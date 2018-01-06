@@ -1,4 +1,0 @@
-build/KeccakSponge.o: LLC/hash/SK/KeccakSponge.c \
-  LLC/hash/SK/KeccakSponge.h LLC/hash/SK/KeccakF-1600-interface.h
-LLC/hash/SK/KeccakSponge.c :
-  LLC/hash/SK/KeccakSponge.h LLC/hash/SK/KeccakF-1600-interface.h :
