@@ -1,0 +1,6 @@
+build/skein.o: LLC/hash/SK/skein.cpp LLC/hash/SK/skein.h \
+  LLC/hash/SK/skein_port.h LLC/hash/SK/brg_types.h \
+  LLC/hash/SK/brg_endian.h LLC/hash/SK/skein_iv.h
+LLC/hash/SK/skein.cpp LLC/hash/SK/skein.h :
+  LLC/hash/SK/skein_port.h LLC/hash/SK/brg_types.h :
+  LLC/hash/SK/brg_endian.h LLC/hash/SK/skein_iv.h :

@@ -1,0 +1,4 @@
+build/KeccakDuplex.o: LLC/hash/SK/KeccakDuplex.c \
+  LLC/hash/SK/KeccakDuplex.h LLC/hash/SK/KeccakF-1600-interface.h
+LLC/hash/SK/KeccakDuplex.c :
+  LLC/hash/SK/KeccakDuplex.h LLC/hash/SK/KeccakF-1600-interface.h :
