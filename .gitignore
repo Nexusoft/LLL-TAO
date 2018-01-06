@@ -1,0 +1,11 @@
+*.DS_Store
+*.o
+*.P
+*.bat
+*.exe
+*.Debug
+*.Release
+*.kate-swp
+*.db
+*.vscode
+*.qm
