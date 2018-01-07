@@ -5,30 +5,47 @@ Series of Templates for developing Crypto, Database, or Protocol. Base templates
 
 Lower Level Crypto
 ------------------
-Set of Operations for handling Crypto with Digital Signatures, Hashing, Encyrption (Symmetric / Assymetric)
+Set of Operations for handling Crypto including:
+
+..* Digital Signatures (ECDSA, Schnorr, Hash Based)
+..* Hashing (SHA3 / Notable Secure Algorithms)
+..* Encyrption (Symmetric / Assymetric)
+..* Post-Quantum Cyrptography (Experimental)
 
 
 Lower Level Database
 --------------------
 Set of Templates for designing high efficiency database systems. Core templates can be expanded into higher level database types.
 
+..* Key Database
+..* Sector Database
+..* Transaction Database (ACID)
+..* Checkpoint Database (Journal)
 
 Lower Level Protocol
 --------------------
 Set of Client / Server templates for efficient data handling. Processes over 10k connections per server. Inhereit and create custom packet types to write a new protocol with ease and no network programming required.
 
+..* Data Server
+..* Listening Server
+..* Connection Types
+..* Packet Styles
+..* Event Triggers
+..* DDOS Throttling
+
 
 Utilities
 ---------
 Set of useful tools for developing any program such as:
--Serialization
--Runtime
--Debug
--Arguments
--Containers
--Configuration
--Sorting
--Allocators
+
+..* Serialization
+..* Runtime
+..* Debug
+..* Arguments
+..* Containers
+..* Configuration
+..* Sorting
+..* Allocators
 
 
 License
