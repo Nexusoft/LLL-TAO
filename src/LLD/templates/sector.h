@@ -54,7 +54,7 @@ namespace LLD
 		/** Mutex for Thread Synchronization. 
 			TODO: Lock Mutex based on Read / Writes on a per Sector Basis. 
 			Will allow higher efficiency for thread concurrency. **/
-		boost::mutex SECTOR_MUTEX;
+		Mutex_t SECTOR_MUTEX;
 		
 		
 		/** The String to hold the Disk Location of Database File. 
@@ -117,6 +117,10 @@ namespace LLD
 				std::ofstream cStream(strprintf("%s%s%u.dat", strBaseLocation.c_str(), strBaseName.c_str(), 0).c_str(), std::ios::binary);
 				cStream.close();
 			}
+			
+			/* Register the Keychain in Global LLD scope if it hasn't been registered already. */
+			if(!KeychainRegistered(strKeychainRegistry))
+				RegisterKeychain(strKeychainRegistry);
 			
 			pTransaction = NULL;
 		}
@@ -223,7 +227,7 @@ namespace LLD
 		/** Get a Record from the Database with Given Key. **/
 		bool Get(std::vector<unsigned char> vKey, std::vector<unsigned char>& vData)
 		{
-			MUTEX_LOCK(SECTOR_MUTEX);
+			LOCK(SECTOR_MUTEX);
 			
 			/** Read a Record from Binary Data. **/
 			KeyDatabase* SectorKeys = GetKeychain(strKeychainRegistry);
@@ -281,7 +285,7 @@ namespace LLD
 		/** Add / Update A Record in the Database **/
 		bool Put(std::vector<unsigned char> vKey, std::vector<unsigned char> vData)
 		{
-			MUTEX_LOCK(SECTOR_MUTEX);
+			LOCK(SECTOR_MUTEX);
 			
 			KeyDatabase* SectorKeys = GetKeychain(strKeychainRegistry);
 			if(!SectorKeys)
@@ -428,7 +432,7 @@ namespace LLD
 			**/
 		bool TxnCommit()
 		{
-			MUTEX_LOCK(SECTOR_MUTEX);
+			LOCK(SECTOR_MUTEX);
 			
 			if(GetArg("-verbose", 0) >= 4)
 				printf("TransactionCommit() : Commiting Transactin to Datachain.\n");

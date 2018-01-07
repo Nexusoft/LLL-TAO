@@ -71,7 +71,7 @@ int GetRandInt(int nMax)
     return (int)GetRand(nMax);
 }
 
-/** For Script Support **/
+
 uint256 GetRand256()
 {
     uint256 hash;
@@ -79,10 +79,18 @@ uint256 GetRand256()
     return hash;
 }
 
-/** For Transaction / Inventory Support **/
+
 uint512 GetRand512()
 {
     uint512 hash;
+    RAND_bytes((unsigned char*)&hash, sizeof(hash));
+    return hash;
+}
+
+
+uint1024 GetRand1024()
+{
+    uint1024 hash;
     RAND_bytes((unsigned char*)&hash, sizeof(hash));
     return hash;
 }

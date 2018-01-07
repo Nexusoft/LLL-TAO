@@ -19,9 +19,9 @@ ________________________________________________________________________________
 #include <vector>
 
 #include "../../LLC/hash/SK.h"
-#include "../../LLC/hash/macro.h"
+#include "../../Util/include/mutex.h"
 
-#define MUTEX_LOCK(a) boost::lock_guard<boost::mutex> lock(a)
+//#define MUTEX_LOCK(a) boost::lock_guard<boost::mutex> lock(a)
 
 namespace LLD
 {
@@ -66,7 +66,7 @@ namespace LLD
 		uint64 TransactionID;
 		
 		/** Only let one operation happen on the transaction at one time. **/
-		boost::mutex TX_MUTEX;
+		Mutex_t TX_MUTEX;
 		
 		/** New Data to be Added. **/
 		std::map< std::vector<unsigned char>, std::vector<unsigned char> > mapTransactions;
@@ -84,7 +84,7 @@ namespace LLD
 		bool AddTransaction(std::vector<unsigned char> vKey, std::vector<unsigned char> vData,
 							std::vector<unsigned char> vOriginalData)
 		{
-			MUTEX_LOCK(TX_MUTEX);
+			LOCK(TX_MUTEX);
 			
 			mapTransactions[vKey] = vData;
 			mapOriginalData[vKey] = vOriginalData;
@@ -95,7 +95,7 @@ namespace LLD
 		/** Function to Erase a Key from the Keychain. **/
 		bool EraseTransaction(std::vector<unsigned char> vKey)
 		{
-			MUTEX_LOCK(TX_MUTEX);
+			LOCK(TX_MUTEX);
 			
 			mapEraseData[vKey] = 0;
 			if(mapTransactions.count(vKey))

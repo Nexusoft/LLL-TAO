@@ -17,20 +17,54 @@ ________________________________________________________________________________
 #include "key.h"
 
 #include "../../Util/include/args.h"
+#include "../../Util/include/mutex.h"
 
 namespace LLD
 {
-	/** Handle the Registry of Shared Keychain Pointer Objects. **/
-	extern std::map<std::string, KeyDatabase*> mapKeychainRegistry;
 	
-	/** Handle the Key Registry. **/
-	extern Mutex_t REGISTRY_MUTEX;
+	/* Handle the Registry of Shared Keychain Pointer Objects. */
+	std::map<std::string, KeyDatabase*> mapKeychainRegistry;
 	
-	/** Handle the Registrying of Keychains for LLD Sectors. **/
-	void RegisterKeychain(std::string strRegistryName, std::string strBaseName);
 	
-	/** Return the Keychain Pointer Object. **/
-	KeyDatabase* GetKeychain(std::string strRegistryName);
+	/* Handle the Key Registry. */
+	Mutex_t REGISTRY_MUTEX;
+	
+	
+	/* Handle the Registrying of Keychains for LLD Sectors. */
+	void RegisterKeychain(std::string strRegistryName)
+	{
+		LOCK(REGISTRY_MUTEX);
+		
+		/* Debug Output for Keychain Database Initialization. */
+		printf("[KEYCHAIN] Registering Keychain For Database %s.... ", strRegistryName.c_str());
+		
+		/** Create the New Keychain Database. **/
+		KeyDatabase* SectorKeys = new KeyDatabase(GetDataDir().string() + "/keychain/", strRegistryName);
+		SectorKeys->Initialize();
+		
+		/* Log the new Keychain into the Memeory Map. */
+		mapKeychainRegistry[strRegistryName] = SectorKeys;
+		
+		printf("Done\n");
+	}
+	
+	
+	/* Return the Keychain Pointer Object. */
+	KeyDatabase* GetKeychain(std::string strRegistryName) {
+		if(!mapKeychainRegistry.count(strRegistryName))
+			return NULL;
+		
+		return mapKeychainRegistry[strRegistryName];
+	}
+	
+	
+	/* Return if a Keychain is Registered or Not. */
+	bool KeychainRegistered(std::string strRegistryName)
+	{
+		return mapKeychainRegistry.count(strRegistryName);
+	}
+	
+	
 }
 
 #endif

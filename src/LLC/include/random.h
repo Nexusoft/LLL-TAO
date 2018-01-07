@@ -56,4 +56,7 @@ uint256 GetRand256();
 /* Get a random 512 bit number. */
 uint512 GetRand512();
 
+/* Get a random 1024 bit number. */
+uint1024 GetRand1024();
+
 #endif

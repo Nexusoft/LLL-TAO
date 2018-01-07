@@ -45,7 +45,7 @@ int OutputDebugStringF(const char* pszFormat, ...)
 	// print to debug.log
 	if (!fileout)
 	{
-		boost::filesystem::path pathDebug = "debug.log";
+		boost::filesystem::path pathDebug = GetDataDir() / "debug.log";
 		fileout = fopen(pathDebug.string().c_str(), "a");
 		if (fileout) setbuf(fileout, NULL); // unbuffered
 	}
@@ -181,7 +181,7 @@ bool error(const char *format, ...)
         buffer[limit-1] = 0;
     }
 	
-    printf("ERROR: %s\n", buffer);
+    printf(ANSI_COLOR_RED "ERROR: %s" ANSI_COLOR_RESET "\n", buffer);
     return false;
 }
 

@@ -48,7 +48,7 @@ bool SetStartOnSystemStartup(bool fAutoStart);
 
 
 /* Get the default directory Nexus data is stored in. */
-boost::filesystem::path GetDefaultDataDir(std::string strName = "Nexus");
+boost::filesystem::path GetDefaultDataDir(std::string strName = "LLL");
 
 
 /* Get the Location of the Config File. */
