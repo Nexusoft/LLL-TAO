@@ -7,6 +7,7 @@
 //
 
 #include "Util/include/debug.h"
+#include "Util/include/runtime.h"
 #include "LLD/templates/sector.h"
 #include "LLC/hash/SK.h"
 #include "LLC/include/random.h"
@@ -91,12 +92,15 @@ public:
 
 int main(int argc, char** argv)
 {
+	ParseParameters(argc, argv);
+	
     printf("Lower Level Library Initialization...\n");
 	
 	TestDB db;
 	
 	CBlock test;
 	test.SetRandom();
+
 	
 	db.WriteBlock(test.GetHash(), test);
 	test.Print();

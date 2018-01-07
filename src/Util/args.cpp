@@ -77,8 +77,7 @@ void ParseParameters(int argc, const char*const argv[])
         mapMultiArgs[psz].push_back(pszValue);
     }
 
-    // New 0.6 features:
-    BOOST_FOREACH(const PAIRTYPE(std::string, std::string)& entry, mapArgs)
+    for(auto entry : mapArgs)
     {
         std::string name = entry.first;
 

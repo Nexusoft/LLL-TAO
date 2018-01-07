@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include "keychain.h"
 #include "transaction.h"
 
+#include "../../Util/include/runtime.h"
+
 namespace LLD
 {
 
@@ -82,6 +84,10 @@ namespace LLD
 		bool fReadOnly = false;
 		
 		
+		/** Timer for Runtime Calculations. **/
+		Timer runtime;
+		
+		
 		/** Class to handle Transaction Data. **/
 		SectorTransaction* pTransaction;
 	public:
@@ -106,6 +112,9 @@ namespace LLD
 		/** Initialize Sector Database. **/
 		void Initialize()
 		{
+			if(GetBoolArg("-runtime", false))
+				runtime.Start();
+			
 			/** Create the Sector Database Directories. **/
 			boost::filesystem::path dir(strBaseLocation);
 			boost::filesystem::create_directory(dir);
@@ -123,6 +132,9 @@ namespace LLD
 				RegisterKeychain(strKeychainRegistry);
 			
 			pTransaction = NULL;
+			
+			if(GetBoolArg("-runtime", false))
+				printf(ANSI_COLOR_GREEN "LLD::Sector::Read() executed in %u micro-seconds\n" ANSI_COLOR_RESET, runtime.ElapsedMicroseconds());
 		}
 		
 		template<typename Key>
@@ -146,6 +158,9 @@ namespace LLD
 		template<typename Key>
 		bool Erase(const Key& key)
 		{
+			if(GetBoolArg("-runtime", false))
+				runtime.Start();
+			
 			/** Serialize Key into Bytes. **/
 			CDataStream ssKey(SER_LLD, DATABASE_VERSION);
 			ssKey.reserve(GetSerializeSize(key, SER_LLD, DATABASE_VERSION));
@@ -165,11 +180,17 @@ namespace LLD
 			
 			/** Return the Key existance in the Keychain Database. **/
 			return SectorKeys->Erase(vKey);
+			
+			if(GetBoolArg("-runtime", false))
+				printf(ANSI_COLOR_GREEN "LLD::Sector::Erase() executed in %u micro-seconds\n" ANSI_COLOR_RESET, runtime.ElapsedMicroseconds());
 		}
 		
 		template<typename Key, typename Type>
 		bool Read(const Key& key, Type& value)
 		{
+			if(GetBoolArg("-runtime", false))
+				runtime.Start();
+				
 			/** Serialize Key into Bytes. **/
 			CDataStream ssKey(SER_LLD, DATABASE_VERSION);
 			ssKey.reserve(GetSerializeSize(key, SER_LLD, DATABASE_VERSION));
@@ -189,6 +210,9 @@ namespace LLD
 			catch (std::exception &e) {
 				return false;
 			}
+			
+			if(GetBoolArg("-runtime", false))
+				printf(ANSI_COLOR_GREEN "LLD::Sector::Read() executed in %u micro-seconds\n" ANSI_COLOR_RESET, runtime.ElapsedMicroseconds());
 
 			return true;
 		}
@@ -196,6 +220,9 @@ namespace LLD
 		template<typename Key, typename Type>
 		bool Write(const Key& key, const Type& value)
 		{
+			if(GetBoolArg("-runtime", false))
+				runtime.Start();
+				
 			if (fReadOnly)
 				assert(!"Write called on database in read-only mode");
 
@@ -220,6 +247,9 @@ namespace LLD
 				
 				return pTransaction->AddTransaction(vKey, vData, vOriginalData);
 			}
+			
+			if(GetBoolArg("-runtime", false))
+				printf(ANSI_COLOR_GREEN "LLD::Sector::Write() executed in %u micro-seconds\n" ANSI_COLOR_RESET, runtime.ElapsedMicroseconds());
 			
 			return Put(vKey, vData);
 		}
@@ -434,6 +464,9 @@ namespace LLD
 		{
 			LOCK(SECTOR_MUTEX);
 			
+			if(GetBoolArg("-runtime", false))
+				runtime.Start();
+			
 			if(GetArg("-verbose", 0) >= 4)
 				printf("TransactionCommit() : Commiting Transactin to Datachain.\n");
 			
@@ -563,6 +596,9 @@ namespace LLD
 				TODO: Delete the Sector and Keychain for Current Transaction Commit ID. **/
 			delete pTransaction;
 			pTransaction = NULL;
+			
+			if(GetBoolArg("-runtime", false))
+				printf(ANSI_COLOR_GREEN "LLD::Sector::TxnCommit() executed in %u micro-seconds\n" ANSI_COLOR_RESET, runtime.ElapsedMicroseconds());
 			
 			return true;
 		}
