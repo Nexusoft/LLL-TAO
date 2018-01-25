@@ -19,7 +19,6 @@ ________________________________________________________________________________
 #include <openssl/bn.h>
 
 #include "../../Util/templates/serialize.h"
-#include "../../LLP/include/message.h"
 
 
 /** Errors thrown by the bignum class */
@@ -498,19 +497,19 @@ public:
         return ToString(16);
     }
 
-    unsigned int GetSerializeSize(int nType=0, int nVersion=PROTOCOL_VERSION) const
+    unsigned int GetSerializeSize(int nType=0, int nVersion=SER_NETWORK) const
     {
         return ::GetSerializeSize(getvch(), nType, nVersion);
     }
 
     template<typename Stream>
-    void Serialize(Stream& s, int nType=0, int nVersion=PROTOCOL_VERSION) const
+    void Serialize(Stream& s, int nType=0, int nVersion=SER_NETWORK) const
     {
         ::Serialize(s, getvch(), nType, nVersion);
     }
 
     template<typename Stream>
-    void Unserialize(Stream& s, int nType=0, int nVersion=PROTOCOL_VERSION)
+    void Unserialize(Stream& s, int nType=0, int nVersion=SER_NETWORK)
     {
         std::vector<unsigned char> vch;
         ::Unserialize(s, vch, nType, nVersion);

@@ -35,17 +35,12 @@ namespace LLD
 	{
 		LOCK(REGISTRY_MUTEX);
 		
-		/* Debug Output for Keychain Database Initialization. */
-		printf("[KEYCHAIN] Registering Keychain For Database %s.... ", strRegistryName.c_str());
-		
 		/** Create the New Keychain Database. **/
 		KeyDatabase* SectorKeys = new KeyDatabase(GetDataDir().string() + "/keychain/", strRegistryName);
 		SectorKeys->Initialize();
 		
 		/* Log the new Keychain into the Memeory Map. */
 		mapKeychainRegistry[strRegistryName] = SectorKeys;
-		
-		printf("Done\n");
 	}
 	
 	
