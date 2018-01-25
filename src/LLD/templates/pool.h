@@ -21,15 +21,10 @@ namespace LLD
 {	
 
 	/* Holding Object for Memory Maps. */
-	template<typename ObjectType> class CHoldingObject
+	struct CachedData
 	{
-	public:
 		uint64        Timestamp;
-		unsigned char     State;
-		ObjectType       Object;
-		
-		CHoldingObject() {}
-		CHoldingObject(uint64 TimestampIn, unsigned char StateIn, ObjectType ObjectIn) : Timestamp(TimestampIn), State(StateIn), Object(ObjectIn) {}
+		std::vector<unsigned char> vObjectData;
 	};
 	
 	
@@ -44,45 +39,48 @@ namespace LLD
 	 * B. It can process data locked as orphans
 	 * 
 	 */
-	template<typename IndexType, typename ObjectType> class CHoldingPool
+	class CachePool
 	{
 		
 	protected:
-		
-		/* Map of the current holding data. */
-		std::map<IndexType, CHoldingObject<ObjectType> > mapObjects;
         
-		
-		/* The Expiration Time of Holding Data. */
-		unsigned int nExpirationTime;
+        
+        /* The Maximum Size of the Cache. */
+        unsigned int MAX_CACHE_SIZE;
+        
+        
+        /* The Maximum Cache Buckets. */
+        unsigned int MAX_CACHE_BUCKETS;
+        
+        
+        /* The current size of the pool. */
+        unsigned int nCurrentSize;
         
 		
 		/* Mutex for thread concurrencdy. */
 		Mutex_t MUTEX;
 		
+        
+        /* Map of the current holding data. */
+		std::map<std::vector<unsigned char>, CachedData > mapObjects[];
+        
 	public:
-	
-		/** State level messages to hold information about holding data. */
-		enum
-		{
-			//Unverified States
-			UNVERIFIED = 254,
-			NOTFOUND   = 255
-			
-			//All states on 0 - 253 for custom states with child classes
-		};
+		
+		/** Base Constructor.
+         * 
+         * MAX_CACHE_SIZE default value is 32 MB
+         * MAX_CACHE_BUCKETS default value is 65,539 (2 bytes)
+         * 
+         */
+		CachePool() : mapObjects(), MAX_CACHE_SIZE(32 * 1024 * 1024), MAX_CACHE_BUCKETS(256 * 256), nCurrentSize(0) (0) {}
 		
 		
-		/** Base Constructor. **/
-		CHoldingPool() : mapObjects(), nExpirationTime(0) {}
-		
-		
-		/** Expiration Constructor
+		/** Cache Size Constructor
 		 * 
-		 * @param[in] nExpirationTimeIn The time in seconds for objects to expire in the pool.
+		 * @param[in] nCacheSizeIn The maximum size of this Cache Pool
 		 * 
 		 */
-		CHoldingPool(unsigned int nExpirationTimeIn) : mapObjects(), nExpirationTime(nExpirationTimeIn) {}
+		CachePool(unsigned int nCacheSizeIn, unsigned int nMaxBuckets = 256 * 256) : mapObjects(), MAX_CACHE_SIZE(nCacheSizeIn), MAX_CACHE_BUCKETS(nMaxBuckets), nCurrentSize(0) {}
 		
 		
 		/** Check for Data by Index.
@@ -92,7 +90,7 @@ namespace LLD
 		 * @return Boolean expressino whether pool contains data by index
 		 * 
 		 */
-		bool Has(IndexType Index) const { return mapObjects.count(Index); }
+		bool Has(std::vector<unsigned char> vKey) const { return mapObjects.count(Index); }
 		
 		
 		/** Get the Data by Index
@@ -200,7 +198,7 @@ namespace LLD
 		 * @param[in] Object Template argument for the object to be added.
 		 * 
 		 */
-		bool Update(IndexType Index, ObjectType Object, unsigned char State = UNVERIFIED, uint64 nTimestamp = Core::UnifiedTimestamp())
+		bool Update(IndexType Index, ObjectType Object, unsigned char State = UNVERIFIED, uint64 nTimestamp = Timestamp(true))
 		{
 			LOCK(MUTEX);
 			
@@ -223,7 +221,7 @@ namespace LLD
 		 * @param[in] Object Template argument for the object to be added.
 		 * 
 		 */
-		bool Add(IndexType Index, ObjectType Object, unsigned char State = UNVERIFIED, uint64 nTimestamp = Core::UnifiedTimestamp())
+		bool Add(IndexType Index, ObjectType Object, unsigned char State = UNVERIFIED, uint64 nTimestamp = Timestamp(true))
 		{
 			LOCK(MUTEX);
 			

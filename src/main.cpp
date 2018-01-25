@@ -12,6 +12,11 @@
 #include "LLC/hash/SK.h"
 #include "LLC/include/random.h"
 
+#include "leveldb/db.h"
+
+
+#include <db_cxx.h>
+
 class CBlock
 {
 public:
@@ -96,22 +101,182 @@ int main(int argc, char** argv)
 	
     printf("Lower Level Library Initialization...\n");
 	
-	TestDB db;
+	TestDB* db = new TestDB();
 	
 	CBlock test;
-	test.SetRandom();
+    test.SetRandom();
+    
+    std::map<uint1024, CBlock> mapBlocks;
+    std::vector<uint1024> vBlocks;
+    CBlock bulkTest;
+    bulkTest.SetRandom();
+    for(int i = 0; i < GetArg("-testwrite", 1); i++)
+    {
+        bulkTest.nChannel = i;
+        mapBlocks[bulkTest.GetHash()] = bulkTest;
+        vBlocks.push_back(bulkTest.GetHash());
+    }
+    
+    
+    unsigned int nTotalElapsed = 0;
+    Timer timer;
+    timer.Start();
+    for(typename std::map< uint1024, CBlock >::iterator blk = mapBlocks.begin(); blk != mapBlocks.end(); blk++ )
+    {
+        db->WriteBlock(blk->first, blk->second);
+    }
+    
+    unsigned int nElapsed = timer.ElapsedMicroseconds();
+    printf(ANSI_COLOR_GREEN "LLD Write Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
+    nTotalElapsed += nElapsed;
+    
 
-	
-	db.WriteBlock(test.GetHash(), test);
-	test.Print();
-	
-	CBlock newTest;
-	db.ReadBlock(test.GetHash(), newTest);
-	newTest.Print();
-	
-	CBlock newTestToo;
-	db.ReadBlock(test.GetHash(), newTestToo);
-	newTestToo.Print();
+    
+    timer.Reset();
+    std::random_shuffle(vBlocks.begin(), vBlocks.end());
+    for(auto hash : vBlocks)
+    {
+        db->ReadBlock(hash, test);
+    }
+    
+    nElapsed = timer.ElapsedMicroseconds();
+    printf(ANSI_COLOR_GREEN "LLD Read Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
+    nTotalElapsed += nElapsed;
+    
+    timer.Reset();
+    delete db;
+    nElapsed = timer.ElapsedMicroseconds();
+    printf(ANSI_COLOR_GREEN "LLD Destruct Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
+    nTotalElapsed += nElapsed;
+    
+    printf(ANSI_COLOR_YELLOW "LLD Total Running Time: %u micro-seconds\n\n" ANSI_COLOR_RESET, nTotalElapsed);
+    nTotalElapsed = 0;
+    
+    
+    // Set up database connection information and open database
+    leveldb::DB* ldb;
+    leveldb::Options options;
+    options.create_if_missing = true;
+    options.block_size = 256000;
+
+    leveldb::Status status = leveldb::DB::Open(options, "./leveldb", &ldb);
+
+    if (false == status.ok())
+    {
+        return error("Unable to Open Leveldb\n");
+    }
+    
+    // Add 256 values to the database
+    leveldb::WriteOptions writeOptions;
+    leveldb::ReadOptions readoptions;
+    
+    timer.Reset();
+    for(typename std::map< uint1024, CBlock >::iterator blk = mapBlocks.begin(); blk != mapBlocks.end(); blk++ )
+    {
+        CDataStream ssKey(SER_LLD, DATABASE_VERSION);
+        ssKey << blk->first;
+        
+        std::vector<char> vKey(ssKey.begin(), ssKey.end());
+        
+        CDataStream ssData(SER_LLD, DATABASE_VERSION);
+        ssData << blk->second;
+        
+        std::vector<char> vData(ssData.begin(), ssData.end());
+        
+        leveldb::Slice slKey(&vKey[0], vKey.size());
+        leveldb::Slice slData(&vData[0], vData.size());
+        
+        ldb->Put(writeOptions, slKey, slData);
+    }
+    nElapsed = timer.ElapsedMicroseconds();
+    printf(ANSI_COLOR_GREEN "LevelDB Write Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
+    nTotalElapsed += nElapsed;
+    
+    Sleep(2000);
+    
+    
+    timer.Reset();
+    std::random_shuffle(vBlocks.begin(), vBlocks.end());
+    for(auto hash : vBlocks)
+    {
+        CDataStream ssKey(SER_LLD, DATABASE_VERSION);
+        ssKey << hash;
+        
+        std::vector<char> vKey(ssKey.begin(), ssKey.end());
+
+        leveldb::Slice slKey(&vKey[0], vKey.size());
+        std::string strValue;
+        
+        ldb->Get(readoptions, slKey, &strValue);
+    }
+    nElapsed = timer.ElapsedMicroseconds();
+    printf(ANSI_COLOR_GREEN "LevelDB Read Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
+    nTotalElapsed += nElapsed;
+    
+    timer.Reset();
+    delete ldb;
+    nElapsed = timer.ElapsedMicroseconds();
+    printf(ANSI_COLOR_GREEN "LevelDB Destruct Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
+    nTotalElapsed += nElapsed;
+    
+    
+    printf(ANSI_COLOR_YELLOW "LevelDB Total Running Time: %u micro-seconds\n\n" ANSI_COLOR_RESET, nTotalElapsed);
+    nTotalElapsed = 0;
+    
+    
+    DbEnv dbenv(0);
+    dbenv.open("bdb", DB_CREATE | DB_INIT_MPOOL, 0);
+    
+    Db* pdb = new Db(&dbenv, 0);
+    pdb->open(NULL, "bdb.dat", NULL, DB_BTREE, DB_CREATE | DB_TRUNCATE, 0);
+    
+    timer.Reset();
+    for(typename std::map< uint1024, CBlock >::iterator blk = mapBlocks.begin(); blk != mapBlocks.end(); blk++ )
+    {
+        CDataStream ssKey(SER_LLD, DATABASE_VERSION);
+        ssKey << blk->first;
+        
+        CDataStream ssData(SER_LLD, DATABASE_VERSION);
+        ssData << blk->second;
+
+        Dbt datKey(&ssKey[0], ssKey.size());
+        Dbt datValue(&ssData[0], ssData.size());
+
+        // Write
+        pdb->put(0, &datKey, &datValue, 0);
+    }
+    
+    nElapsed = timer.ElapsedMicroseconds();
+    printf(ANSI_COLOR_GREEN "BerkleeDB Write Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
+    nTotalElapsed += nElapsed;
+
+    timer.Reset();
+    std::random_shuffle(vBlocks.begin(), vBlocks.end());
+    for(auto hash : vBlocks)
+    {
+        CDataStream ssKey(SER_LLD, DATABASE_VERSION);
+        ssKey << hash;
+
+        Dbt datKey(&ssKey[0], ssKey.size());
+        Dbt datValue;
+        datValue.set_flags(DB_DBT_MALLOC);
+
+        // Write
+        pdb->get(0, &datKey, &datValue, 0);
+    }
+    
+    nElapsed = timer.ElapsedMicroseconds();
+    printf(ANSI_COLOR_GREEN "BerkleeDB Read Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
+    nTotalElapsed += nElapsed;
+    
+    /* Close the Databases. */
+    timer.Reset();
+    delete pdb;
+    nElapsed = timer.ElapsedMicroseconds();
+    printf(ANSI_COLOR_GREEN "BerkleeDB Destruct Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
+    nTotalElapsed += nElapsed;
+    
+    printf(ANSI_COLOR_YELLOW "BerkleeDB Total Running Time: %u micro-seconds\n" ANSI_COLOR_RESET, nTotalElapsed);
     
     return 0;
 }

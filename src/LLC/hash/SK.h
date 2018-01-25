@@ -33,6 +33,24 @@ namespace LLC
 	
 	namespace HASH
 	{
+        
+        /* Hashing template for Checksums */
+		inline unsigned int SK32(const std::vector<unsigned char>& vch)
+		{
+			unsigned int skein;
+			Skein_256_Ctxt_t ctx;
+			Skein_256_Init(&ctx, 32);
+			Skein_256_Update(&ctx, (unsigned char *)&vch[0], vch.size());
+			Skein_256_Final(&ctx, (unsigned char *)&skein);
+			
+			unsigned int keccak;
+			Keccak_HashInstance ctx_keccak;
+			Keccak_HashInitialize(&ctx_keccak, 1344, 256, 32, 0x06);
+			Keccak_HashUpdate(&ctx_keccak, (unsigned char *)&skein, 32);
+			Keccak_HashFinal(&ctx_keccak, (unsigned char *)&keccak);
+			
+			return keccak;
+		}
 		
 		/* Hashing template for Checksums */
 		template<typename T1>
@@ -91,6 +109,18 @@ namespace LLC
 			Keccak_HashInstance ctx_keccak;
 			Keccak_HashInitialize(&ctx_keccak, 1344, 256, 64, 0x06);
 			Keccak_HashUpdate(&ctx_keccak, (unsigned char *)&skein, 64);
+			Keccak_HashFinal(&ctx_keccak, (unsigned char *)&keccak);
+			
+			return keccak;
+		}
+		
+        /* Hashing template for Address Generation */
+		inline uint64 Keccak64(const std::vector<unsigned char>& vch)
+		{
+            uint64 keccak;
+			Keccak_HashInstance ctx_keccak;
+			Keccak_HashInitialize(&ctx_keccak, 1344, 256, 64, 0x06);
+			Keccak_HashUpdate(&ctx_keccak, (unsigned char *)&vch, vch.size());
 			Keccak_HashFinal(&ctx_keccak, (unsigned char *)&keccak);
 			
 			return keccak;

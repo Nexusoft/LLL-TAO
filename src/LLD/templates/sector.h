@@ -19,8 +19,18 @@ ________________________________________________________________________________
 
 #include "../../Util/include/runtime.h"
 
+#include <unordered_map>
+
 namespace LLD
 {
+    
+    /* Maximum size a file can be in the keychain. */
+    const unsigned int MAX_SECTOR_FILE_SIZE = 1024 * 1024 * 1024; //1 GB per File
+    
+    
+    /* Maximum cache buckets for sectors. */
+    const unsigned int MAX_SECTOR_CACHE_BUCKETS = 256 * 256;
+    
 
 	/** Base Template Class for a Sector Database. 
 		Processes main Lower Level Disk Communications.
@@ -53,60 +63,80 @@ namespace LLD
 	class SectorDatabase
 	{
 	protected:
-		/** Mutex for Thread Synchronization. 
+		/* Mutex for Thread Synchronization. 
 			TODO: Lock Mutex based on Read / Writes on a per Sector Basis. 
-			Will allow higher efficiency for thread concurrency. **/
+			Will allow higher efficiency for thread concurrency. */
 		Mutex_t SECTOR_MUTEX;
 		
 		
-		/** The String to hold the Disk Location of Database File. 
-			Each Database File Acts as a New Table as in Conventional Design.
-			Key can be any Type, which is how the Database Records are Accessed. **/
-		std::string strBaseName;
+		/* The String to hold the Disk Location of Database File. */
+		std::string strLocation;
 		
 		
-		/** Location of the Directory to host Database File System. 
-			Main File Components are Derived from Base Name.
-			Contains Key and Cache Databases. **/
-		std::string strBaseLocation;
-		
-		
-		/** Keychain Registry:
-			The nameof the Keychain Registry. **/
+		/* The nameof the Keychain Registry. */
 		std::string strKeychainRegistry;
 		
 		
-		/** Memory Structure to Track the Database Sizes. **/
-		std::vector<unsigned int> vDatabaseSizes;
-		
-		
-		/** Read only Flag for Sectors. **/
+		/* Read only Flag for Sectors. */
 		bool fReadOnly = false;
 		
 		
-		/** Timer for Runtime Calculations. **/
+		/* Timer for Runtime Calculations. */
 		Timer runtime;
 		
 		
-		/** Class to handle Transaction Data. **/
+		/* Class to handle Transaction Data. */
 		SectorTransaction* pTransaction;
+        
+        
+        /* Sector Keys Database. */
+        KeyDatabase* SectorKeys;
+        
+        
+        /* Hashmap Custom Hash Using SK. */
+        struct SK_Hashmap
+        {
+            std::size_t operator()(const std::vector<unsigned char>& k) const {
+                return LLC::HASH::SK32(k);
+            }
+        };
+        
+        //std::unordered_map< std::vector<unsigned char>, std::vector<unsigned char>, SK_Hashmap > mapRecordCache;
+        std::map< std::vector<unsigned char>, std::vector<unsigned char> > mapRecordCache[MAX_SECTOR_CACHE_BUCKETS];
+        
+        /* The current File Position. */
+        mutable unsigned int nCurrentFile;
+        mutable unsigned int nCurrentFileSize;
 	public:
 		/** The Database Constructor. To determine file location and the Bytes per Record. **/
 		SectorDatabase(std::string strName, std::string strKeychain, const char* pszMode="r+")
 		{
+            /* Create the Sector Database Directories. */
+            boost::filesystem::path dir(GetDataDir().string() + "/datachain");
+            if(!boost::filesystem::exists(dir))
+                boost::filesystem::create_directory(dir);
+            
 			strKeychainRegistry = strKeychain;
-			strBaseLocation = GetDataDir().string() + "/datachain/"; 
-			strBaseName = strName;
+			strLocation = GetDataDir().string() + "/datachain/" + strName;
+            
+            nCurrentFile = 0;
 			
 			/** Read only flag when instantiating new database. **/
 			fReadOnly = (!strchr(pszMode, '+') && !strchr(pszMode, 'w'));
 			
 			Initialize();
 		}
+		
 		~SectorDatabase()
         { 
             if (pTransaction) 
                 delete pTransaction;
+        }
+        
+        unsigned int GetBucket(std::vector<unsigned char> vKey) const
+        {
+            assert(vKey.size() > 1);
+            return (vKey[0] << 8) + vKey[1];
         }
 		
 		/** Initialize Sector Database. **/
@@ -114,27 +144,52 @@ namespace LLD
 		{
 			if(GetBoolArg("-runtime", false))
 				runtime.Start();
+            
+            /* Find the most recent append file. */
+            while(true)
+            {
 			
-			/** Create the Sector Database Directories. **/
-			boost::filesystem::path dir(strBaseLocation);
-			boost::filesystem::create_directory(dir);
-			
-			/** TODO: Make a worker or thread to check sizes of files and automatically create new file.
-				Keep independent of reads and writes for efficiency. **/
-			std::fstream fIncoming(strprintf("%s%s%u.dat", strBaseLocation.c_str(), strBaseName.c_str(), 0).c_str(), std::ios::in | std::ios::binary);
-			if(!fIncoming) {
-				std::ofstream cStream(strprintf("%s%s%u.dat", strBaseLocation.c_str(), strBaseName.c_str(), 0).c_str(), std::ios::binary);
-				cStream.close();
-			}
+                /* TODO: Make a worker or thread to check sizes of files and automatically create new file.
+                    Keep independent of reads and writes for efficiency. */
+                std::string strFilename = strprintf("%s-%u.dat", strLocation.c_str(), nCurrentFile);
+                std::fstream fIncoming(strFilename, std::ios::in | std::ios::binary);
+                if(!fIncoming) {
+                    
+                    /* Assign the Current Size and File. */
+                    if(nCurrentFile > 0)
+                        nCurrentFile--;
+                    else
+                    {
+                        /* Create a new file if it doesn't exist. */
+                        std::ofstream cStream(strprintf("%s-%u.dat", strLocation.c_str(), nCurrentFile).c_str(), std::ios::binary);
+                        cStream.close();
+                    }
+                    
+                    break;
+                }
+                
+                /* Get the Binary Size. */
+                fIncoming.seekg(0, std::ios::end);
+                nCurrentFileSize = fIncoming.tellg();
+                
+                /* Increment the Current File */
+                nCurrentFile++;
+            }
 			
 			/* Register the Keychain in Global LLD scope if it hasn't been registered already. */
 			if(!KeychainRegistered(strKeychainRegistry))
 				RegisterKeychain(strKeychainRegistry);
+            
+            			
+			/** Read a Record from Binary Data. **/
+			SectorKeys = GetKeychain(strKeychainRegistry);
+			if(!SectorKeys)
+				error("LLD::Sector::Initialized() : Sector Keys not Registered for Name %s\n", strKeychainRegistry.c_str());
 			
 			pTransaction = NULL;
 			
 			if(GetBoolArg("-runtime", false))
-				printf(ANSI_COLOR_GREEN "LLD::Sector::Read() executed in %u micro-seconds\n" ANSI_COLOR_RESET, runtime.ElapsedMicroseconds());
+				printf(ANSI_COLOR_GREEN "LLD::Sector::Initialized() executed in %u micro-seconds\n" ANSI_COLOR_RESET, runtime.ElapsedMicroseconds());
 		}
 		
 		template<typename Key>
@@ -145,11 +200,6 @@ namespace LLD
 			ssKey.reserve(GetSerializeSize(key, SER_LLD, DATABASE_VERSION));
 			ssKey << key;
 			std::vector<unsigned char> vKey(ssKey.begin(), ssKey.end());
-			
-			/** Read a Record from Binary Data. **/
-			KeyDatabase* SectorKeys = GetKeychain(strKeychainRegistry);
-			if(!SectorKeys)
-				return error("Exists() : Sector Keys not Registered for Name %s\n", strKeychainRegistry.c_str());
 			
 			/** Return the Key existance in the Keychain Database. **/
 			return SectorKeys->HasKey(vKey);
@@ -172,11 +222,7 @@ namespace LLD
 				
 				return true;
 			}
-		
-			/** Read a Record from Binary Data. **/
-			KeyDatabase* SectorKeys = GetKeychain(strKeychainRegistry);
-			if(!SectorKeys)
-				return error("Erase() : Sector Keys not Registered for Name %s\n", strKeychainRegistry.c_str());
+
 			
 			/** Return the Key existance in the Keychain Database. **/
 			return SectorKeys->Erase(vKey);
@@ -188,12 +234,8 @@ namespace LLD
 		template<typename Key, typename Type>
 		bool Read(const Key& key, Type& value)
 		{
-			if(GetBoolArg("-runtime", false))
-				runtime.Start();
-				
 			/** Serialize Key into Bytes. **/
 			CDataStream ssKey(SER_LLD, DATABASE_VERSION);
-			ssKey.reserve(GetSerializeSize(key, SER_LLD, DATABASE_VERSION));
 			ssKey << key;
 			std::vector<unsigned char> vKey(ssKey.begin(), ssKey.end());
 			
@@ -210,9 +252,7 @@ namespace LLD
 			catch (std::exception &e) {
 				return false;
 			}
-			
-			if(GetBoolArg("-runtime", false))
-				printf(ANSI_COLOR_GREEN "LLD::Sector::Read() executed in %u micro-seconds\n" ANSI_COLOR_RESET, runtime.ElapsedMicroseconds());
+
 
 			return true;
 		}
@@ -220,21 +260,16 @@ namespace LLD
 		template<typename Key, typename Type>
 		bool Write(const Key& key, const Type& value)
 		{
-			if(GetBoolArg("-runtime", false))
-				runtime.Start();
-				
 			if (fReadOnly)
 				assert(!"Write called on database in read-only mode");
 
 			/** Serialize the Key. **/
 			CDataStream ssKey(SER_LLD, DATABASE_VERSION);
-			ssKey.reserve(GetSerializeSize(key, SER_LLD, DATABASE_VERSION));
 			ssKey << key;
 			std::vector<unsigned char> vKey(ssKey.begin(), ssKey.end());
 
 			/** Serialize the Value **/
 			CDataStream ssValue(SER_LLD, DATABASE_VERSION);
-			ssValue.reserve(value.GetSerializeSize(SER_LLD, DATABASE_VERSION));
 			ssValue << value;
 			std::vector<unsigned char> vData(ssValue.begin(), ssValue.end());
 
@@ -248,9 +283,6 @@ namespace LLD
 				return pTransaction->AddTransaction(vKey, vData, vOriginalData);
 			}
 			
-			if(GetBoolArg("-runtime", false))
-				printf(ANSI_COLOR_GREEN "LLD::Sector::Write() executed in %u micro-seconds\n" ANSI_COLOR_RESET, runtime.ElapsedMicroseconds());
-			
 			return Put(vKey, vData);
 		}
 		
@@ -258,12 +290,17 @@ namespace LLD
 		bool Get(std::vector<unsigned char> vKey, std::vector<unsigned char>& vData)
 		{
 			LOCK(SECTOR_MUTEX);
-			
-			/** Read a Record from Binary Data. **/
-			KeyDatabase* SectorKeys = GetKeychain(strKeychainRegistry);
-			if(!SectorKeys)
-				return error("Get() : Sector Keys not Registered for Name %s\n", strKeychainRegistry.c_str());
-			
+            
+            unsigned int nBucket = GetBucket(vKey);
+            
+            auto search = mapRecordCache[nBucket].find(vKey);
+            if(search != mapRecordCache[nBucket].end())
+            {
+                vData = mapRecordCache[nBucket][vKey];
+                
+                return true;
+            }
+            
 			if(SectorKeys->HasKey(vKey))
 			{	
                 /* Check that the key is not pending in a transaction for Erase. */
@@ -287,8 +324,12 @@ namespace LLD
 					return false;
 				
 				/** Open the Stream to Read the data from Sector on File. **/
-				std::fstream fStream(strprintf("%s%s%u.dat", strBaseLocation.c_str(), strBaseName.c_str(), cKey.nSectorFile).c_str(), std::ios::in | std::ios::binary);
-
+				/* Open the Stream to Read the data from Sector on File. */
+                std::string strFilename = strprintf("%s-%u.dat", strLocation.c_str(), cKey.nSectorFile);
+				std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::binary);
+                if(!fStream)
+                    return error("Sector File %s Doesn't Exist\n", strFilename.c_str());
+                
 				/** Seek to the Sector Position on Disk. **/
 				fStream.seekg(cKey.nSectorStart);
 			
@@ -298,7 +339,7 @@ namespace LLD
 				fStream.close();
 				
 				/** Check the Data Integrity of the Sector by comparing the Checksums. **/
-				uint64 nChecksum = LLC::HASH::SK64(vData);
+				unsigned int nChecksum = LLC::HASH::SK32(vData);
 				if(cKey.nChecksum != nChecksum)
 					return error("Sector Get() : Checksums don't match data. Corrupted Sector.");
 				
@@ -307,6 +348,8 @@ namespace LLD
 				
 				return true;
 			}
+			else
+                return error("SECTOR GET::KEY NOT FOUND");
 			
 			return false;
 		}
@@ -316,63 +359,66 @@ namespace LLD
 		bool Put(std::vector<unsigned char> vKey, std::vector<unsigned char> vData)
 		{
 			LOCK(SECTOR_MUTEX);
+            
+            unsigned int nBucket = GetBucket(vKey);
+            
+            auto search = mapRecordCache[nBucket].find(vKey);
+            if(search == mapRecordCache[nBucket].end())
+                mapRecordCache[nBucket][vKey] = vData;
+            
+            if(GetBoolArg("-runtime", false))
+				runtime.Start();
 			
-			KeyDatabase* SectorKeys = GetKeychain(strKeychainRegistry);
-			if(!SectorKeys)
-				return error("Put() : Sector Keys not Registered for Name %s\n", strKeychainRegistry.c_str());
-			
-			/** Write Header if First Update. **/
+			/* Write Header if First Update. */
 			if(!SectorKeys->HasKey(vKey))
 			{
-				/** TODO:: Assign a Sector File based on Database Sizes. **/
-				unsigned short nSectorFile = 0;
+				if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
+                {
+                    if(GetArg("-verbose", 0) >= 4)
+                        printf("SECTOR::Put(): Current File too Large, allocating new File %u\n", nCurrentFileSize, nCurrentFile + 1);
+                        
+                    nCurrentFile ++;
+                    nCurrentFileSize = 0;
+                    
+                    std::ofstream fStream(strprintf("%s-%u.dat", strLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                    fStream.close();
+                }
+                
+				/* Open the Stream to Read the data from Sector on File. */
+                std::string strFilename = strprintf("%s-%u.dat", strLocation.c_str(), nCurrentFile);
+				std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
 				
-				/** Open the Stream to Read the data from Sector on File. **/
-				std::fstream fStream(strprintf("%s%s%u.dat", strBaseLocation.c_str(), strBaseName.c_str(), nSectorFile).c_str(), std::ios::in | std::ios::out | std::ios::binary);
-				
-				/** Create a new Sector Key. **/
-				SectorKey cKey(WRITE, vKey, nSectorFile, 0, vData.size()); 
-				
-				/** Assign the Key to Keychain. **/
-				SectorKeys->Put(cKey);
-				
-				/** If it is a New Sector, Assign a Binary Position. 
-					TODO: Track Sector Database File Sizes. **/
-				unsigned int nBegin = fStream.tellg();
-				fStream.seekg (0, std::ios::end);
-				
-				unsigned int nStart = (unsigned int) fStream.tellg() - nBegin;
-				fStream.seekp(nStart, std::ios::beg);
-				
+				/* If it is a New Sector, Assign a Binary Position. 
+					TODO: Track Sector Database File Sizes. */
+				fStream.seekp(nCurrentFileSize, std::ios::beg);
 				fStream.write((char*) &vData[0], vData.size());
 				fStream.close();
+                
+                /* Create a new Sector Key. */
+				SectorKey cKey(READY, vKey, nCurrentFile, nCurrentFileSize, vData.size()); 
 				
-				/** Assign New Data to the Sector Key. **/
-				cKey.nState       = READY;
-				cKey.nSectorSize  = vData.size();
-				cKey.nSectorStart = nStart;
+				/* Check the Data Integrity of the Sector by comparing the Checksums. */
+				cKey.nChecksum    = LLC::HASH::SK32(vData);
+                
+                /* Increment the current filesize */
+                nCurrentFileSize += vData.size();
 				
-				/** Check the Data Integrity of the Sector by comparing the Checksums. **/
-				cKey.nChecksum    = LLC::HASH::SK64(vData);
-				
-				/** Assign the Key to Keychain. **/
+				/* Assign the Key to Keychain. */
 				SectorKeys->Put(cKey);
 			}
 			else
 			{
-				/** Get the Sector Key from the Keychain. **/
+				/* Get the Sector Key from the Keychain. */
 				SectorKey cKey;
-				if(!SectorKeys->Get(vKey, cKey)) {
-					SectorKeys->Erase(vKey);
-					
+				if(!SectorKeys->Get(vKey, cKey))
 					return false;
-				}
 					
-				/** Open the Stream to Read the data from Sector on File. **/
-				std::fstream fStream(strprintf("%s%s%u.dat", strBaseLocation.c_str(), strBaseName.c_str(), cKey.nSectorFile).c_str(), std::ios::in | std::ios::out | std::ios::binary);
+				/* Open the Stream to Read the data from Sector on File. */
+                std::string strFilename = strprintf("%s-%u.dat", strLocation.c_str(), cKey.nSectorFile);
+				std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
 				
-				/** Locate the Sector Data from Sector Key. 
-					TODO: Make Paging more Efficient in Keys by breaking data into different locations in Database. **/
+				/* Locate the Sector Data from Sector Key. 
+					TODO: Make Paging more Efficient in Keys by breaking data into different locations in Database. */
 				fStream.seekp(cKey.nSectorStart, std::ios::beg);
 				if(vData.size() > cKey.nSectorSize){
 					fStream.close();
@@ -381,21 +427,23 @@ namespace LLD
 					return false;
 				}
 				
-				/** Assign the Writing State for Sector. **/
-				cKey.nState = WRITE;
-				SectorKeys->Put(cKey);
-				
+				/* Assign the Writing State for Sector. */
+                //TODO: use memory maps
+                
 				fStream.write((char*) &vData[0], vData.size());
 				fStream.close();
 				
 				cKey.nState    = READY;
-				cKey.nChecksum = LLC::HASH::SK64(vData);
+				cKey.nChecksum = LLC::HASH::SK32(vData);
 				
 				SectorKeys->Put(cKey);
 			}
 			
 			if(GetArg("-verbose", 0) >= 4)
-				printf("SECTOR PUT:%s\n", HexStr(vData.begin(), vData.end()).c_str());
+				printf("SECTOR PUT:%s\nCurrent File: %u | Current File Size: %u\n", HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
+        
+            if(GetBoolArg("-runtime", false))
+				printf(ANSI_COLOR_GREEN "LLD::Sector::Write() executed in %u micro-seconds\n" ANSI_COLOR_RESET, runtime.ElapsedMicroseconds());
 			
 			return true;
 		}
@@ -474,11 +522,6 @@ namespace LLD
 			if(!pTransaction)
 				return error("TransactionCommit() : No Transaction data to Commit.");
 			
-			/** Get the Keychain from the Sector Database. **/
-			KeyDatabase* SectorKeys = GetKeychain(strKeychainRegistry);
-			if(!SectorKeys)
-				return error("TransactionCommit() : Sector Keys not Registered for Name %s\n", strKeychainRegistry.c_str());
-			
 			/** Habdle setting the sector key flags so the database knows if the transaction was completed properly. **/
 			if(GetArg("-verbose", 0) >= 4)
 				printf("TransactionCommit() : Commiting Keys to Keychain.\n");
@@ -517,59 +560,79 @@ namespace LLD
 				std::vector<unsigned char> vKey  = nIterator->first;
 				std::vector<unsigned char> vData = nIterator->second;
 				
-				/** Write Header if First Update. **/
-				if(!SectorKeys->HasKey(vKey))
-				{
-					/** TODO:: Assign a Sector File based on Database Sizes. **/
-					unsigned short nSectorFile = 0;
-					
-					/** Open the Stream to Read the data from Sector on File. **/
-					std::fstream fStream(strprintf("%s%s%u.dat", strBaseLocation.c_str(), strBaseName.c_str(), nSectorFile).c_str(), std::ios::in | std::ios::out | std::ios::binary);
-					
-					/** Create a new Sector Key. **/
-					SectorKey cKey(TRANSACTION, vKey, nSectorFile, 0, vData.size());
-					
-					/** If it is a New Sector, Assign a Binary Position. 
-						TODO: Track Sector Database File Sizes. **/
-					unsigned int nBegin = fStream.tellg();
-					fStream.seekg (0, std::ios::end);
-					
-					/** Find the Binary Starting Location. **/
-					unsigned int nStart = (unsigned int) fStream.tellg() - nBegin;
-					
-					/** Assign the Key to Keychain. **/
-					cKey.nSectorStart = nStart;
-					SectorKeys->Put(cKey);
-					
-					/** Write the Data to the Sector. **/
-					fStream.seekp(nStart, std::ios::beg);
-					fStream.write((char*) &vData[0], vData.size());
-					fStream.close();
-				}
-				else
-				{
-					/** Get the Sector Key from the Keychain. **/
-					SectorKey cKey;
-					if(!SectorKeys->Get(vKey, cKey))
-						return false;
-						
-					/** Open the Stream to Read the data from Sector on File. **/
-					std::fstream fStream(strprintf("%s%s%u.dat", strBaseLocation.c_str(), strBaseName.c_str(), cKey.nSectorFile).c_str(), std::ios::in | std::ios::out | std::ios::binary);
-					
-					/** Locate the Sector Data from Sector Key. 
-						TODO: Make Paging more Efficient in Keys by breaking data into different locations in Database. **/
-					fStream.seekp(cKey.nSectorStart, std::ios::beg);
-					if(vData.size() > cKey.nSectorSize){
-						fStream.close();
-						printf("ERROR PUT (TOO LARGE) NO TRUNCATING ALLOWED (Old %u :: New %u):%s\n", cKey.nSectorSize, vData.size(), HexStr(vData.begin(), vData.end()).c_str());
-						
-						return false;
-					}
-					
-					/** Assign the Writing State for Sector. **/
-					fStream.write((char*) &vData[0], vData.size());
-					fStream.close();
-				}
+                /* Write Header if First Update. */
+                if(!SectorKeys->HasKey(vKey))
+                {
+                    if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
+                    {
+                        if(GetArg("-verbose", 0) >= 4)
+                            printf("SECTOR::Put(): Current File too Large, allocating new File %u\n", nCurrentFileSize, nCurrentFile + 1);
+                            
+                        nCurrentFile ++;
+                        nCurrentFileSize = 0;
+                        
+                        std::ofstream fStream(strprintf("%s-%u.dat", strLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                        fStream.close();
+                    }
+                    
+                    /* Open the Stream to Read the data from Sector on File. */
+                    std::string strFilename = strprintf("%s-%u.dat", strLocation.c_str(), nCurrentFile);
+                    std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
+                    
+                    /* If it is a New Sector, Assign a Binary Position. 
+                        TODO: Track Sector Database File Sizes. */
+                    fStream.seekp(nCurrentFileSize, std::ios::beg);
+                    
+                    fStream.write((char*) &vData[0], vData.size());
+                    fStream.close();
+                    
+                    /* Create a new Sector Key. */
+                    SectorKey cKey(READY, vKey, nCurrentFile, nCurrentFileSize, vData.size()); 
+                    
+                    /* Check the Data Integrity of the Sector by comparing the Checksums. */
+                    cKey.nChecksum    = LLC::HASH::SK32(vData);
+                    
+                    /* Increment the current filesize */
+                    nCurrentFileSize += vData.size();
+                    
+                    /* Assign the Key to Keychain. */
+                    SectorKeys->Put(cKey);
+                }
+                else
+                {
+                    /* Get the Sector Key from the Keychain. */
+                    SectorKey cKey;
+                    if(!SectorKeys->Get(vKey, cKey)) {
+                        SectorKeys->Erase(vKey);
+                        
+                        return false;
+                    }
+                        
+                    /* Open the Stream to Read the data from Sector on File. */
+                    std::string strFilename = strprintf("%s-%u.dat", strLocation.c_str(), cKey.nSectorFile);
+                    std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
+                    
+                    /* Locate the Sector Data from Sector Key. 
+                        TODO: Make Paging more Efficient in Keys by breaking data into different locations in Database. */
+                    fStream.seekp(cKey.nSectorStart, std::ios::beg);
+                    if(vData.size() > cKey.nSectorSize){
+                        fStream.close();
+                        printf("ERROR PUT (TOO LARGE) NO TRUNCATING ALLOWED (Old %u :: New %u):%s\n", cKey.nSectorSize, vData.size(), HexStr(vData.begin(), vData.end()).c_str());
+                        
+                        return false;
+                    }
+                    
+                    /* Assign the Writing State for Sector. */
+                    //TODO: use memory maps
+                    
+                    fStream.write((char*) &vData[0], vData.size());
+                    fStream.close();
+                    
+                    cKey.nState    = READY;
+                    cKey.nChecksum = LLC::HASH::SK32(vData);
+                    
+                    SectorKeys->Put(cKey);
+                }
 			}
 			
 			/** Update the Keychain with Checksums and READY Flag letting sectors know they were written successfully. **/
@@ -585,7 +648,7 @@ namespace LLD
 				
 				/** Set the Sector states back to Active. **/
 				cKey.nState    = READY;
-				cKey.nChecksum = LLC::HASH::SK64(nIterator->second);
+				cKey.nChecksum = LLC::HASH::SK32(nIterator->second);
 				
 				/** Commit the Keys to Keychain Database. **/
 				if(!SectorKeys->Put(cKey))
