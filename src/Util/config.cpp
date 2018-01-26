@@ -1,14 +1,14 @@
 /*__________________________________________________________________________________________
- 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
-			
-			(c) Copyright The Nexus Developers 2014 - 2017
-			
-			Distributed under the MIT software license, see the accompanying
-			file COPYING or http://www.opensource.org/licenses/mit-license.php.
-			
-			"fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
-  
+
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
+            
+            (c) Copyright The Nexus Developers 2014 - 2017
+            
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+            
+            "fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
+
 ____________________________________________________________________________________________*/
 
 #include "include/args.h"
@@ -221,7 +221,7 @@ bool SetStartOnSystemStartup(bool fAutoStart)
             // saving the shortcut in persistent storage.
             IPersistFile* ppf = NULL;
             hres = psl->QueryInterface(IID_IPersistFile,
-                                       reinterpret_cast<void**>(&ppf));
+                                    reinterpret_cast<void**>(&ppf));
             if (SUCCEEDED(hres))
             {
                 WCHAR pwsz[MAX_PATH];
@@ -302,7 +302,7 @@ bool SetStartOnSystemStartup(bool fAutoStart)
         boost::filesystem::ofstream optionFile(GetAutostartFilePath(), ios_base::out|ios_base::trunc);
         if (!optionFile.good())
             return false;
-		  
+        
         // Write a nexus.desktop file to the autostart directory:
         optionFile << "[Desktop Entry]\n";
         optionFile << "Type=Application\n";

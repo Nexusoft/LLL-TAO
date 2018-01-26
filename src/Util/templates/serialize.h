@@ -1,14 +1,14 @@
 /*__________________________________________________________________________________________
- 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
-			
-			(c) Copyright The Nexus Developers 2014 - 2017
-			
-			Distributed under the MIT software license, see the accompanying
-			file COPYING or http://www.opensource.org/licenses/mit-license.php.
-			
-			"fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
-  
+
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
+            
+            (c) Copyright The Nexus Developers 2014 - 2017
+            
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+            
+            "fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
+
 ____________________________________________________________________________________________*/
 
 #ifndef NEXUS_SERIALIZE_H
@@ -57,28 +57,28 @@ inline T& REF(const T& val)
 
 /* Used for features in the database. */
 const int DATABASE_VERSION =
-      1000000 * DATABASE_MAJOR
+    1000000 * DATABASE_MAJOR
     +   10000 * DATABASE_MINOR
     +     100 * DATABASE_PATCH
     +       1 * DATABASE_BUILD;
 
 enum
 {
-	// primary actions
-	SER_NETWORK         = (1 << 0),
-	SER_DISK            = (1 << 1),
-	SER_GETHASH         = (1 << 2),
-	
-	// LLD actions
-	SER_LLD             = (1 << 3),
-	SER_LLD_KEY_HEADER  = (1 << 4),
+    // primary actions
+    SER_NETWORK         = (1 << 0),
+    SER_DISK            = (1 << 1),
+    SER_GETHASH         = (1 << 2),
+    
+    // LLD actions
+    SER_LLD             = (1 << 3),
+    SER_LLD_KEY_HEADER  = (1 << 4),
 
-	// modifiers
-	SER_SKIPSIG         = (1 << 16),
-	SER_BLOCKHEADERONLY = (1 << 17),
-	
-	// LLP actions
-	SER_LLP_HEADER_ONLY = (1 << 30),
+    // modifiers
+    SER_SKIPSIG         = (1 << 16),
+    SER_BLOCKHEADERONLY = (1 << 17),
+    
+    // LLP actions
+    SER_LLP_HEADER_ONLY = (1 << 30),
 };
 
 
@@ -275,8 +275,8 @@ uint64 ReadCompactSize(Stream& is)
 #define FLATDATA(obj)   REF(CFlatData((char*)&(obj), (char*)&(obj) + sizeof(obj)))
 
 /** Wrapper for serializing arrays and POD.
- * There's a clever template way to make arrays serialize normally, but MSVC6 doesn't support it.
- */
+* There's a clever template way to make arrays serialize normally, but MSVC6 doesn't support it.
+*/
 class CFlatData
 {
 protected:
@@ -736,10 +736,10 @@ struct ser_streamplaceholder
 
 
 /** Double ended buffer combining vector and stream-like interfaces.
- *
- * >> and << read and write unformatted data using the above serialization templates.
- * Fills with data in linear time; some stringstream implementations take N^2 time.
- */
+*
+* >> and << read and write unformatted data using the above serialization templates.
+* Fills with data in linear time; some stringstream implementations take N^2 time.
+*/
 class CDataStream
 {
 protected:
@@ -1097,11 +1097,11 @@ int main(int argc, char *argv[])
 
 
 /** RAII wrapper for FILE*.
- *
- * Will automatically close the file when it goes out of scope if not null.
- * If you're returning the file pointer, return file.release().
- * If you need to close the file early, use file.fclose() instead of fclose(file).
- */
+*
+* Will automatically close the file when it goes out of scope if not null.
+* If you're returning the file pointer, return file.release().
+* If you need to close the file early, use file.fclose() instead of fclose(file).
+*/
 class CAutoFile
 {
 protected:

@@ -1,14 +1,14 @@
 /*__________________________________________________________________________________________
- 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
-			
-			(c) Copyright The Nexus Developers 2014 - 2017
-			
-			Distributed under the MIT software license, see the accompanying
-			file COPYING or http://www.opensource.org/licenses/mit-license.php.
-			
-			"fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
-  
+
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
+            
+            (c) Copyright The Nexus Developers 2014 - 2017
+            
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+            
+            "fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
+
 ____________________________________________________________________________________________*/
 
 #ifndef NEXUS_UTIL_INCLUDE_SORTING_H
@@ -34,9 +34,9 @@ T* alignup(T* p)
 /** Create a sorted Multimap for rich lists. **/
 template <typename A, typename B> std::multimap<B, A> flip_map(std::map<A,B> & src) 
 {
-	std::multimap<B,A> dst;
-	for(typename std::map<A, B>::const_iterator it = src.begin(); it != src.end(); ++it)
-		dst.insert(std::pair<B, A>(it -> second, it -> first));
+    std::multimap<B,A> dst;
+    for(typename std::map<A, B>::const_iterator it = src.begin(); it != src.end(); ++it)
+        dst.insert(std::pair<B, A>(it -> second, it -> first));
 
     return dst;
 }

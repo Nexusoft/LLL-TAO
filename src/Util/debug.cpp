@@ -1,14 +1,14 @@
 /*__________________________________________________________________________________________
- 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
-			
-			(c) Copyright The Nexus Developers 2014 - 2017
-			
-			Distributed under the MIT software license, see the accompanying
-			file COPYING or http://www.opensource.org/licenses/mit-license.php.
-			
-			"fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
-  
+
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
+            
+            (c) Copyright The Nexus Developers 2014 - 2017
+            
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+            
+            "fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
+
 ____________________________________________________________________________________________*/
 
 #include "include/config.h"
@@ -33,89 +33,89 @@ static FILE* fileout = NULL;
 static Mutex_t DEBUG_MUTEX;
 int OutputDebugStringF(const char* pszFormat, ...)
 {
-	LOCK(DEBUG_MUTEX);
-	
+    LOCK(DEBUG_MUTEX);
+    
     // print to console
-	int ret = 0;
+    int ret = 0;
     va_list arg_ptr;
     va_start(arg_ptr, pszFormat);
     ret = vprintf(pszFormat, arg_ptr);
     va_end(arg_ptr);
 
-	// print to debug.log
-	if (!fileout)
-	{
-		boost::filesystem::path pathDebug = GetDataDir() / "debug.log";
-		fileout = fopen(pathDebug.string().c_str(), "a");
-		if (fileout) setbuf(fileout, NULL); // unbuffered
-	}
-	
-	if (fileout)
-	{
-		static bool fStartedNewLine = true;
+    // print to debug.log
+    if (!fileout)
+    {
+        boost::filesystem::path pathDebug = GetDataDir() / "debug.log";
+        fileout = fopen(pathDebug.string().c_str(), "a");
+        if (fileout) setbuf(fileout, NULL); // unbuffered
+    }
+    
+    if (fileout)
+    {
+        static bool fStartedNewLine = true;
 
-		// Debug print useful for profiling
-		if (fStartedNewLine)
-			fprintf(fileout, "%s ", DateTimeStrFormat(Timestamp()).c_str());
-		
-		if (pszFormat[strlen(pszFormat) - 1] == '\n')
-			fStartedNewLine = true;
-		else
-			fStartedNewLine = false;
+        // Debug print useful for profiling
+        if (fStartedNewLine)
+            fprintf(fileout, "%s ", DateTimeStrFormat(Timestamp()).c_str());
+        
+        if (pszFormat[strlen(pszFormat) - 1] == '\n')
+            fStartedNewLine = true;
+        else
+            fStartedNewLine = false;
 
-		va_list arg_ptr;
-		va_start(arg_ptr, pszFormat);
-		ret = vfprintf(fileout, pszFormat, arg_ptr);
-		va_end(arg_ptr);
-	}
+        va_list arg_ptr;
+        va_start(arg_ptr, pszFormat);
+        ret = vfprintf(fileout, pszFormat, arg_ptr);
+        va_end(arg_ptr);
+    }
 
 #ifdef WIN32
-	if (fPrintToDebugger)
-	{
-		// accumulate a line at a time
-		{
-			static char pszBuffer[50000];
-			static char* pend;
-			if (pend == NULL)
-					pend = pszBuffer;
-			va_list arg_ptr;
-			va_start(arg_ptr, pszFormat);
-			int limit = END(pszBuffer) - pend - 2;
-			int ret = _vsnprintf(pend, limit, pszFormat, arg_ptr);
-			va_end(arg_ptr);
-			if (ret < 0 || ret >= limit)
-			{
-					pend = END(pszBuffer) - 2;
-					*pend++ = '\n';
-			}
-			else
-					pend += ret;
-			
-			*pend = '\0';
-			
-			char* p1 = pszBuffer;
-			char* p2;
-			
-			while ((p2 = strchr(p1, '\n')))
-			{
-				p2++;
-				char c = *p2;
-				
-				*p2 = '\0';
-				
-				OutputDebugStringA(p1);
-				*p2 = c;
-				p1 = p2;
-			}
-			
-			if (p1 != pszBuffer)
-				memmove(pszBuffer, p1, pend - p1 + 1);
-			
-			pend -= (p1 - pszBuffer);
-		}
-	}
+    if (fPrintToDebugger)
+    {
+        // accumulate a line at a time
+        {
+            static char pszBuffer[50000];
+            static char* pend;
+            if (pend == NULL)
+                    pend = pszBuffer;
+            va_list arg_ptr;
+            va_start(arg_ptr, pszFormat);
+            int limit = END(pszBuffer) - pend - 2;
+            int ret = _vsnprintf(pend, limit, pszFormat, arg_ptr);
+            va_end(arg_ptr);
+            if (ret < 0 || ret >= limit)
+            {
+                    pend = END(pszBuffer) - 2;
+                    *pend++ = '\n';
+            }
+            else
+                    pend += ret;
+            
+            *pend = '\0';
+            
+            char* p1 = pszBuffer;
+            char* p2;
+            
+            while ((p2 = strchr(p1, '\n')))
+            {
+                p2++;
+                char c = *p2;
+                
+                *p2 = '\0';
+                
+                OutputDebugStringA(p1);
+                *p2 = c;
+                p1 = p2;
+            }
+            
+            if (p1 != pszBuffer)
+                memmove(pszBuffer, p1, pend - p1 + 1);
+            
+            pend -= (p1 - pszBuffer);
+        }
+    }
 #endif
-	return ret;
+    return ret;
 }
 
 // Safer snprintf
@@ -163,7 +163,7 @@ std::string real_strprintf(const std::string &format, int dummy, ...)
     std::string str(p, p+ret);
     if (p != buffer)
         delete[] p;
-	 
+    
     return str;
 }
 
@@ -180,7 +180,7 @@ bool error(const char *format, ...)
     {
         buffer[limit-1] = 0;
     }
-	
+    
     printf(ANSI_COLOR_RED "ERROR: %s" ANSI_COLOR_RESET "\n", buffer);
     return false;
 }

@@ -20,90 +20,90 @@
 class CBlock
 {
 public:
-	unsigned int nBlkVersion;
-	uint1024 hashPrevBlock;
-	uint512 hashMerkleRoot;
-	unsigned int nHeight;
-	unsigned int nChannel;
-	unsigned int nBits;
-	uint64 nNonce;
-	
-	IMPLEMENT_SERIALIZE
-	(
-		READWRITE(nBlkVersion);
-		//nVersion = this->nVersion;
-		READWRITE(hashPrevBlock);
-		READWRITE(hashMerkleRoot);
-		READWRITE(nHeight);
-		READWRITE(nChannel);
-		READWRITE(nBits);
-		READWRITE(nNonce);
-	)
-	
-	CBlock()
-	{
-		SetNull();
-	}
-	
-	void SetNull()
-	{
-		nBlkVersion = 0;
-		hashPrevBlock = 0;
-		hashMerkleRoot = 0;
-		nHeight = 0;
-		nChannel = 0;
-		nNonce   = 0;
-	}
-	
-	void SetRandom()
-	{
-		nBlkVersion = GetRandInt(1000);
-		nHeight  = GetRandInt(1000);
-		nChannel = GetRandInt(1000);
-		nBits    = GetRandInt(1000);
-		nNonce   = GetRand(1000000);
-		
-		hashMerkleRoot = GetRand512();
-		hashPrevBlock  = GetRand1024();
-	}
-	
-	uint1024 GetHash() const
-	{
-		return LLC::HASH::SK1024(BEGIN(nBlkVersion), END(nNonce));
-	}
-	
-	void Print()
-	{
-		printf("CBlock(nVersion=%u, hashPrevBlock=%s, hashMerkleRoot=%s, nHeight=%u, nChannel=%u, nBits=%u, nNonce=%" PRIu64 ", hash=" ANSI_COLOR_BRIGHT_BLUE "%s" ANSI_COLOR_RESET ")\n", nBlkVersion, hashPrevBlock.ToString().c_str(), hashMerkleRoot.ToString().c_str(), nHeight, nChannel, nBits, nNonce, GetHash().ToString().c_str());
-	}
+    unsigned int nBlkVersion;
+    uint1024 hashPrevBlock;
+    uint512 hashMerkleRoot;
+    unsigned int nHeight;
+    unsigned int nChannel;
+    unsigned int nBits;
+    uint64 nNonce;
+    
+    IMPLEMENT_SERIALIZE
+    (
+        READWRITE(nBlkVersion);
+        //nVersion = this->nVersion;
+        READWRITE(hashPrevBlock);
+        READWRITE(hashMerkleRoot);
+        READWRITE(nHeight);
+        READWRITE(nChannel);
+        READWRITE(nBits);
+        READWRITE(nNonce);
+    )
+    
+    CBlock()
+    {
+        SetNull();
+    }
+    
+    void SetNull()
+    {
+        nBlkVersion = 0;
+        hashPrevBlock = 0;
+        hashMerkleRoot = 0;
+        nHeight = 0;
+        nChannel = 0;
+        nNonce   = 0;
+    }
+    
+    void SetRandom()
+    {
+        nBlkVersion = GetRandInt(1000);
+        nHeight  = GetRandInt(1000);
+        nChannel = GetRandInt(1000);
+        nBits    = GetRandInt(1000);
+        nNonce   = GetRand(1000000);
+        
+        hashMerkleRoot = GetRand512();
+        hashPrevBlock  = GetRand1024();
+    }
+    
+    uint1024 GetHash() const
+    {
+        return LLC::HASH::SK1024(BEGIN(nBlkVersion), END(nNonce));
+    }
+    
+    void Print()
+    {
+        printf("CBlock(nVersion=%u, hashPrevBlock=%s, hashMerkleRoot=%s, nHeight=%u, nChannel=%u, nBits=%u, nNonce=%" PRIu64 ", hash=" ANSI_COLOR_BRIGHT_BLUE "%s" ANSI_COLOR_RESET ")\n", nBlkVersion, hashPrevBlock.ToString().c_str(), hashMerkleRoot.ToString().c_str(), nHeight, nChannel, nBits, nNonce, GetHash().ToString().c_str());
+    }
 };
 
 
 class TestDB : public LLD::SectorDatabase
 {
 public:
-	TestDB(const char* pszMode="r+") : SectorDatabase("testdb", "testdb", pszMode) {}
-	
+    TestDB(const char* pszMode="r+") : SectorDatabase("testdb", "testdb", pszMode) {}
+    
     bool WriteBlock(uint1024 hash, CBlock blk)
-	{
-		return Write(hash, blk);
-	}
-	
-	bool ReadBlock(uint1024 hash, CBlock& blk)
-	{
-		return Read(hash, blk);
-	}
+    {
+        return Write(hash, blk);
+    }
+    
+    bool ReadBlock(uint1024 hash, CBlock& blk)
+    {
+        return Read(hash, blk);
+    }
 };
 
 int main(int argc, char** argv)
 {
-	ParseParameters(argc, argv);
-	
+    ParseParameters(argc, argv);
+    
     printf("Lower Level Library Initialization...\n");
     
-	TestDB* db = new TestDB();
-	
-	CBlock test;
+    TestDB* db = new TestDB();
+    
+    CBlock test;
     test.SetRandom();
     
     std::map<uint1024, CBlock> mapBlocks;
@@ -239,13 +239,13 @@ int main(int argc, char** argv)
     //dbenv.set_flags(DB_AUTO_COMMIT, 1);
     dbenv.log_set_config(DB_LOG_AUTO_REMOVE, 1);
     dbenv.open((GetDataDir().string() + "/bdb").c_str(),
-								 DB_CREATE     |
-								 DB_INIT_LOCK  |
-								 DB_INIT_LOG   |
-								 DB_INIT_MPOOL |
-								 DB_INIT_TXN   |
-								 DB_THREAD     |
-								 DB_RECOVER, S_IRUSR | S_IWUSR);
+                                DB_CREATE     |
+                                DB_INIT_LOCK  |
+                                DB_INIT_LOG   |
+                                DB_INIT_MPOOL |
+                                DB_INIT_TXN   |
+                                DB_THREAD     |
+                                DB_RECOVER, S_IRUSR | S_IWUSR);
                 
     Db* pdb = new Db(&dbenv, 0);
     pdb->open(NULL, "bdb.dat", NULL, DB_BTREE, DB_CREATE | DB_THREAD, 0);
