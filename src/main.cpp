@@ -110,13 +110,16 @@ int main(int argc, char** argv)
     std::vector<uint1024> vBlocks;
     CBlock bulkTest;
     bulkTest.SetRandom();
-    for(int i = 0; i < GetArg("-testwrite", 1); i++)
+    
+    unsigned int nTotalRecords = GetArg("-testwrite", 1);
+    for(int i = 0; i < nTotalRecords; i++)
     {
         bulkTest.nChannel = i;
         mapBlocks[bulkTest.GetHash()] = bulkTest;
         vBlocks.push_back(bulkTest.GetHash());
     }
     
+    printf(ANSI_COLOR_BRIGHT_BLUE "\nWriting %u Keys to Nexus LLD, Google LevelDB, and Oracle BerkeleyDB\n\n" ANSI_COLOR_RESET, nTotalRecords);
     
     unsigned int nTotalElapsed = 0;
     Timer timer;
@@ -127,7 +130,7 @@ int main(int argc, char** argv)
     }
     
     unsigned int nElapsed = timer.ElapsedMicroseconds();
-    printf(ANSI_COLOR_GREEN "LLD Write Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
+    printf(ANSI_COLOR_GREEN "LLD Write Performance: %u micro-seconds | %f ops/s\n" ANSI_COLOR_RESET, nElapsed, (nTotalRecords * 1000000.0) / nElapsed);
     nTotalElapsed += nElapsed;
     
 
@@ -140,7 +143,7 @@ int main(int argc, char** argv)
     }
     
     nElapsed = timer.ElapsedMicroseconds();
-    printf(ANSI_COLOR_GREEN "LLD Read Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
+    printf(ANSI_COLOR_GREEN "LLD Read Performance: %u micro-seconds | %f ops/s\n" ANSI_COLOR_RESET, nElapsed, (nTotalRecords * 1000000.0) / nElapsed);
     nTotalElapsed += nElapsed;
     
     timer.Reset();
@@ -149,7 +152,7 @@ int main(int argc, char** argv)
     printf(ANSI_COLOR_GREEN "LLD Destruct Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
     nTotalElapsed += nElapsed;
     
-    printf(ANSI_COLOR_YELLOW "LLD Total Running Time: %f seconds\n\n" ANSI_COLOR_RESET, nTotalElapsed / 1000000.0);
+    printf(ANSI_COLOR_YELLOW "LLD Total Running Time: %f seconds | %f ops/s\n\n" ANSI_COLOR_RESET, nTotalElapsed / 1000000.0, (nTotalRecords * 1000000.0) / nTotalElapsed);
     nTotalElapsed = 0;
     
     
@@ -189,7 +192,7 @@ int main(int argc, char** argv)
         ldb->Put(writeOptions, slKey, slData);
     }
     nElapsed = timer.ElapsedMicroseconds();
-    printf(ANSI_COLOR_GREEN "LevelDB Write Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
+    printf(ANSI_COLOR_GREEN "LevelDB Write Performance: %u micro-seconds | %f ops/s\n" ANSI_COLOR_RESET, nElapsed, (nTotalRecords * 1000000.0) / nElapsed);
     nTotalElapsed += nElapsed;
     
     Sleep(2000);
@@ -210,7 +213,7 @@ int main(int argc, char** argv)
         ldb->Get(readoptions, slKey, &strValue);
     }
     nElapsed = timer.ElapsedMicroseconds();
-    printf(ANSI_COLOR_GREEN "LevelDB Read Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
+    printf(ANSI_COLOR_GREEN "LevelDB Read Performance: %u micro-seconds | %f ops/s\n" ANSI_COLOR_RESET, nElapsed, (nTotalRecords * 1000000.0) / nElapsed);
     nTotalElapsed += nElapsed;
     
     timer.Reset();
@@ -220,7 +223,7 @@ int main(int argc, char** argv)
     nTotalElapsed += nElapsed;
     
     
-    printf(ANSI_COLOR_YELLOW "LevelDB Total Running Time: %f seconds\n\n" ANSI_COLOR_RESET, nTotalElapsed / 1000000.0);
+    printf(ANSI_COLOR_YELLOW "LevelDB Total Running Time: %f seconds | %f ops/s\n\n" ANSI_COLOR_RESET, nTotalElapsed / 1000000.0, (nTotalRecords * 1000000.0) / nTotalElapsed);
     nTotalElapsed = 0;
     
     
@@ -264,7 +267,7 @@ int main(int argc, char** argv)
     }
     
     nElapsed = timer.ElapsedMicroseconds();
-    printf(ANSI_COLOR_GREEN "BerkleeDB Write Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
+    printf(ANSI_COLOR_GREEN "BerkeleyDB Write Performance: %u micro-seconds | %f ops/s\n" ANSI_COLOR_RESET, nElapsed, (nTotalRecords * 1000000.0) / nElapsed);
     nTotalElapsed += nElapsed;
 
     timer.Reset();
@@ -283,17 +286,17 @@ int main(int argc, char** argv)
     }
     
     nElapsed = timer.ElapsedMicroseconds();
-    printf(ANSI_COLOR_GREEN "BerkleeDB Read Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
+    printf(ANSI_COLOR_GREEN "BerkeleyDB Read Performance: %u micro-seconds | %f ops/s\n" ANSI_COLOR_RESET, nElapsed, (nTotalRecords * 1000000.0) / nElapsed);
     nTotalElapsed += nElapsed;
     
     /* Close the Databases. */
     timer.Reset();
     delete pdb;
     nElapsed = timer.ElapsedMicroseconds();
-    printf(ANSI_COLOR_GREEN "BerkleeDB Destruct Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
+    printf(ANSI_COLOR_GREEN "BerkeleyDB Destruct Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
     nTotalElapsed += nElapsed;
     
-    printf(ANSI_COLOR_YELLOW "BerkleeDB Total Running Time: %f seconds\n\n" ANSI_COLOR_RESET, nTotalElapsed / 1000000.0);
+    printf(ANSI_COLOR_YELLOW "BerkeleyDB Total Running Time: %f seconds | %f ops/s\n\n" ANSI_COLOR_RESET, nTotalElapsed / 1000000.0, (nTotalRecords * 1000000.0) / nTotalElapsed);
     
     return 0;
 }
