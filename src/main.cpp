@@ -100,7 +100,7 @@ int main(int argc, char** argv)
 	ParseParameters(argc, argv);
 	
     printf("Lower Level Library Initialization...\n");
-	
+    
 	TestDB* db = new TestDB();
 	
 	CBlock test;
@@ -149,7 +149,7 @@ int main(int argc, char** argv)
     printf(ANSI_COLOR_GREEN "LLD Destruct Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
     nTotalElapsed += nElapsed;
     
-    printf(ANSI_COLOR_YELLOW "LLD Total Running Time: %u micro-seconds\n\n" ANSI_COLOR_RESET, nTotalElapsed);
+    printf(ANSI_COLOR_YELLOW "LLD Total Running Time: %f seconds\n\n" ANSI_COLOR_RESET, nTotalElapsed / 1000000.0);
     nTotalElapsed = 0;
     
     
@@ -159,7 +159,7 @@ int main(int argc, char** argv)
     options.create_if_missing = true;
     options.block_size = 256000;
 
-    leveldb::Status status = leveldb::DB::Open(options, "./leveldb", &ldb);
+    leveldb::Status status = leveldb::DB::Open(options, GetDataDir().string() + "/leveldb" , &ldb);
 
     if (false == status.ok())
     {
@@ -220,15 +220,32 @@ int main(int argc, char** argv)
     nTotalElapsed += nElapsed;
     
     
-    printf(ANSI_COLOR_YELLOW "LevelDB Total Running Time: %u micro-seconds\n\n" ANSI_COLOR_RESET, nTotalElapsed);
+    printf(ANSI_COLOR_YELLOW "LevelDB Total Running Time: %f seconds\n\n" ANSI_COLOR_RESET, nTotalElapsed / 1000000.0);
     nTotalElapsed = 0;
     
     
-    DbEnv dbenv(0);
-    dbenv.open("bdb", DB_CREATE | DB_INIT_MPOOL, 0);
     
+    int nDbCache = GetArg("-dbcache", 25);
+    DbEnv dbenv(0);
+    dbenv.set_cachesize(nDbCache / 1024, (nDbCache % 1024)*1048576, 1);
+    dbenv.set_lg_bsize(1048576);
+    dbenv.set_lg_max(10485760);
+    dbenv.set_lk_max_locks(10000);
+    dbenv.set_lk_max_objects(10000);
+    dbenv.set_flags(DB_TXN_WRITE_NOSYNC, 1);
+    //dbenv.set_flags(DB_AUTO_COMMIT, 1);
+    dbenv.log_set_config(DB_LOG_AUTO_REMOVE, 1);
+    dbenv.open((GetDataDir().string() + "/bdb").c_str(),
+								 DB_CREATE     |
+								 DB_INIT_LOCK  |
+								 DB_INIT_LOG   |
+								 DB_INIT_MPOOL |
+								 DB_INIT_TXN   |
+								 DB_THREAD     |
+								 DB_RECOVER, S_IRUSR | S_IWUSR);
+                
     Db* pdb = new Db(&dbenv, 0);
-    pdb->open(NULL, "bdb.dat", NULL, DB_BTREE, DB_CREATE | DB_TRUNCATE, 0);
+    pdb->open(NULL, "bdb.dat", NULL, DB_BTREE, DB_CREATE | DB_THREAD, 0);
     
     timer.Reset();
     for(typename std::map< uint1024, CBlock >::iterator blk = mapBlocks.begin(); blk != mapBlocks.end(); blk++ )
@@ -276,7 +293,7 @@ int main(int argc, char** argv)
     printf(ANSI_COLOR_GREEN "BerkleeDB Destruct Performance: %u micro-seconds\n" ANSI_COLOR_RESET, nElapsed);
     nTotalElapsed += nElapsed;
     
-    printf(ANSI_COLOR_YELLOW "BerkleeDB Total Running Time: %u micro-seconds\n" ANSI_COLOR_RESET, nTotalElapsed);
+    printf(ANSI_COLOR_YELLOW "BerkleeDB Total Running Time: %f seconds\n\n" ANSI_COLOR_RESET, nTotalElapsed / 1000000.0);
     
     return 0;
 }
