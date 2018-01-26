@@ -1,14 +1,14 @@
 /*__________________________________________________________________________________________
- 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
-			
-			(c) Copyright The Nexus Developers 2014 - 2017
-			
-			Distributed under the MIT software license, see the accompanying
-			file COPYING or http://www.opensource.org/licenses/mit-license.php.
-			
-			"fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
-  
+
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
+            
+            (c) Copyright The Nexus Developers 2014 - 2017
+            
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+            
+            "fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
+
 ____________________________________________________________________________________________*/
 
 #ifndef NEXUS_UTIL_INCLUDE_BASE64_H
@@ -100,33 +100,33 @@ inline std::vector<unsigned char> DecodeBase64(const char* p, bool* pfInvalid = 
 
     while (1)
     {
-         int dec = decode64_table[(unsigned char)*p];
-         if (dec == -1) break;
-         p++;
-         switch (mode)
-         {
-             case 0: // we have no bits and get 6
-                 left = dec;
-                 mode = 1;
-                 break;
+        int dec = decode64_table[(unsigned char)*p];
+        if (dec == -1) break;
+        p++;
+        switch (mode)
+        {
+            case 0: // we have no bits and get 6
+                left = dec;
+                mode = 1;
+                break;
 
-              case 1: // we have 6 bits and keep 4
-                  vchRet.push_back((left<<2) | (dec>>4));
-                  left = dec & 15;
-                  mode = 2;
-                  break;
+            case 1: // we have 6 bits and keep 4
+                vchRet.push_back((left<<2) | (dec>>4));
+                left = dec & 15;
+                mode = 2;
+                break;
 
-             case 2: // we have 4 bits and get 6, we keep 2
-                 vchRet.push_back((left<<4) | (dec>>2));
-                 left = dec & 3;
-                 mode = 3;
-                 break;
+            case 2: // we have 4 bits and get 6, we keep 2
+                vchRet.push_back((left<<4) | (dec>>2));
+                left = dec & 3;
+                mode = 3;
+                break;
 
-             case 3: // we have 2 bits and get 6
-                 vchRet.push_back((left<<6) | dec);
-                 mode = 0;
-                 break;
-         }
+            case 3: // we have 2 bits and get 6
+                vchRet.push_back((left<<6) | dec);
+                mode = 0;
+                break;
+        }
     }
 
     if (pfInvalid)

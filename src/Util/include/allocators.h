@@ -1,14 +1,14 @@
 /*__________________________________________________________________________________________
- 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
-			
-			(c) Copyright The Nexus Developers 2014 - 2017
-			
-			Distributed under the MIT software license, see the accompanying
-			file COPYING or http://www.opensource.org/licenses/mit-license.php.
-			
-			"fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
-  
+
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
+            
+            (c) Copyright The Nexus Developers 2014 - 2017
+            
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+            
+            "fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
+
 ____________________________________________________________________________________________*/
 
 #ifndef NEXUS_ALLOCATORS_H
@@ -42,11 +42,11 @@ ________________________________________________________________________________
 #define PAGESIZE sysconf(_SC_PAGESIZE)
 #endif
 #define mlock(a,b) \
-  mlock(((void *)(((size_t)(a)) & (~((PAGESIZE)-1)))),\
-  (((((size_t)(a)) + (b) - 1) | ((PAGESIZE) - 1)) + 1) - (((size_t)(a)) & (~((PAGESIZE) - 1))))
+mlock(((void *)(((size_t)(a)) & (~((PAGESIZE)-1)))),\
+(((((size_t)(a)) + (b) - 1) | ((PAGESIZE) - 1)) + 1) - (((size_t)(a)) & (~((PAGESIZE) - 1))))
 #define munlock(a,b) \
-  munlock(((void *)(((size_t)(a)) & (~((PAGESIZE)-1)))),\
-  (((((size_t)(a)) + (b) - 1) | ((PAGESIZE) - 1)) + 1) - (((size_t)(a)) & (~((PAGESIZE) - 1))))
+munlock(((void *)(((size_t)(a)) & (~((PAGESIZE)-1)))),\
+(((((size_t)(a)) + (b) - 1) | ((PAGESIZE) - 1)) + 1) - (((size_t)(a)) & (~((PAGESIZE) - 1))))
 #endif
 
 //
