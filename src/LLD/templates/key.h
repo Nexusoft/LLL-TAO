@@ -151,7 +151,7 @@ namespace LLD
         
         
         /* Use these for iterating file locations. */
-        mutable unsigned int nCurrentFile;
+        mutable unsigned short nCurrentFile;
         mutable unsigned int nCurrentFileSize;
 		
         /* Hashmap Custom Hash Using SK. */
@@ -167,7 +167,7 @@ namespace LLD
 			Used to Quickly Read the Database File at Given Position
 			To Obtain the Record from its Database Key. This is Read
 			Into Memory on Database Initialization. **/
-		mutable typename std::map< std::vector<unsigned char>, std::pair<unsigned int, unsigned int> > mapKeys[TOTAL_KEYCHAIN_BUCKETS];
+		mutable typename std::map< std::vector<unsigned char>, std::pair<unsigned short, unsigned int> > mapKeys[TOTAL_KEYCHAIN_BUCKETS];
 		
         
 		/** Caching Memory Map. Keep within caching limits. Pop on and off like a stack
@@ -191,7 +191,7 @@ namespace LLD
 		{
 			std::vector< std::vector<unsigned char> > vKeys;
             for(int i = 0; i < TOTAL_KEYCHAIN_BUCKETS; i++)
-                for(typename std::map< std::vector<unsigned char>, std::pair<unsigned int, unsigned int> >::iterator nIterator = mapKeys[i].begin(); nIterator != mapKeys[i].end(); nIterator++ )
+                for(typename std::map< std::vector<unsigned char>, std::pair<unsigned short, unsigned int> >::iterator nIterator = mapKeys[i].begin(); nIterator != mapKeys[i].end(); nIterator++ )
                     vKeys.push_back(nIterator->first);
 				
 			return vKeys;
@@ -222,7 +222,7 @@ namespace LLD
             
             
             /* Stats variable for collective keychain size. */
-            unsigned int nKeychainSize = 0;
+            unsigned int nKeychainSize = 0, nTotalKeys = 0;
             
             
             /* Iterate through the files detected. */
@@ -257,6 +257,7 @@ namespace LLD
                 fIncoming.seekg (0, std::ios::beg);
                 std::vector<unsigned char> vKeychain(nCurrentFileSize, 0);
                 fIncoming.read((char*) &vKeychain[0], vKeychain.size());
+                fIncoming.close();
                 
                 
                 /* Iterator for Key Sectors. */
@@ -290,6 +291,8 @@ namespace LLD
                         /* Debug Output of Sector Key Information. */
                         if(GetArg("-verbose", 0) >= 5)
                             printf("KeyDB::Load() : State: %u Length: %u File: %u Location: %u Key: %s\n", cKey.nState, cKey.nLength, mapKeys[nBucket][vKey].first, mapKeys[nBucket][vKey].second, HexStr(vKey.begin(), vKey.end()).c_str());
+                    
+                        nTotalKeys++;
                     }
                     else 
                     {
@@ -305,9 +308,12 @@ namespace LLD
                 
                 /* Iterate the current file. */
                 nCurrentFile++;
+                
+                /* Clear the keychain data. */
+                vKeychain.clear();
             }
             
-            printf("[DATABASE] Keychain Initialized with Total Size %u | Total Files %u | Current Size %u\n", nKeychainSize, nCurrentFile + 1, nCurrentFileSize);
+            printf("[DATABASE] Keychain Initialized with %u Keys | Total Size %u | Total Files %u | Current Size %u\n", nTotalKeys, nKeychainSize, nCurrentFile + 1, nCurrentFileSize);
 		}
 		
 		/** Add / Update A Record in the Database **/

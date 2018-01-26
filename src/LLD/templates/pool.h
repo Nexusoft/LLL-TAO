@@ -14,17 +14,33 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_POOL_H
 #define NEXUS_LLP_TEMPLATES_POOL_H
 
-#include "../../Core/include/unifiedtime.h"
+#include "../../Util/templates/serialize.h"
 #include "../../Util/include/mutex.h"
 
 namespace LLD
 {	
+    
+    /* The number of buckets available in Cache Pool. */
+    const unsigned int MAX_CACHE_POOL_BUCKETS = 256 * 256;
+    
+    
+    enum
+    {
+        PENDING_WRITE = 0,
+        PENDING_ERASE = 1,
+        
+        MEMORY_ONLY   = 10, //Default State
+        
+        COMPLETED     = 255
+    };
+    
 
 	/* Holding Object for Memory Maps. */
 	struct CachedData
 	{
+        unsigned char State;
 		uint64        Timestamp;
-		std::vector<unsigned char> vObjectData;
+		std::vector<unsigned char> Data;
 	};
 	
 	
@@ -49,10 +65,6 @@ namespace LLD
         unsigned int MAX_CACHE_SIZE;
         
         
-        /* The Maximum Cache Buckets. */
-        unsigned int MAX_CACHE_BUCKETS;
-        
-        
         /* The current size of the pool. */
         unsigned int nCurrentSize;
         
@@ -62,7 +74,15 @@ namespace LLD
 		
         
         /* Map of the current holding data. */
-		std::map<std::vector<unsigned char>, CachedData > mapObjects[];
+		std::map<std::vector<unsigned char>, CachedData > mapObjects[MAX_CACHE_POOL_BUCKETS];
+        
+        
+        /* Disk Buffer Object to flush objects to disk. */
+        std::vector< std::pair<std::vector<unsigned char>, std::vector<unsigned char>> > vDiskBuffer;
+        
+        
+        /* Thread of cache cleaner. */
+        Thread_t CACHE_THREAD;
         
 	public:
 		
@@ -72,7 +92,7 @@ namespace LLD
          * MAX_CACHE_BUCKETS default value is 65,539 (2 bytes)
          * 
          */
-		CachePool() : mapObjects(), MAX_CACHE_SIZE(32 * 1024 * 1024), MAX_CACHE_BUCKETS(256 * 256), nCurrentSize(0) (0) {}
+		CachePool() : MAX_CACHE_SIZE(32 * 1024 * 1024), nCurrentSize(0) {}
 		
 		
 		/** Cache Size Constructor
@@ -80,333 +100,267 @@ namespace LLD
 		 * @param[in] nCacheSizeIn The maximum size of this Cache Pool
 		 * 
 		 */
-		CachePool(unsigned int nCacheSizeIn, unsigned int nMaxBuckets = 256 * 256) : mapObjects(), MAX_CACHE_SIZE(nCacheSizeIn), MAX_CACHE_BUCKETS(nMaxBuckets), nCurrentSize(0) {}
+		CachePool(unsigned int nCacheSizeIn) : MAX_CACHE_SIZE(nCacheSizeIn), nCurrentSize(0) {}
 		
 		
-		/** Check for Data by Index.
+		/* Class Destructor. */
+		~CachePool()
+        {
+            //CACHE_THREAD.kill();
+        }
+        
+        
+		/** Get the assigned bucket
+         * 
+         * @param[in] vKey The binary data of key 
+         * 
+         * @return The bucket number through serializaing first two bytes of key.
+         */
+		unsigned int GetBucket(std::vector<unsigned char> vKey) const 
+		{ 
+            assert(vKey.size() > 1);
+            
+            return (vKey[0] << 8) + (vKey[1]);
+        }
+		
+		
+		/** Check if data exists
 		 * 
-		 * @param[in] Index Template arguement to check by supplied index
+		 * @param[in] vKey The binary data of the key
 		 * 
-		 * @return Boolean expressino whether pool contains data by index
+		 * @return True/False whether pool contains data by index
 		 * 
 		 */
-		bool Has(std::vector<unsigned char> vKey) const { return mapObjects.count(Index); }
+		bool Has(std::vector<unsigned char> vKey, unsigned int nBucket = MAX_CACHE_POOL_BUCKETS + 1) const 
+		{ 
+            if(nBucket == MAX_CACHE_POOL_BUCKETS + 1)
+                nBucket = GetBucket(vKey);
+            
+            return (mapObjects[nBucket].find(vKey) != mapObjects[nBucket].end());
+        }
 		
 		
-		/** Get the Data by Index
+		/** Get the data by index
 		 * 
-		 * @param[in] Index Template argument to get by supplied index
-		 * @param[out] Object Reference variable to return object if found
+		 * @param[in] vKey The binary data of the key
+		 * @param[out] vData The binary data of the cached record
 		 * 
 		 * @return True if object was found, false if none found by index.
 		 * 
 		 */
-		bool Get(IndexType Index, ObjectType& Object)
+		bool Get(std::vector<unsigned char> vKey, std::vector<unsigned char>& vData)
 		{
 			LOCK(MUTEX);
-			
-			if(!Has(Index))
-				return false;
-			
-			Object = mapObjects[Index].Object;
+            
+            /* Check if the Record Exists. */
+			auto nBucket = GetBucket(vKey);
+            if(!Has(vKey, nBucket))
+                return false;
+            
+            /* Get the data record. */
+            vData = mapObjects[nBucket][vKey].Data;
+            
+            /* Update the Object's time (to keep cache of most accessed elements). */
+            mapObjects[nBucket][vKey].Timestamp = Timestamp(true);
 			
 			return true;
 		}
 		
 		
-		/** Get the Data by State.
+        /** Get the Bulk Objects in the Pool
 		 * 
-		 * @param[in] State The state that is being searched for 
-		 * @param[out] vObjects The list of objects being sent out
-		 * @param[in]  nLimit The limit to the number of objects to get (0 = unlimited)
+		 * @param[out] vObjects A list of objects from the pool in binary form
+		 * @param[in] nLimit The limit to the number of indexes to get (0 = unlimited)
 		 * 
-		 * @return Returns true if any states matched, false if none matched
+		 * @return Returns true if there are indexes, false if none found.
+         * 
+         * TODO: Determine how data type will be carried forward for serializaing
 		 * 
 		 */
-		bool Get(unsigned char State, std::vector<ObjectType>& vObjects, unsigned int nLimit = 0)
+		bool Get(std::vector< std::pair<std::vector<unsigned char>, std::vector<unsigned char>> >& vObjects, unsigned char nState = MEMORY_ONLY, unsigned int nLimit = 0)
 		{
-			LOCK(MUTEX);
+            LOCK(MUTEX);
+            
+            for(int nBucket = 0; nBucket < MAX_CACHE_POOL_BUCKETS; nBucket++)
+            {
+                for(auto obj : mapObjects[nBucket])
+                {
+                    if(nLimit != 0 && vObjects.size() >= nLimit)
+                        return true;
+                    
+                    if(nState != obj.second.State)
+                        continue;
+                        
+                    vObjects.push_back(std::make_pair(obj.first, obj.second.Data));
+                }
+            }
 			
-			for(auto const& i : mapObjects)
-			{
-				if(nLimit != 0 && vObjects.size() >= nLimit)
-					return true;
-				
-				if(i.second.State == State)
-					vObjects.push_back(i.second.Object);
-			}
-				
 			return (vObjects.size() > 0);
 		}
 		
 		
-		/** Get the Indexes in Pool
+		/** Get the indexes in Pool
 		 * 
-		 * @param[out] vIndexes A list of Indexes in the pool
+		 * @param[out] vIndexes A list of indexes from the pool in binary form
 		 * @param[in] nLimit The limit to the number of indexes to get (0 = unlimited)
 		 * 
 		 * @return Returns true if there are indexes, false if none found.
+         * 
+         * TODO: Determine how data type will be carried forward for serializaing
 		 * 
 		 */
-		bool GetIndexes(std::vector<IndexType>& vIndexes, unsigned int nLimit = 0)
+		bool GetIndexes(std::vector< std::vector<unsigned char> >& vIndexes, unsigned char nState = MEMORY_ONLY, unsigned int nLimit = 0)
 		{
 			LOCK(MUTEX);
-			
-			for(auto i : mapObjects)
-			{
-				if(nLimit != 0 && vIndexes.size() >= nLimit)
-					return true;
-					
-				vIndexes.push_back(i.first);
-			}
+            
+            for(int nBucket = 0; nBucket < MAX_CACHE_POOL_BUCKETS; nBucket++)
+            {
+                for(auto obj : mapObjects[nBucket])
+                {
+                    if(nLimit != 0 && vIndexes.size() >= nLimit)
+                        return true;
+                    
+                    if(nState != obj.second.State)
+                        continue;
+                        
+                    vIndexes.push_back(obj.first);
+                }
+            }
 			
 			return (vIndexes.size() > 0);
 		}
 		
 		
-		/** Get the Indexs in Pool by State
+		/** Add data in the Pool
 		 * 
-		 * @param[in] State The state char to filter results by
-		 * @param[out] vIndexes The return vector with the results
-		 * @param[in] nLimit The limit to the nuymber of indexes to get (0 = unlimited)
-		 * 
-		 * @return Returns true if indexes fit criteria, false if none found
+		 * @param[in] vKey The key in binary form
+		 * @param[in] vData The input data in binary form
+         * @param[in] nState The state of the object being written
+         * @param[in] nTimestamp The Time record was Put (ms)
 		 * 
 		 */
-		bool GetIndexes(const unsigned char State, std::vector<IndexType>& vIndexes, unsigned int nLimit = 0)
+		void Put(std::vector<unsigned char> vKey, std::vector<unsigned char> vData, unsigned char nState = MEMORY_ONLY, uint64 nTimestamp = Timestamp(true))
 		{
-			LOCK(MUTEX);
-			
-			for(auto i : mapObjects)
-			{
-				if(nLimit != 0 && vIndexes.size() >= nLimit)
-					return true;
-				
-				if(i.second.State == State)
-					vIndexes.push_back(i.first);
-			}
-				
-			return (vIndexes.size() > 0);
+            LOCK(MUTEX);
+            
+			auto nBucket = GetBucket(vKey);
+            if(!Has(vKey, nBucket))
+                nCurrentSize += vData.size();
+            
+            if(nState == PENDING_WRITE) {
+                vDiskBuffer.push_back(std::make_pair(vKey, vData));
+                
+                nState = MEMORY_ONLY;
+            }
+            
+            CachedData cacheObject = { nState, nTimestamp, vData };
+            mapObjects[nBucket][vKey] = cacheObject;
 		}
 		
 		
-		/** Update data in the Pool
-		 * 
-		 * Default state is UNVERIFIED
-		 * 
-		 * @param[in] Index Template argument to add selected index
-		 * @param[in] Object Template argument for the object to be added.
-		 * 
-		 */
-		bool Update(IndexType Index, ObjectType Object, unsigned char State = UNVERIFIED, uint64 nTimestamp = Timestamp(true))
-		{
-			LOCK(MUTEX);
-			
-			if(!Has(Index))
-				return false;
-			
-			mapObjects[Index].Object    = Object;
-			mapObjects[Index].State     = State;
-			mapObjects[Index].Timestamp = nTimestamp;
-			
-			return true;
-		}
+		/** Get Disk Buffer.
+         * 
+         *  Returns the current disk buffer ready for writing.
+         *
+         */
+		bool GetDiskBuffer(std::vector< std::pair<std::vector<unsigned char>, std::vector<unsigned char>> >& vBuffer)
+        {
+            LOCK(MUTEX);
+            
+            if(vDiskBuffer.size() == 0)
+                return false;
+            
+            vBuffer = vDiskBuffer;
+            vDiskBuffer.clear();
+            
+            return true;
+        }
 		
 		
-		/** Add data to the pool
-		 * 
-		 * Default state is UNVERIFIED
-		 * 
-		 * @param[in] Index Template argument to add selected index
-		 * @param[in] Object Template argument for the object to be added.
-		 * 
-		 */
-		bool Add(IndexType Index, ObjectType Object, unsigned char State = UNVERIFIED, uint64 nTimestamp = Timestamp(true))
-		{
-			LOCK(MUTEX);
-			
-			if(Has(Index))
-				return false;
-			
-			CHoldingObject<ObjectType> HoldingObject(nTimestamp, State, Object);
-			mapObjects[Index] = HoldingObject;
-			
-			return true;
-		}
-		
-		
-		/** Set the State of specific Object
-		 * 
-		 * @param[in] Index Template argument to add selected index
-		 * @param[in] State The selected state to add (Default is UNVERIFIED)
-		 * 
-		 */
-		void AddState(IndexType Index, unsigned char State = UNVERIFIED)
-		{ 
-			LOCK(MUTEX);
-			
-			CHoldingObject<ObjectType> HoldingObject;
-			HoldingObject.State = State;
-			HoldingObject.Timestamp = Core::UnifiedTimestamp();
-			
-			mapObjects[Index] = HoldingObject;
-		}
-
-		
-		/** Set the State of specific Object
-		 * 
-		 * @param[in] Index Template argument to add selected index
-		 * @param[in] State The selected state to add (Default is UNVERIFIED)
-		 * 
-		 */
-		void SetState(IndexType Index, unsigned char State = UNVERIFIED)
-		{ 
-			LOCK(MUTEX);
-			
-			if(!Has(Index))
-				return;
-			
-			mapObjects[Index].State = State;
-			mapObjects[Index].Timestamp = Core::UnifiedTimestamp();
-		}
-		
-		
-		/** Set Timestamp of Object
-		 * 
-		 * @param[in] Index Template argument to select Object
-		 * @param[in] Timestamp The new timestamp for object
-		 * 
-		 */
-		void SetTimestamp(IndexType Index, unsigned int Timestamp = Core::UnifiedTimestamp())
-		{
-			LOCK(MUTEX);
-			
-			if(!Has(Index))
-				return;
-			
-			mapObjects[Index].Timestamp = Timestamp;
-		}
-		
-		
-		/** Get the State of Specific Object
-		 * 
-		 * @param[in] Index Template argument to add selected index
-		 * 
-		 * @return Object state (NOTFOUND returned if does not exist)
-		 *
-		 */
-		unsigned char State(IndexType Index) const
-		{
-			if(!Has(Index))
-				return NOTFOUND;
-			
-			return mapObjects.at(Index).State;
-		}
+		/** Set the state of the data in cache
+         * 
+         * @param[in] vKey The key in binary form
+         * @param[in] nState The new state of the object.
+         * 
+         */
+		void SetState(std::vector<unsigned char> vKey, unsigned char nState)
+        {
+            auto nBucket = GetBucket(vKey);
+            if(!Has(vKey, nBucket))
+                return;
+            
+            mapObjects[nBucket][vKey].Timestamp = Timestamp(true);
+            mapObjects[nBucket][vKey].State = nState;
+        }
 		
 		
 		/** Force Remove Object by Index
 		 * 
-		 * @param[in] Index Template argument to determine location
+		 * @param[in] vKey Binary Data of the Key
 		 * 
 		 * @return True on successful removal, false if it fails
 		 * 
 		 */
-		bool Remove(IndexType Index)
+		bool Remove(std::vector<unsigned char> vKey)
 		{
-			LOCK(MUTEX);
+            LOCK(MUTEX);
+            
+            /* Check if the Record Exists. */
+			auto nBucket = GetBucket(vKey);
+            if(!Has(vKey, nBucket))
+                return false;
 			
-			if(!Has(Index))
-				return false;
-			
-			mapObjects.erase(Index);
+            nCurrentSize -= mapObjects[nBucket][vKey].Data.size();
+            
+            mapObjects[nBucket].erase(vKey);
 			
 			return true;
 		}
 		
 		
-		/** Check if an object is Expired
-		 * 
-		 * @param[in] Index Template argument to determine location
-		 * 
-		 * @return True if object has expired, false if it is active
-		 * 
-		 */
-		bool Expired(IndexType Index, unsigned int nTimestamp) const
+		static bool SortByTime(const std::pair< std::vector<unsigned char>, CachedData>& a, const std::pair< std::vector<unsigned char>, CachedData>& b)
+        {
+            return a.second.Timestamp < b.second.Timestamp;
+        }
+		
+		
+		/** Clean up older data from the Cache Pool to keep within Cache Limits. 
+         * 
+         *  This is a Worker Thread.
+         */
+		void CacheCleaner()
 		{
-			if(!Has(Index))
-				return true;
-			
-			if(mapObjects.at(Index).Timestamp + nTimestamp < Core::UnifiedTimestamp())
-				return true;
-			
-			return false;
-		}
-		
-		
-		/** Check the age of an object since its last state change. 
-		 * 
-		 * @param[in] Index Template argument to determine location
-		 * 
-		 * @return The age in seconds of the object being quieried.
-		 */
-		unsigned int Age(IndexType Index) const
-		{
-			if(!Has(Index))
-				return 0;
-			
-			return Core::UnifiedTimestamp() - mapObjects.at(Index).Timestamp;
-		}
-		
-		
-		/** Clean up data that is expired to keep memory use low
-		 * 
-		 * @return The number of elements that were removed in cleaning process.
-		 * 
-		 */
-		int Clean()
-		{
-			std::vector<IndexType> vClean;
-			
-			{ LOCK(MUTEX);
-				for(auto i : mapObjects)
-					if(Expired(i.first, nExpirationTime))
-						vClean.push_back(i.first);
-			}
-			
-			for(auto i : vClean)
-				Remove(i);
-			
-			return vClean.size();
-		}
-		
-		/** Count or the number of elements in the memory pool
-		 * 
-		 * @return returns the total size of the pool.
-		 * 
-		 */
-		int Count() const
-		{
-			return mapObjects.size();
-		}
-		
-		
-		/** Count or the number of elements in the pool
-		 * 
-		 * @param[in] State The state to filter the results with
-		 * 
-		 * @return Returns the total number of elements in the pool based on the state
-		 * 
-		 */
-		int Count(unsigned char State)
-		{
-			LOCK(MUTEX);
-			
-			int nCount = 0;
-			for(auto i : mapObjects)
-				if(i.second.State == State)
-					nCount++;
-				
-			return nCount;
+            while(true)
+            {
+                /* Trim off less used objects if reached cache limits. */
+                if(nCurrentSize > MAX_CACHE_SIZE)
+                {
+                    std::vector< std::pair< std::vector<unsigned char>, CachedData > > vKeys;
+                    for(int nBucket = 0; nBucket < MAX_CACHE_POOL_BUCKETS; nBucket++)
+                    {
+                        for(auto obj : mapObjects[nBucket])
+                        {
+                            /* Don't clear objects waiting for writes. */
+                            if((obj.second.State & PENDING_WRITE) || (obj.second.State & PENDING_ERASE))
+                                continue;
+                            
+                            vKeys.push_back(obj);
+                        }
+                    }
+                    
+                    /* Sort by earliest timestamp and remove until cache is balanced. */
+                    std::sort(vKeys.begin(), vKeys.end(), SortByTime);
+                    for(auto obj : vKeys)
+                    {
+                        if(nCurrentSize <= MAX_CACHE_SIZE)
+                            break;
+                        
+                        Remove(obj.first);
+                    }
+                }
+                
+                Sleep(1000);
+            }
 		}
 	};
 }
