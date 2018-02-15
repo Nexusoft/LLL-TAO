@@ -474,7 +474,7 @@ namespace LLD
                 /* Wait for Database to Initialize. */
                 if(!fInitialized)
                 {
-                    Sleep(1);
+                    Sleep(1, true);
                     
                     continue;
                 }
@@ -486,7 +486,7 @@ namespace LLD
                     if(fDestruct)
                         return;
                     
-                    Sleep(1);
+                    Sleep(1, true);
                     
                     continue;
                 }
