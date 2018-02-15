@@ -39,7 +39,7 @@ inline int64_t Timestamp(bool fMilliseconds = false)
         
 
 /* Sleep for a duration in Milliseconds. */
-inline void Sleep(unsigned int nTime){ boost::this_thread::sleep(boost::posix_time::milliseconds(nTime)); }
+inline void Sleep(unsigned int nTime, bool fMicroseconds = false){ fMicroseconds ? boost::this_thread::sleep(boost::posix_time::microseconds(nTime)) : boost::this_thread::sleep(boost::posix_time::milliseconds(nTime)); }
 
         
 /* Class the tracks the duration of time elapsed in seconds or milliseconds.

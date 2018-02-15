@@ -47,7 +47,7 @@ namespace LLD
     /** Holding Pool:
     * 
     * This class is responsible for holding data that is partially processed.
-    * It is also uselef for data that needs to be relayed from cache once recieved.
+    * It is also useful for data that needs to be relayed from cache once recieved.
     * 
     * It must adhere to the processing expiration time.
     * 
