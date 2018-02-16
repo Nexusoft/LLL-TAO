@@ -248,8 +248,8 @@ namespace LLD
                 }
                 
                 /* Get the Binary Size. */
-                fIncoming.seekg (0, std::ios::end);
-                nCurrentFileSize = fIncoming.tellg();
+                fIncoming.ignore(std::numeric_limits<std::streamsize>::max());
+                nCurrentFileSize = fIncoming.gcount();
                 nKeychainSize += nCurrentFileSize;
                 
                 printf("[DATABASE] Keychain File %u Loading [%u bytes]...\n", nCurrentFile, nCurrentFileSize);
