@@ -375,10 +375,12 @@ namespace LLD
         {
             LOCK(SECTOR_MUTEX);
             
-            cachePool->Put(vKey, vData, PENDING_WRITE);
+            if(!GetBoolArg("-forcewrite", false))
+            {
+                cachePool->Put(vKey, vData, PENDING_WRITE);
             
-            return true;
-            
+                return true;
+            }
             
             if(GetBoolArg("-runtime", false))
                 runtime.Start();
