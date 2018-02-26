@@ -112,7 +112,7 @@ namespace LLD
         
         //std::unordered_map< std::vector<unsigned char>, std::vector<unsigned char>, SK_Hashmap > mapRecordCache;
         //std::map< std::vector<unsigned char>, std::vector<unsigned char> > mapRecordCache[MAX_SECTOR_CACHE_BUCKETS];
-        CachePool* cachePool;
+        MemCachePool* cachePool;
         
         /* The current File Position. */
         mutable unsigned int nCurrentFile;
@@ -123,7 +123,7 @@ namespace LLD
         
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(std::string strName, std::string strKeychain, const char* pszMode="r+") : cachePool(new CachePool(MAX_SECTOR_CACHE_SIZE)), CacheWriterThread(boost::bind(&SectorDatabase::CacheWriter, this))
+        SectorDatabase(std::string strName, std::string strKeychain, const char* pszMode="r+") : cachePool(new MemCachePool(MAX_SECTOR_CACHE_SIZE)), CacheWriterThread(boost::bind(&SectorDatabase::CacheWriter, this))
         {
             /* Create the Sector Database Directories. */
             boost::filesystem::path dir(GetDataDir().string() + "/datachain");
