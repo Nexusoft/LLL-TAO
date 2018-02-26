@@ -1,5 +1,5 @@
 /*__________________________________________________________________________________________
-
+           
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
             
             (c) Copyright The Nexus Developers 2014 - 2017
@@ -8,11 +8,10 @@
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
             
             "fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
-
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LLP_TEMPLATES_POOL_H
-#define NEXUS_LLP_TEMPLATES_POOL_H
+#ifndef NEXUS_LLD_TEMPLATES_MEMCACHEPOOL_H
+#define NEXUS_LLD_TEMPLATES_MEMCACHEPOOL_H
 
 #include "../../Util/templates/serialize.h"
 #include "../../Util/include/mutex.h"
@@ -30,6 +29,7 @@ namespace LLD
         PENDING_ERASE = 1,
         
         MEMORY_ONLY   = 10, //Default State
+        PENDING_TX    = 11,
         
         COMPLETED     = 255
     };
@@ -38,8 +38,8 @@ namespace LLD
     /* Holding Object for Memory Maps. */
     struct CachedData
     {
-        unsigned char State;
-        uint64        Timestamp;
+        unsigned char  State;
+        uint64         Timestamp;
         std::vector<unsigned char> Data;
     };
     
@@ -47,7 +47,7 @@ namespace LLD
     /** Holding Pool:
     * 
     * This class is responsible for holding data that is partially processed.
-    * It is also useful for data that needs to be relayed from cache once recieved.
+    * It is also uselef for data that needs to be relayed from cache once recieved.
     * 
     * It must adhere to the processing expiration time.
     * 
@@ -55,10 +55,13 @@ namespace LLD
     * B. It can process data locked as orphans
     * 
     */
-    class CachePool
+    class MemCachePool
     {
         
     protected:
+        
+        /* Destructor flag. */
+        bool fDestruct;
         
         
         /* The Maximum Size of the Cache. */
@@ -81,8 +84,13 @@ namespace LLD
         std::vector< std::pair<std::vector<unsigned char>, std::vector<unsigned char>> > vDiskBuffer;
         
         
+        /* Transaction Disk Buffer Object. */
+        std::vector< std::pair<std::vector<unsigned char>, std::vector<unsigned char>> > vTransactionBuffer;
+        
+        
         /* Thread of cache cleaner. */
         Thread_t CACHE_THREAD;
+        
         
     public:
         
@@ -92,7 +100,7 @@ namespace LLD
         * MAX_CACHE_BUCKETS default value is 65,539 (2 bytes)
         * 
         */
-        CachePool() : MAX_CACHE_SIZE(32 * 1024 * 1024), nCurrentSize(0) {}
+        MemCachePool() : fDestruct(false), MAX_CACHE_SIZE(1024 * 1024), nCurrentSize(0), CACHE_THREAD(boost::bind(&MemCachePool::CacheCleaner, this)) {}
         
         
         /** Cache Size Constructor
@@ -100,13 +108,15 @@ namespace LLD
         * @param[in] nCacheSizeIn The maximum size of this Cache Pool
         * 
         */
-        CachePool(unsigned int nCacheSizeIn) : MAX_CACHE_SIZE(nCacheSizeIn), nCurrentSize(0) {}
+        MemCachePool(unsigned int nCacheSizeIn) : fDestruct(false), MAX_CACHE_SIZE(nCacheSizeIn), nCurrentSize(0), CACHE_THREAD(boost::bind(&MemCachePool::CacheCleaner, this)) {}
         
         
         /* Class Destructor. */
-        ~CachePool()
+        ~MemCachePool()
         {
-            //CACHE_THREAD.kill();
+            fDestruct = true;
+            
+            CACHE_THREAD.join();
         }
         
         
@@ -118,9 +128,11 @@ namespace LLD
         */
         unsigned int GetBucket(std::vector<unsigned char> vKey) const 
         { 
-            assert(vKey.size() > 1);
+            uint64 nBucket = 0;
+            for(int i = 0; i < vKey.size() && i < 8; i++)
+                nBucket += vKey[i] << (8 * i);
             
-            return (vKey[0] << 8) + (vKey[1]);
+            return nBucket % MAX_CACHE_POOL_BUCKETS;
         }
         
         
@@ -247,12 +259,15 @@ namespace LLD
             if(!Has(vKey, nBucket))
                 nCurrentSize += vData.size();
             
-            if(nState == PENDING_WRITE) {
+            /* Handle the Writing Buffer, out of transaction orders. */
+            if(nState == PENDING_WRITE)
                 vDiskBuffer.push_back(std::make_pair(vKey, vData));
-                
-                nState = MEMORY_ONLY;
-            }
             
+            /* Handle a Pending Transaction, write to buffer */
+            else if(nState == PENDING_TX)
+                vTransactionBuffer.push_back(std::make_pair(vKey, vData));
+                
+            /* Overwrite existing objects. */
             CachedData cacheObject = { nState, nTimestamp, vData };
             mapObjects[nBucket][vKey] = cacheObject;
         }
@@ -277,13 +292,32 @@ namespace LLD
         }
         
         
+        /** Get Transaction Buffer.
+        * 
+        *  Returns the current disk buffer ready for writing.
+        *
+        */
+        bool GetTransactionBuffer(std::vector< std::pair<std::vector<unsigned char>, std::vector<unsigned char>> >& vBuffer)
+        {
+            LOCK(MUTEX);
+            
+            if(vTransactionBuffer.size() == 0)
+                return false;
+            
+            vBuffer = vTransactionBuffer;
+            vTransactionBuffer.clear();
+            
+            return true;
+        }
+        
+        
         /** Set the state of the data in cache
         * 
         * @param[in] vKey The key in binary form
         * @param[in] nState The new state of the object.
         * 
         */
-        void SetState(std::vector<unsigned char> vKey, unsigned char nState)
+        void SetState(std::vector<unsigned char> vKey, unsigned short nState)
         {
             auto nBucket = GetBucket(vKey);
             if(!Has(vKey, nBucket))
@@ -312,9 +346,31 @@ namespace LLD
             
             nCurrentSize -= mapObjects[nBucket][vKey].Data.size();
             
+            //if(mapObjects[nBucket][vKey].State == PENDING_TX)
+            //    mapObjects[nBucket][vKey].State = PENDING_ERASE;
+            //else
             mapObjects[nBucket].erase(vKey);
             
             return true;
+        }
+        
+        
+        /** Force Remove Object by Index
+        * 
+        * @param[in] vKey Binary Data of the Key
+        * @param[in] nState The State objects to remove
+        * 
+        * 
+        * NOTE: This is high complexity, use sparingly
+        * 
+        */
+        void Remove(unsigned char nState)
+        {
+            std::vector< std::vector<unsigned char> > vKeys;
+            GetIndexes(vKeys, nState);
+            
+            for(auto Key : vKeys)
+                Remove(Key);
         }
         
         
@@ -330,7 +386,7 @@ namespace LLD
         */
         void CacheCleaner()
         {
-            while(true)
+            while(!fDestruct)
             {
                 /* Trim off less used objects if reached cache limits. */
                 if(nCurrentSize > MAX_CACHE_SIZE)
@@ -340,11 +396,9 @@ namespace LLD
                     {
                         for(auto obj : mapObjects[nBucket])
                         {
-                            /* Don't clear objects waiting for writes. */
-                            if((obj.second.State & PENDING_WRITE) || (obj.second.State & PENDING_ERASE))
-                                continue;
-                            
-                            vKeys.push_back(obj);
+                            /* Don't clear objects waiting for writes or transactions. */
+                            if( (obj.second.State != PENDING_WRITE) && (obj.second.State != PENDING_ERASE) && (obj.second.State != PENDING_TX) )
+                                vKeys.push_back(obj);
                         }
                     }
                     
@@ -359,7 +413,7 @@ namespace LLD
                     }
                 }
                 
-                Sleep(1000);
+                Sleep(1);
             }
         }
     };

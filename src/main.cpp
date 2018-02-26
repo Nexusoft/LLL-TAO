@@ -227,7 +227,7 @@ int main(int argc, char** argv)
     nTotalElapsed = 0;
     
     
-    
+    /*
     int nDbCache = GetArg("-dbcache", 25);
     DbEnv dbenv(0);
     dbenv.set_cachesize(nDbCache / 1024, (nDbCache % 1024)*1048576, 1);
@@ -289,7 +289,6 @@ int main(int argc, char** argv)
     printf(ANSI_COLOR_GREEN "BerkeleyDB Read Performance: %u micro-seconds | %f ops/s\n" ANSI_COLOR_RESET, nElapsed, (nTotalRecords * 1000000.0) / nElapsed);
     nTotalElapsed += nElapsed;
     
-    /* Close the Databases. */
     timer.Reset();
     delete pdb;
     nElapsed = timer.ElapsedMicroseconds();
@@ -297,6 +296,7 @@ int main(int argc, char** argv)
     nTotalElapsed += nElapsed;
     
     printf(ANSI_COLOR_YELLOW "BerkeleyDB Total Running Time: %f seconds | %f ops/s\n\n" ANSI_COLOR_RESET, nTotalElapsed / 1000000.0, (nTotalRecords * 1000000.0) / nTotalElapsed);
+    */
     
     return 0;
 }
