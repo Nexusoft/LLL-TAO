@@ -1,19 +1,20 @@
-//
-//  main.cpp
-//  
-//
-//  Created by Colin Cantrell on 1/2/18.
-//
-//
+
+#include "TAO/Core/include/sigchain.h"
 
 #include "Util/include/debug.h"
 #include "Util/include/runtime.h"
-#include "LLD/templates/sector.h"
+#include "Util/include/hex.h"
+
 #include "LLC/hash/SK.h"
 #include "LLC/include/random.h"
+#include "LLC/include/key.h"
+
+#include "LLP/include/legacy.h"
+#include "LLP/templates/server.h"
+
+#include "LLD/templates/sector.h"
 
 #include "leveldb/db.h"
-
 
 #include <db_cxx.h>
 
@@ -95,11 +96,125 @@ public:
     }
 };
 
+
+enum
+{
+    OP_PUBLISH  = 0x01,
+    OP_REQUIRE  = 0x02,
+    OP_TRANSFER = 0x03,
+    
+    OP_DEBIT    = 0xa1,
+    OP_CREDIT   = 0xa2,
+    
+    OP_IF          = 0xb1,
+    OP_ELSE        = 0xb2,
+    OP_ENDIF       = 0xb3,
+    
+    OP
+};
+
+
+
+class CTritiumTransaction
+{
+    
+    std::vector<unsigned char> vchContract;
+    std::vector<unsigned char> vchPubKey;
+    
+    uint512 NextHash; //TXID
+    
+    std::vector<unsigned char> vchInput;
+    
+    std::vector<unsigned char> vchSig;
+    
+    uint512 GetPrevHash() const 
+    {
+        return LLC::HASH::SK512(vchPubKey); //INDEX
+    }
+    
+    uint512 GetHash()
+    {
+        
+    }
+    
+    bool IsValid()
+    {
+        LLC::CKey key(NID_brainpoolP512t1, 64);
+        key.SetPubKey(vchPubKey);
+    }
+    
+};
+
 int main(int argc, char** argv)
 {
     ParseParameters(argc, argv);
     
-    printf("Lower Level Library Initialization...\n");
+    LLP::Server<LLP::CLegacyNode>* LegacyServer = new LLP::Server<LLP::CLegacyNode>(9323, 10, true, 2, 20, 30, 60, true, true);
+
+    uint512 hashSeed = GetRand512();
+    uint256 hash256  = GetRand256();
+    
+    Core::SignatureChain sigChain("username","password");
+    uint512 hashGenesis = sigChain.Generate(0, "secret");
+    
+    printf("Genesis Priv %s\n", hashGenesis.ToString().c_str());
+        
+    LLC::CKey key(NID_brainpoolP512t1, 64);
+    
+    std::vector<unsigned char> vchData = hashGenesis.GetBytes();
+    
+    LLC::CSecret vchSecret(vchData.begin(), vchData.end());
+    
+    key.SetSecret(vchSecret, true);
+    
+    LLC::CKey key512(key);
+    
+    std::vector<unsigned char> vPubKey = key.GetPubKey();
+    
+    printf("Genesis Pub %s\n", HexStr(vPubKey).c_str());
+    
+    uint512 genesisID = LLC::HASH::SK512(vPubKey);
+    
+    printf("Genesis ID %s\n", genesisID.ToString().c_str());
+    
+    printf("Keys Created == %s\n", (key == key512) ? "TRUE" : "FALSE");
+        
+    std::vector<unsigned char> vchSig;
+    bool fSigned = key512.Sign(hashSeed, vchSig, 256);
+    //vchSig[0] = 0x11;
+        
+    LLC::CKey keyVerify(NID_brainpoolP512t1, 64);
+    keyVerify.SetPubKey(vPubKey);
+    
+    
+    bool fVerify = keyVerify.Verify(hashSeed, vchSig, 256);
+    printf("Signature %s [%u Bytes] Signed %s and Verified %s\n", HexStr(vchSig).c_str(), vchSig.size(), fSigned ? "True" : "False", fVerify ? "True" : "False");
+    
+    LLC::CKey k571(NID_secp256k1, 32);
+    k571.MakeNewKey(true);
+    
+    std::vector<unsigned char> vchPubKey = k571.GetPubKey();
+    
+    vchSig.clear();
+    fSigned = k571.SignCompact(hash256, vchSig);
+    
+    LLC::CKey k571v(NID_secp256k1, 32);
+    fVerify = k571v.SetCompactSignature(hash256, vchSig);
+    
+    std::vector<unsigned char> vchPubKey2 = k571v.GetPubKey();
+    
+    printf("Pub1: %s\nPub2: %s\n", HexStr(vchPubKey).c_str(), HexStr(vchPubKey2).c_str());
+    
+    printf("Signature %s [%u Bytes] Signed %s and Verified %s\n", HexStr(vchSig).c_str(), vchSig.size(), fSigned ? "True" : "False", fVerify ? "True" : "False");
+    
+    return 0;
+}
+
+
+
+int TestLLD()
+{
+        printf("Lower Level Library Initialization...\n");
     
     TestDB* db = new TestDB();
     
@@ -297,6 +412,4 @@ int main(int argc, char** argv)
     
     printf(ANSI_COLOR_YELLOW "BerkeleyDB Total Running Time: %f seconds | %f ops/s\n\n" ANSI_COLOR_RESET, nTotalElapsed / 1000000.0, (nTotalRecords * 1000000.0) / nTotalElapsed);
     */
-    
-    return 0;
 }

@@ -90,6 +90,9 @@ OBJS= \
 	build/Keccak-compact64.o \
 	build/KeccakHash.o \
 	build/random.o \
+	build/key.o \
+	build/network.o \
+	build/hosts.o \
 	build/args.o \
 	build/config.o \
 	build/debug.o

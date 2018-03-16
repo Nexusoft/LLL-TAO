@@ -1,14 +1,14 @@
 /*__________________________________________________________________________________________
- 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
-			
-			(c) Copyright The Nexus Developers 2014 - 2017
-			
-			Distributed under the MIT software license, see the accompanying
-			file COPYING or http://www.opensource.org/licenses/mit-license.php.
-			
-			"fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
-  
+
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
+            
+            (c) Copyright The Nexus Developers 2014 - 2017
+            
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+            
+            "fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
+
 ____________________________________________________________________________________________*/
 
 #ifndef NEXUS_UINT1024_H
@@ -32,8 +32,8 @@ typedef unsigned long long  uint64;
 
 
 /** Base class without constructors for uint256, uint512, uint576, uint1024.
- * This makes the compiler let u use it in a union.
- */
+* This makes the compiler let u use it in a union.
+*/
 template<unsigned int BITS>
 class base_uint
 {
@@ -338,37 +338,37 @@ public:
     {
         SetHex(str.c_str());
     }
-	
-	/** Converts the corresponding unsigned integer into bytes. 
-		Used for serializing in Miner LLP **/
-	const std::vector<unsigned char> GetBytes()
-	{
-		std::vector<unsigned char> DATA;
+    
+    /** Converts the corresponding unsigned integer into bytes. 
+        Used for serializing in Miner LLP **/
+    const std::vector<unsigned char> GetBytes()
+    {
+        std::vector<unsigned char> DATA;
 
-		for(int index = 0; index < WIDTH; index++)
-		{
-			std::vector<unsigned char> BYTES(4, 0);
-			BYTES[0] = (pn[index] >> 24);
-			BYTES[1] = (pn[index] >> 16);
-			BYTES[2] = (pn[index] >> 8);
-			BYTES[3] =  pn[index];
-	
-			DATA.insert(DATA.end(), BYTES.begin(), BYTES.end());
-		}
-		
-		return DATA;
-	}
-	
-	/** Creates an unsigned integer from bytes. 
-		Used for de-serializing in Miner LLP **/
-	void SetBytes(const std::vector<unsigned char> DATA)
-	{
-		for(int index = 0; index < WIDTH; index++)
-		{
-			std::vector<unsigned char> BYTES(DATA.begin() + (index * 4), DATA.begin() + (index * 4) + 4); 
-			pn[index] = (BYTES[0] << 24) + (BYTES[1] << 16) + (BYTES[2] << 8) + (BYTES[3] );
-		}
-	}
+        for(int index = 0; index < WIDTH; index++)
+        {
+            std::vector<unsigned char> BYTES(4, 0);
+            BYTES[0] = (pn[index] >> 24);
+            BYTES[1] = (pn[index] >> 16);
+            BYTES[2] = (pn[index] >> 8);
+            BYTES[3] =  pn[index];
+    
+            DATA.insert(DATA.end(), BYTES.begin(), BYTES.end());
+        }
+        
+        return DATA;
+    }
+    
+    /** Creates an unsigned integer from bytes. 
+        Used for de-serializing in Miner LLP **/
+    void SetBytes(const std::vector<unsigned char> DATA)
+    {
+        for(int index = 0; index < WIDTH; index++)
+        {
+            std::vector<unsigned char> BYTES(DATA.begin() + (index * 4), DATA.begin() + (index * 4) + 4); 
+            pn[index] = (BYTES[0] << 24) + (BYTES[1] << 16) + (BYTES[2] << 8) + (BYTES[3] );
+        }
+    }
 
     std::string ToString() const
     {
@@ -417,9 +417,9 @@ public:
 
 
     friend class uint256;
-	friend class uint512;
-	friend class uint576;
-	friend class uint1024;
+    friend class uint512;
+    friend class uint576;
+    friend class uint1024;
 };
 
 typedef base_uint<256> base_uint256;
@@ -575,18 +575,18 @@ public:
             pn[i] = 0;
         return *this;
     }
-	
-	explicit uint512(const std::vector<unsigned char> vch)
-	{
-		SetBytes(vch);
-	}
+    
+    explicit uint512(const std::vector<unsigned char> vch)
+    {
+        SetBytes(vch);
+    }
 
     explicit uint512(const std::string& str)
     {
         SetHex(str);
     }
 
-	/*
+    /*
     explicit uint512(const std::vector<unsigned char>& vch)
     {
         if (vch.size() == sizeof(pn))
@@ -594,7 +594,7 @@ public:
         else
             *this = 0;
     }
-	*/
+    */
 };
 
 inline bool operator==(const uint512& a, uint64 b)                           { return (base_uint512)a == b; }
@@ -794,69 +794,69 @@ public:
             pn[i] = 0;
         return *this;
     }
-	
-	uint1024(uint256 b)
+    
+    uint1024(uint256 b)
     {
         for (int i = 0; i < WIDTH; i++)
-			if(i < b.WIDTH)
-				pn[i] = b.pn[i];
-			else
-				pn[i] = 0;
+            if(i < b.WIDTH)
+                pn[i] = b.pn[i];
+            else
+                pn[i] = 0;
     }
-	
-	uint1024& operator=(uint256 b)
+    
+    uint1024& operator=(uint256 b)
     {
         for (int i = 0; i < WIDTH; i++)
-			if(i < b.WIDTH)
-				pn[i] = b.pn[i];
-			else
-				pn[i] = 0;
-				
-		return *this;
+            if(i < b.WIDTH)
+                pn[i] = b.pn[i];
+            else
+                pn[i] = 0;
+                
+        return *this;
     }
-	
-	uint1024(uint512 b)
+    
+    uint1024(uint512 b)
     {
         for (int i = 0; i < WIDTH; i++)
-			if(i < b.WIDTH)
-				pn[i] = b.pn[i];
-			else
-				pn[i] = 0;
+            if(i < b.WIDTH)
+                pn[i] = b.pn[i];
+            else
+                pn[i] = 0;
     }
-	
-	uint1024& operator=(uint512 b)
+    
+    uint1024& operator=(uint512 b)
     {
         for (int i = 0; i < WIDTH; i++)
-			if(i < b.WIDTH)
-				pn[i] = b.pn[i];
-			else
-				pn[i] = 0;
-				
-		return *this;
+            if(i < b.WIDTH)
+                pn[i] = b.pn[i];
+            else
+                pn[i] = 0;
+                
+        return *this;
     }
-	
-	/** This method should only be used to retrieve an uint256 when stored inside an uint1024. 
-	    This is necessary for for ambiguous function declaration. */
-	uint256 getuint256() const
-	{
-		uint256 b;
-		for (int i = 0; i < b.WIDTH; i++)
-			b.pn[i] = pn[i];
-		
-		return b;
-	}
-	
-	/** This method should only be used to retrieve an uint512 when stored inside an uint1024. 
-	    This is necessary for the inventory system to function with both a 1024 bit block
-		and 512 bit transaction. */
-	uint512 getuint512() const
-	{
-		uint512 b;
-		for (int i = 0; i < b.WIDTH; i++)
-			b.pn[i] = pn[i];
-		
-		return b;
-	}
+    
+    /** This method should only be used to retrieve an uint256 when stored inside an uint1024. 
+        This is necessary for for ambiguous function declaration. */
+    uint256 getuint256() const
+    {
+        uint256 b;
+        for (int i = 0; i < b.WIDTH; i++)
+            b.pn[i] = pn[i];
+        
+        return b;
+    }
+    
+    /** This method should only be used to retrieve an uint512 when stored inside an uint1024. 
+        This is necessary for the inventory system to function with both a 1024 bit block
+        and 512 bit transaction. */
+    uint512 getuint512() const
+    {
+        uint512 b;
+        for (int i = 0; i < b.WIDTH; i++)
+            b.pn[i] = pn[i];
+        
+        return b;
+    }
 
     explicit uint1024(const std::string& str)
     {
