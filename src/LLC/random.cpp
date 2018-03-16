@@ -61,8 +61,11 @@ uint64 GetRand(uint64 nMax)
     uint64 nRange = (std::numeric_limits<uint64>::max() / nMax) * nMax;
     uint64 nRand = 0;
     do
+    {
         RAND_bytes((unsigned char*)&nRand, sizeof(nRand));
+    }
     while (nRand >= nRange);
+    
     return (nRand % nMax);
 }
 
