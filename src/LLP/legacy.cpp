@@ -12,25 +12,18 @@
 ____________________________________________________________________________________________*/
 
 
-#include "../Core/include/manager.h"
-
-#include "include/checkpoints.h"
-#include "include/message.h"
 #include "include/hosts.h"
 #include "include/legacy.h"
 #include "include/inv.h"
 
 #include "../LLC/include/random.h"
-#include "../LLD/include/index.h"
 
 #include "../Util/include/args.h"
 #include "../Util/include/hex.h"
 
-#include "../main.h"
-
 
 namespace LLP
-{	
+{
     
     /* Push a Message With Information about This Current Node. */
     void CLegacyNode::PushVersion()
@@ -78,6 +71,7 @@ namespace LLP
             
             return;
         }
+        
             
         /** Handle for a Packet Data Read. **/
         if(EVENT == EVENT_PACKET)
@@ -139,7 +133,6 @@ namespace LLP
         /* Handle the Socket Disconnect */
         if(EVENT == EVENT_DISCONNECT)
         {
-            Core::pManager->vDropped.push_back(addrThisNode);
             
             if(GetArg("-verbose", 0) >= 1)
                 printf("xxxxx %s Node %s Disconnected (%s) at Timestamp %" PRIu64 "\n", fOUTGOING ? "Ougoing" : "Incoming", addrThisNode.ToString().c_str(), ErrorMessage().c_str(), Core::UnifiedTimestamp());
@@ -154,9 +147,8 @@ namespace LLP
         custom messaging system, and how to interpret it from raw packets. **/
     bool CLegacyNode::ProcessPacket()
     {
+        
         CDataStream ssMessage(INCOMING.DATA, SER_NETWORK, MIN_PROTO_VERSION);
-        
-        
         if(INCOMING.GetMessage() == "getoffset")
         {
             /* Don't service unified seeds unless time is unified. */
@@ -502,17 +494,15 @@ namespace LLP
                 /* Skip asking for inventory that is already known. */
                 if(vInv[i].type == MSG_BLOCK)
                 {
-                    if(Core::pManager->blkPool.Has(vInv[i].hash))
-                        continue;
-                    
-                    Core::CBlock blk;
-                    Core::pManager->blkPool.Add(vInv[i].hash, blk, Core::pManager->blkPool.REQUESTED);
+                    continue;
                 }
                 
                 /* Skip asking for inventory that is already known. */
-                if(vInv[i].type == MSG_TX && Core::pManager->txPool.Has(vInv[i].hash.getuint512()))
+                if(vInv[i].type == MSG_TX)
+                {
                     continue;
-
+                }
+                
                 /* Add the inventory to new vector. (Only TX) */
                 vInvNew.push_back(vInv[i]);
             }

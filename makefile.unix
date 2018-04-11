@@ -95,6 +95,8 @@ OBJS= \
 	build/hosts.o \
 	build/args.o \
 	build/config.o \
+	build/network.o \
+	build/hosts.o \
 	build/debug.o
 
 
