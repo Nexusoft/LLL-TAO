@@ -9,7 +9,6 @@
 #include "LLC/include/random.h"
 #include "LLC/include/key.h"
 
-#include "LLP/include/legacy.h"
 #include "LLP/templates/server.h"
 
 #include "LLD/templates/sector.h"
@@ -103,20 +102,19 @@ enum
     OP_REQUIRE  = 0x02,
     OP_TRANSFER = 0x03,
     
-    OP_DEBIT    = 0xa1,
-    OP_CREDIT   = 0xa2,
-    
     OP_IF          = 0xb1,
     OP_ELSE        = 0xb2,
     OP_ENDIF       = 0xb3,
     
-    OP
+    OP_UNSIGNEDINT = 0xd1, //stored in a register
+    
 };
 
 
 
 class CTritiumTransaction
 {
+    unsigned int nVersion;
     
     std::vector<unsigned char> vchContract;
     std::vector<unsigned char> vchPubKey;
@@ -125,7 +123,14 @@ class CTritiumTransaction
     
     std::vector<unsigned char> vchInput;
     
-    std::vector<unsigned char> vchSig;
+    std::vector<unsigned char> vchSenderSig;
+    
+    std::vector<unsigned char> vchRecieveSig;
+    
+    IMPLEMENT_SERIALIZE
+    (
+        
+    )
     
     uint512 GetPrevHash() const 
     {
@@ -145,11 +150,12 @@ class CTritiumTransaction
     
 };
 
-int main(int argc, char** argv)
+
+int TestSIGS(int argc, char** argv)
 {
     ParseParameters(argc, argv);
     
-    LLP::Server<LLP::CLegacyNode>* LegacyServer = new LLP::Server<LLP::CLegacyNode>(9323, 10, true, 2, 20, 30, 60, true, true);
+    //LLP::Server<LLP::CLegacyNode>* LegacyServer = new LLP::Server<LLP::CLegacyNode>(9323, 10, true, 2, 20, 30, 60, true, true);
 
     uint512 hashSeed = GetRand512();
     uint256 hash256  = GetRand256();
@@ -212,9 +218,11 @@ int main(int argc, char** argv)
 
 
 
-int TestLLD()
+int main(int argc, char** argv)
 {
-        printf("Lower Level Library Initialization...\n");
+    ParseParameters(argc, argv);
+    
+    printf("Lower Level Library Initialization...\n");
     
     TestDB* db = new TestDB();
     
@@ -342,7 +350,6 @@ int TestLLD()
     nTotalElapsed = 0;
     
     
-    /*
     int nDbCache = GetArg("-dbcache", 25);
     DbEnv dbenv(0);
     dbenv.set_cachesize(nDbCache / 1024, (nDbCache % 1024)*1048576, 1);
@@ -411,5 +418,4 @@ int TestLLD()
     nTotalElapsed += nElapsed;
     
     printf(ANSI_COLOR_YELLOW "BerkeleyDB Total Running Time: %f seconds | %f ops/s\n\n" ANSI_COLOR_RESET, nTotalElapsed / 1000000.0, (nTotalRecords * 1000000.0) / nTotalElapsed);
-    */
 }
