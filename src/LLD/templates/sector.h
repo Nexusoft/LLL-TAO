@@ -15,12 +15,10 @@ ________________________________________________________________________________
 #define NEXUS_LLD_TEMPLATES_SECTOR_H
 
 #include "pool.h"
-#include "keychain.h"
+#include "key.h"
 #include "transaction.h"
 
 #include "../../Util/include/runtime.h"
-
-#include <unordered_map>
 
 namespace LLD
 {
@@ -61,7 +59,7 @@ namespace LLD
         TODO:: Add in the Database File Searching from Sector Keys. Allow Multiple Files.
         
     **/
-    class SectorDatabase
+    template<typename KeychainType> class SectorDatabase
     {
     protected:
         /* Mutex for Thread Synchronization. 
@@ -99,7 +97,7 @@ namespace LLD
         
         
         /* Sector Keys Database. */
-        KeyDatabase* SectorKeys;
+        KeychainType* SectorKeys;
         
         
         /* Hashmap Custom Hash Using SK. */
@@ -123,22 +121,29 @@ namespace LLD
         
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(std::string strName, std::string strKeychain, const char* pszMode="r+") : cachePool(new MemCachePool(MAX_SECTOR_CACHE_SIZE)), CacheWriterThread(boost::bind(&SectorDatabase::CacheWriter, this))
+        SectorDatabase(std::string strName, const char* pszMode="r+") : cachePool(new MemCachePool(MAX_SECTOR_CACHE_SIZE)), CacheWriterThread(boost::bind(&SectorDatabase::CacheWriter, this))
         {
+            if(GetBoolArg("-runtime", false))
+                runtime.Start();
+                
             /* Create the Sector Database Directories. */
             boost::filesystem::path dir(GetDataDir().string() + "/datachain");
             if(!boost::filesystem::exists(dir))
                 boost::filesystem::create_directory(dir);
             
-            strKeychainRegistry = strKeychain;
             strLocation = GetDataDir().string() + "/datachain/" + strName;
-            
             nCurrentFile = 0;
             
             /** Read only flag when instantiating new database. **/
             fReadOnly = (!strchr(pszMode, '+') && !strchr(pszMode, 'w'));
             
+            /* Initialize the Keys Class. */
+            SectorKeys = new KeychainType((GetDataDir().string() + "/keychain/"), strName);
+            
             Initialize();
+            
+            if(GetBoolArg("-runtime", false))
+                printf(ANSI_COLOR_GREEN "LLD::Sector::Initialized() executed in %u micro-seconds\n" ANSI_COLOR_RESET, runtime.ElapsedMicroseconds());
         }
         
         ~SectorDatabase()
@@ -146,17 +151,16 @@ namespace LLD
             fDestruct = true;
             
             CacheWriterThread.join();
+            
             delete pTransaction;
             delete cachePool;
+            delete SectorKeys;
         }
         
         
         /** Initialize Sector Database. **/
         void Initialize()
         {
-            if(GetBoolArg("-runtime", false))
-                runtime.Start();
-            
             /* Find the most recent append file. */
             while(true)
             {
@@ -189,21 +193,7 @@ namespace LLD
                 nCurrentFile++;
             }
             
-            /* Register the Keychain in Global LLD scope if it hasn't been registered already. */
-            if(!KeychainRegistered(strKeychainRegistry))
-                RegisterKeychain(strKeychainRegistry);
-            
-                        
-            /** Read a Record from Binary Data. **/
-            SectorKeys = GetKeychain(strKeychainRegistry);
-            if(!SectorKeys)
-                error("LLD::Sector::Initialized() : Sector Keys not Registered for Name %s\n", strKeychainRegistry.c_str());
-            
             pTransaction = NULL;
-            
-            if(GetBoolArg("-runtime", false))
-                printf(ANSI_COLOR_GREEN "LLD::Sector::Initialized() executed in %u micro-seconds\n" ANSI_COLOR_RESET, runtime.ElapsedMicroseconds());
-            
             fInitialized = true;
         }
         
@@ -511,7 +501,7 @@ namespace LLD
                 
                 /* Go through and do overwrite operations. */
                 std::vector< unsigned char > vBatch;
-                for(auto vObj : vIndexes)
+                for(auto vObj : vIndexes)  
                 {
                         
                     /* Setup for batch write on first update. */
@@ -568,7 +558,7 @@ namespace LLD
                 }
                 
                 /* Write the data in one operation. */
-                if(vBatch.size() > 0)
+                if(vBatch.size() > 0 || fDestruct)
                 {
                     /* Open the Stream to Read the data from Sector on File. */
                     std::string strFilename = strprintf("%s-%u.dat", strLocation.c_str(), nCurrentFile);

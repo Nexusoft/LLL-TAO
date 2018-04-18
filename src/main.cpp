@@ -12,6 +12,7 @@
 #include "LLP/templates/server.h"
 
 #include "LLD/templates/sector.h"
+#include "LLD/templates/filemap.h"
 
 #include "leveldb/db.h"
 
@@ -79,10 +80,10 @@ public:
 };
 
 
-class TestDB : public LLD::SectorDatabase
+class TestDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
 {
 public:
-    TestDB(const char* pszMode="r+") : SectorDatabase("testdb", "testdb", pszMode) {}
+    TestDB(const char* pszMode="r+") : SectorDatabase("testdb", pszMode) {}
     
     bool WriteBlock(uint1024 hash, CBlock blk)
     {
