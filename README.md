@@ -1,6 +1,6 @@
-# Lower Level Library
+# Lower Level Library / TAO Framework
 
-Series of Templates for developing Crypto, Database, or Protocol. Base templates for the TAO framework, which will inhereit these templates and create higher level functionality such as Tritium, Amine, and Obsidian for Nexus. This framework is the foundation to Nexus and a 3DC. 
+Series of Templates for developing Crypto, Database, or Protocol. Base templates for the TAO framework, which will inhereit these templates and create higher level functionality. This TAO framework is the foundation to Nexus as an integrated series of core upgrades for a live blockchain to upgrade into a multi-dimensional chain. This is named the acronym TAO standing for Tritium, Amine, and Obsidian.
 
 
 ### Lower Level Crypto
