@@ -69,13 +69,9 @@ namespace LLD
         
         
         /* The String to hold the Disk Location of Database File. */
-        std::string strLocation;
+        std::string strBaseLocation;
         
-        
-        /* The nameof the Keychain Registry. */
-        std::string strKeychainRegistry;
-        
-        
+
         /* Read only Flag for Sectors. */
         bool fReadOnly = false;
         
@@ -121,25 +117,18 @@ namespace LLD
         
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(std::string strName, const char* pszMode="r+") : cachePool(new MemCachePool(MAX_SECTOR_CACHE_SIZE)), CacheWriterThread(boost::bind(&SectorDatabase::CacheWriter, this))
+        SectorDatabase(std::string strName, const char* pszMode="r+") : strBaseLocation(GetDataDir().string() + "/" + strName + "/datachain/"), cachePool(new MemCachePool(MAX_SECTOR_CACHE_SIZE)), nCurrentFile(0), nCurrentFileSize(0), CacheWriterThread(boost::bind(&SectorDatabase::CacheWriter, this))
         {
             if(GetBoolArg("-runtime", false))
                 runtime.Start();
-                
-            /* Create the Sector Database Directories. */
-            boost::filesystem::path dir(GetDataDir().string() + "/datachain");
-            if(!boost::filesystem::exists(dir))
-                boost::filesystem::create_directory(dir);
             
-            strLocation = GetDataDir().string() + "/datachain/" + strName;
-            nCurrentFile = 0;
-            
-            /** Read only flag when instantiating new database. **/
+            /* Read only flag when instantiating new database. */
             fReadOnly = (!strchr(pszMode, '+') && !strchr(pszMode, 'w'));
             
             /* Initialize the Keys Class. */
-            SectorKeys = new KeychainType((GetDataDir().string() + "/keychain/"), strName);
+            SectorKeys = new KeychainType((GetDataDir().string() + "/" + strName + "/keychain/"));
             
+            /* Initialize the Database. */
             Initialize();
             
             if(GetBoolArg("-runtime", false))
@@ -161,14 +150,17 @@ namespace LLD
         /** Initialize Sector Database. **/
         void Initialize()
         {
+            /* Create directories if they don't exist yet. */
+            if(boost::filesystem::create_directories(strBaseLocation))
+                printf("LLD::Sector::Initialize() : Generated Path %s\n", strBaseLocation.c_str());
+            
             /* Find the most recent append file. */
             while(true)
             {
             
                 /* TODO: Make a worker or thread to check sizes of files and automatically create new file.
                     Keep independent of reads and writes for efficiency. */
-                std::string strFilename = strprintf("%s-%u.dat", strLocation.c_str(), nCurrentFile);
-                std::fstream fIncoming(strFilename, std::ios::in | std::ios::binary);
+                std::fstream fIncoming(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::in | std::ios::binary);
                 if(!fIncoming) {
                     
                     /* Assign the Current Size and File. */
@@ -177,7 +169,7 @@ namespace LLD
                     else
                     {
                         /* Create a new file if it doesn't exist. */
-                        std::ofstream cStream(strprintf("%s-%u.dat", strLocation.c_str(), nCurrentFile).c_str(), std::ios::binary);
+                        std::ofstream cStream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::binary);
                         cStream.close();
                     }
                     
@@ -328,7 +320,7 @@ namespace LLD
                 
                 /** Open the Stream to Read the data from Sector on File. **/
                 /* Open the Stream to Read the data from Sector on File. */
-                std::string strFilename = strprintf("%s-%u.dat", strLocation.c_str(), cKey.nSectorFile);
+                std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile);
                 std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::binary);
                 if(!fStream)
                     return error("Sector File %s Doesn't Exist\n", strFilename.c_str());
@@ -386,12 +378,12 @@ namespace LLD
                     nCurrentFile ++;
                     nCurrentFileSize = 0;
                     
-                    std::ofstream fStream(strprintf("%s-%u.dat", strLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                    std::ofstream fStream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
                     fStream.close();
                 }
                 
                 /* Open the Stream to Read the data from Sector on File. */
-                std::string strFilename = strprintf("%s-%u.dat", strLocation.c_str(), nCurrentFile);
+                std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
                 std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
                 
                 /* If it is a New Sector, Assign a Binary Position. 
@@ -420,7 +412,7 @@ namespace LLD
                     return false;
                     
                 /* Open the Stream to Read the data from Sector on File. */
-                std::string strFilename = strprintf("%s-%u.dat", strLocation.c_str(), cKey.nSectorFile);
+                std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile);
                 std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
                 
                 /* Locate the Sector Data from Sector Key. 
@@ -492,7 +484,7 @@ namespace LLD
                     nCurrentFile ++;
                     nCurrentFileSize = 0;
                             
-                    std::ofstream fStream(strprintf("%s-%u.dat", strLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                    std::ofstream fStream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
                     fStream.close();
                 }
                 
@@ -530,7 +522,7 @@ namespace LLD
                             break;
                             
                         /* Open the Stream to Read the data from Sector on File. */
-                        std::string strFilename = strprintf("%s-%u.dat", strLocation.c_str(), cKey.nSectorFile);
+                        std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile);
                         std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
                         
                         /* Locate the Sector Data from Sector Key. 
@@ -561,7 +553,7 @@ namespace LLD
                 if(vBatch.size() > 0 || fDestruct)
                 {
                     /* Open the Stream to Read the data from Sector on File. */
-                    std::string strFilename = strprintf("%s-%u.dat", strLocation.c_str(), nCurrentFile);
+                    std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
                     std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
                     
                     /* If it is a New Sector, Assign a Binary Position. 
@@ -699,12 +691,12 @@ namespace LLD
                         nCurrentFile ++;
                         nCurrentFileSize = 0;
                         
-                        std::ofstream fStream(strprintf("%s-%u.dat", strLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                        std::ofstream fStream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
                         fStream.close();
                     }
                     
                     /* Open the Stream to Read the data from Sector on File. */
-                    std::string strFilename = strprintf("%s-%u.dat", strLocation.c_str(), nCurrentFile);
+                    std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
                     std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
                     
                     /* If it is a New Sector, Assign a Binary Position. 
@@ -737,7 +729,7 @@ namespace LLD
                     }
                         
                     /* Open the Stream to Read the data from Sector on File. */
-                    std::string strFilename = strprintf("%s-%u.dat", strLocation.c_str(), cKey.nSectorFile);
+                    std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile);
                     std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
                     
                     /* Locate the Sector Data from Sector Key. 
