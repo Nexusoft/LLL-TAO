@@ -3,6 +3,46 @@
 Series of Templates for developing Crypto, Database, or Protocol. Base templates for the TAO framework, which will inhereit these templates and create higher level functionality. This TAO framework is the foundation to Nexus as an integrated series of core upgrades for a live blockchain to upgrade into a multi-dimensional chain. This is named the acronym TAO standing for Tritium, Amine, and Obsidian.
 
 
+## TAO Framework
+
+The core base upgrades utilizing the LLL as base templates for Tritium, Amine, and Obsidian feature sets.
+
+### Tritium
+
+The first of the three updates in the TAO Framework. Tritium will include the following feature sets:
+
+* Tritium Transactions / Signature Chains (Key Suites)
+* Advanced Contracts (Phase 1)
+* LISP Integration (Optional)
+* L1 Locking Groups (LISP IP Multicast)
+* Twin Blocks (No more Orphans)
+
+### Amine
+
+The second of the three updates in the TAO Framework. Amine will include the following feature sets:
+
+* L1 Ledger Sharding Channels
+* L2 Ledger Sharding Groups
+* Advanced Contracts (Phase 2)
+* IP Multicast Groups over LISP (L1, L2, and L3)
+* L1 and L2 Trust Locking and Reputation
+
+### Obsidian
+
+The third of the three updates in the TAO Framework. Obsidian will include the following feature sets:
+
+* L3 Ledger Sharding Cubes
+* L3 Distributed Mining Pool
+* L3 Trust Locking and Reputation
+* Distributed Autonomous Community
+* Ambassador / Developer Contracts (Validated on Ledger)
+* Advanced Contracts (Phase 3)
+
+
+## Lower Level Library
+
+Following will include descriptions of the core components of the Lower Level Library. These base templates lay the foundation for any higher inheritance as a series of base classes for Crypto, Database, and Protocol.
+
 ### Lower Level Crypto
 
 Set of Operations for handling Crypto including:
@@ -70,4 +110,4 @@ These core templates can be expanded in any way by inheriting the base templates
 
 
 ## Why?
-Because a lot of software that we use today for databases, or protocols, or cyrptography was created back in the 1990's as open source software. Since then the industry has expanded and bloated this code causing performance degragation. The aim of these templates is performance in simplicity. Include only what is needed, no more, and no less. This allows extremely high performance and scaleability necessary for the new distributed systems that will continue to evolve over the next few decades.
+A lot of software that we use today for databases, or protocols, or cyrptography was created back in the 1990's as open source software. Since then the industry has expanded and bloated this code causing performance degragation. The aim of these templates is performance in simplicity. Include only what is needed, no more, and no less. This allows extremely high performance and scaleability necessary for the new distributed systems that will continue to evolve over the next few decades.
