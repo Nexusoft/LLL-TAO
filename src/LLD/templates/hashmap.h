@@ -21,6 +21,9 @@ ________________________________________________________________________________
 namespace LLD
 {
 
+    /** The Maximum buckets allowed in the hashmap. */
+    const unsigned int HASHMAP_TOTAL_BUCKETS = 256;
+    
     /** Base Key Database Class.
         Stores and Contains the Sector Keys to Access the
         Sector Database.
@@ -46,8 +49,6 @@ namespace LLD
         /** Caching Size.
             TODO: Make this a variable actually enforced. **/
         unsigned int nCacheSize = 0;
-        
-        unsigned int TOTAL_HASHMAP_BUCKETS
         
     public:	
         
@@ -85,7 +86,7 @@ namespace LLD
             for(int i = 0; i < vKey.size() && i < 8; i++)
                 nBucket += vKey[i] << (8 * i);
             
-            return nBucket % TOTAL_KEYCHAIN_BUCKETS;
+            return nBucket % HASHMAP_TOTAL_BUCKETS;
         }
         
         
