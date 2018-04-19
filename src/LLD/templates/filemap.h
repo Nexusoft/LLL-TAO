@@ -19,8 +19,15 @@ ________________________________________________________________________________
 #include "key.h"
 
 namespace LLD
-{    
+{  
+    
+    /** Total buckets for memory accessing. */
+    const unsigned int FILEMAP_TOTAL_BUCKETS = 256 * 256;
+    
+    /* Maximum size a file can be in the keychain. */
+    const unsigned int FILEMAP_MAX_FILE_SIZE = 1024 * 1024 * 1024; //1 GB per File
 
+    
     /** Base Key Database Class.
         Stores and Contains the Sector Keys to Access the
         Sector Database.
@@ -65,19 +72,17 @@ namespace LLD
             Used to Quickly Read the Database File at Given Position
             To Obtain the Record from its Database Key. This is Read
             Into Memory on Database Initialization. **/
-        mutable typename std::map< std::vector<unsigned char>, std::pair<unsigned short, unsigned int> > mapKeys[TOTAL_KEYCHAIN_BUCKETS];
+        mutable typename std::map< std::vector<unsigned char>, std::pair<unsigned short, unsigned int> > mapKeys[FILEMAP_TOTAL_BUCKETS];
         
         
         /** Caching Memory Map. Keep within caching limits. Pop on and off like a stack
             using seperate caching class if over limits. **/
-        mutable typename std::map< std::vector<unsigned char>, SectorKey > mapKeysCache[TOTAL_KEYCHAIN_BUCKETS];
+        mutable typename std::map< std::vector<unsigned char>, SectorKey > mapKeysCache[FILEMAP_TOTAL_BUCKETS];
         
         
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryFileMap(std::string strBaseLocationIn, std::string strDatabaseNameIn) : strBaseLocation(strBaseLocationIn), strDatabaseName(strDatabaseNameIn), nCurrentFile(0), nCurrentFileSize(0) 
-        { 
-            strLocation = strBaseLocation + strDatabaseName; 
-            
+        BinaryFileMap(std::string strBaseLocationIn, std::string strDatabaseNameIn) : strBaseLocation(strBaseLocationIn), strDatabaseName(strDatabaseNameIn), nCurrentFile(0), nCurrentFileSize(0), strLocation(strBaseLocationIn + strDatabaseNameIn) 
+        {
             Initialize();
         }
         
@@ -90,7 +95,7 @@ namespace LLD
         std::vector< std::vector<unsigned char> > GetKeys()
         {
             std::vector< std::vector<unsigned char> > vKeys;
-            for(int i = 0; i < TOTAL_KEYCHAIN_BUCKETS; i++)
+            for(int i = 0; i < FILEMAP_TOTAL_BUCKETS; i++)
                 for(typename std::map< std::vector<unsigned char>, std::pair<unsigned short, unsigned int> >::iterator nIterator = mapKeys[i].begin(); nIterator != mapKeys[i].end(); nIterator++ )
                     vKeys.push_back(nIterator->first);
                 
@@ -105,8 +110,11 @@ namespace LLD
         /** Handle the Assigning of a Map Bucket. **/
         unsigned int GetBucket(const std::vector<unsigned char>& vKey) const
         {
-            assert(vKey.size() > 1);
-            return ((vKey[0] << 8) + vKey[1]);
+            uint64 nBucket = 0;
+            for(int i = 0; i < vKey.size() && i < 8; i++)
+                nBucket += vKey[i] << (8 * i);
+            
+            return nBucket % FILEMAP_TOTAL_BUCKETS;
         }
         
         
@@ -226,7 +234,7 @@ namespace LLD
             if(!mapKeys[nBucket].count(cKey.vKey))
             {
                 /* Check the Binary File Size. */
-                if(nCurrentFileSize > MAX_KEYCHAIN_FILE_SIZE)
+                if(nCurrentFileSize > FILEMAP_MAX_FILE_SIZE)
                 {
                     if(GetArg("-verbose", 0) >= 4)
                         printf("KEY::Put(): Current File too Large, allocating new File %u\n", nCurrentFileSize, nCurrentFile + 1);
