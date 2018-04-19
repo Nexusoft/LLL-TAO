@@ -185,6 +185,22 @@ bool error(const char *format, ...)
     return false;
 }
 
+void debug(const char* base, const char* format, ...)
+{
+    char buffer[50000];
+    int limit = sizeof(buffer);
+    va_list arg_ptr;
+    va_start(arg_ptr, format);
+    int ret = _vsnprintf(buffer, limit, format, arg_ptr);
+    va_end(arg_ptr);
+    if (ret < 0 || ret >= limit)
+    {
+        buffer[limit-1] = 0;
+    }
+    
+    printf(ANSI_COLOR_FUNCTION "%s::%s()" ANSI_COLOR_RESET " : %s\n", base, __func__, buffer);
+}
+
 void FormatException(char* pszMessage, std::exception* pex, const char* pszThread)
 {
 #ifdef WIN32

@@ -123,7 +123,7 @@ namespace LLD
             
             /* Create directories if they don't exist yet. */
             if(boost::filesystem::create_directories(strBaseLocation))
-                printf("LLD::Filemap::%s() : Generated Path %s\n", __func__, strBaseLocation.c_str());
+                printf(FUNCTION "Generated Path %s\n", __func__, strBaseLocation.c_str());
             
             /* Stats variable for collective keychain size. */
             unsigned int nKeychainSize = 0, nTotalKeys = 0;
@@ -133,7 +133,7 @@ namespace LLD
             while(true)
             {
                 std::string strFilename = strprintf("%s_filemap.%05u", strBaseLocation.c_str(), nCurrentFile);
-                printf("LLD::Filemap::%s() : Checking File %s\n", __func__, strFilename.c_str());
+                printf(FUNCTION "Checking File %s\n", __PRETTY_FUNCTION__, strFilename.c_str());
                 
                 /* Get the Filename at given File Position. */
                 std::fstream fIncoming(strFilename.c_str(), std::ios::in | std::ios::binary);
@@ -155,7 +155,7 @@ namespace LLD
                 nCurrentFileSize = fIncoming.gcount();
                 nKeychainSize += nCurrentFileSize;
                 
-                printf("LLD::Filemap::%s() : Keychain File %u Loading [%u bytes]...\n", __func__, nCurrentFile, nCurrentFileSize);
+                printf(FUNCTION "Keychain File %u Loading [%u bytes]...\n", __PRETTY_FUNCTION__, nCurrentFile, nCurrentFileSize);
                 
                 
                 fIncoming.seekg (0, std::ios::beg);
@@ -194,7 +194,7 @@ namespace LLD
                         
                         /* Debug Output of Sector Key Information. */
                         if(GetArg("-verbose", 0) >= 5)
-                            printf("LLD::Filemap::%s() : State: %u Length: %u File: %u Location: %u Key: %s\n", __func__, cKey.nState, cKey.nLength, mapKeys[nBucket][vKey].first, mapKeys[nBucket][vKey].second, HexStr(vKey.begin(), vKey.end()).c_str());
+                            printf(FUNCTION "State: %u Length: %u File: %u Location: %u Key: %s\n", __PRETTY_FUNCTION__, cKey.nState, cKey.nLength, mapKeys[nBucket][vKey].first, mapKeys[nBucket][vKey].second, HexStr(vKey.begin(), vKey.end()).c_str());
                     
                         nTotalKeys++;
                     }
@@ -203,7 +203,7 @@ namespace LLD
                         
                         /* Debug Output of Sector Key Information. */
                         if(GetArg("-verbose", 0) >= 5)
-                            printf("LLD::Filemap::%s() : Skipping Sector State: %u Length: %u\n", __func__, cKey.nState, cKey.nLength);
+                            printf(FUNCTION "Skipping Sector State: %u Length: %u\n", __PRETTY_FUNCTION__, cKey.nState, cKey.nLength);
                     }
                     
                     /* Increment the Iterator. */
@@ -217,7 +217,7 @@ namespace LLD
                 vKeychain.clear();
             }
             
-            printf("LLD::Filemap::%s() : Initialized with %u Keys | Total Size %u | Total Files %u | Current Size %u\n", __func__, nTotalKeys, nKeychainSize, nCurrentFile + 1, nCurrentFileSize);
+            printf(FUNCTION "Initialized with %u Keys | Total Size %u | Total Files %u | Current Size %u\n", __PRETTY_FUNCTION__, nTotalKeys, nKeychainSize, nCurrentFile + 1, nCurrentFileSize);
         }
         
         /** Add / Update A Record in the Database **/
@@ -233,7 +233,7 @@ namespace LLD
                 if(nCurrentFileSize > FILEMAP_MAX_FILE_SIZE)
                 {
                     if(GetArg("-verbose", 0) >= 4)
-                        printf("LLD::Filemap::%s() : Current File too Large, allocating new File %u\n", __func__, nCurrentFileSize, nCurrentFile + 1);
+                        printf(FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
                         
                     nCurrentFile ++;
                     nCurrentFileSize = 0;
@@ -272,7 +272,7 @@ namespace LLD
             
             /* Debug Output of Sector Key Information. */
             if(GetArg("-verbose", 0) >= 4)
-                printf("LLD::Filemap::%s() : State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u\n Key: %s\nCurrent File: %u | Current File Size: %u\n", __func__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][cKey.vKey].second, mapKeys[nBucket][cKey.vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str(), nCurrentFile, nCurrentFileSize);
+                printf(FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s | Current File: %u | Current File Size: %u\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][cKey.vKey].second, mapKeys[nBucket][cKey.vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str(), nCurrentFile, nCurrentFileSize);
             
             
             return true;
@@ -286,7 +286,7 @@ namespace LLD
             /* Check for the Key. */
             unsigned int nBucket = GetBucket(vKey);
             if(!mapKeys[nBucket].count(vKey))
-                return error("LLD::Filemap::%s() : Key doesn't Exist", __func__);
+                return error(FUNCTION "Key doesn't Exist", __PRETTY_FUNCTION__);
             
             
             /* Establish the Outgoing Stream. */
@@ -350,7 +350,7 @@ namespace LLD
                 
                 /* Debug Output of Sector Key Information. */
                 if(GetArg("-verbose", 0) >= 4)
-                    printf("LLD::Filemap::%s() : State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u\n Key: %s\n", __func__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][vKey].second, mapKeys[nBucket][vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str());
+                    printf(FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][vKey].second, mapKeys[nBucket][vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str());
                         
                 
                 /* Skip Empty Sectors for Now. (TODO: Expand to Reads / Writes) */
@@ -362,7 +362,7 @@ namespace LLD
                     
                     /* Check the Keys Match Properly. */
                     if(vKeyIn != vKey)
-                        return error("LLD::Filemap::%s() : Key Mistmatch: DB:: %s MEM %s\n", __func__, HexStr(vKeyIn.begin(), vKeyIn.end()).c_str(), HexStr(vKey.begin(), vKey.end()).c_str());
+                        return error(FUNCTION "Key Mistmatch: DB:: %s MEM %s\n", __PRETTY_FUNCTION__, HexStr(vKeyIn.begin(), vKeyIn.end()).c_str(), HexStr(vKey.begin(), vKey.end()).c_str());
                     
                     /* Assign Key to Sector. */
                     cKey.vKey = vKeyIn;

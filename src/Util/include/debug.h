@@ -50,6 +50,10 @@ ________________________________________________________________________________
 #define ANSI_COLOR_BRIGHT_CYAN    "\u001b[36;1m"
 #define ANSI_COLOR_BRIGHT_WHITE   "\u001b[37;1m"
 
+#define ANSI_COLOR_FUNCTION ANSI_COLOR_BRIGHT_WHITE
+
+#define FUNCTION ANSI_COLOR_FUNCTION "%s" ANSI_COLOR_RESET " : "
+
 int OutputDebugStringF(const char* pszFormat, ...);
 
 int my_snprintf(char* buffer, size_t limit, const char* format, ...);
@@ -63,6 +67,7 @@ std::string real_strprintf(const std::string &format, int dummy, ...);
 #define strprintf(format, ...) real_strprintf(format, 0, __VA_ARGS__)
 #define printf              	 OutputDebugStringF
 
+void debug(const char * base, const char *format, ...);
 bool error(const char *format, ...);
 
 void LogException(std::exception* pex, const char* pszThread);
