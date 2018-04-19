@@ -39,8 +39,6 @@ namespace LLD
             Each Database File Acts as a New Table as in Conventional Design.
             Key can be any Type, which is how the Database Records are Accessed. **/
         std::string strBaseLocation;
-        std::string strDatabaseName;
-        std::string strLocation;
         
         /** Caching Flag
             TODO: Expand the Caching System. **/
@@ -53,7 +51,7 @@ namespace LLD
     public:	
         
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(std::string strBaseLocationIn, std::string strDatabaseNameIn) : strBaseLocation(strBaseLocationIn), strDatabaseName(strDatabaseNameIn), nCurrentFile(0), nCurrentFileSize(0), strLocation(strBaseLocationIn + strDatabaseNameIn) 
+        BinaryHashMap(std::string strBaseLocationIn, std::string strDatabaseNameIn) : strBaseLocation(strBaseLocationIn), nCurrentFile(0), nCurrentFileSize(0)
         { 
             Initialize();
         }
@@ -106,49 +104,19 @@ namespace LLD
         {
             LOCK(KEY_MUTEX);
             
-            /* Write Header if First Update. */
+            /* Get the assigned bucket for the hashmap. */
             unsigned int nBucket = GetBucket(cKey.vKey);
-            if(!mapKeys[nBucket].count(cKey.vKey))
-            {
-                /* Check the Binary File Size. */
-                if(nCurrentFileSize > MAX_KEYCHAIN_FILE_SIZE)
-                {
-                    if(GetArg("-verbose", 0) >= 4)
-                        printf("KEY::Put(): Current File too Large, allocating new File %u\n", nCurrentFileSize, nCurrentFile + 1);
-                        
-                    nCurrentFile ++;
-                    nCurrentFileSize = 0;
-                    
-                    std::ofstream fStream(strprintf("%s-%u.keys", strLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
-                    fStream.close();
-                }
-                
-                mapKeys[nBucket][cKey.vKey] = std::make_pair(nCurrentFile, nCurrentFileSize);
-            }
             
-            
-            /* Establish the Outgoing Stream. */
-            std::string strFilename = strprintf("%s-%u.keys", strLocation.c_str(), mapKeys[nBucket][cKey.vKey].first);
+            /* Establish the Stream File for Keychain Bucket. */
+            std::string strFilename = strprintf("%s.keys", strLocation.c_str(), );
             std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
             
             
-            /* Seek File Pointer */
-            fStream.seekp(mapKeys[nBucket][cKey.vKey].second, std::ios::beg);
-                
-            
-            /* Handle the Sector Key Serialization. */
-            CDataStream ssKey(SER_LLD, DATABASE_VERSION);
-            ssKey.reserve(cKey.Size());
-            ssKey << cKey;
-                
-            
-            /* Write to Disk. */
-            std::vector<unsigned char> vData(ssKey.begin(), ssKey.end());
-            vData.insert(vData.end(), cKey.vKey.begin(), cKey.vKey.end());
-            fStream.write((char*) &vData[0], vData.size());
-            
-            /* Increment current File Size. */
-            nCurrentFileSize += cKey.Size();
+            fIncoming.ignore(std::numeric_limits<std::streamsize>::max());
+            fIncoming.seekg (0, std::ios::beg);
+            std::vector<unsigned char> vKeychain(fStream.gcount(), 0);
+            fIncoming.read((char*) &vKeychain[0], vKeychain.size());
+            fIncoming.close();
             
             
             /* Debug Output of Sector Key Information. */

@@ -25,7 +25,7 @@ namespace LLD
     const unsigned int FILEMAP_TOTAL_BUCKETS = 256 * 256;
     
     /* Maximum size a file can be in the keychain. */
-    const unsigned int FILEMAP_MAX_FILE_SIZE = 1024 * 1024 * 1024; //1 GB per File
+    const unsigned int FILEMAP_MAX_FILE_SIZE = 1024 * 1024; //1 GB per File
 
     
     /** Base Key Database Class.
@@ -43,8 +43,6 @@ namespace LLD
             Each Database File Acts as a New Table as in Conventional Design.
             Key can be any Type, which is how the Database Records are Accessed. **/
         std::string strBaseLocation;
-        std::string strDatabaseName;
-        std::string strLocation;
         
         /** Caching Flag
             TODO: Expand the Caching System. **/
@@ -81,7 +79,7 @@ namespace LLD
         
         
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryFileMap(std::string strBaseLocationIn, std::string strDatabaseNameIn) : strBaseLocation(strBaseLocationIn), strDatabaseName(strDatabaseNameIn), nCurrentFile(0), nCurrentFileSize(0), strLocation(strBaseLocationIn + strDatabaseNameIn) 
+        BinaryFileMap(std::string strBaseLocationIn) : strBaseLocation(strBaseLocationIn), nCurrentFile(0), nCurrentFileSize(0)
         {
             Initialize();
         }
@@ -123,11 +121,9 @@ namespace LLD
         {
             LOCK(KEY_MUTEX);
             
-            /* Create the Sector Database Directories. */
-            boost::filesystem::path dir(strBaseLocation);
-            if(!boost::filesystem::exists(dir))
-                boost::filesystem::create_directory(dir);
-            
+            /* Create directories if they don't exist yet. */
+            if(boost::filesystem::create_directories(strBaseLocation))
+                printf("LLD::Filemap::Initialize() : Generated Path %s\n", strBaseLocation.c_str());
             
             /* Stats variable for collective keychain size. */
             unsigned int nKeychainSize = 0, nTotalKeys = 0;
@@ -136,8 +132,8 @@ namespace LLD
             /* Iterate through the files detected. */
             while(true)
             {
-                std::string strFilename = strprintf("%s-%u.keys", strLocation.c_str(), nCurrentFile);
-                printf("[DATABASE] Checking File %s\n", strFilename.c_str());
+                std::string strFilename = strprintf("%s_filemap.%05u", strBaseLocation.c_str(), nCurrentFile);
+                printf("LLD::Filemap::Initialize() : Checking File %s\n", strFilename.c_str());
                 
                 /* Get the Filename at given File Position. */
                 std::fstream fIncoming(strFilename.c_str(), std::ios::in | std::ios::binary);
@@ -159,7 +155,7 @@ namespace LLD
                 nCurrentFileSize = fIncoming.gcount();
                 nKeychainSize += nCurrentFileSize;
                 
-                printf("[DATABASE] Keychain File %u Loading [%u bytes]...\n", nCurrentFile, nCurrentFileSize);
+                printf("LLD::Filemap::Initialize() : Keychain File %u Loading [%u bytes]...\n", nCurrentFile, nCurrentFileSize);
                 
                 
                 fIncoming.seekg (0, std::ios::beg);
@@ -242,7 +238,7 @@ namespace LLD
                     nCurrentFile ++;
                     nCurrentFileSize = 0;
                     
-                    std::ofstream fStream(strprintf("%s-%u.keys", strLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                    std::ofstream fStream(strprintf("%s_filemap.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
                     fStream.close();
                 }
                 
@@ -251,7 +247,7 @@ namespace LLD
             
             
             /* Establish the Outgoing Stream. */
-            std::string strFilename = strprintf("%s-%u.keys", strLocation.c_str(), mapKeys[nBucket][cKey.vKey].first);
+            std::string strFilename = strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][cKey.vKey].first);
             std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
             
             
@@ -294,7 +290,7 @@ namespace LLD
             
             
             /* Establish the Outgoing Stream. */
-            std::string strFilename = strprintf("%s-%u.keys", strLocation.c_str(), mapKeys[nBucket][vKey].first);
+            std::string strFilename = strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][vKey].first);
             std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
             
             
@@ -334,7 +330,7 @@ namespace LLD
             {
                 
                 /* Open the Stream Object. */
-                std::string strFilename = strprintf("%s-%u.keys", strLocation.c_str(), mapKeys[nBucket][vKey].first);
+                std::string strFilename = strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][vKey].first);
                 std::ifstream fStream(strFilename.c_str(), std::ios::in | std::ios::binary);
 
                 
