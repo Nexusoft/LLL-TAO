@@ -132,7 +132,7 @@ namespace LLD
             Initialize();
             
             if(GetBoolArg("-runtime", false))
-                printf(ANSI_COLOR_GREEN "LLD::Sector::Initialized() executed in %u micro-seconds\n" ANSI_COLOR_RESET, runtime.ElapsedMicroseconds());
+                printf(ANSI_COLOR_GREEN "LLD::Sector::%s() : executed in %u micro-seconds\n" ANSI_COLOR_RESET, __func__, runtime.ElapsedMicroseconds());
         }
         
         ~SectorDatabase()
@@ -152,7 +152,7 @@ namespace LLD
         {
             /* Create directories if they don't exist yet. */
             if(boost::filesystem::create_directories(strBaseLocation))
-                printf("LLD::Sector::Initialize() : Generated Path %s\n", strBaseLocation.c_str());
+                printf("LLD::Sector::%s() : Generated Path %s\n", __func__, strBaseLocation.c_str());
             
             /* Find the most recent append file. */
             while(true)
@@ -230,7 +230,7 @@ namespace LLD
             return SectorKeys->Erase(vKey);
             
             if(GetBoolArg("-runtime", false))
-                printf(ANSI_COLOR_GREEN "LLD::Sector::Erase() executed in %u micro-seconds\n" ANSI_COLOR_RESET, runtime.ElapsedMicroseconds());
+                printf(ANSI_COLOR_GREEN "LLD::Sector::%s() : executed in %u micro-seconds\n" ANSI_COLOR_RESET, __func__, runtime.ElapsedMicroseconds());
         }
         
         template<typename Key, typename Type>
@@ -308,7 +308,7 @@ namespace LLD
                     vData = pTransaction->mapTransactions[vKey];
                     
                     if(GetArg("-verbose", 0) >= 4)
-                        printf("SECTOR GET:%s\n", HexStr(vData.begin(), vData.end()).c_str());
+                        printf("LLD::Sector::%s() : %s\n", __func__, HexStr(vData.begin(), vData.end()).c_str());
                     
                     return true;
                 }
@@ -323,7 +323,7 @@ namespace LLD
                 std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile);
                 std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::binary);
                 if(!fStream)
-                    return error("Sector File %s Doesn't Exist\n", strFilename.c_str());
+                    return error("LLD::Sector::%s() : Sector File %s Doesn't Exist\n", __func__, strFilename.c_str());
                 
                 /** Seek to the Sector Position on Disk. **/
                 fStream.seekg(cKey.nSectorStart, std::ios::beg);
@@ -338,15 +338,15 @@ namespace LLD
                 /** Check the Data Integrity of the Sector by comparing the Checksums. **/
                 unsigned int nChecksum = LLC::HASH::SK32(vData);
                 if(cKey.nChecksum != nChecksum)
-                    return error("Sector Get() : Checksums don't match data. Corrupted Sector.");
+                    return error("LLD::Sector::%s() : Checksums don't match data. Corrupted Sector.", __func__);
                 
                 if(GetArg("-verbose", 0) >= 4)
-                    printf("SECTOR GET:%s\n", HexStr(vData.begin(), vData.end()).c_str());
+                    printf("LLD::Sector::%s() : %s\n", __func__, HexStr(vData.begin(), vData.end()).c_str());
                 
                 return true;
             }
             else
-                return error("SECTOR GET::KEY NOT FOUND");
+                return error("LLD::Sector::%s() : :KEY NOT FOUND", __func__);
             
             return false;
         }
@@ -373,7 +373,7 @@ namespace LLD
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                 {
                     if(GetArg("-verbose", 0) >= 4)
-                        printf("SECTOR::Put(): Current File too Large, allocating new File %u\n", nCurrentFileSize, nCurrentFile + 1);
+                        printf("LLD::Sector::%s() : Current File too Large, allocating new File %u\n", __func__, nCurrentFileSize, nCurrentFile + 1);
                         
                     nCurrentFile ++;
                     nCurrentFileSize = 0;
@@ -420,7 +420,7 @@ namespace LLD
                 fStream.seekp(cKey.nSectorStart, std::ios::beg);
                 if(vData.size() > cKey.nSectorSize){
                     fStream.close();
-                    printf("ERROR PUT (TOO LARGE) NO TRUNCATING ALLOWED (Old %u :: New %u):%s\n", cKey.nSectorSize, vData.size(), HexStr(vData.begin(), vData.end()).c_str());
+                    printf("LLD::Sector::%s() : PUT (TOO LARGE) NO TRUNCATING ALLOWED (Old %u :: New %u):%s\n", __func__, cKey.nSectorSize, vData.size(), HexStr(vData.begin(), vData.end()).c_str());
                     
                     return false;
                 }
@@ -438,10 +438,10 @@ namespace LLD
             }
             
             if(GetArg("-verbose", 0) >= 4)
-                printf("SECTOR PUT:%s\nCurrent File: %u | Current File Size: %u\n", HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
+                printf("LLD::Sector::%s() : %s\nCurrent File: %u | Current File Size: %u\n", __func__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
         
             if(GetBoolArg("-runtime", false))
-                printf(ANSI_COLOR_GREEN "LLD::Sector::Write() executed in %u micro-seconds\n" ANSI_COLOR_RESET, runtime.ElapsedMicroseconds());
+                printf(ANSI_COLOR_GREEN "LLD::Sector::%s() : executed in %u micro-seconds\n" ANSI_COLOR_RESET, __func__, runtime.ElapsedMicroseconds());
             
             return true;
         }
@@ -479,7 +479,7 @@ namespace LLD
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                 {
                     if(GetArg("-verbose", 0) >= 4)
-                        printf("SECTOR::Put(): Current File too Large, allocating new File %u\n", nCurrentFileSize, nCurrentFile + 1);
+                        printf("LLD::Sector::%s() : Current File too Large, allocating new File %u\n", __func__, nCurrentFileSize, nCurrentFile + 1);
                                 
                     nCurrentFile ++;
                     nCurrentFileSize = 0;
@@ -530,7 +530,7 @@ namespace LLD
                         fStream.seekp(cKey.nSectorStart, std::ios::beg);
                         if(vObj.second.size() > cKey.nSectorSize){
                             fStream.close();
-                            printf("ERROR PUT (TOO LARGE) NO TRUNCATING ALLOWED (Old %u :: New %u):%s\n", cKey.nSectorSize, vObj.second.size(), HexStr(vObj.second.begin(), vObj.second.end()).c_str());
+                            printf("LLD::Sector::%s() : PUT (TOO LARGE) NO TRUNCATING ALLOWED (Old %u :: New %u):%s\n", __func__, cKey.nSectorSize, vObj.second.size(), HexStr(vObj.second.begin(), vObj.second.end()).c_str());
                             
                             break;
                         }
@@ -581,7 +581,7 @@ namespace LLD
             pTransaction = new SectorTransaction();
             
             if(GetArg("-verbose", 0) >= 4)
-                printf("TransactionStart() : New Sector Transaction Started.\n");
+                printf("LLD::Sector::%s() : New Sector Transaction Started.\n", __func__);
         }
         
         /** Abort the current transaction that is pending in the transaction chain. **/
@@ -636,15 +636,15 @@ namespace LLD
                 runtime.Start();
             
             if(GetArg("-verbose", 0) >= 4)
-                printf("TransactionCommit() : Commiting Transactin to Datachain.\n");
+                printf("LLD::Sector::%s() : Commiting Transactin to Datachain.\n", __func__);
             
             /** Check that there is a valid transaction to apply to the database. **/
             if(!pTransaction)
-                return error("TransactionCommit() : No Transaction data to Commit.");
+                return error("LLD::Sector::%s() : No Transaction data to Commit.", __func__);
             
             /** Habdle setting the sector key flags so the database knows if the transaction was completed properly. **/
             if(GetArg("-verbose", 0) >= 4)
-                printf("TransactionCommit() : Commiting Keys to Keychain.\n");
+                printf("LLD::Sector::%s() : Commiting Keys to Keychain.\n", __func__);
             
             /** Set the Sector Keys to an Invalid State to know if there are interuptions the sector was not finished successfully. **/
             for(typename std::map< std::vector<unsigned char>, std::vector<unsigned char> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
@@ -652,7 +652,7 @@ namespace LLD
                 SectorKey cKey;
                 if(SectorKeys->HasKey(nIterator->first)) {
                     if(!SectorKeys->Get(nIterator->first, cKey))
-                        return error("CommitTransaction() : Couldn't get the Active Sector Key.");
+                        return error("LLD::Sector::%s() : Couldn't get the Active Sector Key.", __func__);
                     
                     cKey.nState = TRANSACTION;
                     SectorKeys->Put(cKey);
@@ -661,18 +661,18 @@ namespace LLD
             
             /** Update the Keychain with Checksums and READY Flag letting sectors know they were written successfully. **/
             if(GetArg("-verbose", 0) >= 4)
-                printf("TransactionCommit() : Erasing Sector Keys Flagged for Deletingn.\n");
+                printf("LLD::Sector::%s() : Erasing Sector Keys Flagged for Deletingn.\n", __func__);
             
             /** Erase all the Transactions that are set to be erased. That way if they are assigned a TRANSACTION flag we know to roll back their key to orginal data. **/
             for(typename std::map< std::vector<unsigned char>, unsigned int >::iterator nIterator = pTransaction->mapEraseData.begin(); nIterator != pTransaction->mapEraseData.end(); nIterator++ )
             {
                 if(!SectorKeys->Erase(nIterator->first))
-                    return error("CommitTransaction() : Couldn't get the Active Sector Key for Delete.");
+                    return error("LLD::Sector::%s() : Couldn't get the Active Sector Key for Delete.", __func__);
             }
             
             /** Commit the Sector Data to the Database. **/
             if(GetArg("-verbose", 0) >= 4)
-                printf("TransactionCommit() : Commit Data to Datachain Sector Database.\n");
+                printf("LLD::Sector::%s() : Commit Data to Datachain Sector Database.\n", __func__);
             
             for(typename std::map< std::vector<unsigned char>, std::vector<unsigned char> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
             {
@@ -686,7 +686,7 @@ namespace LLD
                     if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                     {
                         if(GetArg("-verbose", 0) >= 4)
-                            printf("SECTOR::Put(): Current File too Large, allocating new File %u\n", nCurrentFileSize, nCurrentFile + 1);
+                            printf("LLD::Sector::%s() : Current File too Large, allocating new File %u\n", __func__, nCurrentFileSize, nCurrentFile + 1);
                             
                         nCurrentFile ++;
                         nCurrentFileSize = 0;
@@ -737,7 +737,7 @@ namespace LLD
                     fStream.seekp(cKey.nSectorStart, std::ios::beg);
                     if(vData.size() > cKey.nSectorSize){
                         fStream.close();
-                        printf("ERROR PUT (TOO LARGE) NO TRUNCATING ALLOWED (Old %u :: New %u):%s\n", cKey.nSectorSize, vData.size(), HexStr(vData.begin(), vData.end()).c_str());
+                        printf("LLD::Sector::%s() : PUT (TOO LARGE) NO TRUNCATING ALLOWED (Old %u :: New %u):%s\n", __func__, cKey.nSectorSize, vData.size(), HexStr(vData.begin(), vData.end()).c_str());
                         
                         return false;
                     }
@@ -757,14 +757,14 @@ namespace LLD
             
             /** Update the Keychain with Checksums and READY Flag letting sectors know they were written successfully. **/
             if(GetArg("-verbose", 0) >= 4)
-                printf("TransactionCommit() : Commiting Key Valid States to Keychain.\n");
+                printf("LLD::Sector::%s() : Commiting Key Valid States to Keychain.\n", __func__);
             
             for(typename std::map< std::vector<unsigned char>, std::vector<unsigned char> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
             {
                 /** Assign the Writing State for Sector. **/
                 SectorKey cKey;
                 if(!SectorKeys->Get(nIterator->first, cKey))
-                    return error("CommitTransaction() : Failed to Get Key from Keychain.");
+                    return error("LLD::Sector::%s() : Failed to Get Key from Keychain.", __func__);
                 
                 /** Set the Sector states back to Active. **/
                 cKey.nState    = READY;
@@ -772,7 +772,7 @@ namespace LLD
                 
                 /** Commit the Keys to Keychain Database. **/
                 if(!SectorKeys->Put(cKey))
-                    return error("CommitTransaction() : Failed to Commit Key to Keychain.");
+                    return error("LLD::Sector::%s() : Failed to Commit Key to Keychain.", __func__);
             }
             
             /** Clean up the Sector Transaction Key. 
@@ -781,7 +781,7 @@ namespace LLD
             pTransaction = NULL;
             
             if(GetBoolArg("-runtime", false))
-                printf(ANSI_COLOR_GREEN "LLD::Sector::TxnCommit() executed in %u micro-seconds\n" ANSI_COLOR_RESET, runtime.ElapsedMicroseconds());
+                printf(ANSI_COLOR_GREEN "LLD::Sector::%s() : executed in %u micro-seconds\n" ANSI_COLOR_RESET, __func__, runtime.ElapsedMicroseconds());
             
             return true;
         }

@@ -51,7 +51,7 @@ namespace LLD
     public:	
         
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(std::string strBaseLocationIn, std::string strDatabaseNameIn) : strBaseLocation(strBaseLocationIn), nCurrentFile(0), nCurrentFileSize(0)
+        BinaryHashMap(std::string strBaseLocationIn, std::string strDatabaseNameIn) : strBaseLocation(strBaseLocationIn)
         { 
             Initialize();
         }
@@ -65,7 +65,7 @@ namespace LLD
         std::vector< std::vector<unsigned char> > GetKeys()
         {
             std::vector< std::vector<unsigned char> > vKeys;
-                
+            //TODO: FINISH
             return vKeys;
         }
         
@@ -93,10 +93,9 @@ namespace LLD
         {
             LOCK(KEY_MUTEX);
             
-            /* Create the Sector Database Directories. */
-            boost::filesystem::path dir(strBaseLocation);
-            if(!boost::filesystem::exists(dir))
-                boost::filesystem::create_directory(dir);
+            /* Create directories if they don't exist yet. */
+            if(boost::filesystem::create_directories(strBaseLocation))
+                printf("LLD::Hashmap::Initialize() : Generated Path %s\n", strBaseLocation.c_str());
         }
         
         /** Add / Update A Record in the Database **/
@@ -121,7 +120,7 @@ namespace LLD
             
             /* Debug Output of Sector Key Information. */
             if(GetArg("-verbose", 0) >= 4)
-                printf("KEY::Put(): State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u\n Key: %s\nCurrent File: %u | Current File Size: %u\n", cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][cKey.vKey].second, mapKeys[nBucket][cKey.vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str(), nCurrentFile, nCurrentFileSize);
+                printf("LLD::Hashmap::Put(): State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u\n Key: %s\nCurrent File: %u | Current File Size: %u\n", cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][cKey.vKey].second, mapKeys[nBucket][cKey.vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str(), nCurrentFile, nCurrentFileSize);
             
             
             return true;
