@@ -28,9 +28,9 @@ namespace LLD
     const unsigned int FILEMAP_MAX_FILE_SIZE = 1024 * 1024; //1 GB per File
 
     
-    /** Base Key Database Class.
-        Stores and Contains the Sector Keys to Access the
-        Sector Database.
+    /** Binary File Map Database Class.
+     * 
+        Stores and Contains the Sector Keys to Access the Sector Database.
     **/
     class BinaryFileMap
     {

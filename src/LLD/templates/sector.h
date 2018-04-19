@@ -495,7 +495,9 @@ namespace LLD
                 std::vector< unsigned char > vBatch;
                 for(auto vObj : vIndexes)  
                 {
-                        
+                    if(nTempFileSize >= MAX_SECTOR_FILE_SIZE)
+                        break;
+                    
                     /* Setup for batch write on first update. */
                     if(!SectorKeys->HasKey(vObj.first))
                     {
@@ -566,7 +568,7 @@ namespace LLD
                     nCurrentFileSize = nTempFileSize;
                     
                     if(GetArg("-verbose", 0) >= 4)
-                        printf(FUNCTION "Batch Data %s | Current File: %u | Current File Size: %u\n", __PRETTY_FUNCTION__, HexStr(vBatch.begin(), vBatch.end()).c_str(), nCurrentFile, nCurrentFileSize);
+                        printf(FUNCTION "Batch Data %u Bytes | Current File: %u | Current File Size: %u\n", __PRETTY_FUNCTION__, vBatch.size(), nCurrentFile, nCurrentFileSize);
                 }
             }
         }
