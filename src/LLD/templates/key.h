@@ -44,13 +44,6 @@ namespace LLD
         TRANSACTION     = 4
     };
     
-    /* Maximum size a file can be in the keychain. */
-    const unsigned int MAX_KEYCHAIN_FILE_SIZE = 1024 * 1024 * 1024; //1 GB per File
-    
-    
-    /* Total Buckets for Key Searching. */
-    const unsigned int TOTAL_KEYCHAIN_BUCKETS = 256 * 256;
-    
     
     /** Key Class to Hold the Location of Sectors it is referencing. 
         This Indexes the Sector Database. **/
