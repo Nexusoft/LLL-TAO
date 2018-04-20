@@ -21,17 +21,6 @@ ________________________________________________________________________________
 namespace LLD
 {
     
-    class HashKey : public SectorKey
-    {
-    public:
-        
-        unsigned int nIterator;
-        unsigned int nBucket;
-    
-        HashKey(SectorKey cKey, unsigned int nIteratorIn, unsigned int nBucketIn) : SectorKey(cKey), nIterator(nIteratorIn), nBucket(nBucketIn) {}
-    };
-    
-
     /** The Maximum buckets allowed in the hashmap. */
     const unsigned int HASHMAP_TOTAL_BUCKETS = 256;
     
@@ -64,20 +53,21 @@ namespace LLD
             TODO: Make this a variable actually enforced. **/
         unsigned int nCacheSize = 0;
         
-        /** Cache Pool for Found Records. **/
-        MemCachePool* cachePool;
+        
+        /** Cache of records searched with find. **/
+        mutable std::map<std::vector<unsigned char>, unsigned int> mapBinaryIterators;
         
     public:	
         
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(std::string strBaseLocationIn, std::string strDatabaseNameIn) : strBaseLocation(strBaseLocationIn), cachePool(new MemCachePool(HASHMAP_MAX_CACHE_SZIE))
+        BinaryHashMap(std::string strBaseLocationIn) : strBaseLocation(strBaseLocationIn)
         {
             Initialize();
         }
         
         
         /** Clean up Memory Usage. **/
-        ~BinaryHashMap() { delete cachePool; }
+        ~BinaryHashMap() { }
         
         
         /** Return the Keys to the Records Held in the Database. **/
@@ -91,8 +81,7 @@ namespace LLD
         
         /** Return Whether a Key Exists in the Database. **/
         bool HasKey(const std::vector<unsigned char>& vKey)
-        { 
-            
+        {
             /* Get the assigned bucket for the hashmap. */
             unsigned int nBucket = GetBucket(vKey);
             
@@ -103,7 +92,7 @@ namespace LLD
             /* Read the Bucket File. */
             ssIncoming.ignore(std::numeric_limits<std::streamsize>::max());
             ssIncoming.seekg (0, std::ios::beg);
-            std::vector<unsigned char> vBucket(fStream.gcount(), 0);
+            std::vector<unsigned char> vBucket(ssIncoming.gcount(), 0);
             ssIncoming.read((char*) &vBucket[0], vBucket.size());
             ssIncoming.close();
                         
@@ -131,8 +120,10 @@ namespace LLD
                     /* Found the Binary Position. */
                     if(vKeyIn == vKey)
                     {
+                        mapBinaryIterators[vKey] = nIterator;
+                        
                         return true;
-                    }       
+                    }
                 }
                     
                 nIterator += cKey.Size();
@@ -169,12 +160,36 @@ namespace LLD
         {
             LOCK(KEY_MUTEX);
             
-
+            /* Get the bucket for the key */
+            unsigned int nBucket = GetBucket(cKey.vKey);
             
+            /* Establish the Stream File for Keychain Bucket. */
+            std::fstream ssFile(strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), nBucket).c_str(), std::ios::in | std::ios::out | std::ios::binary);
+            
+            if(mapBinaryIterators.count(cKey.vKey))
+                ssFile.seekp(mapBinaryIterators[cKey.vKey], std::ios::beg);
+            else
+                ssFile.seekp(0, std::ios::end);
+            
+            //for debugging only
+            unsigned int nIterator = ssFile.tellp();
+            
+            
+            /* Handle the Sector Key Serialization. */
+            CDataStream ssKey(SER_LLD, DATABASE_VERSION);
+            ssKey.reserve(cKey.Size());
+            ssKey << cKey;
+                
+            
+            /* Write to Disk. */
+            std::vector<unsigned char> vData(ssKey.begin(), ssKey.end());
+            vData.insert(vData.end(), cKey.vKey.begin(), cKey.vKey.end());
+            ssFile.write((char*) &vData[0], vData.size());
+                
             
             /* Debug Output of Sector Key Information. */
             if(GetArg("-verbose", 0) >= 4)
-                printf(FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u\n Key: %s\nCurrent File: %u | Current File Size: %u\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][cKey.vKey].second, mapKeys[nBucket][cKey.vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str(), nCurrentFile, nCurrentFileSize);
+                printf(FUNCTION "State: %s | Length: %u | Position: %u | Bucket: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, nIterator, nBucket, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str());
             
             
             return true;
@@ -192,19 +207,6 @@ namespace LLD
             std::fstream fStream(strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), nBucket).c_str(), std::ios::in | std::ios::out | std::ios::binary);
             
             
-            /* Set to put at the right file and sector position. */
-            fStream.seekp(mapKeys[nBucket][vKey].second, std::ios::beg);
-            
-            
-            /* Establish the Sector State as Empty. */
-            std::vector<unsigned char> vData(1, EMPTY);
-            fStream.write((char*) &vData[0], vData.size());
-                
-            
-            /* Remove the Sector Key from the Memory Map. */
-            mapKeys[nBucket].erase(vKey);
-            
-            
             return true;
         }
         
@@ -213,11 +215,54 @@ namespace LLD
         {
             LOCK(KEY_MUTEX);
             
+            /* Get the assigned bucket for the hashmap. */
+            unsigned int nBucket = GetBucket(vKey);
             
-            /* Debug Output of Sector Key Information. */
-            if(GetArg("-verbose", 0) >= 4)
-                printf(FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u\n Key: %s\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][vKey].second, mapKeys[nBucket][vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str());
-
+            /* Establish the Stream File for Keychain Bucket. */
+            std::fstream ssFile(strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), nBucket).c_str(), std::ios::in | std::ios::out | std::ios::binary);
+            
+            
+            /* Read the Bucket File. */
+            ssFile.ignore(std::numeric_limits<std::streamsize>::max());
+            ssFile.seekg (0, std::ios::beg);
+            std::vector<unsigned char> vBucket(ssFile.gcount(), 0);
+            ssFile.read((char*) &vBucket[0], vBucket.size());
+                        
+                        
+            /* Iterator for Key Sectors. */
+            unsigned int nIterator = 0;
+            while(nIterator < vBucket.size())
+            {
+                            
+                /* Get Binary Data */
+                std::vector<unsigned char> vData(vBucket.begin() + nIterator, vBucket.begin() + nIterator + 15);
+                            
+                            
+                /* Read the State and Size of Sector Header. */
+                CDataStream ssKey(vData, SER_LLD, DATABASE_VERSION);
+                ssKey >> cKey;
+                            
+                if(cKey.Ready())
+                {
+                            
+                    /* Read the Key Data. */
+                    std::vector<unsigned char> vKeyIn(vBucket.begin() + nIterator + 15, vBucket.begin() + nIterator + 15 + cKey.nLength);
+                                
+                    /* Found the Binary Position. */
+                    if(vKeyIn == vKey)
+                    {
+                        cKey.vKey = vKeyIn;
+                        
+                        /* Debug Output of Sector Key Information. */
+                        if(GetArg("-verbose", 0) >= 4)
+                            printf(FUNCTION "State: %s | Length: %u | Position: %u | Bucket: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, nIterator, nBucket, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str());
+            
+                        return true;
+                    }
+                }
+                    
+                nIterator += cKey.Size();
+            }
             
             return false;
         }
