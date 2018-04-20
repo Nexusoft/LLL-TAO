@@ -123,7 +123,7 @@ namespace LLD
             
             /* Create directories if they don't exist yet. */
             if(boost::filesystem::create_directories(strBaseLocation))
-                printf(FUNCTION "Generated Path %s\n", __func__, strBaseLocation.c_str());
+                printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
             
             /* Stats variable for collective keychain size. */
             unsigned int nKeychainSize = 0, nTotalKeys = 0;
