@@ -12,7 +12,7 @@
 #include "LLP/templates/server.h"
 
 #include "LLD/templates/sector.h"
-#include "LLD/templates/filemap.h"
+#include "LLD/templates/hashmap.h"
 
 #include "leveldb/db.h"
 
@@ -80,7 +80,7 @@ public:
 };
 
 
-class TestDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
+class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap>
 {
 public:
     TestDB(const char* pszMode="r+") : SectorDatabase("testdb", pszMode) {}
