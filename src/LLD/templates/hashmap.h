@@ -20,9 +20,25 @@ ________________________________________________________________________________
 
 namespace LLD
 {
+    
+    class HashKey : public SectorKey
+    {
+    public:
+        
+        unsigned int nIterator;
+        unsigned int nBucket;
+    
+        HashKey(SectorKey cKey, unsigned int nIteratorIn, unsigned int nBucketIn) : SectorKey(cKey), nIterator(nIteratorIn), nBucket(nBucketIn) {}
+    };
+    
 
     /** The Maximum buckets allowed in the hashmap. */
     const unsigned int HASHMAP_TOTAL_BUCKETS = 256;
+    
+    
+    /** The Maximum cache size for allocated keys. **/
+    const unsigned int HASHMAP_MAX_CACHE_SZIE = 1024 * 1024; //1 MB
+    
     
     /** Base Key Database Class.
         Stores and Contains the Sector Keys to Access the
@@ -48,17 +64,20 @@ namespace LLD
             TODO: Make this a variable actually enforced. **/
         unsigned int nCacheSize = 0;
         
+        /** Cache Pool for Found Records. **/
+        MemCachePool* cachePool;
+        
     public:	
         
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(std::string strBaseLocationIn, std::string strDatabaseNameIn) : strBaseLocation(strBaseLocationIn)
-        { 
+        BinaryHashMap(std::string strBaseLocationIn, std::string strDatabaseNameIn) : strBaseLocation(strBaseLocationIn), cachePool(new MemCachePool(HASHMAP_MAX_CACHE_SZIE))
+        {
             Initialize();
         }
         
         
         /** Clean up Memory Usage. **/
-        ~BinaryHashMap() {}
+        ~BinaryHashMap() { delete cachePool; }
         
         
         /** Return the Keys to the Records Held in the Database. **/
@@ -71,8 +90,54 @@ namespace LLD
         
         
         /** Return Whether a Key Exists in the Database. **/
-        bool HasKey(const std::vector<unsigned char>& vKey) 
+        bool HasKey(const std::vector<unsigned char>& vKey)
         { 
+            
+            /* Get the assigned bucket for the hashmap. */
+            unsigned int nBucket = GetBucket(vKey);
+            
+            /* Establish the Stream File for Keychain Bucket. */
+            std::fstream ssIncoming(strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), nBucket).c_str(), std::ios::in | std::ios::out | std::ios::binary);
+            
+            
+            /* Read the Bucket File. */
+            ssIncoming.ignore(std::numeric_limits<std::streamsize>::max());
+            ssIncoming.seekg (0, std::ios::beg);
+            std::vector<unsigned char> vBucket(fStream.gcount(), 0);
+            ssIncoming.read((char*) &vBucket[0], vBucket.size());
+            ssIncoming.close();
+                        
+                        
+            /* Iterator for Key Sectors. */
+            unsigned int nIterator = 0;
+            while(nIterator < vBucket.size())
+            {
+                            
+                /* Get Binary Data */
+                std::vector<unsigned char> vData(vBucket.begin() + nIterator, vBucket.begin() + nIterator + 15);
+                            
+                            
+                /* Read the State and Size of Sector Header. */
+                SectorKey cKey;
+                CDataStream ssKey(vData, SER_LLD, DATABASE_VERSION);
+                ssKey >> cKey;
+                            
+                if(cKey.Ready())
+                {
+                            
+                    /* Read the Key Data. */
+                    std::vector<unsigned char> vKeyIn(vBucket.begin() + nIterator + 15, vBucket.begin() + nIterator + 15 + cKey.nLength);
+                                
+                    /* Found the Binary Position. */
+                    if(vKeyIn == vKey)
+                    {
+                        return true;
+                    }       
+                }
+                    
+                nIterator += cKey.Size();
+            }
+            
             return false;
         }
         
@@ -95,32 +160,21 @@ namespace LLD
             
             /* Create directories if they don't exist yet. */
             if(boost::filesystem::create_directories(strBaseLocation))
-                printf("LLD::Hashmap::Initialize() : Generated Path %s\n", strBaseLocation.c_str());
+                printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
         }
+        
         
         /** Add / Update A Record in the Database **/
         bool Put(SectorKey cKey) const
         {
             LOCK(KEY_MUTEX);
             
-            /* Get the assigned bucket for the hashmap. */
-            unsigned int nBucket = GetBucket(cKey.vKey);
-            
-            /* Establish the Stream File for Keychain Bucket. */
-            std::string strFilename = strprintf("%s.keys", strLocation.c_str(), );
-            std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
-            
-            
-            fIncoming.ignore(std::numeric_limits<std::streamsize>::max());
-            fIncoming.seekg (0, std::ios::beg);
-            std::vector<unsigned char> vKeychain(fStream.gcount(), 0);
-            fIncoming.read((char*) &vKeychain[0], vKeychain.size());
-            fIncoming.close();
+
             
             
             /* Debug Output of Sector Key Information. */
             if(GetArg("-verbose", 0) >= 4)
-                printf("LLD::Hashmap::Put(): State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u\n Key: %s\nCurrent File: %u | Current File Size: %u\n", cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][cKey.vKey].second, mapKeys[nBucket][cKey.vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str(), nCurrentFile, nCurrentFileSize);
+                printf(FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u\n Key: %s\nCurrent File: %u | Current File Size: %u\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][cKey.vKey].second, mapKeys[nBucket][cKey.vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str(), nCurrentFile, nCurrentFileSize);
             
             
             return true;
@@ -133,13 +187,9 @@ namespace LLD
             
             /* Check for the Key. */
             unsigned int nBucket = GetBucket(vKey);
-            if(!mapKeys[nBucket].count(vKey))
-                return error("Key Erase() : Key doesn't Exist");
-            
             
             /* Establish the Outgoing Stream. */
-            std::string strFilename = strprintf("%s-%u.keys", strLocation.c_str(), mapKeys[nBucket][vKey].first);
-            std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
+            std::fstream fStream(strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), nBucket).c_str(), std::ios::in | std::ios::out | std::ios::binary);
             
             
             /* Set to put at the right file and sector position. */
@@ -164,52 +214,10 @@ namespace LLD
             LOCK(KEY_MUTEX);
             
             
-            /* Read a Record from Binary Data. */
-            if(mapKeys[nBucket].count(vKey))
-            {
-                
-                /* Open the Stream Object. */
-                std::string strFilename = strprintf("%s-%u.keys", strLocation.c_str(), mapKeys[nBucket][vKey].first);
-                std::ifstream fStream(strFilename.c_str(), std::ios::in | std::ios::binary);
+            /* Debug Output of Sector Key Information. */
+            if(GetArg("-verbose", 0) >= 4)
+                printf(FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u\n Key: %s\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][vKey].second, mapKeys[nBucket][vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str());
 
-                
-                /* Seek to the Sector Position on Disk. */
-                fStream.seekg(mapKeys[nBucket][vKey].second, std::ios::beg);
-            
-                
-                /* Read the State and Size of Sector Header. */
-                std::vector<unsigned char> vData(15, 0);
-                fStream.read((char*) &vData[0], 15);
-                
-                
-                /* De-serialize the Header. */
-                CDataStream ssHeader(vData, SER_LLD, DATABASE_VERSION);
-                ssHeader >> cKey;
-                
-                
-                /* Debug Output of Sector Key Information. */
-                if(GetArg("-verbose", 0) >= 4)
-                    printf("KEY::Get(): State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u\n Key: %s\n", cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][vKey].second, mapKeys[nBucket][vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str());
-                        
-                
-                /* Skip Empty Sectors for Now. (TODO: Expand to Reads / Writes) */
-                if(cKey.Ready() || cKey.IsTxn()) {
-                
-                    /* Read the Key Data. */
-                    std::vector<unsigned char> vKeyIn(cKey.nLength, 0);
-                    fStream.read((char*) &vKeyIn[0], vKeyIn.size());
-                    
-                    /* Check the Keys Match Properly. */
-                    if(vKeyIn != vKey)
-                        return error("Key Mistmatch: DB:: %s MEM %s\n", HexStr(vKeyIn.begin(), vKeyIn.end()).c_str(), HexStr(vKey.begin(), vKey.end()).c_str());
-                    
-                    /* Assign Key to Sector. */
-                    cKey.vKey = vKeyIn;
-                    
-                    return true;
-                }
-
-            }
             
             return false;
         }
