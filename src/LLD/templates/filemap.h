@@ -247,8 +247,7 @@ namespace LLD
             
             
             /* Establish the Outgoing Stream. */
-            std::string strFilename = strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][cKey.vKey].first);
-            std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
+            std::fstream fStream(strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][cKey.vKey].first).c_str(), std::ios::in | std::ios::out | std::ios::binary);
             
             
             /* Seek File Pointer */

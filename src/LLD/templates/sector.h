@@ -346,7 +346,7 @@ namespace LLD
                 return true;
             }
             else
-                return error(FUNCTION ":KEY NOT FOUND", __PRETTY_FUNCTION__);
+                return error(FUNCTION "KEY NOT FOUND", __PRETTY_FUNCTION__);
             
             return false;
         }
@@ -552,7 +552,7 @@ namespace LLD
                 }
                 
                 /* Write the data in one operation. */
-                if(vBatch.size() > 0 || fDestruct)
+                if(vBatch.size() > 100 || fDestruct)
                 {
                     /* Open the Stream to Read the data from Sector on File. */
                     std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
