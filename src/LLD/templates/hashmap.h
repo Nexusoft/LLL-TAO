@@ -82,6 +82,8 @@ namespace LLD
         /** Return Whether a Key Exists in the Database. **/
         bool HasKey(const std::vector<unsigned char>& vKey)
         {
+            return false;
+            
             if(mapBinaryIterators.count(vKey))
                 return true;
                 
@@ -189,8 +191,8 @@ namespace LLD
             /* Write to Disk. */
             std::vector<unsigned char> vData(ssKey.begin(), ssKey.end());
             vData.insert(vData.end(), cKey.vKey.begin(), cKey.vKey.end());
-            ssFile.write((char*) &vData[0], vData.size());
-                
+            //ssFile.write((char*) &vData[0], vData.size());
+            //ssFile.close();
             
             /* Debug Output of Sector Key Information. */
             if(GetArg("-verbose", 0) >= 4)
@@ -264,9 +266,6 @@ namespace LLD
             }
             else
             {
-                ssFile.seekg(0, std::ios::end);
-            
-            
                 /* Read the Bucket File. */
                 ssFile.ignore(std::numeric_limits<std::streamsize>::max());
                 ssFile.seekg (0, std::ios::beg);
