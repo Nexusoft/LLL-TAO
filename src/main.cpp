@@ -13,6 +13,7 @@
 
 #include "LLD/templates/sector.h"
 #include "LLD/templates/hashmap.h"
+#include "LLD/templates/filemap.h"
 
 #include "leveldb/db.h"
 

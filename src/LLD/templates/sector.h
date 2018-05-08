@@ -143,7 +143,7 @@ namespace LLD
             
             delete pTransaction;
             delete cachePool;
-            delete SectorKeys;
+            delete SectorKeys; 
         }
         
         
@@ -552,7 +552,7 @@ namespace LLD
                 }
                 
                 /* Write the data in one operation. */
-                if(vBatch.size() > 100 || fDestruct)
+                if(vBatch.size() > 0 || fDestruct)
                 {
                     /* Open the Stream to Read the data from Sector on File. */
                     std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
@@ -561,8 +561,8 @@ namespace LLD
                     /* If it is a New Sector, Assign a Binary Position. 
                         TODO: Track Sector Database File Sizes. */
                     fStream.seekp(nCurrentFileSize, std::ios::beg);
-                    fStream.write((char*) &vBatch[0], vBatch.size());
-                    fStream.close();
+                    //fStream.write((char*) &vBatch[0], vBatch.size());
+                    //fStream.close();
                     
                     /* Set the new current file size. */
                     nCurrentFileSize = nTempFileSize;
@@ -666,7 +666,7 @@ namespace LLD
             
             /** Update the Keychain with Checksums and READY Flag letting sectors know they were written successfully. **/
             if(GetArg("-verbose", 0) >= 4)
-                printf(FUNCTION "Erasing Sector Keys Flagged for Deletingn.\n", __PRETTY_FUNCTION__);
+                printf(FUNCTION "Erasing Sector Keys Flagged for Deletion.\n", __PRETTY_FUNCTION__);
             
             /** Erase all the Transactions that are set to be erased. That way if they are assigned a TRANSACTION flag we know to roll back their key to orginal data. **/
             for(typename std::map< std::vector<unsigned char>, unsigned int >::iterator nIterator = pTransaction->mapEraseData.begin(); nIterator != pTransaction->mapEraseData.end(); nIterator++ )
