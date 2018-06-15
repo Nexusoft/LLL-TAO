@@ -19,6 +19,8 @@
 
 #include <db_cxx.h>
 
+#include <sys/time.h>
+
 class CBlock
 {
 public:
@@ -81,7 +83,7 @@ public:
 };
 
 
-class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap>
+class TestDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
 {
 public:
     TestDB(const char* pszMode="r+") : SectorDatabase("testdb", pszMode) {}
@@ -100,15 +102,124 @@ public:
 
 enum
 {
-    OP_PUBLISH  = 0x01,
-    OP_REQUIRE  = 0x02,
-    OP_TRANSFER = 0x03,
+    OP_WRITE = 0x01,
+    OP_READ  = 0x02,
+    OP_CREDIT = 0x03,
+    OP_DEBIT  = 0x04
+};
+
+
+class CStateRegister
+{
+public:
     
-    OP_IF          = 0xb1,
-    OP_ELSE        = 0xb2,
-    OP_ENDIF       = 0xb3,
+    /** Flag to determine if register is Read Only. **/
+    bool fReadOnly;
     
-    OP_UNSIGNEDINT = 0xd1, //stored in a register
+    
+    /** The version of the state of the register. **/
+    unsigned short nVersion;
+    
+    
+    /** The length of the state register. **/
+    unsigned short nLength;
+    
+    
+    /** The byte level data of the register. **/
+    std::vector<unsigned char> vchState;
+    
+    
+    /** The address space of the register. **/
+    uint256 hashAddress;
+    
+    
+    /** The chechsum of the state register for use in pruning. */
+    uint64 hashChecksum;
+    
+    
+    IMPLEMENT_SERIALIZE
+    (
+        READWRITE(fReadOnly);
+        READWRITE(nVersion);
+        READWRITE(nLength);
+        READWRITE(vchState);
+        READWRITE(hashAddress);
+        READWRITE(hashChecksum);
+    )
+    
+    
+    CStateRegister() : fReadOnly(false), nVersion(1), nLength(0), hashAddress(0), hashChecksum(0)
+    {
+        vchState.clear();
+    }
+    
+    
+    CStateRegister(std::vector<unsigned char> vchData) : fReadOnly(false), nVersion(1), nLength(vchData.size()), vchState(vchData), hashAddress(0), hashChecksum(0)
+    {
+        
+    }
+    
+    
+    CStateRegister(uint64 hashChecksumIn) : fReadOnly(false), nVersion(1), nLength(0), hashAddress(0), hashChecksum(hashChecksumIn)
+    {
+        
+    }
+    
+    
+    /** Set the State Register into a NULL state. **/
+    void SetNull()
+    {
+        nVersion = 1;
+        hashAddress = 0;
+        nLength   = 0;
+        vchState.size() == 0;
+        hashChecksum == 0;
+    }
+    
+    
+    /** NULL Checking flag for a State Register. **/
+    bool IsNull()
+    {
+        return (nVersion == 1 && hashAddress == 0 && nLength == 0 && vchState.size() == 0 && hashChecksum == 0);
+    }
+    
+    
+    /** Flag to determine if the state register has been pruned. **/
+    bool IsPruned()
+    {
+        return (fReadOnly == true && nVersion == 0 && nLength == 0 && vchState.size() == 0 && hashChecksum != 0);
+    }
+    
+    
+    /** Set the Memory Address of this Register's Index. **/
+    void SetAddress(uint256 hashAddressIn)
+    {
+        hashAddress = hashAddressIn;
+    }
+    
+    
+    /** Set the Checksum of this Register. **/
+    void SetChecksum()
+    {
+        hashChecksum = LLC::HASH::SK64(BEGIN(nVersion), END(hashAddress));
+    }
+    
+    
+    /** Get the State from the Register. **/
+    std::vector<unsigned char> GetState()
+    {
+        return vchState;
+    }
+    
+    
+    /** Set the State from Byte Vector. **/
+    void SetState(std::vector<unsigned char> vchStateIn)
+    {
+        vchState = vchStateIn;
+        nLength  = vchStateIn.size();
+        
+        SetChecksum();
+    }
     
 };
 
@@ -118,31 +229,36 @@ class CTritiumTransaction
 {
     unsigned int nVersion;
     
-    std::vector<unsigned char> vchContract;
+    CStateRegister regState;
+    
     std::vector<unsigned char> vchPubKey;
     
-    uint512 NextHash; //TXID
+    uint256 hashNext;
     
-    std::vector<unsigned char> vchInput;
+    std::vector<unsigned char> vchSignature;
     
-    std::vector<unsigned char> vchSenderSig;
-    
-    std::vector<unsigned char> vchRecieveSig;
     
     IMPLEMENT_SERIALIZE
     (
-        
+        READWRITE(nVersion);
+        READWRITE(regState);
+        READWRITE(vchPubKey);
+        READWRITE(vchSignature);
+        READWRITE(hashNext);
     )
+    
     
     uint512 GetPrevHash() const 
     {
-        return LLC::HASH::SK512(vchPubKey); //INDEX
+        //return LLC::HASH::SK256(vchPubKey); //INDEX
     }
+    
     
     uint512 GetHash()
     {
-        
+        return LLC::HASH::SK512(BEGIN(nVersion), END(hashNext));
     }
+    
     
     bool IsValid()
     {
@@ -153,74 +269,97 @@ class CTritiumTransaction
 };
 
 
-int TestSIGS(int argc, char** argv)
+class DiskMap
+{
+public:
+    
+    DiskMap() {}
+    
+    //void* pprev = &this->Prev;
+    //void* pnext = &this->Next;
+    
+    void Prev()
+    {
+        printf("Prev\n");
+    }
+    
+    void Next()
+    {
+        printf("Next\n");
+    }
+};
+
+std::string DateTimeStrFormat(const char* pszFormat, int64 nTime)
+{
+    time_t n = nTime;
+    struct tm* ptmTime = gmtime(&n);
+    char pszTime[200];
+    strftime(pszTime, sizeof(pszTime), pszFormat, ptmTime);
+    return pszTime;
+}
+
+
+int main(int argc, char** argv)
 {
     ParseParameters(argc, argv);
     
+    std::string time = DateTimeStrFormat("%Y-%m-%d %H:%M:%S UTC", 1528732690);
+    printf("%s\n", time.c_str());
+
     //LLP::Server<LLP::CLegacyNode>* LegacyServer = new LLP::Server<LLP::CLegacyNode>(9323, 10, true, 2, 20, 30, 60, true, true);
 
-    uint512 hashSeed = GetRand512();
-    uint256 hash256  = GetRand256();
+    return 0;
     
-    Core::SignatureChain sigChain("username","password");
-    uint512 hashGenesis = sigChain.Generate(0, "secret");
-    
-    printf("Genesis Priv %s\n", hashGenesis.ToString().c_str());
+    for(int i = 0; ; i++)
+    {
+        uint512 hashSeed = GetRand512();
+        uint256 hash256  = GetRand256();
         
-    LLC::CKey key(NID_brainpoolP512t1, 64);
-    
-    std::vector<unsigned char> vchData = hashGenesis.GetBytes();
-    
-    LLC::CSecret vchSecret(vchData.begin(), vchData.end());
-    
-    key.SetSecret(vchSecret, true);
-    
-    LLC::CKey key512(key);
-    
-    std::vector<unsigned char> vPubKey = key.GetPubKey();
-    
-    printf("Genesis Pub %s\n", HexStr(vPubKey).c_str());
-    
-    uint512 genesisID = LLC::HASH::SK512(vPubKey);
-    
-    printf("Genesis ID %s\n", genesisID.ToString().c_str());
-    
-    printf("Keys Created == %s\n", (key == key512) ? "TRUE" : "FALSE");
+        Core::SignatureChain sigChain("username", hashSeed.ToString());
+        uint512 hashGenesis = sigChain.Generate(i, hash256.ToString());
         
-    std::vector<unsigned char> vchSig;
-    bool fSigned = key512.Sign(hashSeed, vchSig, 256);
-    //vchSig[0] = 0x11;
+        printf("Genesis Priv %s\n", hashGenesis.ToString().c_str());
+            
+        LLC::CKey key(NID_brainpoolP512t1, 64);
         
-    LLC::CKey keyVerify(NID_brainpoolP512t1, 64);
-    keyVerify.SetPubKey(vPubKey);
-    
-    
-    bool fVerify = keyVerify.Verify(hashSeed, vchSig, 256);
-    printf("Signature %s [%u Bytes] Signed %s and Verified %s\n", HexStr(vchSig).c_str(), vchSig.size(), fSigned ? "True" : "False", fVerify ? "True" : "False");
-    
-    LLC::CKey k571(NID_secp256k1, 32);
-    k571.MakeNewKey(true);
-    
-    std::vector<unsigned char> vchPubKey = k571.GetPubKey();
-    
-    vchSig.clear();
-    fSigned = k571.SignCompact(hash256, vchSig);
-    
-    LLC::CKey k571v(NID_secp256k1, 32);
-    fVerify = k571v.SetCompactSignature(hash256, vchSig);
-    
-    std::vector<unsigned char> vchPubKey2 = k571v.GetPubKey();
-    
-    printf("Pub1: %s\nPub2: %s\n", HexStr(vchPubKey).c_str(), HexStr(vchPubKey2).c_str());
-    
-    printf("Signature %s [%u Bytes] Signed %s and Verified %s\n", HexStr(vchSig).c_str(), vchSig.size(), fSigned ? "True" : "False", fVerify ? "True" : "False");
+        std::vector<unsigned char> vchData = hashGenesis.GetBytes();
+        
+        LLC::CSecret vchSecret(vchData.begin(), vchData.end());
+        if(!key.SetSecret(vchSecret, true))
+            return 0;
+        
+        LLC::CKey key512(key);
+        
+        std::vector<unsigned char> vPubKey = key.GetPubKey();
+        
+        printf("Genesis Pub %s\n", HexStr(vPubKey).c_str());
+        
+        uint512 genesisID = LLC::HASH::SK512(vPubKey);
+        
+        printf("Genesis ID %s\n", genesisID.ToString().c_str());
+        
+        printf("Keys Created == %s\n", (key == key512) ? "TRUE" : "FALSE");
+            
+        std::vector<unsigned char> vchSig;
+        bool fSigned = key512.Sign(hashSeed, vchSig, 256);
+        //vchSig[0] = 0x11;
+            
+        LLC::CKey keyVerify(NID_brainpoolP512t1, 64);
+        keyVerify.SetPubKey(vPubKey);
+        
+        bool fVerify = keyVerify.Verify(hashSeed, vchSig, 256);
+        printf("[%i] Signature %s [%u Bytes] Signed %s and Verified %s\n", i, HexStr(vchSig).c_str(), vchSig.size(), fSigned ? "True" : "False", fVerify ? "True" : "False");
+        
+        if(!fVerify)
+            return 0;
+    }
     
     return 0;
 }
 
 
 
-int main(int argc, char** argv)
+int TestLLD(int argc, char** argv)
 {
     ParseParameters(argc, argv);
     

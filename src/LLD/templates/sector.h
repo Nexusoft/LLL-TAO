@@ -450,6 +450,8 @@ namespace LLD
         /* Helper Thread to Batch Write to Disk. */
         void CacheWriter()
         {
+            if(GetBoolArg("-forcewrite", false))
+                return;
             
             //TODO: Add this to data journal with data to be committed first. 
             //This will tell the database on next keychain init if there was any failed writes for graceful recovery
@@ -561,8 +563,8 @@ namespace LLD
                     /* If it is a New Sector, Assign a Binary Position. 
                         TODO: Track Sector Database File Sizes. */
                     fStream.seekp(nCurrentFileSize, std::ios::beg);
-                    //fStream.write((char*) &vBatch[0], vBatch.size());
-                    //fStream.close();
+                    fStream.write((char*) &vBatch[0], vBatch.size());
+                    fStream.close();
                     
                     /* Set the new current file size. */
                     nCurrentFileSize = nTempFileSize;

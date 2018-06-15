@@ -82,8 +82,6 @@ namespace LLD
         /** Return Whether a Key Exists in the Database. **/
         bool HasKey(const std::vector<unsigned char>& vKey)
         {
-            return false;
-            
             if(mapBinaryIterators.count(vKey))
                 return true;
                 
@@ -112,7 +110,6 @@ namespace LLD
                 /* Get Binary Data */
                 std::vector<unsigned char> vData(vBucket.begin() + nIterator, vBucket.begin() + nIterator + 15);
                             
-                            
                 /* Read the State and Size of Sector Header. */
                 SectorKey cKey;
                 CDataStream ssKey(vData, SER_LLD, DATABASE_VERSION);
@@ -120,7 +117,6 @@ namespace LLD
                             
                 if(cKey.Ready())
                 {
-                            
                     /* Read the Key Data. */
                     std::vector<unsigned char> vKeyIn(vBucket.begin() + nIterator + 15, vBucket.begin() + nIterator + 15 + cKey.nLength);
                                 
@@ -191,8 +187,8 @@ namespace LLD
             /* Write to Disk. */
             std::vector<unsigned char> vData(ssKey.begin(), ssKey.end());
             vData.insert(vData.end(), cKey.vKey.begin(), cKey.vKey.end());
-            //ssFile.write((char*) &vData[0], vData.size());
-            //ssFile.close();
+            ssFile.write((char*) &vData[0], vData.size());
+            ssFile.close();
             
             /* Debug Output of Sector Key Information. */
             if(GetArg("-verbose", 0) >= 4)

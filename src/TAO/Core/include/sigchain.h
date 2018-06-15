@@ -21,7 +21,7 @@ namespace Core
 
     /** Base Class for a Signature SignatureChain
     * 
-    *  Similar to HD wallet systems, but integrated into the Layer 1 of the network.
+    *  Similar to HD wallet systems, but integrated into the Layer 2 of the nexus software stack.
     *  Seed phrase includes at least 128 bits of entropy (8 char username, 8 char password) and pin 
     *  to attack a signature chain by dictionary attack.
     * 
@@ -59,10 +59,10 @@ namespace Core
         {
             /* Serialize the Key ID (Big Endian). */
             std::vector<unsigned char> vKeyID;
-            vKeyID.push_back(nKeyID >> 24);
-            vKeyID.push_back(nKeyID >> 16);
-            vKeyID.push_back(nKeyID >> 8 );
-            vKeyID.push_back(nKeyID      );
+            vKeyID.push_back(nKeyID >> 24 & 0xff);
+            vKeyID.push_back(nKeyID >> 16 & 0xff);
+            vKeyID.push_back(nKeyID >> 8  & 0xff);
+            vKeyID.push_back(nKeyID       & 0xff);
     
             /* Generate the Secret Phrase */
             std::vector<unsigned char> vSecret(strUsername.begin(), strUsername.end());
