@@ -25,7 +25,7 @@ namespace LLD
     const unsigned int FILEMAP_TOTAL_BUCKETS = 256 * 256;
     
     /* Maximum size a file can be in the keychain. */
-    const unsigned int FILEMAP_MAX_FILE_SIZE = 1024 * 1024; //1 GB per File
+    const unsigned int FILEMAP_MAX_FILE_SIZE = 1024 * 1024 * 1024; //1 GB per File
 
     
     /** Binary File Map Database Class.

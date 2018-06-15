@@ -111,18 +111,6 @@ namespace LLC
 			
 			return keccak;
 		}
-		
-        /* Hashing template for Address Generation */
-		inline uint64 Keccak64(const std::vector<unsigned char>& vch)
-		{
-            uint64 keccak;
-			Keccak_HashInstance ctx_keccak;
-			Keccak_HashInitialize(&ctx_keccak, 1344, 256, 64, 0x06);
-			Keccak_HashUpdate(&ctx_keccak, (unsigned char *)&vch, vch.size());
-			Keccak_HashFinal(&ctx_keccak, (unsigned char *)&keccak);
-			
-			return keccak;
-		}
 
 		
 		/* Hashing template for Address Generation */
