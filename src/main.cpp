@@ -101,7 +101,7 @@ public:
 
 
 //NETF - ADS - Application Development Standard - Document to define new applicaqtion programming interface calls required by developers
-//NETF - NOS - Nexus Operation Standard - Document to define operation needs, and byte slot, and NETF engineers to develop the CASE statement
+//NETF - NOS - Nexus Operation Standard - Document to define operation needs, formal design, and byte slot, and NETF engineers to develop the CASE statement
 //NETF - ORS - Object Register Standard - Document to define a specific object register for purpose of ADS standards, with NOS standards being capable of supporting methods
 
 
@@ -109,32 +109,40 @@ public:
 enum
 {
     //register operations
-    OP_WRITE     = 0x01, //OP_WRITE <vchAddress> <vchData> return fSuccess
-    OP_READ      = 0x02, //OP_READ <vchAddress> return <vchData>
-    OP_REGISTER  = 0x03, //OP_REGISTER <vchAddress> return fSuccess
-    OP_AUTHORIZE = 0x04, //OP_AUTHORIZE OP_GETHASH <vchPubKey> return fSuccess
-    OP_TRANSFER  = 0x05, //OP_TRANSFER <vchAddress> <vchGenesisID> return fSuccess
-    OP_GETHASH   = 0x06, //OP_GETHASH <vchData> return vchHashData
-    OP_EXPIRE    = 0x07, //OP_EXPIRE <nTimestamp> return fExpire
+    OP_WRITE      = 0x01, //OP_WRITE <vchAddress> <vchData> return fSuccess
+    OP_READ       = 0x02, //OP_READ <vchAddress> return <vchData>
+    OP_REGISTER   = 0x03, //OP_REGISTER <vchAddress> return fSuccess
+    OP_AUTHORIZE  = 0x04, //OP_AUTHORIZE OP_GETHASH <vchPubKey> return fSuccess
+    OP_TRANSFER   = 0x05, //OP_TRANSFER <vchAddress> <vchGenesisID> return fSuccess
+    OP_GETHASH    = 0x06, //OP_GETHASH <vchData> return vchHashData
+    OP_EXPIRE     = 0x07, //OP_EXPIRE <nTimestamp> return fExpire
     //0x08 - 0x0f UNASSIGNED
 
+
     //conditional operations
-    OP_IF        = 0x10, //OP_IF <boolean expression>
-    OP_ELSE      = 0x11, //OP_ELSE
-    OP_ENDIF     = 0x12, //OP_ENDIF
-    OP_NOT       = 0x13, //OP_NOT <bool expression>
-    OP_EQUALS    = 0x14, //OP_EQUALS <vchData1> <VchData2>
+    OP_IF         = 0x10, //OP_IF <boolean expression>
+    OP_ELSE       = 0x11, //OP_ELSE
+    OP_ENDIF      = 0x12, //OP_ENDIF
+    OP_NOT        = 0x13, //OP_NOT <bool expression>
+    OP_EQUALS     = 0x14, //OP_EQUALS <vchData1> <VchData2>
     //0x15 - 0x1f UNASSIGNED
 
+
     //financial operators
-    OP_ACCOUNT   = 0x20, //OP_ACCOUNT <vchAddress> <vchIdentifier> return fSuccess
-    OP_CREDIT    = 0x21, //OP_CREDIT <hashTransaction> <nAmount> return fSuccess
-    OP_DEBIT     = 0x22, //OP_DEBIT <vchAccount> <nAmount> return fSuccess
-    OP_BALANCE   = 0x23, //OP_BALANCE <vchAccount>
+    OP_ACCOUNT    = 0x20, //OP_ACCOUNT <vchAddress> <vchIdentifier> return fSuccess - create account
+    OP_CREDIT     = 0x21, //OP_CREDIT <hashTransaction> <nAmount> return fSuccess
+    OP_DEBIT      = 0x22, //OP_DEBIT <vchAccount> <nAmount> return fSuccess
+    OP_BALANCE    = 0x23, //OP_BALANCE <vchAccount> <vchIdentifier> return nBalance
 
 
     //joint ownership TODO (I own 50% of this copyright, you own 50%, when a royalty transaction hits, disperse to accounts)
-    OP_LICENSE   = 0x30, //OP_LICENSE <vchAddress>
+    OP_LICENSE    = 0x30, //OP_LICENSE <vchAddress>
+
+
+    //chain state operations
+    OP_HEIGHT     = 0x40, //OP_HEIGHT return nHeight
+    OP_TIMESTAMP  = 0x41, //OP_TIMESTAMP return UnifiedTimestamp()
+    OP_TXID       = 0x42, //OP_TXID return GetHash() - callers transaction hash
 };
 
 class COperation
