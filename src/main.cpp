@@ -109,14 +109,13 @@ public:
 enum
 {
     //register operations
-    OP_WRITE      = 0x01, //OP_WRITE <vchAddress> <vchData> return fSuccess
-    OP_READ       = 0x02, //OP_READ <vchAddress> return <vchData>
-    OP_REGISTER   = 0x03, //OP_REGISTER <vchAddress> return fSuccess
+    OP_WRITE      = 0x01, //OP_WRITE <vchRegAddress> <vchData> return fSuccess
+    OP_READ       = 0x02, //OP_READ <vchRegAddress> return <vchData>
+    OP_REGISTER   = 0x03, //OP_REGISTER <vchRegAddress> return fSuccess
     OP_AUTHORIZE  = 0x04, //OP_AUTHORIZE OP_GETHASH <vchPubKey> return fSuccess
-    OP_TRANSFER   = 0x05, //OP_TRANSFER <vchAddress> <vchGenesisID> return fSuccess
+    OP_TRANSFER   = 0x05, //OP_TRANSFER <vchRegAddress> <vchGenesisID> return fSuccess
     OP_GETHASH    = 0x06, //OP_GETHASH <vchData> return vchHashData
-    OP_EXPIRE     = 0x07, //OP_EXPIRE <nTimestamp> return fExpire
-    //0x08 - 0x0f UNASSIGNED
+    //0x07 - 0x0f UNASSIGNED
 
 
     //conditional operations
@@ -129,20 +128,25 @@ enum
 
 
     //financial operators
-    OP_ACCOUNT    = 0x20, //OP_ACCOUNT <vchAddress> <vchIdentifier> return fSuccess - create account
+    OP_ACCOUNT    = 0x20, //OP_ACCOUNT <vchRegAddress> <vchIdentifier> return fSuccess - create account
     OP_CREDIT     = 0x21, //OP_CREDIT <hashTransaction> <nAmount> return fSuccess
     OP_DEBIT      = 0x22, //OP_DEBIT <vchAccount> <nAmount> return fSuccess
     OP_BALANCE    = 0x23, //OP_BALANCE <vchAccount> <vchIdentifier> return nBalance
+    OP_EXPIRE     = 0x24, //OP_EXPIRE <nTimestamp> return fExpire
 
 
     //joint ownership TODO (I own 50% of this copyright, you own 50%, when a royalty transaction hits, disperse to accounts)
-    OP_LICENSE    = 0x30, //OP_LICENSE <vchAddress>
+    OP_LICENSE    = 0x30, //OP_LICENSE <vchRegAddress>
 
 
     //chain state operations
     OP_HEIGHT     = 0x40, //OP_HEIGHT return nHeight
     OP_TIMESTAMP  = 0x41, //OP_TIMESTAMP return UnifiedTimestamp()
     OP_TXID       = 0x42, //OP_TXID return GetHash() - callers transaction hash
+
+
+    //object register methods TODO: assess how we will handle pointers, current thoughts are through LISP IPv11 database clusters, where TCP/IP address is the pointer reference location (&), so pointers in the contract code will be hashes to represent the address space which can be located through opening up a TCP/IP socket to that reference location and getting the data returned so the network will act like a giant memory bank
+    OP_METHOD     = 0x50, //OP_METHOD return hashAddress
 };
 
 class COperation
