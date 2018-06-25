@@ -138,16 +138,19 @@ enum
 
     //joint ownership TODO (I own 50% of this copyright, you own 50%, when a royalty transaction hits, disperse to accounts)
     OP_LICENSE    = 0x30, //OP_LICENSE <vchRegAddress>
+    //0x31 - 0x3f UNASSIGNED
 
 
     //chain state operations
     OP_HEIGHT     = 0x40, //OP_HEIGHT return nHeight
     OP_TIMESTAMP  = 0x41, //OP_TIMESTAMP return UnifiedTimestamp()
     OP_TXID       = 0x42, //OP_TXID return GetHash() - callers transaction hash
+    //0x43 - 0x4f UNASSIGNED
 
 
     //object register methods TODO: assess how we will handle pointers, current thoughts are through LISP IPv11 database clusters, where TCP/IP address is the pointer reference location (&), so pointers in the contract code will be hashes to represent the address space which can be located through opening up a TCP/IP socket to that reference location and getting the data returned so the network will act like a giant memory bank
     OP_METHOD     = 0x50, //OP_METHOD return hashAddress
+    //0x51 - 0x5f UNASSIGNED
 };
 
 class COperation
