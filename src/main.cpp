@@ -227,27 +227,33 @@ public:
 
 class CTritiumTransaction
 {
+
+    /** The transaction version for extensibility. **/
     unsigned int nVersion;
 
+    /** The raw state register associated with this specific transaction. **/
     CStateRegister regState;
 
-    std::vector<unsigned char> vchPubKey;
+    /** The computed hash of the next key in the series. **/
+    uint256 hashNextKey;
 
-    uint256 hashNext;
+    /** MEMORY ONLY: The Binary data of the Public Key revealed in this transaction. **/
+    mutable std::vector<unsigned char> vchPubKey;
 
-    std::vector<unsigned char> vchSignature;
-
+    /** MEMORY ONLY: The Binary data of the Signature revealed in this transaction. **/
+    mutable std::vector<unsigned char> vchSignature;
 
     IMPLEMENT_SERIALIZE
     (
         READWRITE(nVersion);
         READWRITE(regState);
+        READWRITE(hashNext);
         READWRITE(vchPubKey);
         READWRITE(vchSignature);
-        READWRITE(hashNext);
     )
 
 
+    //TODO: Get this indexing right
     uint512 GetPrevHash() const
     {
         //return LLC::HASH::SK256(vchPubKey); //INDEX
