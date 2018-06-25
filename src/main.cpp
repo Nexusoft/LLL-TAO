@@ -133,6 +133,7 @@ enum
     OP_DEBIT      = 0x22, //OP_DEBIT <vchAccount> <nAmount> return fSuccess
     OP_BALANCE    = 0x23, //OP_BALANCE <vchAccount> <vchIdentifier> return nBalance
     OP_EXPIRE     = 0x24, //OP_EXPIRE <nTimestamp> return fExpire
+    //0x25 - 0x2f UNASSIGNED
 
 
     //joint ownership TODO (I own 50% of this copyright, you own 50%, when a royalty transaction hits, disperse to accounts)
