@@ -100,13 +100,85 @@ public:
 };
 
 
+/** Operation Layer Byte Code. **/
 enum
 {
-    OP_WRITE = 0x01,
-    OP_READ  = 0x02,
-    OP_CREDIT = 0x03,
-    OP_DEBIT  = 0x04
+    //core operations
+    OP_WRITE     = 0x01, //OP_WRITE <vchAddress> <vchData> return fSuccess
+    OP_READ      = 0x02, //OP_READ <vchAddress> return <vchData>
+    OP_CREDIT    = 0x03, //OP_CREDIT <hashTransaction> <nAmount> return fSuccess
+    OP_DEBIT     = 0x04, //OP_DEBIT <vchAccount> <nAmount> return fSuccess
+    OP_REGISTER  = 0x05, //OP_REGISTER <vchAddress> return fSuccess
+    OP_AUTHORIZE = 0x06, //OP_AUTHORIZE OP_GETHASH <vchPubKey> return fSuccess
+    OP_TRANSFER  = 0x07, //OP_TRANSFER <vchAddress> <vchGenesisID> return fSuccess
+    OP_GETHASH   = 0x08, //OP_GETHASH <vchData> return vchHashData
+    OP_ACCOUNT   = 0x09, //OP_ACCOUNT <vchAddress> return fSuccess
+    OP_EXPIRE    = 0x0a, //OP_EXPIRE <nTimestamp> return fExpire
+
+
+    //conditional operations
+    OP_IF        = 0x0b, //OP_IF <boolean expression>
+    OP_ELSE      = 0x0c, //OP_ELSE
+    OP_ENDIF     = 0x0d, //OP_ENDIF
+    OP_NOT       = 0x0e, //OP_NOT <bool expression>
+    OP_EQUALS    = 0x0f, //OP_EQUALS <vchData1> <VchData2>
+
+
 };
+
+class COperation
+{
+    std::vector<unsigned char> vchRegisters[4]; //MAX SIZE 64 bytes - 512bit hash
+
+    std::vector<unsigned char> vchOperations;
+
+    COperation(std::vector<unsigned char> vchOperationsIn) : vchOperations(vchOperationsIn) {}
+
+    bool Execute()
+    {
+        switch()
+        {
+            case OP_WRITE:
+            break;
+
+            case OP_READ:
+            break;
+
+            case OP_CREDIT:
+            break;
+
+            case OP_DEBUT:
+            break;
+
+            case OP_REGISTER:
+            break;
+
+            case OP_AUTHORIZE:
+            break;
+
+            case OP_TRANSFER:
+            break;
+
+            case: OP_GETHASH:
+            break;
+
+            case OP_ACCOUNT:
+            break;
+
+            case OP_EXPIRE:
+            break;
+
+            case OP_IF:
+            break;
+
+            case OP_ELSE:
+            break;
+
+            case OP_ENDIF:
+            break;
+        }
+    }
+}
 
 
 class CStateRegister
@@ -231,11 +303,14 @@ class CTritiumTransaction
     /** The transaction version for extensibility. **/
     unsigned int nVersion;
 
-    /** The raw state register associated with this specific transaction. **/
-    CStateRegister regState;
-
     /** The computed hash of the next key in the series. **/
-    uint256 hashNextKey;
+    uint256 hashNext;
+
+    /** The genesis ID of this signature chain. **/
+    uint256 hashGenesis;
+
+    /** The serialized byte code that is to be encoded in the chain. **/
+    std::vector<unsigned char> vchLedgerData;
 
     /** MEMORY ONLY: The Binary data of the Public Key revealed in this transaction. **/
     mutable std::vector<unsigned char> vchPubKey;
@@ -246,11 +321,14 @@ class CTritiumTransaction
     IMPLEMENT_SERIALIZE
     (
         READWRITE(nVersion);
-        READWRITE(regState);
         READWRITE(hashNext);
-        READWRITE(vchPubKey);
-        READWRITE(vchSignature);
-    )
+        READWRITE(FLATDATA(vchLedgerData));
+
+        if(!(nType & SER_LLD)) {
+          READWRITE(vchPubKey);
+          READWRITE(vchSignature);
+        }
+    }
 
 
     //TODO: Get this indexing right
@@ -260,16 +338,27 @@ class CTritiumTransaction
     }
 
 
-    uint512 GetHash()
+    uint512 GetHash() const
     {
-        return LLC::HASH::SK512(BEGIN(nVersion), END(hashNext));
+        return LLC::HASH::SK512(BEGIN(nVersion), END(vchLedgerData));
     }
 
 
+    /** IsValid
+     *
+     *  Checks if the transaction is valid. Only called on validation process, not to be run from disk since it requires memory only data.
+     *
+     *   @return Returns whether the key is valid.
+     */
     bool IsValid()
     {
+        /* Generate the key object to check signature. */
         LLC::CKey key(NID_brainpoolP512t1, 64);
         key.SetPubKey(vchPubKey);
+
+        /* Verify that the signature is valid. */
+        if(!key.Verify(GetHash().GetBytes(), vchSignature))
+            return false;
     }
 
 };
