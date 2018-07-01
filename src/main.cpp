@@ -148,8 +148,12 @@ enum
     //0x43 - 0x4f UNASSIGNED
 
 
+    //consensus operations
+    OP_VOTE       = 0x50, //OP_VOTE <vchData> return fSuccess - vote in favor of a register address (piece of data)
+    OP_REQUIRE    = 0x51, //OP_REQUIRE <boolean expression> return fExpression - require something to be true to evaltue script
+
     //object register methods TODO: assess how we will handle pointers, current thoughts are through LISP IPv11 database clusters, where TCP/IP address is the pointer reference location (&), so pointers in the contract code will be hashes to represent the address space which can be located through opening up a TCP/IP socket to that reference location and getting the data returned so the network will act like a giant memory bank
-    OP_METHOD     = 0x50, //OP_METHOD return hashAddress
+    //OP_METHOD     = 0x50, //OP_METHOD return hashAddress
     //0x51 - 0x5f UNASSIGNED
 };
 
@@ -159,6 +163,7 @@ class COperation
 
     std::vector<unsigned char> vchOperations;
 
+    unsigned int nIterator = 0;
     COperation(std::vector<unsigned char> vchOperationsIn) : vchOperations(vchOperationsIn) {}
 
     bool Execute()
@@ -166,43 +171,23 @@ class COperation
         switch()
         {
             case OP_WRITE:
-            break;
+                std::vector<unsigned char> vchAddress(vchOperations.begin(), vchOperations.end());
+
+                std::vector<unsigned char> vchData;
+                //write to register from data
+
+
+                break;
 
             case OP_READ:
-            break;
 
-            case OP_CREDIT:
-            break;
+                std::vector<unsigned char> vchAddress(vchOperations.begin(), vchOperations.end());
 
-            case OP_DEBUT:
-            break;
+                //read the register value
 
-            case OP_REGISTER:
-            break;
+                break;
 
-            case OP_AUTHORIZE:
-            break;
-
-            case OP_TRANSFER:
-            break;
-
-            case: OP_GETHASH:
-            break;
-
-            case OP_ACCOUNT:
-            break;
-
-            case OP_EXPIRE:
-            break;
-
-            case OP_IF:
-            break;
-
-            case OP_ELSE:
-            break;
-
-            case OP_ENDIF:
-            break;
+            case
         }
     }
 }
