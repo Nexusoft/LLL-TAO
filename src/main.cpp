@@ -100,99 +100,6 @@ public:
 };
 
 
-//NETF - ADS - Application Development Standard - Document to define new applicaqtion programming interface calls required by developers
-//NETF - NOS - Nexus Operation Standard - Document to define operation needs, formal design, and byte slot, and NETF engineers to develop the CASE statement
-//NETF - ORS - Object Register Standard - Document to define a specific object register for purpose of ADS standards, with NOS standards being capable of supporting methods
-
-
-/** Operation Layer Byte Code. **/
-enum
-{
-    //register operations
-    OP_WRITE      = 0x01, //OP_WRITE <vchRegAddress> <vchData> return fSuccess
-    OP_READ       = 0x02, //OP_READ <vchRegAddress> return <vchData>
-    OP_REGISTER   = 0x03, //OP_REGISTER <vchRegAddress> return fSuccess
-    OP_AUTHORIZE  = 0x04, //OP_AUTHORIZE OP_GETHASH <vchPubKey> return fSuccess
-    OP_TRANSFER   = 0x05, //OP_TRANSFER <vchRegAddress> <vchGenesisID> return fSuccess
-    OP_GETHASH    = 0x06, //OP_GETHASH <vchData> return vchHashData
-    //0x07 - 0x0f UNASSIGNED
-
-
-    //conditional operations
-    OP_IF         = 0x10, //OP_IF <boolean expression>
-    OP_ELSE       = 0x11, //OP_ELSE
-    OP_ENDIF      = 0x12, //OP_ENDIF
-    OP_NOT        = 0x13, //OP_NOT <bool expression>
-    OP_EQUALS     = 0x14, //OP_EQUALS <vchData1> <VchData2>
-    //0x15 - 0x1f UNASSIGNED
-
-
-    //financial operators
-    OP_ACCOUNT    = 0x20, //OP_ACCOUNT <vchRegAddress> <vchIdentifier> return fSuccess - create account
-    OP_CREDIT     = 0x21, //OP_CREDIT <hashTransaction> <nAmount> return fSuccess
-    OP_DEBIT      = 0x22, //OP_DEBIT <vchAccount> <nAmount> return fSuccess
-    OP_BALANCE    = 0x23, //OP_BALANCE <vchAccount> <vchIdentifier> return nBalance
-    OP_EXPIRE     = 0x24, //OP_EXPIRE <nTimestamp> return fExpire
-    //0x25 - 0x2f UNASSIGNED
-
-
-    //joint ownership TODO (I own 50% of this copyright, you own 50%, when a royalty transaction hits, disperse to accounts)
-    OP_LICENSE    = 0x30, //OP_LICENSE <vchRegAddress>
-    //0x31 - 0x3f UNASSIGNED
-
-
-    //chain state operations
-    OP_HEIGHT     = 0x40, //OP_HEIGHT return nHeight
-    OP_TIMESTAMP  = 0x41, //OP_TIMESTAMP return UnifiedTimestamp()
-    OP_TXID       = 0x42, //OP_TXID return GetHash() - callers transaction hash
-    //0x43 - 0x4f UNASSIGNED
-
-
-    //consensus operations
-    OP_VOTE       = 0x50, //OP_VOTE <vchData> return fSuccess - vote in favor of a register address (piece of data)
-    OP_REQUIRE    = 0x51, //OP_REQUIRE <boolean expression> return fExpression - require something to be true to evaltue script
-
-    //object register methods TODO: assess how we will handle pointers, current thoughts are through LISP IPv11 database clusters, where TCP/IP address is the pointer reference location (&), so pointers in the contract code will be hashes to represent the address space which can be located through opening up a TCP/IP socket to that reference location and getting the data returned so the network will act like a giant memory bank
-    //OP_METHOD     = 0x50, //OP_METHOD return hashAddress
-    //0x51 - 0x5f UNASSIGNED
-};
-
-class COperation
-{
-    std::vector<unsigned char> vchRegisters[4]; //MAX SIZE 64 bytes - 512bit hash
-
-    std::vector<unsigned char> vchOperations;
-
-    unsigned int nIterator = 0;
-    COperation(std::vector<unsigned char> vchOperationsIn) : vchOperations(vchOperationsIn) {}
-
-    bool Execute()
-    {
-        switch()
-        {
-            case OP_WRITE:
-                std::vector<unsigned char> vchAddress(vchOperations.begin(), vchOperations.end());
-
-                std::vector<unsigned char> vchData;
-                //write to register from data
-
-
-                break;
-
-            case OP_READ:
-
-                std::vector<unsigned char> vchAddress(vchOperations.begin(), vchOperations.end());
-
-                //read the register value
-
-                break;
-
-            case
-        }
-    }
-}
-
-
 class CStateRegister
 {
 public:
@@ -217,6 +124,10 @@ public:
     uint256 hashAddress;
 
 
+    /** The owner of the register. **/
+    uint256 hashOwner; //genesis ID
+
+
     /** The chechsum of the state register for use in pruning. */
     uint64 hashChecksum;
 
@@ -226,9 +137,13 @@ public:
         READWRITE(fReadOnly);
         READWRITE(nVersion);
         READWRITE(nLength);
-        READWRITE(vchState);
+        READWRITE(FLATDATA(vchState));
         READWRITE(hashAddress);
-        READWRITE(hashChecksum);
+        READWRITE(hashOwner);
+
+        //checksum hash only seriazlied
+        if(!(nType & SER_REGISTER_PRUNED))
+            READWRITE(hashChecksum);
     )
 
 
@@ -308,6 +223,260 @@ public:
 };
 
 
+class RegisterDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
+{
+    RegisterDB(const char* pszMode="r+") : SectorDatabase("regdb", pszMode) {}
+
+    bool ReadRegister(uint256 address, CStateRegister& regState)
+    {
+        return Read(address, regState);
+    }
+
+    bool WriteRegister(uint256 address, CStateRegister regState)
+    {
+        return Write(address, regState);
+    }
+};
+
+
+//NETF - ADS - Application Development Standard - Document to define new applicaqtion programming interface calls required by developers
+//NETF - NOS - Nexus Operation Standard - Document to define operation needs, formal design, and byte slot, and NETF engineers to develop the CASE statement
+//NETF - ORS - Object Register Standard - Document to define a specific object register for purpose of ADS standards, with NOS standards being capable of supporting methods
+
+
+/** Operation Layer Byte Code. **/
+enum
+{
+    //register operations
+    OP_WRITE      = 0x01, //OP_WRITE <vchRegAddress> <vchData> return fSuccess
+    OP_READ       = 0x02, //OP_READ <vchRegAddress> return <vchData>
+    OP_REGISTER   = 0x03, //OP_REGISTER <vchRegData> return fSuccess
+    OP_AUTHORIZE  = 0x04, //OP_AUTHORIZE OP_GETHASH <vchPubKey> return fSuccess
+    OP_TRANSFER   = 0x05, //OP_TRANSFER <vchRegAddress> <vchGenesisID> return fSuccess
+    //OP_GETHASH    = 0x06, //OP_GETHASH <vchData> return vchHashData NOTE: Not sure if we want these low level ops on this layer
+    //0x07 - 0x0f UNASSIGNED
+
+
+    //conditional operations
+    OP_IF         = 0x10, //OP_IF <boolean expression>
+    OP_ELSE       = 0x11, //OP_ELSE
+    OP_ENDIF      = 0x12, //OP_ENDIF
+    OP_NOT        = 0x13, //OP_NOT <bool expression>
+    OP_EQUALS     = 0x14, //OP_EQUALS <vchData1> <VchData2>
+    //0x15 - 0x1f UNASSIGNED
+
+
+    //financial operators
+    OP_ACCOUNT    = 0x20, //OP_ACCOUNT <vchAddress> <vchIdentifier> return fSuccess - create account
+    OP_CREDIT     = 0x21, //OP_CREDIT <hashTransaction> <nAmount> return fSuccess
+    OP_DEBIT      = 0x22, //OP_DEBIT <vchAccount> <nAmount> return fSuccess
+    OP_BALANCE    = 0x23, //OP_BALANCE <vchAccount> <vchIdentifier> return nBalance
+    OP_EXPIRE     = 0x24, //OP_EXPIRE <nTimestamp> return fExpire
+    OP_CREATE     = 0x25, //OP_CREATE create the tokens
+    //0x25 - 0x2f UNASSIGNED
+
+
+    //joint ownership TODO (I own 50% of this copyright, you own 50%, when a royalty transaction hits, disperse to accounts)
+    OP_LICENSE    = 0x30, //OP_LICENSE <vchRegAddress>
+    //0x31 - 0x3f UNASSIGNED
+
+
+    //chain state operations
+    OP_HEIGHT     = 0x40, //OP_HEIGHT return nHeight
+    OP_TIMESTAMP  = 0x41, //OP_TIMESTAMP return UnifiedTimestamp()
+    OP_TXID       = 0x42, //OP_TXID return GetHash() - callers transaction hash
+    //0x43 - 0x4f UNASSIGNED
+
+
+    //consensus operations
+    OP_VOTE       = 0x50, //OP_VOTE <vchData> <bool> return fSuccess - vote for or against a memory location (piece of data)
+    OP_REQUIRE    = 0x51, //OP_REQUIRE <boolean expression> return fExpression - require something to be true to evaltue script
+
+    //object register methods TODO: assess how we will handle pointers, current thoughts are through LISP IPv11 database clusters, where TCP/IP address is the pointer reference location (&), so pointers in the contract code will be hashes to represent the address space which can be located through opening up a TCP/IP socket to that reference location and getting the data returned so the network will act like a giant memory bank
+    //OP_METHOD     = 0x50, //OP_METHOD return hashAddress
+    //0x51 - 0x5f UNASSIGNED
+};
+
+
+/** CParameter Class
+ *
+ *  This class is responsible for serializing and deserializing a parameter from the Operations layer to interpret new data or call upon registers.
+ *
+ **/
+class CData
+{
+    /** The length of the parameter data. **/
+    unsigned short nLength;
+
+    /** The byte code of the parameter data. **/
+    std::vector<unsigned char> vchData;
+
+    /** Default Paramter Consturctor. **/
+    CData() : nLength(0) {}
+
+    /** Parameter Constrcutor to set from byte vector. **/
+    CData(std::vector<unsigned char> vchDataIn) : nLength(vchDataIn.size()), vchData(vchDataIn) { }
+
+    IMPLEMENT_SERIALIZE
+    (
+        READWRITE(nLength);
+        READWRITE(FLATDATA(vchData));
+    )
+
+    /** Is NULL Check. **/
+    bool IsNull()
+    {
+        return (nLength == 0 && vchParameter.empty());
+    }
+
+    /** Set NULL Flag. **/
+    void SetNull()
+    {
+        nLength = 0;
+        vchParameter.clear();
+    }
+
+    /** Return the bytes in this data state. */
+    std::vector<unsigned char> bytes() { return vchData; }
+
+
+    /** Return a 256 bit unsigned int of the data's hash. **/
+    uint256 GetHash() const
+    {
+        return LLC::HASH::SK256(vchData.begin(), vchData.end());
+    }
+};
+
+
+class COperation
+{
+    uint256 hashOwner;
+
+    std::vector<unsigned char> vchOperations;
+
+    //counter to track what operation code we are on
+    unsigned int nIterator = 0;
+
+    COperation(std::vector<unsigned char> vchOperationsIn) : vchOperations(vchOperationsIn) {}
+
+    bool Execute(LLD::RegisterDB& regDB)
+    {
+        CDataStream ssData(vchOperations.begin(), vchOperations.end(), SER_LLD);
+
+        switch(vchOperations[nIterator])
+        {
+            case OP_WRITE:
+
+                /* Get the Address of the Register. */
+                uint256 hashAddress;
+                ssData >> hashAddress;
+
+                /* Read the binary data of the Register. */
+                CStateRegister regState;
+                if(!regDB.Read(hashAddress, regState))
+                    return error("Operation::OP_WRITE : Register Address doewn't exist %s", hashAddress.ToString().c_str());
+
+                /* Check ReadOnly permissions. */
+                if(regState.fReadOnly)
+                    return error("Operation::OP_WRITE : Write operation called on read-only register");
+
+                /* Check that the proper owner is commiting the write. */
+                if(hashOwner != regState.hashOwner)
+                    return error("Operation::OP_WRITE : No write permissions for owner %s", hashOwner.ToString().c_str());
+
+                /* Get the Data of the Register. */
+                CData regData;
+                ssData >> regData;
+
+                /* Check the new data size against register's allocated size. */
+                if(regState.nLength != 0 && regData.bytes().size() != regState.nLength)
+                    return error("Operation::OP_WRITE : New Register State size %u mismatch %u", regData.bytes().size(), regState.nLength);
+
+                regState.SetState(regData.bytes());
+
+                if(!regDB.Write(hashAddress, regState))
+                    return false;
+
+                break;
+
+            case OP_READ:
+
+                uint256 hashAddress;
+                ssData >> hashAddress;
+
+                CStateRegister regState;
+                if(!regDB.Read(hashAddress, regState))
+                    return error("Operation::OP_READ : Register Address %s not found", hashAddress.ToString().c_str());
+
+                //register stake push? or vchRegister data held locally?
+
+                break;
+
+            case OP_REGISTER:
+
+                CData regData;
+                ssData >> regData;
+
+                /* Check that the register doesn't exist yet. */
+                uint256 hashAddress = regData.GetHash(); //the address of a register is the hash of the first state
+                if(regDB.Exists(hashAddress))
+                    return error("Operation::OP_REGISTER : Cannot allocate register of same memory address %s", hashAddress.ToString().c_str());
+
+                /* Set the register's state */
+                CStateRegister regState = CStateRegister();
+                regState.SetState(regData.bytes());
+                regState.hashOwner = hashOwner;
+                regState.SetAddress(hashAddress);
+
+                if(!regDB.Write(hashAddress, regState))
+                    return error("Operation::OP_REGISTER : Failed to write state register %s into register DB", hashAddress.ToString().c_str());
+
+                break;
+
+            case OP_AUTHORIZE:
+
+                uint256 hashToken;
+                ssData >> hashToken;
+
+                //need to have a database of authorized tokens by ID
+                //to obtain authorization you need to request to another node for access to a said System
+                //they will then post the hashToken to their signature Chain
+                //once cleared this needs to relay backa as a push message to the API with the hashToken
+                //on authorized internal system they need to make API request to verify that the token is vaid on the ledger
+
+                break;
+
+            case OP_TRANSFER:
+
+                uint256 hashAddress;
+                ssData >> hashAddress;
+
+                uint256 hashNewOwner;
+                ssData >> hashNewOwner;
+
+                CStateRegister regState;
+                if(!regDB.Read(hashAddress, regState))
+                    return error("Operation::OP_TRANSFER : Invalid register addrewss in register DB");
+
+                if(regState.hashOwner != hashOwner)
+                    return error("Operation::OP_TRANSFER : %s not authorized to transfer register", hashOwner.ToString().c_str());
+
+                regState.hashOwner = hashNewOwner;
+                if(!regDB.Write(hashAddress, regState))
+                    return error("Opeation::OP_TRANSAFER : Failed to write new owner for register");
+
+                break;
+
+
+
+        }
+    }
+}
+
+
+
+
+
 
 class CTritiumTransaction
 {
@@ -371,6 +540,8 @@ class CTritiumTransaction
         /* Verify that the signature is valid. */
         if(!key.Verify(GetHash().GetBytes(), vchSignature))
             return false;
+
+        return true;
     }
 
 };
