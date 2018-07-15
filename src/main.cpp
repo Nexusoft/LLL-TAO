@@ -222,23 +222,6 @@ public:
 
 };
 
-
-class RegisterDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
-{
-    RegisterDB(const char* pszMode="r+") : SectorDatabase("regdb", pszMode) {}
-
-    bool ReadRegister(uint256 address, CStateRegister& regState)
-    {
-        return Read(address, regState);
-    }
-
-    bool WriteRegister(uint256 address, CStateRegister regState)
-    {
-        return Write(address, regState);
-    }
-};
-
-
 //NETF - ADS - Application Development Standard - Document to define new applicaqtion programming interface calls required by developers
 //NETF - NOS - Nexus Operation Standard - Document to define operation needs, formal design, and byte slot, and NETF engineers to develop the CASE statement
 //NETF - ORS - Object Register Standard - Document to define a specific object register for purpose of ADS standards, with NOS standards being capable of supporting methods
@@ -295,7 +278,139 @@ enum
     //object register methods TODO: assess how we will handle pointers, current thoughts are through LISP IPv11 database clusters, where TCP/IP address is the pointer reference location (&), so pointers in the contract code will be hashes to represent the address space which can be located through opening up a TCP/IP socket to that reference location and getting the data returned so the network will act like a giant memory bank
     //OP_METHOD     = 0x50, //OP_METHOD return hashAddress
     //0x51 - 0x5f UNASSIGNED
+
+    OP_METHOD     = 0xff; //OP_METHOD <vchAddress> return <vchData>
 };
+
+
+template<typename TypeObject> class CObjectRegister : public CStateRegister
+{
+public:
+
+    unsigned int nStateEnd; //the binary end of the state bytes
+
+    std::map<uint64, std::vector<unsigned char> > mapMethods; //the byte data of the mothods
+
+    CObjectRegister(TypeObject classObjectIn, std::vector<unsigned char> vchOperations)
+    {
+        CDataStream ssObject;
+        ssObject << classObjectIn;
+        ssObject.insert(ssObject.end(), vchOperations.begin(), vchOperations.end());
+
+        SetState(ssObject);
+    }
+
+    std::vector< uint64 > GetAddresses() //get method addresses
+    {
+        std::vector<uint64> vnAddresses;
+
+        for(auto methods : mapMethods)
+            vnAddresses.push_back(methods.first);
+
+        return vnAddresses;
+    }
+
+    TypeObject GetObject()
+    {
+        TypeObject classObject;
+
+        CDataStrem ssObject(vchState.begin(), vchState.begin() + nStateEnd);
+        ssObject >> classObject;
+
+        return classObject;
+    }
+
+
+    void ParseMethods()
+    {
+        std::vector<unsigned char> vchOperations;
+
+        vchOperations.insert(vchState.begin() + nStateEnd, vchState.end());
+
+        //really bad algorithm I know... TODO log(n) rather than O(n) to parse methods. Keep iterator pointer for method point or make a method class with a length field in it
+        std::vector<unsigned char> vchMethod;
+        for(auto chOP : vchOperations)
+        {
+            if(chOP == OP_METHOD)
+            {
+                //get the address of the method out of the data. uint32
+                //state address method call is hashAddress->uint32
+
+                vchMethods.push_back(vchMethod);
+                vchMethod.clear();
+
+                continue;
+            }
+
+            vchMethod.push_back(chOP);
+        }
+    }
+
+
+    template<typename TypeReturn>
+    TypeReturn Execute(uint64 nAddress, std::vector<unsigned char> vchParameters)
+    {
+        TypeReturn objReturn;
+        objReturn.SetNull(); //all return types must have a virtual TypeReturn
+
+        if(!mapMethods.count(nAddress))
+            return objReturn; //return a null value if the method address was not found
+
+        std::vector<unsigned char> vchMethod = mapMethods[nAddress];
+
+        COperation opCode(vchMethod);
+    }
+};
+
+
+class CAccount
+{
+    std::vector<unsigned char> vchIdentifier;
+
+    uint256 hashAddress;
+
+    uint64 nBalance;
+
+    IMPLEMENT_SERIALIZE
+    (
+        READWRITE(hashAddress);
+        READWRITE(nBalance);
+        READWRITE(FLATDATA(vchIdentifier));
+    )
+
+    CAccount() : hashAddress(0), nBalance(0)
+    {
+
+    }
+
+
+    //TODO: compile this code into operation codes for the NVM
+    bool Debit(uint64 nTotal)
+    {
+        if(nTotal > nBalance)
+            return false;
+
+
+    }
+
+};
+
+class RegisterDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
+{
+    RegisterDB(const char* pszMode="r+") : SectorDatabase("regdb", pszMode) {}
+
+    bool ReadRegister(uint256 address, CStateRegister& regState)
+    {
+        return Read(address, regState);
+    }
+
+    bool WriteRegister(uint256 address, CStateRegister regState)
+    {
+        return Write(address, regState);
+    }
+};
+
+
 
 
 /** CParameter Class
@@ -350,8 +465,6 @@ class CData
 
 class COperation
 {
-    uint256 hashOwner;
-
     std::vector<unsigned char> vchOperations;
 
     //counter to track what operation code we are on
@@ -359,7 +472,7 @@ class COperation
 
     COperation(std::vector<unsigned char> vchOperationsIn) : vchOperations(vchOperationsIn) {}
 
-    bool Execute(LLD::RegisterDB& regDB)
+    bool Execute(LLD::RegisterDB& regDB, uint256 hashOwner)
     {
         CDataStream ssData(vchOperations.begin(), vchOperations.end(), SER_LLD);
 
@@ -468,6 +581,51 @@ class COperation
                 break;
 
 
+            //skip for now
+            case OP_IF:
+
+                break;
+
+            case OP_ELSE:
+
+                break;
+
+            case OP_ENDIF:
+
+                break;
+
+            case OP_NOT:
+
+                break;
+
+            case OP_EQUALS:
+
+                break;
+
+
+            case OP_ACCOUNT:
+
+                break;
+
+            case OP_CREDIT:
+
+                break;
+
+            case OP_DEBIT:
+
+                break;
+
+            case OP_BALANCE:
+
+                break;
+
+            case OP_EXPIRE:
+
+                break;
+
+            case OP_CREATE:
+
+                break;
 
         }
     }
