@@ -1,0 +1,581 @@
+ifeq ($(OS),Windows_NT)
+detected_OS:= Windows
+else ifeq ($(shell uname -s),Darwin)
+	detected_OS:= OSX
+else
+	detected_OS:= Linux
+endif
+
+#Configure for 32/64 Bit
+ifndef 32BIT
+	override 32BIT= 0
+endif
+ifeq (${32BIT}, 1)
+	BUILD_ARCH=x86
+	CXXFLAGS+= -m32
+else
+	BUILD_ARCH=x64
+	CXXFLAGS+= -m64
+endif
+
+
+#Define default LIB and INCLUDE path variables
+ifndef BOOST_LIB_SUFFIX
+	ifeq ($(detected_OS),Windows)
+		BOOST_LIB_SUFFIX= "-mgw73-mt-s-$(BUILD_ARCH)-1_66"
+	endif
+	ifeq ($(detected_OS),OSX)
+		BOOST_LIB_SUFFIX= -mt
+	endif
+	ifeq ($(detected_OS),Linux)
+		BOOST_LIB_SUFFIX=
+	endif
+endif
+ifndef BOOST_LIB_PATH
+	ifeq ($(detected_OS),Windows)
+		BOOST_LIB_PATH= "C:\deps\lib"
+	endif
+	ifeq ($(detected_OS),OSX)
+		BOOST_LIB_PATH= /usr/local/opt/boost/lib
+	endif
+	ifeq ($(detected_OS),Linux)
+		BOOST_LIB_PATH= /usr/lib/x86_64-linux-gnu
+	endif
+endif
+ifndef BOOST_INCLUDE_PATH
+	ifeq ($(detected_OS),Windows)
+		BOOST_INCLUDE_PATH= "C:\deps\include\boost-1_66"
+	endif
+	ifeq ($(detected_OS),OSX)
+		BOOST_INCLUDE_PATH= /usr/local/opt/boost/include
+	endif
+	ifeq ($(detected_OS),Linux)
+		BOOST_INCLUDE_PATH= /usr/include/boost
+	endif
+endif
+ifndef OPENSSL_LIB_PATH
+	ifeq ($(detected_OS),Windows)
+		OPENSSL_LIB_PATH= "C:\deps\lib"
+	endif
+	ifeq ($(detected_OS),OSX)
+		OPENSSL_LIB_PATH= /usr/local/opt/openssl/lib
+	endif
+	ifeq ($(detected_OS),Linux)
+		#Arch Linux Fix
+		ifeq ($(shell uname -r | grep -o ....$), ARCH)
+			OPENSSL_LIB_PATH= /usr/lib/openssl-1.0
+		else
+		OPENSSL_LIB_PATH= /usr/lib/x86_64-linux-gnu
+		endif
+	endif
+endif
+ifndef OPENSSL_INCLUDE_PATH
+	ifeq ($(detected_OS),Windows)
+		OPENSSL_INCLUDE_PATH= "C:\deps\include"
+	endif
+	ifeq ($(detected_OS),OSX)
+		OPENSSL_INCLUDE_PATH= /usr/local/opt/openssl/include
+	endif
+	ifeq ($(detected_OS),Linux)
+		#Arch Linux Fix
+		ifeq ($(shell uname -r | grep -o ....$), ARCH)
+			OPENSSL_INCLUDE_PATH= /usr/include/openssl-1.0
+		else
+			OPENSSL_INCLUDE_PATH= /usr/include/openssl
+		endif
+	endif
+endif
+ifndef BDB_LIB_PATH
+	ifeq ($(detected_OS),Windows)
+		BDB_LIB_PATH= "C:\deps\lib"
+	endif
+	ifeq ($(detected_OS),OSX)
+		BDB_LIB_PATH= /usr/local/opt/db/lib
+	endif
+	ifeq ($(detected_OS),Linux)
+		BDB_LIB_PATH= /usr/lib/x86_64-linux-gnu
+	endif
+endif
+ifndef BDB_INCLUDE_PATH
+	ifeq ($(detected_OS),Windows)
+		BDB_INCLUDE_PATH= "C:\deps\include"
+	endif
+	ifeq ($(detected_OS),OSX)
+		BDB_INCLUDE_PATH= /usr/local/opt/db/include
+	endif
+	ifeq ($(detected_OS),Linux)
+		BDB_INCLUDE_PATH= /usr/include
+	endif
+endif
+ifndef MINIUPNPC_LIB_PATH
+	ifeq ($(detected_OS),Windows)
+		MINIUPNPC_LIB_PATH= "C:\deps\lib"
+	endif
+	ifeq ($(detected_OS),OSX)
+		MINIUPNPC_LIB_PATH= /usr/local/opt/miniupnpc/lib
+	endif
+	ifeq ($(detected_OS),Linux)
+		MINIUPNPC_LIB_PATH= /usr/local/opt/miniupnpc/lib
+	endif
+endif
+ifndef MINIUPNPC_INCLUDE_PATH
+	ifeq ($(detected_OS),Windows)
+		MINIUPNPC_INCLUDE_PATH= "C:\deps\include"
+	endif
+	ifeq ($(detected_OS),OSX)
+		MINIUPNPC_INCLUDE_PATH= /usr/local/opt/miniupnpc/include
+	endif
+	ifeq ($(detected_OS),Linux)
+		MINIUPNPC_INCLUDE_PATH= /usr/lib/x86_64-linux-gnu
+	endif
+endif
+
+#UPNP Support Config
+ifndef NO_UPNP
+	override NO_UPNP= 0
+endif
+ifneq (${NO_UPNP}, 1)
+	INCLUDEPATHS+= -I$(MINIUPNPC_INCLUDE_PATH)
+	LIBPATHS+= -L$(MINIUPNPC_LIB_PATH)
+	ifneq ($(detected_OS),OSX)
+		LIBS+= -lminiupnpc
+	endif
+	ifeq ($(detected_OS),OSX)
+		LIBS+= $(MINIUPNPC_LIB_PATH)/libminiupnpc.a
+	endif
+	ifeq ($(detected_OS),Windows)
+		LIBS+= -l iphlpapi
+	endif
+	DEFS+= -DMINIUPNP_STATICLIB -DUSE_UPNP=1
+endif
+
+#Oracle DB Support Config
+ifndef ORACLE
+	override ORACLE= 0
+endif
+ifneq (${ORACLE}, 1)
+	DEFS+= -DUSE_LLD
+endif
+
+#Configure Build Environment
+ifneq ($(detected_OS),Windows)
+INCLUDEPATHS+= $(addprefix -I,$(CURDIR) $(CURDIR)/build $(CURDIR)/src $(CURDIR)/src/core $(CURDIR)/src/hash $(CURDIR)/src/json $(CURDIR)/src/json $(CURDIR)/src/LLP $(CURDIR)/src/LLD $(CURDIR)/src/net $(CURDIR)/src/util $(CURDIR)/src/wallet) \
+	-I$(BDB_INCLUDE_PATH) \
+	-I$(BOOST_INCLUDE_PATH) \
+	-I$(OPENSSL_INCLUDE_PATH)
+endif
+ifeq ($(detected_OS),Windows)
+INCLUDEPATHS+= -I"$(CURDIR)" -I"$(CURDIR)/build" -I"$(CURDIR)/src" -I"$(CURDIR)/src/core" -I"$(CURDIR)/src/hash" -I"$(CURDIR)/src/json" -I"$(CURDIR)/src/json" -I"$(CURDIR)/src/LLP" -I"$(CURDIR)/src/LLD" -I"$(CURDIR)/src/net" -I"$(CURDIR)/src/util" -I"$(CURDIR)/src/wallet" \
+	-I$(BDB_INCLUDE_PATH) \
+	-I$(BOOST_INCLUDE_PATH) \
+	-I$(OPENSSL_INCLUDE_PATH)
+endif
+LIBPATHS+= -L$(BOOST_LIB_PATH) \
+	-L$(BDB_LIB_PATH) \
+	-L$(OPENSSL_LIB_PATH)
+ifneq ($(detected_OS),OSX)
+LIBS+=-lboost_system$(BOOST_LIB_SUFFIX) \
+	-lboost_filesystem$(BOOST_LIB_SUFFIX) \
+	-lboost_program_options$(BOOST_LIB_SUFFIX) \
+	-lboost_thread$(BOOST_LIB_SUFFIX) \
+	-ldb_cxx \
+	-lssl \
+	-lcrypto
+endif
+DEFS+=  -DBOOST_SPIRIT_THREADSAFE \
+	-DBOOST_NO_CXX11_SCOPED_ENUMS \
+	-D$(BUILD_ARCH)
+
+#Display Warnings while compiling
+ifdef ENABLE_WARNINGS
+	CXXFLAGS+= -Wall -Wextra -Wno-sign-compare -Wno-invalid-offsetof -Wno-unused-parameter -Wformat -Wformat-security
+else
+	CXXFLAGS+= -w
+endif
+
+#Display Warnings while compiling
+ifdef ENABLE_DEBUG
+	DEBUG+=-g
+else
+	DEBUG+=-s
+endif
+
+#Source File List
+HEADERS= $(wildcard *.h)
+OBJS= build/version.o \
+	build/netbase.o \
+	build/addrman.o \
+	build/crypter.o \
+	build/key.o \
+	build/db.o \
+	build/main.o \
+	build/keystore.o \
+	build/difficulty.o \
+	build/checkpoints.o \
+	build/net.o \
+	build/protocol.o \
+	build/unifiedtime.o \
+	build/rpcserver.o \
+	build/rpcdump.o \
+	build/script.o \
+	build/util.o \
+	build/mining.o \
+	build/wallet.o \
+	build/walletdb.o \
+	build/noui.o \
+	build/kernel.o \
+	build/debug.o \
+	build/prime.o \
+	build/skein.o \
+	build/skein_block.o \
+	build/KeccakDuplex.o \
+	build/KeccakSponge.o \
+	build/Keccak-compact64.o \
+	build/KeccakHash.o \
+	build/release.o \
+	build/block.o \
+	build/dispatch.o \
+	build/message.o \
+	build/transaction.o \
+	build/global.o \
+	build/keychain.o \
+	build/index.o
+
+###############################################################################
+ifeq ($(detected_OS),Windows)
+
+#Configure OS Specific Compiler Output
+ifndef VERBOSE
+	CXX= @echo Compiling $< && g++
+else
+	CXX= g++
+endif
+
+#Configure OS Specific Build Environment
+LIBS+= -l kernel32 \
+	-l user32 \
+	-l gdi32 \
+	-l comdlg32 \
+	-l winspool \
+	-l winmm \
+	-l shell32 \
+	-l comctl32 \
+	-l ole32 \
+	-l oleaut32 \
+	-l uuid \
+	-l rpcrt4 \
+	-l advapi32 \
+	-l ws2_32 \
+	-l shlwapi
+DEFS+= -DWIN32 \
+	-D_WINDOWS \
+	-DBOOST_THREAD_USE_LIB \
+	-DBOOST_ASIO_ENABLE_OLD_SERVICES
+
+#OS Specific Compiler Flags
+CXXFLAGS+= -mthreads \
+	-static \
+	-static-libgcc \
+	-static-libstdc++ \
+	-O3 \
+	$(DEBUG) \
+	$(DEFS) \
+	$(INCLUDEPATHS)
+
+#set -std=c++ for all but c compiling
+CFLAGS:= $(CXXFLAGS)
+CXXFLAGS+=-std=c++11
+
+#OS Specific Targets and instructions
+all: release/nexus.exe
+
+build/%.o: ./src/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/%.o: ./src/core/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/%.o: ./src/hash/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/%.o: ./src/hash/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -o $@ $<
+
+build/%.o: ./src/keys/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/%.o: ./src/LLP/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/%.o: ./src/LLD/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/%.o: ./src/net/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/%.o: ./src/util/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/%.o: ./src/wallet/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+release/nexus.exe: $(OBJS:build/%=build/%)
+	$(CXX) $(CXXFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
+	@echo " "
+	@echo Finished building nexus.exe
+	@echo " "
+
+clean:
+	-rm -f release\nexus.exe
+	-rm -f build/*.o
+	-rm -f build/*.P
+	-rm -f src/build.h
+
+endif
+###############################################################################
+ifeq ($(detected_OS),OSX)
+
+#Configure OS Specific Compiler Output
+ifndef VERBOSE
+	CXX= @echo Compiling $< && llvm-g++
+else
+	CXX= llvm-g++
+endif
+
+#Configure OS Specific Build Environment
+DEFS+= -DMAC_OSX \
+	-DMSG_NOSIGNAL=0 \
+	-DBOOST_SPIRIT_THREADSAFE
+LIBS+= $(BOOST_LIB_PATH)/libboost_system-mt.a \
+	$(BOOST_LIB_PATH)/libboost_filesystem-mt.a \
+	$(BOOST_LIB_PATH)/libboost_program_options-mt.a \
+	$(BOOST_LIB_PATH)/libboost_thread-mt.a \
+	$(BDB_LIB_PATH)/libdb_cxx.a \
+	$(OPENSSL_LIB_PATH)/libssl.a \
+	$(OPENSSL_LIB_PATH)/libcrypto.a
+
+
+
+#OS Specific Compiler Flags
+CXXFLAGS+= -mmacosx-version-min=10.10 \
+	-O3 \
+	$(DEFS) \
+	$(INCLUDEPATHS)
+
+#set -std=c++ for all but c compiling
+CFLAGS:= $(CXXFLAGS)
+CXXFLAGS+=-std=c++11
+
+#OS Specific Targets and instructions
+all: nexus
+
+build/%.o: src/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/core/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/hash/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/hash/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/json/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/LLD/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/LLP/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/net/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/util/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/wallet/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+nexus: $(OBJS:build/%=build/%)
+	$(CXX) $(CXXFLAGS) -dead_strip -o $@ $(LIBPATHS) $^ $(LIBS)
+	@echo ' '
+	@echo Finished building nexus
+	@echo ' '
+
+clean:
+	-rm -f nexus
+	-rm -f build/*.o
+	-rm -f build/*.P
+	-rm -f src/build.h
+
+endif
+###############################################################################
+ifeq ($(detected_OS),Linux)
+
+#Configure OS Specific Compiler Output
+ifndef VERBOSE
+CXX= @echo Compiling $< && g++
+else
+CXX= g++
+endif
+
+#Configure OS Specific Build Environment
+LIBS+= -Wl,-Bdynamic \
+	-lz \
+	-ldl \
+	-lpthread
+
+#Arch Linux Fix
+ifeq ($(shell uname -r | grep -o ....$), ARCH)
+	TMPLIBS := $(LIBS)
+	LIBS= $(filter-out -lssl -lcrypto,$(TMPLIBS))
+	LIBS+= /usr/lib/openssl-1.0/libssl.so \
+		/usr/lib/openssl-1.0/libcrypto.so
+endif
+
+#OS Specific Compiler Flags
+CXXFLAGS+= -O3 \
+	-pthread \
+	-fstack-protector \
+	-D_FORTIFY_SOURCE=2 \
+	-Wl,-z,relro \
+	-Wl,-z,now \
+	$(DEBUG) \
+	$(DEFS) \
+	$(INCLUDEPATHS)
+
+#set -std=c++ for all but c compiling
+CFLAGS:= $(CXXFLAGS)
+CXXFLAGS+=-std=c++11
+
+#OS Specific Targets and instructions
+all: nexus
+
+build/%.o: src/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/core/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/hash/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -MMD -x c -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/hash/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/json/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/LLP/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/LLD/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/net/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/util/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/wallet/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -fpermissive -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+
+nexus: $(OBJS:obj/%=build/%)
+	$(CXX) $(CXXFLAGS) -rdynamic -o $@ $^ $(LDFLAGS) $(LIBS)
+	@echo ' '
+	@echo Finished building nexus
+	@echo ' '
+
+clean:
+	-rm -f nexus
+	-rm -f build/*.o
+	-rm -f build/*.P
+	-rm -f src/build.h
+
+endif
+###############################################################################
