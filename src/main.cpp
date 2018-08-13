@@ -383,16 +383,6 @@ class CAccount
 
     }
 
-
-    //TODO: compile this code into operation codes for the NVM
-    bool Debit(uint64 nTotal)
-    {
-        if(nTotal > nBalance)
-            return false;
-
-
-    }
-
 };
 
 class RegisterDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
