@@ -202,44 +202,23 @@ endif
 
 #Source File List
 HEADERS= $(wildcard *.h)
-OBJS= build/version.o \
-	build/netbase.o \
-	build/addrman.o \
-	build/crypter.o \
-	build/key.o \
-	build/db.o \
+OBJS= \
 	build/main.o \
-	build/keystore.o \
-	build/difficulty.o \
-	build/checkpoints.o \
-	build/net.o \
-	build/protocol.o \
-	build/unifiedtime.o \
-	build/rpcserver.o \
-	build/rpcdump.o \
-	build/script.o \
-	build/util.o \
-	build/mining.o \
-	build/wallet.o \
-	build/walletdb.o \
-	build/noui.o \
-	build/kernel.o \
-	build/debug.o \
-	build/prime.o \
 	build/skein.o \
 	build/skein_block.o \
 	build/KeccakDuplex.o \
 	build/KeccakSponge.o \
 	build/Keccak-compact64.o \
 	build/KeccakHash.o \
-	build/release.o \
-	build/block.o \
-	build/dispatch.o \
-	build/message.o \
-	build/transaction.o \
-	build/global.o \
-	build/keychain.o \
-	build/index.o
+	build/random.o \
+	build/key.o \
+	build/network.o \
+	build/hosts.o \
+	build/args.o \
+	build/config.o \
+	build/network.o \
+	build/hosts.o \
+	build/debug.o
 
 ###############################################################################
 ifeq ($(detected_OS),Windows)
@@ -287,7 +266,7 @@ CFLAGS:= $(CXXFLAGS)
 CXXFLAGS+=-std=c++11
 
 #OS Specific Targets and instructions
-all: release/nexus.exe
+all: release/tritium.exe
 
 build/%.o: ./src/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
@@ -326,7 +305,7 @@ release/nexus.exe: $(OBJS:build/%=build/%)
 	@echo " "
 
 clean:
-	-rm -f release\nexus.exe
+	-rm -f release\tritium.exe
 	-rm -f build/*.o
 	-rm -f build/*.P
 	-rm -f src/build.h
