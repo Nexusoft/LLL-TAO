@@ -38,9 +38,6 @@ namespace TAO
             int nVersion;
 
 
-            /** The ID of the global signature chain. May not include this in the transaciton payload.**/
-            uint256 hashID;
-
             /** The nextHash which can claim the signature chain. */
             uint256 hashNext;
 
