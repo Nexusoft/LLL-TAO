@@ -1,23 +1,27 @@
 /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
-            
+
             (c) Copyright The Nexus Developers 2014 - 2017
-            
+
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
-            
+
             "fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_OPERATION_INCLUDE_DATA_H
-#define NEXUS_TAO_OPERATION_INCLUDE_DATA_H
+#ifndef NEXUS_TAO_LEDGER_TYPES_INCLUDE_DATA_H
+#define NEXUS_TAO_LEDGER_TYPES_INCLUDE_DATA_H
+
+#include <vector>
+
+#include "../../../../Util/templates/serialize.h"
 
 namespace TAO
 {
 
-    namespace Operation
+    namespace Ledger
     {
 
         /** CData Class
