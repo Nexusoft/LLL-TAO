@@ -1,12 +1,12 @@
 /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
-            
+
             (c) Copyright The Nexus Developers 2014 - 2017
-            
+
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
-            
+
             "fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
 
 ____________________________________________________________________________________________*/
@@ -15,12 +15,15 @@ ________________________________________________________________________________
 #define NEXUS_TAO_REGISTER_INCLUDE_STATE_H
 
 
+#include "../../../Util/templates/serialize.h"
+
+
 namespace TAO
 {
 
     namespace Register
     {
-        
+
         class CStateRegister
         {
         public:
@@ -51,7 +54,7 @@ namespace TAO
 
             /** The chechsum of the state register for use in pruning. */
             uint64 hashChecksum;
-            
+
 
 
             IMPLEMENT_SERIALIZE
@@ -64,6 +67,7 @@ namespace TAO
                 READWRITE(hashOwner);
 
                 //checksum hash only seriazlied
+                //TODO: clean up this logic
                 if(!(nType & SER_REGISTER_PRUNED))
                     READWRITE(hashChecksum);
             )
@@ -93,8 +97,7 @@ namespace TAO
                 nVersion = 1;
                 hashAddress = 0;
                 nLength   = 0;
-                vchState.size() == 0;
-                hashChecksum == 0;
+                hashChecksum = 0;
             }
 
 
@@ -143,7 +146,7 @@ namespace TAO
             }
 
         };
-    
+
     }
 
 }

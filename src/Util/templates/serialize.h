@@ -1,12 +1,12 @@
 /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
-            
+
             (c) Copyright The Nexus Developers 2014 - 2017
-            
+
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
-            
+
             "fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
 
 ____________________________________________________________________________________________*/
@@ -68,7 +68,7 @@ enum
     SER_NETWORK         = (1 << 0),
     SER_DISK            = (1 << 1),
     SER_GETHASH         = (1 << 2),
-    
+
     // LLD actions
     SER_LLD             = (1 << 3),
     SER_LLD_KEY_HEADER  = (1 << 4),
@@ -76,9 +76,12 @@ enum
     // modifiers
     SER_SKIPSIG         = (1 << 16),
     SER_BLOCKHEADERONLY = (1 << 17),
-    
+
     // LLP actions
-    SER_LLP_HEADER_ONLY = (1 << 30),
+    SER_LLP_HEADER_ONLY = (1 << 20),
+
+    //Register actions
+    SER_REGISTER_PRUNED = (1 << 21)
 };
 
 
@@ -853,7 +856,7 @@ public:
     }
 
 /* Fix for MaxOSX Compatability for XCode and Deployment 10.10. */
-#if !defined(MAC_OSX) 
+#if !defined(MAC_OSX)
     void insert(iterator it, std::vector<char>::const_iterator first, std::vector<char>::const_iterator last)
     {
         if (it == vch.begin() + nReadPos && last - first <= nReadPos)
