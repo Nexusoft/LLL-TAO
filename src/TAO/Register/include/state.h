@@ -68,8 +68,8 @@ namespace TAO
 
                 //checksum hash only seriazlied
                 //TODO: clean up this logic
-                if(!(nType & SER_REGISTER_PRUNED))
-                    READWRITE(hashChecksum);
+                //if(!(nType & SER_REGISTER_PRUNED))
+                READWRITE(hashChecksum);
             )
 
 
