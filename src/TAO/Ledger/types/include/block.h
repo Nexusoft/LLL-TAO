@@ -352,30 +352,15 @@ namespace TAO
 				READWRITE(nReleasedReserve[1]);
 				READWRITE(nReleasedReserve[2]);
 				READWRITE(hashCheckpoint);
-				READWRITE(hashNextBlock);
+
+				//for disk operations only
+				//READWRITE(hashNextBlock);
 			)
 
 
 			CBlockState() : nChainTrust(0), nMoneySupply(0), nChannelHeight(0), nReleasedReserve(0, 0, 0), hashCheckpoint(0), fConnected(false) { SetNull(); }
 
 			CBlockState(CBlock blk) : CBlock(blk), nChainTrust(0), nMoneySupply(0), nChannelHeight(0), nReleasedReserve(0, 0, 0), hashCheckpoint(0), fConnected(false) { }
-
-
-	        /* Get the block header. */
-	        CBlock GetHeader() const
-	        {
-	            CBlock block;
-	            block.nVersion       = nVersion;
-	            block.hashPrevBlock  = hashPrevBlock;
-	            block.hashMerkleRoot = hashMerkleRoot;
-	            block.nChannel       = nChannel;
-	            block.nHeight        = nHeight;
-	            block.nBits          = nBits;
-	            block.nNonce         = nNonce;
-	            block.nTime          = nTime;
-
-	            return block;
-	        }
 
 
 	        /* Function to determine if this block has been connected into the main chain. */
@@ -414,93 +399,88 @@ namespace TAO
 	        void print() const;
 		};
 
+
+		/** DEPRECATED:
+		 *
+		 * Describes a place in the block chain to another node such that if the
+		 * other node doesn't have the same branch, it can find a recent common trunk.
+		 * The further back it is, the further before the fork it may be.
+		 */
+		class CBlockLocator
+		{
+		protected:
+			std::vector<uint1024> vHave;
+
+		public:
+
+			IMPLEMENT_SERIALIZE
+			(
+				if (!(nType & SER_GETHASH))
+					READWRITE(nVersion);
+				READWRITE(vHave);
+			)
+
+			CBlockLocator()
+			{
+			}
+
+			explicit CBlockLocator(const CBlockIndex* pindex)
+			{
+				Set(pindex);
+			}
+
+			explicit CBlockLocator(uint1024 hashBlock)
+			{
+				std::map<uint1024, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashBlock);
+				if (mi != mapBlockIndex.end())
+					Set((*mi).second);
+			}
+
+
+			/* Set by List of Vectors. */
+			CBlockLocator(const std::vector<uint1024>& vHaveIn)
+			{
+				vHave = vHaveIn;
+			}
+
+
+			/* Set the State of Object to NULL. */
+			void SetNull()
+			{
+				vHave.clear();
+			}
+
+
+			/* Check the State of Object as NULL. */
+			bool IsNull()
+			{
+				return vHave.empty();
+			}
+
+
+			/* Set from Block Index Object. */
+			void Set(const CBlockIndex* pindex);
+
+
+			/* Find the total blocks back locator determined. */
+			int GetDistanceBack();
+
+
+			/* Get the Index object stored in Locator. */
+			CBlockIndex* GetBlockIndex();
+
+
+			/* Get the hash of block. */
+			uint1024 GetBlockHash();
+
+
+			/* bdg note: GetHeight is never used. */
+			/* Get the Height of the Locator. */
+			int GetHeight();
+
+		};
+
 	}
-
-}
-
-
-
-
-	/** DEPRECATED:
-	 *
-	 * Describes a place in the block chain to another node such that if the
-	 * other node doesn't have the same branch, it can find a recent common trunk.
-	 * The further back it is, the further before the fork it may be.
-	 */
-	class CBlockLocator
-	{
-	protected:
-		std::vector<uint1024> vHave;
-
-	public:
-
-		IMPLEMENT_SERIALIZE
-		(
-			if (!(nType & SER_GETHASH))
-				READWRITE(nVersion);
-			READWRITE(vHave);
-		)
-
-		CBlockLocator()
-		{
-		}
-
-		explicit CBlockLocator(const CBlockIndex* pindex)
-		{
-			Set(pindex);
-		}
-
-		explicit CBlockLocator(uint1024 hashBlock)
-		{
-			std::map<uint1024, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashBlock);
-			if (mi != mapBlockIndex.end())
-				Set((*mi).second);
-		}
-
-
-		/* Set by List of Vectors. */
-		CBlockLocator(const std::vector<uint1024>& vHaveIn)
-		{
-			vHave = vHaveIn;
-		}
-
-
-		/* Set the State of Object to NULL. */
-		void SetNull()
-		{
-			vHave.clear();
-		}
-
-
-		/* Check the State of Object as NULL. */
-		bool IsNull()
-		{
-			return vHave.empty();
-		}
-
-
-		/* Set from Block Index Object. */
-		void Set(const CBlockIndex* pindex);
-
-
-		/* Find the total blocks back locator determined. */
-		int GetDistanceBack();
-
-
-		/* Get the Index object stored in Locator. */
-		CBlockIndex* GetBlockIndex();
-
-
-		/* Get the hash of block. */
-		uint1024 GetBlockHash();
-
-
-		/* bdg note: GetHeight is never used. */
-		/* Get the Height of the Locator. */
-		int GetHeight();
-
-	};
-
 
 }
 
