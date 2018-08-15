@@ -34,17 +34,31 @@ namespace TAO
         class CTritiumTransaction
         {
 
+            /** The transaction version. **/
             int nVersion;
 
+
+            /** The ID of the global signature chain. May not include this in the transaciton payload.**/
+            uint256 hashID;
+
+            /** The nextHash which can claim the signature chain. */
             uint256 hashNext;
 
+            /** The data to be recorded in the ledger. **/
             CData vchLedgerData;
 
-
-            //memory only
+            //memory only, to be disposed once fully locked into the chain behind a checkpoints
+            //this is for the segregated keys from transaction data.
             std::vector<unsigned char> vchPubKey;
-
             std::vector<unsigned char> vchSig;
+
+            IMPLEMENT_SERIALIZE
+            (
+                READWRITE(nVersion);
+                READWRITE(hashID);
+                READWRITE(hashNext);
+                REACWRITE(vchLedgerData);
+            )
 
             bool IsValid()
             {
