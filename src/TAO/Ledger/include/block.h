@@ -33,13 +33,6 @@ namespace TAO
         bool CheckDiskSpace(uint64 nAdditionalBytes = 0);
 
 
-        /* DEPRECATED: Find the block from file and binary position (blk0001.dat), */
-        FILE* OpenBlockFile(unsigned int nFile, unsigned int nBlockPos, const char* pszMode);
-
-
-        /* DEPRECATED: Add a block to the block file and binary position (blk0001.dat). */
-        FILE* AppendBlockFile(unsigned int& nFileRet);
-
 
         /* DEPRECATED: Load the Genesis and other blocks from the BDB/LLD Indexes. */
         bool LoadBlockIndex(bool fAllowNew = true);
