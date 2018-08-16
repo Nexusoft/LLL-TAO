@@ -1,0 +1,84 @@
+#
+# lispers.net lisp.config file, last changed: Fri Jan  5 04:51:30 UTC 2018
+#    
+# Hostname: <sample>
+#
+# (1) Only commands between the first pair of dotted lines will be processed. 
+#
+# (2) Any lines you find prepended with "#>>>" are errors found during command 
+#     processing.
+#
+# (3) You may comment out lines by placing a "#" in the first column of any 
+#     line between the section between the first pair of dotted lines.
+#
+# (4) Note the modification timestamp above is auto generated after you have 
+#     saved this file and it has been processed.
+#
+# (5) Deleting configuration can be achieved by deleting lines and restarting
+#     the LISP component or by use of the LISP API.
+#
+# (6) The landing web page on any device provides detailed Command and API
+#     documentation.
+#
+# (7) Any name references must follow their definitions. Examples are 
+#     elp-names and rle-names when referred to in static map-cache entries.
+#
+# DO NOT WRITE TO ANY OTHER PART OF THIS FILE. YOU MUST ONLY ADD, CHANGE, OR
+# REMOVE LINES BETWEEN THE FIRST PAIR OF DOTTED LINES SECTION.
+#
+#-----------------------------------------------------------------------------
+lisp enable {
+    itr = yes
+    etr = yes
+    rtr = no
+    map-server = no
+    map-resolver = no
+    ddt-node = no
+}
+lisp debug {
+    etr = no
+    core = no
+    map-resolver = no
+    ddt-node = no
+    rtr = no
+    map-server = no
+    itr = no
+}
+lisp user-account {
+    username = root
+    password = 
+    super-user = yes
+}
+lisp xtr-parameters {
+    rloc-probing = yes
+    data-plane-security = no
+    nat-traversal = yes
+    nonce-echoing = no
+    data-plane-logging = no
+    flow-logging = no
+}
+lisp map-resolver {
+    dns-name = g-ms2.lispers.net
+}
+lisp map-server {
+    dns-name = g-ms2.lispers.net
+    authentication-key = colin
+}
+lisp database-mapping {
+    prefix {
+        instance-id = <iid>
+        eid-prefix = <v4-eid>/32
+    }
+    prefix {
+        instance-id = <iid>
+        eid-prefix = <v6-eid>/128
+    }
+    rloc {
+        interface = eth0
+    }
+}
+lisp group-mapping {
+    group-name = ipv4-multicast
+    instance-id = <iid>
+    group-prefix = 224.0.0.0/8
+}

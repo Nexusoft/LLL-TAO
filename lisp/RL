@@ -1,0 +1,59 @@
+#!/bin/tcsh
+#
+# RL - Restart LISP Wrapper Script
+#
+# Nexus/LISP wrapper script to start the lispers.net LISP subsystem. The
+# lisp.config configuration file will be provisioned with parameters in
+# variables at the top of this file.
+#
+#------------------------------------------------------------------------------
+
+#set random
+
+#
+# If you want to configure specific EIDs, do so here. Otherwise, random EIDs
+# will be allocated in 240.0.0.0/8 fd::/8 prefixes which will register in
+# instance-ID 0.
+#
+if ($?random) then
+else
+    set iid = 1537
+    set v4_eid = 240.0.255.255
+    set v6_eid = fd::fd
+endif    
+set hostname = `hostname`
+
+#
+# Provision instance-id and EIDs if not already provisioned.
+#
+egrep "<iid>" lisp.config >& /dev/null
+if ($status != 1) then
+    echo "Provisioning lisp.config file with EIDs [$iid]$v4_eid &" \
+        "[$iid]$v6_eid"
+    cat lisp.config.xtr | sed "s/<sample>/$hostname/" > lisp.config.bak
+    cat lisp.config.bak | sed "s/<iid>/$iid/" > lisp.config
+    cat lisp.config | sed "s/<v4-eid>/$v4_eid/" > lisp.config.bak
+    cat lisp.config.bak | sed "s/<v6-eid>/$v6_eid/" > lisp.config
+    rm lisp.config.bak
+else
+    echo "lisp.config file already provisioned"
+endif
+
+#
+# Configure EID on interface lo.
+#
+sudo ip addr add $v4_eid/32 dev lo >& /dev/null
+sudo ip addr add $v6_eid/128 dev lo >& /dev/null
+
+#
+# Have packets to EIDs and multicast groups get sourced from EIDs.
+#
+sudo ip route add 240.0.0.0/8 dev lo src $v4_eid
+sudo ip route add 224.0.0.0/4 dev lo src $v4_eid
+sudo ip route add fd::/8 dev lo src $v6_eid
+sudo ip route add ff::/8 dev lo src $v6_eid
+
+#
+# Start LISP up.
+#
+/lispers.net/RESTART-LISP 8080 eth0
