@@ -1,0 +1,5 @@
+#!/bin/bash
+#
+# Launch nexus daemon. 
+#
+/nexus/nexus -printtoconsole -verbose=2 -lispnet -istimeseed > /nexus/nexus.log &
