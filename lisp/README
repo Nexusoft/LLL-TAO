@@ -1,0 +1,45 @@
+
+                             lispers.net
+                             -----------
+
+This repository contains the world's most feature-rich implementation of the
+Locator/ID Separation Protocol (LISP). The implementation runs on the 
+following OS platforms:
+
+    Ubuntu, Debian, Centos, MacOS
+    Raspbian, Alpine Linux
+    Docker (running guest-OS Ubuntu, Debian, or Centos)
+
+The lispers.net implementation supports the following IETF LISP Working Group
+created RFCs and Internet-Drafts:
+
+RFC 6830 - The Locator/ID Separation Protocol (LISP)
+RFC 6831 - The Locator/ID Separation Protocol (LISP) for Multicast Environments
+RFC 6832 - Interworking between Locator/ID Separation Protocol (LISP) and Non-LISP Sites
+RFC 6833 - Locator/ID Separation Protocol (LISP) Map-Server Interface
+RFC 6835 - The Locator/ID Separation Protocol Internet Groper (LIG)
+RFC 7954 - Locator/ID Separation Protocol (LISP) Endpoint Identifier (EID) Block
+RFC 8060 - LISP Canonical Address Format (LCAF)
+RFC 8061 - Locator/ID Separation Protocol (LISP) Data-Plane Confidentiality
+RFC 8111 - Locator/ID Separation Protocol Delegated Database Tree (LISP-DDT)
+RFC 8112 - Locator/ID Separation Protocol Delegated Database Tree (LISP-DDT) Referral Internet Groper (RIG)
+RFC 8378 - Signal-Free Locator/ID Separation Protocol (LISP) Multicast
+RFC 8439 - ChaCha20 and Poly1305 for IETF Protocols    
+
+draft-ietf-lisp-rfc6830bis - The Locator/ID Separation Protocol (LISP)
+draft-ietf-lisp-rfc6833bis - Locator/ID Separation Protocol (LISP) Control-Plane
+draft-ietf-lisp-eid-anonymity - LISP EID Anonymity
+draft-ietf-lisp-eid-mobility - LISP L2/L3 EID Mobility Using a Unified Control Plane
+draft-ietf-lisp-mn - LISP Mobile Node
+draft-ietf-lisp-predictive-rlocs - LISP Predictive RLOCs
+draft-ietf-lisp-te - LISP Traffic Engineering Use-Cases
+draft-ietf-lisp-vpn - LISP Virtual Private Networks (VPNs)
+draft-ietf-lisp-pubsub - Publish/Subscribe Functionality for LISP
+draft-ermagan-lisp-nat-traversal - NAT traversal for LISP
+draft-farinacci-lisp-geo - LISP Geo-Coordinate Use-Cases
+draft-farinacci-lisp-name-encoding - LISP Distinguished Name Encoding
+draft-farinacci-lisp-ecdsa-auth - LISP Control-Plane ECDSA Authentication and Authorization
+draft-farinacci-lisp-mobile-network - LISP for the Mobile Network
+draft-farinacci-lisp-decent - A Decent LISP Mapping System (LISP-Decent)
+
+-------------------------------------------------------------------------------
