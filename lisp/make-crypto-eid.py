@@ -4,7 +4,7 @@
 #
 # This program creates a IPv6 crypto-EID. It performs the following functions:
 #
-# (1) Generates a key-pair. Writes private key to lisp-cert.pem in current
+# (1) Generates a key-pair. Writes private key to lisp-sig.pem in current
 #     directory.
 # (2) Creates a file named "lisp.config.include" in the current directory that
 #     contains two "lisp database-mapping" commands. One for the crypto-EID
