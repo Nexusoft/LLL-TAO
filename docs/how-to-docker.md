@@ -41,7 +41,7 @@ You should see a container named "nexus"
 
     https://localhost:9999/lisp
 
-Note if port numnber 9999 is used by another application on your system,
+Note if port number 9999 is used by another application on your system,
 just choose another port number on the "docker run" command.
 
 When the container is started, the Nexus daemon and the LISP subsystem will
