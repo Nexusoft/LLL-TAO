@@ -2,9 +2,12 @@
                              lispers.net
                              -----------
 
-This repository contains the world's most feature-rich implementation of the
-Locator/ID Separation Protocol (LISP). The implementation runs on the 
-following OS platforms:
+This directory contains the world's most feature-rich implementation of
+the Locator/ID Separation Protocol (LISP). For more information, go to
+http://www.lispers.net. For questions, comments, or support, send email
+to support@lispers.net.
+
+The implementation runs on the following OS platforms:
 
     Ubuntu, Debian, Centos, MacOS
     Raspbian, Alpine Linux
