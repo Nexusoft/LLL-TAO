@@ -173,10 +173,10 @@ OBJS= \
 	build/key.o \
 	build/network.o \
 	build/hosts.o \
+	build/inv.o\
+	build/legacy.o \
 	build/args.o \
 	build/config.o \
-	build/network.o \
-	build/hosts.o \
 	build/debug.o
 
 ###############################################################################

@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <vector>
 
 #include "network.h"
+#include "version.h"
 
 #include "../templates/types.h"
 

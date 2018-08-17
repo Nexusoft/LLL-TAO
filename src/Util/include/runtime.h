@@ -30,7 +30,7 @@ typedef boost::thread                                        Thread_t;
 
 
 /* The location of the unified time seed. To enable a Unified Time System push data to this variable. */
-int UNIFIED_AVERAGE_OFFSET = 0;
+static int UNIFIED_AVERAGE_OFFSET = 0;
 
 
 /* Return the Current UNIX Timestamp. */
