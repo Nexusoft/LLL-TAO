@@ -71,6 +71,8 @@ int main(int argc, char** argv)
 
     SERVER->AddConnection("104.192.170.130", "9323");
     SERVER->AddConnection("104.192.169.10",  "9323");
+    SERVER->AddConnection("104.192.170.30",  "9323");
+    SERVER->AddConnection("96.43.131.82",    "9323");
 
     while(true)
     {
