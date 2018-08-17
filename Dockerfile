@@ -1,8 +1,8 @@
 # 
-# Build Nexus/LISP docker image based on a Debian Linux kernel. This is for
+# Build Nexus/LISP docker image based on a Debian Linux kernel. This
 # Dockerfile is for the Tritium release of the TAO. The docker image name
 # should be called "tritium". To build, use the "docker build" command in
-# the LLL-TAO directory:
+# the LLL-TAO git repo directory:
 #
 #     cd LLL-TAO
 #     docker build -t tritium .
