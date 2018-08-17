@@ -53,22 +53,28 @@ if ($status != 1) then
   #
   # Tell kernel LISP wants to use IPv6 and configure IPv6 routing.
   #
-  sysctl -w net.ipv6.conf.all.disable_ipv6=0
-  sysctl -w net.ipv6.conf.all.forwarding=1
+  sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null
+  sysctl -w net.ipv6.conf.all.forwarding=1 > /dev/null
 
   #
   # An IPv6 EID MUST not be assigned to interface lo or it will be unreachable. 
   #
   sudo ip addr add $v6_eid/128 dev eth0 >& /dev/null
   sudo ip neighbor add fe80::1 lladdr 0:0:0:0:0:1 dev eth0
+  sleep 2
   sudo ip route add fd00::/8 via fe80::1 dev eth0 src $v6_eid
   sudo ip route add fe00::/8 via fe80::1 dev eth0 src $v6_eid
   sudo ip route add ff00::/8 via fe80::1 dev eth0 src $v6_eid
-else
-  echo "lisp.config file already provisioned"
-endif
 
-#
-# Start LISP up.
-#
-/lispers.net/RESTART-LISP 8080 eth0
+  #
+  # Start LISP quietly.
+  #
+  /lispers.net/RESTART-LISP 8080 eth0 > /dev/null
+else
+  echo "Provisioning lisp.config file already performed"
+
+  #
+  # Start LISP.
+  #
+  /lispers.net/RESTART-LISP 8080 eth0
+endif
