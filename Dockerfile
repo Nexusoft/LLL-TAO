@@ -88,6 +88,6 @@ ENV RUN_NEXUS   /nexus/run-nexus
 ENV RUN_GETINFO /nexus/nexus -lispnet getinfo
 ENV RUN_PSLISP  /lispers.net/pslisp
 
-CMD echo "Starting LISP..."; $RUN_LISP; \
+CMD echo "Starting LISP ..."; $RUN_LISP; \
     echo "Starting Nexus ..."; $RUN_NEXUS; \
     sleep 1; $RUN_PSLISP; $RUN_GETINFO; tcsh
