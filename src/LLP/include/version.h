@@ -14,8 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_VERSION_H
 #define NEXUS_LLP_INCLUDE_VERSION_H
 
-#include <string>
-
+/* The current Protocol Version. */
 #define PROTOCOL_MAJOR       0
 #define PROTOCOL_MINOR       2
 #define PROTOCOL_REVISION    0
@@ -37,11 +36,6 @@ const int MIN_PROTO_VERSION = 10000;
 
 /* Used to define the baseline of Tritium Versioning. */
 const int MIN_TRITIUM_VERSION = 20000;
-
-
-/* Version Specifiers. */
-std::string FormatFullVersion();
-std::string FormatSubVersion();
 
 
 #endif

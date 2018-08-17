@@ -22,7 +22,7 @@ ________________________________________________________________________________
 #include "../Util/include/hex.h"
 #include "../Util/include/runtime.h"
 
-#include "../TAO/Ledger/include/version.h" //TODO: Move this to a better location
+
 
 
 namespace LLP
@@ -44,9 +44,12 @@ namespace LLP
         CAddress addrMe  = CAddress(CService("0.0.0.0",0));
         CAddress addrYou = CAddress(CService("0.0.0.0",0));
 
+        std::string strVersion = "Tritium [3.0]";
+        unsigned int nBestHeight = 0;
+
         /* Push the Message to receiving node. */
         PushMessage("version", PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,
-                    nSessionID, FormatFullVersion(), 0); //Core::nBestHeight);
+                    nSessionID, strVersion, nBestHeight); //Core::nBestHeight);
     }
 
 
