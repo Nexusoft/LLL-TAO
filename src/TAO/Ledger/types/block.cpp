@@ -23,42 +23,42 @@ namespace TAO
 
 
 		/* Set the channel of the block. */
-		void CBlock::SetChannel(unsigned int nNewChannel)
+		void Block::SetChannel(unsigned int nNewChannel)
 		{
 			nChannel = nNewChannel;
 		}
 
 
 		/* Get the Channel block is produced from. */
-		int CBlock::GetChannel() const
+		int Block::GetChannel() const
 		{
 			return nChannel;
 		}
 
 
 		/* Check the NULL state of the block. */
-		bool CBlock::IsNull() const
+		bool Block::IsNull() const
 		{
 			return (nBits == 0);
 		}
 
 
 		/* Return the Block's current UNIX Timestamp. */
-		int64 CBlock::GetBlockTime() const
+		int64 Block::GetBlockTime() const
 		{
 			return (int64)nTime;
 		}
 
 
 		/* Get the prime number of the block. */
-		LLC::Types::CBigNum CBlock::GetPrime() const
+		LLC::TYPES::CBigNum Block::GetPrime() const
 		{
-			return CBigNum(GetHash() + nNonce);
+			return LLC::TYPES::CBigNum(GetHash() + nNonce);
 		}
 
 
 		/* Generate a Hash For the Block from the Header. */
-		uint1024 CBlock::GetHash() const
+		uint1024 Block::GetHash() const
 		{
 			/** Hashing template for CPU miners uses nVersion to nBits **/
 			if(GetChannel() == 1)
@@ -70,7 +70,7 @@ namespace TAO
 
 
 		/* Generate the Signature Hash Required After Block completes Proof of Work / Stake. */
-		uint1024 CBlock::SignatureHash() const
+		uint1024 Block::SignatureHash() const
 		{
 			if(nVersion < 5)
 				return LLC::HASH::SK1024(BEGIN(nVersion), END(nTime));
@@ -80,28 +80,28 @@ namespace TAO
 
 
 		/* Update the nTime of the current block. */
-		void CBlock::CBlock::UpdateTime()
+		void Block::UpdateTime()
 		{
 			nTime = std::max((uint64)mapBlockIndex[hashPrevBlock]->GetBlockTime() + 1, UnifiedTimestamp());
 		}
 
 
 		/* Check flags for nPoS block. */
-		bool CBlock::IsProofOfStake() const
+		bool Block::IsProofOfStake() const
 		{
 			return (nChannel == 0);
 		}
 
 
 		/* Check flags for PoW block. */
-		bool CBlock::IsProofOfWork() const
+		bool Block::IsProofOfWork() const
 		{
 			return (nChannel == 1 || nChannel == 2);
 		}
 
 
 		/* Generate the Merkle Tree from uint512 hashes. */
-		uint512 CBlock::BuildMerkleTree() const
+		uint512 Block::BuildMerkleTree() const
 		{
 			vMerkleTree.clear();
 			BOOST_FOREACH(const CTransaction& tx, vtx)
@@ -122,7 +122,7 @@ namespace TAO
 
 
 		/* Get the current Branch that is being worked on. */
-		std::vector<uint512> CBlock::GetMerkleBranch(int nIndex) const
+		std::vector<uint512> Block::GetMerkleBranch(int nIndex) const
 		{
 			if (vMerkleTree.empty())
 				BuildMerkleTree();
@@ -140,7 +140,7 @@ namespace TAO
 
 
 		/* Check that the Merkle branch matches hash tree. */
-		uint512 CBlock::CheckMerkleBranch(uint512 hash, const std::vector<uint512>& vMerkleBranch, int nIndex)
+		uint512 Block::CheckMerkleBranch(uint512 hash, const std::vector<uint512>& vMerkleBranch, int nIndex)
 		{
 			if (nIndex == -1)
 				return 0;
@@ -157,7 +157,7 @@ namespace TAO
 
 
 		/* Dump the Block data to Console / Debug.log. */
-		void CBlock::print() const
+		void Block::print() const
 		{
 			printf("CBlock(hash=%s, ver=%d, hashPrevBlock=%s, hashMerkleRoot=%s, nTime=%u, nBits=%08x, nChannel = %u, nHeight = %u, nNonce=%" PRIu64 ", vtx=%d, vchBlockSig=%s)\n",
 					GetHash().ToString().substr(0,20).c_str(),
@@ -180,7 +180,7 @@ namespace TAO
 
 
 		/* Verify the Proof of Work satisfies network requirements. */
-		bool CBlock::VerifyWork() const
+		bool Block::VerifyWork() const
 		{
 			/** Check the Prime Number Proof of Work for the Prime Channel. **/
 			if(GetChannel() == 1)
@@ -195,7 +195,7 @@ namespace TAO
 				return true;
 			}
 
-			CBigNum bnTarget;
+			LLC::TYPES::CBigNum bnTarget;
 			bnTarget.SetCompact(nBits);
 
 			/** Check that the Hash is Within Range. **/
@@ -212,7 +212,7 @@ namespace TAO
 
 
 		/* Verify the Proof of Stake satisfies network requirements. */
-		bool CBlock::VerifyStake() const
+		bool Block::VerifyStake() const
 	    {
 
 			//TODO: Fill in when trust source file complete
@@ -222,7 +222,7 @@ namespace TAO
 
 
 		/* Sign the block with the key that found the block. */
-		bool CBlock::GenerateSignature(const LLC::CKey& key)
+		bool Block::GenerateSignature(const LLC::CKey& key)
 		{
 			vector<std::vector<unsigned char> > vSolutions;
 			Wallet::TransactionType whichType;
@@ -245,7 +245,7 @@ namespace TAO
 		}
 
 		/* Check that the block signature is a valid signature. */
-		bool CBlock::VerifySignature() const
+		bool Block::VerifySignature() const
 		{
 			if (GetHash() == hashGenesisBlock)
 				return vchBlockSig.empty();

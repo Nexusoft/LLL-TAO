@@ -24,7 +24,7 @@ ________________________________________________________________________________
 namespace LLC
 {
 
-    namespace Types
+    namespace TYPES
     {
 
         /** Errors thrown by the bignum class */
