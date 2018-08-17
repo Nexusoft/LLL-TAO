@@ -21,12 +21,12 @@ namespace TAO
 	{
 
 		/** Blockchain Speicific State variables for a block after it is processed.
-		 *
-		 * This can be broadcast to other nodes as a fully state locked block, with
-		 * optional signature of data or validated and generated individually by each
-		 * node.
-		 *
-		 */
+		*
+		* This can be broadcast to other nodes as a fully state locked block, with
+		* optional signature of data or validated and generated individually by each
+		* node.
+		*
+		*/
 		class CBlockState : public CBlock
 		{
 		public:
@@ -51,15 +51,15 @@ namespace TAO
 			uint1024 hashCheckpoint;
 
 
-	        /* Used to Iterate forward in the chain */
-	        uint1024 hashNextBlock;
+			/* Used to Iterate forward in the chain */
+			uint1024 hashNextBlock;
 
 
-	        /* Boolean flag for if this block is connected. */
-	        bool fConnected;
+			/* Boolean flag for if this block is connected. */
+			bool fConnected;
 
 
-	        /* Serialization Macros */
+			/* Serialization Macros */
 			IMPLEMENT_SERIALIZE
 			(
 				READWRITE(nChainTrust);
@@ -80,40 +80,40 @@ namespace TAO
 			CBlockState(CBlock blk) : CBlock(blk), nChainTrust(0), nMoneySupply(0), nChannelHeight(0), nReleasedReserve(0, 0, 0), hashCheckpoint(0), fConnected(false) { }
 
 
-	        /* Function to determine if this block has been connected into the main chain. */
-	        bool IsInMainChain() const
-	        {
-	            return fConnected;
-	        }
+			/* Function to determine if this block has been connected into the main chain. */
+			bool IsInMainChain() const
+			{
+			    return fConnected;
+			}
 
 
-	        /* The hash of this current block state. */
-	        uint1024 StateHash() const
-	        {
-	            return LLC::HASH::SK1024(BEGIN(nVersion), END(hashCheckpoint));
-	        }
+			/* The hash of this current block state. */
+			uint1024 StateHash() const
+			{
+			    return LLC::HASH::SK1024(BEGIN(nVersion), END(hashCheckpoint));
+			}
 
 
-	        /* Flag to determine if this block is a Proof-of-Work block. */
-	        bool IsProofOfWork() const
-	        {
-	            return (nChannel > 0);
-	        }
+			/* Flag to determine if this block is a Proof-of-Work block. */
+			bool IsProofOfWork() const
+			{
+			    return (nChannel > 0);
+			}
 
 
-	        /* Flag to determine if this block is a Proof-of-Stake block. */
-	        bool IsProofOfStake() const
-	        {
-	            return (nChannel == 0);
-	        }
+			/* Flag to determine if this block is a Proof-of-Stake block. */
+			bool IsProofOfStake() const
+			{
+			    return (nChannel == 0);
+			}
 
 
-	        /* For debuggin Purposes seeing block state data dump */
-	        std::string ToString() const;
+			/* For debuggin Purposes seeing block state data dump */
+			std::string ToString() const;
 
 
-	        /* For debugging purposes, printing the block to stdout */
-	        void print() const;
+			/* For debugging purposes, printing the block to stdout */
+			void print() const;
 		};
 
 
