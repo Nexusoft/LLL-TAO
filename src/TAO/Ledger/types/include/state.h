@@ -83,28 +83,28 @@ namespace TAO
 			/* Function to determine if this block has been connected into the main chain. */
 			bool IsInMainChain() const
 			{
-			    return fConnected;
+				return fConnected;
 			}
 
 
 			/* The hash of this current block state. */
 			uint1024 StateHash() const
 			{
-			    return LLC::HASH::SK1024(BEGIN(nVersion), END(hashCheckpoint));
+		    	return LLC::HASH::SK1024(BEGIN(nVersion), END(hashCheckpoint));
 			}
 
 
 			/* Flag to determine if this block is a Proof-of-Work block. */
 			bool IsProofOfWork() const
 			{
-			    return (nChannel > 0);
+		    	return (nChannel > 0);
 			}
 
 
 			/* Flag to determine if this block is a Proof-of-Stake block. */
 			bool IsProofOfStake() const
 			{
-			    return (nChannel == 0);
+		    	return (nChannel == 0);
 			}
 
 
