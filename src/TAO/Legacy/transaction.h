@@ -1,14 +1,14 @@
 /*__________________________________________________________________________________________
- 
+
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
-			
+
 			(c) Copyright The Nexus Developers 2014 - 2017
-			
+
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
-			
+
 			"fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
-  
+
 ____________________________________________________________________________________________*/
 
 #ifndef NEXUS_CORE_INCLUDE_TRANSACTION_H
@@ -28,21 +28,21 @@ ________________________________________________________________________________
 
 #include "../../../Wallet/script.h"
 
-namespace LLD 
+namespace LLD
 {
 	class CIndexDB;
 }
 
-namespace Core
+namespace Legacy
 {
 	class CTxIndex;
 	class CBlockIndex;
 	class CDiskTxPos;
 	class CTransaction;
-	
+
 	typedef std::map<uint512, std::pair<CTxIndex, CTransaction> > MapPrevTx;
-	
-	
+
+
 	/* Transaction Fee Based Relay Codes. */
 	enum GetMinFee_mode
 	{
@@ -51,7 +51,7 @@ namespace Core
 		GMF_SEND,
 	};
 
-	
+
 	/** Serialize Hash: Used to Serialize a CTransaction class in order to obtain the Tx Hash. Utilizes CDataStream to serialize the class. **/
 	template<typename T>
 	uint512 SerializeHash(const T& obj, int nType=SER_GETHASH, int nVersion=PROTOCOL_VERSION)
@@ -142,16 +142,16 @@ namespace Core
 		{
 			return (nSequence == std::numeric_limits<unsigned int>::max());
 		}
-		
+
 		bool IsStakeSig() const
 		{
 			if( scriptSig.size() != 8)
 				return false;
-				
-			if( scriptSig[0] != 1 || scriptSig[1] != 2 || scriptSig[2] != 3 || scriptSig[3] != 5 || 
+
+			if( scriptSig[0] != 1 || scriptSig[1] != 2 || scriptSig[2] != 3 || scriptSig[3] != 5 ||
 				scriptSig[4] != 8 || scriptSig[5] != 13 || scriptSig[6] != 21 || scriptSig[7] != 34)
 				return false;
-			
+
 			return true;
 		}
 
@@ -246,11 +246,11 @@ namespace Core
 
 		void print() const;
 	};
-	
-	
 
-	
-	
+
+
+
+
 	/** An inpoint - a combination of a transaction and an index n into its vin */
 	class CInPoint
 	{
@@ -263,7 +263,7 @@ namespace Core
 		void SetNull() { ptx = NULL; n = -1; }
 		bool IsNull() const { return (ptx == NULL && n == -1); }
 	};
-	
+
 		/** The basic transaction that is broadcasted on the network and contained in
 	 * blocks.  A transaction can contain multiple inputs and outputs.
 	 */
@@ -275,7 +275,7 @@ namespace Core
 		std::vector<CTxIn> vin;
 		std::vector<CTxOut> vout;
 		unsigned int nLockTime;
-        
+
         //TODO: CTransactionState (hash) - get from prevout on ctxIn
         //{ std::vector<bool> vSpent; { out1, out2, out3 } }
         //To hold the spend data on disk transactions.
@@ -367,15 +367,15 @@ namespace Core
 			/** A] Input Size must be 1. **/
 			if(vin.size() != 1)
 				return false;
-				
+
 			/** B] First Input must be Empty. **/
 			if(!vin[0].prevout.IsNull())
 				return false;
-				
+
 			/** C] Outputs Count must Exceed 1. **/
 			if(vout.size() < 1)
 				return false;
-				
+
 			return true;
 		}
 
@@ -385,61 +385,61 @@ namespace Core
 			/* A] Must have more than one Input. */
 			if(vin.size() <= 1)
 				return false;
-				
+
 			/* B] First Input Script Signature must be 8 Bytes. */
 			if(vin[0].scriptSig.size() != 8)
 				return false;
-				
+
 			/* C] First Input Script Signature must Contain Fibanacci Byte Series. */
 			if(!vin[0].IsStakeSig())
 				return false;
-				
+
 			/* D] All Remaining Previous Inputs must not be Empty. */
 			for(int nIndex = 1; nIndex < vin.size(); nIndex++)
 				if(vin[nIndex].prevout.IsNull())
 					return false;
-				
+
 			/* E] Must Contain only 1 Outputs. */
 			if(vout.size() != 1)
 				return false;
-				
+
 			return true;
 		}
-		
+
 		/** Flag to determine if the transaction is a genesis transaction. **/
 		bool IsGenesis() const
 		{
 			/* A] Genesis Transaction must be Coin Stake. */
 			if(!IsCoinStake())
 				return false;
-				
+
 			/* B] First Input Previous Transaction must be Empty. */
 			if(!vin[0].prevout.IsNull())
 				return false;
-				
+
 			return true;
 		}
-		
-		
+
+
 		/** Flag to determine if the transaction is a Trust Transaction. **/
 		bool IsTrust() const
 		{
 			/** A] Genesis Transaction must be Coin Stake. **/
 			if(!IsCoinStake())
 				return false;
-				
+
 			/** B] First Input Previous Transaction must not be Empty. **/
 			if(vin[0].prevout.IsNull())
 				return false;
-				
+
 			/** C] First Input Previous Transaction Hash must not be 0. **/
 			if(vin[0].prevout.hash == 0)
 				return false;
-				
+
 			/** D] First Input Previous Transaction Index must be 0. **/
 			if(vin[0].prevout.n != 0)
 				return false;
-				
+
 			return true;
 		}
 
@@ -529,7 +529,7 @@ namespace Core
 		bool GetCoinstakeInterest(LLD::CIndexDB& txdb, int64& nInterest) const;
 		bool GetCoinstakeAge(LLD::CIndexDB& txdb, uint64& nAge) const;
 
-		
+
 		bool ReadFromDisk(LLD::CIndexDB& indexdb, COutPoint prevout, CTxIndex& txindexRet);
 		bool ReadFromDisk(LLD::CIndexDB& indexdb, COutPoint prevout);
 		bool ReadFromDisk(COutPoint prevout);
@@ -562,16 +562,16 @@ namespace Core
 		bool ConnectInputs(LLD::CIndexDB& indexdb, MapPrevTx inputs,
 						   std::map<uint512, CTxIndex>& mapTestPool, const CDiskTxPos& posThisTx,
 						   const CBlockIndex* pindexBlock, bool fBlock, bool fMiner);
-		
+
 		bool ClientConnectInputs();
 		bool CheckTransaction() const;
-	
+
 
 	protected:
 		const CTxOut& GetOutputFor(const CTxIn& input, const MapPrevTx& inputs) const;
 	};
-	
-	
+
+
 	/** A transaction with a merkle branch linking it to the block chain. */
 	class CMerkleTx : public CTransaction
 	{
@@ -618,9 +618,9 @@ namespace Core
 		bool IsInMainChain() const { return GetDepthInMainChain() > 0; }
 		int GetBlocksToMaturity() const;
 	};
-	
-	
-	
+
+
+
 	/** Position on disk for a particular transaction. **/
 	class CDiskTxPos
 	{
@@ -702,7 +702,7 @@ namespace Core
 		{
 			return pos.IsNull();
 		}
-		
+
 		int GetDepthInMainChain() const;
 
 		friend bool operator==(const CTxIndex& a, const CTxIndex& b)
@@ -716,29 +716,29 @@ namespace Core
 			return !(a == b);
 		}
 	};
-	
-	
-	
+
+
+
 	/* __________________________________________________ (Transaction Methods) __________________________________________________  */
-	
-	
-	
-	
+
+
+
+
 	/* Add an oprhan transaction to the Orphans Memory Map. */
 	bool AddOrphanTx(const CDataStream& vMsg);
-	
-	
+
+
 	/* Remove an Orphaned Transaction from the Memory Mao. */
 	void EraseOrphanTx(uint512 hash);
-	
-	
+
+
 	/* Set the Limit of the Orphan Transaction Sizes Dynamically. */
 	unsigned int LimitOrphanTxSize(unsigned int nMaxOrphans);
-	
-	
+
+
 	/* Get a specific transaction from the Database or from a block's binary position. */
 	bool GetTransaction(const uint512 &hash, CTransaction &tx, uint1024 &hashBlock);
-	
+
 }
 
 

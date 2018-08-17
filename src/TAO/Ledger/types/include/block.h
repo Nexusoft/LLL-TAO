@@ -16,12 +16,6 @@ ________________________________________________________________________________
 
 #include "../../../../Util/templates/serialize.h"
 
-//forward declerations of legacy transactions
-namespace Legacy
-{
-	class CTransaction;
-}
-
 //forward declerations for BigNum
 namespace LLC
 {
@@ -86,7 +80,7 @@ namespace TAO
 
 
 			/** The transactions included in this block. Used to build the merkle tree. **/
-			std::vector<Legacy::CTransaction> vtx;
+			std::vector<Legacy::Transaction> vtx;
 
 
 			/** Memory only structure to hold merkle tree data. **/
@@ -94,6 +88,12 @@ namespace TAO
 
 
 			//serialization functions
+			//TODO: Serialize vtx on network, but not on disk
+			//Only serialize the hashes of the transactions (as precurser to light blocks)
+			//Then blocks can be relayed with no need for transactional data, which can be represented by L1 locks later down.
+			//Block size will not exist, blocks will only keep record of transactions in merkle done by processing buckets.
+			//Until done in the future with Amine these will be at the descretion of Miners what buckets to include.
+			//possibly assess a penalty if a bucket exists that a miner doesn't include.
 			IMPLEMENT_SERIALIZE
 			(
 				READWRITE(this->nVersion);
@@ -105,30 +105,14 @@ namespace TAO
 				READWRITE(nBits);
 				READWRITE(nNonce);
 				READWRITE(nTime);
+				READWRITE(vtx);
+				READWRITE(vchBlockSig);
 
-				//TODO: Serialize vtx on network, but not on disk
-				//Only serialize the hashes of the transactions (as precurser to light blocks)
-				//Then blocks can be relayed with no need for transactional data, which can be represented by L1 locks later down.
-				//Block size will not exist, blocks will only keep record of transactions in merkle done by processing buckets.
-				//Until done in the future with Amine these will be at the descretion of Miners what buckets to include.
-				//possibly assess a penalty if a bucket exists that a miner doesn't include.
-
-				// ConnectBlock depends on vtx following header to generate CDiskTxPos
-				if (!(nType & (SER_GETHASH | SER_BLOCKHEADERONLY)))
-				{
-					READWRITE(vtx);
-					READWRITE(vchBlockSig);
-				}
-				else if (fRead)
-				{
-					const_cast<CBlock*>(this)->vtx.clear();
-					const_cast<CBlock*>(this)->vchBlockSig.clear();
-				}
 			)
 
 
 			/** The default constructor. Sets block state to Null. **/
-			CBlock() { SetNull(); }
+			Block() { SetNull(); }
 
 
 			/** A base constructor.
@@ -139,7 +123,7 @@ namespace TAO
 			 *	@param[in] nHeightIn The height this block is being created at.
 			 *
 			**/
-			CBlock(unsigned int nVersionIn, uint1024 hashPrevBlockIn, unsigned int nChannelIn, unsigned int nHeightIn) : nVersion(nVersionIn), hashPrevBlock(hashPrevBlockIn), nChannel(nChannelIn), nHeight(nHeightIn), nBits(0), nNonce(0), nTime(0) { }
+			Block(unsigned int nVersionIn, uint1024 hashPrevBlockIn, unsigned int nChannelIn, unsigned int nHeightIn) : nVersion(nVersionIn), hashPrevBlock(hashPrevBlockIn), nChannel(nChannelIn), nHeight(nHeightIn), nBits(0), nNonce(0), nTime(0) { }
 
 
 			/** Set the block to Null state. **/
