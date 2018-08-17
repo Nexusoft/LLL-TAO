@@ -12,7 +12,7 @@ alias t          'nice top -d 1'
 #
 # Nexus handy aliases.
 #        
-alias run-nexus  '/nexus/nexus > /nexus/nexus.log'
+alias run-nexus  '/nexus/run-nexus'
 alias ps-nexus   'psg nexus'
 alias ncli       '/nexus/nexus'
 alias ninfo      'ncli getinfo'
@@ -24,3 +24,5 @@ alias npeercount 'ncli getconnectioncount'
 #            
 alias ps-lisp 'pushd /lispers.net > /dev/null; ./pslisp; popd > /dev/null'
 alias mc      'curl --silent --insecure -u root: https://localhost:8080/lisp/api/data/map-cache | jq .'
+alias ver     'curl --silent --insecure -u root: https://localhost:8080/lisp/api/data/system | jq .'
+alias rate    'mc | egrep "stats|address"'
