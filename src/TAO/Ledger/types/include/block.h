@@ -25,7 +25,7 @@ namespace Legacy
 //forward declerations for BigNum
 namespace LLC
 {
-	namespace Types
+	namespace TYPES
 	{
 		class CBigNum;
 	}
@@ -207,7 +207,7 @@ namespace TAO
 			 *	@return Prime number stored as a CBigNum (wrapper for BIGNUM in OpenSSL)
 			 *
 			 **/
-			LLC::Types::CBigNum GetPrime() const;
+			LLC::TYPES::CBigNum GetPrime() const;
 
 
 			/** GetHash
