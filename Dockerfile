@@ -76,6 +76,11 @@ COPY lisp/lisp-join.py /lispers.net/lisp-join.py
 COPY lisp/make-crypto-eid.py /lispers.net/make-crypto-eid.py
 
 #
+# Add some useful bash alias commands.
+#
+COPY nexus-config/.aliases /root/.aliases
+
+#
 # Startup lispers.net and nexus. Output some useful data and drop into tcsh.
 #
 ENV RUN_LISP    /lispers.net/RL
