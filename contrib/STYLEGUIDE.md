@@ -20,6 +20,7 @@ The variable names have a prefix that defines the type. This helps us not lose t
 * (map)Variable ex. mapVar - (map) denotes the type is a std::map
 * (set)Variable ex. setVar - (set) denotes the type is a std::set
 
+
 ## Namespaces
 
 Always use namespaces to keep the code well ordered and organized. The guide to using namespaces is based around the folder the source files are in. Always declare a new namespace every time you increment a folder, to ensure it is easy to find objects, and there are no duplicate declarations.
