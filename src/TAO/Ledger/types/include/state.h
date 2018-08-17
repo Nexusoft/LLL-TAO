@@ -27,7 +27,7 @@ namespace TAO
 		* node.
 		*
 		*/
-		class CBlockState : public CBlock
+		class BlockState : public Block
 		{
 		public:
 
@@ -75,9 +75,9 @@ namespace TAO
 			)
 
 
-			CBlockState() : nChainTrust(0), nMoneySupply(0), nChannelHeight(0), nReleasedReserve(0, 0, 0), hashCheckpoint(0), fConnected(false) { SetNull(); }
+			BlockState() : nChainTrust(0), nMoneySupply(0), nChannelHeight(0), nReleasedReserve(0, 0, 0), hashCheckpoint(0), fConnected(false) { SetNull(); }
 
-			CBlockState(CBlock blk) : CBlock(blk), nChainTrust(0), nMoneySupply(0), nChannelHeight(0), nReleasedReserve(0, 0, 0), hashCheckpoint(0), fConnected(false) { }
+			BlockState(CBlock blk) : CBlock(blk), nChainTrust(0), nMoneySupply(0), nChannelHeight(0), nReleasedReserve(0, 0, 0), hashCheckpoint(0), fConnected(false) { }
 
 
 			/* Function to determine if this block has been connected into the main chain. */
