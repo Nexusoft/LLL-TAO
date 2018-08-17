@@ -14,8 +14,22 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_BLOCK_H
 #define NEXUS_TAO_LEDGER_TYPES_BLOCK_H
 
-#include "legacy_tx.h"
-#include "../../../../LLC/hash/macro.h"
+#include "../../../../Util/templates/serialize.h"
+
+//forward declerations of legacy transactions
+namespace Legacy
+{
+	class CTransaction;
+}
+
+//forward declerations for BigNum
+namespace LLC
+{
+	namespace Types
+	{
+		class CBigNum;
+	}
+}
 
 namespace TAO
 {
@@ -31,37 +45,55 @@ namespace TAO
 		 * Blocks are appended to blk0001.dat files on disk.  Their location on disk
 		 * is indexed by CBlockIndex objects in memory.
 		 */
-		class CBlock
+		class Block
 		{
 		public:
 
-			/* Core Block Header. */
+			/** The blocks version for. Useful for changing rules. **/
 			unsigned int nVersion;
+
+
+			/** The previous blocks hash. Used to chain blocks together. **/
 			uint1024 hashPrevBlock;
+
+
+			/** The Merkle Root. A merkle tree of transaction hashes included in header. **/
 			uint512 hashMerkleRoot;
+
+
+			/** The Block Channel. This number designates what validation algorithm is required. **/
 			unsigned int nChannel;
+
+
+			/** The Block's Height. This number tells what block number this is in the chain. **/
 			unsigned int nHeight;
+
+
+			/** The Block's Bits. This number is a compact representation of the required difficulty. **/
 			unsigned int nBits;
+
+
+			/** The Block's nOnce. This number is used to find the "winning" hash. **/
 			uint64 nNonce;
 
 
-			/* The Block Time locked in Block Signature. */
+			/** The Block's timestamp. This number is locked into the signature hash. **/
 			unsigned int nTime;
 
 
-			/* Nexus block signature */
+			/** The bytes holding the blocks signature. Signed by the block creator before broadcast. **/
 			std::vector<unsigned char> vchBlockSig;
 
 
-			/* Transactions for Current Block. */
-			std::vector<CTransaction> vtx;
+			/** The transactions included in this block. Used to build the merkle tree. **/
+			std::vector<Legacy::CTransaction> vtx;
 
 
-			/* Memory Only Data. */
+			/** Memory only structure to hold merkle tree data. **/
 			mutable std::vector<uint512> vMerkleTree;
 
-			uint512 hashPrevChecksum; //for new signature hash input. Checksum of previous block signature for block signature chains
 
+			//serialization functions
 			IMPLEMENT_SERIALIZE
 			(
 				READWRITE(this->nVersion);
@@ -82,7 +114,7 @@ namespace TAO
 	            //possibly assess a penalty if a bucket exists that a miner doesn't include.
 
 				// ConnectBlock depends on vtx following header to generate CDiskTxPos
-				if (!(nType & (SER_GETHASH|SER_BLOCKHEADERONLY)))
+				if (!(nType & (SER_GETHASH | SER_BLOCKHEADERONLY)))
 				{
 					READWRITE(vtx);
 					READWRITE(vchBlockSig);
@@ -94,27 +126,26 @@ namespace TAO
 				}
 			)
 
-			CBlock()
-			{
-				SetNull();
-			}
 
-			CBlock(unsigned int nVersionIn, uint1024 hashPrevBlockIn, unsigned int nChannelIn, unsigned int nHeightIn)
-			{
-				SetNull();
-
-				nVersion = nVersionIn;
-				hashPrevBlock = hashPrevBlockIn;
-				nChannel = nChannelIn;
-				nHeight  = nHeightIn;
-			}
+			/** The default constructor. Sets block state to Null. **/
+			CBlock() { SetNull(); }
 
 
-			/* Set block to a NULL state. */
+			/** A base constructor.
+			 *
+			 *	@param[in] nVersionIn The version to set block to
+			 *	@param[in] hashPrevBlockIn The previous block being linked to
+			 *	@param[in] nChannelIn The channel this block is being created for
+			 *	@param[in] nHeightIn The height this block is being created at.
+			 *
+			**/
+			CBlock(unsigned int nVersionIn, uint1024 hashPrevBlockIn, unsigned int nChannelIn, unsigned int nHeightIn) : nVersion(nVersionIn), hashPrevBlock(hashPrevBlockIn), nChannel(nChannelIn), nHeight(nHeightIn), nBits(0), nNonce(0), nTime(0) { }
+
+
+			/** Set the block to Null state. **/
 			void SetNull()
 			{
-				/* bdg question: should this use the current version instead of hard coded 3? */
-				nVersion = 3;
+				nVersion = 3; //TODO: Use current block version
 				hashPrevBlock = 0;
 				hashMerkleRoot = 0;
 				nChannel = 0;
@@ -129,354 +160,179 @@ namespace TAO
 			}
 
 
-			/* bdg note: SetChannel is never used */
-			/* Set the Channel for block. */
-			void SetChannel(unsigned int nNewChannel)
-			{
-				nChannel = nNewChannel;
-			}
+			/** SetChannel
+			 *
+			 *	Sets the channel for the block.
+			 *
+			 *	@param[in] nNewChannel The channel to set.
+			 *
+			 **/
+			void SetChannel(unsigned int nNewChannel);
 
 
-			/* Get the Channel block is produced from. */
-			int GetChannel() const
-			{
-				return nChannel;
-			}
+			/** GetChannel
+			 *
+			 *	Gets the channel the block belongs to
+			 *
+			 *	@return The channel assigned (unsigned int)
+			 *
+			 */
+			unsigned int GetChannel() const;
 
 
-			/* Check the NULL state of the block. */
-			bool IsNull() const
-			{
-				return (nBits == 0);
-			}
+			/** IsNull
+			 *
+			 *	Checks the Null state of the block
+			 *
+			 *	@return true if null, false otherwise
+			 *
+			 **/
+			bool IsNull() const;
 
 
-			/* Return the Block's current UNIX Timestamp. */
-			int64 GetBlockTime() const
-			{
-				return (int64)nTime;
-			}
+			/** GetBlockTime
+			 *
+			 *	Returns the current UNIX timestamp of the block.
+			 *
+			 *	@return 64-bit unsigned integer of timestamp
+			 *
+			 **/
+			uint64_t GetBlockTime() const;
 
 
-			/* bdg question: should this check if the block is in the prime channel first? */
-			/* Get the prime number of the block. */
-			CBigNum GetPrime() const
-			{
-				return CBigNum(GetHash() + nNonce);
-			}
+			/** GetPrime
+			 *
+			 *	Get the Prime number for the block (hash + nNonce)
+			 *
+			 *	@return Prime number stored as a CBigNum (wrapper for BIGNUM in OpenSSL)
+			 *
+			 **/
+			LLC::Types::CBigNum GetPrime() const;
 
 
-			/* Generate a Hash For the Block from the Header. */
-			uint1024 GetHash() const
-			{
-				/** Hashing template for CPU miners uses nVersion to nBits **/
-				if(GetChannel() == 1)
-					return LLC::HASH::SK1024(BEGIN(nVersion), END(nBits));
-
-				/** Hashing template for GPU uses nVersion to nNonce **/
-				return LLC::HASH::SK1024(BEGIN(nVersion), END(nNonce));
-			}
+			/** GetHash
+			 *
+			 *	Get the Hash of the block.
+			 *
+			 *	@return 1024-bit block hash
+			 *
+			 **/
+			uint1024 GetHash() const;
 
 
-			/* Generate the Signature Hash Required After Block completes Proof of Work / Stake. */
-			uint1024 SignatureHash() const
-			{
-				if(nVersion < 5)
-					return LLC::HASH::SK1024(BEGIN(nVersion), END(nTime));
-				else
-					return LLC::HASH::SK1024(BEGIN(nVersion), END(hashPrevChecksum));
-			}
+			/** SignatureHash
+			 *
+			 *	Get the signature hash of block. This is signed by block finder.
+			 *
+			 *	@return 1024-bit hash for signature
+			 *
+			 **/
+			uint1024 SignatureHash() const;
 
 
-			/* Update the nTime of the current block. */
+			/** UpdateTime
+			 *
+			 *	Update the blocks Timestamp
+			 *
+			 **/
 			void UpdateTime();
 
 
-			/* Check flags for nPoS block. */
-			bool IsProofOfStake() const
-			{
-				return (nChannel == 0);
-			}
+			/** IsProofOfStake
+			 *
+			 *	@return true if the block is proof of stake.
+			 *
+			 **/
+			bool IsProofOfStake() const;
 
 
-			/* Check flags for PoW block. */
-			bool IsProofOfWork() const
-			{
-				return (nChannel == 1 || nChannel == 2);
-			}
+			/** IsProofOfWork
+			 *
+			 *	@return true if the block is proof of work.
+			 *
+			 **/
+			bool IsProofOfWork() const;
 
 
-			/* Generate the Merkle Tree from uint512 hashes. */
-			uint512 BuildMerkleTree() const
-			{
-				vMerkleTree.clear();
-				BOOST_FOREACH(const CTransaction& tx, vtx)
-					vMerkleTree.push_back(tx.GetHash());
-				int j = 0;
-				for (int nSize = (int)vtx.size(); nSize > 1; nSize = (nSize + 1) / 2)
-				{
-					for (int i = 0; i < nSize; i += 2)
-					{
-						int i2 = std::min(i+1, nSize-1);
-						vMerkleTree.push_back(LLC::HASH::SK512(BEGIN(vMerkleTree[j+i]),  END(vMerkleTree[j+i]),
-												    BEGIN(vMerkleTree[j+i2]), END(vMerkleTree[j+i2])));
-					}
-					j += nSize;
-				}
-				return (vMerkleTree.empty() ? 0 : vMerkleTree.back());
-			}
+			/** BuildMerkleTree
+			 *
+			 *	Build the merkle tree from the transaction list.
+			 *
+			 *	@return The 512-bit merkle root
+			 *
+			 **/
+			uint512 BuildMerkleTree() const;
 
 
-			/* Get the current Branch that is being worked on. */
-			std::vector<uint512> GetMerkleBranch(int nIndex) const
-			{
-				if (vMerkleTree.empty())
-					BuildMerkleTree();
-				std::vector<uint512> vMerkleBranch;
-				int j = 0;
-				for (int nSize = (int)vtx.size(); nSize > 1; nSize = (nSize + 1) / 2)
-				{
-					int i = std::min(nIndex^1, nSize-1);
-					vMerkleBranch.push_back(vMerkleTree[j+i]);
-					nIndex >>= 1;
-					j += nSize;
-				}
-				return vMerkleBranch;
-			}
+			/** GetMerkleBranch
+			 *
+			 *	Find the branch in the merkle tree that the given index belongs to.
+			 *
+			 *	@param[in] nIndex The index to search for
+			 *
+			 *	@return A vector containing the hashes of the transaction's branch
+			 *
+			 **/
+			std::vector<uint512> GetMerkleBranch(int nIndex) const;
 
 
-			/* Check that the Merkle branch matches hash tree. */
-			static uint512 CheckMerkleBranch(uint512 hash, const std::vector<uint512>& vMerkleBranch, int nIndex)
-			{
-				if (nIndex == -1)
-					return 0;
-				for(int i = 0; i < vMerkleBranch.size(); i++)
-				{
-					if (nIndex & 1)
-						hash = LLC::HASH::SK512(BEGIN(vMerkleBranch[i]), END(vMerkleBranch[i]), BEGIN(hash), END(hash));
-					else
-						hash = LLC::HASH::SK512(BEGIN(hash), END(hash), BEGIN(vMerkleBranch[i]), END(vMerkleBranch[i]));
-					nIndex >>= 1;
-				}
-				return hash;
-			}
-
-			/* Write Block to Disk File. */
-			bool WriteToDisk(unsigned int& nFileRet, unsigned int& nBlockPosRet);
+			/** CheckMerkleBranch
+			 *
+			 *	Check that the transaction exists in the merkle branch.
+			 *
+			 **/
+			uint512 CheckMerkleBranch(uint512 hash, const std::vector<uint512>& vMerkleBranch, int nIndex);
 
 
-			/* Read Block from Disk File. */
-			bool ReadFromDisk(unsigned int nFile, unsigned int nBlockPos, bool fReadTransactions=true);
-
-
-			/* Read Block from Disk File by Index Object. */
-			bool ReadFromDisk(const CBlockIndex* pindex, bool fReadTransactions=true);
-
-
-			/* Dump the Block data to Console / Debug.log. */
+			/** print
+			 *
+			 *	Dump to the log file the raw block data
+			 *
+			 **/
 			void print() const;
 
 
-			/* Disconnect all associated inputs from a block. */
-			bool DisconnectBlock(LLD::CIndexDB& indexdb, CBlockIndex* pindex);
-
-
-			/* Connect all associated inputs from a block. */
-			bool ConnectBlock(LLD::CIndexDB& indexdb, CBlockIndex* pindex);
-
-
-			/* Verify the Proof of Work satisfies network requirements. */
+			/** VerifyWork
+			 *
+			 *	Verify the work was completed by miners as advertised
+			 *
+			 *	@return true if work is valid, false otherwise
+			 *
+			 **/
 			bool VerifyWork() const;
 
 
-			/* Verify the Proof of Stake satisfies network requirements. */
+			/** VerifyStake
+			 *
+			 *	Verify the stake work was completed
+			 *
+			 *	@return true if stake is valid, false otherwise
+			 *
+			 **/
 			bool VerifyStake() const;
 
 
-			/* Sign the block with the key that found the block. */
-			bool SignBlock(const Wallet::CKeyStore& keystore);
+			/** GenerateSignature
+			 *
+			 *	Generate the signature as the block finder
+			 *
+			 *	@param[in] key The key object containing private key to make Signature
+			 *
+			 *	@return True if the signature was made successfully, false otherwise
+			 *
+			 **/
+			bool GenerateSignature(const LLC::CKey& key);
 
 
-			/* Check that the block signature is a valid signature. */
-			bool CheckBlockSignature() const;
+			/** VerifySignature
+			 *
+			 *	Verify that the signature included in block is valid
+			 *
+			 *	@return True if signature is valid, false otherwise
+			 *
+			 **/
+			bool VerifySignature() const;
 
-		};
-
-
-		/** Blockchain Speicific State variables for a block after it is processed.
-		 *
-		 * This can be broadcast to other nodes as a fully state locked block, with
-		 * optional signature of data or validated and generated individually by each
-		 * node.
-		 *
-		 */
-		class CBlockState : public CBlock
-		{
-		public:
-
-			/* The Trust of the Chain to this Block. */
-			uint64 nChainTrust;
-
-
-			/* The Total NXS released to date */
-			uint64 nMoneySupply;
-
-
-			/* The height of this channel. */
-			unsigned int nChannelHeight;
-
-
-			/* The reserves that are released. */
-			unsigned int nReleasedReserve[2];
-
-
-			/* The checkpoint this block was made from. */
-			uint1024 hashCheckpoint;
-
-
-	        /* Used to Iterate forward in the chain */
-	        uint1024 hashNextBlock;
-
-
-	        /* Boolean flag for if this block is connected. */
-	        bool fConnected;
-
-
-	        /* Serialization Macros */
-			IMPLEMENT_SERIALIZE
-			(
-				READWRITE(nChainTrust);
-				READWRITE(nMoneySupply);
-				READWRITE(nChannelHeight);
-				READWRITE(nReleasedReserve[0]);
-				READWRITE(nReleasedReserve[1]);
-				READWRITE(nReleasedReserve[2]);
-				READWRITE(hashCheckpoint);
-
-				//for disk operations only
-				//READWRITE(hashNextBlock);
-			)
-
-
-			CBlockState() : nChainTrust(0), nMoneySupply(0), nChannelHeight(0), nReleasedReserve(0, 0, 0), hashCheckpoint(0), fConnected(false) { SetNull(); }
-
-			CBlockState(CBlock blk) : CBlock(blk), nChainTrust(0), nMoneySupply(0), nChannelHeight(0), nReleasedReserve(0, 0, 0), hashCheckpoint(0), fConnected(false) { }
-
-
-	        /* Function to determine if this block has been connected into the main chain. */
-	        bool IsInMainChain() const
-	        {
-	            return fConnected;
-	        }
-
-
-	        /* The hash of this current block state. */
-	        uint1024 StateHash() const
-	        {
-	            return LLC::HASH::SK1024(BEGIN(nVersion), END(hashCheckpoint));
-	        }
-
-
-	        /* Flag to determine if this block is a Proof-of-Work block. */
-	        bool IsProofOfWork() const
-	        {
-	            return (nChannel > 0);
-	        }
-
-
-	        /* Flag to determine if this block is a Proof-of-Stake block. */
-	        bool IsProofOfStake() const
-	        {
-	            return (nChannel == 0);
-	        }
-
-
-	        /* For debuggin Purposes seeing block state data dump */
-	        std::string ToString() const;
-
-
-	        /* For debugging purposes, printing the block to stdout */
-	        void print() const;
-		};
-
-
-		/** DEPRECATED:
-		 *
-		 * Describes a place in the block chain to another node such that if the
-		 * other node doesn't have the same branch, it can find a recent common trunk.
-		 * The further back it is, the further before the fork it may be.
-		 */
-		class CBlockLocator
-		{
-		protected:
-			std::vector<uint1024> vHave;
-
-		public:
-
-			IMPLEMENT_SERIALIZE
-			(
-				if (!(nType & SER_GETHASH))
-					READWRITE(nVersion);
-				READWRITE(vHave);
-			)
-
-			CBlockLocator()
-			{
-			}
-
-			explicit CBlockLocator(const CBlockIndex* pindex)
-			{
-				Set(pindex);
-			}
-
-			explicit CBlockLocator(uint1024 hashBlock)
-			{
-				std::map<uint1024, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashBlock);
-				if (mi != mapBlockIndex.end())
-					Set((*mi).second);
-			}
-
-
-			/* Set by List of Vectors. */
-			CBlockLocator(const std::vector<uint1024>& vHaveIn)
-			{
-				vHave = vHaveIn;
-			}
-
-
-			/* Set the State of Object to NULL. */
-			void SetNull()
-			{
-				vHave.clear();
-			}
-
-
-			/* Check the State of Object as NULL. */
-			bool IsNull()
-			{
-				return vHave.empty();
-			}
-
-
-			/* Set from Block Index Object. */
-			void Set(const CBlockIndex* pindex);
-
-
-			/* Find the total blocks back locator determined. */
-			int GetDistanceBack();
-
-
-			/* Get the Index object stored in Locator. */
-			CBlockIndex* GetBlockIndex();
-
-
-			/* Get the hash of block. */
-			uint1024 GetBlockHash();
-
-
-			/* bdg note: GetHeight is never used. */
-			/* Get the Height of the Locator. */
-			int GetHeight();
 
 		};
 

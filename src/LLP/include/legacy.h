@@ -197,15 +197,15 @@ namespace LLP
 
 
 
-    class CLegacyNode : public BaseConnection<LegacyPacket>
+    class LegacyNode : public BaseConnection<LegacyPacket>
     {
         CAddress addrThisNode;
 
     public:
 
         /* Constructors for Message LLP Class. */
-        CLegacyNode() : BaseConnection<LegacyPacket>() {}
-        CLegacyNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false ) : BaseConnection<LegacyPacket>( SOCKET_IN, DDOS_IN ) { }
+        LegacyNode() : BaseConnection<LegacyPacket>() {}
+        LegacyNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false ) : BaseConnection<LegacyPacket>( SOCKET_IN, DDOS_IN ) { }
 
 
         /** Randomly genearted session ID. **/
@@ -237,7 +237,7 @@ namespace LLP
 
 
         /** Timer object to keep track of ping latency. **/
-        Timer cLatencyTimer;
+        std::map<uint64_t, Timer> mapLatencyTracker;
 
 
         /** Mao to keep track of sent request ID's while witing for them to return. **/

@@ -29,7 +29,7 @@ namespace LLP
 {
 
     /* Push a Message With Information about This Current Node. */
-    void CLegacyNode::PushVersion()
+    void LegacyNode::PushVersion()
     {
         /* Random Session ID */
         RAND_bytes((unsigned char*)&nSessionID, sizeof(nSessionID));
@@ -44,17 +44,16 @@ namespace LLP
         CAddress addrMe  = CAddress(CService("0.0.0.0",0));
         CAddress addrYou = CAddress(CService("0.0.0.0",0));
 
-        std::string strVersion = "Tritium [3.0]";
-        unsigned int nBestHeight = 0;
+        unsigned int nBestHeight = 0; //TODO: Chain State Parameters (Ledger Layer)
 
         /* Push the Message to receiving node. */
         PushMessage("version", PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,
-                    nSessionID, strVersion, nBestHeight); //Core::nBestHeight);
+                    nSessionID, strProtocolName, nBestHeight); //Core::nBestHeight);
     }
 
 
     /** Handle Event Inheritance. **/
-    void CLegacyNode::Event(unsigned char EVENT, unsigned int LENGTH)
+    void LegacyNode::Event(unsigned char EVENT, unsigned int LENGTH)
     {
         /** Handle any DDOS Packet Filters. **/
         if(EVENT == EVENT_HEADER)
@@ -111,7 +110,9 @@ namespace LLP
                 RAND_bytes((unsigned char*)&nSessionID, sizeof(nSessionID));
 
                 nLastPing = UnifiedTimestamp();
-                cLatencyTimer.Reset();
+
+                mapLatencyTracker.emplace(nSessionID, Timer());
+                mapLatencyTracker[nSessionID].Start();
 
                 PushMessage("ping", nSessionID);
             }
@@ -151,7 +152,7 @@ namespace LLP
 
     /** This function is necessary for a template LLP server. It handles your
         custom messaging system, and how to interpret it from raw packets. **/
-    bool CLegacyNode::ProcessPacket()
+    bool LegacyNode::ProcessPacket()
     {
 
         CDataStream ssMessage(INCOMING.DATA, SER_NETWORK, MIN_PROTO_VERSION);
@@ -270,10 +271,6 @@ namespace LLP
             uint64 nonce = 0;
             ssMessage >> nonce;
 
-            /* Calculate the Average Latency of the Connection. */
-            nLastPing = UnifiedTimestamp();
-            cLatencyTimer.Start();
-
             PushMessage("pong", nonce);
         }
 
@@ -283,15 +280,21 @@ namespace LLP
             uint64 nonce = 0;
             ssMessage >> nonce;
 
+            /* If the nonce was not received or known from pong. */
+            if(!mapLatencyTracker.count(nonce))
+            {
+                DDOS->rSCORE += 5;
+                return true;
+            }
 
             /* Calculate the Average Latency of the Connection. */
-            nNodeLatency = cLatencyTimer.ElapsedMilliseconds();
-            cLatencyTimer.Reset();
+            unsigned int nLatency = mapLatencyTracker[nonce].ElapsedMilliseconds();
+            mapLatencyTracker.erase(nonce);
 
 
             /* Debug Level 3: output Node Latencies. */
             if(GetArg("-verbose", 0) >= 3)
-                printf("***** Node %s Latency (%u ms)\n", addrThisNode.ToString().c_str(), nNodeLatency);
+                printf("***** Node %s Latency (Nonce %" PRIu64 " - %u ms)\n", addrThisNode.ToString().c_str(), nonce, nLatency);
         }
 
 

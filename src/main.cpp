@@ -18,6 +18,9 @@
 
 #include <sys/time.h>
 
+#include "LLP/templates/server.h"
+#include "LLP/include/legacy.h"
+
 
 
 class CAccount
@@ -63,6 +66,18 @@ class RegisterDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
 int main(int argc, char** argv)
 {
     ParseParameters(argc, argv);
+
+    LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(9323, 10, 30);
+
+    SERVER->AddConnection("104.192.170.130", "9323");
+    SERVER->AddConnection("104.192.169.10",  "9323");
+
+    while(true)
+    {
+        Sleep(10);
+    }
+
+    return 0;
 
     for(int i = 0; ; i++)
     {

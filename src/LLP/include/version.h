@@ -38,4 +38,8 @@ const int MIN_PROTO_VERSION = 10000;
 const int MIN_TRITIUM_VERSION = 20000;
 
 
+/* The name that will be shared with other nodes. */
+const std::string strProtocolName = "Tritium";
+
+
 #endif
