@@ -76,7 +76,7 @@ COPY lisp/lisp-join.py /lispers.net/lisp-join.py
 COPY lisp/make-crypto-eid.py /lispers.net/make-crypto-eid.py
 
 #
-# Add some useful bash alias commands.
+# Add some useful tcsh alias commands.
 #
 COPY nexus-config/.aliases /root/.aliases
 
@@ -88,4 +88,6 @@ ENV RUN_NEXUS   /nexus/run-nexus
 ENV RUN_GETINFO /nexus/nexus -lispnet getinfo
 ENV RUN_PSLISP  /lispers.net/pslisp
 
-CMD $RUN_LISP; $RUN_NEXUS; sleep 1; $RUN_PSLISP; $RUN_GETINFO; tcsh
+CMD echo "Starting LISP..."; $RUN_LISP; \
+    echo "Starting Nexus ..."; $RUN_NEXUS; \
+    sleep 1; $RUN_PSLISP; $RUN_GETINFO; tcsh
