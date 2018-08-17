@@ -25,18 +25,73 @@
 
 class CAccount
 {
+public:
     std::vector<unsigned char> vchIdentifier;
 
     uint256 hashAddress;
 
     uint64 nBalance;
 
-    IMPLEMENT_SERIALIZE
-    (
+    unsigned int GetSerializeSize(int nType, int nVersion) const
+    {
+        CSerActionGetSerializeSize ser_action;
+
+        const bool fGetSize = true;
+        const bool fWrite = false;
+        const bool fRead = false;
+
+        unsigned int nSerSize = 0;
+        ser_streamplaceholder s;
+
+        assert(fGetSize||fWrite||fRead);
+
+        s.nType = nType;
+        s.nVersion = nVersion;
+
+        nSerSize += ::SerReadWrite(s, hashAddress, nType, nVersion, ser_action);
+        nSerSize += ::SerReadWrite(s, nBalance, nType, nVersion, ser_action);
+        nSerSize += ::SerReadWrite(s, vchIdentifier, nType, nVersion, ser_action);
+
         READWRITE(hashAddress);
         READWRITE(nBalance);
-        READWRITE(FLATDATA(vchIdentifier));
-    )
+        READWRITE(vchIdentifier);
+
+        return nSerSize;
+    }
+
+    template<typename Stream>
+    void Serialize(Stream& s, int nType, int nVersion) const
+    {
+        CSerActionSerialize ser_action;
+
+        const bool fGetSize = false;
+        const bool fWrite = true;
+        const bool fRead = false;
+
+        unsigned int nSerSize = 0;
+        assert(fGetSize||fWrite||fRead);
+
+        READWRITE(hashAddress);
+        READWRITE(nBalance);
+        READWRITE(vchIdentifier);
+    }
+
+    template<typename Stream>
+    void Unserialize(Stream& s, int nType, int nVersion)
+    {
+        CSerActionUnserialize ser_action;
+
+        const bool fGetSize = false;
+        const bool fWrite = false;
+        const bool fRead = true;
+
+        unsigned int nSerSize = 0;
+        assert(fGetSize||fWrite||fRead);
+
+        READWRITE(hashAddress);
+        READWRITE(nBalance);
+        READWRITE(vchIdentifier);
+    }
 
     CAccount() : hashAddress(0), nBalance(0)
     {
@@ -69,10 +124,15 @@ int main(int argc, char** argv)
 
     LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(9323, 10, 30);
 
-    SERVER->AddConnection("104.192.170.130", "9323");
-    SERVER->AddConnection("104.192.169.10",  "9323");
-    SERVER->AddConnection("104.192.170.30",  "9323");
-    SERVER->AddConnection("96.43.131.82",    "9323");
+    if (mapArgs.count("-addnode") == 0)
+        return 0;
+
+    for(auto strNode : mapMultiArgs["-addnode"])
+        SERVER->AddConnection(strNode, "9323");
+        
+    //SERVER->AddConnection("104.192.169.10",  "9323");
+    //SERVER->AddConnection("104.192.170.30",  "9323");
+    //SERVER->AddConnection("96.43.131.82",    "9323");
 
     while(true)
     {
