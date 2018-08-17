@@ -1,0 +1,12 @@
+testnet=1
+unified=1
+listen=1
+stake=1
+server=1
+mining=1
+debug=1
+verbose=4
+rpcuser=therpcuser
+rpcpassword=ptCHANGEME89uhij4903i4ij
+rpcallowip=127.0.0.1
+daemon=1

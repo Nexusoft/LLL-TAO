@@ -14,8 +14,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_BLOCK_H
 #define NEXUS_TAO_LEDGER_TYPES_BLOCK_H
 
-#include "transaction.h"
-#include "../../../LLC/hash/macro.h"
+#include "legacy_tx.h"
+#include "../../../../LLC/hash/macro.h"
 
 namespace TAO
 {
