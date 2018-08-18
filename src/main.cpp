@@ -77,13 +77,14 @@ int main(int argc, char** argv)
 {
     ParseParameters(argc, argv);
 
-    LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(stoi(GetArg("-port", "9323")), 10, 30);
+    int nPort = GetArg("-port", 9323);
+    LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(nPort, 10, 30);
 
     if (mapArgs.count("-addnode") == 0)
         return 0;
 
     for(auto strNode : mapMultiArgs["-addnode"])
-        SERVER->AddConnection(strNode, GetArg("-port", "9323"));
+        SERVER->AddConnection(strNode, strprintf("%i", nPort));
 
     //SERVER->AddConnection("240.0.255.255", "9323");
     //SERVER->AddConnection("104.192.169.10",  "9323");
