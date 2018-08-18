@@ -1,12 +1,12 @@
 /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
-            
+
             (c) Copyright The Nexus Developers 2014 - 2017
-            
+
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
-            
+
             "fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
 
 ____________________________________________________________________________________________*/
@@ -98,12 +98,12 @@ inline std::string HexStr(const std::vector<unsigned char>& vch, bool fSpaces=fa
 }
 
 template<typename T>
-inline void PrintHex(const T pbegin, const T pend, const char* pszFormat="%s", bool fSpaces=true)
+inline void PrintHex(const T pbegin, const T pend, const char* pszFormat="%s\n", bool fSpaces=true)
 {
     printf(pszFormat, HexStr(pbegin, pend, fSpaces).c_str());
 }
 
-inline void PrintHex(const std::vector<unsigned char>& vch, const char* pszFormat="%s", bool fSpaces=true)
+inline void PrintHex(const std::vector<unsigned char>& vch, const char* pszFormat="%s\n", bool fSpaces=true)
 {
     printf(pszFormat, HexStr(vch, fSpaces).c_str());
 }

@@ -139,6 +139,7 @@ namespace LLP
         void SetChecksum()
         {
             uint512 hash = LLC::HASH::SK512(DATA.begin(), DATA.end());
+            //std::copy(hash, hash + sizeof(CHECKSUM), CHECKSUM);
             memcpy(&CHECKSUM, &hash, sizeof(CHECKSUM));
         }
 
@@ -173,6 +174,7 @@ namespace LLP
             /* Double check the Message Checksum. */
             uint512 hash = LLC::HASH::SK512(DATA.begin(), DATA.end());
             unsigned int nChecksum = 0;
+            //std::copy(hash.begin(), hash.begin() + sizeof(nChecksum), &nChecksum);
             memcpy(&nChecksum, &hash, sizeof(nChecksum));
 
             if (nChecksum != CHECKSUM)

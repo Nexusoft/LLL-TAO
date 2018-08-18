@@ -78,7 +78,7 @@ int main(int argc, char** argv)
     ParseParameters(argc, argv);
 
     int nPort = GetArg("-port", 9323);
-    LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(nPort, 10, 30);
+    LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(nPort, 10, 30, true, 2, 30, 60, fListen, true);
 
     if (mapArgs.count("-addnode") == 0)
         return 0;

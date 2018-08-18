@@ -58,7 +58,7 @@ namespace LLP
         /** Handle any DDOS Packet Filters. **/
         if(EVENT == EVENT_HEADER)
         {
-            if(GetArg("-verbose", 0) >= 4)
+            if(GetArg("-verbose", 0) >= 3)
                 printf("***** Node recieved Message (%s, %u)\n", INCOMING.GetMessage().c_str(), INCOMING.LENGTH);
 
             if(fDDOS)
@@ -81,14 +81,13 @@ namespace LLP
         /** Handle for a Packet Data Read. **/
         if(EVENT == EVENT_PACKET)
         {
-            if(GetArg("-verbose", 0) >= 5)
-                printf("***** Node Read Data for Message (%s, %u, %s)\n", INCOMING.GetMessage().c_str(), LENGTH, INCOMING.Complete() ? "TRUE" : "FALSE");
 
             /* Check a packet's validity once it is finished being read. */
             if(fDDOS) {
 
                 /* Give higher score for Bad Packets. */
-                if(INCOMING.Complete() && !INCOMING.IsValid()){
+                if(INCOMING.Complete() && !INCOMING.IsValid())
+                {
 
                     if(GetArg("-verbose", 0) >= 3)
                         printf("***** Dropped Packet (Complete: %s - Valid: %s)\n", INCOMING.Complete() ? "Y" : "N" , INCOMING.IsValid() ? "Y" : "N" );
@@ -96,6 +95,18 @@ namespace LLP
                     DDOS->rSCORE += 15;
                 }
 
+            }
+
+            if(INCOMING.Complete())
+            {
+                if(GetArg("-verbose", 0) >= 4)
+                    printf("***** Node Received Packet (%u, %u)\n", INCOMING.LENGTH, INCOMING.GetBytes().size());
+
+                if(GetArg("-verbose", 0) >= 5) {
+                    printf("***** Hex Message Dump\n");
+
+                    PrintHex(INCOMING.GetBytes());
+                }
             }
 
             return;
