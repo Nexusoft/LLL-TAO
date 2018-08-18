@@ -173,7 +173,7 @@ namespace LLP
             /* Double check the Message Checksum. */
             uint512 hash = LLC::HASH::SK512(DATA.begin(), DATA.end());
             unsigned int nChecksum = 0;
-            memcpy(&nChecksum, &hash, sizeof(nChecksum));
+            std::copy(&hash, sizeof(nChecksum), nChecksum);
 
             if (nChecksum != CHECKSUM)
                 return error("Message Packet (%s, %u bytes) : CHECKSUM MISMATCH nChecksum=%u hdr.nChecksum=%u",
