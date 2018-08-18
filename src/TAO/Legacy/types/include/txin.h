@@ -11,14 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_TYPES_INCLUDE_TRANSACTION_H
-#define NEXUS_TAO_LEGACY_TYPES_INCLUDE_TRANSACTION_H
+#ifndef NEXUS_TAO_LEGACY_TYPES_INCLUDE_TXIN_H
+#define NEXUS_TAO_LEGACY_TYPES_INCLUDE_TXIN_H
 
-
-namespace LLD
-{
-	class CIndexDB;
-}
 
 namespace Legacy
 {
