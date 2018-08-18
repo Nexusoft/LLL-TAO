@@ -44,10 +44,8 @@ RUN python /lispers.net/get-pip.py
 RUN pip install -r /lispers.net/pip-requirements.txt
 
 #
-# Make prompt hostname/container name, allow web interface to work, and put us
-# in the /lispers.net directory when you attach to container.
+# Put user in the /lispers.net directory when you attach to container.
 #
-#RUN echo 'PS1="`hostname | cut -d . -f 0` > "' >> /root/.profile
 EXPOSE 8080
 WORKDIR /lispers.net
 
@@ -55,7 +53,9 @@ WORKDIR /lispers.net
 # Put Nexus source-tree in docker image.
 #
 RUN mkdir /nexus
-COPY ./ /nexus/
+RUN mkdir /nexus/build
+COPY ./makefile.cli /nexus
+COPY ./src /nexus/src/
 COPY nexus-config/nexus.conf /root/.Nexus/nexus.conf
 COPY nexus-config/run-nexus /nexus/run-nexus
 
