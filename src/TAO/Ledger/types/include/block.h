@@ -25,6 +25,11 @@ namespace LLC
 	}
 }
 
+namespace Legacy
+{
+	class Transaction;
+}
+
 namespace TAO
 {
 	namespace Ledger
@@ -87,37 +92,8 @@ namespace TAO
 			mutable std::vector<uint512> vMerkleTree;
 
 
-			//serialization functions
-			//TODO: Serialize vtx on network, but not on disk
-			//Only serialize the hashes of the transactions (as precurser to light blocks)
-			//Then blocks can be relayed with no need for transactional data, which can be represented by L1 locks later down.
-			//Block size will not exist, blocks will only keep record of transactions in merkle done by processing buckets.
-			//Until done in the future with Amine these will be at the descretion of Miners what buckets to include.
-			//possibly assess a penalty if a bucket exists that a miner doesn't include.
-
-			unsigned int GetSerializeSize(int nType, int nVersion) const;
-
-			template<typename Stream> void Serialize(Stream& s, int nType, int nVersion) const;
-
-			template<typename Stream> void Unserialize(Stream& s, int nType, int nVersion);
-
-			/*
-			IMPLEMENT_SERIALIZE
-			(
-				READWRITE(this->nVersion);
-				nVersion = this->nVersion;
-				READWRITE(hashPrevBlock);
-				READWRITE(hashMerkleRoot);
-				READWRITE(nChannel);
-				READWRITE(nHeight);
-				READWRITE(nBits);
-				READWRITE(nNonce);
-				READWRITE(nTime);
-				READWRITE(vtx);
-				READWRITE(vchBlockSig);
-
-			)
-			*/
+			//standard serialization methods
+			SERIALIZE_METHODS_HEADER
 
 
 			/** The default constructor. Sets block state to Null. **/

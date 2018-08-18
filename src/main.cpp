@@ -32,73 +32,28 @@ public:
 
     uint64 nBalance;
 
-    unsigned int GetSerializeSize(int nType, int nVersion) const
-    {
-        CSerActionGetSerializeSize ser_action;
-
-        const bool fGetSize = true;
-        const bool fWrite = false;
-        const bool fRead = false;
-
-        unsigned int nSerSize = 0;
-        ser_streamplaceholder s;
-
-        assert(fGetSize||fWrite||fRead);
-
-        s.nType = nType;
-        s.nVersion = nVersion;
-
-        nSerSize += ::SerReadWrite(s, hashAddress, nType, nVersion, ser_action);
-        nSerSize += ::SerReadWrite(s, nBalance, nType, nVersion, ser_action);
-        nSerSize += ::SerReadWrite(s, vchIdentifier, nType, nVersion, ser_action);
-
-        READWRITE(hashAddress);
-        READWRITE(nBalance);
-        READWRITE(vchIdentifier);
-
-        return nSerSize;
-    }
-
-    template<typename Stream>
-    void Serialize(Stream& s, int nType, int nVersion) const
-    {
-        CSerActionSerialize ser_action;
-
-        const bool fGetSize = false;
-        const bool fWrite = true;
-        const bool fRead = false;
-
-        unsigned int nSerSize = 0;
-        assert(fGetSize||fWrite||fRead);
-
-        READWRITE(hashAddress);
-        READWRITE(nBalance);
-        READWRITE(vchIdentifier);
-    }
-
-    template<typename Stream>
-    void Unserialize(Stream& s, int nType, int nVersion)
-    {
-        CSerActionUnserialize ser_action;
-
-        const bool fGetSize = false;
-        const bool fWrite = false;
-        const bool fRead = true;
-
-        unsigned int nSerSize = 0;
-        assert(fGetSize||fWrite||fRead);
-
-        READWRITE(hashAddress);
-        READWRITE(nBalance);
-        READWRITE(vchIdentifier);
-    }
+    SERIALIZE_METHODS_HEADER
 
     CAccount() : hashAddress(0), nBalance(0)
     {
 
     }
 
+    void print()
+    {
+        printf("Identifier %s, Address %s, %" PRIu64 "\n", HexStr(vchIdentifier.begin(), vchIdentifier.end()).c_str(), hashAddress.ToString().c_str(), nBalance);
+    }
 };
+
+
+SERIALIZE_METHODS_SOURCE
+(
+    CAccount,
+
+    READWRITE(vchIdentifier);
+    READWRITE(hashAddress);
+    READWRITE(nBalance);
+)
 
 
 
@@ -132,7 +87,7 @@ int main(int argc, char** argv)
 
     //SERVER->AddConnection("240.0.255.255", "9323");
     //SERVER->AddConnection("104.192.169.10",  "9323");
-    //SERVER->AddConnection("104.192.170.30",  "9323");
+    //SERVER->AddConnection("104.192.170.30",  "9323");-
     //SERVER->AddConnection("96.43.131.82",    "9323");
 
     while(true)

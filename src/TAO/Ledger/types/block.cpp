@@ -21,6 +21,48 @@ namespace TAO
 	namespace Ledger
 	{
 
+		//serialization functions
+		//TODO: Serialize vtx on network, but not on disk
+		//Only serialize the hashes of the transactions (as precurser to light blocks)
+		//Then blocks can be relayed with no need for transactional data, which can be represented by L1 locks later down.
+		//Block size will not exist, blocks will only keep record of transactions in merkle done by processing buckets.
+		//Until done in the future with Amine these will be at the descretion of Miners what buckets to include.
+		//possibly assess a penalty if a bucket exists that a miner doesn't include.
+		SERIALIZE_METHODS_SOURCE
+		(
+			Block, //the class type
+
+			READWRITE(this->nVersion);
+			nVersion = this->nVersion;
+
+			READWRITE(hashPrevBlock);
+			READWRITE(hashMerkleRoot);
+			READWRITE(nChannel);
+			READWRITE(nHeight);
+			READWRITE(nBits);
+			READWRITE(nNonce);
+			READWRITE(nTime);
+			READWRITE(vtx);
+			READWRITE(vchBlockSig);
+
+		)
+
+		/* Set the block state to null. */
+		void Block::SetNull()
+		{
+			nVersion = 3; //TODO: Use current block version
+			hashPrevBlock = 0;
+			hashMerkleRoot = 0;
+			nChannel = 0;
+			nHeight = 0;
+			nBits = 0;
+			nNonce = 0;
+			nTime = 0;
+
+			vtx.clear();
+			vchBlockSig.clear();
+			vMerkleTree.clear();
+		}
 
 		/* Set the channel of the block. */
 		void Block::SetChannel(unsigned int nNewChannel)
