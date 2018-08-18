@@ -14,11 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_INCLUDE_TRANSACTION_H
 #define NEXUS_TAO_LEGACY_TYPES_INCLUDE_TRANSACTION_H
 
-
-namespace LLD
-{
-	class CIndexDB;
-}
+#include "include/outpoint.h"
 
 namespace Legacy
 {
@@ -26,59 +22,75 @@ namespace Legacy
 	namespace Types
 	{
 
-			SERIALIZE_SOURCE
-			(
-				CTxIn,
+		/* Serizliation Method Body. */
+		SERIALIZE_SOURCE
+		(
+			CTxIn,
 
-				READWRITE(prevout);
-				READWRITE(scriptSig);
-				READWRITE(nSequence);
-			)
+			READWRITE(prevout);
+			READWRITE(scriptSig);
+			READWRITE(nSequence);
+		)
 
-			bool CTxIn::IsStakeSig() const
-			{
-				if( scriptSig.size() != 8)
-					return false;
 
-				if( scriptSig[0] != 1 || scriptSig[1] != 2 || scriptSig[2] != 3 || scriptSig[3] != 5 ||
-					scriptSig[4] != 8 || scriptSig[5] != 13 || scriptSig[6] != 21 || scriptSig[7] != 34)
-					return false;
+		/* Basic Constructor. */
+		CTxIn::CTxIn(uint512 hashPrevTx, unsigned int nOut, Wallet::CScript scriptSigIn=CScript(), unsigned int nSequenceIn=std::numeric_limits<unsigned int>::max())
+		{
+			prevout = COutPoint(hashPrevTx, nOut);
+			scriptSig = scriptSigIn;
+			nSequence = nSequenceIn;
+		}
 
-				return true;
-			}
 
-			std::string CTxIn::ToStringShort() const
-	        {
-	            return strprintf(" %s %d", prevout.hash.ToString().c_str(), prevout.n);
-	        }
+		/* Flag to tell if this input is the flag for proof of stake Transactions */
+		bool CTxIn::IsStakeSig() const
+		{
+			if( scriptSig.size() != 8)
+				return false;
 
-	        std::string CTxIn::ToString() const
-	        {
-	            std::string str;
-	            str += "CTxIn(";
-	            str += prevout.ToString();
-	            if (prevout.IsNull())
-	            {
-	                if(IsStakeSig())
-	                    str += strprintf(", genesis %s", HexStr(scriptSig).c_str());
-	                else
-	                    str += strprintf(", coinbase %s", HexStr(scriptSig).c_str());
-	            }
-	            else if(IsStakeSig())
-	                str += strprintf(", trust %s", HexStr(scriptSig).c_str());
-	            else
-	                str += strprintf(", scriptSig=%s", scriptSig.ToString().substr(0,24).c_str());
-	            if (nSequence != std::numeric_limits<unsigned int>::max())
-	                str += strprintf(", nSequence=%u", nSequence);
-	            str += ")";
-	            return str;
-	        }
+			if( scriptSig[0] != 1 || scriptSig[1] != 2 || scriptSig[2] != 3 || scriptSig[3] != 5 ||
+				scriptSig[4] != 8 || scriptSig[5] != 13 || scriptSig[6] != 21 || scriptSig[7] != 34)
+				return false;
 
-	        void CTxIn::print() const
-	        {
-	            printf("%s\n", ToString().c_str());
-	        }
-		};
+			return true;
+		}
+
+
+		/* Short Hand debug output of the object (hash, n) */
+		std::string CTxIn::ToStringShort() const
+        {
+            return strprintf(" %s %d", prevout.hash.ToString().c_str(), prevout.n);
+        }
+
+
+		/* Full object debug output as std::string. */
+        std::string CTxIn::ToString() const
+        {
+            std::string str;
+            str += "CTxIn(";
+            str += prevout.ToString();
+            if (prevout.IsNull())
+            {
+                if(IsStakeSig())
+                    str += strprintf(", genesis %s", HexStr(scriptSig).c_str());
+                else
+                    str += strprintf(", coinbase %s", HexStr(scriptSig).c_str());
+            }
+            else if(IsStakeSig())
+                str += strprintf(", trust %s", HexStr(scriptSig).c_str());
+            else
+                str += strprintf(", scriptSig=%s", scriptSig.ToString().substr(0,24).c_str());
+            if (nSequence != std::numeric_limits<unsigned int>::max())
+                str += strprintf(", nSequence=%u", nSequence);
+            str += ")";
+            return str;
+        }
+
+
+		/* Dump the full object to the console (stdout) */
+        void CTxIn::print() const
+        {
+            printf("%s\n", ToString().c_str());
+        }
 	}
-
 }
