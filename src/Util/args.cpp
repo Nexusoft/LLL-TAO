@@ -1,14 +1,14 @@
 /*__________________________________________________________________________________________
- 
+
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
-			
+
 			(c) Copyright The Nexus Developers 2014 - 2017
-			
+
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
-			
+
 			"fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
-  
+
 ____________________________________________________________________________________________*/
 
 #include "include/args.h"
@@ -93,6 +93,8 @@ void ParseParameters(int argc, const char*const argv[])
         // interpret -nofoo as -foo=0 (and -nofoo=0 as -foo=1) as long as -foo not set
         InterpretNegativeSetting(name, mapArgs);
     }
+
+    fTestNet = (GetBoolArg("-testnet", false) || GetBoolArg("-lispnet", false));
 }
 
 std::string GetArg(const std::string& strArg, const std::string& strDefault)
