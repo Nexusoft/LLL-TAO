@@ -1,12 +1,12 @@
 /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
-            
+
             (c) Copyright The Nexus Developers 2014 - 2017
-            
+
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
-            
+
             "fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
 
 ____________________________________________________________________________________________*/
@@ -90,16 +90,16 @@ typedef int socklen_t;
 
 namespace LLP
 {
-    
+
     static const unsigned char pchIPv4[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff };
-    
+
     /** Services flags */
     enum
     {
         NODE_NETWORK = (1 << 0),
     };
-    
-    
+
+
     /** IP address (IPv6, or IPv4 using mapped IPv6 range (::FFFF:0:0/96)) */
     class CNetAddr
     {
@@ -151,7 +151,7 @@ namespace LLP
                 )
     };
 
-    
+
     /** A combination of a network address (CNetAddr) and a (TCP) port */
     class CService : public CNetAddr
     {
@@ -197,7 +197,7 @@ namespace LLP
             )
     };
 
-    
+
     /** A CService with information about it as peer */
     class CAddress : public CService
     {
@@ -233,8 +233,8 @@ namespace LLP
             // memory only
             int64 nLastTry;
     };
-    
-    
+
+
     /** Extended statistics about a CAddress */
     class CAddrInfo : public CAddress
     {
@@ -242,19 +242,19 @@ namespace LLP
         /* Who Gave us this Address. */
         CNetAddr source;
 
-        
+
         /* The last time this connection was seen. */
         unsigned int nLastSuccess;
 
-        
+
         /* The last time this node was tried. */
         unsigned int nLastAttempt;
 
-        
+
         /* Number of attempts to connect since last try. */
         unsigned int nAttempts;
 
-        
+
 
     public:
 
@@ -283,20 +283,20 @@ namespace LLP
             Init();
         }
     };
-    
-    
+
+
     /* Proxy Settings for Nexus Core. */
     static CService addrProxy("127.0.0.1", 9050);
-    
-    
+
+
     /* Get the Main Core LLP Port for Nexus. */
     inline unsigned short GetCorePort(const bool testnet = fTestNet){ return testnet ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT; }
-    
-    
+
+
     /* Get the Main Mining LLP Port for Nexus. */
     inline unsigned short GetMiningPort(const bool testnet = fTestNet){ return testnet ? TESTNET_MINING_LLP_PORT : MAINNET_MINING_LLP_PORT; }
-    
-    
+
+
     /* Get the Main Message LLP Port for Nexus. */
     inline unsigned short GetDefaultPort(const bool testnet = fTestNet){ return testnet ? TESTNET_PORT : MAINNET_PORT; }
 
