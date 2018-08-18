@@ -14,7 +14,7 @@ alias t          'nice top -d 1'
 #        
 alias run-nexus  '/nexus/run-nexus'
 alias ps-nexus   'psg nexus'
-alias ncli       '/nexus/nexus'
+alias ncli       '/nexus/nexus -lispnet'
 alias ninfo      'ncli getinfo'
 alias npeers     'ncli getpeerinfo'
 alias npeercount 'ncli getconnectioncount'
