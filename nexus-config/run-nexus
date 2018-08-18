@@ -1,5 +1,6 @@
 #!/bin/bash
 #
-# Launch nexus daemon. 
+# Launch Nexus Daemon. Start with seed node in JDC data center.
 #
-/nexus/nexus -printtoconsole -verbose=2 -lispnet -istimeseed > /nexus/nexus.log &
+cd /nexus
+./nexus -verbose=3 -addnode=240.0.13.13 -port 7323 >& /nexus/nexus.log &
