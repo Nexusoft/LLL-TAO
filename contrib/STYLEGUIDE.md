@@ -26,12 +26,18 @@ The variable names have a prefix that defines the type. This helps us not lose t
 Always use namespaces to keep the code well ordered and organized. The guide to using namespaces is based around the folder the source files are in. Always declare a new namespace every time you increment a folder, to ensure it is easy to find objects, and there are no duplicate declarations.
 
 
+## Indentation and Formatting
+
+This section involes how to format the code due to carriage return
+
+
 ## Types to avoid
 
 There are certain types that cause more problems than they solve. Following is a list of types to be warned of using.
 
 * Avoid floating points in objects when possible to avoid floating point precision errors that can occur on certain hardware. One can easily convert from an integer into float by setting the significant figures. ex. unsigned int n = 1000000; printf("%f", n / 1000000.0);
 
+
 ## Security Precautions
 
-* memcopy - this is known to have attack vulnerabilities and it leaves a large interpretation to the operation system. Avoid this when at all possible.
+* memcpy - this is known to have buffer overflow attack vulnerabilities. Use std::copy instead of memcpy in all instances.

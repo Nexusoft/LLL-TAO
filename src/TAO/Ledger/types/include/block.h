@@ -93,7 +93,7 @@ namespace TAO
 
 
 			//standard serialization methods
-			SERIALIZE_METHODS_HEADER
+			SERIALIZE_HEADER
 
 
 			/** The default constructor. Sets block state to Null. **/

@@ -23,7 +23,6 @@ std::map<std::string, std::vector<std::string> > mapMultiArgs;
 
 bool fDebug = false;
 bool fPrintToConsole = false;
-bool fPrintToDebugger = false;
 bool fRequestShutdown = false;
 bool fShutdown = false;
 bool fDaemon = false;
@@ -94,7 +93,16 @@ void ParseParameters(int argc, const char*const argv[])
         InterpretNegativeSetting(name, mapArgs);
     }
 
-    fTestNet = (GetBoolArg("-testnet", false) || GetBoolArg("-lispnet", false));
+    fDebug                  = GetBoolArg("-debug", false);
+    fPrintToConsole         = GetBoolArg("-printtoconsole", false);
+    fDaemon                 = GetBoolArg("-daemon", false);
+    fServer                 = GetBoolArg("-server", false);
+    fTestNet                = GetBoolArg("-testnet", false) ||
+                              GetBoolArg("-lispnet", false);
+    fListen                 = GetBoolArg("-listen", true);
+    //fUseProxy               = GetBoolArg("-proxy")
+    fAllowDNS               = GetBoolArg("-allowdns", true);
+    fLogTimestamps          = GetBoolArg("-logtimestamps", false);
 }
 
 std::string GetArg(const std::string& strArg, const std::string& strDefault)
