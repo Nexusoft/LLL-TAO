@@ -32,7 +32,7 @@ public:
 
     uint64 nBalance;
 
-    SERIALIZE_METHODS_HEADER
+    SERIALIZE_HEADER
 
     CAccount() : hashAddress(0), nBalance(0)
     {
@@ -46,7 +46,7 @@ public:
 };
 
 
-SERIALIZE_METHODS_SOURCE
+SERIALIZE_SOURCE
 (
     CAccount,
 
@@ -85,11 +85,6 @@ int main(int argc, char** argv)
 
     for(auto strNode : mapMultiArgs["-addnode"])
         SERVER->AddConnection(strNode, strprintf("%i", nPort));
-
-    //SERVER->AddConnection("240.0.255.255", "9323");
-    //SERVER->AddConnection("104.192.169.10",  "9323");
-    //SERVER->AddConnection("104.192.170.30",  "9323");-
-    //SERVER->AddConnection("96.43.131.82",    "9323");
 
     while(true)
     {
