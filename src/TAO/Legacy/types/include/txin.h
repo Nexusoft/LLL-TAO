@@ -62,7 +62,7 @@ namespace Legacy
 			}
 
 
-			/** Explicit Constructor
+			/** Constructor
 			 *
 			 *	@param[in] prevoutIn The previous output object (hash, n)
 			 *	@param[in] scriptSigIn The script object to validate spend
@@ -77,7 +77,7 @@ namespace Legacy
 			}
 
 
-			/** Explicit Constructor
+			/** Constructor
 			 *
 			 *	@param[in] hashPrevTx The previous transaction hash input is spending
 			 *	@param[in] nOut The output number of previous transaction being spent
@@ -85,12 +85,7 @@ namespace Legacy
 			 *	@param[in] nSequenceIn The sequence number (default unsigned int numeric limits)
 			 *
 			 **/
-			CTxIn(uint512 hashPrevTx, unsigned int nOut, Wallet::CScript scriptSigIn=CScript(), unsigned int nSequenceIn=std::numeric_limits<unsigned int>::max())
-			{
-				prevout = COutPoint(hashPrevTx, nOut);
-				scriptSig = scriptSigIn;
-				nSequence = nSequenceIn;
-			}
+			CTxIn(uint512 hashPrevTx, unsigned int nOut, Wallet::CScript scriptSigIn=CScript(), unsigned int nSequenceIn=std::numeric_limits<unsigned int>::max());
 
 			/** Comparison Operator overload
 			 *
@@ -160,6 +155,7 @@ namespace Legacy
 			 **/
 			std::string ToString() const;
 
+
 			/** print
 			 *
 			 *	Dump the full object to the console (stdout)
@@ -167,7 +163,7 @@ namespace Legacy
 			 **/
 			void print() const;
 
-			
+
 		};
 	}
 
