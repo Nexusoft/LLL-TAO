@@ -163,7 +163,7 @@ namespace LLP
                 return false;
 
             /* Check the Header Bytes. */
-            if(memcmp(HEADER, (fTestNet ? MESSAGE_START_TESTNET : MESSAGE_START_TESTNET), sizeof(HEADER)) != 0)
+            if(memcmp(HEADER, (fTestNet ? MESSAGE_START_TESTNET : MESSAGE_START_MAINNET), sizeof(HEADER)) != 0)
                 return error("Message Packet (Invalid Packet Header");
 
             /* Make sure Packet length is within bounds. (Max 512 MB Packet Size) */
