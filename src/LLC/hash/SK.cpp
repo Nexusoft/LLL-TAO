@@ -27,12 +27,12 @@ namespace LLC
 
 		/** Serialize Hash: Used to Serialize a CTransaction class in order to obtain the Tx Hash. Utilizes CDataStream to serialize the class. **/
 		template<typename T>
-		uint512 SerializeHash(const T& obj, int nType=SER_GETHASH, int nVersion=PROTOCOL_VERSION)
+		uint512 SerializeHash(const T& obj)
 		{
 			// Most of the time is spent allocating and deallocating CDataStream's
 			// buffer.  If this ever needs to be optimized further, make a CStaticStream
 			// class with its buffer on the stack.
-			CDataStream ss(nType, nVersion);
+			CDataStream ss(SER_GETHASH, PROTOCOL_VERSION);
 			ss.reserve(10000);
 			ss << obj;
 			return LLC::HASH::SK512(ss.begin(), ss.end());

@@ -26,35 +26,18 @@ namespace Legacy
 	namespace Types
 	{
 
+		/** Transaction Fee Based Relay Codes. **/
+		enum GetMinFee_mode
+		{
+			GMF_BLOCK,
+			GMF_RELAY,
+			GMF_SEND,
+		};
+
 		/** Typedef for reading previous transaction inputs. TODO: deprecate txindex **/
 		typedef std::map<uint512, std::pair<CTxIndex, CTransaction> > MapPrevTx;
 
 
-	}
-
-
-
-
-	/* Transaction Fee Based Relay Codes. */
-	enum GetMinFee_mode
-	{
-		GMF_BLOCK,
-		GMF_RELAY,
-		GMF_SEND,
-	};
-
-
-	/** Serialize Hash: Used to Serialize a CTransaction class in order to obtain the Tx Hash. Utilizes CDataStream to serialize the class. **/
-	template<typename T>
-	uint512 SerializeHash(const T& obj, int nType=SER_GETHASH, int nVersion=PROTOCOL_VERSION)
-	{
-		// Most of the time is spent allocating and deallocating CDataStream's
-		// buffer.  If this ever needs to be optimized further, make a CStaticStream
-		// class with its buffer on the stack.
-		CDataStream ss(nType, nVersion);
-		ss.reserve(10000);
-		ss << obj;
-		return LLC::HASH::SK512(ss.begin(), ss.end());
 	}
 
 
