@@ -30,11 +30,10 @@ namespace TAO
 		//possibly assess a penalty if a bucket exists that a miner doesn't include.
 		SERIALIZE_METHODS_SOURCE
 		(
-			Block, //the class type
+			Block,
 
 			READWRITE(this->nVersion);
 			nVersion = this->nVersion;
-
 			READWRITE(hashPrevBlock);
 			READWRITE(hashMerkleRoot);
 			READWRITE(nChannel);
@@ -46,6 +45,7 @@ namespace TAO
 			READWRITE(vchBlockSig);
 
 		)
+		
 
 		/* Set the block state to null. */
 		void Block::SetNull()
