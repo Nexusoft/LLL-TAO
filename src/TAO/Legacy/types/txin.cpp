@@ -11,9 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_TYPES_INCLUDE_TRANSACTION_H
-#define NEXUS_TAO_LEGACY_TYPES_INCLUDE_TRANSACTION_H
-
 #include "include/outpoint.h"
 
 namespace Legacy

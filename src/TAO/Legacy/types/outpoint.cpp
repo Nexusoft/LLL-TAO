@@ -11,8 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_TYPES_INCLUDE_OUTPOINT_H
-#define NEXUS_TAO_LEGACY_TYPES_INCLUDE_OUTPOINT_H
 
 #include "../../../LLC/types/uint1024.h"
 #include "../../../Util/templates/serialize"
