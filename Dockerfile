@@ -1,8 +1,8 @@
 # 
-# Build Nexus/LISP docker image based on a Debian Linux kernel. This is for
+# Build Nexus/LISP docker image based on a Debian Linux kernel. This
 # Dockerfile is for the Tritium release of the TAO. The docker image name
 # should be called "tritium". To build, use the "docker build" command in
-# the LLL-TAO directory:
+# the LLL-TAO git repo directory:
 #
 #     cd LLL-TAO
 #     docker build -t tritium .
@@ -44,10 +44,8 @@ RUN python /lispers.net/get-pip.py
 RUN pip install -r /lispers.net/pip-requirements.txt
 
 #
-# Make prompt hostname/container name, allow web interface to work, and put us
-# in the /lispers.net directory when you attach to container.
+# Put user in the /lispers.net directory when you attach to container.
 #
-#RUN echo 'PS1="`hostname | cut -d . -f 0` > "' >> /root/.profile
 EXPOSE 8080
 WORKDIR /lispers.net
 
@@ -55,7 +53,9 @@ WORKDIR /lispers.net
 # Put Nexus source-tree in docker image.
 #
 RUN mkdir /nexus
-COPY ./ /nexus/
+RUN mkdir /nexus/build
+COPY ./makefile.cli /nexus
+COPY ./src /nexus/src/
 COPY nexus-config/nexus.conf /root/.Nexus/nexus.conf
 COPY nexus-config/run-nexus /nexus/run-nexus
 
@@ -76,6 +76,11 @@ COPY lisp/lisp-join.py /lispers.net/lisp-join.py
 COPY lisp/make-crypto-eid.py /lispers.net/make-crypto-eid.py
 
 #
+# Add some useful tcsh alias commands.
+#
+COPY nexus-config/.aliases /root/.aliases
+
+#
 # Startup lispers.net and nexus. Output some useful data and drop into tcsh.
 #
 ENV RUN_LISP    /lispers.net/RL
@@ -83,4 +88,6 @@ ENV RUN_NEXUS   /nexus/run-nexus
 ENV RUN_GETINFO /nexus/nexus -lispnet getinfo
 ENV RUN_PSLISP  /lispers.net/pslisp
 
-CMD $RUN_LISP; $RUN_NEXUS; sleep 1; $RUN_PSLISP; $RUN_GETINFO; tcsh
+CMD echo "Starting LISP ..."; $RUN_LISP; \
+    echo "Starting Nexus ..."; $RUN_NEXUS; \
+    sleep 1; $RUN_PSLISP; $RUN_GETINFO; tcsh

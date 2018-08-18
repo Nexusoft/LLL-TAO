@@ -1,0 +1,28 @@
+#
+# General tcsh aliases.
+#            
+alias sa         'source /root/.aliases'
+alias psg        'ps auxww | egrep \!* | egrep -v grep'
+alias py         'python -O -u'
+alias ll         'ls -lag'
+alias ld         'ls -lgd'
+alias h          'history'            
+alias t          'nice top -d 1'
+
+#
+# Nexus handy aliases.
+#        
+alias run-nexus  '/nexus/run-nexus'
+alias ps-nexus   'psg nexus'
+alias ncli       '/nexus/nexus'
+alias ninfo      'ncli getinfo'
+alias npeers     'ncli getpeerinfo'
+alias npeercount 'ncli getconnectioncount'
+
+#
+# LISP handy aliases.
+#            
+alias ps-lisp 'pushd /lispers.net > /dev/null; ./pslisp; popd > /dev/null'
+alias mc      'curl --silent --insecure -u root: https://localhost:8080/lisp/api/data/map-cache | jq .'
+alias ver     'curl --silent --insecure -u root: https://localhost:8080/lisp/api/data/system | jq .'
+alias rate    'mc | egrep "stats|address|state"'
