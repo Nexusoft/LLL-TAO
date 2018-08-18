@@ -84,7 +84,8 @@ enum
     SER_REGISTER_PRUNED = (1 << 21)
 };
 
-#define SERIALIZE_METHODS_HEADER \
+//Use this in the header file to keep dependencies clean
+#define SERIALIZE_HEADER \
     unsigned int GetSerializeSize(int nType, int nVersion) const;   \
     template<typename Stream>                                       \
     void Serialize(Stream& s, int nType, int nVersion) const;       \
@@ -92,7 +93,8 @@ enum
     void Unserialize(Stream& s, int nType, int nVersion);
 
 
-#define SERIALIZE_METHODS_SOURCE(classname, statements)    \
+//Use this in the source file to keep dependencies clean
+#define SERIALIZE_SOURCE(classname, statements)    \
     unsigned int classname::GetSerializeSize(int nType, int nVersion) const  \
     {                                           \
         CSerActionGetSerializeSize ser_action;  \
@@ -131,6 +133,10 @@ enum
     }
 
 
+
+
+//this should be used in header only files with complete types
+//best to avoid the use of it if not needed, kept for backwards compatability
 #define IMPLEMENT_SERIALIZE(statements)    \
     unsigned int GetSerializeSize(int nType, int nVersion) const  \
     {                                           \

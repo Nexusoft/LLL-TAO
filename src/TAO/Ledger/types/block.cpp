@@ -28,7 +28,7 @@ namespace TAO
 		//Block size will not exist, blocks will only keep record of transactions in merkle done by processing buckets.
 		//Until done in the future with Amine these will be at the descretion of Miners what buckets to include.
 		//possibly assess a penalty if a bucket exists that a miner doesn't include.
-		SERIALIZE_METHODS_SOURCE
+		SERIALIZE_SOURCE
 		(
 			Block,
 
@@ -45,7 +45,7 @@ namespace TAO
 			READWRITE(vchBlockSig);
 
 		)
-		
+
 
 		/* Set the block state to null. */
 		void Block::SetNull()
