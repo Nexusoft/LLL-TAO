@@ -11,22 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_CORE_INCLUDE_TRANSACTION_H
-#define NEXUS_CORE_INCLUDE_TRANSACTION_H
+#ifndef NEXUS_TAO_LEGACY_TYPES_INCLUDE_TRANSACTION_H
+#define NEXUS_TAO_LEGACY_TYPES_INCLUDE_TRANSACTION_H
 
-#include <map>
-#include <stdint.h>
-
-#include "../../include/global.h"
-#include "../../include/unifiedtime.h"
-
-#include "../../../Util/templates/serialize.h"
-#include "../../../Util/include/runtime.h"
-
-#include "../../../LLC/hash/SK.h"
-#include "../../../LLP/include/message.h"
-
-#include "../../../Wallet/script.h"
 
 namespace LLD
 {
@@ -35,12 +22,17 @@ namespace LLD
 
 namespace Legacy
 {
-	class CTxIndex;
-	class CBlockIndex;
-	class CDiskTxPos;
-	class CTransaction;
 
-	typedef std::map<uint512, std::pair<CTxIndex, CTransaction> > MapPrevTx;
+	namespace Types
+	{
+
+		/** Typedef for reading previous transaction inputs. TODO: deprecate txindex **/
+		typedef std::map<uint512, std::pair<CTxIndex, CTransaction> > MapPrevTx;
+
+
+	}
+
+
 
 
 	/* Transaction Fee Based Relay Codes. */
