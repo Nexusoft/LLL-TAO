@@ -1,13 +1,13 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
+			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2017
+			(c) Copyright The Nexus Developers 2014 - 2018
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-			"fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
+			"ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
 
@@ -93,9 +93,9 @@ namespace TAO
 
 
 		/* Get the prime number of the block. */
-		LLC::TYPES::CBigNum Block::GetPrime() const
+		LLC::CBigNum Block::GetPrime() const
 		{
-			return LLC::TYPES::CBigNum(GetHash() + nNonce);
+			return LLC::CBigNum(GetHash() + nNonce);
 		}
 
 
