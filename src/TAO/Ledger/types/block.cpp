@@ -64,6 +64,7 @@ namespace TAO
 			vMerkleTree.clear();
 		}
 
+
 		/* Set the channel of the block. */
 		void Block::SetChannel(uint32_t nNewChannel)
 		{

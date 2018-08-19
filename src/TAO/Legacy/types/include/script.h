@@ -19,76 +19,92 @@ ________________________________________________________________________________
 #include <string>
 #include <vector>
 
-#include <boost/foreach.hpp>
-
-namespace Core { class CTransaction; }
+namespace LLC { class CBigNum; }
 namespace Legacy
 {
-    class CKeyStore;
-
-
-    const char* GetTxnOutputType(TransactionType t);
-
-
-    const char* GetOpName(opcodetype opcode);
-
-
-
-
-
-
-
-
-
-
-
+    class Transaction;
 
     /** Serialized script, used inside transaction inputs and outputs */
     class CScript : public std::vector<uint8_t>
     {
     protected:
-        CScript& push_int64(int64_t n)
-        {
-            if (n == -1 || (n >= 1 && n <= 16))
-            {
-                push_back(n + (OP_1 - 1));
-            }
-            else
-            {
-                CBigNum bn(n);
-                *this << bn.getvch();
-            }
-            return *this;
-        }
 
-        CScript& push_uint64(uint64_t n)
-        {
-            if (n >= 1 && n <= 16)
-            {
-                push_back(n + (OP_1 - 1));
-            }
-            else
-            {
-                CBigNum bn(n);
-                *this << bn.getvch();
-            }
-            return *this;
-        }
+        /** push_int64
+         *
+         *  Push a 64 bit signed int onto the stack.
+         *
+         *  @param[in] n The Integer to push into the script.
+         *
+         **/
+        CScript& push_int64(int64_t n);
+
+        /** push_uint64
+         *
+         *  Push a 64 bit unsigned int onto the stack.
+         *
+         *  @param[in] n The Integer to push into the script.
+         *
+         **/
+        CScript& push_uint64(uint64_t n);
 
     public:
+
+        /** Default Constructors **/
         CScript() { }
+
+
+        /** Construct from another CScript
+         *
+         *  Initialize with a copy of the CScript
+         *
+         *  @param[in] b The object to copy into the vector.
+         *
+         **/
         CScript(const CScript& b) : std::vector<uint8_t>(b.begin(), b.end()) { }
+
+
+        /** Construct from iterators
+         *
+         *  Initialize with a copy using iterators
+         *
+         *  @param[in] pbegin The begin iterator of object
+         *  @param[in] pend The end iterator of object
+         *
+         **/
         CScript(const_iterator pbegin, const_iterator pend) : std::vector<uint8_t>(pbegin, pend) { }
+
+
     #ifndef _MSC_VER
+
+        /** Construct from iterators
+         *
+         *  Initialize with a copy using iterators
+         *
+         *  @param[in] pbegin The begin iterator of object
+         *  @param[in] pend The end iterator of object
+         *
+         **/
         CScript(const uint8_t* pbegin, const uint8_t* pend) : std::vector<uint8_t>(pbegin, pend) { }
     #endif
 
+
+        /** Operator overload +=
+         *
+         *  Concatenate Script Objects
+         *
+         **/
         CScript& operator+=(const CScript& b)
         {
             insert(end(), b.begin(), b.end());
             return *this;
         }
 
+
+        /** Operator overload +
+         *
+         *  Concatenate two Script Objects
+         *
+         **/
         friend CScript operator+(const CScript& a, const CScript& b)
         {
             CScript ret = a;
@@ -98,34 +114,31 @@ namespace Legacy
 
 
         //explicit CScript(char b) is not portable.  Use 'signed char' or 'uint8_t'.
-        explicit CScript(signed char b)    { operator<<(b); }
-        explicit CScript(short b)          { operator<<(b); }
-        explicit CScript(int b)            { operator<<(b); }
-        explicit CScript(long b)           { operator<<(b); }
-        explicit CScript(int64_t b)          { operator<<(b); }
-        explicit CScript(uint8_t b)  { operator<<(b); }
-        explicit CScript(uint32_t b)   { operator<<(b); }
-        explicit CScript(uint16_t b) { operator<<(b); }
-        explicit CScript(unsigned long b)  { operator<<(b); }
-        explicit CScript(uint64_t b)         { operator<<(b); }
-
-        explicit CScript(opcodetype b)     { operator<<(b); }
-        explicit CScript(const uint256_t& b) { operator<<(b); }
-        explicit CScript(const CBigNum& b) { operator<<(b); }
+        explicit CScript(signed char b)                 { operator<<(b); }
+        explicit CScript(short b)                       { operator<<(b); }
+        explicit CScript(int b)                         { operator<<(b); }
+        explicit CScript(long b)                        { operator<<(b); }
+        explicit CScript(int64_t b)                     { operator<<(b); }
+        explicit CScript(uint8_t b)                     { operator<<(b); }
+        explicit CScript(uint32_t b)                    { operator<<(b); }
+        explicit CScript(uint16_t b)                    { operator<<(b); }
+        explicit CScript(unsigned long b)               { operator<<(b); }
+        explicit CScript(uint64_t b)                    { operator<<(b); }
+        explicit CScript(opcodetype b)                  { operator<<(b); }
+        explicit CScript(const uint256_t& b)            { operator<<(b); }
+        explicit CScript(const LLC::CBigNum& b)         { operator<<(b); }
         explicit CScript(const std::vector<uint8_t>& b) { operator<<(b); }
 
-
-        //CScript& operator<<(char b) is not portable.  Use 'signed char' or 'uint8_t'.
-        CScript& operator<<(signed char b)    { return push_int64(b); }
-        CScript& operator<<(short b)          { return push_int64(b); }
-        CScript& operator<<(int b)            { return push_int64(b); }
-        CScript& operator<<(long b)           { return push_int64(b); }
-        CScript& operator<<(int64_t b)          { return push_int64(b); }
-        CScript& operator<<(uint8_t b)  { return push_uint64(b); }
-        CScript& operator<<(uint32_t b)   { return push_uint64(b); }
-        CScript& operator<<(uint16_t b) { return push_uint64(b); }
-        CScript& operator<<(unsigned long b)  { return push_uint64(b); }
-        CScript& operator<<(uint64_t b)         { return push_uint64(b); }
+        CScript& operator<<(signed char b)              { return push_int64(b); }
+        CScript& operator<<(short b)                    { return push_int64(b); }
+        CScript& operator<<(int b)                      { return push_int64(b); }
+        CScript& operator<<(long b)                     { return push_int64(b); }
+        CScript& operator<<(int64_t b)                  { return push_int64(b); }
+        CScript& operator<<(uint8_t b)                  { return push_uint64(b); }
+        CScript& operator<<(uint32_t b)                 { return push_uint64(b); }
+        CScript& operator<<(uint16_t b)                 { return push_uint64(b); }
+        CScript& operator<<(unsigned long b)            { return push_uint64(b); }
+        CScript& operator<<(uint64_t b)                 { return push_uint64(b); }
 
         CScript& operator<<(opcodetype opcode)
         {
@@ -184,200 +197,233 @@ namespace Legacy
         }
 
 
-        bool GetOp(iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>& vchRet)
-        {
-            // Wrapper so it can be called with either iterator or const_iterator
-            const_iterator pc2 = pc;
-            bool fRet = GetOp2(pc2, opcodeRet, &vchRet);
-            pc = begin() + (pc2 - begin());
-            return fRet;
-        }
+        /** GetOP
+         *
+         *  Get the op codes from stack
+         *
+         *  @param[in] pc Iterator to begin
+         *  @param[out] opcodeRet The code to be returned
+         *  @param[out] vchRet The bytes to return
+         *
+         *  @return true if successful, false otherwise
+         *
+         **/
+        bool GetOp(iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>& vchRet);
 
-        bool GetOp(iterator& pc, opcodetype& opcodeRet)
-        {
-            const_iterator pc2 = pc;
-            bool fRet = GetOp2(pc2, opcodeRet, NULL);
-            pc = begin() + (pc2 - begin());
-            return fRet;
-        }
 
-        bool GetOp(const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>& vchRet) const
-        {
-            return GetOp2(pc, opcodeRet, &vchRet);
-        }
+        /** GetOP
+         *
+         *  Get the op codes from stack
+         *
+         *  @param[in] pc Iterator to begin
+         *  @param[out] opcodeRet The code to be returned
+         *
+         *  @return true if successful, false otherwise
+         *
+         **/
+        bool GetOp(iterator& pc, opcodetype& opcodeRet);
 
-        bool GetOp(const_iterator& pc, opcodetype& opcodeRet) const
-        {
-            return GetOp2(pc, opcodeRet, NULL);
-        }
 
-        bool GetOp2(const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>* pvchRet) const
-        {
-            opcodeRet = OP_INVALIDOPCODE;
-            if (pvchRet)
-                pvchRet->clear();
-            if (pc >= end())
-                return false;
+        /** GetOP
+         *
+         *  Get the op codes from stack
+         *
+         *  @param[in] pc constant iterator to begin
+         *  @param[out] opcodeRet The code to be returned
+         *  @param[out] vchRet The bytes to return
+         *
+         *  @return true if successful, false otherwise
+         *
+         **/
+        bool GetOp(const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>& vchRet) const;
 
-            // Read instruction
-            if (end() - pc < 1)
-                return false;
-            uint32_t opcode = *pc++;
 
-            // Immediate operand
-            if (opcode <= OP_PUSHDATA4)
-            {
-                uint32_t nSize;
-                if (opcode < OP_PUSHDATA1)
-                {
-                    nSize = opcode;
-                }
-                else if (opcode == OP_PUSHDATA1)
-                {
-                    if (end() - pc < 1)
-                        return false;
-                    nSize = *pc++;
-                }
-                else if (opcode == OP_PUSHDATA2)
-                {
-                    if (end() - pc < 2)
-                        return false;
-                    nSize = 0;
-                    memcpy(&nSize, &pc[0], 2);
-                    pc += 2;
-                }
-                else if (opcode == OP_PUSHDATA4)
-                {
-                    if (end() - pc < 4)
-                        return false;
-                    memcpy(&nSize, &pc[0], 4);
-                    pc += 4;
-                }
-                if (end() - pc < nSize)
-                    return false;
-                if (pvchRet)
-                    pvchRet->assign(pc, pc + nSize);
-                pc += nSize;
-            }
+        /** GetOP
+         *
+         *  Get the op codes from stack
+         *
+         *  @param[in] pc constant iterator to begin
+         *  @param[out] opcodeRet The code to be returned
+         *
+         *  @return true if successful, false otherwise
+         *
+         **/
+        bool GetOp(const_iterator& pc, opcodetype& opcodeRet) const;
 
-            opcodeRet = (opcodetype)opcode;
-            return true;
-        }
 
-        // Encode/decode small integers:
-        static int DecodeOP_N(opcodetype opcode)
-        {
-            if (opcode == OP_0)
-                return 0;
-            assert(opcode >= OP_1 && opcode <= OP_16);
-            return (int)opcode - (int)(OP_1 - 1);
-        }
-        static opcodetype EncodeOP_N(int n)
-        {
-            assert(n >= 0 && n <= 16);
-            if (n == 0)
-                return OP_0;
-            return (opcodetype)(OP_1+n-1);
-        }
+        /** GetOP
+         *
+         *  Get the op codes from stack
+         *
+         *  @param[in] pc constant iterator to begin
+         *  @param[out] opcodeRet The code to be returned
+         *  @param[out] pvchRet The bytes to return via pointer
+         *
+         *  @return true if successful, false otherwise
+         *
+         **/
+        bool GetOp2(const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>* pvchRet) const;
 
-        int FindAndDelete(const CScript& b)
-        {
-            int nFound = 0;
-            if (b.empty())
-                return nFound;
-            iterator pc = begin();
-            opcodetype opcode;
-            do
-            {
-                while (end() - pc >= (long)b.size() && memcmp(&pc[0], &b[0], b.size()) == 0)
-                {
-                    erase(pc, pc + b.size());
-                    ++nFound;
-                }
-            }
-            while (GetOp(pc, opcode));
-            return nFound;
-        }
-        int Find(opcodetype op) const
-        {
-            int nFound = 0;
-            opcodetype opcode;
-            for (const_iterator pc = begin(); pc != end() && GetOp(pc, opcode);)
-                if (opcode == op)
-                    ++nFound;
-            return nFound;
-        }
 
-        // Pre-version-0.6, Nexus always counted CHECKMULTISIGs
-        // as 20 sigops. With pay-to-script-hash, that changed:
-        // CHECKMULTISIGs serialized in scriptSigs are
-        // counted more accurately, assuming they are of the form
-        //  ... OP_N CHECKMULTISIG ...
+        /** DecodeOP_N
+         *
+         *  Decodes the operation code.
+         *
+         *  @param[in] opcode The code to decode
+         *
+         *  @return the int representing code.
+         *
+         **/
+        int DecodeOP_N(opcodetype opcode);
+
+
+        /** EncodeOP_N
+         *
+         *  Encodes the operation code.
+         *
+         *  @param[in] n The int to encode with
+         *
+         *  @return the opcode corresponding to n
+         *
+         **/
+        opcodetype EncodeOP_N(int n);
+
+
+        /** FindAndDelete
+         *
+         *  Removes a script from a script
+         *
+         *  @param[in] b The script to delete from this script
+         *
+         *  @return the place in which was overwritten.
+         *
+         **/
+        int FindAndDelete(const CScript& b);
+
+
+        /** Find
+         *
+         *  Find the location of an opcode in the script.
+         *
+         *  @param[in] op The code that is being searched for
+         *
+         *  @return the byte location where code was found.
+         *
+         **/
+        int Find(opcodetype op) const;
+
+
+        /** GetSigOpCount
+         *
+         *  Get the total number of signature operations
+         *
+         *  @param[in] fAccurate Accuracy flag for SigOps
+         *
+         *  @return the total number of signature operations
+         *
+         **/
         uint32_t GetSigOpCount(bool fAccurate) const;
 
-        // Accurately count sigOps, including sigOps in
-        // pay-to-script-hash transactions:
+
+        /** GetSigOpCount
+         *
+         *  Get the total number of signature operations
+         *
+         *  @param[in] scriptSig The script object to check
+         *
+         *  @return the total number of signature operations
+         *
+         **/
         uint32_t GetSigOpCount(const CScript& scriptSig) const;
 
+
+        /** IsPayToScriptHash
+         *
+         *  Determine if script fits P2SH template
+         *
+         *  @return True if it fits P2SH template
+         *
+         **/
         bool IsPayToScriptHash() const;
 
-        // Called by Core::CTransaction::IsStandard
-        bool IsPushOnly() const
-        {
-            const_iterator pc = begin();
-            while (pc < end())
-            {
-                opcodetype opcode;
-                if (!GetOp(pc, opcode))
-                    return false;
-                if (opcode > OP_16)
-                    return false;
-            }
-            return true;
-        }
+
+        /** IsPushOnly
+         *
+         *  Determine if script is a pushdata only script
+         *
+         *  @return True if it is only pushing data
+         *
+         **/
+        bool IsPushOnly() const;
 
 
+        /** SetNexusAddress
+         *
+         *  Set the nexus address into script
+         *
+         *  @param[in] address The nexus address you input
+         *
+         **/
         void SetNexusAddress(const NexusAddress& address);
-        void SetNexusAddress(const std::vector<uint8_t>& vchPubKey)
-        {
-            SetNexusAddress(NexusAddress(vchPubKey));
-        }
+
+
+        /** SetNexusAddress
+         *
+         *  Set the nexus address from public key
+         *
+         *  @param[in] vchPubKey The public key to set.
+         *
+         **/
+        void SetNexusAddress(const std::vector<uint8_t>& vchPubKey);
+
+
+        /** SetMultiSig
+         *
+         *  Set script based on multi-sig data
+         *
+         *  @param[in] nRequired The total multi-sig keys required
+         *  @param[in] keys The keys to be added into the multi-sig contract
+         *
+         **/
         void SetMultisig(int nRequired, const std::vector<CKey>& keys);
+
+
+        /** SetPayToScriptHash
+         *
+         *  Set the script based on a P2SH script input
+         *
+         *  @param[in] subscript The input script
+         *
+         **/
         void SetPayToScriptHash(const CScript& subscript);
 
 
-        void PrintHex() const
-        {
-            printf("CScript(%s)\n", HexStr(begin(), end(), true).c_str());
-        }
+        /** PrintHex
+         *
+         *  Print the Hex output of the script
+         *
+         **/
+        void PrintHex() const;
 
-        std::string ToString(bool fShort=false) const
-        {
-            std::string str;
-            opcodetype opcode;
-            std::vector<uint8_t> vch;
-            const_iterator pc = begin();
-            while (pc < end())
-            {
-                if (!str.empty())
-                    str += " ";
-                if (!GetOp(pc, opcode, vch))
-                {
-                    str += "[error]";
-                    return str;
-                }
-                if (0 <= opcode && opcode <= OP_PUSHDATA4)
-                    str += fShort? HexStr(vch).substr(0, 10) : HexStr(vch);
-                else
-                    str += GetOpName(opcode);
-            }
-            return str;
-        }
 
-        void print() const
-        {
-            printf("%s\n", ToString().c_str());
-        }
+        /** ToString
+         *
+         *  Print the Hex output of the script into a std::string
+         *
+         *  @param[in] fShort Flag to set string to shorthand form
+         *
+         *  @return The script hex output in std::string
+         *
+         **/
+        std::string ToString(bool fShort=false) const;
+
+
+        /** print
+         *
+         *  Dump the Hex data into std::out or console 
+         *
+         **/
+        void print() const;
     };
 
 
@@ -390,9 +436,7 @@ namespace Legacy
     //used in standard inputs function check in transaction. potential to remove
     int ScriptSigArgsExpected(TransactionType t, const std::vector<std::vector<uint8_t> >& vSolutions);
 
-
     bool IsStandard(const CScript& scriptPubKey);
-
 
     bool IsMine(const CKeyStore& keystore, const CScript& scriptPubKey);
 
@@ -403,6 +447,7 @@ namespace Legacy
 
 
     bool ExtractAddresses(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<NexusAddress>& addressRet, int& nRequiredRet);
+
 
     //important to keep
     bool SignSignature(const CKeyStore& keystore, const Transaction& txFrom, Transaction& txTo, uint32_t nIn, int nHashType=SIGHASH_ALL);
