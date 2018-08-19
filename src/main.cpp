@@ -28,7 +28,7 @@
 class CAccount
 {
 public:
-    std::vector<unsigned char> vchIdentifier;
+    std::vector<uint8_t> vchIdentifier;
 
     LLC::uint256 hashAddress;
 
@@ -107,7 +107,7 @@ int main(int argc, char** argv)
 
         LLC::CKey key(NID_brainpoolP512t1, 64);
 
-        std::vector<unsigned char> vchData = hashGenesis.GetBytes();
+        std::vector<uint8_t> vchData = hashGenesis.GetBytes();
 
         LLC::CSecret vchSecret(vchData.begin(), vchData.end());
         if(!key.SetSecret(vchSecret, true))
@@ -115,7 +115,7 @@ int main(int argc, char** argv)
 
         LLC::CKey key512(key);
 
-        std::vector<unsigned char> vPubKey = key.GetPubKey();
+        std::vector<uint8_t> vPubKey = key.GetPubKey();
 
         printf("Genesis Pub %s\n", HexStr(vPubKey).c_str());
 
@@ -125,7 +125,7 @@ int main(int argc, char** argv)
 
         printf("Keys Created == %s\n", (key == key512) ? "TRUE" : "FALSE");
 
-        std::vector<unsigned char> vchSig;
+        std::vector<uint8_t> vchSig;
         bool fSigned = key512.Sign(hashSeed, vchSig, 256);
         //vchSig[0] = 0x11;
 

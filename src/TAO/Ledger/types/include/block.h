@@ -49,7 +49,7 @@ namespace TAO
 		public:
 
 			/** The blocks version for. Useful for changing rules. **/
-			unsigned int nVersion;
+			uint32_t nVersion;
 
 
 			/** The previous blocks hash. Used to chain blocks together. **/
@@ -61,15 +61,15 @@ namespace TAO
 
 
 			/** The Block Channel. This number designates what validation algorithm is required. **/
-			unsigned int nChannel;
+			uint32_t nChannel;
 
 
 			/** The Block's Height. This number tells what block number this is in the chain. **/
-			unsigned int nHeight;
+			uint32_t nHeight;
 
 
 			/** The Block's Bits. This number is a compact representation of the required difficulty. **/
-			unsigned int nBits;
+			uint32_t nBits;
 
 
 			/** The Block's nOnce. This number is used to find the "winning" hash. **/
@@ -77,11 +77,11 @@ namespace TAO
 
 
 			/** The Block's timestamp. This number is locked into the signature hash. **/
-			unsigned int nTime;
+			uint32_t nTime;
 
 
 			/** The bytes holding the blocks signature. Signed by the block creator before broadcast. **/
-			std::vector<unsigned char> vchBlockSig;
+			std::vector<uint8_t> vchBlockSig;
 
 
 			/** The transactions included in this block. Used to build the merkle tree. **/
@@ -108,7 +108,7 @@ namespace TAO
 			 *	@param[in] nHeightIn The height this block is being created at.
 			 *
 			**/
-			Block(unsigned int nVersionIn, LLC::uint1024 hashPrevBlockIn, unsigned int nChannelIn, unsigned int nHeightIn) : nVersion(nVersionIn), hashPrevBlock(hashPrevBlockIn), nChannel(nChannelIn), nHeight(nHeightIn), nBits(0), nNonce(0), nTime(0) { }
+			Block(uint32_t nVersionIn, LLC::uint1024 hashPrevBlockIn, uint32_t nChannelIn, uint32_t nHeightIn) : nVersion(nVersionIn), hashPrevBlock(hashPrevBlockIn), nChannel(nChannelIn), nHeight(nHeightIn), nBits(0), nNonce(0), nTime(0) { }
 
 
 			/** Set the block to Null state. **/
@@ -136,17 +136,17 @@ namespace TAO
 			 *	@param[in] nNewChannel The channel to set.
 			 *
 			 **/
-			void SetChannel(unsigned int nNewChannel);
+			void SetChannel(uint32_t nNewChannel);
 
 
 			/** GetChannel
 			 *
 			 *	Gets the channel the block belongs to
 			 *
-			 *	@return The channel assigned (unsigned int)
+			 *	@return The channel assigned (uint32_t)
 			 *
 			 */
-			unsigned int GetChannel() const;
+			uint32_t GetChannel() const;
 
 
 			/** IsNull
@@ -163,7 +163,7 @@ namespace TAO
 			 *
 			 *	Returns the current UNIX timestamp of the block.
 			 *
-			 *	@return 64-bit unsigned integer of timestamp
+			 *	@return 64-bit uint32_teger of timestamp
 			 *
 			 **/
 			uint64_t GetBlockTime() const;

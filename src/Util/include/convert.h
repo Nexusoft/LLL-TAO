@@ -111,13 +111,13 @@ inline bool IsSwitchChar(char c)
 }
 
 
-inline std::string ip_string(std::vector<unsigned char> ip) { return strprintf("%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]); }
+inline std::string ip_string(std::vector<uint8_t> ip) { return strprintf("%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]); }
 
 
 /* Parse an IP Address into a Byte Vector from Std::String. */
-inline std::vector<unsigned char> parse_ip(std::string ip)
+inline std::vector<uint8_t> parse_ip(std::string ip)
 {
-    std::vector<unsigned char> bytes(4, 0);
+    std::vector<uint8_t> bytes(4, 0);
     sscanf(ip.c_str(), "%hhu.%hhu.%hhu.%hhu", &bytes[0], &bytes[1], &bytes[2], &bytes[3]);
     
     return bytes;
@@ -125,9 +125,9 @@ inline std::vector<unsigned char> parse_ip(std::string ip)
 
 
 /* Convert a 32 bit Unsigned Integer to Byte Vector using Bitwise Shifts. */
-inline std::vector<unsigned char> uint2bytes(unsigned int UINT)
+inline std::vector<uint8_t> uint2bytes(uint32_t UINT)
 {
-    std::vector<unsigned char> BYTES(4, 0);
+    std::vector<uint8_t> BYTES(4, 0);
     BYTES[0] = UINT >> 24;
     BYTES[1] = UINT >> 16;
     BYTES[2] = UINT >> 8;
@@ -138,13 +138,13 @@ inline std::vector<unsigned char> uint2bytes(unsigned int UINT)
 
 
 /* Convert a byte stream into a signed integer 32 bit. */	
-inline int bytes2int(std::vector<unsigned char> BYTES, int nOffset = 0) { return (BYTES[0 + nOffset] << 24) + (BYTES[1 + nOffset] << 16) + (BYTES[2 + nOffset] << 8) + BYTES[3 + nOffset]; }
+inline int bytes2int(std::vector<uint8_t> BYTES, int nOffset = 0) { return (BYTES[0 + nOffset] << 24) + (BYTES[1 + nOffset] << 16) + (BYTES[2 + nOffset] << 8) + BYTES[3 + nOffset]; }
         
 
 /* Convert a 32 bit signed Integer to Byte Vector using Bitwise Shifts. */
-inline std::vector<unsigned char> int2bytes(int INT)
+inline std::vector<uint8_t> int2bytes(int INT)
 {
-    std::vector<unsigned char> BYTES(4, 0);
+    std::vector<uint8_t> BYTES(4, 0);
     BYTES[0] = INT >> 24;
     BYTES[1] = INT >> 16;
     BYTES[2] = INT >> 8;
@@ -154,18 +154,18 @@ inline std::vector<unsigned char> int2bytes(int INT)
 }
             
             
-/* Convert a byte stream into unsigned integer 32 bit. */	
-inline unsigned int bytes2uint(std::vector<unsigned char> BYTES, int nOffset = 0) { return (BYTES[0 + nOffset] << 24) + (BYTES[1 + nOffset] << 16) + (BYTES[2 + nOffset] << 8) + BYTES[3 + nOffset]; }		
+/* Convert a byte stream into uint32_teger 32 bit. */	
+inline uint32_t bytes2uint(std::vector<uint8_t> BYTES, int nOffset = 0) { return (BYTES[0 + nOffset] << 24) + (BYTES[1 + nOffset] << 16) + (BYTES[2 + nOffset] << 8) + BYTES[3 + nOffset]; }		
             
             
 /* Convert a 64 bit Unsigned Integer to Byte Vector using Bitwise Shifts. */
-inline std::vector<unsigned char> uint2bytes64(uint64_t UINT)
+inline std::vector<uint8_t> uint2bytes64(uint64_t UINT)
 {
-    std::vector<unsigned char> INTS[2];
-    INTS[0] = uint2bytes((unsigned int) UINT);
-    INTS[1] = uint2bytes((unsigned int) (UINT >> 32));
+    std::vector<uint8_t> INTS[2];
+    INTS[0] = uint2bytes((uint32_t) UINT);
+    INTS[1] = uint2bytes((uint32_t) (UINT >> 32));
                 
-    std::vector<unsigned char> BYTES;
+    std::vector<uint8_t> BYTES;
     BYTES.insert(BYTES.end(), INTS[0].begin(), INTS[0].end());
     BYTES.insert(BYTES.end(), INTS[1].begin(), INTS[1].end());
                 
@@ -173,20 +173,20 @@ inline std::vector<unsigned char> uint2bytes64(uint64_t UINT)
 }
 
             
-/* Convert a byte Vector into unsigned integer 64 bit. */
-inline uint64_t bytes2uint64(std::vector<unsigned char> BYTES, int nOffset = 0) { return (bytes2uint(BYTES, nOffset) | ((uint64_t)bytes2uint(BYTES, nOffset + 4) << 32)); }
+/* Convert a byte Vector into uint32_teger 64 bit. */
+inline uint64_t bytes2uint64(std::vector<uint8_t> BYTES, int nOffset = 0) { return (bytes2uint(BYTES, nOffset) | ((uint64_t)bytes2uint(BYTES, nOffset + 4) << 32)); }
 
 
 /* Convert Standard String into Byte Vector. */
-inline std::vector<unsigned char> string2bytes(std::string STRING)
+inline std::vector<uint8_t> string2bytes(std::string STRING)
 {
-    std::vector<unsigned char> BYTES(STRING.begin(), STRING.end());
+    std::vector<uint8_t> BYTES(STRING.begin(), STRING.end());
     return BYTES;
 }
 
 
 /* Convert Byte Vector into Standard String. */
-inline std::string bytes2string(std::vector<unsigned char> BYTES)
+inline std::string bytes2string(std::vector<uint8_t> BYTES)
 {
     std::string STRING(BYTES.begin(), BYTES.end());
     return STRING;

@@ -41,25 +41,25 @@ inline bool IsHex(const std::string& str)
 {
     for(int i = 0; i < str.size(); i ++)
     {
-        if (phexdigit[ (unsigned char) str[i] ] < 0)
+        if (phexdigit[ (uint8_t) str[i] ] < 0)
             return false;
     }
     return (str.size() > 0) && (str.size()%2 == 0);
 }
 
-inline std::vector<unsigned char> ParseHex(const char* psz)
+inline std::vector<uint8_t> ParseHex(const char* psz)
 {
     // convert hex dump to vector
-    std::vector<unsigned char> vch;
+    std::vector<uint8_t> vch;
     for(;;)
     {
         while (isspace(*psz))
             psz++;
-        signed char c = phexdigit[(unsigned char)*psz++];
+        signed char c = phexdigit[(uint8_t)*psz++];
         if (c == (signed char)-1)
             break;
-        unsigned char n = (c << 4);
-        c = phexdigit[(unsigned char)*psz++];
+        uint8_t n = (c << 4);
+        c = phexdigit[(uint8_t)*psz++];
         if (c == (signed char)-1)
             break;
         n |= c;
@@ -68,7 +68,7 @@ inline std::vector<unsigned char> ParseHex(const char* psz)
     return vch;
 }
 
-inline std::vector<unsigned char> ParseHex(const std::string& str)
+inline std::vector<uint8_t> ParseHex(const std::string& str)
 {
     return ParseHex(str.c_str());
 }
@@ -82,7 +82,7 @@ std::string HexStr(const T itbegin, const T itend, bool fSpaces=false)
     rv.reserve((itend-itbegin)*3);
     for(T it = itbegin; it < itend; ++it)
     {
-        unsigned char val = (unsigned char)(*it);
+        uint8_t val = (uint8_t)(*it);
         if(fSpaces && it != itbegin)
             rv.push_back(' ');
         rv.push_back(hexmap[val>>4]);
@@ -92,7 +92,7 @@ std::string HexStr(const T itbegin, const T itend, bool fSpaces=false)
     return std::string(rv.begin(), rv.end());
 }
 
-inline std::string HexStr(const std::vector<unsigned char>& vch, bool fSpaces=false)
+inline std::string HexStr(const std::vector<uint8_t>& vch, bool fSpaces=false)
 {
     return HexStr(vch.begin(), vch.end(), fSpaces);
 }
@@ -103,7 +103,7 @@ inline void PrintHex(const T pbegin, const T pend, const char* pszFormat="%s\n",
     printf(pszFormat, HexStr(pbegin, pend, fSpaces).c_str());
 }
 
-inline void PrintHex(const std::vector<unsigned char>& vch, const char* pszFormat="%s\n", bool fSpaces=true)
+inline void PrintHex(const std::vector<uint8_t>& vch, const char* pszFormat="%s\n", bool fSpaces=true)
 {
     printf(pszFormat, HexStr(vch, fSpaces).c_str());
 }

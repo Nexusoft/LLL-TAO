@@ -22,7 +22,7 @@ namespace Core
 {
 	/* Determines the Decimal of nBits per Channel for a decent "Frame of Reference".
 		Has no functionality in Network Operation. */
-	double GetDifficulty(unsigned int nBits, int nChannel)
+	double GetDifficulty(uint32_t nBits, int nChannel)
 	{
 		
 		/* Prime Channel is just Decimal Held in Integer
@@ -57,7 +57,7 @@ namespace Core
 	
 	
 	/* Break the Chain Age in Minutes into Days, Hours, and Minutes. */
-	void GetChainTimes(unsigned int nAge, unsigned int& nDays, unsigned int& nHours, unsigned int& nMinutes)
+	void GetChainTimes(uint32_t nAge, uint32_t& nDays, uint32_t& nHours, uint32_t& nMinutes)
 	{
 		nDays = nAge / 1440;
 		nHours = (nAge - (nDays * 1440)) / 60;
@@ -68,9 +68,9 @@ namespace Core
 	/* Get Weighted Times functions to weight the average on an iterator to give more weight to the most recent blocks
 		in the average to let previous block nDepth back still influence difficulty, but to let the most recent block
 		have the most influence in the adjustment. */
-    unsigned int CBlkPool::GetWeightedTimes(LLC::uint1024 hashBlock, unsigned int nDepth)
+    uint32_t CBlkPool::GetWeightedTimes(LLC::uint1024 hashBlock, uint32_t nDepth)
 	{
-		unsigned int nIterator = 0, nWeightedAverage = 0;
+		uint32_t nIterator = 0, nWeightedAverage = 0;
 		
         /* Find the introductory block. */
         CBlockState blkFirst;
@@ -87,7 +87,7 @@ namespace Core
 				break;
 				
             /* Calculate the time. */
-			unsigned int nTime = max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), 1) * nIndex * 3;
+			uint32_t nTime = max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), 1) * nIndex * 3;
             blkFirst = blkLast;
 			
             /* Weight the iterator based on the weight constant. */
@@ -103,7 +103,7 @@ namespace Core
 
 	
 	/* Switching function for each difficulty re-target [each channel uses their own version] */
-    unsigned int CBlkPool::GetNextTargetRequired(const CBlock blk, int nChannel)
+    uint32_t CBlkPool::GetNextTargetRequired(const CBlock blk, int nChannel)
 	{
 		if(nChannel == 0)
 			return RetargetTrust(blk);
@@ -120,7 +120,7 @@ namespace Core
 	
 	
 	/* Trust Retargeting: Modulate Difficulty based on production rate. */
-    unsigned int CBlkPool::RetargetTrust(const CBlock blk)
+    uint32_t CBlkPool::RetargetTrust(const CBlock blk)
 	{
 
 		/* Get Last Block Index [1st block back in Channel]. **/
@@ -201,7 +201,7 @@ namespace Core
 		/* Verbose Debug Output. */
 		if(GetArg("-verbose", 0) >= 3)
 		{
-			unsigned int nDays, nHours, nMinutes;
+			uint32_t nDays, nHours, nMinutes;
 			GetChainTimes(GetChainAge(blkFirst.GetBlockTime()), nDays, nHours, nMinutes);
 			
 			printf("RETARGET weighted time=%" PRId64 " actual time =%" PRId64 "[%f %%]\n\tchain time: [%" PRId64 " / %" PRId64 "]\n\tdifficulty: [%f to %f]\n\ttrust height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n\n", 
@@ -214,7 +214,7 @@ namespace Core
 	
 	
 	/* Prime Retargeting: Modulate Difficulty based on production rate. */
-	unsigned int RetargetPrime(const CBlock blk)
+	uint32_t RetargetPrime(const CBlock blk)
 	{
 
         /* Get Last Block Index [1st block back in Channel]. */
@@ -318,7 +318,7 @@ namespace Core
 
 		
 		/* Keep the target difficulty at minimum (allow -regtest difficulty) */
-		unsigned int nBits = SetBits(nDifficulty);
+		uint32_t nBits = SetBits(nDifficulty);
 		if (GetBoolArg("-regtest",false)) {
 			if (nBits < bnProofOfWorkLimitRegtest[1].getuint())
 				nBits = bnProofOfWorkLimitRegtest[1].getuint();
@@ -331,7 +331,7 @@ namespace Core
 		/* Console Output */
 		if(GetArg("-verbose", 0) >= 3)
 		{
-			unsigned int nDays, nHours, nMinutes;
+			uint32_t nDays, nHours, nMinutes;
 			GetChainTimes(GetChainAge(blkFirst.GetBlockTime()), nDays, nHours, nMinutes);
 			
 			printf("RETARGET weighted time=%" PRId64 " actual time %" PRId64 ", [%f %%]\n\tchain time: [%" PRId64 " / %" PRId64 "]\n\treleased reward: %" PRId64 " [%f %%]\n\tdifficulty: [%f to %f]\n\tprime height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n\n", 
@@ -345,7 +345,7 @@ namespace Core
 	
 	
 	/* Trust Retargeting: Modulate Difficulty based on production rate. */
-	unsigned int RetargetHash(const CBlock blk)
+	uint32_t RetargetHash(const CBlock blk)
 	{
 	
         /* Get Last Block Index [1st block back in Channel]. */
@@ -457,7 +457,7 @@ namespace Core
 		/* Console Output if Flagged. */
 		if(GetArg("-verbose", 0) >= 3)
 		{
-			unsigned int nDays, nHours, nMinutes;
+			uint32_t nDays, nHours, nMinutes;
 			GetChainTimes(GetChainAge(blkFirst.GetBlockTime()), nDays, nHours, nMinutes);
 			
 			printf("RETARGET weighted time=%" PRId64 " actual time %" PRId64 " [%f %%]\n\tchain time: [%" PRId64 " / %" PRId64 "]\n\treleased reward: %" PRId64 " [%f %%]\n\tdifficulty: [%f to %f]\n\thash height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n\n", 

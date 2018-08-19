@@ -40,11 +40,11 @@ namespace TAO
 
 
 			/* The height of this channel. */
-			unsigned int nChannelHeight;
+			uint32_t nChannelHeight;
 
 
 			/* The reserves that are released. */
-			unsigned int nReleasedReserve[2];
+			uint32_t nReleasedReserve[2];
 
 
 			/* The checkpoint this block was made from. */

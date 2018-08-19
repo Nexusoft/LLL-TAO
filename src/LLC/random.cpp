@@ -37,7 +37,7 @@ void RandAddSeedPerfmon()
 #ifdef WIN32
     // Don't need this on Linux, OpenSSL automatically uses /dev/urandom
     // Seed with the entire set of perfmon data
-    unsigned char pdata[250000];
+    uint8_t pdata[250000];
     memset(pdata, 0, sizeof(pdata));
     unsigned long nSize = sizeof(pdata);
     long ret = RegQueryValueExA(HKEY_PERFORMANCE_DATA, "Global", NULL, NULL, pdata, &nSize);
@@ -62,7 +62,7 @@ uint64_t GetRand(uint64_t nMax)
     uint64_t nRand = 0;
     do
     {
-        RAND_bytes((unsigned char*)&nRand, sizeof(nRand));
+        RAND_bytes((uint8_t*)&nRand, sizeof(nRand));
     }
     while (nRand >= nRange);
     
@@ -78,7 +78,7 @@ int GetRandInt(int nMax)
 LLC::uint256 GetRand256()
 {
     LLC::uint256 hash;
-    RAND_bytes((unsigned char*)&hash, sizeof(hash));
+    RAND_bytes((uint8_t*)&hash, sizeof(hash));
     return hash;
 }
 
@@ -86,7 +86,7 @@ LLC::uint256 GetRand256()
 LLC::uint512 GetRand512()
 {
     LLC::uint512 hash;
-    RAND_bytes((unsigned char*)&hash, sizeof(hash));
+    RAND_bytes((uint8_t*)&hash, sizeof(hash));
     return hash;
 }
 
@@ -94,6 +94,6 @@ LLC::uint512 GetRand512()
 LLC::uint1024 GetRand1024()
 {
     LLC::uint1024 hash;
-    RAND_bytes((unsigned char*)&hash, sizeof(hash));
+    RAND_bytes((uint8_t*)&hash, sizeof(hash));
     return hash;
 }

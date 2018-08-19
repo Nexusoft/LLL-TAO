@@ -46,8 +46,8 @@ namespace TAO
 
             //memory only, to be disposed once fully locked into the chain behind a checkpoints
             //this is for the segregated keys from transaction data.
-            std::vector<unsigned char> vchPubKey;
-            std::vector<unsigned char> vchSig;
+            std::vector<uint8_t> vchPubKey;
+            std::vector<uint8_t> vchSig;
 
             IMPLEMENT_SERIALIZE
             (

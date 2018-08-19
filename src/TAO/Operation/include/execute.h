@@ -22,12 +22,12 @@ namespace TAO
 
         class COperation
         {
-            std::vector<unsigned char> vchOperations;
+            std::vector<uint8_t> vchOperations;
 
             //counter to track what operation code we are on
-            unsigned int nIterator = 0;
+            uint32_t nIterator = 0;
 
-            COperation(std::vector<unsigned char> vchOperationsIn) : vchOperations(vchOperationsIn) {}
+            COperation(std::vector<uint8_t> vchOperationsIn) : vchOperations(vchOperationsIn) {}
 
             bool Execute(LLD::RegisterDB& regDB, LLC::uint256 hashOwner)
             {

@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 //Use this in the header file to keep dependencies clean
 #define SERIALIZE_HEADER \
-    unsigned int GetSerializeSize(int nType, int nVersion) const;   \
+    uint32_t GetSerializeSize(int nType, int nVersion) const;   \
     template<typename Stream>                                       \
     void Serialize(Stream& s, int nType, int nVersion) const;       \
     template<typename Stream>                                       \

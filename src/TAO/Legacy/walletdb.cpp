@@ -76,7 +76,7 @@ namespace Wallet
         Dbc* pcursor = GetCursor();
         if (!pcursor)
             throw runtime_error("CWalletDB::ListAccountCreditDebit() : cannot create DB cursor");
-        unsigned int fFlags = DB_SET_RANGE;
+        uint32_t fFlags = DB_SET_RANGE;
         loop() {
             // Read next record
             CDataStream ssKey(SER_DISK, DATABASE_VERSION);
@@ -219,7 +219,7 @@ namespace Wallet
                 }
                 else if (strType == "key" || strType == "wkey")
                 {
-                    vector<unsigned char> vchPubKey;
+                    vector<uint8_t> vchPubKey;
                     ssKey >> vchPubKey;
                     CKey key;
                     if (strType == "key")
@@ -264,7 +264,7 @@ namespace Wallet
                 }
                 else if (strType == "mkey")
                 {
-                    unsigned int nID;
+                    uint32_t nID;
                     ssKey >> nID;
                     CMasterKey kMasterKey;
                     ssValue >> kMasterKey;
@@ -279,9 +279,9 @@ namespace Wallet
                 }
                 else if (strType == "ckey")
                 {
-                    vector<unsigned char> vchPubKey;
+                    vector<uint8_t> vchPubKey;
                     ssKey >> vchPubKey;
-                    vector<unsigned char> vchPrivKey;
+                    vector<uint8_t> vchPrivKey;
                     ssValue >> vchPrivKey;
                     if (!pwallet->LoadCryptedKey(vchPubKey, vchPrivKey))
                     {
@@ -358,8 +358,8 @@ namespace Wallet
         if (!GetBoolArg("-flushwallet", true))
             return;
 
-        unsigned int nLastSeen = nWalletDBUpdated;
-        unsigned int nLastFlushed = nWalletDBUpdated;
+        uint32_t nLastSeen = nWalletDBUpdated;
+        uint32_t nLastFlushed = nWalletDBUpdated;
         int64_t nLastWalletUpdate = GetUnifiedTimestamp();
         while (!fShutdown)
         {

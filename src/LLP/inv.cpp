@@ -46,7 +46,7 @@ namespace LLP
 	
 	CInv::CInv(const std::string& strType, const LLC::uint1024& hashIn)
 	{
-		unsigned int i;
+		uint32_t i;
 		for (i = 1; i < ARRAYLEN(ppszTypeName); i++)
 		{
 			if (strType == ppszTypeName[i])

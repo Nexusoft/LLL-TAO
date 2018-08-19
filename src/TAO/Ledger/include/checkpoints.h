@@ -24,15 +24,15 @@ namespace Core
 	
 	
 	/* Memory Map to hold all the hashes of the checkpoints decided on by the network. */
-	extern std::map<unsigned int, LLC::uint1024> mapCheckpoints;
+	extern std::map<uint32_t, LLC::uint1024> mapCheckpoints;
 	
 	
 	/* Checkpoint Timespan, or the time that triggers a new checkpoint (in Minutes). */
-	extern unsigned int CHECKPOINT_TIMESPAN;
+	extern uint32_t CHECKPOINT_TIMESPAN;
 	
 	
 	/* Checkpoint Search. The Maximum amount of checkpoints that can be serached back to find a Descendant. */
-	extern unsigned int MAX_CHECKPOINTS_SEARCH;
+	extern uint32_t MAX_CHECKPOINTS_SEARCH;
 
 	
 	

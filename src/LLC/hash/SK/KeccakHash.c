@@ -18,7 +18,7 @@ http://creativecommons.org/publicdomain/zero/1.0/
 
 /* ---------------------------------------------------------------- */
 
-HashReturn Keccak_HashInitialize(Keccak_HashInstance *instance, unsigned int rate, unsigned int capacity, unsigned int hashbitlen, unsigned char delimitedSuffix)
+HashReturn Keccak_HashInitialize(Keccak_HashInstance *instance, uint32_t rate, uint32_t capacity, uint32_t hashbitlen, uint8_t delimitedSuffix)
 {
     HashReturn result;
 
@@ -42,14 +42,14 @@ HashReturn Keccak_HashUpdate(Keccak_HashInstance *instance, const BitSequence *d
         HashReturn ret = Keccak_SpongeAbsorb(&instance->sponge, data, databitlen/8);
         if (ret == SUCCESS) {
             // The last partial byte is assumed to be aligned on the least significant bits
-            unsigned char lastByte = data[databitlen/8];
+            uint8_t lastByte = data[databitlen/8];
             // Concatenate the last few bits provided here with those of the suffix
-            unsigned short delimitedLastBytes = (unsigned short)lastByte | ((unsigned short)instance->delimitedSuffix << (databitlen % 8));
+            uint16_t delimitedLastBytes = (uint16_t)lastByte | ((uint16_t)instance->delimitedSuffix << (databitlen % 8));
             if ((delimitedLastBytes & 0xFF00) == 0x0000) {
                 instance->delimitedSuffix = delimitedLastBytes & 0xFF;
             }
             else {
-                unsigned char oneByte[1];
+                uint8_t oneByte[1];
                 oneByte[0] = delimitedLastBytes & 0xFF;
                 ret = Keccak_SpongeAbsorb(&instance->sponge, oneByte, 1);
                 instance->delimitedSuffix = (delimitedLastBytes >> 8) & 0xFF;

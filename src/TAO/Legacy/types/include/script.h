@@ -189,7 +189,7 @@ namespace Wallet
 
 
 
-    inline std::string ValueString(const std::vector<unsigned char>& vch)
+    inline std::string ValueString(const std::vector<uint8_t>& vch)
     {
         if (vch.size() <= 4)
             return strprintf("%d", CBigNum(vch).getint());
@@ -197,10 +197,10 @@ namespace Wallet
             return HexStr(vch);
     }
 
-    inline std::string StackString(const std::vector<std::vector<unsigned char> >& vStack)
+    inline std::string StackString(const std::vector<std::vector<uint8_t> >& vStack)
     {
         std::string str;
-        BOOST_FOREACH(const std::vector<unsigned char>& vch, vStack)
+        BOOST_FOREACH(const std::vector<uint8_t>& vch, vStack)
         {
             if (!str.empty())
                 str += " ";
@@ -217,7 +217,7 @@ namespace Wallet
 
 
     /** Serialized script, used inside transaction inputs and outputs */
-    class CScript : public std::vector<unsigned char>
+    class CScript : public std::vector<uint8_t>
     {
     protected:
         CScript& push_int64(int64_t n)
@@ -250,10 +250,10 @@ namespace Wallet
 
     public:
         CScript() { }
-        CScript(const CScript& b) : std::vector<unsigned char>(b.begin(), b.end()) { }
-        CScript(const_iterator pbegin, const_iterator pend) : std::vector<unsigned char>(pbegin, pend) { }
+        CScript(const CScript& b) : std::vector<uint8_t>(b.begin(), b.end()) { }
+        CScript(const_iterator pbegin, const_iterator pend) : std::vector<uint8_t>(pbegin, pend) { }
     #ifndef _MSC_VER
-        CScript(const unsigned char* pbegin, const unsigned char* pend) : std::vector<unsigned char>(pbegin, pend) { }
+        CScript(const uint8_t* pbegin, const uint8_t* pend) : std::vector<uint8_t>(pbegin, pend) { }
     #endif
 
         CScript& operator+=(const CScript& b)
@@ -270,33 +270,33 @@ namespace Wallet
         }
 
 
-        //explicit CScript(char b) is not portable.  Use 'signed char' or 'unsigned char'.
+        //explicit CScript(char b) is not portable.  Use 'signed char' or 'uint8_t'.
         explicit CScript(signed char b)    { operator<<(b); }
         explicit CScript(short b)          { operator<<(b); }
         explicit CScript(int b)            { operator<<(b); }
         explicit CScript(long b)           { operator<<(b); }
         explicit CScript(int64_t b)          { operator<<(b); }
-        explicit CScript(unsigned char b)  { operator<<(b); }
-        explicit CScript(unsigned int b)   { operator<<(b); }
-        explicit CScript(unsigned short b) { operator<<(b); }
+        explicit CScript(uint8_t b)  { operator<<(b); }
+        explicit CScript(uint32_t b)   { operator<<(b); }
+        explicit CScript(uint16_t b) { operator<<(b); }
         explicit CScript(unsigned long b)  { operator<<(b); }
         explicit CScript(uint64_t b)         { operator<<(b); }
 
         explicit CScript(opcodetype b)     { operator<<(b); }
         explicit CScript(const LLC::uint256& b) { operator<<(b); }
         explicit CScript(const CBigNum& b) { operator<<(b); }
-        explicit CScript(const std::vector<unsigned char>& b) { operator<<(b); }
+        explicit CScript(const std::vector<uint8_t>& b) { operator<<(b); }
 
 
-        //CScript& operator<<(char b) is not portable.  Use 'signed char' or 'unsigned char'.
+        //CScript& operator<<(char b) is not portable.  Use 'signed char' or 'uint8_t'.
         CScript& operator<<(signed char b)    { return push_int64(b); }
         CScript& operator<<(short b)          { return push_int64(b); }
         CScript& operator<<(int b)            { return push_int64(b); }
         CScript& operator<<(long b)           { return push_int64(b); }
         CScript& operator<<(int64_t b)          { return push_int64(b); }
-        CScript& operator<<(unsigned char b)  { return push_uint64(b); }
-        CScript& operator<<(unsigned int b)   { return push_uint64(b); }
-        CScript& operator<<(unsigned short b) { return push_uint64(b); }
+        CScript& operator<<(uint8_t b)  { return push_uint64(b); }
+        CScript& operator<<(uint32_t b)   { return push_uint64(b); }
+        CScript& operator<<(uint16_t b) { return push_uint64(b); }
         CScript& operator<<(unsigned long b)  { return push_uint64(b); }
         CScript& operator<<(uint64_t b)         { return push_uint64(b); }
 
@@ -304,14 +304,14 @@ namespace Wallet
         {
             if (opcode < 0 || opcode > 0xff)
                 throw std::runtime_error("CScript::operator<<() : invalid opcode");
-            insert(end(), (unsigned char)opcode);
+            insert(end(), (uint8_t)opcode);
             return *this;
         }
 
         CScript& operator<<(const LLC::uint256& b)
         {
             insert(end(), sizeof(b));
-            insert(end(), (unsigned char*)&b, (unsigned char*)&b + sizeof(b));
+            insert(end(), (uint8_t*)&b, (uint8_t*)&b + sizeof(b));
             return *this;
         }
 
@@ -321,28 +321,28 @@ namespace Wallet
             return *this;
         }
 
-        CScript& operator<<(const std::vector<unsigned char>& b)
+        CScript& operator<<(const std::vector<uint8_t>& b)
         {
             if (b.size() < OP_PUSHDATA1)
             {
-                insert(end(), (unsigned char)b.size());
+                insert(end(), (uint8_t)b.size());
             }
             else if (b.size() <= 0xff)
             {
                 insert(end(), OP_PUSHDATA1);
-                insert(end(), (unsigned char)b.size());
+                insert(end(), (uint8_t)b.size());
             }
             else if (b.size() <= 0xffff)
             {
                 insert(end(), OP_PUSHDATA2);
-                unsigned short nSize = b.size();
-                insert(end(), (unsigned char*)&nSize, (unsigned char*)&nSize + sizeof(nSize));
+                uint16_t nSize = b.size();
+                insert(end(), (uint8_t*)&nSize, (uint8_t*)&nSize + sizeof(nSize));
             }
             else
             {
                 insert(end(), OP_PUSHDATA4);
-                unsigned int nSize = b.size();
-                insert(end(), (unsigned char*)&nSize, (unsigned char*)&nSize + sizeof(nSize));
+                uint32_t nSize = b.size();
+                insert(end(), (uint8_t*)&nSize, (uint8_t*)&nSize + sizeof(nSize));
             }
             insert(end(), b.begin(), b.end());
             return *this;
@@ -357,7 +357,7 @@ namespace Wallet
         }
 
 
-        bool GetOp(iterator& pc, opcodetype& opcodeRet, std::vector<unsigned char>& vchRet)
+        bool GetOp(iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>& vchRet)
         {
             // Wrapper so it can be called with either iterator or const_iterator
             const_iterator pc2 = pc;
@@ -374,7 +374,7 @@ namespace Wallet
             return fRet;
         }
 
-        bool GetOp(const_iterator& pc, opcodetype& opcodeRet, std::vector<unsigned char>& vchRet) const
+        bool GetOp(const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>& vchRet) const
         {
             return GetOp2(pc, opcodeRet, &vchRet);
         }
@@ -384,7 +384,7 @@ namespace Wallet
             return GetOp2(pc, opcodeRet, NULL);
         }
 
-        bool GetOp2(const_iterator& pc, opcodetype& opcodeRet, std::vector<unsigned char>* pvchRet) const
+        bool GetOp2(const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>* pvchRet) const
         {
             opcodeRet = OP_INVALIDOPCODE;
             if (pvchRet)
@@ -395,12 +395,12 @@ namespace Wallet
             // Read instruction
             if (end() - pc < 1)
                 return false;
-            unsigned int opcode = *pc++;
+            uint32_t opcode = *pc++;
 
             // Immediate operand
             if (opcode <= OP_PUSHDATA4)
             {
-                unsigned int nSize;
+                uint32_t nSize;
                 if (opcode < OP_PUSHDATA1)
                 {
                     nSize = opcode;
@@ -486,11 +486,11 @@ namespace Wallet
         // CHECKMULTISIGs serialized in scriptSigs are
         // counted more accurately, assuming they are of the form
         //  ... OP_N CHECKMULTISIG ...
-        unsigned int GetSigOpCount(bool fAccurate) const;
+        uint32_t GetSigOpCount(bool fAccurate) const;
 
         // Accurately count sigOps, including sigOps in
         // pay-to-script-hash transactions:
-        unsigned int GetSigOpCount(const CScript& scriptSig) const;
+        uint32_t GetSigOpCount(const CScript& scriptSig) const;
 
         bool IsPayToScriptHash() const;
 
@@ -511,7 +511,7 @@ namespace Wallet
 
 
         void SetNexusAddress(const NexusAddress& address);
-        void SetNexusAddress(const std::vector<unsigned char>& vchPubKey)
+        void SetNexusAddress(const std::vector<uint8_t>& vchPubKey)
         {
             SetNexusAddress(NexusAddress(vchPubKey));
         }
@@ -528,7 +528,7 @@ namespace Wallet
         {
             std::string str;
             opcodetype opcode;
-            std::vector<unsigned char> vch;
+            std::vector<uint8_t> vch;
             const_iterator pc = begin();
             while (pc < end())
             {
@@ -557,18 +557,18 @@ namespace Wallet
 
 
 
-    bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, const Core::CTransaction& txTo, unsigned int nIn, int nHashType);
-    bool Solver(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<std::vector<unsigned char> >& vSolutionsRet);
-    int ScriptSigArgsExpected(TransactionType t, const std::vector<std::vector<unsigned char> >& vSolutions);
+    bool EvalScript(std::vector<std::vector<uint8_t> >& stack, const CScript& script, const Core::CTransaction& txTo, uint32_t nIn, int nHashType);
+    bool Solver(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<std::vector<uint8_t> >& vSolutionsRet);
+    int ScriptSigArgsExpected(TransactionType t, const std::vector<std::vector<uint8_t> >& vSolutions);
     bool IsStandard(const CScript& scriptPubKey);
     bool IsMine(const CKeyStore& keystore, const CScript& scriptPubKey);
     bool ExtractAddress(const CScript& scriptPubKey, NexusAddress& addressRet);
     bool ExtractAddresses(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<NexusAddress>& addressRet, int& nRequiredRet);
-    bool SignSignature(const CKeyStore& keystore, const Core::CTransaction& txFrom, Core::CTransaction& txTo, unsigned int nIn, int nHashType=SIGHASH_ALL);
-    bool VerifySignature(const Core::CTransaction& txFrom, const Core::CTransaction& txTo, unsigned int nIn, int nHashType);
-    bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const Core::CTransaction& txTo, unsigned int nIn, int nHashType);
+    bool SignSignature(const CKeyStore& keystore, const Core::CTransaction& txFrom, Core::CTransaction& txTo, uint32_t nIn, int nHashType=SIGHASH_ALL);
+    bool VerifySignature(const Core::CTransaction& txFrom, const Core::CTransaction& txTo, uint32_t nIn, int nHashType);
+    bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const Core::CTransaction& txTo, uint32_t nIn, int nHashType);
 
-    CScript CombineSignatures(CScript scriptPubKey, const Core::CTransaction& txTo, unsigned int nIn, const CScript& scriptSig1, const CScript& scriptSig2);
+    CScript CombineSignatures(CScript scriptPubKey, const Core::CTransaction& txTo, uint32_t nIn, const CScript& scriptSig1, const CScript& scriptSig2);
 }
 
 #endif

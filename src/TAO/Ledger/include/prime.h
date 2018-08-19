@@ -20,19 +20,19 @@ namespace Core
 {
 
 	/* Set the Bits of the Prime Difficulty into a Unsigned Integer Number by Multiplying and Dividing by 10 ^ Significant Digits. */
-	unsigned int SetBits(double nDiff);
+	uint32_t SetBits(double nDiff);
 	
 	
 	/* Get the Difficulty of a given prime number by checking its Cluster Size and Fermat Remainder Proportion of last +2 Compositie. */
 	double GetPrimeDifficulty(CBigNum prime, int checks);
 	
 	
-	/* Get the Number of Bits in the Prime Number (by its difficulty) to compare with out unsigned integers. */
-	unsigned int GetPrimeBits(CBigNum prime);
+	/* Get the Number of Bits in the Prime Number (by its difficulty) to compare with out uint32_tegers. */
+	uint32_t GetPrimeBits(CBigNum prime);
 	
 	
 	/* Get the Last Composite Fermat Remainder Proportion for calculating the decimal aspect of the Prime Difficulty. */
-	unsigned int GetFractionalDifficulty(CBigNum composite);
+	uint32_t GetFractionalDifficulty(CBigNum composite);
 	
 	
 	/* Check a Prime Number first by Divisor, then Fermats, then Miller=Rabin to detect if it is an effective prime number. */

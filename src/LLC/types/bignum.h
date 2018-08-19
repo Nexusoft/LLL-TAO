@@ -89,15 +89,15 @@ namespace LLC
             BN_clear_free(this);
         }
 
-        //CBigNum(char n) is not portable.  Use 'signed char' or 'unsigned char'.
+        //CBigNum(char n) is not portable.  Use 'signed char' or 'uint8_t'.
         CBigNum(signed char n)      { BN_init(this); if (n >= 0) setulong(n); else setint64(n); }
         CBigNum(signed short n)            { BN_init(this); if (n >= 0) setulong(n); else setint64(n); }
         CBigNum(signed int n)              { BN_init(this); if (n >= 0) setulong(n); else setint64(n); }
         //CBigNum(long n)             { BN_init(this); if (n >= 0) setulong(n); else setint64(n); }
         CBigNum(int64_t n)            { BN_init(this); setint64(n); }
-        CBigNum(unsigned char n)    { BN_init(this); setulong(n); }
-        CBigNum(unsigned short n)   { BN_init(this); setulong(n); }
-        CBigNum(unsigned int n)     { BN_init(this); setulong(n); }
+        CBigNum(uint8_t n)    { BN_init(this); setulong(n); }
+        CBigNum(uint16_t n)   { BN_init(this); setulong(n); }
+        CBigNum(uint32_t n)     { BN_init(this); setulong(n); }
         //CBigNum(unsigned long n)    { BN_init(this); setulong(n); }
         CBigNum(uint64_t n)           { BN_init(this); setuint64(n); }
         explicit CBigNum(uint256 n) { BN_init(this); setuint256(n); }
@@ -105,7 +105,7 @@ namespace LLC
     	explicit CBigNum(uint576 n) { BN_init(this); setuint576(n); }
     	explicit CBigNum(uint1024 n) { BN_init(this); setuint1024(n); }
 
-        explicit CBigNum(const std::vector<unsigned char>& vch)
+        explicit CBigNum(const std::vector<uint8_t>& vch)
         {
             BN_init(this);
             setvch(vch);
@@ -122,7 +122,7 @@ namespace LLC
             return BN_get_word(this);
         }
 
-        unsigned int getuint() const
+        uint32_t getuint() const
         {
             return BN_get_word(this);
         }
@@ -138,8 +138,8 @@ namespace LLC
 
         void setint64(int64_t n)
         {
-            unsigned char pch[sizeof(n) + 6];
-            unsigned char* p = pch + 4;
+            uint8_t pch[sizeof(n) + 6];
+            uint8_t* p = pch + 4;
             bool fNegative = false;
             if (n < (int64_t)0)
             {
@@ -149,7 +149,7 @@ namespace LLC
             bool fLeadingZeroes = true;
             for (int i = 0; i < 8; i++)
             {
-                unsigned char c = (n >> 56) & 0xff;
+                uint8_t c = (n >> 56) & 0xff;
                 n <<= 8;
                 if (fLeadingZeroes)
                 {
@@ -163,7 +163,7 @@ namespace LLC
                 }
                 *p++ = c;
             }
-            unsigned int nSize = p - (pch + 4);
+            uint32_t nSize = p - (pch + 4);
             pch[0] = (nSize >> 24) & 0xff;
             pch[1] = (nSize >> 16) & 0xff;
             pch[2] = (nSize >> 8) & 0xff;
@@ -173,12 +173,12 @@ namespace LLC
 
         void setuint64(uint64_t n)
         {
-            unsigned char pch[sizeof(n) + 6];
-            unsigned char* p = pch + 4;
+            uint8_t pch[sizeof(n) + 6];
+            uint8_t* p = pch + 4;
             bool fLeadingZeroes = true;
             for (int i = 0; i < 8; i++)
             {
-                unsigned char c = (n >> 56) & 0xff;
+                uint8_t c = (n >> 56) & 0xff;
                 n <<= 8;
                 if (fLeadingZeroes)
                 {
@@ -190,7 +190,7 @@ namespace LLC
                 }
                 *p++ = c;
             }
-            unsigned int nSize = p - (pch + 4);
+            uint32_t nSize = p - (pch + 4);
             pch[0] = (nSize >> 24) & 0xff;
             pch[1] = (nSize >> 16) & 0xff;
             pch[2] = (nSize >> 8) & 0xff;
@@ -200,29 +200,29 @@ namespace LLC
 
         uint64_t getuint64()
         {
-            unsigned int nSize = BN_bn2mpi(this, NULL);
+            uint32_t nSize = BN_bn2mpi(this, NULL);
             if (nSize < 4)
                 return 0;
-            std::vector<unsigned char> vch(nSize);
+            std::vector<uint8_t> vch(nSize);
             BN_bn2mpi(this, &vch[0]);
             if (vch.size() > 4)
                 vch[4] &= 0x7f;
             uint64_t n = 0;
             for (int i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
-                ((unsigned char*)&n)[i] = vch[j];
+                ((uint8_t*)&n)[i] = vch[j];
             return n;
         }
 
         void setuint256(uint256 n)
         {
-            unsigned char pch[sizeof(n) + 6];
-            unsigned char* p = pch + 4;
+            uint8_t pch[sizeof(n) + 6];
+            uint8_t* p = pch + 4;
             bool fLeadingZeroes = true;
-            unsigned char* pbegin = (unsigned char*)&n;
-            unsigned char* psrc = pbegin + sizeof(n);
+            uint8_t* pbegin = (uint8_t*)&n;
+            uint8_t* psrc = pbegin + sizeof(n);
             while (psrc != pbegin)
             {
-                unsigned char c = *(--psrc);
+                uint8_t c = *(--psrc);
                 if (fLeadingZeroes)
                 {
                     if (c == 0)
@@ -233,7 +233,7 @@ namespace LLC
                 }
                 *p++ = c;
             }
-            unsigned int nSize = p - (pch + 4);
+            uint32_t nSize = p - (pch + 4);
             pch[0] = (nSize >> 24) & 0xff;
             pch[1] = (nSize >> 16) & 0xff;
             pch[2] = (nSize >> 8) & 0xff;
@@ -243,29 +243,29 @@ namespace LLC
 
         uint256 getuint256()
         {
-            unsigned int nSize = BN_bn2mpi(this, NULL);
+            uint32_t nSize = BN_bn2mpi(this, NULL);
             if (nSize < 4)
                 return 0;
-            std::vector<unsigned char> vch(nSize);
+            std::vector<uint8_t> vch(nSize);
             BN_bn2mpi(this, &vch[0]);
             if (vch.size() > 4)
                 vch[4] &= 0x7f;
             uint256 n = 0;
-            for (unsigned int i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
-                ((unsigned char*)&n)[i] = vch[j];
+            for (uint32_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
+                ((uint8_t*)&n)[i] = vch[j];
             return n;
         }
 
     	void setuint512(uint512 n)
         {
-            unsigned char pch[sizeof(n) + 6];
-            unsigned char* p = pch + 4;
+            uint8_t pch[sizeof(n) + 6];
+            uint8_t* p = pch + 4;
             bool fLeadingZeroes = true;
-            unsigned char* pbegin = (unsigned char*)&n;
-            unsigned char* psrc = pbegin + sizeof(n);
+            uint8_t* pbegin = (uint8_t*)&n;
+            uint8_t* psrc = pbegin + sizeof(n);
             while (psrc != pbegin)
             {
-                unsigned char c = *(--psrc);
+                uint8_t c = *(--psrc);
                 if (fLeadingZeroes)
                 {
                     if (c == 0)
@@ -276,7 +276,7 @@ namespace LLC
                 }
                 *p++ = c;
             }
-            unsigned int nSize = p - (pch + 4);
+            uint32_t nSize = p - (pch + 4);
             pch[0] = (nSize >> 24) & 0xff;
             pch[1] = (nSize >> 16) & 0xff;
             pch[2] = (nSize >> 8) & 0xff;
@@ -286,29 +286,29 @@ namespace LLC
 
         uint512 getuint512()
         {
-            unsigned int nSize = BN_bn2mpi(this, NULL);
+            uint32_t nSize = BN_bn2mpi(this, NULL);
             if (nSize < 4)
                 return 0;
-            std::vector<unsigned char> vch(nSize);
+            std::vector<uint8_t> vch(nSize);
             BN_bn2mpi(this, &vch[0]);
             if (vch.size() > 4)
                 vch[4] &= 0x7f;
             uint512 n = 0;
-            for (unsigned int i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
-                ((unsigned char*)&n)[i] = vch[j];
+            for (uint32_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
+                ((uint8_t*)&n)[i] = vch[j];
             return n;
         }
 
     	void setuint576(uint576 n)
         {
-            unsigned char pch[sizeof(n) + 6];
-            unsigned char* p = pch + 4;
+            uint8_t pch[sizeof(n) + 6];
+            uint8_t* p = pch + 4;
             bool fLeadingZeroes = true;
-            unsigned char* pbegin = (unsigned char*)&n;
-            unsigned char* psrc = pbegin + sizeof(n);
+            uint8_t* pbegin = (uint8_t*)&n;
+            uint8_t* psrc = pbegin + sizeof(n);
             while (psrc != pbegin)
             {
-                unsigned char c = *(--psrc);
+                uint8_t c = *(--psrc);
                 if (fLeadingZeroes)
                 {
                     if (c == 0)
@@ -319,7 +319,7 @@ namespace LLC
                 }
                 *p++ = c;
             }
-            unsigned int nSize = p - (pch + 4);
+            uint32_t nSize = p - (pch + 4);
             pch[0] = (nSize >> 24) & 0xff;
             pch[1] = (nSize >> 16) & 0xff;
             pch[2] = (nSize >> 8) & 0xff;
@@ -329,29 +329,29 @@ namespace LLC
 
         uint576 getuint576()
         {
-            unsigned int nSize = BN_bn2mpi(this, NULL);
+            uint32_t nSize = BN_bn2mpi(this, NULL);
             if (nSize < 4)
                 return 0;
-            std::vector<unsigned char> vch(nSize);
+            std::vector<uint8_t> vch(nSize);
             BN_bn2mpi(this, &vch[0]);
             if (vch.size() > 4)
                 vch[4] &= 0x7f;
             uint576 n = 0;
-            for (unsigned int i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
-                ((unsigned char*)&n)[i] = vch[j];
+            for (uint32_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
+                ((uint8_t*)&n)[i] = vch[j];
             return n;
         }
 
     	void setuint1024(uint1024 n)
         {
-            unsigned char pch[sizeof(n) + 6];
-            unsigned char* p = pch + 4;
+            uint8_t pch[sizeof(n) + 6];
+            uint8_t* p = pch + 4;
             bool fLeadingZeroes = true;
-            unsigned char* pbegin = (unsigned char*)&n;
-            unsigned char* psrc = pbegin + sizeof(n);
+            uint8_t* pbegin = (uint8_t*)&n;
+            uint8_t* psrc = pbegin + sizeof(n);
             while (psrc != pbegin)
             {
-                unsigned char c = *(--psrc);
+                uint8_t c = *(--psrc);
                 if (fLeadingZeroes)
                 {
                     if (c == 0)
@@ -362,7 +362,7 @@ namespace LLC
                 }
                 *p++ = c;
             }
-            unsigned int nSize = p - (pch + 4);
+            uint32_t nSize = p - (pch + 4);
             pch[0] = (nSize >> 24) & 0xff;
             pch[1] = (nSize >> 16) & 0xff;
             pch[2] = (nSize >> 8) & 0xff;
@@ -372,23 +372,23 @@ namespace LLC
 
         uint1024 getuint1024()
         {
-            unsigned int nSize = BN_bn2mpi(this, NULL);
+            uint32_t nSize = BN_bn2mpi(this, NULL);
             if (nSize < 4)
                 return 0;
-            std::vector<unsigned char> vch(nSize);
+            std::vector<uint8_t> vch(nSize);
             BN_bn2mpi(this, &vch[0]);
             if (vch.size() > 4)
                 vch[4] &= 0x7f;
             uint1024 n = 0;
-            for (unsigned int i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
-                ((unsigned char*)&n)[i] = vch[j];
+            for (uint32_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
+                ((uint8_t*)&n)[i] = vch[j];
             return n;
         }
 
-        void setvch(const std::vector<unsigned char>& vch)
+        void setvch(const std::vector<uint8_t>& vch)
         {
-            std::vector<unsigned char> vch2(vch.size() + 4);
-            unsigned int nSize = vch.size();
+            std::vector<uint8_t> vch2(vch.size() + 4);
+            uint32_t nSize = vch.size();
             // BIGNUM's byte stream format expects 4 bytes of
             // big endian size data info at the front
             vch2[0] = (nSize >> 24) & 0xff;
@@ -400,22 +400,22 @@ namespace LLC
             BN_mpi2bn(&vch2[0], vch2.size(), this);
         }
 
-        std::vector<unsigned char> getvch() const
+        std::vector<uint8_t> getvch() const
         {
-            unsigned int nSize = BN_bn2mpi(this, NULL);
+            uint32_t nSize = BN_bn2mpi(this, NULL);
             if (nSize <= 4)
-                return std::vector<unsigned char>();
-            std::vector<unsigned char> vch(nSize);
+                return std::vector<uint8_t>();
+            std::vector<uint8_t> vch(nSize);
             BN_bn2mpi(this, &vch[0]);
             vch.erase(vch.begin(), vch.begin() + 4);
             reverse(vch.begin(), vch.end());
             return vch;
         }
 
-        CBigNum& SetCompact(unsigned int nCompact)
+        CBigNum& SetCompact(uint32_t nCompact)
         {
-            unsigned int nSize = nCompact >> 24;
-            std::vector<unsigned char> vch(4 + nSize);
+            uint32_t nSize = nCompact >> 24;
+            std::vector<uint8_t> vch(4 + nSize);
             vch[3] = nSize;
             if (nSize >= 1) vch[4] = (nCompact >> 16) & 0xff;
             if (nSize >= 2) vch[5] = (nCompact >> 8) & 0xff;
@@ -424,13 +424,13 @@ namespace LLC
             return *this;
         }
 
-        unsigned int GetCompact() const
+        uint32_t GetCompact() const
         {
-            unsigned int nSize = BN_bn2mpi(this, NULL);
-            std::vector<unsigned char> vch(nSize);
+            uint32_t nSize = BN_bn2mpi(this, NULL);
+            std::vector<uint8_t> vch(nSize);
             nSize -= 4;
             BN_bn2mpi(this, &vch[0]);
-            unsigned int nCompact = nSize << 24;
+            uint32_t nCompact = nSize << 24;
             if (nSize >= 1) nCompact |= (vch[4] << 16);
             if (nSize >= 2) nCompact |= (vch[5] << 8);
             if (nSize >= 3) nCompact |= (vch[6] << 0);
@@ -460,7 +460,7 @@ namespace LLC
             while (isxdigit(*psz))
             {
                 *this <<= 4;
-                int n = phexdigit[(unsigned char)*psz++];
+                int n = phexdigit[(uint8_t)*psz++];
                 *this += n;
             }
             if (fNegative)
@@ -484,7 +484,7 @@ namespace LLC
                 if (!BN_div(&dv, &rem, &bn, &bnBase, pctx))
                     throw bignum_error("CBigNum::ToString() : BN_div failed");
                 bn = dv;
-                unsigned int c = rem.getulong();
+                uint32_t c = rem.getulong();
                 str += "0123456789abcdef"[c];
             }
             if (BN_is_negative(this))
@@ -498,7 +498,7 @@ namespace LLC
             return ToString(16);
         }
 
-        unsigned int GetSerializeSize(int nType=0, int nVersion=SER_NETWORK) const
+        uint32_t GetSerializeSize(int nType=0, int nVersion=SER_NETWORK) const
         {
             return ::GetSerializeSize(getvch(), nType, nVersion);
         }
@@ -512,7 +512,7 @@ namespace LLC
         template<typename Stream>
         void Unserialize(Stream& s, int nType=0, int nVersion=SER_NETWORK)
         {
-            std::vector<unsigned char> vch;
+            std::vector<uint8_t> vch;
             ::Unserialize(s, vch, nType, nVersion);
             setvch(vch);
         }
@@ -556,14 +556,14 @@ namespace LLC
             return *this;
         }
 
-        CBigNum& operator<<=(unsigned int shift)
+        CBigNum& operator<<=(uint32_t shift)
         {
             if (!BN_lshift(this, this, shift))
                 throw bignum_error("CBigNum:operator<<= : BN_lshift failed");
             return *this;
         }
 
-        CBigNum& operator>>=(unsigned int shift)
+        CBigNum& operator>>=(uint32_t shift)
         {
             // Note: BN_rshift segfaults on 64-bit if 2^shift is greater than the number
             //   if built on ubuntu 9.04 or 9.10, probably depends on version of openssl
@@ -673,7 +673,7 @@ namespace LLC
         return r;
     }
 
-    inline const CBigNum operator<<(const CBigNum& a, unsigned int shift)
+    inline const CBigNum operator<<(const CBigNum& a, uint32_t shift)
     {
         CBigNum r;
         if (!BN_lshift(&r, &a, shift))
@@ -681,7 +681,7 @@ namespace LLC
         return r;
     }
 
-    inline const CBigNum operator>>(const CBigNum& a, unsigned int shift)
+    inline const CBigNum operator>>(const CBigNum& a, uint32_t shift)
     {
         CBigNum r = a;
         r >>= shift;

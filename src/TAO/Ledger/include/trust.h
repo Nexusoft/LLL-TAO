@@ -36,12 +36,12 @@ namespace Core
 	public:
 	
 		/* The Public Key associated with Trust Key. */
-		std::vector<unsigned char> vchPubKey;
+		std::vector<uint8_t> vchPubKey;
 		
-		unsigned int nVersion;
+		uint32_t nVersion;
 		LLC::uint1024  hashGenesisBlock;
 		LLC::uint512   hashGenesisTx;
-		unsigned int nGenesisTime;
+		uint32_t nGenesisTime;
 		
 		
 		/* Previous Blocks Vector to store list of blocks of this Trust Key. */
@@ -49,7 +49,7 @@ namespace Core
 		
 		
 		CTrustKey() { SetNull(); }
-		CTrustKey(std::vector<unsigned char> vchPubKeyIn, LLC::uint1024 hashBlockIn, LLC::uint512 hashTxIn, unsigned int nTimeIn)
+		CTrustKey(std::vector<uint8_t> vchPubKeyIn, LLC::uint1024 hashBlockIn, LLC::uint512 hashTxIn, uint32_t nTimeIn)
 		{
 			SetNull();
 			
@@ -90,11 +90,11 @@ namespace Core
 		
 		
 		/* Determine how old the Trust Key is From Timestamp. */
-		uint64_t Age(unsigned int nTime) const;
+		uint64_t Age(uint32_t nTime) const;
 		
 		
 		/* Time Since last Trust Block. */
-		uint64_t BlockAge(unsigned int nTime) const;
+		uint64_t BlockAge(uint32_t nTime) const;
 		
 		
 		/* Flag to Determine if Class is Empty and Null. */
@@ -102,7 +102,7 @@ namespace Core
 		
 		
 		/* Determine if a key is expired by its age. */
-		bool Expired(unsigned int nTime) const;
+		bool Expired(uint32_t nTime) const;
 		
 		
 		/* Check the Genesis Transaction of this Trust Key. */
@@ -136,11 +136,11 @@ namespace Core
 		
 		
 		/* The Trust Key Owned By Current Node. */
-		std::vector<unsigned char>   vchTrustKey;
+		std::vector<uint8_t>   vchTrustKey;
 		
 		
 		/* Helper Function to Find Trust Key. */
-		bool HasTrustKey(unsigned int nTime);
+		bool HasTrustKey(uint32_t nTime);
 		
 		
 		/* Check the Validity of a Trust Key. */
@@ -164,11 +164,11 @@ namespace Core
 		
 		
 		/* Calculate the Interest Rate of given trust key. */
-		double InterestRate(LLC::uint576 cKey, unsigned int nTime) const;
+		double InterestRate(LLC::uint576 cKey, uint32_t nTime) const;
 		
 		
 		/* The Trust score of the Trust Key. Determines the Age and Interest Rates. */
-		uint64_t TrustScore(LLC::uint576 cKey, unsigned int nTime) const;
+		uint64_t TrustScore(LLC::uint576 cKey, uint32_t nTime) const;
 		
 		
 		/* Locate a Trust Key in the Trust Pool. */

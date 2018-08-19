@@ -33,7 +33,7 @@ namespace Wallet
         virtual bool HaveKey(const NexusAddress &address) const =0;
         virtual bool GetKey(const NexusAddress &address, CKey& keyOut) const =0;
         virtual void GetKeys(std::set<NexusAddress> &setAddress) const =0;
-        virtual bool GetPubKey(const NexusAddress &address, std::vector<unsigned char>& vchPubKeyOut) const;
+        virtual bool GetPubKey(const NexusAddress &address, std::vector<uint8_t>& vchPubKeyOut) const;
         virtual bool AddCScript(const CScript& redeemScript) =0;
         virtual bool HaveCScript(const LLC::uint256 &hash) const =0;
         virtual bool GetCScript(const LLC::uint256 &hash, CScript& redeemScriptOut) const =0;
@@ -101,7 +101,7 @@ namespace Wallet
         virtual bool GetCScript(const LLC::uint256 &hash, CScript& redeemScriptOut) const;
     };
 
-    typedef std::map<NexusAddress, std::pair<std::vector<unsigned char>, std::vector<unsigned char> > > CryptedKeyMap;
+    typedef std::map<NexusAddress, std::pair<std::vector<uint8_t>, std::vector<uint8_t> > > CryptedKeyMap;
 
     /** Keystore which keeps the private keys encrypted.
     * It derives from the basic key store, which is used if no encryption is active.
@@ -160,7 +160,7 @@ namespace Wallet
             return true;
         }
 
-        virtual bool AddCryptedKey(const std::vector<unsigned char> &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret);
+        virtual bool AddCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret);
         bool AddKey(const CKey& key);
         bool HaveKey(const NexusAddress &address) const
         {
@@ -173,7 +173,7 @@ namespace Wallet
             return false;
         }
         bool GetKey(const NexusAddress &address, CKey& keyOut) const;
-        bool GetPubKey(const NexusAddress &address, std::vector<unsigned char>& vchPubKeyOut) const;
+        bool GetPubKey(const NexusAddress &address, std::vector<uint8_t>& vchPubKeyOut) const;
         void GetKeys(std::set<NexusAddress> &setAddress) const
         {
             if (!IsCrypted())

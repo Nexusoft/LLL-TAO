@@ -65,7 +65,7 @@ namespace TAO
 		}
 
 		/* Set the channel of the block. */
-		void Block::SetChannel(unsigned int nNewChannel)
+		void Block::SetChannel(uint32_t nNewChannel)
 		{
 			nChannel = nNewChannel;
 		}
@@ -209,13 +209,13 @@ namespace TAO
 					nTime, nBits, nChannel, nHeight, nNonce,
 					vtx.size(),
 					HexStr(vchBlockSig.begin(), vchBlockSig.end()).c_str());
-			for (unsigned int i = 0; i < vtx.size(); i++)
+			for (uint32_t i = 0; i < vtx.size(); i++)
 			{
 				printf("  ");
 				vtx[i].print();
 			}
 			printf("  vMerkleTree: ");
-			for (unsigned int i = 0; i < vMerkleTree.size(); i++)
+			for (uint32_t i = 0; i < vMerkleTree.size(); i++)
 				printf("%s ", vMerkleTree[i].ToString().substr(0,10).c_str());
 			printf("\n");
 		}
@@ -227,7 +227,7 @@ namespace TAO
 			/** Check the Prime Number Proof of Work for the Prime Channel. **/
 			if(GetChannel() == 1)
 			{
-				unsigned int nPrimeBits = GetPrimeBits(GetPrime());
+				uint32_t nPrimeBits = GetPrimeBits(GetPrime());
 				if (nPrimeBits < bnProofOfWorkLimit[1])
 					return error("VerifyWork() : prime below minimum work");
 
@@ -266,7 +266,7 @@ namespace TAO
 		/* Sign the block with the key that found the block. */
 		bool Block::GenerateSignature(const LLC::CKey& key)
 		{
-			vector<std::vector<unsigned char> > vSolutions;
+			vector<std::vector<uint8_t> > vSolutions;
 			Wallet::TransactionType whichType;
 			const CTxOut& txout = vtx[0].vout[0];
 
@@ -276,7 +276,7 @@ namespace TAO
 			if (whichType == Wallet::TX_PUBKEY)
 			{
 				// Sign
-				const std::vector<unsigned char>& vchPubKey = vSolutions[0];
+				const std::vector<uint8_t>& vchPubKey = vSolutions[0];
 				if (key.GetPubKey() != vchPubKey)
 					return false;
 
@@ -292,7 +292,7 @@ namespace TAO
 			if (GetHash() == hashGenesisBlock)
 				return vchBlockSig.empty();
 
-			vector<std::vector<unsigned char> > vSolutions;
+			vector<std::vector<uint8_t> > vSolutions;
 			Wallet::TransactionType whichType;
 			const CTxOut& txout = vtx[0].vout[0];
 
@@ -300,7 +300,7 @@ namespace TAO
 				return false;
 			if (whichType == Wallet::TX_PUBKEY)
 			{
-				const std::vector<unsigned char>& vchPubKey = vSolutions[0];
+				const std::vector<uint8_t>& vchPubKey = vSolutions[0];
 				Wallet::CKey key;
 				if (!key.SetPubKey(vchPubKey))
 					return false;

@@ -22,10 +22,10 @@ namespace LLD
 {  
     
     /** Total buckets for memory accessing. */
-    const unsigned int FILEMAP_TOTAL_BUCKETS = 256 * 256;
+    const uint32_t FILEMAP_TOTAL_BUCKETS = 256 * 256;
     
     /* Maximum size a file can be in the keychain. */
-    const unsigned int FILEMAP_MAX_FILE_SIZE = 1024 * 1024 * 1024; //1 GB per File
+    const uint32_t FILEMAP_MAX_FILE_SIZE = 1024 * 1024 * 1024; //1 GB per File
 
     
     /** Binary File Map Database Class.
@@ -50,17 +50,17 @@ namespace LLD
         
         /** Caching Size.
             TODO: Make this a variable actually enforced. **/
-        unsigned int nCacheSize = 0;
+        uint32_t nCacheSize = 0;
         
         
         /* Use these for iterating file locations. */
-        mutable unsigned short nCurrentFile;
-        mutable unsigned int nCurrentFileSize;
+        mutable uint16_t nCurrentFile;
+        mutable uint32_t nCurrentFileSize;
         
         /* Hashmap Custom Hash Using SK. */
         struct SK_Hashmap
         {
-            std::size_t operator()(const std::vector<unsigned char>& k) const {
+            std::size_t operator()(const std::vector<uint8_t>& k) const {
                 return LLC::SK32(k);
             }
         };
@@ -70,12 +70,12 @@ namespace LLD
             Used to Quickly Read the Database File at Given Position
             To Obtain the Record from its Database Key. This is Read
             Into Memory on Database Initialization. **/
-        mutable typename std::map< std::vector<unsigned char>, std::pair<unsigned short, unsigned int> > mapKeys[FILEMAP_TOTAL_BUCKETS];
+        mutable typename std::map< std::vector<uint8_t>, std::pair<uint16_t, uint32_t> > mapKeys[FILEMAP_TOTAL_BUCKETS];
         
         
         /** Caching Memory Map. Keep within caching limits. Pop on and off like a stack
             using seperate caching class if over limits. **/
-        mutable typename std::map< std::vector<unsigned char>, SectorKey > mapKeysCache[FILEMAP_TOTAL_BUCKETS];
+        mutable typename std::map< std::vector<uint8_t>, SectorKey > mapKeysCache[FILEMAP_TOTAL_BUCKETS];
         
         
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
@@ -90,11 +90,11 @@ namespace LLD
         
         
         /** Return the Keys to the Records Held in the Database. **/
-        std::vector< std::vector<unsigned char> > GetKeys()
+        std::vector< std::vector<uint8_t> > GetKeys()
         {
-            std::vector< std::vector<unsigned char> > vKeys;
+            std::vector< std::vector<uint8_t> > vKeys;
             for(int i = 0; i < FILEMAP_TOTAL_BUCKETS; i++)
-                for(typename std::map< std::vector<unsigned char>, std::pair<unsigned short, unsigned int> >::iterator nIterator = mapKeys[i].begin(); nIterator != mapKeys[i].end(); nIterator++ )
+                for(typename std::map< std::vector<uint8_t>, std::pair<uint16_t, uint32_t> >::iterator nIterator = mapKeys[i].begin(); nIterator != mapKeys[i].end(); nIterator++ )
                     vKeys.push_back(nIterator->first);
                 
             return vKeys;
@@ -102,11 +102,11 @@ namespace LLD
         
         
         /** Return Whether a Key Exists in the Database. **/
-        bool HasKey(const std::vector<unsigned char>& vKey) { return mapKeys[GetBucket(vKey)].count(vKey); }
+        bool HasKey(const std::vector<uint8_t>& vKey) { return mapKeys[GetBucket(vKey)].count(vKey); }
         
         
         /** Handle the Assigning of a Map Bucket. **/
-        unsigned int GetBucket(const std::vector<unsigned char>& vKey) const
+        uint32_t GetBucket(const std::vector<uint8_t>& vKey) const
         {
             uint64_t nBucket = 0;
             for(int i = 0; i < vKey.size() && i < 8; i++)
@@ -126,7 +126,7 @@ namespace LLD
                 printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
             
             /* Stats variable for collective keychain size. */
-            unsigned int nKeychainSize = 0, nTotalKeys = 0;
+            uint32_t nKeychainSize = 0, nTotalKeys = 0;
             
             
             /* Iterate through the files detected. */
@@ -159,18 +159,18 @@ namespace LLD
                 
                 
                 fIncoming.seekg (0, std::ios::beg);
-                std::vector<unsigned char> vKeychain(nCurrentFileSize, 0);
+                std::vector<uint8_t> vKeychain(nCurrentFileSize, 0);
                 fIncoming.read((char*) &vKeychain[0], vKeychain.size());
                 fIncoming.close();
                 
                 
                 /* Iterator for Key Sectors. */
-                unsigned int nIterator = 0;
+                uint32_t nIterator = 0;
                 while(nIterator < nCurrentFileSize)
                 {
                     
                     /* Get Binary Data */
-                    std::vector<unsigned char> vKey(vKeychain.begin() + nIterator, vKeychain.begin() + nIterator + 15);
+                    std::vector<uint8_t> vKey(vKeychain.begin() + nIterator, vKeychain.begin() + nIterator + 15);
                     
                     
                     /* Read the State and Size of Sector Header. */
@@ -185,10 +185,10 @@ namespace LLD
                     {
                     
                         /* Read the Key Data. */
-                        std::vector<unsigned char> vKey(vKeychain.begin() + nIterator + 15, vKeychain.begin() + nIterator + 15 + cKey.nLength);
+                        std::vector<uint8_t> vKey(vKeychain.begin() + nIterator + 15, vKeychain.begin() + nIterator + 15 + cKey.nLength);
                         
                         /* Set the Key Data. */
-                        unsigned int nBucket = GetBucket(vKey);
+                        uint32_t nBucket = GetBucket(vKey);
                         mapKeys[nBucket][vKey] = std::make_pair(nCurrentFile, nIterator);
                         //mapKeysCache[nBucket][vKey] = cKey;
                         
@@ -226,7 +226,7 @@ namespace LLD
             LOCK(KEY_MUTEX);
             
             /* Write Header if First Update. */
-            unsigned int nBucket = GetBucket(cKey.vKey);
+            uint32_t nBucket = GetBucket(cKey.vKey);
             if(!mapKeys[nBucket].count(cKey.vKey))
             {
                 /* Check the Binary File Size. */
@@ -261,7 +261,7 @@ namespace LLD
                 
             
             /* Write to Disk. */
-            std::vector<unsigned char> vData(ssKey.begin(), ssKey.end());
+            std::vector<uint8_t> vData(ssKey.begin(), ssKey.end());
             vData.insert(vData.end(), cKey.vKey.begin(), cKey.vKey.end());
             fStream.write((char*) &vData[0], vData.size());
             
@@ -278,12 +278,12 @@ namespace LLD
         }
         
         /** Simple Erase for now, not efficient in Data Usage of HD but quick to get erase function working. **/
-        bool Erase(const std::vector<unsigned char> vKey)
+        bool Erase(const std::vector<uint8_t> vKey)
         {
             LOCK(KEY_MUTEX);
             
             /* Check for the Key. */
-            unsigned int nBucket = GetBucket(vKey);
+            uint32_t nBucket = GetBucket(vKey);
             if(!mapKeys[nBucket].count(vKey))
                 return error(FUNCTION "Key doesn't Exist", __PRETTY_FUNCTION__);
             
@@ -298,7 +298,7 @@ namespace LLD
             
             
             /* Establish the Sector State as Empty. */
-            std::vector<unsigned char> vData(1, EMPTY);
+            std::vector<uint8_t> vData(1, EMPTY);
             fStream.write((char*) &vData[0], vData.size());
                 
             
@@ -310,13 +310,13 @@ namespace LLD
         }
         
         /** Get a Record from the Database with Given Key. **/
-        bool Get(const std::vector<unsigned char> vKey, SectorKey& cKey)
+        bool Get(const std::vector<uint8_t> vKey, SectorKey& cKey)
         {
             LOCK(KEY_MUTEX);
 
             
             /* Check the Memory Cache. */
-            unsigned int nBucket = GetBucket(vKey);
+            uint32_t nBucket = GetBucket(vKey);
             if(mapKeysCache[nBucket].count(vKey)) {
                 cKey = mapKeysCache[nBucket][vKey];
 
@@ -338,7 +338,7 @@ namespace LLD
             
                 
                 /* Read the State and Size of Sector Header. */
-                std::vector<unsigned char> vData(15, 0);
+                std::vector<uint8_t> vData(15, 0);
                 fStream.read((char*) &vData[0], 15);
                 
                 
@@ -356,7 +356,7 @@ namespace LLD
                 if(cKey.Ready() || cKey.IsTxn()) {
                 
                     /* Read the Key Data. */
-                    std::vector<unsigned char> vKeyIn(cKey.nLength, 0);
+                    std::vector<uint8_t> vKeyIn(cKey.nLength, 0);
                     fStream.read((char*) &vKeyIn[0], vKeyIn.size());
                     
                     /* Check the Keys Match Properly. */

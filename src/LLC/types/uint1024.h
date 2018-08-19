@@ -27,12 +27,12 @@ namespace LLC
     /** Base class without constructors for uint256, uint512, uint576, uint1024.
     * This makes the compiler let u use it in a union.
     */
-    template<unsigned int BITS>
+    template<uint32_t BITS>
     class base_uint
     {
     protected:
         enum { WIDTH=BITS/32 };
-        unsigned int pn[WIDTH];
+        uint32_t pn[WIDTH];
     public:
 
         bool operator!() const
@@ -63,8 +63,8 @@ namespace LLC
 
         base_uint& operator=(uint64_t b)
         {
-            pn[0] = (unsigned int)b;
-            pn[1] = (unsigned int)(b >> 32);
+            pn[0] = (uint32_t)b;
+            pn[1] = (uint32_t)(b >> 32);
             for (int i = 2; i < WIDTH; i++)
                 pn[i] = 0;
             return *this;
@@ -93,19 +93,19 @@ namespace LLC
 
         base_uint& operator^=(uint64_t b)
         {
-            pn[0] ^= (unsigned int)b;
-            pn[1] ^= (unsigned int)(b >> 32);
+            pn[0] ^= (uint32_t)b;
+            pn[1] ^= (uint32_t)(b >> 32);
             return *this;
         }
 
         base_uint& operator|=(uint64_t b)
         {
-            pn[0] |= (unsigned int)b;
-            pn[1] |= (unsigned int)(b >> 32);
+            pn[0] |= (uint32_t)b;
+            pn[1] |= (uint32_t)(b >> 32);
             return *this;
         }
 
-        base_uint& operator<<=(unsigned int shift)
+        base_uint& operator<<=(uint32_t shift)
         {
             base_uint a(*this);
             for (int i = 0; i < WIDTH; i++)
@@ -122,7 +122,7 @@ namespace LLC
             return *this;
         }
 
-        base_uint& operator>>=(unsigned int shift)
+        base_uint& operator>>=(uint32_t shift)
         {
             base_uint a(*this);
             for (int i = 0; i < WIDTH; i++)
@@ -267,9 +267,9 @@ namespace LLC
 
         friend inline bool operator==(const base_uint& a, uint64_t b)
         {
-            if (a.pn[0] != (unsigned int)b)
+            if (a.pn[0] != (uint32_t)b)
                 return false;
-            if (a.pn[1] != (unsigned int)(b >> 32))
+            if (a.pn[1] != (uint32_t)(b >> 32))
                 return false;
             for (int i = 2; i < base_uint::WIDTH; i++)
                 if (a.pn[i] != 0)
@@ -292,8 +292,8 @@ namespace LLC
         std::string GetHex() const
         {
             char psz[sizeof(pn)*2 + 1];
-            for (unsigned int i = 0; i < sizeof(pn); i++)
-                sprintf(psz + i*2, "%02x", ((unsigned char*)pn)[sizeof(pn) - i - 1]);
+            for (uint32_t i = 0; i < sizeof(pn); i++)
+                sprintf(psz + i*2, "%02x", ((uint8_t*)pn)[sizeof(pn) - i - 1]);
             return std::string(psz, psz + sizeof(pn)*2);
         }
 
@@ -309,19 +309,19 @@ namespace LLC
                 psz += 2;
 
 
-            static unsigned char phexdigit[256] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,1,2,3,4,5,6,7,8,9,0,0,0,0,0,0, 0,0xa,0xb,0xc,0xd,0xe,0xf,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0xa,0xb,0xc,0xd,0xe,0xf,0,0,0,0,0,0,0,0,0 };
+            static uint8_t phexdigit[256] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,1,2,3,4,5,6,7,8,9,0,0,0,0,0,0, 0,0xa,0xb,0xc,0xd,0xe,0xf,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0xa,0xb,0xc,0xd,0xe,0xf,0,0,0,0,0,0,0,0,0 };
             const char* pbegin = psz;
-            while (phexdigit[(unsigned char)*psz] || *psz == '0')
+            while (phexdigit[(uint8_t)*psz] || *psz == '0')
                 psz++;
             psz--;
-            unsigned char* p1 = (unsigned char*)pn;
-            unsigned char* pend = p1 + WIDTH * 4;
+            uint8_t* p1 = (uint8_t*)pn;
+            uint8_t* pend = p1 + WIDTH * 4;
             while (psz >= pbegin && p1 < pend)
             {
-                *p1 = phexdigit[(unsigned char)*psz--];
+                *p1 = phexdigit[(uint8_t)*psz--];
                 if (psz >= pbegin)
                 {
-                    *p1 |= (phexdigit[(unsigned char)*psz--] << 4);
+                    *p1 |= (phexdigit[(uint8_t)*psz--] << 4);
                     p1++;
                 }
             }
@@ -332,15 +332,15 @@ namespace LLC
             SetHex(str.c_str());
         }
 
-        /** Converts the corresponding unsigned integer into bytes.
+        /** Converts the corresponding uint32_teger into bytes.
             Used for serializing in Miner LLP **/
-        const std::vector<unsigned char> GetBytes()
+        const std::vector<uint8_t> GetBytes()
         {
-            std::vector<unsigned char> DATA;
+            std::vector<uint8_t> DATA;
 
             for(int index = 0; index < WIDTH; index++)
             {
-                std::vector<unsigned char> BYTES(4, 0);
+                std::vector<uint8_t> BYTES(4, 0);
                 BYTES[0] = (pn[index] >> 24);
                 BYTES[1] = (pn[index] >> 16);
                 BYTES[2] = (pn[index] >> 8);
@@ -352,13 +352,13 @@ namespace LLC
             return DATA;
         }
 
-        /** Creates an unsigned integer from bytes.
+        /** Creates an uint32_teger from bytes.
             Used for de-serializing in Miner LLP **/
-        void SetBytes(const std::vector<unsigned char> DATA)
+        void SetBytes(const std::vector<uint8_t> DATA)
         {
             for(int index = 0; index < WIDTH; index++)
             {
-                std::vector<unsigned char> BYTES(DATA.begin() + (index * 4), DATA.begin() + (index * 4) + 4);
+                std::vector<uint8_t> BYTES(DATA.begin() + (index * 4), DATA.begin() + (index * 4) + 4);
                 pn[index] = (BYTES[0] << 24) + (BYTES[1] << 16) + (BYTES[2] << 8) + (BYTES[3] );
             }
         }
@@ -368,17 +368,17 @@ namespace LLC
             return (GetHex());
         }
 
-        unsigned char* begin()
+        uint8_t* begin()
         {
-            return (unsigned char*)&pn[0];
+            return (uint8_t*)&pn[0];
         }
 
-        unsigned char* end()
+        uint8_t* end()
         {
-            return (unsigned char*)&pn[WIDTH];
+            return (uint8_t*)&pn[WIDTH];
         }
 
-        unsigned int size()
+        uint32_t size()
         {
             return sizeof(pn);
         }
@@ -388,8 +388,8 @@ namespace LLC
             return pn[2*n] | (uint64_t)pn[2*n+1] << 32;
         }
 
-    //    unsigned int GetSerializeSize(int nType=0, int nVersion=PROTOCOL_VERSION) const
-        unsigned int GetSerializeSize(int nType, int nVersion) const
+    //    uint32_t GetSerializeSize(int nType=0, int nVersion=PROTOCOL_VERSION) const
+        uint32_t GetSerializeSize(int nType, int nVersion) const
         {
             return sizeof(pn);
         }
@@ -421,7 +421,7 @@ namespace LLC
     typedef base_uint<1024> base_uint1024;
 
 
-    /** 256-bit unsigned integer */
+    /** 256-bit uint32_teger */
     class uint256 : public base_uint256
     {
     public:
@@ -448,16 +448,16 @@ namespace LLC
 
         uint256(uint64_t b)
         {
-            pn[0] = (unsigned int)b;
-            pn[1] = (unsigned int)(b >> 32);
+            pn[0] = (uint32_t)b;
+            pn[1] = (uint32_t)(b >> 32);
             for (int i = 2; i < WIDTH; i++)
                 pn[i] = 0;
         }
 
         uint256& operator=(uint64_t b)
         {
-            pn[0] = (unsigned int)b;
-            pn[1] = (unsigned int)(b >> 32);
+            pn[0] = (uint32_t)b;
+            pn[1] = (uint32_t)(b >> 32);
             for (int i = 2; i < WIDTH; i++)
                 pn[i] = 0;
             return *this;
@@ -468,7 +468,7 @@ namespace LLC
             SetHex(str);
         }
 
-        explicit uint256(const std::vector<unsigned char>& vch)
+        explicit uint256(const std::vector<uint8_t>& vch)
         {
             if (vch.size() == sizeof(pn))
                 memcpy(pn, &vch[0], sizeof(pn));
@@ -479,10 +479,10 @@ namespace LLC
 
     inline bool operator==(const uint256& a, uint64_t b)                           { return (base_uint256)a == b; }
     inline bool operator!=(const uint256& a, uint64_t b)                           { return (base_uint256)a != b; }
-    inline const uint256 operator<<(const base_uint256& a, unsigned int shift)   { return uint256(a) <<= shift; }
-    inline const uint256 operator>>(const base_uint256& a, unsigned int shift)   { return uint256(a) >>= shift; }
-    inline const uint256 operator<<(const uint256& a, unsigned int shift)        { return uint256(a) <<= shift; }
-    inline const uint256 operator>>(const uint256& a, unsigned int shift)        { return uint256(a) >>= shift; }
+    inline const uint256 operator<<(const base_uint256& a, uint32_t shift)   { return uint256(a) <<= shift; }
+    inline const uint256 operator>>(const base_uint256& a, uint32_t shift)   { return uint256(a) >>= shift; }
+    inline const uint256 operator<<(const uint256& a, uint32_t shift)        { return uint256(a) <<= shift; }
+    inline const uint256 operator>>(const uint256& a, uint32_t shift)        { return uint256(a) >>= shift; }
 
     inline const uint256 operator^(const base_uint256& a, const base_uint256& b) { return uint256(a) ^= b; }
     inline const uint256 operator&(const base_uint256& a, const base_uint256& b) { return uint256(a) &= b; }
@@ -527,7 +527,7 @@ namespace LLC
     inline const uint256 operator-(const uint256& a, const uint256& b)      { return (base_uint256)a -  (base_uint256)b; }
 
 
-    /** 512-bit unsigned integer */
+    /** 512-bit uint32_teger */
     class uint512 : public base_uint512
     {
     public:
@@ -554,22 +554,22 @@ namespace LLC
 
         uint512(uint64_t b)
         {
-            pn[0] = (unsigned int)b;
-            pn[1] = (unsigned int)(b >> 32);
+            pn[0] = (uint32_t)b;
+            pn[1] = (uint32_t)(b >> 32);
             for (int i = 2; i < WIDTH; i++)
                 pn[i] = 0;
         }
 
         uint512& operator=(uint64_t b)
         {
-            pn[0] = (unsigned int)b;
-            pn[1] = (unsigned int)(b >> 32);
+            pn[0] = (uint32_t)b;
+            pn[1] = (uint32_t)(b >> 32);
             for (int i = 2; i < WIDTH; i++)
                 pn[i] = 0;
             return *this;
         }
 
-        explicit uint512(const std::vector<unsigned char> vch)
+        explicit uint512(const std::vector<uint8_t> vch)
         {
             SetBytes(vch);
         }
@@ -580,7 +580,7 @@ namespace LLC
         }
 
         /*
-        explicit uint512(const std::vector<unsigned char>& vch)
+        explicit uint512(const std::vector<uint8_t>& vch)
         {
             if (vch.size() == sizeof(pn))
                 memcpy(pn, &vch[0], sizeof(pn));
@@ -592,10 +592,10 @@ namespace LLC
 
     inline bool operator==(const uint512& a, uint64_t b)                           { return (base_uint512)a == b; }
     inline bool operator!=(const uint512& a, uint64_t b)                           { return (base_uint512)a != b; }
-    inline const uint512 operator<<(const base_uint512& a, unsigned int shift)   { return uint512(a) <<= shift; }
-    inline const uint512 operator>>(const base_uint512& a, unsigned int shift)   { return uint512(a) >>= shift; }
-    inline const uint512 operator<<(const uint512& a, unsigned int shift)        { return uint512(a) <<= shift; }
-    inline const uint512 operator>>(const uint512& a, unsigned int shift)        { return uint512(a) >>= shift; }
+    inline const uint512 operator<<(const base_uint512& a, uint32_t shift)   { return uint512(a) <<= shift; }
+    inline const uint512 operator>>(const base_uint512& a, uint32_t shift)   { return uint512(a) >>= shift; }
+    inline const uint512 operator<<(const uint512& a, uint32_t shift)        { return uint512(a) <<= shift; }
+    inline const uint512 operator>>(const uint512& a, uint32_t shift)        { return uint512(a) >>= shift; }
 
     inline const uint512 operator^(const base_uint512& a, const base_uint512& b) { return uint512(a) ^= b; }
     inline const uint512 operator&(const base_uint512& a, const base_uint512& b) { return uint512(a) &= b; }
@@ -639,7 +639,7 @@ namespace LLC
     inline const uint512 operator+(const uint512& a, const uint512& b)      { return (base_uint512)a +  (base_uint512)b; }
     inline const uint512 operator-(const uint512& a, const uint512& b)      { return (base_uint512)a -  (base_uint512)b; }
 
-    /** 576-bit unsigned integer */
+    /** 576-bit uint32_teger */
     class uint576 : public base_uint576
     {
     public:
@@ -666,16 +666,16 @@ namespace LLC
 
         uint576(uint64_t b)
         {
-            pn[0] = (unsigned int)b;
-            pn[1] = (unsigned int)(b >> 32);
+            pn[0] = (uint32_t)b;
+            pn[1] = (uint32_t)(b >> 32);
             for (int i = 2; i < WIDTH; i++)
                 pn[i] = 0;
         }
 
         uint576& operator=(uint64_t b)
         {
-            pn[0] = (unsigned int)b;
-            pn[1] = (unsigned int)(b >> 32);
+            pn[0] = (uint32_t)b;
+            pn[1] = (uint32_t)(b >> 32);
             for (int i = 2; i < WIDTH; i++)
                 pn[i] = 0;
             return *this;
@@ -686,7 +686,7 @@ namespace LLC
             SetHex(str);
         }
 
-        explicit uint576(const std::vector<unsigned char>& vch)
+        explicit uint576(const std::vector<uint8_t>& vch)
         {
             if (vch.size() == sizeof(pn))
                 memcpy(pn, &vch[0], sizeof(pn));
@@ -697,10 +697,10 @@ namespace LLC
 
     inline bool operator==(const uint576& a, uint64_t b)                           { return (base_uint576)a == b; }
     inline bool operator!=(const uint576& a, uint64_t b)                           { return (base_uint576)a != b; }
-    inline const uint576 operator<<(const base_uint576& a, unsigned int shift)   { return uint576(a) <<= shift; }
-    inline const uint576 operator>>(const base_uint576& a, unsigned int shift)   { return uint576(a) >>= shift; }
-    inline const uint576 operator<<(const uint576& a, unsigned int shift)        { return uint576(a) <<= shift; }
-    inline const uint576 operator>>(const uint576& a, unsigned int shift)        { return uint576(a) >>= shift; }
+    inline const uint576 operator<<(const base_uint576& a, uint32_t shift)   { return uint576(a) <<= shift; }
+    inline const uint576 operator>>(const base_uint576& a, uint32_t shift)   { return uint576(a) >>= shift; }
+    inline const uint576 operator<<(const uint576& a, uint32_t shift)        { return uint576(a) <<= shift; }
+    inline const uint576 operator>>(const uint576& a, uint32_t shift)        { return uint576(a) >>= shift; }
 
     inline const uint576 operator^(const base_uint576& a, const base_uint576& b) { return uint576(a) ^= b; }
     inline const uint576 operator&(const base_uint576& a, const base_uint576& b) { return uint576(a) &= b; }
@@ -746,7 +746,7 @@ namespace LLC
 
 
 
-    /** 1024-bit unsigned integer */
+    /** 1024-bit uint32_teger */
     class uint1024 : public base_uint1024
     {
     public:
@@ -773,16 +773,16 @@ namespace LLC
 
         uint1024(uint64_t b)
         {
-            pn[0] = (unsigned int)b;
-            pn[1] = (unsigned int)(b >> 32);
+            pn[0] = (uint32_t)b;
+            pn[1] = (uint32_t)(b >> 32);
             for (int i = 2; i < WIDTH; i++)
                 pn[i] = 0;
         }
 
         uint1024& operator=(uint64_t b)
         {
-            pn[0] = (unsigned int)b;
-            pn[1] = (unsigned int)(b >> 32);
+            pn[0] = (uint32_t)b;
+            pn[1] = (uint32_t)(b >> 32);
             for (int i = 2; i < WIDTH; i++)
                 pn[i] = 0;
             return *this;
@@ -856,7 +856,7 @@ namespace LLC
             SetHex(str);
         }
 
-        explicit uint1024(const std::vector<unsigned char>& vch)
+        explicit uint1024(const std::vector<uint8_t>& vch)
         {
             if (vch.size() == sizeof(pn))
                 memcpy(pn, &vch[0], sizeof(pn));
@@ -867,10 +867,10 @@ namespace LLC
 
     inline bool operator==(const uint1024& a, uint64_t b)                           { return (base_uint1024)a == b; }
     inline bool operator!=(const uint1024& a, uint64_t b)                           { return (base_uint1024)a != b; }
-    inline const uint1024 operator<<(const base_uint1024& a, unsigned int shift)   { return uint1024(a) <<= shift; }
-    inline const uint1024 operator>>(const base_uint1024& a, unsigned int shift)   { return uint1024(a) >>= shift; }
-    inline const uint1024 operator<<(const uint1024& a, unsigned int shift)        { return uint1024(a) <<= shift; }
-    inline const uint1024 operator>>(const uint1024& a, unsigned int shift)        { return uint1024(a) >>= shift; }
+    inline const uint1024 operator<<(const base_uint1024& a, uint32_t shift)   { return uint1024(a) <<= shift; }
+    inline const uint1024 operator>>(const base_uint1024& a, uint32_t shift)   { return uint1024(a) >>= shift; }
+    inline const uint1024 operator<<(const uint1024& a, uint32_t shift)        { return uint1024(a) <<= shift; }
+    inline const uint1024 operator>>(const uint1024& a, uint32_t shift)        { return uint1024(a) >>= shift; }
 
     inline const uint1024 operator^(const base_uint1024& a, const base_uint1024& b) { return uint1024(a) ^= b; }
     inline const uint1024 operator&(const base_uint1024& a, const base_uint1024& b) { return uint1024(a) &= b; }

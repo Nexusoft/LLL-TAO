@@ -45,10 +45,10 @@ namespace Legacy
 		{
 		public:
 			int nVersion;
-			unsigned int nTime;
+			uint32_t nTime;
 			std::vector<CTxIn> vin;
 			std::vector<CTxOut> vout;
-			unsigned int nLockTime;
+			uint32_t nLockTime;
 
 	        //TODO: CTransactionState (hash) - get from prevout on ctxIn
 	        //{ std::vector<bool> vSpent; { out1, out2, out3 } }
@@ -110,13 +110,13 @@ namespace Legacy
 			{
 				if (vin.size() != old.vin.size())
 					return false;
-				for (unsigned int i = 0; i < vin.size(); i++)
+				for (uint32_t i = 0; i < vin.size(); i++)
 					if (vin[i].prevout != old.vin[i].prevout)
 						return false;
 
 				bool fNewer = false;
-				unsigned int nLowest = std::numeric_limits<unsigned int>::max();
-				for (unsigned int i = 0; i < vin.size(); i++)
+				uint32_t nLowest = std::numeric_limits<uint32_t>::max();
+				for (uint32_t i = 0; i < vin.size(); i++)
 				{
 					if (vin[i].nSequence != old.vin[i].nSequence)
 					{
@@ -233,7 +233,7 @@ namespace Legacy
 				@return number of sigops this transaction's outputs will produce when spent
 				@see CTransaction::FetchInputs
 			*/
-			unsigned int GetLegacySigOpCount() const;
+			uint32_t GetLegacySigOpCount() const;
 
 			/** Count ECDSA signature operations in pay-to-script-hash inputs.
 
@@ -241,7 +241,7 @@ namespace Legacy
 				@return maximum number of sigops required to validate this transaction's inputs
 				@see CTransaction::FetchInputs
 			 */
-			unsigned int TotalSigOps(const MapPrevTx& mapInputs) const;
+			uint32_t TotalSigOps(const MapPrevTx& mapInputs) const;
 
 			/** Amount of Coins spent by this transaction.
 				@return sum of all outputs (note: does not include fees)
@@ -273,7 +273,7 @@ namespace Legacy
 				return dPriority > COIN * 144 / 250;
 			}
 
-			int64_t GetMinFee(unsigned int nBlockSize=1, bool fAllowFree=false, enum GetMinFee_mode mode=GMF_BLOCK) const;
+			int64_t GetMinFee(uint32_t nBlockSize=1, bool fAllowFree=false, enum GetMinFee_mode mode=GMF_BLOCK) const;
 
 
 			bool ReadFromDisk(CDiskTxPos pos, FILE** pfileRet=NULL);
@@ -368,7 +368,7 @@ namespace Legacy
 
 
 	/* Set the Limit of the Orphan Transaction Sizes Dynamically. */
-	unsigned int LimitOrphanTxSize(unsigned int nMaxOrphans);
+	uint32_t LimitOrphanTxSize(uint32_t nMaxOrphans);
 
 
 	/* Get a specific transaction from the Database or from a block's binary position. */

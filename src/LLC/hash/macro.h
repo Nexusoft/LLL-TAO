@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #define BEGIN(a)            ((char*)&(a))
 #define END(a)              ((char*)&((&(a))[1]))
-#define UBEGIN(a)           ((unsigned char*)&(a))
-#define UEND(a)             ((unsigned char*)&((&(a))[1]))
+#define UBEGIN(a)           ((uint8_t*)&(a))
+#define UEND(a)             ((uint8_t*)&((&(a))[1]))
 
 #endif

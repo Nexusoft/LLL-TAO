@@ -31,7 +31,7 @@ namespace Legacy
 
 
 		/* Basic Constructor. */
-		CTxIn::CTxIn(LLC::uint512 hashPrevTx, unsigned int nOut, Wallet::CScript scriptSigIn=CScript(), unsigned int nSequenceIn=std::numeric_limits<unsigned int>::max())
+		CTxIn::CTxIn(LLC::uint512 hashPrevTx, uint32_t nOut, Wallet::CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max())
 		{
 			prevout = COutPoint(hashPrevTx, nOut);
 			scriptSig = scriptSigIn;
@@ -77,7 +77,7 @@ namespace Legacy
                 str += strprintf(", trust %s", HexStr(scriptSig).c_str());
             else
                 str += strprintf(", scriptSig=%s", scriptSig.ToString().substr(0,24).c_str());
-            if (nSequence != std::numeric_limits<unsigned int>::max())
+            if (nSequence != std::numeric_limits<uint32_t>::max())
                 str += strprintf(", nSequence=%u", nSequence);
             str += ")";
             return str;

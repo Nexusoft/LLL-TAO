@@ -16,14 +16,14 @@ http://creativecommons.org/publicdomain/zero/1.0/
 
 #include "KeccakSponge.h"
 
-typedef unsigned char BitSequence;
+typedef uint8_t BitSequence;
 typedef unsigned long long DataLength;
 typedef enum { SUCCESS = 0, FAIL = 1, BAD_HASHLEN = 2 } HashReturn;
 
 typedef struct {
     Keccak_SpongeInstance sponge;
-    unsigned int fixedOutputLength;
-    unsigned char delimitedSuffix;
+    uint32_t fixedOutputLength;
+    uint8_t delimitedSuffix;
 } Keccak_HashInstance;
 
 /**
@@ -41,7 +41,7 @@ typedef struct {
   * @pre    One must have r+c=1600 and the rate a multiple of 8 bits in this implementation.
   * @return SUCCESS if successful, FAIL otherwise.
   */
-HashReturn Keccak_HashInitialize(Keccak_HashInstance *hashInstance, unsigned int rate, unsigned int capacity, unsigned int hashbitlen, unsigned char delimitedSuffix);
+HashReturn Keccak_HashInitialize(Keccak_HashInstance *hashInstance, uint32_t rate, uint32_t capacity, uint32_t hashbitlen, uint8_t delimitedSuffix);
 
 /** Macro to initialize a SHAKE128 instance as specified in the FIPS 202 draft.
   */

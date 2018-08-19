@@ -163,11 +163,11 @@ namespace LLP
     class DDOS_Filter
     {
         Timer TIMER;
-        unsigned int BANTIME, TOTALBANS;
+        uint32_t BANTIME, TOTALBANS;
 
     public:
         DDOS_Score rSCORE, cSCORE;
-        DDOS_Filter(unsigned int nTimespan) : BANTIME(0), TOTALBANS(0), rSCORE(nTimespan), cSCORE(nTimespan) { }
+        DDOS_Filter(uint32_t nTimespan) : BANTIME(0), TOTALBANS(0), rSCORE(nTimespan), cSCORE(nTimespan) { }
         Mutex_t MUTEX;
 
         /** Ban a Connection, and Flush its Scores. **/
@@ -194,7 +194,7 @@ namespace LLP
         {
             LOCK(MUTEX);
 
-            unsigned int ELAPSED = TIMER.Elapsed();
+            uint32_t ELAPSED = TIMER.Elapsed();
 
             return (ELAPSED < BANTIME);
 
@@ -211,9 +211,9 @@ namespace LLP
             BYTE 0       : Header
             BYTE 1 - 5   : Length
             BYTE 6 - End : Data      */
-        unsigned char    HEADER;
-        unsigned int     LENGTH;
-        std::vector<unsigned char> DATA;
+        uint8_t    HEADER;
+        uint32_t     LENGTH;
+        std::vector<uint8_t> DATA;
 
 
         /* Set the Packet Null Flags. */
@@ -239,13 +239,13 @@ namespace LLP
 
 
         /* Sets the size of the packet from Byte Vector. */
-        void SetLength(std::vector<unsigned char> BYTES) { LENGTH = (BYTES[0] << 24) + (BYTES[1] << 16) + (BYTES[2] << 8) + (BYTES[3] ); }
+        void SetLength(std::vector<uint8_t> BYTES) { LENGTH = (BYTES[0] << 24) + (BYTES[1] << 16) + (BYTES[2] << 8) + (BYTES[3] ); }
 
 
         /* Serializes class into a Byte Vector. Used to write Packet to Sockets. */
-        std::vector<unsigned char> GetBytes()
+        std::vector<uint8_t> GetBytes()
         {
-            std::vector<unsigned char> BYTES(1, HEADER);
+            std::vector<uint8_t> BYTES(1, HEADER);
 
             /* Handle for Data Packets. */
             if(HEADER < 128)
@@ -281,7 +281,7 @@ namespace LLP
             LENGTH == 0: General Events
             LENGTH  > 0 && PACKET: Read nSize Bytes into Data Packet
         */
-        virtual void Event(unsigned char EVENT, unsigned int LENGTH = 0) = 0;
+        virtual void Event(uint8_t EVENT, uint32_t LENGTH = 0) = 0;
 
 
         /* Pure Virtual Process Function. To be overridden with your own custom packet processing. */
@@ -324,7 +324,7 @@ namespace LLP
 
 
         /* Determines if nTime seconds have elapsed since last Read / Write. */
-        bool Timeout(unsigned int nTime){ return (TIMER.Elapsed() >= nTime); }
+        bool Timeout(uint32_t nTime){ return (TIMER.Elapsed() >= nTime); }
 
 
         /* Determines if Connected or Not. */
@@ -427,7 +427,7 @@ namespace LLP
 
 
         /* Lower level network communications: Read. Interacts with OS sockets. */
-        size_t Read(std::vector<unsigned char> &DATA, size_t nBytes)
+        size_t Read(std::vector<uint8_t> &DATA, size_t nBytes)
         {
             if(Errors())
                 return 0;
@@ -439,7 +439,7 @@ namespace LLP
 
 
         /* Lower level network communications: Write. Interacts with OS sockets. */
-        void Write(std::vector<unsigned char> DATA)
+        void Write(std::vector<uint8_t> DATA)
         {
             if(Errors())
                 return;
@@ -468,7 +468,7 @@ namespace LLP
             /* Handle Reading Packet Type Header. */
             if(SOCKET->available() > 0 && INCOMING.IsNull())
             {
-                std::vector<unsigned char> HEADER(1, 255);
+                std::vector<uint8_t> HEADER(1, 255);
                 if(Read(HEADER, 1) == 1)
                     INCOMING.HEADER = HEADER[0];
 
@@ -479,7 +479,7 @@ namespace LLP
                 /* Handle Reading Packet Length Header. */
                 if(SOCKET->available() >= 4 && INCOMING.LENGTH == 0)
                 {
-                    std::vector<unsigned char> BYTES(4, 0);
+                    std::vector<uint8_t> BYTES(4, 0);
                     if(Read(BYTES, 4) == 4)
                     {
                         INCOMING.SetLength(BYTES);
@@ -488,11 +488,11 @@ namespace LLP
                 }
 
                 /* Handle Reading Packet Data. */
-                unsigned int nAvailable = SOCKET->available();
+                uint32_t nAvailable = SOCKET->available();
                 if(nAvailable > 0 && INCOMING.LENGTH > 0 && INCOMING.DATA.size() < INCOMING.LENGTH)
                 {
-                    std::vector<unsigned char> DATA( std::min(nAvailable, (unsigned int)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
-                    unsigned int nRead = Read(DATA, DATA.size());
+                    std::vector<uint8_t> DATA( std::min(nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
+                    uint32_t nRead = Read(DATA, DATA.size());
 
                     if(nRead == DATA.size())
                     {

@@ -23,11 +23,11 @@ using namespace boost;
 namespace Wallet
 {
 
-    bool CheckSig(vector<unsigned char> vchSig, vector<unsigned char> vchPubKey, CScript scriptCode, const Core::CTransaction& txTo, unsigned int nIn, int nHashType);
+    bool CheckSig(vector<uint8_t> vchSig, vector<uint8_t> vchPubKey, CScript scriptCode, const Core::CTransaction& txTo, uint32_t nIn, int nHashType);
 
-    static const std::vector<unsigned char> vchFalse(0);
-    static const std::vector<unsigned char> vchZero(0);
-    static const std::vector<unsigned char> vchTrue(1, 1);
+    static const std::vector<uint8_t> vchFalse(0);
+    static const std::vector<uint8_t> vchZero(0);
+    static const std::vector<uint8_t> vchTrue(1, 1);
     static const CBigNum bnZero(0);
     static const CBigNum bnOne(1);
     static const CBigNum bnFalse(0);
@@ -35,7 +35,7 @@ namespace Wallet
     static const size_t nMaxNumSize = 4;
 
 
-    CBigNum CastToBigNum(const std::vector<unsigned char>& vch)
+    CBigNum CastToBigNum(const std::vector<uint8_t>& vch)
     {
         if (vch.size() > nMaxNumSize)
             throw runtime_error("CastToBigNum() : overflow");
@@ -43,9 +43,9 @@ namespace Wallet
         return CBigNum(CBigNum(vch).getvch());
     }
 
-    bool CastToBool(const std::vector<unsigned char>& vch)
+    bool CastToBool(const std::vector<uint8_t>& vch)
     {
-        for (unsigned int i = 0; i < vch.size(); i++)
+        for (uint32_t i = 0; i < vch.size(); i++)
         {
 
             if (vch[i] != 0)
@@ -61,7 +61,7 @@ namespace Wallet
         return false;
     }
 
-    void MakeSameSize(std::vector<unsigned char>& vch1, std::vector<unsigned char>& vch2)
+    void MakeSameSize(std::vector<uint8_t>& vch1, std::vector<uint8_t>& vch2)
     {
         // Lengthen the shorter one
         if (vch1.size() < vch2.size())
@@ -78,7 +78,7 @@ namespace Wallet
     //
     #define stacktop(i)  (stack.at(stack.size()+(i)))
     #define altstacktop(i)  (altstack.at(altstack.size()+(i)))
-    static inline void popstack(vector<std::vector<unsigned char> >& stack)
+    static inline void popstack(vector<std::vector<uint8_t> >& stack)
     {
         if (stack.empty())
             throw runtime_error("popstack() : stack empty");
@@ -239,16 +239,16 @@ namespace Wallet
         }
     }
 
-    bool EvalScript(vector<vector<unsigned char> >& stack, const CScript& script, const Core::CTransaction& txTo, unsigned int nIn, int nHashType)
+    bool EvalScript(vector<vector<uint8_t> >& stack, const CScript& script, const Core::CTransaction& txTo, uint32_t nIn, int nHashType)
     {
         CAutoBN_CTX pctx;
         CScript::const_iterator pc = script.begin();
         CScript::const_iterator pend = script.end();
         CScript::const_iterator pbegincodehash = script.begin();
         opcodetype opcode;
-        std::vector<unsigned char> vchPushValue;
+        std::vector<uint8_t> vchPushValue;
         vector<bool> vfExec;
-        vector<std::vector<unsigned char> > altstack;
+        vector<std::vector<uint8_t> > altstack;
         if (script.size() > 10000)
             return false;
         int nOpCount = 0;
@@ -338,7 +338,7 @@ namespace Wallet
                         {
                             if (stack.size() < 1)
                                 return false;
-                            std::vector<unsigned char>& vch = stacktop(-1);
+                            std::vector<uint8_t>& vch = stacktop(-1);
                             fValue = CastToBool(vch);
                             if (opcode == OP_NOTIF)
                                 fValue = !fValue;
@@ -421,8 +421,8 @@ namespace Wallet
                         // (x1 x2 -- x1 x2 x1 x2)
                         if (stack.size() < 2)
                             return false;
-                        std::vector<unsigned char> vch1 = stacktop(-2);
-                        std::vector<unsigned char> vch2 = stacktop(-1);
+                        std::vector<uint8_t> vch1 = stacktop(-2);
+                        std::vector<uint8_t> vch2 = stacktop(-1);
                         stack.push_back(vch1);
                         stack.push_back(vch2);
                     }
@@ -433,9 +433,9 @@ namespace Wallet
                         // (x1 x2 x3 -- x1 x2 x3 x1 x2 x3)
                         if (stack.size() < 3)
                             return false;
-                        std::vector<unsigned char> vch1 = stacktop(-3);
-                        std::vector<unsigned char> vch2 = stacktop(-2);
-                        std::vector<unsigned char> vch3 = stacktop(-1);
+                        std::vector<uint8_t> vch1 = stacktop(-3);
+                        std::vector<uint8_t> vch2 = stacktop(-2);
+                        std::vector<uint8_t> vch3 = stacktop(-1);
                         stack.push_back(vch1);
                         stack.push_back(vch2);
                         stack.push_back(vch3);
@@ -447,8 +447,8 @@ namespace Wallet
                         // (x1 x2 x3 x4 -- x1 x2 x3 x4 x1 x2)
                         if (stack.size() < 4)
                             return false;
-                        std::vector<unsigned char> vch1 = stacktop(-4);
-                        std::vector<unsigned char> vch2 = stacktop(-3);
+                        std::vector<uint8_t> vch1 = stacktop(-4);
+                        std::vector<uint8_t> vch2 = stacktop(-3);
                         stack.push_back(vch1);
                         stack.push_back(vch2);
                     }
@@ -459,8 +459,8 @@ namespace Wallet
                         // (x1 x2 x3 x4 x5 x6 -- x3 x4 x5 x6 x1 x2)
                         if (stack.size() < 6)
                             return false;
-                        std::vector<unsigned char> vch1 = stacktop(-6);
-                        std::vector<unsigned char> vch2 = stacktop(-5);
+                        std::vector<uint8_t> vch1 = stacktop(-6);
+                        std::vector<uint8_t> vch2 = stacktop(-5);
                         stack.erase(stack.end()-6, stack.end()-4);
                         stack.push_back(vch1);
                         stack.push_back(vch2);
@@ -482,7 +482,7 @@ namespace Wallet
                         // (x - 0 | x x)
                         if (stack.size() < 1)
                             return false;
-                        std::vector<unsigned char> vch = stacktop(-1);
+                        std::vector<uint8_t> vch = stacktop(-1);
                         if (CastToBool(vch))
                             stack.push_back(vch);
                     }
@@ -510,7 +510,7 @@ namespace Wallet
                         // (x -- x x)
                         if (stack.size() < 1)
                             return false;
-                        std::vector<unsigned char> vch = stacktop(-1);
+                        std::vector<uint8_t> vch = stacktop(-1);
                         stack.push_back(vch);
                     }
                     break;
@@ -529,7 +529,7 @@ namespace Wallet
                         // (x1 x2 -- x1 x2 x1)
                         if (stack.size() < 2)
                             return false;
-                        std::vector<unsigned char> vch = stacktop(-2);
+                        std::vector<uint8_t> vch = stacktop(-2);
                         stack.push_back(vch);
                     }
                     break;
@@ -545,7 +545,7 @@ namespace Wallet
                         popstack(stack);
                         if (n < 0 || n >= (int)stack.size())
                             return false;
-                        std::vector<unsigned char> vch = stacktop(-n-1);
+                        std::vector<uint8_t> vch = stacktop(-n-1);
                         if (opcode == OP_ROLL)
                             stack.erase(stack.end()-n-1);
                         stack.push_back(vch);
@@ -578,7 +578,7 @@ namespace Wallet
                         // (x1 x2 -- x2 x1 x2)
                         if (stack.size() < 2)
                             return false;
-                        std::vector<unsigned char> vch = stacktop(-1);
+                        std::vector<uint8_t> vch = stacktop(-1);
                         stack.insert(stack.end()-2, vch);
                     }
                     break;
@@ -592,8 +592,8 @@ namespace Wallet
                         // (x1 x2 -- out)
                         if (stack.size() < 2)
                             return false;
-                        std::vector<unsigned char>& vch1 = stacktop(-2);
-                        std::vector<unsigned char>& vch2 = stacktop(-1);
+                        std::vector<uint8_t>& vch1 = stacktop(-2);
+                        std::vector<uint8_t>& vch2 = stacktop(-1);
                         vch1.insert(vch1.end(), vch2.begin(), vch2.end());
                         popstack(stack);
                         if (stacktop(-1).size() > 520)
@@ -606,7 +606,7 @@ namespace Wallet
                         // (in begin size -- out)
                         if (stack.size() < 3)
                             return false;
-                        std::vector<unsigned char>& vch = stacktop(-3);
+                        std::vector<uint8_t>& vch = stacktop(-3);
                         int nBegin = CastToBigNum(stacktop(-2)).getint();
                         int nEnd = nBegin + CastToBigNum(stacktop(-1)).getint();
                         if (nBegin < 0 || nEnd < nBegin)
@@ -628,7 +628,7 @@ namespace Wallet
                         // (in size -- out)
                         if (stack.size() < 2)
                             return false;
-                        std::vector<unsigned char>& vch = stacktop(-2);
+                        std::vector<uint8_t>& vch = stacktop(-2);
                         int nSize = CastToBigNum(stacktop(-1)).getint();
                         if (nSize < 0)
                             return false;
@@ -661,8 +661,8 @@ namespace Wallet
                         // (in - out)
                         if (stack.size() < 1)
                             return false;
-                        std::vector<unsigned char>& vch = stacktop(-1);
-                        for (unsigned int i = 0; i < vch.size(); i++)
+                        std::vector<uint8_t>& vch = stacktop(-1);
+                        for (uint32_t i = 0; i < vch.size(); i++)
                             vch[i] = ~vch[i];
                     }
                     break;
@@ -674,22 +674,22 @@ namespace Wallet
                         // (x1 x2 - out)
                         if (stack.size() < 2)
                             return false;
-                        std::vector<unsigned char>& vch1 = stacktop(-2);
-                        std::vector<unsigned char>& vch2 = stacktop(-1);
+                        std::vector<uint8_t>& vch1 = stacktop(-2);
+                        std::vector<uint8_t>& vch2 = stacktop(-1);
                         MakeSameSize(vch1, vch2);
                         if (opcode == OP_AND)
                         {
-                            for (unsigned int i = 0; i < vch1.size(); i++)
+                            for (uint32_t i = 0; i < vch1.size(); i++)
                                 vch1[i] &= vch2[i];
                         }
                         else if (opcode == OP_OR)
                         {
-                            for (unsigned int i = 0; i < vch1.size(); i++)
+                            for (uint32_t i = 0; i < vch1.size(); i++)
                                 vch1[i] |= vch2[i];
                         }
                         else if (opcode == OP_XOR)
                         {
-                            for (unsigned int i = 0; i < vch1.size(); i++)
+                            for (uint32_t i = 0; i < vch1.size(); i++)
                                 vch1[i] ^= vch2[i];
                         }
                         popstack(stack);
@@ -703,8 +703,8 @@ namespace Wallet
                         // (x1 x2 - bool)
                         if (stack.size() < 2)
                             return false;
-                        std::vector<unsigned char>& vch1 = stacktop(-2);
-                        std::vector<unsigned char>& vch2 = stacktop(-1);
+                        std::vector<uint8_t>& vch1 = stacktop(-2);
+                        std::vector<uint8_t>& vch2 = stacktop(-1);
                         bool fEqual = (vch1 == vch2);
                         // OP_NOTEQUAL is disabled because it would be too easy to say
                         // something like n != 1 and have some wiseguy pass in 1 with extra
@@ -872,8 +872,8 @@ namespace Wallet
                         // (in -- hash)
                         if (stack.size() < 1)
                             return false;
-                        std::vector<unsigned char>& vch = stacktop(-1);
-                        std::vector<unsigned char> vchHash(32);
+                        std::vector<uint8_t>& vch = stacktop(-1);
+                        std::vector<uint8_t> vchHash(32);
 
                         LLC::uint256 hash256 = SK256(vch);
                         memcpy(&vchHash[0], &hash256, sizeof(hash256));
@@ -897,8 +897,8 @@ namespace Wallet
                         if (stack.size() < 2)
                             return false;
 
-                        std::vector<unsigned char>& vchSig    = stacktop(-2);
-                        std::vector<unsigned char>& vchPubKey = stacktop(-1);
+                        std::vector<uint8_t>& vchSig    = stacktop(-2);
+                        std::vector<uint8_t>& vchPubKey = stacktop(-1);
 
                         ////// debug print
                         //PrintHex(vchSig.begin(), vchSig.end(), "sig: %s\n");
@@ -958,15 +958,15 @@ namespace Wallet
                         // Drop the signatures, since there's no way for a signature to sign itself
                         for (int k = 0; k < nSigsCount; k++)
                         {
-                            std::vector<unsigned char>& vchSig = stacktop(-isig-k);
+                            std::vector<uint8_t>& vchSig = stacktop(-isig-k);
                             scriptCode.FindAndDelete(CScript(vchSig));
                         }
 
                         bool fSuccess = true;
                         while (fSuccess && nSigsCount > 0)
                         {
-                            std::vector<unsigned char>& vchSig    = stacktop(-isig);
-                            std::vector<unsigned char>& vchPubKey = stacktop(-ikey);
+                            std::vector<uint8_t>& vchSig    = stacktop(-isig);
+                            std::vector<uint8_t>& vchPubKey = stacktop(-ikey);
 
                             // Check signature
                             if (CheckSig(vchSig, vchPubKey, scriptCode, txTo, nIn, nHashType))
@@ -1026,7 +1026,7 @@ namespace Wallet
 
 
 
-    LLC::uint256 SignatureHash(CScript scriptCode, const Core::CTransaction& txTo, unsigned int nIn, int nHashType)
+    LLC::uint256 SignatureHash(CScript scriptCode, const Core::CTransaction& txTo, uint32_t nIn, int nHashType)
     {
         if (nIn >= txTo.vin.size())
         {
@@ -1041,7 +1041,7 @@ namespace Wallet
         scriptCode.FindAndDelete(CScript(OP_CODESEPARATOR));
 
         // Blank out other inputs' signatures
-        for (unsigned int i = 0; i < txTmp.vin.size(); i++)
+        for (uint32_t i = 0; i < txTmp.vin.size(); i++)
             txTmp.vin[i].scriptSig = CScript();
         txTmp.vin[nIn].scriptSig = scriptCode;
 
@@ -1052,25 +1052,25 @@ namespace Wallet
             txTmp.vout.clear();
 
             // Let the others update at will
-            for (unsigned int i = 0; i < txTmp.vin.size(); i++)
+            for (uint32_t i = 0; i < txTmp.vin.size(); i++)
                 if (i != nIn)
                     txTmp.vin[i].nSequence = 0;
         }
         else if ((nHashType & 0x1f) == SIGHASH_SINGLE)
         {
             // Only lockin the txout payee at same index as txin
-            unsigned int nOut = nIn;
+            uint32_t nOut = nIn;
             if (nOut >= txTmp.vout.size())
             {
                 printf("ERROR: SignatureHash() : nOut=%d out of range\n", nOut);
                 return 1;
             }
             txTmp.vout.resize(nOut+1);
-            for (unsigned int i = 0; i < nOut; i++)
+            for (uint32_t i = 0; i < nOut; i++)
                 txTmp.vout[i].SetNull();
 
             // Let the others update at will
-            for (unsigned int i = 0; i < txTmp.vin.size(); i++)
+            for (uint32_t i = 0; i < txTmp.vin.size(); i++)
                 if (i != nIn)
                     txTmp.vin[i].nSequence = 0;
         }
@@ -1098,13 +1098,13 @@ namespace Wallet
     {
     private:
         // sigdata_type is (signature hash, signature, public key):
-        typedef boost::tuple<LLC::uint256, std::vector<unsigned char>, std::vector<unsigned char> > sigdata_type;
+        typedef boost::tuple<LLC::uint256, std::vector<uint8_t>, std::vector<uint8_t> > sigdata_type;
         std::set< sigdata_type> setValid;
         CCriticalSection cs_sigcache;
 
     public:
         bool
-        Get(LLC::uint256 hash, const std::vector<unsigned char>& vchSig, const std::vector<unsigned char>& pubKey)
+        Get(LLC::uint256 hash, const std::vector<uint8_t>& vchSig, const std::vector<uint8_t>& pubKey)
         {
             LOCK(cs_sigcache);
 
@@ -1116,7 +1116,7 @@ namespace Wallet
         }
 
         void
-        Set(LLC::uint256 hash, const std::vector<unsigned char>& vchSig, const std::vector<unsigned char>& pubKey)
+        Set(LLC::uint256 hash, const std::vector<uint8_t>& vchSig, const std::vector<uint8_t>& pubKey)
         {
             // DoS prevention: limit cache size to less than 10MB
             // (~200 bytes per cache entry times 50,000 entries)
@@ -1134,7 +1134,7 @@ namespace Wallet
                 // and re-use a set of valid signatures just-slightly-greater
                 // than our cache size.
                 LLC::uint256 randomHash = GetRand256();
-                std::vector<unsigned char> unused;
+                std::vector<uint8_t> unused;
                 std::set<sigdata_type>::iterator it =
                     setValid.lower_bound(sigdata_type(randomHash, unused, unused));
                 if (it == setValid.end())
@@ -1147,8 +1147,8 @@ namespace Wallet
         }
     };
 
-    bool CheckSig(vector<unsigned char> vchSig, vector<unsigned char> vchPubKey, CScript scriptCode,
-                const Core::CTransaction& txTo, unsigned int nIn, int nHashType)
+    bool CheckSig(vector<uint8_t> vchSig, vector<uint8_t> vchPubKey, CScript scriptCode,
+                const Core::CTransaction& txTo, uint32_t nIn, int nHashType)
     {
         static CSignatureCache signatureCache;
 
@@ -1188,7 +1188,7 @@ namespace Wallet
     //
     // Return public keys or hashes from scriptPubKey, for 'standard' transaction types.
     //
-    bool Solver(const CScript& scriptPubKey, TransactionType& typeRet, vector<vector<unsigned char> >& vSolutionsRet)
+    bool Solver(const CScript& scriptPubKey, TransactionType& typeRet, vector<vector<uint8_t> >& vSolutionsRet)
     {
         // Templates
         static map<TransactionType, CScript> mTemplates;
@@ -1209,7 +1209,7 @@ namespace Wallet
         if (scriptPubKey.IsPayToScriptHash())
         {
             typeRet = TX_SCRIPTHASH;
-            vector<unsigned char> hashBytes(scriptPubKey.begin()+2, scriptPubKey.begin()+22);
+            vector<uint8_t> hashBytes(scriptPubKey.begin()+2, scriptPubKey.begin()+22);
             vSolutionsRet.push_back(hashBytes);
             return true;
         }
@@ -1222,7 +1222,7 @@ namespace Wallet
             vSolutionsRet.clear();
 
             opcodetype opcode1, opcode2;
-            vector<unsigned char> vch1, vch2;
+            vector<uint8_t> vch1, vch2;
 
             // Compare
             CScript::const_iterator pc1 = script1.begin();
@@ -1235,8 +1235,8 @@ namespace Wallet
                     if (typeRet == TX_MULTISIG)
                     {
                         // Additional checks for TX_MULTISIG:
-                        unsigned char m = vSolutionsRet.front()[0];
-                        unsigned char n = vSolutionsRet.back()[0];
+                        uint8_t m = vSolutionsRet.front()[0];
+                        uint8_t n = vSolutionsRet.back()[0];
                         if (m < 1 || n < 1 || m > n || vSolutionsRet.size()-2 != n)
                             return false;
                     }
@@ -1280,7 +1280,7 @@ namespace Wallet
                         (opcode1 >= OP_1 && opcode1 <= OP_16))
                     {
                         char n = (char)CScript::DecodeOP_N(opcode1);
-                        vSolutionsRet.push_back(std::vector<unsigned char>(1, n));
+                        vSolutionsRet.push_back(std::vector<uint8_t>(1, n));
                     }
                     else
                         break;
@@ -1305,22 +1305,22 @@ namespace Wallet
         if (!keystore.GetKey(address, key))
             return false;
 
-        vector<unsigned char> vchSig;
+        vector<uint8_t> vchSig;
         if (!key.Sign(hash, vchSig, 256))
             return false;
-        vchSig.push_back((unsigned char)nHashType);
+        vchSig.push_back((uint8_t)nHashType);
         scriptSigRet << vchSig;
 
         return true;
     }
 
-    bool SignN(const vector<std::vector<unsigned char> >& multisigdata, const CKeyStore& keystore, LLC::uint256 hash, int nHashType, CScript& scriptSigRet)
+    bool SignN(const vector<std::vector<uint8_t> >& multisigdata, const CKeyStore& keystore, LLC::uint256 hash, int nHashType, CScript& scriptSigRet)
     {
         int nSigned = 0;
         int nRequired = multisigdata.front()[0];
-        for (vector<std::vector<unsigned char> >::const_iterator it = multisigdata.begin()+1; it != multisigdata.begin()+multisigdata.size()-1; it++)
+        for (vector<std::vector<uint8_t> >::const_iterator it = multisigdata.begin()+1; it != multisigdata.begin()+multisigdata.size()-1; it++)
         {
-            const std::vector<unsigned char>& pubkey = *it;
+            const std::vector<uint8_t>& pubkey = *it;
             NexusAddress address;
             address.SetPubKey(pubkey);
             if (Sign1(address, keystore, hash, nHashType, scriptSigRet))
@@ -1343,7 +1343,7 @@ namespace Wallet
     {
         scriptSigRet.clear();
 
-        vector<std::vector<unsigned char> > vSolutions;
+        vector<std::vector<uint8_t> > vSolutions;
         if (!Solver(scriptPubKey, whichTypeRet, vSolutions))
             return false;
 
@@ -1361,7 +1361,7 @@ namespace Wallet
                 return false;
             else
             {
-                std::vector<unsigned char> vch;
+                std::vector<uint8_t> vch;
                 keystore.GetPubKey(address, vch);
                 scriptSigRet << vch;
             }
@@ -1376,7 +1376,7 @@ namespace Wallet
         return false;
     }
 
-    int ScriptSigArgsExpected(TransactionType t, const std::vector<std::vector<unsigned char> >& vSolutions)
+    int ScriptSigArgsExpected(TransactionType t, const std::vector<std::vector<uint8_t> >& vSolutions)
     {
         switch (t)
         {
@@ -1398,15 +1398,15 @@ namespace Wallet
 
     bool IsStandard(const CScript& scriptPubKey)
     {
-        vector<std::vector<unsigned char> > vSolutions;
+        vector<std::vector<uint8_t> > vSolutions;
         TransactionType whichType;
         if (!Solver(scriptPubKey, whichType, vSolutions))
             return false;
 
         if (whichType == TX_MULTISIG)
         {
-            unsigned char m = vSolutions.front()[0];
-            unsigned char n = vSolutions.back()[0];
+            uint8_t m = vSolutions.front()[0];
+            uint8_t n = vSolutions.back()[0];
             // Support up to x-of-3 multisig txns as standard
             if (n < 1 || n > 3)
                 return false;
@@ -1418,10 +1418,10 @@ namespace Wallet
     }
 
 
-    unsigned int HaveKeys(const vector<std::vector<unsigned char> >& pubkeys, const CKeyStore& keystore)
+    uint32_t HaveKeys(const vector<std::vector<uint8_t> >& pubkeys, const CKeyStore& keystore)
     {
-        unsigned int nResult = 0;
-        BOOST_FOREACH(const std::vector<unsigned char>& pubkey, pubkeys)
+        uint32_t nResult = 0;
+        BOOST_FOREACH(const std::vector<uint8_t>& pubkey, pubkeys)
         {
             NexusAddress address;
             address.SetPubKey(pubkey);
@@ -1433,7 +1433,7 @@ namespace Wallet
 
     bool IsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
     {
-        vector<std::vector<unsigned char> > vSolutions;
+        vector<std::vector<uint8_t> > vSolutions;
         TransactionType whichType;
         if (!Solver(scriptPubKey, whichType, vSolutions))
             return false;
@@ -1464,7 +1464,7 @@ namespace Wallet
             // partially owned (somebody else has a key that can spend
             // them) enable spend-out-from-under-you attacks, especially
             // in shared-wallet situations.
-            vector<std::vector<unsigned char> > keys(vSolutions.begin()+1, vSolutions.begin()+vSolutions.size()-1);
+            vector<std::vector<uint8_t> > keys(vSolutions.begin()+1, vSolutions.begin()+vSolutions.size()-1);
             return HaveKeys(keys, keystore) == keys.size();
         }
         }
@@ -1473,7 +1473,7 @@ namespace Wallet
 
     bool ExtractAddress(const CScript& scriptPubKey, NexusAddress& addressRet)
     {
-        vector<std::vector<unsigned char> > vSolutions;
+        vector<std::vector<uint8_t> > vSolutions;
         TransactionType whichType;
         if (!Solver(scriptPubKey, whichType, vSolutions))
             return false;
@@ -1501,14 +1501,14 @@ namespace Wallet
     {
         addressRet.clear();
         typeRet = TX_NONSTANDARD;
-        vector<std::vector<unsigned char> > vSolutions;
+        vector<std::vector<uint8_t> > vSolutions;
         if (!Solver(scriptPubKey, typeRet, vSolutions))
             return false;
 
         if (typeRet == TX_MULTISIG)
         {
             nRequiredRet = vSolutions.front()[0];
-            for (unsigned int i = 1; i < vSolutions.size()-1; i++)
+            for (uint32_t i = 1; i < vSolutions.size()-1; i++)
             {
                 NexusAddress address;
                 address.SetPubKey(vSolutions[i]);
@@ -1531,9 +1531,9 @@ namespace Wallet
         return true;
     }
 
-    bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const Core::CTransaction& txTo, unsigned int nIn, int nHashType)
+    bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const Core::CTransaction& txTo, uint32_t nIn, int nHashType)
     {
-        vector<vector<unsigned char> > stack, stackCopy;
+        vector<vector<uint8_t> > stack, stackCopy;
         if (!EvalScript(stack, scriptSig, txTo, nIn, nHashType))
             return false;
 
@@ -1553,7 +1553,7 @@ namespace Wallet
             if (!scriptSig.IsPushOnly()) // scriptSig must be literals-only
                 return false;
 
-            const std::vector<unsigned char>& pubKeySerialized = stackCopy.back();
+            const std::vector<uint8_t>& pubKeySerialized = stackCopy.back();
             CScript pubKey2(pubKeySerialized.begin(), pubKeySerialized.end());
             popstack(stackCopy);
 
@@ -1570,7 +1570,7 @@ namespace Wallet
     }
 
 
-    bool SignSignature(const CKeyStore &keystore, const Core::CTransaction& txFrom, Core::CTransaction& txTo, unsigned int nIn, int nHashType)
+    bool SignSignature(const CKeyStore &keystore, const Core::CTransaction& txFrom, Core::CTransaction& txTo, uint32_t nIn, int nHashType)
     {
         assert(nIn < txTo.vin.size());
         Core::CTxIn& txin = txTo.vin[nIn];
@@ -1600,7 +1600,7 @@ namespace Wallet
                 return false;
             if (subType == TX_SCRIPTHASH)
                 return false;
-            txin.scriptSig << static_cast<std::vector<unsigned char> >(subscript); // Append serialized subscript
+            txin.scriptSig << static_cast<std::vector<uint8_t> >(subscript); // Append serialized subscript
         }
 
         // Test solution
@@ -1611,7 +1611,7 @@ namespace Wallet
     }
 
 
-    bool VerifySignature(const Core::CTransaction& txFrom, const Core::CTransaction& txTo, unsigned int nIn, int nHashType)
+    bool VerifySignature(const Core::CTransaction& txFrom, const Core::CTransaction& txTo, uint32_t nIn, int nHashType)
     {
         assert(nIn < txTo.vin.size());
         const Core::CTxIn& txin = txTo.vin[nIn];
@@ -1628,9 +1628,9 @@ namespace Wallet
         return true;
     }
 
-    unsigned int CScript::GetSigOpCount(bool fAccurate) const
+    uint32_t CScript::GetSigOpCount(bool fAccurate) const
     {
-        unsigned int n = 0;
+        uint32_t n = 0;
         const_iterator pc = begin();
         opcodetype lastOpcode = OP_INVALIDOPCODE;
         while (pc < end())
@@ -1653,7 +1653,7 @@ namespace Wallet
         return n;
     }
 
-    unsigned int CScript::GetSigOpCount(const CScript& scriptSig) const
+    uint32_t CScript::GetSigOpCount(const CScript& scriptSig) const
     {
         if (!IsPayToScriptHash())
             return GetSigOpCount(true);
@@ -1662,7 +1662,7 @@ namespace Wallet
         // get the last item that the scriptSig
         // pushes onto the stack:
         const_iterator pc = scriptSig.begin();
-        vector<unsigned char> data;
+        vector<uint8_t> data;
         while (pc < scriptSig.end())
         {
             opcodetype opcode;

@@ -25,7 +25,7 @@ using namespace boost;
 
 namespace Wallet
 {
-    unsigned int nWalletDBUpdated;
+    uint32_t nWalletDBUpdated;
 
     CCriticalSection cs_db;
     static bool fDbEnvInit = false;
@@ -73,7 +73,7 @@ namespace Wallet
 
         fReadOnly = (!strchr(pszMode, '+') && !strchr(pszMode, 'w'));
         bool fCreate = strchr(pszMode, 'c');
-        unsigned int nFlags = DB_THREAD;
+        uint32_t nFlags = DB_THREAD;
         if (fCreate)
             nFlags |= DB_CREATE;
 
@@ -163,7 +163,7 @@ namespace Wallet
         pdb = NULL;
 
         // Flush database activity from memory pool to disk log
-        unsigned int nMinutes = 0;
+        uint32_t nMinutes = 0;
         if (fReadOnly)
             nMinutes = 1;
         if (strFile == "addr.dat")
@@ -399,7 +399,7 @@ namespace Wallet
         if (!pcursor)
             return false;
 
-        unsigned int fFlags = DB_SET_RANGE;
+        uint32_t fFlags = DB_SET_RANGE;
         loop() {
             // Read next record
             CDataStream ssKey(SER_DISK, DATABASE_VERSION);
@@ -525,7 +525,7 @@ namespace Wallet
         // Read pre-0.6 addr records
 
         vector<Net::CAddress> vAddr;
-        vector<vector<unsigned char> > vDelete;
+        vector<vector<uint8_t> > vDelete;
 
         // Get cursor
         Dbc* pcursor = GetCursor();

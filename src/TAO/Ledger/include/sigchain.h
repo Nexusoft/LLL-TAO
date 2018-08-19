@@ -57,23 +57,23 @@ namespace TAO
             *
             * @return The 512 bit hash of this key in the series.
             */
-            LLC::uint512 Generate(unsigned int nKeyID, std::string strSecret)
+            LLC::uint512 Generate(uint32_t nKeyID, std::string strSecret)
             {
                 /* Serialize the Key ID (Big Endian). */
-                std::vector<unsigned char> vKeyID;
+                std::vector<uint8_t> vKeyID;
                 vKeyID.push_back(nKeyID >> 24 & 0xff);
                 vKeyID.push_back(nKeyID >> 16 & 0xff);
                 vKeyID.push_back(nKeyID >> 8  & 0xff);
                 vKeyID.push_back(nKeyID       & 0xff);
 
                 /* Generate the Secret Phrase */
-                std::vector<unsigned char> vSecret(strUsername.begin(), strUsername.end());
+                std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
                 vSecret.insert(vSecret.end(), vKeyID.begin(), vKeyID.end());
                 vSecret.insert(vSecret.end(), strPassword.begin(), strPassword.end());
 
                 /* Generate the Pin Data.
                 TODO: Look to see if this can be improved. */
-                std::vector<unsigned char> vPin(strSecret.begin(), strSecret.end());
+                std::vector<uint8_t> vPin(strSecret.begin(), strSecret.end());
                 vPin.insert(vPin.end(), vKeyID.begin(), vKeyID.end());
 
                 /* Generate the Hashes */

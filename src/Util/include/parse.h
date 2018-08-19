@@ -65,9 +65,9 @@ inline std::string FormatMoney(int64_t n, bool fPlus = false, int64_t COIN_SIZE 
         str.erase(str.size()-nTrim, nTrim);
     
     if (n < 0)
-        str.insert((unsigned int)0, 1, '-');
+        str.insert((uint32_t)0, 1, '-');
     else if (fPlus && n > 0)
-        str.insert((unsigned int)0, 1, '+');
+        str.insert((uint32_t)0, 1, '+');
     return str;
 }
 

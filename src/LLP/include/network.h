@@ -91,7 +91,7 @@ typedef int socklen_t;
 namespace LLP
 {
 
-    static const unsigned char pchIPv4[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff };
+    static const uint8_t pchIPv4[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff };
 
     /** Services flags */
     enum
@@ -104,7 +104,7 @@ namespace LLP
     class CNetAddr
     {
         protected:
-            unsigned char ip[16]; // in network byte order
+            uint8_t ip[16]; // in network byte order
 
         public:
             CNetAddr();
@@ -133,7 +133,7 @@ namespace LLP
             int GetByte(int n) const;
             uint64_t GetHash() const;
             bool GetInAddr(struct in_addr* pipv4Addr) const;
-            std::vector<unsigned char> GetGroup() const;
+            std::vector<uint8_t> GetGroup() const;
             void print() const;
 
     #ifdef USE_IPV6
@@ -156,32 +156,32 @@ namespace LLP
     class CService : public CNetAddr
     {
         protected:
-            unsigned short port; // host order
+            uint16_t port; // host order
 
         public:
             CService();
-            CService(const CNetAddr& ip, unsigned short port);
-            CService(const struct in_addr& ipv4Addr, unsigned short port);
+            CService(const CNetAddr& ip, uint16_t port);
+            CService(const struct in_addr& ipv4Addr, uint16_t port);
             CService(const struct sockaddr_in& addr);
             explicit CService(const char *pszIpPort, int portDefault, bool fAllowLookup = false);
             explicit CService(const char *pszIpPort, bool fAllowLookup = false);
             explicit CService(const std::string& strIpPort, int portDefault, bool fAllowLookup = false);
             explicit CService(const std::string& strIpPort, bool fAllowLookup = false);
             void Init();
-            void SetPort(unsigned short portIn);
-            unsigned short GetPort() const;
+            void SetPort(uint16_t portIn);
+            uint16_t GetPort() const;
             bool GetSockAddr(struct sockaddr_in* paddr) const;
             friend bool operator==(const CService& a, const CService& b);
             friend bool operator!=(const CService& a, const CService& b);
             friend bool operator<(const CService& a, const CService& b);
-            std::vector<unsigned char> GetKey() const;
+            std::vector<uint8_t> GetKey() const;
             std::string ToString() const;
             std::string ToStringPort() const;
             std::string ToStringIPPort() const;
             void print() const;
 
     #ifdef USE_IPV6
-            CService(const struct in6_addr& ipv6Addr, unsigned short port);
+            CService(const struct in6_addr& ipv6Addr, uint16_t port);
             bool GetSockAddr6(struct sockaddr_in6* paddr) const;
             CService(const struct sockaddr_in6& addr);
     #endif
@@ -190,7 +190,7 @@ namespace LLP
             (
                 CService* pthis = const_cast<CService*>(this);
                 READWRITE(FLATDATA(ip));
-                unsigned short portN = htons(port);
+                uint16_t portN = htons(port);
                 READWRITE(portN);
                 if (fRead)
                     pthis->port = ntohs(portN);
@@ -228,7 +228,7 @@ namespace LLP
             uint64_t nServices;
 
             // disk and network only
-            unsigned int nTime;
+            uint32_t nTime;
 
             // memory only
             int64_t nLastTry;
@@ -244,15 +244,15 @@ namespace LLP
 
 
         /* The last time this connection was seen. */
-        unsigned int nLastSuccess;
+        uint32_t nLastSuccess;
 
 
         /* The last time this node was tried. */
-        unsigned int nLastAttempt;
+        uint32_t nLastAttempt;
 
 
         /* Number of attempts to connect since last try. */
-        unsigned int nAttempts;
+        uint32_t nAttempts;
 
 
 
@@ -290,15 +290,15 @@ namespace LLP
 
 
     /* Get the Main Core LLP Port for Nexus. */
-    inline unsigned short GetCorePort(const bool testnet = fTestNet){ return testnet ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT; }
+    inline uint16_t GetCorePort(const bool testnet = fTestNet){ return testnet ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT; }
 
 
     /* Get the Main Mining LLP Port for Nexus. */
-    inline unsigned short GetMiningPort(const bool testnet = fTestNet){ return testnet ? TESTNET_MINING_LLP_PORT : MAINNET_MINING_LLP_PORT; }
+    inline uint16_t GetMiningPort(const bool testnet = fTestNet){ return testnet ? TESTNET_MINING_LLP_PORT : MAINNET_MINING_LLP_PORT; }
 
 
     /* Get the Main Message LLP Port for Nexus. */
-    inline unsigned short GetDefaultPort(const bool testnet = fTestNet){ return testnet ? TESTNET_PORT : MAINNET_PORT; }
+    inline uint16_t GetDefaultPort(const bool testnet = fTestNet){ return testnet ? TESTNET_PORT : MAINNET_PORT; }
 
 }
 

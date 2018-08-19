@@ -35,11 +35,11 @@ namespace LLC
 
 
     /** CPrivKey is a serialized private key, with all parameters included **/
-    typedef std::vector<unsigned char, secure_allocator<unsigned char> > CPrivKey;
+    typedef std::vector<uint8_t, secure_allocator<uint8_t> > CPrivKey;
     
     
     /** CSecret is a serialization of just the secret parameter **/
-    typedef std::vector<unsigned char, secure_allocator<unsigned char> > CSecret;
+    typedef std::vector<uint8_t, secure_allocator<uint8_t> > CSecret;
 
     
     /** An encapsulated OpenSSL Elliptic Curve key (public and/or private) **/
@@ -67,7 +67,7 @@ namespace LLC
         
         
         /** The size of the curve finite field in bytes (Secret). **/
-        unsigned int nKeySize;
+        uint32_t nKeySize;
         
     public:
 
@@ -167,7 +167,7 @@ namespace LLC
         * 
         *  @return True if the key was set properly.
         **/
-        bool SetPubKey(const std::vector<unsigned char>& vchPubKey);
+        bool SetPubKey(const std::vector<uint8_t>& vchPubKey);
         
         
         /** Get Public Key 
@@ -176,7 +176,7 @@ namespace LLC
         * 
         *  @return The bytes of the public key in this keypair
         **/
-        std::vector<unsigned char> GetPubKey() const;
+        std::vector<uint8_t> GetPubKey() const;
 
         
         /** Tritium Signing Function.
@@ -188,7 +188,7 @@ namespace LLC
         * 
         *  @return True if the Signature was created successfully
         **/
-        bool Sign(const std::vector<unsigned char>& vchData, std::vector<unsigned char>& vchSig);
+        bool Sign(const std::vector<uint8_t>& vchData, std::vector<uint8_t>& vchSig);
         
         
         /** Tritium Signature Verification Function
@@ -200,7 +200,7 @@ namespace LLC
         * 
         *  @return True if the Signature was Verified as Valid
         **/
-        bool Verify(const std::vector<unsigned char>& vchData, const std::vector<unsigned char>& vchSig);
+        bool Verify(const std::vector<uint8_t>& vchData, const std::vector<uint8_t>& vchSig);
         
         
         /** Legacy Signing Function
@@ -213,7 +213,7 @@ namespace LLC
         * 
         *  @return True if the Signature was created successfully
         **/
-        bool Sign(LLC::uint1024 hash, std::vector<unsigned char>& vchSig, int nBits);
+        bool Sign(LLC::uint1024 hash, std::vector<uint8_t>& vchSig, int nBits);
         
         
         /** Legacy Verifying Function. 
@@ -226,7 +226,7 @@ namespace LLC
         * 
         *  @return True if the Signature was verified successfully
         **/
-        bool Verify(LLC::uint1024 hash, const std::vector<unsigned char>& vchSig, int nBits);
+        bool Verify(LLC::uint1024 hash, const std::vector<uint8_t>& vchSig, int nBits);
         
         
         /** Check if a Key is valid based on a few parameters
@@ -235,8 +235,8 @@ namespace LLC
         **/
         bool IsValid();
         
-        bool SignCompact(LLC::uint256 hash, std::vector<unsigned char>& vchSig);
-		bool SetCompactSignature(LLC::uint256 hash, const std::vector<unsigned char>& vchSig);
+        bool SignCompact(LLC::uint256 hash, std::vector<uint8_t>& vchSig);
+		bool SetCompactSignature(LLC::uint256 hash, const std::vector<uint8_t>& vchSig);
     };
 }
 #endif

@@ -32,7 +32,7 @@ namespace LLP
     void LegacyNode::PushVersion()
     {
         /* Random Session ID */
-        RAND_bytes((unsigned char*)&nSessionID, sizeof(nSessionID));
+        RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
 
         /* Current Unified Timestamp. */
         int64_t nTime = UnifiedTimestamp();
@@ -44,7 +44,7 @@ namespace LLP
         CAddress addrMe  = CAddress(CService("0.0.0.0",0));
         CAddress addrYou = CAddress(CService("0.0.0.0",0));
 
-        unsigned int nBestHeight = 0; //TODO: Chain State Parameters (Ledger Layer)
+        uint32_t nBestHeight = 0; //TODO: Chain State Parameters (Ledger Layer)
 
         /* Push the Message to receiving node. */
         PushMessage("version", PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,
@@ -53,7 +53,7 @@ namespace LLP
 
 
     /** Handle Event Inheritance. **/
-    void LegacyNode::Event(unsigned char EVENT, unsigned int LENGTH)
+    void LegacyNode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
         /** Handle any DDOS Packet Filters. **/
         if(EVENT == EVENT_HEADER)
@@ -118,7 +118,7 @@ namespace LLP
         {
 
             if(nLastPing + 5 < UnifiedTimestamp()) {
-                RAND_bytes((unsigned char*)&nSessionID, sizeof(nSessionID));
+                RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
 
                 nLastPing = UnifiedTimestamp();
 
@@ -174,7 +174,7 @@ namespace LLP
             //    return true;
 
             /* De-Serialize the Request ID. */
-            unsigned int nRequestID;
+            uint32_t nRequestID;
             ssMessage >> nRequestID;
 
             /* De-Serialize the Timestamp Sent. */
@@ -198,7 +198,7 @@ namespace LLP
         {
 
             /* De-Serialize the Request ID. */
-            unsigned int nRequestID;
+            uint32_t nRequestID;
             ssMessage >> nRequestID;
 
 
@@ -208,7 +208,7 @@ namespace LLP
 
 
             /* Handle the Request ID's. */
-            //unsigned int nLatencyTime = (Core::UnifiedTimestamp(true) - nTimestamp);
+            //uint32_t nLatencyTime = (Core::UnifiedTimestamp(true) - nTimestamp);
 
 
             /* Ignore Messages Recieved that weren't Requested. */
@@ -299,7 +299,7 @@ namespace LLP
             }
 
             /* Calculate the Average Latency of the Connection. */
-            unsigned int nLatency = mapLatencyTracker[nonce].ElapsedMilliseconds();
+            uint32_t nLatency = mapLatencyTracker[nonce].ElapsedMilliseconds();
             mapLatencyTracker.erase(nonce);
 
 
