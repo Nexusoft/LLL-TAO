@@ -4,4 +4,4 @@
 #
 cd /nexus
 ./nexus -verbose=5 -addnode=240.0.12.12 -addnode=240.0.13.13 -port=7323 -testnet \
-        >& /nexus/nexus.log &
+        -datadir=/nexus >& /nexus/nexus.log &
