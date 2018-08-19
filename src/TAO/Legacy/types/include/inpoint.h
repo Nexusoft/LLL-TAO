@@ -25,13 +25,57 @@ namespace Legacy
 		class CInPoint
 		{
 		public:
+
+			/** The transaction pointer. **/
 			CTransaction* ptx;
+
+
+			/** The index n of transaction input. **/
 			unsigned int n;
 
+
+			/** Default Constructor
+			 *
+			 *	Sets object to null state.
+			 *
+			 **/
 			CInPoint() { SetNull(); }
-			CInPoint(CTransaction* ptxIn, unsigned int nIn) { ptx = ptxIn; n = nIn; }
-			void SetNull() { ptx = NULL; n = -1; }
-			bool IsNull() const { return (ptx == NULL && n == -1); }
+
+
+			/** Constructor
+			 *
+			 *	@param[in] ptxIn The transaction input pointer
+			 *	@param[in] nIn The index input
+			 *
+			 **/
+			CInPoint(CTransaction* ptxIn, unsigned int nIn)
+			{
+				ptx = ptxIn;
+				n = nIn;
+			}
+
+
+			/** Set Null
+			 *
+			 *	Sets the object to null state
+			 *
+			 **/
+			void SetNull()
+			{
+				ptx = NULL;
+				n = -1;
+			}
+
+
+			/** Is Null
+			 *
+			 *	Checks the objects null state.
+			 *
+			 **/
+			bool IsNull() const
+			{
+				return (ptx == NULL && n == -1);
+			}
 		};
 
 	}
