@@ -107,10 +107,10 @@ namespace Wallet
             pwalletdbEncryption = NULL;
         }
 
-        std::map<uint512, CWalletTx> mapWallet;
-        std::vector<uint512> vWalletUpdated;
+        std::map<LLC::uint512, CWalletTx> mapWallet;
+        std::vector<LLC::uint512> vWalletUpdated;
 
-        std::map<uint1024, int> mapRequestCount;
+        std::map<LLC::uint1024, int> mapRequestCount;
 
         std::map<NexusAddress, std::string> mapAddressBook;
 
@@ -143,10 +143,10 @@ namespace Wallet
         void MarkDirty();
         bool AddToWallet(const CWalletTx& wtxIn);
         bool AddToWalletIfInvolvingMe(const Core::CTransaction& tx, const Core::CBlock* pblock, bool fUpdate = false, bool fFindBlock = false);
-        bool EraseFromWallet(uint512 hash);
+        bool EraseFromWallet(LLC::uint512 hash);
         void WalletUpdateSpent(const Core::CTransaction& prevout);
         int ScanForWalletTransactions(Core::CBlockIndex* pindexStart, bool fUpdate = false);
-        int ScanForWalletTransaction(const uint512& hashTx);
+        int ScanForWalletTransaction(const LLC::uint512& hashTx);
         void ReacceptWalletTransactions();
         void ResendWalletTransactions();
         int64_t GetBalance() const;
@@ -245,7 +245,7 @@ namespace Wallet
 
         bool DelAddressBookName(const NexusAddress& address);
 
-        void UpdatedTransaction(const uint512 &hashTx)
+        void UpdatedTransaction(const LLC::uint512 &hashTx)
         {
             {
                 LOCK(cs_wallet);
@@ -255,11 +255,11 @@ namespace Wallet
 
         void PrintWallet(const Core::CBlock& block);
 
-        void Inventory(const uint1024 &hash)
+        void Inventory(const LLC::uint1024 &hash)
         {
             {
                 LOCK(cs_wallet);
-                std::map<uint1024, int>::iterator mi = mapRequestCount.find(hash);
+                std::map<LLC::uint1024, int>::iterator mi = mapRequestCount.find(hash);
                 if (mi != mapRequestCount.end())
                     (*mi).second++;
             }
@@ -270,7 +270,7 @@ namespace Wallet
             return setKeyPool.size();
         }
 
-        bool GetTransaction(const uint512 &hashTx, CWalletTx& wtx);
+        bool GetTransaction(const LLC::uint512 &hashTx, CWalletTx& wtx);
 
         bool SetDefaultKey(const std::vector<unsigned char> &vchPubKey);
 
@@ -582,7 +582,7 @@ namespace Wallet
 
             // If no confirmations but it's from us, we can still
             // consider it confirmed if all dependencies are confirmed
-            std::map<uint512, const Core::CMerkleTx*> mapPrev;
+            std::map<LLC::uint512, const Core::CMerkleTx*> mapPrev;
             std::vector<const Core::CMerkleTx*> vWorkQueue;
             vWorkQueue.reserve(vtxPrev.size()+1);
             vWorkQueue.push_back(this);

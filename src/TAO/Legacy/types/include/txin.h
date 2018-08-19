@@ -80,7 +80,7 @@ namespace Legacy
 			 *	@param[in] nSequenceIn The sequence number (default unsigned int numeric limits)
 			 *
 			 **/
-			CTxIn(uint512 hashPrevTx, unsigned int nOut, Wallet::CScript scriptSigIn=CScript(), unsigned int nSequenceIn=std::numeric_limits<unsigned int>::max());
+			CTxIn(LLC::uint512 hashPrevTx, unsigned int nOut, Wallet::CScript scriptSigIn=CScript(), unsigned int nSequenceIn=std::numeric_limits<unsigned int>::max());
 
 			/** Comparison Operator overload
 			 *

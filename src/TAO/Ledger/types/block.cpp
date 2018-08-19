@@ -100,7 +100,7 @@ namespace TAO
 
 
 		/* Generate a Hash For the Block from the Header. */
-		uint1024 Block::GetHash() const
+		LLC::uint1024 Block::GetHash() const
 		{
 			/** Hashing template for CPU miners uses nVersion to nBits **/
 			if(GetChannel() == 1)
@@ -112,7 +112,7 @@ namespace TAO
 
 
 		/* Generate the Signature Hash Required After Block completes Proof of Work / Stake. */
-		uint1024 Block::SignatureHash() const
+		LLC::uint1024 Block::SignatureHash() const
 		{
 			if(nVersion < 5)
 				return LLC::HASH::SK1024(BEGIN(nVersion), END(nTime));
@@ -142,8 +142,8 @@ namespace TAO
 		}
 
 
-		/* Generate the Merkle Tree from uint512 hashes. */
-		uint512 Block::BuildMerkleTree() const
+		/* Generate the Merkle Tree from LLC::uint512 hashes. */
+		LLC::uint512 Block::BuildMerkleTree() const
 		{
 			vMerkleTree.clear();
 			BOOST_FOREACH(const CTransaction& tx, vtx)
@@ -164,11 +164,11 @@ namespace TAO
 
 
 		/* Get the current Branch that is being worked on. */
-		std::vector<uint512> Block::GetMerkleBranch(int nIndex) const
+		std::vector<LLC::uint512> Block::GetMerkleBranch(int nIndex) const
 		{
 			if (vMerkleTree.empty())
 				BuildMerkleTree();
-			std::vector<uint512> vMerkleBranch;
+			std::vector<LLC::uint512> vMerkleBranch;
 			int j = 0;
 			for (int nSize = (int)vtx.size(); nSize > 1; nSize = (nSize + 1) / 2)
 			{
@@ -182,7 +182,7 @@ namespace TAO
 
 
 		/* Check that the Merkle branch matches hash tree. */
-		uint512 Block::CheckMerkleBranch(uint512 hash, const std::vector<uint512>& vMerkleBranch, int nIndex)
+		LLC::uint512 Block::CheckMerkleBranch(LLC::uint512 hash, const std::vector<LLC::uint512>& vMerkleBranch, int nIndex)
 		{
 			if (nIndex == -1)
 				return 0;

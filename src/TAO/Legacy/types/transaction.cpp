@@ -23,13 +23,13 @@ using namespace boost;
 namespace Core
 {
 
-    void CTxMemPool::queryHashes(std::vector<uint512>& vtxid)
+    void CTxMemPool::queryHashes(std::vector<LLC::uint512>& vtxid)
     {
         vtxid.clear();
 
         LOCK(cs);
         vtxid.reserve(mapTx.size());
-        for (map<uint512, CTransaction>::iterator mi = mapTx.begin(); mi != mapTx.end(); ++mi)
+        for (map<LLC::uint512, CTransaction>::iterator mi = mapTx.begin(); mi != mapTx.end(); ++mi)
             vtxid.push_back((*mi).first);
     }
 
@@ -38,7 +38,7 @@ namespace Core
     {
         CTransaction tx;
         CDataStream(vMsg) >> tx;
-        uint512 hash = tx.GetHash();
+        LLC::uint512 hash = tx.GetHash();
         if (mapOrphanTransactions.count(hash))
             return false;
 
@@ -67,7 +67,7 @@ namespace Core
         return true;
     }
 
-    void EraseOrphanTx(uint512 hash)
+    void EraseOrphanTx(LLC::uint512 hash)
     {
         if (!mapOrphanTransactions.count(hash))
             return;
@@ -90,8 +90,8 @@ namespace Core
         while (mapOrphanTransactions.size() > nMaxOrphans)
         {
             // Evict a random orphan:
-            uint512 randomhash = GetRand512();
-            map<uint512, CDataStream*>::iterator it = mapOrphanTransactions.lower_bound(randomhash);
+            LLC::uint512 randomhash = GetRand512();
+            map<LLC::uint512, CDataStream*>::iterator it = mapOrphanTransactions.lower_bound(randomhash);
             if (it == mapOrphanTransactions.end())
                 it = mapOrphanTransactions.begin();
             EraseOrphanTx(it->first);
@@ -283,7 +283,7 @@ namespace Core
         }
 
         // Is the tx in a block that's in the main chain
-        map<uint1024, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashBlock);
+        map<LLC::uint1024, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashBlock);
         if (mi == mapBlockIndex.end())
             return 0;
         CBlockIndex* pindex = (*mi).second;
@@ -383,7 +383,7 @@ namespace Core
             return error("CTxMemPool::accept() : nonstandard transaction type");
 
         // Do we already have it?
-        uint512 hash = tx.GetHash();
+        LLC::uint512 hash = tx.GetHash();
         {
             LOCK(cs);
             if (mapTx.count(hash))
@@ -424,7 +424,7 @@ namespace Core
         if (fCheckInputs)
         {
             MapPrevTx mapInputs;
-            map<uint512, CTxIndex> mapUnused;
+            map<LLC::uint512, CTxIndex> mapUnused;
             bool fInvalid = false;
             if (!tx.FetchInputs(indexdb, mapUnused, false, false, mapInputs, fInvalid))
             {
@@ -515,7 +515,7 @@ namespace Core
         // call CTxMemPool::accept to properly check the transaction first.
         {
             LOCK(cs);
-            uint512 hash = tx.GetHash();
+            LLC::uint512 hash = tx.GetHash();
             mapTx[hash] = tx;
             for (unsigned int i = 0; i < tx.vin.size(); i++)
                 mapNextTx[tx.vin[i].prevout] = CInPoint(&mapTx[hash], i);
@@ -530,7 +530,7 @@ namespace Core
         // Remove transaction from memory pool
         {
             LOCK(cs);
-            uint512 hash = tx.GetHash();
+            LLC::uint512 hash = tx.GetHash();
             if (mapTx.count(hash))
             {
                 BOOST_FOREACH(const CTxIn& txin, tx.vin)
@@ -553,7 +553,7 @@ namespace Core
             return 0;
 
         // Find the block it claims to be in
-        map<uint1024, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashBlock);
+        map<LLC::uint1024, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashBlock);
         if (mi == mapBlockIndex.end())
             return 0;
         CBlockIndex* pindex = (*mi).second;
@@ -608,7 +608,7 @@ namespace Core
         if (!block.ReadFromDisk(pos.nFile, pos.nBlockPos, false))
             return 0;
         // Find the block in the index
-        map<uint1024, CBlockIndex*>::iterator mi = mapBlockIndex.find(block.GetHash());
+        map<LLC::uint1024, CBlockIndex*>::iterator mi = mapBlockIndex.find(block.GetHash());
         if (mi == mapBlockIndex.end())
             return 0;
         CBlockIndex* pindex = (*mi).second;
@@ -673,7 +673,7 @@ namespace Core
     }
 
 
-    bool CTransaction::FetchInputs(LLD::CIndexDB& indexdb, const map<uint512, CTxIndex>& mapTestPool,
+    bool CTransaction::FetchInputs(LLD::CIndexDB& indexdb, const map<LLC::uint512, CTxIndex>& mapTestPool,
                                    bool fBlock, bool fMiner, MapPrevTx& inputsRet, bool& fInvalid)
     {
         // FetchInputs can return false either because we just haven't seen some inputs
@@ -790,7 +790,7 @@ namespace Core
     }
 
     bool CTransaction::ConnectInputs(LLD::CIndexDB& indexdb, MapPrevTx inputs,
-                                     map<uint512, CTxIndex>& mapTestPool, const CDiskTxPos& posThisTx,
+                                     map<LLC::uint512, CTxIndex>& mapTestPool, const CDiskTxPos& posThisTx,
                                      const CBlockIndex* pindexBlock, bool fBlock, bool fMiner)
     {
         // Take over previous transactions' spent pointers
@@ -912,7 +912,7 @@ namespace Core
     }
 
 // Return transaction in tx, and if it was found inside a block, its hash is placed in hashBlock
-bool GetTransaction(const uint512 &hash, CTransaction &tx, uint1024 &hashBlock)
+bool GetTransaction(const LLC::uint512 &hash, CTransaction &tx, LLC::uint1024 &hashBlock)
 {
     {
         LOCK(cs_main);
@@ -949,7 +949,7 @@ bool Wallet::CWalletTx::AcceptWalletTransaction(LLD::CIndexDB& indexdb, bool fCh
         {
             if (!(tx.IsCoinBase() || tx.IsCoinStake()))
             {
-                uint512 hash = tx.GetHash();
+                LLC::uint512 hash = tx.GetHash();
                 if (!Core::mempool.exists(hash) && !indexdb.ContainsTx(hash))
                     tx.AcceptToMemoryPool(indexdb, fCheckInputs);
             }

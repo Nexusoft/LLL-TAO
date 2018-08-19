@@ -60,7 +60,7 @@ namespace Legacy
 
 
 		/* Get the hash of the object. */
-		uint512 CTxOut::GetHash() const
+		LLC::uint512 CTxOut::GetHash() const
 		{
 			return SerializeHash(*this);
 		}

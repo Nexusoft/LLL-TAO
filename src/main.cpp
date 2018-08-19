@@ -10,6 +10,7 @@
 #include "LLC/hash/SK.h"
 #include "LLC/include/random.h"
 #include "LLC/include/key.h"
+#include "LLC/types/bignum.h"
 
 #include "LLP/templates/server.h"
 
@@ -29,7 +30,7 @@ class CAccount
 public:
     std::vector<unsigned char> vchIdentifier;
 
-    uint256 hashAddress;
+    LLC::uint256 hashAddress;
 
     uint64_t nBalance;
 
@@ -62,12 +63,12 @@ class RegisterDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
 {
     RegisterDB(const char* pszMode="r+") : SectorDatabase("regdb", pszMode) {}
 
-    bool ReadRegister(uint256 address, TAO::Register::CStateRegister& regState)
+    bool ReadRegister(LLC::uint256 address, TAO::Register::CStateRegister& regState)
     {
         return Read(address, regState);
     }
 
-    bool WriteRegister(uint256 address, TAO::Register::CStateRegister regState)
+    bool WriteRegister(LLC::uint256 address, TAO::Register::CStateRegister regState)
     {
         return Write(address, regState);
     }
@@ -96,11 +97,11 @@ int main(int argc, char** argv)
 
     for(int i = 0; ; i++)
     {
-        uint512 hashSeed = GetRand512();
-        uint256 hash256  = GetRand256();
+        LLC::uint512 hashSeed = GetRand512();
+        LLC::uint256 hash256  = GetRand256();
 
         TAO::Ledger::SignatureChain sigChain("username", hashSeed.ToString());
-        uint512 hashGenesis = sigChain.Generate(i, hash256.ToString());
+        LLC::uint512 hashGenesis = sigChain.Generate(i, hash256.ToString());
 
         printf("Genesis Priv %s\n", hashGenesis.ToString().c_str());
 
@@ -118,7 +119,7 @@ int main(int argc, char** argv)
 
         printf("Genesis Pub %s\n", HexStr(vPubKey).c_str());
 
-        uint512 genesisID = LLC::HASH::SK512(vPubKey);
+        LLC::uint512 genesisID = LLC::HASH::SK512(vPubKey);
 
         printf("Genesis ID %s\n", genesisID.ToString().c_str());
 

@@ -45,11 +45,11 @@ namespace TAO
 
 
             /** The address space of the register. **/
-            uint256 hashAddress;
+            LLC::uint256 hashAddress;
 
 
             /** The owner of the register. **/
-            uint256 hashOwner; //genesis ID
+            LLC::uint256 hashOwner; //genesis ID
 
 
             /** The chechsum of the state register for use in pruning. */
@@ -116,7 +116,7 @@ namespace TAO
 
 
             /** Set the Memory Address of this Register's Index. **/
-            void SetAddress(uint256 hashAddressIn)
+            void SetAddress(LLC::uint256 hashAddressIn)
             {
                 hashAddress = hashAddressIn;
             }

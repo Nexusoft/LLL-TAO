@@ -53,11 +53,11 @@ namespace TAO
 
 
 			/** The previous blocks hash. Used to chain blocks together. **/
-			uint1024 hashPrevBlock;
+			LLC::uint1024 hashPrevBlock;
 
 
 			/** The Merkle Root. A merkle tree of transaction hashes included in header. **/
-			uint512 hashMerkleRoot;
+			LLC::uint512 hashMerkleRoot;
 
 
 			/** The Block Channel. This number designates what validation algorithm is required. **/
@@ -89,7 +89,7 @@ namespace TAO
 
 
 			/** Memory only structure to hold merkle tree data. **/
-			mutable std::vector<uint512> vMerkleTree;
+			mutable std::vector<LLC::uint512> vMerkleTree;
 
 
 			//standard serialization methods
@@ -108,7 +108,7 @@ namespace TAO
 			 *	@param[in] nHeightIn The height this block is being created at.
 			 *
 			**/
-			Block(unsigned int nVersionIn, uint1024 hashPrevBlockIn, unsigned int nChannelIn, unsigned int nHeightIn) : nVersion(nVersionIn), hashPrevBlock(hashPrevBlockIn), nChannel(nChannelIn), nHeight(nHeightIn), nBits(0), nNonce(0), nTime(0) { }
+			Block(unsigned int nVersionIn, LLC::uint1024 hashPrevBlockIn, unsigned int nChannelIn, unsigned int nHeightIn) : nVersion(nVersionIn), hashPrevBlock(hashPrevBlockIn), nChannel(nChannelIn), nHeight(nHeightIn), nBits(0), nNonce(0), nTime(0) { }
 
 
 			/** Set the block to Null state. **/
@@ -186,7 +186,7 @@ namespace TAO
 			 *	@return 1024-bit block hash
 			 *
 			 **/
-			uint1024 GetHash() const;
+			LLC::uint1024 GetHash() const;
 
 
 			/** SignatureHash
@@ -196,7 +196,7 @@ namespace TAO
 			 *	@return 1024-bit hash for signature
 			 *
 			 **/
-			uint1024 SignatureHash() const;
+			LLC::uint1024 SignatureHash() const;
 
 
 			/** UpdateTime
@@ -230,7 +230,7 @@ namespace TAO
 			 *	@return The 512-bit merkle root
 			 *
 			 **/
-			uint512 BuildMerkleTree() const;
+			LLC::uint512 BuildMerkleTree() const;
 
 
 			/** GetMerkleBranch
@@ -242,7 +242,7 @@ namespace TAO
 			 *	@return A vector containing the hashes of the transaction's branch
 			 *
 			 **/
-			std::vector<uint512> GetMerkleBranch(int nIndex) const;
+			std::vector<LLC::uint512> GetMerkleBranch(int nIndex) const;
 
 
 			/** CheckMerkleBranch
@@ -250,7 +250,7 @@ namespace TAO
 			 *	Check that the transaction exists in the merkle branch.
 			 *
 			 **/
-			uint512 CheckMerkleBranch(uint512 hash, const std::vector<uint512>& vMerkleBranch, int nIndex);
+			LLC::uint512 CheckMerkleBranch(LLC::uint512 hash, const std::vector<LLC::uint512>& vMerkleBranch, int nIndex);
 
 
 			/** print
