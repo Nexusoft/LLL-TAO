@@ -25,13 +25,13 @@ namespace Core
 
 	
 	/* Returns the value of a full minutes reward per channel */
-	int64 GetSubsidy(int nMinutes, int nType) { return (((decay[nType][0] * exp(decay[nType][1] * nMinutes)) + decay[nType][2]) * (COIN / 2.0)); }
+	int64_t GetSubsidy(int nMinutes, int nType) { return (((decay[nType][0] * exp(decay[nType][1] * nMinutes)) + decay[nType][2]) * (COIN / 2.0)); }
 	
 
 	/* Compound the subsidy from a start point to an interval point. */
-	int64 SubsidyInterval(int nMinutes, int nInterval)
+	int64_t SubsidyInterval(int nMinutes, int nInterval)
 	{
-		int64 nMoneySupply = 0;
+		int64_t nMoneySupply = 0;
 		nInterval += nMinutes;
 		
 		for(int nMinute = nMinutes; nMinute < nInterval; nMinute++)
@@ -43,9 +43,9 @@ namespace Core
 	
 
 	/** Returns the Calculated Money Supply after nMinutes compounded from the Decay Equations. **/
-	int64 CompoundSubsidy(int nMinutes, int nTypes)
+	int64_t CompoundSubsidy(int nMinutes, int nTypes)
     {
-		int64 nMoneySupply = 0;
+		int64_t nMoneySupply = 0;
 		for(int nMinute = 1; nMinute <= nMinutes; nMinute++)
 			for(int nType = (nTypes == 3 ? 0 : nTypes); nType < (nTypes == 3 ? 4 : nTypes + 1); nType++) //nTypes == 3 designates all channels, nTypes == 0, 1, 2 equals miner, ambassador, and developers
 				nMoneySupply += (GetSubsidy(nMinute, nType) * 2);
@@ -55,23 +55,23 @@ namespace Core
 	
 	
 	/* Calculates the Actual Money Supply from nReleasedReserve and nMoneySupply. */
-    uint64 GetMoneySupply(const CBlockState blk)
+    uint64_t GetMoneySupply(const CBlockState blk)
 	{
         return blk.nMoneySupply;
 	}
 	
 	
 	/* Get the Age of the Block Chain in Minutes. */
-	int64 GetChainAge(int64 nTime) { return floor((nTime - (int64)(fTestNet ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK)) / 60.0); }ß
+	int64_t GetChainAge(int64_t nTime) { return floor((nTime - (int64_t)(fTestNet ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK)) / 60.0); }ß
 	
 	
 	/* Returns the Time Based value of the Block which is a Fraction of Time's worth of Full Minutes Subsidy. */
-    int64 GetFractionalSubsidy(int nMinutes, int nType, double nFraction)
+    int64_t GetFractionalSubsidy(int nMinutes, int nType, double nFraction)
 	{
 		int nInterval = floor(nFraction);
 		double nRemainder   = nFraction - nInterval;
 		
-		int64 nSubsidy = 0;
+		int64_t nSubsidy = 0;
 		for(int nMinute = 0; nMinute < nInterval; nMinute++)
 			nSubsidy += GetSubsidy(nMinutes + nMinute, nType);
 
@@ -80,9 +80,9 @@ namespace Core
 
 
 	/* Releases Nexus into Blockchain for Miners to Create. */
-	int64 ReleaseRewards(int nTimespan, int nStart, int nType)
+	int64_t ReleaseRewards(int nTimespan, int nStart, int nType)
 	{
-		int64 nSubsidy = 0;
+		int64_t nSubsidy = 0;
 		for(int nMinutes = nStart; nMinutes < (nStart + nTimespan); nMinutes++)
 			nSubsidy += GetSubsidy(nMinutes, nType);
 		
@@ -92,9 +92,9 @@ namespace Core
 	
 	
 	/* Releases Nexus into Blockchain [2% of Money Supply] for POS Minting. */
-	int64 ReleaseInflation(int nTimespan, int nStart)
+	int64_t ReleaseInflation(int nTimespan, int nStart)
 	{
-		int64 nSubsidy = GetInflation(nTimespan, CompoundSubsidy(nStart));
+		int64_t nSubsidy = GetInflation(nTimespan, CompoundSubsidy(nStart));
 		
 		printf("Inflation: %f Nexus | Timespan %i - %i Minutes\n", (double)nSubsidy / COIN, nStart, (nStart + nTimespan));
 		return nSubsidy;
@@ -102,7 +102,7 @@ namespace Core
     
     
     /* Returns the Coinbase Reward Generated for Block Timespan */
-    int64 CBlkPool::GetCoinbaseReward(const CBlock blk, int nChannel, int nType)
+    int64_t CBlkPool::GetCoinbaseReward(const CBlock blk, int nChannel, int nType)
     {
         const CBlockState blkFirst = GetLastBlock(blk.GetHash(), nChannel);
         if(!blkFirst.hashPrevBlock == 0)
@@ -113,8 +113,8 @@ namespace Core
             return GetSubsidy(1, nType);
         
         
-        int64 nBlockTime = max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64) 1 );
-        int64 nMinutes   = ((blk.nVersion >= 3) ? GetChainAge(blkFirst.GetBlockTime()) : min(blkFirst.nChannelHeight,  GetChainAge(blkFirst.GetBlockTime())));
+        int64_t nBlockTime = max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64_t) 1 );
+        int64_t nMinutes   = ((blk.nVersion >= 3) ? GetChainAge(blkFirst.GetBlockTime()) : min(blkFirst.nChannelHeight,  GetChainAge(blkFirst.GetBlockTime())));
         
         
         /* Block Version 3 Coinbase Tx Calculations. */
@@ -148,7 +148,7 @@ namespace Core
 	
 
 	/* Calculates the release of new rewards based on the Network Time */
-    int64 CBlkPool::GetReleasedReserve(const CBlockState blk, int nChannel, int nType)
+    int64_t CBlkPool::GetReleasedReserve(const CBlockState blk, int nChannel, int nType)
 	{
         const CBlockState blkFirst = GetLastBlock(blk.GetHash(), nChannel);
         if(!blkFirst.hashPrevBlock == 0)

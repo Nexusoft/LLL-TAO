@@ -127,27 +127,27 @@ namespace Core
 
 
 	/* The significcant digits a "COIN" can be broken into. */
-	extern const int64 COIN;
+	extern const int64_t COIN;
 
 
 	/* The significiant digits a "CENT" can be broken into. */
-	extern const int64 CENT;
+	extern const int64_t CENT;
 
 
 	/* The Minimum fee Amount for a Transaction (TODO: Going to be eliminated post Tritium). */
-	extern const int64 MIN_TX_FEE;
+	extern const int64_t MIN_TX_FEE;
 
 
 	/* The Minimum fee Amount for a Transaction (TODO: Going to be eliminated post Tritium). */
-	extern const int64 MIN_RELAY_TX_FEE;
+	extern const int64_t MIN_RELAY_TX_FEE;
 
 
 	/* The Maximum amount that can be sent in a single transaction. */
-	extern const int64 MAX_TXOUT_AMOUNT;
+	extern const int64_t MAX_TXOUT_AMOUNT;
 
 
 	/* The Minimum amount that can be sent in a single transaction. */
-	extern const int64 MIN_TXOUT_AMOUNT;
+	extern const int64_t MIN_TXOUT_AMOUNT;
 
 
 	/* The total blocks for any generated (minted) transaction to confirm. */
@@ -173,7 +173,7 @@ namespace Core
 
 
 	/* NOTE: Pre-Tritium Rule. The amount that is needed to stake to get a fully weighted Energy Efficiency Threshold. */
-	extern const uint64 MAX_STAKE_WEIGHT;
+	extern const uint64_t MAX_STAKE_WEIGHT;
 
 
 	/* Tritium ++ Rules for Trust Keys. The timespan in which positive and negative trust are calculated against. */
@@ -239,7 +239,7 @@ namespace Core
 
 
 	/* The number calculated on a per block basis to determine the most trusted chain */
-	extern uint64 nBestChainTrust;
+	extern uint64_t nBestChainTrust;
 
 
 	/* Memory Only Map of Blocks that are in orphan holding until their dependent blocks arrive to this node. */
@@ -271,19 +271,19 @@ namespace Core
 
 
 	/* Mutable Transaction Fee inherited by constants and mutated by TESTNET switch */
-	extern int64 nTransactionFee;
+	extern int64_t nTransactionFee;
 
 
 	/* The Last time a block was recieved. Used for internal node processing. */
-	extern int64 nTimeBestReceived;
+	extern int64_t nTimeBestReceived;
 
 
 	/* The last Transaction that was in a block. */
-	extern uint64 nLastBlockTx;
+	extern uint64_t nLastBlockTx;
 
 
 	/* The Size of the Latest block accepted into the Block Chain. */
-	extern uint64 nLastBlockSize;
+	extern uint64_t nLastBlockSize;
 
 
 	/* The Official Genesis Block switched by the TESTNET flag. */
@@ -346,7 +346,7 @@ namespace Core
 
 
 	/** Small function to ensure the global supply remains within reasonable bounds **/
-	inline bool MoneyRange(int64 nValue) { return (nValue >= 0 && nValue <= MAX_TXOUT_AMOUNT); }
+	inline bool MoneyRange(int64_t nValue) { return (nValue >= 0 && nValue <= MAX_TXOUT_AMOUNT); }
 
 
 
@@ -354,7 +354,7 @@ namespace Core
 
 
 	/* TODO: Very simple and ineffective way to track address balances. Build a new LLD Database for such Post Tritium. */
-	extern std::map<uint256, uint64> mapAddressTransactions;
+	extern std::map<uint256, uint64_t> mapAddressTransactions;
 
 
 	/* TODO: Left-over from old blockchain architecture. No longer needed. Remove pre / post Tritium. */

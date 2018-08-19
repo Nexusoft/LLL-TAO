@@ -32,7 +32,7 @@ namespace Core
 	
 	
 	/* Get Weighted Times functions to weight the average on an iterator */
-	int64 GetWeightedTimes(const CBlockIndex* pindex, unsigned int nDepth);
+	int64_t GetWeightedTimes(const CBlockIndex* pindex, unsigned int nDepth);
 
 	
 	/* Switching function for each difficulty re-target [each channel uses their own version] */

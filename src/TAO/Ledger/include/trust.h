@@ -90,11 +90,11 @@ namespace Core
 		
 		
 		/* Determine how old the Trust Key is From Timestamp. */
-		uint64 Age(unsigned int nTime) const;
+		uint64_t Age(unsigned int nTime) const;
 		
 		
 		/* Time Since last Trust Block. */
-		uint64 BlockAge(unsigned int nTime) const;
+		uint64_t BlockAge(unsigned int nTime) const;
 		
 		
 		/* Flag to Determine if Class is Empty and Null. */
@@ -168,7 +168,7 @@ namespace Core
 		
 		
 		/* The Trust score of the Trust Key. Determines the Age and Interest Rates. */
-		uint64 TrustScore(uint576 cKey, unsigned int nTime) const;
+		uint64_t TrustScore(uint576 cKey, unsigned int nTime) const;
 		
 		
 		/* Locate a Trust Key in the Trust Pool. */

@@ -18,16 +18,9 @@ ________________________________________________________________________________
 #include <string>
 #include <vector>
 
-#if defined(MAC_OSX) || defined(WIN32)
-typedef int64_t int64;
-typedef uint64_t uint64;
-#else
-typedef long long  int64;
-typedef unsigned long long  uint64;
-#endif
-
 extern std::map<std::string, std::string> mapArgs;
 extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
+
 extern bool fDebug;
 extern bool fPrintToConsole;
 extern bool fRequestShutdown;
@@ -77,7 +70,7 @@ std::string GetArg(const std::string& strArg, const std::string& strDefault);
 * @param default (e.g. 1)
 * @return command-line argument (0 if invalid number) or default value
 */
-int64 GetArg(const std::string& strArg, int64 nDefault);
+int64_t GetArg(const std::string& strArg, int64_t nDefault);
 
 /**
 * Return boolean argument or default value

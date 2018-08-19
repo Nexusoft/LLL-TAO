@@ -213,7 +213,7 @@ namespace LLP
 
 
         /** Randomly genearted session ID. **/
-        uint64 nSessionID;
+        uint64_t nSessionID;
 
 
         /** String version of this Node's Version. **/
@@ -245,7 +245,7 @@ namespace LLP
 
 
         /** Mao to keep track of sent request ID's while witing for them to return. **/
-        std::map<unsigned int, uint64> mapSentRequests;
+        std::map<unsigned int, uint64_t> mapSentRequests;
 
 
         /** Virtual Functions to Determine Behavior of Message LLP.

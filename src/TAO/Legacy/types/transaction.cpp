@@ -312,7 +312,7 @@ namespace Core
             return DoS(100, error("CTransaction::CheckTransaction() : size limits failed"));
 
         // Check for negative or overflow output values
-        int64 nValueOut = 0;
+        int64_t nValueOut = 0;
         for (int i = 0; i < vout.size(); i++)
         {
             const CTxOut& txout = vout[i];
@@ -375,7 +375,7 @@ namespace Core
             return tx.DoS(100, error("CTxMemPool::accept() : coinstake as individual tx"));
 
         // To help v0.1.5 clients who would see it as a negative number
-        if ((int64)tx.nLockTime > std::numeric_limits<int>::max())
+        if ((int64_t)tx.nLockTime > std::numeric_limits<int>::max())
             return error("CTxMemPool::accept() : not accepting nLockTime beyond 2038 yet");
 
         // Rather not work on nonstandard transactions (unless -testnet)
@@ -443,7 +443,7 @@ namespace Core
             // you should add code here to check that the transaction does a
             // reasonable number of ECDSA signature verifications.
 
-            int64 nFees = tx.GetValueIn(mapInputs)-tx.GetValueOut();
+            int64_t nFees = tx.GetValueIn(mapInputs)-tx.GetValueOut();
             unsigned int nSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
 
             // Don't accept it if it can't get into a block
@@ -457,8 +457,8 @@ namespace Core
             {
                 static CCriticalSection cs;
                 static double dFreeCount;
-                static int64 nLastTime;
-                int64 nNow = GetUnifiedTimestamp();
+                static int64_t nLastTime;
+                int64_t nNow = GetUnifiedTimestamp();
 
                 {
                     LOCK(cs);
@@ -761,12 +761,12 @@ namespace Core
         return txPrev.vout[input.prevout.n];
     }
 
-    int64 CTransaction::GetValueIn(const MapPrevTx& inputs) const
+    int64_t CTransaction::GetValueIn(const MapPrevTx& inputs) const
     {
         if (IsCoinBase())
             return 0;
 
-        int64 nResult = 0;
+        int64_t nResult = 0;
         for (unsigned int i = (int) IsCoinStake(); i < vin.size(); i++)
         {
             nResult += GetOutputFor(vin[i], inputs).nValue;
@@ -798,7 +798,7 @@ namespace Core
         // ... both are false when called from CTransaction::AcceptToMemoryPool
         if (!IsCoinBase())
         {
-            int64 nValueIn = 0;
+            int64_t nValueIn = 0;
             for (unsigned int i = (int) IsCoinStake(); i < vin.size(); i++)
             {
                 COutPoint prevout = vin[i].prevout;
@@ -857,7 +857,7 @@ namespace Core
 
             if (IsCoinStake())
             {
-                int64 nInterest;
+                int64_t nInterest;
                 GetCoinstakeInterest(indexdb, nInterest);
 
                 printf("ConnectInputs() : %f Value Out, %f Expected\n", (double)round_coin_digits(vout[0].nValue, 3) / COIN, (double)(round_coin_digits(nInterest + nValueIn, 3)) / COIN);
@@ -883,7 +883,7 @@ namespace Core
         // Take over previous transactions' spent pointers
         {
             LOCK(mempool.cs);
-            int64 nValueIn = 0;
+            int64_t nValueIn = 0;
             for (unsigned int i = (int) IsCoinStake(); i < vin.size(); i++)
             {
                 // Get prev tx from single transactions in memory

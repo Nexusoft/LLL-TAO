@@ -41,22 +41,22 @@ namespace Core
 	const unsigned int MAX_ORPHAN_TRANSACTIONS = MAX_BLOCK_SIZE/100;
 
 	/* The significcant digits a "COIN" can be broken into. */
-	const int64 COIN = 1000000;
+	const int64_t COIN = 1000000;
 
 	/* The significiant digits a "CENT" can be broken into. */
-	const int64 CENT = 10000;
+	const int64_t CENT = 10000;
 
 
 	/** Nexus Transactions are Free for Everyone. **/
-	const int64 MIN_TX_FEE = CENT;
-	const int64 MIN_RELAY_TX_FEE = CENT;
+	const int64_t MIN_TX_FEE = CENT;
+	const int64_t MIN_RELAY_TX_FEE = CENT;
 
 	/** Maximum Coins that can be Sent in 1 Transaction is 1 Million Nexus. **/
-	const int64 MAX_TXOUT_AMOUNT = 1000000 * COIN;
+	const int64_t MAX_TXOUT_AMOUNT = 1000000 * COIN;
 
 
 	/** Minimum Output can be 1 Satoshi. **/
-	const int64 MIN_TXOUT_AMOUNT = 1;
+	const int64_t MIN_TXOUT_AMOUNT = 1;
 
 
 	/** Nexus New Supply Matures in 100 Blocks. **/
@@ -89,7 +89,7 @@ namespace Core
 
 
 	/** Set the Maximum Output Value of Coinstake Transaction. **/
-	const uint64 MAX_STAKE_WEIGHT = 1000 * COIN;
+	const uint64_t MAX_STAKE_WEIGHT = 1000 * COIN;
 
 
 	/** Time - Lock for the Nexus Network Launch. Allowed Binary Distribution before Time-Lock but no Mining until after Time-Lock. **/
@@ -227,7 +227,7 @@ namespace Core
 
 
 	/** In Memory Holdings of each Address Balance. **/
-	map<uint256, uint64>   mapAddressTransactions;
+	map<uint256, uint64_t>   mapAddressTransactions;
 
 
 	/** Anchored Genesis Block to start the Chain. **/
@@ -252,10 +252,10 @@ namespace Core
 	CBlockIndex* pindexGenesisBlock = NULL;
 	unsigned int nBestHeight = 0;
 
-	uint64 nBestChainTrust = 0;
+	uint64_t nBestChainTrust = 0;
 	uint1024 hashBestChain = 0;
 	CBlockIndex* pindexBest = NULL;
-	int64 nTimeBestReceived = 0;
+	int64_t nTimeBestReceived = 0;
 
 
 	double dTrustWeight = 0.0;
@@ -268,8 +268,8 @@ namespace Core
 	int MAX_HOLDING_CACHE_SIZE;
 
 
-	uint64 nLastBlockTx = 0;
-	uint64 nLastBlockSize = 0;
+	uint64_t nLastBlockTx = 0;
+	uint64_t nLastBlockSize = 0;
 
 	CMajority<int> cPeerBlockCounts; // Amount of blocks that other nodes claim to have
 
@@ -283,5 +283,5 @@ namespace Core
 	const string strMessageMagic = "Nexus Signed Message:\n";
 
 	// Settings
-	int64 nTransactionFee = MIN_TX_FEE;
+	int64_t nTransactionFee = MIN_TX_FEE;
 }

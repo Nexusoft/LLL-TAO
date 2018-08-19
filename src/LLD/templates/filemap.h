@@ -108,7 +108,7 @@ namespace LLD
         /** Handle the Assigning of a Map Bucket. **/
         unsigned int GetBucket(const std::vector<unsigned char>& vKey) const
         {
-            uint64 nBucket = 0;
+            uint64_t nBucket = 0;
             for(int i = 0; i < vKey.size() && i < 8; i++)
                 nBucket += vKey[i] << (8 * i);
             

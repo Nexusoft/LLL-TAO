@@ -35,10 +35,10 @@ namespace LLP
         RAND_bytes((unsigned char*)&nSessionID, sizeof(nSessionID));
 
         /* Current Unified Timestamp. */
-        int64 nTime = UnifiedTimestamp();
+        int64_t nTime = UnifiedTimestamp();
 
         /* Dummy Variable NOTE: Remove in Tritium ++ */
-        uint64 nLocalServices = 0;
+        uint64_t nLocalServices = 0;
 
         /* Relay Your Address. */
         CAddress addrMe  = CAddress(CService("0.0.0.0",0));
@@ -178,7 +178,7 @@ namespace LLP
             ssMessage >> nRequestID;
 
             /* De-Serialize the Timestamp Sent. */
-            uint64 nTimestamp;
+            uint64_t nTimestamp;
             ssMessage >> nTimestamp;
 
             /* Log into the sent requests Map. */
@@ -203,7 +203,7 @@ namespace LLP
 
 
             /* De-Serialize the Timestamp Sent. */
-            uint64 nTimestamp;
+            uint64_t nTimestamp;
             ssMessage >> nTimestamp;
 
 
@@ -279,7 +279,7 @@ namespace LLP
         /* Send a Ping with a nNonce to get Latency Calculations. */
         else if (INCOMING.GetMessage() == "ping")
         {
-            uint64 nonce = 0;
+            uint64_t nonce = 0;
             ssMessage >> nonce;
 
             PushMessage("pong", nonce);
@@ -288,7 +288,7 @@ namespace LLP
 
         else if(INCOMING.GetMessage() == "pong")
         {
-            uint64 nonce = 0;
+            uint64_t nonce = 0;
             ssMessage >> nonce;
 
             /* If the nonce was not received or known from pong. */
@@ -325,10 +325,10 @@ namespace LLP
         else if (INCOMING.GetMessage() == "version")
         {
 
-            int64 nTime;
+            int64_t nTime;
             CAddress addrMe;
             CAddress addrFrom;
-            uint64 nServices = 0;
+            uint64_t nServices = 0;
 
 
             /* Check the Protocol Versions */

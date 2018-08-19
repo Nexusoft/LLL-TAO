@@ -46,13 +46,13 @@ inline void ParseString(const std::string& str, char c, std::vector<std::string>
 }
 
 
-inline std::string FormatMoney(int64 n, bool fPlus = false, int64 COIN_SIZE = 1000000)
+inline std::string FormatMoney(int64_t n, bool fPlus = false, int64_t COIN_SIZE = 1000000)
 {
     // Note: not using straight sprintf here because we do NOT want
     // localized number formatting.
-    int64 n_abs = (n > 0 ? n : -n);
-    int64 quotient = n_abs / COIN_SIZE;
-    int64 remainder = n_abs % COIN_SIZE;
+    int64_t n_abs = (n > 0 ? n : -n);
+    int64_t quotient = n_abs / COIN_SIZE;
+    int64_t remainder = n_abs % COIN_SIZE;
     
     std::string str = strprintf("%" PRI64d ".%06" PRI64d "", quotient, remainder);
 
@@ -72,15 +72,15 @@ inline std::string FormatMoney(int64 n, bool fPlus = false, int64 COIN_SIZE = 10
 }
 
 
-inline bool ParseMoney(const std::string& str, int64& nRet)
+inline bool ParseMoney(const std::string& str, int64_t& nRet)
 {
     return ParseMoney(str.c_str(), nRet);
 }
 
-inline bool ParseMoney(const char* pszIn, int64& nRet, int64 COIN_SIZE = 1000000, int64 CENT_SIZE = 10000)
+inline bool ParseMoney(const char* pszIn, int64_t& nRet, int64_t COIN_SIZE = 1000000, int64_t CENT_SIZE = 10000)
 {
     std::string strWhole;
-    int64 nUnits = 0;
+    int64_t nUnits = 0;
     const char* p = pszIn;
     while (isspace(*p))
         p++;
@@ -89,7 +89,7 @@ inline bool ParseMoney(const char* pszIn, int64& nRet, int64 COIN_SIZE = 1000000
         if (*p == '.')
         {
             p++;
-            int64 nMult = CENT_SIZE * 10;
+            int64_t nMult = CENT_SIZE * 10;
             while (isdigit(*p) && (nMult > 0))
             {
                 nUnits += nMult * (*p++ - '0');
@@ -116,8 +116,8 @@ inline bool ParseMoney(const char* pszIn, int64& nRet, int64 COIN_SIZE = 1000000
     if (nUnits < 0 || nUnits > COIN_SIZE)
         return false;
     
-    int64 nWhole = atoi64(strWhole);
-    int64 nValue = nWhole* COIN_SIZE + nUnits;
+    int64_t nWhole = atoi64(strWhole);
+    int64_t nValue = nWhole* COIN_SIZE + nUnits;
     
     nRet = nValue;
     return true;

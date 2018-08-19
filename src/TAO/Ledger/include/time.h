@@ -16,7 +16,7 @@
 
 
 /** Carried on from uint1024.h **/
-typedef long long  int64;
+typedef long long  int64_t;
 
 
 /** Unified Time Flags **/

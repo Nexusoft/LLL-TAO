@@ -30,7 +30,7 @@ namespace TAO
 
 
         /* Check the disk space for the current partition database is stored in. */
-        bool CheckDiskSpace(uint64 nAdditionalBytes = 0);
+        bool CheckDiskSpace(uint64_t nAdditionalBytes = 0);
 
 
 

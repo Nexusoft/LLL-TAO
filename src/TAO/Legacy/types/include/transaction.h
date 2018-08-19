@@ -89,7 +89,7 @@ namespace Legacy
 				return SerializeHash(*this);
 			}
 
-			bool IsFinal(int nBlockHeight=0, int64 nBlockTime=0) const
+			bool IsFinal(int nBlockHeight=0, int64_t nBlockTime=0) const
 			{
 				// Time based nLockTime implemented in 0.1.6
 				if (nLockTime == 0)
@@ -98,7 +98,7 @@ namespace Legacy
 					nBlockHeight = nBestHeight;
 				if (nBlockTime == 0)
 					nBlockTime = Timestamp();
-				if ((int64)nLockTime < ((int64)nLockTime < LOCKTIME_THRESHOLD ? (int64)nBlockHeight : nBlockTime))
+				if ((int64_t)nLockTime < ((int64_t)nLockTime < LOCKTIME_THRESHOLD ? (int64_t)nBlockHeight : nBlockTime))
 					return true;
 				for(auto txin : vin)
 					if (!txin.IsFinal())
@@ -246,9 +246,9 @@ namespace Legacy
 			/** Amount of Coins spent by this transaction.
 				@return sum of all outputs (note: does not include fees)
 			 */
-			int64 GetValueOut() const
+			int64_t GetValueOut() const
 			{
-				int64 nValueOut = 0;
+				int64_t nValueOut = 0;
 				BOOST_FOREACH(const CTxOut& txout, vout)
 				{
 					nValueOut += txout.nValue;
@@ -264,7 +264,7 @@ namespace Legacy
 				@return	Sum of value of all inputs (scriptSigs)
 				@see CTransaction::FetchInputs
 			 */
-			int64 GetValueIn(const MapPrevTx& mapInputs) const;
+			int64_t GetValueIn(const MapPrevTx& mapInputs) const;
 
 			static bool AllowFree(double dPriority)
 			{
@@ -273,7 +273,7 @@ namespace Legacy
 				return dPriority > COIN * 144 / 250;
 			}
 
-			int64 GetMinFee(unsigned int nBlockSize=1, bool fAllowFree=false, enum GetMinFee_mode mode=GMF_BLOCK) const;
+			int64_t GetMinFee(unsigned int nBlockSize=1, bool fAllowFree=false, enum GetMinFee_mode mode=GMF_BLOCK) const;
 
 
 			bool ReadFromDisk(CDiskTxPos pos, FILE** pfileRet=NULL);
@@ -300,8 +300,8 @@ namespace Legacy
 			void print() const;
 
 
-			bool GetCoinstakeInterest(LLD::CIndexDB& txdb, int64& nInterest) const;
-			bool GetCoinstakeAge(LLD::CIndexDB& txdb, uint64& nAge) const;
+			bool GetCoinstakeInterest(LLD::CIndexDB& txdb, int64_t& nInterest) const;
+			bool GetCoinstakeAge(LLD::CIndexDB& txdb, uint64_t& nAge) const;
 
 
 			bool ReadFromDisk(LLD::CIndexDB& indexdb, COutPoint prevout, CTxIndex& txindexRet);

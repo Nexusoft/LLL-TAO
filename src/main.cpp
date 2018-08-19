@@ -31,7 +31,7 @@ public:
 
     uint256 hashAddress;
 
-    uint64 nBalance;
+    uint64_t nBalance;
 
     SERIALIZE_HEADER
 

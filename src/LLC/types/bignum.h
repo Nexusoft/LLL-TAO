@@ -96,15 +96,15 @@ namespace LLC
 
             //CBigNum(char n) is not portable.  Use 'signed char' or 'unsigned char'.
             CBigNum(signed char n)      { BN_init(this); if (n >= 0) setulong(n); else setint64(n); }
-            CBigNum(short n)            { BN_init(this); if (n >= 0) setulong(n); else setint64(n); }
-            CBigNum(int n)              { BN_init(this); if (n >= 0) setulong(n); else setint64(n); }
-            CBigNum(long n)             { BN_init(this); if (n >= 0) setulong(n); else setint64(n); }
-            CBigNum(int64 n)            { BN_init(this); setint64(n); }
+            CBigNum(signed short n)            { BN_init(this); if (n >= 0) setulong(n); else setint64(n); }
+            CBigNum(signed int n)              { BN_init(this); if (n >= 0) setulong(n); else setint64(n); }
+            //CBigNum(long n)             { BN_init(this); if (n >= 0) setulong(n); else setint64(n); }
+            CBigNum(int64_t n)            { BN_init(this); setint64(n); }
             CBigNum(unsigned char n)    { BN_init(this); setulong(n); }
             CBigNum(unsigned short n)   { BN_init(this); setulong(n); }
             CBigNum(unsigned int n)     { BN_init(this); setulong(n); }
-            CBigNum(unsigned long n)    { BN_init(this); setulong(n); }
-            CBigNum(uint64 n)           { BN_init(this); setuint64(n); }
+            //CBigNum(unsigned long n)    { BN_init(this); setulong(n); }
+            CBigNum(uint64_t n)           { BN_init(this); setuint64(n); }
             explicit CBigNum(uint256 n) { BN_init(this); setuint256(n); }
         	explicit CBigNum(uint512 n) { BN_init(this); setuint512(n); }
         	explicit CBigNum(uint576 n) { BN_init(this); setuint576(n); }
@@ -141,12 +141,12 @@ namespace LLC
                     return (n > (unsigned long)std::numeric_limits<int>::max() ? std::numeric_limits<int>::min() : -(int)n);
             }
 
-            void setint64(int64 n)
+            void setint64(int64_t n)
             {
                 unsigned char pch[sizeof(n) + 6];
                 unsigned char* p = pch + 4;
                 bool fNegative = false;
-                if (n < (int64)0)
+                if (n < (int64_t)0)
                 {
                     n = -n;
                     fNegative = true;
@@ -176,7 +176,7 @@ namespace LLC
                 BN_mpi2bn(pch, p - pch, this);
             }
 
-            void setuint64(uint64 n)
+            void setuint64(uint64_t n)
             {
                 unsigned char pch[sizeof(n) + 6];
                 unsigned char* p = pch + 4;
@@ -203,7 +203,7 @@ namespace LLC
                 BN_mpi2bn(pch, p - pch, this);
             }
 
-            uint64 getuint64()
+            uint64_t getuint64()
             {
                 unsigned int nSize = BN_bn2mpi(this, NULL);
                 if (nSize < 4)
@@ -212,7 +212,7 @@ namespace LLC
                 BN_bn2mpi(this, &vch[0]);
                 if (vch.size() > 4)
                     vch[4] &= 0x7f;
-                uint64 n = 0;
+                uint64_t n = 0;
                 for (int i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
                     ((unsigned char*)&n)[i] = vch[j];
                 return n;

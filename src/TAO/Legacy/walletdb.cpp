@@ -17,7 +17,7 @@ using namespace boost;
 namespace Wallet
 {
 
-    static uint64 nAccountingEntryNumber = 0;
+    static uint64_t nAccountingEntryNumber = 0;
 
     extern CCriticalSection cs_db;
     extern map<string, int> mapFileUseCount;
@@ -57,12 +57,12 @@ namespace Wallet
         return Write(boost::make_tuple(string("acentry"), acentry.strAccount, ++nAccountingEntryNumber), acentry);
     }
 
-    int64 CWalletDB::GetAccountCreditDebit(const string& strAccount)
+    int64_t CWalletDB::GetAccountCreditDebit(const string& strAccount)
     {
         list<CAccountingEntry> entries;
         ListAccountCreditDebit(strAccount, entries);
 
-        int64 nCreditDebit = 0;
+        int64_t nCreditDebit = 0;
         BOOST_FOREACH (const CAccountingEntry& entry, entries)
             nCreditDebit += entry.nCreditDebit;
 
@@ -81,7 +81,7 @@ namespace Wallet
             // Read next record
             CDataStream ssKey(SER_DISK, DATABASE_VERSION);
             if (fFlags == DB_SET_RANGE)
-                ssKey << boost::make_tuple(string("acentry"), (fAllAccounts? string("") : strAccount), uint64(0));
+                ssKey << boost::make_tuple(string("acentry"), (fAllAccounts? string("") : strAccount), uint64_t(0));
             CDataStream ssValue(SER_DISK, DATABASE_VERSION);
             int ret = ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
             fFlags = DB_NEXT;
@@ -212,7 +212,7 @@ namespace Wallet
                 {
                     string strAccount;
                     ssKey >> strAccount;
-                    uint64 nNumber;
+                    uint64_t nNumber;
                     ssKey >> nNumber;
                     if (nNumber > nAccountingEntryNumber)
                         nAccountingEntryNumber = nNumber;
@@ -296,7 +296,7 @@ namespace Wallet
                 }
                 else if (strType == "pool")
                 {
-                    int64 nIndex;
+                    int64_t nIndex;
                     ssKey >> nIndex;
                     pwallet->setKeyPool.insert(nIndex);
                 }
@@ -360,7 +360,7 @@ namespace Wallet
 
         unsigned int nLastSeen = nWalletDBUpdated;
         unsigned int nLastFlushed = nWalletDBUpdated;
-        int64 nLastWalletUpdate = GetUnifiedTimestamp();
+        int64_t nLastWalletUpdate = GetUnifiedTimestamp();
         while (!fShutdown)
         {
             Sleep(500);
@@ -393,7 +393,7 @@ namespace Wallet
                             printf("%s ", DateTimeStrFormat(GetUnifiedTimestamp()).c_str());
                             printf("Flushing wallet.dat\n");
                             nLastFlushed = nWalletDBUpdated;
-                            int64 nStart = GetTimeMillis();
+                            int64_t nStart = GetTimeMillis();
 
                             // Flush wallet.dat so it's self contained
                             CloseDb(strFile);
