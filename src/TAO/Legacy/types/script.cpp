@@ -25,7 +25,7 @@ using namespace boost;
 #include "../util/util.h"
 #include "../util/bignum.h"
 
-namespace Wallet
+namespace Legacy
 {
 
     bool CheckSig(vector<uint8_t> vchSig, vector<uint8_t> vchPubKey, CScript scriptCode, const Core::CTransaction& txTo, uint32_t nIn, int nHashType);
