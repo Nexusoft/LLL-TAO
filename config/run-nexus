@@ -3,5 +3,5 @@
 # Launch Nexus Daemon. Start with seed node in JDC data center.
 #
 cd /nexus
-./nexus -verbose=3 -addnode=240.0.13.13 -port=7323 -lispnet \
-        >& /nexus/nexus.log &
+./nexus -verbose=5 -addnode=240.0.12.12 -addnode=240.0.13.13 -port=7323 -testnet \
+        -datadir=/nexus >& /nexus/nexus.log &
