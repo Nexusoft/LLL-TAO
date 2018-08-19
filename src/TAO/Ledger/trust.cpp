@@ -36,7 +36,7 @@ namespace Consensus
             return error("CBlock::VerifyStake() : Trust Key must be of Public Key Type Created from Keypool.");
         
         /* Set the Public Key Integer Key from Bytes. */
-        LLC::uint576 cKey;
+        uint576_t cKey;
         cKey.SetBytes(vKeys[0]);
         
         /* Determine Trust Age if the Trust Key Exists. */
@@ -90,7 +90,7 @@ namespace Consensus
         /** H] Check the Block Hash with Weighted Hash to Target. **/
         CBigNum bnTarget;
         bnTarget.SetCompact(nBits);
-        LLC::uint1024 hashTarget = bnTarget.getuint1024();
+        uint1024_t hashTarget = bnTarget.getuint1024();
         
         if(GetHash() > hashTarget)
             return error("CBlock::VerifyStake() : Proof of Stake Hash not meeting Target.");
@@ -164,7 +164,7 @@ namespace Consensus
             return error("CTransaction::GetCoinstakeInterest() : Trust Key must be of Public Key Type Created from Keypool.");
         
         /** Set the Public Key Integer Key from Bytes. **/
-        LLC::uint576 cKey;
+        uint576_t cKey;
         cKey.SetBytes(vKeys[0]);
             
         /** Output figure to show the amount of coins being staked at their interest rates. **/
@@ -218,7 +218,7 @@ namespace Consensus
         /** First Check if the Current Key is Expired. **/
         if(!vchTrustKey.empty())
         {
-            LLC::uint576 cKey;
+            uint576_t cKey;
             cKey.SetBytes(vchTrustKey);
             
             /* Handle if the Trust Pool does not have current Assigned Trust Key. */
@@ -247,7 +247,7 @@ namespace Consensus
         
         /** Check each Trust Key to See if we Own it if there is no Key. **/
         CTrustKey keyBestTrust;
-        for(std::map<LLC::uint576, CTrustKey>::iterator i = mapTrustKeys.begin(); i != mapTrustKeys.end() && vchTrustKey.empty(); ++i)
+        for(std::map<uint576_t, CTrustKey>::iterator i = mapTrustKeys.begin(); i != mapTrustKeys.end() && vchTrustKey.empty(); ++i)
         {
                 
             /* Check the Wallet and Trust Keys in Trust Pool to see if we own any keys. */
@@ -304,7 +304,7 @@ namespace Consensus
             return error("CTrustPool::IsValid() : Trust Key must be of Public Key Type Created from Keypool.");
             
         /* Set the Public Key Integer Key from Bytes. */
-        LLC::uint576 cKey;
+        uint576_t cKey;
         cKey.SetBytes(vKeys[0]);
             
         /* Find the last 6 nPoS blocks. */
@@ -491,14 +491,14 @@ namespace Consensus
             return error("CTrustPool::Connect() : Trust Key must be of Public Key Type Created from Keypool.");
             
         /* Set the Public Key Integer Key from Bytes. */
-        LLC::uint576 cKey;
+        uint576_t cKey;
         cKey.SetBytes(vKeys[0]);
             
         /* Handle Genesis Transaction Rules. Genesis is checked after Trust Key Established. */
         if(cBlock.vtx[0].IsGenesis())
         {
             
-            std::vector< std::pair<LLC::uint1024, bool> >::iterator itFalse = std::find(mapTrustKeys[cKey].hashPrevBlocks.begin(), mapTrustKeys[cKey].hashPrevBlocks.end(), std::make_pair(cBlock.GetHash(), false) );
+            std::vector< std::pair<uint1024_t, bool> >::iterator itFalse = std::find(mapTrustKeys[cKey].hashPrevBlocks.begin(), mapTrustKeys[cKey].hashPrevBlocks.end(), std::make_pair(cBlock.GetHash(), false) );
             
             if(itFalse != mapTrustKeys[cKey].hashPrevBlocks.end())
                 (*itFalse).second = true;
@@ -567,13 +567,13 @@ namespace Consensus
             if((cBlock.nHeight - mapBlockIndex[mapTrustKeys[cKey].Back()]->nHeight) < TRUST_KEY_MIN_INTERVAL)
                 return error("CTrustPool::Connect() : Trust Block Created Before Minimum Trust Key Interval.");
             
-            std::vector< std::pair<LLC::uint1024, bool> >::iterator itFalse = std::find(mapTrustKeys[cKey].hashPrevBlocks.begin(), mapTrustKeys[cKey].hashPrevBlocks.end(), std::make_pair(cBlock.GetHash(), false) );
+            std::vector< std::pair<uint1024_t, bool> >::iterator itFalse = std::find(mapTrustKeys[cKey].hashPrevBlocks.begin(), mapTrustKeys[cKey].hashPrevBlocks.end(), std::make_pair(cBlock.GetHash(), false) );
             
             if(itFalse != mapTrustKeys[cKey].hashPrevBlocks.end())
                 (*itFalse).second = true;
             else
             {
-                std::vector< std::pair<LLC::uint1024, bool> >::iterator itTrue = std::find(mapTrustKeys[cKey].hashPrevBlocks.begin(), mapTrustKeys[cKey].hashPrevBlocks.end(), std::make_pair(cBlock.GetHash(), true) );
+                std::vector< std::pair<uint1024_t, bool> >::iterator itTrue = std::find(mapTrustKeys[cKey].hashPrevBlocks.begin(), mapTrustKeys[cKey].hashPrevBlocks.end(), std::make_pair(cBlock.GetHash(), true) );
                 
                 if(itTrue == mapTrustKeys[cKey].hashPrevBlocks.end())
                 {
@@ -621,7 +621,7 @@ namespace Consensus
             return error("CTrustPool::Disconnect() : Trust Key must be of Public Key Type Created from Keypool.");
             
         /** Set the Public Key Integer Key from Bytes. **/
-        LLC::uint576 cKey;
+        uint576_t cKey;
         cKey.SetBytes(vKeys[0]);
             
         /** Handle Genesis Transaction Rules. Genesis is checked after Trust Key Established. **/
@@ -644,11 +644,11 @@ namespace Consensus
         else if(cBlock.vtx[0].IsTrust())
         {
             /** Get the Index of the Block in the Trust Key. **/
-            std::vector< std::pair<LLC::uint1024, bool> >::iterator it = std::find(mapTrustKeys[cKey].hashPrevBlocks.begin(), mapTrustKeys[cKey].hashPrevBlocks.end(), std::make_pair(cBlock.GetHash(), true) );
+            std::vector< std::pair<uint1024_t, bool> >::iterator it = std::find(mapTrustKeys[cKey].hashPrevBlocks.begin(), mapTrustKeys[cKey].hashPrevBlocks.end(), std::make_pair(cBlock.GetHash(), true) );
             
             if(it == mapTrustKeys[cKey].hashPrevBlocks.end())
             {
-                std::vector< std::pair<LLC::uint1024, bool> >::iterator itFalse = std::find(mapTrustKeys[cKey].hashPrevBlocks.begin(), mapTrustKeys[cKey].hashPrevBlocks.end(), std::make_pair(cBlock.GetHash(), false) );
+                std::vector< std::pair<uint1024_t, bool> >::iterator itFalse = std::find(mapTrustKeys[cKey].hashPrevBlocks.begin(), mapTrustKeys[cKey].hashPrevBlocks.end(), std::make_pair(cBlock.GetHash(), false) );
                 if(itFalse == mapTrustKeys[cKey].hashPrevBlocks.end())
                     return error("CTrustPool::Disconnect() Block %s not found in Trust Key", cBlock.GetHash().ToString().substr(0, 20).c_str());
             }
@@ -682,7 +682,7 @@ namespace Consensus
             return error("CTrustPool::accept() : Trust Key must be of Public Key Type Created from Keypool.");
             
         /* Set the Public Key Integer Key from Bytes. */
-        LLC::uint576 cKey;
+        uint576_t cKey;
         cKey.SetBytes(vKeys[0]);
             
         /* Handle Genesis Transaction Rules. Genesis is checked after Trust Key Established. */
@@ -729,7 +729,7 @@ namespace Consensus
     
     
     /** Interest is Determined By Logarithmic Equation from Genesis Key. **/
-    double CTrustPool::InterestRate(LLC::uint576 cKey, uint32_t nTime) const
+    double CTrustPool::InterestRate(uint576_t cKey, uint32_t nTime) const
     {
         /** Genesis and First Trust Block awarded 0.5% interest. **/
         if(!Exists(cKey) || IsGenesis(cKey)) //TODO detect genesis flag with block hash
@@ -787,7 +787,7 @@ namespace Consensus
 
     /* Key is Expired if Time between Network Previous Best Block and
      Trust Best Previous is Greater than Expiration Time. */
-    bool CTrustKey::Expired(LLC::uint1024 hashThisBlock, LLC::uint1024 hashPrevBlock) const
+    bool CTrustKey::Expired(uint1024_t hashThisBlock, uint1024_t hashPrevBlock) const
     {
         if(BlockAge(hashThisBlock, hashPrevBlock) > TRUST_KEY_EXPIRE)
             return true;
@@ -811,7 +811,7 @@ namespace Consensus
     
     
     /* The Age of a Key in Block age as in the Time it has been since Trust Key has produced block. */
-    uint64_t CTrustKey::BlockAge(LLC::uint1024 hashThisBlock, LLC::uint1024 hashPrevBlock) const
+    uint64_t CTrustKey::BlockAge(uint1024_t hashThisBlock, uint1024_t hashPrevBlock) const
     {
         /* Genesis Transaction Block Age is Time to Genesis Time. */
         if(!mapBlockIndex.count(hashPrevBlock))
@@ -822,7 +822,7 @@ namespace Consensus
             return error("CTrustKey::BlockAge() : %u Time is < Genesis %u", (uint32_t) mapBlockIndex[hashPrevBlock]->GetBlockTime(), nGenesisTime);
         
         /* Find the block previous to pindexNew. */
-        LLC::uint1024 hashBlockLast = Back(hashThisBlock);
+        uint1024_t hashBlockLast = Back(hashThisBlock);
         
         /* Make sure there aren't timestamp overflows. */
         if(mapBlockIndex[hashBlockLast]->GetBlockTime() > mapBlockIndex[hashPrevBlock]->GetBlockTime())
@@ -860,7 +860,7 @@ namespace Consensus
             LLD::CIndexDB indexdb("r");
             
             /* Take a snapshot of the best block. */
-            LLC::uint1024 hashBest = hashBestChain;
+            uint1024_t hashBest = hashBestChain;
             
             /* Create the block(s) to work on. */
             CBlock baseBlock = CreateNewBlock(reservekey, pwalletMain, 0);
@@ -868,7 +868,7 @@ namespace Consensus
                 continue;
             
             /* Check the Trust Keys. */
-            LLC::uint576 cKey;
+            uint576_t cKey;
             if(!cTrustPool.HasTrustKey(pindexBest->GetBlockTime()))
             {
                 cKey.SetBytes(reservekey.GetReservedKey());

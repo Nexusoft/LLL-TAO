@@ -40,7 +40,7 @@ namespace Wallet
         return true;
     }
 
-    bool CBasicKeyStore::HaveCScript(const LLC::uint256& hash) const
+    bool CBasicKeyStore::HaveCScript(const uint256_t& hash) const
     {
         bool result;
         {
@@ -51,7 +51,7 @@ namespace Wallet
     }
 
 
-    bool CBasicKeyStore::GetCScript(const LLC::uint256 &hash, CScript& redeemScriptOut) const
+    bool CBasicKeyStore::GetCScript(const uint256_t &hash, CScript& redeemScriptOut) const
     {
         {
             LOCK(cs_KeyStore);

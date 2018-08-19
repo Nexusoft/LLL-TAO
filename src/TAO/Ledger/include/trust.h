@@ -39,17 +39,17 @@ namespace Core
 		std::vector<uint8_t> vchPubKey;
 		
 		uint32_t nVersion;
-		LLC::uint1024  hashGenesisBlock;
-		LLC::uint512   hashGenesisTx;
+		uint1024_t  hashGenesisBlock;
+		uint512_t   hashGenesisTx;
 		uint32_t nGenesisTime;
 		
 		
 		/* Previous Blocks Vector to store list of blocks of this Trust Key. */
-		mutable std::vector<LLC::uint1024> hashPrevBlocks;
+		mutable std::vector<uint1024_t> hashPrevBlocks;
 		
 		
 		CTrustKey() { SetNull(); }
-		CTrustKey(std::vector<uint8_t> vchPubKeyIn, LLC::uint1024 hashBlockIn, LLC::uint512 hashTxIn, uint32_t nTimeIn)
+		CTrustKey(std::vector<uint8_t> vchPubKeyIn, uint1024_t hashBlockIn, uint512_t hashTxIn, uint32_t nTimeIn)
 		{
 			SetNull();
 			
@@ -86,7 +86,7 @@ namespace Core
 		
 		
 		/* Hash of a Trust Key to Verify the Key's Root. */
-		LLC::uint512 GetHash() const { return LLC::SK512(vchPubKey, BEGIN(hashGenesisBlock), END(nGenesisTime)); }
+		uint512_t GetHash() const { return LLC::SK512(vchPubKey, BEGIN(hashGenesisBlock), END(nGenesisTime)); }
 		
 		
 		/* Determine how old the Trust Key is From Timestamp. */
@@ -112,7 +112,7 @@ namespace Core
 		/* Dump to Console information about current Trust Key. */
 		std::string ToString()
 		{
-			LLC::uint576 cKey;
+			uint576_t cKey;
 			cKey.SetBytes(vchPubKey);
 			
 			return strprintf("CTrustKey(Hash = %s, Key = %s, Genesis = %s, Tx = %s, Time = %u, Age = %" PRIu64 ", BlockAge = %" PRIu64 ", Expired = %s)", GetHash().ToString().c_str(), cKey.ToString().c_str(), hashGenesisBlock.ToString().c_str(), hashGenesisTx.ToString().c_str(), nGenesisTime, Age(Timestamp()), BlockAge(Timestamp()), Expired(Timestamp()) ? "TRUE" : "FALSE");
@@ -128,7 +128,7 @@ namespace Core
 	public:
 		
 		/* Trust Keys internal Map. */
-		mutable std::map<LLC::uint576, CTrustKey> mapTrustKeys;
+		mutable std::map<uint576_t, CTrustKey> mapTrustKeys;
 		
 		
 		/* Internal Mutex. */
@@ -156,23 +156,23 @@ namespace Core
 		
 		
 		/* Check if a Trust Key Exists in the Trust Pool. */
-		bool Exists(LLC::uint576 cKey)    const { return mapTrustKeys.count(cKey); }
+		bool Exists(uint576_t cKey)    const { return mapTrustKeys.count(cKey); }
 		
 		
 		/* Detect if this key is still a genesis key. */
-		bool IsGenesis(LLC::uint576 cKey) const { return mapTrustKeys[cKey].hashPrevBlocks.empty(); }
+		bool IsGenesis(uint576_t cKey) const { return mapTrustKeys[cKey].hashPrevBlocks.empty(); }
 		
 		
 		/* Calculate the Interest Rate of given trust key. */
-		double InterestRate(LLC::uint576 cKey, uint32_t nTime) const;
+		double InterestRate(uint576_t cKey, uint32_t nTime) const;
 		
 		
 		/* The Trust score of the Trust Key. Determines the Age and Interest Rates. */
-		uint64_t TrustScore(LLC::uint576 cKey, uint32_t nTime) const;
+		uint64_t TrustScore(uint576_t cKey, uint32_t nTime) const;
 		
 		
 		/* Locate a Trust Key in the Trust Pool. */
-		CTrustKey Find(LLC::uint576 cKey) const { return mapTrustKeys[cKey]; }
+		CTrustKey Find(uint576_t cKey) const { return mapTrustKeys[cKey]; }
 	};
 	
 	

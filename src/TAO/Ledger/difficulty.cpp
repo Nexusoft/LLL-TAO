@@ -68,7 +68,7 @@ namespace Core
 	/* Get Weighted Times functions to weight the average on an iterator to give more weight to the most recent blocks
 		in the average to let previous block nDepth back still influence difficulty, but to let the most recent block
 		have the most influence in the adjustment. */
-    uint32_t CBlkPool::GetWeightedTimes(LLC::uint1024 hashBlock, uint32_t nDepth)
+    uint32_t CBlkPool::GetWeightedTimes(uint1024_t hashBlock, uint32_t nDepth)
 	{
 		uint32_t nIterator = 0, nWeightedAverage = 0;
 		

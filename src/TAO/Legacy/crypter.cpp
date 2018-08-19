@@ -122,7 +122,7 @@ namespace Wallet
     }
 
 
-    bool EncryptSecret(CKeyingMaterial& vMasterKey, const CSecret &vchPlaintext, const LLC::uint576& nIV, std::vector<uint8_t> &vchCiphertext)
+    bool EncryptSecret(CKeyingMaterial& vMasterKey, const CSecret &vchPlaintext, const uint576_t& nIV, std::vector<uint8_t> &vchCiphertext)
     {
         CCrypter cKeyCrypter;
         std::vector<uint8_t> chIV(WALLET_CRYPTO_KEY_SIZE);
@@ -132,7 +132,7 @@ namespace Wallet
         return cKeyCrypter.Encrypt((CKeyingMaterial)vchPlaintext, vchCiphertext);
     }
 
-    bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<uint8_t>& vchCiphertext, const LLC::uint576& nIV, CSecret& vchPlaintext)
+    bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<uint8_t>& vchCiphertext, const uint576_t& nIV, CSecret& vchPlaintext)
     {
         CCrypter cKeyCrypter;
         std::vector<uint8_t> chIV(WALLET_CRYPTO_KEY_SIZE);

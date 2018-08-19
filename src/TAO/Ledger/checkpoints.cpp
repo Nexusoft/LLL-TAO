@@ -20,7 +20,7 @@ namespace Core
 {	
 	
 	/* Memory Map to hold all the hashes of the checkpoints decided on by the network. */
-	std::map<uint32_t, LLC::uint1024> mapCheckpoints;
+	std::map<uint32_t, uint1024_t> mapCheckpoints;
 	
 	
 	/* Checkpoint Timespan, or the time that triggers a new checkpoint (in Minutes). */

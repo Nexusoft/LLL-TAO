@@ -115,8 +115,8 @@ namespace Wallet
     {
         pwallet->vchDefaultKey.clear();
         int nFileVersion = 0;
-        vector<LLC::uint512> vWalletUpgrade;
-        vector<LLC::uint512> vWalletRemove;
+        vector<uint512_t> vWalletUpgrade;
+        vector<uint512_t> vWalletRemove;
 
         bool fIsEncrypted = false;
 
@@ -165,7 +165,7 @@ namespace Wallet
                 }
                 else if (strType == "tx")
                 {
-                    LLC::uint512 hash;
+                    uint512_t hash;
                     ssKey >> hash;
                     CWalletTx& wtx = pwallet->mapWallet[hash];
                     ssValue >> wtx;
@@ -308,7 +308,7 @@ namespace Wallet
                 }
                 else if (strType == "cscript")
                 {
-                    LLC::uint256 hash;
+                    uint256_t hash;
                     ssKey >> hash;
                     CScript script;
                     ssValue >> script;
@@ -322,12 +322,12 @@ namespace Wallet
             pcursor->close();
         }
 
-        BOOST_FOREACH(LLC::uint512 hash, vWalletUpgrade)
+        BOOST_FOREACH(uint512_t hash, vWalletUpgrade)
             WriteTx(hash, pwallet->mapWallet[hash]);
 
 
         if(vWalletRemove.size() > 0) {
-            BOOST_FOREACH(LLC::uint512 hash, vWalletRemove) {
+            BOOST_FOREACH(uint512_t hash, vWalletRemove) {
                 EraseTx(hash);
                 pwallet->mapWallet.erase(hash);
 

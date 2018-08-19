@@ -39,11 +39,11 @@ namespace Core
 
 
 	/* The Hash of the Genesis Block for the Network. Genesis Blocks are used as the root of a blockchain. */
-	extern const LLC::uint1024 hashGenesisBlockOfficial;
+	extern const uint1024_t hashGenesisBlockOfficial;
 
 
 	/* The Hash of the Genesis Block for the Testnet. Genesis Blocks are used as the root of a blockchain. */
-	extern const LLC::uint1024 hashGenesisBlockTestNet;
+	extern const uint1024_t hashGenesisBlockTestNet;
 
 
 
@@ -243,23 +243,23 @@ namespace Core
 
 
 	/* Memory Only Map of Blocks that are in orphan holding until their dependent blocks arrive to this node. */
-	extern std::map<LLC::uint1024, CBlock> mapOrphanBlocks;
+	extern std::map<uint1024_t, CBlock> mapOrphanBlocks;
 
 
 	/* Memory Only Map of Orphan Blocks indexed by their previous block for easier reassembly of long or short block orphan chains. */
-	extern std::multimap<LLC::uint1024, CBlock> mapOrphanBlocksByPrev;
+	extern std::multimap<uint1024_t, CBlock> mapOrphanBlocksByPrev;
 
 
 	/* Memory Only Map of Transactions that are in orphan holding since they don't have any known previous transactions to spend the UTXO. */
-	extern std::map<LLC::uint512, CDataStream*> mapOrphanTransactions;
+	extern std::map<uint512_t, CDataStream*> mapOrphanTransactions;
 
 
 	/* Memory Only Map referencing orphan transactions by their previous inputs for easier reassembling of a transaction chain that is broken into orphans. */
-	extern std::map<LLC::uint512, std::map<LLC::uint512, CDataStream*> > mapOrphanTransactionsByPrev;
+	extern std::map<uint512_t, std::map<uint512_t, CDataStream*> > mapOrphanTransactionsByPrev;
 
 
 	/* Memory Only Map of the blocks that have been stored as an Index Object. Used for quick reading / writing of block data. */
-	extern std::map<LLC::uint1024, CBlockIndex*> mapBlockIndex;
+	extern std::map<uint1024_t, CBlockIndex*> mapBlockIndex;
 
 
 	/* Main CWallet registry (wallet.dat) for Core dispatching functions to keep the wallet.dat up to date with what the rest of the transaction history is on the network. */
@@ -287,15 +287,15 @@ namespace Core
 
 
 	/* The Official Genesis Block switched by the TESTNET flag. */
-	extern LLC::uint1024 hashGenesisBlock;
+	extern uint1024_t hashGenesisBlock;
 
 
 	/* Reference of the last checkpoint. */
-	extern LLC::uint1024 hashLastCheckpoint;
+	extern uint1024_t hashLastCheckpoint;
 
 
 	/* The Official Hash of the Best Chain. This is set in the SetBestChain method in block.h/block.cpp. */
-	extern LLC::uint1024 hashBestChain;
+	extern uint1024_t hashBestChain;
 
 
 	/* The current file that is being used to append new data to the block database (blk0001.dat). */
@@ -354,7 +354,7 @@ namespace Core
 
 
 	/* TODO: Very simple and ineffective way to track address balances. Build a new LLD Database for such Post Tritium. */
-	extern std::map<LLC::uint256, uint64_t> mapAddressTransactions;
+	extern std::map<uint256_t, uint64_t> mapAddressTransactions;
 
 
 	/* TODO: Left-over from old blockchain architecture. No longer needed. Remove pre / post Tritium. */

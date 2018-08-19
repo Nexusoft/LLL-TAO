@@ -101,8 +101,8 @@ namespace Wallet
         }
     };
 
-    bool EncryptSecret(CKeyingMaterial& vMasterKey, const CSecret &vchPlaintext, const LLC::uint576& nIV, std::vector<uint8_t> &vchCiphertext);
-    bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<uint8_t> &vchCiphertext, const LLC::uint576& nIV, CSecret &vchPlaintext);
+    bool EncryptSecret(CKeyingMaterial& vMasterKey, const CSecret &vchPlaintext, const uint576_t& nIV, std::vector<uint8_t> &vchCiphertext);
+    bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<uint8_t> &vchCiphertext, const uint576_t& nIV, CSecret &vchPlaintext);
 
 }
 #endif

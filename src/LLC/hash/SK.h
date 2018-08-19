@@ -35,7 +35,7 @@ namespace LLC
 
 
 	/* Hashing Template to Serialize Object into a 512-bit hash **/
-	template<typename T> uint512 SerializeHash(const T& obj);
+	template<typename T> uint512_t SerializeHash(const T& obj);
 
 
     /* Hashing template for Checksums */
@@ -116,15 +116,15 @@ namespace LLC
 
 
 	/* Hashing template for Address Generation */
-	inline uint256 SK256(const std::vector<uint8_t>& vch)
+	inline uint256_t SK256(const std::vector<uint8_t>& vch)
 	{
-		uint256 skein;
+		uint256_t skein;
 		Skein_256_Ctxt_t ctx;
 		Skein_256_Init(&ctx, 256);
 		Skein_256_Update(&ctx, (uint8_t *)&vch[0], vch.size());
 		Skein_256_Final(&ctx, (uint8_t *)&skein);
 
-		uint256 keccak;
+		uint256_t keccak;
 		Keccak_HashInstance ctx_keccak;
 		Keccak_HashInitialize_SHA3_256(&ctx_keccak);
 		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 256);
@@ -136,15 +136,15 @@ namespace LLC
 
 	/* Hashing template for Address Generation */
 	template<typename T1>
-	inline uint256 SK256(const T1 pbegin, const T1 pend)
+	inline uint256_t SK256(const T1 pbegin, const T1 pend)
 	{
-		uint256 skein;
+		uint256_t skein;
 		Skein_256_Ctxt_t ctx;
 		Skein_256_Init  (&ctx, 256);
 		Skein_256_Update(&ctx, (pbegin == pend ? pblank : (uint8_t*)&pbegin[0]), (pend - pbegin) * sizeof(pbegin[0]));
 		Skein_256_Final (&ctx, (uint8_t *)&skein);
 
-		uint256 keccak;
+		uint256_t keccak;
 		Keccak_HashInstance ctx_keccak;
 		Keccak_HashInitialize_SHA3_256(&ctx_keccak);
 		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 256);
@@ -155,15 +155,15 @@ namespace LLC
 
 
     /* Hashing template for Next Hash */
-    inline uint512 SK512(const std::vector<uint8_t>& vch)
+    inline uint512_t SK512(const std::vector<uint8_t>& vch)
 	{
-		uint512 skein;
+		uint512_t skein;
 		Skein_512_Ctxt_t ctx;
 		Skein_512_Init(&ctx, 512);
 		Skein_512_Update(&ctx, (uint8_t *)&vch[0], vch.size());
 		Skein_512_Final(&ctx, (uint8_t *)&skein);
 
-		uint512 keccak;
+		uint512_t keccak;
 		Keccak_HashInstance ctx_keccak;
 		Keccak_HashInitialize_SHA3_512(&ctx_keccak);
 		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 512);
@@ -175,16 +175,16 @@ namespace LLC
 
 	/* Hashing template for Trust Key Hash */
 	template<typename T1>
-	inline uint512 SK512(const std::vector<uint8_t>& vch, const T1 pbegin, const T1 pend)
+	inline uint512_t SK512(const std::vector<uint8_t>& vch, const T1 pbegin, const T1 pend)
 	{
-		uint512 skein;
+		uint512_t skein;
 		Skein_512_Ctxt_t ctx;
 		Skein_512_Init(&ctx, 512);
 		Skein_512_Update(&ctx, (uint8_t *)&vch[0], vch.size());
 		Skein_512_Update(&ctx, (pbegin == pend ? pblank : (uint8_t*)&pbegin[0]), (pend - pbegin) * sizeof(pbegin[0]));
 		Skein_512_Final(&ctx, (uint8_t *)&skein);
 
-		uint512 keccak;
+		uint512_t keccak;
 		Keccak_HashInstance ctx_keccak;
 		Keccak_HashInitialize_SHA3_512(&ctx_keccak);
 		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 512);
@@ -196,15 +196,15 @@ namespace LLC
 
 	/* Hashing template for TX hash */
 	template<typename T1>
-	inline uint512 SK512(const T1 pbegin, const T1 pend)
+	inline uint512_t SK512(const T1 pbegin, const T1 pend)
 	{
-		uint512 skein;
+		uint512_t skein;
 		Skein_512_Ctxt_t ctx;
 		Skein_512_Init  (&ctx, 512);
 		Skein_512_Update(&ctx, (pbegin == pend ? pblank : (uint8_t*)&pbegin[0]), (pend - pbegin) * sizeof(pbegin[0]));
 		Skein_512_Final (&ctx, (uint8_t *)&skein);
 
-		uint512 keccak;
+		uint512_t keccak;
 		Keccak_HashInstance ctx_keccak;
 		Keccak_HashInitialize_SHA3_512(&ctx_keccak);
 		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 512);
@@ -216,17 +216,17 @@ namespace LLC
 
 	/* Hashing template for TX hash */
 	template<typename T1, typename T2>
-	inline uint512 SK512(const T1 p1begin, const T1 p1end,
+	inline uint512_t SK512(const T1 p1begin, const T1 p1end,
 						const T2 p2begin, const T2 p2end)
 	{
-		uint512 skein;
+		uint512_t skein;
 		Skein_512_Ctxt_t ctx;
 		Skein_512_Init  (&ctx, 512);
 		Skein_512_Update(&ctx, (p1begin == p1end ? pblank : (uint8_t*)&p1begin[0]), (p1end - p1begin) * sizeof(p1begin[0]));
 		Skein_512_Update(&ctx, (p2begin == p2end ? pblank : (uint8_t*)&p2begin[0]), (p2end - p2begin) * sizeof(p2begin[0]));
 		Skein_512_Final (&ctx, (uint8_t *)&skein);
 
-		uint512 keccak;
+		uint512_t keccak;
 		Keccak_HashInstance ctx_keccak;
 		Keccak_HashInitialize_SHA3_512(&ctx_keccak);
 		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 512);
@@ -238,11 +238,11 @@ namespace LLC
 
 	/* Hashing template for TX hash */
 	template<typename T1, typename T2, typename T3>
-	inline uint512 SK512(const T1 p1begin, const T1 p1end,
+	inline uint512_t SK512(const T1 p1begin, const T1 p1end,
 						const T2 p2begin, const T2 p2end,
 						const T3 p3begin, const T3 p3end)
 	{
-		uint512 skein;
+		uint512_t skein;
 		Skein_512_Ctxt_t ctx;
 		Skein_512_Init  (&ctx, 512);
 		Skein_512_Update(&ctx, (p1begin == p1end ? pblank : (uint8_t*)&p1begin[0]), (p1end - p1begin) * sizeof(p1begin[0]));
@@ -250,7 +250,7 @@ namespace LLC
 		Skein_512_Update(&ctx, (p3begin == p3end ? pblank : (uint8_t*)&p3begin[0]), (p3end - p3begin) * sizeof(p3begin[0]));
 		Skein_512_Final (&ctx, (uint8_t *)&skein);
 
-		uint512 keccak;
+		uint512_t keccak;
 		Keccak_HashInstance ctx_keccak;
 		Keccak_HashInitialize_SHA3_512(&ctx_keccak);
 		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 512);
@@ -262,15 +262,15 @@ namespace LLC
 
 	/* Hashing template used for Private Keys */
 	template<typename T1>
-	inline uint576 SK576(const T1 pbegin, const T1 pend)
+	inline uint576_t SK576(const T1 pbegin, const T1 pend)
 	{
-		uint576 skein;
+		uint576_t skein;
 		Skein1024_Ctxt_t ctx;
 		Skein1024_Init(&ctx, 576);
 		Skein1024_Update(&ctx, (pbegin == pend ? pblank : (uint8_t*)&pbegin[0]), (pend - pbegin) * sizeof(pbegin[0]));
 		Skein1024_Final(&ctx, (uint8_t *)&skein);
 
-		uint576 keccak;
+		uint576_t keccak;
 		Keccak_HashInstance ctx_keccak;
 		Keccak_HashInitialize(&ctx_keccak, 1024, 576, 576, 0x06);
 		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 576);
@@ -280,15 +280,15 @@ namespace LLC
 	}
 
     /* Hashing template used to Build Sig Chains */
-    inline uint1024 SK1024(const std::vector<uint8_t>& vch)
+    inline uint1024_t SK1024(const std::vector<uint8_t>& vch)
 	{
-		uint1024 skein;
+		uint1024_t skein;
 		Skein1024_Ctxt_t ctx;
 		Skein1024_Init(&ctx, 1024);
 		Skein1024_Update(&ctx, (uint8_t *)&vch[0], vch.size());
 		Skein1024_Final(&ctx, (uint8_t *)&skein);
 
-		uint1024 keccak;
+		uint1024_t keccak;
 		Keccak_HashInstance ctx_keccak;
 		Keccak_HashInitialize(&ctx_keccak, 576, 1024, 1024, 0x05);
 		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 1024);
@@ -300,15 +300,15 @@ namespace LLC
 
 	/* Hashing template used to build Block Hashes */
 	template<typename T1>
-	inline uint1024 SK1024(const T1 pbegin, const T1 pend)
+	inline uint1024_t SK1024(const T1 pbegin, const T1 pend)
 	{
-		uint1024 skein;
+		uint1024_t skein;
 		Skein1024_Ctxt_t ctx;
 		Skein1024_Init(&ctx, 1024);
 		Skein1024_Update(&ctx, (pbegin == pend ? pblank : (uint8_t*)&pbegin[0]), (pend - pbegin) * sizeof(pbegin[0]));
 		Skein1024_Final(&ctx, (uint8_t *)&skein);
 
-		uint1024 keccak;
+		uint1024_t keccak;
 		Keccak_HashInstance ctx_keccak;
 		Keccak_HashInitialize(&ctx_keccak, 576, 1024, 1024, 0x05);
 		Keccak_HashUpdate(&ctx_keccak, (uint8_t *)&skein, 1024);

@@ -31,7 +31,7 @@ namespace Legacy
 
 
 		/* Basic Constructor. */
-		CTxIn::CTxIn(LLC::uint512 hashPrevTx, uint32_t nOut, Wallet::CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max())
+		CTxIn::CTxIn(uint512_t hashPrevTx, uint32_t nOut, Wallet::CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max())
 		{
 			prevout = COutPoint(hashPrevTx, nOut);
 			scriptSig = scriptSigIn;

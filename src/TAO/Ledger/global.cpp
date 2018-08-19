@@ -22,11 +22,11 @@ namespace Core
 {
 
 	/** Hash to start the Main Net Blockchain. **/
-	const LLC::uint1024 hashGenesisBlockOfficial("00000bb8601315185a0d001e19e63551c34f1b7abeb3445105077522a9cbabf3e1da963e3bfbb87d260218b7c6207cb9c6df90b86e6a3ce84366434763bc8bcbf6ccbd1a7d5958996aecbe8205c20b296818efb3a59c74acbc7a2d1a5a6b64aab63839b8b11a6b41c4992f835cbbc576d338404fb1217bdd7909ca7db63bbc02");
+	const uint1024_t hashGenesisBlockOfficial("00000bb8601315185a0d001e19e63551c34f1b7abeb3445105077522a9cbabf3e1da963e3bfbb87d260218b7c6207cb9c6df90b86e6a3ce84366434763bc8bcbf6ccbd1a7d5958996aecbe8205c20b296818efb3a59c74acbc7a2d1a5a6b64aab63839b8b11a6b41c4992f835cbbc576d338404fb1217bdd7909ca7db63bbc02");
 
 
 	/** Hash to start the Test Net Blockchain. **/
-	const LLC::uint1024 hashGenesisBlockTestNet("0x00002a0ccd35f2e1e9e1c08f5a2109a82834606b121aca891d5862ba12c6987d55d1e789024fcd5b9adaf07f5445d24e78604ea136a0654497ed3db0958d63e72f146fae2794e86323126b8c3d8037b193ce531c909e5222d090099b4d574782d15c135ddd99d183ec14288437563e8a6392f70259e761e62d2ea228977dd2f7");
+	const uint1024_t hashGenesisBlockTestNet("0x00002a0ccd35f2e1e9e1c08f5a2109a82834606b121aca891d5862ba12c6987d55d1e789024fcd5b9adaf07f5445d24e78604ea136a0654497ed3db0958d63e72f146fae2794e86323126b8c3d8037b193ce531c909e5222d090099b4d574782d15c135ddd99d183ec14288437563e8a6392f70259e761e62d2ea228977dd2f7");
 
 
 	/** The current Block Version Activating in this Release. **/
@@ -223,29 +223,29 @@ namespace Core
 
 
 	/** In memory Indexing of Blocks into Blockchain. **/
-	map<LLC::uint1024, CBlockIndex*> mapBlockIndex;
+	map<uint1024_t, CBlockIndex*> mapBlockIndex;
 
 
 	/** In Memory Holdings of each Address Balance. **/
-	map<LLC::uint256, uint64_t>   mapAddressTransactions;
+	map<uint256_t, uint64_t>   mapAddressTransactions;
 
 
 	/** Anchored Genesis Block to start the Chain. **/
-	LLC::uint1024 hashGenesisBlock = hashGenesisBlockOfficial;
+	uint1024_t hashGenesisBlock = hashGenesisBlockOfficial;
 
 
 	/* Reference of the last checkpoint. */
-	LLC::uint1024 hashLastCheckpoint;
+	uint1024_t hashLastCheckpoint;
 
 
 	/** Initial Difficulty Adjustments. **/
-	CBigNum bnProofOfWorkLimit[] = { CBigNum(~LLC::uint1024(0) >> 5), CBigNum(20000000), CBigNum(~LLC::uint1024(0) >> 17) };
-	CBigNum bnProofOfWorkStart[] = { CBigNum(~LLC::uint1024(0) >> 7), CBigNum(25000000), CBigNum(~LLC::uint1024(0) >> 22) };
+	CBigNum bnProofOfWorkLimit[] = { CBigNum(~uint1024_t(0) >> 5), CBigNum(20000000), CBigNum(~uint1024_t(0) >> 17) };
+	CBigNum bnProofOfWorkStart[] = { CBigNum(~uint1024_t(0) >> 7), CBigNum(25000000), CBigNum(~uint1024_t(0) >> 22) };
 
 
     /** Alternate Difficulty Adjustments for Regression Tests. **/
-	CBigNum bnProofOfWorkLimitRegtest[] = { CBigNum(~LLC::uint1024(0) >> 5), CBigNum(100000), CBigNum(~LLC::uint1024(0) >> 17) };
-	CBigNum bnProofOfWorkStartRegtest[] = { CBigNum(~LLC::uint1024(0) >> 7), CBigNum(100000), CBigNum(~LLC::uint1024(0) >> 22) };
+	CBigNum bnProofOfWorkLimitRegtest[] = { CBigNum(~uint1024_t(0) >> 5), CBigNum(100000), CBigNum(~uint1024_t(0) >> 17) };
+	CBigNum bnProofOfWorkStartRegtest[] = { CBigNum(~uint1024_t(0) >> 7), CBigNum(100000), CBigNum(~uint1024_t(0) >> 22) };
 
 
 	int nCoinbaseMaturity = COINBASE_MATURITY;
@@ -253,7 +253,7 @@ namespace Core
 	uint32_t nBestHeight = 0;
 
 	uint64_t nBestChainTrust = 0;
-	LLC::uint1024 hashBestChain = 0;
+	uint1024_t hashBestChain = 0;
 	CBlockIndex* pindexBest = NULL;
 	int64_t nTimeBestReceived = 0;
 
@@ -273,12 +273,12 @@ namespace Core
 
 	CMajority<int> cPeerBlockCounts; // Amount of blocks that other nodes claim to have
 
-	map<LLC::uint1024, CBlock> mapOrphanBlocks;
-	multimap<LLC::uint1024, CBlock> mapOrphanBlocksByPrev;
-	map<LLC::uint1024, LLC::uint1024> mapProofOfStake;
+	map<uint1024_t, CBlock> mapOrphanBlocks;
+	multimap<uint1024_t, CBlock> mapOrphanBlocksByPrev;
+	map<uint1024_t, uint1024_t> mapProofOfStake;
 
-	map<LLC::uint512, CDataStream*> mapOrphanTransactions;
-	map<LLC::uint512, map<LLC::uint512, CDataStream*> > mapOrphanTransactionsByPrev;
+	map<uint512_t, CDataStream*> mapOrphanTransactions;
+	map<uint512_t, map<uint512_t, CDataStream*> > mapOrphanTransactionsByPrev;
 
 	const string strMessageMagic = "Nexus Signed Message:\n";
 

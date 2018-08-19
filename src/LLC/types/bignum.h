@@ -100,10 +100,10 @@ namespace LLC
         CBigNum(uint32_t n)     { BN_init(this); setulong(n); }
         //CBigNum(unsigned long n)    { BN_init(this); setulong(n); }
         CBigNum(uint64_t n)           { BN_init(this); setuint64(n); }
-        explicit CBigNum(uint256 n) { BN_init(this); setuint256(n); }
-    	explicit CBigNum(uint512 n) { BN_init(this); setuint512(n); }
-    	explicit CBigNum(uint576 n) { BN_init(this); setuint576(n); }
-    	explicit CBigNum(uint1024 n) { BN_init(this); setuint1024(n); }
+        explicit CBigNum(uint256_t n) { BN_init(this); setuint256(n); }
+    	explicit CBigNum(uint512_t n) { BN_init(this); setuint512(n); }
+    	explicit CBigNum(uint576_t n) { BN_init(this); setuint576(n); }
+    	explicit CBigNum(uint1024_t n) { BN_init(this); setuint1024(n); }
 
         explicit CBigNum(const std::vector<uint8_t>& vch)
         {
@@ -213,7 +213,7 @@ namespace LLC
             return n;
         }
 
-        void setuint256(uint256 n)
+        void setuint256(uint256_t n)
         {
             uint8_t pch[sizeof(n) + 6];
             uint8_t* p = pch + 4;
@@ -241,7 +241,7 @@ namespace LLC
             BN_mpi2bn(pch, p - pch, this);
         }
 
-        uint256 getuint256()
+        uint256_t getuint256()
         {
             uint32_t nSize = BN_bn2mpi(this, NULL);
             if (nSize < 4)
@@ -250,13 +250,13 @@ namespace LLC
             BN_bn2mpi(this, &vch[0]);
             if (vch.size() > 4)
                 vch[4] &= 0x7f;
-            uint256 n = 0;
+            uint256_t n = 0;
             for (uint32_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
                 ((uint8_t*)&n)[i] = vch[j];
             return n;
         }
 
-    	void setuint512(uint512 n)
+    	void setuint512(uint512_t n)
         {
             uint8_t pch[sizeof(n) + 6];
             uint8_t* p = pch + 4;
@@ -284,7 +284,7 @@ namespace LLC
             BN_mpi2bn(pch, p - pch, this);
         }
 
-        uint512 getuint512()
+        uint512_t getuint512()
         {
             uint32_t nSize = BN_bn2mpi(this, NULL);
             if (nSize < 4)
@@ -293,13 +293,13 @@ namespace LLC
             BN_bn2mpi(this, &vch[0]);
             if (vch.size() > 4)
                 vch[4] &= 0x7f;
-            uint512 n = 0;
+            uint512_t n = 0;
             for (uint32_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
                 ((uint8_t*)&n)[i] = vch[j];
             return n;
         }
 
-    	void setuint576(uint576 n)
+    	void setuint576(uint576_t n)
         {
             uint8_t pch[sizeof(n) + 6];
             uint8_t* p = pch + 4;
@@ -327,7 +327,7 @@ namespace LLC
             BN_mpi2bn(pch, p - pch, this);
         }
 
-        uint576 getuint576()
+        uint576_t getuint576()
         {
             uint32_t nSize = BN_bn2mpi(this, NULL);
             if (nSize < 4)
@@ -336,13 +336,13 @@ namespace LLC
             BN_bn2mpi(this, &vch[0]);
             if (vch.size() > 4)
                 vch[4] &= 0x7f;
-            uint576 n = 0;
+            uint576_t n = 0;
             for (uint32_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
                 ((uint8_t*)&n)[i] = vch[j];
             return n;
         }
 
-    	void setuint1024(uint1024 n)
+    	void setuint1024(uint1024_t n)
         {
             uint8_t pch[sizeof(n) + 6];
             uint8_t* p = pch + 4;
@@ -370,7 +370,7 @@ namespace LLC
             BN_mpi2bn(pch, p - pch, this);
         }
 
-        uint1024 getuint1024()
+        uint1024_t getuint1024()
         {
             uint32_t nSize = BN_bn2mpi(this, NULL);
             if (nSize < 4)
@@ -379,7 +379,7 @@ namespace LLC
             BN_bn2mpi(this, &vch[0]);
             if (vch.size() > 4)
                 vch[4] &= 0x7f;
-            uint1024 n = 0;
+            uint1024_t n = 0;
             for (uint32_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
                 ((uint8_t*)&n)[i] = vch[j];
             return n;
