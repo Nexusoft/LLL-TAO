@@ -69,20 +69,20 @@ namespace LLD
         Mutex_t TX_MUTEX;
         
         /** New Data to be Added. **/
-        std::map< std::vector<unsigned char>, std::vector<unsigned char> > mapTransactions;
+        std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapTransactions;
         
         /** Original Data that is retained when new one is added. **/
-        std::map< std::vector<unsigned char>, std::vector<unsigned char> > mapOriginalData;
+        std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapOriginalData;
         
         /** Vector to hold the keys of transactions to be erased. **/
-        std::map< std::vector<unsigned char>, unsigned int > mapEraseData;
+        std::map< std::vector<uint8_t>, uint32_t > mapEraseData;
         
         /** Basic Constructor. **/
         SectorTransaction(){ }
         
         /** Add a new Transaction to the Memory Map. **/
-        bool AddTransaction(std::vector<unsigned char> vKey, std::vector<unsigned char> vData,
-                            std::vector<unsigned char> vOriginalData)
+        bool AddTransaction(std::vector<uint8_t> vKey, std::vector<uint8_t> vData,
+                            std::vector<uint8_t> vOriginalData)
         {
             LOCK(TX_MUTEX);
             
@@ -93,7 +93,7 @@ namespace LLD
         }
         
         /** Function to Erase a Key from the Keychain. **/
-        bool EraseTransaction(std::vector<unsigned char> vKey)
+        bool EraseTransaction(std::vector<uint8_t> vKey)
         {
             LOCK(TX_MUTEX);
             

@@ -24,11 +24,11 @@ namespace TAO
         {
         public:
 
-            unsigned int nStateEnd; //the binary end of the state bytes
+            uint32_t nStateEnd; //the binary end of the state bytes
 
-            std::map<uint64_t, std::vector<unsigned char> > mapMethods; //the byte data of the mothods
+            std::map<uint64_t, std::vector<uint8_t> > mapMethods; //the byte data of the mothods
 
-            CObjectRegister(TypeObject classObjectIn, std::vector<unsigned char> vchOperations)
+            CObjectRegister(TypeObject classObjectIn, std::vector<uint8_t> vchOperations)
             {
                 CDataStream ssObject;
                 ssObject << classObjectIn;
@@ -60,12 +60,12 @@ namespace TAO
 
             void ParseMethods()
             {
-                std::vector<unsigned char> vchOperations;
+                std::vector<uint8_t> vchOperations;
 
                 vchOperations.insert(vchState.begin() + nStateEnd, vchState.end());
 
                 //really bad algorithm I know... TODO log(n) rather than O(n) to parse methods. Keep iterator pointer for method point or make a method class with a length field in it
-                std::vector<unsigned char> vchMethod;
+                std::vector<uint8_t> vchMethod;
                 for(auto chOP : vchOperations)
                 {
                     if(chOP == OP_METHOD)
@@ -85,7 +85,7 @@ namespace TAO
 
 
             template<typename TypeReturn>
-            TypeReturn Execute(uint64_t nAddress, std::vector<unsigned char> vchParameters)
+            TypeReturn Execute(uint64_t nAddress, std::vector<uint8_t> vchParameters)
             {
                 TypeReturn objReturn;
                 objReturn.SetNull(); //all return types must have a virtual TypeReturn
@@ -93,7 +93,7 @@ namespace TAO
                 if(!mapMethods.count(nAddress))
                     return objReturn; //return a null value if the method address was not found
 
-                std::vector<unsigned char> vchMethod = mapMethods[nAddress];
+                std::vector<uint8_t> vchMethod = mapMethods[nAddress];
 
                 COperation opCode(vchMethod);
             }

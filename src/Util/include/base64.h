@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <string>
 #include <vector>
 
-inline std::string EncodeBase64(const unsigned char* pch, size_t len)
+inline std::string EncodeBase64(const uint8_t* pch, size_t len)
 {
     static const char *pbase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -25,7 +25,7 @@ inline std::string EncodeBase64(const unsigned char* pch, size_t len)
     strRet.reserve((len+2)/3*4);
 
     int mode=0, left=0;
-    const unsigned char *pchEnd = pch+len;
+    const uint8_t *pchEnd = pch+len;
 
     while (pch<pchEnd)
     {
@@ -66,11 +66,11 @@ inline std::string EncodeBase64(const unsigned char* pch, size_t len)
 
 inline std::string EncodeBase64(const std::string& str)
 {
-    return EncodeBase64((const unsigned char*)str.c_str(), str.size());
+    return EncodeBase64((const uint8_t*)str.c_str(), str.size());
 }
 
 
-inline std::vector<unsigned char> DecodeBase64(const char* p, bool* pfInvalid = NULL)
+inline std::vector<uint8_t> DecodeBase64(const char* p, bool* pfInvalid = NULL)
 {
     static const int decode64_table[256] =
     {
@@ -92,7 +92,7 @@ inline std::vector<unsigned char> DecodeBase64(const char* p, bool* pfInvalid = 
     if (pfInvalid)
         *pfInvalid = false;
 
-    std::vector<unsigned char> vchRet;
+    std::vector<uint8_t> vchRet;
     vchRet.reserve(strlen(p)*3/4);
 
     int mode = 0;
@@ -100,7 +100,7 @@ inline std::vector<unsigned char> DecodeBase64(const char* p, bool* pfInvalid = 
 
     while (1)
     {
-        int dec = decode64_table[(unsigned char)*p];
+        int dec = decode64_table[(uint8_t)*p];
         if (dec == -1) break;
         p++;
         switch (mode)
@@ -140,12 +140,12 @@ inline std::vector<unsigned char> DecodeBase64(const char* p, bool* pfInvalid = 
                 break;
 
             case 2: // 4n+2 base64 characters processed: require '=='
-                if (left || p[0] != '=' || p[1] != '=' || decode64_table[(unsigned char)p[2]] != -1)
+                if (left || p[0] != '=' || p[1] != '=' || decode64_table[(uint8_t)p[2]] != -1)
                     *pfInvalid = true;
                 break;
 
             case 3: // 4n+3 base64 characters processed: require '='
-                if (left || p[0] != '=' || decode64_table[(unsigned char)p[1]] != -1)
+                if (left || p[0] != '=' || decode64_table[(uint8_t)p[1]] != -1)
                     *pfInvalid = true;
                 break;
         }
@@ -155,7 +155,7 @@ inline std::vector<unsigned char> DecodeBase64(const char* p, bool* pfInvalid = 
 
 inline std::string DecodeBase64(const std::string& str)
 {
-    std::vector<unsigned char> vchRet = DecodeBase64(str.c_str());
+    std::vector<uint8_t> vchRet = DecodeBase64(str.c_str());
     return std::string((const char*)&vchRet[0], vchRet.size());
 }
 

@@ -22,11 +22,11 @@ namespace LLD
 {
     
     /** The Maximum buckets allowed in the hashmap. */
-    const unsigned int HASHMAP_TOTAL_BUCKETS = 256 * 256;
+    const uint32_t HASHMAP_TOTAL_BUCKETS = 256 * 256;
     
     
     /** The Maximum cache size for allocated keys. **/
-    const unsigned int HASHMAP_MAX_CACHE_SZIE = 1024 * 1024; //1 MB
+    const uint32_t HASHMAP_MAX_CACHE_SZIE = 1024 * 1024; //1 MB
     
     
     /** Base Key Database Class.
@@ -51,11 +51,11 @@ namespace LLD
         
         /** Caching Size.
             TODO: Make this a variable actually enforced. **/
-        unsigned int nCacheSize = 0;
+        uint32_t nCacheSize = 0;
         
         
         /** Cache of records searched with find. **/
-        mutable std::map<std::vector<unsigned char>, unsigned int> mapBinaryIterators;
+        mutable std::map<std::vector<uint8_t>, uint32_t> mapBinaryIterators;
         
     public:	
         
@@ -71,22 +71,22 @@ namespace LLD
         
         
         /** Return the Keys to the Records Held in the Database. **/
-        std::vector< std::vector<unsigned char> > GetKeys()
+        std::vector< std::vector<uint8_t> > GetKeys()
         {
-            std::vector< std::vector<unsigned char> > vKeys;
+            std::vector< std::vector<uint8_t> > vKeys;
             //TODO: FINISH
             return vKeys;
         }
         
         
         /** Return Whether a Key Exists in the Database. **/
-        bool HasKey(const std::vector<unsigned char>& vKey)
+        bool HasKey(const std::vector<uint8_t>& vKey)
         {
             if(mapBinaryIterators.count(vKey))
                 return true;
                 
             /* Get the assigned bucket for the hashmap. */
-            unsigned int nBucket = GetBucket(vKey);
+            uint32_t nBucket = GetBucket(vKey);
             
             /* Establish the Stream File for Keychain Bucket. */
             std::fstream ssFile(strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), nBucket).c_str(), std::ios::in | std::ios::binary);
@@ -97,18 +97,18 @@ namespace LLD
             /* Read the Bucket File. */
             ssFile.ignore(std::numeric_limits<std::streamsize>::max());
             ssFile.seekg (0, std::ios::beg);
-            std::vector<unsigned char> vBucket(ssFile.gcount(), 0);
+            std::vector<uint8_t> vBucket(ssFile.gcount(), 0);
             ssFile.read((char*) &vBucket[0], vBucket.size());
             ssFile.close();
                         
                         
             /* Iterator for Key Sectors. */
-            unsigned int nIterator = 0;
+            uint32_t nIterator = 0;
             while(nIterator < vBucket.size())
             {
                             
                 /* Get Binary Data */
-                std::vector<unsigned char> vData(vBucket.begin() + nIterator, vBucket.begin() + nIterator + 15);
+                std::vector<uint8_t> vData(vBucket.begin() + nIterator, vBucket.begin() + nIterator + 15);
                             
                 /* Read the State and Size of Sector Header. */
                 SectorKey cKey;
@@ -118,7 +118,7 @@ namespace LLD
                 if(cKey.Ready())
                 {
                     /* Read the Key Data. */
-                    std::vector<unsigned char> vKeyIn(vBucket.begin() + nIterator + 15, vBucket.begin() + nIterator + 15 + cKey.nLength);
+                    std::vector<uint8_t> vKeyIn(vBucket.begin() + nIterator + 15, vBucket.begin() + nIterator + 15 + cKey.nLength);
                                 
                     /* Found the Binary Position. */
                     if(vKeyIn == vKey)
@@ -137,7 +137,7 @@ namespace LLD
         
         
         /** Handle the Assigning of a Map Bucket. **/
-        unsigned int GetBucket(const std::vector<unsigned char>& vKey) const
+        uint32_t GetBucket(const std::vector<uint8_t>& vKey) const
         {
             uint64_t nBucket = 0;
             for(int i = 0; i < vKey.size() && i < 8; i++)
@@ -164,7 +164,7 @@ namespace LLD
             LOCK(KEY_MUTEX);
             
             /* Get the bucket for the key */
-            unsigned int nBucket = GetBucket(cKey.vKey);
+            uint32_t nBucket = GetBucket(cKey.vKey);
             
             /* Establish the Stream File for Keychain Bucket. */
             std::ofstream ssFile(strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), nBucket).c_str(), std::ios::out | std::ios::binary);
@@ -175,7 +175,7 @@ namespace LLD
                 ssFile.seekp(0, std::ios::end);
             
             //for debugging only
-            unsigned int nIterator = ssFile.tellp();
+            uint32_t nIterator = ssFile.tellp();
             
             
             /* Handle the Sector Key Serialization. */
@@ -185,7 +185,7 @@ namespace LLD
                 
             
             /* Write to Disk. */
-            std::vector<unsigned char> vData(ssKey.begin(), ssKey.end());
+            std::vector<uint8_t> vData(ssKey.begin(), ssKey.end());
             vData.insert(vData.end(), cKey.vKey.begin(), cKey.vKey.end());
             ssFile.write((char*) &vData[0], vData.size());
             ssFile.close();
@@ -199,12 +199,12 @@ namespace LLD
         }
         
         /** Simple Erase for now, not efficient in Data Usage of HD but quick to get erase function working. **/
-        bool Erase(const std::vector<unsigned char> vKey)
+        bool Erase(const std::vector<uint8_t> vKey)
         {
             LOCK(KEY_MUTEX);
             
             /* Check for the Key. */
-            unsigned int nBucket = GetBucket(vKey);
+            uint32_t nBucket = GetBucket(vKey);
             
             /* Establish the Outgoing Stream. */
             std::fstream ssFile(strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), nBucket).c_str(), std::ios::in | std::ios::out | std::ios::binary);
@@ -214,12 +214,12 @@ namespace LLD
         }
         
         /** Get a Record from the Database with Given Key. **/
-        bool Get(const std::vector<unsigned char> vKey, SectorKey& cKey)
+        bool Get(const std::vector<uint8_t> vKey, SectorKey& cKey)
         {
             LOCK(KEY_MUTEX);
             
             /* Get the assigned bucket for the hashmap. */
-            unsigned int nBucket = GetBucket(vKey);
+            uint32_t nBucket = GetBucket(vKey);
             
             /* Establish the Stream File for Keychain Bucket. */
             std::fstream ssFile(strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), nBucket).c_str(), std::ios::in | std::ios::out | std::ios::binary);
@@ -229,7 +229,7 @@ namespace LLD
                 ssFile.seekg(mapBinaryIterators[vKey], std::ios::beg);
                 
                 /* Read the State and Size of Sector Header. */
-                std::vector<unsigned char> vData(15, 0);
+                std::vector<uint8_t> vData(15, 0);
                 ssFile.read((char*) &vData[0], 15);
                 
                 
@@ -243,7 +243,7 @@ namespace LLD
                 {
                 
                     /* Read the Key Data. */
-                    std::vector<unsigned char> vKeyIn(cKey.nLength, 0);
+                    std::vector<uint8_t> vKeyIn(cKey.nLength, 0);
                     ssFile.read((char*) &vKeyIn[0], vKeyIn.size());
                     
                     /* Check the Keys Match Properly. */
@@ -265,17 +265,17 @@ namespace LLD
                 /* Read the Bucket File. */
                 ssFile.ignore(std::numeric_limits<std::streamsize>::max());
                 ssFile.seekg (0, std::ios::beg);
-                std::vector<unsigned char> vBucket(ssFile.gcount(), 0);
+                std::vector<uint8_t> vBucket(ssFile.gcount(), 0);
                 ssFile.read((char*) &vBucket[0], vBucket.size());
                             
                             
                 /* Iterator for Key Sectors. */
-                unsigned int nIterator = 0;
+                uint32_t nIterator = 0;
                 while(nIterator < vBucket.size())
                 {
                                 
                     /* Get Binary Data */
-                    std::vector<unsigned char> vData(vBucket.begin() + nIterator, vBucket.begin() + nIterator + 15);
+                    std::vector<uint8_t> vData(vBucket.begin() + nIterator, vBucket.begin() + nIterator + 15);
                                 
                                 
                     /* Read the State and Size of Sector Header. */
@@ -286,7 +286,7 @@ namespace LLD
                     {
                                 
                         /* Read the Key Data. */
-                        std::vector<unsigned char> vKeyIn(vBucket.begin() + nIterator + 15, vBucket.begin() + nIterator + 15 + cKey.nLength);
+                        std::vector<uint8_t> vKeyIn(vBucket.begin() + nIterator + 15, vBucket.begin() + nIterator + 15 + cKey.nLength);
                                     
                         /* Found the Binary Position. */
                         if(vKeyIn == vKey)

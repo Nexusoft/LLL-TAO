@@ -31,7 +31,7 @@ namespace Legacy
 
 
 			/** The index n of transaction input. **/
-			unsigned int n;
+			uint32_t n;
 
 
 			/** Default Constructor
@@ -48,7 +48,7 @@ namespace Legacy
 			 *	@param[in] nIn The index input
 			 *
 			 **/
-			CInPoint(CTransaction* ptxIn, unsigned int nIn)
+			CInPoint(CTransaction* ptxIn, uint32_t nIn)
 			{
 				ptx = ptxIn;
 				n = nIn;

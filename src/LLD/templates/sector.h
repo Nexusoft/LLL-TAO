@@ -24,11 +24,11 @@ namespace LLD
 {
     
     /* Maximum size a file can be in the keychain. */
-    const unsigned int MAX_SECTOR_FILE_SIZE = 1024 * 1024 * 1024; //1 GB per File
+    const uint32_t MAX_SECTOR_FILE_SIZE = 1024 * 1024 * 1024; //1 GB per File
     
     
     /* Maximum cache buckets for sectors. */
-    const unsigned int MAX_SECTOR_CACHE_SIZE = 1024 * 1024; //1 MB Max Cache
+    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024; //1 MB Max Cache
     
 
     /** Base Template Class for a Sector Database. 
@@ -99,18 +99,18 @@ namespace LLD
         /* Hashmap Custom Hash Using SK. */
         struct SK_Hashmap
         {
-            std::size_t operator()(const std::vector<unsigned char>& k) const {
+            std::size_t operator()(const std::vector<uint8_t>& k) const {
                 return LLC::SK32(k);
             }
         };
         
-        //std::unordered_map< std::vector<unsigned char>, std::vector<unsigned char>, SK_Hashmap > mapRecordCache;
-        //std::map< std::vector<unsigned char>, std::vector<unsigned char> > mapRecordCache[MAX_SECTOR_CACHE_BUCKETS];
+        //std::unordered_map< std::vector<uint8_t>, std::vector<uint8_t>, SK_Hashmap > mapRecordCache;
+        //std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapRecordCache[MAX_SECTOR_CACHE_BUCKETS];
         MemCachePool* cachePool;
         
         /* The current File Position. */
-        mutable unsigned int nCurrentFile;
-        mutable unsigned int nCurrentFileSize;
+        mutable uint32_t nCurrentFile;
+        mutable uint32_t nCurrentFileSize;
         
         /* Cache Writer Thread. */
         Thread_t CacheWriterThread;
@@ -191,7 +191,7 @@ namespace LLD
         
         
         /* Get the keys for this sector database from the keychain.  */
-        std::vector< std::vector<unsigned char> > GetKeys() { return SectorKeys->GetKeys(); }
+        std::vector< std::vector<uint8_t> > GetKeys() { return SectorKeys->GetKeys(); }
         
         
         template<typename Key>
@@ -201,7 +201,7 @@ namespace LLD
             CDataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey.reserve(GetSerializeSize(key, SER_LLD, DATABASE_VERSION));
             ssKey << key;
-            std::vector<unsigned char> vKey(ssKey.begin(), ssKey.end());
+            std::vector<uint8_t> vKey(ssKey.begin(), ssKey.end());
             
             /** Return the Key existance in the Keychain Database. **/
             return SectorKeys->HasKey(vKey);
@@ -217,7 +217,7 @@ namespace LLD
             CDataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey.reserve(GetSerializeSize(key, SER_LLD, DATABASE_VERSION));
             ssKey << key;
-            std::vector<unsigned char> vKey(ssKey.begin(), ssKey.end());
+            std::vector<uint8_t> vKey(ssKey.begin(), ssKey.end());
             
             if(pTransaction){
                 pTransaction->EraseTransaction(vKey);
@@ -239,10 +239,10 @@ namespace LLD
             /** Serialize Key into Bytes. **/
             CDataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
-            std::vector<unsigned char> vKey(ssKey.begin(), ssKey.end());
+            std::vector<uint8_t> vKey(ssKey.begin(), ssKey.end());
             
             /** Get the Data from Sector Database. **/
-            std::vector<unsigned char> vData;
+            std::vector<uint8_t> vData;
             if(!Get(vKey, vData))
                 return false;
 
@@ -268,18 +268,18 @@ namespace LLD
             /** Serialize the Key. **/
             CDataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
-            std::vector<unsigned char> vKey(ssKey.begin(), ssKey.end());
+            std::vector<uint8_t> vKey(ssKey.begin(), ssKey.end());
 
             /** Serialize the Value **/
             CDataStream ssValue(SER_LLD, DATABASE_VERSION);
             ssValue << value;
-            std::vector<unsigned char> vData(ssValue.begin(), ssValue.end());
+            std::vector<uint8_t> vData(ssValue.begin(), ssValue.end());
 
             /** Commit to the Database. **/
             if(pTransaction)
             {
                 
-                std::vector<unsigned char> vOriginalData;
+                std::vector<uint8_t> vOriginalData;
                 //Get(vKey, vOriginalData);
                 
                 return pTransaction->AddTransaction(vKey, vData, vOriginalData);
@@ -289,7 +289,7 @@ namespace LLD
         }
         
         /** Get a Record from the Database with Given Key. **/
-        bool Get(std::vector<unsigned char> vKey, std::vector<unsigned char>& vData)
+        bool Get(std::vector<uint8_t> vKey, std::vector<uint8_t>& vData)
         {
             LOCK(SECTOR_MUTEX);
             
@@ -336,7 +336,7 @@ namespace LLD
                 fStream.close();
                 
                 /** Check the Data Integrity of the Sector by comparing the Checksums. **/
-                unsigned int nChecksum = LLC::SK32(vData);
+                uint32_t nChecksum = LLC::SK32(vData);
                 if(cKey.nChecksum != nChecksum)
                     return error(FUNCTION "Checksums don't match data. Corrupted Sector.", __PRETTY_FUNCTION__);
                 
@@ -353,7 +353,7 @@ namespace LLD
         
         
         /** Add / Update A Record in the Database **/
-        bool Put(std::vector<unsigned char> vKey, std::vector<unsigned char> vData)
+        bool Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
         {
             LOCK(SECTOR_MUTEX);
             
@@ -466,7 +466,7 @@ namespace LLD
                 }
                 
                 /* Check for data to be written. */
-                std::vector< std::pair<std::vector<unsigned char>, std::vector<unsigned char>> > vIndexes;
+                std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vIndexes;
                 if(!cachePool->GetDiskBuffer(vIndexes))
                 {
                     if(fDestruct)
@@ -491,10 +491,10 @@ namespace LLD
                 }
                 
                 /* Temp Variable for Reads / Writes. */
-                unsigned int nTempFileSize = nCurrentFileSize;
+                uint32_t nTempFileSize = nCurrentFileSize;
                 
                 /* Go through and do overwrite operations. */
-                std::vector< unsigned char > vBatch;
+                std::vector< uint8_t > vBatch;
                 for(auto vObj : vIndexes)  
                 {
                     if(nTempFileSize >= MAX_SECTOR_FILE_SIZE)
@@ -606,7 +606,7 @@ namespace LLD
         bool RollbackTransactions()
         {
                 /** Iterate the original data memory map to reset the database to its previous state. **/
-            for(typename std::map< std::vector<unsigned char>, std::vector<unsigned char> >::iterator nIterator = pTransaction->mapOriginalData.begin(); nIterator != pTransaction->mapOriginalData.end(); nIterator++ )
+            for(typename std::map< std::vector<uint8_t>, std::vector<uint8_t> >::iterator nIterator = pTransaction->mapOriginalData.begin(); nIterator != pTransaction->mapOriginalData.end(); nIterator++ )
                 if(!Put(nIterator->first, nIterator->second))
                     return false;
                 
@@ -654,7 +654,7 @@ namespace LLD
                 printf(FUNCTION "Commiting Keys to Keychain.\n", __PRETTY_FUNCTION__);
             
             /** Set the Sector Keys to an Invalid State to know if there are interuptions the sector was not finished successfully. **/
-            for(typename std::map< std::vector<unsigned char>, std::vector<unsigned char> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
+            for(typename std::map< std::vector<uint8_t>, std::vector<uint8_t> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
             {
                 SectorKey cKey;
                 if(SectorKeys->HasKey(nIterator->first)) {
@@ -671,7 +671,7 @@ namespace LLD
                 printf(FUNCTION "Erasing Sector Keys Flagged for Deletion.\n", __PRETTY_FUNCTION__);
             
             /** Erase all the Transactions that are set to be erased. That way if they are assigned a TRANSACTION flag we know to roll back their key to orginal data. **/
-            for(typename std::map< std::vector<unsigned char>, unsigned int >::iterator nIterator = pTransaction->mapEraseData.begin(); nIterator != pTransaction->mapEraseData.end(); nIterator++ )
+            for(typename std::map< std::vector<uint8_t>, uint32_t >::iterator nIterator = pTransaction->mapEraseData.begin(); nIterator != pTransaction->mapEraseData.end(); nIterator++ )
             {
                 if(!SectorKeys->Erase(nIterator->first))
                     return error(FUNCTION "Couldn't get the Active Sector Key for Delete.", __PRETTY_FUNCTION__);
@@ -681,11 +681,11 @@ namespace LLD
             if(GetArg("-verbose", 0) >= 4)
                 printf(FUNCTION "Commit Data to Datachain Sector Database.\n", __PRETTY_FUNCTION__);
             
-            for(typename std::map< std::vector<unsigned char>, std::vector<unsigned char> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
+            for(typename std::map< std::vector<uint8_t>, std::vector<uint8_t> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
             {
                 /** Declare the Key and Data for easier reference. **/
-                std::vector<unsigned char> vKey  = nIterator->first;
-                std::vector<unsigned char> vData = nIterator->second;
+                std::vector<uint8_t> vKey  = nIterator->first;
+                std::vector<uint8_t> vData = nIterator->second;
                 
                 /* Write Header if First Update. */
                 if(!SectorKeys->HasKey(vKey))
@@ -766,7 +766,7 @@ namespace LLD
             if(GetArg("-verbose", 0) >= 4)
                 printf(FUNCTION "Commiting Key Valid States to Keychain.\n", __PRETTY_FUNCTION__);
             
-            for(typename std::map< std::vector<unsigned char>, std::vector<unsigned char> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
+            for(typename std::map< std::vector<uint8_t>, std::vector<uint8_t> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
             {
                 /** Assign the Writing State for Sector. **/
                 SectorKey cKey;

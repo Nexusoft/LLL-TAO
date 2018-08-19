@@ -46,7 +46,7 @@ namespace LLP
     }
     
     
-    bool static LookupIntern(const char *pszName, std::vector<CNetAddr>& vIP, unsigned int nMaxSolutions, bool fAllowLookup)
+    bool static LookupIntern(const char *pszName, std::vector<CNetAddr>& vIP, uint32_t nMaxSolutions, bool fAllowLookup)
     {
         vIP.clear();
         struct addrinfo aiHint;
@@ -101,7 +101,7 @@ namespace LLP
         return (vIP.size() > 0);
     }
     
-    bool LookupHost(const char *pszName, std::vector<CNetAddr>& vIP, unsigned int nMaxSolutions, bool fAllowLookup)
+    bool LookupHost(const char *pszName, std::vector<CNetAddr>& vIP, uint32_t nMaxSolutions, bool fAllowLookup)
     {
         if (pszName[0] == 0)
             return false;
@@ -117,12 +117,12 @@ namespace LLP
         return LookupIntern(pszHost, vIP, nMaxSolutions, fAllowLookup);
     }
     
-    bool LookupHostNumeric(const char *pszName, std::vector<CNetAddr>& vIP, unsigned int nMaxSolutions)
+    bool LookupHostNumeric(const char *pszName, std::vector<CNetAddr>& vIP, uint32_t nMaxSolutions)
     {
         return LookupHost(pszName, vIP, nMaxSolutions, false);
     }
 
-    bool Lookup(const char *pszName, std::vector<CService>& vAddr, int portDefault, bool fAllowLookup, unsigned int nMaxSolutions)
+    bool Lookup(const char *pszName, std::vector<CService>& vAddr, int portDefault, bool fAllowLookup, uint32_t nMaxSolutions)
     {
         if (pszName[0] == 0)
             return false;
@@ -160,7 +160,7 @@ namespace LLP
         if (!fRet)
             return false;
         vAddr.resize(vIP.size());
-        for (unsigned int i = 0; i < vIP.size(); i++)
+        for (uint32_t i = 0; i < vIP.size(); i++)
             vAddr[i] = CService(vIP[i], port);
         return true;
     }

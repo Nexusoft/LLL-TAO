@@ -33,15 +33,15 @@ namespace TAO
 
 
             /** The version of the state of the register. **/
-            unsigned short nVersion; //may be superfluous
+            uint16_t nVersion; //may be superfluous
 
 
             /** The length of the state register. **/
-            unsigned short nLength;
+            uint16_t nLength;
 
 
             /** The byte level data of the register. **/
-            std::vector<unsigned char> vchState;
+            std::vector<uint8_t> vchState;
 
 
             /** The address space of the register. **/
@@ -79,7 +79,7 @@ namespace TAO
             }
 
 
-            CStateRegister(std::vector<unsigned char> vchData) : fReadOnly(false), nVersion(1), nLength(vchData.size()), vchState(vchData), hashAddress(0), hashChecksum(0)
+            CStateRegister(std::vector<uint8_t> vchData) : fReadOnly(false), nVersion(1), nLength(vchData.size()), vchState(vchData), hashAddress(0), hashChecksum(0)
             {
 
             }
@@ -130,14 +130,14 @@ namespace TAO
 
 
             /** Get the State from the Register. **/
-            std::vector<unsigned char> GetState()
+            std::vector<uint8_t> GetState()
             {
                 return vchState;
             }
 
 
             /** Set the State from Byte Vector. **/
-            void SetState(std::vector<unsigned char> vchStateIn)
+            void SetState(std::vector<uint8_t> vchStateIn)
             {
                 vchState = vchStateIn;
                 nLength  = vchStateIn.size();

@@ -29,7 +29,7 @@
  ---------------------------------------------------------------------------
  Issue 09/09/2006
 
- The unsigned integer types defined here are of the form uint_<nn>t where
+ The uint32_teger types defined here are of the form uint_<nn>t where
  <nn> is the length of the type; for example, the unsigned 32-bit type is
  'uint_32t'.  These are NOT the same as the 'C99 integer types' that are
  defined in the inttypes.h and stdint.h headers since attempts to use these
@@ -47,22 +47,23 @@ extern "C" {
 #endif
 
 #include <limits.h>
+#include <inttypes.h>
 
 #ifndef BRG_UI8
 #  define BRG_UI8
 #  if UCHAR_MAX == 255u
-     typedef unsigned char uint_8t;
+     typedef uint8_t uint_8t;
 #  else
-#    error Please define uint_8t as an 8-bit unsigned integer type in brg_types.h
+#    error Please define uint_8t as an 8-bit uint32_teger type in brg_types.h
 #  endif
 #endif
 
 #ifndef BRG_UI16
 #  define BRG_UI16
 #  if USHRT_MAX == 65535u
-     typedef unsigned short uint_16t;
+     typedef uint16_t uint_16t;
 #  else
-#    error Please define uint_16t as a 16-bit unsigned short type in brg_types.h
+#    error Please define uint_16t as a 16-bit uint16_t type in brg_types.h
 #  endif
 #endif
 
@@ -70,14 +71,14 @@ extern "C" {
 #  define BRG_UI32
 #  if UINT_MAX == 4294967295u
 #    define li_32(h) 0x##h##u
-     typedef unsigned int uint_32t;
+     typedef uint32_t uint_32t;
 #  elif ULONG_MAX == 4294967295u
 #    define li_32(h) 0x##h##ul
      typedef unsigned long uint_32t;
 #  elif defined( _CRAY )
 #    error This code needs 32-bit data types, which Cray machines do not provide
 #  else
-#    error Please define uint_32t as a 32-bit unsigned integer type in brg_types.h
+#    error Please define uint_32t as a 32-bit uint32_teger type in brg_types.h
 #  endif
 #endif
 
@@ -98,7 +99,7 @@ extern "C" {
 #    if UINT_MAX == 18446744073709551615u
 #      define BRG_UI64
 #      define li_64(h) 0x##h##u
-       typedef unsigned int uint_64t;
+       typedef uint32_t uint_64t;
 #    endif
 #  elif defined( ULONG_MAX ) && ULONG_MAX > 4294967295u
 #    if ULONG_MAX == 18446744073709551615ul
@@ -164,15 +165,15 @@ extern "C" {
     faster operations on longer variables to be used.  In all these
     defines 'size' must be a power of 2 and >= 8
 
-    dec_unit_type(size,x)       declares a variable 'x' of length 
+    dec_unit_type(size,x)       declares a variable 'x' of length
                                 'size' bits
 
-    dec_bufr_type(size,bsize,x) declares a buffer 'x' of length 'bsize' 
+    dec_bufr_type(size,bsize,x) declares a buffer 'x' of length 'bsize'
                                 bytes defined as an array of variables
-                                each of 'size' bits (bsize must be a 
+                                each of 'size' bits (bsize must be a
                                 multiple of size / 8)
 
-    ptr_cast(x,size)            casts a pointer to a pointer to a 
+    ptr_cast(x,size)            casts a pointer to a pointer to a
                                 varaiable of length 'size' bits
 */
 

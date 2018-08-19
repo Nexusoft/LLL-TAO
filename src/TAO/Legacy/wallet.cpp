@@ -18,7 +18,7 @@ using namespace std;
 namespace Wallet
 {
 
-    std::vector<unsigned char> CWallet::GenerateNewKey()
+    std::vector<uint8_t> CWallet::GenerateNewKey()
     {
         bool fCompressed = true;
 
@@ -42,7 +42,7 @@ namespace Wallet
         return true;
     }
 
-    bool CWallet::AddCryptedKey(const vector<unsigned char> &vchPubKey, const vector<unsigned char> &vchCryptedSecret)
+    bool CWallet::AddCryptedKey(const vector<uint8_t> &vchPubKey, const vector<uint8_t> &vchCryptedSecret)
     {
         if (!CCryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret))
             return false;
@@ -357,7 +357,7 @@ namespace Wallet
             {
                 if (txout.scriptPubKey == scriptDefaultKey)
                 {
-                    std::vector<unsigned char> newDefaultKey;
+                    std::vector<uint8_t> newDefaultKey;
                     if (GetKeyFromPool(newDefaultKey, false))
                     {
                         SetDefaultKey(newDefaultKey);
@@ -544,7 +544,7 @@ namespace Wallet
         BOOST_FOREACH(const Core::CTxOut& txout, vout)
         {
             NexusAddress address;
-            vector<unsigned char> vchPubKey;
+            vector<uint8_t> vchPubKey;
             if (!ExtractAddress(txout.scriptPubKey, address))
             {
                 printf("CWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",
@@ -619,7 +619,7 @@ namespace Wallet
                 LOCK(pwallet->cs_wallet);
                 map<LLC::uint512, const CMerkleTx*> mapWalletPrev;
                 set<LLC::uint512> setAlreadyDone;
-                for (unsigned int i = 0; i < vWorkQueue.size(); i++)
+                for (uint32_t i = 0; i < vWorkQueue.size(); i++)
                 {
                     LLC::uint512 hash = vWorkQueue[i];
                     if (setAlreadyDone.count(hash))
@@ -727,7 +727,7 @@ namespace Wallet
                         printf("ERROR: ReacceptWalletTransactions() : txindex.vSpent.size() %d != wtx.vout.size() %d\n", txindex.vSpent.size(), wtx.vout.size());
                         continue;
                     }
-                    for (unsigned int i = 0; i < txindex.vSpent.size(); i++)
+                    for (uint32_t i = 0; i < txindex.vSpent.size(); i++)
                     {
                         if (wtx.IsSpent(i))
                             continue;
@@ -813,7 +813,7 @@ namespace Wallet
         {
             LOCK(cs_wallet);
             // Sort them in chronological order
-            multimap<unsigned int, CWalletTx*> mapSorted;
+            multimap<uint32_t, CWalletTx*> mapSorted;
             BOOST_FOREACH(PAIRTYPE(const LLC::uint512, CWalletTx)& item, mapWallet)
             {
                 CWalletTx& wtx = item.second;
@@ -822,7 +822,7 @@ namespace Wallet
                 if (Core::nTimeBestReceived - (int64_t)wtx.nTimeReceived > 5 * 60)
                     mapSorted.insert(make_pair(wtx.nTimeReceived, &wtx));
             }
-            BOOST_FOREACH(PAIRTYPE(const unsigned int, CWalletTx*)& item, mapSorted)
+            BOOST_FOREACH(PAIRTYPE(const uint32_t, CWalletTx*)& item, mapSorted)
             {
                 CWalletTx& wtx = *item.second;
                 if (wtx.CheckTransaction())
@@ -907,7 +907,7 @@ namespace Wallet
     }
 
     // populate vCoins with vector of spendable (age, (value, (transaction, output_number))) outputs
-    void CWallet::AvailableCoins(unsigned int nSpendTime, vector<COutput>& vCoins, bool fOnlyConfirmed) const
+    void CWallet::AvailableCoins(uint32_t nSpendTime, vector<COutput>& vCoins, bool fOnlyConfirmed) const
     {
         vCoins.clear();
 
@@ -939,7 +939,7 @@ namespace Wallet
     }
 
     /** Get the available addresses that have a balance associated with a wallet. **/
-    bool CWallet::AvailableAddresses(unsigned int nSpendTime, map<NexusAddress, int64_t>& mapAddresses, bool fOnlyConfirmed) const
+    bool CWallet::AvailableAddresses(uint32_t nSpendTime, map<NexusAddress, int64_t>& mapAddresses, bool fOnlyConfirmed) const
     {
         mapAddresses.clear();
         {
@@ -981,7 +981,7 @@ namespace Wallet
     }
 
 
-    bool CWallet::SelectCoinsMinConf(int64_t nTargetValue, unsigned int nSpendTime, int nConfMine, int nConfTheirs, set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64_t& nValueRet) const
+    bool CWallet::SelectCoinsMinConf(int64_t nTargetValue, uint32_t nSpendTime, int nConfMine, int nConfTheirs, set<pair<const CWalletTx*,uint32_t> >& setCoinsRet, int64_t& nValueRet) const
     {
         /* Add Each Input to Transaction. */
         setCoinsRet.clear();
@@ -1006,7 +1006,7 @@ namespace Wallet
             if ((pcoin->IsCoinBase() || pcoin->IsCoinStake()) && pcoin->GetBlocksToMaturity() > 0)
                 continue;
 
-            for (unsigned int i = 0; i < pcoin->vout.size(); i++)
+            for (uint32_t i = 0; i < pcoin->vout.size(); i++)
             {
                 if (pcoin->IsSpent(i) || !IsMine(pcoin->vout[i]))
                     continue;
@@ -1030,7 +1030,7 @@ namespace Wallet
         if (GetBoolArg("-printselectcoin"))
         {
             printf("SelectCoins() selected: ");
-            BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoinsRet)
+            BOOST_FOREACH(PAIRTYPE(const CWalletTx*, uint32_t) pcoin, setCoinsRet)
                 pcoin.first->print();
 
             printf("total %s\n", FormatMoney(nValueRet).c_str());
@@ -1048,7 +1048,7 @@ namespace Wallet
     }
 
 
-    bool CWallet::SelectCoins(int64_t nTargetValue, unsigned int nSpendTime, set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64_t& nValueRet) const
+    bool CWallet::SelectCoins(int64_t nTargetValue, uint32_t nSpendTime, set<pair<const CWalletTx*,uint32_t> >& setCoinsRet, int64_t& nValueRet) const
     {
         return (SelectCoinsMinConf(nTargetValue, nSpendTime, 3, 3, setCoinsRet, nValueRet) ||
                 SelectCoinsMinConf(nTargetValue, nSpendTime, 3, 3, setCoinsRet, nValueRet) ||
@@ -1091,13 +1091,13 @@ namespace Wallet
                         wtxNew.vout.push_back(Core::CTxOut(s.second, s.first));
 
                     // Choose coins to use
-                    set<pair<const CWalletTx*,unsigned int> > setCoins;
+                    set<pair<const CWalletTx*,uint32_t> > setCoins;
                     int64_t nValueIn = 0;
                     if (!SelectCoins(nTotalValue, wtxNew.nTime, setCoins, nValueIn))
                         return false;
 
                     CScript scriptChange;
-                    BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
+                    BOOST_FOREACH(PAIRTYPE(const CWalletTx*, uint32_t) pcoin, setCoins)
                     {
                         int64_t nCredit = pcoin.first->vout[pcoin.second].nValue;
                         dPriority += (double)nCredit * pcoin.first->GetDepthInMainChain();
@@ -1135,7 +1135,7 @@ namespace Wallet
                         if (!GetBoolArg("-avatar")) // Nexus: not avatar mode
                         {
                             // Reserve a new key pair from key pool
-                            vector<unsigned char> vchPubKey = reservekey.GetReservedKey();
+                            vector<uint8_t> vchPubKey = reservekey.GetReservedKey();
                             // assert(mapKeys.count(vchPubKey));
 
                             // Fill a vout to ourself
@@ -1152,17 +1152,17 @@ namespace Wallet
                         reservekey.ReturnKey();
 
                     // Fill vin
-                    BOOST_FOREACH(const PAIRTYPE(const CWalletTx*,unsigned int)& coin, setCoins)
+                    BOOST_FOREACH(const PAIRTYPE(const CWalletTx*,uint32_t)& coin, setCoins)
                         wtxNew.vin.push_back(Core::CTxIn(coin.first->GetHash(),coin.second));
 
                     // Sign
                     int nIn = 0;
-                    BOOST_FOREACH(const PAIRTYPE(const CWalletTx*,unsigned int)& coin, setCoins)
+                    BOOST_FOREACH(const PAIRTYPE(const CWalletTx*,uint32_t)& coin, setCoins)
                         if (!SignSignature(*this, *coin.first, wtxNew, nIn++))
                             return false;
 
                     // Limit size
-                    unsigned int nBytes = ::GetSerializeSize(*(Core::CTransaction*)&wtxNew, SER_NETWORK, PROTOCOL_VERSION);
+                    uint32_t nBytes = ::GetSerializeSize(*(Core::CTransaction*)&wtxNew, SER_NETWORK, PROTOCOL_VERSION);
                     if (nBytes >= Core::MAX_BLOCK_SIZE_GEN/5)
                         return false;
                     dPriority /= nBytes;
@@ -1383,7 +1383,7 @@ namespace Wallet
         return false;
     }
 
-    bool CWallet::SetDefaultKey(const std::vector<unsigned char> &vchPubKey)
+    bool CWallet::SetDefaultKey(const std::vector<uint8_t> &vchPubKey)
     {
         if (fFileBacked)
         {
@@ -1441,7 +1441,7 @@ namespace Wallet
             CWalletDB walletdb(strWalletFile);
 
             // Top up key pool
-            unsigned int nTargetSize = max(GetArg("-keypool", 100), 0LL);
+            uint32_t nTargetSize = max(GetArg("-keypool", 100), 0LL);
             while (setKeyPool.size() < (nTargetSize + 1))
             {
                 int64_t nEnd = 1;
@@ -1523,7 +1523,7 @@ namespace Wallet
             printf("keypool return %" PRI64d "\n", nIndex);
     }
 
-    bool CWallet::GetKeyFromPool(vector<unsigned char>& result, bool fAllowReuse)
+    bool CWallet::GetKeyFromPool(vector<uint8_t>& result, bool fAllowReuse)
     {
         int64_t nIndex = 0;
         CKeyPool keypool;
@@ -1635,7 +1635,7 @@ namespace Wallet
         }
     }
 
-    vector<unsigned char> CReserveKey::GetReservedKey()
+    vector<uint8_t> CReserveKey::GetReservedKey()
     {
         if (nIndex == -1)
         {

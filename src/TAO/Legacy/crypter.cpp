@@ -18,7 +18,7 @@
 
 namespace Wallet
 {
-    bool CCrypter::SetKeyFromPassphrase(const SecureString& strKeyData, const std::vector<unsigned char>& chSalt, const unsigned int nRounds, const unsigned int nDerivationMethod)
+    bool CCrypter::SetKeyFromPassphrase(const SecureString& strKeyData, const std::vector<uint8_t>& chSalt, const uint32_t nRounds, const uint32_t nDerivationMethod)
     {
         if (nRounds < 1 || chSalt.size() != WALLET_CRYPTO_SALT_SIZE)
             return false;
@@ -32,7 +32,7 @@ namespace Wallet
         int i = 0;
         if (nDerivationMethod == 0)
             i = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha512(), &chSalt[0],
-                            (unsigned char *)&strKeyData[0], strKeyData.size(), nRounds, chKey, chIV);
+                            (uint8_t *)&strKeyData[0], strKeyData.size(), nRounds, chKey, chIV);
 
         if (i != (int) 32)
         {
@@ -45,7 +45,7 @@ namespace Wallet
         return true;
     }
 
-    bool CCrypter::SetKey(const CKeyingMaterial& chNewKey, const std::vector<unsigned char>& chNewIV)
+    bool CCrypter::SetKey(const CKeyingMaterial& chNewKey, const std::vector<uint8_t>& chNewIV)
     {
         if (chNewKey.size() != WALLET_CRYPTO_KEY_SIZE || chNewIV.size() != WALLET_CRYPTO_KEY_SIZE)
             return false;
@@ -63,7 +63,7 @@ namespace Wallet
         return true;
     }
 
-    bool CCrypter::Encrypt(const CKeyingMaterial& vchPlaintext, std::vector<unsigned char> &vchCiphertext)
+    bool CCrypter::Encrypt(const CKeyingMaterial& vchPlaintext, std::vector<uint8_t> &vchCiphertext)
     {
         if (!fKeySet)
             return false;
@@ -72,7 +72,7 @@ namespace Wallet
         // n + AES_BLOCK_SIZE - 1 bytes
         int nLen = vchPlaintext.size();
         int nCLen = nLen + AES_BLOCK_SIZE, nFLen = 0;
-        vchCiphertext = std::vector<unsigned char> (nCLen);
+        vchCiphertext = std::vector<uint8_t> (nCLen);
 
         EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
         if (nullptr == ctx)
@@ -92,7 +92,7 @@ namespace Wallet
         return true;
     }
 
-    bool CCrypter::Decrypt(const std::vector<unsigned char>& vchCiphertext, CKeyingMaterial& vchPlaintext)
+    bool CCrypter::Decrypt(const std::vector<uint8_t>& vchCiphertext, CKeyingMaterial& vchPlaintext)
     {
         if (!fKeySet)
             return false;
@@ -122,20 +122,20 @@ namespace Wallet
     }
 
 
-    bool EncryptSecret(CKeyingMaterial& vMasterKey, const CSecret &vchPlaintext, const LLC::uint576& nIV, std::vector<unsigned char> &vchCiphertext)
+    bool EncryptSecret(CKeyingMaterial& vMasterKey, const CSecret &vchPlaintext, const LLC::uint576& nIV, std::vector<uint8_t> &vchCiphertext)
     {
         CCrypter cKeyCrypter;
-        std::vector<unsigned char> chIV(WALLET_CRYPTO_KEY_SIZE);
+        std::vector<uint8_t> chIV(WALLET_CRYPTO_KEY_SIZE);
         memcpy(&chIV[0], &nIV, WALLET_CRYPTO_KEY_SIZE);
         if(!cKeyCrypter.SetKey(vMasterKey, chIV))
             return false;
         return cKeyCrypter.Encrypt((CKeyingMaterial)vchPlaintext, vchCiphertext);
     }
 
-    bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<unsigned char>& vchCiphertext, const LLC::uint576& nIV, CSecret& vchPlaintext)
+    bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<uint8_t>& vchCiphertext, const LLC::uint576& nIV, CSecret& vchPlaintext)
     {
         CCrypter cKeyCrypter;
-        std::vector<unsigned char> chIV(WALLET_CRYPTO_KEY_SIZE);
+        std::vector<uint8_t> chIV(WALLET_CRYPTO_KEY_SIZE);
         memcpy(&chIV[0], &nIV, WALLET_CRYPTO_KEY_SIZE);
         if(!cKeyCrypter.SetKey(vMasterKey, chIV))
             return false;

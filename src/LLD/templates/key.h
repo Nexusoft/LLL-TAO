@@ -57,18 +57,18 @@ namespace LLD
             Byte 1 - 3: nLength (The Size of the Sector)
             Byte 3 - 5: nSector (The Sector Number [0 - x])
         **/
-        unsigned char   		   	nState;
-        unsigned short 			   nLength;
+        uint8_t   		   	nState;
+        uint16_t 			   nLength;
 
         /** These three hold the location of
             Sector in the Sector Database of
             Given Sector Key. **/
-        unsigned short 			   nSectorFile;
-        unsigned short   		   nSectorSize;
-        unsigned int   			   nSectorStart;
+        uint16_t 			   nSectorFile;
+        uint16_t   		   nSectorSize;
+        uint32_t   			   nSectorStart;
 
         /* The binary data of the Sector key. */
-        std::vector<unsigned char> vKey;
+        std::vector<uint8_t> vKey;
 
         /** Checksum of Original Data to ensure no database corrupted sectors.
             TODO: Consider the Original Data from a checksum.
@@ -78,7 +78,7 @@ namespace LLD
             corrupt the database backups. This will ensure the core database never gets corrupted.
             On startup ensure that the checksums match to ensure that the database was not stopped
             in the middle of a write. **/
-        unsigned int nChecksum;
+        uint32_t nChecksum;
 
         /* Serialization Macro. */
         IMPLEMENT_SERIALIZE
@@ -93,7 +93,7 @@ namespace LLD
 
         /* Constructors. */
         SectorKey() : nState(0), nLength(0), nSectorFile(0), nSectorSize(0), nSectorStart(0) { }
-        SectorKey(unsigned char nStateIn, std::vector<unsigned char> vKeyIn, unsigned short nSectorFileIn, unsigned int nSectorStartIn, unsigned short nSectorSizeIn) : nState(nStateIn), nSectorFile(nSectorFileIn), nSectorSize(nSectorSizeIn), nSectorStart(nSectorStartIn)
+        SectorKey(uint8_t nStateIn, std::vector<uint8_t> vKeyIn, uint16_t nSectorFileIn, uint32_t nSectorStartIn, uint16_t nSectorSizeIn) : nState(nStateIn), nSectorFile(nSectorFileIn), nSectorSize(nSectorSizeIn), nSectorStart(nSectorStartIn)
         {
             nLength = vKeyIn.size();
             vKey    = vKeyIn;
@@ -101,11 +101,11 @@ namespace LLD
 
 
         /* Iterator to the beginning of the raw key. */
-        unsigned int Begin() { return 15; }
+        uint32_t Begin() { return 15; }
 
 
         /* Return the Size of the Key Sector on Disk. */
-        unsigned int Size() { return (15 + nLength); }
+        uint32_t Size() { return (15 + nLength); }
 
 
         /* Dump Key to Debug Console. */

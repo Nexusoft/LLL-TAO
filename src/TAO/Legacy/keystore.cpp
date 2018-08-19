@@ -11,7 +11,7 @@
 
 namespace Wallet
 {
-    bool CKeyStore::GetPubKey(const NexusAddress &address, std::vector<unsigned char> &vchPubKeyOut) const
+    bool CKeyStore::GetPubKey(const NexusAddress &address, std::vector<uint8_t> &vchPubKeyOut) const
     {
         CKey key;
         if (!GetKey(address, key))
@@ -88,8 +88,8 @@ namespace Wallet
             CryptedKeyMap::const_iterator mi = mapCryptedKeys.begin();
             for (; mi != mapCryptedKeys.end(); ++mi)
             {
-                const std::vector<unsigned char> &vchPubKey = (*mi).second.first;
-                const std::vector<unsigned char> &vchCryptedSecret = (*mi).second.second;
+                const std::vector<uint8_t> &vchPubKey = (*mi).second.first;
+                const std::vector<uint8_t> &vchCryptedSecret = (*mi).second.second;
                 CSecret vchSecret;
                 if(!DecryptSecret(vMasterKeyIn, vchCryptedSecret, SK576(vchPubKey.begin(), vchPubKey.end()), vchSecret))
                     return false;
@@ -117,8 +117,8 @@ namespace Wallet
             if (IsLocked())
                 return false;
 
-            std::vector<unsigned char> vchCryptedSecret;
-            std::vector<unsigned char> vchPubKey = key.GetPubKey();
+            std::vector<uint8_t> vchCryptedSecret;
+            std::vector<uint8_t> vchPubKey = key.GetPubKey();
             bool fCompressed;
             if (!EncryptSecret(vMasterKey, key.GetSecret(fCompressed), SK576(vchPubKey.begin(), vchPubKey.end()), vchCryptedSecret))
                 return false;
@@ -130,7 +130,7 @@ namespace Wallet
     }
 
 
-    bool CCryptoKeyStore::AddCryptedKey(const std::vector<unsigned char> &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret)
+    bool CCryptoKeyStore::AddCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret)
     {
         {
             LOCK(cs_KeyStore);
@@ -152,8 +152,8 @@ namespace Wallet
             CryptedKeyMap::const_iterator mi = mapCryptedKeys.find(address);
             if (mi != mapCryptedKeys.end())
             {
-                const std::vector<unsigned char> &vchPubKey = (*mi).second.first;
-                const std::vector<unsigned char> &vchCryptedSecret = (*mi).second.second;
+                const std::vector<uint8_t> &vchPubKey = (*mi).second.first;
+                const std::vector<uint8_t> &vchCryptedSecret = (*mi).second.second;
                 CSecret vchSecret;
                 if (!DecryptSecret(vMasterKey, vchCryptedSecret, SK576(vchPubKey.begin(), vchPubKey.end()), vchSecret))
                     return false;
@@ -167,7 +167,7 @@ namespace Wallet
         return false;
     }
 
-    bool CCryptoKeyStore::GetPubKey(const NexusAddress &address, std::vector<unsigned char>& vchPubKeyOut) const
+    bool CCryptoKeyStore::GetPubKey(const NexusAddress &address, std::vector<uint8_t>& vchPubKeyOut) const
     {
         {
             LOCK(cs_KeyStore);
@@ -197,8 +197,8 @@ namespace Wallet
                 CKey key;
                 if (!key.SetSecret(mKey.second.first, mKey.second.second))
                     return false;
-                const std::vector<unsigned char> vchPubKey = key.GetPubKey();
-                std::vector<unsigned char> vchCryptedSecret;
+                const std::vector<uint8_t> vchPubKey = key.GetPubKey();
+                std::vector<uint8_t> vchCryptedSecret;
                 bool fCompressed;
                 if (!EncryptSecret(vMasterKeyIn, key.GetSecret(fCompressed), SK576(vchPubKey.begin(), vchPubKey.end()), vchCryptedSecret))
                     return false;

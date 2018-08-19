@@ -26,7 +26,7 @@ namespace Consensus
     {
             
         /* Check Average age is above Limit if No Trust Key Seen. */
-        vector< std::vector<unsigned char> > vKeys;
+        vector< std::vector<uint8_t> > vKeys;
         Wallet::TransactionType keyType;
         if (!Wallet::Solver(vtx[0].vout[0].scriptPubKey, keyType, vKeys))
             return error("CBlock::VerifyStake() : Failed To Solve Trust Key Script.");
@@ -101,7 +101,7 @@ namespace Consensus
             printf("CBlock::VerifyStake() : Target Hash %s\n", hashTarget.ToString().substr(0, 20).c_str());
             printf("CBlock::VerifyStake() : Coin Age %" PRIu64 " Trust Age %" PRIu64 " Block Age %" PRIu64 "\n", nCoinAge, nTrustAge, nBlockAge);
             printf("CBlock::VerifyStake() : Trust Weight %f Block Weight %f\n", nTrustWeight, nBlockWeight);
-            printf("CBlock::VerifyStake() : Threshold %f Required %f Time %u nNonce %" PRIu64 "\n", nThreshold, nRequired, (unsigned int)(nTime - vtx[0].nTime), nNonce);
+            printf("CBlock::VerifyStake() : Threshold %f Required %f Time %u nNonce %" PRIu64 "\n", nThreshold, nRequired, (uint32_t)(nTime - vtx[0].nTime), nNonce);
         }
 
         return true;
@@ -154,7 +154,7 @@ namespace Consensus
             return error("CTransaction::GetCoinstakeInterest() : Not Coinstake Transaction");
             
         /** Extract the Key from the Script Signature. **/
-        vector< std::vector<unsigned char> > vKeys;
+        vector< std::vector<uint8_t> > vKeys;
         Wallet::TransactionType keyType;
         if (!Wallet::Solver(vout[0].scriptPubKey, keyType, vKeys))
             return error("CTransaction::GetCoinstakeInterest() : Failed To Solve Trust Key Script.");
@@ -213,7 +213,7 @@ namespace Consensus
     * 
     * Function to Check the Current Trust Key to see if it is expired.
     * If Key is Empty, check Trust Pool for Possible Key owned by this wallet. **/
-    bool CTrustPool::HasTrustKey(unsigned int nTime)
+    bool CTrustPool::HasTrustKey(uint32_t nTime)
     {
         /** First Check if the Current Key is Expired. **/
         if(!vchTrustKey.empty())
@@ -294,7 +294,7 @@ namespace Consensus
         LOCK(cs);
         
         /* Extract the Key from the Script Signature. */
-        vector< std::vector<unsigned char> > vKeys;
+        vector< std::vector<uint8_t> > vKeys;
         Wallet::TransactionType keyType;
         if (!Wallet::Solver(cBlock.vtx[0].vout[0].scriptPubKey, keyType, vKeys))
             return error("CTrustPool::IsValid() : Failed To Solve Trust Key Script.");
@@ -311,7 +311,7 @@ namespace Consensus
         CBlock pblock[6];
         const CBlockIndex* pindex[6];
             
-        unsigned int nAverageTime = 0, nTotalGenesis = 0;
+        uint32_t nAverageTime = 0, nTotalGenesis = 0;
         for(int i = 0; i < 6; i++)
         {
             pindex[i] = GetLastChannelIndex(i == 0 ? mapBlockIndex[cBlock.hashPrevBlock] : pindex[i - 1]->pprev, 0);
@@ -462,7 +462,7 @@ namespace Consensus
             return error("CTrustPool::check()  : Coinstake Timestamp too Early.");
             
         /** Extract the Key from the Script Signature. **/
-        vector< std::vector<unsigned char> > vKeys;
+        vector< std::vector<uint8_t> > vKeys;
         Wallet::TransactionType keyType;
         if (!Wallet::Solver(cBlock.vtx[0].vout[0].scriptPubKey, keyType, vKeys))
             return error("CTrustPool::check() : Failed To Solve Trust Key Script.");
@@ -481,7 +481,7 @@ namespace Consensus
         LOCK(cs);
             
         /* Extract the Key from the Script Signature. */
-        vector< std::vector<unsigned char> > vKeys;
+        vector< std::vector<uint8_t> > vKeys;
         Wallet::TransactionType keyType;
         if (!Wallet::Solver(cBlock.vtx[0].vout[0].scriptPubKey, keyType, vKeys))
             return error("CTrustPool::Connect() : Failed To Solve Trust Key Script.");
@@ -611,7 +611,7 @@ namespace Consensus
         LOCK(cs);
         
         /** Extract the Key from the Script Signature. **/
-        vector< std::vector<unsigned char> > vKeys;
+        vector< std::vector<uint8_t> > vKeys;
         Wallet::TransactionType keyType;
         if (!Wallet::Solver(cBlock.vtx[0].vout[0].scriptPubKey, keyType, vKeys))
             return error("CTrustPool::Disconnect() : Failed To Solve Trust Key Script.");
@@ -672,7 +672,7 @@ namespace Consensus
         LOCK(cs);
             
         /* Extract the Key from the Script Signature. */
-        vector< std::vector<unsigned char> > vKeys;
+        vector< std::vector<uint8_t> > vKeys;
         Wallet::TransactionType keyType;
         if (!Wallet::Solver(cBlock.vtx[0].vout[0].scriptPubKey, keyType, vKeys))
             return error("CTrustPool::accept() : Failed To Solve Trust Key Script.");
@@ -729,7 +729,7 @@ namespace Consensus
     
     
     /** Interest is Determined By Logarithmic Equation from Genesis Key. **/
-    double CTrustPool::InterestRate(LLC::uint576 cKey, unsigned int nTime) const
+    double CTrustPool::InterestRate(LLC::uint576 cKey, uint32_t nTime) const
     {
         /** Genesis and First Trust Block awarded 0.5% interest. **/
         if(!Exists(cKey) || IsGenesis(cKey)) //TODO detect genesis flag with block hash
@@ -739,7 +739,7 @@ namespace Consensus
     }
     
     /** Break the Chain Age in Minutes into Days, Hours, and Minutes. **/
-    void GetTimes(unsigned int nAge, unsigned int& nDays, unsigned int& nHours, unsigned int& nMinutes)
+    void GetTimes(uint32_t nAge, uint32_t& nDays, uint32_t& nHours, uint32_t& nMinutes)
     {
         nDays = nAge / 1440;
         nHours = (nAge - (nDays * 1440)) / 60;
@@ -768,7 +768,7 @@ namespace Consensus
             return error("CTrustKey::CheckGenesis() : Genesis Key Hash Mismatch to Genesis Transaction Hash");
             
         /** Extract the Key from the Script Signature. **/
-        vector< std::vector<unsigned char> > vKeys;
+        vector< std::vector<uint8_t> > vKeys;
         Wallet::TransactionType keyType;
         if (!Wallet::Solver(cBlock.vtx[0].vout[0].scriptPubKey, keyType, vKeys))
             return error("CTrustKey::IsInvalid() : Failed To Solve Trust Key Script.");
@@ -797,7 +797,7 @@ namespace Consensus
     
     
     /** Key is Expired if it is Invalid or Time between Network Best Block and Best Previous is Greater than Expiration Time. **/
-    uint64_t CTrustKey::Age(unsigned int nTime) const 
+    uint64_t CTrustKey::Age(uint32_t nTime) const 
     { 
         if(nGenesisTime == 0)
             return 0;
@@ -819,7 +819,7 @@ namespace Consensus
         
         /* Catch overflow attacks. Should be caught in verify stake but double check here. */
         if(nGenesisTime > mapBlockIndex[hashPrevBlock]->GetBlockTime())
-            return error("CTrustKey::BlockAge() : %u Time is < Genesis %u", (unsigned int) mapBlockIndex[hashPrevBlock]->GetBlockTime(), nGenesisTime);
+            return error("CTrustKey::BlockAge() : %u Time is < Genesis %u", (uint32_t) mapBlockIndex[hashPrevBlock]->GetBlockTime(), nGenesisTime);
         
         /* Find the block previous to pindexNew. */
         LLC::uint1024 hashBlockLast = Back(hashThisBlock);
@@ -1008,7 +1008,7 @@ namespace Consensus
                     CBigNum hashTarget;
                     hashTarget.SetCompact(block[i].nBits);
                     
-                    if(block[i].nNonce % (unsigned int)((nTrustWeight + nBlockWeight) * 5) == 0 && GetArg("-verbose", 0) >= 3)
+                    if(block[i].nNonce % (uint32_t)((nTrustWeight + nBlockWeight) * 5) == 0 && GetArg("-verbose", 0) >= 3)
                         printf("Stake Minter : Below Threshold %f Required %f Incrementing nNonce %" PRIu64 "\n", nThreshold, nRequired, block[i].nNonce);
                             
                     if (block[i].GetHash() < hashTarget.getuint1024())

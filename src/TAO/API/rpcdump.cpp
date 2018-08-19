@@ -197,7 +197,7 @@ namespace Net
 
         /** Compile the list of available Nexus Addresses and their according Balances. **/
         map<Wallet::NexusAddress, int64_t> mapAddresses;
-        if(!pwalletMain->AvailableAddresses((unsigned int)GetUnifiedTimestamp(), mapAddresses))
+        if(!pwalletMain->AvailableAddresses((uint32_t)GetUnifiedTimestamp(), mapAddresses))
             throw JSONRPCError(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
         /** Loop all entries of the memory map to compile the list of account names and their addresses.

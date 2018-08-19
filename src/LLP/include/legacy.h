@@ -31,8 +31,8 @@ namespace LLP
 
 
     /* Message Packet Leading Bytes. */
-    const unsigned char MESSAGE_START_TESTNET[4] = { 0xe9, 0x59, 0x0d, 0x05 };
-    const unsigned char MESSAGE_START_MAINNET[4] = { 0x05, 0x0d, 0x59, 0xe9 };
+    const uint8_t MESSAGE_START_TESTNET[4] = { 0xe9, 0x59, 0x0d, 0x05 };
+    const uint8_t MESSAGE_START_MAINNET[4] = { 0x05, 0x0d, 0x59, 0xe9 };
 
 
     /* Used to Lock-Out Nodes that are running a protocol version that are too old. */
@@ -53,12 +53,12 @@ namespace LLP
         * BYTE 26 - X   : Data
         *
         */
-        unsigned char	HEADER[4];
+        uint8_t	HEADER[4];
         char			MESSAGE[12];
-        unsigned int	LENGTH;
-        unsigned int	CHECKSUM;
+        uint32_t	LENGTH;
+        uint32_t	CHECKSUM;
 
-        std::vector<unsigned char> DATA;
+        std::vector<uint8_t> DATA;
 
         LegacyPacket()
         {
@@ -130,7 +130,7 @@ namespace LLP
 
 
         /* Sets the size of the packet from Byte Vector. */
-        void SetLength(std::vector<unsigned char> BYTES)
+        void SetLength(std::vector<uint8_t> BYTES)
         {
             CDataStream ssLength(BYTES, SER_NETWORK, MIN_PROTO_VERSION);
             ssLength >> LENGTH;
@@ -149,7 +149,7 @@ namespace LLP
         /* Set the Packet Data. */
         void SetData(CDataStream ssData)
         {
-            std::vector<unsigned char> vData(ssData.begin(), ssData.end());
+            std::vector<uint8_t> vData(ssData.begin(), ssData.end());
 
             LENGTH = vData.size();
             DATA   = vData;
@@ -175,7 +175,7 @@ namespace LLP
 
             /* Double check the Message Checksum. */
             LLC::uint512 hash = LLC::SK512(DATA.begin(), DATA.end());
-            unsigned int nChecksum = 0;
+            uint32_t nChecksum = 0;
             //std::copy(hash.begin(), hash.begin() + sizeof(nChecksum), &nChecksum);
             memcpy(&nChecksum, &hash, sizeof(nChecksum));
 
@@ -188,12 +188,12 @@ namespace LLP
 
 
         /* Serializes class into a Byte Vector. Used to write Packet to Sockets. */
-        std::vector<unsigned char> GetBytes()
+        std::vector<uint8_t> GetBytes()
         {
             CDataStream ssHeader(SER_NETWORK, MIN_PROTO_VERSION);
             ssHeader << *this;
 
-            std::vector<unsigned char> BYTES(ssHeader.begin(), ssHeader.end());
+            std::vector<uint8_t> BYTES(ssHeader.begin(), ssHeader.end());
             BYTES.insert(BYTES.end(), DATA.begin(), DATA.end());
             return BYTES;
         }
@@ -233,11 +233,11 @@ namespace LLP
 
 
         /** Latency in Milliseconds to determine a node's reliability. **/
-        unsigned int nNodeLatency; //milli-seconds
+        uint32_t nNodeLatency; //milli-seconds
 
 
         /** Counter to keep track of the last time a ping was made. **/
-        unsigned int nLastPing;
+        uint32_t nLastPing;
 
 
         /** Timer object to keep track of ping latency. **/
@@ -245,7 +245,7 @@ namespace LLP
 
 
         /** Mao to keep track of sent request ID's while witing for them to return. **/
-        std::map<unsigned int, uint64_t> mapSentRequests;
+        std::map<uint32_t, uint64_t> mapSentRequests;
 
 
         /** Virtual Functions to Determine Behavior of Message LLP.
@@ -254,7 +254,7 @@ namespace LLP
         * @param[in[ LENGTH The size of bytes read on packet read events
         *
         */
-        void Event(unsigned char EVENT, unsigned int LENGTH = 0);
+        void Event(uint8_t EVENT, uint32_t LENGTH = 0);
 
 
         /** Main message handler once a packet is recieved. **/
@@ -302,7 +302,7 @@ namespace LLP
                 /** Handle Reading Packet Length Header. **/
                 if(SOCKET->available() >= 24 && INCOMING.IsNull())
                 {
-                    std::vector<unsigned char> BYTES(24, 0);
+                    std::vector<uint8_t> BYTES(24, 0);
                     if(Read(BYTES, 24) == 24)
                     {
                         CDataStream ssHeader(BYTES, SER_NETWORK, MIN_PROTO_VERSION);
@@ -313,11 +313,11 @@ namespace LLP
                 }
 
                 /** Handle Reading Packet Data. **/
-                unsigned int nAvailable = SOCKET->available();
+                uint32_t nAvailable = SOCKET->available();
                 if(nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
                 {
-                    std::vector<unsigned char> DATA( std::min(std::min(nAvailable, 512u), (unsigned int)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
-                    unsigned int nRead = Read(DATA, DATA.size());
+                    std::vector<uint8_t> DATA( std::min(std::min(nAvailable, 512u), (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
+                    uint32_t nRead = Read(DATA, DATA.size());
 
                     if(nRead == DATA.size())
                     {

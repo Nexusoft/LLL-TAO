@@ -27,7 +27,7 @@ template <typename CType> class CMajority
 {
 private:
     std::map<CType, int> mapList;
-    unsigned int nSamples;
+    uint32_t nSamples;
     
 public:
     CMajority() : nSamples(0) {}
@@ -46,7 +46,7 @@ public:
     
     
     /* Return the total number of samples this container holds. */
-    unsigned int Samples(){ return nSamples; }
+    uint32_t Samples(){ return nSamples; }
     
     
     /* Return the Element of Type that has the highest Majority. */

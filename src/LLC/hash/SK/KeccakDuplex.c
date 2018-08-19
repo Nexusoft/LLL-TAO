@@ -18,7 +18,7 @@ http://creativecommons.org/publicdomain/zero/1.0/
 #include "displayIntermediateValues.h"
 #endif
 
-int Keccak_DuplexInitialize(Keccak_DuplexInstance *instance, unsigned int rate, unsigned int capacity)
+int Keccak_DuplexInitialize(Keccak_DuplexInstance *instance, uint32_t rate, uint32_t capacity)
 {
     if (rate+capacity != 1600)
         return 1;
@@ -30,17 +30,17 @@ int Keccak_DuplexInitialize(Keccak_DuplexInstance *instance, unsigned int rate, 
     return 0;
 }
 
-int Keccak_Duplexing(Keccak_DuplexInstance *instance, const unsigned char *sigmaBegin, unsigned int sigmaBeginByteLen, unsigned char *Z, unsigned int ZByteLen, unsigned char delimitedSigmaEnd)
+int Keccak_Duplexing(Keccak_DuplexInstance *instance, const uint8_t *sigmaBegin, uint32_t sigmaBeginByteLen, uint8_t *Z, uint32_t ZByteLen, uint8_t delimitedSigmaEnd)
 {
-    unsigned char delimitedSigmaEnd1[1];
-    const unsigned int rho_max = instance->rate - 2;
+    uint8_t delimitedSigmaEnd1[1];
+    const uint32_t rho_max = instance->rate - 2;
     
     if (delimitedSigmaEnd == 0)
         return 1;
     if (sigmaBeginByteLen*8 > rho_max)
         return 1;
     if (rho_max - sigmaBeginByteLen*8 < 7) {
-        unsigned int maxBitsInDelimitedSigmaEnd = rho_max - sigmaBeginByteLen*8;
+        uint32_t maxBitsInDelimitedSigmaEnd = rho_max - sigmaBeginByteLen*8;
         if (delimitedSigmaEnd >= (1 << (maxBitsInDelimitedSigmaEnd+1)))
             return 1;
     }
@@ -48,15 +48,15 @@ int Keccak_Duplexing(Keccak_DuplexInstance *instance, const unsigned char *sigma
         return 1; // The output length must not be greater than the rate (rounded up to a byte)
 
     if ((sigmaBeginByteLen%KeccakF_laneInBytes) > 0) {
-        unsigned int offsetBeyondLane = (sigmaBeginByteLen/KeccakF_laneInBytes)*KeccakF_laneInBytes;
-        unsigned int beyondLaneBytes = sigmaBeginByteLen%KeccakF_laneInBytes;
+        uint32_t offsetBeyondLane = (sigmaBeginByteLen/KeccakF_laneInBytes)*KeccakF_laneInBytes;
+        uint32_t beyondLaneBytes = sigmaBeginByteLen%KeccakF_laneInBytes;
         KeccakF1600_StateXORBytesInLane(instance->state, sigmaBeginByteLen/KeccakF_laneInBytes, 
             sigmaBegin+offsetBeyondLane, 0, beyondLaneBytes);
     }
 
     #ifdef KeccakReference
     {
-        unsigned char block[KeccakF_width/8];
+        uint8_t block[KeccakF_width/8];
         memcpy(block, sigmaBegin, sigmaBeginByteLen);
         block[sigmaBeginByteLen] = delimitedSigmaEnd;
         memset(block+sigmaBeginByteLen+1, 0, ((instance->rate+63)/64)*8-sigmaBeginByteLen-1);
@@ -75,13 +75,13 @@ int Keccak_Duplexing(Keccak_DuplexInstance *instance, const unsigned char *sigma
         Z, ZByteLen/KeccakF_laneInBytes);
 
     if ((ZByteLen%KeccakF_laneInBytes) > 0) {
-        unsigned int offsetBeyondLane = (ZByteLen/KeccakF_laneInBytes)*KeccakF_laneInBytes;
-        unsigned int beyondLaneBytes = ZByteLen%KeccakF_laneInBytes;
+        uint32_t offsetBeyondLane = (ZByteLen/KeccakF_laneInBytes)*KeccakF_laneInBytes;
+        uint32_t beyondLaneBytes = ZByteLen%KeccakF_laneInBytes;
         KeccakF1600_StateExtractBytesInLane(instance->state, ZByteLen/KeccakF_laneInBytes, 
             Z+offsetBeyondLane, 0, beyondLaneBytes);
     }
     if (ZByteLen*8 > instance->rate) {
-        unsigned char mask = (unsigned char)(1 << (instance->rate % 8)) - 1;
+        uint8_t mask = (uint8_t)(1 << (instance->rate % 8)) - 1;
         Z[ZByteLen-1] &= mask;
     }
 

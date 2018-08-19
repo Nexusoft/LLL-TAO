@@ -66,19 +66,19 @@ namespace Wallet
             return Erase(std::make_pair(std::string("tx"), hash));
         }
 
-        bool ReadKey(const std::vector<unsigned char>& vchPubKey, CPrivKey& vchPrivKey)
+        bool ReadKey(const std::vector<uint8_t>& vchPubKey, CPrivKey& vchPrivKey)
         {
             vchPrivKey.clear();
             return Read(std::make_pair(std::string("key"), vchPubKey), vchPrivKey);
         }
 
-        bool WriteKey(const std::vector<unsigned char>& vchPubKey, const CPrivKey& vchPrivKey)
+        bool WriteKey(const std::vector<uint8_t>& vchPubKey, const CPrivKey& vchPrivKey)
         {
             nWalletDBUpdated++;
             return Write(std::make_pair(std::string("key"), vchPubKey), vchPrivKey, false);
         }
 
-        bool WriteCryptedKey(const std::vector<unsigned char>& vchPubKey, const std::vector<unsigned char>& vchCryptedSecret, bool fEraseUnencryptedKey = true)
+        bool WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret, bool fEraseUnencryptedKey = true)
         {
             nWalletDBUpdated++;
             if (!Write(std::make_pair(std::string("ckey"), vchPubKey), vchCryptedSecret, false))
@@ -91,7 +91,7 @@ namespace Wallet
             return true;
         }
 
-        bool WriteMasterKey(unsigned int nID, const CMasterKey& kMasterKey)
+        bool WriteMasterKey(uint32_t nID, const CMasterKey& kMasterKey)
         {
             nWalletDBUpdated++;
             return Write(std::make_pair(std::string("mkey"), nID), kMasterKey, true);
@@ -120,13 +120,13 @@ namespace Wallet
             return Read(std::string("bestblock"), locator);
         }
 
-        bool ReadDefaultKey(std::vector<unsigned char>& vchPubKey)
+        bool ReadDefaultKey(std::vector<uint8_t>& vchPubKey)
         {
             vchPubKey.clear();
             return Read(std::string("defaultkey"), vchPubKey);
         }
 
-        bool WriteDefaultKey(const std::vector<unsigned char>& vchPubKey)
+        bool WriteDefaultKey(const std::vector<uint8_t>& vchPubKey)
         {
             nWalletDBUpdated++;
             return Write(std::string("defaultkey"), vchPubKey);

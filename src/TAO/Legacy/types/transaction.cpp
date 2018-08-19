@@ -84,9 +84,9 @@ namespace Core
         mapOrphanTransactions.erase(hash);
     }
 
-    unsigned int LimitOrphanTxSize(unsigned int nMaxOrphans)
+    uint32_t LimitOrphanTxSize(uint32_t nMaxOrphans)
     {
-        unsigned int nEvicted = 0;
+        uint32_t nEvicted = 0;
         while (mapOrphanTransactions.size() > nMaxOrphans)
         {
             // Evict a random orphan:
@@ -173,11 +173,11 @@ namespace Core
         if (IsCoinBase())
             return true; // Coinbases don't use vin normally
 
-        for (unsigned int i = (int) IsCoinStake(); i < vin.size(); i++)
+        for (uint32_t i = (int) IsCoinStake(); i < vin.size(); i++)
         {
             const CTxOut& prev = GetOutputFor(vin[i], mapInputs);
 
-            vector<vector<unsigned char> > vSolutions;
+            vector<vector<uint8_t> > vSolutions;
             Wallet::TransactionType whichType;
             // get the scriptPubKey corresponding to this input:
             const Wallet::CScript& prevScript = prev.scriptPubKey;
@@ -192,7 +192,7 @@ namespace Core
             // be quick, because if there are any operations
             // beside "push data" in the scriptSig the
             // IsStandard() call returns false
-            vector<vector<unsigned char> > stack;
+            vector<vector<uint8_t> > stack;
             if (!EvalScript(stack, vin[i].scriptSig, *this, i, 0))
                 return false;
 
@@ -201,7 +201,7 @@ namespace Core
                 if (stack.empty())
                     return false;
                 Wallet::CScript subscript(stack.back().begin(), stack.back().end());
-                vector<vector<unsigned char> > vSolutions2;
+                vector<vector<uint8_t> > vSolutions2;
                 Wallet::TransactionType whichType2;
                 if (!Solver(subscript, whichType2, vSolutions2))
                     return false;
@@ -215,17 +215,17 @@ namespace Core
                 nArgsExpected += tmpExpected;
             }
 
-            if (stack.size() != (unsigned int)nArgsExpected)
+            if (stack.size() != (uint32_t)nArgsExpected)
                 return false;
         }
 
         return true;
     }
 
-    unsigned int
+    uint32_t
     CTransaction::GetLegacySigOpCount() const
     {
-        unsigned int nSigOps = 0;
+        uint32_t nSigOps = 0;
         BOOST_FOREACH(const CTxIn& txin, vin)
         {
             /** Don't count stake signature for operations. **/
@@ -395,7 +395,7 @@ namespace Core
 
         // Check for conflicts with in-memory transactions
         CTransaction* ptxOld = NULL;
-        for (unsigned int i = 0; i < tx.vin.size(); i++)
+        for (uint32_t i = 0; i < tx.vin.size(); i++)
         {
             COutPoint outpoint = tx.vin[i].prevout;
             if (mapNextTx.count(outpoint))
@@ -411,7 +411,7 @@ namespace Core
                     return false;
                 if (!tx.IsNewerThan(*ptxOld))
                     return false;
-                for (unsigned int i = 0; i < tx.vin.size(); i++)
+                for (uint32_t i = 0; i < tx.vin.size(); i++)
                 {
                     COutPoint outpoint = tx.vin[i].prevout;
                     if (!mapNextTx.count(outpoint) || mapNextTx[outpoint].ptx != ptxOld)
@@ -444,7 +444,7 @@ namespace Core
             // reasonable number of ECDSA signature verifications.
 
             int64_t nFees = tx.GetValueIn(mapInputs)-tx.GetValueOut();
-            unsigned int nSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
+            uint32_t nSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
 
             // Don't accept it if it can't get into a block
             if (nFees < tx.GetMinFee(1000, false, GMF_RELAY))
@@ -517,7 +517,7 @@ namespace Core
             LOCK(cs);
             LLC::uint512 hash = tx.GetHash();
             mapTx[hash] = tx;
-            for (unsigned int i = 0; i < tx.vin.size(); i++)
+            for (uint32_t i = 0; i < tx.vin.size(); i++)
                 mapNextTx[tx.vin[i].prevout] = CInPoint(&mapTx[hash], i);
 
         }
@@ -685,7 +685,7 @@ namespace Core
         if (IsCoinBase())
             return true; // Coinbase transactions have no inputs to fetch.
 
-        for (unsigned int i = (int) IsCoinStake(); i < vin.size(); i++)
+        for (uint32_t i = (int) IsCoinStake(); i < vin.size(); i++)
         {
             COutPoint prevout = vin[i].prevout;
             if (inputsRet.count(prevout.hash))
@@ -730,7 +730,7 @@ namespace Core
         }
 
         // Make sure all prevout.n's are valid:
-        for (unsigned int i = (int) IsCoinStake(); i < vin.size(); i++)
+        for (uint32_t i = (int) IsCoinStake(); i < vin.size(); i++)
         {
             const COutPoint prevout = vin[i].prevout;
             assert(inputsRet.count(prevout.hash) != 0);
@@ -767,7 +767,7 @@ namespace Core
             return 0;
 
         int64_t nResult = 0;
-        for (unsigned int i = (int) IsCoinStake(); i < vin.size(); i++)
+        for (uint32_t i = (int) IsCoinStake(); i < vin.size(); i++)
         {
             nResult += GetOutputFor(vin[i], inputs).nValue;
         }
@@ -775,13 +775,13 @@ namespace Core
 
     }
 
-    unsigned int CTransaction::TotalSigOps(const MapPrevTx& inputs) const
+    uint32_t CTransaction::TotalSigOps(const MapPrevTx& inputs) const
     {
         if (IsCoinBase())
             return 0;
 
-        unsigned int nSigOps = 0;
-        for (unsigned int i = (int) IsCoinStake(); i < vin.size(); i++)
+        uint32_t nSigOps = 0;
+        for (uint32_t i = (int) IsCoinStake(); i < vin.size(); i++)
         {
             const CTxOut& prevout = GetOutputFor(vin[i], inputs);
             nSigOps += prevout.scriptPubKey.GetSigOpCount(vin[i].scriptSig);
@@ -799,7 +799,7 @@ namespace Core
         if (!IsCoinBase())
         {
             int64_t nValueIn = 0;
-            for (unsigned int i = (int) IsCoinStake(); i < vin.size(); i++)
+            for (uint32_t i = (int) IsCoinStake(); i < vin.size(); i++)
             {
                 COutPoint prevout = vin[i].prevout;
                 assert(inputs.count(prevout.hash) > 0);
@@ -828,7 +828,7 @@ namespace Core
             // The first loop above does all the inexpensive checks.
             // Only if ALL inputs pass do we perform expensive ECDSA signature checks.
             // Helps prevent CPU exhaustion attacks.
-            for (unsigned int i = (int) IsCoinStake(); i < vin.size(); i++)
+            for (uint32_t i = (int) IsCoinStake(); i < vin.size(); i++)
             {
                 COutPoint prevout = vin[i].prevout;
                 assert(inputs.count(prevout.hash) > 0);
@@ -884,7 +884,7 @@ namespace Core
         {
             LOCK(mempool.cs);
             int64_t nValueIn = 0;
-            for (unsigned int i = (int) IsCoinStake(); i < vin.size(); i++)
+            for (uint32_t i = (int) IsCoinStake(); i < vin.size(); i++)
             {
                 // Get prev tx from single transactions in memory
                 COutPoint prevout = vin[i].prevout;

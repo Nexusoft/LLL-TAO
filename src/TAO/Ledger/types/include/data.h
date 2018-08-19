@@ -32,16 +32,16 @@ namespace TAO
         class CData
         {
             /** The length of the parameter data. **/
-            unsigned short nLength;
+            uint16_t nLength;
 
             /** The byte code of the parameter data. **/
-            std::vector<unsigned char> vchData;
+            std::vector<uint8_t> vchData;
 
             /** Default Paramter Consturctor. **/
             CData() : nLength(0) {}
 
             /** Data Constrcutor to set from byte vector. **/
-            CData(std::vector<unsigned char> vchDataIn) : nLength(vchDataIn.size()), vchData(vchDataIn) { }
+            CData(std::vector<uint8_t> vchDataIn) : nLength(vchDataIn.size()), vchData(vchDataIn) { }
 
             IMPLEMENT_SERIALIZE
             (
@@ -63,10 +63,10 @@ namespace TAO
             }
 
             /** Return the bytes in this data state. */
-            std::vector<unsigned char> bytes() { return vchData; }
+            std::vector<uint8_t> bytes() { return vchData; }
 
 
-            /** Return a 256 bit unsigned int of the data's hash. **/
+            /** Return a 256 bit uint32_t of the data's hash. **/
             LLC::uint256 GetHash() const
             {
                 return LLC::SK256(vchData.begin(), vchData.end());

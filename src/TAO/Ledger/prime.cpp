@@ -19,10 +19,10 @@ using namespace std;
 namespace Core
 {
 
-	/* Convert Double to unsigned int Representative. Used for encoding / decoding prime difficulty from nBits. */
-	unsigned int SetBits(double nDiff)
+	/* Convert Double to uint32_t Representative. Used for encoding / decoding prime difficulty from nBits. */
+	uint32_t SetBits(double nDiff)
 	{
-		unsigned int nBits = 10000000;
+		uint32_t nBits = 10000000;
 		nBits *= nDiff;
 		
 		return nBits;
@@ -40,7 +40,7 @@ namespace Core
 			
 		CBigNum lastPrime = prime;
 		CBigNum next = prime + 2;
-		unsigned int clusterSize = 1;
+		uint32_t clusterSize = 1;
 		
 		/* Largest prime gap in cluster can be + 12
 		 * this was determined by previously found clusters 
@@ -64,8 +64,8 @@ namespace Core
 	}
 
 	
-	/* Gets the unsigned int representative of a decimal prime difficulty */
-	unsigned int GetPrimeBits(CBigNum prime)
+	/* Gets the uint32_t representative of a decimal prime difficulty */
+	uint32_t GetPrimeBits(CBigNum prime)
 	{
 		return SetBits(GetPrimeDifficulty(prime, 1));
 	}
@@ -74,7 +74,7 @@ namespace Core
 	/* Breaks the remainder of last composite in Prime Cluster into an integer. 
 	 * Larger numbers are more rare to find, so a proportion can be determined 
 	 * to give decimal difficulty between whole number increases. */
-	unsigned int GetFractionalDifficulty(CBigNum composite)
+	uint32_t GetFractionalDifficulty(CBigNum composite)
 	{
 		/** Break the remainder of Fermat test to calculate fractional difficulty [Thanks Sunny] **/
 		return ((composite - FermatTest(composite, 2) << 24) / composite).getuint();

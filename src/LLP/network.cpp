@@ -141,7 +141,7 @@ namespace LLP
 
     bool CNetAddr::IsRFC6052() const
     {
-        static const unsigned char pchRFC6052[] = {0,0x64,0xFF,0x9B,0,0,0,0,0,0,0,0};
+        static const uint8_t pchRFC6052[] = {0,0x64,0xFF,0x9B,0,0,0,0,0,0,0,0};
         return (memcmp(ip, pchRFC6052, sizeof(pchRFC6052)) == 0);
     }
 
@@ -154,7 +154,7 @@ namespace LLP
 
     bool CNetAddr::IsRFC4862() const
     {
-        static const unsigned char pchRFC4862[] = {0xFE,0x80,0,0,0,0,0,0};
+        static const uint8_t pchRFC4862[] = {0xFE,0x80,0,0,0,0,0,0};
         return (memcmp(ip, pchRFC4862, sizeof(pchRFC4862)) == 0);
     }
 
@@ -167,7 +167,7 @@ namespace LLP
 
     bool CNetAddr::IsRFC6145() const
     {
-        static const unsigned char pchRFC6145[] = {0,0,0,0,0,0,0,0,0xFF,0xFF,0,0};
+        static const uint8_t pchRFC6145[] = {0,0,0,0,0,0,0,0,0xFF,0xFF,0,0};
         return (memcmp(ip, pchRFC6145, sizeof(pchRFC6145)) == 0);
     }
 
@@ -185,7 +185,7 @@ namespace LLP
         return true;
 
     // IPv6 loopback (::1/128)
-    static const unsigned char pchLocal[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
+    static const uint8_t pchLocal[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
     if (memcmp(ip, pchLocal, 16) == 0)
         return true;
 
@@ -212,7 +212,7 @@ namespace LLP
             return false;
 
         // unspecified IPv6 address (::/128)
-        unsigned char ipNone[16] = {};
+        uint8_t ipNone[16] = {};
         if (memcmp(ip, ipNone, 16) == 0)
             return false;
 
@@ -300,9 +300,9 @@ namespace LLP
 
     // get canonical identifier of an address' group
     // no two connections will be attempted to addresses with the same group
-    std::vector<unsigned char> CNetAddr::GetGroup() const
+    std::vector<uint8_t> CNetAddr::GetGroup() const
     {
-        std::vector<unsigned char> vchRet;
+        std::vector<uint8_t> vchRet;
         int nClass = 0; // 0=IPv6, 1=IPv4, 254=local, 255=unroutable
         int nStartByte = 0;
         int nBits = 16;
@@ -386,18 +386,18 @@ namespace LLP
     }
 
 
-    CService::CService(const CNetAddr& cip, unsigned short portIn) : CNetAddr(cip), port(portIn)
+    CService::CService(const CNetAddr& cip, uint16_t portIn) : CNetAddr(cip), port(portIn)
     {
     }
 
 
-    CService::CService(const struct in_addr& ipv4Addr, unsigned short portIn) : CNetAddr(ipv4Addr), port(portIn)
+    CService::CService(const struct in_addr& ipv4Addr, uint16_t portIn) : CNetAddr(ipv4Addr), port(portIn)
     {
     }
 
 
     #ifdef USE_IPV6
-    CService::CService(const struct in6_addr& ipv6Addr, unsigned short portIn) : CNetAddr(ipv6Addr), port(portIn)
+    CService::CService(const struct in6_addr& ipv6Addr, uint16_t portIn) : CNetAddr(ipv6Addr), port(portIn)
     {
     }
     #endif
@@ -453,7 +453,7 @@ namespace LLP
     }
 
 
-    unsigned short CService::GetPort() const
+    uint16_t CService::GetPort() const
     {
         return port;
     }
@@ -503,9 +503,9 @@ namespace LLP
     #endif
 
 
-    std::vector<unsigned char> CService::GetKey() const
+    std::vector<uint8_t> CService::GetKey() const
     {
-        std::vector<unsigned char> vKey;
+        std::vector<uint8_t> vKey;
         vKey.resize(18);
         memcpy(&vKey[0], ip, 16);
         vKey[16] = port / 0x100;
@@ -538,7 +538,7 @@ namespace LLP
     }
 
 
-    void CService::SetPort(unsigned short portIn)
+    void CService::SetPort(uint16_t portIn)
     {
         port = portIn;
     }

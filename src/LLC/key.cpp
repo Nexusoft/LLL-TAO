@@ -60,7 +60,7 @@ namespace LLC
     // Perform ECDSA key recovery (see SEC1 4.1.6) for curves over (mod p)-fields
     // recid selects which key is recovered
     // if check is nonzero, additional checks are performed
-    int ECDSA_SIG_recover_key_GFp(EC_KEY *eckey, ECDSA_SIG *ecsig, const unsigned char *msg, int msglen, int recid, int check)
+    int ECDSA_SIG_recover_key_GFp(EC_KEY *eckey, ECDSA_SIG *ecsig, const uint8_t *msg, int msglen, int recid, int check)
     {
         if (!eckey) return 0;
 
@@ -251,7 +251,7 @@ namespace LLC
 
     bool CKey::SetPrivKey(const CPrivKey& vchPrivKey)
     {
-        const unsigned char* pbegin = &vchPrivKey[0];
+        const uint8_t* pbegin = &vchPrivKey[0];
         if (!d2i_ECPrivateKey(&pkey, &pbegin, vchPrivKey.size()))
             return false;
         
@@ -317,7 +317,7 @@ namespace LLC
             throw key_error("CKey::GetPrivKey() : i2d_ECPrivateKey failed");
         
         CPrivKey vchPrivKey(nSize, 0);
-        unsigned char* pbegin = &vchPrivKey[0];
+        uint8_t* pbegin = &vchPrivKey[0];
         if (i2d_ECPrivateKey(pkey, &pbegin) != nSize)
             throw key_error("CKey::GetPrivKey() : i2d_ECPrivateKey returned unexpected size");
         
@@ -325,9 +325,9 @@ namespace LLC
     }
     
 
-    bool CKey::SetPubKey(const std::vector<unsigned char>& vchPubKey)
+    bool CKey::SetPubKey(const std::vector<uint8_t>& vchPubKey)
     {
-        const unsigned char* pbegin = &vchPubKey[0];
+        const uint8_t* pbegin = &vchPubKey[0];
         if (!o2i_ECPublicKey(&pkey, &pbegin, vchPubKey.size()))
             return false;
         
@@ -339,14 +339,14 @@ namespace LLC
     }
     
 
-    std::vector<unsigned char> CKey::GetPubKey() const
+    std::vector<uint8_t> CKey::GetPubKey() const
     {
         int nSize = i2o_ECPublicKey(pkey, NULL);
         if (!nSize)
             throw key_error("CKey::GetPubKey() : i2o_ECPublicKey failed");
         
-        std::vector<unsigned char> vchPubKey(nSize, 0);
-        unsigned char* pbegin = &vchPubKey[0];
+        std::vector<uint8_t> vchPubKey(nSize, 0);
+        uint8_t* pbegin = &vchPubKey[0];
         if (i2o_ECPublicKey(pkey, &pbegin) != nSize)
             throw key_error("CKey::GetPubKey() : i2o_ECPublicKey returned unexpected size");
         
@@ -358,10 +358,10 @@ namespace LLC
     // The format is one header byte, followed by two times 32 bytes for the serialized r and s values.
     // The header byte: 0x1B = first key with even y, 0x1C = first key with odd y,
     //                  0x1D = second key with even y, 0x1E = second key with odd y
-    bool CKey::SignCompact(LLC::uint256 hash, std::vector<unsigned char>& vchSig)
+    bool CKey::SignCompact(LLC::uint256 hash, std::vector<uint8_t>& vchSig)
     {
         bool fOk = false;
-        ECDSA_SIG *sig = ECDSA_do_sign((unsigned char*)&hash, sizeof(hash), pkey);
+        ECDSA_SIG *sig = ECDSA_do_sign((uint8_t*)&hash, sizeof(hash), pkey);
         if (sig==NULL)
             return false;
         vchSig.clear();
@@ -381,7 +381,7 @@ namespace LLC
                 if (fCompressedPubKey)
                     keyRec.SetCompressedPubKey();
                 
-                int nID = ECDSA_SIG_recover_key_GFp(keyRec.pkey, sig, (unsigned char*)&hash, sizeof(hash), i, 1);
+                int nID = ECDSA_SIG_recover_key_GFp(keyRec.pkey, sig, (uint8_t*)&hash, sizeof(hash), i, 1);
                 if (nID == 1)
                 {
                     if (keyRec.GetPubKey() == this->GetPubKey())
@@ -412,7 +412,7 @@ namespace LLC
     // This is only slightly more CPU intensive than just verifying it.
     // If this function succeeds, the recovered public key is guaranteed to be valid
     // (the signature is a valid signature of the given data for that key)
-    bool CKey::SetCompactSignature(LLC::uint256 hash, const std::vector<unsigned char>& vchSig)
+    bool CKey::SetCompactSignature(LLC::uint256 hash, const std::vector<uint8_t>& vchSig)
     {
         if (vchSig.size() != 145)
             return false;
@@ -430,7 +430,7 @@ namespace LLC
             SetCompressedPubKey();
             nV -= 4;
         }
-        if (ECDSA_SIG_recover_key_GFp(pkey, sig, (unsigned char*)&hash, sizeof(hash), nV - 27, 0) == 1)
+        if (ECDSA_SIG_recover_key_GFp(pkey, sig, (uint8_t*)&hash, sizeof(hash), nV - 27, 0) == 1)
         {
             fSet = true;
             ECDSA_SIG_free(sig);
@@ -439,7 +439,7 @@ namespace LLC
         return false;
     }
     
-    bool static IsEncodingDER(const std::vector<unsigned char> & sig)
+    bool static IsEncodingDER(const std::vector<uint8_t> & sig)
     {
         // Format: 0x30 [total-length] 0x02 [R-length] [R] 0x02 [S-length] [S] [sighash]
         // * total-length: 1-byte length descriptor of everything that follows,
@@ -464,13 +464,13 @@ namespace LLC
         if (sig[1] != sig.size() - 3) return false;
 
         // Extract the length of the R element.
-        unsigned int lenR = sig[3];
+        uint32_t lenR = sig[3];
 
         // Make sure the length of the S element is still inside the signature.
         if (5 + lenR >= sig.size()) return false;
 
         // Extract the length of the S element.
-        unsigned int lenS = sig[5 + lenR];
+        uint32_t lenS = sig[5 + lenR];
 
         // Verify that the length of the signature matches the sum of the length
         // of the elements.
@@ -506,24 +506,24 @@ namespace LLC
     }
     
     
-    bool CKey::Sign(LLC::uint1024 hash, std::vector<unsigned char>& vchSig, int nBits)
+    bool CKey::Sign(LLC::uint1024 hash, std::vector<uint8_t>& vchSig, int nBits)
     {
-        unsigned int nSize = ECDSA_size(pkey);
+        uint32_t nSize = ECDSA_size(pkey);
         vchSig.resize(nSize); // Make sure it is big enough
         
         bool fSuccess = false;
         if(nBits == 256)
         {
             LLC::uint256 hash256 = hash.getuint256();
-            fSuccess = (ECDSA_sign(0, (unsigned char*)&hash256, sizeof(hash256), &vchSig[0], &nSize, pkey) == 1);
+            fSuccess = (ECDSA_sign(0, (uint8_t*)&hash256, sizeof(hash256), &vchSig[0], &nSize, pkey) == 1);
         }
         else if(nBits == 512)
         {
             LLC::uint512 hash512 = hash.getuint512();
-            fSuccess = (ECDSA_sign(0, (unsigned char*)&hash512, sizeof(hash512), &vchSig[0], &nSize, pkey) == 1);
+            fSuccess = (ECDSA_sign(0, (uint8_t*)&hash512, sizeof(hash512), &vchSig[0], &nSize, pkey) == 1);
         }
         else
-            fSuccess = (ECDSA_sign(0, (unsigned char*)&hash, sizeof(hash), &vchSig[0], &nSize, pkey) == 1);
+            fSuccess = (ECDSA_sign(0, (uint8_t*)&hash, sizeof(hash), &vchSig[0], &nSize, pkey) == 1);
         
         if(!fSuccess)
         {
@@ -536,29 +536,29 @@ namespace LLC
     }
     
     
-    bool CKey::Verify(LLC::uint1024 hash, const std::vector<unsigned char>& vchSig, int nBits)
+    bool CKey::Verify(LLC::uint1024 hash, const std::vector<uint8_t>& vchSig, int nBits)
     {
         bool fSuccess = false;
         if(nBits == 256)
         {
             LLC::uint256 hash256 = hash.getuint256();
-            fSuccess = (ECDSA_verify(0, (unsigned char*)&hash256, sizeof(hash256), &vchSig[0], vchSig.size(), pkey) == 1);
+            fSuccess = (ECDSA_verify(0, (uint8_t*)&hash256, sizeof(hash256), &vchSig[0], vchSig.size(), pkey) == 1);
         }
         else if(nBits == 512)
         {
             LLC::uint512 hash512 = hash.getuint512();
-            fSuccess = (ECDSA_verify(0, (unsigned char*)&hash512, sizeof(hash512), &vchSig[0], vchSig.size(), pkey) == 1);
+            fSuccess = (ECDSA_verify(0, (uint8_t*)&hash512, sizeof(hash512), &vchSig[0], vchSig.size(), pkey) == 1);
         }
         else
-            fSuccess = (ECDSA_verify(0, (unsigned char*)&hash, sizeof(hash), &vchSig[0], vchSig.size(), pkey) == 1);
+            fSuccess = (ECDSA_verify(0, (uint8_t*)&hash, sizeof(hash), &vchSig[0], vchSig.size(), pkey) == 1);
             
         return fSuccess;
     }
     
 
-    bool CKey::Sign(const std::vector<unsigned char>& vchData, std::vector<unsigned char>& vchSig)
+    bool CKey::Sign(const std::vector<uint8_t>& vchData, std::vector<uint8_t>& vchSig)
     {
-        unsigned int nSize = ECDSA_size(pkey);
+        uint32_t nSize = ECDSA_size(pkey);
         vchSig.resize(nSize); // Make sure it is big enough
 
         /* Attempt the ECDSA Signing Operation. */
@@ -579,7 +579,7 @@ namespace LLC
     }
     
 
-    bool CKey::Verify(const std::vector<unsigned char>& vchData, const std::vector<unsigned char>& vchSig)
+    bool CKey::Verify(const std::vector<uint8_t>& vchData, const std::vector<uint8_t>& vchSig)
     {
         return IsEncodingDER(vchSig) && 
               (ECDSA_verify(0, &vchData[0], vchData.size(), &vchSig[0], vchSig.size(), pkey) == 1);

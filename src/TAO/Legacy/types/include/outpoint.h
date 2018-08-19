@@ -32,7 +32,7 @@ namespace Legacy
 
 
 			/** The output number of the previous transaction being spent. **/
-			unsigned int n;
+			uint32_t n;
 
 
 			//the serizliation methods
@@ -53,7 +53,7 @@ namespace Legacy
 			 *	@param[in] nIn The output number of previous transaction.
 			 *
 			 **/
-			COutPoint(LLC::uint512 hashIn, unsigned int nIn) { hash = hashIn; n = nIn; }
+			COutPoint(LLC::uint512 hashIn, uint32_t nIn) { hash = hashIn; n = nIn; }
 
 
 			/** SetNull

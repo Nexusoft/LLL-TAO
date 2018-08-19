@@ -32,7 +32,7 @@ namespace LLP
         
         
         /* Variables to track Connection / Request Count. */
-        bool fDDOS, fMETER; unsigned int nConnections, ID, REQUESTS, TIMEOUT, DDOS_rSCORE, DDOS_cSCORE;
+        bool fDDOS, fMETER; uint32_t nConnections, ID, REQUESTS, TIMEOUT, DDOS_rSCORE, DDOS_cSCORE;
         
         
         /* Vector to store Connections. */
@@ -43,7 +43,7 @@ namespace LLP
         Thread_t DATA_THREAD;
         
         
-        DataThread<ProtocolType>(unsigned int id, bool isDDOS, unsigned int rScore, unsigned int cScore, unsigned int nTimeout, bool fMeter = false) : 
+        DataThread<ProtocolType>(uint32_t id, bool isDDOS, uint32_t rScore, uint32_t cScore, uint32_t nTimeout, bool fMeter = false) : 
             fDDOS(isDDOS), fMETER(fMeter), nConnections(0), ID(id), REQUESTS(0), TIMEOUT(nTimeout),  DDOS_rSCORE(rScore), DDOS_cSCORE(cScore), CONNECTIONS(0), DATA_THREAD(boost::bind(&DataThread::Thread, this)) { }
             
             

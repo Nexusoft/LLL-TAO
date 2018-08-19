@@ -14,7 +14,7 @@
 
 namespace json_spirit
 {
-    inline char to_hex_char( unsigned int c )
+    inline char to_hex_char( uint32_t c )
     {
         assert( c <= 0xF );
 
@@ -26,7 +26,7 @@ namespace json_spirit
     }
 
     template< class String_type >
-    String_type non_printable_to_string( unsigned int c )
+    String_type non_printable_to_string( uint32_t c )
     {
 
         String_type result( 6, '\\' );

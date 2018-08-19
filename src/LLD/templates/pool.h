@@ -20,7 +20,7 @@ namespace LLD
 {	
     
     /* The number of buckets available in Cache Pool. */
-    const unsigned int MAX_CACHE_POOL_BUCKETS = 256 * 256;
+    const uint32_t MAX_CACHE_POOL_BUCKETS = 256 * 256;
     
     
     enum
@@ -38,9 +38,9 @@ namespace LLD
     /* Holding Object for Memory Maps. */
     struct CachedData
     {
-        unsigned char  State;
+        uint8_t  State;
         uint64_t         Timestamp;
-        std::vector<unsigned char> Data;
+        std::vector<uint8_t> Data;
     };
     
     
@@ -65,11 +65,11 @@ namespace LLD
         
         
         /* The Maximum Size of the Cache. */
-        unsigned int MAX_CACHE_SIZE;
+        uint32_t MAX_CACHE_SIZE;
         
         
         /* The current size of the pool. */
-        unsigned int nCurrentSize;
+        uint32_t nCurrentSize;
         
         
         /* Mutex for thread concurrencdy. */
@@ -77,15 +77,15 @@ namespace LLD
         
         
         /* Map of the current holding data. */
-        std::map<std::vector<unsigned char>, CachedData > mapObjects[MAX_CACHE_POOL_BUCKETS];
+        std::map<std::vector<uint8_t>, CachedData > mapObjects[MAX_CACHE_POOL_BUCKETS];
         
         
         /* Disk Buffer Object to flush objects to disk. */
-        std::vector< std::pair<std::vector<unsigned char>, std::vector<unsigned char>> > vDiskBuffer;
+        std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vDiskBuffer;
         
         
         /* Transaction Disk Buffer Object. */
-        std::vector< std::pair<std::vector<unsigned char>, std::vector<unsigned char>> > vTransactionBuffer;
+        std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vTransactionBuffer;
         
         
         /* Thread of cache cleaner. */
@@ -108,7 +108,7 @@ namespace LLD
         * @param[in] nCacheSizeIn The maximum size of this Cache Pool
         * 
         */
-        MemCachePool(unsigned int nCacheSizeIn) : fDestruct(false), MAX_CACHE_SIZE(nCacheSizeIn), nCurrentSize(0), CACHE_THREAD(boost::bind(&MemCachePool::CacheCleaner, this)) {}
+        MemCachePool(uint32_t nCacheSizeIn) : fDestruct(false), MAX_CACHE_SIZE(nCacheSizeIn), nCurrentSize(0), CACHE_THREAD(boost::bind(&MemCachePool::CacheCleaner, this)) {}
         
         
         /* Class Destructor. */
@@ -126,7 +126,7 @@ namespace LLD
         * 
         * @return The bucket number through serializaing first two bytes of key.
         */
-        unsigned int GetBucket(std::vector<unsigned char> vKey) const 
+        uint32_t GetBucket(std::vector<uint8_t> vKey) const 
         { 
             uint64_t nBucket = 0;
             for(int i = 0; i < vKey.size() && i < 8; i++)
@@ -143,7 +143,7 @@ namespace LLD
         * @return True/False whether pool contains data by index
         * 
         */
-        bool Has(std::vector<unsigned char> vKey, unsigned int nBucket = MAX_CACHE_POOL_BUCKETS + 1) const 
+        bool Has(std::vector<uint8_t> vKey, uint32_t nBucket = MAX_CACHE_POOL_BUCKETS + 1) const 
         { 
             if(nBucket == MAX_CACHE_POOL_BUCKETS + 1)
                 nBucket = GetBucket(vKey);
@@ -160,7 +160,7 @@ namespace LLD
         * @return True if object was found, false if none found by index.
         * 
         */
-        bool Get(std::vector<unsigned char> vKey, std::vector<unsigned char>& vData)
+        bool Get(std::vector<uint8_t> vKey, std::vector<uint8_t>& vData)
         {
             LOCK(MUTEX);
             
@@ -189,7 +189,7 @@ namespace LLD
         * TODO: Determine how data type will be carried forward for serializaing
         * 
         */
-        bool Get(std::vector< std::pair<std::vector<unsigned char>, std::vector<unsigned char>> >& vObjects, unsigned char nState = MEMORY_ONLY, unsigned int nLimit = 0)
+        bool Get(std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> >& vObjects, uint8_t nState = MEMORY_ONLY, uint32_t nLimit = 0)
         {
             LOCK(MUTEX);
             
@@ -221,7 +221,7 @@ namespace LLD
         * TODO: Determine how data type will be carried forward for serializaing
         * 
         */
-        bool GetIndexes(std::vector< std::vector<unsigned char> >& vIndexes, unsigned char nState = MEMORY_ONLY, unsigned int nLimit = 0)
+        bool GetIndexes(std::vector< std::vector<uint8_t> >& vIndexes, uint8_t nState = MEMORY_ONLY, uint32_t nLimit = 0)
         {
             LOCK(MUTEX);
             
@@ -251,7 +251,7 @@ namespace LLD
         * @param[in] nTimestamp The Time record was Put (ms)
         * 
         */
-        void Put(std::vector<unsigned char> vKey, std::vector<unsigned char> vData, unsigned char nState = MEMORY_ONLY, uint64_t nTimestamp = Timestamp(true))
+        void Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData, uint8_t nState = MEMORY_ONLY, uint64_t nTimestamp = Timestamp(true))
         {
             LOCK(MUTEX);
             
@@ -278,7 +278,7 @@ namespace LLD
         *  Returns the current disk buffer ready for writing.
         *
         */
-        bool GetDiskBuffer(std::vector< std::pair<std::vector<unsigned char>, std::vector<unsigned char>> >& vBuffer)
+        bool GetDiskBuffer(std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> >& vBuffer)
         {
             LOCK(MUTEX);
             
@@ -297,7 +297,7 @@ namespace LLD
         *  Returns the current disk buffer ready for writing.
         *
         */
-        bool GetTransactionBuffer(std::vector< std::pair<std::vector<unsigned char>, std::vector<unsigned char>> >& vBuffer)
+        bool GetTransactionBuffer(std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> >& vBuffer)
         {
             LOCK(MUTEX);
             
@@ -317,7 +317,7 @@ namespace LLD
         * @param[in] nState The new state of the object.
         * 
         */
-        void SetState(std::vector<unsigned char> vKey, unsigned short nState)
+        void SetState(std::vector<uint8_t> vKey, uint16_t nState)
         {
             auto nBucket = GetBucket(vKey);
             if(!Has(vKey, nBucket))
@@ -335,7 +335,7 @@ namespace LLD
         * @return True on successful removal, false if it fails
         * 
         */
-        bool Remove(std::vector<unsigned char> vKey)
+        bool Remove(std::vector<uint8_t> vKey)
         {
             LOCK(MUTEX);
             
@@ -364,9 +364,9 @@ namespace LLD
         * NOTE: This is high complexity, use sparingly
         * 
         */
-        void Remove(unsigned char nState)
+        void Remove(uint8_t nState)
         {
-            std::vector< std::vector<unsigned char> > vKeys;
+            std::vector< std::vector<uint8_t> > vKeys;
             GetIndexes(vKeys, nState);
             
             for(auto Key : vKeys)
@@ -374,7 +374,7 @@ namespace LLD
         }
         
         
-        static bool SortByTime(const std::pair< std::vector<unsigned char>, CachedData>& a, const std::pair< std::vector<unsigned char>, CachedData>& b)
+        static bool SortByTime(const std::pair< std::vector<uint8_t>, CachedData>& a, const std::pair< std::vector<uint8_t>, CachedData>& b)
         {
             return a.second.Timestamp < b.second.Timestamp;
         }
@@ -391,7 +391,7 @@ namespace LLD
                 /* Trim off less used objects if reached cache limits. */
                 if(nCurrentSize > MAX_CACHE_SIZE)
                 {
-                    std::vector< std::pair< std::vector<unsigned char>, CachedData > > vKeys;
+                    std::vector< std::pair< std::vector<uint8_t>, CachedData > > vKeys;
                     for(int nBucket = 0; nBucket < MAX_CACHE_POOL_BUCKETS; nBucket++)
                     {
                         for(auto obj : mapObjects[nBucket])

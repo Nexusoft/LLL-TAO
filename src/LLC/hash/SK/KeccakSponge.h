@@ -38,11 +38,11 @@ http://creativecommons.org/publicdomain/zero/1.0/
   */
 ALIGN typedef struct Keccak_SpongeInstanceStruct {
     /** The state processed by the permutation. */
-    ALIGN unsigned char state[KeccakF_width/8];
+    ALIGN uint8_t state[KeccakF_width/8];
     /** The value of the rate in bits.*/
-    unsigned int rate;
+    uint32_t rate;
     /** The position in the state of the next byte to be input (when absorbing) or output (when squeezing). */
-    unsigned int byteIOIndex;
+    uint32_t byteIOIndex;
     /** If set to 0, in the absorbing phase; otherwise, in the squeezing phase. */
     int squeezing;
 } Keccak_SpongeInstance;
@@ -56,7 +56,7 @@ ALIGN typedef struct Keccak_SpongeInstanceStruct {
   * @pre    One must have r+c=1600 and the rate a multiple of 8 bits (one byte) in this implementation.
   * @return Zero if successful, 1 otherwise.
   */
-int Keccak_SpongeInitialize(Keccak_SpongeInstance *spongeInstance, unsigned int rate, unsigned int capacity);
+int Keccak_SpongeInitialize(Keccak_SpongeInstance *spongeInstance, uint32_t rate, uint32_t capacity);
 
 /**
   * Function to give input data bytes for the sponge function to absorb.
@@ -68,7 +68,7 @@ int Keccak_SpongeInitialize(Keccak_SpongeInstance *spongeInstance, unsigned int 
   *         must not have been called before.
   * @return Zero if successful, 1 otherwise.
   */
-int Keccak_SpongeAbsorb(Keccak_SpongeInstance *spongeInstance, const unsigned char *data, unsigned long long dataByteLen);
+int Keccak_SpongeAbsorb(Keccak_SpongeInstance *spongeInstance, const uint8_t *data, unsigned long long dataByteLen);
 
 /**
   * Function to give input data bits for the sponge function to absorb
@@ -92,7 +92,7 @@ int Keccak_SpongeAbsorb(Keccak_SpongeInstance *spongeInstance, const unsigned ch
   * @pre    @a delimitedData ≠ 0x00
   * @return Zero if successful, 1 otherwise.
   */
-int Keccak_SpongeAbsorbLastFewBits(Keccak_SpongeInstance *spongeInstance, unsigned char delimitedData);
+int Keccak_SpongeAbsorbLastFewBits(Keccak_SpongeInstance *spongeInstance, uint8_t delimitedData);
 
 /**
   * Function to squeeze output data from the sponge function.
@@ -104,6 +104,6 @@ int Keccak_SpongeAbsorbLastFewBits(Keccak_SpongeInstance *spongeInstance, unsign
   * @param  dataByteLen The number of output bytes desired.
   * @return Zero if successful, 1 otherwise.
   */
-int Keccak_SpongeSqueeze(Keccak_SpongeInstance *spongeInstance, unsigned char *data, unsigned long long dataByteLen);
+int Keccak_SpongeSqueeze(Keccak_SpongeInstance *spongeInstance, uint8_t *data, unsigned long long dataByteLen);
 
 #endif

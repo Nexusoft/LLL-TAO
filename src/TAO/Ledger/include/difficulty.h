@@ -20,38 +20,38 @@ namespace Core
 	
 	
 	/* Target Timespan of 300 Seconds. */
-	const unsigned int nTargetTimespan = 300;
+	const uint32_t nTargetTimespan = 300;
 	
 	
 	/* Determines the Decimal of nBits per Channel for a decent "Frame of Reference". Has no functionality in Network Operation. */
-	double GetDifficulty(unsigned int nBits, int nChannel);
+	double GetDifficulty(uint32_t nBits, int nChannel);
 	
 	
 	/* Break the Chain Age in Minutes into Days, Hours, and Minutes. */
-	void GetChainTimes(unsigned int nAge, unsigned int& nDays, unsigned int& nHours, unsigned int& nMinutes);
+	void GetChainTimes(uint32_t nAge, uint32_t& nDays, uint32_t& nHours, uint32_t& nMinutes);
 	
 	
 	/* Get Weighted Times functions to weight the average on an iterator */
-	int64_t GetWeightedTimes(const CBlockIndex* pindex, unsigned int nDepth);
+	int64_t GetWeightedTimes(const CBlockIndex* pindex, uint32_t nDepth);
 
 	
 	/* Switching function for each difficulty re-target [each channel uses their own version] */
-	unsigned int GetNextTargetRequired(const CBlockIndex* pindex, int nChannel);
+	uint32_t GetNextTargetRequired(const CBlockIndex* pindex, int nChannel);
 	
 	
 	/* Trust Channel Retargeting: Modulate Difficulty based on production rate. */
-	unsigned int RetargetTrust(const CBlockIndex* pindex);
+	uint32_t RetargetTrust(const CBlockIndex* pindex);
 	
 	
 	/* Prime Channel Retargeting. Very different than GPU or POS retargeting. Scales the Maximum
 		Increase / Decrease by Network Difficulty. This helps to keep increases more time based than
 		mathematically based. This means that as the difficulty rises, the maximum up/down in difficulty
 		will decrease keeping the time difference in difficulty jumps the same from diff 1 - 100. */
-	unsigned int RetargetPrime(const CBlockIndex* pindex);
+	uint32_t RetargetPrime(const CBlockIndex* pindex);
 
 	
 	/* Hash Channel Retargeting: Modulate Difficulty based on production rate. */
-	unsigned int RetargetHash(const CBlockIndex* pindex);
+	uint32_t RetargetHash(const CBlockIndex* pindex);
 }
 
 #endif

@@ -53,19 +53,19 @@ namespace Core
 
 
 	/* The maximum size of a block in bytes. */
-	extern const unsigned int MAX_BLOCK_SIZE;
+	extern const uint32_t MAX_BLOCK_SIZE;
 
 
 	/* The maxmimum size a block can be filled while generating (mining). */
-	extern const unsigned int MAX_BLOCK_SIZE_GEN;
+	extern const uint32_t MAX_BLOCK_SIZE_GEN;
 
 
 	/* The maxmimum Operations each block can contain (prevents DoS exhaustion attacks). */
-	extern const unsigned int MAX_BLOCK_SIGOPS;
+	extern const uint32_t MAX_BLOCK_SIGOPS;
 
 
 	/* The maximum orphan transactions that arse kept around in memory. */
-	extern const unsigned int MAX_ORPHAN_TRANSACTIONS;
+	extern const uint32_t MAX_ORPHAN_TRANSACTIONS;
 
 
 	/* The minimum difficulty that any one channel can have. */
@@ -91,35 +91,35 @@ namespace Core
 
 
 	/* The Current Block Version being activated by NETWORK_VERSION_TIMELOCK. Sets the rules for new block versions. */
-	extern const unsigned int NETWORK_BLOCK_CURRENT_VERSION;
+	extern const uint32_t NETWORK_BLOCK_CURRENT_VERSION;
 
 
 	/* The Current Block Version being activated by TESTNET_VERSION_TIMELOCK. Sets the rules for new block versions. */
-	extern const unsigned int TESTNET_BLOCK_CURRENT_VERSION;
+	extern const uint32_t TESTNET_BLOCK_CURRENT_VERSION;
 
 
 	/* The UNIX Timestamp to set as the genesis time-lock (the Network activation timestamp). */
-	extern const unsigned int NEXUS_NETWORK_TIMELOCK;
+	extern const uint32_t NEXUS_NETWORK_TIMELOCK;
 
 
 	/* The UNIX Timestamp to set as the genesis time-lcok (the Testnet activation timestamp). */
-	extern const unsigned int NEXUS_TESTNET_TIMELOCK;
+	extern const uint32_t NEXUS_TESTNET_TIMELOCK;
 
 
 	/* The UNIX Timestamp to set as the activation timestamps for all Network block version updates (Consensus Updates). */
-	extern const unsigned int NETWORK_VERSION_TIMELOCK[];
+	extern const uint32_t NETWORK_VERSION_TIMELOCK[];
 
 
 	/* The UNIX Timestamp to set as the activation timestamps for all Testnet block version updates (Consensus Updates). */
-	extern const unsigned int TESTNET_VERSION_TIMELOCK[];
+	extern const uint32_t TESTNET_VERSION_TIMELOCK[];
 
 
 	/* The UNIX Timestamp to set the Network activation times of each of the block production channels (Prime, Hash, nPoS). */
-	extern const unsigned int CHANNEL_NETWORK_TIMELOCK[];
+	extern const uint32_t CHANNEL_NETWORK_TIMELOCK[];
 
 
 	/* The UNIX Timestamp to set the activation times of each of the block production channels (Prime, Hash, nPoS). */
-	extern const unsigned int CHANNEL_TESTNET_TIMELOCK[];
+	extern const uint32_t CHANNEL_TESTNET_TIMELOCK[];
 
 
 
@@ -203,15 +203,15 @@ namespace Core
 
 
 	/* Byte Level data of each Developer Script Signature for verifying addresses in coinbase inputs */
-	extern const unsigned char DEVELOPER_SCRIPT_SIGNATURES[][37];
+	extern const uint8_t DEVELOPER_SCRIPT_SIGNATURES[][37];
 
 
 	/* Byte Level data of each Developer Script Signature for verifying addresses in coinbase inputs  */
-	extern const unsigned char AMBASSADOR_SCRIPT_SIGNATURES[][37];
+	extern const uint8_t AMBASSADOR_SCRIPT_SIGNATURES[][37];
 
 
 	/* Byte Level data of Testnet non-spendable address for Testing purposes only */
-	extern const unsigned char TESTNET_DUMMY_SIGNATURE[];
+	extern const uint8_t TESTNET_DUMMY_SIGNATURE[];
 
 
 
@@ -299,11 +299,11 @@ namespace Core
 
 
 	/* The current file that is being used to append new data to the block database (blk0001.dat). */
-	extern unsigned int nCurrentBlockFile;
+	extern uint32_t nCurrentBlockFile;
 
 
 	/* The height of the best block in the chain. Used to know what the current block chain height is. */
-	extern unsigned int nBestHeight;
+	extern uint32_t nBestHeight;
 
 
 	/* The index pointer of the genesis block for easy referencing and reading / writing from disk. */

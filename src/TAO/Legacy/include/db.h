@@ -34,7 +34,7 @@ namespace Wallet
     class CWalletTx;
     class CMasterKey;
 
-    extern unsigned int nWalletDBUpdated;
+    extern uint32_t nWalletDBUpdated;
     extern bool fDetachDB;
     extern DbEnv dbenv;
 
@@ -178,7 +178,7 @@ namespace Wallet
             return pcursor;
         }
 
-        int ReadAtCursor(Dbc* pcursor, CDataStream& ssKey, CDataStream& ssValue, unsigned int fFlags=DB_NEXT)
+        int ReadAtCursor(Dbc* pcursor, CDataStream& ssKey, CDataStream& ssValue, uint32_t fFlags=DB_NEXT)
         {
             // Read at cursor
             Dbt datKey;

@@ -15,8 +15,8 @@
 
 namespace Wallet
 {
-    const unsigned int WALLET_CRYPTO_KEY_SIZE = 72;
-    const unsigned int WALLET_CRYPTO_SALT_SIZE = 18;
+    const uint32_t WALLET_CRYPTO_KEY_SIZE = 72;
+    const uint32_t WALLET_CRYPTO_SALT_SIZE = 18;
 
     /**
     Private key encryption is done based on a CMasterKey,
@@ -37,15 +37,15 @@ namespace Wallet
     class CMasterKey
     {
     public:
-        std::vector<unsigned char> vchCryptedKey;
-        std::vector<unsigned char> vchSalt;
+        std::vector<uint8_t> vchCryptedKey;
+        std::vector<uint8_t> vchSalt;
         // 0 = EVP_sha512()
         // 1 = scrypt()
-        unsigned int nDerivationMethod;
-        unsigned int nDeriveIterations;
+        uint32_t nDerivationMethod;
+        uint32_t nDeriveIterations;
         // Use this for more parameters to key derivation,
         // such as the various parameters to scrypt
-        std::vector<unsigned char> vchOtherDerivationParameters;
+        std::vector<uint8_t> vchOtherDerivationParameters;
 
         IMPLEMENT_SERIALIZE
         (
@@ -61,25 +61,25 @@ namespace Wallet
             // ie slightly lower than the lowest hardware we need bother supporting
             nDeriveIterations = 25000;
             nDerivationMethod = 0;
-            vchOtherDerivationParameters = std::vector<unsigned char>(0);
+            vchOtherDerivationParameters = std::vector<uint8_t>(0);
         }
     };
 
-    typedef std::vector<unsigned char, secure_allocator<unsigned char> > CKeyingMaterial;
+    typedef std::vector<uint8_t, secure_allocator<uint8_t> > CKeyingMaterial;
 
     /** Encryption/decryption context with key information */
     class CCrypter
     {
     private:
-        unsigned char chKey[WALLET_CRYPTO_KEY_SIZE];
-        unsigned char chIV[WALLET_CRYPTO_KEY_SIZE];
+        uint8_t chKey[WALLET_CRYPTO_KEY_SIZE];
+        uint8_t chIV[WALLET_CRYPTO_KEY_SIZE];
         bool fKeySet;
 
     public:
-        bool SetKeyFromPassphrase(const SecureString &strKeyData, const std::vector<unsigned char>& chSalt, const unsigned int nRounds, const unsigned int nDerivationMethod);
-        bool Encrypt(const CKeyingMaterial& vchPlaintext, std::vector<unsigned char> &vchCiphertext);
-        bool Decrypt(const std::vector<unsigned char>& vchCiphertext, CKeyingMaterial& vchPlaintext);
-        bool SetKey(const CKeyingMaterial& chNewKey, const std::vector<unsigned char>& chNewIV);
+        bool SetKeyFromPassphrase(const SecureString &strKeyData, const std::vector<uint8_t>& chSalt, const uint32_t nRounds, const uint32_t nDerivationMethod);
+        bool Encrypt(const CKeyingMaterial& vchPlaintext, std::vector<uint8_t> &vchCiphertext);
+        bool Decrypt(const std::vector<uint8_t>& vchCiphertext, CKeyingMaterial& vchPlaintext);
+        bool SetKey(const CKeyingMaterial& chNewKey, const std::vector<uint8_t>& chNewIV);
 
         void CleanKey()
         {
@@ -101,8 +101,8 @@ namespace Wallet
         }
     };
 
-    bool EncryptSecret(CKeyingMaterial& vMasterKey, const CSecret &vchPlaintext, const LLC::uint576& nIV, std::vector<unsigned char> &vchCiphertext);
-    bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<unsigned char> &vchCiphertext, const LLC::uint576& nIV, CSecret &vchPlaintext);
+    bool EncryptSecret(CKeyingMaterial& vMasterKey, const CSecret &vchPlaintext, const LLC::uint576& nIV, std::vector<uint8_t> &vchCiphertext);
+    bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<uint8_t> &vchCiphertext, const LLC::uint576& nIV, CSecret &vchPlaintext);
 
 }
 #endif

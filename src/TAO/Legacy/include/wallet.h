@@ -37,14 +37,14 @@ namespace Wallet
     {
     public:
         int64_t nTime;
-        std::vector<unsigned char> vchPubKey;
+        std::vector<uint8_t> vchPubKey;
 
         CKeyPool()
         {
             nTime = GetUnifiedTimestamp();
         }
 
-        CKeyPool(const std::vector<unsigned char>& vchPubKeyIn)
+        CKeyPool(const std::vector<uint8_t>& vchPubKeyIn)
         {
             nTime = GetUnifiedTimestamp();
             vchPubKey = vchPubKeyIn;
@@ -65,8 +65,8 @@ namespace Wallet
     class CWallet : public CCryptoKeyStore
     {
     private:
-        bool SelectCoinsMinConf(int64_t nTargetValue, unsigned int nSpendTime, int nConfMine, int nConfTheirs, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64_t& nValueRet) const;
-        bool SelectCoins(int64_t nTargetValue, unsigned int nSpendTime, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64_t& nValueRet) const;
+        bool SelectCoinsMinConf(int64_t nTargetValue, uint32_t nSpendTime, int nConfMine, int nConfTheirs, std::set<std::pair<const CWalletTx*,uint32_t> >& setCoinsRet, int64_t& nValueRet) const;
+        bool SelectCoins(int64_t nTargetValue, uint32_t nSpendTime, std::set<std::pair<const CWalletTx*,uint32_t> >& setCoinsRet, int64_t& nValueRet) const;
 
         CWalletDB *pwalletdbEncryption;
 
@@ -85,9 +85,9 @@ namespace Wallet
         std::set<int64_t> setKeyPool;
 
 
-        typedef std::map<unsigned int, CMasterKey> MasterKeyMap;
+        typedef std::map<uint32_t, CMasterKey> MasterKeyMap;
         MasterKeyMap mapMasterKeys;
-        unsigned int nMasterKeyMaxID;
+        uint32_t nMasterKeyMaxID;
 
         CWallet()
         {
@@ -114,14 +114,14 @@ namespace Wallet
 
         std::map<NexusAddress, std::string> mapAddressBook;
 
-        std::vector<unsigned char> vchDefaultKey;
+        std::vector<uint8_t> vchDefaultKey;
 
         // check whether we are allowed to upgrade (or already support) to the named feature
         bool CanSupportFeature(enum WalletFeature wf) { return nWalletMaxVersion >= wf; }
 
         // keystore implementation
         // Generate a new key
-        std::vector<unsigned char> GenerateNewKey();
+        std::vector<uint8_t> GenerateNewKey();
         // Adds a key to the store, and saves it to disk.
         bool AddKey(const CKey& key);
         // Adds a key to the store, without saving it to disk (used by LoadWallet)
@@ -130,9 +130,9 @@ namespace Wallet
         bool LoadMinVersion(int nVersion) { nWalletVersion = nVersion; nWalletMaxVersion = std::max(nWalletMaxVersion, nVersion); return true; }
 
         // Adds an encrypted key to the store, and saves it to disk.
-        bool AddCryptedKey(const std::vector<unsigned char> &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret);
+        bool AddCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret);
         // Adds an encrypted key to the store, without saving it to disk (used by LoadWallet)
-        bool LoadCryptedKey(const std::vector<unsigned char> &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret) { return CCryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret); }
+        bool LoadCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret) { return CCryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret); }
         bool AddCScript(const CScript& redeemScript);
         bool LoadCScript(const CScript& redeemScript) { return CCryptoKeyStore::AddCScript(redeemScript); }
 
@@ -154,8 +154,8 @@ namespace Wallet
         int64_t GetStake() const;
         int64_t GetNewMint() const;
 
-        void AvailableCoins(unsigned int nSpendTime, std::vector<COutput>& vCoins, bool fOnlyConfirmed) const;
-        bool AvailableAddresses(unsigned int nSpendTime, std::map<NexusAddress, int64_t>& mapAddresses, bool fOnlyConfirmed = false) const;
+        void AvailableCoins(uint32_t nSpendTime, std::vector<COutput>& vCoins, bool fOnlyConfirmed) const;
+        bool AvailableAddresses(uint32_t nSpendTime, std::map<NexusAddress, int64_t>& mapAddresses, bool fOnlyConfirmed = false) const;
 
         bool CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, int64_t& nFeeRet);
         bool CreateTransaction(CScript scriptPubKey, int64_t nValue, CWalletTx& wtxNew, CReserveKey& reservekey, int64_t& nFeeRet);
@@ -170,7 +170,7 @@ namespace Wallet
         void ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& keypool);
         void KeepKey(int64_t nIndex);
         void ReturnKey(int64_t nIndex);
-        bool GetKeyFromPool(std::vector<unsigned char> &key, bool fAllowReuse=true);
+        bool GetKeyFromPool(std::vector<uint8_t> &key, bool fAllowReuse=true);
         int64_t GetOldestKeyPoolTime();
         void GetAllReserveAddresses(std::set<NexusAddress>& setAddress);
 
@@ -272,7 +272,7 @@ namespace Wallet
 
         bool GetTransaction(const LLC::uint512 &hashTx, CWalletTx& wtx);
 
-        bool SetDefaultKey(const std::vector<unsigned char> &vchPubKey);
+        bool SetDefaultKey(const std::vector<uint8_t> &vchPubKey);
 
         // signify that a particular wallet feature is now used. this may change nWalletVersion and nWalletMaxVersion if those are lower
         bool SetMinVersion(enum WalletFeature, CWalletDB* pwalletdbIn = NULL, bool fExplicit = false);
@@ -294,7 +294,7 @@ namespace Wallet
     protected:
         CWallet* pwallet;
         int64_t nIndex;
-        std::vector<unsigned char> vchPubKey;
+        std::vector<uint8_t> vchPubKey;
     public:
         CReserveKey(CWallet* pwalletIn)
         {
@@ -309,7 +309,7 @@ namespace Wallet
         }
 
         void ReturnKey();
-        std::vector<unsigned char> GetReservedKey();
+        std::vector<uint8_t> GetReservedKey();
         void KeepKey();
     };
 
@@ -326,8 +326,8 @@ namespace Wallet
         std::vector<Core::CMerkleTx> vtxPrev;
         std::map<std::string, std::string> mapValue;
         std::vector<std::pair<std::string, std::string> > vOrderForm;
-        unsigned int fTimeReceivedIsTxTime;
-        unsigned int nTimeReceived;  // time received by this node
+        uint32_t fTimeReceivedIsTxTime;
+        uint32_t nTimeReceived;  // time received by this node
         char fFromMe;
         std::string strFromAccount;
         std::vector<char> vfSpent; // which outputs are already spent
@@ -434,7 +434,7 @@ namespace Wallet
         bool UpdateSpent(const std::vector<char>& vfNewSpent)
         {
             bool fReturn = false;
-            for (unsigned int i = 0; i < vfNewSpent.size(); i++)
+            for (uint32_t i = 0; i < vfNewSpent.size(); i++)
             {
                 if (i == vfSpent.size())
                     break;
@@ -464,7 +464,7 @@ namespace Wallet
             MarkDirty();
         }
 
-        void MarkSpent(unsigned int nOut)
+        void MarkSpent(uint32_t nOut)
         {
             if (nOut >= vout.size())
                 throw std::runtime_error("CWalletTx::MarkSpent() : nOut out of range");
@@ -476,7 +476,7 @@ namespace Wallet
             }
         }
 
-        void MarkUnspent(unsigned int nOut)
+        void MarkUnspent(uint32_t nOut)
         {
             if (nOut >= vout.size())
                 throw std::runtime_error("CWalletTx::MarkUnspent() : nOut out of range");
@@ -488,7 +488,7 @@ namespace Wallet
             }
         }
 
-        bool IsSpent(unsigned int nOut) const
+        bool IsSpent(uint32_t nOut) const
         {
             if (nOut >= vout.size())
                 throw std::runtime_error("CWalletTx::IsSpent() : nOut out of range");
@@ -533,7 +533,7 @@ namespace Wallet
             //return nAvailableCreditCached;
 
             int64_t nCredit = 0;
-            for (unsigned int i = 0; i < vout.size(); i++)
+            for (uint32_t i = 0; i < vout.size(); i++)
             {
                 if (!IsSpent(i) && pwallet->IsMine(vout[i]) && vout[i].nValue > 0)
                 {
@@ -587,7 +587,7 @@ namespace Wallet
             vWorkQueue.reserve(vtxPrev.size()+1);
             vWorkQueue.push_back(this);
 
-            for (unsigned int i = 0; i < vWorkQueue.size(); i++)
+            for (uint32_t i = 0; i < vWorkQueue.size(); i++)
             {
                 const CMerkleTx* ptx = vWorkQueue[i];
 
@@ -696,7 +696,7 @@ namespace Wallet
     class CAccount
     {
     public:
-        std::vector<unsigned char> vchPubKey;
+        std::vector<uint8_t> vchPubKey;
 
         CAccount()
         {

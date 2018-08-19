@@ -39,7 +39,7 @@ namespace Legacy
 
 
 			/** The sequence number (to be deprecated). **/
-			unsigned int nSequence;
+			uint32_t nSequence;
 
 
 			//for serizliation macros
@@ -48,12 +48,12 @@ namespace Legacy
 
 			/** Default Constructor
 			 *
-			 *	Sets the sequence to numeric limits of 32 bit unsigned int
+			 *	Sets the sequence to numeric limits of 32 bit uint32_t
 			 *
 			 **/
 			CTxIn()
 			{
-				nSequence = std::numeric_limits<unsigned int>::max();
+				nSequence = std::numeric_limits<uint32_t>::max();
 			}
 
 
@@ -61,10 +61,10 @@ namespace Legacy
 			 *
 			 *	@param[in] prevoutIn The previous output object (hash, n)
 			 *	@param[in] scriptSigIn The script object to validate spend
-			 *	@param[in] nSequenceIn The sequence number (default unsigned int numeric limits)
+			 *	@param[in] nSequenceIn The sequence number (default uint32_t numeric limits)
 			 *
 			 **/
-			explicit CTxIn(COutPoint prevoutIn, Wallet::CScript scriptSigIn=CScript(), unsigned int nSequenceIn=std::numeric_limits<unsigned int>::max())
+			explicit CTxIn(COutPoint prevoutIn, Wallet::CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max())
 			{
 				prevout = prevoutIn;
 				scriptSig = scriptSigIn;
@@ -77,10 +77,10 @@ namespace Legacy
 			 *	@param[in] hashPrevTx The previous transaction hash input is spending
 			 *	@param[in] nOut The output number of previous transaction being spent
 			 * 	@param[in] scriptSigIn The script object to validate spend
-			 *	@param[in] nSequenceIn The sequence number (default unsigned int numeric limits)
+			 *	@param[in] nSequenceIn The sequence number (default uint32_t numeric limits)
 			 *
 			 **/
-			CTxIn(LLC::uint512 hashPrevTx, unsigned int nOut, Wallet::CScript scriptSigIn=CScript(), unsigned int nSequenceIn=std::numeric_limits<unsigned int>::max());
+			CTxIn(LLC::uint512 hashPrevTx, uint32_t nOut, Wallet::CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max());
 
 			/** Comparison Operator overload
 			 *
@@ -117,7 +117,7 @@ namespace Legacy
 			 **/
 			bool IsFinal() const
 			{
-				return (nSequence == std::numeric_limits<unsigned int>::max());
+				return (nSequence == std::numeric_limits<uint32_t>::max());
 			}
 
 

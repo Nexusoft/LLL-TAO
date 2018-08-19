@@ -26,11 +26,11 @@ namespace LLP
     {
         /* The DDOS variables. Tracks the Requests and Connections per Second
             from each connected address. */
-        std::map<unsigned int,   DDOS_Filter*> DDOS_MAP;
+        std::map<uint32_t,   DDOS_Filter*> DDOS_MAP;
         bool fDDOS, fLISTEN, fMETER;
 
     public:
-        unsigned int PORT, MAX_THREADS, DDOS_TIMESPAN;
+        uint32_t PORT, MAX_THREADS, DDOS_TIMESPAN;
 
         /* The data type to keep track of current running threads. */
         std::vector< DataThread<ProtocolType>* > DATA_THREADS;
@@ -64,9 +64,9 @@ namespace LLP
         void AddConnection(Socket_t SOCKET)
         {
             /* Initialize DDOS Protection for Incoming IP Address. */
-            std::vector<unsigned char> vAddress(4, 0);
+            std::vector<uint8_t> vAddress(4, 0);
             sscanf(SOCKET->remote_endpoint().address().to_string().c_str(), "%hhu.%hhu.%hhu.%hhu", &vAddress[0], &vAddress[1], &vAddress[2], &vAddress[3]);
-            unsigned int ADDRESS = (vAddress[0] << 24) + (vAddress[1] << 16) + (vAddress[2] << 8) + vAddress[3];
+            uint32_t ADDRESS = (vAddress[0] << 24) + (vAddress[1] << 16) + (vAddress[2] << 8) + vAddress[3];
 
             /* Create new DDOS Filter if NEeded. */
             if(!DDOS_MAP.count(ADDRESS))
@@ -91,9 +91,9 @@ namespace LLP
         bool AddConnection(std::string strAddress, std::string strPort)
         {
             /* Initialize DDOS Protection for Incoming IP Address. */
-            std::vector<unsigned char> vAddress(4, 0);
+            std::vector<uint8_t> vAddress(4, 0);
             sscanf(strAddress.c_str(), "%hhu.%hhu.%hhu.%hhu", &vAddress[0], &vAddress[1], &vAddress[2], &vAddress[3]);
-            unsigned int ADDRESS = (vAddress[0] << 24) + (vAddress[1] << 16) + (vAddress[2] << 8) + vAddress[3];
+            uint32_t ADDRESS = (vAddress[0] << 24) + (vAddress[1] << 16) + (vAddress[2] << 8) + vAddress[3];
 
             /* Create new DDOS Filter if NEeded. */
             if(!DDOS_MAP.count(ADDRESS))
@@ -204,9 +204,9 @@ namespace LLP
                     LISTENER.accept(*SOCKET);
 
                     /** Initialize DDOS Protection for Incoming IP Address. **/
-                    std::vector<unsigned char> vAddress(4, 0);
+                    std::vector<uint8_t> vAddress(4, 0);
                     sscanf(SOCKET->remote_endpoint().address().to_string().c_str(), "%hhu.%hhu.%hhu.%hhu", &vAddress[0], &vAddress[1], &vAddress[2], &vAddress[3]);
-                    unsigned int ADDRESS = (vAddress[0] << 24) + (vAddress[1] << 16) + (vAddress[2] << 8) + vAddress[3];
+                    uint32_t ADDRESS = (vAddress[0] << 24) + (vAddress[1] << 16) + (vAddress[2] << 8) + vAddress[3];
 
                     { //LOCK(DDOS_MUTEX);
                         if(!DDOS_MAP.count(ADDRESS))
@@ -246,7 +246,7 @@ namespace LLP
             {
                 Sleep(10000);
 
-                unsigned int nGlobalConnections = 0;
+                uint32_t nGlobalConnections = 0;
                 for(int nIndex = 0; nIndex < MAX_THREADS; nIndex++)
                     nGlobalConnections += DATA_THREADS[nIndex]->nConnections;
 

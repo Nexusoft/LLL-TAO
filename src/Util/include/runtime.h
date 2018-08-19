@@ -49,7 +49,7 @@ inline int64_t UnifiedTimestamp(bool fMilliseconds = false)
 
 
 /* Sleep for a duration in Milliseconds. */
-inline void Sleep(unsigned int nTime, bool fMicroseconds = false){ fMicroseconds ? boost::this_thread::sleep(boost::posix_time::microseconds(nTime)) : boost::this_thread::sleep(boost::posix_time::milliseconds(nTime)); }
+inline void Sleep(uint32_t nTime, bool fMicroseconds = false){ fMicroseconds ? boost::this_thread::sleep(boost::posix_time::microseconds(nTime)) : boost::this_thread::sleep(boost::posix_time::milliseconds(nTime)); }
 
 
 /* Class the tracks the duration of time elapsed in seconds or milliseconds.
@@ -66,7 +66,7 @@ public:
     void Stop()  { TIMER_END = boost::posix_time::microsec_clock::local_time(); fStopped = true; }
 
     /* Return the Total Seconds Elapsed Since Timer Started. */
-    unsigned int Elapsed()
+    uint32_t Elapsed()
     {
         if(fStopped)
             return (TIMER_END - TIMER_START).total_seconds();
@@ -75,7 +75,7 @@ public:
     }
 
     /* Return the Total Milliseconds Elapsed Since Timer Started. */
-    unsigned int ElapsedMilliseconds()
+    uint32_t ElapsedMilliseconds()
     {
         if(fStopped)
             return (TIMER_END - TIMER_START).total_milliseconds();

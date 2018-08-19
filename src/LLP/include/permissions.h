@@ -24,7 +24,7 @@ ________________________________________________________________________________
 /** IP Filtering Definitions
     IP's are Filtered By Ports.
     Format is IP and PORT. **/
-inline bool CheckPermissions(std::string strAddress, unsigned int nPort)
+inline bool CheckPermissions(std::string strAddress, uint32_t nPort)
 {
     /* Bypass localhost addresses first. */
     if(strAddress == "127.0.0.1")
@@ -54,7 +54,7 @@ inline bool CheckPermissions(std::string strAddress, unsigned int nPort)
             std::vector<std::string> strPort = Split(vCheck[3], ':');
             vCheck[3] = strPort[0];
             
-            unsigned int nPortCheck = boost::lexical_cast<unsigned int>(strPort[1]);
+            uint32_t nPortCheck = boost::lexical_cast<uint32_t>(strPort[1]);
             if(nPort != nPortCheck)
                 return error("Bad Port.");
         }

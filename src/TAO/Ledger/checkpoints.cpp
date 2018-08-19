@@ -20,15 +20,15 @@ namespace Core
 {	
 	
 	/* Memory Map to hold all the hashes of the checkpoints decided on by the network. */
-	std::map<unsigned int, LLC::uint1024> mapCheckpoints;
+	std::map<uint32_t, LLC::uint1024> mapCheckpoints;
 	
 	
 	/* Checkpoint Timespan, or the time that triggers a new checkpoint (in Minutes). */
-	unsigned int CHECKPOINT_TIMESPAN = 60;
+	uint32_t CHECKPOINT_TIMESPAN = 60;
 	
 	
 	/* Checkpoint Search. The Maximum amount of checkpoints that can be serached back to find a Descendant. */
-	unsigned int MAX_CHECKPOINTS_SEARCH = 2;
+	uint32_t MAX_CHECKPOINTS_SEARCH = 2;
 	
 	
 	/** Check Checkpoint Timespan. **/
@@ -51,7 +51,7 @@ namespace Core
 			return true;
 			
 		/** Ensure that the block is made after last hardened Checkpoint. **/
-		unsigned int nTotalCheckpoints = 0;
+		uint32_t nTotalCheckpoints = 0;
 			
 		/** Check The Block Hash **/
 		while(pindex && pindex->pprev)

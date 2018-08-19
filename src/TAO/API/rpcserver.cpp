@@ -89,7 +89,7 @@ namespace Net
     }
 
     std::string
-    HexBits(unsigned int nBits)
+    HexBits(uint32_t nBits)
     {
         union {
             int32_t nBits;
@@ -272,7 +272,7 @@ namespace Net
         uint64_t nTimeConstant = 276758250000;
 
         const Core::CBlockIndex* pindex = Core::GetLastChannelIndex(Core::pindexBest, 2);
-        unsigned int nAverageTime = 0, nTotal = 0;
+        uint32_t nAverageTime = 0, nTotal = 0;
         double nAverageDifficulty = 0.0;
 
         for( ; nTotal < 1440 && pindex->pprev; nTotal ++) {
@@ -315,10 +315,10 @@ namespace Net
          * This constant was found that 2,450 Prime Per Second is required to find 1 3ch Cluster per Second.
          * The difficulty changes are exponential or in other words require 50x more work per difficulty increase
          */
-        unsigned int nTimeConstant = 2480;
+        uint32_t nTimeConstant = 2480;
 
         const Core::CBlockIndex* pindex = Core::GetLastChannelIndex(Core::pindexBest, 1);
-        unsigned int nAverageTime = 0, nTotal = 0;
+        uint32_t nAverageTime = 0, nTotal = 0;
         double nAverageDifficulty = 0.0;
 
         for( ; nTotal < 1440 && pindex->pprev; nTotal ++) {
@@ -354,7 +354,7 @@ namespace Net
                 "List all the Trust Keys on the Network");
 
 
-        unsigned int nTotalActive = 0;
+        uint32_t nTotalActive = 0;
         Array trustkeys;
         Object ret;
         for(std::map<LLC::uint576, Core::CTrustKey>::iterator it = Core::cTrustPool.mapTrustKeys.begin(); it != Core::cTrustPool.mapTrustKeys.end(); ++it)
@@ -496,7 +496,7 @@ namespace Net
                 "This is to prevent error from Gregorian Figures.");
 
         Object obj;
-        unsigned int nMinutes = Core::GetChainAge(Core::pindexBest->GetBlockTime());
+        uint32_t nMinutes = Core::GetChainAge(Core::pindexBest->GetBlockTime());
 
         obj.push_back(Pair("chainAge",       (int)nMinutes));
 
@@ -526,7 +526,7 @@ namespace Net
                 "Default timestamp is the current Unified Timestamp. The timestamp is recorded as a UNIX timestamp");
 
         Object obj;
-        unsigned int nMinutes = Core::GetChainAge(Core::pindexBest->GetBlockTime());
+        uint32_t nMinutes = Core::GetChainAge(Core::pindexBest->GetBlockTime());
 
         obj.push_back(Pair("chainAge",       (int)nMinutes));
         obj.push_back(Pair("miners", ValueFromAmount(Core::CompoundSubsidy(nMinutes, 0))));
@@ -587,8 +587,8 @@ namespace Net
         if(!Core::pindexBest || Core::pindexBest->GetBlockHash() != Core::hashGenesisBlock)
         {
             double nPrimeAverageDifficulty = 0.0;
-            unsigned int nPrimeAverageTime = 0;
-            unsigned int nPrimeTimeConstant = 2480;
+            uint32_t nPrimeAverageTime = 0;
+            uint32_t nPrimeTimeConstant = 2480;
             int nTotal = 0;
             const Core::CBlockIndex* pindex = Core::GetLastChannelIndex(Core::pindexBest, 1);
             for(; (nTotal < 1440 && pindex->pprev); nTotal ++) {
@@ -605,7 +605,7 @@ namespace Net
 
         // Hash
         int nHTotal = 0;
-        unsigned int nHashAverageTime = 0;
+        uint32_t nHashAverageTime = 0;
         double nHashAverageDifficulty = 0.0;
         uint64_t nTimeConstant = 276758250000;
         const Core::CBlockIndex* hindex = Core::GetLastChannelIndex(Core::pindexBest, 2);
@@ -669,7 +669,7 @@ namespace Net
             pwalletMain->TopUpKeyPool();
 
         // Generate a new key that is added to wallet
-        std::vector<unsigned char> newKey;
+        std::vector<uint8_t> newKey;
         if (!pwalletMain->GetKeyFromPool(newKey, false))
             throw JSONRPCError(-12, "Error: Keypool ran out, please call keypoolrefill first");
         Wallet::NexusAddress address(newKey);
@@ -883,7 +883,7 @@ namespace Net
         ss << Core::strMessageMagic;
         ss << strMessage;
 
-        vector<unsigned char> vchSig;
+        vector<uint8_t> vchSig;
         if (!key.SignCompact(SK256(ss.begin(), ss.end()), vchSig))
             throw JSONRPCError(-5, "Sign failed");
 
@@ -906,7 +906,7 @@ namespace Net
             throw JSONRPCError(-3, "Invalid address");
 
         bool fInvalid = false;
-        vector<unsigned char> vchSig = DecodeBase64(strSign.c_str(), &fInvalid);
+        vector<uint8_t> vchSig = DecodeBase64(strSign.c_str(), &fInvalid);
 
         if (fInvalid)
             throw JSONRPCError(-5, "Malformed base64 encoding");
@@ -1107,7 +1107,7 @@ namespace Net
             fCoinbase = params[0].get_bool();
 
         /* Extract the address from input arguments. */
-        unsigned int nTotalTransactions = 0, nTotalAddresses = 0;
+        uint32_t nTotalTransactions = 0, nTotalAddresses = 0;
         if(params.size() > 1)
         {
             string strAddress = params[1].get_str();
@@ -1553,7 +1553,7 @@ namespace Net
                           "(got %d keys, but need at least %d to redeem)", keys.size(), nRequired));
         std::vector<Wallet::CKey> pubkeys;
         pubkeys.resize(keys.size());
-        for (unsigned int i = 0; i < keys.size(); i++)
+        for (uint32_t i = 0; i < keys.size(); i++)
         {
             const std::string& ks = keys[i].get_str();
 
@@ -1564,7 +1564,7 @@ namespace Net
                 if (address.IsScript())
                     throw runtime_error(
                         strprintf("%s is a pay-to-script address",ks.c_str()));
-                std::vector<unsigned char> vchPubKey;
+                std::vector<uint8_t> vchPubKey;
                 if (!pwalletMain->GetPubKey(address, vchPubKey))
                     throw runtime_error(
                         strprintf("no full public key for address %s",ks.c_str()));
@@ -1575,7 +1575,7 @@ namespace Net
             // Case 2: hex public key
             else if (IsHex(ks))
             {
-                vector<unsigned char> vchPubKey = ParseHex(ks);
+                vector<uint8_t> vchPubKey = ParseHex(ks);
                 if (vchPubKey.empty() || !pubkeys[i].SetPubKey(vchPubKey))
                     throw runtime_error(" Invalid public key: "+ks);
             }
@@ -2085,7 +2085,7 @@ namespace Net
                 "If checkinputs is non-zero, checks the validity of the inputs of the transaction before sending it.");
 
         // parse hex string from parameter
-        vector<unsigned char> txData(ParseHex(params[0].get_str()));
+        vector<uint8_t> txData(ParseHex(params[0].get_str()));
         CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
         bool fCheckInputs = false;
         if (params.size() > 1)
@@ -2364,7 +2364,7 @@ namespace Net
             if (pwalletMain->HaveKey(address))
             {
                 ret.push_back(Pair("ismine", true));
-                std::vector<unsigned char> vchPubKey;
+                std::vector<uint8_t> vchPubKey;
                 pwalletMain->GetPubKey(address, vchPubKey);
                 ret.push_back(Pair("pubkey", HexStr(vchPubKey)));
                 Wallet::CKey key;
@@ -2614,7 +2614,7 @@ namespace Net
         }
 
         vector<Wallet::COutput> vecOutputs;
-        pwalletMain->AvailableCoins((unsigned int)GetUnifiedTimestamp(), vecOutputs, false);
+        pwalletMain->AvailableCoins((uint32_t)GetUnifiedTimestamp(), vecOutputs, false);
 
         int64_t nCredit = 0;
         BOOST_FOREACH(const Wallet::COutput& out, vecOutputs)
@@ -2687,7 +2687,7 @@ namespace Net
 
         Array results;
         vector<Wallet::COutput> vecOutputs;
-        pwalletMain->AvailableCoins((unsigned int)GetUnifiedTimestamp(), vecOutputs, false);
+        pwalletMain->AvailableCoins((uint32_t)GetUnifiedTimestamp(), vecOutputs, false);
         BOOST_FOREACH(const Wallet::COutput& out, vecOutputs)
         {
             if (out.nDepth < nMinDepth || out.nDepth > nMaxDepth)
@@ -2822,7 +2822,7 @@ namespace Net
 
     CRPCTable::CRPCTable()
     {
-        unsigned int vcidx;
+        uint32_t vcidx;
         for (vcidx = 0; vcidx < (sizeof(vRPCCommands) / sizeof(vRPCCommands[0])); vcidx++)
         {
             const CRPCCommand *pcmd;
@@ -3125,7 +3125,7 @@ namespace Net
         strRPCUserColonPass = mapArgs["-rpcuser"] + ":" + mapArgs["-rpcpassword"];
         if (mapArgs["-rpcpassword"] == "")
         {
-            unsigned char rand_pwd[32];
+            uint8_t rand_pwd[32];
             RAND_bytes(rand_pwd, 32);
             string strWhatAmI = "To use Nexus";
             if (mapArgs.count("-server"))
