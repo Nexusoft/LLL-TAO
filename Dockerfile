@@ -56,8 +56,8 @@ RUN mkdir /nexus
 RUN mkdir /nexus/build
 COPY ./makefile.cli /nexus
 COPY ./src /nexus/src/
-COPY nexus-config/nexus.conf /root/.Nexus/nexus.conf
-COPY nexus-config/run-nexus /nexus/run-nexus
+COPY config/nexus.conf /root/.Nexus/nexus.conf
+COPY config/run-nexus /nexus/run-nexus
 
 #
 # Build Nexus.
@@ -78,7 +78,7 @@ COPY lisp/make-crypto-eid.py /lispers.net/make-crypto-eid.py
 #
 # Add some useful tcsh alias commands.
 #
-COPY nexus-config/.aliases /root/.aliases
+COPY config/.aliases /root/.aliases
 
 #
 # Startup lispers.net and nexus. Output some useful data and drop into tcsh.
