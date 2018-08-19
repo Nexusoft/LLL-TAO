@@ -34,25 +34,7 @@ namespace Legacy
 
 
 
-    inline std::string ValueString(const std::vector<uint8_t>& vch)
-    {
-        if (vch.size() <= 4)
-            return strprintf("%d", CBigNum(vch).getint());
-        else
-            return HexStr(vch);
-    }
 
-    inline std::string StackString(const std::vector<std::vector<uint8_t> >& vStack)
-    {
-        std::string str;
-        for(const auto & vch : vStack)
-        {
-            if (!str.empty())
-                str += " ";
-            str += ValueString(vch);
-        }
-        return str;
-    }
 
 
 
@@ -385,7 +367,7 @@ namespace Legacy
                     return str;
                 }
                 if (0 <= opcode && opcode <= OP_PUSHDATA4)
-                    str += fShort? ValueString(vch).substr(0, 10) : ValueString(vch);
+                    str += fShort? HexStr(vch).substr(0, 10) : HexStr(vch);
                 else
                     str += GetOpName(opcode);
             }
@@ -404,16 +386,33 @@ namespace Legacy
 
     bool EvalScript(std::vector<std::vector<uint8_t> >& stack, const CScript& script, const Core::CTransaction& txTo, uint32_t nIn, int nHashType);
     bool Solver(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<std::vector<uint8_t> >& vSolutionsRet);
-    int ScriptSigArgsExpected(TransactionType t, const std::vector<std::vector<uint8_t> >& vSolutions);
-    bool IsStandard(const CScript& scriptPubKey);
-    bool IsMine(const CKeyStore& keystore, const CScript& scriptPubKey);
-    bool ExtractAddress(const CScript& scriptPubKey, NexusAddress& addressRet);
-    bool ExtractAddresses(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<NexusAddress>& addressRet, int& nRequiredRet);
-    bool SignSignature(const CKeyStore& keystore, const Core::CTransaction& txFrom, Core::CTransaction& txTo, uint32_t nIn, int nHashType=SIGHASH_ALL);
-    bool VerifySignature(const Core::CTransaction& txFrom, const Core::CTransaction& txTo, uint32_t nIn, int nHashType);
-    bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const Core::CTransaction& txTo, uint32_t nIn, int nHashType);
 
-    CScript CombineSignatures(CScript scriptPubKey, const Core::CTransaction& txTo, uint32_t nIn, const CScript& scriptSig1, const CScript& scriptSig2);
+    //used in standard inputs function check in transaction. potential to remove
+    int ScriptSigArgsExpected(TransactionType t, const std::vector<std::vector<uint8_t> >& vSolutions);
+
+
+    bool IsStandard(const CScript& scriptPubKey);
+
+
+    bool IsMine(const CKeyStore& keystore, const CScript& scriptPubKey);
+
+
+
+
+    bool ExtractAddress(const CScript& scriptPubKey, NexusAddress& addressRet);
+
+
+    bool ExtractAddresses(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<NexusAddress>& addressRet, int& nRequiredRet);
+
+    //important to keep
+    bool SignSignature(const CKeyStore& keystore, const Transaction& txFrom, Transaction& txTo, uint32_t nIn, int nHashType=SIGHASH_ALL);
+
+    //important to keep
+    bool VerifySignature(const Transaction& txFrom, const Transaction& txTo, uint32_t nIn, int nHashType);
+
+    //used twice. Potential to clean up TODO
+    bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const Transaction& txTo, uint32_t nIn, int nHashType);
+
 }
 
 #endif

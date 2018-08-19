@@ -23,6 +23,8 @@
 #include "LLP/templates/server.h"
 #include "LLP/include/legacy.h"
 
+#include "TAO/Legacy/types/include/enum.h" //for testing
+
 //#include "TAO/Ledger/types/include/block.h"
 
 class CAccount

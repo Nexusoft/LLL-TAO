@@ -2387,9 +2387,11 @@ namespace Net
                 int nRequired;
                 Wallet::ExtractAddresses(subscript, whichType, addresses, nRequired);
                 ret.push_back(Pair("script", Wallet::GetTxnOutputType(whichType)));
+                
                 Array a;
                 BOOST_FOREACH(const Wallet::NexusAddress& addr, addresses)
                     a.push_back(addr.ToString());
+
                 ret.push_back(Pair("addresses", a));
                 if (whichType == Wallet::TX_MULTISIG)
                     ret.push_back(Pair("sigsrequired", nRequired));
