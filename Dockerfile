@@ -56,8 +56,8 @@ RUN mkdir /nexus
 RUN mkdir /nexus/build
 COPY ./makefile.cli /nexus
 COPY ./src /nexus/src/
-COPY nexus-config/nexus.conf /root/.Nexus/nexus.conf
-COPY nexus-config/run-nexus /nexus/run-nexus
+COPY config/nexus.conf /root/.Nexus/nexus.conf
+COPY config/run-nexus /nexus/run-nexus
 
 #
 # Build Nexus.
