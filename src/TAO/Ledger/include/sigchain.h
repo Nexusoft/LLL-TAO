@@ -57,7 +57,7 @@ namespace TAO
             *
             * @return The 512 bit hash of this key in the series.
             */
-            uint512 Generate(unsigned int nKeyID, std::string strSecret)
+            LLC::uint512 Generate(unsigned int nKeyID, std::string strSecret)
             {
                 /* Serialize the Key ID (Big Endian). */
                 std::vector<unsigned char> vKeyID;
@@ -77,8 +77,8 @@ namespace TAO
                 vPin.insert(vPin.end(), vKeyID.begin(), vKeyID.end());
 
                 /* Generate the Hashes */
-                uint1024 hashSecret = LLC::HASH::SK1024(vSecret);
-                uint1024 hashPIN    = LLC::HASH::SK1024(vPin);
+                LLC::uint1024 hashSecret = LLC::HASH::SK1024(vSecret);
+                LLC::uint1024 hashPIN    = LLC::HASH::SK1024(vPin);
 
                 /* Generate the Final Root Hash. */
                 return LLC::HASH::SK512(BEGIN(hashSecret), END(hashPIN));

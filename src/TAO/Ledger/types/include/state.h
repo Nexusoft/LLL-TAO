@@ -48,11 +48,11 @@ namespace TAO
 
 
 			/* The checkpoint this block was made from. */
-			uint1024 hashCheckpoint;
+			LLC::uint1024 hashCheckpoint;
 
 
 			/* Used to Iterate forward in the chain */
-			uint1024 hashNextBlock;
+			LLC::uint1024 hashNextBlock;
 
 
 			/* Boolean flag for if this block is connected. */
@@ -88,7 +88,7 @@ namespace TAO
 
 
 			/* The hash of this current block state. */
-			uint1024 StateHash() const
+			LLC::uint1024 StateHash() const
 			{
 				return LLC::HASH::SK1024(BEGIN(nVersion), END(hashCheckpoint));
 			}

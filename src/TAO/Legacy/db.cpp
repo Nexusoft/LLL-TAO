@@ -352,14 +352,14 @@ namespace Wallet
     // CTxDB
     //
 
-    bool CTxDB::ReadTxIndex(uint512 hash, Core::CTxIndex& txindex)
+    bool CTxDB::ReadTxIndex(LLC::uint512 hash, Core::CTxIndex& txindex)
     {
         assert(!Net::fClient);
         txindex.SetNull();
         return Read(make_pair(string("tx"), hash), txindex);
     }
 
-    bool CTxDB::UpdateTxIndex(uint512 hash, const Core::CTxIndex& txindex)
+    bool CTxDB::UpdateTxIndex(LLC::uint512 hash, const Core::CTxIndex& txindex)
     {
         assert(!Net::fClient);
         return Write(make_pair(string("tx"), hash), txindex);
@@ -370,7 +370,7 @@ namespace Wallet
         assert(!Net::fClient);
 
         // Add to tx index
-        uint512 hash = tx.GetHash();
+        LLC::uint512 hash = tx.GetHash();
         Core::CTxIndex txindex(pos, tx.vout.size());
         return Write(make_pair(string("tx"), hash), txindex);
     }
@@ -378,18 +378,18 @@ namespace Wallet
     bool CTxDB::EraseTxIndex(const Core::CTransaction& tx)
     {
         assert(!Net::fClient);
-        uint512 hash = tx.GetHash();
+        LLC::uint512 hash = tx.GetHash();
 
         return Erase(make_pair(string("tx"), hash));
     }
 
-    bool CTxDB::ContainsTx(uint512 hash)
+    bool CTxDB::ContainsTx(LLC::uint512 hash)
     {
         assert(!Net::fClient);
         return Exists(make_pair(string("tx"), hash));
     }
 
-    bool CTxDB::ReadOwnerTxes(uint512 hash, int nMinHeight, vector<Core::CTransaction>& vtx)
+    bool CTxDB::ReadOwnerTxes(LLC::uint512 hash, int nMinHeight, vector<Core::CTransaction>& vtx)
     {
         assert(!Net::fClient);
         vtx.clear();
@@ -418,7 +418,7 @@ namespace Wallet
 
             // Unserialize
             string strType;
-            uint512 hashItem;
+            LLC::uint512 hashItem;
             Core::CDiskTxPos pos;
             int nItemHeight;
 
@@ -448,7 +448,7 @@ namespace Wallet
         return true;
     }
 
-    bool CTxDB::ReadDiskTx(uint512 hash, Core::CTransaction& tx, Core::CTxIndex& txindex)
+    bool CTxDB::ReadDiskTx(LLC::uint512 hash, Core::CTransaction& tx, Core::CTxIndex& txindex)
     {
         assert(!Net::fClient);
         tx.SetNull();
@@ -457,7 +457,7 @@ namespace Wallet
         return (tx.ReadFromDisk(txindex.pos));
     }
 
-    bool CTxDB::ReadDiskTx(uint512 hash, Core::CTransaction& tx)
+    bool CTxDB::ReadDiskTx(LLC::uint512 hash, Core::CTransaction& tx)
     {
         Core::CTxIndex txindex;
         return ReadDiskTx(hash, tx, txindex);
@@ -479,17 +479,17 @@ namespace Wallet
         return Write(make_pair(string("blockindex"), blockindex.GetBlockHash()), blockindex);
     }
 
-    bool CTxDB::EraseBlockIndex(uint1024 hash)
+    bool CTxDB::EraseBlockIndex(LLC::uint1024 hash)
     {
         return Erase(make_pair(string("blockindex"), hash));
     }
 
-    bool CTxDB::ReadHashBestChain(uint1024& hashBestChain)
+    bool CTxDB::ReadHashBestChain(LLC::uint1024& hashBestChain)
     {
         return Read(string("hashBestChain"), hashBestChain);
     }
 
-    bool CTxDB::WriteHashBestChain(uint1024 hashBestChain)
+    bool CTxDB::WriteHashBestChain(LLC::uint1024 hashBestChain)
     {
         return Write(string("hashBestChain"), hashBestChain);
     }

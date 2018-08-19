@@ -39,7 +39,7 @@ namespace TAO
 
 
             /** The nextHash which can claim the signature chain. */
-            uint256 hashNext;
+            LLC::uint256 hashNext;
 
             /** The data to be recorded in the ledger. **/
             CData vchLedgerData;

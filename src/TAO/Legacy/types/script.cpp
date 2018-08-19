@@ -875,7 +875,7 @@ namespace Wallet
                         std::vector<unsigned char>& vch = stacktop(-1);
                         std::vector<unsigned char> vchHash(32);
 
-                        uint256 hash256 = SK256(vch);
+                        LLC::uint256 hash256 = SK256(vch);
                         memcpy(&vchHash[0], &hash256, sizeof(hash256));
 
                         popstack(stack);
@@ -1026,7 +1026,7 @@ namespace Wallet
 
 
 
-    uint256 SignatureHash(CScript scriptCode, const Core::CTransaction& txTo, unsigned int nIn, int nHashType)
+    LLC::uint256 SignatureHash(CScript scriptCode, const Core::CTransaction& txTo, unsigned int nIn, int nHashType)
     {
         if (nIn >= txTo.vin.size())
         {
@@ -1098,13 +1098,13 @@ namespace Wallet
     {
     private:
         // sigdata_type is (signature hash, signature, public key):
-        typedef boost::tuple<uint256, std::vector<unsigned char>, std::vector<unsigned char> > sigdata_type;
+        typedef boost::tuple<LLC::uint256, std::vector<unsigned char>, std::vector<unsigned char> > sigdata_type;
         std::set< sigdata_type> setValid;
         CCriticalSection cs_sigcache;
 
     public:
         bool
-        Get(uint256 hash, const std::vector<unsigned char>& vchSig, const std::vector<unsigned char>& pubKey)
+        Get(LLC::uint256 hash, const std::vector<unsigned char>& vchSig, const std::vector<unsigned char>& pubKey)
         {
             LOCK(cs_sigcache);
 
@@ -1116,7 +1116,7 @@ namespace Wallet
         }
 
         void
-        Set(uint256 hash, const std::vector<unsigned char>& vchSig, const std::vector<unsigned char>& pubKey)
+        Set(LLC::uint256 hash, const std::vector<unsigned char>& vchSig, const std::vector<unsigned char>& pubKey)
         {
             // DoS prevention: limit cache size to less than 10MB
             // (~200 bytes per cache entry times 50,000 entries)
@@ -1133,7 +1133,7 @@ namespace Wallet
                 // foil would-be DoS attackers who might try to pre-generate
                 // and re-use a set of valid signatures just-slightly-greater
                 // than our cache size.
-                uint256 randomHash = GetRand256();
+                LLC::uint256 randomHash = GetRand256();
                 std::vector<unsigned char> unused;
                 std::set<sigdata_type>::iterator it =
                     setValid.lower_bound(sigdata_type(randomHash, unused, unused));
@@ -1161,7 +1161,7 @@ namespace Wallet
             return false;
         vchSig.pop_back();
 
-        uint256 sighash = SignatureHash(scriptCode, txTo, nIn, nHashType);
+        LLC::uint256 sighash = SignatureHash(scriptCode, txTo, nIn, nHashType);
 
         if (signatureCache.Get(sighash, vchSig, vchPubKey))
             return true;
@@ -1270,7 +1270,7 @@ namespace Wallet
                 }
                 else if (opcode2 == OP_PUBKEYHASH)
                 {
-                    if (vch1.size() != sizeof(uint256))
+                    if (vch1.size() != sizeof(LLC::uint256))
                         break;
                     vSolutionsRet.push_back(vch1);
                 }
@@ -1299,7 +1299,7 @@ namespace Wallet
     }
 
 
-    bool Sign1(const NexusAddress& address, const CKeyStore& keystore, uint256 hash, int nHashType, CScript& scriptSigRet)
+    bool Sign1(const NexusAddress& address, const CKeyStore& keystore, LLC::uint256 hash, int nHashType, CScript& scriptSigRet)
     {
         CKey key;
         if (!keystore.GetKey(address, key))
@@ -1314,7 +1314,7 @@ namespace Wallet
         return true;
     }
 
-    bool SignN(const vector<std::vector<unsigned char> >& multisigdata, const CKeyStore& keystore, uint256 hash, int nHashType, CScript& scriptSigRet)
+    bool SignN(const vector<std::vector<unsigned char> >& multisigdata, const CKeyStore& keystore, LLC::uint256 hash, int nHashType, CScript& scriptSigRet)
     {
         int nSigned = 0;
         int nRequired = multisigdata.front()[0];
@@ -1338,7 +1338,7 @@ namespace Wallet
     // unless whichTypeRet is TX_SCRIPTHASH, in which case scriptSigRet is the redemption script.
     // Returns false if scriptPubKey could not be completely satisified.
     //
-    bool Solver(const CKeyStore& keystore, const CScript& scriptPubKey, uint256 hash, int nHashType,
+    bool Solver(const CKeyStore& keystore, const CScript& scriptPubKey, LLC::uint256 hash, int nHashType,
                     CScript& scriptSigRet, TransactionType& whichTypeRet)
     {
         scriptSigRet.clear();
@@ -1356,7 +1356,7 @@ namespace Wallet
             address.SetPubKey(vSolutions[0]);
             return Sign1(address, keystore, hash, nHashType, scriptSigRet);
         case TX_PUBKEYHASH:
-            address.SetHash256(uint256(vSolutions[0]));
+            address.SetHash256(LLC::uint256(vSolutions[0]));
             if (!Sign1(address, keystore, hash, nHashType, scriptSigRet))
                 return false;
             else
@@ -1367,7 +1367,7 @@ namespace Wallet
             }
             return true;
         case TX_SCRIPTHASH:
-            return keystore.GetCScript(uint256(vSolutions[0]), scriptSigRet);
+            return keystore.GetCScript(LLC::uint256(vSolutions[0]), scriptSigRet);
 
         case TX_MULTISIG:
             scriptSigRet << OP_0; // workaround CHECKMULTISIG bug
@@ -1447,12 +1447,12 @@ namespace Wallet
             address.SetPubKey(vSolutions[0]);
             return keystore.HaveKey(address);
         case TX_PUBKEYHASH:
-            address.SetHash256(uint256(vSolutions[0]));
+            address.SetHash256(LLC::uint256(vSolutions[0]));
             return keystore.HaveKey(address);
         case TX_SCRIPTHASH:
         {
             CScript subscript;
-            if (!keystore.GetCScript(uint256(vSolutions[0]), subscript))
+            if (!keystore.GetCScript(LLC::uint256(vSolutions[0]), subscript))
                 return false;
 
             return IsMine(keystore, subscript);
@@ -1485,12 +1485,12 @@ namespace Wallet
         }
         else if (whichType == TX_PUBKEYHASH)
         {
-            addressRet.SetHash256(uint256(vSolutions[0]));
+            addressRet.SetHash256(LLC::uint256(vSolutions[0]));
             return true;
         }
         else if (whichType == TX_SCRIPTHASH)
         {
-            addressRet.SetScriptHash256(uint256(vSolutions[0]));
+            addressRet.SetScriptHash256(LLC::uint256(vSolutions[0]));
             return true;
         }
         // Multisig txns have more than one address...
@@ -1520,9 +1520,9 @@ namespace Wallet
             nRequiredRet = 1;
             NexusAddress address;
             if (typeRet == TX_PUBKEYHASH)
-                address.SetHash256(uint256(vSolutions.front()));
+                address.SetHash256(LLC::uint256(vSolutions.front()));
             else if (typeRet == TX_SCRIPTHASH)
-                address.SetScriptHash256(uint256(vSolutions.front()));
+                address.SetScriptHash256(LLC::uint256(vSolutions.front()));
             else if (typeRet == TX_PUBKEY)
                 address.SetPubKey(vSolutions.front());
             addressRet.push_back(address);
@@ -1580,7 +1580,7 @@ namespace Wallet
 
         // Leave out the signature from the hash, since a signature can't sign itself.
         // The checksig op will also drop the signatures from its hash.
-        uint256 hash = SignatureHash(txout.scriptPubKey, txTo, nIn, nHashType);
+        LLC::uint256 hash = SignatureHash(txout.scriptPubKey, txTo, nIn, nHashType);
 
         TransactionType whichType;
         if (!Solver(keystore, txout.scriptPubKey, hash, nHashType, txin.scriptSig, whichType))
@@ -1594,7 +1594,7 @@ namespace Wallet
             CScript subscript = txin.scriptSig;
 
             // Recompute txn hash using subscript in place of scriptPubKey:
-            uint256 hash2 = SignatureHash(subscript, txTo, nIn, nHashType);
+            LLC::uint256 hash2 = SignatureHash(subscript, txTo, nIn, nHashType);
             TransactionType subType;
             if (!Solver(keystore, subscript, hash2, nHashType, txin.scriptSig, subType))
                 return false;
@@ -1708,7 +1708,7 @@ namespace Wallet
     void CScript::SetPayToScriptHash(const CScript& subscript)
     {
         assert(!subscript.empty());
-        uint256 subscriptHash = SK256(subscript);
+        LLC::uint256 subscriptHash = SK256(subscript);
         this->clear();
         *this << OP_HASH256 << subscriptHash << OP_EQUAL;
     }

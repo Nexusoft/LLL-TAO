@@ -44,8 +44,8 @@ namespace LLD
             
         }
         
-        bool AddTransaction(uint512 hash, Core::CTxIndex& txindex);
-        bool RemoveTransaction(uint512 hash, const Core::CTxIndex& txindex);
+        bool AddTransaction(LLC::uint512 hash, Core::CTxIndex& txindex);
+        bool RemoveTransaction(LLC::uint512 hash, const Core::CTxIndex& txindex);
     };
 }
 

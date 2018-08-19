@@ -108,9 +108,9 @@ namespace LLD
         }
         
         /* Hash to keep track of the Sector Transactions in the Transaction History Journal. */
-        uint512 GetHash()
+        LLC::uint512 GetHash()
         {
-            uint512 hashTransaction;
+            LLC::uint512 hashTransaction;
             
             return hashTransaction;
         }

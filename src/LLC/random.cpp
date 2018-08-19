@@ -75,25 +75,25 @@ int GetRandInt(int nMax)
 }
 
 
-uint256 GetRand256()
+LLC::uint256 GetRand256()
 {
-    uint256 hash;
+    LLC::uint256 hash;
     RAND_bytes((unsigned char*)&hash, sizeof(hash));
     return hash;
 }
 
 
-uint512 GetRand512()
+LLC::uint512 GetRand512()
 {
-    uint512 hash;
+    LLC::uint512 hash;
     RAND_bytes((unsigned char*)&hash, sizeof(hash));
     return hash;
 }
 
 
-uint1024 GetRand1024()
+LLC::uint1024 GetRand1024()
 {
-    uint1024 hash;
+    LLC::uint1024 hash;
     RAND_bytes((unsigned char*)&hash, sizeof(hash));
     return hash;
 }

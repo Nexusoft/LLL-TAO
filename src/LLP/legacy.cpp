@@ -435,7 +435,7 @@ namespace LLP
         else if (INCOMING.GetMessage() == "getblocks")
         {
             //Core::CBlockLocator locator;
-            //uint1024 hashStop;
+            //LLC::uint1024 hashStop;
             //ssMessage >> locator >> hashStop;
 
         }
@@ -445,7 +445,7 @@ namespace LLP
         else if (INCOMING.GetMessage() == "getheaders")
         {
             //Core::CBlockLocator locator;
-            //uint1024 hashStop;
+            //LLC::uint1024 hashStop;
             //ssMessage >> locator >> hashStop;
 
         }

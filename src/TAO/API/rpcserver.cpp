@@ -357,7 +357,7 @@ namespace Net
         unsigned int nTotalActive = 0;
         Array trustkeys;
         Object ret;
-        for(std::map<uint576, Core::CTrustKey>::iterator it = Core::cTrustPool.mapTrustKeys.begin(); it != Core::cTrustPool.mapTrustKeys.end(); ++it)
+        for(std::map<LLC::uint576, Core::CTrustKey>::iterator it = Core::cTrustPool.mapTrustKeys.begin(); it != Core::cTrustPool.mapTrustKeys.end(); ++it)
         {
             Object obj;
 
@@ -694,7 +694,7 @@ namespace Net
         {
             Wallet::CScript scriptPubKey;
             scriptPubKey.SetNexusAddress(account.vchPubKey);
-            for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin();
+            for (map<LLC::uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin();
                  it != pwalletMain->mapWallet.end() && !account.vchPubKey.empty();
                  ++it)
             {
@@ -946,7 +946,7 @@ namespace Net
 
         // Tally
         int64_t nAmount = 0;
-        for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
+        for (map<LLC::uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
         {
             const Wallet::CWalletTx& wtx = (*it).second;
             if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
@@ -993,7 +993,7 @@ namespace Net
 
         // Tally
         int64_t nAmount = 0;
-        for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
+        for (map<LLC::uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
         {
             const Wallet::CWalletTx& wtx = (*it).second;
             if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
@@ -1023,11 +1023,11 @@ namespace Net
                 "Get balances of top addresses in the Network.");
 
         int nCount = params[0].get_int();
-        multimap<uint64_t, uint256> richList = flip_map(Core::mapAddressTransactions);
+        multimap<uint64_t, LLC::uint256> richList = flip_map(Core::mapAddressTransactions);
 
         /** Dump the Address and Values. **/
         Object entry;
-        for(multimap<uint64_t, uint256>::const_reverse_iterator it = richList.rbegin(); it != richList.rend() && nCount > 0; ++it)
+        for(multimap<uint64_t, LLC::uint256>::const_reverse_iterator it = richList.rbegin(); it != richList.rend() && nCount > 0; ++it)
         {
             Wallet::NexusAddress cAddress(it->second);
             entry.push_back(Pair(cAddress.ToString(), (double)it->first / COIN));
@@ -1062,7 +1062,7 @@ namespace Net
             fCoinbase = params[2].get_bool();
 
         /* List the transactions stored in the memory map. */
-        std::vector<std::pair<bool, uint512> > vTransactions = Core::mapRichList[cAddress.GetHash256()];
+        std::vector<std::pair<bool, LLC::uint512> > vTransactions = Core::mapRichList[cAddress.GetHash256()];
 
         Array entry;
         for(auto tx : vTransactions)
@@ -1070,7 +1070,7 @@ namespace Net
             if(fCoinbase && tx.first)
                 continue;
 
-            uint1024 hashBlock = 0;
+            LLC::uint1024 hashBlock = 0;
             Core::CTransaction TX;
             if (!Core::GetTransaction(tx.second, TX, hashBlock))
                 throw JSONRPCError(-5, "No information available about transaction");
@@ -1187,7 +1187,7 @@ namespace Net
                 "getglobaltransaction [txid]\n"
                 "Get detailed information about [txid]");
 
-        uint512 hash;
+        LLC::uint512 hash;
         hash.SetHex(params[0].get_str());
 
         Core::CTxIndex txindex;
@@ -1278,7 +1278,7 @@ namespace Net
         int64_t nBalance = 0;
 
         // Tally wallet transactions
-        for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
+        for (map<LLC::uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
         {
             const Wallet::CWalletTx& wtx = (*it).second;
             if (!wtx.IsFinal())
@@ -1326,7 +1326,7 @@ namespace Net
             // (GetBalance() sums up all unspent TxOuts)
             // getbalance and getbalance '*' should always return the same number.
             int64_t nBalance = 0;
-            for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
+            for (map<LLC::uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
             {
                 const Wallet::CWalletTx& wtx = (*it).second;
                 if (!wtx.IsFinal())
@@ -1589,7 +1589,7 @@ namespace Net
         Wallet::CScript inner;
         inner.SetMultisig(nRequired, pubkeys);
 
-        uint256 scriptHash = SK256(inner);
+        LLC::uint256 scriptHash = SK256(inner);
         Wallet::CScript scriptPubKey;
         scriptPubKey.SetPayToScriptHash(inner);
         pwalletMain->AddCScript(inner);
@@ -1626,7 +1626,7 @@ namespace Net
 
         // Tally
         map<Wallet::NexusAddress, tallyitem> mapTally;
-        for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
+        for (map<LLC::uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
         {
             const Wallet::CWalletTx& wtx = (*it).second;
 
@@ -1858,7 +1858,7 @@ namespace Net
 
         // Note: maintaining indices in the database of (account,time) --> txid and (account, time) --> acentry
         // would make this much faster for applications that do this a lot.
-        for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
+        for (map<LLC::uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
         {
             Wallet::CWalletTx* wtx = &((*it).second);
             txByTime.insert(make_pair(wtx->GetTxTime(), TxPair(wtx, (Wallet::CAccountingEntry*)0)));
@@ -1919,7 +1919,7 @@ namespace Net
                 mapAccountBalances[entry.second] = 0;
         }
 
-        for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
+        for (map<LLC::uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
         {
             const Wallet::CWalletTx& wtx = (*it).second;
             int64_t nGeneratedImmature, nGeneratedMature, nFee;
@@ -1965,7 +1965,7 @@ namespace Net
 
         if (params.size() > 0)
         {
-            uint1024 blockId = 0;
+            LLC::uint1024 blockId = 0;
 
             blockId.SetHex(params[0].get_str());
             pindex = Core::CBlockLocator(blockId).GetBlockIndex();
@@ -1983,7 +1983,7 @@ namespace Net
 
         Array transactions;
 
-        for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); it++)
+        for (map<LLC::uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); it++)
         {
             Wallet::CWalletTx tx = (*it).second;
 
@@ -1993,7 +1993,7 @@ namespace Net
 
 
         //NOTE: Do we need this code for anything?
-        uint1024 lastblock;
+        LLC::uint1024 lastblock;
 
         if (target_confirms == 1)
         {
@@ -2025,7 +2025,7 @@ namespace Net
                 "gettransaction <txid>\n"
                 "Get detailed information about <txid>");
 
-        uint512 hash;
+        LLC::uint512 hash;
         hash.SetHex(params[0].get_str());
 
         Object entry;
@@ -2063,11 +2063,11 @@ namespace Net
                 "Returns a string that is serialized,\n"
                 "hex-encoded data for <txid>.");
 
-        uint512 hash;
+        LLC::uint512 hash;
         hash.SetHex(params[0].get_str());
 
         Core::CTransaction tx;
-        uint1024 hashBlock = 0;
+        LLC::uint1024 hashBlock = 0;
         if (!Core::GetTransaction(hash, tx, hashBlock))
             throw JSONRPCError(-5, "No information available about transaction");
 
@@ -2099,12 +2099,12 @@ namespace Net
         catch (std::exception &e) {
             throw JSONRPCError(-22, "TX decode failed");
         }
-        uint512 hashTx = tx.GetHash();
+        LLC::uint512 hashTx = tx.GetHash();
 
         // See if the transaction is already in a block
         // or in the memory pool:
         Core::CTransaction existingTx;
-        uint1024 hashBlock = 0;
+        LLC::uint1024 hashBlock = 0;
         if (Core::GetTransaction(hashTx, existingTx, hashBlock))
         {
             if (hashBlock != 0)
@@ -2426,7 +2426,7 @@ namespace Net
                 "Returns details of a block with given block-hash.");
 
         std::string strHash = params[0].get_str();
-        uint1024 hash(strHash);
+        LLC::uint1024 hash(strHash);
 
         if (Core::mapBlockIndex.count(hash) == 0)
             throw JSONRPCError(-5, "Block not found");
@@ -2514,7 +2514,7 @@ namespace Net
 
         /** Check each Trust Key to See if we Own it if there is no Key. **/
         Object result;
-        for(std::map<uint576, Core::CTrustKey>::iterator i = Core::cTrustPool.mapTrustKeys.begin(); i != Core::cTrustPool.mapTrustKeys.end(); ++i)
+        for(std::map<LLC::uint576, Core::CTrustKey>::iterator i = Core::cTrustPool.mapTrustKeys.begin(); i != Core::cTrustPool.mapTrustKeys.end(); ++i)
         {
 
             /** Check the Wallet and Trust Keys in Trust Pool to see if we own any keys. **/
@@ -2734,11 +2734,11 @@ namespace Net
                 "getrawmempool\n"
                 "Returns all transaction ids in memory pool.");
 
-        vector<uint512> vtxid;
+        vector<LLC::uint512> vtxid;
         Core::mempool.queryHashes(vtxid);
 
         Array a;
-        BOOST_FOREACH(const uint512& hash, vtxid)
+        BOOST_FOREACH(const LLC::uint512& hash, vtxid)
             a.push_back(hash.ToString());
 
         return a;

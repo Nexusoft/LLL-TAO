@@ -35,7 +35,7 @@ namespace Legacy
 		};
 
 		/** Typedef for reading previous transaction inputs. TODO: deprecate txindex **/
-		typedef std::map<uint512, std::pair<CTxIndex, CTransaction> > MapPrevTx;
+		typedef std::map<LLC::uint512, std::pair<CTxIndex, CTransaction> > MapPrevTx;
 
 
 		/** The basic transaction that is broadcasted on the network and contained in
@@ -84,7 +84,7 @@ namespace Legacy
 				return (vin.empty() && vout.empty());
 			}
 
-			uint512 GetHash() const
+			LLC::uint512 GetHash() const
 			{
 				return SerializeHash(*this);
 			}
@@ -319,7 +319,7 @@ namespace Legacy
 			 @param[out] fInvalid	returns true if transaction is invalid
 			 @return	Returns true if all inputs are in txdb or mapTestPool
 			 */
-			bool FetchInputs(LLD::CIndexDB& indexdb, const std::map<uint512, CTxIndex>& mapTestPool,
+			bool FetchInputs(LLD::CIndexDB& indexdb, const std::map<LLC::uint512, CTxIndex>& mapTestPool,
 							 bool fBlock, bool fMiner, MapPrevTx& inputsRet, bool& fInvalid);
 
 			/** Sanity check previous transactions, then, if all checks succeed,
@@ -334,7 +334,7 @@ namespace Legacy
 				@return Returns true if all checks succeed
 			 */
 			bool ConnectInputs(LLD::CIndexDB& indexdb, MapPrevTx inputs,
-							   std::map<uint512, CTxIndex>& mapTestPool, const CDiskTxPos& posThisTx,
+							   std::map<LLC::uint512, CTxIndex>& mapTestPool, const CDiskTxPos& posThisTx,
 							   const CBlockIndex* pindexBlock, bool fBlock, bool fMiner);
 
 			bool ClientConnectInputs();
@@ -364,7 +364,7 @@ namespace Legacy
 
 
 	/* Remove an Orphaned Transaction from the Memory Mao. */
-	void EraseOrphanTx(uint512 hash);
+	void EraseOrphanTx(LLC::uint512 hash);
 
 
 	/* Set the Limit of the Orphan Transaction Sizes Dynamically. */
@@ -372,7 +372,7 @@ namespace Legacy
 
 
 	/* Get a specific transaction from the Database or from a block's binary position. */
-	bool GetTransaction(const uint512 &hash, CTransaction &tx, uint1024 &hashBlock);
+	bool GetTransaction(const LLC::uint512 &hash, CTransaction &tx, LLC::uint1024 &hashBlock);
 
 }
 

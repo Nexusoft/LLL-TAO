@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <map>
 
-class uint1024;
+class LLC::uint1024;
 
 namespace Core
 {
@@ -24,7 +24,7 @@ namespace Core
 	
 	
 	/* Memory Map to hold all the hashes of the checkpoints decided on by the network. */
-	extern std::map<unsigned int, uint1024> mapCheckpoints;
+	extern std::map<unsigned int, LLC::uint1024> mapCheckpoints;
 	
 	
 	/* Checkpoint Timespan, or the time that triggers a new checkpoint (in Minutes). */
@@ -42,7 +42,7 @@ namespace Core
 	
 	
 	/* Get the most recent checkpoint that was agreed upon by the timestamp. */
-	uint1024 GetLastCheckpoint();
+	LLC::uint1024 GetLastCheckpoint();
 	
 	
 	/* Check if the new block triggers a new Checkpoint timespan. */

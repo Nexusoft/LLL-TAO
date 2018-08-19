@@ -32,8 +32,8 @@ namespace LLP
     {
         public:
             CInv();
-            CInv(int typeIn, const uint1024& hashIn);
-            CInv(const std::string& strType, const uint1024& hashIn);
+            CInv(int typeIn, const LLC::uint1024& hashIn);
+            CInv(const std::string& strType, const LLC::uint1024& hashIn);
 
             IMPLEMENT_SERIALIZE
             (
@@ -51,7 +51,7 @@ namespace LLP
         // TODO: make private (improves encapsulation)
         public:
             int type;
-            uint1024 hash;
+            LLC::uint1024 hash;
     };
 }
 

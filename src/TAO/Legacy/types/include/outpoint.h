@@ -28,7 +28,7 @@ namespace Legacy
 		public:
 
 			/** The hash of the previous transaction being spent. **/
-			uint512 hash;
+			LLC::uint512 hash;
 
 
 			/** The output number of the previous transaction being spent. **/
@@ -53,7 +53,7 @@ namespace Legacy
 			 *	@param[in] nIn The output number of previous transaction.
 			 *
 			 **/
-			COutPoint(uint512 hashIn, unsigned int nIn) { hash = hashIn; n = nIn; }
+			COutPoint(LLC::uint512 hashIn, unsigned int nIn) { hash = hashIn; n = nIn; }
 
 
 			/** SetNull
