@@ -24,9 +24,9 @@ ________________________________________________________________________________
 
 
 /** Performance counter wrapper for Random Seed Generating. **/
-inline int64 GetPerformanceCounter()
+inline int64_t GetPerformanceCounter()
 {
-    int64 nCounter = 0;
+    int64_t nCounter = 0;
 #ifdef WIN32
     QueryPerformanceCounter((LARGE_INTEGER*)&nCounter);
 #else
@@ -48,7 +48,7 @@ int GetRandInt(int nMax);
 int GetRandInt(int nMax);
 
 /* Get random 64 bit number. */
-uint64 GetRand(uint64 nMax);
+uint64_t GetRand(uint64_t nMax);
 
 /* Get random 256 bit number. */
 uint256 GetRand256();

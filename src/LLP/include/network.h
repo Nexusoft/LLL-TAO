@@ -131,7 +131,7 @@ namespace LLP
             std::string ToString() const;
             std::string ToStringIP() const;
             int GetByte(int n) const;
-            uint64 GetHash() const;
+            uint64_t GetHash() const;
             bool GetInAddr(struct in_addr* pipv4Addr) const;
             std::vector<unsigned char> GetGroup() const;
             void print() const;
@@ -203,7 +203,7 @@ namespace LLP
     {
         public:
             CAddress();
-            explicit CAddress(CService ipIn, uint64 nServicesIn = NODE_NETWORK);
+            explicit CAddress(CService ipIn, uint64_t nServicesIn = NODE_NETWORK);
 
             void Init();
 
@@ -225,13 +225,13 @@ namespace LLP
 
         // TODO: make private (improves encapsulation)
         public:
-            uint64 nServices;
+            uint64_t nServices;
 
             // disk and network only
             unsigned int nTime;
 
             // memory only
-            int64 nLastTry;
+            int64_t nLastTry;
     };
 
 

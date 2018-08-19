@@ -53,7 +53,7 @@ namespace TAO
 
 
             /** The chechsum of the state register for use in pruning. */
-            uint64 hashChecksum;
+            uint64_t hashChecksum;
 
 
 
@@ -85,7 +85,7 @@ namespace TAO
             }
 
 
-            CStateRegister(uint64 hashChecksumIn) : fReadOnly(false), nVersion(1), nLength(0), hashAddress(0), hashChecksum(hashChecksumIn)
+            CStateRegister(uint64_t hashChecksumIn) : fReadOnly(false), nVersion(1), nLength(0), hashAddress(0), hashChecksum(hashChecksumIn)
             {
 
             }

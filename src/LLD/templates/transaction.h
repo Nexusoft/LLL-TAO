@@ -63,7 +63,7 @@ namespace LLD
     public:
     
         /** The hash for the Transaction to be saved under. **/
-        uint64 TransactionID;
+        uint64_t TransactionID;
         
         /** Only let one operation happen on the transaction at one time. **/
         Mutex_t TX_MUTEX;

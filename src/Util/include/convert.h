@@ -174,7 +174,7 @@ inline std::vector<unsigned char> uint2bytes64(uint64_t UINT)
 
             
 /* Convert a byte Vector into unsigned integer 64 bit. */
-inline uint64_t bytes2uint64(std::vector<unsigned char> BYTES, int nOffset = 0) { return (bytes2uint(BYTES, nOffset) | ((uint64)bytes2uint(BYTES, nOffset + 4) << 32)); }
+inline uint64_t bytes2uint64(std::vector<unsigned char> BYTES, int nOffset = 0) { return (bytes2uint(BYTES, nOffset) | ((uint64_t)bytes2uint(BYTES, nOffset + 4) << 32)); }
 
 
 /* Convert Standard String into Byte Vector. */

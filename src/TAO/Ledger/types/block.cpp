@@ -86,9 +86,9 @@ namespace TAO
 
 
 		/* Return the Block's current UNIX Timestamp. */
-		int64 Block::GetBlockTime() const
+		int64_t Block::GetBlockTime() const
 		{
-			return (int64)nTime;
+			return (int64_t)nTime;
 		}
 
 
@@ -124,7 +124,7 @@ namespace TAO
 		/* Update the nTime of the current block. */
 		void Block::UpdateTime()
 		{
-			nTime = std::max((uint64)mapBlockIndex[hashPrevBlock]->GetBlockTime() + 1, UnifiedTimestamp());
+			nTime = std::max((uint64_t)mapBlockIndex[hashPrevBlock]->GetBlockTime() + 1, UnifiedTimestamp());
 		}
 
 

@@ -34,7 +34,7 @@ namespace LLP
     }
 
 
-    CAddress::CAddress(CService ipIn, uint64 nServicesIn) : CService(ipIn)
+    CAddress::CAddress(CService ipIn, uint64_t nServicesIn) : CService(ipIn)
     {
         Init();
         nServices = nServicesIn;
@@ -362,7 +362,7 @@ namespace LLP
     }
 
 
-    uint64 CNetAddr::GetHash() const
+    uint64_t CNetAddr::GetHash() const
     {
         return LLC::HASH::SK64(&ip[0], &ip[16]);
     }

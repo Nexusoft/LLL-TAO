@@ -26,7 +26,7 @@ namespace TAO
 
             unsigned int nStateEnd; //the binary end of the state bytes
 
-            std::map<uint64, std::vector<unsigned char> > mapMethods; //the byte data of the mothods
+            std::map<uint64_t, std::vector<unsigned char> > mapMethods; //the byte data of the mothods
 
             CObjectRegister(TypeObject classObjectIn, std::vector<unsigned char> vchOperations)
             {
@@ -37,9 +37,9 @@ namespace TAO
                 SetState(ssObject);
             }
 
-            std::vector< uint64 > GetAddresses() //get method addresses
+            std::vector< uint64_t > GetAddresses() //get method addresses
             {
-                std::vector<uint64> vnAddresses;
+                std::vector<uint64_t> vnAddresses;
 
                 for(auto methods : mapMethods)
                     vnAddresses.push_back(methods.first);
@@ -85,7 +85,7 @@ namespace TAO
 
 
             template<typename TypeReturn>
-            TypeReturn Execute(uint64 nAddress, std::vector<unsigned char> vchParameters)
+            TypeReturn Execute(uint64_t nAddress, std::vector<unsigned char> vchParameters)
             {
                 TypeReturn objReturn;
                 objReturn.SetNull(); //all return types must have a virtual TypeReturn

@@ -30,7 +30,7 @@ namespace Net
     {
     public:
         Core::CBlockIndex *pindex;
-        int64 nValue;
+        int64_t nValue;
         bool fSpent;
         Wallet::CWalletTx* ptx;
         int nOut;
@@ -196,14 +196,14 @@ namespace Net
             throw JSONRPCError(-102, "Wallet is unlocked for minting only.");
 
         /** Compile the list of available Nexus Addresses and their according Balances. **/
-        map<Wallet::NexusAddress, int64> mapAddresses;
+        map<Wallet::NexusAddress, int64_t> mapAddresses;
         if(!pwalletMain->AvailableAddresses((unsigned int)GetUnifiedTimestamp(), mapAddresses))
             throw JSONRPCError(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
         /** Loop all entries of the memory map to compile the list of account names and their addresses.
             JSON object format is a reflection of the import and export options. **/
         Object entry;
-        for (map<Wallet::NexusAddress, int64>::iterator it = mapAddresses.begin(); it != mapAddresses.end(); ++it)
+        for (map<Wallet::NexusAddress, int64_t>::iterator it = mapAddresses.begin(); it != mapAddresses.end(); ++it)
         {
             /** Extract the Secret key from the Wallet. **/
             Wallet::CSecret vchSecret;

@@ -40,7 +40,7 @@ namespace Consensus
         cKey.SetBytes(vKeys[0]);
         
         /* Determine Trust Age if the Trust Key Exists. */
-        uint64 nCoinAge = 0, nTrustAge = 0, nBlockAge = 0;
+        uint64_t nCoinAge = 0, nTrustAge = 0, nBlockAge = 0;
         double nTrustWeight = 0.0, nBlockWeight = 0.0;
         if(!cTrustPool.Exists(cKey))
             return error("CBlock::VerifyStake() : No Trust Key in Trust Pool (Missing Accept)");
@@ -82,7 +82,7 @@ namespace Consensus
         
         /** G] Check the nNonce Efficiency Proportion Requirements. **/
         double nThreshold = ((nTime - vtx[0].nTime) * 100.0) / nNonce;
-        double nRequired  = ((50.0 - nTrustWeight - nBlockWeight) * MAX_STAKE_WEIGHT) / std::min((int64)MAX_STAKE_WEIGHT, vtx[0].vout[0].nValue);
+        double nRequired  = ((50.0 - nTrustWeight - nBlockWeight) * MAX_STAKE_WEIGHT) / std::min((int64_t)MAX_STAKE_WEIGHT, vtx[0].vout[0].nValue);
         if(nThreshold < nRequired)
             return error("CBlock::VerifyStake() : Coinstake / nNonce threshold too low %f Required %f. Energy efficiency limits Reached Coin Age %" PRIu64 " | Trust Age %" PRIu64 " | Block Age %" PRIu64, nThreshold, nRequired, nCoinAge, nTrustAge, nBlockAge);
             
@@ -109,7 +109,7 @@ namespace Consensus
     
     
     /** Calculate the Age of the current Coinstake. Age is determined by average time from previous transactions. **/
-    bool CTransaction::GetCoinstakeAge(LLD::CIndexDB& indexdb, uint64& nAge) const
+    bool CTransaction::GetCoinstakeAge(LLD::CIndexDB& indexdb, uint64_t& nAge) const
     {
         /** Output figure to show the amount of coins being staked at their interest rates. **/
         nAge = 0;
@@ -134,7 +134,7 @@ namespace Consensus
                 return error("GetCoinstakeAge() : Failed To Read Block from Disk");
 
             /** Calculate the Age and Value of given output. **/
-            int64 nCoinAge = (nTime - block.GetBlockTime());
+            int64_t nCoinAge = (nTime - block.GetBlockTime());
             
             /** Compound the Total Figures. **/
             nAge += nCoinAge;
@@ -147,7 +147,7 @@ namespace Consensus
     
     
     /** Obtains the proper compounded interest from given Coin Stake Transaction. **/
-    bool CTransaction::GetCoinstakeInterest(LLD::CIndexDB& indexdb, int64& nInterest) const
+    bool CTransaction::GetCoinstakeInterest(LLD::CIndexDB& indexdb, int64_t& nInterest) const
     {
         /** Check that the transaction is Coinstake. **/
         if(!IsCoinStake())
@@ -168,7 +168,7 @@ namespace Consensus
         cKey.SetBytes(vKeys[0]);
             
         /** Output figure to show the amount of coins being staked at their interest rates. **/
-        int64 nTotalCoins = 0, nAverageAge = 0;
+        int64_t nTotalCoins = 0, nAverageAge = 0;
         nInterest = 0;
         
         /** Calculate the Variable Interest Rate for Given Coin Age Input. [0.5% Minimum - 3% Maximum].
@@ -191,8 +191,8 @@ namespace Consensus
                 return error("CTransaction::GetCoinstakeInterest() : Failed To Read Block from Disk");
                 
             /** Calculate the Age and Value of given output. **/
-            int64 nCoinAge = (nTime - block.GetBlockTime());
-            int64 nValue = txPrev.vout[vin[nIndex].prevout.n].nValue;
+            int64_t nCoinAge = (nTime - block.GetBlockTime());
+            int64_t nValue = txPrev.vout[vin[nIndex].prevout.n].nValue;
             
             /** Compound the Total Figures. **/
             nTotalCoins += nValue;
@@ -408,8 +408,8 @@ namespace Consensus
             }
             
             /* Get the time since last block. */
-            uint64 nTrustAge = mapTrustKeys[cKey].Age(GetUnifiedTimestamp());
-            uint64 nBlockAge = mapTrustKeys[cKey].BlockAge(cBlock.GetHash(), cBlock.hashPrevBlock);
+            uint64_t nTrustAge = mapTrustKeys[cKey].Age(GetUnifiedTimestamp());
+            uint64_t nBlockAge = mapTrustKeys[cKey].BlockAge(cBlock.GetHash(), cBlock.hashPrevBlock);
             
             /* Genesis Rules: Less than 1000 NXS in block. */
             if(cBlock.vtx[0].GetValueOut() < 1000 * COIN)
@@ -797,7 +797,7 @@ namespace Consensus
     
     
     /** Key is Expired if it is Invalid or Time between Network Best Block and Best Previous is Greater than Expiration Time. **/
-    uint64 CTrustKey::Age(unsigned int nTime) const 
+    uint64_t CTrustKey::Age(unsigned int nTime) const 
     { 
         if(nGenesisTime == 0)
             return 0;
@@ -806,12 +806,12 @@ namespace Consensus
         if(nGenesisTime > nTime)
             return 1;
     
-        return (uint64)(nTime - nGenesisTime);
+        return (uint64_t)(nTime - nGenesisTime);
     }
     
     
     /* The Age of a Key in Block age as in the Time it has been since Trust Key has produced block. */
-    uint64 CTrustKey::BlockAge(uint1024 hashThisBlock, uint1024 hashPrevBlock) const
+    uint64_t CTrustKey::BlockAge(uint1024 hashThisBlock, uint1024 hashPrevBlock) const
     {
         /* Genesis Transaction Block Age is Time to Genesis Time. */
         if(!mapBlockIndex.count(hashPrevBlock))
@@ -829,7 +829,7 @@ namespace Consensus
             return BlockAge(hashBlockLast, hashPrevBlock); //recursively look back from last back if block times not satisfied
         
         /* Block Age is Time to Previous Block's Time. */
-        return (uint64)(mapBlockIndex[hashPrevBlock]->GetBlockTime() - mapBlockIndex[hashBlockLast]->GetBlockTime());
+        return (uint64_t)(mapBlockIndex[hashPrevBlock]->GetBlockTime() - mapBlockIndex[hashBlockLast]->GetBlockTime());
     }
     
     
@@ -885,7 +885,7 @@ namespace Consensus
             
             
             /* Determine Trust Age if the Trust Key Exists. */
-            uint64 nCoinAge = 0, nTrustAge = 0, nBlockAge = 0;
+            uint64_t nCoinAge = 0, nTrustAge = 0, nBlockAge = 0;
             double nTrustWeight = 0.0, nBlockWeight = 0.0;
             if(cTrustPool.Exists(cKey))
             {
@@ -997,7 +997,7 @@ namespace Consensus
                         
                     /* Calculate the Efficiency Threshold. */
                     double nThreshold = (double)((block[i].nTime - block[i].vtx[0].nTime) * 100.0) / (block[i].nNonce + 1); //+1 to account for increment if that nNonce is chosen
-                    double nRequired  = ((50.0 - nTrustWeight - nBlockWeight) * MAX_STAKE_WEIGHT) / std::min((int64)MAX_STAKE_WEIGHT, block[i].vtx[0].vout[0].nValue);
+                    double nRequired  = ((50.0 - nTrustWeight - nBlockWeight) * MAX_STAKE_WEIGHT) / std::min((int64_t)MAX_STAKE_WEIGHT, block[i].vtx[0].vout[0].nValue);
                         
                     /* Allow the Searching For Stake block if Below the Efficiency Threshold. */
                     if(nThreshold < nRequired)

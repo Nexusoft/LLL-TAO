@@ -136,13 +136,13 @@ namespace Core
 		
 		
 		/* Get the Block Time and Target Spacing. */
-		int64 nBlockTime   = GetWeightedTimes(blkFirst.GetHash(), 5);
-		int64 nBlockTarget = STAKE_TARGET_SPACING;
+		int64_t nBlockTime   = GetWeightedTimes(blkFirst.GetHash(), 5);
+		int64_t nBlockTarget = STAKE_TARGET_SPACING;
 		
 		
 		/* The Upper and Lower Bound Adjusters. */
-		int64 nUpperBound = nBlockTarget;
-		int64 nLowerBound = nBlockTarget;
+		int64_t nUpperBound = nBlockTarget;
+		int64_t nLowerBound = nBlockTarget;
 		
 			
 		/* If the time is above target, reduce difficulty by modular
@@ -150,7 +150,7 @@ namespace Core
 		if(nBlockTime >= nBlockTarget)
 		{
 			/* Take the Minimum overlap of Target Timespan to make that maximum interval. */
-			uint64 nOverlap = (uint64)min((nBlockTime - nBlockTarget), (nBlockTarget * 2));
+			uint64_t nOverlap = (uint64_t)min((nBlockTime - nBlockTarget), (nBlockTarget * 2));
 				
 			/* Get the Mod from the Proportion of Overlap in one Interval. */
 			double nProportions = (double)nOverlap / (nBlockTarget * 2);
@@ -166,7 +166,7 @@ namespace Core
 		else
 		{
 			/* Get the overlap in reference from Target Timespan. */
-			uint64 nOverlap = nBlockTarget - nBlockTime;
+			uint64_t nOverlap = nBlockTarget - nBlockTime;
 				
 			/* Get the mod from overlap proportion. Time of 1 will be closest to mod of 1. */
 			double nProportions = (double) nOverlap / nBlockTarget;
@@ -205,7 +205,7 @@ namespace Core
 			GetChainTimes(GetChainAge(blkFirst.GetBlockTime()), nDays, nHours, nMinutes);
 			
 			printf("RETARGET weighted time=%" PRId64 " actual time =%" PRId64 "[%f %%]\n\tchain time: [%" PRId64 " / %" PRId64 "]\n\tdifficulty: [%f to %f]\n\ttrust height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n\n", 
-			nBlockTime, max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64) 1), ((100.0 * nLowerBound) / nUpperBound), nBlockTarget, nBlockTime, GetDifficulty(blkFirst.nBits, 0), GetDifficulty(bnNew.GetCompact(), 0), blkFirst.nChannelHeight, nDays, nHours, nMinutes);
+			nBlockTime, max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64_t) 1), ((100.0 * nLowerBound) / nUpperBound), nBlockTarget, nBlockTime, GetDifficulty(blkFirst.nBits, 0), GetDifficulty(bnNew.GetCompact(), 0), blkFirst.nChannelHeight, nDays, nHours, nMinutes);
 		}
 		
 		return bnNew.GetCompact();
@@ -230,8 +230,8 @@ namespace Core
 		
 		
 		/* Standard Time Proportions */
-		int64 nBlockTime = ((blk.nVersion >= 4) ? GetWeightedTimes(blkFirst.GetHash(), 5) : max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), 1));
-		int64 nBlockTarget = nTargetTimespan;
+		int64_t nBlockTime = ((blk.nVersion >= 4) ? GetWeightedTimes(blkFirst.GetHash(), 5) : max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), 1));
+		int64_t nBlockTarget = nTargetTimespan;
 		
 		
 		/* Chain Mod: Is a proportion to reflect outstanding released funds. Version 1 Deflates difficulty slightly
@@ -265,7 +265,7 @@ namespace Core
 			if(nBlockTime >= nBlockTarget)
 			{
 				/* Take the Minimum overlap of Target Timespan to make that maximum interval. */
-				uint64 nOverlap = (uint64)min((nBlockTime - nBlockTarget), (nBlockTarget * 2));
+				uint64_t nOverlap = (uint64_t)min((nBlockTime - nBlockTarget), (nBlockTarget * 2));
 				
 				/* Get the Mod from the Proportion of Overlap in one Interval. */
 				double nProportions = (double)nOverlap / (nBlockTarget * 2);
@@ -279,7 +279,7 @@ namespace Core
 			else
 			{
 				/* Get the overlap in reference from Target Timespan. */
-				uint64 nOverlap = nBlockTarget - nBlockTime;
+				uint64_t nOverlap = nBlockTarget - nBlockTime;
 				
 				/* Get the mod from overlap proportion. Time of 1 will be closest to mod of 1. */
 				double nProportions = (double) nOverlap / nBlockTarget;
@@ -335,7 +335,7 @@ namespace Core
 			GetChainTimes(GetChainAge(blkFirst.GetBlockTime()), nDays, nHours, nMinutes);
 			
 			printf("RETARGET weighted time=%" PRId64 " actual time %" PRId64 ", [%f %%]\n\tchain time: [%" PRId64 " / %" PRId64 "]\n\treleased reward: %" PRId64 " [%f %%]\n\tdifficulty: [%f to %f]\n\tprime height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n\n", 
-			nBlockTime, max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64) 1), nMod * 100.0, nBlockTarget, nBlockTime, blkFirst.nReleasedReserve[0] / COIN, 100.0 * nChainMod, GetDifficulty(blkFirst.nBits, 1), GetDifficulty(nBits, 1), blkFirst.nChannelHeight, nDays, nHours, nMinutes);
+			nBlockTime, max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64_t) 1), nMod * 100.0, nBlockTarget, nBlockTime, blkFirst.nReleasedReserve[0] / COIN, 100.0 * nChainMod, GetDifficulty(blkFirst.nBits, 1), GetDifficulty(nBits, 1), blkFirst.nChannelHeight, nDays, nHours, nMinutes);
 		}
 		
 		
@@ -361,8 +361,8 @@ namespace Core
 
 			
 		/* Get the Block Times with Minimum of 1 to Prevent Time Warps. */
-		int64 nBlockTime = ((pindex->nVersion >= 4) ? GetWeightedTimes(blkFirst.GetHash(), 5) : max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64) 1));
-		int64 nBlockTarget = nTargetTimespan;
+		int64_t nBlockTime = ((pindex->nVersion >= 4) ? GetWeightedTimes(blkFirst.GetHash(), 5) : max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64_t) 1));
+		int64_t nBlockTarget = nTargetTimespan;
 		
 		
 		/* Get the Chain Modular from Reserves. */
@@ -377,8 +377,8 @@ namespace Core
 			
 			
 		/* The Upper and Lower Bound Adjusters. */
-		int64 nUpperBound = nBlockTarget;
-		int64 nLowerBound = nBlockTarget;
+		int64_t nUpperBound = nBlockTarget;
+		int64_t nLowerBound = nBlockTarget;
 		
 			
 		/* Handle for Version 3 Blocks. Mod determined by time multiplied by max / min. */
@@ -390,7 +390,7 @@ namespace Core
 			if(nBlockTime >= nBlockTarget)
 			{
 				/* Take the Minimum overlap of Target Timespan to make that maximum interval. */
-				uint64 nOverlap = (uint64)min((nBlockTime - nBlockTarget), (nBlockTarget * 2));
+				uint64_t nOverlap = (uint64_t)min((nBlockTime - nBlockTarget), (nBlockTarget * 2));
 				
 				/* Get the Mod from the Proportion of Overlap in one Interval. */
 				double nProportions = (double)nOverlap / (nBlockTarget * 2);
@@ -405,7 +405,7 @@ namespace Core
 			else
 			{
 				/* Get the overlap in reference from Target Timespan. */
-				uint64 nOverlap = nBlockTarget - nBlockTime;
+				uint64_t nOverlap = nBlockTarget - nBlockTime;
 				
 				/* Get the mod from overlap proportion. Time of 1 will be closest to mod of 1. */
 				double nProportions = (double) nOverlap / nBlockTarget;
@@ -432,7 +432,7 @@ namespace Core
 				nLowerBound *= nChainMod;
 			
 			/* Set Maximum [difficulty] up to 8%, and Minimum [difficulty] down to 50% */
-			nLowerBound = min(nLowerBound, (int64)(nUpperBound + (nUpperBound / 8)));
+			nLowerBound = min(nLowerBound, (int64_t)(nUpperBound + (nUpperBound / 8)));
 			nLowerBound = max(nLowerBound, (3 * nUpperBound ) / 4);
 		}
 			
@@ -461,7 +461,7 @@ namespace Core
 			GetChainTimes(GetChainAge(blkFirst.GetBlockTime()), nDays, nHours, nMinutes);
 			
 			printf("RETARGET weighted time=%" PRId64 " actual time %" PRId64 " [%f %%]\n\tchain time: [%" PRId64 " / %" PRId64 "]\n\treleased reward: %" PRId64 " [%f %%]\n\tdifficulty: [%f to %f]\n\thash height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n\n", 
-			nBlockTime, max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64) 1), (100.0 * nLowerBound) / nUpperBound, nBlockTarget, nBlockTime, blkFirst.nReleasedReserve[0] / COIN, 100.0 * nChainMod, GetDifficulty(blkFirst.nBits, 2), GetDifficulty(bnNew.GetCompact(), 2), blkFirst.nChannelHeight, nDays, nHours, nMinutes);
+			nBlockTime, max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64_t) 1), (100.0 * nLowerBound) / nUpperBound, nBlockTarget, nBlockTime, blkFirst.nReleasedReserve[0] / COIN, 100.0 * nChainMod, GetDifficulty(blkFirst.nBits, 2), GetDifficulty(bnNew.GetCompact(), 2), blkFirst.nChannelHeight, nDays, nHours, nMinutes);
 		}
 		
 		return bnNew.GetCompact();

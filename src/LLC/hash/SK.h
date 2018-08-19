@@ -80,15 +80,15 @@ namespace LLC
 
 		/* Hashing template for Checksums */
 		template<typename T1>
-		inline uint64 SK64(const T1 pbegin, const T1 pend)
+		inline uint64_t SK64(const T1 pbegin, const T1 pend)
 		{
-			uint64 skein;
+			uint64_t skein;
 			Skein_256_Ctxt_t ctx;
 			Skein_256_Init  (&ctx, 64);
 			Skein_256_Update(&ctx, (pbegin == pend ? pblank : (unsigned char*)&pbegin[0]), (pend - pbegin) * sizeof(pbegin[0]));
 			Skein_256_Final (&ctx, (unsigned char *)&skein);
 
-			uint64 keccak;
+			uint64_t keccak;
 			Keccak_HashInstance ctx_keccak;
 			Keccak_HashInitialize(&ctx_keccak, 1344, 256, 64, 0x06);
 			Keccak_HashUpdate(&ctx_keccak, (unsigned char *)&skein, 64);
@@ -99,15 +99,15 @@ namespace LLC
 
 
 		/* Hashing template for Address Generation */
-		inline uint64 SK64(const std::vector<unsigned char>& vch)
+		inline uint64_t SK64(const std::vector<unsigned char>& vch)
 		{
-			uint64 skein;
+			uint64_t skein;
 			Skein_256_Ctxt_t ctx;
 			Skein_256_Init(&ctx, 64);
 			Skein_256_Update(&ctx, (unsigned char *)&vch[0], vch.size());
 			Skein_256_Final(&ctx, (unsigned char *)&skein);
 
-			uint64 keccak;
+			uint64_t keccak;
 			Keccak_HashInstance ctx_keccak;
 			Keccak_HashInitialize(&ctx_keccak, 1344, 256, 64, 0x06);
 			Keccak_HashUpdate(&ctx_keccak, (unsigned char *)&skein, 64);

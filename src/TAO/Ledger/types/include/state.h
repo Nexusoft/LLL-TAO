@@ -32,11 +32,11 @@ namespace TAO
 		public:
 
 			/* The Trust of the Chain to this Block. */
-			uint64 nChainTrust;
+			uint64_t nChainTrust;
 
 
 			/* The Total NXS released to date */
-			uint64 nMoneySupply;
+			uint64_t nMoneySupply;
 
 
 			/* The height of this channel. */

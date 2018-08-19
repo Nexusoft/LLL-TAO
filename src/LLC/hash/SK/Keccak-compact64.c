@@ -22,9 +22,9 @@ http://creativecommons.org/publicdomain/zero/1.0/
 
 
 typedef unsigned char UINT8;
-typedef unsigned long long int UINT64;
+typedef unsigned long long int uint64_t;
 typedef unsigned int tSmaUtilInt; /*INFO It could be more optimized to use "unsigned char" on an 8-bit CPU    */
-typedef UINT64 tKeccakLane;
+typedef uint64_t tKeccakLane;
 
 #if defined(__GNUC__)
 #define ALIGN __attribute__ ((aligned(32)))
@@ -38,13 +38,13 @@ typedef UINT64 tKeccakLane;
 #define ROL64(a, offset) _rotl64(a, offset)
 #elif defined(UseSHLD)
     #define ROL64(x,N) ({ \
-    register UINT64 __out; \
-    register UINT64 __in = x; \
+    register uint64_t __out; \
+    register uint64_t __in = x; \
     __asm__ ("shld %2,%0,%0" : "=r"(__out) : "0"(__in), "i"(N)); \
     __out; \
     })
 #else
-#define ROL64(a, offset) ((((UINT64)a) << offset) ^ (((UINT64)a) >> (64-offset)))
+#define ROL64(a, offset) ((((uint64_t)a) << offset) ^ (((uint64_t)a) >> (64-offset)))
 #endif
 
 #define    cKeccakNumberOfRounds    24

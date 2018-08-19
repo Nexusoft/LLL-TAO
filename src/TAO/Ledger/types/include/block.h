@@ -73,7 +73,7 @@ namespace TAO
 
 
 			/** The Block's nOnce. This number is used to find the "winning" hash. **/
-			uint64 nNonce;
+			uint64_t nNonce;
 
 
 			/** The Block's timestamp. This number is locked into the signature hash. **/

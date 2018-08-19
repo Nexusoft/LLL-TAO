@@ -52,7 +52,7 @@ namespace Net
 
     static std::string strRPCUserColonPass;
 
-    static int64 nWalletUnlockTime;
+    static int64_t nWalletUnlockTime;
     static CCriticalSection cs_nWalletUnlockTime;
 
     extern Value dumpprivkey(const Array& params, bool fHelp);
@@ -72,18 +72,18 @@ namespace Net
     }
 
 
-    int64 AmountFromValue(const Value& value)
+    int64_t AmountFromValue(const Value& value)
     {
         double dAmount = value.get_real();
         if (dAmount <= 0.0 || dAmount > Core::MAX_TXOUT_AMOUNT)
             throw JSONRPCError(-3, "Invalid amount");
-        int64 nAmount = roundint64(dAmount * COIN);
+        int64_t nAmount = roundint64(dAmount * COIN);
         if (!Core::MoneyRange(nAmount))
             throw JSONRPCError(-3, "Invalid amount");
         return nAmount;
     }
 
-    Value ValueFromAmount(int64 amount)
+    Value ValueFromAmount(int64_t amount)
     {
         return (double)amount / (double)COIN;
     }
@@ -269,7 +269,7 @@ namespace Net
          * It is the total hashes per second required to find a hash of difficulty 1.0 every second.
          * This can then be used in calculing the network hash rate by block times over average of 1440 blocks.
          * */
-        uint64 nTimeConstant = 276758250000;
+        uint64_t nTimeConstant = 276758250000;
 
         const Core::CBlockIndex* pindex = Core::GetLastChannelIndex(Core::pindexBest, 2);
         unsigned int nAverageTime = 0, nTotal = 0;
@@ -296,7 +296,7 @@ namespace Net
         obj.push_back(Pair("average difficulty", nAverageDifficulty));
 
         /* Calculate the hashrate based on nTimeConstant. */
-        uint64 nHashRate = (nTimeConstant / nAverageTime) * nAverageDifficulty;
+        uint64_t nHashRate = (nTimeConstant / nAverageTime) * nAverageDifficulty;
 
         obj.push_back(Pair("hashrate", (boost::uint64_t)nHashRate));
 
@@ -339,7 +339,7 @@ namespace Net
 
         /* Calculate the hashrate based on nTimeConstant. Set the reference from 3ch and
          * Above since 1x and 2x were never useful starting difficulties. */
-        uint64 nHashRate = (nTimeConstant / nAverageTime) * std::pow(50.0, (nAverageDifficulty - 3.0));
+        uint64_t nHashRate = (nTimeConstant / nAverageTime) * std::pow(50.0, (nAverageDifficulty - 3.0));
 
         obj.push_back(Pair("primes per second", (boost::uint64_t)nHashRate));
 
@@ -500,8 +500,8 @@ namespace Net
 
         obj.push_back(Pair("chainAge",       (int)nMinutes));
 
-        int64 nSupply = Core::pindexBest->nMoneySupply;
-        int64 nTarget = Core::CompoundSubsidy(nMinutes);
+        int64_t nSupply = Core::pindexBest->nMoneySupply;
+        int64_t nTarget = Core::CompoundSubsidy(nMinutes);
 
         obj.push_back(Pair("moneysupply",   ValueFromAmount(nSupply)));
         obj.push_back(Pair("targetsupply",   ValueFromAmount(nTarget)));
@@ -583,7 +583,7 @@ namespace Net
                 "getmininginfo\n"
                 "Returns an object containing mining-related information.");
 
-        uint64 nPrimePS = 0;
+        uint64_t nPrimePS = 0;
         if(!Core::pindexBest || Core::pindexBest->GetBlockHash() != Core::hashGenesisBlock)
         {
             double nPrimeAverageDifficulty = 0.0;
@@ -607,7 +607,7 @@ namespace Net
         int nHTotal = 0;
         unsigned int nHashAverageTime = 0;
         double nHashAverageDifficulty = 0.0;
-        uint64 nTimeConstant = 276758250000;
+        uint64_t nTimeConstant = 276758250000;
         const Core::CBlockIndex* hindex = Core::GetLastChannelIndex(Core::pindexBest, 2);
         for(;  (nHTotal < 1440 && hindex->pprev); nHTotal ++) {
 
@@ -619,7 +619,7 @@ namespace Net
         nHashAverageDifficulty /= nHTotal;
         nHashAverageTime /= nHTotal;
 
-        uint64 nHashRate = (nTimeConstant / nHashAverageTime) * nHashAverageDifficulty;
+        uint64_t nHashRate = (nTimeConstant / nHashAverageTime) * nHashAverageDifficulty;
 
 
         Object obj;
@@ -837,7 +837,7 @@ namespace Net
             throw JSONRPCError(-5, "Invalid Nexus address");
 
         // Amount
-        int64 nAmount = AmountFromValue(params[1]);
+        int64_t nAmount = AmountFromValue(params[1]);
         if (nAmount < Core::MIN_TXOUT_AMOUNT)
             throw JSONRPCError(-101, "Send amount too small");
 
@@ -945,7 +945,7 @@ namespace Net
             nMinDepth = params[1].get_int();
 
         // Tally
-        int64 nAmount = 0;
+        int64_t nAmount = 0;
         for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
         {
             const Wallet::CWalletTx& wtx = (*it).second;
@@ -992,7 +992,7 @@ namespace Net
         GetAccountAddresses(strAccount, setAddress);
 
         // Tally
-        int64 nAmount = 0;
+        int64_t nAmount = 0;
         for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
         {
             const Wallet::CWalletTx& wtx = (*it).second;
@@ -1023,11 +1023,11 @@ namespace Net
                 "Get balances of top addresses in the Network.");
 
         int nCount = params[0].get_int();
-        multimap<uint64, uint256> richList = flip_map(Core::mapAddressTransactions);
+        multimap<uint64_t, uint256> richList = flip_map(Core::mapAddressTransactions);
 
         /** Dump the Address and Values. **/
         Object entry;
-        for(multimap<uint64, uint256>::const_reverse_iterator it = richList.rbegin(); it != richList.rend() && nCount > 0; ++it)
+        for(multimap<uint64_t, uint256>::const_reverse_iterator it = richList.rbegin(); it != richList.rend() && nCount > 0; ++it)
         {
             Wallet::NexusAddress cAddress(it->second);
             entry.push_back(Pair(cAddress.ToString(), (double)it->first / COIN));
@@ -1273,9 +1273,9 @@ namespace Net
     }
 
 
-    int64 GetAccountBalance(Wallet::CWalletDB& walletdb, const string& strAccount, int nMinDepth)
+    int64_t GetAccountBalance(Wallet::CWalletDB& walletdb, const string& strAccount, int nMinDepth)
     {
-        int64 nBalance = 0;
+        int64_t nBalance = 0;
 
         // Tally wallet transactions
         for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
@@ -1284,7 +1284,7 @@ namespace Net
             if (!wtx.IsFinal())
                 continue;
 
-            int64 nGenerated, nReceived, nSent, nFee;
+            int64_t nGenerated, nReceived, nSent, nFee;
             wtx.GetAccountAmounts(strAccount, nGenerated, nReceived, nSent, nFee);
 
             if (nReceived != 0 && wtx.GetDepthInMainChain() >= nMinDepth)
@@ -1299,7 +1299,7 @@ namespace Net
     }
 
 
-    int64 GetAccountBalance(const string& strAccount, int nMinDepth)
+    int64_t GetAccountBalance(const string& strAccount, int nMinDepth)
     {
         Wallet::CWalletDB walletdb(pwalletMain->strWalletFile);
         return GetAccountBalance(walletdb, strAccount, nMinDepth);
@@ -1325,25 +1325,25 @@ namespace Net
             // Calculate total balance a different way from GetBalance()
             // (GetBalance() sums up all unspent TxOuts)
             // getbalance and getbalance '*' should always return the same number.
-            int64 nBalance = 0;
+            int64_t nBalance = 0;
             for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
             {
                 const Wallet::CWalletTx& wtx = (*it).second;
                 if (!wtx.IsFinal())
                     continue;
 
-                int64 allGeneratedImmature, allGeneratedMature, allFee;
+                int64_t allGeneratedImmature, allGeneratedMature, allFee;
                 allGeneratedImmature = allGeneratedMature = allFee = 0;
                 string strSentAccount;
-                list<pair<Wallet::NexusAddress, int64> > listReceived;
-                list<pair<Wallet::NexusAddress, int64> > listSent;
+                list<pair<Wallet::NexusAddress, int64_t> > listReceived;
+                list<pair<Wallet::NexusAddress, int64_t> > listSent;
                 wtx.GetAmounts(allGeneratedImmature, allGeneratedMature, listReceived, listSent, allFee, strSentAccount);
                 if (wtx.GetDepthInMainChain() >= nMinDepth)
                 {
-                    BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress,int64)& r, listReceived)
+                    BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress,int64_t)& r, listReceived)
                         nBalance += r.second;
                 }
-                BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress,int64)& r, listSent)
+                BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress,int64_t)& r, listSent)
                     nBalance -= r.second;
                 nBalance -= allFee;
                 nBalance += allGeneratedMature;
@@ -1353,7 +1353,7 @@ namespace Net
 
         string strAccount = AccountFromValue(params[0]);
 
-        int64 nBalance = GetAccountBalance(strAccount, nMinDepth);
+        int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
 
         return ValueFromAmount(nBalance);
     }
@@ -1368,7 +1368,7 @@ namespace Net
 
         string strFrom = AccountFromValue(params[0]);
         string strTo = AccountFromValue(params[1]);
-        int64 nAmount = AmountFromValue(params[2]);
+        int64_t nAmount = AmountFromValue(params[2]);
         if (params.size() > 3)
             // unused parameter, used to be nMinDepth, keep type-checking it though
             (void)params[3].get_int();
@@ -1380,7 +1380,7 @@ namespace Net
         if (!walletdb.TxnBegin())
             throw JSONRPCError(-20, "database error");
 
-        int64 nNow = GetUnifiedTimestamp();
+        int64_t nNow = GetUnifiedTimestamp();
 
         // Debit
         Wallet::CAccountingEntry debit;
@@ -1423,7 +1423,7 @@ namespace Net
         Wallet::NexusAddress address(params[1].get_str());
         if (!address.IsValid())
             throw JSONRPCError(-5, "Invalid Nexus address");
-        int64 nAmount = AmountFromValue(params[2]);
+        int64_t nAmount = AmountFromValue(params[2]);
         if (nAmount < Core::MIN_TXOUT_AMOUNT)
             throw JSONRPCError(-101, "Send amount too small");
         int nMinDepth = 1;
@@ -1441,7 +1441,7 @@ namespace Net
             throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
         // Check funds
-        int64 nBalance = GetAccountBalance(strAccount, nMinDepth);
+        int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
         if (nAmount > nBalance)
             throw JSONRPCError(-6, "Account has insufficient funds");
 
@@ -1478,9 +1478,9 @@ namespace Net
             wtx.mapValue["comment"] = params[3].get_str();
 
         set<Wallet::NexusAddress> setAddress;
-        vector<pair<Wallet::CScript, int64> > vecSend;
+        vector<pair<Wallet::CScript, int64_t> > vecSend;
 
-        int64 totalAmount = 0;
+        int64_t totalAmount = 0;
         BOOST_FOREACH(const Pair& s, sendTo)
         {
             Wallet::NexusAddress address(s.name_);
@@ -1493,7 +1493,7 @@ namespace Net
 
             Wallet::CScript scriptPubKey;
             scriptPubKey.SetNexusAddress(address);
-            int64 nAmount = AmountFromValue(s.value_);
+            int64_t nAmount = AmountFromValue(s.value_);
             if (nAmount < Core::MIN_TXOUT_AMOUNT)
                 throw JSONRPCError(-101, "Send amount too small");
             totalAmount += nAmount;
@@ -1507,13 +1507,13 @@ namespace Net
             throw JSONRPCError(-13, "Error: Wallet unlocked for block minting only.");
 
         // Check funds
-        int64 nBalance = GetAccountBalance(strAccount, nMinDepth);
+        int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
         if (totalAmount > nBalance)
             throw JSONRPCError(-6, "Account has insufficient funds");
 
         // Send
         Wallet::CReserveKey keyChange(pwalletMain);
-        int64 nFeeRequired = 0;
+        int64_t nFeeRequired = 0;
         bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired);
         if (!fCreated)
         {
@@ -1603,7 +1603,7 @@ namespace Net
 
     struct tallyitem
     {
-        int64 nAmount;
+        int64_t nAmount;
         int nConf;
         tallyitem()
         {
@@ -1660,7 +1660,7 @@ namespace Net
             if (it == mapTally.end() && !fIncludeEmpty)
                 continue;
 
-            int64 nAmount = 0;
+            int64_t nAmount = 0;
             int nConf = std::numeric_limits<int>::max();
             if (it != mapTally.end())
             {
@@ -1689,7 +1689,7 @@ namespace Net
         {
             for (map<string, tallyitem>::iterator it = mapAccountTally.begin(); it != mapAccountTally.end(); ++it)
             {
-                int64 nAmount = (*it).second.nAmount;
+                int64_t nAmount = (*it).second.nAmount;
                 int nConf = (*it).second.nConf;
                 Object obj;
                 obj.push_back(Pair("account",       (*it).first));
@@ -1735,10 +1735,10 @@ namespace Net
 
     void ListTransactions(const Wallet::CWalletTx& wtx, const string& strAccount, int nMinDepth, bool fLong, Array& ret)
     {
-        int64 nGeneratedImmature, nGeneratedMature, nFee;
+        int64_t nGeneratedImmature, nGeneratedMature, nFee;
         string strSentAccount;
-        list<pair<Wallet::NexusAddress, int64> > listReceived;
-        list<pair<Wallet::NexusAddress, int64> > listSent;
+        list<pair<Wallet::NexusAddress, int64_t> > listReceived;
+        list<pair<Wallet::NexusAddress, int64_t> > listSent;
 
         wtx.GetAmounts(nGeneratedImmature, nGeneratedMature, listReceived, listSent, nFee, strSentAccount);
 
@@ -1772,7 +1772,7 @@ namespace Net
         // Sent
         if ((!listSent.empty() || nFee != 0) && (fAllAccounts || strAccount == strSentAccount))
         {
-            BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, int64)& s, listSent)
+            BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, int64_t)& s, listSent)
             {
                 Object entry;
                 entry.push_back(Pair("account", strSentAccount));
@@ -1789,7 +1789,7 @@ namespace Net
         // Received
         if (listReceived.size() > 0 && wtx.GetDepthInMainChain() >= nMinDepth)
         {
-            BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, int64)& r, listReceived)
+            BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, int64_t)& r, listReceived)
             {
                 string account;
                 if (pwalletMain->mapAddressBook.count(r.first))
@@ -1853,7 +1853,7 @@ namespace Net
 
         // First: get all Wallet::CWalletTx and Wallet::CAccountingEntry into a sorted-by-time multimap.
         typedef pair<Wallet::CWalletTx*, Wallet::CAccountingEntry*> TxPair;
-        typedef multimap<int64, TxPair > TxItems;
+        typedef multimap<int64_t, TxPair > TxItems;
         TxItems txByTime;
 
         // Note: maintaining indices in the database of (account,time) --> txid and (account, time) --> acentry
@@ -1913,7 +1913,7 @@ namespace Net
         if (params.size() > 0)
             nMinDepth = params[0].get_int();
 
-        map<string, int64> mapAccountBalances;
+        map<string, int64_t> mapAccountBalances;
         BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, string)& entry, pwalletMain->mapAddressBook) {
             if (pwalletMain->HaveKey(entry.first)) // This address belongs to me
                 mapAccountBalances[entry.second] = 0;
@@ -1922,18 +1922,18 @@ namespace Net
         for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
         {
             const Wallet::CWalletTx& wtx = (*it).second;
-            int64 nGeneratedImmature, nGeneratedMature, nFee;
+            int64_t nGeneratedImmature, nGeneratedMature, nFee;
             string strSentAccount;
-            list<pair<Wallet::NexusAddress, int64> > listReceived;
-            list<pair<Wallet::NexusAddress, int64> > listSent;
+            list<pair<Wallet::NexusAddress, int64_t> > listReceived;
+            list<pair<Wallet::NexusAddress, int64_t> > listSent;
             wtx.GetAmounts(nGeneratedImmature, nGeneratedMature, listReceived, listSent, nFee, strSentAccount);
             mapAccountBalances[strSentAccount] -= nFee;
-            BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, int64)& s, listSent)
+            BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, int64_t)& s, listSent)
                 mapAccountBalances[strSentAccount] -= s.second;
             if (wtx.GetDepthInMainChain() >= nMinDepth)
             {
                 mapAccountBalances[""] += nGeneratedMature;
-                BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, int64)& r, listReceived)
+                BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, int64_t)& r, listReceived)
                     if (pwalletMain->mapAddressBook.count(r.first))
                         mapAccountBalances[pwalletMain->mapAddressBook[r.first]] += r.second;
                     else
@@ -1947,7 +1947,7 @@ namespace Net
             mapAccountBalances[entry.strAccount] += entry.nCreditDebit;
 
         Object ret;
-        BOOST_FOREACH(const PAIRTYPE(string, int64)& accountBalance, mapAccountBalances) {
+        BOOST_FOREACH(const PAIRTYPE(string, int64_t)& accountBalance, mapAccountBalances) {
             ret.push_back(Pair(accountBalance.first, ValueFromAmount(accountBalance.second)));
         }
         return ret;
@@ -2034,10 +2034,10 @@ namespace Net
             throw JSONRPCError(-5, "Invalid or non-wallet transaction id");
         const Wallet::CWalletTx& wtx = pwalletMain->mapWallet[hash];
 
-        int64 nCredit = wtx.GetCredit();
-        int64 nDebit = wtx.GetDebit();
-        int64 nNet = nCredit - nDebit;
-        int64 nFee = (wtx.IsFromMe() ? wtx.GetValueOut() - nDebit : 0);
+        int64_t nCredit = wtx.GetCredit();
+        int64_t nDebit = wtx.GetDebit();
+        int64_t nNet = nCredit - nDebit;
+        int64_t nFee = (wtx.IsFromMe() ? wtx.GetValueOut() - nDebit : 0);
 
         entry.push_back(Pair("amount", ValueFromAmount(nNet - nFee)));
         if (wtx.IsFromMe())
@@ -2171,7 +2171,7 @@ namespace Net
 
     void ThreadCleanWalletPassphrase(void* parg)
     {
-        int64 nMyWakeTime = GetTimeMillis() + *((int64*)parg) * 1000;
+        int64_t nMyWakeTime = GetTimeMillis() + *((int64_t*)parg) * 1000;
 
         ENTER_CRITICAL_SECTION(cs_nWalletUnlockTime);
 
@@ -2183,7 +2183,7 @@ namespace Net
             {
                 if (nWalletUnlockTime==0)
                     break;
-                int64 nToSleep = nWalletUnlockTime - GetTimeMillis();
+                int64_t nToSleep = nWalletUnlockTime - GetTimeMillis();
                 if (nToSleep <= 0)
                     break;
 
@@ -2207,7 +2207,7 @@ namespace Net
 
         LEAVE_CRITICAL_SECTION(cs_nWalletUnlockTime);
 
-        delete (int64*)parg;
+        delete (int64_t*)parg;
     }
 
     Value walletpassphrase(const Array& params, bool fHelp)
@@ -2243,7 +2243,7 @@ namespace Net
                 "Stores the wallet decryption key in memory for <timeout> seconds.");
 
         CreateThread(ThreadTopUpKeyPool, NULL);
-        int64* pnSleepTime = new int64(params[1].get_int64());
+        int64_t* pnSleepTime = new int64_t(params[1].get_int64());
         CreateThread(ThreadCleanWalletPassphrase, pnSleepTime);
 
         // Nexus: if user OS account compromised prevent trivial sendmoney commands
@@ -2457,7 +2457,7 @@ namespace Net
             {
                 if (params.size() == 1)
                     throw runtime_error("must provide amount to reserve balance.\n");
-                int64 nAmount = AmountFromValue(params[1]);
+                int64_t nAmount = AmountFromValue(params[1]);
                 nAmount = (nAmount / CENT) * CENT;  // round to cent
                 if (nAmount < 0)
                     throw runtime_error("amount cannot be negative.\n");
@@ -2472,7 +2472,7 @@ namespace Net
         }
 
         Object result;
-        int64 nReserveBalance = 0;
+        int64_t nReserveBalance = 0;
         if (mapArgs.count("-reservebalance") && !ParseMoney(mapArgs["-reservebalance"], nReserveBalance))
             throw runtime_error("invalid reserve balance amount\n");
         result.push_back(Pair("reserve", (nReserveBalance > 0)));
@@ -2490,7 +2490,7 @@ namespace Net
                 "Check wallet for integrity.\n");
 
         int nMismatchSpent;
-        int64 nBalanceInQuestion;
+        int64_t nBalanceInQuestion;
         pwalletMain->FixSpentCoins(nMismatchSpent, nBalanceInQuestion, true);
         Object result;
         if (nMismatchSpent == 0)
@@ -2537,7 +2537,7 @@ namespace Net
                 "Repair wallet if checkwallet reports any problem.\n");
 
         int nMismatchSpent;
-        int64 nBalanceInQuestion;
+        int64_t nBalanceInQuestion;
         pwalletMain->FixSpentCoins(nMismatchSpent, nBalanceInQuestion);
         Object result;
         if (nMismatchSpent == 0)
@@ -2616,7 +2616,7 @@ namespace Net
         vector<Wallet::COutput> vecOutputs;
         pwalletMain->AvailableCoins((unsigned int)GetUnifiedTimestamp(), vecOutputs, false);
 
-        int64 nCredit = 0;
+        int64_t nCredit = 0;
         BOOST_FOREACH(const Wallet::COutput& out, vecOutputs)
         {
             if(setAddresses.size())
@@ -2629,7 +2629,7 @@ namespace Net
                     continue;
             }
 
-            int64 nValue = out.tx->vout[out.i].nValue;
+            int64_t nValue = out.tx->vout[out.i].nValue;
             const Wallet::CScript& pk = out.tx->vout[out.i].scriptPubKey;
             Wallet::NexusAddress address;
 
@@ -2703,7 +2703,7 @@ namespace Net
                     continue;
             }
 
-            int64 nValue = out.tx->vout[out.i].nValue;
+            int64_t nValue = out.tx->vout[out.i].nValue;
             const Wallet::CScript& pk = out.tx->vout[out.i].scriptPubKey;
             Wallet::NexusAddress address;
             Object entry;

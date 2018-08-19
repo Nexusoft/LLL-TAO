@@ -39,7 +39,7 @@ namespace LLD
     struct CachedData
     {
         unsigned char  State;
-        uint64         Timestamp;
+        uint64_t         Timestamp;
         std::vector<unsigned char> Data;
     };
     
@@ -128,7 +128,7 @@ namespace LLD
         */
         unsigned int GetBucket(std::vector<unsigned char> vKey) const 
         { 
-            uint64 nBucket = 0;
+            uint64_t nBucket = 0;
             for(int i = 0; i < vKey.size() && i < 8; i++)
                 nBucket += vKey[i] << (8 * i);
             
@@ -251,7 +251,7 @@ namespace LLD
         * @param[in] nTimestamp The Time record was Put (ms)
         * 
         */
-        void Put(std::vector<unsigned char> vKey, std::vector<unsigned char> vData, unsigned char nState = MEMORY_ONLY, uint64 nTimestamp = Timestamp(true))
+        void Put(std::vector<unsigned char> vKey, std::vector<unsigned char> vData, unsigned char nState = MEMORY_ONLY, uint64_t nTimestamp = Timestamp(true))
         {
             LOCK(MUTEX);
             

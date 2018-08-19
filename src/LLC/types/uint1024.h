@@ -1,12 +1,12 @@
 /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
-            
+
             (c) Copyright The Nexus Developers 2014 - 2017
-            
+
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
-            
+
             "fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
 
 ____________________________________________________________________________________________*/
@@ -20,15 +20,6 @@ ________________________________________________________________________________
 #include <string>
 #include <vector>
 #include <stdint.h>
-
-/* Linux Specific Work Around (For Now). */
-#if defined(MAC_OSX) || defined(WIN32)
-typedef int64_t int64;
-typedef uint64_t uint64;
-#else
-typedef long long  int64;
-typedef unsigned long long  uint64;
-#endif
 
 
 /** Base class without constructors for uint256, uint512, uint576, uint1024.
@@ -68,7 +59,7 @@ public:
     }
 
 
-    base_uint& operator=(uint64 b)
+    base_uint& operator=(uint64_t b)
     {
         pn[0] = (unsigned int)b;
         pn[1] = (unsigned int)(b >> 32);
@@ -98,14 +89,14 @@ public:
         return *this;
     }
 
-    base_uint& operator^=(uint64 b)
+    base_uint& operator^=(uint64_t b)
     {
         pn[0] ^= (unsigned int)b;
         pn[1] ^= (unsigned int)(b >> 32);
         return *this;
     }
 
-    base_uint& operator|=(uint64 b)
+    base_uint& operator|=(uint64_t b)
     {
         pn[0] |= (unsigned int)b;
         pn[1] |= (unsigned int)(b >> 32);
@@ -148,10 +139,10 @@ public:
 
     base_uint& operator+=(const base_uint& b)
     {
-        uint64 carry = 0;
+        uint64_t carry = 0;
         for (int i = 0; i < WIDTH; i++)
         {
-            uint64 n = carry + pn[i] + b.pn[i];
+            uint64_t n = carry + pn[i] + b.pn[i];
             pn[i] = n & 0xffffffff;
             carry = n >> 32;
         }
@@ -164,7 +155,7 @@ public:
         return *this;
     }
 
-    base_uint& operator+=(uint64 b64)
+    base_uint& operator+=(uint64_t b64)
     {
         base_uint b;
         b = b64;
@@ -172,7 +163,7 @@ public:
         return *this;
     }
 
-    base_uint& operator-=(uint64 b64)
+    base_uint& operator-=(uint64_t b64)
     {
         base_uint b;
         b = b64;
@@ -272,7 +263,7 @@ public:
         return true;
     }
 
-    friend inline bool operator==(const base_uint& a, uint64 b)
+    friend inline bool operator==(const base_uint& a, uint64_t b)
     {
         if (a.pn[0] != (unsigned int)b)
             return false;
@@ -289,7 +280,7 @@ public:
         return (!(a == b));
     }
 
-    friend inline bool operator!=(const base_uint& a, uint64 b)
+    friend inline bool operator!=(const base_uint& a, uint64_t b)
     {
         return (!(a == b));
     }
@@ -315,7 +306,7 @@ public:
         if (psz[0] == '0' && tolower(psz[1]) == 'x')
             psz += 2;
 
-        
+
         static unsigned char phexdigit[256] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,1,2,3,4,5,6,7,8,9,0,0,0,0,0,0, 0,0xa,0xb,0xc,0xd,0xe,0xf,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0xa,0xb,0xc,0xd,0xe,0xf,0,0,0,0,0,0,0,0,0 };
         const char* pbegin = psz;
         while (phexdigit[(unsigned char)*psz] || *psz == '0')
@@ -338,8 +329,8 @@ public:
     {
         SetHex(str.c_str());
     }
-    
-    /** Converts the corresponding unsigned integer into bytes. 
+
+    /** Converts the corresponding unsigned integer into bytes.
         Used for serializing in Miner LLP **/
     const std::vector<unsigned char> GetBytes()
     {
@@ -352,20 +343,20 @@ public:
             BYTES[1] = (pn[index] >> 16);
             BYTES[2] = (pn[index] >> 8);
             BYTES[3] =  pn[index];
-    
+
             DATA.insert(DATA.end(), BYTES.begin(), BYTES.end());
         }
-        
+
         return DATA;
     }
-    
-    /** Creates an unsigned integer from bytes. 
+
+    /** Creates an unsigned integer from bytes.
         Used for de-serializing in Miner LLP **/
     void SetBytes(const std::vector<unsigned char> DATA)
     {
         for(int index = 0; index < WIDTH; index++)
         {
-            std::vector<unsigned char> BYTES(DATA.begin() + (index * 4), DATA.begin() + (index * 4) + 4); 
+            std::vector<unsigned char> BYTES(DATA.begin() + (index * 4), DATA.begin() + (index * 4) + 4);
             pn[index] = (BYTES[0] << 24) + (BYTES[1] << 16) + (BYTES[2] << 8) + (BYTES[3] );
         }
     }
@@ -390,9 +381,9 @@ public:
         return sizeof(pn);
     }
 
-    uint64 Get64(int n=0) const
+    uint64_t Get64(int n=0) const
     {
-        return pn[2*n] | (uint64)pn[2*n+1] << 32;
+        return pn[2*n] | (uint64_t)pn[2*n+1] << 32;
     }
 
 //    unsigned int GetSerializeSize(int nType=0, int nVersion=PROTOCOL_VERSION) const
@@ -453,7 +444,7 @@ public:
         return *this;
     }
 
-    uint256(uint64 b)
+    uint256(uint64_t b)
     {
         pn[0] = (unsigned int)b;
         pn[1] = (unsigned int)(b >> 32);
@@ -461,7 +452,7 @@ public:
             pn[i] = 0;
     }
 
-    uint256& operator=(uint64 b)
+    uint256& operator=(uint64_t b)
     {
         pn[0] = (unsigned int)b;
         pn[1] = (unsigned int)(b >> 32);
@@ -484,8 +475,8 @@ public:
     }
 };
 
-inline bool operator==(const uint256& a, uint64 b)                           { return (base_uint256)a == b; }
-inline bool operator!=(const uint256& a, uint64 b)                           { return (base_uint256)a != b; }
+inline bool operator==(const uint256& a, uint64_t b)                           { return (base_uint256)a == b; }
+inline bool operator!=(const uint256& a, uint64_t b)                           { return (base_uint256)a != b; }
 inline const uint256 operator<<(const base_uint256& a, unsigned int shift)   { return uint256(a) <<= shift; }
 inline const uint256 operator>>(const base_uint256& a, unsigned int shift)   { return uint256(a) >>= shift; }
 inline const uint256 operator<<(const uint256& a, unsigned int shift)        { return uint256(a) <<= shift; }
@@ -559,7 +550,7 @@ public:
         return *this;
     }
 
-    uint512(uint64 b)
+    uint512(uint64_t b)
     {
         pn[0] = (unsigned int)b;
         pn[1] = (unsigned int)(b >> 32);
@@ -567,7 +558,7 @@ public:
             pn[i] = 0;
     }
 
-    uint512& operator=(uint64 b)
+    uint512& operator=(uint64_t b)
     {
         pn[0] = (unsigned int)b;
         pn[1] = (unsigned int)(b >> 32);
@@ -575,7 +566,7 @@ public:
             pn[i] = 0;
         return *this;
     }
-    
+
     explicit uint512(const std::vector<unsigned char> vch)
     {
         SetBytes(vch);
@@ -597,8 +588,8 @@ public:
     */
 };
 
-inline bool operator==(const uint512& a, uint64 b)                           { return (base_uint512)a == b; }
-inline bool operator!=(const uint512& a, uint64 b)                           { return (base_uint512)a != b; }
+inline bool operator==(const uint512& a, uint64_t b)                           { return (base_uint512)a == b; }
+inline bool operator!=(const uint512& a, uint64_t b)                           { return (base_uint512)a != b; }
 inline const uint512 operator<<(const base_uint512& a, unsigned int shift)   { return uint512(a) <<= shift; }
 inline const uint512 operator>>(const base_uint512& a, unsigned int shift)   { return uint512(a) >>= shift; }
 inline const uint512 operator<<(const uint512& a, unsigned int shift)        { return uint512(a) <<= shift; }
@@ -671,7 +662,7 @@ public:
         return *this;
     }
 
-    uint576(uint64 b)
+    uint576(uint64_t b)
     {
         pn[0] = (unsigned int)b;
         pn[1] = (unsigned int)(b >> 32);
@@ -679,7 +670,7 @@ public:
             pn[i] = 0;
     }
 
-    uint576& operator=(uint64 b)
+    uint576& operator=(uint64_t b)
     {
         pn[0] = (unsigned int)b;
         pn[1] = (unsigned int)(b >> 32);
@@ -702,8 +693,8 @@ public:
     }
 };
 
-inline bool operator==(const uint576& a, uint64 b)                           { return (base_uint576)a == b; }
-inline bool operator!=(const uint576& a, uint64 b)                           { return (base_uint576)a != b; }
+inline bool operator==(const uint576& a, uint64_t b)                           { return (base_uint576)a == b; }
+inline bool operator!=(const uint576& a, uint64_t b)                           { return (base_uint576)a != b; }
 inline const uint576 operator<<(const base_uint576& a, unsigned int shift)   { return uint576(a) <<= shift; }
 inline const uint576 operator>>(const base_uint576& a, unsigned int shift)   { return uint576(a) >>= shift; }
 inline const uint576 operator<<(const uint576& a, unsigned int shift)        { return uint576(a) <<= shift; }
@@ -778,7 +769,7 @@ public:
         return *this;
     }
 
-    uint1024(uint64 b)
+    uint1024(uint64_t b)
     {
         pn[0] = (unsigned int)b;
         pn[1] = (unsigned int)(b >> 32);
@@ -786,7 +777,7 @@ public:
             pn[i] = 0;
     }
 
-    uint1024& operator=(uint64 b)
+    uint1024& operator=(uint64_t b)
     {
         pn[0] = (unsigned int)b;
         pn[1] = (unsigned int)(b >> 32);
@@ -794,7 +785,7 @@ public:
             pn[i] = 0;
         return *this;
     }
-    
+
     uint1024(uint256 b)
     {
         for (int i = 0; i < WIDTH; i++)
@@ -803,7 +794,7 @@ public:
             else
                 pn[i] = 0;
     }
-    
+
     uint1024& operator=(uint256 b)
     {
         for (int i = 0; i < WIDTH; i++)
@@ -811,10 +802,10 @@ public:
                 pn[i] = b.pn[i];
             else
                 pn[i] = 0;
-                
+
         return *this;
     }
-    
+
     uint1024(uint512 b)
     {
         for (int i = 0; i < WIDTH; i++)
@@ -823,7 +814,7 @@ public:
             else
                 pn[i] = 0;
     }
-    
+
     uint1024& operator=(uint512 b)
     {
         for (int i = 0; i < WIDTH; i++)
@@ -831,22 +822,22 @@ public:
                 pn[i] = b.pn[i];
             else
                 pn[i] = 0;
-                
+
         return *this;
     }
-    
-    /** This method should only be used to retrieve an uint256 when stored inside an uint1024. 
+
+    /** This method should only be used to retrieve an uint256 when stored inside an uint1024.
         This is necessary for for ambiguous function declaration. */
     uint256 getuint256() const
     {
         uint256 b;
         for (int i = 0; i < b.WIDTH; i++)
             b.pn[i] = pn[i];
-        
+
         return b;
     }
-    
-    /** This method should only be used to retrieve an uint512 when stored inside an uint1024. 
+
+    /** This method should only be used to retrieve an uint512 when stored inside an uint1024.
         This is necessary for the inventory system to function with both a 1024 bit block
         and 512 bit transaction. */
     uint512 getuint512() const
@@ -854,7 +845,7 @@ public:
         uint512 b;
         for (int i = 0; i < b.WIDTH; i++)
             b.pn[i] = pn[i];
-        
+
         return b;
     }
 
@@ -872,8 +863,8 @@ public:
     }
 };
 
-inline bool operator==(const uint1024& a, uint64 b)                           { return (base_uint1024)a == b; }
-inline bool operator!=(const uint1024& a, uint64 b)                           { return (base_uint1024)a != b; }
+inline bool operator==(const uint1024& a, uint64_t b)                           { return (base_uint1024)a == b; }
+inline bool operator!=(const uint1024& a, uint64_t b)                           { return (base_uint1024)a != b; }
 inline const uint1024 operator<<(const base_uint1024& a, unsigned int shift)   { return uint1024(a) <<= shift; }
 inline const uint1024 operator>>(const base_uint1024& a, unsigned int shift)   { return uint1024(a) >>= shift; }
 inline const uint1024 operator<<(const uint1024& a, unsigned int shift)        { return uint1024(a) <<= shift; }
