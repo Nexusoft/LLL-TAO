@@ -1,12 +1,12 @@
 /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2017] ++
-            
+
             (c) Copyright The Nexus Developers 2014 - 2017
-            
+
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
-            
+
             "fides in stellis, virtus in numeris" - Faith in the Stars, Power in Numbers
 
 ____________________________________________________________________________________________*/
@@ -16,6 +16,8 @@ ________________________________________________________________________________
 
 #include "../Util/include/debug.h"
 
+#include "../LLC/hash/SK.h"
+
 #ifndef WIN32
 #include <sys/fcntl.h>
 #endif
@@ -24,21 +26,21 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    
-    
+
+
     CAddress::CAddress() : CService()
     {
         Init();
     }
 
-    
+
     CAddress::CAddress(CService ipIn, uint64 nServicesIn) : CService(ipIn)
     {
         Init();
         nServices = nServicesIn;
     }
 
-    
+
     void CAddress::Init()
     {
         nServices = NODE_NETWORK;
@@ -46,32 +48,32 @@ namespace LLP
         nLastTry = 0;
     }
 
-    
+
     void CNetAddr::Init()
     {
         memset(ip, 0, 16);
     }
 
-    
+
     void CNetAddr::SetIP(const CNetAddr& ipIn)
     {
         memcpy(ip, ipIn.ip, sizeof(ip));
     }
 
-    
+
     CNetAddr::CNetAddr()
     {
         Init();
     }
 
-    
+
     CNetAddr::CNetAddr(const struct in_addr& ipv4Addr)
     {
         memcpy(ip,    pchIPv4, 12);
         memcpy(ip+12, &ipv4Addr, 4);
     }
 
-    
+
     #ifdef USE_IPV6
     CNetAddr::CNetAddr(const struct in6_addr& ipv6Addr)
     {
@@ -79,7 +81,7 @@ namespace LLP
     }
     #endif
 
-    
+
     CNetAddr::CNetAddr(const char *pszIp, bool fAllowLookup)
     {
         Init();
@@ -88,7 +90,7 @@ namespace LLP
             *this = vIP[0];
     }
 
-    
+
     CNetAddr::CNetAddr(const std::string &strIp, bool fAllowLookup)
     {
         Init();
@@ -97,85 +99,85 @@ namespace LLP
             *this = vIP[0];
     }
 
-    
+
     int CNetAddr::GetByte(int n) const
     {
         return ip[15-n];
     }
 
-    
+
     bool CNetAddr::IsIPv4() const
     {
         return (memcmp(ip, pchIPv4, sizeof(pchIPv4)) == 0);
     }
 
-    
+
     bool CNetAddr::IsRFC1918() const
     {
         return IsIPv4() && (
-            GetByte(3) == 10 || 
-            (GetByte(3) == 192 && GetByte(2) == 168) || 
+            GetByte(3) == 10 ||
+            (GetByte(3) == 192 && GetByte(2) == 168) ||
             (GetByte(3) == 172 && (GetByte(2) >= 16 && GetByte(2) <= 31)));
     }
 
-    
+
     bool CNetAddr::IsRFC3927() const
     {
         return IsIPv4() && (GetByte(3) == 169 && GetByte(2) == 254);
     }
 
-    
+
     bool CNetAddr::IsRFC3849() const
     {
         return GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0x0D && GetByte(12) == 0xB8;
     }
 
-    
+
     bool CNetAddr::IsRFC3964() const
     {
         return (GetByte(15) == 0x20 && GetByte(14) == 0x02);
     }
 
-    
+
     bool CNetAddr::IsRFC6052() const
     {
         static const unsigned char pchRFC6052[] = {0,0x64,0xFF,0x9B,0,0,0,0,0,0,0,0};
         return (memcmp(ip, pchRFC6052, sizeof(pchRFC6052)) == 0);
     }
 
-    
+
     bool CNetAddr::IsRFC4380() const
     {
         return (GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0 && GetByte(12) == 0);
     }
 
-    
+
     bool CNetAddr::IsRFC4862() const
     {
         static const unsigned char pchRFC4862[] = {0xFE,0x80,0,0,0,0,0,0};
         return (memcmp(ip, pchRFC4862, sizeof(pchRFC4862)) == 0);
     }
 
-    
+
     bool CNetAddr::IsRFC4193() const
     {
         return ((GetByte(15) & 0xFE) == 0xFC);
     }
 
-    
+
     bool CNetAddr::IsRFC6145() const
     {
         static const unsigned char pchRFC6145[] = {0,0,0,0,0,0,0,0,0xFF,0xFF,0,0};
         return (memcmp(ip, pchRFC6145, sizeof(pchRFC6145)) == 0);
     }
 
-    
+
     bool CNetAddr::IsRFC4843() const
     {
         return (GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0x00 && (GetByte(12) & 0xF0) == 0x10);
     }
 
-    
+
     bool CNetAddr::IsLocal() const
     {
         // IPv4 loopback
@@ -190,14 +192,14 @@ namespace LLP
     return false;
     }
 
-    
+
     bool CNetAddr::IsMulticast() const
     {
         return    (IsIPv4() && (GetByte(3) & 0xF0) == 0xE0)
             || (GetByte(15) == 0xFF);
     }
 
-    
+
     bool CNetAddr::IsValid() const
     {
         // Clean up 3-byte shifted addresses caused by garbage in size field
@@ -234,13 +236,13 @@ namespace LLP
         return true;
     }
 
-    
+
     bool CNetAddr::IsRoutable() const
     {
         return IsValid() && !(IsRFC1918() || IsRFC3927() || IsRFC4862() || IsRFC4193() || IsRFC4843() || IsLocal());
     }
 
-    
+
     std::string CNetAddr::ToStringIP() const
     {
         if (IsIPv4())
@@ -253,31 +255,31 @@ namespace LLP
                             GetByte(3) << 8 | GetByte(2), GetByte(1) << 8 | GetByte(0));
     }
 
-    
+
     std::string CNetAddr::ToString() const
     {
         return ToStringIP();
     }
 
-    
+
     bool operator==(const CNetAddr& a, const CNetAddr& b)
     {
         return (memcmp(a.ip, b.ip, 16) == 0);
     }
 
-    
+
     bool operator!=(const CNetAddr& a, const CNetAddr& b)
     {
         return (memcmp(a.ip, b.ip, 16) != 0);
     }
 
-    
+
     bool operator<(const CNetAddr& a, const CNetAddr& b)
     {
         return (memcmp(a.ip, b.ip, 16) < 0);
     }
 
-    
+
     bool CNetAddr::GetInAddr(struct in_addr* pipv4Addr) const
     {
         if (!IsIPv4())
@@ -286,7 +288,7 @@ namespace LLP
         return true;
     }
 
-    
+
     #ifdef USE_IPV6
     bool CNetAddr::GetIn6Addr(struct in6_addr* pipv6Addr) const
     {
@@ -295,7 +297,7 @@ namespace LLP
     }
     #endif
 
-    
+
     // get canonical identifier of an address' group
     // no two connections will be attempted to addresses with the same group
     std::vector<unsigned char> CNetAddr::GetGroup() const
@@ -359,54 +361,54 @@ namespace LLP
         return vchRet;
     }
 
-    
+
     uint64 CNetAddr::GetHash() const
     {
         return LLC::HASH::SK64(&ip[0], &ip[16]);
     }
 
-    
+
     void CNetAddr::print() const
     {
         printf("CNetAddr(%s)\n", ToString().c_str());
     }
 
-    
+
     void CService::Init()
     {
         port = 0;
     }
 
-    
+
     CService::CService()
     {
         Init();
     }
 
-    
+
     CService::CService(const CNetAddr& cip, unsigned short portIn) : CNetAddr(cip), port(portIn)
     {
     }
 
-    
+
     CService::CService(const struct in_addr& ipv4Addr, unsigned short portIn) : CNetAddr(ipv4Addr), port(portIn)
     {
     }
 
-    
+
     #ifdef USE_IPV6
     CService::CService(const struct in6_addr& ipv6Addr, unsigned short portIn) : CNetAddr(ipv6Addr), port(portIn)
     {
     }
     #endif
 
-    
+
     CService::CService(const struct sockaddr_in& addr) : CNetAddr(addr.sin_addr), port(ntohs(addr.sin_port))
     {
         assert(addr.sin_family == AF_INET);
     }
 
-    
+
     #ifdef USE_IPV6
     CService::CService(const struct sockaddr_in6 &addr) : CNetAddr(addr.sin6_addr), port(ntohs(addr.sin6_port))
     {
@@ -414,7 +416,7 @@ namespace LLP
     }
     #endif
 
-    
+
     CService::CService(const char *pszIpPort, bool fAllowLookup)
     {
         Init();
@@ -423,7 +425,7 @@ namespace LLP
             *this = ip;
     }
 
-    
+
     CService::CService(const char *pszIpPort, int portDefault, bool fAllowLookup)
     {
         Init();
@@ -432,7 +434,7 @@ namespace LLP
             *this = ip;
     }
 
-    
+
     CService::CService(const std::string &strIpPort, bool fAllowLookup)
     {
         Init();
@@ -441,7 +443,7 @@ namespace LLP
             *this = ip;
     }
 
-    
+
     CService::CService(const std::string &strIpPort, int portDefault, bool fAllowLookup)
     {
         Init();
@@ -450,31 +452,31 @@ namespace LLP
             *this = ip;
     }
 
-    
+
     unsigned short CService::GetPort() const
     {
         return port;
     }
 
-    
+
     bool operator==(const CService& a, const CService& b)
     {
         return (CNetAddr)a == (CNetAddr)b && a.port == b.port;
     }
 
-    
+
     bool operator!=(const CService& a, const CService& b)
     {
         return (CNetAddr)a != (CNetAddr)b || a.port != b.port;
     }
 
-    
+
     bool operator<(const CService& a, const CService& b)
     {
         return (CNetAddr)a < (CNetAddr)b || ((CNetAddr)a == (CNetAddr)b && a.port < b.port);
     }
 
-    
+
     bool CService::GetSockAddr(struct sockaddr_in* paddr) const
     {
         if (!IsIPv4())
@@ -487,7 +489,7 @@ namespace LLP
         return true;
     }
 
-    
+
     #ifdef USE_IPV6
     bool CService::GetSockAddr6(struct sockaddr_in6* paddr) const
     {
@@ -500,7 +502,7 @@ namespace LLP
     }
     #endif
 
-    
+
     std::vector<unsigned char> CService::GetKey() const
     {
         std::vector<unsigned char> vKey;
@@ -511,35 +513,34 @@ namespace LLP
         return vKey;
     }
 
-    
+
     std::string CService::ToStringPort() const
     {
         return strprintf(":%i", port);
     }
 
-    
+
     std::string CService::ToStringIPPort() const
     {
         return ToStringIP() + ToStringPort();
     }
 
-    
+
     std::string CService::ToString() const
     {
         return ToStringIPPort();
     }
 
-    
+
     void CService::print() const
     {
         printf("CService(%s)\n", ToString().c_str());
     }
 
-    
+
     void CService::SetPort(unsigned short portIn)
     {
         port = portIn;
     }
 
 }
-

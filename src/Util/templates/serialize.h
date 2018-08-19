@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_SERIALIZE_H
-#define NEXUS_SERIALIZE_H
+#ifndef NEXUS_UTIL_SERIALIZE_H
+#define NEXUS_UTIL_SERIALIZE_H
 
 #include <string>
 #include <vector>
@@ -31,9 +31,15 @@ ________________________________________________________________________________
 
 #include "../include/allocators.h"
 
-#include "../../LLC/hash/SK.h"
+#include "../../LLC/types/uint1024.h"
 
-namespace Wallet { class CScript; }
+namespace Legacy
+{
+    namespace Types
+    {
+        class CScript;
+    }
+}
 
 
 // Used to bypass the rule against non-const reference to temporary
@@ -48,20 +54,7 @@ inline T& REF(const T& val)
 //
 // Templates for serializing to anything that looks like a stream,
 // i.e. anything that supports .read(char*, int) and .write(char*, int)
-//
-
-#define DATABASE_MAJOR       0
-#define DATABASE_MINOR       1
-#define DATABASE_PATCH       1
-#define DATABASE_BUILD       0
-
-/* Used for features in the database. */
-const int DATABASE_VERSION =
-    1000000 * DATABASE_MAJOR
-    +   10000 * DATABASE_MINOR
-    +     100 * DATABASE_PATCH
-    +       1 * DATABASE_BUILD;
-
+/////////////////////////////////////////////////////////////////
 enum
 {
     // primary actions
@@ -83,14 +76,6 @@ enum
     //Register actions
     SER_REGISTER_PRUNED = (1 << 21)
 };
-
-//Use this in the header file to keep dependencies clean
-#define SERIALIZE_HEADER \
-    unsigned int GetSerializeSize(int nType, int nVersion) const;   \
-    template<typename Stream>                                       \
-    void Serialize(Stream& s, int nType, int nVersion) const;       \
-    template<typename Stream>                                       \
-    void Unserialize(Stream& s, int nType, int nVersion);
 
 
 //Use this in the source file to keep dependencies clean
@@ -131,8 +116,6 @@ enum
         assert(fGetSize||fWrite||fRead); /* suppress warning */ \
         {statements}                            \
     }
-
-
 
 
 //this should be used in header only files with complete types
@@ -383,9 +366,9 @@ template<typename Stream, typename T, typename A> void Unserialize_impl(Stream& 
 template<typename Stream, typename T, typename A> inline void Unserialize(Stream& is, std::vector<T, A>& v, int nType, int nVersion);
 
 // others derived from vector
-extern inline unsigned int GetSerializeSize(const Wallet::CScript& v, int nType, int nVersion);
-template<typename Stream> void Serialize(Stream& os, const Wallet::CScript& v, int nType, int nVersion);
-template<typename Stream> void Unserialize(Stream& is, Wallet::CScript& v, int nType, int nVersion);
+extern inline unsigned int GetSerializeSize(const Legacy::Types::CScript& v, int nType, int nVersion);
+template<typename Stream> void Serialize(Stream& os, const Legacy::Types::CScript& v, int nType, int nVersion);
+template<typename Stream> void Unserialize(Stream& is, Legacy::Types::CScript& v, int nType, int nVersion);
 
 // pair
 template<typename K, typename T> unsigned int GetSerializeSize(const std::pair<K, T>& item, int nType, int nVersion);
@@ -565,19 +548,19 @@ inline void Unserialize(Stream& is, std::vector<T, A>& v, int nType, int nVersio
 //
 // others derived from vector
 //
-inline unsigned int GetSerializeSize(const Wallet::CScript& v, int nType, int nVersion)
+inline unsigned int GetSerializeSize(const Legacy::Types::CScript& v, int nType, int nVersion)
 {
     return GetSerializeSize((const std::vector<unsigned char>&)v, nType, nVersion);
 }
 
 template<typename Stream>
-void Serialize(Stream& os, const Wallet::CScript& v, int nType, int nVersion)
+void Serialize(Stream& os, const Legacy::Types::CScript& v, int nType, int nVersion)
 {
     Serialize(os, (const std::vector<unsigned char>&)v, nType, nVersion);
 }
 
 template<typename Stream>
-void Unserialize(Stream& is, Wallet::CScript& v, int nType, int nVersion)
+void Unserialize(Stream& is, Legacy::Types::CScript& v, int nType, int nVersion)
 {
     Unserialize(is, (std::vector<unsigned char>&)v, nType, nVersion);
 }

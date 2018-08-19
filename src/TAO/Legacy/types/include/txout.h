@@ -14,12 +14,13 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_INCLUDE_TXIN_H
 #define NEXUS_TAO_LEGACY_TYPES_INCLUDE_TXIN_H
 
+#include "../../../Util/templates/serialize"
 
 namespace Legacy
 {
-
 	namespace Types
 	{
+		class CScript;
 
         /** An output of a transaction.  It contains the public key that the next input
     	 * must be able to sign with to claim it.
@@ -29,7 +30,7 @@ namespace Legacy
     	public:
 
 			/** The amount of NXS being transferred into output. **/
-    		int64 nValue;
+    		int64_t nValue;
 
 
 			/** The output script required to evaluate to true to be spent. **/
@@ -57,7 +58,7 @@ namespace Legacy
 			 *	@param[in] scriptPubKeyIn The script to be evaluated on spend.
 			 *
 			 **/
-    		CTxOut(int64 nValueIn, CScript scriptPubKeyIn)
+    		CTxOut(int64_t nValueIn, CScript scriptPubKeyIn)
     		{
     			nValue = nValueIn;
     			scriptPubKey = scriptPubKeyIn;
