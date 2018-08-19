@@ -140,7 +140,7 @@ namespace LLP
         /* Set the Packet Checksum Data. */
         void SetChecksum()
         {
-            LLC::uint512 hash = LLC::HASH::SK512(DATA.begin(), DATA.end());
+            LLC::uint512 hash = LLC::SK512(DATA.begin(), DATA.end());
             //std::copy(hash, hash + sizeof(CHECKSUM), CHECKSUM);
             memcpy(&CHECKSUM, &hash, sizeof(CHECKSUM));
         }
@@ -174,7 +174,7 @@ namespace LLP
                 return error("Message Packet (%s, %u bytes) : Message too Large", MESSAGE, LENGTH);
 
             /* Double check the Message Checksum. */
-            LLC::uint512 hash = LLC::HASH::SK512(DATA.begin(), DATA.end());
+            LLC::uint512 hash = LLC::SK512(DATA.begin(), DATA.end());
             unsigned int nChecksum = 0;
             //std::copy(hash.begin(), hash.begin() + sizeof(nChecksum), &nChecksum);
             memcpy(&nChecksum, &hash, sizeof(nChecksum));

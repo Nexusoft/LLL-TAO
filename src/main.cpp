@@ -119,7 +119,7 @@ int main(int argc, char** argv)
 
         printf("Genesis Pub %s\n", HexStr(vPubKey).c_str());
 
-        LLC::uint512 genesisID = LLC::HASH::SK512(vPubKey);
+        LLC::uint512 genesisID = LLC::SK512(vPubKey);
 
         printf("Genesis ID %s\n", genesisID.ToString().c_str());
 

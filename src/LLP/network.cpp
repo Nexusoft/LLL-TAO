@@ -364,7 +364,7 @@ namespace LLP
 
     uint64_t CNetAddr::GetHash() const
     {
-        return LLC::HASH::SK64(&ip[0], &ip[16]);
+        return LLC::SK64(&ip[0], &ip[16]);
     }
 
 

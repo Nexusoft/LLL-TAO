@@ -61,7 +61,7 @@ namespace LLD
         struct SK_Hashmap
         {
             std::size_t operator()(const std::vector<unsigned char>& k) const {
-                return LLC::HASH::SK32(k);
+                return LLC::SK32(k);
             }
         };
         

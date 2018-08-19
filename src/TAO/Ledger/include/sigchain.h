@@ -77,11 +77,11 @@ namespace TAO
                 vPin.insert(vPin.end(), vKeyID.begin(), vKeyID.end());
 
                 /* Generate the Hashes */
-                LLC::uint1024 hashSecret = LLC::HASH::SK1024(vSecret);
-                LLC::uint1024 hashPIN    = LLC::HASH::SK1024(vPin);
+                LLC::uint1024 hashSecret = LLC::SK1024(vSecret);
+                LLC::uint1024 hashPIN    = LLC::SK1024(vPin);
 
                 /* Generate the Final Root Hash. */
-                return LLC::HASH::SK512(BEGIN(hashSecret), END(hashPIN));
+                return LLC::SK512(BEGIN(hashSecret), END(hashPIN));
             }
         };
     }
