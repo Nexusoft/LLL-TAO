@@ -25,8 +25,8 @@ namespace Legacy
     	class CMerkleTx : public CTransaction
     	{
     	public:
-    		LLC::uint1024 hashBlock;
-    		std::vector<LLC::uint512> vMerkleBranch;
+    		uint1024_t hashBlock;
+    		std::vector<uint512_t> vMerkleBranch;
     		int nIndex;
 
     		// memory only

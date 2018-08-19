@@ -30,7 +30,7 @@ class CAccount
 public:
     std::vector<uint8_t> vchIdentifier;
 
-    LLC::uint256 hashAddress;
+    uint256_t hashAddress;
 
     uint64_t nBalance;
 
@@ -63,12 +63,12 @@ class RegisterDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
 {
     RegisterDB(const char* pszMode="r+") : SectorDatabase("regdb", pszMode) {}
 
-    bool ReadRegister(LLC::uint256 address, TAO::Register::CStateRegister& regState)
+    bool ReadRegister(uint256_t address, TAO::Register::CStateRegister& regState)
     {
         return Read(address, regState);
     }
 
-    bool WriteRegister(LLC::uint256 address, TAO::Register::CStateRegister regState)
+    bool WriteRegister(uint256_t address, TAO::Register::CStateRegister regState)
     {
         return Write(address, regState);
     }
@@ -97,11 +97,11 @@ int main(int argc, char** argv)
 
     for(int i = 0; ; i++)
     {
-        LLC::uint512 hashSeed = GetRand512();
-        LLC::uint256 hash256  = GetRand256();
+        uint512_t hashSeed = GetRand512();
+        uint256_t hash256  = GetRand256();
 
         TAO::Ledger::SignatureChain sigChain("username", hashSeed.ToString());
-        LLC::uint512 hashGenesis = sigChain.Generate(i, hash256.ToString());
+        uint512_t hashGenesis = sigChain.Generate(i, hash256.ToString());
 
         printf("Genesis Priv %s\n", hashGenesis.ToString().c_str());
 
@@ -119,7 +119,7 @@ int main(int argc, char** argv)
 
         printf("Genesis Pub %s\n", HexStr(vPubKey).c_str());
 
-        LLC::uint512 genesisID = LLC::SK512(vPubKey);
+        uint512_t genesisID = LLC::SK512(vPubKey);
 
         printf("Genesis ID %s\n", genesisID.ToString().c_str());
 

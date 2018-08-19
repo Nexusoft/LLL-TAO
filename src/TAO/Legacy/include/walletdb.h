@@ -49,18 +49,18 @@ namespace Wallet
 
         bool EraseName(const std::string& strAddress);
 
-        bool ReadTx(LLC::uint512 hash, CWalletTx& wtx)
+        bool ReadTx(uint512_t hash, CWalletTx& wtx)
         {
             return Read(std::make_pair(std::string("tx"), hash), wtx);
         }
 
-        bool WriteTx(LLC::uint512 hash, const CWalletTx& wtx)
+        bool WriteTx(uint512_t hash, const CWalletTx& wtx)
         {
             nWalletDBUpdated++;
             return Write(std::make_pair(std::string("tx"), hash), wtx);
         }
 
-        bool EraseTx(LLC::uint512 hash)
+        bool EraseTx(uint512_t hash)
         {
             nWalletDBUpdated++;
             return Erase(std::make_pair(std::string("tx"), hash));
@@ -97,13 +97,13 @@ namespace Wallet
             return Write(std::make_pair(std::string("mkey"), nID), kMasterKey, true);
         }
 
-        bool ReadCScript(const LLC::uint256 &hash, CScript& redeemScript)
+        bool ReadCScript(const uint256_t &hash, CScript& redeemScript)
         {
             redeemScript.clear();
             return Read(std::make_pair(std::string("cscript"), hash), redeemScript);
         }
 
-        bool WriteCScript(const LLC::uint256& hash, const CScript& redeemScript)
+        bool WriteCScript(const uint256_t& hash, const CScript& redeemScript)
         {
             nWalletDBUpdated++;
             return Write(std::make_pair(std::string("cscript"), hash), redeemScript, false);

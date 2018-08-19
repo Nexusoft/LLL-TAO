@@ -102,7 +102,7 @@ namespace Legacy
 			 *	Get the hash of the object.
 			 *
 			 **/
-    		LLC::uint512 GetHash() const;
+    		uint512_t GetHash() const;
 
 
 			/** Equals operator overload

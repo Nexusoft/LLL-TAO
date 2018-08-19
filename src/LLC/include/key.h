@@ -213,7 +213,7 @@ namespace LLC
         * 
         *  @return True if the Signature was created successfully
         **/
-        bool Sign(LLC::uint1024 hash, std::vector<uint8_t>& vchSig, int nBits);
+        bool Sign(uint1024_t hash, std::vector<uint8_t>& vchSig, int nBits);
         
         
         /** Legacy Verifying Function. 
@@ -226,7 +226,7 @@ namespace LLC
         * 
         *  @return True if the Signature was verified successfully
         **/
-        bool Verify(LLC::uint1024 hash, const std::vector<uint8_t>& vchSig, int nBits);
+        bool Verify(uint1024_t hash, const std::vector<uint8_t>& vchSig, int nBits);
         
         
         /** Check if a Key is valid based on a few parameters
@@ -235,8 +235,8 @@ namespace LLC
         **/
         bool IsValid();
         
-        bool SignCompact(LLC::uint256 hash, std::vector<uint8_t>& vchSig);
-		bool SetCompactSignature(LLC::uint256 hash, const std::vector<uint8_t>& vchSig);
+        bool SignCompact(uint256_t hash, std::vector<uint8_t>& vchSig);
+		bool SetCompactSignature(uint256_t hash, const std::vector<uint8_t>& vchSig);
     };
 }
 #endif

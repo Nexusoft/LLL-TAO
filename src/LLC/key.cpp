@@ -358,7 +358,7 @@ namespace LLC
     // The format is one header byte, followed by two times 32 bytes for the serialized r and s values.
     // The header byte: 0x1B = first key with even y, 0x1C = first key with odd y,
     //                  0x1D = second key with even y, 0x1E = second key with odd y
-    bool CKey::SignCompact(LLC::uint256 hash, std::vector<uint8_t>& vchSig)
+    bool CKey::SignCompact(uint256_t hash, std::vector<uint8_t>& vchSig)
     {
         bool fOk = false;
         ECDSA_SIG *sig = ECDSA_do_sign((uint8_t*)&hash, sizeof(hash), pkey);
@@ -412,7 +412,7 @@ namespace LLC
     // This is only slightly more CPU intensive than just verifying it.
     // If this function succeeds, the recovered public key is guaranteed to be valid
     // (the signature is a valid signature of the given data for that key)
-    bool CKey::SetCompactSignature(LLC::uint256 hash, const std::vector<uint8_t>& vchSig)
+    bool CKey::SetCompactSignature(uint256_t hash, const std::vector<uint8_t>& vchSig)
     {
         if (vchSig.size() != 145)
             return false;
@@ -506,7 +506,7 @@ namespace LLC
     }
     
     
-    bool CKey::Sign(LLC::uint1024 hash, std::vector<uint8_t>& vchSig, int nBits)
+    bool CKey::Sign(uint1024_t hash, std::vector<uint8_t>& vchSig, int nBits)
     {
         uint32_t nSize = ECDSA_size(pkey);
         vchSig.resize(nSize); // Make sure it is big enough
@@ -514,12 +514,12 @@ namespace LLC
         bool fSuccess = false;
         if(nBits == 256)
         {
-            LLC::uint256 hash256 = hash.getuint256();
+            uint256_t hash256 = hash.getuint256();
             fSuccess = (ECDSA_sign(0, (uint8_t*)&hash256, sizeof(hash256), &vchSig[0], &nSize, pkey) == 1);
         }
         else if(nBits == 512)
         {
-            LLC::uint512 hash512 = hash.getuint512();
+            uint512_t hash512 = hash.getuint512();
             fSuccess = (ECDSA_sign(0, (uint8_t*)&hash512, sizeof(hash512), &vchSig[0], &nSize, pkey) == 1);
         }
         else
@@ -536,17 +536,17 @@ namespace LLC
     }
     
     
-    bool CKey::Verify(LLC::uint1024 hash, const std::vector<uint8_t>& vchSig, int nBits)
+    bool CKey::Verify(uint1024_t hash, const std::vector<uint8_t>& vchSig, int nBits)
     {
         bool fSuccess = false;
         if(nBits == 256)
         {
-            LLC::uint256 hash256 = hash.getuint256();
+            uint256_t hash256 = hash.getuint256();
             fSuccess = (ECDSA_verify(0, (uint8_t*)&hash256, sizeof(hash256), &vchSig[0], vchSig.size(), pkey) == 1);
         }
         else if(nBits == 512)
         {
-            LLC::uint512 hash512 = hash.getuint512();
+            uint512_t hash512 = hash.getuint512();
             fSuccess = (ECDSA_verify(0, (uint8_t*)&hash512, sizeof(hash512), &vchSig[0], vchSig.size(), pkey) == 1);
         }
         else

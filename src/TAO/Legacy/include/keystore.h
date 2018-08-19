@@ -35,8 +35,8 @@ namespace Wallet
         virtual void GetKeys(std::set<NexusAddress> &setAddress) const =0;
         virtual bool GetPubKey(const NexusAddress &address, std::vector<uint8_t>& vchPubKeyOut) const;
         virtual bool AddCScript(const CScript& redeemScript) =0;
-        virtual bool HaveCScript(const LLC::uint256 &hash) const =0;
-        virtual bool GetCScript(const LLC::uint256 &hash, CScript& redeemScriptOut) const =0;
+        virtual bool HaveCScript(const uint256_t &hash) const =0;
+        virtual bool GetCScript(const uint256_t &hash, CScript& redeemScriptOut) const =0;
 
         virtual bool GetSecret(const NexusAddress &address, CSecret& vchSecret, bool &fCompressed) const
         {
@@ -49,7 +49,7 @@ namespace Wallet
     };
 
     typedef std::map<NexusAddress, std::pair<CSecret, bool> > KeyMap;
-    typedef std::map<LLC::uint256, CScript > ScriptMap;
+    typedef std::map<uint256_t, CScript > ScriptMap;
 
     /** Basic key store, that keeps keys in an address->secret map */
     class CBasicKeyStore : public CKeyStore
@@ -97,8 +97,8 @@ namespace Wallet
             return false;
         }
         virtual bool AddCScript(const CScript& redeemScript);
-        virtual bool HaveCScript(const LLC::uint256 &hash) const;
-        virtual bool GetCScript(const LLC::uint256 &hash, CScript& redeemScriptOut) const;
+        virtual bool HaveCScript(const uint256_t &hash) const;
+        virtual bool GetCScript(const uint256_t &hash, CScript& redeemScriptOut) const;
     };
 
     typedef std::map<NexusAddress, std::pair<std::vector<uint8_t>, std::vector<uint8_t> > > CryptedKeyMap;

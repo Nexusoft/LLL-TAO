@@ -67,7 +67,7 @@ namespace TAO
 
 
             /** Return a 256 bit uint32_t of the data's hash. **/
-            LLC::uint256 GetHash() const
+            uint256_t GetHash() const
             {
                 return LLC::SK256(vchData.begin(), vchData.end());
             }

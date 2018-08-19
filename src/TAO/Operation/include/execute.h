@@ -29,7 +29,7 @@ namespace TAO
 
             COperation(std::vector<uint8_t> vchOperationsIn) : vchOperations(vchOperationsIn) {}
 
-            bool Execute(LLD::RegisterDB& regDB, LLC::uint256 hashOwner)
+            bool Execute(LLD::RegisterDB& regDB, uint256_t hashOwner)
             {
                 CDataStream ssData(vchOperations.begin(), vchOperations.end(), SER_LLD);
 
@@ -38,7 +38,7 @@ namespace TAO
                     case OP_WRITE:
 
                         /* Get the Address of the Register. */
-                        LLC::uint256 hashAddress;
+                        uint256_t hashAddress;
                         ssData >> hashAddress;
 
                         /* Read the binary data of the Register. */
@@ -71,7 +71,7 @@ namespace TAO
 
                     case OP_READ:
 
-                        LLC::uint256 hashAddress;
+                        uint256_t hashAddress;
                         ssData >> hashAddress;
 
                         CStateRegister regState;
@@ -88,7 +88,7 @@ namespace TAO
                         ssData >> regData;
 
                         /* Check that the register doesn't exist yet. */
-                        LLC::uint256 hashAddress = regData.GetHash(); //the address of a register is the hash of the first state
+                        uint256_t hashAddress = regData.GetHash(); //the address of a register is the hash of the first state
                         if(regDB.Exists(hashAddress))
                             return error("Operation::OP_REGISTER : Cannot allocate register of same memory address %s", hashAddress.ToString().c_str());
 
@@ -105,7 +105,7 @@ namespace TAO
 
                     case OP_AUTHORIZE:
 
-                        LLC::uint256 hashToken;
+                        uint256_t hashToken;
                         ssData >> hashToken;
 
                         //need to have a database of authorized tokens by ID
@@ -118,10 +118,10 @@ namespace TAO
 
                     case OP_TRANSFER:
 
-                        LLC::uint256 hashAddress;
+                        uint256_t hashAddress;
                         ssData >> hashAddress;
 
-                        LLC::uint256 hashNewOwner;
+                        uint256_t hashNewOwner;
                         ssData >> hashNewOwner;
 
                         CStateRegister regState;

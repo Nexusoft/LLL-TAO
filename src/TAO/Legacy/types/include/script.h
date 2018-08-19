@@ -283,7 +283,7 @@ namespace Wallet
         explicit CScript(uint64_t b)         { operator<<(b); }
 
         explicit CScript(opcodetype b)     { operator<<(b); }
-        explicit CScript(const LLC::uint256& b) { operator<<(b); }
+        explicit CScript(const uint256_t& b) { operator<<(b); }
         explicit CScript(const CBigNum& b) { operator<<(b); }
         explicit CScript(const std::vector<uint8_t>& b) { operator<<(b); }
 
@@ -308,7 +308,7 @@ namespace Wallet
             return *this;
         }
 
-        CScript& operator<<(const LLC::uint256& b)
+        CScript& operator<<(const uint256_t& b)
         {
             insert(end(), sizeof(b));
             insert(end(), (uint8_t*)&b, (uint8_t*)&b + sizeof(b));

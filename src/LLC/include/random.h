@@ -51,12 +51,12 @@ int GetRandInt(int nMax);
 uint64_t GetRand(uint64_t nMax);
 
 /* Get random 256 bit number. */
-LLC::uint256 GetRand256();
+uint256_t GetRand256();
 
 /* Get a random 512 bit number. */
-LLC::uint512 GetRand512();
+uint512_t GetRand512();
 
 /* Get a random 1024 bit number. */
-LLC::uint1024 GetRand1024();
+uint1024_t GetRand1024();
 
 #endif

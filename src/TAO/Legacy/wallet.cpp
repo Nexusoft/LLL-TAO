@@ -280,7 +280,7 @@ namespace Wallet
             LOCK(cs_wallet);
             BOOST_FOREACH(const Core::CTxIn& txin, tx.vin)
             {
-                map<LLC::uint512, CWalletTx>::iterator mi = mapWallet.find(txin.prevout.hash);
+                map<uint512_t, CWalletTx>::iterator mi = mapWallet.find(txin.prevout.hash);
                 if (mi != mapWallet.end())
                 {
                     CWalletTx& wtx = (*mi).second;
@@ -300,19 +300,19 @@ namespace Wallet
     {
         {
             LOCK(cs_wallet);
-            BOOST_FOREACH(PAIRTYPE(const LLC::uint512, CWalletTx)& item, mapWallet)
+            BOOST_FOREACH(PAIRTYPE(const uint512_t, CWalletTx)& item, mapWallet)
                 item.second.MarkDirty();
         }
     }
 
     bool CWallet::AddToWallet(const CWalletTx& wtxIn)
     {
-        LLC::uint512 hash = wtxIn.GetHash();
+        uint512_t hash = wtxIn.GetHash();
         {
             LOCK(cs_wallet);
 
             // Inserts only if not already there, returns tx inserted or tx found
-            pair<map<LLC::uint512, CWalletTx>::iterator, bool> ret = mapWallet.insert(make_pair(hash, wtxIn));
+            pair<map<uint512_t, CWalletTx>::iterator, bool> ret = mapWallet.insert(make_pair(hash, wtxIn));
             CWalletTx& wtx = (*ret.first).second;
             wtx.BindWallet(this);
             bool fInsertedNew = ret.second;
@@ -383,7 +383,7 @@ namespace Wallet
     // If fUpdate is true, existing transactions will be updated.
     bool CWallet::AddToWalletIfInvolvingMe(const Core::CTransaction& tx, const Core::CBlock* pblock, bool fUpdate, bool fFindBlock)
     {
-        LLC::uint512 hash = tx.GetHash();
+        uint512_t hash = tx.GetHash();
         {
             LOCK(cs_wallet);
             bool fExisted = mapWallet.count(hash);
@@ -403,7 +403,7 @@ namespace Wallet
         return false;
     }
 
-    bool CWallet::EraseFromWallet(LLC::uint512 hash)
+    bool CWallet::EraseFromWallet(uint512_t hash)
     {
         if (!fFileBacked)
             return false;
@@ -420,7 +420,7 @@ namespace Wallet
     {
         {
             LOCK(cs_wallet);
-            map<LLC::uint512, CWalletTx>::const_iterator mi = mapWallet.find(txin.prevout.hash);
+            map<uint512_t, CWalletTx>::const_iterator mi = mapWallet.find(txin.prevout.hash);
             if (mi != mapWallet.end())
             {
                 const CWalletTx& prev = (*mi).second;
@@ -439,7 +439,7 @@ namespace Wallet
 
         {
             LOCK(cs_wallet);
-            map<LLC::uint512, CWalletTx>::const_iterator mi = mapWallet.find(txin.prevout.hash);
+            map<uint512_t, CWalletTx>::const_iterator mi = mapWallet.find(txin.prevout.hash);
             if (mi != mapWallet.end())
             {
                 const CWalletTx& prev = (*mi).second;
@@ -487,7 +487,7 @@ namespace Wallet
                 // Generated block
                 if (hashBlock != 0)
                 {
-                    map<LLC::uint1024, int>::const_iterator mi = pwallet->mapRequestCount.find(hashBlock);
+                    map<uint1024_t, int>::const_iterator mi = pwallet->mapRequestCount.find(hashBlock);
                     if (mi != pwallet->mapRequestCount.end())
                         nRequests = (*mi).second;
                 }
@@ -495,7 +495,7 @@ namespace Wallet
             else
             {
                 // Did anyone request this transaction?
-                map<LLC::uint1024, int>::const_iterator mi = pwallet->mapRequestCount.find(GetHash());
+                map<uint1024_t, int>::const_iterator mi = pwallet->mapRequestCount.find(GetHash());
                 if (mi != pwallet->mapRequestCount.end())
                 {
                     nRequests = (*mi).second;
@@ -503,7 +503,7 @@ namespace Wallet
                     // How about the block it's in?
                     if (nRequests == 0 && hashBlock != 0)
                     {
-                        map<LLC::uint1024, int>::const_iterator mi = pwallet->mapRequestCount.find(hashBlock);
+                        map<uint1024_t, int>::const_iterator mi = pwallet->mapRequestCount.find(hashBlock);
                         if (mi != pwallet->mapRequestCount.end())
                             nRequests = (*mi).second;
                         else
@@ -610,24 +610,24 @@ namespace Wallet
         const int COPY_DEPTH = 3;
         if (SetMerkleBranch() < COPY_DEPTH)
         {
-            vector<LLC::uint512> vWorkQueue;
+            vector<uint512_t> vWorkQueue;
             BOOST_FOREACH(const Core::CTxIn& txin, vin)
                 vWorkQueue.push_back(txin.prevout.hash);
 
             // This critsect is OK because indexdb is already open
             {
                 LOCK(pwallet->cs_wallet);
-                map<LLC::uint512, const CMerkleTx*> mapWalletPrev;
-                set<LLC::uint512> setAlreadyDone;
+                map<uint512_t, const CMerkleTx*> mapWalletPrev;
+                set<uint512_t> setAlreadyDone;
                 for (uint32_t i = 0; i < vWorkQueue.size(); i++)
                 {
-                    LLC::uint512 hash = vWorkQueue[i];
+                    uint512_t hash = vWorkQueue[i];
                     if (setAlreadyDone.count(hash))
                         continue;
                     setAlreadyDone.insert(hash);
 
                     Core::CMerkleTx tx;
-                    map<LLC::uint512, CWalletTx>::const_iterator mi = pwallet->mapWallet.find(hash);
+                    map<uint512_t, CWalletTx>::const_iterator mi = pwallet->mapWallet.find(hash);
                     if (mi != pwallet->mapWallet.end())
                     {
                         tx = (*mi).second;
@@ -693,7 +693,7 @@ namespace Wallet
         return ret;
     }
 
-    int CWallet::ScanForWalletTransaction(const LLC::uint512& hashTx)
+    int CWallet::ScanForWalletTransaction(const uint512_t& hashTx)
     {
         Core::CTransaction tx;
         tx.ReadFromDisk(Core::COutPoint(hashTx, 0));
@@ -711,7 +711,7 @@ namespace Wallet
             LOCK(cs_wallet);
             fRepeat = false;
             vector<Core::CDiskTxPos> vMissingTx;
-            BOOST_FOREACH(PAIRTYPE(const LLC::uint512, CWalletTx)& item, mapWallet)
+            BOOST_FOREACH(PAIRTYPE(const uint512_t, CWalletTx)& item, mapWallet)
             {
                 CWalletTx& wtx = item.second;
                 if ((wtx.IsCoinBase() && wtx.IsSpent(0)) || (wtx.IsCoinStake() && wtx.IsSpent(0)))
@@ -767,14 +767,14 @@ namespace Wallet
         {
             if (!(tx.IsCoinBase() || tx.IsCoinStake()))
             {
-                LLC::uint512 hash = tx.GetHash();
+                uint512_t hash = tx.GetHash();
                 if (!indexdb.ContainsTx(hash))
                     RelayMessage(Net::CInv(Net::MSG_TX, hash), (Core::CTransaction)tx);
             }
         }
         if (!(IsCoinBase() || IsCoinStake()))
         {
-            LLC::uint512 hash = GetHash();
+            uint512_t hash = GetHash();
             if (!indexdb.ContainsTx(hash))
             {
                 printf("Relaying wtx %s\n", hash.ToString().substr(0,10).c_str());
@@ -814,7 +814,7 @@ namespace Wallet
             LOCK(cs_wallet);
             // Sort them in chronological order
             multimap<uint32_t, CWalletTx*> mapSorted;
-            BOOST_FOREACH(PAIRTYPE(const LLC::uint512, CWalletTx)& item, mapWallet)
+            BOOST_FOREACH(PAIRTYPE(const uint512_t, CWalletTx)& item, mapWallet)
             {
                 CWalletTx& wtx = item.second;
                 // Don't rebroadcast until it's had plenty of time that
@@ -849,7 +849,7 @@ namespace Wallet
         int64_t nTotal = 0;
         {
             LOCK(cs_wallet);
-            for (map<LLC::uint512, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+            for (map<uint512_t, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
             {
                 const CWalletTx* pcoin = &(*it).second;
                 if (!pcoin->IsFinal() || !pcoin->IsConfirmed() || pcoin->nTime > GetUnifiedTimestamp())
@@ -868,7 +868,7 @@ namespace Wallet
         int64_t nTotal = 0;
         {
             LOCK(cs_wallet);
-            for (map<LLC::uint512, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+            for (map<uint512_t, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
             {
                 const CWalletTx* pcoin = &(*it).second;
                 if (pcoin->IsFinal() && pcoin->IsConfirmed())
@@ -884,7 +884,7 @@ namespace Wallet
     {
         int64_t nTotal = 0;
         LOCK(cs_wallet);
-        for (map<LLC::uint512, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+        for (map<uint512_t, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
         {
             const CWalletTx* pcoin = &(*it).second;
             if (pcoin->IsCoinStake() && pcoin->GetBlocksToMaturity() > 0 && pcoin->GetDepthInMainChain() > 1)
@@ -897,7 +897,7 @@ namespace Wallet
     {
         int64_t nTotal = 0;
         LOCK(cs_wallet);
-        for (map<LLC::uint512, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+        for (map<uint512_t, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
         {
             const CWalletTx* pcoin = &(*it).second;
             if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0 && pcoin->GetDepthInMainChain() > 1)
@@ -913,7 +913,7 @@ namespace Wallet
 
         {
             LOCK(cs_wallet);
-            for (map<LLC::uint512, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+            for (map<uint512_t, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
             {
                 const CWalletTx* pcoin = &(*it).second;
 
@@ -944,7 +944,7 @@ namespace Wallet
         mapAddresses.clear();
         {
             LOCK(cs_wallet);
-            for (map<LLC::uint512, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+            for (map<uint512_t, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
             {
                 const CWalletTx* pcoin = &(*it).second;
 
@@ -993,7 +993,7 @@ namespace Wallet
         LOCK(cs_wallet);
 
         vCoins.reserve(mapWallet.size());
-        for (map<LLC::uint512, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+        for (map<uint512_t, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
             vCoins.push_back(&(*it).second);
         }
 
@@ -1369,11 +1369,11 @@ namespace Wallet
         printf("\n");
     }
 
-    bool CWallet::GetTransaction(const LLC::uint512 &hashTx, CWalletTx& wtx)
+    bool CWallet::GetTransaction(const uint512_t &hashTx, CWalletTx& wtx)
     {
         {
             LOCK(cs_wallet);
-            map<LLC::uint512, CWalletTx>::iterator mi = mapWallet.find(hashTx);
+            map<uint512_t, CWalletTx>::iterator mi = mapWallet.find(hashTx);
             if (mi != mapWallet.end())
             {
                 wtx = (*mi).second;
@@ -1568,7 +1568,7 @@ namespace Wallet
         LOCK(cs_wallet);
         vector<CWalletTx*> vCoins;
         vCoins.reserve(mapWallet.size());
-        for (map<LLC::uint512, CWalletTx>::iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+        for (map<uint512_t, CWalletTx>::iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
             vCoins.push_back(&(*it).second);
 
         LLD::CIndexDB indexdb("r");
@@ -1622,7 +1622,7 @@ namespace Wallet
         LOCK(cs_wallet);
         BOOST_FOREACH(const Core::CTxIn& txin, tx.vin)
         {
-            map<LLC::uint512, CWalletTx>::iterator mi = mapWallet.find(txin.prevout.hash);
+            map<uint512_t, CWalletTx>::iterator mi = mapWallet.find(txin.prevout.hash);
             if (mi != mapWallet.end())
             {
                 CWalletTx& prev = (*mi).second;
