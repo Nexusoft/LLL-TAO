@@ -90,7 +90,7 @@ namespace TAO
 			/* The hash of this current block state. */
 			LLC::uint1024 StateHash() const
 			{
-				return LLC::HASH::SK1024(BEGIN(nVersion), END(hashCheckpoint));
+				return LLC::SK1024(BEGIN(nVersion), END(hashCheckpoint));
 			}
 
 

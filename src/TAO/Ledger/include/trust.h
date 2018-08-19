@@ -86,7 +86,7 @@ namespace Core
 		
 		
 		/* Hash of a Trust Key to Verify the Key's Root. */
-		LLC::uint512 GetHash() const { return LLC::HASH::SK512(vchPubKey, BEGIN(hashGenesisBlock), END(nGenesisTime)); }
+		LLC::uint512 GetHash() const { return LLC::SK512(vchPubKey, BEGIN(hashGenesisBlock), END(nGenesisTime)); }
 		
 		
 		/* Determine how old the Trust Key is From Timestamp. */

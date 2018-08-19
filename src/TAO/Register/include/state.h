@@ -125,7 +125,7 @@ namespace TAO
             /** Set the Checksum of this Register. **/
             void SetChecksum()
             {
-                hashChecksum = LLC::HASH::SK64(BEGIN(nVersion), END(hashAddress));
+                hashChecksum = LLC::SK64(BEGIN(nVersion), END(hashAddress));
             }
 
 

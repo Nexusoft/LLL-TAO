@@ -104,10 +104,10 @@ namespace TAO
 		{
 			/** Hashing template for CPU miners uses nVersion to nBits **/
 			if(GetChannel() == 1)
-				return LLC::HASH::SK1024(BEGIN(nVersion), END(nBits));
+				return LLC::SK1024(BEGIN(nVersion), END(nBits));
 
 			/** Hashing template for GPU uses nVersion to nNonce **/
-			return LLC::HASH::SK1024(BEGIN(nVersion), END(nNonce));
+			return LLC::SK1024(BEGIN(nVersion), END(nNonce));
 		}
 
 
@@ -115,9 +115,9 @@ namespace TAO
 		LLC::uint1024 Block::SignatureHash() const
 		{
 			if(nVersion < 5)
-				return LLC::HASH::SK1024(BEGIN(nVersion), END(nTime));
+				return LLC::SK1024(BEGIN(nVersion), END(nTime));
 			else
-				return LLC::HASH::SK1024(BEGIN(nVersion), END(hashPrevChecksum));
+				return LLC::SK1024(BEGIN(nVersion), END(hashPrevChecksum));
 		}
 
 
@@ -154,7 +154,7 @@ namespace TAO
 				for (int i = 0; i < nSize; i += 2)
 				{
 					int i2 = std::min(i+1, nSize-1);
-					vMerkleTree.push_back(LLC::HASH::SK512(BEGIN(vMerkleTree[j+i]),  END(vMerkleTree[j+i]),
+					vMerkleTree.push_back(LLC::SK512(BEGIN(vMerkleTree[j+i]),  END(vMerkleTree[j+i]),
 												BEGIN(vMerkleTree[j+i2]), END(vMerkleTree[j+i2])));
 				}
 				j += nSize;
@@ -189,9 +189,9 @@ namespace TAO
 			for(int i = 0; i < vMerkleBranch.size(); i++)
 			{
 				if (nIndex & 1)
-					hash = LLC::HASH::SK512(BEGIN(vMerkleBranch[i]), END(vMerkleBranch[i]), BEGIN(hash), END(hash));
+					hash = LLC::SK512(BEGIN(vMerkleBranch[i]), END(vMerkleBranch[i]), BEGIN(hash), END(hash));
 				else
-					hash = LLC::HASH::SK512(BEGIN(hash), END(hash), BEGIN(vMerkleBranch[i]), END(vMerkleBranch[i]));
+					hash = LLC::SK512(BEGIN(hash), END(hash), BEGIN(vMerkleBranch[i]), END(vMerkleBranch[i]));
 				nIndex >>= 1;
 			}
 			return hash;

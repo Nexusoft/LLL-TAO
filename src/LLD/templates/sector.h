@@ -100,7 +100,7 @@ namespace LLD
         struct SK_Hashmap
         {
             std::size_t operator()(const std::vector<unsigned char>& k) const {
-                return LLC::HASH::SK32(k);
+                return LLC::SK32(k);
             }
         };
         
@@ -336,7 +336,7 @@ namespace LLD
                 fStream.close();
                 
                 /** Check the Data Integrity of the Sector by comparing the Checksums. **/
-                unsigned int nChecksum = LLC::HASH::SK32(vData);
+                unsigned int nChecksum = LLC::SK32(vData);
                 if(cKey.nChecksum != nChecksum)
                     return error(FUNCTION "Checksums don't match data. Corrupted Sector.", __PRETTY_FUNCTION__);
                 
@@ -396,7 +396,7 @@ namespace LLD
                 SectorKey cKey(READY, vKey, nCurrentFile, nCurrentFileSize, vData.size()); 
                 
                 /* Check the Data Integrity of the Sector by comparing the Checksums. */
-                cKey.nChecksum    = LLC::HASH::SK32(vData);
+                cKey.nChecksum    = LLC::SK32(vData);
                 
                 /* Increment the current filesize */
                 nCurrentFileSize += vData.size();
@@ -432,7 +432,7 @@ namespace LLD
                 fStream.close();
                 
                 cKey.nState    = READY;
-                cKey.nChecksum = LLC::HASH::SK32(vData);
+                cKey.nChecksum = LLC::SK32(vData);
                 
                 SectorKeys->Put(cKey);
             }
@@ -507,7 +507,7 @@ namespace LLD
                         SectorKey cKey(READY, vObj.first, nCurrentFile, nTempFileSize, vObj.second.size()); 
                         
                         /* Check the Data Integrity of the Sector by comparing the Checksums. */
-                        cKey.nChecksum    = LLC::HASH::SK32(vObj.second);
+                        cKey.nChecksum    = LLC::SK32(vObj.second);
                         
                         /* Increment the current filesize */
                         nTempFileSize += vObj.second.size();
@@ -545,7 +545,7 @@ namespace LLD
                         
                         /* Update the Keychain. */
                         cKey.nState    = READY;
-                        cKey.nChecksum = LLC::HASH::SK32(vObj.second);
+                        cKey.nChecksum = LLC::SK32(vObj.second);
                         SectorKeys->Put(cKey);
                         
                         /* Update the Cache Pool. */
@@ -717,7 +717,7 @@ namespace LLD
                     SectorKey cKey(READY, vKey, nCurrentFile, nCurrentFileSize, vData.size()); 
                     
                     /* Check the Data Integrity of the Sector by comparing the Checksums. */
-                    cKey.nChecksum    = LLC::HASH::SK32(vData);
+                    cKey.nChecksum    = LLC::SK32(vData);
                     
                     /* Increment the current filesize */
                     nCurrentFileSize += vData.size();
@@ -756,7 +756,7 @@ namespace LLD
                     fStream.close();
                     
                     cKey.nState    = READY;
-                    cKey.nChecksum = LLC::HASH::SK32(vData);
+                    cKey.nChecksum = LLC::SK32(vData);
                     
                     SectorKeys->Put(cKey);
                 }
@@ -775,7 +775,7 @@ namespace LLD
                 
                 /** Set the Sector states back to Active. **/
                 cKey.nState    = READY;
-                cKey.nChecksum = LLC::HASH::SK32(nIterator->second);
+                cKey.nChecksum = LLC::SK32(nIterator->second);
                 
                 /** Commit the Keys to Keychain Database. **/
                 if(!SectorKeys->Put(cKey))
