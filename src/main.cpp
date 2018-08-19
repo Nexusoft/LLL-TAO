@@ -5,6 +5,7 @@
 #include "Util/include/debug.h"
 #include "Util/include/runtime.h"
 #include "Util/include/hex.h"
+#include "Util/macro/header.h"
 
 #include "LLC/hash/SK.h"
 #include "LLC/include/random.h"

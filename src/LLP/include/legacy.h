@@ -22,6 +22,8 @@ ________________________________________________________________________________
 
 #include "../templates/types.h"
 
+#include "../../LLC/hash/SK.h"
+
 
 namespace LLP
 {
