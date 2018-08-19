@@ -40,7 +40,7 @@ public:
         return true;
     }
 
-    void SetPubKey(const std::vector<unsigned char>& vchPubKey)
+    void SetPubKey(const std::vector<uint8_t>& vchPubKey)
     {
         SetHash256(SK256(vchPubKey));
     }
@@ -98,7 +98,7 @@ public:
         SetHash256(hash256In);
     }
 
-    NexusAddress(const std::vector<unsigned char>& vchPubKey)
+    NexusAddress(const std::vector<uint8_t>& vchPubKey)
     {
         SetPubKey(vchPubKey);
     }

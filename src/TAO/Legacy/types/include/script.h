@@ -88,115 +88,6 @@ namespace Legacy
     #endif
 
 
-        /** Operator overload +=
-         *
-         *  Concatenate Script Objects
-         *
-         **/
-        CScript& operator+=(const CScript& b)
-        {
-            insert(end(), b.begin(), b.end());
-            return *this;
-        }
-
-
-        /** Operator overload +
-         *
-         *  Concatenate two Script Objects
-         *
-         **/
-        friend CScript operator+(const CScript& a, const CScript& b)
-        {
-            CScript ret = a;
-            ret += b;
-            return ret;
-        }
-
-
-        //explicit CScript(char b) is not portable.  Use 'signed char' or 'uint8_t'.
-        explicit CScript(signed char b)                 { operator<<(b); }
-        explicit CScript(short b)                       { operator<<(b); }
-        explicit CScript(int b)                         { operator<<(b); }
-        explicit CScript(long b)                        { operator<<(b); }
-        explicit CScript(int64_t b)                     { operator<<(b); }
-        explicit CScript(uint8_t b)                     { operator<<(b); }
-        explicit CScript(uint32_t b)                    { operator<<(b); }
-        explicit CScript(uint16_t b)                    { operator<<(b); }
-        explicit CScript(unsigned long b)               { operator<<(b); }
-        explicit CScript(uint64_t b)                    { operator<<(b); }
-        explicit CScript(opcodetype b)                  { operator<<(b); }
-        explicit CScript(const uint256_t& b)            { operator<<(b); }
-        explicit CScript(const LLC::CBigNum& b)         { operator<<(b); }
-        explicit CScript(const std::vector<uint8_t>& b) { operator<<(b); }
-
-        CScript& operator<<(signed char b)              { return push_int64(b); }
-        CScript& operator<<(short b)                    { return push_int64(b); }
-        CScript& operator<<(int b)                      { return push_int64(b); }
-        CScript& operator<<(long b)                     { return push_int64(b); }
-        CScript& operator<<(int64_t b)                  { return push_int64(b); }
-        CScript& operator<<(uint8_t b)                  { return push_uint64(b); }
-        CScript& operator<<(uint32_t b)                 { return push_uint64(b); }
-        CScript& operator<<(uint16_t b)                 { return push_uint64(b); }
-        CScript& operator<<(unsigned long b)            { return push_uint64(b); }
-        CScript& operator<<(uint64_t b)                 { return push_uint64(b); }
-
-        CScript& operator<<(opcodetype opcode)
-        {
-            if (opcode < 0 || opcode > 0xff)
-                throw std::runtime_error("CScript::operator<<() : invalid opcode");
-            insert(end(), (uint8_t)opcode);
-            return *this;
-        }
-
-        CScript& operator<<(const uint256_t& b)
-        {
-            insert(end(), sizeof(b));
-            insert(end(), (uint8_t*)&b, (uint8_t*)&b + sizeof(b));
-            return *this;
-        }
-
-        CScript& operator<<(const CBigNum& b)
-        {
-            *this << b.getvch();
-            return *this;
-        }
-
-        CScript& operator<<(const std::vector<uint8_t>& b)
-        {
-            if (b.size() < OP_PUSHDATA1)
-            {
-                insert(end(), (uint8_t)b.size());
-            }
-            else if (b.size() <= 0xff)
-            {
-                insert(end(), OP_PUSHDATA1);
-                insert(end(), (uint8_t)b.size());
-            }
-            else if (b.size() <= 0xffff)
-            {
-                insert(end(), OP_PUSHDATA2);
-                uint16_t nSize = b.size();
-                insert(end(), (uint8_t*)&nSize, (uint8_t*)&nSize + sizeof(nSize));
-            }
-            else
-            {
-                insert(end(), OP_PUSHDATA4);
-                uint32_t nSize = b.size();
-                insert(end(), (uint8_t*)&nSize, (uint8_t*)&nSize + sizeof(nSize));
-            }
-            insert(end(), b.begin(), b.end());
-            return *this;
-        }
-
-        CScript& operator<<(const CScript& b)
-        {
-            // I'm not sure if this should push the script or concatenate scripts.
-            // If there's ever a use for pushing a script onto a script, delete this member fn
-            assert(!"warning: pushing a CScript onto a CScript with << is probably not intended, use + to concatenate");
-            return *this;
-        }
-
-
         /** GetOP
          *
          *  Get the op codes from stack
@@ -420,10 +311,119 @@ namespace Legacy
 
         /** print
          *
-         *  Dump the Hex data into std::out or console 
+         *  Dump the Hex data into std::out or console
          *
          **/
         void print() const;
+
+
+        /** Operator overload +=
+         *
+         *  Concatenate Script Objects
+         *
+         **/
+        CScript& operator+=(const CScript& b)
+        {
+            insert(end(), b.begin(), b.end());
+            return *this;
+        }
+
+
+        /** Operator overload +
+         *
+         *  Concatenate two Script Objects
+         *
+         **/
+        friend CScript operator+(const CScript& a, const CScript& b)
+        {
+            CScript ret = a;
+            ret += b;
+            return ret;
+        }
+
+
+        //explicit CScript(char b) is not portable.  Use 'signed char' or 'uint8_t'.
+        explicit CScript(signed char b)                 { operator<<(b); }
+        explicit CScript(short b)                       { operator<<(b); }
+        explicit CScript(int b)                         { operator<<(b); }
+        explicit CScript(long b)                        { operator<<(b); }
+        explicit CScript(int64_t b)                     { operator<<(b); }
+        explicit CScript(uint8_t b)                     { operator<<(b); }
+        explicit CScript(uint32_t b)                    { operator<<(b); }
+        explicit CScript(uint16_t b)                    { operator<<(b); }
+        explicit CScript(unsigned long b)               { operator<<(b); }
+        explicit CScript(uint64_t b)                    { operator<<(b); }
+        explicit CScript(opcodetype b)                  { operator<<(b); }
+        explicit CScript(const uint256_t& b)            { operator<<(b); }
+        explicit CScript(const LLC::CBigNum& b)         { operator<<(b); }
+        explicit CScript(const std::vector<uint8_t>& b) { operator<<(b); }
+
+        CScript& operator<<(signed char b)              { return push_int64(b); }
+        CScript& operator<<(short b)                    { return push_int64(b); }
+        CScript& operator<<(int b)                      { return push_int64(b); }
+        CScript& operator<<(long b)                     { return push_int64(b); }
+        CScript& operator<<(int64_t b)                  { return push_int64(b); }
+        CScript& operator<<(uint8_t b)                  { return push_uint64(b); }
+        CScript& operator<<(uint32_t b)                 { return push_uint64(b); }
+        CScript& operator<<(uint16_t b)                 { return push_uint64(b); }
+        CScript& operator<<(unsigned long b)            { return push_uint64(b); }
+        CScript& operator<<(uint64_t b)                 { return push_uint64(b); }
+
+        CScript& operator<<(opcodetype opcode)
+        {
+            if (opcode < 0 || opcode > 0xff)
+                throw std::runtime_error("CScript::operator<<() : invalid opcode");
+            insert(end(), (uint8_t)opcode);
+            return *this;
+        }
+
+        CScript& operator<<(const uint256_t& b)
+        {
+            insert(end(), sizeof(b));
+            insert(end(), (uint8_t*)&b, (uint8_t*)&b + sizeof(b));
+            return *this;
+        }
+
+        CScript& operator<<(const CBigNum& b)
+        {
+            *this << b.getvch();
+            return *this;
+        }
+
+        CScript& operator<<(const std::vector<uint8_t>& b)
+        {
+            if (b.size() < OP_PUSHDATA1)
+            {
+                insert(end(), (uint8_t)b.size());
+            }
+            else if (b.size() <= 0xff)
+            {
+                insert(end(), OP_PUSHDATA1);
+                insert(end(), (uint8_t)b.size());
+            }
+            else if (b.size() <= 0xffff)
+            {
+                insert(end(), OP_PUSHDATA2);
+                uint16_t nSize = b.size();
+                insert(end(), (uint8_t*)&nSize, (uint8_t*)&nSize + sizeof(nSize));
+            }
+            else
+            {
+                insert(end(), OP_PUSHDATA4);
+                uint32_t nSize = b.size();
+                insert(end(), (uint8_t*)&nSize, (uint8_t*)&nSize + sizeof(nSize));
+            }
+            insert(end(), b.begin(), b.end());
+            return *this;
+        }
+
+        CScript& operator<<(const CScript& b)
+        {
+            // I'm not sure if this should push the script or concatenate scripts.
+            // If there's ever a use for pushing a script onto a script, delete this member fn
+            assert(!"warning: pushing a CScript onto a CScript with << is probably not intended, use + to concatenate");
+            return *this;
+        }
     };
 
 
