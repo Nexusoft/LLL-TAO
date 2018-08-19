@@ -27,68 +27,137 @@ namespace Legacy
     	class CTxOut
     	{
     	public:
+
+			/** The amount of NXS being transferred into output. **/
     		int64 nValue;
+
+
+			/** The output script required to evaluate to true to be spent. **/
     		CScript scriptPubKey;
 
+
+			//the serialization methods
+			SERIALIZE_HEADER
+
+
+			/** Default constructor
+			 *
+			 *	Sets object to null state.
+			 *
+			 **/
     		CTxOut()
     		{
     			SetNull();
     		}
 
-    		CTxOut(int64 nValueIn, Wallet::CScript scriptPubKeyIn)
+
+			/** Constructor
+			 *
+			 *	@param[in] nValueIn The value to be transferred in output.
+			 *	@param[in] scriptPubKeyIn The script to be evaluated on spend.
+			 *
+			 **/
+    		CTxOut(int64 nValueIn, CScript scriptPubKeyIn)
     		{
     			nValue = nValueIn;
     			scriptPubKey = scriptPubKeyIn;
     		}
 
-    		IMPLEMENT_SERIALIZE
-    		(
-    			READWRITE(nValue);
-    			READWRITE(scriptPubKey);
-    		)
 
-    		void SetNull()
-    		{
-    			nValue = -1;
-    			scriptPubKey.clear();
-    		}
+			/** SetNull
+			 *
+			 *	Set the object to null state.
+			 *
+			 **/
+    		void SetNull();
 
-    		bool IsNull()
-    		{
-    			return (nValue == -1);
-    		}
 
-    		void SetEmpty()
-    		{
-    			nValue = 0;
-    			scriptPubKey.clear();
-    		}
+			/** IsNull
+			 *
+			 *	Determine if the object is in a null state.
+			 *
+			 **/
+    		bool IsNull();
 
-    		bool IsEmpty() const
-    		{
-    			return (nValue == 0 && scriptPubKey.empty());
-    		}
 
-    		uint512 GetHash() const
-    		{
-    			return SerializeHash(*this);
-    		}
+			/** SetEmpty
+			 *
+			 *	Clear the object and reset value to 0.
+			 *
+			 **/
+    		void SetEmpty();
 
+
+			/** IsEmpty
+			 *
+			 *	Determine if the object is in an empty state.
+			 *
+			 **/
+    		bool IsEmpty() const;
+
+
+			/** GetHash
+			 *
+			 *	Get the hash of the object.
+			 *
+			 **/
+    		uint512 GetHash() const;
+
+
+			/** Equals operator overload
+			 *
+			 *	@param[in] a The first object to compare
+			 *	@param[in] b The second object to compare
+			 *
+			 *	@return true if the objects are equivilent.
+			 *
+			 **/
     		friend bool operator==(const CTxOut& a, const CTxOut& b)
     		{
     			return (a.nValue       == b.nValue &&
     					a.scriptPubKey == b.scriptPubKey);
     		}
 
+
+			/** Not Equals operator overload
+			 *
+			 *	@param[in] a The first object to compare
+			 *	@param[in] b The second object to compare
+			 *
+			 *	@return true if the objects are not equivilent.
+			 *
+			 **/
     		friend bool operator!=(const CTxOut& a, const CTxOut& b)
     		{
     			return !(a == b);
     		}
 
+
+			/** ToStringShort
+			 *
+			 *	Short Hand debug output of the object (hash, n)
+			 *
+			 *	@return string containing the shorthand output
+			 *
+			 **/
     		std::string ToStringShort() const;
 
+
+			/** ToString
+			 *
+			 *	Full object debug output
+			 *
+			 *	@return string containing the object output.
+			 *
+			 **/
     		std::string ToString() const;
 
+
+			/** print
+			 *
+			 *	Dump the full object to the console (stdout)
+			 *
+			 **/
     		void print() const;
     	};
 	}
