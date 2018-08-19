@@ -24,7 +24,7 @@ namespace TAO
     namespace Register
     {
 
-        class CStateRegister
+        class State
         {
         public:
 
@@ -73,19 +73,19 @@ namespace TAO
             )
 
 
-            CStateRegister() : fReadOnly(false), nVersion(1), nLength(0), hashAddress(0), hashChecksum(0)
+            State() : fReadOnly(false), nVersion(1), nLength(0), hashAddress(0), hashChecksum(0)
             {
                 vchState.clear();
             }
 
 
-            CStateRegister(std::vector<uint8_t> vchData) : fReadOnly(false), nVersion(1), nLength(vchData.size()), vchState(vchData), hashAddress(0), hashChecksum(0)
+            State(std::vector<uint8_t> vchData) : fReadOnly(false), nVersion(1), nLength(vchData.size()), vchState(vchData), hashAddress(0), hashChecksum(0)
             {
 
             }
 
 
-            CStateRegister(uint64_t hashChecksumIn) : fReadOnly(false), nVersion(1), nLength(0), hashAddress(0), hashChecksum(hashChecksumIn)
+            State(uint64_t hashChecksumIn) : fReadOnly(false), nVersion(1), nLength(0), hashAddress(0), hashChecksum(hashChecksumIn)
             {
 
             }

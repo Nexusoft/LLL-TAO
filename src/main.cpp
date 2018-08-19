@@ -65,12 +65,12 @@ class RegisterDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
 {
     RegisterDB(const char* pszMode="r+") : SectorDatabase("regdb", pszMode) {}
 
-    bool ReadRegister(uint256_t address, TAO::Register::CStateRegister& regState)
+    bool ReadRegister(uint256_t address, TAO::Register::State& regState)
     {
         return Read(address, regState);
     }
 
-    bool WriteRegister(uint256_t address, TAO::Register::CStateRegister regState)
+    bool WriteRegister(uint256_t address, TAO::Register::State regState)
     {
         return Write(address, regState);
     }
