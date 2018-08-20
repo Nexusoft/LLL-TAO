@@ -16,8 +16,14 @@ ________________________________________________________________________________
 
 #include <stdexcept>
 #include <vector>
+#include <algorithm>
 #include <openssl/bn.h>
 
+#include "uint1024.h"
+
+#include "../Util/templates/serialize.h" //TODO: This shouldn't be here. Bignum needs to break into header / source combination
+
+#include "../LLP/include/version.h" //for serialization version
 
 namespace LLC
 {
@@ -28,7 +34,6 @@ namespace LLC
     public:
         explicit bignum_error(const std::string& str) : std::runtime_error(str) {}
     };
-
 
     /** RAII encapsulated BN_CTX (OpenSSL bignum context) */
     class CAutoBN_CTX
@@ -59,78 +64,83 @@ namespace LLC
 
 
     /** C++ wrapper for BIGNUM (OpenSSL bignum) */
-    class CBigNum : public BIGNUM
+    class CBigNum
     {
     public:
         CBigNum()
         {
-            BN_init(this);
+            allocate();
         }
 
-        CBigNum(const CBigNum& b)
+        CBigNum(const CBigNum& b) : m_BN(BN_dup(b.getBN()))
         {
-            BN_init(this);
-            if (!BN_copy(this, &b))
+            if (nullptr == m_BN)
             {
-                BN_clear_free(this);
-                throw bignum_error("CBigNum::CBigNum(const CBigNum&) : BN_copy failed");
+                throw bignum_error("CBigNum::CBigNum(const CBigNum&): BN_dup failed");
             }
         }
 
         CBigNum& operator=(const CBigNum& b)
         {
-            if (!BN_copy(this, &b))
-                throw bignum_error("CBigNum::operator= : BN_copy failed");
+            if (nullptr == BN_copy(m_BN, b.getBN()))
+            {
+                throw bignum_error("CBigNum::operator=(const CBigNum&): BN_copy failed");
+            }
             return (*this);
         }
 
         ~CBigNum()
         {
-            BN_clear_free(this);
+            BN_clear_free(m_BN);
         }
 
         //CBigNum(char n) is not portable.  Use 'signed char' or 'uint8_t'.
-        CBigNum(signed char n)      { BN_init(this); if (n >= 0) setulong(n); else setint64(n); }
-        CBigNum(signed short n)            { BN_init(this); if (n >= 0) setulong(n); else setint64(n); }
-        CBigNum(signed int n)              { BN_init(this); if (n >= 0) setulong(n); else setint64(n); }
-        //CBigNum(long n)             { BN_init(this); if (n >= 0) setulong(n); else setint64(n); }
-        CBigNum(int64_t n)            { BN_init(this); setint64(n); }
-        CBigNum(uint8_t n)    { BN_init(this); setulong(n); }
-        CBigNum(uint16_t n)   { BN_init(this); setulong(n); }
-        CBigNum(uint32_t n)     { BN_init(this); setulong(n); }
-        //CBigNum(unsigned long n)    { BN_init(this); setulong(n); }
-        CBigNum(uint64_t n)           { BN_init(this); setuint64(n); }
-        explicit CBigNum(uint256_t n) { BN_init(this); setuint256(n); }
-    	explicit CBigNum(uint512_t n) { BN_init(this); setuint512(n); }
-    	explicit CBigNum(uint576_t n) { BN_init(this); setuint576(n); }
-    	explicit CBigNum(uint1024_t n) { BN_init(this); setuint1024(n); }
+        CBigNum(signed char n)       { allocate(); if (n >= 0) setulong(n); else setint64(n); }
+        CBigNum(short n)             { allocate(); if (n >= 0) setulong(n); else setint64(n); }
+        CBigNum(int n)               { allocate(); if (n >= 0) setulong(n); else setint64(n); }
+        //CBigNum(long n)              { allocate(); if (n >= 0) setulong(n); else setint64(n); }
+        CBigNum(int64_t n)             { allocate(); setint64(n); }
+        CBigNum(uint8_t n)     { allocate(); setulong(n); }
+        CBigNum(uint16_t n)    { allocate(); setulong(n); }
+        CBigNum(uint32_t n)      { allocate(); setulong(n); }
+        //CBigNum(unsigned long n)     { allocate(); setulong(n); }
+        CBigNum(uint64_t n)            { allocate(); setuint64(n); }
+        explicit CBigNum(uint256_t n)  { allocate(); setuint256(n); }
+        explicit CBigNum(uint512_t n)  { allocate(); setuint512(n); }
+        explicit CBigNum(uint576_t n)  { allocate(); setuint576(n); }
+        explicit CBigNum(uint1024_t n) { allocate(); setuint1024(n); }
 
         explicit CBigNum(const std::vector<uint8_t>& vch)
         {
-            BN_init(this);
+            allocate();
             setvch(vch);
+        }
+
+        BIGNUM* const getBN() const
+        {
+            return m_BN;
         }
 
         void setulong(unsigned long n)
         {
-            if (!BN_set_word(this, n))
+            if (!BN_set_word(m_BN, n))
                 throw bignum_error("CBigNum conversion from unsigned long : BN_set_word failed");
         }
 
         unsigned long getulong() const
         {
-            return BN_get_word(this);
+            return BN_get_word(m_BN);
         }
 
         uint32_t getuint() const
         {
-            return BN_get_word(this);
+            return BN_get_word(m_BN);
         }
 
         int getint() const
         {
-            unsigned long n = BN_get_word(this);
-            if (!BN_is_negative(this))
+            unsigned long n = BN_get_word(m_BN);
+            if (!BN_is_negative(m_BN))
                 return (n > (unsigned long)std::numeric_limits<int>::max() ? std::numeric_limits<int>::max() : n);
             else
                 return (n > (unsigned long)std::numeric_limits<int>::max() ? std::numeric_limits<int>::min() : -(int)n);
@@ -168,7 +178,7 @@ namespace LLC
             pch[1] = (nSize >> 16) & 0xff;
             pch[2] = (nSize >> 8) & 0xff;
             pch[3] = (nSize) & 0xff;
-            BN_mpi2bn(pch, p - pch, this);
+            BN_mpi2bn(pch, p - pch, m_BN);
         }
 
         void setuint64(uint64_t n)
@@ -195,16 +205,16 @@ namespace LLC
             pch[1] = (nSize >> 16) & 0xff;
             pch[2] = (nSize >> 8) & 0xff;
             pch[3] = (nSize) & 0xff;
-            BN_mpi2bn(pch, p - pch, this);
+            BN_mpi2bn(pch, p - pch, m_BN);
         }
 
         uint64_t getuint64()
         {
-            uint32_t nSize = BN_bn2mpi(this, NULL);
+            uint32_t nSize = BN_bn2mpi(m_BN, NULL);
             if (nSize < 4)
                 return 0;
             std::vector<uint8_t> vch(nSize);
-            BN_bn2mpi(this, &vch[0]);
+            BN_bn2mpi(m_BN, &vch[0]);
             if (vch.size() > 4)
                 vch[4] &= 0x7f;
             uint64_t n = 0;
@@ -238,16 +248,16 @@ namespace LLC
             pch[1] = (nSize >> 16) & 0xff;
             pch[2] = (nSize >> 8) & 0xff;
             pch[3] = (nSize >> 0) & 0xff;
-            BN_mpi2bn(pch, p - pch, this);
+            BN_mpi2bn(pch, p - pch, m_BN);
         }
 
         uint256_t getuint256()
         {
-            uint32_t nSize = BN_bn2mpi(this, NULL);
+            uint32_t nSize = BN_bn2mpi(m_BN, NULL);
             if (nSize < 4)
                 return 0;
             std::vector<uint8_t> vch(nSize);
-            BN_bn2mpi(this, &vch[0]);
+            BN_bn2mpi(m_BN, &vch[0]);
             if (vch.size() > 4)
                 vch[4] &= 0x7f;
             uint256_t n = 0;
@@ -256,7 +266,7 @@ namespace LLC
             return n;
         }
 
-    	void setuint512(uint512_t n)
+        void setuint512(uint512_t n)
         {
             uint8_t pch[sizeof(n) + 6];
             uint8_t* p = pch + 4;
@@ -281,16 +291,16 @@ namespace LLC
             pch[1] = (nSize >> 16) & 0xff;
             pch[2] = (nSize >> 8) & 0xff;
             pch[3] = (nSize >> 0) & 0xff;
-            BN_mpi2bn(pch, p - pch, this);
+            BN_mpi2bn(pch, p - pch, m_BN);
         }
 
         uint512_t getuint512()
         {
-            uint32_t nSize = BN_bn2mpi(this, NULL);
+            uint32_t nSize = BN_bn2mpi(m_BN, NULL);
             if (nSize < 4)
                 return 0;
             std::vector<uint8_t> vch(nSize);
-            BN_bn2mpi(this, &vch[0]);
+            BN_bn2mpi(m_BN, &vch[0]);
             if (vch.size() > 4)
                 vch[4] &= 0x7f;
             uint512_t n = 0;
@@ -299,7 +309,7 @@ namespace LLC
             return n;
         }
 
-    	void setuint576(uint576_t n)
+        void setuint576(uint576_t n)
         {
             uint8_t pch[sizeof(n) + 6];
             uint8_t* p = pch + 4;
@@ -324,16 +334,16 @@ namespace LLC
             pch[1] = (nSize >> 16) & 0xff;
             pch[2] = (nSize >> 8) & 0xff;
             pch[3] = (nSize >> 0) & 0xff;
-            BN_mpi2bn(pch, p - pch, this);
+            BN_mpi2bn(pch, p - pch, m_BN);
         }
 
         uint576_t getuint576()
         {
-            uint32_t nSize = BN_bn2mpi(this, NULL);
+            uint32_t nSize = BN_bn2mpi(m_BN, NULL);
             if (nSize < 4)
                 return 0;
             std::vector<uint8_t> vch(nSize);
-            BN_bn2mpi(this, &vch[0]);
+            BN_bn2mpi(m_BN, &vch[0]);
             if (vch.size() > 4)
                 vch[4] &= 0x7f;
             uint576_t n = 0;
@@ -342,7 +352,7 @@ namespace LLC
             return n;
         }
 
-    	void setuint1024(uint1024_t n)
+        void setuint1024(uint1024_t n)
         {
             uint8_t pch[sizeof(n) + 6];
             uint8_t* p = pch + 4;
@@ -367,16 +377,16 @@ namespace LLC
             pch[1] = (nSize >> 16) & 0xff;
             pch[2] = (nSize >> 8) & 0xff;
             pch[3] = (nSize >> 0) & 0xff;
-            BN_mpi2bn(pch, p - pch, this);
+            BN_mpi2bn(pch, p - pch, m_BN);
         }
 
         uint1024_t getuint1024()
         {
-            uint32_t nSize = BN_bn2mpi(this, NULL);
+            uint32_t nSize = BN_bn2mpi(m_BN, NULL);
             if (nSize < 4)
                 return 0;
             std::vector<uint8_t> vch(nSize);
-            BN_bn2mpi(this, &vch[0]);
+            BN_bn2mpi(m_BN, &vch[0]);
             if (vch.size() > 4)
                 vch[4] &= 0x7f;
             uint1024_t n = 0;
@@ -396,19 +406,19 @@ namespace LLC
             vch2[2] = (nSize >> 8) & 0xff;
             vch2[3] = (nSize >> 0) & 0xff;
             // swap data to big endian
-            reverse_copy(vch.begin(), vch.end(), vch2.begin() + 4);
-            BN_mpi2bn(&vch2[0], vch2.size(), this);
+            std::reverse_copy(vch.begin(), vch.end(), vch2.begin() + 4);
+            BN_mpi2bn(&vch2[0], vch2.size(), m_BN);
         }
 
         std::vector<uint8_t> getvch() const
         {
-            uint32_t nSize = BN_bn2mpi(this, NULL);
+            uint32_t nSize = BN_bn2mpi(m_BN, NULL);
             if (nSize <= 4)
                 return std::vector<uint8_t>();
             std::vector<uint8_t> vch(nSize);
-            BN_bn2mpi(this, &vch[0]);
+            BN_bn2mpi(m_BN, &vch[0]);
             vch.erase(vch.begin(), vch.begin() + 4);
-            reverse(vch.begin(), vch.end());
+            std::reverse(vch.begin(), vch.end());
             return vch;
         }
 
@@ -420,16 +430,16 @@ namespace LLC
             if (nSize >= 1) vch[4] = (nCompact >> 16) & 0xff;
             if (nSize >= 2) vch[5] = (nCompact >> 8) & 0xff;
             if (nSize >= 3) vch[6] = (nCompact >> 0) & 0xff;
-            BN_mpi2bn(&vch[0], vch.size(), this);
+            BN_mpi2bn(&vch[0], vch.size(), m_BN);
             return *this;
         }
 
         uint32_t GetCompact() const
         {
-            uint32_t nSize = BN_bn2mpi(this, NULL);
+            uint32_t nSize = BN_bn2mpi(m_BN, NULL);
             std::vector<uint8_t> vch(nSize);
             nSize -= 4;
-            BN_bn2mpi(this, &vch[0]);
+            BN_bn2mpi(m_BN, &vch[0]);
             uint32_t nCompact = nSize << 24;
             if (nSize >= 1) nCompact |= (vch[4] << 16);
             if (nSize >= 2) nCompact |= (vch[5] << 8);
@@ -474,22 +484,22 @@ namespace LLC
             CBigNum bn0 = 0;
             std::string str;
             CBigNum bn = *this;
-            BN_set_negative(&bn, false);
+            BN_set_negative(bn.getBN(), false);
             CBigNum dv;
             CBigNum rem;
-            if (BN_cmp(&bn, &bn0) == 0)
+            if (BN_cmp(bn.getBN(), bn0.getBN()) == 0)
                 return "0";
-            while (BN_cmp(&bn, &bn0) > 0)
+            while (BN_cmp(bn.getBN(), bn0.getBN()) > 0)
             {
-                if (!BN_div(&dv, &rem, &bn, &bnBase, pctx))
+                if (!BN_div(dv.getBN(), rem.getBN(), bn.getBN(), bnBase.getBN(), pctx))
                     throw bignum_error("CBigNum::ToString() : BN_div failed");
                 bn = dv;
                 uint32_t c = rem.getulong();
                 str += "0123456789abcdef"[c];
             }
-            if (BN_is_negative(this))
+            if (BN_is_negative(m_BN))
                 str += "-";
-            reverse(str.begin(), str.end());
+            std::reverse(str.begin(), str.end());
             return str;
         }
 
@@ -498,19 +508,19 @@ namespace LLC
             return ToString(16);
         }
 
-        uint32_t GetSerializeSize(int nType=0, int nVersion=SER_NETWORK) const
+        uint32_t GetSerializeSize(int nType=0, int nVersion=PROTOCOL_VERSION) const
         {
             return ::GetSerializeSize(getvch(), nType, nVersion);
         }
 
         template<typename Stream>
-        void Serialize(Stream& s, int nType=0, int nVersion=SER_NETWORK) const
+        void Serialize(Stream& s, int nType=0, int nVersion=PROTOCOL_VERSION) const
         {
             ::Serialize(s, getvch(), nType, nVersion);
         }
 
         template<typename Stream>
-        void Unserialize(Stream& s, int nType=0, int nVersion=SER_NETWORK)
+        void Unserialize(Stream& s, int nType=0, int nVersion=PROTOCOL_VERSION)
         {
             std::vector<uint8_t> vch;
             ::Unserialize(s, vch, nType, nVersion);
@@ -520,12 +530,12 @@ namespace LLC
 
         bool operator!() const
         {
-            return BN_is_zero(this);
+            return BN_is_zero(m_BN);
         }
 
         CBigNum& operator+=(const CBigNum& b)
         {
-            if (!BN_add(this, this, &b))
+            if (!BN_add(m_BN, m_BN, b.getBN()))
                 throw bignum_error("CBigNum::operator+= : BN_add failed");
             return *this;
         }
@@ -539,7 +549,7 @@ namespace LLC
         CBigNum& operator*=(const CBigNum& b)
         {
             CAutoBN_CTX pctx;
-            if (!BN_mul(this, this, &b, pctx))
+            if (!BN_mul(m_BN, m_BN, b.getBN(), pctx))
                 throw bignum_error("CBigNum::operator*= : BN_mul failed");
             return *this;
         }
@@ -558,7 +568,7 @@ namespace LLC
 
         CBigNum& operator<<=(uint32_t shift)
         {
-            if (!BN_lshift(this, this, shift))
+            if (!BN_lshift(m_BN, m_BN, shift))
                 throw bignum_error("CBigNum:operator<<= : BN_lshift failed");
             return *this;
         }
@@ -569,13 +579,13 @@ namespace LLC
             //   if built on ubuntu 9.04 or 9.10, probably depends on version of openssl
             CBigNum a = 1;
             a <<= shift;
-            if (BN_cmp(&a, this) > 0)
+            if (BN_cmp(a.getBN(), m_BN) > 0)
             {
                 *this = 0;
                 return *this;
             }
 
-            if (!BN_rshift(this, this, shift))
+            if (!BN_rshift(m_BN, m_BN, shift))
                 throw bignum_error("CBigNum:operator>>= : BN_rshift failed");
             return *this;
         }
@@ -584,7 +594,7 @@ namespace LLC
         CBigNum& operator++()
         {
             // prefix operator
-            if (!BN_add(this, this, BN_value_one()))
+            if (!BN_add(m_BN, m_BN, BN_value_one()))
                 throw bignum_error("CBigNum::operator++ : BN_add failed");
             return *this;
         }
@@ -601,7 +611,7 @@ namespace LLC
         {
             // prefix operator
             CBigNum r;
-            if (!BN_sub(&r, this, BN_value_one()))
+            if (!BN_sub(r.getBN(), m_BN, BN_value_one()))
                 throw bignum_error("CBigNum::operator-- : BN_sub failed");
             *this = r;
             return *this;
@@ -619,6 +629,18 @@ namespace LLC
         friend inline const CBigNum operator-(const CBigNum& a, const CBigNum& b);
         friend inline const CBigNum operator/(const CBigNum& a, const CBigNum& b);
         friend inline const CBigNum operator%(const CBigNum& a, const CBigNum& b);
+
+    private:
+        BIGNUM* m_BN = nullptr;
+
+        void allocate()
+        {
+            m_BN = BN_new();
+            if(nullptr == m_BN)
+            {
+                throw bignum_error("CBigNum::allocate(): failed to allocate BIGNUM");
+            }
+        }
     };
 
 
@@ -626,7 +648,7 @@ namespace LLC
     inline const CBigNum operator+(const CBigNum& a, const CBigNum& b)
     {
         CBigNum r;
-        if (!BN_add(&r, &a, &b))
+        if (!BN_add(r.getBN(), a.getBN(), b.getBN()))
             throw bignum_error("CBigNum::operator+ : BN_add failed");
         return r;
     }
@@ -634,7 +656,7 @@ namespace LLC
     inline const CBigNum operator-(const CBigNum& a, const CBigNum& b)
     {
         CBigNum r;
-        if (!BN_sub(&r, &a, &b))
+        if (!BN_sub(r.getBN(), a.getBN(), b.getBN()))
             throw bignum_error("CBigNum::operator- : BN_sub failed");
         return r;
     }
@@ -642,7 +664,7 @@ namespace LLC
     inline const CBigNum operator-(const CBigNum& a)
     {
         CBigNum r(a);
-        BN_set_negative(&r, !BN_is_negative(&r));
+        BN_set_negative(r.getBN(), !BN_is_negative(r.getBN()));
         return r;
     }
 
@@ -650,7 +672,7 @@ namespace LLC
     {
         CAutoBN_CTX pctx;
         CBigNum r;
-        if (!BN_mul(&r, &a, &b, pctx))
+        if (!BN_mul(r.getBN(), a.getBN(), b.getBN(), pctx))
             throw bignum_error("CBigNum::operator* : BN_mul failed");
         return r;
     }
@@ -659,7 +681,7 @@ namespace LLC
     {
         CAutoBN_CTX pctx;
         CBigNum r;
-        if (!BN_div(&r, NULL, &a, &b, pctx))
+        if (!BN_div(r.getBN(), NULL, a.getBN(), b.getBN(), pctx))
             throw bignum_error("CBigNum::operator/ : BN_div failed");
         return r;
     }
@@ -668,7 +690,7 @@ namespace LLC
     {
         CAutoBN_CTX pctx;
         CBigNum r;
-        if (!BN_mod(&r, &a, &b, pctx))
+        if (!BN_mod(r.getBN(), a.getBN(), b.getBN(), pctx))
             throw bignum_error("CBigNum::operator% : BN_div failed");
         return r;
     }
@@ -676,7 +698,7 @@ namespace LLC
     inline const CBigNum operator<<(const CBigNum& a, uint32_t shift)
     {
         CBigNum r;
-        if (!BN_lshift(&r, &a, shift))
+        if (!BN_lshift(r.getBN(), a.getBN(), shift))
             throw bignum_error("CBigNum:operator<< : BN_lshift failed");
         return r;
     }
@@ -688,12 +710,12 @@ namespace LLC
         return r;
     }
 
-    inline bool operator==(const CBigNum& a, const CBigNum& b) { return (BN_cmp(&a, &b) == 0); }
-    inline bool operator!=(const CBigNum& a, const CBigNum& b) { return (BN_cmp(&a, &b) != 0); }
-    inline bool operator<=(const CBigNum& a, const CBigNum& b) { return (BN_cmp(&a, &b) <= 0); }
-    inline bool operator>=(const CBigNum& a, const CBigNum& b) { return (BN_cmp(&a, &b) >= 0); }
-    inline bool operator<(const CBigNum& a, const CBigNum& b)  { return (BN_cmp(&a, &b) < 0); }
-    inline bool operator>(const CBigNum& a, const CBigNum& b)  { return (BN_cmp(&a, &b) > 0); }
+    inline bool operator==(const CBigNum& a, const CBigNum& b) { return (BN_cmp(a.getBN(), b.getBN()) == 0); }
+    inline bool operator!=(const CBigNum& a, const CBigNum& b) { return (BN_cmp(a.getBN(), b.getBN()) != 0); }
+    inline bool operator<=(const CBigNum& a, const CBigNum& b) { return (BN_cmp(a.getBN(), b.getBN()) <= 0); }
+    inline bool operator>=(const CBigNum& a, const CBigNum& b) { return (BN_cmp(a.getBN(), b.getBN()) >= 0); }
+    inline bool operator<(const CBigNum& a, const CBigNum& b)  { return (BN_cmp(a.getBN(), b.getBN()) < 0); }
+    inline bool operator>(const CBigNum& a, const CBigNum& b)  { return (BN_cmp(a.getBN(), b.getBN()) > 0); }
 
 }
 

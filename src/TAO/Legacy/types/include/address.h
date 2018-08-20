@@ -14,113 +14,136 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_INCLUDE_ADDRESS_H
 #define NEXUS_TAO_LEGACY_TYPES_INCLUDE_ADDRESS_H
 
+#include "../../../../Util/include/base58.h"
+
+class uint256_t;
+
 namespace Legacy
 {
 
-/** base58-encoded nexus addresses.
-* Public-key-hash-addresses have version 55 (or 111 testnet).
-* The data vector contains RIPEMD160(SHA256(pubkey)), where pubkey is the serialized public key.
-* Script-hash-addresses have version 117 (or 196 testnet).
-* The data vector contains RIPEMD160(SHA256(cscript)), where cscript is the serialized redemption script.
-*/
-class NexusAddress : public CBase58Data
-{
-public:
-    enum
+    /** Base58-encoded Nexus Addresses.
+     *
+     *  Public-key-hash-addresses have version 42 (or 111 testnet).
+     *  Script-hash-addresses have version 104 (or 196 testnet).
+     *  The data vector contains SK256(cscript), where cscript is the serialized redemption script.
+     **/
+    class NexusAddress : public CBase58Data
     {
-        PUBKEY_ADDRESS = 42,
-        SCRIPT_ADDRESS = 104,
-        PUBKEY_ADDRESS_TEST = 111,
-        SCRIPT_ADDRESS_TEST = 196,
-    };
+    public:
 
-    bool SetHash256(const uint256& hash256)
-    {
-        SetData(fTestNet ? PUBKEY_ADDRESS_TEST : PUBKEY_ADDRESS, &hash256, 32);
-        return true;
-    }
-
-    void SetPubKey(const std::vector<unsigned char>& vchPubKey)
-    {
-        SetHash256(SK256(vchPubKey));
-    }
-
-    bool SetScriptHash256(const uint256& hash256)
-    {
-        SetData(fTestNet ? SCRIPT_ADDRESS_TEST : SCRIPT_ADDRESS, &hash256, 32);
-        return true;
-    }
-
-    bool IsValid() const
-    {
-        unsigned int nExpectedSize = 32;
-        bool fExpectTestNet = false;
-        switch(nVersion)
+        /** Enumeration of scripts. **/
+        enum
         {
-            case PUBKEY_ADDRESS:
-                nExpectedSize = 32; // Hash of public key
-                fExpectTestNet = false;
-                break;
-            case SCRIPT_ADDRESS:
-                nExpectedSize = 32; // Hash of CScript
-                fExpectTestNet = false;
-                break;
+            PUBKEY_ADDRESS = 42,
+            SCRIPT_ADDRESS = 104,
+            PUBKEY_ADDRESS_TEST = 111,
+            SCRIPT_ADDRESS_TEST = 196,
+        };
 
-            case PUBKEY_ADDRESS_TEST:
-                nExpectedSize = 32;
-                fExpectTestNet = true;
-                break;
-            case SCRIPT_ADDRESS_TEST:
-                nExpectedSize = 32;
-                fExpectTestNet = true;
-                break;
 
-            default:
-                return false;
-        }
-        return fExpectTestNet == fTestNet && vchData.size() == nExpectedSize;
-    }
-    bool IsScript() const
-    {
-        if (!IsValid())
-            return false;
-        if (fTestNet)
-            return nVersion == SCRIPT_ADDRESS_TEST;
-        return nVersion == SCRIPT_ADDRESS;
-    }
+        /** Default Constructor. **/
+        NexusAddress() {}
 
-    NexusAddress()
-    {
-    }
 
-    NexusAddress(uint256 hash256In)
-    {
-        SetHash256(hash256In);
-    }
+        /** Constructor
+         *
+         *  Sets the hash256
+         *
+         *  @param[in] hash256 The input hash to copy in
+         *
+         **/
+        NexusAddress(uint256_t hash256In);
 
-    NexusAddress(const std::vector<unsigned char>& vchPubKey)
-    {
-        SetPubKey(vchPubKey);
-    }
 
-    NexusAddress(const std::string& strAddress)
-    {
-        SetString(strAddress);
-    }
+        /** Constructor
+         *
+         *  Sets by the public key
+         *
+         *  @param[in] vchPubKey the byte vector of input data
+         *
+         **/
+        NexusAddress(const std::vector<uint8_t>& vchPubKey);
 
-    NexusAddress(const char* pszAddress)
-    {
-        SetString(pszAddress);
-    }
 
-    uint256 GetHash256() const
-    {
-        assert(vchData.size() == 32);
-        uint256 hash256;
-        memcpy(&hash256, &vchData[0], 32);
-        return hash256;
-    }
-};
+        /** Constructor
+         *
+         *  Sets by a std::string
+         *
+         *  @param[in] strAddress The address string
+         *
+         **/
+        NexusAddress(const std::string& strAddress);
+
+
+        /** Constructor
+         *
+         *  Sets by a c-style string
+         *
+         *  @param[in] pszAddress The address c-style string
+         *
+         **/
+        NexusAddress(const char* pszAddress);
+
+
+        /** SetHash256
+         *
+         *  Sets the generated hash for address
+         *
+         *  @param[in] hash256 The input hash to copy in
+         *
+         **/
+        void SetHash256(const uint256_t& hash256);
+
+
+        /** SetPubKey
+         *
+         *  Sets the public key by hashing it to generate address hash
+         *
+         *  @param[in] vchPubKey the byte vector of input data
+         *
+         **/
+        void SetPubKey(const std::vector<uint8_t>& vchPubKey);
+
+
+        /** SetScriptHash256
+         *
+         *  Sets the address based on the hash of the script
+         *
+         *  @param[in] hash256 the input hash to copy in
+         *
+         **/
+        void SetScriptHash256(const uint256_t& hash256);
+
+
+        /** IsValid
+         *
+         *  Preliminary check to ensure the address is mapped to a valid public key or script
+         *
+         *  @return true if valid address
+         *
+         **/
+        bool IsValid() const;
+
+
+        /** IsScript
+         *
+         *  Check of version byte to see if address is P2SH
+         *
+         *  @return true if valid address
+         *
+         **/
+        bool IsScript() const;
+
+
+        /** GetHash256
+         *
+         *  Get the hash from byte vector
+         *
+         *  @return uint256_t of the hash copy
+         *
+         **/
+        uint256_t GetHash256() const;
+    };
 
 }
 
