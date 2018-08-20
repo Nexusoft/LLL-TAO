@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <assert.h>
 
 #include "include/address.h"
+#include "include/enum.h"
 
 #include "../../../LLC/hash/SK.h"
 #include "../../../Util/include/args.h"

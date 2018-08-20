@@ -54,7 +54,7 @@ std::string EncodeBase58(const uint8_t* pbegin, const uint8_t* pend)
         str += pszBase58[0];
 
     // Convert little endian std::string to big endian
-    reverse(str.begin(), str.end());
+    std::reverse(str.begin(), str.end());
     return str;
 }
 
