@@ -177,6 +177,7 @@ OBJS= \
 	build/inv.o\
 	build/legacy.o \
 	build/args.o \
+	build/base58.o \
 	build/config.o \
 	build/debug.o
 

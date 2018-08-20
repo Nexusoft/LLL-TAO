@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <string>
 #include <vector>
+#include <cstring>
 
 static const char* pszBase58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
