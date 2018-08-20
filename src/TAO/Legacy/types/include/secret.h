@@ -14,6 +14,9 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_INCLUDE_SECRET_H
 #define NEXUS_TAO_LEGACY_TYPES_INCLUDE_SECRET_H
 
+#include "../../../../Util/include/base58.h"
+#include "../../../../LLC/include/key.h"
+
 namespace Legacy
 {
 
@@ -21,59 +24,75 @@ namespace Legacy
     class NexusSecret : public CBase58Data
     {
     public:
-        void SetSecret(const CSecret& vchSecret, bool fCompressed)
-        {
-            assert(vchSecret.size() == 72);
-            SetData(128 + (fTestNet ? NexusAddress::PUBKEY_ADDRESS_TEST : NexusAddress::PUBKEY_ADDRESS), &vchSecret[0], vchSecret.size());
-            if (fCompressed)
-                vchData.push_back(1);
-        }
 
-        CSecret GetSecret(bool &fCompressedOut)
-        {
-            CSecret vchSecret;
-            vchSecret.resize(72);
-            memcpy(&vchSecret[0], &vchData[0], 72);
-            fCompressedOut = vchData.size() == 73;
-            return vchSecret;
-        }
-
-        bool IsValid() const
-        {
-            bool fExpectTestNet = false;
-            switch(nVersion)
-            {
-                case (128 + NexusAddress::PUBKEY_ADDRESS):
-                    break;
-
-                case (128 + NexusAddress::PUBKEY_ADDRESS_TEST):
-                    fExpectTestNet = true;
-                    break;
-
-                default:
-                    return false;
-            }
-            return fExpectTestNet == fTestNet && (vchData.size() == 72 || (vchData.size() == 73 && vchData[72] == 1));
-        }
-
-        bool SetString(const char* pszSecret)
-        {
-            return CBase58Data::SetString(pszSecret) && IsValid();
-        }
-
-        bool SetString(const std::string& strSecret)
-        {
-            return SetString(strSecret.c_str());
-        }
-
-        NexusSecret(const CSecret& vchSecret, bool fCompressed)
-        {
-            SetSecret(vchSecret, fCompressed);
-        }
-
+        /** Default Constructor. **/
         NexusSecret()
         {
         }
+
+
+        /** Constructor
+         *
+         *  Sets from a CSecret phrase (byte vector in secure allocator)
+         *
+         *  @param[in] vchSecret The secret allocator
+         *  @param[in] fCompressed Flag if key is in compressed form.
+         *
+         **/
+        NexusSecret(const LLC::CSecret& vchSecret, bool fCompressed);
+
+
+        /** SetSecret
+         *
+         *  Sets from a CSecret phrase (byte vector in secure allocator)
+         *
+         *  @param[in] vchSecret The secret allocator
+         *  @param[in] fCompressed Flag if key is in compressed form.
+         *
+         **/
+        void SetSecret(const LLC::CSecret& vchSecret, bool fCompressed);
+
+
+        /** GetSecret
+         *
+         *  Gets the CSecret phrase (byte vector in secure allocator)
+         *
+         *  @param[out] fCompressedOut Flag to denote if the secret is in a compressed form.
+         *
+         **/
+        LLC::CSecret GetSecret(bool &fCompressedOut);
+
+
+        /** IsValid
+         *
+         *  Check if object passes validity tests
+         *
+         *  @return true if secret is valid.
+         *
+         **/
+        bool IsValid() const;
+
+
+        /** SetString
+         *
+         *  Sets the secret from a Base58 encoded c-style string.
+         *
+         *  @param[in] pszSecret The c-style string input
+         *
+         **/
+        bool SetString(const char* pszSecret);
+
+
+        /** SetString
+         *
+         *  Sets the secret from a Base58 encoded std::string.
+         *
+         *  @param[in] strSecret The std::string input
+         *
+         **/
+        bool SetString(const std::string& strSecret);
+
+
     };
 
 }

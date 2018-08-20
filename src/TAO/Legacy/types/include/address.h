@@ -31,16 +31,6 @@ namespace Legacy
     {
     public:
 
-        /** Enumeration of scripts. **/
-        enum
-        {
-            PUBKEY_ADDRESS = 42,
-            SCRIPT_ADDRESS = 104,
-            PUBKEY_ADDRESS_TEST = 111,
-            SCRIPT_ADDRESS_TEST = 196,
-        };
-
-
         /** Default Constructor. **/
         NexusAddress() {}
 
