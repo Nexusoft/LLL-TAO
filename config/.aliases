@@ -8,6 +8,7 @@ alias ll         'ls -lag'
 alias ld         'ls -lgd'
 alias h          'history'            
 alias t          'nice top -d 1'
+alias td         'tcpdump -i any -n'
 
 #
 # Nexus handy aliases.
@@ -22,7 +23,9 @@ alias npeercount 'ncli getconnectioncount'
 #
 # LISP handy aliases.
 #            
-alias ps-lisp 'pushd /lispers.net > /dev/null; ./pslisp; popd > /dev/null'
-alias mc      'curl --silent --insecure -u root: https://localhost:8080/lisp/api/data/map-cache | jq .'
-alias ver     'curl --silent --insecure -u root: https://localhost:8080/lisp/api/data/system | jq .'
-alias rate    'mc | egrep "stats|address|state"'
+alias ps-lisp  'pushd /lispers.net > /dev/null; ./pslisp; popd > /dev/null'
+alias mc       'curl --silent --insecure -u root: https://localhost:8080/lisp/api/data/map-cache | jq .'
+alias ver       'curl --silent --insecure -u root: https://localhost:8080/lisp/api/data/system | jq .'
+alias rate      'mc | egrep "stats|address|state"'
+alias rate-loop 'echo "while 1 \n rate | sort -bu \n echo \n sleep 1 \n end \n" | tcsh'
+alias eids      'mc | egrep "eid-prefix|group-prefix"'
