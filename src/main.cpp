@@ -24,7 +24,7 @@
 #include "LLP/include/legacy.h"
 
 #include "TAO/Legacy/types/include/enum.h" //for testing
-
+#include "TAO/Legacy/types/include/address.h"
 //#include "TAO/Ledger/types/include/block.h"
 
 class CAccount

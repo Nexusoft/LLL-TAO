@@ -176,6 +176,7 @@ OBJS= \
 	build/hosts.o \
 	build/inv.o\
 	build/legacy.o \
+	build/address.o \
 	build/args.o \
 	build/base58.o \
 	build/config.o \
