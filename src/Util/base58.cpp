@@ -191,7 +191,9 @@ bool CBase58Data::SetString(const char* psz)
     nVersion = vchTemp[0];
     vchData.resize(vchTemp.size() - 1);
     if (!vchData.empty())
-        memcpy(&vchData[0], &vchTemp[1], vchData.size());
+        //std::copy(vchData.begin(), vchData.end(), vchTemp.begin() + 1);
+        memcpy(&vchData[0], &vchTemp[1], vchData.size()); //TODO: remove all instances of memcpy for a safer alternative
+
     memset(&vchTemp[0], 0, vchTemp.size());
     return true;
 }

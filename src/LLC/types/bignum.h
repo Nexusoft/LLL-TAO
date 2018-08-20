@@ -21,7 +21,7 @@ ________________________________________________________________________________
 
 #include "uint1024.h"
 
-#include "../Util/templates/serialize.h"
+#include "../Util/templates/serialize.h" //TODO: This shouldn't be here. Bignum needs to break into header / source combination
 
 #include "../LLP/include/version.h" //for serialization version
 
