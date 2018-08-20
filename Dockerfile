@@ -13,6 +13,8 @@
 #
 # Once you install it you can run docker commands in a Terminal window.
 #
+# For instructions on how to use this Dockerfile, see ./docs/how-to-docker.md.
+#
 
 #
 # We prefer Debian as a base OS.
@@ -27,7 +29,7 @@ ENV LISP_URL https://www.dropbox.com/s/e87heamhl9t5asz/lisp-nexus.tgz
 #
 # Install tools we need for a networking geek.
 #
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get -yq install \
     gcc libc-dev python python-dev libffi-dev openssl libpcap-dev \
     curl iptables iproute2 tcpdump tcsh sudo traceroute iputils-ping \
     net-tools procps emacs jq
@@ -62,9 +64,9 @@ COPY config/run-nexus /nexus/run-nexus
 #
 # Build Nexus.
 #
-RUN apt-get install -y build-essential libboost-all-dev libdb-dev libdb++-dev \
-    libssl1.0-dev libminiupnpc-dev libqrencode-dev qt4-qmake libqt4-dev \
-    lib32z1-dev
+RUN apt-get update && apt-get -yq install \
+    build-essential libboost-all-dev libdb-dev libdb++-dev libssl1.0-dev \
+    libminiupnpc-dev libqrencode-dev qt4-qmake libqt4-dev lib32z1-dev
 RUN cd /nexus; make -f makefile.cli
 
 #
@@ -79,6 +81,7 @@ COPY lisp/make-crypto-eid.py /lispers.net/make-crypto-eid.py
 # Add some useful tcsh alias commands.
 #
 COPY config/.aliases /root/.aliases
+COPY config/.cshrc /root/.cshrc
 
 #
 # Startup lispers.net and nexus. Output some useful data and drop into tcsh.
