@@ -76,9 +76,36 @@ lisp database-mapping {
     rloc {
         interface = eth0
     }
+    rloc {
+        address = <v4-rloc>
+    }    
 }
 lisp group-mapping {
     group-name = ipv4-multicast
     instance-id = <iid>
     group-prefix = 224.0.0.0/8
 }
+#
+# Do short-cuts for IPv6 non-crypto EIDs only.
+#            
+lisp map-cache {
+   prefix {
+       instance-id = <iid>
+       eid-prefix = fe::/8
+       send-map-request = yes
+    }
+}
+#lisp map-cache {
+#   prefix {
+#       instance-id = <iid>
+#       eid-prefix = 240.0.0.0/8
+#       send-map-request = yes
+#    }
+#}
+#lisp map-cache {
+#   prefix {
+#       instance-id = <iid>
+#       eid-prefix = fd::/8
+#       send-map-request = yes
+#    }
+#}
