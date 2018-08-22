@@ -39,7 +39,7 @@ You should see an image called "tritium" in the list.
 
     docker ps
 
-You should see a container named 'nexus-<fill-in>'
+You should see a container named "nexus-&lt;<fill-in&gt;>"
 
 (4) You can monitor the LISP subsystem by pointing your browser to:
 
