@@ -41,8 +41,10 @@ You should see a container named "nexus"
 
     https://localhost:9999/lisp
 
-Note if port number 9999 is used by another application on your system,
-just choose another port number on the "docker run" command.
+By default, the username is "root" with no password on the lispers.net login
+webpage. Note if port number 9999 is used by another application on your
+system, just choose another port number on the "docker run" command and
+reference that port in the above URL.
 
 When the container is started, the Nexus daemon and the LISP subsystem will
 be operational and the Nexus daemon can run on the LISP overlay and/or the
