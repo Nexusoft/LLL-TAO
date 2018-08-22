@@ -15,13 +15,17 @@ This will build a docker image called "tritium".
 
 (3) To create and start the container, type:
 
-    docker run -p 9999:8080 --privileged --name nexus -h nexus -ti tritium
+    docker run -p 9999:8080 --privileged --name nexus-<fill-in> \
+               -h nexus-<fill-in> -ti tritium
+
+You should pick a value for <fill-in> so your container is unique with the
+LISP mapping system.    
 
 Monitoring:
 
 (1) To get into the container command-line shell, type:
 
-    docker exec nexus bash
+    docker exec nexus-<fill-in> bash
 
 If you type control-D or exit, you exit the container and it remains running.
 
@@ -35,7 +39,7 @@ You should see an image called "tritium" in the list.
 
     docker ps
 
-You should see a container named "nexus"
+You should see a container named "nexus-<fill-in>"
 
 (4) You can monitor the LISP subsystem by pointing your browser to:
 
@@ -49,7 +53,6 @@ reference that port in the above URL.
 When the container is started, the Nexus daemon and the LISP subsystem will
 be operational and the Nexus daemon can run on the LISP overlay and/or the
 Internet underlay concurrently.
-
 
 -------------------------------------------------------------------------------
 
