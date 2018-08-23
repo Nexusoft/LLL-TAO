@@ -20,6 +20,7 @@ ________________________________________________________________________________
 
 namespace Legacy
 {
+
     /* Sets from a CSecret phrase (byte vector in secure allocator) */
     NexusSecret::NexusSecret(const LLC::CSecret& vchSecret, bool fCompressed)
     {

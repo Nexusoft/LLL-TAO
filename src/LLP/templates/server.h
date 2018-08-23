@@ -26,7 +26,7 @@ namespace LLP
     {
         /* The DDOS variables. Tracks the Requests and Connections per Second
             from each connected address. */
-        std::map<uint32_t,   DDOS_Filter*> DDOS_MAP;
+        std::map<CService,   DDOS_Filter*> DDOS_MAP;
         bool fDDOS, fLISTEN, fMETER;
 
     public:
@@ -36,8 +36,8 @@ namespace LLP
         std::vector< DataThread<ProtocolType>* > DATA_THREADS;
 
 
-        Server<ProtocolType>(int nPort, int nMaxThreads, int nTimeout = 30, bool isDDOS = false, int cScore = 0, int rScore = 0, int nTimespan = 60, bool fListen = true, bool fMeter = false) : 
-            fDDOS(isDDOS), fLISTEN(fListen), fMETER(fMeter), PORT(nPort), MAX_THREADS(nMaxThreads), DDOS_TIMESPAN(nTimespan), DATA_THREADS(0), LISTENER(SERVICE), LISTEN_THREAD(boost::bind(&Server::ListeningThread, this)), METER_THREAD(boost::bind(&Server::MeterThread, this))
+        Server<ProtocolType>(int nPort, int nMaxThreads, int nTimeout = 30, bool isDDOS = false, int cScore = 0, int rScore = 0, int nTimespan = 60, bool fListen = true, bool fMeter = false) :
+            fDDOS(isDDOS), fLISTEN(fListen), fMETER(fMeter), PORT(nPort), MAX_THREADS(nMaxThreads), DDOS_TIMESPAN(nTimespan), DATA_THREADS(0), LISTEN_THREAD(boost::bind(&Server::ListeningThread, this)), METER_THREAD(boost::bind(&Server::MeterThread, this))
         {
             for(int index = 0; index < MAX_THREADS; index++)
                 DATA_THREADS.push_back(new DataThread<ProtocolType>(index, fDDOS, rScore, cScore, nTimeout, fMeter));
@@ -56,31 +56,6 @@ namespace LLP
         }
 
 
-        /** Public Wraper to Add a Connection Manually.
-
-            @param[in] SOCKET		The socket object to add
-
-        */
-        void AddConnection(Socket_t SOCKET)
-        {
-            /* Initialize DDOS Protection for Incoming IP Address. */
-            std::vector<uint8_t> vAddress(4, 0);
-            sscanf(SOCKET->remote_endpoint().address().to_string().c_str(), "%hhu.%hhu.%hhu.%hhu", &vAddress[0], &vAddress[1], &vAddress[2], &vAddress[3]);
-            uint32_t ADDRESS = (vAddress[0] << 24) + (vAddress[1] << 16) + (vAddress[2] << 8) + vAddress[3];
-
-            /* Create new DDOS Filter if NEeded. */
-            if(!DDOS_MAP.count(ADDRESS))
-                DDOS_MAP[ADDRESS] = new DDOS_Filter(DDOS_TIMESPAN);
-
-            /* DDOS Operations: Only executed when DDOS is enabled. */
-            if((fDDOS && DDOS_MAP[ADDRESS]->Banned()))
-                return;
-
-            /* Find a balanced Data Thread to Add Connection to. */
-            int nThread = FindThread();
-            DATA_THREADS[nThread]->AddConnection(SOCKET, DDOS_MAP[ADDRESS]);
-        }
-
 
         /** Public Wraper to Add a Connection Manually.
 
@@ -88,24 +63,22 @@ namespace LLP
             @param[in] strPort		Port of outgoing connection
 
             @return	Returns true if the connection was established successfully */
-        bool AddConnection(std::string strAddress, std::string strPort)
+        bool AddConnection(std::string strAddress, int nPort)
         {
             /* Initialize DDOS Protection for Incoming IP Address. */
-            std::vector<uint8_t> vAddress(4, 0);
-            sscanf(strAddress.c_str(), "%hhu.%hhu.%hhu.%hhu", &vAddress[0], &vAddress[1], &vAddress[2], &vAddress[3]);
-            uint32_t ADDRESS = (vAddress[0] << 24) + (vAddress[1] << 16) + (vAddress[2] << 8) + vAddress[3];
+            CService addrConnect(strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
 
-            /* Create new DDOS Filter if NEeded. */
-            if(!DDOS_MAP.count(ADDRESS))
-                DDOS_MAP[ADDRESS] = new DDOS_Filter(DDOS_TIMESPAN);
+            /* Create new DDOS Filter if Needed. */
+            if(!DDOS_MAP.count(addrConnect))
+                DDOS_MAP[addrConnect] = new DDOS_Filter(DDOS_TIMESPAN);
 
             /* DDOS Operations: Only executed when DDOS is enabled. */
-            if((fDDOS && DDOS_MAP[ADDRESS]->Banned()))
+            if((fDDOS && DDOS_MAP[addrConnect]->Banned()))
                 return false;
 
             /* Find a balanced Data Thread to Add Connection to. */
             int nThread = FindThread();
-            if(!DATA_THREADS[nThread]->AddConnection(strAddress, strPort, DDOS_MAP[ADDRESS]))
+            if(!DATA_THREADS[nThread]->AddConnection(strAddress, nPort, DDOS_MAP[addrConnect]))
                 return false;
 
             return true;
@@ -139,12 +112,11 @@ namespace LLP
     private:
 
         /* Basic Socket Handle Variables. */
-        Service_t   SERVICE;
-        Listener_t  LISTENER;
-        Error_t     ERROR_HANDLE;
+        //Listener_t  LISTENER;
         Thread_t    LISTEN_THREAD;
         Thread_t    METER_THREAD;
         Mutex_t     DDOS_MUTEX;
+        int         hListenSocket;
 
 
         /* Determine the thread with the least amount of active connections.
@@ -172,67 +144,139 @@ namespace LLP
             if(!fLISTEN)
                 return;
 
-            /** Don't listen until all data threads are created. **/
+            /* Bind the Listener. */
+            BindListenPort();
+
+            /* Don't listen until all data threads are created. */
             while(DATA_THREADS.size() < MAX_THREADS)
                 Sleep(1000);
 
-            /** Basic Socket Options for Boost ASIO. Allow aborted connections, don't allow lingering. **/
-            boost::asio::socket_base::enable_connection_aborted    CONNECTION_ABORT(true);
-            boost::asio::socket_base::linger                       CONNECTION_LINGER(false, 0);
-            boost::asio::ip::tcp::acceptor::reuse_address          CONNECTION_REUSE(true);
-            boost::asio::ip::tcp::endpoint 						  		 ENDPOINT(boost::asio::ip::tcp::v4(), PORT);
-
-            /** Open the listener with maximum of 1000 queued Connections. **/
-            LISTENER.open(ENDPOINT.protocol());
-            LISTENER.set_option(CONNECTION_ABORT);
-            LISTENER.set_option(CONNECTION_REUSE);
-            LISTENER.set_option(CONNECTION_LINGER);
-            LISTENER.bind(ENDPOINT);
-            LISTENER.listen(1000, ERROR_HANDLE);
-
-            //printf("LLP Server Listening on Port %u\n", PORT);
-            while(!fShutdown)
+            /* Main listener loop. */
+            while(true)
             {
-                /** Limit listener to allow maximum of 100 new connections per second. **/
                 Sleep(10);
 
-                try
+                if (hListenSocket != INVALID_SOCKET)
                 {
-                    /** Accept a new connection, then process DDOS. **/
-                    int nThread = FindThread();
-                    Socket_t SOCKET(new boost::asio::ip::tcp::socket(DATA_THREADS[nThread]->IO_SERVICE));
-                    LISTENER.accept(*SOCKET);
+                    struct sockaddr_in sockaddr;
+                    socklen_t len = sizeof(sockaddr);
 
-                    /** Initialize DDOS Protection for Incoming IP Address. **/
-                    std::vector<uint8_t> vAddress(4, 0);
-                    sscanf(SOCKET->remote_endpoint().address().to_string().c_str(), "%hhu.%hhu.%hhu.%hhu", &vAddress[0], &vAddress[1], &vAddress[2], &vAddress[3]);
-                    uint32_t ADDRESS = (vAddress[0] << 24) + (vAddress[1] << 16) + (vAddress[2] << 8) + vAddress[3];
+                    SOCKET hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len);
 
-                    { //LOCK(DDOS_MUTEX);
-                        if(!DDOS_MAP.count(ADDRESS))
-                            DDOS_MAP[ADDRESS] = new DDOS_Filter(30);
+                    CAddress addr;
+                    if (hSocket != INVALID_SOCKET)
+                        addr = CAddress(sockaddr);
 
-                        /** DDOS Operations: Only executed when DDOS is enabled. **/
-                        if((fDDOS && DDOS_MAP[ADDRESS]->Banned()) || !CheckPermissions(strprintf("%u.%u.%u.%u:%u",vAddress[0], vAddress[1], vAddress[2],vAddress[3]), PORT))
+                    if (hSocket == INVALID_SOCKET)
+                    {
+                        if (GetLastError() != WSAEWOULDBLOCK)
+                            printf("socket error accept failed: %d\n", GetLastError());
+                    }
+                    else
+                    {
+
+                        /* Create new DDOS Filter if Needed. */
+                        if(!DDOS_MAP.count((CService)addr))
+                            DDOS_MAP[addr] = new DDOS_Filter(DDOS_TIMESPAN);
+
+                        /* DDOS Operations: Only executed when DDOS is enabled. */
+                        if((fDDOS && DDOS_MAP[(CService)addr]->Banned()))
                         {
-                            SOCKET -> shutdown(boost::asio::ip::tcp::socket::shutdown_both, ERROR_HANDLE);
-                            SOCKET -> close();
-
-                            printf("XXXXX BLOCKED: LLP Connection Request from %u.%u.%u.%u to Port %u\n", vAddress[0], vAddress[1], vAddress[2], vAddress[3], PORT);
+                            printf("***** LLP Server: Connection Request %s refused... Banned.", addr.ToString().c_str());
+                            close(hSocket);
 
                             continue;
                         }
 
+                        Socket_t sockNew(hSocket, addr);
 
-                        /** Add new connection if passed all DDOS checks. **/
-                        DATA_THREADS[nThread]->AddConnection(SOCKET, DDOS_MAP[ADDRESS]);
+                        int nThread = FindThread();
+                        DATA_THREADS[nThread]->AddConnection(sockNew, DDOS_MAP[(CService)addr]);
+
+                        printf("***** LLP Server: Accepted Connection %s on port %u\n", addr.ToString().c_str(), PORT);
                     }
                 }
-                catch(std::exception& e)
-                {
-                    printf("error: %s\n", e.what());
-                }
             }
+        }
+
+        bool BindListenPort()
+        {
+            std::string strError = "";
+            int nOne = 1;
+
+            #ifdef WIN32
+                // Initialize Windows Sockets
+                WSADATA wsadata;
+                int ret = WSAStartup(MAKEWORD(2,2), &wsadata);
+                if (ret != NO_ERROR)
+                {
+                    printf("Error: TCP/IP socket library failed to start (WSAStartup returned error %d)", ret);
+
+                    return false;
+                }
+            #endif
+
+            // Create socket for listening for incoming connections
+            hListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+            if (hListenSocket == INVALID_SOCKET)
+            {
+                printf("Error: Couldn't open socket for incoming connections (socket returned error %d)", GetLastError());
+
+                return false;
+            }
+
+            #ifdef SO_NOSIGPIPE
+                // Different way of disabling SIGPIPE on BSD
+                setsockopt(hListenSocket, SOL_SOCKET, SO_NOSIGPIPE, (void*)&nOne, sizeof(int));
+            #endif
+
+            #ifndef WIN32
+                // Allow binding if the port is still in TIME_WAIT state after
+                // the program was closed and restarted.  Not an issue on windows.
+                setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEADDR, (void*)&nOne, sizeof(int));
+            #endif
+
+
+            #ifdef WIN32
+                // Set to nonblocking, incoming connections will also inherit this
+                if (ioctlsocket(hListenSocket, FIONBIO, (u_long*)&nOne) == SOCKET_ERROR)
+            #else
+                if (fcntl(hListenSocket, F_SETFL, O_NONBLOCK) == SOCKET_ERROR)
+            #endif
+            {
+                printf("Error: Couldn't set properties on socket for incoming connections (error %d)", GetLastError());
+
+                return false;
+            }
+
+            // The sockaddr_in structure specifies the address family,
+            // IP address, and port for the socket that is being bound
+            struct sockaddr_in sockaddr;
+            memset(&sockaddr, 0, sizeof(sockaddr));
+            sockaddr.sin_family = AF_INET;
+            sockaddr.sin_addr.s_addr = INADDR_ANY; // bind to all IPs on this computer
+            sockaddr.sin_port = htons(PORT);
+            if (::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
+            {
+                int nErr = GetLastError();
+                if (nErr == WSAEADDRINUSE)
+                    printf("Error:Unable to bind to port %d on this computer.  Nexus is probably already running.", ntohs(sockaddr.sin_port));
+                else
+                    printf("Error: Unable to bind to port %d on this computer (bind returned error %d)", ntohs(sockaddr.sin_port), nErr);
+
+                return false;
+            }
+            printf("***** LLP Server: Bound to port %d\n", ntohs(sockaddr.sin_port));
+
+            // Listen for incoming connections
+            if (listen(hListenSocket, SOMAXCONN) == SOCKET_ERROR)
+            {
+                printf("Error: Listening for incoming connections failed (listen returned error %d)", GetLastError());
+
+                return false;
+            }
+
+            return true;
         }
 
 
@@ -250,8 +294,8 @@ namespace LLP
                 for(int nIndex = 0; nIndex < MAX_THREADS; nIndex++)
                     nGlobalConnections += DATA_THREADS[nIndex]->nConnections;
 
-                double RPS = (double) TotalRequests() / TIMER.Elapsed();
-                printf("METER LLP Running at %f Requests per Second with %u Connections.\n", RPS, nGlobalConnections);
+                uint32_t RPS = TotalRequests() / TIMER.Elapsed();
+                printf("***** LLP Running at %u requests/s with %u connections.\n", RPS, nGlobalConnections);
 
                 TIMER.Reset();
                 ClearRequests();
