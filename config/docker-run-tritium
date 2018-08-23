@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+# docker-run-tritium
+#
+# This script is used on your host OS to create and start a docker container
+# that runs the Nexus Daemon and the lispers.net LISP subsystem.
+#
+# You can run this script multiple times and it will create as many containers
+# as you wish. The docker image "tritium" must already be built by using
+# "docker build".
+#
+# Note the port number allocated to get to the lispers.net webpage interface
+# can be found in the PORTS column of "docker ps".
+#
+HOSTNAME=`hostname | cut -d "." -f 1`
+RAND=`python -c "import random as r; print hex(r.randint(0, 0xffffffff))[2::]"`
+NAME="nexus-$HOSTNAME-$RAND"
+
+docker create --privileged --name $NAME -h $NAME -ti tritium > /dev/null
+echo "Starting container '$NAME' ..."
+docker start $NAME > /dev/null
+
+

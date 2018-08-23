@@ -27,6 +27,8 @@ if ($status != 1) then
     set byte0 = `python -c "print $rand & 0xff"`
     set v4_eid = 240.$byte2.$byte1.$byte0
     set v6_eid = fe::${byte2}:${byte1}:${byte0}
+    set v4_rloc = `ifconfig eth0 | egrep "inet "`
+    set v4_rloc = `echo $v4_rloc | cut -d " " -f 2`
 #   set iid = 0
     set iid = 1537
   else
@@ -41,7 +43,8 @@ if ($status != 1) then
   cat lisp.config.bak | sed "s/<iid>/$iid/" > lisp.config
   cat lisp.config | sed "s/<v4-eid>/$v4_eid/" > lisp.config.bak
   cat lisp.config.bak | sed "s/<v6-eid>/$v6_eid/" > lisp.config
-  rm lisp.config.bak
+  cat lisp.config | sed "s/<v4-rloc>/$v4_rloc/" > lisp.config.bak
+  mv lisp.config.bak lisp.config
 
   #
   # Configure IPv4 EIDs on interface lo and routes for EID source selection.
