@@ -17,9 +17,10 @@ ________________________________________________________________________________
 #include <string>
 #include <vector>
 #include <stdio.h>
-#include <boost/bind.hpp>
-#include <boost/smart_ptr.hpp>
-#include <boost/asio.hpp>
+
+#include "../include/network.h"
+
+#include "socket.h"
 
 #include "../../Util/include/mutex.h"
 #include "../../Util/include/runtime.h"
@@ -40,15 +41,18 @@ namespace LLP
         EVENT_GENERIC        = 4,
         EVENT_FAILED         = 5,
 
-        EVENT_COMMAND        = 6 //For Message Pushing to Server Processors
+        EVENT_COMMAND        = 6, //For Message Pushing to Server Processors
+
+        //disonnect reason flags
+        DISCONNECT_TIMEOUT   = 7,
+        DISCONNECT_ERRORS    = 8,
+        DISCONNECT_DDOS      = 9,
+        DISCONNECT_FORCE     = 10
     };
 
 
     /** Type Definitions for LLP Functions **/
-    typedef boost::shared_ptr<boost::asio::ip::tcp::socket>      Socket_t;
-    typedef boost::asio::ip::tcp::acceptor                       Listener_t;
-    typedef boost::asio::io_service                              Service_t;
-    typedef boost::system::error_code                            Error_t;
+    typedef Socket Socket_t;
 
 
     /* DoS Wrapper for Returning  */
@@ -211,9 +215,9 @@ namespace LLP
             BYTE 0       : Header
             BYTE 1 - 5   : Length
             BYTE 6 - End : Data      */
-        uint8_t    HEADER;
-        uint32_t     LENGTH;
-        std::vector<uint8_t> DATA;
+        uint8_t                 HEADER;
+        uint32_t                LENGTH;
+        std::vector<uint8_t>    DATA;
 
 
         /* Set the Packet Null Flags. */
@@ -268,7 +272,6 @@ namespace LLP
 
         /* Basic Connection Variables. */
         Timer         TIMER;
-        Error_t       ERROR_HANDLE;
         Socket_t      SOCKET;
         Mutex_t       MUTEX;
 
@@ -320,7 +323,7 @@ namespace LLP
 
 
         /* Checks for any flags in the Error Handle. */
-        bool Errors(){ return (ERROR_HANDLE == boost::asio::error::eof || ERROR_HANDLE); }
+        bool Errors(){ return !SOCKET.IsValid(); }
 
 
         /* Determines if nTime seconds have elapsed since last Read / Write. */
@@ -349,7 +352,7 @@ namespace LLP
 
             if(GetArg("-verbose", 0) >= 5) {
                 printf("***** Hex Message Dump\n");
-                
+
                 PrintHex(PACKET.GetBytes());
             }
 
@@ -363,34 +366,25 @@ namespace LLP
 
 
         /* Connect Socket to a Remote Endpoint. */
-        bool Connect(std::string strAddress, std::string strPort, Service_t& IO_SERVICE)
+        bool Connect(std::string strAddress, int nPort)
         {
-            try
+            CService addrConnect(strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
+
+            /// debug print
+            printf("***** Node Connecting to %s\n",
+                addrConnect.ToString().c_str());
+
+            // Connect
+            if (SOCKET.Connect(addrConnect))
             {
+                /// debug print
+                printf("***** Node Connected to %s\n", addrConnect.ToString().c_str());
 
-                /* Establish the new Connection. */
-                using boost::asio::ip::tcp;
-
-                tcp::resolver					RESOLVER(IO_SERVICE);
-                tcp::resolver::query			QUERY   (tcp::v4(), strAddress.c_str(), strPort.c_str());
-                tcp::resolver::iterator			ADDRESS = RESOLVER.resolve(QUERY);
-
-                SOCKET = Socket_t(new tcp::socket(IO_SERVICE));
-                SOCKET -> connect(*ADDRESS, ERROR_HANDLE);
-
-                /* Handle a Connection Error. */
-                if(ERROR_HANDLE)
-                    return error("Failed to Connect to %s:%s::%s", strAddress.c_str(), strPort.c_str(), ERROR_HANDLE.message().c_str());
-
-                /* Set the object to be conneted if success. */
                 fCONNECTED = true;
-
                 return true;
             }
-            catch(...)
-            {
-                return false;
-            }
+
+            return false;
         }
 
 
@@ -400,26 +394,8 @@ namespace LLP
             if(!fCONNECTED)
                 return;
 
-            try
-            {
-                SOCKET -> shutdown(boost::asio::ip::tcp::socket::shutdown_both, ERROR_HANDLE);
-                SOCKET -> close();
-            }
-            catch(...){}
-
+            SOCKET.Disconnect();
             fCONNECTED = false;
-        }
-
-        std::string GetIPAddress() { return SOCKET->remote_endpoint().address().to_string(); }
-
-
-        /* Helpful for debugging the code. */
-        std::string ErrorMessage()
-        {
-            if(!Errors())
-                return "N/A";
-
-            return ERROR_HANDLE.message();
         }
 
 
@@ -427,26 +403,20 @@ namespace LLP
 
 
         /* Lower level network communications: Read. Interacts with OS sockets. */
-        size_t Read(std::vector<uint8_t> &DATA, size_t nBytes)
+        int Read(std::vector<uint8_t> &DATA, size_t nBytes)
         {
-            if(Errors())
-                return 0;
-
             TIMER.Reset();
 
-            return  boost::asio::read(*SOCKET, boost::asio::buffer(DATA, nBytes), ERROR_HANDLE);
+            return SOCKET.Read(DATA, nBytes);
         }
 
 
         /* Lower level network communications: Write. Interacts with OS sockets. */
-        void Write(std::vector<uint8_t> DATA)
+        int Write(std::vector<uint8_t> DATA)
         {
-            if(Errors())
-                return;
-
             TIMER.Reset();
 
-            boost::asio::write(*SOCKET, boost::asio::buffer(DATA, DATA.size()), ERROR_HANDLE);
+            return SOCKET.Write(DATA, DATA.size());
         }
 
     };
@@ -466,39 +436,38 @@ namespace LLP
         {
 
             /* Handle Reading Packet Type Header. */
-            if(SOCKET->available() > 0 && INCOMING.IsNull())
+            if(SOCKET.Available() >= 1 && INCOMING.IsNull())
             {
                 std::vector<uint8_t> HEADER(1, 255);
                 if(Read(HEADER, 1) == 1)
                     INCOMING.HEADER = HEADER[0];
-
             }
 
-            if(!INCOMING.IsNull() && !INCOMING.Complete())
+            /* Read the packet length. */
+            if(SOCKET.Available() >= 4 && INCOMING.LENGTH == 0)
             {
                 /* Handle Reading Packet Length Header. */
-                if(SOCKET->available() >= 4 && INCOMING.LENGTH == 0)
+                std::vector<uint8_t> BYTES(4, 0);
+                if(Read(BYTES, 4) == 4)
                 {
-                    std::vector<uint8_t> BYTES(4, 0);
-                    if(Read(BYTES, 4) == 4)
-                    {
-                        INCOMING.SetLength(BYTES);
-                        Event(EVENT_HEADER);
-                    }
+                    INCOMING.SetLength(BYTES);
+                    Event(EVENT_HEADER);
                 }
+            }
 
-                /* Handle Reading Packet Data. */
-                uint32_t nAvailable = SOCKET->available();
-                if(nAvailable > 0 && INCOMING.LENGTH > 0 && INCOMING.DATA.size() < INCOMING.LENGTH)
+            /* Handle Reading Packet Data. */
+            uint32_t nAvailable = SOCKET.Available();
+            if(nAvailable > 0 && INCOMING.LENGTH > 0 && INCOMING.DATA.size() < INCOMING.LENGTH)
+            {
+
+                /* Read the data in the packet with a maximum of 512 bytes at a time. */
+                std::vector<uint8_t> DATA( std::min( std::min(nAvailable, 512u), (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
+
+                /* On successful read, fire event and add data to packet. */
+                if(Read(DATA, DATA.size()) == DATA.size())
                 {
-                    std::vector<uint8_t> DATA( std::min(nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
-                    uint32_t nRead = Read(DATA, DATA.size());
-
-                    if(nRead == DATA.size())
-                    {
-                        INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
-                        Event(EVENT_PACKET, nRead);
-                    }
+                    INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
+                    Event(EVENT_PACKET, DATA.size());
                 }
             }
         }

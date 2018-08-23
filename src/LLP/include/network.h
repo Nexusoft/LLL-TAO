@@ -37,13 +37,14 @@ ________________________________________________________________________________
 #endif
 
 typedef u_int SOCKET;
+
 #ifdef WIN32
 #define MSG_NOSIGNAL        0
 #define MSG_DONTWAIT        0
 typedef int socklen_t;
 #else
 #include "errno.h"
-#define WSAGetLastError()   errno
+#define GetLastError()   errno
 #define WSAEINVAL           EINVAL
 #define WSAEALREADY         EALREADY
 #define WSAEWOULDBLOCK      EWOULDBLOCK
@@ -299,6 +300,10 @@ namespace LLP
 
     /* Get the Main Message LLP Port for Nexus. */
     inline uint16_t GetDefaultPort(const bool testnet = fTestNet){ return testnet ? TESTNET_PORT : MAINNET_PORT; }
+
+
+    /** Connect to a socket with given connection timeout flag. **/
+    bool ConnectSocket(const CService &addr, SOCKET& hSocketRet, int nTimeout = 5000);
 
 }
 

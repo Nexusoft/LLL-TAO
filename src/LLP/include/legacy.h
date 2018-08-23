@@ -53,10 +53,10 @@ namespace LLP
         * BYTE 26 - X   : Data
         *
         */
-        uint8_t	HEADER[4];
-        char			MESSAGE[12];
-        uint32_t	LENGTH;
-        uint32_t	CHECKSUM;
+        uint8_t         HEADER[4];
+        char	        MESSAGE[12];
+        uint32_t	    LENGTH;
+        uint32_t	    CHECKSUM;
 
         std::vector<uint8_t> DATA;
 
@@ -300,7 +300,7 @@ namespace LLP
             if(!INCOMING.Complete())
             {
                 /** Handle Reading Packet Length Header. **/
-                if(SOCKET->available() >= 24 && INCOMING.IsNull())
+                if(INCOMING.IsNull() && SOCKET.Available() >= 24)
                 {
                     std::vector<uint8_t> BYTES(24, 0);
                     if(Read(BYTES, 24) == 24)
@@ -313,16 +313,17 @@ namespace LLP
                 }
 
                 /** Handle Reading Packet Data. **/
-                uint32_t nAvailable = SOCKET->available();
+                uint32_t nAvailable = SOCKET.Available();
                 if(nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
                 {
-                    std::vector<uint8_t> DATA( std::min(std::min(nAvailable, 512u), (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
-                    uint32_t nRead = Read(DATA, DATA.size());
+                    /* Create the packet data object. */
+                    std::vector<uint8_t> DATA( std::min( std::min(512u, nAvailable), (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
 
-                    if(nRead == DATA.size())
+                    /* Read up to 512 bytes of data. */
+                    if(Read(DATA, DATA.size()) == DATA.size())
                     {
                         INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
-                        Event(EVENT_PACKET, nRead);
+                        Event(EVENT_PACKET, DATA.size());
                     }
                 }
             }

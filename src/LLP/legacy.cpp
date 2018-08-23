@@ -22,8 +22,22 @@ ________________________________________________________________________________
 #include "../Util/include/hex.h"
 #include "../Util/include/runtime.h"
 
+#include "../LLD/templates/sector.h"
+#include "../LLD/templates/filemap.h"
 
+class TestDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
+{
+public:
+    TestDB(const char* pszMode="r+", const char* pszName = "regdb") : SectorDatabase(pszName, pszMode) {}
 
+    bool WriteSample(uint32_t nRequest, uint64_t nSample)
+    {
+        return Write(nRequest, nSample);
+    }
+};
+
+//TestDB* test = new TestDB("r+", "db1");
+//TestDB* test2 = new TestDB("r+", "db2");
 
 namespace LLP
 {
@@ -117,15 +131,24 @@ namespace LLP
         if(EVENT == EVENT_GENERIC)
         {
 
-            if(nLastPing + 5 < UnifiedTimestamp()) {
-                RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
+            if(nLastPing + 1 < UnifiedTimestamp()) {
+                for(int i = 0; i < GetArg("-pings", 1); i++)
+                {
+                    RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
 
-                nLastPing = UnifiedTimestamp();
+                    nLastPing = UnifiedTimestamp();
 
-                mapLatencyTracker.emplace(nSessionID, Timer());
-                mapLatencyTracker[nSessionID].Start();
+                    mapLatencyTracker.emplace(nSessionID, Timer());
+                    mapLatencyTracker[nSessionID].Start();
 
-                PushMessage("ping", nSessionID);
+                    PushMessage("ping", nSessionID);
+
+                    unsigned int nRequestID;
+                    RAND_bytes((uint8_t*)&nRequestID, sizeof(nRequestID));
+
+                    mapSentRequests.emplace(nRequestID, UnifiedTimestamp(true));
+                    PushMessage("getoffset", nRequestID, UnifiedTimestamp(true));
+                }
             }
 
             //TODO: mapRequests data, if no response given retry the request at given times
@@ -135,7 +158,7 @@ namespace LLP
         /** On Connect Event, Assign the Proper Handle. **/
         if(EVENT == EVENT_CONNECT)
         {
-            addrThisNode = CAddress(CService(GetIPAddress(), GetDefaultPort()));
+            addrThisNode = SOCKET.addr;
             nLastPing    = UnifiedTimestamp();
 
             if(GetArg("-verbose", 0) >= 1)
@@ -151,9 +174,28 @@ namespace LLP
         /* Handle the Socket Disconnect */
         if(EVENT == EVENT_DISCONNECT)
         {
+            std::string strReason = "";
+            switch(LENGTH)
+            {
+                case DISCONNECT_TIMEOUT:
+                    strReason = "Timeout";
+                    break;
+
+                case DISCONNECT_ERRORS:
+                    strReason = "Errors";
+                    break;
+
+                case DISCONNECT_DDOS:
+                    strReason = "DDOS";
+                    break;
+
+                case DISCONNECT_FORCE:
+                    strReason = "Forced";
+                    break;
+            }
 
             if(GetArg("-verbose", 0) >= 1)
-                printf("xxxxx %s Node %s Disconnected (%s) at Timestamp %" PRIu64 "\n", fOUTGOING ? "Ougoing" : "Incoming", addrThisNode.ToString().c_str(), ErrorMessage().c_str(), UnifiedTimestamp());
+                printf("xxxxx %s Node %s Disconnected (%s) at Timestamp %" PRIu64 "\n", fOUTGOING ? "Ougoing" : "Incoming", addrThisNode.ToString().c_str(), strReason.c_str(), UnifiedTimestamp());
 
             return;
         }
@@ -181,6 +223,8 @@ namespace LLP
             uint64_t nTimestamp;
             ssMessage >> nTimestamp;
 
+            //test.WriteSample(nRequestID, nTimestamp);
+
             /* Log into the sent requests Map. */
             mapSentRequests[nRequestID] = UnifiedTimestamp(true);
 
@@ -206,6 +250,7 @@ namespace LLP
             uint64_t nTimestamp;
             ssMessage >> nTimestamp;
 
+            //test2.WriteSample(nRequestID, nTimestamp);
 
             /* Handle the Request ID's. */
             //uint32_t nLatencyTime = (Core::UnifiedTimestamp(true) - nTimestamp);

@@ -1,0 +1,245 @@
+/*__________________________________________________________________________________________
+
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+
+            (c) Copyright The Nexus Developers 2014 - 2018
+
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+            "ad vocem populi" - To the Voice of the People
+
+____________________________________________________________________________________________*/
+
+#include <string>
+#include <vector>
+#include <stdio.h>
+
+#include "include/network.h"
+#include "templates/socket.h"
+
+#include "../Util/include/debug.h"
+
+#ifndef WIN32
+#include <arpa/inet.h>
+#endif
+
+#include <sys/ioctl.h>
+
+namespace LLP
+{
+
+    /* Constructor for Address */
+    Socket::Socket(CService addrConnect)
+    {
+        Connect(addrConnect);
+    }
+
+
+    /* Checks if the socket is in a valid state */
+    bool Socket::IsValid()
+    {
+        return !(nSocket == INVALID_SOCKET ||
+                 nSocket == SOCKET_ERROR);
+    }
+
+
+    /* Connects the socket to an external address */
+    bool Socket::Connect(CService addrDest, int nTimeout)
+    {
+        /* Create the Socket Object (Streaming TCP/IP). */
+        nSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+        /* Catch failure if socket couldn't be initialized. */
+        if (nSocket == INVALID_SOCKET)
+            return false;
+
+        /* Set sockets to non-blocking. */
+    #ifdef WIN32
+        u_long fNonblock = 1;
+        if (ioctlsocket(nSocket, FIONBIO, &fNonblock) == SOCKET_ERROR)
+    #else
+        int fFlags = fcntl(nSocket, F_GETFL, 0);
+        if (fcntl(nSocket, F_SETFL, fFlags | O_NONBLOCK) == -1)
+    #endif
+        {
+            close(nSocket);
+            return false;
+        }
+
+        struct sockaddr_in sockaddr;
+        addrDest.GetSockAddr(&sockaddr);
+
+        /* Copy in the new address. */
+        addr = CAddress(sockaddr);
+
+        /* Open the socket connection. */
+        if (connect(nSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
+        {
+            // WSAEINVAL is here because some legacy version of winsock uses it
+            if (GetLastError() == WSAEINPROGRESS || GetLastError() == WSAEWOULDBLOCK || GetLastError() == WSAEINVAL)
+            {
+                struct timeval timeout;
+                timeout.tv_sec  = nTimeout / 1000;
+                timeout.tv_usec = (nTimeout % 1000) * 1000;
+
+                fd_set fdset;
+                FD_ZERO(&fdset);
+                FD_SET(nSocket, &fdset);
+                int nRet = select(nSocket + 1, NULL, &fdset, NULL, &timeout);
+
+                /* If the connection attempt timed out with select. */
+                if (nRet == 0)
+                {
+                    printf("***** Node Connection Timeout %s...\n", addrDest.ToString().c_str());
+
+                    close(nSocket);
+
+                    return false;
+                }
+
+                /* If the select failed. */
+                if (nRet == SOCKET_ERROR)
+                {
+                    printf("***** Node Select Failed %s (%i)\n", addrDest.ToString().c_str(), GetLastError());
+
+                    close(nSocket);
+
+                    return false;
+                }
+
+                /* Get socket options. TODO: Remove preprocessors for cross platform sockets. */
+                socklen_t nRetSize = sizeof(nRet);
+    #ifdef WIN32
+                if (getsockopt(nSocket, SOL_SOCKET, SO_ERROR, (char*)(&nRet), &nRetSize) == SOCKET_ERROR)
+    #else
+                if (getsockopt(nSocket, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
+    #endif
+                {
+                    printf("***** Node Get Options Failed %s (%i)\n", addrDest.ToString().c_str(), GetLastError());
+                    close(nSocket);
+
+                    return false;
+                }
+
+                /* If there are no socket options set. TODO: Remove preprocessors for cross platform sockets. */
+                if (nRet != 0)
+                {
+                    printf("***** Node Failed after Select %s (%i)\n", addrDest.ToString().c_str(), nRet);
+                    close(nSocket);
+
+                    return false;
+                }
+            }
+    #ifdef WIN32
+            else if (GetLastError() != WSAEISCONN)
+    #else
+            else
+    #endif
+            {
+                printf("***** Node Connect Failed %s (%i)\n", addrDest.ToString().c_str(), GetLastError());
+                close(nSocket);
+
+                return false;
+            }
+        }
+
+            // Set to nonblocking
+        #ifdef WIN32
+                u_long nOne = 1;
+                if (ioctlsocket(nSocket, FIONBIO, &nOne) == SOCKET_ERROR)
+                    return error("ConnectSocket() : ioctlsocket nonblocking setting failed, error %d\n", GetLastError());
+        #else
+                if (fcntl(nSocket, F_SETFL, O_NONBLOCK) == SOCKET_ERROR)
+                    return error("ConnectSocket() : fcntl nonblocking setting failed, error %d\n", errno);
+        #endif
+
+        return true;
+    }
+
+
+    /* Poll the socket to check for available data */
+    int Socket::Available()
+    {
+        int nAvailable = 0;
+        #ifdef WIN32
+            ioctlsocket(nSocket, FIONREAD, &nAvailable)
+        #else
+            ioctl(nSocket, FIONREAD, &nAvailable);
+        #endif
+
+        return nAvailable;
+    }
+
+
+    /* Clear resources associated with socket and return to invalid state */
+    void Socket::Disconnect()
+    {
+        if(!IsValid())
+            return;
+
+        close(nSocket);
+        nSocket = INVALID_SOCKET;
+    }
+
+
+    /* Read data from the socket buffer non-blocking */
+    int Socket::Read(std::vector<uint8_t> &vData, size_t nBytes)
+    {
+        char pchBuf[nBytes];
+        int nRead = recv(nSocket, pchBuf, nBytes, MSG_DONTWAIT);
+        if (nRead < 0)
+        {
+            // error
+            int nErr = GetLastError();
+            if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
+            {
+                printf("socket recv error %d %s\n", nErr, strerror(nErr));
+
+                Disconnect();
+            }
+
+            return -1;
+        }
+
+        if(nRead > 0)
+            memcpy(&vData[0], pchBuf, nRead);
+
+        return nRead;
+    }
+
+
+    /* Write data into the socket buffer non-blocking */
+    int Socket::Write(std::vector<uint8_t> vData, size_t nBytes)
+    {
+        if(nBytes > 10)
+            nBytes = 10;
+        char pchBuf[nBytes];
+        memcpy(pchBuf, &vData[0], nBytes);
+
+        int nSent = send(nSocket, pchBuf, nBytes, MSG_NOSIGNAL | MSG_DONTWAIT);
+
+        /* If there were any errors, handle them gracefully. */
+        if(nSent < 0)
+        {
+            // error
+            int nErr = GetLastError();
+            if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
+                Disconnect();
+
+            printf("socket send error %d %s\n", nErr, strerror(nErr));
+
+            return -1;
+        }
+
+        /* If not all data was sent non-blocking, recurse until it is complete. */
+        else if(nSent != vData.size())
+        {
+            vData.erase(vData.begin(), vData.begin() + nSent);
+
+            return Write(vData, vData.size());
+        }
+
+        return nSent;
+    }
+}
