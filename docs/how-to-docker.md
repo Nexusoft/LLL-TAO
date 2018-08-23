@@ -13,16 +13,19 @@ Building:
 
 This will build a docker image called "tritium".
 
-(3) To create and start the container, type:
+Running:    
+
+(1) To create and start the container, type:
 
     docker run -p 9999:8080 --privileged --name nexus-<fill-in> \
                -h nexus-<fill-in> -ti tritium
 
-You should pick a value for <fill-in> so your container is unique with the
+You should pick a unique container name so your container is unique with the
 LISP mapping system.
 
 If you run the script config/docker-run-tritium on your host OS then the
-container name will be chosen for you and will be unique.
+container name will be chosen for you and will be unique. And you then can
+run multiple containers if you wish to have multiple Nexus nodes running.    
 
 Monitoring:
 
