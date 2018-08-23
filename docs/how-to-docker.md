@@ -22,7 +22,7 @@ You should pick a value for <fill-in> so your container is unique with the
 LISP mapping system.
 
 If you run the script config/docker-run-tritium on your host OS then the
-container name will be chosen for you.
+container name will be chosen for you and will be unique.
 
 Monitoring:
 
