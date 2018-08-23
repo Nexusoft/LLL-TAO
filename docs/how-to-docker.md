@@ -28,7 +28,7 @@ Monitoring:
 
 (1) To get into the container command-line shell, type:
 
-    docker exec nexus-<fill-in> bash
+    docker exec -it nexus-<fill-in> bash
 
 If you type control-D or exit, you exit the container and it remains running.
 
