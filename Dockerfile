@@ -35,6 +35,13 @@ RUN apt-get update && apt-get -yq install \
     net-tools procps emacs jq
 
 #
+# Install Nexus dependencies.
+#
+RUN apt-get update && apt-get -yq install \
+    build-essential libboost-all-dev libdb-dev libdb++-dev libssl1.0-dev \
+    libminiupnpc-dev libqrencode-dev qt4-qmake libqt4-dev lib32z1-dev
+
+#
 # Install LISP release in /lispers.net directory.
 #
 RUN mkdir /lispers.net; cd /lispers.net; curl --insecure -L $LISP_URL | gzip -dc | tar -xf - 
@@ -64,9 +71,6 @@ COPY config/run-nexus /nexus/run-nexus
 #
 # Build Nexus.
 #
-RUN apt-get update && apt-get -yq install \
-    build-essential libboost-all-dev libdb-dev libdb++-dev libssl1.0-dev \
-    libminiupnpc-dev libqrencode-dev qt4-qmake libqt4-dev lib32z1-dev
 RUN cd /nexus; make -f makefile.cli
 
 #
