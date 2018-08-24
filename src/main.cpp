@@ -86,12 +86,10 @@ int main(int argc, char** argv)
     int nPort = GetArg("-port", 9323);
     LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(nPort, GetArg("-threads", 100), 30, false, 2, 30, 60, fListen, true);
 
-    if (mapArgs.count("-addnode") == 0)
-        return 0;
-
-    for(int i = 0; i < GetArg("-loadup", 1); i++)
-        for(auto strNode : mapMultiArgs["-addnode"])
-            SERVER->AddConnection(strNode, nPort);
+    if (mapArgs.count("-addnode"))
+        for(int i = 0; i < GetArg("-loadup", 1); i++)
+            for(auto strNode : mapMultiArgs["-addnode"])
+                SERVER->AddConnection(strNode, nPort);
 
     while(true)
     {
