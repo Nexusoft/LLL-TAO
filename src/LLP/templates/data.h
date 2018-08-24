@@ -129,16 +129,17 @@ namespace LLP
             while(!fShutdown)
             {
                 /* Keep data threads at 1000 FPS Maximum. */
-                Sleep(1);
+                if(CONNECTIONS.size() == 0)
+                    Sleep(10);
 
                 /* Check all connections for data and packets. */
                 int nSize = CONNECTIONS.size();
                 for(int nIndex = 0; nIndex < nSize; nIndex++)
                 {
-                    Sleep(1);
-
                     try
                     {
+                        //TODO: Cleanup threads and sleeps. Make more efficient to reduce total CPU cycles
+                        Sleep(1);
 
                         /* Skip over Inactive Connections. */
                         if(!CONNECTIONS[nIndex])

@@ -24,6 +24,9 @@ ________________________________________________________________________________
 
 #include "../../LLC/hash/SK.h"
 
+#include "../LLD/templates/sector.h"
+#include "../LLD/templates/filemap.h"
+
 
 namespace LLP
 {
