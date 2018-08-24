@@ -180,6 +180,7 @@ OBJS= \
 	build/address.o \
 	build/enum.o \
 	build/secret.o \
+	build/transaction.o \
 	build/args.o \
 	build/base58.o \
 	build/config.o \
@@ -267,6 +268,9 @@ build/%.o: ./src/TAO/Legacy/types/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/%.o: ./src/TAO/Ledger/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/%.o: ./src/TAO/Ledger/types/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/%.o: ./src/TAO/Operation/%.cpp $(HEADERS)
@@ -406,6 +410,13 @@ build/%.o: src/TAO/Legacy/types/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/%.o: src/TAO/Ledger/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/TAO/Ledger/types/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -566,6 +577,13 @@ build/%.o: src/TAO/Legacy/types/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/%.o: src/TAO/Ledger/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/TAO/Ledger/types/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

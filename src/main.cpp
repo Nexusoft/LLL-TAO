@@ -26,6 +26,8 @@
 #include "TAO/Legacy/types/include/address.h"
 //#include "TAO/Ledger/types/include/block.h"
 
+#include "TAO/Ledger/types/include/transaction.h"
+
 class CAccount
 {
 public:

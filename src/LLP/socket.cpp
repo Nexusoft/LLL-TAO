@@ -54,19 +54,7 @@ namespace LLP
         if (nSocket == INVALID_SOCKET)
             return false;
 
-        /* Set sockets to non-blocking. */
-    #ifdef WIN32
-        u_long fNonblock = 1;
-        if (ioctlsocket(nSocket, FIONBIO, &fNonblock) == SOCKET_ERROR)
-    #else
-        int fFlags = fcntl(nSocket, F_GETFL, 0);
-        if (fcntl(nSocket, F_SETFL, fFlags | O_NONBLOCK) == -1)
-    #endif
-        {
-            close(nSocket);
-            return false;
-        }
-
+        /* Set the socket address from the CService. */
         struct sockaddr_in sockaddr;
         addrDest.GetSockAddr(&sockaddr);
 
@@ -144,16 +132,6 @@ namespace LLP
             }
         }
 
-            // Set to nonblocking
-        #ifdef WIN32
-                u_long nOne = 1;
-                if (ioctlsocket(nSocket, FIONBIO, &nOne) == SOCKET_ERROR)
-                    return error("ConnectSocket() : ioctlsocket nonblocking setting failed, error %d\n", GetLastError());
-        #else
-                if (fcntl(nSocket, F_SETFL, O_NONBLOCK) == SOCKET_ERROR)
-                    return error("ConnectSocket() : fcntl nonblocking setting failed, error %d\n", errno);
-        #endif
-
         return true;
     }
 
@@ -212,8 +190,6 @@ namespace LLP
     /* Write data into the socket buffer non-blocking */
     int Socket::Write(std::vector<uint8_t> vData, size_t nBytes)
     {
-        if(nBytes > 10)
-            nBytes = 10;
         char pchBuf[nBytes];
         memcpy(pchBuf, &vData[0], nBytes);
 
@@ -231,8 +207,6 @@ namespace LLP
 
             return -1;
         }
-
-        /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent != vData.size())
         {
             vData.erase(vData.begin(), vData.begin() + nSent);
