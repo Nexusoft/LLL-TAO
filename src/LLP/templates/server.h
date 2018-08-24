@@ -237,18 +237,6 @@ namespace LLP
             #endif
 
 
-            #ifdef WIN32
-                // Set to nonblocking, incoming connections will also inherit this
-                if (ioctlsocket(hListenSocket, FIONBIO, (u_long*)&nOne) == SOCKET_ERROR)
-            #else
-                if (fcntl(hListenSocket, F_SETFL, O_NONBLOCK) == SOCKET_ERROR)
-            #endif
-            {
-                printf("Error: Couldn't set properties on socket for incoming connections (error %d)", GetLastError());
-
-                return false;
-            }
-
             // The sockaddr_in structure specifies the address family,
             // IP address, and port for the socket that is being bound
             struct sockaddr_in sockaddr;

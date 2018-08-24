@@ -11,14 +11,13 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEDGER_TYPES_INCLUDE_DATA_H
-#define NEXUS_TAO_LEDGER_TYPES_INCLUDE_DATA_H
+#ifndef NEXUS_TAO_LEDGER_TYPES_INCLUDE_TRANSACTION_H
+#define NEXUS_TAO_LEDGER_TYPES_INCLUDE_TRANSACTION_H
 
 #include <vector>
 
-#include "data.h"
-
 #include "../../../../Util/templates/serialize.h"
+#include "../../../../LLC/types/uint1024.h"
 
 namespace TAO
 {
@@ -31,18 +30,23 @@ namespace TAO
             Simple data type class that holds the transaction version, nextHash, and ledger data.
 
         **/
-        class CTritiumTransaction
+        class TritiumTransaction
         {
-
+        public:
             /** The transaction version. **/
-            int nVersion;
+            uint32_t nVersion;
 
+            /** The transaction timestamp. **/
+            uint64_t nTimestamp;
 
             /** The nextHash which can claim the signature chain. */
             uint256_t hashNext;
 
+            /** The genesis ID hash. **/
+            uint256_t hashGenesis;
+
             /** The data to be recorded in the ledger. **/
-            CData vchLedgerData;
+            std::vector<uint8_t> vchLedgerData;
 
             //memory only, to be disposed once fully locked into the chain behind a checkpoints
             //this is for the segregated keys from transaction data.
@@ -52,15 +56,72 @@ namespace TAO
             IMPLEMENT_SERIALIZE
             (
                 READWRITE(nVersion);
-                READWRITE(hashID);
+                nVersion = this->nVersion;
+                
+                READWRITE(nTimestamp);
                 READWRITE(hashNext);
-                REACWRITE(vchLedgerData);
+                READWRITE(hashGenesis);
+                READWRITE(vchLedgerData);
+
+                if(!(nType & SER_GETHASH))
+                {
+                    READWRITE(vchPubKey);
+                    READWRITE(vchSig);
+                }
             )
 
-            bool IsValid()
-            {
+            TritiumTransaction() : nVersion(0), nTimestamp(0), hashNext(0), hashGenesis(0) {}
 
-            }
+            /** IsValid
+             *
+             *  Determines if the transaction is a valid transaciton and passes ledger level checks.
+             *
+             *  @return true if transaction is valid.
+             *
+             **/
+            bool IsValid() const;
+
+
+            /** GetHash
+             *
+             *  Gets the hash of the transaction object.
+             *
+             *  @return 512-bit unsigned integer of hash.
+             *
+             **/
+            uint512_t GetHash() const;
+
+
+            /** NextHash
+             *
+             *  Sets the Next Hash from the key
+             *
+             *  @param[in] hashSecret The secret phrase to generate the keys.
+             *
+             **/
+            void NextHash(uint512_t hashSecret);
+
+
+            /** Sign
+             *
+             *  Signs the transaction with the private key and sets the public key
+             *
+             *  @param[in] hashSecret The secret phrase to generate the keys.
+             *
+             **/
+             bool Sign(uint512_t hashSecret);
+
+
+
+             /** Print
+              *
+              * Prints the object to the console.
+              *
+              **/
+             void print() const;
+
         };
-
+    }
 }
+
+#endif
