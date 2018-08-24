@@ -39,7 +39,7 @@ namespace TAO
             keyVerify.SetPubKey(vchPubKey);
 
             uint512_t hashTx = GetHash();
-            return keyVerify.Verify(hashTx, vchSig, 512);
+            return keyVerify.Verify(hashTx.GetBytes(), vchSig);
         }
 
 
@@ -80,7 +80,7 @@ namespace TAO
 
             vchPubKey = key.GetPubKey();
             uint512_t hashTx = GetHash();
-            return key.Sign(hashTx, vchSig, 512);
+            return key.Sign(hashTx.GetBytes(), vchSig);
          }
 
          void TritiumTransaction::print() const
