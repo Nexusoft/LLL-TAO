@@ -80,10 +80,13 @@ class RegisterDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
     }
 };
 
+TestDB* test;
 
 int main(int argc, char** argv)
 {
     ParseParameters(argc, argv);
+
+    test = new TestDB("r+", "db1");
 
     int nPort = GetArg("-port", 9323);
     LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(nPort, GetArg("-threads", 100), 30, false, 2, 30, 60, fListen, true);
