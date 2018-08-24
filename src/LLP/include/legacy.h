@@ -27,6 +27,35 @@ ________________________________________________________________________________
 #include "../LLD/templates/sector.h"
 #include "../LLD/templates/filemap.h"
 
+#include "../TAO/Ledger/types/include/transaction.h"
+
+class TestDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
+{
+public:
+    TestDB(const char* pszMode="r+", const char* pszName = "regdb") : SectorDatabase(pszName, pszMode) {}
+
+    bool WriteSample(uint64_t nRequest, uint64_t nSample)
+    {
+        return Write(nRequest, nSample);
+    }
+
+    bool ReadSample(uint64_t nRequest, uint64_t &nSample)
+    {
+        return Read(nRequest, nSample);
+    }
+
+    bool WriteTransaction(uint512_t hashTx, TAO::Ledger::TritiumTransaction tx)
+    {
+        return Write(hashTx, tx);
+    }
+
+    bool ReadTransaction(uint512_t hashTx, TAO::Ledger::TritiumTransaction &tx)
+    {
+        return Read(hashTx, tx);
+    }
+};
+
+extern TestDB* test;
 
 namespace LLP
 {
