@@ -22,37 +22,9 @@ ________________________________________________________________________________
 #include "../Util/include/hex.h"
 #include "../Util/include/runtime.h"
 
-#include "../TAO/Ledger/types/include/transaction.h"
+
 #include "../TAO/Ledger/include/sigchain.h"
 
-
-class TestDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
-{
-public:
-    TestDB(const char* pszMode="r+", const char* pszName = "regdb") : SectorDatabase(pszName, pszMode) {}
-
-    bool WriteSample(uint64_t nRequest, uint64_t nSample)
-    {
-        return Write(nRequest, nSample);
-    }
-
-    bool ReadSample(uint64_t nRequest, uint64_t &nSample)
-    {
-        return Read(nRequest, nSample);
-    }
-
-    bool WriteTransaction(uint512_t hashTx, TAO::Ledger::TritiumTransaction tx)
-    {
-        return Write(hashTx, tx);
-    }
-
-    bool ReadTransaction(uint512_t hashTx, TAO::Ledger::TritiumTransaction &tx)
-    {
-        return Read(hashTx, tx);
-    }
-};
-
-TestDB* test = new TestDB("r+", "db1");
 
 namespace LLP
 {
