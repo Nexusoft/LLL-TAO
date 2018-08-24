@@ -22,22 +22,37 @@ ________________________________________________________________________________
 #include "../Util/include/hex.h"
 #include "../Util/include/runtime.h"
 
-#include "../LLD/templates/sector.h"
-#include "../LLD/templates/filemap.h"
+#include "../TAO/Ledger/types/include/transaction.h"
+#include "../TAO/Ledger/include/sigchain.h"
+
 
 class TestDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
 {
 public:
     TestDB(const char* pszMode="r+", const char* pszName = "regdb") : SectorDatabase(pszName, pszMode) {}
 
-    bool WriteSample(uint32_t nRequest, uint64_t nSample)
+    bool WriteSample(uint64_t nRequest, uint64_t nSample)
     {
         return Write(nRequest, nSample);
     }
+
+    bool ReadSample(uint64_t nRequest, uint64_t &nSample)
+    {
+        return Read(nRequest, nSample);
+    }
+
+    bool WriteTransaction(uint512_t hashTx, TAO::Ledger::TritiumTransaction tx)
+    {
+        return Write(hashTx, tx);
+    }
+
+    bool ReadTransaction(uint512_t hashTx, TAO::Ledger::TritiumTransaction &tx)
+    {
+        return Read(hashTx, tx);
+    }
 };
 
-//TestDB* test = new TestDB("r+", "db1");
-//TestDB* test2 = new TestDB("r+", "db2");
+TestDB* test = new TestDB("r+", "db1");
 
 namespace LLP
 {
@@ -132,22 +147,36 @@ namespace LLP
         {
 
             if(nLastPing + 1 < UnifiedTimestamp()) {
-                for(int i = 0; i < GetArg("-pings", 1); i++)
+                RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
+
+                nLastPing = UnifiedTimestamp();
+
+                mapLatencyTracker.emplace(nSessionID, Timer());
+                mapLatencyTracker[nSessionID].Start();
+
+                PushMessage("ping", nSessionID);
+
+                if(fListen)
+                    test->WriteSample(nSessionID, UnifiedTimestamp(true));
+
+                if(!fListen)
                 {
-                    RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
+                    for(int i = 0; i < GetArg("-tx", 1) * 2; i+=2)
+                    {
+                        TAO::Ledger::SignatureChain sigChain("username", "password");
 
-                    nLastPing = UnifiedTimestamp();
+                        TAO::Ledger::TritiumTransaction tx = TAO::Ledger::TritiumTransaction();
+                        tx.nVersion    = 1;
+                        tx.nTimestamp  = UnifiedTimestamp();
+                        tx.NextHash(sigChain.Generate(i + 2, "PIN"));
+                        tx.hashGenesis = uint256_t(0);
+                        tx.vchLedgerData = {0xff, 0xff, 0xff, 0xff, 0xfe, 0xfe};
+                        tx.Sign(sigChain.Generate(i + 1, "PIN"));
 
-                    mapLatencyTracker.emplace(nSessionID, Timer());
-                    mapLatencyTracker[nSessionID].Start();
+                        //tx.print();
 
-                    PushMessage("ping", nSessionID);
-
-                    unsigned int nRequestID;
-                    RAND_bytes((uint8_t*)&nRequestID, sizeof(nRequestID));
-
-                    mapSentRequests.emplace(nRequestID, UnifiedTimestamp(true));
-                    PushMessage("getoffset", nRequestID, UnifiedTimestamp(true));
+                        PushMessage("tritium", tx);
+                    }
                 }
             }
 
@@ -223,8 +252,6 @@ namespace LLP
             uint64_t nTimestamp;
             ssMessage >> nTimestamp;
 
-            //test.WriteSample(nRequestID, nTimestamp);
-
             /* Log into the sent requests Map. */
             mapSentRequests[nRequestID] = UnifiedTimestamp(true);
 
@@ -249,8 +276,6 @@ namespace LLP
             /* De-Serialize the Timestamp Sent. */
             uint64_t nTimestamp;
             ssMessage >> nTimestamp;
-
-            //test2.WriteSample(nRequestID, nTimestamp);
 
             /* Handle the Request ID's. */
             //uint32_t nLatencyTime = (Core::UnifiedTimestamp(true) - nTimestamp);
@@ -311,6 +336,25 @@ namespace LLP
         }
 
 
+        else if(INCOMING.GetMessage() == "tritium")
+        {
+            TAO::Ledger::TritiumTransaction tx;
+            ssMessage >> tx;
+
+            //tx.print();
+
+            if(!tx.IsValid())
+            {
+                printf("Invalid tx %sw\n", tx.GetHash().ToString().c_str());
+
+                return true;
+            }
+
+            if(fListen)
+                test->WriteTransaction(tx.GetHash(), tx);
+        }
+
+
         /* Push a block into the Node's Recieved Blocks Queue. */
         else if (INCOMING.GetMessage() == "block")
         {
@@ -346,6 +390,10 @@ namespace LLP
             /* Calculate the Average Latency of the Connection. */
             uint32_t nLatency = mapLatencyTracker[nonce].ElapsedMilliseconds();
             mapLatencyTracker.erase(nonce);
+
+            uint64_t nTimestamp;
+            if(fListen)
+                test->ReadSample(nonce, nTimestamp);
 
 
             /* Debug Level 3: output Node Latencies. */
