@@ -133,20 +133,20 @@ namespace LLP
 
                 if(!fListen)
                 {
+
+                    TAO::Ledger::SignatureChain sigChain("username", "password");
+
+                    TAO::Ledger::TritiumTransaction tx = TAO::Ledger::TritiumTransaction();
+                    tx.nVersion    = 1;
+                    tx.nTimestamp  = UnifiedTimestamp();
+                    tx.NextHash(sigChain.Generate(nSessionID, "PIN"));
+                    tx.hashGenesis = uint256_t(0);
+                    tx.vchLedgerData = {0xff, 0xff, 0xff, 0xff, 0xfe, 0xfe};
+                    tx.Sign(sigChain.Generate(nSessionID + 1, "PIN"));
+
+                    //tx.print();
                     for(int i = 0; i < GetArg("-tx", 1) * 2; i+=2)
                     {
-                        TAO::Ledger::SignatureChain sigChain("username", "password");
-
-                        TAO::Ledger::TritiumTransaction tx = TAO::Ledger::TritiumTransaction();
-                        tx.nVersion    = 1;
-                        tx.nTimestamp  = UnifiedTimestamp();
-                        tx.NextHash(sigChain.Generate(i + 2, "PIN"));
-                        tx.hashGenesis = uint256_t(0);
-                        tx.vchLedgerData = {0xff, 0xff, 0xff, 0xff, 0xfe, 0xfe};
-                        tx.Sign(sigChain.Generate(i + 1, "PIN"));
-
-                        //tx.print();
-
                         PushMessage("tritium", tx);
                     }
                 }
