@@ -323,7 +323,7 @@ namespace LLP
             }
 
             if(fListen)
-                test->WriteTransaction(tx.GetHash(), tx);
+                test->WriteTransaction(GetRand512(), tx);
         }
 
 
