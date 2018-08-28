@@ -56,8 +56,6 @@ namespace TAO
             IMPLEMENT_SERIALIZE
             (
                 READWRITE(nVersion);
-                nVersion = this->nVersion;
-                
                 READWRITE(nTimestamp);
                 READWRITE(hashNext);
                 READWRITE(hashGenesis);
