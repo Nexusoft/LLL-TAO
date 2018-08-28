@@ -215,7 +215,7 @@ namespace LLP
                 if (fRead)
                     pthis->Init();
                 if (nType & SER_DISK)
-                    READWRITE(nVersion);
+                    READWRITE(nSerVersion);
                 if ((nType & SER_DISK) || (!(nType & SER_GETHASH)))
                     READWRITE(nTime);
                 READWRITE(nServices);

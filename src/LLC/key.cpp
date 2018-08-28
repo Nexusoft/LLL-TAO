@@ -334,11 +334,8 @@ namespace LLC
 
 
     /* Based on standard set of byte data as input of any length. Checks for DER encoding */
-    static Mutex_t MUTEX;
     bool CKey::Sign(const std::vector<uint8_t> vchData, std::vector<uint8_t>& vchSig)
     {
-        LOCK(MUTEX);
-        
         uint32_t nSize = ECDSA_size(pkey);
         vchSig.resize(nSize); // Make sure it is big enough
 
