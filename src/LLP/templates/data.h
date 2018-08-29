@@ -144,8 +144,6 @@ namespace LLP
                         /* Remove Connection if it has Timed out or had any Errors. */
                         if(CONNECTIONS[nIndex]->Errors())
                         {
-                            printf("socket error:  %s\n", CONNECTIONS[nIndex]->Error());
-
                             CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_ERRORS);
 
                             Remove(nIndex);

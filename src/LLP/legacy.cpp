@@ -119,17 +119,21 @@ namespace LLP
         {
 
             if(nLastPing + 1 < UnifiedTimestamp()) {
-                RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
 
-                nLastPing = UnifiedTimestamp();
+                for(int i = 0; i < GetArg("-ping", 1); i++)
+                {
+                    RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
 
-                mapLatencyTracker.emplace(nSessionID, Timer());
-                mapLatencyTracker[nSessionID].Start();
+                    nLastPing = UnifiedTimestamp();
 
-                PushMessage("ping", nSessionID);
+                    mapLatencyTracker.emplace(nSessionID, Timer());
+                    mapLatencyTracker[nSessionID].Start();
 
-                if(fListen)
-                    test->WriteSample(nSessionID, UnifiedTimestamp(true));
+                    PushMessage("ping", nSessionID);
+
+                    if(fListen)
+                        test->WriteSample(nSessionID, UnifiedTimestamp(true));
+                }
 
                 if(!fListen)
                 {
@@ -145,7 +149,7 @@ namespace LLP
                     tx.Sign(sigChain.Generate(nSessionID + 1, "PIN"));
 
                     //tx.print();
-                    for(int i = 0; i < GetArg("-tx", 1) * 2; i+=2)
+                    for(int i = 0; i < GetArg("-tx", 1); i++)
                     {
                         PushMessage("tritium", tx);
                     }
