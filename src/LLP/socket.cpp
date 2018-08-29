@@ -39,6 +39,9 @@ namespace LLP
     /* Returns the error of socket if any */
     int Socket::Error()
     {
+        if (nError == WSAEWOULDBLOCK || nError == WSAEMSGSIZE || nError == WSAEINTR || nError == WSAEINPROGRESS)
+            return 0;
+
         return nError;
     }
 
