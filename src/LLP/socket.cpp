@@ -170,12 +170,12 @@ namespace LLP
         {
             // error
             int nErr = GetLastError();
-            if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
-            {
+            //if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
+            //{
                 printf("socket recv error %d %s\n", nErr, strerror(nErr));
 
-                Disconnect();
-            }
+            //    Disconnect();
+            //}
 
             return -1;
         }
@@ -200,8 +200,8 @@ namespace LLP
         {
             // error
             int nErr = GetLastError();
-            if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
-                Disconnect();
+            //if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
+            //    Disconnect();
 
             printf("socket send error %d %s\n", nErr, strerror(nErr));
 

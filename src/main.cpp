@@ -96,9 +96,18 @@ int main(int argc, char** argv)
             for(auto strNode : mapMultiArgs["-addnode"])
                 SERVER->AddConnection(strNode, nPort);
 
+    Timer TIMER;
+    TIMER.Start();
     while(true)
     {
-        Sleep(10);
+        Sleep(10000);
+
+        double TPS = (double)TAO::Ledger::TX_PROCESSED / TIMER.Elapsed();
+
+        printf("===== LLC Processing %f sigs/s\n", TPS);
+
+        TIMER.Reset();
+        TAO::Ledger::TX_PROCESSED = 0;
     }
 
     return 0;
