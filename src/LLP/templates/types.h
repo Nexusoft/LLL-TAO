@@ -407,16 +407,20 @@ namespace LLP
         {
             TIMER.Reset();
 
-            return SOCKET.Read(DATA, nBytes);
+            int nRead = SOCKET.Read(DATA, nBytes);
+            if(nRead < 0)
+                Disconnect();
+
+            return nRead;
         }
 
 
         /* Lower level network communications: Write. Interacts with OS sockets. */
-        int Write(std::vector<uint8_t> DATA)
+        void Write(std::vector<uint8_t> DATA)
         {
-            //TIMER.Reset();
-
-            return SOCKET.Write(DATA, DATA.size());
+            int nWrite = SOCKET.Write(DATA, DATA.size());
+            if(nWrite < 0)
+                Disconnect();
         }
 
     };
