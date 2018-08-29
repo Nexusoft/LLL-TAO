@@ -308,12 +308,16 @@ namespace LLP
         bool fOUTGOING;
 
 
+        /* Flag to determine if the connection is active. */
+        bool fCONNECTED;
+
+
         /* Build Base Connection with no parameters */
-        BaseConnection() : SOCKET(), INCOMING(), DDOS(NULL), fDDOS(false), fOUTGOING(false) { INCOMING.SetNull(); }
+        BaseConnection() : SOCKET(), INCOMING(), DDOS(NULL), fDDOS(false), fOUTGOING(false), fCONNECTED(false) { INCOMING.SetNull(); }
 
 
         /* Build Base Connection with all Parameters. */
-        BaseConnection( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false) : SOCKET(SOCKET_IN), INCOMING(), DDOS(DDOS_IN), fDDOS(isDDOS),  fOUTGOING(fOutgoing) { TIMER.Start(); }
+        BaseConnection( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false) : SOCKET(SOCKET_IN), INCOMING(), DDOS(DDOS_IN), fDDOS(isDDOS),  fOUTGOING(fOutgoing), fCONNECTED(false) { TIMER.Start(); }
 
         virtual ~BaseConnection() { Disconnect(); }
 
@@ -324,6 +328,10 @@ namespace LLP
 
         /* Give the message (c-string) of the error in the socket. */
         char* Error(){ return strerror(SOCKET.Error()); }
+
+
+        /* Connection flag to determine if socket should be handled if not connected. */
+        bool Connected() { return fCONNECTED; }
 
 
         /* Determines if nTime seconds have elapsed since last Read / Write. */
@@ -375,6 +383,7 @@ namespace LLP
             {
                 /// debug print
                 printf("***** Node Connected to %s\n", addrConnect.ToString().c_str());
+                fCONNECTED = true;
 
                 return true;
             }
@@ -387,6 +396,8 @@ namespace LLP
         void Disconnect()
         {
             SOCKET.Close();
+
+            fCONNECTED = false;
         }
 
 
