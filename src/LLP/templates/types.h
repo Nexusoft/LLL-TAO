@@ -319,7 +319,7 @@ namespace LLP
 
 
         /* Checks for any flags in the Error Handle. */
-        bool Errors(){ return SOCKET.Error() == 0; }
+        bool Errors(){ return SOCKET.Error() < 0; }
 
 
         /* Give the message (c-string) of the error in the socket. */
