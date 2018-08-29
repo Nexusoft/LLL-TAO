@@ -28,6 +28,7 @@ namespace TAO
     namespace Ledger
     {
 
+        uint32_t TX_PROCESSED = 0;
 
         /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
         bool TritiumTransaction::IsValid() const
@@ -37,6 +38,8 @@ namespace TAO
 
             LLC::CKey keyVerify(NID_brainpoolP512t1, 64);
             keyVerify.SetPubKey(vchPubKey);
+
+            TX_PROCESSED ++;
 
             uint512_t hashTx = GetHash();
             return keyVerify.Verify(hashTx.GetBytes(), vchSig);
