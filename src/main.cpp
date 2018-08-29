@@ -28,6 +28,9 @@
 
 #include "TAO/Ledger/types/include/transaction.h"
 
+#include <signal.h>
+
+
 class CAccount
 {
 public:
@@ -82,8 +85,17 @@ class RegisterDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
 
 TestDB* test;
 
+/* Catch Signal Handler functio */
+void signal_callback_handler(int signum){
+
+        printf("Caught signal SIGPIPE %d\n",signum);
+}
+
 int main(int argc, char** argv)
 {
+    //this is needed for specific operating systems that terminate on SIGPIPE
+    signal(SIGPIPE, signal_callback_handler);
+
     ParseParameters(argc, argv);
 
     test = new TestDB("r+", "db1");

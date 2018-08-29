@@ -165,17 +165,15 @@ namespace LLP
     int Socket::Read(std::vector<uint8_t> &vData, size_t nBytes)
     {
         char pchBuf[nBytes];
-        int nRead = recv(nSocket, pchBuf, nBytes, MSG_DONTWAIT);
+        int nRead = recv(nSocket, pchBuf, nBytes, 0);
         if (nRead < 0)
         {
             // error
             int nErr = GetLastError();
-            //if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
-            //{
-                printf("socket recv error %d %s\n", nErr, strerror(nErr));
+            if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
+                Disconnect();
 
-            //    Disconnect();
-            //}
+            printf("socket recv error %d %s\n", nErr, strerror(nErr));
 
             return -1;
         }
@@ -193,25 +191,19 @@ namespace LLP
         char pchBuf[nBytes];
         memcpy(pchBuf, &vData[0], nBytes);
 
-        int nSent = send(nSocket, pchBuf, nBytes, MSG_NOSIGNAL | MSG_DONTWAIT);
+        int nSent = send(nSocket, pchBuf, nBytes, 0);
 
         /* If there were any errors, handle them gracefully. */
         if(nSent < 0)
         {
             // error
             int nErr = GetLastError();
-            //if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
-            //    Disconnect();
+            if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
+                Disconnect();
 
             printf("socket send error %d %s\n", nErr, strerror(nErr));
 
             return -1;
-        }
-        else if(nSent != vData.size())
-        {
-            vData.erase(vData.begin(), vData.begin() + nSent);
-
-            return Write(vData, vData.size());
         }
 
         return nSent;
