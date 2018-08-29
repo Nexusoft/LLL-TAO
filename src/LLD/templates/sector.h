@@ -487,7 +487,7 @@ namespace LLD
                     if(fDestruct)
                         return;
 
-                    Sleep(1, true);
+                    Sleep(1);
 
                     continue;
                 }
@@ -532,6 +532,9 @@ namespace LLD
 
                         /* Setup the Batch data write. */
                         vBatch.insert(vBatch.end(), vObj.second.begin(), vObj.second.end());
+
+                        /* Update the Cache Pool. */
+                        cachePool->SetState(vObj.first, MEMORY_ONLY);
                     }
                     else
                     {
@@ -564,7 +567,7 @@ namespace LLD
                         SectorKeys->Put(cKey);
 
                         /* Update the Cache Pool. */
-                        //cachePool->SetState(vObj.first, MEMORY_ONLY);
+                        cachePool->SetState(vObj.first, MEMORY_ONLY);
                     }
                 }
 

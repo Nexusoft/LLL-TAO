@@ -71,7 +71,6 @@ namespace LLP
 
             CONNECTIONS[nSlot] = new ProtocolType(SOCKET, DDOS, fDDOS);
             CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
-            CONNECTIONS[nSlot]->fCONNECTED = true;
 
             nConnections ++;
         }
@@ -90,8 +89,6 @@ namespace LLP
 
             if(!CONNECTIONS[nSlot]->Connect(strAddress, nPort))
             {
-                printf("Socket Failure %s\n", strAddress.c_str());
-
                 delete CONNECTIONS[nSlot];
                 CONNECTIONS[nSlot] = NULL;
 
@@ -102,8 +99,6 @@ namespace LLP
                 DDOS -> cSCORE += 1;
 
             CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
-            CONNECTIONS[nSlot]->fCONNECTED = true;
-
             nConnections ++;
 
             return true;
@@ -111,7 +106,7 @@ namespace LLP
 
         /* Removes given connection from current Data Thread.
             Happens with a timeout / error, graceful close, or disconnect command. */
-        void RemoveConnection(int index)
+        void Remove(int index)
         {
             CONNECTIONS[index]->Disconnect();
 
@@ -145,26 +140,26 @@ namespace LLP
                         if(!CONNECTIONS[nIndex])
                             continue;
 
-                        /* Skip over Connection if not Connected. */
-                        if(!CONNECTIONS[nIndex]->Connected())
+
+                        /* Remove Connection if it has Timed out or had any Errors. */
+                        if(CONNECTIONS[nIndex]->Errors())
+                        {
+                            printf("socket error:  %s\n", CONNECTIONS[nIndex]->Error());
+
+                            CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_ERRORS);
+
+                            Remove(nIndex);
+
                             continue;
+                        }
+
 
                         /* Remove Connection if it has Timed out or had any Errors. */
                         if(CONNECTIONS[nIndex]->Timeout(TIMEOUT))
                         {
                             CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_TIMEOUT);
 
-                            RemoveConnection(nIndex);
-
-                            continue;
-                        }
-
-                        /* Remove Connection if it has Timed out or had any Errors. */
-                        if(CONNECTIONS[nIndex]->Errors())
-                        {
-                            CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_ERRORS);
-
-                            RemoveConnection(nIndex);
+                            Remove(nIndex);
 
                             continue;
                         }
@@ -182,7 +177,7 @@ namespace LLP
                             {
                                 CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_DDOS);
 
-                                RemoveConnection(nIndex);
+                                Remove(nIndex);
 
                                 continue;
                             }
@@ -200,16 +195,16 @@ namespace LLP
                         {
 
                             /* Packet Process return value of False will flag Data Thread to Disconnect. */
-                            if(!CONNECTIONS[nIndex] -> ProcessPacket())
+                            if(!CONNECTIONS[nIndex]->ProcessPacket())
                             {
                                 CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_FORCE);
 
-                                RemoveConnection(nIndex);
+                                Remove(nIndex);
 
                                 continue;
                             }
 
-                            CONNECTIONS[nIndex] -> ResetPacket();
+                            CONNECTIONS[nIndex]->ResetPacket();
 
                             if(fMETER)
                                 REQUESTS++;
@@ -225,7 +220,7 @@ namespace LLP
 
                         CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_ERRORS);
 
-                        RemoveConnection(nIndex);
+                        Remove(nIndex);
                     }
                 }
             }

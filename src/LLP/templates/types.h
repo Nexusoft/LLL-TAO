@@ -300,10 +300,6 @@ namespace LLP
         DDOS_Filter*   DDOS;
 
 
-        /* Connected Flag. **/
-        bool fCONNECTED;
-
-
         /* Flag to Determine if DDOS is Enabled. */
         bool fDDOS;
 
@@ -313,25 +309,25 @@ namespace LLP
 
 
         /* Build Base Connection with no parameters */
-        BaseConnection() : SOCKET(), INCOMING(), DDOS(NULL), fCONNECTED(false), fDDOS(false), fOUTGOING(false) { INCOMING.SetNull(); }
+        BaseConnection() : SOCKET(), INCOMING(), DDOS(NULL), fDDOS(false), fOUTGOING(false) { INCOMING.SetNull(); }
 
 
         /* Build Base Connection with all Parameters. */
-        BaseConnection( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false) : SOCKET(SOCKET_IN), INCOMING(), DDOS(DDOS_IN), fCONNECTED(false), fDDOS(isDDOS),  fOUTGOING(fOutgoing) { TIMER.Start(); }
+        BaseConnection( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false) : SOCKET(SOCKET_IN), INCOMING(), DDOS(DDOS_IN), fDDOS(isDDOS),  fOUTGOING(fOutgoing) { TIMER.Start(); }
 
         virtual ~BaseConnection() { Disconnect(); }
 
 
         /* Checks for any flags in the Error Handle. */
-        bool Errors(){ return !SOCKET.IsValid(); }
+        bool Errors(){ return SOCKET.Error() == 0; }
+
+
+        /* Give the message (c-string) of the error in the socket. */
+        char* Error(){ return strerror(SOCKET.Error()); }
 
 
         /* Determines if nTime seconds have elapsed since last Read / Write. */
         bool Timeout(uint32_t nTime){ return (TIMER.Elapsed() >= nTime); }
-
-
-        /* Determines if Connected or Not. */
-        bool Connected(){ return fCONNECTED; }
 
 
         /* Handles two types of packets, requests which are of header >= 128, and data which are of header < 128. */
@@ -351,7 +347,7 @@ namespace LLP
                 printf("***** Node Sent Message (%u, %u)\n", PACKET.LENGTH, PACKET.GetBytes().size());
 
             if(GetArg("-verbose", 0) >= 5) {
-                printf("***** Hex Message Dump\n");
+                printf("***** Pakcet Dump: ");
 
                 PrintHex(PACKET.GetBytes());
             }
@@ -380,7 +376,6 @@ namespace LLP
                 /// debug print
                 printf("***** Node Connected to %s\n", addrConnect.ToString().c_str());
 
-                fCONNECTED = true;
                 return true;
             }
 
@@ -391,11 +386,7 @@ namespace LLP
         /* Disconnect Socket. Cleans up memory usage to prevent "memory runs" from poor memory management. */
         void Disconnect()
         {
-            if(!fCONNECTED)
-                return;
-
-            SOCKET.Disconnect();
-            fCONNECTED = false;
+            SOCKET.Close();
         }
 
 
@@ -407,20 +398,16 @@ namespace LLP
         {
             TIMER.Reset();
 
-            int nRead = SOCKET.Read(DATA, nBytes);
-            if(nRead < 0)
-                Disconnect();
-
-            return nRead;
+            return SOCKET.Read(DATA, nBytes);
         }
 
 
         /* Lower level network communications: Write. Interacts with OS sockets. */
-        void Write(std::vector<uint8_t> DATA)
+        int Write(std::vector<uint8_t> DATA)
         {
-            int nWrite = SOCKET.Write(DATA, DATA.size());
-            if(nWrite < 0)
-                Disconnect();
+            TIMER.Reset();
+
+            return SOCKET.Write(DATA, DATA.size());
         }
 
     };
