@@ -53,14 +53,15 @@ namespace LLP
         Socket(CService addrDest);
 
 
-        /** IsValid
+
+        /** Error
          *
-         *  Checks if the socket is in a valid state.
+         *  Returns the error of socket if any
          *
-         *  @return true if the socket is in a valid state.
+         *  @return error code of the socket
          *
          **/
-        bool IsValid();
+        int Error();
 
 
         /** Connect
@@ -85,12 +86,14 @@ namespace LLP
         int Available();
 
 
-        /** Disconnect
+        /** Close
          *
          *  Clear resources associated with socket and return to invalid state.
          *
+         *  @param[in] nError The optional error code (default: INVALID_SOCKET)
+         *
          **/
-        void Disconnect();
+        void Close(int nError = INVALID_SOCKET);
 
 
         /** Read
