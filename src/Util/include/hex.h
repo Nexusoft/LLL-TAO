@@ -80,7 +80,6 @@ std::string HexStr(const T itbegin, const T itend, bool fSpaces=false)
     static char hexmap[16] = { '0', '1', '2', '3', '4', '5', '6', '7',
                             '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
     rv.reserve((itend-itbegin)*3);
-    rv.push_back('[');
 
     int nTotal = 0;
     for(T it = itbegin; it < itend; ++it, nTotal++)
@@ -91,7 +90,6 @@ std::string HexStr(const T itbegin, const T itend, bool fSpaces=false)
         rv.push_back(hexmap[val>>4]);
         rv.push_back(hexmap[val&15]);
     }
-    rv.push_back(']');
 
     return std::string(rv.begin(), rv.end());
 }

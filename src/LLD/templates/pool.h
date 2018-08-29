@@ -95,19 +95,19 @@ namespace LLD
     public:
 
         /** Base Constructor.
-        *
-        * MAX_CACHE_SIZE default value is 32 MB
-        * MAX_CACHE_BUCKETS default value is 65,539 (2 bytes)
-        *
-        */
+         *
+         * MAX_CACHE_SIZE default value is 32 MB
+         * MAX_CACHE_BUCKETS default value is 65,539 (2 bytes)
+         *
+         */
         MemCachePool() : fDestruct(false), MAX_CACHE_SIZE(1024 * 1024), nCurrentSize(0), CACHE_THREAD(boost::bind(&MemCachePool::CacheCleaner, this)) {}
 
 
         /** Cache Size Constructor
-        *
-        * @param[in] nCacheSizeIn The maximum size of this Cache Pool
-        *
-        */
+         *
+         * @param[in] nCacheSizeIn The maximum size of this Cache Pool
+         *
+         */
         MemCachePool(uint32_t nCacheSizeIn) : fDestruct(false), MAX_CACHE_SIZE(nCacheSizeIn), nCurrentSize(0), CACHE_THREAD(boost::bind(&MemCachePool::CacheCleaner, this)) {}
 
 
@@ -121,11 +121,11 @@ namespace LLD
 
 
         /** Get the assigned bucket
-        *
-        * @param[in] vKey The binary data of key
-        *
-        * @return The bucket number through serializaing first two bytes of key.
-        */
+         *
+         * @param[in] vKey The binary data of key
+         *
+         * @return The bucket number through serializaing first two bytes of key.
+         */
         uint32_t GetBucket(std::vector<uint8_t> vKey) const
         {
             uint64_t nBucket = 0;
@@ -137,12 +137,12 @@ namespace LLD
 
 
         /** Check if data exists
-        *
-        * @param[in] vKey The binary data of the key
-        *
-        * @return True/False whether pool contains data by index
-        *
-        */
+         *
+         * @param[in] vKey The binary data of the key
+         *
+         * @return True/False whether pool contains data by index
+         *
+         */
         bool Has(std::vector<uint8_t> vKey, uint32_t nBucket = MAX_CACHE_POOL_BUCKETS + 1) const
         {
             if(nBucket == MAX_CACHE_POOL_BUCKETS + 1)
@@ -153,13 +153,13 @@ namespace LLD
 
 
         /** Get the data by index
-        *
-        * @param[in] vKey The binary data of the key
-        * @param[out] vData The binary data of the cached record
-        *
-        * @return True if object was found, false if none found by index.
-        *
-        */
+         *
+         * @param[in] vKey The binary data of the key
+         * @param[out] vData The binary data of the cached record
+         *
+         * @return True if object was found, false if none found by index.
+         *
+         */
         bool Get(std::vector<uint8_t> vKey, std::vector<uint8_t>& vData)
         {
             LOCK(MUTEX);
@@ -180,15 +180,15 @@ namespace LLD
 
 
         /** Get the Bulk Objects in the Pool
-        *
-        * @param[out] vObjects A list of objects from the pool in binary form
-        * @param[in] nLimit The limit to the number of indexes to get (0 = unlimited)
-        *
-        * @return Returns true if there are indexes, false if none found.
-        *
-        * TODO: Determine how data type will be carried forward for serializaing
-        *
-        */
+         *
+         * @param[out] vObjects A list of objects from the pool in binary form
+         * @param[in] nLimit The limit to the number of indexes to get (0 = unlimited)
+         *
+         * @return Returns true if there are indexes, false if none found.
+         *
+         * TODO: Determine how data type will be carried forward for serializaing
+         *
+         */
         bool Get(std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> >& vObjects, uint8_t nState = MEMORY_ONLY, uint32_t nLimit = 0)
         {
             LOCK(MUTEX);
@@ -212,15 +212,15 @@ namespace LLD
 
 
         /** Get the indexes in Pool
-        *
-        * @param[out] vIndexes A list of indexes from the pool in binary form
-        * @param[in] nLimit The limit to the number of indexes to get (0 = unlimited)
-        *
-        * @return Returns true if there are indexes, false if none found.
-        *
-        * TODO: Determine how data type will be carried forward for serializaing
-        *
-        */
+         *
+         * @param[out] vIndexes A list of indexes from the pool in binary form
+         * @param[in] nLimit The limit to the number of indexes to get (0 = unlimited)
+         *
+         * @return Returns true if there are indexes, false if none found.
+         *
+         * TODO: Determine how data type will be carried forward for serializaing
+         *
+         */
         bool GetIndexes(std::vector< std::vector<uint8_t> >& vIndexes, uint8_t nState = MEMORY_ONLY, uint32_t nLimit = 0)
         {
             LOCK(MUTEX);
@@ -244,13 +244,13 @@ namespace LLD
 
 
         /** Add data in the Pool
-        *
-        * @param[in] vKey The key in binary form
-        * @param[in] vData The input data in binary form
-        * @param[in] nState The state of the object being written
-        * @param[in] nTimestamp The Time record was Put (ms)
-        *
-        */
+         *
+         * @param[in] vKey The key in binary form
+         * @param[in] vData The input data in binary form
+         * @param[in] nState The state of the object being written
+         * @param[in] nTimestamp The Time record was Put (ms)
+         *
+         */
         void Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData, uint8_t nState = MEMORY_ONLY, uint64_t nTimestamp = Timestamp(true))
         {
             LOCK(MUTEX);
@@ -274,10 +274,10 @@ namespace LLD
 
 
         /** Get Disk Buffer.
-        *
-        *  Returns the current disk buffer ready for writing.
-        *
-        */
+         *
+         *  Returns the current disk buffer ready for writing.
+         *
+         */
         bool GetDiskBuffer(std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> >& vBuffer)
         {
             LOCK(MUTEX);
@@ -293,10 +293,10 @@ namespace LLD
 
 
         /** Get Transaction Buffer.
-        *
-        *  Returns the current disk buffer ready for writing.
-        *
-        */
+         *
+         *  Returns the current disk buffer ready for writing.
+         *
+         */
         bool GetTransactionBuffer(std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> >& vBuffer)
         {
             LOCK(MUTEX);
@@ -312,29 +312,34 @@ namespace LLD
 
 
         /** Set the state of the data in cache
-        *
-        * @param[in] vKey The key in binary form
-        * @param[in] nState The new state of the object.
-        *
-        */
-        void SetState(std::vector<uint8_t> vKey, uint16_t nState)
+         *
+         * @param[in] vKey The key in binary form
+         * @param[in] nState The new state of the object.
+         *
+         */
+        void SetState(std::vector<uint8_t> vKey, uint8_t nState)
         {
             auto nBucket = GetBucket(vKey);
             if(!Has(vKey, nBucket))
+            {
+                printf("failed to set state... no key...");
                 return;
+            }
 
             mapObjects[nBucket][vKey].Timestamp = Timestamp(true);
             mapObjects[nBucket][vKey].State = nState;
+
+            printf("Set state MEMORY ONLY %s\n", nState == MEMORY_ONLY ? "TRUE" : "FALSE");
         }
 
 
         /** Force Remove Object by Index
-        *
-        * @param[in] vKey Binary Data of the Key
-        *
-        * @return True on successful removal, false if it fails
-        *
-        */
+         *
+         * @param[in] vKey Binary Data of the Key
+         *
+         * @return True on successful removal, false if it fails
+         *
+         */
         bool Remove(std::vector<uint8_t> vKey)
         {
             LOCK(MUTEX);
@@ -356,14 +361,14 @@ namespace LLD
 
 
         /** Force Remove Object by Index
-        *
-        * @param[in] vKey Binary Data of the Key
-        * @param[in] nState The State objects to remove
-        *
-        *
-        * NOTE: This is high complexity, use sparingly
-        *
-        */
+         *
+         * @param[in] vKey Binary Data of the Key
+         * @param[in] nState The State objects to remove
+         *
+         *
+         * NOTE: This is high complexity, use sparingly
+         *
+         */
         void Remove(uint8_t nState)
         {
             std::vector< std::vector<uint8_t> > vKeys;
@@ -381,9 +386,9 @@ namespace LLD
 
 
         /** Clean up older data from the Cache Pool to keep within Cache Limits.
-        *
-        *  This is a Worker Thread.
-        */
+         *
+         *  This is a Worker Thread.
+         */
         void CacheCleaner()
         {
             while(!fDestruct)
@@ -391,6 +396,7 @@ namespace LLD
                 /* Trim off less used objects if reached cache limits. */
                 if(nCurrentSize > MAX_CACHE_SIZE)
                 {
+                    printf(">>>>> LLD Cache Pool. Clearing %u Bytes\n", nCurrentSize - MAX_CACHE_SIZE);
                     std::vector< std::pair< std::vector<uint8_t>, CachedData > > vKeys;
                     for(int nBucket = 0; nBucket < MAX_CACHE_POOL_BUCKETS; nBucket++)
                     {
@@ -403,6 +409,7 @@ namespace LLD
                     }
 
                     /* Sort by earliest timestamp and remove until cache is balanced. */
+                    int nRemoved = 0;
                     std::sort(vKeys.begin(), vKeys.end(), SortByTime);
                     for(auto obj : vKeys)
                     {
@@ -410,10 +417,14 @@ namespace LLD
                             break;
 
                         Remove(obj.first);
+
+                        nRemoved++;
                     }
+
+                    printf(">>>>> LLD Cache Pool of %u keys, Removed %u elements. Size allocation now %u Bytes\n", vKeys.size(), nRemoved, nCurrentSize);
                 }
 
-                Sleep(1000);
+                Sleep(100);
             }
         }
     };
