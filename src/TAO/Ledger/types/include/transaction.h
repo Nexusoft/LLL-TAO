@@ -25,6 +25,8 @@ namespace TAO
     namespace Ledger
     {
 
+        extern uint32_t TX_PROCESSED;
+
         /** Tritium Transaction Object.
 
             Simple data type class that holds the transaction version, nextHash, and ledger data.
