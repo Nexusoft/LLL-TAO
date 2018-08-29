@@ -39,10 +39,7 @@ namespace LLP
     /* Returns the error of socket if any */
     int Socket::Error()
     {
-        if(nSocket >= 0)
-            return 0;
-
-        return nSocket;
+        return nError;
     }
 
 
@@ -153,10 +150,10 @@ namespace LLP
 
 
     /* Clear resources associated with socket and return to invalid state. */
-    void Socket::Close(int nError)
+    void Socket::Close()
     {
         close(nSocket);
-        nSocket = nError;
+        nSocket = INVALID_SOCKET;
     }
 
 
@@ -167,13 +164,11 @@ namespace LLP
         int nRead = recv(nSocket, pchBuf, nBytes, 0);
         if (nRead < 0)
         {
-            int nErr = GetLastError();
-            if(GetArg("-verbose", 0) > 2)
-                printf("***** Node Read Failed %s (%i %s)\n", addr.ToString().c_str(), nErr, strerror(nErr));
+            nError = GetLastError();
+            if(GetArg("-verbose", 0) >= 2)
+                printf("xxxxx Node Read Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
 
-            Close(nErr);
-
-            return nErr;
+            return nError;
         }
 
         if(nRead > 0)
@@ -194,13 +189,11 @@ namespace LLP
         /* If there were any errors, handle them gracefully. */
         if(nSent < 0)
         {
-            int nErr = GetLastError();
-            if(GetArg("-verbose", 0) > 2)
-                printf("***** Node Write Failed %s (%i %s)\n", addr.ToString().c_str(), nErr, strerror(nErr));
+            nError = GetLastError();
+            if(GetArg("-verbose", 0) >= 2)
+                printf("xxxxx Node Write Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
 
-            Close(nErr);
-
-            return nErr;
+            return nError;
         }
 
         return nSent;
