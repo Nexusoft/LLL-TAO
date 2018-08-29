@@ -36,11 +36,13 @@ namespace LLP
     }
 
 
-    /* Checks if the socket is in a valid state */
-    bool Socket::IsValid()
+    /* Returns the error of socket if any */
+    int Socket::Error()
     {
-        return !(nSocket == INVALID_SOCKET ||
-                 nSocket == SOCKET_ERROR);
+        if(nSocket >= 0)
+            return 0;
+
+        return nSocket;
     }
 
 
@@ -150,14 +152,11 @@ namespace LLP
     }
 
 
-    /* Clear resources associated with socket and return to invalid state */
-    void Socket::Disconnect()
+    /* Clear resources associated with socket and return to invalid state. */
+    void Socket::Close(int nError)
     {
-        if(!IsValid())
-            return;
-
         close(nSocket);
-        nSocket = INVALID_SOCKET;
+        nSocket = nError;
     }
 
 
@@ -168,14 +167,13 @@ namespace LLP
         int nRead = recv(nSocket, pchBuf, nBytes, 0);
         if (nRead < 0)
         {
-            // error
             int nErr = GetLastError();
-            if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
-                Disconnect();
+            if(GetArg("-verbose", 0) > 2)
+                printf("***** Node Read Failed %s (%i %s)\n", addr.ToString().c_str(), nErr, strerror(nErr));
 
-            printf("socket recv error %d %s\n", nErr, strerror(nErr));
+            Close(nErr);
 
-            return -1;
+            return nErr;
         }
 
         if(nRead > 0)
@@ -196,14 +194,13 @@ namespace LLP
         /* If there were any errors, handle them gracefully. */
         if(nSent < 0)
         {
-            // error
             int nErr = GetLastError();
-            if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
-                Disconnect();
+            if(GetArg("-verbose", 0) > 2)
+                printf("***** Node Write Failed %s (%i %s)\n", addr.ToString().c_str(), nErr, strerror(nErr));
 
-            printf("socket send error %d %s\n", nErr, strerror(nErr));
+            Close(nErr);
 
-            return -1;
+            return nErr;
         }
 
         return nSent;
