@@ -71,6 +71,7 @@ namespace LLP
 
             CONNECTIONS[nSlot] = new ProtocolType(SOCKET, DDOS, fDDOS);
             CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
+            CONNECTIONS[nSlot]->fCONNECTED = true;
 
             nConnections ++;
         }
@@ -137,7 +138,7 @@ namespace LLP
                         Sleep(1);
 
                         /* Skip over Inactive Connections. */
-                        if(!CONNECTIONS[nIndex])
+                        if(!CONNECTIONS[nIndex] || !CONNECTIONS[nIndex]->Connected())
                             continue;
 
 
