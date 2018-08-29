@@ -197,7 +197,10 @@ namespace LLD
 
 
         /* Get the keys for this sector database from the keychain.  */
-        std::vector< std::vector<uint8_t> > GetKeys() { return SectorKeys->GetKeys(); }
+        std::vector< std::vector<uint8_t> > GetKeys()
+        {
+            return SectorKeys->GetKeys();
+        }
 
 
         template<typename Key>
@@ -561,7 +564,7 @@ namespace LLD
                         SectorKeys->Put(cKey);
 
                         /* Update the Cache Pool. */
-                        cachePool->SetState(vObj.first, MEMORY_ONLY);
+                        //cachePool->SetState(vObj.first, MEMORY_ONLY);
                     }
                 }
 
