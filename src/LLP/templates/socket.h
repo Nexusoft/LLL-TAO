@@ -31,6 +31,9 @@ namespace LLP
         /** The socket file identifier. **/
         int nSocket;
 
+        /** The error codes for socket. **/
+        int nError;
+
     public:
 
         /** The address of this connection. */
@@ -38,11 +41,11 @@ namespace LLP
 
 
         /** The default constructor. **/
-        Socket() : nSocket() {}
+        Socket() : nSocket(INVALID_SOCKET), nError(0) {}
 
 
         /** The socket constructor. **/
-        Socket(int nSocketIn, CAddress addrIn) : nSocket(nSocketIn), addr(addrIn) {}
+        Socket(int nSocketIn, CAddress addrIn) : nSocket(nSocketIn), nError(0), addr(addrIn) {}
 
 
         /** Constructor for Address
@@ -90,10 +93,8 @@ namespace LLP
          *
          *  Clear resources associated with socket and return to invalid state.
          *
-         *  @param[in] nError The optional error code (default: INVALID_SOCKET)
-         *
          **/
-        void Close(int nError = INVALID_SOCKET);
+        void Close();
 
 
         /** Read
