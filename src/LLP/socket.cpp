@@ -191,8 +191,15 @@ namespace LLP
         if(nSent < 0)
         {
             nError = GetLastError();
-            if(Error() && GetArg("-verbose", 0) >= 2)
-                printf("xxxxx Node Write Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
+            if(Error())
+            {
+                if(GetArg("-verbose", 0) >= 2)
+                    printf("xxxxx Node Write Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
+
+                vSendBuffer.clear();
+
+                return;
+            }
 
             vSendBuffer.insert(vSendBuffer.end(), vData.begin(), vData.end());
         }
