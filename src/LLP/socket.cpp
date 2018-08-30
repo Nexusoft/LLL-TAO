@@ -188,8 +188,10 @@ namespace LLP
 
         if(nAvailable > 0)
         {
-            char pchBuf[nAvailable];
-            int nRead = recv(nSocket, pchBuf, nAvailable, 0); //block waiting for data
+            uint32_t nBytes = std::min((uint32_t)nAvailable, 512u);
+
+            char pchBuf[nBytes];
+            int nRead = recv(nSocket, pchBuf, nBytes, MSG_DONTWAIT);
             if (nRead < 0)
             {
                 nError = GetLastError();
@@ -202,18 +204,19 @@ namespace LLP
             std::copy((uint8_t*)pchBuf, (uint8_t*)pchBuf + nRead, vData.begin());
 
             vRecvBuffer.insert(vRecvBuffer.end(), vData.begin(), vData.end());
-
-            return;
         }
 
         /* Return if no data to send. */
         if(vSendBuffer.size() == 0)
             return;
 
-        char pchBuf[vSendBuffer.size()];
-        std::copy(&vSendBuffer[0], &vSendBuffer[0] + vSendBuffer.size(), pchBuf);
+        /* Only write 512 bytes per cycle. */
+        uint32_t nBytes = std::min((uint32_t)vSendBuffer.size(), 512u);
 
-        int nSent = send(nSocket, pchBuf, vSendBuffer.size(), MSG_NOSIGNAL | MSG_DONTWAIT );
+        char pchBuf[nBytes];
+        std::copy(&vSendBuffer[0], &vSendBuffer[0] + nBytes, pchBuf);
+
+        int nSent = send(nSocket, pchBuf, nBytes, MSG_NOSIGNAL | MSG_DONTWAIT );
 
         /* If there were any errors, handle them gracefully. */
         if(nSent < 0)
