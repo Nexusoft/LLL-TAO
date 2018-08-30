@@ -141,7 +141,14 @@ namespace LLP
     /* Poll the socket to check for available data */
     int Socket::Available()
     {
-        return vRecvBuffer.size();
+        int nAvailable = 0;
+        #ifdef WIN32
+            ioctlsocket(nSocket, FIONREAD, &nAvailable)
+        #else
+            ioctl(nSocket, FIONREAD, &nAvailable);
+        #endif
+
+        return nAvailable;
     }
 
 
@@ -156,78 +163,49 @@ namespace LLP
     /* Read data from the socket buffer non-blocking */
     int Socket::Read(std::vector<uint8_t> &vData, size_t nBytes)
     {
-        /* Ensure that the buffer size is large enough. */
-        if(nBytes > vRecvBuffer.size())
-            nBytes = vRecvBuffer.size();
-
-        /* Read the data from the stored buffer. */
-        //std::copy(vData, vRecvBuffer.begin(), vRecvBuffer.begin() + nBytes);
-        std::copy(&vRecvBuffer[0], &vRecvBuffer[0] + nBytes, vData.begin());
-        vRecvBuffer.erase(vRecvBuffer.begin(), vRecvBuffer.begin() + nBytes);
-
-        return nBytes;
-    }
-
-
-    /* Write data into the write buffer non-blocking */
-    void Socket::Write(std::vector<uint8_t> vData, size_t nBytes)
-    {
-        vSendBuffer.insert(vSendBuffer.end(), vData.begin(), vData.begin() + nBytes);
-    }
-
-
-    /* Flushes the data from the socket buffer */
-    void Socket::Buffer()
-    {
-        int nAvailable = 0;
-        #ifdef WIN32
-            ioctlsocket(nSocket, FIONREAD, &nAvailable)
-        #else
-            ioctl(nSocket, FIONREAD, &nAvailable);
-        #endif
-
-        if(nAvailable > 0)
+        char pchBuf[nBytes];
+        int nRead = recv(nSocket, pchBuf, nBytes, MSG_DONTWAIT);
+        if (nRead < 0)
         {
-            uint32_t nBytes = std::min((uint32_t)nAvailable, 512u);
+            nError = GetLastError();
+            if(GetArg("-verbose", 0) >= 2)
+                printf("xxxxx Node Read Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
 
-            char pchBuf[nBytes];
-            int nRead = recv(nSocket, pchBuf, nBytes, MSG_DONTWAIT);
-            if (nRead < 0)
-            {
-                nError = GetLastError();
-                if(Error() && GetArg("-verbose", 0) >= 2)
-                    printf("xxxxx Node Read Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
-
-                return;
-            }
-            std::vector<uint8_t> vData(nRead, 0);
-            std::copy((uint8_t*)pchBuf, (uint8_t*)pchBuf + nRead, vData.begin());
-
-            vRecvBuffer.insert(vRecvBuffer.end(), vData.begin(), vData.end());
+            return nError;
         }
 
-        /* Return if no data to send. */
-        if(vSendBuffer.size() == 0)
-            return;
+        if(nRead > 0)
+            std::copy(&pchBuf[0], &pchBuf[0] + nRead, vData.begin());
 
-        /* Only write 512 bytes per cycle. */
-        uint32_t nBytes = std::min((uint32_t)vSendBuffer.size(), 512u);
+        return nRead;
+    }
 
+
+    /* Write data into the socket buffer non-blocking */
+    int Socket::Write(std::vector<uint8_t> vData, size_t nBytes)
+    {
         char pchBuf[nBytes];
-        std::copy(&vSendBuffer[0], &vSendBuffer[0] + nBytes, pchBuf);
-
-        int nSent = send(nSocket, pchBuf, nBytes, MSG_NOSIGNAL | MSG_DONTWAIT );
+        std::copy(&vData[0], &vData[0] + nBytes, &pchBuf[0]);
 
         /* If there were any errors, handle them gracefully. */
+        int nSent = send(nSocket, pchBuf, nBytes, MSG_NOSIGNAL | MSG_DONTWAIT );
         if(nSent < 0)
         {
             nError = GetLastError();
-            if(Error() && GetArg("-verbose", 0) >= 2)
-                printf("xxxxx Node Flush Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
+            if(GetArg("-verbose", 0) >= 2)
+                printf("xxxxx Node Write Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
+
+            return nError;
         }
 
         /* If not all data was sent non-blocking, recurse until it is complete. */
-        else if(nSent > 0)
-            vSendBuffer.erase(vSendBuffer.begin(), vSendBuffer.begin() + nSent);
+        else if(nSent != vData.size())
+        {
+            vData.erase(vData.begin(), vData.begin() + nSent);
+
+            return Write(vData, vData.size());
+        }
+
+        return nSent;
     }
 }
