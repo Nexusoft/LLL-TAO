@@ -164,7 +164,7 @@ namespace LLP
     int Socket::Read(std::vector<uint8_t> &vData, size_t nBytes)
     {
         char pchBuf[nBytes];
-        int nRead = recv(nSocket, pchBuf, nBytes, 0); //block on reads since we check available first
+        int nRead = recv(nSocket, pchBuf, nBytes, MSG_DONTWAIT);
         if (nRead < 0)
         {
             nError = GetLastError();
