@@ -368,8 +368,8 @@ namespace LLP
             mapLatencyTracker.erase(nonce);
 
             uint64_t nTimestamp;
-            if(fListen)
-                test->ReadSample(nonce, nTimestamp);
+            //if(fListen)
+            //    test->ReadSample(nonce, nTimestamp);
 
 
             /* Debug Level 3: output Node Latencies. */
