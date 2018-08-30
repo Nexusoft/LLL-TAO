@@ -173,14 +173,16 @@ namespace LLP
 
             return nError;
         }
-        memcpy(&vData[0], pchBuf, nRead);
+
+        if(nRead > 0)
+            memcpy(&vData[0], pchBuf, nRead);
 
         return nRead;
     }
 
 
-    /* Write data into the write buffer non-blocking */
-    void Socket::Write(std::vector<uint8_t> vData, size_t nBytes)
+    /* Write data into the socket buffer non-blocking */
+    int Socket::Write(std::vector<uint8_t> vData, size_t nBytes)
     {
         char pchBuf[nBytes];
         memcpy(pchBuf, &vData[0], nBytes);
@@ -191,47 +193,20 @@ namespace LLP
         if(nSent < 0)
         {
             nError = GetLastError();
-            if(Error())
-            {
-                if(GetArg("-verbose", 0) >= 2)
-                    printf("xxxxx Node Write Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
-
-                vSendBuffer.clear();
-
-                return;
-            }
-
-            vSendBuffer.insert(vSendBuffer.end(), vData.begin(), vData.end());
-        }
-
-        /* If not all data was sent non-blocking, recurse until it is complete. */
-        else if(nSent != nBytes)
-            vSendBuffer.insert(vSendBuffer.end(), vData.begin() + nSent, vData.end());
-    }
-
-
-    /* Flushes the data from the socket buffer */
-    void Socket::Flush()
-    {
-        /* Return if no data to send. */
-        if(vSendBuffer.size() == 0)
-            return;
-
-        char pchBuf[vSendBuffer.size()];
-        memcpy(pchBuf, &vSendBuffer[0], vSendBuffer.size());
-
-        int nSent = send(nSocket, pchBuf, vSendBuffer.size(), MSG_NOSIGNAL | MSG_DONTWAIT );
-
-        /* If there were any errors, handle them gracefully. */
-        if(nSent < 0)
-        {
-            nError = GetLastError();
             if(Error() && GetArg("-verbose", 0) >= 2)
-                printf("xxxxx Node Flush Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
+                printf("xxxxx Node Write Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
+
+            return nError;
         }
 
         /* If not all data was sent non-blocking, recurse until it is complete. */
-        else if(nSent > 0)
-            vSendBuffer.erase(vSendBuffer.begin(), vSendBuffer.begin() + nSent);
+        else if(nSent != vData.size())
+        {
+            vData.erase(vData.begin(), vData.begin() + nSent);
+
+            return Write(vData, vData.size());
+        }
+
+        return nSent;
     }
 }
