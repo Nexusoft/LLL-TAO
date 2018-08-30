@@ -35,9 +35,6 @@ namespace LLP
         /** The error codes for socket. **/
         int nError;
 
-        /** The send buffer. **/
-        std::vector<uint8_t> vSendBuffer;
-
     public:
 
         /** The address of this connection. */
@@ -45,11 +42,11 @@ namespace LLP
 
 
         /** The default constructor. **/
-        Socket() : nSocket(INVALID_SOCKET), nError(0), vSendBuffer() {}
+        Socket() : nSocket(INVALID_SOCKET), nError(0) {}
 
 
         /** The socket constructor. **/
-        Socket(int nSocketIn, CAddress addrIn) : nSocket(nSocketIn), nError(0), vSendBuffer(), addr(addrIn) {}
+        Socket(int nSocketIn, CAddress addrIn) : nSocket(nSocketIn), nError(0), addr(addrIn) {}
 
 
         /** Constructor for Address
@@ -124,7 +121,7 @@ namespace LLP
          *  @return the total bytes that were written
          *
          **/
-        void Write(std::vector<uint8_t> vData, size_t nBytes);
+        int Write(std::vector<uint8_t> vData, size_t nBytes);
 
 
         /** Flush
