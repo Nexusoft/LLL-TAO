@@ -25,11 +25,11 @@ ________________________________________________________________________________
 #include "../../LLC/hash/SK.h"
 
 #include "../LLD/templates/sector.h"
-#include "../LLD/templates/filemap.h"
+#include "../LLD/templates/hashmap.h"
 
 #include "../TAO/Ledger/types/include/transaction.h"
 
-class TestDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
+class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap>
 {
 public:
     TestDB(const char* pszMode="r+", const char* pszName = "regdb") : SectorDatabase(pszName, pszMode) {}

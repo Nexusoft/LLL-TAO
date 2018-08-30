@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <vector>
 #include <stdio.h>
 
+
 namespace LLP
 {
     class CService;
@@ -34,6 +35,9 @@ namespace LLP
         /** The error codes for socket. **/
         int nError;
 
+        /** The send buffer. **/
+        std::vector<uint8_t> vSendBuffer;
+
     public:
 
         /** The address of this connection. */
@@ -41,11 +45,11 @@ namespace LLP
 
 
         /** The default constructor. **/
-        Socket() : nSocket(INVALID_SOCKET), nError(0) {}
+        Socket() : nSocket(INVALID_SOCKET), nError(0), vSendBuffer() {}
 
 
         /** The socket constructor. **/
-        Socket(int nSocketIn, CAddress addrIn) : nSocket(nSocketIn), nError(0), addr(addrIn) {}
+        Socket(int nSocketIn, CAddress addrIn) : nSocket(nSocketIn), nError(0), vSendBuffer(), addr(addrIn) {}
 
 
         /** Constructor for Address
@@ -120,7 +124,15 @@ namespace LLP
          *  @return the total bytes that were written
          *
          **/
-        int Write(std::vector<uint8_t> vData, size_t nBytes);
+        void Write(std::vector<uint8_t> vData, size_t nBytes);
+
+
+        /** Flush
+         *
+         *  Flushes the data from the socket buffer
+         *
+         **/
+         void Flush();
 
     };
 }

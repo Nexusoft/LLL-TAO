@@ -351,16 +351,22 @@ namespace LLP
         {
             LOCK(MUTEX);
 
+            /* Debug dump of message type. */
             if(GetArg("-verbose", 0) >= 4)
                 printf("***** Node Sent Message (%u, %u)\n", PACKET.LENGTH, PACKET.GetBytes().size());
 
+            /* Debug dump of packet data. */
             if(GetArg("-verbose", 0) >= 5) {
                 printf("***** Pakcet Dump: ");
 
                 PrintHex(PACKET.GetBytes());
             }
 
+            /* Write the packet to socket buffer. */
             Write(PACKET.GetBytes());
+
+            /* Flush the rest of the buffer if any remains. */
+            SOCKET.Flush();
         }
 
 
@@ -414,11 +420,11 @@ namespace LLP
 
 
         /* Lower level network communications: Write. Interacts with OS sockets. */
-        int Write(std::vector<uint8_t> DATA)
+        void Write(std::vector<uint8_t> DATA)
         {
             TIMER.Reset();
 
-            return SOCKET.Write(DATA, DATA.size());
+            SOCKET.Write(DATA, DATA.size());
         }
 
     };
