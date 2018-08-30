@@ -346,10 +346,6 @@ namespace LLP
         void ResetPacket(){ INCOMING.SetNull(); }
 
 
-        /* Handle the buffering of new data. */
-        void Buffer(){ SOCKET.Buffer(); }
-
-
         /* Write a single packet to the TCP stream. */
         void WritePacket(PacketType PACKET)
         {
@@ -368,7 +364,6 @@ namespace LLP
 
             /* Write the packet to socket buffer. */
             Write(PACKET.GetBytes());
-
         }
 
 
@@ -424,8 +419,6 @@ namespace LLP
         /* Lower level network communications: Write. Interacts with OS sockets. */
         void Write(std::vector<uint8_t> DATA)
         {
-            TIMER.Reset();
-
             SOCKET.Write(DATA, DATA.size());
         }
 

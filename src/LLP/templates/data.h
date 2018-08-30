@@ -187,10 +187,6 @@ namespace LLP
                         CONNECTIONS[nIndex]->Event(EVENT_GENERIC);
 
 
-                        /* Buffer data into the socket connection. */
-                        CONNECTIONS[nIndex]->Buffer();
-
-
                         /* Work on Reading a Packet. **/
                         CONNECTIONS[nIndex]->ReadPacket();
 
