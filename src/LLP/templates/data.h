@@ -186,8 +186,14 @@ namespace LLP
                         /* Generic event for Connection. */
                         CONNECTIONS[nIndex]->Event(EVENT_GENERIC);
 
+
+                        /* Buffer data into the socket connection. */
+                        CONNECTIONS[nIndex]->Buffer();
+
+
                         /* Work on Reading a Packet. **/
                         CONNECTIONS[nIndex]->ReadPacket();
+
 
                         /* If a Packet was received successfully, increment request count [and DDOS count if enabled]. */
                         if(CONNECTIONS[nIndex]->PacketComplete())
