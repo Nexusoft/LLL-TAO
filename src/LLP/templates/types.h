@@ -364,9 +364,6 @@ namespace LLP
 
             /* Write the packet to socket buffer. */
             Write(PACKET.GetBytes());
-
-            /* Flush the rest of the buffer if any remains. */
-            SOCKET.Flush();
         }
 
 
