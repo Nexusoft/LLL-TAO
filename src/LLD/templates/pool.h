@@ -321,15 +321,10 @@ namespace LLD
         {
             auto nBucket = GetBucket(vKey);
             if(!Has(vKey, nBucket))
-            {
-                printf("failed to set state... no key...");
                 return;
-            }
 
             mapObjects[nBucket][vKey].Timestamp = Timestamp(true);
             mapObjects[nBucket][vKey].State = nState;
-
-            printf("Set state MEMORY ONLY %s\n", nState == MEMORY_ONLY ? "TRUE" : "FALSE");
         }
 
 
