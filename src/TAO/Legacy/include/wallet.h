@@ -128,9 +128,9 @@ namespace Wallet
         // Generate a new key
         std::vector<uint8_t> GenerateNewKey();
         // Adds a key to the store, and saves it to disk.
-        bool AddKey(const CKey& key);
+        bool AddKey(const ECKey& key);
         // Adds a key to the store, without saving it to disk (used by LoadWallet)
-        bool LoadKey(const CKey& key) { return CCryptoKeyStore::AddKey(key); }
+        bool LoadKey(const ECKey& key) { return CCryptoKeyStore::AddKey(key); }
 
         bool LoadMinVersion(int nVersion) { nWalletVersion = nVersion; nWalletMaxVersion = std::max(nWalletMaxVersion, nVersion); return true; }
 

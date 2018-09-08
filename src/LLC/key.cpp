@@ -63,7 +63,7 @@ namespace LLC
 
 
     /* Consturctor with default curve type. */
-    CKey::CKey()
+    ECKey::ECKey()
     {
         /* Set the Default Curve ID as sect571r1 */
         nCurveID   = NID_sect571r1;
@@ -75,7 +75,7 @@ namespace LLC
 
 
     /* Constructor from a new curve type. */
-    CKey::CKey(const int nID, const int nKeySizeIn = 72)
+    ECKey::ECKey(const int nID, const int nKeySizeIn = 72)
     {
         /* Set the Curve Type. */
         nCurveID   = nID;
@@ -86,12 +86,12 @@ namespace LLC
     }
 
 
-    /* Constructor from a CKey object. */
-    CKey::CKey(const CKey& b)
+    /* Constructor from a ECKey object. */
+    ECKey::ECKey(const ECKey& b)
     {
         pkey = EC_KEY_dup(b.pkey);
         if (pkey == NULL)
-            throw key_error("CKey::CKey(const CKey&) : EC_KEY_dup failed");
+            throw key_error("ECKey::ECKey(const ECKey&) : EC_KEY_dup failed");
 
         nCurveID   = b.nCurveID;
         nKeySize = b.nKeySize;
@@ -100,31 +100,31 @@ namespace LLC
 
 
     /* Key destructor */
-    CKey::~CKey()
+    ECKey::~ECKey()
     {
         EC_KEY_free(pkey);
     }
 
 
     /* Assignment Operator */
-    CKey& CKey::operator=(const CKey& b)
+    ECKey& ECKey::operator=(const ECKey& b)
     {
         if (!EC_KEY_copy(pkey, b.pkey))
-            throw key_error("CKey::operator=(const CKey&) : EC_KEY_copy failed");
+            throw key_error("ECKey::operator=(const ECKey&) : EC_KEY_copy failed");
         fSet = b.fSet;
         return (*this);
     }
 
 
     /* Comparison Operator */
-    bool CKey::operator==(const CKey& b) const
+    bool ECKey::operator==(const ECKey& b) const
     {
         return (fSet == b.fSet && nCurveID == b.nCurveID && nKeySize == b.nKeySize && GetPrivKey() == b.GetPrivKey());
     }
 
 
     /* Set a public key in Compression form */
-    void CKey::SetCompressedPubKey()
+    void ECKey::SetCompressedPubKey()
     {
         EC_KEY_set_conv_form(pkey, POINT_CONVERSION_COMPRESSED);
         fCompressedPubKey = true;
@@ -132,38 +132,38 @@ namespace LLC
 
 
     /* Reset internal key data. */
-    void CKey::Reset()
+    void ECKey::Reset()
     {
         fCompressedPubKey = false;
         pkey = EC_KEY_new_by_curve_name(nCurveID);
         if (pkey == NULL)
-            throw key_error("CKey::CKey() : EC_KEY_new_by_curve_name failed");
+            throw key_error("ECKey::ECKey() : EC_KEY_new_by_curve_name failed");
         fSet = false;
     }
 
 
     /* Determines if key is in null state */
-    bool CKey::IsNull() const
+    bool ECKey::IsNull() const
     {
         return !fSet;
     }
 
 
     /* Flag to determine if the key is in compressed form */
-    bool CKey::IsCompressed() const
+    bool ECKey::IsCompressed() const
     {
         return fCompressedPubKey;
     }
 
 
     /* Create a new key from OpenSSL Library Pseudo-Random Generator */
-    void CKey::MakeNewKey(bool fCompressed)
+    void ECKey::MakeNewKey(bool fCompressed)
     {
         EC_KEY_free(pkey);
         pkey = EC_KEY_new_by_curve_name(nCurveID);
 
         if (!EC_KEY_generate_key(pkey))
-            throw key_error("CKey::MakeNewKey() : EC_KEY_generate_key failed");
+            throw key_error("ECKey::MakeNewKey() : EC_KEY_generate_key failed");
 
         if (fCompressed)
             SetCompressedPubKey();
@@ -172,7 +172,7 @@ namespace LLC
 
 
     /* Set the key from full private key (including secret) */
-    bool CKey::SetPrivKey(const CPrivKey& vchPrivKey)
+    bool ECKey::SetPrivKey(const CPrivKey& vchPrivKey)
     {
         const uint8_t* pbegin = &vchPrivKey[0];
         if (!d2i_ECPrivateKey(&pkey, &pbegin, vchPrivKey.size()))
@@ -184,25 +184,25 @@ namespace LLC
 
 
     /* Set the secret phrase / key used in the private key. */
-    bool CKey::SetSecret(const CSecret& vchSecret, bool fCompressed)
+    bool ECKey::SetSecret(const CSecret& vchSecret, bool fCompressed)
     {
         EC_KEY_free(pkey);
         pkey = EC_KEY_new_by_curve_name(nCurveID);
 
         if (pkey == NULL)
-            throw key_error("CKey::SetSecret() : EC_KEY_new_by_curve_name failed");
+            throw key_error("ECKey::SetSecret() : EC_KEY_new_by_curve_name failed");
 
         if (vchSecret.size() != nKeySize)
-            throw key_error("CKey::SetSecret() : secret key size mismatch");
+            throw key_error("ECKey::SetSecret() : secret key size mismatch");
 
         BIGNUM *bn = BN_bin2bn(&vchSecret[0], nKeySize, BN_new());
         if (bn == NULL)
-            throw key_error("CKey::SetSecret() : BN_bin2bn failed");
+            throw key_error("ECKey::SetSecret() : BN_bin2bn failed");
 
         if (!EC_KEY_regenerate_key(pkey, bn))
         {
             BN_clear_free(bn);
-            throw key_error("CKey::SetSecret() : EC_KEY_regenerate_key failed");
+            throw key_error("ECKey::SetSecret() : EC_KEY_regenerate_key failed");
         }
 
         BN_clear_free(bn);
@@ -216,7 +216,7 @@ namespace LLC
 
 
     /* Obtain the secret key used in the private key. */
-    CSecret CKey::GetSecret(bool &fCompressed) const
+    CSecret ECKey::GetSecret(bool &fCompressed) const
     {
         CSecret vchRet;
         vchRet.resize(nKeySize);
@@ -224,11 +224,11 @@ namespace LLC
         const BIGNUM *bn = EC_KEY_get0_private_key(pkey);
         int nBytes = BN_num_bytes(bn);
         if (bn == NULL)
-            throw key_error("CKey::GetSecret() : EC_KEY_get0_private_key failed");
+            throw key_error("ECKey::GetSecret() : EC_KEY_get0_private_key failed");
 
         int n = BN_bn2bin(bn, &vchRet[nKeySize - nBytes]);
         if (n != nBytes)
-            throw key_error("CKey::GetSecret(): BN_bn2bin failed");
+            throw key_error("ECKey::GetSecret(): BN_bn2bin failed");
 
         fCompressed = fCompressedPubKey;
         return vchRet;
@@ -236,23 +236,23 @@ namespace LLC
 
 
     /* Obtain the private key and all associated data */
-    CPrivKey CKey::GetPrivKey() const
+    CPrivKey ECKey::GetPrivKey() const
     {
         int nSize = i2d_ECPrivateKey(pkey, NULL);
         if (!nSize)
-            throw key_error("CKey::GetPrivKey() : i2d_ECPrivateKey failed");
+            throw key_error("ECKey::GetPrivKey() : i2d_ECPrivateKey failed");
 
         CPrivKey vchPrivKey(nSize, 0);
         uint8_t* pbegin = &vchPrivKey[0];
         if (i2d_ECPrivateKey(pkey, &pbegin) != nSize)
-            throw key_error("CKey::GetPrivKey() : i2d_ECPrivateKey returned unexpected size");
+            throw key_error("ECKey::GetPrivKey() : i2d_ECPrivateKey returned unexpected size");
 
         return vchPrivKey;
     }
 
 
     /* Returns true on the setting of a public key */
-    bool CKey::SetPubKey(const std::vector<uint8_t>& vchPubKey)
+    bool ECKey::SetPubKey(const std::vector<uint8_t>& vchPubKey)
     {
         const uint8_t* pbegin = &vchPubKey[0];
         if (!o2i_ECPublicKey(&pkey, &pbegin, vchPubKey.size()))
@@ -267,23 +267,23 @@ namespace LLC
 
 
     /* Returns the Public key in a byte vector */
-    std::vector<uint8_t> CKey::GetPubKey() const
+    std::vector<uint8_t> ECKey::GetPubKey() const
     {
         int nSize = i2o_ECPublicKey(pkey, NULL);
         if (!nSize)
-            throw key_error("CKey::GetPubKey() : i2o_ECPublicKey failed");
+            throw key_error("ECKey::GetPubKey() : i2o_ECPublicKey failed");
 
         std::vector<uint8_t> vchPubKey(nSize, 0);
         uint8_t* pbegin = &vchPubKey[0];
         if (i2o_ECPublicKey(pkey, &pbegin) != nSize)
-            throw key_error("CKey::GetPubKey() : i2o_ECPublicKey returned unexpected size");
+            throw key_error("ECKey::GetPubKey() : i2o_ECPublicKey returned unexpected size");
 
         return vchPubKey;
     }
 
 
     /* Nexus sepcific strict DER rules. */
-    bool CKey::Encoding(const std::vector<uint8_t> vchSig)
+    bool ECKey::Encoding(const std::vector<uint8_t> vchSig)
     {
         /* Check the signature length. Strict encoding requires no more than 135 bytes. */
         if (vchSig.size() != 135) return false;
@@ -334,7 +334,7 @@ namespace LLC
 
 
     /* Based on standard set of byte data as input of any length. Checks for DER encoding */
-    bool CKey::Sign(const std::vector<uint8_t> vchData, std::vector<uint8_t>& vchSig)
+    bool ECKey::Sign(const std::vector<uint8_t> vchData, std::vector<uint8_t>& vchSig)
     {
         uint32_t nSize = ECDSA_size(pkey);
         vchSig.resize(nSize); // Make sure it is big enough
@@ -355,7 +355,7 @@ namespace LLC
 
 
     /* Tritium Signature Verification Function */
-    bool CKey::Verify(const std::vector<uint8_t> vchData, const std::vector<uint8_t>& vchSig)
+    bool ECKey::Verify(const std::vector<uint8_t> vchData, const std::vector<uint8_t>& vchSig)
     {
         return Encoding(vchSig) &&
             (ECDSA_verify(0, &vchData[0], vchData.size(), &vchSig[0], vchSig.size(), pkey) == 1);
@@ -363,7 +363,7 @@ namespace LLC
 
 
     /* Legacy Signing Function */
-    bool CKey::Sign(uint1024_t hash, std::vector<uint8_t>& vchSig, int nBits)
+    bool ECKey::Sign(uint1024_t hash, std::vector<uint8_t>& vchSig, int nBits)
     {
         uint32_t nSize = ECDSA_size(pkey);
         vchSig.resize(nSize); // Make sure it is big enough
@@ -394,7 +394,7 @@ namespace LLC
 
 
     /* Legacy Verifying Function.*/
-    bool CKey::Verify(uint1024_t hash, const std::vector<uint8_t>& vchSig, int nBits)
+    bool ECKey::Verify(uint1024_t hash, const std::vector<uint8_t>& vchSig, int nBits)
     {
         bool fSuccess = false;
         if(nBits == 256)
@@ -415,14 +415,14 @@ namespace LLC
 
 
     /* Check if a Key is valid based on a few parameters*/
-    bool CKey::IsValid()
+    bool ECKey::IsValid()
     {
         if (!fSet)
             return false;
 
         bool fCompr;
         CSecret secret = GetSecret(fCompr);
-        CKey key2;
+        ECKey key2;
         key2.SetSecret(secret, fCompr);
         return GetPubKey() == key2.GetPubKey();
     }

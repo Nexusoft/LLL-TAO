@@ -15,14 +15,13 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_TYPES_BLOCK_H
 
 #include "../../../../Util/macro/header.h"
+#include "../../../../LLC/types/uint1024.h"
 
 //forward declerations for BigNum
 namespace LLC
 {
-	namespace TYPES
-	{
-		class CBigNum;
-	}
+	class CBigNum;
+	class ECKey;
 }
 
 namespace TAO
@@ -99,21 +98,7 @@ namespace TAO
 
 
 			/** Set the block to Null state. **/
-			void SetNull()
-			{
-				nVersion = 3; //TODO: Use current block version
-				hashPrevBlock = 0;
-				hashMerkleRoot = 0;
-				nChannel = 0;
-				nHeight = 0;
-				nBits = 0;
-				nNonce = 0;
-				nTime = 0;
-
-				vtx.clear();
-				vchBlockSig.clear();
-				vMerkleTree.clear();
-			}
+			void SetNull();
 
 
 			/** SetChannel
@@ -183,7 +168,7 @@ namespace TAO
 			 *	@return 1024-bit stake hash
 			 *
 			 **/
-			uint1024_t StakeHash() const;
+			uint1024_t StakeHash();
 
 
 			/** Get Hash
@@ -193,17 +178,7 @@ namespace TAO
 			 *	@return 1024-bit block hash
 			 *
 			 **/
-			uint1024_t ProofHash() const;
-
-
-			/** SignatureHash
-			 *
-			 *	Get the signature hash of block. This is signed by block finder.
-			 *
-			 *	@return 1024-bit hash for signature
-			 *
-			 **/
-			uint1024_t SignatureHash() const;
+			uint1024_t BlockHash() const;
 
 
 			/** UpdateTime
@@ -237,27 +212,8 @@ namespace TAO
 			 *	@return The 512-bit merkle root
 			 *
 			 **/
-			uint512_t BuildMerkleTree() const;
+			uint512_t BuildMerkleTree(std::vector<uint512_t> vMerkleTree) const;
 
-
-			/** GetMerkleBranch
-			 *
-			 *	Find the branch in the merkle tree that the given index belongs to.
-			 *
-			 *	@param[in] nIndex The index to search for
-			 *
-			 *	@return A vector containing the hashes of the transaction's branch
-			 *
-			 **/
-			std::vector<uint512_t> GetMerkleBranch(int nIndex) const;
-
-
-			/** CheckMerkleBranch
-			 *
-			 *	Check that the transaction exists in the merkle branch.
-			 *
-			 **/
-			uint512_t CheckMerkleBranch(uint512_t hash, const std::vector<uint512_t>& vMerkleBranch, int nIndex);
 
 
 			/** print
@@ -297,7 +253,7 @@ namespace TAO
 			 *	@return True if the signature was made successfully, false otherwise
 			 *
 			 **/
-			bool GenerateSignature(const LLC::CKey& key);
+			bool GenerateSignature(const LLC::ECKey key);
 
 
 			/** VerifySignature
