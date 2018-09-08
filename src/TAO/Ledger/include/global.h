@@ -143,7 +143,7 @@ namespace Core
 
 
 	/* The Maximum amount that can be sent in a single transaction. */
-	extern const int64_t MAX_TXOUT_AMOUNT;
+	extern const int64_t MaxTxOut();
 
 
 	/* The Minimum amount that can be sent in a single transaction. */
@@ -346,7 +346,7 @@ namespace Core
 
 
 	/** Small function to ensure the global supply remains within reasonable bounds **/
-	inline bool MoneyRange(int64_t nValue) { return (nValue >= 0 && nValue <= MAX_TXOUT_AMOUNT); }
+	inline bool MoneyRange(int64_t nValue) { return (nValue >= 0 && nValue <= MaxTxOut()); }
 
 
 
