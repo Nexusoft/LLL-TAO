@@ -43,7 +43,7 @@ namespace LLC
 
 
     /** An encapsulated OpenSSL Elliptic Curve key (public and/or private) **/
-    class CKey
+    class ECKey
     {
     protected:
         /** The OpenSSL key object. **/
@@ -67,18 +67,18 @@ namespace LLC
 
     public:
 
-        CKey();
-        CKey(const CKey& b);
-        CKey(const int nID, const int nKeySizeIn);
-        ~CKey();
+        ECKey();
+        ECKey(const ECKey& b);
+        ECKey(const int nID, const int nKeySizeIn);
+        ~ECKey();
 
 
         /** Assignment Operator **/
-        CKey& operator=(const CKey& b);
+        ECKey& operator=(const ECKey& b);
 
 
         /** Comparison Operator **/
-        bool operator==(const CKey& b) const;
+        bool operator==(const ECKey& b) const;
 
 
         /** Set a public key in Compression form **/

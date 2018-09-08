@@ -18,14 +18,14 @@ namespace Legacy
 {
     bool CKeyStore::GetPubKey(const NexusAddress &address, std::vector<uint8_t> &vchPubKeyOut) const
     {
-        CKey key;
+        ECKey key;
         if (!GetKey(address, key))
             return false;
         vchPubKeyOut = key.GetPubKey();
         return true;
     }
 
-    bool CBasicKeyStore::AddKey(const CKey& key)
+    bool CBasicKeyStore::AddKey(const ECKey& key)
     {
         bool fCompressed = false;
         CSecret secret = key.GetSecret(fCompressed);
@@ -100,7 +100,7 @@ namespace Legacy
                     return false;
                 if (vchSecret.size() != 72)
                     return false;
-                CKey key;
+                ECKey key;
                 key.SetPubKey(vchPubKey);
                 key.SetSecret(vchSecret);
                 if (key.GetPubKey() == vchPubKey)
@@ -112,7 +112,7 @@ namespace Legacy
         return true;
     }
 
-    bool CCryptoKeyStore::AddKey(const CKey& key)
+    bool CCryptoKeyStore::AddKey(const ECKey& key)
     {
         {
             LOCK(cs_KeyStore);
@@ -147,7 +147,7 @@ namespace Legacy
         return true;
     }
 
-    bool CCryptoKeyStore::GetKey(const NexusAddress &address, CKey& keyOut) const
+    bool CCryptoKeyStore::GetKey(const NexusAddress &address, ECKey& keyOut) const
     {
         {
             LOCK(cs_KeyStore);
@@ -199,7 +199,7 @@ namespace Legacy
             fUseCrypto = true;
             BOOST_FOREACH(KeyMap::value_type& mKey, mapKeys)
             {
-                CKey key;
+                ECKey key;
                 if (!key.SetSecret(mKey.second.first, mKey.second.second))
                     return false;
                 const std::vector<uint8_t> vchPubKey = key.GetPubKey();

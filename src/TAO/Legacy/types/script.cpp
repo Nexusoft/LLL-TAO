@@ -1019,7 +1019,7 @@ namespace Legacy
         if (signatureCache.Get(sighash, vchSig, vchPubKey))
             return true;
 
-        CKey key;
+        ECKey key;
         if (!key.SetPubKey(vchPubKey))
             return false;
 
@@ -1154,7 +1154,7 @@ namespace Legacy
 
     bool Sign1(const NexusAddress& address, const CKeyStore& keystore, uint256_t hash, int nHashType, CScript& scriptSigRet)
     {
-        CKey key;
+        ECKey key;
         if (!keystore.GetKey(address, key))
             return false;
 
@@ -1548,12 +1548,12 @@ namespace Legacy
             *this << OP_DUP << OP_HASH256 << address.GetHash256() << OP_EQUALVERIFY << OP_CHECKSIG;
     }
 
-    void CScript::SetMultisig(int nRequired, const std::vector<CKey>& keys)
+    void CScript::SetMultisig(int nRequired, const std::vector<ECKey>& keys)
     {
         this->clear();
 
         *this << EncodeOP_N(nRequired);
-        BOOST_FOREACH(const CKey& key, keys)
+        BOOST_FOREACH(const ECKey& key, keys)
             *this << key.GetPubKey();
         *this << EncodeOP_N(keys.size()) << OP_CHECKMULTISIG;
     }

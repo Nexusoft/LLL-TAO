@@ -28,7 +28,7 @@ namespace Wallet
         bool fCompressed = true;
 
         RandAddSeedPerfmon();
-        CKey key;
+        ECKey key;
         key.MakeNewKey(fCompressed);
 
         if (!AddKey(key))
@@ -36,7 +36,7 @@ namespace Wallet
         return key.GetPubKey();
     }
 
-    bool CWallet::AddKey(const CKey& key)
+    bool CWallet::AddKey(const ECKey& key)
     {
         if (!CCryptoKeyStore::AddKey(key))
             return false;

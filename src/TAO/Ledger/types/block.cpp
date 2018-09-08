@@ -13,7 +13,15 @@ ________________________________________________________________________________
 
 #include "include/block.h"
 
+#include "../../../LLC/hash/SK.h"
 #include "../../../LLC/hash/macro.h"
+#include "../../../LLC/include/key.h"
+#include "../../../LLC/types/bignum.h"
+
+
+#include "../../../Util/templates/serialize.h"
+#include "../../../Util/include/hex.h"
+#include "../../../Util/include/runtime.h"
 
 namespace TAO
 {
@@ -33,7 +41,6 @@ namespace TAO
 			Block,
 
 			READWRITE(this->nVersion);
-			nVersion = this->nVersion;
 			READWRITE(hashPrevBlock);
 			READWRITE(hashMerkleRoot);
 			READWRITE(nChannel);
@@ -41,9 +48,7 @@ namespace TAO
 			READWRITE(nBits);
 			READWRITE(nNonce);
 			READWRITE(nTime);
-			READWRITE(vtx);
 			READWRITE(vchBlockSig);
-
 		)
 
 
@@ -58,10 +63,7 @@ namespace TAO
 			nBits = 0;
 			nNonce = 0;
 			nTime = 0;
-
-			vtx.clear();
 			vchBlockSig.clear();
-			vMerkleTree.clear();
 		}
 
 
@@ -73,7 +75,7 @@ namespace TAO
 
 
 		/* Get the Channel block is produced from. */
-		int Block::GetChannel() const
+		uint32_t Block::GetChannel() const
 		{
 			return nChannel;
 		}
@@ -87,16 +89,16 @@ namespace TAO
 
 
 		/* Return the Block's current UNIX Timestamp. */
-		int64_t Block::GetBlockTime() const
+		uint64_t Block::GetBlockTime() const
 		{
-			return (int64_t)nTime;
+			return (uint64_t)nTime;
 		}
 
 
 		/* Get the prime number of the block. */
 		LLC::CBigNum Block::GetPrime() const
 		{
-			return LLC::CBigNum(GetHash() + nNonce);
+			return LLC::CBigNum(ProofHash() + nNonce);
 		}
 
 
@@ -119,26 +121,16 @@ namespace TAO
 
 
 		/* Generate a Hash For the Block from the Header. */
-		uint1024_t Block::GetHash() const
+		uint1024_t Block::BlockHash() const
 		{
 			return LLC::SK1024(BEGIN(nVersion), END(nTime));
-		}
-
-
-		/* Generate the Signature Hash Required After Block completes Proof of Work / Stake. */
-		uint1024_t Block::SignatureHash() const
-		{
-			if(nVersion < 5)
-				return LLC::SK1024(BEGIN(nVersion), END(nTime));
-			else
-				return LLC::SK1024(BEGIN(nVersion), END(hashPrevChecksum));
 		}
 
 
 		/* Update the nTime of the current block. */
 		void Block::UpdateTime()
 		{
-			nTime = std::max((uint64_t)mapBlockIndex[hashPrevBlock]->GetBlockTime() + 1, UnifiedTimestamp());
+			nTime = UnifiedTimestamp();
 		}
 
 
@@ -160,7 +152,7 @@ namespace TAO
 		uint512_t Block::BuildMerkleTree(std::vector<uint512_t> vMerkleTree) const
 		{
 			int j = 0;
-			for (int nSize = (int)vtx.size(); nSize > 1; nSize = (nSize + 1) / 2)
+			for (int nSize = (int)vMerkleTree.size(); nSize > 1; nSize = (nSize + 1) / 2)
 			{
 				for (int i = 0; i < nSize; i += 2)
 				{
@@ -177,47 +169,21 @@ namespace TAO
 		/* Dump the Block data to Console / Debug.log. */
 		void Block::print() const
 		{
-			printf("CBlock(hash=%s, ver=%d, hashPrevBlock=%s, hashMerkleRoot=%s, nTime=%u, nBits=%08x, nChannel = %u, nHeight = %u, nNonce=%" PRIu64 ", vtx=%d, vchBlockSig=%s)\n",
-					GetHash().ToString().substr(0,20).c_str(),
+			printf("CBlock(hash=%s, ver=%d, hashPrevBlock=%s, hashMerkleRoot=%s, nTime=%u, nBits=%08x, nChannel = %u, nHeight = %u, nNonce=%" PRIu64 ", vchBlockSig=%s)\n",
+					BlockHash().ToString().substr(0,20).c_str(),
 					nVersion,
 					hashPrevBlock.ToString().substr(0,20).c_str(),
 					hashMerkleRoot.ToString().substr(0,10).c_str(),
 					nTime, nBits, nChannel, nHeight, nNonce,
-					vtx.size(),
 					HexStr(vchBlockSig.begin(), vchBlockSig.end()).c_str());
 		}
 
 
 		/* Verify the Proof of Work satisfies network requirements. */
-		bool CBlock::VerifyWork() const
+		bool Block::VerifyWork() const
 	    {
-	        /** Check the Prime Number Proof of Work for the Prime Channel. **/
-	        if(GetChannel() == 1)
-	        {
-	            if(nVersion >= 5 && ProofHash() < bnPrimeMinOrigins.getuint1024())
-	                return error("VerifyWork() : prime origins below 1016-bits");
 
-	            unsigned int nPrimeBits = GetPrimeBits(GetPrime());
-	            if (nPrimeBits < bnProofOfWorkLimit[1])
-	                return error("VerifyWork() : prime below minimum work");
-
-	            if(nBits > nPrimeBits)
-	                return error("VerifyWork() : prime cluster below target");
-
-	            return true;
-	        }
-
-	        CBigNum bnTarget;
-	        bnTarget.SetCompact(nBits);
-
-	        /** Check that the Hash is Within Range. **/
-	        if (bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[2])
-	            return error("VerifyWork() : proof-of-work hash not in range");
-
-
-	        /** Check that the Hash is within Proof of Work Amount. **/
-	        if ((nVersion < 5 ? GetHash() : ProofHash()) > bnTarget.getuint1024())
-	            return error("VerifyWork() : proof-of-work hash below target");
+			//fill in proof of work here when linked together
 
 	        return true;
 	    }
@@ -234,50 +200,14 @@ namespace TAO
 
 
 		/* Sign the block with the key that found the block. */
-		bool Block::GenerateSignature(const LLC::CKey& key)
+		bool Block::GenerateSignature(const LLC::ECKey key)
 		{
-			vector<std::vector<uint8_t> > vSolutions;
-			Wallet::TransactionType whichType;
-			const CTxOut& txout = vtx[0].vout[0];
-
-			if (!Solver(txout.scriptPubKey, whichType, vSolutions))
-				return false;
-
-			if (whichType == Wallet::TX_PUBKEY)
-			{
-				// Sign
-				const std::vector<uint8_t>& vchPubKey = vSolutions[0];
-				if (key.GetPubKey() != vchPubKey)
-					return false;
-
-				return key.Sign(GetHash(), vchBlockSig, 1024);
-			}
-
 			return false;
 		}
 
 		/* Check that the block signature is a valid signature. */
 		bool Block::VerifySignature() const
 		{
-			if (GetHash() == hashGenesisBlock)
-				return vchBlockSig.empty();
-
-			vector<std::vector<uint8_t> > vSolutions;
-			Wallet::TransactionType whichType;
-			const CTxOut& txout = vtx[0].vout[0];
-
-			if (!Solver(txout.scriptPubKey, whichType, vSolutions))
-				return false;
-			if (whichType == Wallet::TX_PUBKEY)
-			{
-				const std::vector<uint8_t>& vchPubKey = vSolutions[0];
-				Wallet::CKey key;
-				if (!key.SetPubKey(vchPubKey))
-					return false;
-				if (vchBlockSig.empty())
-					return false;
-				return key.Verify(GetHash(), vchBlockSig, 1024);
-			}
 			return false;
 		}
 	}

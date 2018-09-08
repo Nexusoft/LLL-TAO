@@ -32,11 +32,11 @@ namespace Wallet
         virtual ~CKeyStore() {}
 
         // Add a key to the store.
-        virtual bool AddKey(const CKey& key) =0;
+        virtual bool AddKey(const ECKey& key) =0;
 
         // Check whether a key corresponding to a given address is present in the store.
         virtual bool HaveKey(const NexusAddress &address) const =0;
-        virtual bool GetKey(const NexusAddress &address, CKey& keyOut) const =0;
+        virtual bool GetKey(const NexusAddress &address, ECKey& keyOut) const =0;
         virtual void GetKeys(std::set<NexusAddress> &setAddress) const =0;
         virtual bool GetPubKey(const NexusAddress &address, std::vector<uint8_t>& vchPubKeyOut) const;
         virtual bool AddCScript(const CScript& redeemScript) =0;
@@ -45,7 +45,7 @@ namespace Wallet
 
         virtual bool GetSecret(const NexusAddress &address, CSecret& vchSecret, bool &fCompressed) const
         {
-            CKey key;
+            ECKey key;
             if (!GetKey(address, key))
                 return false;
             vchSecret = key.GetSecret(fCompressed);
@@ -64,7 +64,7 @@ namespace Wallet
         ScriptMap mapScripts;
 
     public:
-        bool AddKey(const CKey& key);
+        bool AddKey(const ECKey& key);
         bool HaveKey(const NexusAddress &address) const
         {
             bool result;
@@ -87,7 +87,7 @@ namespace Wallet
                 }
             }
         }
-        bool GetKey(const NexusAddress &address, CKey &keyOut) const
+        bool GetKey(const NexusAddress &address, ECKey &keyOut) const
         {
             {
                 LOCK(cs_KeyStore);
@@ -166,7 +166,7 @@ namespace Wallet
         }
 
         virtual bool AddCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret);
-        bool AddKey(const CKey& key);
+        bool AddKey(const ECKey& key);
         bool HaveKey(const NexusAddress &address) const
         {
             {
@@ -177,7 +177,7 @@ namespace Wallet
             }
             return false;
         }
-        bool GetKey(const NexusAddress &address, CKey& keyOut) const;
+        bool GetKey(const NexusAddress &address, ECKey& keyOut) const;
         bool GetPubKey(const NexusAddress &address, std::vector<uint8_t>& vchPubKeyOut) const;
         void GetKeys(std::set<NexusAddress> &setAddress) const
         {
