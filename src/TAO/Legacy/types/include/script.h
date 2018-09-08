@@ -276,7 +276,7 @@ namespace Legacy
          *  @param[in] keys The keys to be added into the multi-sig contract
          *
          **/
-        void SetMultisig(int nRequired, const std::vector<CKey>& keys);
+        void SetMultisig(int nRequired, const std::vector<ECKey>& keys);
 
 
         /** SetPayToScriptHash

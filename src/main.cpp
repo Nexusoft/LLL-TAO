@@ -24,7 +24,7 @@
 #include "LLP/include/legacy.h"
 
 #include "TAO/Legacy/types/include/address.h"
-//#include "TAO/Ledger/types/include/block.h"
+#include "TAO/Ledger/types/include/block.h"
 
 #include "TAO/Ledger/types/include/transaction.h"
 
@@ -134,7 +134,7 @@ int main(int argc, char** argv)
 
         printf("Genesis Priv %s\n", hashGenesis.ToString().c_str());
 
-        LLC::CKey key(NID_brainpoolP512t1, 64);
+        LLC::ECKey key(NID_brainpoolP512t1, 64);
 
         std::vector<uint8_t> vchData = hashGenesis.GetBytes();
 
@@ -142,7 +142,7 @@ int main(int argc, char** argv)
         if(!key.SetSecret(vchSecret, true))
             return 0;
 
-        LLC::CKey key512(key);
+        LLC::ECKey key512(key);
 
         std::vector<uint8_t> vPubKey = key.GetPubKey();
 
@@ -158,7 +158,7 @@ int main(int argc, char** argv)
         bool fSigned = key512.Sign(hashSeed, vchSig, 256);
         //vchSig[0] = 0x11;
 
-        LLC::CKey keyVerify(NID_brainpoolP512t1, 64);
+        LLC::ECKey keyVerify(NID_brainpoolP512t1, 64);
         keyVerify.SetPubKey(vPubKey);
 
         bool fVerify = keyVerify.Verify(hashSeed, vchSig, 256);

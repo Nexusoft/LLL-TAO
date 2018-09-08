@@ -226,7 +226,7 @@ namespace Wallet
                 {
                     vector<uint8_t> vchPubKey;
                     ssKey >> vchPubKey;
-                    CKey key;
+                    ECKey key;
                     if (strType == "key")
                     {
                         CPrivKey pkey;
