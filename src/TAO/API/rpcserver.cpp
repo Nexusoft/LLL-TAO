@@ -880,7 +880,7 @@ namespace Net
         if (!addr.IsValid())
             throw JSONRPCError(-3, "Invalid address");
 
-        Wallet::CKey key;
+        Wallet::ECKey key;
         if (!pwalletMain->GetKey(addr, key))
             throw JSONRPCError(-4, "Private key not available");
 
@@ -920,7 +920,7 @@ namespace Net
         ss << Core::strMessageMagic;
         ss << strMessage;
 
-        Wallet::CKey key;
+        Wallet::ECKey key;
         if (!key.SetCompactSignature(SK256(ss.begin(), ss.end()), vchSig))
             return false;
 
@@ -1556,7 +1556,7 @@ namespace Net
             throw runtime_error(
                 strprintf("not enough keys supplied "
                           "(got %d keys, but need at least %d to redeem)", keys.size(), nRequired));
-        std::vector<Wallet::CKey> pubkeys;
+        std::vector<Wallet::ECKey> pubkeys;
         pubkeys.resize(keys.size());
         for (uint32_t i = 0; i < keys.size(); i++)
         {
@@ -2372,7 +2372,7 @@ namespace Net
                 std::vector<uint8_t> vchPubKey;
                 pwalletMain->GetPubKey(address, vchPubKey);
                 ret.push_back(Pair("pubkey", HexStr(vchPubKey)));
-                Wallet::CKey key;
+                Wallet::ECKey key;
                 key.SetPubKey(vchPubKey);
                 ret.push_back(Pair("iscompressed", key.IsCompressed()));
             }
@@ -2571,7 +2571,7 @@ namespace Net
         if (params.size() > 0)
             strPrefix = params[0].get_str();
 
-        Wallet::CKey key;
+        Wallet::ECKey key;
         int nCount = 0;
         do
         {

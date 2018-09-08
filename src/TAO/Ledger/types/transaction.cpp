@@ -36,7 +36,7 @@ namespace TAO
             //1. read hash genesis
             //2. check the previous nexthash claims (need INDEX)
 
-            LLC::CKey keyVerify(NID_brainpoolP512t1, 64);
+            LLC::ECKey keyVerify(NID_brainpoolP512t1, 64);
             keyVerify.SetPubKey(vchPubKey);
 
             TX_PROCESSED ++;
@@ -63,7 +63,7 @@ namespace TAO
 
             LLC::CSecret vchSecret(vchData.begin(), vchData.end());
 
-            LLC::CKey key(NID_brainpoolP512t1, 64);
+            LLC::ECKey key(NID_brainpoolP512t1, 64);
             if(!key.SetSecret(vchSecret, true))
                 return;
 
@@ -77,7 +77,7 @@ namespace TAO
 
             LLC::CSecret vchSecret(vchData.begin(), vchData.end());
 
-            LLC::CKey key(NID_brainpoolP512t1, 64);
+            LLC::ECKey key(NID_brainpoolP512t1, 64);
             if(!key.SetSecret(vchSecret, true))
                 return false;
 
