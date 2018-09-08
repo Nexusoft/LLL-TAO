@@ -100,8 +100,8 @@ namespace TAO
 		}
 
 
-		/* Generate a Hash For the Block from the Header. */
-		uint1024_t Block::GetHash() const
+		/* GGet the Proof Hash of the block. Used to verify work claims. */
+		uint1024_t Block::ProofHash() const
 		{
 			/** Hashing template for CPU miners uses nVersion to nBits **/
 			if(GetChannel() == 1)
@@ -109,6 +109,19 @@ namespace TAO
 
 			/** Hashing template for GPU uses nVersion to nNonce **/
 			return LLC::SK1024(BEGIN(nVersion), END(nNonce));
+		}
+
+
+		uint1024_t Block::StakeHash()
+		{
+
+		}
+
+
+		/* Generate a Hash For the Block from the Header. */
+		uint1024_t Block::GetHash() const
+		{
+			return LLC::SK1024(BEGIN(nVersion), END(nTime));
 		}
 
 
@@ -144,11 +157,8 @@ namespace TAO
 
 
 		/* Generate the Merkle Tree from uint512_t hashes. */
-		uint512_t Block::BuildMerkleTree() const
+		uint512_t Block::BuildMerkleTree(std::vector<uint512_t> vMerkleTree) const
 		{
-			vMerkleTree.clear();
-			BOOST_FOREACH(const CTransaction& tx, vtx)
-				vMerkleTree.push_back(tx.GetHash());
 			int j = 0;
 			for (int nSize = (int)vtx.size(); nSize > 1; nSize = (nSize + 1) / 2)
 			{
@@ -164,41 +174,6 @@ namespace TAO
 		}
 
 
-		/* Get the current Branch that is being worked on. */
-		std::vector<uint512_t> Block::GetMerkleBranch(int nIndex) const
-		{
-			if (vMerkleTree.empty())
-				BuildMerkleTree();
-			std::vector<uint512_t> vMerkleBranch;
-			int j = 0;
-			for (int nSize = (int)vtx.size(); nSize > 1; nSize = (nSize + 1) / 2)
-			{
-				int i = std::min(nIndex^1, nSize-1);
-				vMerkleBranch.push_back(vMerkleTree[j+i]);
-				nIndex >>= 1;
-				j += nSize;
-			}
-			return vMerkleBranch;
-		}
-
-
-		/* Check that the Merkle branch matches hash tree. */
-		uint512_t Block::CheckMerkleBranch(uint512_t hash, const std::vector<uint512_t>& vMerkleBranch, int nIndex)
-		{
-			if (nIndex == -1)
-				return 0;
-			for(int i = 0; i < vMerkleBranch.size(); i++)
-			{
-				if (nIndex & 1)
-					hash = LLC::SK512(BEGIN(vMerkleBranch[i]), END(vMerkleBranch[i]), BEGIN(hash), END(hash));
-				else
-					hash = LLC::SK512(BEGIN(hash), END(hash), BEGIN(vMerkleBranch[i]), END(vMerkleBranch[i]));
-				nIndex >>= 1;
-			}
-			return hash;
-		}
-
-
 		/* Dump the Block data to Console / Debug.log. */
 		void Block::print() const
 		{
@@ -210,48 +185,42 @@ namespace TAO
 					nTime, nBits, nChannel, nHeight, nNonce,
 					vtx.size(),
 					HexStr(vchBlockSig.begin(), vchBlockSig.end()).c_str());
-			for (uint32_t i = 0; i < vtx.size(); i++)
-			{
-				printf("  ");
-				vtx[i].print();
-			}
-			printf("  vMerkleTree: ");
-			for (uint32_t i = 0; i < vMerkleTree.size(); i++)
-				printf("%s ", vMerkleTree[i].ToString().substr(0,10).c_str());
-			printf("\n");
 		}
 
 
 		/* Verify the Proof of Work satisfies network requirements. */
-		bool Block::VerifyWork() const
-		{
-			/** Check the Prime Number Proof of Work for the Prime Channel. **/
-			if(GetChannel() == 1)
-			{
-				uint32_t nPrimeBits = GetPrimeBits(GetPrime());
-				if (nPrimeBits < bnProofOfWorkLimit[1])
-					return error("VerifyWork() : prime below minimum work");
+		bool CBlock::VerifyWork() const
+	    {
+	        /** Check the Prime Number Proof of Work for the Prime Channel. **/
+	        if(GetChannel() == 1)
+	        {
+	            if(nVersion >= 5 && ProofHash() < bnPrimeMinOrigins.getuint1024())
+	                return error("VerifyWork() : prime origins below 1016-bits");
 
-				if(nBits > nPrimeBits)
-					return error("VerifyWork() : prime cluster below target");
+	            unsigned int nPrimeBits = GetPrimeBits(GetPrime());
+	            if (nPrimeBits < bnProofOfWorkLimit[1])
+	                return error("VerifyWork() : prime below minimum work");
 
-				return true;
-			}
+	            if(nBits > nPrimeBits)
+	                return error("VerifyWork() : prime cluster below target");
 
-			LLC::TYPES::CBigNum bnTarget;
-			bnTarget.SetCompact(nBits);
+	            return true;
+	        }
 
-			/** Check that the Hash is Within Range. **/
-			if (bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[2])
-				return error("VerifyWork() : proof-of-work hash not in range");
+	        CBigNum bnTarget;
+	        bnTarget.SetCompact(nBits);
+
+	        /** Check that the Hash is Within Range. **/
+	        if (bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[2])
+	            return error("VerifyWork() : proof-of-work hash not in range");
 
 
-			/** Check that the Hash is within Proof of Work Amount. **/
-			if (GetHash() > bnTarget.getuint1024())
-				return error("VerifyWork() : proof-of-work hash below target");
+	        /** Check that the Hash is within Proof of Work Amount. **/
+	        if ((nVersion < 5 ? GetHash() : ProofHash()) > bnTarget.getuint1024())
+	            return error("VerifyWork() : proof-of-work hash below target");
 
-			return true;
-		}
+	        return true;
+	    }
 
 
 		/* Verify the Proof of Stake satisfies network requirements. */
@@ -281,7 +250,7 @@ namespace TAO
 				if (key.GetPubKey() != vchPubKey)
 					return false;
 
-				return key.Sign((nVersion >= 4) ? SignatureHash() : GetHash(), vchBlockSig, 1024);
+				return key.Sign(GetHash(), vchBlockSig, 1024);
 			}
 
 			return false;
@@ -307,7 +276,7 @@ namespace TAO
 					return false;
 				if (vchBlockSig.empty())
 					return false;
-				return key.Verify((nVersion >= 4) ? SignatureHash() : GetHash(), vchBlockSig, 1024);
+				return key.Verify(GetHash(), vchBlockSig, 1024);
 			}
 			return false;
 		}

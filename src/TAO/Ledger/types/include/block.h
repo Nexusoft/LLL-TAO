@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_BLOCK_H
 #define NEXUS_TAO_LEDGER_TYPES_BLOCK_H
 
-#include "../../../../Util/templates/serialize.h"
+#include "../../../../Util/macro/header.h"
 
 //forward declerations for BigNum
 namespace LLC
@@ -23,11 +23,6 @@ namespace LLC
 	{
 		class CBigNum;
 	}
-}
-
-namespace Legacy
-{
-	class Transaction;
 }
 
 namespace TAO
@@ -82,14 +77,6 @@ namespace TAO
 
 			/** The bytes holding the blocks signature. Signed by the block creator before broadcast. **/
 			std::vector<uint8_t> vchBlockSig;
-
-
-			/** The transactions included in this block. Used to build the merkle tree. **/
-			std::vector<Legacy::Transaction> vtx;
-
-
-			/** Memory only structure to hold merkle tree data. **/
-			mutable std::vector<uint512_t> vMerkleTree;
 
 
 			//standard serialization methods
@@ -179,14 +166,34 @@ namespace TAO
 			LLC::CBigNum GetPrime() const;
 
 
-			/** GetHash
+			/** Proof Hash
+			 *
+			 *	Get the Proof Hash of the block. Used to verify work claims.
+			 *
+			 *	@return 1024-bit proof hash
+			 *
+			 **/
+			uint1024_t ProofHash() const;
+
+
+			/** Stake Hash
+			 *
+			 *	Prove that you staked a number of seconds based on weight
+			 *
+			 *	@return 1024-bit stake hash
+			 *
+			 **/
+			uint1024_t StakeHash() const;
+
+
+			/** Get Hash
 			 *
 			 *	Get the Hash of the block.
 			 *
 			 *	@return 1024-bit block hash
 			 *
 			 **/
-			uint1024_t GetHash() const;
+			uint1024_t ProofHash() const;
 
 
 			/** SignatureHash
