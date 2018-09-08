@@ -52,7 +52,7 @@ namespace Core
 	const int64_t MIN_RELAY_TX_FEE = CENT;
 
 	/** Maximum Coins that can be Sent in 1 Transaction is 1 Million Nexus. **/
-	const int64_t MAX_TXOUT_AMOUNT = 1000000 * COIN;
+	const int64_t MaxTxOut() = 1000000 * COIN;
 
 
 	/** Minimum Output can be 1 Satoshi. **/

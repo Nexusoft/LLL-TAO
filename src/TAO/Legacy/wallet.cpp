@@ -1043,7 +1043,7 @@ namespace Wallet
 
         //Ensure total inputs does not exceed maximum
         if(!Core::MoneyRange(nValueRet))
-            return error("CWallet::SelectCoins() : Input total over TX limit Total: %" PRI64d " Limit %" PRI64d, nValueRet, Core::MAX_TXOUT_AMOUNT);
+            return error("CWallet::SelectCoins() : Input total over TX limit Total: %" PRI64d " Limit %" PRI64d, nValueRet, Core::MaxTxOut());
 
         //Ensure balance is sufficient to cover transaction
         if(nValueRet < nTargetValue)
