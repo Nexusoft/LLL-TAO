@@ -20,23 +20,27 @@ namespace TAO
     namespace Register
     {
 
-        class Account
+        class Escrow
         {
         public:
 
-            /** The identifier of the account token. **/
-            uint256 hashIdentifier;
+            /** The total signers. **/
+            uint32_t nSignatories;
 
 
-            /** The balance of total tokens in account. **/
-            uint64_t nBalance;
+            /** The required signers. **/
+            uint32_t nRequired;
+
+
+            /** The hashed keys that can sign. **/
+            std::vector<uint256_t> hashPubKeys;
 
 
             /** Serialization methods. **/
             SERIALIZE_HEADER
 
 
-            Account() : hashIdentifier(0), nBalance(0)
+            Escrow() : hashIdentifier(0), nBalance(0)
             {
 
             }

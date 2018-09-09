@@ -15,27 +15,13 @@ ________________________________________________________________________________
 
 namespace TAO
 {
+
     namespace Register
     {
-        class CAccount
+
+        Account::print() const;
         {
-        public:
-
-            /** The identifier of the account token. **/
-            uint256 hashIdentifier;
-
-            /** The balance of total tokens in account. **/
-            uint64_t nBalance;
-
-            /** Serialization methods. **/
-            SERIALIZE_HEADER
-
-            CAccount() : hashIdentifier(0), nBalance(0)
-            {
-
-            }
-
-            void print();
-        };
+            printf("Account(id=%s, balance=%u)\n", hashIdentifier.ToString().substr(0, 20).c_str(), nBalance)
+        }
     }
 }
