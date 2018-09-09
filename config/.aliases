@@ -15,6 +15,7 @@ alias td         'tcpdump -i any -n'
 #        
 alias run-nexus  '/nexus/run-nexus'
 alias ps-nexus   'psg nexus'
+alias tcp-nexus  'netstat -an | egrep 7323' 
 alias ncli       '/nexus/nexus -testnet'
 alias ninfo      'ncli getinfo'
 alias npeers     'ncli getpeerinfo'

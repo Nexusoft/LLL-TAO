@@ -59,20 +59,20 @@ EXPOSE 8080
 WORKDIR /lispers.net
 
 #
-# Put Nexus source-tree in docker image.
+# Put Nexus source-tree in docker image and build it..
 #
 RUN mkdir /nexus
 RUN mkdir /nexus/build
 COPY ./makefile.cli /nexus
 COPY ./src /nexus/src/
-COPY config/nexus.conf /root/.Nexus/nexus.conf
-COPY config/run-nexus /nexus/run-nexus
-
-#
-# Build Nexus.
-#
 RUN cd /nexus; make -f makefile.cli
 
+#
+# Copy Nexus startup files.
+#
+COPY config/nexus.conf /root/.Nexus/nexus.conf
+COPY config/run-nexus /nexus/run-nexus
+    
 #
 # Copy LISP startup config.
 #
@@ -92,9 +92,10 @@ COPY config/.cshrc /root/.cshrc
 #
 ENV RUN_LISP    /lispers.net/RL
 ENV RUN_NEXUS   /nexus/run-nexus
-ENV RUN_GETINFO /nexus/nexus -lispnet getinfo
+ENV RUN_GETINFO /nexus/nexus -test getinfo
 ENV RUN_PSLISP  /lispers.net/pslisp
 
 CMD echo "Starting LISP ..."; $RUN_LISP; \
     echo "Starting Nexus ..."; $RUN_NEXUS; \
-    sleep 1; $RUN_PSLISP; $RUN_GETINFO; tcsh
+#   sleep 1; $RUN_PSLISP; $RUN_GETINFO; tcsh
+    sleep 1; $RUN_PSLISP; tcsh
