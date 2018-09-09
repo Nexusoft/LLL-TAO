@@ -13,10 +13,10 @@ ________________________________________________________________________________
 
 #include <assert.h>
 
-#include "include/secret.h"
-#include "include/enum.h"
+#include <TAO/Legacy/types/secret.h>
+#include <TAO/Legacy/types/enum.h>
 
-#include "../../../Util/include/args.h"
+#include <Util/include/args.h>
 
 namespace Legacy
 {

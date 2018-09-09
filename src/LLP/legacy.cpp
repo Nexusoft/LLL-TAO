@@ -12,19 +12,20 @@
 ____________________________________________________________________________________________*/
 
 
-#include "include/hosts.h"
-#include "include/legacy.h"
-#include "include/inv.h"
+#include <LLC/include/random.h>
 
-#include "../LLC/include/random.h"
+#include <LLP/include/hosts.h>
+#include <LLP/include/inv.h>
+#include <LLP/include/legacy.h>
+#include <LLP/templates/events.h>
 
-#include "../Util/include/args.h"
-#include "../Util/include/hex.h"
-#include "../Util/include/runtime.h"
+#include <Util/include/args.h>
+#include <Util/include/hex.h>
+#include <Util/include/debug.h>
+#include <Util/include/runtime.h>
 
-
-#include "../TAO/Ledger/include/sigchain.h"
-
+#include <TAO/Ledger/include/sigchain.h>
+#include <TAO/Ledger/types/transaction.h>
 
 namespace LLP
 {
@@ -118,7 +119,8 @@ namespace LLP
         if(EVENT == EVENT_GENERIC)
         {
 
-            if(nLastPing + 1 < UnifiedTimestamp()) {
+            if(nLastPing + 1 < UnifiedTimestamp())
+            {
 
                 for(int i = 0; i < GetArg("-ping", 1); i++)
                 {
@@ -130,29 +132,6 @@ namespace LLP
                     mapLatencyTracker[nSessionID].Start();
 
                     PushMessage("ping", nSessionID);
-
-                    if(fListen)
-                        test->WriteSample(nSessionID, UnifiedTimestamp(true));
-                }
-
-                if(!fListen)
-                {
-
-                    TAO::Ledger::SignatureChain sigChain("username", "password");
-
-                    TAO::Ledger::TritiumTransaction tx = TAO::Ledger::TritiumTransaction();
-                    tx.nVersion    = 1;
-                    tx.nTimestamp  = UnifiedTimestamp();
-                    tx.NextHash(sigChain.Generate(nSessionID, "PIN"));
-                    tx.hashGenesis = uint256_t(0);
-                    tx.vchLedgerData = {0xff, 0xff, 0xff, 0xff, 0xfe, 0xfe};
-                    tx.Sign(sigChain.Generate(nSessionID + 1, "PIN"));
-
-                    //tx.print();
-                    for(int i = 0; i < GetArg("-tx", 1); i++)
-                    {
-                        PushMessage("tritium", tx);
-                    }
                 }
             }
 
@@ -258,7 +237,8 @@ namespace LLP
 
 
             /* Ignore Messages Recieved that weren't Requested. */
-            if(!mapSentRequests.count(nRequestID)) {
+            if(!mapSentRequests.count(nRequestID))
+            {
                 DDOS->rSCORE += 5;
 
                 if(GetArg("-verbose", 0) >= 3)
@@ -269,7 +249,8 @@ namespace LLP
 
 
             /* Reject Samples that are recieved 30 seconds after last check on this node. */
-            if(UnifiedTimestamp(true) - mapSentRequests[nRequestID] > 30000) {
+            if(UnifiedTimestamp(true) - mapSentRequests[nRequestID] > 30000)
+            {
                 mapSentRequests.erase(nRequestID);
 
                 if(GetArg("-verbose", 0) >= 3)
@@ -314,20 +295,10 @@ namespace LLP
 
         else if(INCOMING.GetMessage() == "tritium")
         {
-            TAO::Ledger::TritiumTransaction tx;
+            TAO::Ledger::Transaction tx;
             ssMessage >> tx;
 
-            //tx.print();
-
-            if(!tx.IsValid())
-            {
-                printf("Invalid tx %sw\n", tx.GetHash().ToString().c_str());
-
-                return true;
-            }
-
-            if(fListen)
-                test->WriteTransaction(GetRand512(), tx);
+            tx.print();
         }
 
 
@@ -366,11 +337,6 @@ namespace LLP
             /* Calculate the Average Latency of the Connection. */
             uint32_t nLatency = mapLatencyTracker[nonce].ElapsedMilliseconds();
             mapLatencyTracker.erase(nonce);
-
-            uint64_t nTimestamp;
-            //if(fListen)
-            //    test->ReadSample(nonce, nTimestamp);
-
 
             /* Debug Level 3: output Node Latencies. */
             if(GetArg("-verbose", 0) >= 3)
@@ -435,7 +401,8 @@ namespace LLP
             ssMessage >> vAddr;
 
             /* Don't want addr from older versions unless seeding */
-            if (vAddr.size() > 2000){
+            if (vAddr.size() > 2000)
+            {
                 DDOS->rSCORE += 20;
 
                 return error("***** Node message addr size() = %d... Dropping Connection", vAddr.size());
@@ -531,5 +498,4 @@ namespace LLP
 
         return true;
     }
-
 }
