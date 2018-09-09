@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_REGISTER_INCLUDE_ACCOUNT_H
-#define NEXUS_TAO_REGISTER_INCLUDE_ACCOUNT_H
+#ifndef NEXUS_TAO_REGISTER_INCLUDE_TOKEN_H
+#define NEXUS_TAO_REGISTER_INCLUDE_TOKEN_H
 
 namespace TAO
 {
@@ -20,7 +20,7 @@ namespace TAO
     namespace Register
     {
 
-        class Account
+        class Token
         {
         public:
 
@@ -28,15 +28,19 @@ namespace TAO
             uint256 hashIdentifier;
 
 
-            /** The balance of total tokens in account. **/
-            uint64_t nBalance;
+            /** The maximum supply of said token. **/
+            uint64_t nMaxSupply;
+
+
+            /** The significant figures of said token. **/
+            uint8_t  nCoinDigits;
 
 
             /** Serialization methods. **/
             SERIALIZE_HEADER
 
 
-            Account() : hashIdentifier(0), nBalance(0)
+            Token() : hashIdentifier(0), nBalance(0)
             {
 
             }
