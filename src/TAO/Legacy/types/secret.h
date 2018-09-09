@@ -14,8 +14,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_INCLUDE_SECRET_H
 #define NEXUS_TAO_LEGACY_TYPES_INCLUDE_SECRET_H
 
-#include "../../../../Util/include/base58.h"
-#include "../../../../LLC/include/key.h"
+#include <LLC/include/key.h>
+#include <Util/include/base58.h>
 
 namespace Legacy
 {

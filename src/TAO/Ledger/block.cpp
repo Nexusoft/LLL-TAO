@@ -11,17 +11,16 @@
 
 ____________________________________________________________________________________________*/
 
-#include "include/block.h"
+#include <LLC/hash/SK.h>
+#include <LLC/hash/macro.h>
+#include <LLC/include/key.h>
+#include <LLC/types/bignum.h>
 
-#include "../../../LLC/hash/SK.h"
-#include "../../../LLC/hash/macro.h"
-#include "../../../LLC/include/key.h"
-#include "../../../LLC/types/bignum.h"
+#include <Util/templates/serialize.h>
+#include <Util/include/hex.h>
+#include <Util/include/runtime.h>
 
-
-#include "../../../Util/templates/serialize.h"
-#include "../../../Util/include/hex.h"
-#include "../../../Util/include/runtime.h"
+#include <TAO/Ledger/types/block.h>
 
 namespace TAO
 {

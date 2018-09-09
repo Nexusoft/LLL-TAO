@@ -118,13 +118,13 @@ endif
 
 #Configure Build Environment
 ifneq ($(detected_OS),Windows)
-INCLUDEPATHS+= $(addprefix -I,$(CURDIR) $(CURDIR)/build $(CURDIR)/src $(CURDIR)/src/core $(CURDIR)/src/hash $(CURDIR)/src/json $(CURDIR)/src/json $(CURDIR)/src/LLP $(CURDIR)/src/LLD $(CURDIR)/src/net $(CURDIR)/src/util $(CURDIR)/src/wallet) \
+INCLUDEPATHS+= $(addprefix -I, $(CURDIR) $(CURDIR)/build $(CURDIR)/src )\
 	-I$(BDB_INCLUDE_PATH) \
 	-I$(BOOST_INCLUDE_PATH) \
 	-I$(OPENSSL_INCLUDE_PATH)
 endif
 ifeq ($(detected_OS),Windows)
-INCLUDEPATHS+= -I"$(CURDIR)" -I"$(CURDIR)/build" -I"$(CURDIR)/src" -I"$(CURDIR)/src/core" -I"$(CURDIR)/src/hash" -I"$(CURDIR)/src/json" -I"$(CURDIR)/src/json" -I"$(CURDIR)/src/LLP" -I"$(CURDIR)/src/LLD" -I"$(CURDIR)/src/net" -I"$(CURDIR)/src/util" -I"$(CURDIR)/src/wallet" \
+INCLUDEPATHS+= -I"$(CURDIR)" -I"$(CURDIR)/build" -I"$(CURDIR)/src" \
 	-I$(BDB_INCLUDE_PATH) \
 	-I$(BOOST_INCLUDE_PATH) \
 	-I$(OPENSSL_INCLUDE_PATH)
@@ -259,19 +259,10 @@ build/%.o: ./src/LLP/%.cpp $(HEADERS)
 build/%.o: ./src/TAO/API/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/%.o: ./src/TAO/API/json/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -o $@ $<
-
 build/%.o: ./src/TAO/Legacy/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/%.o: ./src/TAO/Legacy/types/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -o $@ $<
-
 build/%.o: ./src/TAO/Ledger/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -o $@ $<
-
-build/%.o: ./src/TAO/Ledger/types/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/%.o: ./src/TAO/Operation/%.cpp $(HEADERS)
@@ -389,13 +380,6 @@ build/%.o: src/TAO/API/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/API/json/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
 build/%.o: src/TAO/Legacy/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
@@ -403,21 +387,7 @@ build/%.o: src/TAO/Legacy/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/Legacy/types/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
 build/%.o: src/TAO/Ledger/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/%.o: src/TAO/Ledger/types/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -556,13 +526,6 @@ build/%.o: src/TAO/API/%.cpp
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/API/json/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
 build/%.o: src/TAO/Legacy/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
@@ -570,21 +533,7 @@ build/%.o: src/TAO/Legacy/%.cpp
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/Legacy/types/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
 build/%.o: src/TAO/Ledger/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/%.o: src/TAO/Ledger/types/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
