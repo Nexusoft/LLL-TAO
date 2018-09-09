@@ -14,9 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_SOCKET_H
 #define NEXUS_LLP_TEMPLATES_SOCKET_H
 
-#include <string>
 #include <vector>
-#include <stdio.h>
 
 namespace LLP
 {
@@ -41,7 +39,7 @@ namespace LLP
 
 
         /** The default constructor. **/
-        Socket() : nSocket(INVALID_SOCKET), nError(0) {}
+        Socket() : nSocket(0), nError(0) {}
 
 
         /** The socket constructor. **/
@@ -123,6 +121,10 @@ namespace LLP
         int Write(std::vector<uint8_t> vData, size_t nBytes);
 
     };
+
+    /** Type Definitions for LLP Functions **/
+    typedef Socket Socket_t;
+
 }
 
 #endif

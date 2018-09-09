@@ -29,9 +29,9 @@ ________________________________________________________________________________
 #include <boost/tuple/tuple_comparison.hpp>
 #include <boost/tuple/tuple_io.hpp>
 
-#include "../include/allocators.h"
+#include <Util/include/allocators.h>
 
-#include "../../LLC/types/uint1024.h"
+#include <LLC/types/uint1024.h>
 
 namespace Legacy
 {

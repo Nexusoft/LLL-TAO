@@ -13,11 +13,11 @@ ________________________________________________________________________________
 
 #include <assert.h>
 
-#include "include/address.h"
-#include "include/enum.h"
+#include <TAO/Legacy/types/address.h>
+#include <TAO/Legacy/types/enum.h>
 
-#include "../../../LLC/hash/SK.h"
-#include "../../../Util/include/args.h"
+#include <LLC/hash/SK.h>
+#include <Util/include/args.h>
 
 
 namespace Legacy

@@ -14,8 +14,9 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_BLOCK_H
 #define NEXUS_TAO_LEDGER_TYPES_BLOCK_H
 
-#include "../../../../Util/macro/header.h"
-#include "../../../../LLC/types/uint1024.h"
+#include <LLC/types/uint1024.h>
+
+#include <Util/macro/header.h>
 
 //forward declerations for BigNum
 namespace LLC
@@ -28,6 +29,7 @@ namespace TAO
 {
 	namespace Ledger
 	{
+		
 		/** Nodes collect new transactions into a block, hash them into a hash tree,
 		 * and scan through nonce values to make the block's hash satisfy proof-of-work
 		 * requirements.  When they solve the proof-of-work, they broadcast the block

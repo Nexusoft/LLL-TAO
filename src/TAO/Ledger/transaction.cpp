@@ -11,16 +11,17 @@
 
 ____________________________________________________________________________________________*/
 
-#include "include/transaction.h"
 
-#include "../../../Util/templates/serialize.h"
-#include "../../../Util/include/hex.h"
+#include <LLC/hash/SK.h>
+#include <LLC/hash/macro.h>
+#include <LLC/include/key.h>
 
-#include "../../../LLC/hash/SK.h"
-#include "../../../LLC/hash/macro.h"
-#include "../../../LLC/include/key.h"
+#include <LLP/include/version.h>
 
-#include "../../../LLP/include/version.h"
+#include <Util/templates/serialize.h>
+#include <Util/include/hex.h>
+
+#include <TAO/Ledger/types/transaction.h>
 
 namespace TAO
 {
@@ -28,10 +29,8 @@ namespace TAO
     namespace Ledger
     {
 
-        uint32_t TX_PROCESSED = 0;
-
         /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
-        bool TritiumTransaction::IsValid() const
+        bool Transaction::IsValid() const
         {
             //1. read hash genesis
             //2. check the previous nexthash claims (need INDEX)
@@ -39,17 +38,15 @@ namespace TAO
             LLC::ECKey keyVerify(NID_brainpoolP512t1, 64);
             keyVerify.SetPubKey(vchPubKey);
 
-            TX_PROCESSED ++;
-
             uint512_t hashTx = GetHash();
             return keyVerify.Verify(hashTx.GetBytes(), vchSig);
         }
 
 
         /* Gets the hash of the transaction object. */
-        uint512_t TritiumTransaction::GetHash() const
+        uint512_t Transaction::GetHash() const
         {
-            CDataStream ss(SER_GETHASH, PROTOCOL_VERSION);
+            CDataStream ss(SER_GETHASH, nVersion);
             ss << *this;
 
             return LLC::SK512(ss.begin(), ss.end());
@@ -57,7 +54,7 @@ namespace TAO
 
 
         /* Sets the Next Hash from the key */
-        void TritiumTransaction::NextHash(uint512_t hashSecret)
+        void Transaction::NextHash(uint512_t hashSecret)
         {
             std::vector<uint8_t> vchData = hashSecret.GetBytes(); //todo change this a bit
 
@@ -71,7 +68,7 @@ namespace TAO
         }
 
         /* Signs the transaction with the private key and sets the public key */
-         bool TritiumTransaction::Sign(uint512_t hashSecret)
+         bool Transaction::Sign(uint512_t hashSecret)
          {
             std::vector<uint8_t> vchData = hashSecret.GetBytes(); //todo change this a bit
 
@@ -86,7 +83,7 @@ namespace TAO
             return key.Sign(hashTx.GetBytes(), vchSig);
          }
 
-         void TritiumTransaction::print() const
+         void Transaction::print() const
          {
              printf("Tritium(nVersion = %u, nTimestamp = %" PRIu64 ", hashNext = %s, hashGenesis = %s, pub=%s, sig=%s, hash=%s, ledger=%s)\n", nVersion, nTimestamp, hashNext.ToString().c_str(), hashGenesis.ToString().c_str(), HexStr(vchPubKey).c_str(), HexStr(vchSig).c_str(), GetHash().ToString().c_str(), HexStr(vchLedgerData.begin(), vchLedgerData.end()).c_str());
          }
