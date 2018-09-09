@@ -14,6 +14,10 @@
 # when the lisp.config file does not exist in this directory.
 #
 set random
+set hostname = `hostname`
+if ($hostname =~ "*seed") then
+    unset random
+endif
 
 #
 # Provision instance-ID and EIDs if not already provisioned.
@@ -27,8 +31,6 @@ if ($status != 1) then
     set byte0 = `python -c "print $rand & 0xff"`
     set v4_eid = 240.$byte2.$byte1.$byte0
     set v6_eid = fe::${byte2}:${byte1}:${byte0}
-    set v4_rloc = `ifconfig eth0 | egrep "inet "`
-    set v4_rloc = `echo $v4_rloc | cut -d " " -f 2`
 #   set iid = 0
     set iid = 1537
   else
@@ -36,7 +38,8 @@ if ($status != 1) then
     set v6_eid = fe::255:255
     set iid = 1537
   endif
-  set hostname = `hostname`
+  set v4_rloc = `ifconfig eth0 | egrep "inet "`
+  set v4_rloc = `echo $v4_rloc | cut -d " " -f 2`
 
   echo "Provisioning lisp.config file with EIDs [$iid]$v4_eid & [$iid]$v6_eid"
   cat lisp.config.xtr | sed "s/<sample>/$hostname/" > lisp.config.bak
