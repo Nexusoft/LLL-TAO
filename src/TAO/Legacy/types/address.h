@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_INCLUDE_ADDRESS_H
 #define NEXUS_TAO_LEGACY_TYPES_INCLUDE_ADDRESS_H
 
-#include "../../../../Util/include/base58.h"
+#include <Util/include/base58.h>
 
 class uint256_t;
 

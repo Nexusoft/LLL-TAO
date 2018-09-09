@@ -17,8 +17,8 @@ ________________________________________________________________________________
 #include <stdexcept>
 #include <vector>
 
-#include "../Util/include/allocators.h"
-#include "../types/uint1024.h"
+#include <LLC/types/uint1024.h>
+#include <Util/include/allocators.h>
 
 #include <openssl/ec.h> // for EC_KEY definition
 #include <openssl/obj_mac.h>
