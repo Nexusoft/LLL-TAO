@@ -169,7 +169,6 @@ OBJS= \
 	build/KeccakSponge.o \
 	build/Keccak-compact64.o \
 	build/KeccakHash.o \
-	build/SK.o \
 	build/random.o \
 	build/key.o \
 	build/network.o \

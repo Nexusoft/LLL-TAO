@@ -11,7 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/Register/objects/account.h>
+#ifndef NEXUS_TAO_REGISTER_INCLUDE_TOKEN_H
+#define NEXUS_TAO_REGISTER_INCLUDE_TOKEN_H
 
 namespace TAO
 {
@@ -19,9 +20,30 @@ namespace TAO
     namespace Register
     {
 
-        Account::print() const;
+        class Order
         {
-            printf("Account(id=%s, balance=%u)\n", hashIdentifier.ToString().substr(0, 20).c_str(), nBalance)
-        }
+        public:
+
+            /** The identifier of the order (product). **/
+            uint256 hashIdentifier;
+
+
+            /** The quantity ordered **/
+            uint32_t  nQuantity;
+
+
+            /** Serialization methods. **/
+            SERIALIZE_HEADER
+
+
+            Order() : hashIdentifier(0), nBalance(0)
+            {
+
+            }
+
+            void print() const;
+        };
     }
 }
+
+#endif

@@ -32,8 +32,8 @@ namespace TAO
             uint32_t nRequired;
 
 
-            /** The hashed keys that can sign. **/
-            std::vector<uint256_t> hashPubKeys;
+            /** The authorised signatories (genesis id's) **/
+            std::vector<uint512_t> hashSignatories;
 
 
             /** Serialization methods. **/

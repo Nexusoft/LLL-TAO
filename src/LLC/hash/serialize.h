@@ -11,28 +11,41 @@
 
 ____________________________________________________________________________________________*/
 
-#include "SK.h"
+#ifndef NEXUS_LLC_HASH_SERIALIZE_H
+#define NEXUS_LLC_HASH_SERIALIZE_H
 
-#include "../../LLP/include/version.h"
-
-#include "../../Util/templates/serialize.h"
-
+#include <LLC/hash/SK.h>
+#include <LLP/include/version.h>
+#include <Util/templates/serialize.h>
 
 /** Namespace LLC (Lower Level Crypto) **/
 namespace LLC
 {
 
 	/** Serialize Hash: Used to Serialize a CTransaction class in order to obtain the Tx Hash. Utilizes CDataStream to serialize the class. **/
-	template<typename T>
-	uint512_t SerializeHash(const T& obj)
+	template<typename T> uint512_t SerializeSK512(const T& obj, int nVersion = LLP::PROTOCOL_VERSION)
 	{
 		// Most of the time is spent allocating and deallocating CDataStream's
 		// buffer.  If this ever needs to be optimized further, make a CStaticStream
 		// class with its buffer on the stack.
-		CDataStream ss(SER_GETHASH, PROTOCOL_VERSION);
+		CDataStream ss(SER_GETHASH, nVersion);
 		ss.reserve(10000);
 		ss << obj;
 		return SK512(ss.begin(), ss.end());
 	}
 
+	/** Serialize Hash: Used to Serialize a CTransaction class in order to obtain the Tx Hash. Utilizes CDataStream to serialize the class. **/
+	template<typename T> uint64_t SerializeSK64(const T& obj, int nVersion = LLP::PROTOCOL_VERSION)
+	{
+		// Most of the time is spent allocating and deallocating CDataStream's
+		// buffer.  If this ever needs to be optimized further, make a CStaticStream
+		// class with its buffer on the stack.
+		CDataStream ss(SER_GETHASH, nVersion);
+		ss.reserve(10000);
+		ss << obj;
+		return SK64(ss.begin(), ss.end());
+	}
+
 }
+
+#endif

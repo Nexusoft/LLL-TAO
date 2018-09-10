@@ -16,6 +16,11 @@ ________________________________________________________________________________
 #include <Util/include/signals.h>
 #include <Util/include/convert.h>
 
+#include <TAO/Register/objects/account.h>
+#include <TAO/Register/objects/token.h>
+
+#include <TAO/Register/include/state.h>
+#include <TAO/Register/include/object.h>
 
 int main(int argc, char** argv)
 {
@@ -47,6 +52,18 @@ int main(int argc, char** argv)
         }
     }
 
+    TAO::Register::Account acct(105, 15);
+    acct.print();
+
+    CDataStream ssOps(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    ssOps << (uint8_t)TAO::Operation::OP_DEBIT;
+
+    std::vector<uint8_t> vchOps(ssOps.begin(), ssOps.end());
+    TAO::Register::Object<TAO::Register::Account> regNew(acct, vchOps);
+    regNew.print();
+
+    TAO::Register::Account acct2 = regNew.GetObject();
+    acct2.print();
 
     return 0;
 }

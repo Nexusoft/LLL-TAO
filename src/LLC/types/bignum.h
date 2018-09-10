@@ -508,19 +508,19 @@ namespace LLC
             return ToString(16);
         }
 
-        uint32_t GetSerializeSize(int nType=0, int nVersion=PROTOCOL_VERSION) const
+        uint32_t GetSerializeSize(int nType=0, int nVersion=LLP::PROTOCOL_VERSION) const
         {
             return ::GetSerializeSize(getvch(), nType, nVersion);
         }
 
         template<typename Stream>
-        void Serialize(Stream& s, int nType=0, int nVersion=PROTOCOL_VERSION) const
+        void Serialize(Stream& s, int nType=0, int nVersion=LLP::PROTOCOL_VERSION) const
         {
             ::Serialize(s, getvch(), nType, nVersion);
         }
 
         template<typename Stream>
-        void Unserialize(Stream& s, int nType=0, int nVersion=PROTOCOL_VERSION)
+        void Unserialize(Stream& s, int nType=0, int nVersion=LLP::PROTOCOL_VERSION)
         {
             std::vector<uint8_t> vch;
             ::Unserialize(s, vch, nType, nVersion);

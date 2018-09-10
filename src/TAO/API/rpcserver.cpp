@@ -131,7 +131,7 @@ namespace Net
     {
         Object result;
         result.push_back(Pair("hash", block.GetHash().GetHex()));
-        result.push_back(Pair("size", (int)::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION)));
+        result.push_back(Pair("size", (int)::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION)));
         result.push_back(Pair("height", (int)blockindex->nHeight));
         result.push_back(Pair("channel", (int)block.nChannel));
         result.push_back(Pair("version", (int)block.nVersion));
@@ -550,7 +550,7 @@ namespace Net
 
         Object obj;
         obj.push_back(Pair("version",       FormatFullVersion()));
-        obj.push_back(Pair("protocolversion",(int)PROTOCOL_VERSION));
+        obj.push_back(Pair("protocolversion",(int)LLP::PROTOCOL_VERSION));
         obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
         obj.push_back(Pair("balance",       ValueFromAmount(pwalletMain->GetBalance())));
         obj.push_back(Pair("newmint",       ValueFromAmount(pwalletMain->GetNewMint())));
@@ -2076,7 +2076,7 @@ namespace Net
         if (!Core::GetTransaction(hash, tx, hashBlock))
             throw JSONRPCError(-5, "No information available about transaction");
 
-        CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
+        CDataStream ssTx(SER_NETWORK, LLP::PROTOCOL_VERSION);
         ssTx << tx;
         return HexStr(ssTx.begin(), ssTx.end());
     }
@@ -2091,7 +2091,7 @@ namespace Net
 
         // parse hex string from parameter
         vector<uint8_t> txData(ParseHex(params[0].get_str()));
-        CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
+        CDataStream ssData(txData, SER_NETWORK, LLP::PROTOCOL_VERSION);
         bool fCheckInputs = false;
         if (params.size() > 1)
             fCheckInputs = (params[1].get_int() != 0);

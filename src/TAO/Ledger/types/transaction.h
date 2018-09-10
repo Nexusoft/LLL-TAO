@@ -72,6 +72,7 @@ namespace TAO
                 READWRITE(nTimestamp);
                 READWRITE(hashNext);
                 READWRITE(hashGenesis);
+                READWRITE(hashPrevTx);
                 READWRITE(vchLedgerData);
 
                 if(!(nType & SER_GETHASH))
