@@ -22,6 +22,9 @@ ________________________________________________________________________________
 #include <TAO/Register/include/state.h>
 #include <TAO/Register/include/object.h>
 
+#include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/sigchain.h>
+
 int main(int argc, char** argv)
 {
     /* Handle all the signals with signal handler method. */
@@ -52,14 +55,48 @@ int main(int argc, char** argv)
         }
     }
 
+    TAO::Ledger::SignatureChain chain("username", "password");
+    TAO::Ledger::Transaction genesis = TAO::Ledger::Transaction();
+    genesis.NextHash(chain.Generate(genesis.nSequence + 1, "1111"));
+
+
     TAO::Register::Account acct(105, 15);
     acct.print();
 
     CDataStream ssOps(SER_NETWORK, LLP::PROTOCOL_VERSION);
-    ssOps << (uint8_t)TAO::Operation::OP_DEBIT;
 
-    std::vector<uint8_t> vchOps(ssOps.begin(), ssOps.end());
-    TAO::Register::Object<TAO::Register::Account> regNew(acct, vchOps);
+    uint256_t hashRegister;
+    ssOps << (uint8_t)TAO::Operation::OP_WRITE << hashRegister << acct;
+    genesis.vchLedgerData.insert(genesis.vchLedgerData.end(), ssOps.begin(), ssOps.end());
+
+    genesis.hashPrevTx = 0; //sign of genesis
+
+    CDataStream ssGen(SER_GENESISHASH, genesis.nVersion);
+    ssGen << genesis;
+
+    genesis.hashGenesis = LLC::SK256(ssGen.begin(), ssGen.end());
+    genesis.Sign(chain.Generate(genesis.nSequence, "1111"));
+
+    if(genesis.IsValid())
+        genesis.print();
+
+
+    TAO::Ledger::Transaction next = TAO::Ledger::Transaction();
+    next.nSequence = 1;
+
+    next.NextHash(chain.Generate(next.nSequence + 1, "1111"));
+    next.hashPrevTx = genesis.hashGenesis;
+    next.hashGenesis = genesis.hashGenesis;
+    next.Sign(chain.Generate(next.nSequence, "1111"));
+    if(next.IsValid())
+        next.print();
+
+    printf("prevhash=%s\n", next.PrevHash().ToString().c_str());
+
+    //need a bytes switch for object registers from byte code OBJ_ACCOUNT, OBJ_TOKEN, OBJ_ESCROW
+
+    std::vector<uint8_t> vchOps; //for custom coding
+    TAO::Register::Object<TAO::Register::Account> regNew(acct);
     regNew.print();
 
     TAO::Register::Account acct2 = regNew.GetObject();

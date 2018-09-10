@@ -74,7 +74,10 @@ enum
     SER_LLP_HEADER_ONLY = (1 << 20),
 
     //Register actions
-    SER_REGISTER_PRUNED = (1 << 21)
+    SER_REGISTER_PRUNED = (1 << 21),
+
+    // sigchain options
+    SER_GENESISHASH     = (1 << 22)
 };
 
 

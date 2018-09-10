@@ -46,6 +46,15 @@ namespace TAO
                 SetState(vState);
             }
 
+            Object(TypeObject classObjectIn)
+            {
+                CDataStream ssObject(SER_NETWORK, LLP::PROTOCOL_VERSION);
+                ssObject << classObjectIn;
+
+                std::vector<uint8_t> vState(ssObject.begin(), ssObject.end());
+                SetState(vState);
+            }
+
             std::vector< uint64_t > GetAddresses() //get method addresses
             {
                 std::vector<uint64_t> vnAddresses;

@@ -42,6 +42,12 @@ namespace TAO
             return keyVerify.Verify(hashTx.GetBytes(), vchSig);
         }
 
+        /* Determines if the transaction is a genesis transaction */
+        bool Transaction::IsGenesis() const
+        {
+            return (nSequence == 0 && hashGenesis == 0);
+        }
+
 
         /* Gets the hash of the transaction object. */
         uint512_t Transaction::GetHash() const
@@ -56,10 +62,10 @@ namespace TAO
         /* Sets the Next Hash from the key */
         void Transaction::NextHash(uint512_t hashSecret)
         {
-            std::vector<uint8_t> vchData = hashSecret.GetBytes(); //todo change this a bit
+            CDataStream ssData(SER_NETWORK, nVersion);
+            ssData << hashSecret;
 
-            LLC::CSecret vchSecret(vchData.begin(), vchData.end());
-
+            LLC::CSecret vchSecret(ssData.begin(), ssData.end());
             LLC::ECKey key(NID_brainpoolP512t1, 64);
             if(!key.SetSecret(vchSecret, true))
                 return;
@@ -67,12 +73,21 @@ namespace TAO
             hashNext = LLC::SK256(key.GetPubKey());
         }
 
+
+        /* Gets the nextHash from the previous transaction */
+        uint256_t Transaction::PrevHash() const
+        {
+            return LLC::SK256(vchPubKey);
+        }
+
+
         /* Signs the transaction with the private key and sets the public key */
          bool Transaction::Sign(uint512_t hashSecret)
          {
-            std::vector<uint8_t> vchData = hashSecret.GetBytes(); //todo change this a bit
+            CDataStream ssData(SER_NETWORK, nVersion);
+            ssData << hashSecret;
 
-            LLC::CSecret vchSecret(vchData.begin(), vchData.end());
+            LLC::CSecret vchSecret(ssData.begin(), ssData.end());
 
             LLC::ECKey key(NID_brainpoolP512t1, 64);
             if(!key.SetSecret(vchSecret, true))
