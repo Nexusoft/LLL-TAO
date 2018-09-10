@@ -98,9 +98,10 @@ namespace TAO
             return key.Sign(hashTx.GetBytes(), vchSig);
          }
 
+         /* Debug output - use ANSI colors. TODO: turn ansi colors on or off with a commandline flag */
          void Transaction::print() const
          {
-             printf("Tritium(nVersion = %u, nTimestamp = %" PRIu64 ", hashNext = %s, hashGenesis = %s, pub=%s, sig=%s, hash=%s, ledger=%s)\n", nVersion, nTimestamp, hashNext.ToString().c_str(), hashGenesis.ToString().c_str(), HexStr(vchPubKey).c_str(), HexStr(vchSig).c_str(), GetHash().ToString().c_str(), HexStr(vchLedgerData.begin(), vchLedgerData.end()).c_str());
+             printf("Tritium(" ANSI_COLOR_BRIGHT_WHITE "nVersion" ANSI_COLOR_RESET " = %u, " ANSI_COLOR_BRIGHT_WHITE "nTimestamp" ANSI_COLOR_RESET " = %" PRIu64 ", " ANSI_COLOR_BRIGHT_WHITE "hashNext" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hashPrevTx" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hashGenesis" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "pub" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "sig"ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hash" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "ledger" ANSI_COLOR_RESET " = %s)\n", nVersion, nTimestamp, hashNext.ToString().c_str(), hashPrevTx.ToString().c_str(), hashGenesis.ToString().c_str(), HexStr(vchPubKey).c_str(), HexStr(vchSig).c_str(), GetHash().ToString().c_str(), HexStr(vchLedgerData.begin(), vchLedgerData.end()).c_str());
          }
     }
 }

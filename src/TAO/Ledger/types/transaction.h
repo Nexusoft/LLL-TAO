@@ -55,7 +55,7 @@ namespace TAO
 
 
             /** The previous transaction. **/
-            uint256_t hashPrevTx;
+            uint512_t hashPrevTx;
 
 
             /** The data to be recorded in the ledger. **/

@@ -85,7 +85,7 @@ int main(int argc, char** argv)
     next.nSequence = 1;
 
     next.NextHash(chain.Generate(next.nSequence + 1, "1111"));
-    next.hashPrevTx = genesis.hashGenesis;
+    next.hashPrevTx = genesis.GetHash();
     next.hashGenesis = genesis.hashGenesis;
     next.Sign(chain.Generate(next.nSequence, "1111"));
     if(next.IsValid())
