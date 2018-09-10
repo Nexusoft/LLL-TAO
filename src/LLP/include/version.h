@@ -14,32 +14,36 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_VERSION_H
 #define NEXUS_LLP_INCLUDE_VERSION_H
 
-/* The current Protocol Version. */
-#define PROTOCOL_MAJOR       0
-#define PROTOCOL_MINOR       2
-#define PROTOCOL_REVISION    0
-#define PROTOCOL_BUILD       0
+namespace LLP
+{
+
+    /* The current Protocol Version. */
+    #define PROTOCOL_MAJOR       0
+    #define PROTOCOL_MINOR       2
+    #define PROTOCOL_REVISION    0
+    #define PROTOCOL_BUILD       0
 
 
-/* Used to determine the features available in the Nexus Network */
-const int PROTOCOL_VERSION =
-                   1000000 * PROTOCOL_MAJOR
-                 +   10000 * PROTOCOL_MINOR
-                 +     100 * PROTOCOL_REVISION
-                 +       1 * PROTOCOL_BUILD;
+    /* Used to determine the features available in the Nexus Network */
+    const int PROTOCOL_VERSION =
+                       1000000 * PROTOCOL_MAJOR
+                     +   10000 * PROTOCOL_MINOR
+                     +     100 * PROTOCOL_REVISION
+                     +       1 * PROTOCOL_BUILD;
 
 
-/* Used to Lock-Out Nodes that are running a protocol version that is too old,
- * Or to allow certain new protocol changes without confusing Old Nodes. */
-const int MIN_PROTO_VERSION = 10000;
+    /* Used to Lock-Out Nodes that are running a protocol version that is too old,
+     * Or to allow certain new protocol changes without confusing Old Nodes. */
+    const int MIN_PROTO_VERSION = 10000;
 
 
-/* Used to define the baseline of Tritium Versioning. */
-const int MIN_TRITIUM_VERSION = 20000;
+    /* Used to define the baseline of Tritium Versioning. */
+    const int MIN_TRITIUM_VERSION = 20000;
 
 
-/* The name that will be shared with other nodes. */
-const std::string strProtocolName = "Tritium";
+    /* The name that will be shared with other nodes. */
+    const std::string strProtocolName = "Tritium";
 
+}
 
 #endif

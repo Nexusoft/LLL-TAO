@@ -1,19 +1,18 @@
 /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
-            
+
             (c) Copyright The Nexus Developers 2014 - 2018
-            
+
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
-            
+
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_REGISTER_INCLUDE_STATE_H
-#define NEXUS_TAO_REGISTER_INCLUDE_STATE_H
-
+#ifndef NEXUS_TAO_OPERATION_INCLUDE_ENUM_H
+#define NEXUS_TAO_OPERATION_INCLUDE_ENUM_H
 
 namespace TAO
 {
@@ -76,8 +75,10 @@ namespace TAO
             //OP_METHOD     = 0x50, //OP_METHOD return hashAddress
             //0x51 - 0x5f UNASSIGNED
 
-            OP_METHOD     = 0xff; //OP_METHOD <vchAddress> return <vchData>
+            OP_METHOD     = 0xff //OP_METHOD <vchAddress> return <vchData>
         };
-        
+
     }
 }
+
+#endif

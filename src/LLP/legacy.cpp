@@ -49,7 +49,7 @@ namespace LLP
         uint32_t nBestHeight = 0; //TODO: Chain State Parameters (Ledger Layer)
 
         /* Push the Message to receiving node. */
-        PushMessage("version", PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,
+        PushMessage("version", LLP::PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,
                     nSessionID, strProtocolName, nBestHeight); //Core::nBestHeight);
     }
 

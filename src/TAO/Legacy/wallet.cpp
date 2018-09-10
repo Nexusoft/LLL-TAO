@@ -1167,7 +1167,7 @@ namespace Wallet
                             return false;
 
                     // Limit size
-                    uint32_t nBytes = ::GetSerializeSize(*(Core::CTransaction*)&wtxNew, SER_NETWORK, PROTOCOL_VERSION);
+                    uint32_t nBytes = ::GetSerializeSize(*(Core::CTransaction*)&wtxNew, SER_NETWORK, LLP::PROTOCOL_VERSION);
                     if (nBytes >= Core::MAX_BLOCK_SIZE_GEN/5)
                         return false;
                     dPriority /= nBytes;

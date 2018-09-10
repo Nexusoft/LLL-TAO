@@ -15,7 +15,8 @@ ________________________________________________________________________________
 #define NEXUS_TAO_REGISTER_INCLUDE_STATE_H
 
 
-#include "../../../Util/templates/serialize.h"
+#include <LLC/hash/serialize.h>
+#include <Util/include/hex.h>
 
 
 namespace TAO
@@ -32,16 +33,8 @@ namespace TAO
             bool fReadOnly;
 
 
-            /** The version of the state of the register. **/
-            uint16_t nVersion; //may be superfluous
-
-
             /** The length of the state register. **/
             uint16_t nLength;
-
-
-            /** The byte level data of the register. **/
-            std::vector<uint8_t> vchState;
 
 
             /** The address space of the register. **/
@@ -49,7 +42,11 @@ namespace TAO
 
 
             /** The owner of the register. **/
-            uint256_t hashOwner; //genesis ID
+            uint256_t hashOwner;
+
+
+            /** The byte level data of the register. **/
+            std::vector<uint8_t> vchState;
 
 
             /** The chechsum of the state register for use in pruning. */
@@ -60,32 +57,30 @@ namespace TAO
             IMPLEMENT_SERIALIZE
             (
                 READWRITE(fReadOnly);
-                READWRITE(nVersion);
                 READWRITE(nLength);
-                READWRITE(FLATDATA(vchState));
+                READWRITE(vchState);
                 READWRITE(hashAddress);
                 READWRITE(hashOwner);
 
-                //checksum hash only seriazlied
-                //TODO: clean up this logic
-                //if(!(nType & SER_REGISTER_PRUNED))
-                READWRITE(hashChecksum);
+                //checksum hash not serialized on gethash
+                if(!(nType & SER_GETHASH))
+                    READWRITE(hashChecksum);
             )
 
 
-            State() : fReadOnly(false), nVersion(1), nLength(0), hashAddress(0), hashChecksum(0)
+            State() : fReadOnly(false), nLength(0), hashAddress(0), hashChecksum(0)
             {
                 vchState.clear();
             }
 
 
-            State(std::vector<uint8_t> vchData) : fReadOnly(false), nVersion(1), nLength(vchData.size()), vchState(vchData), hashAddress(0), hashChecksum(0)
+            State(std::vector<uint8_t> vchData) : fReadOnly(false), nLength(vchData.size()), vchState(vchData), hashAddress(0), hashChecksum(0)
             {
 
             }
 
 
-            State(uint64_t hashChecksumIn) : fReadOnly(false), nVersion(1), nLength(0), hashAddress(0), hashChecksum(hashChecksumIn)
+            State(uint64_t hashChecksumIn) : fReadOnly(false), nLength(0), hashAddress(0), hashChecksum(hashChecksumIn)
             {
 
             }
@@ -94,24 +89,26 @@ namespace TAO
             /** Set the State Register into a NULL state. **/
             void SetNull()
             {
-                nVersion = 1;
-                hashAddress = 0;
-                nLength   = 0;
+                hashAddress  = 0;
+                nLength      = 0;
+                hashOwner    = 0;
                 hashChecksum = 0;
+
+                vchState.clear();
             }
 
 
             /** NULL Checking flag for a State Register. **/
             bool IsNull()
             {
-                return (nVersion == 1 && hashAddress == 0 && nLength == 0 && vchState.size() == 0 && hashChecksum == 0);
+                return (hashAddress == 0 && nLength == 0 && vchState.size() == 0 && hashChecksum == 0);
             }
 
 
             /** Flag to determine if the state register has been pruned. **/
             bool IsPruned()
             {
-                return (fReadOnly == true && nVersion == 0 && nLength == 0 && vchState.size() == 0 && hashChecksum != 0);
+                return (fReadOnly == true && nLength == 0 && vchState.size() == 0 && hashChecksum != 0);
             }
 
 
@@ -122,10 +119,16 @@ namespace TAO
             }
 
 
+            /** Get the hash of the current state. **/
+            uint64_t GetHash()
+            {
+                return LLC::SerializeSK64(*this);
+            }
+
             /** Set the Checksum of this Register. **/
             void SetChecksum()
             {
-                hashChecksum = LLC::SK64(BEGIN(nVersion), END(hashAddress));
+                hashChecksum = GetHash();
             }
 
 
@@ -143,6 +146,12 @@ namespace TAO
                 nLength  = vchStateIn.size();
 
                 SetChecksum();
+            }
+
+
+            void print()
+            {
+                printf("State(address=%s, length=%u, owner=%s, checksum=%" PRIu64 ", state=%s)\n", hashAddress.ToString().substr(0, 20).c_str(), nLength, hashOwner.ToString().substr(0, 20).c_str(), hashChecksum, HexStr(vchState.begin(), vchState.end()).c_str());
             }
 
         };
