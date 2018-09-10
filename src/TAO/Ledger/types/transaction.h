@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <vector>
 
 #include <LLC/types/uint1024.h>
-
+#include <Util/include/runtime.h>
 #include <Util/templates/serialize.h>
 
 namespace TAO
@@ -38,6 +38,10 @@ namespace TAO
             uint32_t nVersion;
 
 
+            /** The sequence identifier. **/
+            uint32_t nSequence;
+
+
             /** The transaction timestamp. **/
             uint64_t nTimestamp;
 
@@ -47,7 +51,7 @@ namespace TAO
 
 
             /** The genesis ID hash. **/
-            uint256_t hashGenesis;
+            uint256_t hashGenesis; //TODO: consider removing for optimization
 
 
             /** The previous transaction. **/
@@ -71,7 +75,10 @@ namespace TAO
                 READWRITE(this->nVersion);
                 READWRITE(nTimestamp);
                 READWRITE(hashNext);
-                READWRITE(hashGenesis);
+
+                if(!(nType & SER_GENESISHASH)) //genesis hash is not serizlied
+                    READWRITE(hashGenesis);
+
                 READWRITE(hashPrevTx);
                 READWRITE(vchLedgerData);
 
@@ -84,7 +91,8 @@ namespace TAO
 
 
             /** Default Constructor. **/
-            Transaction() : nVersion(0), nTimestamp(0), hashNext(0), hashGenesis(0), hashPrevTx(0) {}
+            Transaction() : nVersion(1), nSequence(0), nTimestamp(UnifiedTimestamp()), hashNext(0), hashGenesis(0), hashPrevTx(0) {}
+
 
 
             /** IsValid
@@ -95,6 +103,16 @@ namespace TAO
              *
              **/
             bool IsValid() const;
+
+
+            /** IsGenesis
+             *
+             *  Determines if the transaction is a genesis transaction
+             *
+             *  @return true if transaction is genesis
+             *
+             **/
+            bool IsGenesis() const;
 
 
             /** GetHash
@@ -115,6 +133,16 @@ namespace TAO
              *
              **/
             void NextHash(uint512_t hashSecret);
+
+
+            /** PrevHash
+             *
+             *  Gets the nextHash from the previous transaction
+             *
+             *  @return 256-bit hash of previous transaction
+             *
+             **/
+            uint256_t PrevHash() const;
 
 
             /** Sign

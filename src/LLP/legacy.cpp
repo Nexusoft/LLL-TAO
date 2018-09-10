@@ -24,7 +24,6 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 
-#include <TAO/Ledger/include/sigchain.h>
 #include <TAO/Ledger/types/transaction.h>
 
 namespace LLP

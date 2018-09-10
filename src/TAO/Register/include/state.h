@@ -15,9 +15,9 @@ ________________________________________________________________________________
 #define NEXUS_TAO_REGISTER_INCLUDE_STATE_H
 
 
-#include <LLC/hash/serialize.h>
+#include <LLC/hash/SK.h>
 #include <Util/include/hex.h>
-
+#include <Util/templates/serialize.h>
 
 namespace TAO
 {
@@ -31,6 +31,10 @@ namespace TAO
 
             /** Flag to determine if register is Read Only. **/
             bool fReadOnly;
+
+
+            /** The version of the state register. */
+            uint16_t nVersion;
 
 
             /** The length of the state register. **/
@@ -68,19 +72,19 @@ namespace TAO
             )
 
 
-            State() : fReadOnly(false), nLength(0), hashAddress(0), hashChecksum(0)
+            State() : fReadOnly(false), nVersion(1), nLength(0), hashAddress(0), hashChecksum(0)
             {
                 vchState.clear();
             }
 
 
-            State(std::vector<uint8_t> vchData) : fReadOnly(false), nLength(vchData.size()), vchState(vchData), hashAddress(0), hashChecksum(0)
+            State(std::vector<uint8_t> vchData) : fReadOnly(false), nVersion(1), nLength(vchData.size()), vchState(vchData), hashAddress(0), hashChecksum(0)
             {
 
             }
 
 
-            State(uint64_t hashChecksumIn) : fReadOnly(false), nLength(0), hashAddress(0), hashChecksum(hashChecksumIn)
+            State(uint64_t hashChecksumIn) : fReadOnly(false), nVersion(1), nLength(0), hashAddress(0), hashChecksum(hashChecksumIn)
             {
 
             }
@@ -89,6 +93,7 @@ namespace TAO
             /** Set the State Register into a NULL state. **/
             void SetNull()
             {
+                nVersion     = 0;
                 hashAddress  = 0;
                 nLength      = 0;
                 hashOwner    = 0;
@@ -101,14 +106,14 @@ namespace TAO
             /** NULL Checking flag for a State Register. **/
             bool IsNull()
             {
-                return (hashAddress == 0 && nLength == 0 && vchState.size() == 0 && hashChecksum == 0);
+                return (nVersion == 0 && hashAddress == 0 && nLength == 0 && vchState.size() == 0 && hashChecksum == 0);
             }
 
 
             /** Flag to determine if the state register has been pruned. **/
             bool IsPruned()
             {
-                return (fReadOnly == true && nLength == 0 && vchState.size() == 0 && hashChecksum != 0);
+                return (fReadOnly == true && nVersion == 0 && nLength == 0 && vchState.size() == 0 && hashChecksum != 0);
             }
 
 
@@ -122,7 +127,10 @@ namespace TAO
             /** Get the hash of the current state. **/
             uint64_t GetHash()
             {
-                return LLC::SerializeSK64(*this);
+                CDataStream ss(SER_GETHASH, nVersion);
+                ss << *this;
+
+                return LLC::SK64(ss.begin(), ss.end());
             }
 
             /** Set the Checksum of this Register. **/
