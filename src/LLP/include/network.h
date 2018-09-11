@@ -214,9 +214,9 @@ namespace LLP
                 CService* pip = (CService*)pthis;
                 if (fRead)
                     pthis->Init();
-                if (nType & SER_DISK)
+                if (nSerType & SER_DISK)
                     READWRITE(nSerVersion);
-                if ((nType & SER_DISK) || (!(nType & SER_GETHASH)))
+                if ((nSerType & SER_DISK) || (!(nSerType & SER_GETHASH)))
                     READWRITE(nTime);
                 READWRITE(nServices);
                 READWRITE(*pip);

@@ -57,7 +57,7 @@ namespace Wallet
 
         IMPLEMENT_SERIALIZE
         (
-            if (!(nType & SER_GETHASH))
+            if (!(nSerType & SER_GETHASH))
                 READWRITE(nVersion);
             READWRITE(nTime);
             READWRITE(vchPubKey);
@@ -409,7 +409,7 @@ namespace Wallet
                 pthis->mapValue["spent"] = str;
             }
 
-            nSerSize += SerReadWrite(s, *(CMerkleTx*)this, nType, nVersion,ser_action);
+            nSerSize += SerReadWrite(s, *(CMerkleTx*)this, nSerType, nVersion,ser_action);
             READWRITE(vtxPrev);
             READWRITE(mapValue);
             READWRITE(vOrderForm);
@@ -653,7 +653,7 @@ namespace Wallet
 
         IMPLEMENT_SERIALIZE
         (
-            if (!(nType & SER_GETHASH))
+            if (!(nSerType & SER_GETHASH))
                 READWRITE(nVersion);
             READWRITE(vchPrivKey);
             READWRITE(nTimeCreated);
@@ -715,7 +715,7 @@ namespace Wallet
 
         IMPLEMENT_SERIALIZE
         (
-            if (!(nType & SER_GETHASH))
+            if (!(nSerType & SER_GETHASH))
                 READWRITE(nVersion);
             READWRITE(vchPubKey);
         )
@@ -751,7 +751,7 @@ namespace Wallet
 
         IMPLEMENT_SERIALIZE
         (
-            if (!(nType & SER_GETHASH))
+            if (!(nSerType & SER_GETHASH))
                 READWRITE(nVersion);
             // Note: strAccount is serialized as part of the key, not here.
             READWRITE(nCreditDebit);
