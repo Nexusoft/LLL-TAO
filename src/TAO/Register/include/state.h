@@ -37,6 +37,10 @@ namespace TAO
             uint16_t nVersion;
 
 
+            /** The type of state recorded. */
+            uint8_t  nType;
+
+
             /** The length of the state register. **/
             uint16_t nLength;
 
@@ -61,6 +65,8 @@ namespace TAO
             IMPLEMENT_SERIALIZE
             (
                 READWRITE(fReadOnly);
+                READWRITE(nVersion);
+                READWRITE(nType);
                 READWRITE(nLength);
                 READWRITE(vchState);
                 READWRITE(hashAddress);
@@ -79,6 +85,11 @@ namespace TAO
 
 
             State(std::vector<uint8_t> vchData) : fReadOnly(false), nVersion(1), nLength(vchData.size()), vchState(vchData), hashAddress(0)
+            {
+                SetChecksum();
+            }
+
+            State(std::vector<uint8_t> vchData, uint8_t nTypeIn, uint256_t hashAddressIn, uint256_t hashOwnerIn) : fReadOnly(false), nVersion(1), nType(nTypeIn), nLength(vchData.size()), vchState(vchData), hashAddress(hashAddressIn), hashOwner(hashOwnerIn)
             {
                 SetChecksum();
             }
@@ -159,7 +170,7 @@ namespace TAO
 
             void print()
             {
-                printf("State(address=%s, length=%u, owner=%s, checksum=%" PRIu64 ", state=%s)\n", hashAddress.ToString().substr(0, 20).c_str(), nLength, hashOwner.ToString().substr(0, 20).c_str(), hashChecksum, HexStr(vchState.begin(), vchState.end()).c_str());
+                printf("State(version=%u, type=%u, address=%s, length=%u, owner=%s, checksum=%" PRIu64 ", state=%s)\n", nVersion, nType, hashAddress.ToString().substr(0, 20).c_str(), nLength, hashOwner.ToString().substr(0, 20).c_str(), hashChecksum, HexStr(vchState.begin(), vchState.end()).c_str());
             }
 
         };
