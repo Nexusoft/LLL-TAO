@@ -53,7 +53,7 @@ namespace Legacy
 
     		IMPLEMENT_SERIALIZE
     		(
-    			nSerSize += SerReadWrite(s, *(CTransaction*)this, nType, nVersion, ser_action);
+    			nSerSize += SerReadWrite(s, *(CTransaction*)this, nSerType, nVersion, ser_action);
     			nVersion = this->nVersion;
     			READWRITE(hashBlock);
     			READWRITE(vMerkleBranch);

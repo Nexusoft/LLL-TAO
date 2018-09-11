@@ -158,7 +158,7 @@ namespace Wallet
     public:
         IMPLEMENT_SERIALIZE
         (
-            if (nType & SER_DISK)
+            if (nSerType & SER_DISK)
                 READWRITE(nVersion);
         )
     };

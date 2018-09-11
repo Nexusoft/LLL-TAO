@@ -31,7 +31,7 @@ namespace Core
 	
 	
 	/* Get the Total Amount to be Released at a given Minute since the NETWORK_TIMELOCK. */
-	int64_t GetSubsidy(int nMinutes, int nType);
+	int64_t GetSubsidy(int nMinutes, int nSerType);
 	
 	
 	/* Calculate the Compounded amount of NXS to be released over the (nInterval) minutes. */
@@ -51,19 +51,19 @@ namespace Core
 	
 	
 	/* Get the Fractional Reward basing the total amount on a number of minutes vs a total reward. */
-	int64_t GetFractionalSubsidy(int nMinutes, int nType, double nFraction);
+	int64_t GetFractionalSubsidy(int nMinutes, int nSerType, double nFraction);
 	
 	
 	/* Get the Coinbase Rewards based on the Reserve Balances to keep the Coinbase rewards under the Reserve Production Rates. */
-	int64_t GetCoinbaseReward(const CBlockIndex* pindex, int nChannel, int nType);
+	int64_t GetCoinbaseReward(const CBlockIndex* pindex, int nChannel, int nSerType);
 	
 	
 	/* Release a certain amount of Nexus into the Reserve System at a given Minute of time. */
-	int64_t ReleaseRewards(int nTimespan, int nStart, int nType);
+	int64_t ReleaseRewards(int nTimespan, int nStart, int nSerType);
 	
 	
 	/* Get the total amount released into this given reserve by this point in time in the Block Index Object. */
-	int64_t GetReleasedReserve(const CBlockIndex* pindex, int nChannel, int nType);
+	int64_t GetReleasedReserve(const CBlockIndex* pindex, int nChannel, int nSerType);
 	
 	
 	/* Check if there is any Nexus that will be released on the Next block in case the reserve values have been severely depleted. */

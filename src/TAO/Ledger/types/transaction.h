@@ -31,7 +31,7 @@ namespace TAO
             Simple data type class that holds the transaction version, nextHash, and ledger data.
 
         **/
-        class Transaction
+        class Transaction //transaction header size is 144 bytes
         {
         public:
             /** The transaction version. **/
@@ -76,13 +76,13 @@ namespace TAO
                 READWRITE(nTimestamp);
                 READWRITE(hashNext);
 
-                if(!(nType & SER_GENESISHASH)) //genesis hash is not serizlied
+                if(!(nSerType & SER_GENESISHASH)) //genesis hash is not serizlied
                     READWRITE(hashGenesis);
 
                 READWRITE(hashPrevTx);
                 READWRITE(vchLedgerData);
 
-                if(!(nType & SER_GETHASH))
+                if(!(nSerType & SER_GETHASH))
                 {
                     READWRITE(vchPubKey);
                     READWRITE(vchSig);

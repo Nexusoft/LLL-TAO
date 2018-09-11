@@ -90,6 +90,7 @@ int main(int argc, char** argv)
     next.hashPrevTx = genesis.GetHash();
     next.hashGenesis = LLC::SK256(ssGen.begin(), ssGen.end());
 
+    assert(next.hashGenesis == LLC::SK256(ssGen.begin(), ssGen.end()));
 
     //create an object register account
     TAO::Register::Account acct(105, 15);
@@ -102,14 +103,13 @@ int main(int argc, char** argv)
     CDataStream ssReg(SER_NETWORK, LLD::DATABASE_VERSION);
     ssReg << acct;
     std::vector<uint8_t> vchState(ssReg.begin(), ssReg.end());
-    TAO::Register::State state = TAO::Register::State(vchState, (uint8_t)TAO::Register::OBJECT_ACCOUNT, hashRegister, LLC::SK256(ssGen.begin(), ssGen.end()));
+    TAO::Register::State state = TAO::Register::State(vchState, 1, hashRegister, LLC::SK256(ssGen.begin(), ssGen.end()));
     state.print();
 
     printf("\n");
 
     //add the data to the ledger
     CDataStream ssOps(SER_NETWORK, LLP::PROTOCOL_VERSION);
-
     ssOps << (uint8_t)TAO::Operation::OP_WRITE << hashRegister << state;
     next.vchLedgerData.insert(next.vchLedgerData.end(), ssOps.begin(), ssOps.end());
 
@@ -118,6 +118,49 @@ int main(int argc, char** argv)
         next.print();
 
     assert(next.PrevHash() == genesis.hashNext);
+
+    CDataStream ssRead(next.vchLedgerData, SER_NETWORK, LLP::PROTOCOL_VERSION);
+
+    uint8_t OP;
+    ssRead >> OP;
+
+    switch(OP)
+    {
+        case TAO::Operation::OP_WRITE:
+        {
+            uint256_t hashAddr;
+            ssRead >> hashAddr;
+
+            TAO::Register::State stateRead = TAO::Register::State();
+            ssRead >> stateRead;
+
+            printf("Write to Register %s\n", hashAddr.ToString().c_str());
+            stateRead.print();
+
+            assert(stateRead.GetHash() == stateRead.hashChecksum);
+
+            switch(stateRead.nType)
+            {
+                case TAO::Register::OBJECT_ACCOUNT:
+                {
+                    CDataStream ssAcct(stateRead.GetState(), SER_NETWORK, LLD::DATABASE_VERSION);
+                    TAO::Register::Account account = TAO::Register::Account();
+                    ssAcct >> account;
+
+                    account.print();
+                }
+            }
+
+            break;
+        }
+
+        case TAO::Operation::OP_READ:
+        {
+            break;
+        }
+
+    }
+
 
 
     //execute the transaction operations

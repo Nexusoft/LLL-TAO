@@ -45,10 +45,6 @@ namespace TAO
             uint16_t nLength;
 
 
-            /** The address space of the register. **/
-            uint256_t hashAddress;
-
-
             /** The owner of the register. **/
             uint256_t hashOwner;
 
@@ -64,38 +60,37 @@ namespace TAO
 
             IMPLEMENT_SERIALIZE
             (
-                READWRITE(fReadOnly);
+                //READWRITE(fReadOnly);
                 READWRITE(nVersion);
                 READWRITE(nType);
                 READWRITE(nLength);
                 READWRITE(vchState);
-                READWRITE(hashAddress);
                 READWRITE(hashOwner);
 
                 //checksum hash not serialized on gethash
-                if(!(nType & SER_GETHASH))
+                if(!(nSerType & SER_GETHASH))
                     READWRITE(hashChecksum);
             )
 
 
-            State() : fReadOnly(false), nVersion(1), nLength(0), hashAddress(0), hashChecksum(0)
+            State() : fReadOnly(false), nVersion(1), nType(0), nLength(0), hashOwner(0), hashChecksum(0)
             {
                 vchState.clear();
             }
 
 
-            State(std::vector<uint8_t> vchData) : fReadOnly(false), nVersion(1), nLength(vchData.size()), vchState(vchData), hashAddress(0)
+            State(std::vector<uint8_t> vchData) : fReadOnly(false), nVersion(1), nType(0), nLength(vchData.size()), vchState(vchData)
             {
                 SetChecksum();
             }
 
-            State(std::vector<uint8_t> vchData, uint8_t nTypeIn, uint256_t hashAddressIn, uint256_t hashOwnerIn) : fReadOnly(false), nVersion(1), nType(nTypeIn), nLength(vchData.size()), vchState(vchData), hashAddress(hashAddressIn), hashOwner(hashOwnerIn)
+            State(std::vector<uint8_t> vchData, uint8_t nTypeIn, uint256_t hashAddressIn, uint256_t hashOwnerIn) : fReadOnly(false), nVersion(1), nType(nTypeIn), nLength(vchData.size()), vchState(vchData), hashOwner(hashOwnerIn)
             {
                 SetChecksum();
             }
 
 
-            State(uint64_t hashChecksumIn) : fReadOnly(false), nVersion(1), nLength(0), hashAddress(0), hashChecksum(hashChecksumIn)
+            State(uint64_t hashChecksumIn) : fReadOnly(false), nVersion(1), nLength(0), hashChecksum(hashChecksumIn)
             {
 
             }
@@ -105,7 +100,7 @@ namespace TAO
             void SetNull()
             {
                 nVersion     = 0;
-                hashAddress  = 0;
+                nType        = 0;
                 nLength      = 0;
                 hashOwner    = 0;
                 hashChecksum = 0;
@@ -117,7 +112,7 @@ namespace TAO
             /** NULL Checking flag for a State Register. **/
             bool IsNull()
             {
-                return (nVersion == 0 && hashAddress == 0 && nLength == 0 && vchState.size() == 0 && hashChecksum == 0);
+                return (nVersion == 0 && nLength == 0 && vchState.size() == 0 && hashChecksum == 0);
             }
 
 
@@ -125,13 +120,6 @@ namespace TAO
             bool IsPruned()
             {
                 return (fReadOnly == true && nVersion == 0 && nLength == 0 && vchState.size() == 0 && hashChecksum != 0);
-            }
-
-
-            /** Set the Memory Address of this Register's Index. **/
-            void SetAddress(uint256_t hashAddressIn)
-            {
-                hashAddress = hashAddressIn;
             }
 
 
@@ -170,7 +158,7 @@ namespace TAO
 
             void print()
             {
-                printf("State(version=%u, type=%u, address=%s, length=%u, owner=%s, checksum=%" PRIu64 ", state=%s)\n", nVersion, nType, hashAddress.ToString().substr(0, 20).c_str(), nLength, hashOwner.ToString().substr(0, 20).c_str(), hashChecksum, HexStr(vchState.begin(), vchState.end()).c_str());
+                printf("State(version=%u, type=%u, length=%u, owner=%s, checksum=%" PRIu64 ", state=%s)\n", nVersion, nType, nLength, hashOwner.ToString().substr(0, 20).c_str(), hashChecksum, HexStr(vchState.begin(), vchState.end()).c_str());
             }
 
         };
