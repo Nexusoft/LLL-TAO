@@ -16,17 +16,17 @@ ________________________________________________________________________________
 
 #include <fstream>
 
-#include "version.h"
+#include <LLD/include/version.h>
 
-#include "../../LLC/hash/SK.h"
-#include "../../LLC/hash/macro.h"
-#include "../../LLC/types/bignum.h"
+#include <LLC/hash/SK.h>
+#include <LLC/hash/macro.h>
+#include <LLC/types/bignum.h>
 
-#include "../../Util/include/args.h"
-#include "../../Util/include/config.h"
-#include "../../Util/include/mutex.h"
-#include "../../Util/include/hex.h"
-#include "../../Util/templates/serialize.h"
+#include <Util/include/args.h>
+#include <Util/include/config.h>
+#include <Util/include/mutex.h>
+#include <Util/include/hex.h>
+#include <Util/templates/serialize.h>
 
 
 namespace LLD

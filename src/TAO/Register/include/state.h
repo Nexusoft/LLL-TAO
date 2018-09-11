@@ -78,9 +78,9 @@ namespace TAO
             }
 
 
-            State(std::vector<uint8_t> vchData) : fReadOnly(false), nVersion(1), nLength(vchData.size()), vchState(vchData), hashAddress(0), hashChecksum(0)
+            State(std::vector<uint8_t> vchData) : fReadOnly(false), nVersion(1), nLength(vchData.size()), vchState(vchData), hashAddress(0)
             {
-
+                SetChecksum();
             }
 
 

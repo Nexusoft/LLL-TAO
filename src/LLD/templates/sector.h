@@ -14,11 +14,11 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_TEMPLATES_SECTOR_H
 #define NEXUS_LLD_TEMPLATES_SECTOR_H
 
-#include "pool.h"
-#include "key.h"
-#include "transaction.h"
+#include <LLD/templates/pool.h>
+#include <LLD/templates/key.h>
+#include <LLD/templates/transaction.h>
 
-#include "../../Util/include/runtime.h"
+#include <Util/include/runtime.h>
 
 namespace LLD
 {

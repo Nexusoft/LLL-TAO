@@ -14,9 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_TEMPLATES_FILEMAP_H
 #define NEXUS_LLD_TEMPLATES_FILEMAP_H
 
-#include <fstream>
-
-#include "key.h"
+#include <LLD/templates/key.h>
 
 namespace LLD
 {

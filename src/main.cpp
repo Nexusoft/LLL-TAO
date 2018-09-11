@@ -16,14 +16,21 @@ ________________________________________________________________________________
 #include <Util/include/signals.h>
 #include <Util/include/convert.h>
 
-#include <TAO/Register/objects/account.h>
-#include <TAO/Register/objects/token.h>
-
-#include <TAO/Register/include/state.h>
-#include <TAO/Register/include/object.h>
-
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/sigchain.h>
+
+#include <TAO/Register/objects/account.h>
+#include <TAO/Register/objects/token.h>
+#include <TAO/Register/include/state.h>
+
+#include <TAO/Operation/include/enum.h>
+
+#include <LLC/include/random.h>
+
+#include <LLD/include/global.h>
+#include <LLD/include/version.h>
+
+LLD::RegisterDB* regDB;
 
 int main(int argc, char** argv)
 {
@@ -55,52 +62,64 @@ int main(int argc, char** argv)
         }
     }
 
+
+    /* Setup Register Database. */
+    regDB = new LLD::RegisterDB("r+");
+
+
     TAO::Ledger::SignatureChain chain("username", "password");
     TAO::Ledger::Transaction genesis = TAO::Ledger::Transaction();
     genesis.NextHash(chain.Generate(genesis.nSequence + 1, "1111"));
-
-
-    TAO::Register::Account acct(105, 15);
-    acct.print();
-
-    CDataStream ssOps(SER_NETWORK, LLP::PROTOCOL_VERSION);
-
-    uint256_t hashRegister;
-    ssOps << (uint8_t)TAO::Operation::OP_WRITE << hashRegister << acct;
-    genesis.vchLedgerData.insert(genesis.vchLedgerData.end(), ssOps.begin(), ssOps.end());
-
     genesis.hashPrevTx = 0; //sign of genesis
 
     CDataStream ssGen(SER_GENESISHASH, genesis.nVersion);
     ssGen << genesis;
-
-    genesis.hashGenesis = LLC::SK256(ssGen.begin(), ssGen.end());
     genesis.Sign(chain.Generate(genesis.nSequence, "1111"));
 
     if(genesis.IsValid())
         genesis.print();
 
 
+
+    //create the first transaction
     TAO::Ledger::Transaction next = TAO::Ledger::Transaction();
     next.nSequence = 1;
 
     next.NextHash(chain.Generate(next.nSequence + 1, "1111"));
     next.hashPrevTx = genesis.GetHash();
-    next.hashGenesis = genesis.hashGenesis;
+    next.hashGenesis = LLC::SK256(ssGen.begin(), ssGen.end());
+
+
+    //create an object register account
+    TAO::Register::Account acct(105, 15);
+    acct.print();
+
+    printf("\n");
+
+    //create a state register
+    CDataStream ssReg(SER_NETWORK, LLD::DATABASE_VERSION);
+    ssReg << acct;
+    std::vector<uint8_t> vchState(ssReg.begin(), ssReg.end());
+    TAO::Register::State state = TAO::Register::State(vchState);
+    state.hashOwner = genesis.hashGenesis;
+    state.print();
+
+    printf("\n");
+
+    //add the data to the ledger
+    CDataStream ssOps(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    uint256_t hashRegister = LLC::GetRand256();
+    ssOps << (uint8_t)TAO::Operation::OP_WRITE << hashRegister << state;
+    next.vchLedgerData.insert(genesis.vchLedgerData.end(), ssOps.begin(), ssOps.end());
+
     next.Sign(chain.Generate(next.nSequence, "1111"));
     if(next.IsValid())
         next.print();
 
+
     printf("prevhash=%s\n", next.PrevHash().ToString().c_str());
 
     //need a bytes switch for object registers from byte code OBJ_ACCOUNT, OBJ_TOKEN, OBJ_ESCROW
-
-    std::vector<uint8_t> vchOps; //for custom coding
-    TAO::Register::Object<TAO::Register::Account> regNew(acct);
-    regNew.print();
-
-    TAO::Register::Account acct2 = regNew.GetObject();
-    acct2.print();
 
     return 0;
 }
