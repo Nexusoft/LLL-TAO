@@ -13,8 +13,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_TEMPLATES_MEMCACHEPOOL_H
 #define NEXUS_LLD_TEMPLATES_MEMCACHEPOOL_H
 
-#include "../../Util/templates/serialize.h"
-#include "../../Util/include/mutex.h"
+#include <Util/templates/serialize.h>
+#include <Util/include/mutex.h>
 
 namespace LLD
 {

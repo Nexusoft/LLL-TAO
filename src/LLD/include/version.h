@@ -15,27 +15,31 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_INCLUDE_VERSION_H
 #define NEXUS_LLD_INCLUDE_VERSION_H
 
+#include <string>
 
 #define DATABASE_MAJOR       0
 #define DATABASE_MINOR       1
 #define DATABASE_PATCH       1
 #define DATABASE_BUILD       0
 
+namespace LLD
+{
 
-/* Used for features in the database. */
-const int DATABASE_VERSION =
-                    1000000 * DATABASE_MAJOR
-                  +   10000 * DATABASE_MINOR
-                  +     100 * DATABASE_PATCH
-                  +       1 * DATABASE_BUILD;
+    /* Used for features in the database. */
+    const int DATABASE_VERSION =
+                        1000000 * DATABASE_MAJOR
+                      +   10000 * DATABASE_MINOR
+                      +     100 * DATABASE_PATCH
+                      +       1 * DATABASE_BUILD;
 
 
-/* The database type used (Berklee DB or Lower Level Database) */
-#ifdef USE_LLD
-const std::string DATABASE_NAME("LLD");
-#else
-const std::string DATABASE_NAME("BDB");
-#endif
+    /* The database type used (Berklee DB or Lower Level Database) */
+    #ifdef USE_LLD
+    const std::string DATABASE_NAME("LLD");
+    #else
+    const std::string DATABASE_NAME("BDB");
+    #endif
 
+}
 
 #endif
