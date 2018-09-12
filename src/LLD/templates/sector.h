@@ -311,22 +311,23 @@ namespace LLD
             if(cachePool->Get(vKey, vData))
                 return true;
 
+            /* Check that the key is not pending in a transaction for Erase. */
+            if(pTransaction && pTransaction->mapEraseData.count(vKey))
+                return false;
+
+            /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
+            if(pTransaction && pTransaction->mapTransactions.count(vKey))
+            {
+                vData = pTransaction->mapTransactions[vKey];
+
+                if(GetArg("-verbose", 0) >= 4)
+                    printf(FUNCTION "%s\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
+
+                return true;
+            }
+
             if(SectorKeys->HasKey(vKey))
             {
-                /* Check that the key is not pending in a transaction for Erase. */
-                if(pTransaction && pTransaction->mapEraseData.count(vKey))
-                    return false;
-
-                /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-                if(pTransaction && pTransaction->mapTransactions.count(vKey))
-                {
-                    vData = pTransaction->mapTransactions[vKey];
-
-                    if(GetArg("-verbose", 0) >= 4)
-                        printf(FUNCTION "%s\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
-
-                    return true;
-                }
 
                 /** Read the Sector Key from Keychain. **/
                 SectorKey cKey;

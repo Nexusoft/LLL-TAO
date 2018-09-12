@@ -69,7 +69,7 @@ namespace TAO
 
             //consensus operations
             OP_VOTE       = 0x50, //OP_VOTE <vchData> <bool> return fSuccess - vote for or against a memory location (piece of data)
-            OP_REQUIRE    = 0x51, //OP_REQUIRE <boolean expression> return fExpression - require something to be true to evaltue script
+            OP_REQUIRE    = 0x51, //OP_REQUIRE <boolean expression> recure validation script to execute to true 
 
             //object register methods TODO: assess how we will handle pointers, current thoughts are through LISP IPv11 database clusters, where TCP/IP address is the pointer reference location (&), so pointers in the contract code will be hashes to represent the address space which can be located through opening up a TCP/IP socket to that reference location and getting the data returned so the network will act like a giant memory bank
             //OP_METHOD     = 0x50, //OP_METHOD return hashAddress

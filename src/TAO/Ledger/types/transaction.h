@@ -51,7 +51,7 @@ namespace TAO
 
 
             /** The genesis ID hash. **/
-            uint256_t hashGenesis; //TODO: consider removing for optimization
+            uint256_t hashGenesis;
 
 
             /** The previous transaction. **/
@@ -66,6 +66,10 @@ namespace TAO
             //this is for the segregated keys from transaction data.
             std::vector<uint8_t> vchPubKey;
             std::vector<uint8_t> vchSig;
+
+
+            //memory only read position
+            uint32_t nReadPos;
 
 
             //serialization methods
@@ -91,8 +95,54 @@ namespace TAO
 
 
             /** Default Constructor. **/
-            Transaction() : nVersion(1), nSequence(0), nTimestamp(UnifiedTimestamp()), hashNext(0), hashGenesis(0), hashPrevTx(0) {}
+            Transaction() : nVersion(1), nSequence(0), nTimestamp(UnifiedTimestamp()), hashNext(0), hashGenesis(0), hashPrevTx(0), nReadPos(0) {}
 
+
+            /** Operator Overload <<
+             *
+             *  Serializes data into vchLedgerData
+             *
+             *  @param[in] obj The object to serialize into ledger data
+             *
+             **/
+            template<typename Type> Transaction& operator<<(const Type& obj)
+            {
+                /* Push the size byte into vector. */
+                vchLedgerData.push_back((uint8_t)sizeof(obj));
+
+                /* Push the obj bytes into the vector. */
+                vchLedgerData.insert(vchLedgerData.end(), (uint8_t*)&obj, (uint8_t*)&obj + sizeof(obj));
+
+                return *this;
+            }
+
+
+            /** Operator Overload >>
+             *
+             *  Serializes data into vchLedgerData
+             *
+             *  @param[out] obj The object to de-serialize from ledger data
+             *
+             **/
+            template<typename Type> Transaction& operator>>(Type& obj)
+            {
+                /* Get the size from size byte. */
+                uint8_t nSize = vchLedgerData[nReadPos];
+
+                /* Create tmp object to prevent double free in std::copy. */
+                Type tmp;
+
+                /* Copy the bytes into tmp object. */
+                std::copy((uint8_t*)&vchLedgerData[nReadPos + 1], (uint8_t*)&vchLedgerData[nReadPos + 1] + nSize, (uint8_t*)&tmp);
+
+                /* Iterate the read position. */
+                nReadPos += nSize + 1;
+
+                /* Set the return value. */
+                obj = tmp;
+
+                return *this;
+            }
 
 
             /** IsValid
