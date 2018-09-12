@@ -27,7 +27,6 @@ namespace TAO
             OBJECT_TOKEN    = 0x02,
             OBJECT_ESCROW   = 0x03
         };
-
     }
 }
 

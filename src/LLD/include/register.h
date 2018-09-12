@@ -40,6 +40,11 @@ namespace LLD
         {
             return Read(std::make_pair(std::string("state"), hashRegister), state);
         }
+
+        bool HasState(uint256_t hashRegister)
+        {
+            return Exists(std::make_pair(std::string("state"), hashRegister));
+        }
     };
 }
 

@@ -57,6 +57,8 @@ namespace TAO
             uint64_t hashChecksum;
 
 
+            //memory only read position
+            uint32_t nReadPos;
 
             IMPLEMENT_SERIALIZE
             (
@@ -73,24 +75,29 @@ namespace TAO
             )
 
 
-            State() : fReadOnly(false), nVersion(1), nType(0), nLength(0), hashOwner(0), hashChecksum(0)
+            State() : fReadOnly(false), nVersion(1), nType(0), nLength(0), hashOwner(0), hashChecksum(0), nReadPos(0)
             {
                 vchState.clear();
             }
 
 
-            State(std::vector<uint8_t> vchData) : fReadOnly(false), nVersion(1), nType(0), nLength(vchData.size()), vchState(vchData)
+            State(std::vector<uint8_t> vchData) : fReadOnly(false), nVersion(1), nType(0), nLength(vchData.size()), vchState(vchData), nReadPos(0)
             {
                 SetChecksum();
             }
 
-            State(std::vector<uint8_t> vchData, uint8_t nTypeIn, uint256_t hashAddressIn, uint256_t hashOwnerIn) : fReadOnly(false), nVersion(1), nType(nTypeIn), nLength(vchData.size()), vchState(vchData), hashOwner(hashOwnerIn)
+            State(uint8_t nTypeIn, uint256_t hashAddressIn, uint256_t hashOwnerIn) : fReadOnly(false), nVersion(1), nType(nTypeIn), nLength(0), hashOwner(hashOwnerIn), nReadPos(0)
+            {
+
+            }
+
+            State(std::vector<uint8_t> vchData, uint8_t nTypeIn, uint256_t hashAddressIn, uint256_t hashOwnerIn) : fReadOnly(false), nVersion(1), nType(nTypeIn), nLength(vchData.size()), vchState(vchData), hashOwner(hashOwnerIn), nReadPos(0)
             {
                 SetChecksum();
             }
 
 
-            State(uint64_t hashChecksumIn) : fReadOnly(false), nVersion(1), nLength(0), hashChecksum(hashChecksumIn)
+            State(uint64_t hashChecksumIn) : fReadOnly(false), nVersion(1), nLength(0), hashChecksum(hashChecksumIn), nReadPos(0)
             {
 
             }
@@ -153,6 +160,64 @@ namespace TAO
                 nLength  = vchStateIn.size();
 
                 SetChecksum();
+            }
+
+            void ClearState()
+            {
+                vchState.clear();
+                nLength  = 0;
+                nReadPos = 0;
+            }
+
+
+            /** Operator Overload <<
+             *
+             *  Serializes data into vchLedgerData
+             *
+             *  @param[in] obj The object to serialize into ledger data
+             *
+             **/
+            template<typename Type> State& operator<<(const Type& obj)
+            {
+                /* Push the size byte */
+                vchState.push_back((uint8_t)sizeof(obj));
+
+                /* Push the data */
+                vchState.insert(vchState.end(), (uint8_t*)&obj, (uint8_t*)&obj + sizeof(obj));
+
+                /* Set the new length. */
+                nLength += sizeof(obj);
+
+                /* Set the checksum */
+                SetChecksum();
+
+                return *this;
+            }
+
+
+            /** Operator Overload >>
+             *
+             *  Serializes data into vchLedgerData
+             *
+             *  @param[out] obj The object to de-serialize from ledger data
+             *
+             **/
+            template<typename Type> State& operator>>(Type& obj)
+            {
+                /* Create temporary object to prevent double free in std::copy. */
+                Type tmp;
+
+                /* Get the size byte. */
+                uint8_t nSize = vchState[0];
+
+                /* Copy the data into tmp. */
+                std::copy((uint8_t*)&vchState[nReadPos + 1], (uint8_t*)&vchState[nReadPos + 1] + nSize, (uint8_t*)&tmp);
+                nReadPos += nSize + 1;
+
+                /* Set return value. */
+                obj = tmp;
+
+                return *this;
             }
 
 

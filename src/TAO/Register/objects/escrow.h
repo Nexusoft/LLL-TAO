@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_ACCOUNT_H
 #define NEXUS_TAO_REGISTER_INCLUDE_ACCOUNT_H
 
+#include <LLC/types/uint1024.h>
+
 namespace TAO
 {
 

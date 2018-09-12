@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LLD_INCLUDE_TRANSACTION_H
-#define NEXUS_LLD_INCLUDE_TRANSACTION_H
+#ifndef NEXUS_LLD_INCLUDE_LEDGER_H
+#define NEXUS_LLD_INCLUDE_LEDGER_H
 
 #include <LLC/types/uint1024.h>
 
@@ -25,11 +25,11 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    class RegisterDB : public SectorDatabase<BinaryFileMap>
+    class LedgerDB : public SectorDatabase<BinaryFileMap>
     {
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        RegisterDB(const char* pszMode="r+") : SectorDatabase("registers", pszMode) {}
+        LedgerDB(const char* pszMode="r+") : SectorDatabase("ledger", pszMode) {}
 
         bool WriteTx(uint512_t hashTransaction, TAO::Ledger::Transaction tx)
         {

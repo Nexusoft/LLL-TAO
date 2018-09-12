@@ -14,8 +14,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_OBJECTS_TOKEN_H
 #define NEXUS_TAO_REGISTER_OBJECTS_TOKEN_H
 
-#include <LLC/hash/SK.h>
-#include <Util/templates/serialize.h>
+#include <stdio.h>
+#include <stdint.h>
 
 namespace TAO
 {
@@ -46,16 +46,6 @@ namespace TAO
 
             /** The significant figures of said token. **/
             uint8_t  nCoinDigits;
-
-
-            /** Serialization methods. **/
-            IMPLEMENT_SERIALIZE
-            (
-                READWRITE(nVersion);
-                READWRITE(nIdentifier);
-                READWRITE(nMaxSupply);
-                READWRITE(nCoinDigits);
-            )
 
 
             /** Default Constructor. **/
