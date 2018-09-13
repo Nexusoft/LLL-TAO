@@ -227,6 +227,13 @@ namespace TAO
                             uint256_t hashProof;
                             stream >> hashProof;
 
+                            //check the hash proof to the transaction database. Proofs claim a debit so it is no longer sendable
+                            //transaction state needs to be update in the transaction database as well. The state willb e flagged as true
+                            //when the debit validation script no longer allows returning to sender
+                            //hash proof in this case is std::pair<hashtx, hashproof> - consider adding boolean index to keychain with no sector
+                            //hash proof for object account credit is the genesis id
+                            //ensure that hashProof == hashOwner in this logic sequence
+
                             /* The account that is being credited. */
                             uint256_t hashAccount;
                             stream >> hashAccount;
@@ -298,6 +305,11 @@ namespace TAO
                             /* The proof this credit is using to make claims. */
                             uint256_t hashProof;
                             stream >> hashProof;
+
+                            //check the hash proof to the transaction database. Proofs claim a debit so it is no longer reversible in validation script
+                            //transaction state needs to be update in the transaction database as well. The state willb e flagged as true
+                            //when the debit validation script no longer allows returning to sender
+                            //hash proof in this case is std::pair<hashtx, hashproof> - consider adding boolean index to keychain with no sector
 
                             /* Check the state register that is being used as proof from creditor. */
                             TAO::Register::State stateProof;
