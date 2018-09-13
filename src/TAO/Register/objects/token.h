@@ -49,7 +49,7 @@ namespace TAO
 
 
             /** Default Constructor. **/
-            Token() : nIdentifier(0), nMaxSupply(0), nCoinDigits(0) {}
+            Token() : nVersion(1), nIdentifier(0), nMaxSupply(0), nCoinDigits(0) {}
 
 
             /** Consturctor
@@ -60,7 +60,7 @@ namespace TAO
              *  @param[in] nMaxSupplyIn The max supply of token
              *
              **/
-            Token(uint32_t nIdentifierIn, uint64_t nMaxSupplyIn) : nIdentifier(nIdentifierIn), nMaxSupply(nMaxSupplyIn), nCoinDigits(6) {}
+            Token(uint32_t nIdentifierIn, uint64_t nMaxSupplyIn) : nVersion(1), nIdentifier(nIdentifierIn), nMaxSupply(nMaxSupplyIn), nCoinDigits(6) {}
 
 
             /** Consturctor
@@ -72,7 +72,7 @@ namespace TAO
              *  @param[in] nCoinDigitsIn The significant figures of token
              *
              **/
-            Token(uint32_t nIdentifierIn, uint64_t nMaxSupplyIn, uint8_t nCoinDigitsIn) : nIdentifier(nIdentifierIn), nMaxSupply(nMaxSupplyIn), nCoinDigits(nCoinDigits) {}
+            Token(uint32_t nIdentifierIn, uint64_t nMaxSupplyIn, uint8_t nCoinDigitsIn) : nVersion(1), nIdentifier(nIdentifierIn), nMaxSupply(nMaxSupplyIn), nCoinDigits(nCoinDigits) {}
 
 
             /** SetNull

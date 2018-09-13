@@ -184,8 +184,6 @@ namespace TAO
 
                         /* Write this to operations stream. */
                         regDB->WriteState(hashFrom, regFrom); //need to do this in operation script to check ownership of register
-                        //stream << OP_WRITE << hashFrom << regFrom;
-                        //TODO: figure out why adding to stream doesn't work right
 
                         break;
                     }
@@ -195,10 +193,6 @@ namespace TAO
                         /* The transaction that this credit is claiming. */
                         uint512_t hashTx;
                         stream >> hashTx;
-
-                        /* The proof this credit is using to make claims. */
-                        uint256_t hashProof;
-                        stream >> hashProof;
 
                         /* Read the claimed transaction. */
                         TAO::Ledger::Transaction tx;
@@ -229,9 +223,22 @@ namespace TAO
                         /* Credits specific to account objects. */
                         if(stateTo.nType == TAO::Register::OBJECT_ACCOUNT)
                         {
+                            /* The proof this credit is using to make claims. */
+                            uint256_t hashProof;
+                            stream >> hashProof;
+
                             /* The account that is being credited. */
                             uint256_t hashAccount;
                             stream >> hashAccount;
+
+                            /* Read the state from. */
+                            TAO::Register::State stateAccount;
+                            if(!regDB->ReadState(hashAccount, stateAccount))
+                                return error(FUNCTION "can't read state from", __PRETTY_FUNCTION__);
+
+                            /* Check that the creditor has permissions. */
+                            if(stateAccount.hashOwner != hashOwner)
+                                return error(FUNCTION "not authorized to credit to this register", __PRETTY_FUNCTION__);
 
                             /* Make sure the claimed account is the debited account. */
                             if(hashAccount != hashTo)
@@ -250,7 +257,7 @@ namespace TAO
                             stateTo >> acctTo;
 
                             if(acctFrom.nIdentifier != acctTo.nIdentifier)
-                                return error(FUNCTION "credit can't be of different identifier");
+                                return error(FUNCTION "credit can't be of different identifier", __PRETTY_FUNCTION__);
 
                             /* The total to be credited. */
                             uint64_t  nAmount;
@@ -262,7 +269,7 @@ namespace TAO
 
                             /* Check the proper balance requirements. */
                             if(nAmount != nTotal)
-                                return error(FUNCTION "trying to credit more than debit");
+                                return error(FUNCTION "credit and debit totals don't match", __PRETTY_FUNCTION__);
 
                             /* Credit account balance. */
                             acctTo.nBalance += nAmount;
@@ -272,6 +279,105 @@ namespace TAO
                             stateTo << acctTo;
 
                             regDB->WriteState(hashTo, stateTo); //this needs to be executing write script to check for ownership
+                        }
+                        else if(stateTo.nType == TAO::Register::OBJECT_RAW)
+                        {
+                            /* Get the state register of this register's owner. */
+                            TAO::Register::State stateOwner;
+                            if(!regDB->ReadState(stateTo.hashOwner, stateOwner))
+                                return error(FUNCTION "credit from raw object can't be without owner", __PRETTY_FUNCTION__);
+
+                            /* Disable any account that's not owned by a token (for now). */
+                            if(stateOwner.nType != TAO::Register::OBJECT_TOKEN)
+                                return error(FUNCTION "credit from raw object can't be owned by non token", __PRETTY_FUNCTION__);
+
+                            /* Get the token object. */
+                            TAO::Register::Token token;
+                            stateOwner >> token;
+
+                            /* The proof this credit is using to make claims. */
+                            uint256_t hashProof;
+                            stream >> hashProof;
+
+                            /* Check the state register that is being used as proof from creditor. */
+                            TAO::Register::State stateProof;
+                            if(!regDB->ReadState(hashProof, stateProof))
+                                return error(FUNCTION "credit proof register is not found", __PRETTY_FUNCTION__);
+
+                            /* Check that the proof is an account being used. */
+                            if(stateProof.nType != TAO::Register::OBJECT_ACCOUNT)
+                                return error(FUNCTION "credit proof register must be account", __PRETTY_FUNCTION__);
+
+                            /* Check the ownership of proof register. */
+                            if(stateProof.hashOwner != hashOwner)
+                                return error(FUNCTION "not authorized to use this proof register", __PRETTY_FUNCTION__);
+
+                            /* Get the proof account object. */
+                            TAO::Register::Account acctProof;
+                            stateProof >> acctProof;
+
+                            /* Check that the token indetifier matches token identifier. */
+                            if(acctProof.nIdentifier != token.nIdentifier)
+                                return error(FUNCTION "account proof identifier not token identifier", __PRETTY_FUNCTION__);
+
+                            /* The account that is being credited. */
+                            uint256_t hashAccount;
+                            stream >> hashAccount;
+
+                            /* Get the state of debit to account. */
+                            TAO::Register::State stateAccount;
+                            if(!regDB->ReadState(hashAccount, stateAccount))
+                                return error(FUNCTION "cannot read credit to account register", __PRETTY_FUNCTION__);
+
+                            /* Make sure the account to is an object account (for now - otherwise you can have chans of chains of chains). */
+                            if(stateAccount.nType != TAO::Register::OBJECT_ACCOUNT)
+                                return error(FUNCTION "credit register is not of account type", __PRETTY_FUNCTION__);
+
+                            /* Check that the creditor has permissions. */
+                            if(stateAccount.hashOwner != hashOwner)
+                                return error(FUNCTION "not authorized to credit to this register", __PRETTY_FUNCTION__);
+
+                            /* Get the total credit is claiming from previous debit. */
+                            uint64_t nCredit;
+                            stream >> nCredit;
+
+                            /* Get the total amount of the debit. */
+                            uint64_t nDebit;
+                            tx >> nDebit;
+
+                            /* Get the total tokens to be distributed. */
+                            uint64_t nTotal = acctProof.nBalance * nDebit / token.nMaxSupply;
+
+                            /* Check that the required credit claim is accurate. */
+                            if(nTotal != nCredit)
+                                return error(FUNCTION "claimed credit " PRIu64 " mismatch with token holdings" PRIu64, __PRETTY_FUNCTION__, nCredit, nTotal);
+
+                            /* Get the account being credited. */
+                            TAO::Register::Account acctTo;
+                            stateAccount >> acctTo;
+
+                            /* Read the state from. */
+                            TAO::Register::State stateFrom;
+                            if(!regDB->ReadState(hashFrom, stateFrom))
+                                return error(FUNCTION "can't read state from", __PRETTY_FUNCTION__);
+
+                            /* Get the debiter's register. */
+                            TAO::Register::Account acctFrom;
+                            stateFrom >> acctFrom;
+
+                            /* Check that the debit to credit identifiers match. */
+                            if(acctFrom.nIdentifier != acctTo.nIdentifier)
+                                return error(FUNCTION "credit can't be of different identifier", __PRETTY_FUNCTION__);
+
+                            /* Update the state account balance. */
+                            acctTo.nBalance += nCredit;
+
+                            /* Update the register. */
+                            stateAccount.ClearState();
+                            stateAccount << acctTo;
+
+                            /* Write to the register database. */
+                            regDB->WriteState(hashAccount, stateAccount);
                         }
 
                         /*
