@@ -414,6 +414,12 @@ namespace TAO
                         //OP_DEBIT goes to exchange object and sets its state. another OP_DEBIT from the other token locks this contract in
                         //hash proof for OP_CREDIT on each side allows the OP_DEBIT from opposite token to be claimed
                     }
+
+                    case OP_SIGNATURE:
+                    {
+                        //a transaction proof that designates the hashOwner or genesisID has signed published data
+                        //>> vchData. to prove this data was signed by being published. This can be a hash if needed.
+                    }
                 }
             }
 
