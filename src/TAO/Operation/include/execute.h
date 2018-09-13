@@ -391,23 +391,6 @@ namespace TAO
                             /* Write to the register database. */
                             regDB->WriteState(hashAccount, stateAccount);
                         }
-
-                        /*
-                        else if(stateTo.nType == TAO::Register::OBJECT_ACCOUNT)
-                        {
-                            //this is a normal credit operation. prove that you own this account and write state.
-                            ssState >> accountTo;
-
-                            accountTo.nBalance += nAmount;
-
-                            if(stateTo.hashOwner != Transaction.hashGenesis) //fail
-
-                            if(hashProof != stateTo.hashOwner) //fail
-
-                            stateTo.SetState(accountTo.Serialize()); //need serialize in and out methods. CDataStream is too clunky here
-                            regDB.WriteState(hashTo, stateTo); //only you can write this state since you are the owner of this register. handle in OP_WRITE operation
-                        }
-                        */
                     }
                 }
             }
