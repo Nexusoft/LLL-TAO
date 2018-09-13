@@ -68,6 +68,10 @@ namespace TAO
             std::vector<uint8_t> vchSig;
 
 
+            //flag to determine if tx has been connected
+            bool fConnected;
+
+
             //memory only read position
             uint32_t nReadPos;
 
@@ -80,7 +84,7 @@ namespace TAO
                 READWRITE(nTimestamp);
                 READWRITE(hashNext);
 
-                if(!(nSerType & SER_GENESISHASH)) //genesis hash is not serizlied
+                if(!(nSerType & SER_GENESISHASH)) //genesis hash is not serialized
                     READWRITE(hashGenesis);
 
                 READWRITE(hashPrevTx);
@@ -91,11 +95,13 @@ namespace TAO
                     READWRITE(vchPubKey);
                     READWRITE(vchSig);
                 }
+
+                READWRITE(fConnected);
             )
 
 
             /** Default Constructor. **/
-            Transaction() : nVersion(1), nSequence(0), nTimestamp(UnifiedTimestamp()), hashNext(0), hashGenesis(0), hashPrevTx(0), nReadPos(0) {}
+            Transaction() : nVersion(1), nSequence(0), nTimestamp(UnifiedTimestamp()), hashNext(0), hashGenesis(0), hashPrevTx(0), fConnected(false), nReadPos(0) {}
 
 
             /** Operator Overload <<

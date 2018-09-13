@@ -367,7 +367,7 @@ printf("\n");
     TAO::Ledger::Transaction next6 = TAO::Ledger::Transaction();
     next6.nSequence = 2;
 
-    next6.NextHash(chain1.Generate(next6.nSequence + 1, "1111"));
+    next6.NextHash(chain.Generate(next6.nSequence + 1, "1111"));
     next6.hashPrevTx = genesis1.GetHash();
     next6.hashGenesis = hashGenesis;
 
@@ -387,11 +387,11 @@ printf("\n");
     //add the data to the ledger
     next6 << (uint8_t)TAO::Operation::OP_REGISTER << hashRegister6 << state6;
 
-    next6.Sign(chain1.Generate(next6.nSequence, "1111"));
+    next6.Sign(chain.Generate(next6.nSequence, "1111"));
     if(next6.IsValid())
         next6.print();
 
-    legDB->WriteTx(next6.GetHash(), next2);
+    legDB->WriteTx(next6.GetHash(), next6);
 
     TAO::Operation::Execute(next6.vchLedgerData, regDB, legDB, next6.hashGenesis);
 
@@ -399,10 +399,57 @@ printf("\n");
     if(!regDB->ReadState(hashRegister6, stateRead6))
         return error("Failed to read state2");
 
-    TAO::Register::Account acct66;
-    stateRead2 >> acct66;
+    TAO::Register::Account acct6t;
+    stateRead2 >> acct6t;
 
-    acct66.print();
+    acct6t.print();
+
+
+
+
+    //create the first debit transaction
+    TAO::Ledger::Transaction next66 = TAO::Ledger::Transaction();
+    next66.nSequence = 2;
+
+    next66.NextHash(chain1.Generate(next66.nSequence + 1, "1111"));
+    next66.hashPrevTx = genesis.GetHash();
+    next66.hashGenesis = hashGenesis1;
+
+    assert(next66.hashGenesis == hashGenesis1);
+
+    //create an object register account
+    TAO::Register::Account acct67(22, 50);
+    acct67.print();
+
+    printf("\n");
+
+    //create a state register
+    uint256_t hashRegister66 = LLC::GetRand256();
+    TAO::Register::State state66 = TAO::Register::State((uint8_t)TAO::Register::OBJECT_ACCOUNT, hashRegister66, next66.hashGenesis);
+    state66 << acct67;
+
+    //add the data to the ledger
+    next66 << (uint8_t)TAO::Operation::OP_REGISTER << hashRegister66 << state66;
+
+    next66.Sign(chain1.Generate(next66.nSequence, "1111"));
+    if(next66.IsValid())
+        next66.print();
+
+    legDB->WriteTx(next66.GetHash(), next66);
+
+    TAO::Operation::Execute(next66.vchLedgerData, regDB, legDB, next66.hashGenesis);
+
+    TAO::Register::State stateRead66;
+    if(!regDB->ReadState(hashRegister66, stateRead66))
+        return error("Failed to read state2");
+
+    TAO::Register::Account acct68;
+    stateRead66 >> acct68;
+
+    acct68.print();
+
+
+
 
 
 
@@ -445,7 +492,7 @@ printf("\n");
     if(next8.IsValid())
         next8.print();
 
-    legDB->WriteTx(next8.GetHash(), next3);
+    legDB->WriteTx(next8.GetHash(), next8);
 
     TAO::Operation::Execute(next8.vchLedgerData, regDB, legDB, next8.hashGenesis);
 
@@ -457,6 +504,84 @@ printf("\n");
     stateRead8 >> account8;
 
     account8.print();
+
+
+    ////////////////////////////////////////////////// reject test
+
+    //create the first transaction
+    TAO::Ledger::Transaction next9 = TAO::Ledger::Transaction();
+    next9.nSequence = next.nSequence + 1;
+
+    next9.NextHash(chain.Generate(next.nSequence + 1, "1111"));
+    next9.hashPrevTx = genesis.GetHash();
+    next9.hashGenesis = hashGenesis;
+
+    assert(next8.hashGenesis == hashGenesis);
+
+    //add the data to the ledger
+    next9 << (uint8_t)TAO::Operation::OP_CREDIT << next7.GetHash() << hashRegister6 << hashRegister << (uint64_t)(10);
+    next9.Sign(chain1.Generate(next9.nSequence, "1111"));
+    if(next9.IsValid())
+        next9.print();
+
+    legDB->WriteTx(next9.GetHash(), next9);
+
+    TAO::Operation::Execute(next9.vchLedgerData, regDB, legDB, next9.hashGenesis);
+
+
+
+    ////////////////////////////////////////////////// credit test
+
+    //create the first transaction
+    TAO::Ledger::Transaction next88 = TAO::Ledger::Transaction();
+    next88.nSequence = next8.nSequence + 1;
+
+    next88.NextHash(chain.Generate(next.nSequence + 1, "1111"));
+    next88.hashPrevTx = genesis.GetHash();
+    next88.hashGenesis = hashGenesis1;
+
+    assert(next8.hashGenesis == hashGenesis);
+
+    //add the data to the ledger
+    next88 << (uint8_t)TAO::Operation::OP_CREDIT << next7.GetHash() << hashRegister66 << hashRegister1 << (uint64_t)(10);
+    next88.Sign(chain.Generate(next88.nSequence, "1111"));
+    if(next88.IsValid())
+        next88.print();
+
+    legDB->WriteTx(next88.GetHash(), next88);
+
+    TAO::Operation::Execute(next88.vchLedgerData, regDB, legDB, next88.hashGenesis);
+
+    TAO::Register::State stateRead88;
+    if(!regDB->ReadState(hashRegister1, stateRead88))
+        return error("Failed to read state");
+
+    TAO::Register::Account account88;
+    stateRead88 >> account88;
+
+    account88.print();
+
+
+
+    ////////////////////////////////////////////////// reject test
+
+    //create the first transaction
+    TAO::Ledger::Transaction next99 = TAO::Ledger::Transaction();
+    next99.nSequence = next.nSequence + 1;
+
+    next99.NextHash(chain.Generate(next.nSequence + 1, "1111"));
+    next99.hashPrevTx = genesis.GetHash();
+    next99.hashGenesis = hashGenesis1;
+
+    //add the data to the ledger
+    next99 << (uint8_t)TAO::Operation::OP_CREDIT << next7.GetHash() << hashRegister66 << hashRegister1 << (uint64_t)(10);
+    next99.Sign(chain1.Generate(next99.nSequence, "1111"));
+    if(next99.IsValid())
+        next99.print();
+
+    legDB->WriteTx(next9.GetHash(), next99);
+
+    TAO::Operation::Execute(next99.vchLedgerData, regDB, legDB, next99.hashGenesis);
 
 
     return 0;

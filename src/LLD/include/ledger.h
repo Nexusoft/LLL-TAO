@@ -36,9 +36,23 @@ namespace LLD
             return Write(std::make_pair(std::string("tx"), hashTransaction), tx);
         }
 
+
         bool ReadTx(uint512_t hashTransaction, TAO::Ledger::Transaction& tx)
         {
             return Read(std::make_pair(std::string("tx"), hashTransaction), tx);
+        }
+
+
+        bool WriteProof(uint256_t hashProof, uint512_t hashTransaction)
+        {
+            uint64_t nDummy = 0; //this is being used as a boolean express. TODO: make LLD handle bool key writes
+            return Write(std::make_pair(hashProof, hashTransaction), nDummy);
+        }
+
+
+        bool HasProof(uint256_t hashProof, uint512_t hashTransaction)
+        {
+            return Exists(std::make_pair(hashProof, hashTransaction));
         }
     };
 }

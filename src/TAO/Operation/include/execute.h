@@ -223,6 +223,15 @@ namespace TAO
                         /* Credits specific to account objects. */
                         if(stateTo.nType == TAO::Register::OBJECT_ACCOUNT)
                         {
+                            /* Check if this is a whole credit that the transaction is not already connected. */
+                            if(tx.fConnected)
+                                return error(FUNCTION "transaction is already spent", __PRETTY_FUNCTION__);
+
+                            /* Connect the transaction and write its new state to disk. */
+                            tx.fConnected = true;
+                            if(!legDB->WriteTx(hashTx, tx))
+                                return error(FUNCTION "failed to change debit transaction state", __PRETTY_FUNCTION__);
+
                             /* The proof this credit is using to make claims. */
                             uint256_t hashProof;
                             stream >> hashProof;
@@ -289,6 +298,11 @@ namespace TAO
                         }
                         else if(stateTo.nType == TAO::Register::OBJECT_RAW)
                         {
+                            /* Connect the transaction and write its new state to disk. */
+                            tx.fConnected = true;
+                            if(!legDB->WriteTx(hashTx, tx))
+                                return error(FUNCTION "failed to change debit transaction state", __PRETTY_FUNCTION__);
+
                             /* Get the state register of this register's owner. */
                             TAO::Register::State stateOwner;
                             if(!regDB->ReadState(stateTo.hashOwner, stateOwner))
@@ -306,8 +320,16 @@ namespace TAO
                             uint256_t hashProof;
                             stream >> hashProof;
 
+                            /* Check that this proof has not been used in a partial credit. */
+                            if(legDB->HasProof(hashProof, hashTx))
+                                return error(FUNCTION "credit proof has already been spent", __PRETTY_FUNCTION__);
+
+                            /* Write the hash proof to disk. */
+                            if(!legDB->WriteProof(hashProof, hashTx))
+                                return error(FUNCTION "failed to write the credit proof", __PRETTY_FUNCTION__);
+
                             //check the hash proof to the transaction database. Proofs claim a debit so it is no longer reversible in validation script
-                            //transaction state needs to be update in the transaction database as well. The state willb e flagged as true
+                            //transaction state needs to be update in the transaction database as well. The state will be flagged as true
                             //when the debit validation script no longer allows returning to sender
                             //hash proof in this case is std::pair<hashtx, hashproof> - consider adding boolean index to keychain with no sector
 
