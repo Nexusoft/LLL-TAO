@@ -392,6 +392,28 @@ namespace TAO
                             regDB->WriteState(hashAccount, stateAccount);
                         }
                     }
+
+                    case OP_AUTHORIZE:
+                    {
+                        //authorization of keys here. logs that a key has been authorized by this hashOwner
+                        //this will require an indexing system to be able to collect all OP_AUTHORIZE relating to hashOwner
+                        //an authorization token will generally be a hased public key. This key can be used for access control in private systems
+                    }
+
+                    case OP_VOTE:
+                    {
+                        //voting mechanism. OP_VOTE can be to any random number. Something that can be regarded as a vote for thie hashOWner
+                        //consider how to index this from API to OP_READ the votes without having to parse too deep into the register layer
+                        //OP_VOTE doesn't need to change states. IT could be a vote read only object register
+                    }
+
+                    case OP_EXCHANGE:
+                    {
+                        //exchange contracts validation register. hashProof in credits can be used as an exchange medium if OP_DEBIT is to
+                        //an exchange object register which holds the token identifier and total in exchange for deposited amount.
+                        //OP_DEBIT goes to exchange object and sets its state. another OP_DEBIT from the other token locks this contract in
+                        //hash proof for OP_CREDIT on each side allows the OP_DEBIT from opposite token to be claimed
+                    }
                 }
             }
 
