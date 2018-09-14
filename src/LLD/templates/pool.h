@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <Util/templates/serialize.h>
 #include <Util/include/mutex.h>
+#include <Util/include/runtime.h>
 
 namespace LLD
 {
