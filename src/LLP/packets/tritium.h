@@ -15,28 +15,51 @@ ________________________________________________________________________________
 #define NEXUS_LLP_PACKETS_TRITIUM_H
 
 #include <vector>
-#include <limits>
-#include <stdint>
+#include <limits.h>
+#include <stdint.h>
 
 #include <LLC/hash/SK.h>
 
+#include <Util/include/debug.h>
+
 namespace LLP
 {
+
+    /** Message format enumeration. **/
+    enum
+    {
+        DAT_VERSION     = 0,
+        GET_OFFSET      = 1,
+        DAT_OFFSET      = 2,
+
+        DAT_INVENTORY   = 10,
+        GET_INVENTORY   = 11,
+
+        GET_ADDRESSES   = 20,
+        DAT_ADDRESSES   = 21,
+
+        DAT_TRANSACTION = 30,
+
+        DAT_PING        = 65533,
+        DAT_PONG        = 65534,
+        DAT_NULL        = 65535
+    };
+
 
     /** Class to handle sending and receiving of More Complese Message LLP Packets. **/
     class TritiumPacket
     {
     public:
 
-        /*
-        * Components of a Message LLP Packet.
-        * BYTE 0 - 4    : Start
-        * BYTE 5 - 17   : Message
-        * BYTE 18 - 22  : Size
-        * BYTE 23 - 26  : Checksum
-        * BYTE 26 - X   : Data
-        *
-        */
+        /** Components of a Message LLP Packet.
+         *
+         *  BYTE 0 - 1  : Message Code
+         *  BYTE 2 - 6  : Packet Length
+         *  BYTE 7 - 10 : Packet Checksum
+         *
+         *  Byte 11 +   : Packet Data
+         *
+         **/
         uint16_t        MESSAGE;
         uint32_t	    LENGTH;
         uint32_t	    CHECKSUM;
@@ -46,7 +69,6 @@ namespace LLP
         TritiumPacket()
         {
             SetNull();
-            SetHeader();
         }
 
         TritiumPacket(uint16_t nMessage)
@@ -67,7 +89,7 @@ namespace LLP
         /* Set the Packet Null Flags. */
         void SetNull()
         {
-            MESSAGE   = std::numeric_limits<uint8_t>();
+            MESSAGE   = DAT_NULL;
             LENGTH    = 0;
             CHECKSUM  = 0;
 
@@ -76,7 +98,7 @@ namespace LLP
 
 
         /* Packet Null Flag. Length and Checksum both 0. */
-        bool IsNull() { return (MESSAGE == std::numeric_limits<uint8_t>() && LENGTH == 0 && CHECKSUM == 0 && DATA.size() == 0); }
+        bool IsNull() { return (MESSAGE == DAT_NULL && LENGTH == 0 && CHECKSUM == 0 && DATA.size() == 0); }
 
 
         /* Determine if a packet is fully read. */
@@ -84,7 +106,7 @@ namespace LLP
 
 
         /* Determine if header is fully read */
-        bool Header()   { return IsNull() ? false : (CHECKSUM > 0 && MESSAGE != std::numeric_limits<uint8_t>()); }
+        bool Header()   { return IsNull() ? false : (CHECKSUM > 0 && MESSAGE != DAT_NULL); }
 
 
         /* Sets the size of the packet from Byte Vector. */
@@ -128,7 +150,7 @@ namespace LLP
             /* Double check the Message Checksum. */
             if (LLC::SK32(DATA.begin(), DATA.end()) != CHECKSUM)
                 return error("Tritium Packet (%s, %u bytes) : CHECKSUM MISMATCH nChecksum=%u hdr.nChecksum=%u",
-                MESSAGE, LENGTH, nChecksum, CHECKSUM);
+                MESSAGE, LENGTH, LLC::SK32(DATA.begin(), DATA.end()), CHECKSUM);
 
             return true;
         }
@@ -141,7 +163,7 @@ namespace LLP
             ssHeader << *this;
 
             std::vector<uint8_t> vBytes(ssHeader.begin(), ssHeader.end());
-            vBytes.insert(vBytes.end(), vData.begin(), vData.end());
+            vBytes.insert(vBytes.end(), DATA.begin(), DATA.end());
 
             return vBytes;
         }

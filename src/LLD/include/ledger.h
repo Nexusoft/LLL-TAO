@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <LLD/templates/filemap.h>
 
 #include <TAO/Register/include/state.h>
+#include <TAO/Ledger/types/transaction.h>
 
 namespace LLD
 {
@@ -40,6 +41,11 @@ namespace LLD
         bool ReadTx(uint512_t hashTransaction, TAO::Ledger::Transaction& tx)
         {
             return Read(std::make_pair(std::string("tx"), hashTransaction), tx);
+        }
+
+        bool HasTx(uint512_t hashTransaction)
+        {
+            return Exists(std::make_pair(std::string("tx"), hashTransaction));
         }
 
 

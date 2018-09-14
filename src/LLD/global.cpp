@@ -11,15 +11,10 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LLD_INCLUDE_GLOBAL_H
-#define NEXUS_LLD_INCLUDE_GLOBAL_H
-
-#include <LLD/include/register.h>
-#include <LLD/include/ledger.h>
+#include <LLD/include/global.h>
 
 namespace LLD
 {
-    extern RegisterDB*   regDB;
-    extern LedgerDB*     legDB;
+    RegisterDB* regDB = new RegisterDB("r+");
+    LedgerDB*   legDB = new LedgerDB("r+");
 }
-#endif
