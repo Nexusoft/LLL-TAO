@@ -21,6 +21,8 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
 
+#include <TAO/Operation/include/execute.h>
+
 namespace LLP
 {
 
@@ -36,6 +38,20 @@ namespace LLP
             {
                 case EVENT_CONNECT:
                 {
+                    /* Setup the variables for this node. */
+                    addrThisNode = SOCKET.addr;
+                    nLastPing    = Timestamp();
+
+                    /* Debut output. */
+                    printf(NODE "%s Connected at timestamp %" PRIu64 "\n", addrThisNode.ToString().c_str(), UnifiedTimestamp());
+
+                    /* Send version if making the connection. */
+                    if(fOUTGOING)
+                    {
+                        uint64_t nSession = LLC::GetRand(std::numeric_limits<uint64_t>::max());
+                        PushMessage(DAT_VERSION, nSession);
+                    }
+
                     break;
                 }
 
@@ -52,7 +68,7 @@ namespace LLP
                 case EVENT_GENERIC:
                 {
                     /* Generic event - pings. */
-                    if(Timestamp() - nLastPing > 30)
+                    if(Timestamp() - nLastPing > 5)
                     {
                         /* Generate the nNonce. */
                         uint64_t nNonce = LLC::GetRand(std::numeric_limits<uint64_t>::max());
@@ -65,6 +81,22 @@ namespace LLP
 
                         /* Update the last ping. */
                         nLastPing = Timestamp();
+                    }
+
+                    /* Generic events - unified time. */
+                    if(Timestamp() - nLastSamples > 30)
+                    {
+                        /* Generate the request identification. */
+                        uint32_t nRequestID = LLC::GetRand(std::numeric_limits<int32_t>::max());
+
+                        /* Add sent requests. */
+                        mapSentRequests[nRequestID] = Timestamp();
+
+                        /* Request time samples. */
+                        PushMessage(GET_OFFSET, nRequestID, Timestamp(true));
+
+                        /* Update the samples timer. */
+                        nLastSamples = Timestamp();
                     }
 
                     break;
@@ -81,9 +113,10 @@ namespace LLP
         /** Main message handler once a packet is recieved. **/
         bool TritiumNode::ProcessPacket()
         {
-            CDataStream ssPacket(SER_NETWORK, PROTOCOL_VERSION);
+            CDataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
             switch(INCOMING.MESSAGE)
             {
+
                 case DAT_VERSION:
                 {
                     /* Deserialize the session identifier. */
@@ -95,6 +128,10 @@ namespace LLP
                         uint64_t nSession = LLC::GetRand(std::numeric_limits<uint64_t>::max());
                         PushMessage(DAT_VERSION, nSession);
                     }
+
+                    /* Debug output for offsets. */
+                    if(GetArg("-verbose", 0) >= 3)
+                        printf(NODE "received session identifier (%" PRIx64 ")\n", nSessionID);
 
                     break;
                 }
@@ -115,7 +152,7 @@ namespace LLP
 
                     /* Debug output for offsets. */
                     if(GetArg("-verbose", 0) >= 3)
-                        printf("***** Tritium::Get Offset: Received Timestamp (%" PRIu64 ") - Sent Offset %i\n", nTimestamp, nOffset);
+                        printf(NODE "received timestamp of (%" PRIu64 ") - sending offset %i\n", nTimestamp, nOffset);
 
                     /* Push a timestamp in response. */
                     PushMessage(DAT_OFFSET, nRequestID, nOffset);
@@ -132,7 +169,16 @@ namespace LLP
 
                     /* Check map known requests. */
                     if(!mapSentRequests.count(nRequestID))
-                        return error("***** Tritium::Offset not requested");
+                        return error(NODE "offset not requested");
+
+                    /* Check the time since request was sent. */
+                    if(Timestamp() - mapSentRequests[nRequestID] > 10)
+                    {
+                        printf(NODE "offset is stale.\n");
+                        mapSentRequests.erase(nRequestID);
+
+                        break;
+                    }
 
                     /* Deserialize the offset. */
                     int32_t nOffset;
@@ -140,7 +186,10 @@ namespace LLP
 
                     /* Debug output for offsets. */
                     if(GetArg("-verbose", 0) >= 3)
-                        printf("***** Tritium::Offset: Received Offset %i\n", nOffset);
+                        printf(NODE "received offset %i\n", nOffset);
+
+                    /* Remove sent requests from mpa. */
+                    mapSentRequests.erase(nRequestID);
 
                     break;
                 }
@@ -186,12 +235,12 @@ namespace LLP
                     {
                         /* Debug output for tx. */
                         if(GetArg("-verbose", 0) >= 3)
-                            printf("***** Tritium: recieved tx %s\n", tx.GetHash().ToString().substr(0, 20).c_str());
+                            printf(NODE "recieved tx %s\n", tx.GetHash().ToString().substr(0, 20).c_str());
 
                         /* Check if tx is valid. */
                         if(!tx.IsValid())
                         {
-                            error("***** Tritium: tx %s REJECTED", tx.GetHash().ToString().substr(0, 20).c_str());
+                            error(NODE "tx %s REJECTED", tx.GetHash().ToString().substr(0, 20).c_str());
 
                             break;
                         }
@@ -199,7 +248,15 @@ namespace LLP
                         /* Write the transaction to ledger database. */
                         if(!LLD::legDB->WriteTx(tx.GetHash(), tx))
                         {
-                            error("***** Tritium: tx failed to write to disk");
+                            error(NODE "tx failed to write to disk");
+
+                            break;
+                        }
+
+                        /* Process the transaction operations. */
+                        if(!TAO::Operation::Execute(tx.vchLedgerData, LLD::regDB, LLD::legDB, tx.hashGenesis))
+                        {
+                            error(NODE "tx failed to process register/operations");
 
                             break;
                         }
@@ -207,7 +264,7 @@ namespace LLP
 
                     /* Debug output for offsets. */
                     else if(GetArg("-verbose", 0) >= 3)
-                        printf("***** Tritium::Transaction: Already have tx %s\n", tx.GetHash().ToString().substr(0, 20).c_str());
+                        printf(NODE "already have tx %s\n", tx.GetHash().ToString().substr(0, 20).c_str());
 
                     break;
                 }
@@ -244,11 +301,11 @@ namespace LLP
 
                     /* Check for unsolicted pongs. */
                     if(!mapLatencyTracker.count(nNonce))
-                        return error("***** Tritium::Pong not requested");
+                        return error(NODE "unsolicited pong");
 
                     /* Debug output for latency. */
                     if(GetArg("-verbose", 0) >= 3)
-                        printf("***** Tritium::Pong: Latency %u ms\n", Timestamp(true) - mapLatencyTracker[nNonce]);
+                        printf(NODE "latency %u ms\n", Timestamp(true) - mapLatencyTracker[nNonce]);
 
                     /* Clear the latency tracker record. */
                     mapLatencyTracker.erase(nNonce);

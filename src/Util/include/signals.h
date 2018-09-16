@@ -15,12 +15,16 @@ ________________________________________________________________________________
 #define NEXUS_UTIL_INCLUDE_SIGNALS_H
 
 #include <signal.h>
-
+#include <Util/include/args.h>
 
 /* Catch Signal Handler functio */
 void HandleSIGTERM(int signum)
 {
-    printf("Caught signal SIGPIPE %d\n",signum);
+    if(signum != SIGPIPE)
+    {
+        printf("Shutting Down %d\n", signum);
+        fShutdown = true;
+    }
 }
 
 
@@ -40,6 +44,7 @@ void SetupSignals()
         sigaction(SIGILL, &sa, NULL);
         sigaction(SIGINT, &sa, NULL);
         sigaction(SIGTERM, &sa, NULL);
+        sigaction(SIGPIPE, &sa, NULL);
 
     #else
         //catch all signals to flag fShutdown for all threads
@@ -47,6 +52,7 @@ void SetupSignals()
         signal(SIGILL, HandleSIGTERM);
         signal(SIGINT, HandleSIGTERM);
         signal(SIGTERM, HandleSIGTERM);
+        signal(SIGPIPE, HandleSIGTERM);
 
     #ifdef SIGBREAK
         signal(SIGBREAK, HandleSIGTERM);

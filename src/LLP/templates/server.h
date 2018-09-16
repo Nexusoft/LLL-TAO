@@ -182,7 +182,7 @@ namespace LLP
                         /* DDOS Operations: Only executed when DDOS is enabled. */
                         if((fDDOS && DDOS_MAP[(CService)addr]->Banned()))
                         {
-                            printf("***** LLP Server: Connection Request %s refused... Banned.", addr.ToString().c_str());
+                            printf(NODE "Connection Request %s refused... Banned.", addr.ToString().c_str());
                             close(hSocket);
 
                             continue;
@@ -193,7 +193,7 @@ namespace LLP
                         int nThread = FindThread();
                         DATA_THREADS[nThread]->AddConnection(sockNew, DDOS_MAP[(CService)addr]);
 
-                        printf("***** LLP Server: Accepted Connection %s on port %u\n", addr.ToString().c_str(), PORT);
+                        printf(NODE "Accepted Connection %s on port %u\n", addr.ToString().c_str(), PORT);
                     }
                 }
             }
@@ -254,7 +254,7 @@ namespace LLP
 
                 return false;
             }
-            printf("***** LLP Server: Bound to port %d\n", ntohs(sockaddr.sin_port));
+            printf(NODE "Bound to port %d\n", ntohs(sockaddr.sin_port));
 
             // Listen for incoming connections
             if (listen(hListenSocket, SOMAXCONN) == SOCKET_ERROR)
@@ -271,6 +271,9 @@ namespace LLP
         /* LLP Meter Thread. Tracks the Requests / Second. */
         void MeterThread()
         {
+            if(!GetBoolArg("-meters", false))
+                return;
+
             Timer TIMER;
             TIMER.Start();
 

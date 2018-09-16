@@ -29,8 +29,8 @@ namespace LLP
     public:
 
         /* Constructors for Message LLP Class. */
-        TritiumNode() : BaseConnection<TritiumPacket>() {}
-        TritiumNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false ) : BaseConnection<TritiumPacket>( SOCKET_IN, DDOS_IN ) { }
+        TritiumNode() : BaseConnection<TritiumPacket>(), nSessionID(0), fInbound(false), nNodeLatency(0), nLastPing(0), nLastSamples(0) {}
+        TritiumNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false ) : BaseConnection<TritiumPacket>( SOCKET_IN, DDOS_IN ), nSessionID(0), fInbound(false), nNodeLatency(0), nLastPing(0), nLastSamples(0) { }
 
 
         /** Randomly genearted session ID. **/
@@ -47,6 +47,10 @@ namespace LLP
 
         /** Counter to keep track of the last time a ping was made. **/
         uint32_t nLastPing;
+
+
+        /** Counter to keep track of last time sample request. */
+        uint32_t nLastSamples;
 
 
         /** Timer object to keep track of ping latency. **/

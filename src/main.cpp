@@ -16,25 +16,12 @@ ________________________________________________________________________________
 #include <Util/include/signals.h>
 #include <Util/include/convert.h>
 
-#include <TAO/Ledger/types/transaction.h>
-#include <TAO/Ledger/types/sigchain.h>
-
-#include <TAO/Register/objects/account.h>
-#include <TAO/Register/objects/token.h>
-#include <TAO/Register/include/state.h>
-#include <TAO/Register/include/enum.h>
-
-#include <TAO/Operation/include/enum.h>
-#include <TAO/Operation/include/stream.h>
-#include <TAO/Operation/include/execute.h>
-
-#include <LLC/include/random.h>
 
 #include <LLD/include/global.h>
-#include <LLD/include/version.h>
-
 #include <LLP/include/tritium.h>
 #include <LLP/templates/server.h>
+
+
 
 int main(int argc, char** argv)
 {
@@ -46,14 +33,18 @@ int main(int argc, char** argv)
     ParseParameters(argc, argv);
 
 
-    /* Read the configuration file. */
-    if (!boost::filesystem::is_directory(GetDataDir(false)))
-    {
-        fprintf(stderr, "Error: Specified directory does not exist\n");
+    /* Create directories if they don't exist yet. */
+    if(boost::filesystem::create_directories(GetDataDir(false)))
+        printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, GetDataDir(false).c_str());
 
-        return 0;
-    }
+
+    /* Read the configuration file. */
     ReadConfigFile(mapArgs, mapMultiArgs);
+
+
+    /* Create the database instances. */
+    LLD::regDB = new LLD::RegisterDB("r+");
+    LLD::legDB = new LLD::LedgerDB("r+");
 
 
     /* Handle Commandline switch */
@@ -67,14 +58,14 @@ int main(int argc, char** argv)
     }
 
 
-
-
-
     /* Create an LLP Server. */
     LLP::Server<LLP::TritiumNode>* SERVER = new LLP::Server<LLP::TritiumNode>(1111, 10, 30, false, 0, 0, 60, GetBoolArg("-listen", true), true);
 
+    if(mapMultiArgs["-addnode"].size() > 0)
+        for(auto node : mapMultiArgs["-addnode"])
+            SERVER->AddConnection(node, 1111);
 
-    while(true)
+    while(!fShutdown)
     {
         Sleep(1000);
     }

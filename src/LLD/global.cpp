@@ -15,6 +15,6 @@ ________________________________________________________________________________
 
 namespace LLD
 {
-    RegisterDB* regDB = new RegisterDB("r+");
-    LedgerDB*   legDB = new LedgerDB("r+");
+    RegisterDB* regDB;
+    LedgerDB*   legDB;
 }
