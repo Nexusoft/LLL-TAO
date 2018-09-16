@@ -240,6 +240,7 @@ namespace LLP
     class CAddrInfo : public CAddress
     {
     private:
+        
         /* Who Gave us this Address. */
         CNetAddr source;
 

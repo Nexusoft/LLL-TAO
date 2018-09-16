@@ -119,11 +119,11 @@ namespace LLP
 
             /* Debug dump of message type. */
             if(GetArg("-verbose", 0) >= 4)
-                printf("***** Node Sent Message (%u, %u)\n", PACKET.LENGTH, PACKET.GetBytes().size());
+                printf(NODE "Sent Message (%u, %u)\n", PACKET.LENGTH, PACKET.GetBytes().size());
 
             /* Debug dump of packet data. */
             if(GetArg("-verbose", 0) >= 5) {
-                printf("***** Pakcet Dump: ");
+                printf(NODE "Pakcet Dump: ");
 
                 PrintHex(PACKET.GetBytes());
             }
@@ -144,15 +144,16 @@ namespace LLP
             CService addrConnect(strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
 
             /// debug print
-            printf("***** Node Connecting to %s\n",
+            printf(NODE "Connecting to %s\n",
                 addrConnect.ToString().c_str());
 
             // Connect
             if (SOCKET.Connect(addrConnect))
             {
                 /// debug print
-                printf("***** Node Connected to %s\n", addrConnect.ToString().c_str());
+                printf(NODE "Connected to %s\n", addrConnect.ToString().c_str());
                 fCONNECTED = true;
+                fOUTGOING  = true;
 
                 return true;
             }

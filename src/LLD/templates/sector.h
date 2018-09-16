@@ -471,7 +471,7 @@ namespace LLD
 
             //TODO: Add this to data journal with data to be committed first.
             //This will tell the database on next keychain init if there was any failed writes for graceful recovery
-            while(true)
+            while(!fShutdown)
             {
                 /* Wait for Database to Initialize. */
                 if(!fInitialized)
@@ -597,10 +597,13 @@ namespace LLD
         /* LLP Meter Thread. Tracks the Requests / Second. */
         void Meter()
         {
+            if(!GetBoolArg("-meters", false))
+                return;
+
             Timer TIMER;
             TIMER.Start();
 
-            while(true)
+            while(!fShutdown)
             {
                 Sleep(10000);
 

@@ -54,6 +54,8 @@ ________________________________________________________________________________
 
 #define FUNCTION ANSI_COLOR_FUNCTION "%s" ANSI_COLOR_RESET " : "
 
+#define NODE ANSI_COLOR_FUNCTION "Node" ANSI_COLOR_RESET " : "
+
 //Support for Windoze
 #ifndef __PRETTY_FUNCTION__
 #define __PRETTY_FUNCTION__ __FUNCTION__
