@@ -16,7 +16,7 @@ HOSTNAME=`hostname | cut -d "." -f 1`
 RAND=`python -c "import random as r; print hex(r.randint(0, 0xffffffff))[2::]"`
 NAME="nexus-$HOSTNAME-$RAND"
 
-docker create --privileged --name $NAME -h $NAME -ti tritium > /dev/null
+docker create -p 8080 --privileged --name $NAME -h $NAME -ti tritium > /dev/null
 echo "Starting container '$NAME' ..."
 docker start $NAME > /dev/null
 
