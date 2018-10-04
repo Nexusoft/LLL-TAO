@@ -82,9 +82,6 @@ key = ecdsa.SigningKey.generate(curve=ecdsa.NIST256p)
 pubkey = key.get_verifying_key().to_der()
 print ""
 
-f = open("./lisp-sig.pem", "w"); f.write(key.to_pem()); f.close()
-print "Private-key stored in file {}".format(bold("lisp-sig.pem"))
-
 #
 # Build EID. The hash is <4-byte-iid><variable-length-prefix><pubkey>
 #
@@ -119,14 +116,29 @@ eid = eid.replace(":0", ":")
 #
 sig_data = "[{}]{}".format(iid, eid)
 sig = key.sign(sig_data, hashfunc=hashlib.sha256)
+print "Generated crypto-EID {}".format(bold(sig_data))
+
+#
+# Put crypto-EID in PEM file as a comment header.
+#
+f = open("./lisp-sig.pem", "w");
+pem_header = \
+'''
+#
+# lispers.net crypto-EID: {}
+#
+'''.format(sig_data)
+
+f.write(pem_header)
+f.write(key.to_pem())
+f.write(key.get_verifying_key().to_pem())
+f.close()
+print "Keys stored in file {}".format(bold("lisp-sig.pem"))
 
 #
 # Return values in base64 format
 #
-print "Generated crypto-EID {}\n".format(bold(sig_data))
-
 pubkey = b2a(key.get_verifying_key().to_pem())
-print "Public-key {}".format(pubkey)
 sig = b2a(sig)
 
 hvv = hv
