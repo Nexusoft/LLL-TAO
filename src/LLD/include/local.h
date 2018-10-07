@@ -39,7 +39,17 @@ namespace LLD
 
         bool WriteTx(TAO::Ledger::Transaction tx)
         {
+            return Write(std::make_pair(std::string("tx"), tx));
+        }
 
+        bool WriteLast(TAO::Ledger::Transaction tx)
+        {
+            return Write(std::make_pair(std::string("last"), tx));
+        }
+
+        bool ReadLast(TAO::Ledger::Transaction& tx)
+        {
+            return Read(std::make_pair(std::string(""))
         }
     };
 }
