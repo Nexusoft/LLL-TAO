@@ -34,22 +34,32 @@ namespace LLD
 
         bool WriteGenesis(TAO::Ledger::Transaction tx)
         {
-            return Write(std::make_pair(std::string("genesis")), tx);
+            return Write(std::string("genesis"), tx);
+        }
+
+        bool ReadGenesis(TAO::Ledger::Transaction& tx)
+        {
+            return Read(std::string("genesis"), tx);
         }
 
         bool WriteTx(TAO::Ledger::Transaction tx)
         {
-            return Write(std::make_pair(std::string("tx"), tx));
+            return Write(std::make_pair(std::string("tx"), tx.GetHash()), tx);
         }
 
-        bool WriteLast(TAO::Ledger::Transaction tx)
+        bool ReadTx(uint512_t hash, TAO::Ledger::Transaction& tx)
         {
-            return Write(std::make_pair(std::string("last"), tx));
+            return Read(std::make_pair(std::string("tx"), hash), tx);
         }
 
-        bool ReadLast(TAO::Ledger::Transaction& tx)
+        bool WriteLast(uint512_t hashLast)
         {
-            return Read(std::make_pair(std::string(""))
+            return Write(std::string("last"), hashLast);
+        }
+
+        bool ReadLast(uint512_t& hashLast)
+        {
+            return Read(std::string("last"), hashLast);
         }
     };
 }
