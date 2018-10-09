@@ -113,6 +113,13 @@ namespace LLD
         }
 
 
+        /** Remove Node
+         *
+         *  Remove a node from the double linked list.
+         *
+         *  @param[in] pthis The node to remove from list.
+         *
+         */
         void RemoveNode(CacheNode* pthis)
         {
             /* Link the next pointer if not null */
@@ -125,6 +132,13 @@ namespace LLD
         }
 
 
+        /** Move to Front
+         *
+         *  Move the node in double linked list to front.
+         *
+         *  @param[in] pthis The node to move to front.
+         *
+         **/
         void MoveToFront(CacheNode* pthis)
         {
             /* Don't move to front if already in the front. */
