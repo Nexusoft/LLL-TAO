@@ -308,8 +308,8 @@ namespace LLD
         {
             LOCK(SECTOR_MUTEX);
 
-            if(cachePool->Get(vKey, vData))
-                return true;
+            //if(cachePool->Get(vKey, vData))
+            //    return true;
 
             /* Check that the key is not pending in a transaction for Erase. */
             if(pTransaction && pTransaction->mapEraseData.count(vKey))
@@ -375,7 +375,7 @@ namespace LLD
 
             if(!GetBoolArg("-forcewrite", false))
             {
-                cachePool->Put(vKey, vData, PENDING_WRITE);
+                //cachePool->Put(vKey, vData, PENDING_WRITE);
 
                 return true;
             }
@@ -483,7 +483,7 @@ namespace LLD
 
                 /* Check for data to be written. */
                 std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vIndexes;
-                if(!cachePool->GetDiskBuffer(vIndexes))
+                //if(!cachePool->GetDiskBuffer(vIndexes))
                 {
                     if(fDestruct)
                         return;
@@ -535,7 +535,7 @@ namespace LLD
                         vBatch.insert(vBatch.end(), vObj.second.begin(), vObj.second.end());
 
                         /* Update the Cache Pool. */
-                        cachePool->SetState(vObj.first, MEMORY_ONLY);
+                        //cachePool->SetState(vObj.first, MEMORY_ONLY);
                     }
                     else
                     {
@@ -568,7 +568,7 @@ namespace LLD
                         SectorKeys->Put(cKey);
 
                         /* Update the Cache Pool. */
-                        cachePool->SetState(vObj.first, MEMORY_ONLY);
+                        //cachePool->SetState(vObj.first, MEMORY_ONLY);
                     }
                 }
 
