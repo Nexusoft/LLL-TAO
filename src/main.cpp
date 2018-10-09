@@ -15,13 +15,36 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/signals.h>
 #include <Util/include/convert.h>
+#include <Util/include/runtime.h>
 
+#include <LLC/include/random.h>
 
-#include <LLD/include/global.h>
+#include <LLD/include/version.h>
+#include <LLD/templates/pool.h>
+
 #include <LLP/include/tritium.h>
 #include <LLP/templates/server.h>
 
+#include <TAO/Ledger/types/transaction.h>
 
+
+/*
+class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap>
+{
+public:
+    TestDB(const char* pszMode="r+") : SectorDatabase("testdb", pszMode) {}
+
+    bool WriteTx(uint512_t hashTransaction, TAO::Ledger::Transaction tx)
+    {
+        return Write(std::make_pair(std::string("tx"), hashTransaction), tx);
+    }
+
+    bool ReadTx(uint512_t hashTransaction, TAO::Ledger::Transaction& tx)
+    {
+        return Read(std::make_pair(std::string("tx"), hashTransaction), tx);
+    }
+};
+*/
 
 int main(int argc, char** argv)
 {
@@ -43,8 +66,8 @@ int main(int argc, char** argv)
 
 
     /* Create the database instances. */
-    LLD::regDB = new LLD::RegisterDB("r+");
-    LLD::legDB = new LLD::LedgerDB("r+");
+    //LLD::regDB = new LLD::RegisterDB("r+");
+    //LLD::legDB = new LLD::LedgerDB("r+");
 
 
     /* Handle Commandline switch */
@@ -58,7 +81,57 @@ int main(int argc, char** argv)
     }
 
 
-    /* Create an LLP Server. */
+    LLD::MemCachePool* cachePool = new LLD::MemCachePool(1024 * 1024);
+    /*
+
+    TestDB* test = new TestDB();
+
+    uint512_t hashTest("c861dffe8d1f5f59c05b726546b05a1e57742004317519a4dee454dcefb3f838c4005625d4799646aac8694aad41a9c447686d26da05a95fe5d20ce7ce979962");
+
+    //TAO::Ledger::Transaction tx;
+    //if(!test->ReadTx(hashTest, tx))
+    //    return error("FAILED");
+
+    //tx.print();
+    */
+
+    int nCounter = 0;
+    Timer timer;
+    timer.Start();
+    while(!fShutdown)
+    {
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = LLC::GetRand256();
+        uint512_t hash = tx.GetHash();
+
+        std::vector<uint8_t> vKey((uint8_t*)&hash, (uint8_t*)&hash + sizeof(hash));
+
+        std::vector<uint8_t> vData((uint8_t*)&tx, (uint8_t*)&tx + tx.GetSerializeSize(SER_LLD, LLD::DATABASE_VERSION));
+
+        //tx.print();
+
+        cachePool->Put(vKey, vData); 
+        //cachePool->Get(vKey, vData);
+        //test->WriteTx(hash, tx);
+
+        //TAO::Ledger::Transaction tx1;
+        //test->ReadTx(hash, tx1);
+
+        //tx1.print();
+
+        //Sleep(10);
+
+        if(nCounter % 100000 == 0)
+        {
+            printf("100k records written in %u ms\n", timer.ElapsedMilliseconds());
+            timer.Reset();
+        }
+
+        nCounter++;
+    }
+
+
+    /* Create an LLP Server.
     LLP::Server<LLP::TritiumNode>* SERVER = new LLP::Server<LLP::TritiumNode>(1111, 10, 30, false, 0, 0, 60, GetBoolArg("-listen", true), true);
 
     if(mapMultiArgs["-addnode"].size() > 0)
@@ -69,6 +142,8 @@ int main(int argc, char** argv)
     {
         Sleep(1000);
     }
+
+    */
 
 
     return 0;
