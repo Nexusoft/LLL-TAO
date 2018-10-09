@@ -96,7 +96,19 @@ namespace LLD
         /* Class Destructor. */
         ~MemCachePool()
         {
-            //TODO: delete the cache nodes
+            /* Loop through the linked list. */
+            while(pfirst)
+            {
+                /* Free memory of previous entry. */
+                if(pfirst->pprev)
+                    delete pfirst->pprev;
+
+                /* Iterate forward */
+                pfirst = pfirst->pnext;
+            }
+
+            /* Clear the objects map. */
+            mapObjects.clear();
         }
 
 
