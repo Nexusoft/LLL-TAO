@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <Util/templates/serialize.h>
 #include <Util/include/mutex.h>
 #include <Util/include/runtime.h>
+#include <Util/include/hex.h>
 
 namespace LLD
 {
@@ -45,6 +46,10 @@ namespace LLD
         uint32_t MAX_CACHE_SIZE;
 
 
+        /* The total buckets available. */
+        uint32_t MAX_CACHE_BUCKETS;
+
+
         /* The current size of the pool. */
         uint32_t nCurrentSize;
 
@@ -54,7 +59,7 @@ namespace LLD
 
 
         /* Map of the current holding data. */
-        std::map<std::vector<uint8_t>, CacheNode*> mapObjects;
+        std::vector<CacheNode*> hashmap;
 
 
         /* Keep track of the first object in linked list. */
@@ -74,8 +79,12 @@ namespace LLD
          * MAX_CACHE_BUCKETS default value is 65,539 (2 bytes)
          *
          */
-        MemCachePool() : MAX_CACHE_SIZE(1024 * 1024), nCurrentSize(0), pfirst(0), plast(0)
+        MemCachePool() : MAX_CACHE_SIZE(1024 * 1024), MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 64), nCurrentSize(MAX_CACHE_BUCKETS * 24), pfirst(0), plast(0)
         {
+            /* Resize the hashmap vector. */
+            hashmap.resize(MAX_CACHE_BUCKETS);
+
+            /* Set the start and end pointers. */
             pfirst = NULL;
             plast  = NULL;
         }
@@ -86,8 +95,12 @@ namespace LLD
          * @param[in] nCacheSizeIn The maximum size of this Cache Pool
          *
          */
-        MemCachePool(uint32_t nCacheSizeIn) : MAX_CACHE_SIZE(nCacheSizeIn), nCurrentSize(0)
+        MemCachePool(uint32_t nCacheSizeIn) : MAX_CACHE_SIZE(nCacheSizeIn), MAX_CACHE_BUCKETS(nCacheSizeIn / 64), nCurrentSize(MAX_CACHE_BUCKETS * 24)
         {
+            /* Resize the hashmap vector. */
+            hashmap.resize(MAX_CACHE_BUCKETS);
+
+            /* Set the start and end pointers. */
             pfirst = NULL;
             plast  = NULL;
         }
@@ -106,9 +119,23 @@ namespace LLD
                 /* Iterate forward */
                 pfirst = pfirst->pnext;
             }
+        }
 
-            /* Clear the objects map. */
-            mapObjects.clear();
+
+        /** Bucket
+         *
+         *  Find a bucket for cache key management.
+         *
+         *  @param[in] vKey The key to get bucket for.
+         *
+         **/
+        uint32_t Bucket(const std::vector<uint8_t>& vKey) const
+        {
+            uint64_t nBucket = 0;
+            for(int i = 0; i < vKey.size() && i < 8; i++)
+                nBucket += vKey[i] << (8 * i);
+
+            return nBucket % MAX_CACHE_BUCKETS;
         }
 
 
@@ -121,7 +148,7 @@ namespace LLD
          */
         bool Has(std::vector<uint8_t> vKey) const
         {
-            return (mapObjects.count(vKey) > 0);
+            return (hashmap[Bucket(vKey)] != NULL);
         }
 
 
@@ -168,7 +195,11 @@ namespace LLD
 
             /* Update the first reference prev */
             if(pfirst)
+            {
                 pfirst->pprev = pthis;
+                if(!plast)
+                    plast = pfirst;
+            }
 
             /* Update the first reference. */
             pfirst        = pthis;
@@ -192,10 +223,13 @@ namespace LLD
                 return false;
 
             /* Get the data. */
-            vData = mapObjects[vKey]->vData;
+            CacheNode* pthis = hashmap[Bucket(vKey)];
+
+            /* Get the data. */
+            vData = pthis->vData;
 
             /* Move to front of double linked list. */
-            MoveToFront(mapObjects[vKey]);
+            MoveToFront(pthis);
 
             return true;
         }
@@ -211,54 +245,53 @@ namespace LLD
         {
             LOCK(MUTEX);
 
-            /* If has a key, update that in map. */
+            /* If has a key, check for bucket collisions. */
+            uint32_t nBucket = Bucket(vKey);
+
+            /* Check for bucket collisions. */
+            CacheNode* pthis = NULL;
             if(Has(vKey))
-                mapObjects[vKey]->vData = vData;
+            {
+                /* Update the cache node. */
+                pthis = hashmap[nBucket];
+                pthis->vData = vData;
+                pthis->vKey  = vKey;
+            }
             else
             {
                 /* Create a new cache node. */
-                CacheNode* pthis = new CacheNode();
+                pthis = new CacheNode();
                 pthis->vData = vData;
                 pthis->vKey  = vKey;
 
                 /* Add cache node to objects map. */
-                mapObjects[vKey] = pthis;
-
-                /* Check for last. */
-                if(!plast)
-                    plast = pthis;
-
-                if(!pfirst)
-                    pfirst = pthis;
-                else
-                {
-                    pfirst->pprev = pthis;
-                    pthis->pnext  = pfirst;
-                    pfirst        = pthis;
-                }
-
+                hashmap[nBucket] = pthis;
             }
 
+            /* Set the new cache node to the front */
+            MoveToFront(pthis);
 
             /* Remove the last node if cache too large. */
             if(nCurrentSize > MAX_CACHE_SIZE)
             {
                 /* Get the last key. */
                 CacheNode* pnode = plast;
+                if(plast->pprev)
+                {
+                    /* Relink in memory. */
+                    plast = plast->pprev;
+                    plast->pnext = NULL;
 
-                /* Relink in memory. */
-                plast = plast->pprev;
-                plast->pnext = NULL;
+                    /* Reduce the current cache size. */
+                    nCurrentSize += (vKey.size() + vData.size() - pnode->vData.size() - pnode->vKey.size());
 
-                /* Reduce the current cache size. */
-                nCurrentSize += (vData.size() - pnode->vData.size());
-
-                /* Clear the pointers. */
-                mapObjects.erase(vKey);
-                delete pnode;
+                    /* Clear the pointers. */
+                    hashmap[Bucket(pnode->vKey)] = NULL; //TODO: hashmap linked list for collisions
+                    delete pnode;
+                }
             }
             else
-                nCurrentSize += vData.size();
+                nCurrentSize += (vData.size() + vKey.size());
         }
 
 
@@ -277,19 +310,17 @@ namespace LLD
             if(!Has(vKey))
                 return false;
 
-            /* Reduce the current cache size. */
-            nCurrentSize -= (mapObjects[vKey]->vData.size() + vKey.size());
+            /* Get the node */
+            CacheNode* pnode = hashmap[Bucket(vKey)];
 
-            /* Get the cache node. */
-            CacheNode* pnode = mapObjects[vKey];
+            /* Reduce the current cache size. */
+            nCurrentSize -= (pnode->vData.size() + vKey.size());
 
             /* Remove from linked list. */
             RemoveNode(pnode);
 
             /* Remove the object from the map. */
-            mapObjects.erase(vKey);
-
-            /* Erase the pointer. */
+            hashmap[Bucket(vKey)] = NULL;
             delete pnode;
 
             return true;
