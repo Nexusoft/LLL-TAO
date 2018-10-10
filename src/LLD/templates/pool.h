@@ -55,7 +55,7 @@ namespace LLD
 
 
         /* Mutex for thread concurrencdy. */
-        Mutex_t MUTEX;
+        mutable Mutex_t MUTEX;
 
 
         /* Map of the current holding data. */
@@ -148,7 +148,10 @@ namespace LLD
          */
         bool Has(std::vector<uint8_t> vKey) const
         {
-            return (hashmap[Bucket(vKey)] != NULL);
+            LOCK(MUTEX);
+
+            uint32_t nBucket = Bucket(vKey);
+            return (hashmap[nBucket] != NULL && hashmap[nBucket]->vKey == vKey);
         }
 
 
@@ -275,9 +278,10 @@ namespace LLD
             if(nCurrentSize > MAX_CACHE_SIZE)
             {
                 /* Get the last key. */
-                CacheNode* pnode = plast;
                 if(plast->pprev)
                 {
+                    CacheNode* pnode = plast;
+
                     /* Relink in memory. */
                     plast = plast->pprev;
                     plast->pnext = NULL;

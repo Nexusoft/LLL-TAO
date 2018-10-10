@@ -78,7 +78,7 @@ namespace LLD
 
 
         /** Return Whether a Key Exists in the Database. **/
-        bool HasKey(const std::vector<uint8_t>& vKey)
+        bool HasKey(const std::vector<uint8_t> vKey)
         {
             if(mapBinaryIterators.count(vKey))
                 return true;
@@ -87,17 +87,20 @@ namespace LLD
             uint32_t nBucket = GetBucket(vKey);
 
             /* Establish the Stream File for Keychain Bucket. */
-            std::fstream ssFile(strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), nBucket).c_str(), std::ios::in | std::ios::binary);
+            std::ifstream ssFile(strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), nBucket).c_str(), std::ios::in | std::ios::binary);
             if(!ssFile)
                 return false;
 
 
             /* Read the Bucket File. */
-            ssFile.ignore(std::numeric_limits<std::streamsize>::max());
-            ssFile.seekg (0, std::ios::beg);
-            std::vector<uint8_t> vBucket(ssFile.gcount(), 0);
+            //ssFile.ignore(std::numeric_limits<std::streamsize>::max());
+            ssFile.seekg (0, std::ios::end);
+            std::vector<uint8_t> vBucket(ssFile.tellg(), 0);
             ssFile.read((char*) &vBucket[0], vBucket.size());
+            //std::copy(std::istream_iterator<uint8_t>(ssFile), std::istream_iterator<uint8_t>(), std::back_inserter(vBucket));
             ssFile.close();
+
+            vBucket.clear();
 
 
             /* Iterator for Key Sectors. */
@@ -129,6 +132,8 @@ namespace LLD
 
                 nIterator += cKey.Size();
             }
+
+
 
             return false;
         }
