@@ -81,7 +81,7 @@ int main(int argc, char** argv)
     }
 
 
-    LLD::MemCachePool* cachePool = new LLD::MemCachePool(1024 * 1024);
+    LLD::MemCachePool* cachePool = new LLD::MemCachePool(1024 * 1024 * 1024);  
     /*
 
     TestDB* test = new TestDB();
@@ -107,7 +107,6 @@ int main(int argc, char** argv)
         std::vector<uint8_t> vKey((uint8_t*)&hash, (uint8_t*)&hash + sizeof(hash));
 
         std::vector<uint8_t> vData((uint8_t*)&tx, (uint8_t*)&tx + tx.GetSerializeSize(SER_LLD, LLD::DATABASE_VERSION));
-
         //tx.print();
 
         cachePool->Put(vKey, vData);
@@ -118,7 +117,6 @@ int main(int argc, char** argv)
         //test->ReadTx(hash, tx1);
 
         //tx1.print();
-
         //Sleep(10);
 
         if(nCounter % 100000 == 0)
