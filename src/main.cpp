@@ -28,7 +28,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/transaction.h>
 
- 
+
 class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap>
 {
 public:
@@ -44,6 +44,7 @@ public:
         return Read(std::make_pair(std::string("tx"), hashTransaction), tx);
     }
 };
+
 
 int main(int argc, char** argv)
 {
@@ -106,8 +107,10 @@ int main(int argc, char** argv)
 
         test->WriteTx(hash, tx);
 
+        //LLC::SK256(hash.GetBytes());
+
         TAO::Ledger::Transaction tx1;
-        test->ReadTx(hash, tx1);
+        //test->ReadTx(hash, tx1);
 
         //tx1.print();
         //Sleep(10);

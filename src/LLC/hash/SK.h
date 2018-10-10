@@ -34,7 +34,7 @@ namespace LLC
 	static uint8_t pblank[1];
 
     /* Hashing template for Checksums */
-	inline uint32_t SK32(const std::vector<uint8_t>& vch)
+	inline uint32_t SK32(const std::vector<uint8_t> vch)
 	{
 		uint32_t skein;
 		Skein_256_Ctxt_t ctx;

@@ -66,6 +66,7 @@ namespace LLD
             TODO: Lock Mutex based on Read / Writes on a per Sector Basis.
             Will allow higher efficiency for thread concurrency. */
         Mutex_t SECTOR_MUTEX;
+        Mutex_t BUFFER_MUTEX;
 
 
         /* The String to hold the Disk Location of Database File. */
@@ -123,7 +124,7 @@ namespace LLD
 
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(std::string strName, const char* pszMode="r+") : strBaseLocation(GetDataDir().string() + "/" + strName + "/datachain/"), cachePool(new MemCachePool(MAX_SECTOR_CACHE_SIZE)), nBytesRead(0), nBytesWrote(0), nCurrentFile(0), nCurrentFileSize(0), CacheWriterThread(boost::bind(&SectorDatabase::CacheWriter, this)), MeterThread(boost::bind(&SectorDatabase::Meter, this))
+        SectorDatabase(std::string strName, const char* pszMode="r+") : strBaseLocation(GetDataDir().string() + "/" + strName + "/datachain/"), cachePool(new MemCachePool(MAX_SECTOR_CACHE_SIZE)), nBytesRead(0), nBytesWrote(0), nCurrentFile(0), nCurrentFileSize(0), MeterThread(boost::bind(&SectorDatabase::Meter, this))
         {
             if(GetBoolArg("-runtime", false))
                 runtime.Start();
@@ -139,6 +140,8 @@ namespace LLD
 
             if(GetBoolArg("-runtime", false))
                 printf(ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
+
+            CacheWriterThread = Thread_t(&SectorDatabase::CacheWriter, this);
         }
 
         ~SectorDatabase()
@@ -255,8 +258,6 @@ namespace LLD
             if(!Get(vKey, vData))
                 return false;
 
-
-
             /** Deserialize Value. **/
             try {
                 CDataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
@@ -306,8 +307,6 @@ namespace LLD
         /** Get a Record from the Database with Given Key. **/
         bool Get(std::vector<uint8_t> vKey, std::vector<uint8_t>& vData)
         {
-            LOCK(SECTOR_MUTEX);
-
             if(cachePool->Get(vKey, vData))
                 return true;
 
@@ -333,6 +332,8 @@ namespace LLD
                 SectorKey cKey;
                 if(!SectorKeys->Get(vKey, cKey))
                     return false;
+
+                LOCK(SECTOR_MUTEX);
 
                 /** Open the Stream to Read the data from Sector on File. **/
                 /* Open the Stream to Read the data from Sector on File. */
@@ -369,25 +370,16 @@ namespace LLD
 
 
         /** Add / Update A Record in the Database **/
-        bool Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
+        bool Put2(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
         {
-            LOCK(SECTOR_MUTEX);
-
-            if(!GetBoolArg("-forcewrite", false))
-            {
-                cachePool->Put(vKey, vData);
-
-                vDiskBuffer.push_back(std::make_pair(vKey, vData));
-
-                return true;
-            }
-
             if(GetBoolArg("-runtime", false))
                 runtime.Start();
 
             /* Write Header if First Update. */
             if(!SectorKeys->HasKey(vKey))
             {
+                LOCK(SECTOR_MUTEX);
+
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                 {
                     if(GetArg("-verbose", 0) >= 4)
@@ -429,6 +421,8 @@ namespace LLD
                 if(!SectorKeys->Get(vKey, cKey))
                     return false;
 
+                LOCK(SECTOR_MUTEX);
+
                 /* Open the Stream to Read the data from Sector on File. */
                 std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile);
                 std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
@@ -465,6 +459,20 @@ namespace LLD
         }
 
 
+        /** Add / Update A Record in the Database **/
+        bool Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
+        {
+            if(!cachePool->Has(vKey))
+                cachePool->Put(vKey, vData);
+
+            { LOCK(BUFFER_MUTEX);
+                vDiskBuffer.push_back(std::make_pair(vKey, vData));
+            }
+
+            return true;
+        }
+
+
         /* Helper Thread to Batch Write to Disk. */
         void CacheWriter()
         {
@@ -496,7 +504,7 @@ namespace LLD
 
                 std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vIndexes;
                 {
-                    LOCK(SECTOR_MUTEX);
+                    LOCK(BUFFER_MUTEX);
                     vIndexes.swap(vDiskBuffer);
                 }
 
@@ -520,6 +528,13 @@ namespace LLD
                 std::vector< uint8_t > vBatch;
                 for(auto vObj : vIndexes)
                 {
+                    SectorKeys->HasKey(vObj.first);
+                    SectorKeys->HasKey(vObj.first);
+                    
+                    //LLC::SK256(vObj.second);
+
+                    continue;
+
                     if(nTempFileSize >= MAX_SECTOR_FILE_SIZE)
                         break;
 
@@ -532,7 +547,10 @@ namespace LLD
                         SectorKey cKey = SectorKey(READY, vObj.first, nCurrentFile, nTempFileSize, vObj.second.size());
 
                         /* Check the Data Integrity of the Sector by comparing the Checksums. */
-                        cKey.nChecksum    = LLC::SK32(vObj.second);
+                        //LLC::SK256(vObj.second);
+                        //std::vector<uint8_t> vTest = vObj.second;
+                        //cKey.nChecksum = LLC::SK32(vTest);
+                        //LLC::SK256(vBatch);
 
                         /* Increment the current filesize */
                         nTempFileSize += vObj.second.size();
