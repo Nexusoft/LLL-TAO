@@ -19,16 +19,16 @@ ________________________________________________________________________________
 
 #include <LLC/include/random.h>
 
-#include <LLD/include/version.h>
-#include <LLD/templates/pool.h>
+#include <LLD/templates/sector.h>
+#include <LLD/templates/hashmap.h>
+#include <LLD/templates/filemap.h>
 
 #include <LLP/include/tritium.h>
 #include <LLP/templates/server.h>
 
 #include <TAO/Ledger/types/transaction.h>
 
-
-/*
+ 
 class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap>
 {
 public:
@@ -44,12 +44,12 @@ public:
         return Read(std::make_pair(std::string("tx"), hashTransaction), tx);
     }
 };
-*/
 
 int main(int argc, char** argv)
 {
     /* Handle all the signals with signal handler method. */
     SetupSignals();
+
 
 
     /* Parse out the parameters */
@@ -63,6 +63,7 @@ int main(int argc, char** argv)
 
     /* Read the configuration file. */
     ReadConfigFile(mapArgs, mapMultiArgs);
+
 
 
     /* Create the database instances. */
@@ -81,19 +82,18 @@ int main(int argc, char** argv)
     }
 
 
-    LLD::MemCachePool* cachePool = new LLD::MemCachePool(1024 * 1024 * 1024);  
-    /*
+    //LLD::MemCachePool* cachePool = new LLD::MemCachePool(1024 * 1024 * 2048);
 
     TestDB* test = new TestDB();
 
-    uint512_t hashTest("c861dffe8d1f5f59c05b726546b05a1e57742004317519a4dee454dcefb3f838c4005625d4799646aac8694aad41a9c447686d26da05a95fe5d20ce7ce979962");
+    uint512_t  hashTest("c861dffe8d1f5f59c05b726546b05a1e57742004317519a4dee454dcefb3f838c4005625d4799646aac8694aad41a9c447686d26da05a95fe5d20ce7ce979962");
 
     //TAO::Ledger::Transaction tx;
     //if(!test->ReadTx(hashTest, tx))
     //    return error("FAILED");
 
     //tx.print();
-    */
+
 
     int nCounter = 0;
     Timer timer;
@@ -104,17 +104,10 @@ int main(int argc, char** argv)
         tx.hashGenesis = LLC::GetRand256();
         uint512_t hash = tx.GetHash();
 
-        std::vector<uint8_t> vKey((uint8_t*)&hash, (uint8_t*)&hash + sizeof(hash));
+        test->WriteTx(hash, tx);
 
-        std::vector<uint8_t> vData((uint8_t*)&tx, (uint8_t*)&tx + tx.GetSerializeSize(SER_LLD, LLD::DATABASE_VERSION));
-        //tx.print();
-
-        cachePool->Put(vKey, vData);
-        //cachePool->Get(vKey, vData);
-        //test->WriteTx(hash, tx);
-
-        //TAO::Ledger::Transaction tx1;
-        //test->ReadTx(hash, tx1);
+        TAO::Ledger::Transaction tx1;
+        test->ReadTx(hash, tx1);
 
         //tx1.print();
         //Sleep(10);

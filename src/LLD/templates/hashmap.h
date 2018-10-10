@@ -121,7 +121,7 @@ namespace LLD
                     /* Found the Binary Position. */
                     if(vKeyIn == vKey)
                     {
-                        mapBinaryIterators[vKey] = nIterator;
+                        //mapBinaryIterators[vKey] = nIterator;
 
                         return true;
                     }
