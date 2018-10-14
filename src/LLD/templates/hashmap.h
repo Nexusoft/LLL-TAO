@@ -16,6 +16,8 @@ ________________________________________________________________________________
 
 #include <LLD/templates/key.h>
 
+#include <algorithm>
+
 namespace LLD
 {
 
@@ -57,9 +59,38 @@ namespace LLD
 
     public:
 
+        BinaryHashMap() {}
+
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         BinaryHashMap(std::string strBaseLocationIn) : strBaseLocation(strBaseLocationIn)
         {
+            Initialize();
+        }
+
+        BinaryHashMap& operator=(BinaryHashMap map)
+        {
+            //KEY_MUTEX = map.KEY_MUTEX;
+
+            strBaseLocation    = map.strBaseLocation;
+            fMemoryCaching     = map.fMemoryCaching;
+            nCacheSize         = map.nCacheSize;
+            mapBinaryIterators = map.mapBinaryIterators;
+
+            Initialize();
+
+            return *this;
+        }
+
+
+        BinaryHashMap(const BinaryHashMap& map)
+        {
+            //KEY_MUTEX = map.KEY_MUTEX;
+
+            strBaseLocation    = map.strBaseLocation;
+            fMemoryCaching     = map.fMemoryCaching;
+            nCacheSize         = map.nCacheSize;
+            mapBinaryIterators = map.mapBinaryIterators;
+
             Initialize();
         }
 
@@ -78,60 +109,61 @@ namespace LLD
 
 
         /** Return Whether a Key Exists in the Database. **/
-        bool HasKey(const std::vector<uint8_t> vKey)
+        bool HasKey(const std::vector<uint8_t>& vKey)
         {
             if(mapBinaryIterators.count(vKey))
                 return true;
 
             /* Get the assigned bucket for the hashmap. */
+            //uint32_t nBucket = GetBucket(vKey);
+
             uint32_t nBucket = GetBucket(vKey);
+            const char* dir = strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), nBucket).c_str();
+            {
+                std::ifstream ssFile = std::ifstream(dir, std::ios::in | std::ios::binary);
+                if(!ssFile)
+                    return false;
+
+                ssFile.close();
+            }
+            //std::fstream ssFile(dir, std::ios::in | std::ios::binary);
+            //if(!ssFile)
+            //    return false;
+
+            //ssFile.close();
+
+            //ssFile.seekg (0, std::ios::end);
+            //std::vector<uint8_t> vBucket(ssFile.tellg(), 0);
+            //ssFile.read((char*) &vBucket[0], vBucket.size());
+            //ssFile.close();
+
+            /*
+            std::ifstream ssFile2(strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), nBucket).c_str(), std::ios::in | std::ios::binary);
+            if(!ssFile2)
+                return false;
+
+            ssFile2.seekg (0, std::ios::end);
+            std::vector<uint8_t> vBucket2(ssFile2.tellg(), 0);
+            //ssFile2.read((char*) &vBucket2[0], vBucket2.size());
+            ssFile2.close();
+            */
 
             /* Establish the Stream File for Keychain Bucket. */
-            std::ifstream ssFile(strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), nBucket).c_str(), std::ios::in | std::ios::binary);
-            if(!ssFile)
-                return false;
+            //std::ifstream ssFile(strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), nBucket).c_str(), std::ios::in | std::ios::binary);
+            //if(!ssFile)
+            //    return false;
 
 
             /* Read the Bucket File. */
             //ssFile.ignore(std::numeric_limits<std::streamsize>::max());
-            ssFile.seekg (0, std::ios::end);
-            std::vector<uint8_t> vBucket(ssFile.tellg(), 0);
-            ssFile.read((char*) &vBucket[0], vBucket.size());
+            //ssFile.seekg (0, std::ios::end);
+            //std::vector<uint8_t> vBucket(ssFile.tellg(), 0);
+            //ssFile.read((char*) &vBucket[0], vBucket.size());
             //std::copy(std::istream_iterator<uint8_t>(ssFile), std::istream_iterator<uint8_t>(), std::back_inserter(vBucket));
-            ssFile.close();
+            //ssFile.close();
 
-            vBucket.clear();
-
-
-            /* Iterator for Key Sectors. */
-            uint32_t nIterator = 0;
-            while(nIterator < vBucket.size())
-            {
-
-                /* Get Binary Data */
-                std::vector<uint8_t> vData(vBucket.begin() + nIterator, vBucket.begin() + nIterator + 15);
-
-                /* Read the State and Size of Sector Header. */
-                SectorKey cKey;
-                CDataStream ssKey(vData, SER_LLD, DATABASE_VERSION);
-                ssKey >> cKey;
-
-                if(cKey.Ready())
-                {
-                    /* Read the Key Data. */
-                    std::vector<uint8_t> vKeyIn(vBucket.begin() + nIterator + 15, vBucket.begin() + nIterator + 15 + cKey.nLength);
-
-                    /* Found the Binary Position. */
-                    if(vKeyIn == vKey)
-                    {
-                        //mapBinaryIterators[vKey] = nIterator;
-
-                        return true;
-                    }
-                }
-
-                nIterator += cKey.Size();
-            }
+            //std::vector<uint8_t>().swap(vBucket);
+            //vBucket.clear();
 
 
 

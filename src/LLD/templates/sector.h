@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_TEMPLATES_SECTOR_H
 #define NEXUS_LLD_TEMPLATES_SECTOR_H
 
+#include <functional>
+
 #include <LLD/templates/pool.h>
 #include <LLD/templates/key.h>
 #include <LLD/templates/transaction.h>
@@ -94,7 +96,7 @@ namespace LLD
 
 
         /* Sector Keys Database. */
-        KeychainType* SectorKeys;
+        KeychainType SectorKeys;
 
 
         /* For the Meter. */
@@ -112,7 +114,7 @@ namespace LLD
 
 
         /* Cache Writer Thread. */
-        Thread_t CacheWriterThread;
+        std::thread CacheWriterThread;
 
 
         /* The meter thread. */
@@ -124,7 +126,7 @@ namespace LLD
 
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(std::string strName, const char* pszMode="r+") : strBaseLocation(GetDataDir().string() + "/" + strName + "/datachain/"), cachePool(new MemCachePool(MAX_SECTOR_CACHE_SIZE)), nBytesRead(0), nBytesWrote(0), nCurrentFile(0), nCurrentFileSize(0), MeterThread(boost::bind(&SectorDatabase::Meter, this))
+        SectorDatabase(std::string strName, const char* pszMode="r+") : strBaseLocation(GetDataDir().string() + "/" + strName + "/datachain/"), cachePool(new MemCachePool(MAX_SECTOR_CACHE_SIZE)), nBytesRead(0), nBytesWrote(0), nCurrentFile(0), nCurrentFileSize(0), MeterThread(std::bind(&SectorDatabase::Meter, this))
         {
             if(GetBoolArg("-runtime", false))
                 runtime.Start();
@@ -133,7 +135,7 @@ namespace LLD
             fReadOnly = (!strchr(pszMode, '+') && !strchr(pszMode, 'w'));
 
             /* Initialize the Keys Class. */
-            SectorKeys = new KeychainType((GetDataDir().string() + "/" + strName + "/keychain/"));
+            SectorKeys = KeychainType((GetDataDir().string() + "/" + strName + "/keychain/"));
 
             /* Initialize the Database. */
             Initialize();
@@ -152,7 +154,7 @@ namespace LLD
 
             delete pTransaction;
             delete cachePool;
-            delete SectorKeys;
+            //delete SectorKeys;
         }
 
 
@@ -202,7 +204,7 @@ namespace LLD
         /* Get the keys for this sector database from the keychain.  */
         std::vector< std::vector<uint8_t> > GetKeys()
         {
-            return SectorKeys->GetKeys();
+            return SectorKeys.GetKeys();
         }
 
 
@@ -216,7 +218,7 @@ namespace LLD
             std::vector<uint8_t> vKey(ssKey.begin(), ssKey.end());
 
             /** Return the Key existance in the Keychain Database. **/
-            return SectorKeys->HasKey(vKey);
+            return SectorKeys.HasKey(vKey);
         }
 
         template<typename Key>
@@ -239,7 +241,7 @@ namespace LLD
 
 
             /** Return the Key existance in the Keychain Database. **/
-            return SectorKeys->Erase(vKey);
+            return SectorKeys.Erase(vKey);
 
             if(GetBoolArg("-runtime", false))
                 printf(ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
@@ -325,12 +327,12 @@ namespace LLD
                 return true;
             }
 
-            if(SectorKeys->HasKey(vKey))
+            if(SectorKeys.HasKey(vKey))
             {
 
                 /** Read the Sector Key from Keychain. **/
                 SectorKey cKey;
-                if(!SectorKeys->Get(vKey, cKey))
+                if(!SectorKeys.Get(vKey, cKey))
                     return false;
 
                 LOCK(SECTOR_MUTEX);
@@ -376,7 +378,7 @@ namespace LLD
                 runtime.Start();
 
             /* Write Header if First Update. */
-            if(!SectorKeys->HasKey(vKey))
+            if(!SectorKeys.HasKey(vKey))
             {
                 LOCK(SECTOR_MUTEX);
 
@@ -412,13 +414,13 @@ namespace LLD
                 nCurrentFileSize += vData.size();
 
                 /* Assign the Key to Keychain. */
-                SectorKeys->Put(cKey);
+                SectorKeys.Put(cKey);
             }
             else
             {
                 /* Get the Sector Key from the Keychain. */
                 SectorKey cKey;
-                if(!SectorKeys->Get(vKey, cKey))
+                if(!SectorKeys.Get(vKey, cKey))
                     return false;
 
                 LOCK(SECTOR_MUTEX);
@@ -446,7 +448,7 @@ namespace LLD
                 cKey.nState    = READY;
                 cKey.nChecksum = LLC::SK32(vData);
 
-                SectorKeys->Put(cKey);
+                SectorKeys.Put(cKey);
             }
 
             if(GetArg("-verbose", 0) >= 4)
@@ -462,9 +464,10 @@ namespace LLD
         /** Add / Update A Record in the Database **/
         bool Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
         {
-            if(!cachePool->Has(vKey))
-                cachePool->Put(vKey, vData);
+            /* Write the data into the memory cache. */
+            cachePool->Put(vKey, vData);
 
+            /* Add to the write buffer thread. */
             { LOCK(BUFFER_MUTEX);
                 vDiskBuffer.push_back(std::make_pair(vKey, vData));
             }
@@ -528,9 +531,9 @@ namespace LLD
                 std::vector< uint8_t > vBatch;
                 for(auto vObj : vIndexes)
                 {
-                    SectorKeys->HasKey(vObj.first);
-                    SectorKeys->HasKey(vObj.first);
-                    
+                    SectorKeys.HasKey(vObj.first);
+                    //SectorKeys.HasKey(vObj.first);
+
                     //LLC::SK256(vObj.second);
 
                     continue;
@@ -539,7 +542,7 @@ namespace LLD
                         break;
 
                     /* Setup for batch write on first update. */
-                    if(!SectorKeys->HasKey(vObj.first))
+                    if(!SectorKeys.HasKey(vObj.first))
                     {
                         LOCK(SECTOR_MUTEX);
 
@@ -556,7 +559,7 @@ namespace LLD
                         nTempFileSize += vObj.second.size();
 
                         /* Assign the Key to Keychain. */
-                        //SectorKeys->Put(cKey);
+                        //SectorKeys.Put(cKey);
 
                         /* Setup the Batch data write. */
                         vBatch.insert(vBatch.end(), vObj.second.begin(), vObj.second.end());
@@ -565,7 +568,7 @@ namespace LLD
                     {
                         /* Get the Sector Key from the Keychain. */
                         SectorKey cKey;
-                        if(!SectorKeys->Get(vObj.first, cKey))
+                        if(!SectorKeys.Get(vObj.first, cKey))
                             break;
 
                         /* Open the Stream to Read the data from Sector on File. */
@@ -589,7 +592,7 @@ namespace LLD
                         /* Update the Keychain. */
                         cKey.nState    = READY;
                         cKey.nChecksum = LLC::SK32(vObj.second);
-                        SectorKeys->Put(cKey);
+                        SectorKeys.Put(cKey);
                     }
                 }
 
@@ -725,12 +728,12 @@ namespace LLD
             for(typename std::map< std::vector<uint8_t>, std::vector<uint8_t> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
             {
                 SectorKey cKey;
-                if(SectorKeys->HasKey(nIterator->first)) {
-                    if(!SectorKeys->Get(nIterator->first, cKey))
+                if(SectorKeys.HasKey(nIterator->first)) {
+                    if(!SectorKeys.Get(nIterator->first, cKey))
                         return error(FUNCTION "Couldn't get the Active Sector Key.", __PRETTY_FUNCTION__);
 
                     cKey.nState = TRANSACTION;
-                    SectorKeys->Put(cKey);
+                    SectorKeys.Put(cKey);
                 }
             }
 
@@ -741,7 +744,7 @@ namespace LLD
             /** Erase all the Transactions that are set to be erased. That way if they are assigned a TRANSACTION flag we know to roll back their key to orginal data. **/
             for(typename std::map< std::vector<uint8_t>, uint32_t >::iterator nIterator = pTransaction->mapEraseData.begin(); nIterator != pTransaction->mapEraseData.end(); nIterator++ )
             {
-                if(!SectorKeys->Erase(nIterator->first))
+                if(!SectorKeys.Erase(nIterator->first))
                     return error(FUNCTION "Couldn't get the Active Sector Key for Delete.", __PRETTY_FUNCTION__);
             }
 
@@ -756,7 +759,7 @@ namespace LLD
                 std::vector<uint8_t> vData = nIterator->second;
 
                 /* Write Header if First Update. */
-                if(!SectorKeys->HasKey(vKey))
+                if(!SectorKeys.HasKey(vKey))
                 {
                     if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                     {
@@ -791,14 +794,14 @@ namespace LLD
                     nCurrentFileSize += vData.size();
 
                     /* Assign the Key to Keychain. */
-                    SectorKeys->Put(cKey);
+                    SectorKeys.Put(cKey);
                 }
                 else
                 {
                     /* Get the Sector Key from the Keychain. */
                     SectorKey cKey;
-                    if(!SectorKeys->Get(vKey, cKey)) {
-                        SectorKeys->Erase(vKey);
+                    if(!SectorKeys.Get(vKey, cKey)) {
+                        SectorKeys.Erase(vKey);
 
                         return false;
                     }
@@ -826,7 +829,7 @@ namespace LLD
                     cKey.nState    = READY;
                     cKey.nChecksum = LLC::SK32(vData);
 
-                    SectorKeys->Put(cKey);
+                    SectorKeys.Put(cKey);
                 }
             }
 
@@ -838,7 +841,7 @@ namespace LLD
             {
                 /** Assign the Writing State for Sector. **/
                 SectorKey cKey;
-                if(!SectorKeys->Get(nIterator->first, cKey))
+                if(!SectorKeys.Get(nIterator->first, cKey))
                     return error(FUNCTION "Failed to Get Key from Keychain.", __PRETTY_FUNCTION__);
 
                 /** Set the Sector states back to Active. **/
@@ -846,7 +849,7 @@ namespace LLD
                 cKey.nChecksum = LLC::SK32(nIterator->second);
 
                 /** Commit the Keys to Keychain Database. **/
-                if(!SectorKeys->Put(cKey))
+                if(!SectorKeys.Put(cKey))
                     return error(FUNCTION "Failed to Commit Key to Keychain.", __PRETTY_FUNCTION__);
             }
 

@@ -11,8 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <boost/assign/list_of.hpp>
-
 #include "core.h"
 #include "unifiedtime.h"
 #include "../wallet/db.h"

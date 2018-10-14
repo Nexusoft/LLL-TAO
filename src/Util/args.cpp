@@ -16,8 +16,6 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/strlcpy.h>
 
-#include <boost/foreach.hpp>
-
 std::map<std::string, std::string> mapArgs;
 std::map<std::string, std::vector<std::string> > mapMultiArgs;
 

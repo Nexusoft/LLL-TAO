@@ -16,7 +16,6 @@ ________________________________________________________________________________
 #include <boost/filesystem.hpp>
 
 using namespace std;
-using namespace boost;
 
 
 namespace Wallet
@@ -59,7 +58,7 @@ namespace Wallet
 
     bool CWalletDB::WriteAccountingEntry(const CAccountingEntry& acentry)
     {
-        return Write(boost::make_tuple(string("acentry"), acentry.strAccount, ++nAccountingEntryNumber), acentry);
+        return Write(std::make_tuple(string("acentry"), acentry.strAccount, ++nAccountingEntryNumber), acentry);
     }
 
     int64_t CWalletDB::GetAccountCreditDebit(const string& strAccount)
@@ -86,7 +85,7 @@ namespace Wallet
             // Read next record
             CDataStream ssKey(SER_DISK, DATABASE_VERSION);
             if (fFlags == DB_SET_RANGE)
-                ssKey << boost::make_tuple(string("acentry"), (fAllAccounts? string("") : strAccount), uint64_t(0));
+                ssKey << std::::make_tuple(string("acentry"), (fAllAccounts? std::string("") : strAccount), uint64_t(0));
             CDataStream ssValue(SER_DISK, DATABASE_VERSION);
             int ret = ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
             fFlags = DB_NEXT;
@@ -120,8 +119,8 @@ namespace Wallet
     {
         pwallet->vchDefaultKey.clear();
         int nFileVersion = 0;
-        vector<uint512_t> vWalletUpgrade;
-        vector<uint512_t> vWalletRemove;
+        std::vector<uint512_t> vWalletUpgrade;
+        std::vector<uint512_t> vWalletRemove;
 
         bool fIsEncrypted = false;
 
@@ -224,7 +223,7 @@ namespace Wallet
                 }
                 else if (strType == "key" || strType == "wkey")
                 {
-                    vector<uint8_t> vchPubKey;
+                    std::vector<uint8_t> vchPubKey;
                     ssKey >> vchPubKey;
                     ECKey key;
                     if (strType == "key")
@@ -284,9 +283,9 @@ namespace Wallet
                 }
                 else if (strType == "ckey")
                 {
-                    vector<uint8_t> vchPubKey;
+                    std::vector<uint8_t> vchPubKey;
                     ssKey >> vchPubKey;
-                    vector<uint8_t> vchPrivKey;
+                    std::vector<uint8_t> vchPrivKey;
                     ssValue >> vchPrivKey;
                     if (!pwallet->LoadCryptedKey(vchPubKey, vchPrivKey))
                     {
@@ -327,12 +326,12 @@ namespace Wallet
             pcursor->close();
         }
 
-        BOOST_FOREACH(uint512_t hash, vWalletUpgrade)
+        for(uint512_t hash : vWalletUpgrade)
             WriteTx(hash, pwallet->mapWallet[hash]);
 
 
         if(vWalletRemove.size() > 0) {
-            BOOST_FOREACH(uint512_t hash, vWalletRemove) {
+            for(uint512_t hash : vWalletRemove) {
                 EraseTx(hash);
                 pwallet->mapWallet.erase(hash);
 
