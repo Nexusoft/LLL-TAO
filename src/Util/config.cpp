@@ -36,7 +36,7 @@ void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
 
     for (pod::config_file_iterator it(streamConfig, setOptions), end; it != end; ++it)
     {
-        // Don't overwrite existing settings so command line settings override bitcoin.conf
+        // Don't overwrite existing settings so command line settings override nexus.conf
         std::string strKey = std::string("-") + it->string_key;
         if (mapSettingsRet.count(strKey) == 0)
         {

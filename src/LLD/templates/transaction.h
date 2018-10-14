@@ -14,7 +14,6 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_TEMPLATES_TRANSACTION_H
 #define NEXUS_LLD_TEMPLATES_TRANSACTION_H
 
-#include <boost/thread.hpp>
 #include <map>
 #include <vector>
 

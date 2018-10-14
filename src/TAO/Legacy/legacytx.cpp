@@ -18,12 +18,7 @@ ________________________________________________________________________________
 
 #include "../LLD/index.h"
 
-#include <boost/algorithm/string/replace.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
-
 using namespace std;
-using namespace boost;
 
 namespace Core
 {
@@ -64,7 +59,7 @@ namespace Core
         }
 
         mapOrphanTransactions[hash] = pvMsg;
-        BOOST_FOREACH(const CTxIn& txin, tx.vin)
+        for(const CTxIn& txin : tx.vin)
             mapOrphanTransactionsByPrev[txin.prevout.hash].insert(make_pair(hash, pvMsg));
 
         printf("stored orphan tx %s (mapsz %u)\n", hash.ToString().substr(0,10).c_str(),
@@ -79,7 +74,7 @@ namespace Core
         const CDataStream* pvMsg = mapOrphanTransactions[hash];
         CTransaction tx;
         CDataStream(*pvMsg) >> tx;
-        BOOST_FOREACH(const CTxIn& txin, tx.vin)
+        for(const CTxIn& txin : tx.vin)
         {
             mapOrphanTransactionsByPrev[txin.prevout.hash].erase(hash);
             if (mapOrphanTransactionsByPrev[txin.prevout.hash].empty())
@@ -146,7 +141,7 @@ namespace Core
 
     bool CTransaction::IsStandard() const
     {
-        BOOST_FOREACH(const CTxIn& txin, vin)
+        for(const CTxIn& txin : vin)
         {
             // Biggest 'standard' txin is a 3-signature 3-of-3 CHECKMULTISIG
             // pay-to-script-hash, which is 3 ~80-byte signatures, 3
@@ -156,7 +151,7 @@ namespace Core
             if (!txin.scriptSig.IsPushOnly())
                 return false;
         }
-        BOOST_FOREACH(const CTxOut& txout, vout)
+        for(const CTxOut& txout : vout)
             if (!Wallet::IsStandard(txout.scriptPubKey))
                 return false;
         return true;
@@ -231,7 +226,7 @@ namespace Core
     CTransaction::GetLegacySigOpCount() const
     {
         uint32_t nSigOps = 0;
-        BOOST_FOREACH(const CTxIn& txin, vin)
+        for(const CTxIn& txin : vin)
         {
             /** Don't count stake signature for operations. **/
             if(txin.IsStakeSig())
@@ -239,7 +234,7 @@ namespace Core
 
             nSigOps += txin.scriptSig.GetSigOpCount(false);
         }
-        BOOST_FOREACH(const CTxOut& txout, vout)
+        for(const CTxOut& txout : vout)
         {
             nSigOps += txout.scriptPubKey.GetSigOpCount(false);
         }
@@ -338,7 +333,7 @@ namespace Core
 
         // Check for duplicate inputs
         set<COutPoint> vInOutPoints;
-        BOOST_FOREACH(const CTxIn& txin, vin)
+        for(const CTxIn& txin : vin)
         {
 
             if (vInOutPoints.count(txin.prevout))
@@ -354,7 +349,7 @@ namespace Core
         }
         else
         {
-            BOOST_FOREACH(const CTxIn& txin, vin)
+            for(const CTxIn& txin : vin)
                 if (txin.prevout.IsNull())
                     return DoS(10, error("CTransaction::CheckTransaction() : prevout is null"));
         }
@@ -538,7 +533,7 @@ namespace Core
             uint512_t hash = tx.GetHash();
             if (mapTx.count(hash))
             {
-                BOOST_FOREACH(const CTxIn& txin, tx.vin)
+                for(const CTxIn& txin : tx.vin)
                     mapNextTx.erase(txin.prevout);
                 mapTx.erase(hash);
 
@@ -950,7 +945,7 @@ bool Wallet::CWalletTx::AcceptWalletTransaction(LLD::CIndexDB& indexdb, bool fCh
     {
         LOCK(Core::mempool.cs);
         // Add previous supporting transactions first
-        BOOST_FOREACH(Core::CMerkleTx& tx, vtxPrev)
+        for(Core::CMerkleTx& tx : vtxPrev)
         {
             if (!(tx.IsCoinBase() || tx.IsCoinStake()))
             {

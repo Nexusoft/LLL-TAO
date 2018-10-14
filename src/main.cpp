@@ -99,17 +99,22 @@ int main(int argc, char** argv)
     int nCounter = 0;
     Timer timer;
     timer.Start();
+
+    TAO::Ledger::Transaction tx;
+    tx.hashGenesis = LLC::GetRand256();
+    uint512_t hash = tx.GetHash();
+
     while(!fShutdown)
     {
-        TAO::Ledger::Transaction tx;
-        tx.hashGenesis = LLC::GetRand256();
-        uint512_t hash = tx.GetHash();
-
-        test->WriteTx(hash, tx);
+        hash = hash + 1;
+        std::vector<uint8_t> vKey((uint8_t*)&hash, (uint8_t*)&hash + sizeof(hash));
+        std::vector<uint8_t> vData((uint8_t*)&tx, (uint8_t*)&tx + tx.GetSerializeSize(SER_DISK, LLD::DATABASE_VERSION));
+        //cachePool->Put(vKey, vData);
+        test->Put(vKey, vData);
 
         //LLC::SK256(hash.GetBytes());
 
-        TAO::Ledger::Transaction tx1;
+        //TAO::Ledger::Transaction tx1;
         //test->ReadTx(hash, tx1);
 
         //tx1.print();

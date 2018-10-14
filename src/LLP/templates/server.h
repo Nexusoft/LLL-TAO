@@ -14,8 +14,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_SERVER_H
 #define NEXUS_LLP_TEMPLATES_SERVER_H
 
-#include "data.h"
-#include "../include/permissions.h"
+#include <functional>
+
+#include <LLP/templates/data.h>
+#include <LLP/include/permissions.h>
 
 namespace LLP
 {
@@ -37,7 +39,7 @@ namespace LLP
 
 
         Server<ProtocolType>(int nPort, int nMaxThreads, int nTimeout = 30, bool isDDOS = false, int cScore = 0, int rScore = 0, int nTimespan = 60, bool fListen = true, bool fMeter = false) :
-            fDDOS(isDDOS), fLISTEN(fListen), fMETER(fMeter), PORT(nPort), MAX_THREADS(nMaxThreads), DDOS_TIMESPAN(nTimespan), DATA_THREADS(0), LISTEN_THREAD(boost::bind(&Server::ListeningThread, this)), METER_THREAD(boost::bind(&Server::MeterThread, this))
+            fDDOS(isDDOS), fLISTEN(fListen), fMETER(fMeter), PORT(nPort), MAX_THREADS(nMaxThreads), DDOS_TIMESPAN(nTimespan), DATA_THREADS(0), LISTEN_THREAD(std::bind(&Server::ListeningThread, this)), METER_THREAD(std::bind(&Server::MeterThread, this))
         {
             for(int index = 0; index < MAX_THREADS; index++)
                 DATA_THREADS.push_back(new DataThread<ProtocolType>(index, fDDOS, rScore, cScore, nTimeout, fMeter));
