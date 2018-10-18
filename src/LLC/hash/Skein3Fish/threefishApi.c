@@ -2,7 +2,7 @@
 
 #include <threefishApi.h>
 #include <stdlib.h>
-#include <string.h>
+#include <cstring>
 
 void threefishSetKey(ThreefishKey_t* keyCtx, ThreefishSize_t stateSize,
                      uint64_t* keyData, uint64_t* tweak)

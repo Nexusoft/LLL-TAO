@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <vector>
 #include <limits.h>
-#include <stdint.h>
+#include <cstdint>
 
 #include <LLC/hash/SK.h>
 

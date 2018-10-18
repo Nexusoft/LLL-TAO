@@ -97,6 +97,7 @@ int main(int argc, char** argv)
 
 
     int nCounter = 0;
+    uint32_t nAverage = 0;
     Timer timer;
     timer.Start();
 
@@ -104,6 +105,7 @@ int main(int argc, char** argv)
     tx.hashGenesis = LLC::GetRand256();
     uint512_t hash = tx.GetHash();
 
+    uint32_t wps = 0;
     while(!fShutdown)
     {
         hash = hash + 1;
@@ -122,9 +124,17 @@ int main(int argc, char** argv)
 
         if(nCounter % 100000 == 0)
         {
-            printf("100k records written in %u ms\n", timer.ElapsedMilliseconds());
+            nAverage++;
+            uint32_t nTimer = timer.ElapsedMilliseconds();
+            wps += (100000.0 / nTimer);
+
+            printf("100k records written in %u ms WPS = %uk / s\n", nTimer, wps / nAverage);
             timer.Reset();
+
+            //Sleep(1000);
         }
+
+        //Sleep(true, 1);
 
         nCounter++;
     }

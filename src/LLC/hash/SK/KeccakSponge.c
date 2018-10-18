@@ -58,7 +58,7 @@ int Keccak_SpongeAbsorb(Keccak_SpongeInstance *instance, const uint8_t *data, un
                 #endif
                 if ((rateInBytes % KeccakF_laneInBytes) > 0)
                     KeccakF1600_StateXORBytesInLane(instance->state, rateInBytes/KeccakF_laneInBytes,
-                        curData+(rateInBytes/KeccakF_laneInBytes)*KeccakF_laneInBytes, 
+                        curData+(rateInBytes/KeccakF_laneInBytes)*KeccakF_laneInBytes,
                         0, rateInBytes%KeccakF_laneInBytes);
                 KeccakF1600_StateXORPermuteExtract(instance->state, curData, rateInBytes/KeccakF_laneInBytes, 0, 0);
                 curData+=rateInBytes;
@@ -116,7 +116,7 @@ int Keccak_SpongeAbsorbLastFewBits(Keccak_SpongeInstance *instance, uint8_t deli
     displayBytes(1, "Block to be absorbed (last few bits + first bit of padding)", delimitedData1, 1);
     #endif
     // Last few bits, whose delimiter coincides with first bit of padding
-    KeccakF1600_StateXORBytesInLane(instance->state, instance->byteIOIndex/KeccakF_laneInBytes, 
+    KeccakF1600_StateXORBytesInLane(instance->state, instance->byteIOIndex/KeccakF_laneInBytes,
         delimitedData1, instance->byteIOIndex%KeccakF_laneInBytes, 1);
     // If the first bit of padding is at position rate-1, we need a whole new block for the second bit of padding
     if ((delimitedData >= 0x80) && (instance->byteIOIndex == (rateInBytes-1)))
@@ -161,7 +161,7 @@ int Keccak_SpongeSqueeze(Keccak_SpongeInstance *instance, uint8_t *data, unsigne
                 KeccakF1600_StateXORPermuteExtract(instance->state, 0, 0, curData, rateInBytes/KeccakF_laneInBytes);
                 if ((rateInBytes % KeccakF_laneInBytes) > 0)
                     KeccakF1600_StateExtractBytesInLane(instance->state, rateInBytes/KeccakF_laneInBytes,
-                        curData+(rateInBytes/KeccakF_laneInBytes)*KeccakF_laneInBytes, 0, 
+                        curData+(rateInBytes/KeccakF_laneInBytes)*KeccakF_laneInBytes, 0,
                         rateInBytes%KeccakF_laneInBytes);
                 #ifdef KeccakReference
                 displayBytes(1, "Squeezed block", curData, rateInBytes);

@@ -18,7 +18,7 @@
 #define NEXUS_UTIL_INCLUDE_STRLCPY_H
 
 #include <stdlib.h>
-#include <string.h>
+#include <cstring>
 
 /*
  * Copy src to string dst of size siz.  At most siz-1 characters

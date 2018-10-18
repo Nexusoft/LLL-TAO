@@ -57,14 +57,14 @@ namespace LLD
             Byte 1 - 3: nLength (The Size of the Sector)
             Byte 3 - 5: nSector (The Sector Number [0 - x])
         **/
-        uint8_t   		   	nState;
-        uint16_t 			   nLength;
+        uint8_t   		   	    nState;
+        uint16_t 			    nLength;
 
         /** These three hold the location of
             Sector in the Sector Database of
             Given Sector Key. **/
         uint16_t 			   nSectorFile;
-        uint16_t   		   nSectorSize;
+        uint16_t   		       nSectorSize;
         uint32_t   			   nSectorStart;
 
         /* The binary data of the Sector key. */
@@ -99,6 +99,32 @@ namespace LLD
             vKey    = vKeyIn;
         }
 
+        ~SectorKey()
+        {
+            
+        }
+
+        SectorKey& operator=(SectorKey key)
+        {
+            nState          = key.nState;
+            nLength         = key.nLength;
+            nSectorFile     = key.nSectorFile;
+            nSectorSize     = key.nSectorSize;
+            nSectorStart    = key.nSectorStart;
+            nChecksum       = key.nChecksum;
+            vKey            = key.vKey;
+        }
+
+        SectorKey(const SectorKey& key)
+        {
+            nState          = key.nState;
+            nLength         = key.nLength;
+            nSectorFile     = key.nSectorFile;
+            nSectorSize     = key.nSectorSize;
+            nSectorStart    = key.nSectorStart;
+            nChecksum       = key.nChecksum;
+            vKey            = key.vKey;
+        }
 
         /* Iterator to the beginning of the raw key. */
         uint32_t Begin() { return 15; }

@@ -23,7 +23,7 @@ ________________________________________________________________________________
 #include <limits>
 #include <cstring>
 #include <cstdio>
-#include <stdint.h>
+#include <cstdint>
 
 #include <type_traits>
 #include <tuple>

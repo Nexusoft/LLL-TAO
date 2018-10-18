@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_TAO_REGISTER_OBJECTS_TOKEN_H
 
 #include <stdio.h>
-#include <stdint.h>
+#include <cstdint>
 
 namespace TAO
 {
