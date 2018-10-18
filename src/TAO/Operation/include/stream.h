@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_TAO_OPERATION_INCLUDE_STREAM_H
 
 #include <vector>
-#include <stdint.h>
+#include <cstdint>
 
 namespace TAO
 {

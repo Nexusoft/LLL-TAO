@@ -1,6 +1,6 @@
 #include <threefishApi.h>
-#include <stdint.h>
-#include <string.h>
+#include <cstdint>
+#include <cstring>
 
 
 void threefishEncrypt512(ThreefishKey_t* keyCtx, uint64_t* input, uint64_t* output)

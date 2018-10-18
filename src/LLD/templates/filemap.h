@@ -87,6 +87,36 @@ namespace LLD
         ~BinaryFileMap() {}
 
 
+        BinaryFileMap& operator=(BinaryFileMap map)
+        {
+            //KEY_MUTEX = map.KEY_MUTEX;
+
+            strBaseLocation    = map.strBaseLocation;
+            fMemoryCaching     = map.fMemoryCaching;
+            nCacheSize         = map.nCacheSize;
+            nCurrentFile       = map.nCurrentFile;
+            nCurrentFileSize   = map.nCurrentFileSize;
+
+            Initialize();
+
+            return *this;
+        }
+
+
+        BinaryFileMap(const BinaryFileMap& map)
+        {
+            //KEY_MUTEX = map.KEY_MUTEX;
+
+            strBaseLocation    = map.strBaseLocation;
+            fMemoryCaching     = map.fMemoryCaching;
+            nCacheSize         = map.nCacheSize;
+            nCurrentFile       = map.nCurrentFile;
+            nCurrentFileSize   = map.nCurrentFileSize;
+
+            Initialize();
+        }
+
+
         /** Return the Keys to the Records Held in the Database. **/
         std::vector< std::vector<uint8_t> > GetKeys()
         {

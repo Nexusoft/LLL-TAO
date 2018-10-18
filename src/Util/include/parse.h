@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <vector>
 #include <string>
-#include <stdint.h>
+#include <cstdint>
 
 #include <LLC/types/uint1024.h>
 

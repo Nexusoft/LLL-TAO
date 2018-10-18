@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_UTIL_INCLUDE_CONVERT_H
 
 #include <cstdlib>
-#include <stdint.h>
+#include <cstdint>
 #include <string>
 
 #include "debug.h"

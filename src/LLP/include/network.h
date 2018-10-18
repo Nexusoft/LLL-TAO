@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_NETWORK_H
 #define NEXUS_LLP_INCLUDE_NETWORK_H
 
-#include <stdint.h>
+#include <cstdint>
 
 #ifdef WIN32
 #define _WIN32_WINNT 0x0501

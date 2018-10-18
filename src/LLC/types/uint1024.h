@@ -16,10 +16,10 @@ ________________________________________________________________________________
 
 #include <limits.h>
 #include <stdio.h>
-#include <string.h>
+#include <cstring>
 #include <string>
 #include <vector>
-#include <stdint.h>
+#include <cstdint>
 
 /** Base class without constructors for uint256_t, uint512_t, uint576_t, uint1024_t.
 * This makes the compiler let u use it in a union.
