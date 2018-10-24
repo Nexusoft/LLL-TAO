@@ -171,8 +171,8 @@ namespace LLD
                         nCurrentFile --;
                     else
                     {
-                        std::ofstream fStream(strFilename.c_str(), std::ios::out | std::ios::binary);
-                        fStream.close();
+                        std::ofstream ssFile(strFilename.c_str(), std::ios::out | std::ios::binary);
+                        ssFile.close();
                     }
 
                     break;
@@ -266,8 +266,8 @@ namespace LLD
                     nCurrentFile ++;
                     nCurrentFileSize = 0;
 
-                    std::ofstream fStream(strprintf("%s_filemap.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
-                    fStream.close();
+                    std::ofstream ssFile(strprintf("%s_filemap.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                    ssFile.close();
                 }
 
                 mapKeys[nBucket][cKey.vKey] = std::make_pair(nCurrentFile, nCurrentFileSize);
@@ -275,11 +275,11 @@ namespace LLD
 
 
             /* Establish the Outgoing Stream. */
-            std::fstream fStream(strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][cKey.vKey].first).c_str(), std::ios::in | std::ios::out | std::ios::binary);
+            std::fstream ssFile(strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][cKey.vKey].first).c_str(), std::ios::in | std::ios::out | std::ios::binary);
 
 
             /* Seek File Pointer */
-            fStream.seekp(mapKeys[nBucket][cKey.vKey].second, std::ios::beg);
+            ssFile.seekp(mapKeys[nBucket][cKey.vKey].second, std::ios::beg);
 
 
             /* Handle the Sector Key Serialization. */
@@ -291,7 +291,7 @@ namespace LLD
             /* Write to Disk. */
             std::vector<uint8_t> vData(ssKey.begin(), ssKey.end());
             vData.insert(vData.end(), cKey.vKey.begin(), cKey.vKey.end());
-            fStream.write((char*) &vData[0], vData.size());
+            ssFile.write((char*) &vData[0], vData.size());
 
             /* Increment current File Size. */
             nCurrentFileSize += cKey.Size();
@@ -318,16 +318,16 @@ namespace LLD
 
             /* Establish the Outgoing Stream. */
             std::string strFilename = strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][vKey].first);
-            std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
+            std::fstream ssFile(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
 
 
             /* Set to put at the right file and sector position. */
-            fStream.seekp(mapKeys[nBucket][vKey].second, std::ios::beg);
+            ssFile.seekp(mapKeys[nBucket][vKey].second, std::ios::beg);
 
 
             /* Establish the Sector State as Empty. */
             std::vector<uint8_t> vData(1, EMPTY);
-            fStream.write((char*) &vData[0], vData.size());
+            ssFile.write((char*) &vData[0], vData.size());
 
 
             /* Remove the Sector Key from the Memory Map. */
@@ -358,16 +358,16 @@ namespace LLD
 
                 /* Open the Stream Object. */
                 std::string strFilename = strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][vKey].first);
-                std::ifstream fStream(strFilename.c_str(), std::ios::in | std::ios::binary);
+                std::ifstream ssFile(strFilename.c_str(), std::ios::in | std::ios::binary);
 
 
                 /* Seek to the Sector Position on Disk. */
-                fStream.seekg(mapKeys[nBucket][vKey].second, std::ios::beg);
+                ssFile.seekg(mapKeys[nBucket][vKey].second, std::ios::beg);
 
 
                 /* Read the State and Size of Sector Header. */
                 std::vector<uint8_t> vData(15, 0);
-                fStream.read((char*) &vData[0], 15);
+                ssFile.read((char*) &vData[0], 15);
 
 
                 /* De-serialize the Header. */
@@ -385,7 +385,7 @@ namespace LLD
 
                     /* Read the Key Data. */
                     std::vector<uint8_t> vKeyIn(cKey.nLength, 0);
-                    fStream.read((char*) &vKeyIn[0], vKeyIn.size());
+                    ssFile.read((char*) &vKeyIn[0], vKeyIn.size());
 
                     /* Check the Keys Match Properly. */
                     if(vKeyIn != vKey)

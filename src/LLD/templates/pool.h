@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/hex.h>
 
+
+//TODO: Abstract base class for all cache systems
 namespace LLD
 {
 
