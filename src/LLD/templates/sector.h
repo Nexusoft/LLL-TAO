@@ -134,7 +134,7 @@ namespace LLD
 
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(std::string strNameIn, const char* pszMode="r+") : strName(strNameIn), strBaseLocation(GetDataDir().string() + "/" + strName + "/datachain/"), cachePool(new MemCachePool(MAX_SECTOR_CACHE_SIZE)), nBytesRead(0), nBytesWrote(0), nCurrentFile(0), nCurrentFileSize(0), CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this)), MeterThread(std::bind(&SectorDatabase::Meter, this)), nBufferBytes(0)
+        SectorDatabase(std::string strNameIn, const char* pszMode="r+") : strName(strNameIn), strBaseLocation(GetDataDir().string() + "/" + strNameIn + "/datachain/"), cachePool(new MemCachePool(MAX_SECTOR_CACHE_SIZE)), nBytesRead(0), nBytesWrote(0), nCurrentFile(0), nCurrentFileSize(0), CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this)), MeterThread(std::bind(&SectorDatabase::Meter, this)), nBufferBytes(0)
         {
             if(GetBoolArg("-runtime", false))
                 runtime.Start();
@@ -157,9 +157,6 @@ namespace LLD
             fDestruct = true;
 
             CacheWriterThread.join();
-            //CacheWriterThread[1].join();
-            //CacheWriterThread[2].join();
-            //CacheWriterThread[3].join();
 
             delete pTransaction;
             delete cachePool;
@@ -181,7 +178,8 @@ namespace LLD
                 /* TODO: Make a worker or thread to check sizes of files and automatically create new file.
                     Keep independent of reads and writes for efficiency. */
                 std::fstream fIncoming(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::in | std::ios::binary);
-                if(!fIncoming) {
+                if(!fIncoming)
+                {
 
                     /* Assign the Current Size and File. */
                     if(nCurrentFile > 0)
@@ -189,7 +187,7 @@ namespace LLD
                     else
                     {
                         /* Create a new file if it doesn't exist. */
-                        std::ofstream cStream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::binary);
+                        std::ofstream cStream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::binary | std::ios::out | std::ios::trunc);
                         cStream.close();
                     }
 
@@ -382,9 +380,7 @@ namespace LLD
                 runtime.Start();
 
             /* Write Header if First Update. */
-            SectorKey cKey;
-            if(!SectorKeys.Get(vKey, cKey))
-            {
+
                 LOCK(SECTOR_MUTEX);
 
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
@@ -420,35 +416,7 @@ namespace LLD
 
                 /* Assign the Key to Keychain. */
                 SectorKeys.Put(cTmp);
-            }
-            else
-            {
 
-                LOCK(SECTOR_MUTEX);
-
-                /* Open the Stream to Read the data from Sector on File. */
-                std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile);
-                std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
-
-                /* Locate the Sector Data from Sector Key.
-                    TODO: Make Paging more Efficient in Keys by breaking data into different locations in Database. */
-                fStream.seekp(cKey.nSectorStart, std::ios::beg);
-                if(vData.size() > cKey.nSectorSize){
-                    fStream.close();
-                    printf(FUNCTION "PUT (TOO LARGE) NO TRUNCATING ALLOWED (Old %u :: New %u):%s\n", __PRETTY_FUNCTION__, cKey.nSectorSize, vData.size(), HexStr(vData.begin(), vData.end()).c_str());
-
-                    return false;
-                }
-
-                /* Assign the Writing State for Sector. */
-                fStream.write((char*) &vData[0], vData.size());
-                fStream.close();
-
-                cKey.nState    = READY;
-                cKey.nChecksum = LLC::SK32(vData);
-
-                SectorKeys.Put(cKey);
-            }
 
             if(GetArg("-verbose", 0) >= 4)
                 printf(FUNCTION "%s | Current File: %u | Current File Size: %u\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
@@ -521,15 +489,20 @@ namespace LLD
                 }
 
                 /* Open the Stream to Read the data from Sector on File. */
-                FILE* ssFile = fopen(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), "wb");
-                fseek(ssFile, nCurrentFileSize, SEEK_SET);
+                //FILE* ssFile = fopen(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), "wbc");
+                //fseek(ssFile, nCurrentFileSize, SEEK_SET);
+
+                /* Open the Stream to Read the data from Sector on File. */
+                std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
+                std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
+
+                /* If it is a New Sector, Assign a Binary Position.
+                    TODO: Track Sector Database File Sizes. */
+                fStream.seekp(nCurrentFileSize, std::ios::beg);
 
                 uint32_t nWrote = 0;
                 for(auto vObj : vIndexes)
                 {
-                    SectorKey cKey;
-                    if(!SectorKeys.Get(vObj.first, cKey))
-                    {
                         /* Create a new Sector Key. */
                         SectorKey cTmp = SectorKey(READY, vObj.first, nCurrentFile, nCurrentFileSize, vObj.second.size());
 
@@ -542,23 +515,18 @@ namespace LLD
                         /* Assign the Key to Keychain. */
                         SectorKeys.Put(cTmp);
 
-                    }
-                    else
-                    {
-
-                    }
-
                     /* If it is a New Sector, Assign a Binary Position.
                         TODO: Track Sector Database File Sizes. */
-                    fwrite((char*)&vObj.second[0], 1, vObj.second.size(), ssFile);
+                    //fwrite((char*)&vObj.second[0], 1, vObj.second.size(), ssFile);
+                    fStream.write((char*)&vObj.second[0], vObj.second.size());
+                    //fStream.close();
                     //fflush(ssFile);
 
                     /* Change the buffer sizes. */
                     nWrote += (vObj.first.size() + vObj.second.size());
                 }
 
-                fflush(ssFile);
-                fclose(ssFile);
+                fStream.close();
 
                 nBufferBytes -= nWrote;
             }
