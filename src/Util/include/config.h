@@ -14,9 +14,6 @@ ________________________________________________________________________________
 #ifndef NEXUS_UTIL_INCLUDE_CONFIG_H
 #define NEXUS_UTIL_INCLUDE_CONFIG_H
 
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/path.hpp>
-
 #include <string>
 #include <vector>
 #include <map>
@@ -36,7 +33,7 @@ void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet, std::map
 
 
 /* Setup PID file for Linux users. */
-void CreatePidFile(const boost::filesystem::path &path, pid_t pid);
+void CreatePidFile(const std::string &path, pid_t pid);
 
 
 /* Check if set to start when system boots. */
@@ -48,19 +45,19 @@ bool SetStartOnSystemStartup(bool fAutoStart);
 
 
 /* Get the default directory Nexus data is stored in. */
-boost::filesystem::path GetDefaultDataDir(std::string strName = "TAO");
+std::string GetDefaultDataDir(std::string strName = "TAO");
 
 
 /* Get the Location of the Config File. */
-boost::filesystem::path GetConfigFile();
+std::string GetConfigFile();
 
 
 /* Get the Location of the PID File. */
-boost::filesystem::path GetPidFile();
+std::string GetPidFile();
 
 
 /* Get the location that Nexus data is being stored in. */
-const boost::filesystem::path &GetDataDir(bool fNetSpecific = true);
+std::string GetDataDir(bool fNetSpecific = true);
 
 
 #endif

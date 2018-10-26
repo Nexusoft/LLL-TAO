@@ -186,7 +186,8 @@ OBJS= \
 	build/args.o \
 	build/base58.o \
 	build/config.o \
-	build/debug.o
+	build/debug.o \
+    build/filesystem.o
 
 ###############################################################################
 ifeq ($(detected_OS),Windows)
