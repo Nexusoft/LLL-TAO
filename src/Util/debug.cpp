@@ -11,15 +11,19 @@
 
 ____________________________________________________________________________________________*/
 
+#include <string>
+
 #include <Util/include/config.h>
 #include <Util/include/debug.h>
 #include <Util/include/args.h>
 #include <Util/include/mutex.h>
 #include <Util/include/runtime.h>
 #include <Util/include/convert.h>
+#include <Util/include/filesystem.h>
 
 #include <stdarg.h>
 #include <stdio.h>
+
 
 #ifndef WIN32
 #include <execinfo.h>
@@ -45,8 +49,8 @@ int OutputDebugStringF(const char* pszFormat, ...)
     // print to debug.log
     if (!fileout)
     {
-        boost::filesystem::path pathDebug = GetDataDir() / "debug.log";
-        fileout = fopen(pathDebug.string().c_str(), "a");
+        std::string pathDebug = GetDataDir() + "\\debug.log";
+        fileout = fopen(pathDebug.c_str(), "a");
         if (fileout) setbuf(fileout, NULL); // unbuffered
     }
 
@@ -259,8 +263,8 @@ int GetFilesize(FILE* file)
 void ShrinkDebugFile()
 {
     // Scroll debug.log if it's getting too big
-    boost::filesystem::path pathLog = GetDataDir() / "debug.log";
-    FILE* file = fopen(pathLog.string().c_str(), "r");
+    std::string pathLog = GetDataDir() + "\\debug.log";
+    FILE* file = fopen(pathLog.c_str(), "r");
     if (file && GetFilesize(file) > 10 * 1000000)
     {
         // Restart the file with some of the end
@@ -269,7 +273,7 @@ void ShrinkDebugFile()
         int nBytes = fread(pch, 1, sizeof(pch), file);
         fclose(file);
 
-        file = fopen(pathLog.string().c_str(), "w");
+        file = fopen(pathLog.c_str(), "w");
         if (file)
         {
             fwrite(pch, 1, nBytes, file);

@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <LLD/templates/transaction.h>
 
 #include <Util/include/runtime.h>
+#include <Util/include/filesystem.h>
 
 //static std::fstream* streamTest;
 
@@ -134,7 +135,7 @@ namespace LLD
 
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(std::string strNameIn, const char* pszMode="r+") : strName(strNameIn), strBaseLocation(GetDataDir().string() + "/" + strNameIn + "/datachain/"), cachePool(new MemCachePool(MAX_SECTOR_CACHE_SIZE)), nBytesRead(0), nBytesWrote(0), nCurrentFile(0), nCurrentFileSize(0), CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this)), MeterThread(std::bind(&SectorDatabase::Meter, this)), nBufferBytes(0)
+        SectorDatabase(std::string strNameIn, const char* pszMode="r+") : strName(strNameIn), strBaseLocation(GetDataDir() + "/" + strNameIn + "/datachain/"), cachePool(new MemCachePool(MAX_SECTOR_CACHE_SIZE)), nBytesRead(0), nBytesWrote(0), nCurrentFile(0), nCurrentFileSize(0), CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this)), MeterThread(std::bind(&SectorDatabase::Meter, this)), nBufferBytes(0)
         {
             if(GetBoolArg("-runtime", false))
                 runtime.Start();
@@ -143,7 +144,7 @@ namespace LLD
             fReadOnly = (!strchr(pszMode, '+') && !strchr(pszMode, 'w'));
 
             /* Initialize the Keys Class. */
-            SectorKeys = KeychainType((GetDataDir().string() + "/" + strName + "/keychain/"));
+            SectorKeys = KeychainType((GetDataDir() + "/" + strName + "/keychain/"));
 
             /* Initialize the Database. */
             Initialize();
@@ -168,7 +169,7 @@ namespace LLD
         void Initialize()
         {
             /* Create directories if they don't exist yet. */
-            if(boost::filesystem::create_directories(strBaseLocation))
+            if(create_directory(strBaseLocation))
                 printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
 
             /* Find the most recent append file. */

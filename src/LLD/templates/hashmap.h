@@ -116,7 +116,7 @@ namespace LLD
         void Initialize()
         {
             /* Create directories if they don't exist yet. */
-            if(boost::filesystem::create_directories(strBaseLocation))
+            if(create_directory(strBaseLocation))
                 printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
 
 
@@ -124,7 +124,7 @@ namespace LLD
             for(int i = 0; i < 10; i++)
             {
                 const char* file = strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i).c_str();
-                if(!boost::filesystem::exists(file))
+                if(!exists(file))
                 {
                     uint32_t nMaxSize = HASHMAP_TOTAL_BUCKETS * HASHMAP_KEY_ALLOCATION;
 

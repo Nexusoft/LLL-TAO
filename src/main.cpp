@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <Util/include/signals.h>
 #include <Util/include/convert.h>
 #include <Util/include/runtime.h>
+#include <Util/include/filesystem.h>
+
 
 #include <LLC/include/random.h>
 
@@ -52,13 +54,12 @@ int main(int argc, char** argv)
     SetupSignals();
 
 
-
     /* Parse out the parameters */
     ParseParameters(argc, argv);
 
 
     /* Create directories if they don't exist yet. */
-    if(boost::filesystem::create_directories(GetDataDir(false)))
+    if(create_directory(GetDataDir(false)))
         printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, GetDataDir(false).c_str());
 
 
@@ -82,7 +83,6 @@ int main(int argc, char** argv)
         }
     }
 
-
     //LLD::MemCachePool* cachePool = new LLD::MemCachePool(1024 * 1024 * 2048);
 
     TestDB* test = new TestDB();
@@ -105,6 +105,7 @@ int main(int argc, char** argv)
     tx.hashGenesis = LLC::GetRand256();
     uint512_t hash = tx.GetHash();
 
+    /*
     uint32_t wps = 0;
     while(!fShutdown)
     {
