@@ -23,14 +23,13 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    template<typename DataType> struct CacheNode
+    struct CacheNode
     {
-        CacheNode<DataType>* pprev;
-        CacheNode<DataType>* pnext;
+        CacheNode* pprev;
+        CacheNode* pnext;
 
         std::vector<uint8_t> vKey;
-
-        DataType vData;
+        std::vector<uint8_t> vData;
     };
 
 
@@ -40,7 +39,6 @@ namespace LLD
     * It is also uselef for data that needs to be relayed from cache once recieved.
     *
     */
-    template<typename DataType>
     class MemCachePool
     {
 
@@ -63,15 +61,15 @@ namespace LLD
 
 
         /* Map of the current holding data. */
-        std::vector<CacheNode<DataType>*> hashmap;
+        std::vector<CacheNode*> hashmap;
 
 
         /* Keep track of the first object in linked list. */
-        CacheNode<DataType>* pfirst;
+        CacheNode* pfirst;
 
 
         /* Keep track of the last object in linked list. */
-        CacheNode<DataType>* plast;
+        CacheNode* plast;
 
 
 
@@ -166,7 +164,7 @@ namespace LLD
          *  @param[in] pthis The node to remove from list.
          *
          */
-        void RemoveNode(CacheNode<DataType>* pthis)
+        void RemoveNode(CacheNode* pthis)
         {
             /* Link the next pointer if not null */
             if(pthis->pnext)
@@ -185,7 +183,7 @@ namespace LLD
          *  @param[in] pthis The node to move to front.
          *
          **/
-        void MoveToFront(CacheNode<DataType>* pthis)
+        void MoveToFront(CacheNode* pthis)
         {
             /* Don't move to front if already in the front. */
             if(pthis == pfirst)
@@ -221,7 +219,7 @@ namespace LLD
          * @return True if object was found, false if none found by index.
          *
          */
-        bool Get(std::vector<uint8_t> vKey, DataType& vData)
+        bool Get(std::vector<uint8_t> vKey, std::vector<uint8_t>& vData)
         {
             LOCK(MUTEX);
 
@@ -230,7 +228,7 @@ namespace LLD
                 return false;
 
             /* Get the data. */
-            CacheNode<DataType>* pthis = hashmap[Bucket(vKey)];
+            CacheNode* pthis = hashmap[Bucket(vKey)];
 
             /* Get the data. */
             vData = pthis->vData;
@@ -248,7 +246,7 @@ namespace LLD
          * @param[in] vData The input data in binary form
          *
          */
-        void Put(std::vector<uint8_t> vKey, DataType vData)
+        void Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
         {
             LOCK(MUTEX);
 
@@ -256,7 +254,7 @@ namespace LLD
             uint32_t nBucket = Bucket(vKey);
 
             /* Check for bucket collisions. */
-            CacheNode<DataType>* pthis = NULL;
+            CacheNode* pthis = NULL;
             if(Has(vKey))
             {
                 /* Update the cache node. */
@@ -267,7 +265,7 @@ namespace LLD
             else
             {
                 /* Create a new cache node. */
-                pthis = new CacheNode<DataType>();
+                pthis = new CacheNode();
                 pthis->vData = vData;
                 pthis->vKey  = vKey;
 
@@ -284,25 +282,21 @@ namespace LLD
                 /* Get the last key. */
                 if(plast->pprev)
                 {
-                    CacheNode<DataType>* pnode = plast;
+                    CacheNode* pnode = plast;
 
                     /* Relink in memory. */
                     plast = plast->pprev;
                     plast->pnext = NULL;
 
                     /* Reduce the current cache size. */
-                    if (std::is_same<DataType, std::vector<uint8_t>>::value)
-                        nCurrentSize += (vKey.size() + vData.size() - pnode->vData.size() - pnode->vKey.size());
-                    else
-                        nCurrentSize += (vKey.size() + sizeof(vData) - pnode->vKey.size() - sizeof(pnode->vData));
-
+                    nCurrentSize += (vKey.size() + vData.size() - pnode->vData.size() - pnode->vKey.size());
 
                     /* Clear the pointers. */
                     hashmap[Bucket(pnode->vKey)] = NULL; //TODO: hashmap linked list for collisions
                     delete pnode;
                 }
             }
-            else if (std::is_same<DataType, std::vector<uint8_t>>::value)
+            else if (std::is_same<std::vector<uint8_t>, std::vector<uint8_t>>::value)
                 nCurrentSize += (vData.size() + vKey.size());
             else
                 nCurrentSize += (sizeof(vData) + vKey.size());
@@ -325,7 +319,7 @@ namespace LLD
                 return false;
 
             /* Get the node */
-            CacheNode<DataType>* pnode = hashmap[Bucket(vKey)];
+            CacheNode* pnode = hashmap[Bucket(vKey)];
 
             /* Reduce the current cache size. */
             nCurrentSize -= (pnode->vData.size() + vKey.size());

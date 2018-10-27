@@ -110,7 +110,7 @@ namespace LLD
 
 
         /* Cache Pool */
-        MemCachePool<std::vector<uint8_t>>* cachePool;
+        MemCachePool* cachePool;
 
 
         /* The current File Position. */
@@ -134,7 +134,7 @@ namespace LLD
 
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(std::string strNameIn, const char* pszMode="r+") : strName(strNameIn), strBaseLocation(GetDataDir().string() + "/" + strNameIn + "/datachain/"), cachePool(new MemCachePool<std::vector<uint8_t>>(MAX_SECTOR_CACHE_SIZE)), nBytesRead(0), nBytesWrote(0), nCurrentFile(0), nCurrentFileSize(0), CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this)), MeterThread(std::bind(&SectorDatabase::Meter, this)), nBufferBytes(0)
+        SectorDatabase(std::string strNameIn, const char* pszMode="r+") : strName(strNameIn), strBaseLocation(GetDataDir().string() + "/" + strNameIn + "/datachain/"), cachePool(new MemCachePool(MAX_SECTOR_CACHE_SIZE)), nBytesRead(0), nBytesWrote(0), nCurrentFile(0), nCurrentFileSize(0), CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this)), MeterThread(std::bind(&SectorDatabase::Meter, this)), nBufferBytes(0)
         {
             if(GetBoolArg("-runtime", false))
                 runtime.Start();
