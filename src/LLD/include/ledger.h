@@ -18,7 +18,9 @@ ________________________________________________________________________________
 
 #include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
-#include <LLD/templates/hashmap.h>
+
+#include <LLD/cache/binary_lru.h>
+#include <LLD/keychain/hashmap.h>
 
 #include <TAO/Register/include/state.h>
 #include <TAO/Ledger/types/transaction.h>
@@ -26,7 +28,7 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    class LedgerDB : public SectorDatabase<BinaryHashMap>
+    class LedgerDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/

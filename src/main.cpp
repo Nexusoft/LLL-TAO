@@ -20,8 +20,11 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 
 #include <LLD/templates/sector.h>
-#include <LLD/templates/hashmap.h>
-#include <LLD/templates/filemap.h>
+
+#include <LLD/keychain/hashmap.h>
+#include <LLD/keychain/filemap.h>
+
+#include <LLD/cache/binary_lru.h>
 
 #include <LLP/include/tritium.h>
 #include <LLP/templates/server.h>
@@ -29,7 +32,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 
 
-class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap>
+class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU>
 {
 public:
     TestDB(const char* pszMode="r+") : SectorDatabase("testdb", pszMode) {}
@@ -83,6 +86,7 @@ int main(int argc, char** argv)
     }
 
 
+    //LLD::MemCachePool* cachePool = new LLD::MemCachePool(1024 * 1024 * 2048);=
 
     TestDB* test = new TestDB();
 
