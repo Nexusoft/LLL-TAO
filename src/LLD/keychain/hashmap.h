@@ -65,16 +65,24 @@ namespace LLD
 
         /* Keychain stream object. */
         mutable TemplateLRU<uint32_t, std::fstream*>* fileCache;
+        mutable std::vector<uint32_t> hashmap;
         //std::fstream* pstream[10];
 
     public:
 
-        BinaryHashMap() : HASHMAP_TOTAL_BUCKETS(256 * 256), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 15), fileCache(new TemplateLRU<uint32_t, std::fstream*>()) {}
+        BinaryHashMap() : HASHMAP_TOTAL_BUCKETS(256 * 256 * 10), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 15), fileCache(new TemplateLRU<uint32_t, std::fstream*>())
+        {
+            //Initialize();
+
+            hashmap.resize(HASHMAP_TOTAL_BUCKETS);
+        }
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(std::string strBaseLocationIn) : strBaseLocation(strBaseLocationIn), HASHMAP_TOTAL_BUCKETS(256 * 256), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 15), fileCache(new TemplateLRU<uint32_t, std::fstream*>())
+        BinaryHashMap(std::string strBaseLocationIn) : strBaseLocation(strBaseLocationIn), HASHMAP_TOTAL_BUCKETS(256 * 256 * 10), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 15), fileCache(new TemplateLRU<uint32_t, std::fstream*>())
         {
             Initialize();
+
+            hashmap.resize(HASHMAP_TOTAL_BUCKETS);
         }
 
         BinaryHashMap& operator=(BinaryHashMap map)
@@ -119,7 +127,7 @@ namespace LLD
 
 
             /* Setup the file objects. */
-            for(uint32_t i = 0; i < 10; i++)
+            for(uint32_t i = 0; i < 1; i++)
             {
                 const char* file = strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i).c_str();
                 if(!boost::filesystem::exists(file))
@@ -205,9 +213,9 @@ namespace LLD
             uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
 
             /* Get the binary data. */
-            std::vector<uint8_t> vBlank(cKey.vKey.size(), 0);
-            for(int i = 0; ; i++)
+            std::vector<uint8_t> vBlank(std::min(cKey.vKey.size(), 8ul), 0);
             {
+                int i = hashmap[nBucket];
                 std::string file = strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
                 if(!boost::filesystem::exists(file))
                 {
@@ -231,13 +239,15 @@ namespace LLD
                     fileCache->Put(i, pstream);
                 }
 
-                pstream->seekg (nFilePos, std::ios::beg);
-                std::vector<uint8_t> vKeychain(cKey.vKey.size(), 0);
-                pstream->read((char*) &vKeychain[0], vKeychain.size());
+                //pstream->seekg (nFilePos, std::ios::beg);
+                //std::vector<uint8_t> vKeychain(std::min(cKey.vKey.size(), 8ul), 0);
+                //pstream->read((char*) &vKeychain[0], vKeychain.size());
 
                 /* Check that the keys match. */
-                if(vBlank == vKeychain || cKey.vKey == vKeychain)
+                //if(vBlank == vKeychain || cKey.vKey == vKeychain)
                 {
+                    hashmap[nBucket]++;
+
                     /* Read the key object from disk. */
                     std::vector<uint8_t> vData(cKey.vKey);
 

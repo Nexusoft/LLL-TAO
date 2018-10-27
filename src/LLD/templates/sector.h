@@ -32,11 +32,11 @@ namespace LLD
 
 
     /* Maximum cache buckets for sectors. */
-    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 512; //512 MB Max Cache
+    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 128; //512 MB Max Cache
 
 
     /* The maximum amount of bytes allowed in the memory buffer for disk flushes. **/
-    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 512; //512 MB Max Disk Buffer
+    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 128; //512 MB Max Disk Buffer
 
 
     /** Base Template Class for a Sector Database.
@@ -136,7 +136,7 @@ namespace LLD
 
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(std::string strNameIn, const char* pszMode="r+") : strName(strNameIn), strBaseLocation(GetDataDir().string() + "/" + strNameIn + "/datachain/"), cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE)), nBytesRead(0), nBytesWrote(0), nCurrentFile(0), nCurrentFileSize(0), CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this)), nBufferBytes(0)
+        SectorDatabase(std::string strNameIn, const char* pszMode="r+") : strName(strNameIn), strBaseLocation(GetDataDir().string() + "/" + strNameIn + "/datachain/"), cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE)), nBytesRead(0), nBytesWrote(0), nCurrentFile(0), nCurrentFileSize(0), CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this)), MeterThread(std::bind(&SectorDatabase::Meter, this)), nBufferBytes(0)
         {
             if(GetBoolArg("-runtime", false))
                 runtime.Start();
@@ -281,8 +281,6 @@ namespace LLD
                 return false;
             }
 
-            nBytesRead += (vKey.size() + vData.size());
-
             return true;
         }
 
@@ -313,7 +311,6 @@ namespace LLD
             }
 
             bool fRet = Put(vKey, vData);
-            nBytesWrote += (vKey.size() + vData.size());
 
             return fRet;
         }
@@ -321,6 +318,8 @@ namespace LLD
         /** Get a Record from the Database with Given Key. **/
         bool Get(std::vector<uint8_t> vKey, std::vector<uint8_t>& vData)
         {
+            nBytesRead += (vKey.size() + vData.size());
+
             if(cachePool->Get(vKey, vData))
                 return true;
 
@@ -433,17 +432,18 @@ namespace LLD
         /** Add / Update A Record in the Database **/
         bool Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
         {
+            nBytesWrote += (vKey.size() + vData.size());
+            
             /* Write the data into the memory cache. */
             cachePool->Put(vKey, vData);
-            if(nBufferBytes > MAX_SECTOR_BUFFER_SIZE)
-                return Put2(vKey, vData);
+            while(!fShutdown && nBufferBytes > MAX_SECTOR_BUFFER_SIZE)
+                Sleep(1);
 
             /* Add to the write buffer thread. */
             { LOCK(BUFFER_MUTEX);
                 vDiskBuffer.push_back(std::make_pair(vKey, vData));
+                nBufferBytes += (vKey.size() + vData.size());
             }
-
-            nBufferBytes += (vKey.size() + vData.size());
 
             return true;
         }
@@ -463,7 +463,7 @@ namespace LLD
                 }
 
                 /* Check for data to be written. */
-                if(vDiskBuffer.size() == 0)
+                if(nBufferBytes < 1024 * 1024)
                 {
                     if(fDestruct)
                         return;
@@ -478,6 +478,7 @@ namespace LLD
                 {
                     LOCK(BUFFER_MUTEX);
                     vIndexes.swap(vDiskBuffer);
+                    nBufferBytes = 0;
                 }
 
                 /* Allocate new File if Needed. TODO: Check if sectors go over file size, assign new file if so */
@@ -502,7 +503,7 @@ namespace LLD
                     TODO: Track Sector Database File Sizes. */
                 fStream.seekp(nCurrentFileSize, std::ios::beg);
 
-                uint32_t nWrote = 0;
+                std::vector<uint8_t> vWrite;
                 for(auto vObj : vIndexes)
                 {
                         /* Create a new Sector Key. */
@@ -520,17 +521,21 @@ namespace LLD
                     /* If it is a New Sector, Assign a Binary Position.
                         TODO: Track Sector Database File Sizes. */
                     //fwrite((char*)&vObj.second[0], 1, vObj.second.size(), ssFile);
-                    fStream.write((char*)&vObj.second[0], vObj.second.size());
+                    vWrite.insert(vWrite.end(), vObj.second.begin(), vObj.second.end());
+                    //fStream.write((char*)&vObj.second[0], vObj.second.size());
                     //fStream.close();
                     //fflush(ssFile);
 
-                    /* Change the buffer sizes. */
-                    nWrote += (vObj.first.size() + vObj.second.size());
+                    if(vWrite.size() > 1024 * 1024)
+                    {
+                        fStream.write((char*)&vWrite[0], vWrite.size());
+                        vWrite.clear();
+                    }
                 }
-
+                fStream.write((char*)&vWrite[0], vWrite.size());
                 fStream.close();
 
-                nBufferBytes -= nWrote;
+                printf(FUNCTION " Flushed %u Bytes to Disk\n", __PRETTY_FUNCTION__, vWrite.size());
             }
         }
 
