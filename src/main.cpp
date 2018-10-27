@@ -83,7 +83,6 @@ int main(int argc, char** argv)
     }
 
 
-    //LLD::MemCachePool* cachePool = new LLD::MemCachePool(1024 * 1024 * 2048);
 
     TestDB* test = new TestDB();
 

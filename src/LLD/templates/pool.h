@@ -291,15 +291,21 @@ namespace LLD
                     plast->pnext = NULL;
 
                     /* Reduce the current cache size. */
-                    nCurrentSize += (vKey.size() + vData.size() - pnode->vData.size() - pnode->vKey.size());
+                    if (std::is_same<DataType, std::vector<uint8_t>>::value)
+                        nCurrentSize += (vKey.size() + vData.size() - pnode->vData.size() - pnode->vKey.size());
+                    else
+                        nCurrentSize += (vKey.size() + sizeof(vData) - pnode->vKey.size() - sizeof(pnode->vData));
+
 
                     /* Clear the pointers. */
                     hashmap[Bucket(pnode->vKey)] = NULL; //TODO: hashmap linked list for collisions
                     delete pnode;
                 }
             }
-            else
+            else if (std::is_same<DataType, std::vector<uint8_t>>::value)
                 nCurrentSize += (vData.size() + vKey.size());
+            else
+                nCurrentSize += (sizeof(vData) + vKey.size());
         }
 
 
