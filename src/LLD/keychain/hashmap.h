@@ -63,32 +63,46 @@ namespace LLD
         uint16_t HASHMAP_KEY_ALLOCATION;
 
 
+        /* Initialized flag (used for cache thread) */
+        bool fInitialized;
+
+
         /* Keychain stream object. */
         mutable TemplateLRU<uint32_t, std::fstream*>* fileCache;
+
+
+        /* Total elements in hashmap for quick inserts. */
         mutable std::vector<uint32_t> hashmap;
-        //std::fstream* pstream[10];
+
+
+        /* The cache for recent files. */
+        mutable TemplateLRU<uint32_t, std::vector<uint8_t>>* diskCache;
+
+
+        /* The cache writer thread. */
+        Thread_t CacheThread;
+
 
     public:
 
-        BinaryHashMap() : HASHMAP_TOTAL_BUCKETS(256 * 256 * 10), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 15), fileCache(new TemplateLRU<uint32_t, std::fstream*>())
+        BinaryHashMap() : HASHMAP_TOTAL_BUCKETS(256 * 256 * 32), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 15), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>()), diskCache(new TemplateLRU<uint32_t, std::vector<uint8_t>>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
-            //Initialize();
-
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
         }
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(std::string strBaseLocationIn) : strBaseLocation(strBaseLocationIn), HASHMAP_TOTAL_BUCKETS(256 * 256 * 10), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 15), fileCache(new TemplateLRU<uint32_t, std::fstream*>())
+        BinaryHashMap(std::string strBaseLocationIn) : strBaseLocation(strBaseLocationIn), HASHMAP_TOTAL_BUCKETS(256 * 256 * 32), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 15), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>()), diskCache(new TemplateLRU<uint32_t, std::vector<uint8_t>>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
-            Initialize();
-
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
+
+            Initialize();
         }
 
+        //TODO: cleanup copy constructors
         BinaryHashMap& operator=(BinaryHashMap map)
         {
-            strBaseLocation    = map.strBaseLocation;
-            fileCache          = map.fileCache;
+            strBaseLocation       = map.strBaseLocation;
+            fileCache             = map.fileCache;
 
             return *this;
         }
@@ -125,26 +139,62 @@ namespace LLD
             if(boost::filesystem::create_directories(strBaseLocation))
                 printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
 
-
-            /* Setup the file objects. */
-            for(uint32_t i = 0; i < 1; i++)
+            /* Build the hashmap indexes. */
+            std::string index = strprintf("%s_hashmap.index", strBaseLocation.c_str());
+            if(!boost::filesystem::exists(index))
             {
-                const char* file = strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i).c_str();
-                if(!boost::filesystem::exists(file))
-                {
-                    uint32_t nMaxSize = HASHMAP_TOTAL_BUCKETS * HASHMAP_KEY_ALLOCATION;
+                /* Generate empty space for new file. */
+                std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * 4, 0);
 
-                    std::vector<uint8_t> vSpace(nMaxSize, 0);
-                    std::fstream stream(file, std::ios::out | std::ios::binary | std::ios::trunc);
-                    stream.write((char*)&vSpace[0], vSpace.size());
-                    stream.close();
+                /* Write the new disk index .*/
+                std::fstream stream(index, std::ios::out | std::ios::binary | std::ios::trunc);
+                stream.write((char*)&vSpace[0], vSpace.size());
+                stream.close();
 
-                    printf(FUNCTION "Generated Disk Hash Map %u of %u bytes\n", __PRETTY_FUNCTION__, i, vSpace.size());
-                }
-
-                std::fstream* pstream = new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary);
-                fileCache->Put(i, pstream);
+                /* Debug output showing generation of disk index. */
+                printf(FUNCTION "Generated Disk Index of %u bytes\n", __PRETTY_FUNCTION__, vSpace.size());
             }
+
+            /* Read the hashmap indexes. */
+            else
+            {
+                /* Build a vector to read the disk index. */
+                std::vector<uint8_t> vIndex(HASHMAP_TOTAL_BUCKETS * 4, 0);
+
+                /* Read the disk index bytes. */
+                std::fstream stream(index, std::ios::in | std::ios::binary);
+                stream.read((char*)&vIndex[0], vIndex.size());
+                stream.close();
+
+                /* Deserialize the values into memory index. */
+                for(int nBucket = 0; nBucket < HASHMAP_TOTAL_BUCKETS; nBucket++)
+                    std::copy((uint8_t*)&vIndex[nBucket * 4], (uint8_t*)&vIndex[nBucket * 4] + 4, (uint8_t*)&hashmap[nBucket]);
+
+                /* Debug output showing loading of disk index. */
+                printf(FUNCTION "Loaded Disk Index of %u bytes\n", __PRETTY_FUNCTION__, vIndex.size());
+            }
+
+            /* Build the first hashmap index file if it doesn't exist. */
+            std::string file = strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), 0u).c_str();
+            if(!boost::filesystem::exists(file))
+            {
+                /* Build a vector with empty bytes to flush to disk. */
+                std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * HASHMAP_KEY_ALLOCATION, 0);
+
+                /* Flush the empty keychain file to disk. */
+                std::fstream stream(file, std::ios::out | std::ios::binary | std::ios::trunc);
+                stream.write((char*)&vSpace[0], vSpace.size());
+                stream.close();
+
+                /* Debug output showing generating of the hashmap file. */
+                printf(FUNCTION "Generated Disk Hash Map %u of %u bytes\n", __PRETTY_FUNCTION__, 0u, vSpace.size());
+            }
+
+            /* Load the stream object into the stream LRU cache. */
+            fileCache->Put(0, new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary));
+
+            /* Set the initialization flag to complete. */
+            fInitialized = true;
         }
 
 
@@ -159,38 +209,32 @@ namespace LLD
             /* Get the file binary position. */
             uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
 
-            /* Get the binary data. */
-            for(uint32_t i = 0; ; i++)
+            /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
+            for(int i = hashmap[nBucket]; i >= 0; i--)
             {
-                std::string file = strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
-                if(!boost::filesystem::exists(file))
-                    return false;
-
+                /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
                 if(!fileCache->Get(i, pstream))
                 {
-                    pstream = new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream)
-                        return false;
+                    /* Set the new stream pointer. */
+                    pstream = new std::fstream(strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
 
+                    /* If file not found add to LRU cache. */
                     fileCache->Put(i, pstream);
                 }
 
+                /* Seek to the hashmap index in file. */
                 pstream->seekg (nFilePos, std::ios::beg);
-                std::vector<uint8_t> vKeychain(vKey.size(), 0);
-                pstream->read((char*) &vKeychain[0], vKeychain.size());
 
-                /* Check that the keys match. */
-                if(vKey == vKeychain)
+                /* Read the bucket binary data from file stream */
+                std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
+                pstream->read((char*) &vBucket[0], vBucket.size());
+
+                /* Check if this bucket has the key */
+                if(std::equal(vBucket.begin() + 15, vBucket.begin() + 15 + vKey.size(), vKey.begin()))
                 {
-                    /* Read the key object from disk. */
-                    pstream->seekg (nFilePos + HASHMAP_MAX_KEY_SIZE, std::ios::beg);
-                    std::vector<uint8_t> vData(15, 0);
-                    pstream->read((char*) &vData[0], vData.size());
-
-                    /* Read the State and Size of Sector Header. */
-                    SectorKey cKey;
-                    CDataStream ssKey(vData, SER_LLD, DATABASE_VERSION);
+                    /* Deserialie key and return if found. */
+                    CDataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
                     ssKey >> cKey;
 
                     return true;
@@ -212,60 +256,80 @@ namespace LLD
             /* Get the file binary position. */
             uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
 
-            /* Get the binary data. */
-            std::vector<uint8_t> vBlank(std::min(cKey.vKey.size(), 8ul), 0);
+            /* Create a new disk hashmap object in linked list if it doesn't exist. */
+            std::string file = strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), hashmap[nBucket]);
+            if(!boost::filesystem::exists(file))
             {
-                int i = hashmap[nBucket];
-                std::string file = strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
-                if(!boost::filesystem::exists(file))
-                {
-                    uint32_t nMaxSize = HASHMAP_TOTAL_BUCKETS * HASHMAP_KEY_ALLOCATION;
+                /* Blank vector to write empty space in new disk file. */
+                std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * HASHMAP_KEY_ALLOCATION, 0);
 
-                    std::vector<uint8_t> vSpace(nMaxSize, 0);
-                    std::fstream stream(file, std::ios::out | std::ios::binary | std::ios::trunc);
-                    stream.write((char*)&vSpace[0], vSpace.size());
-                    stream.close();
+                /* Write the blank data to the new file handle. */
+                std::fstream stream(file, std::ios::out | std::ios::binary | std::ios::trunc);
+                stream.write((char*)&vSpace[0], vSpace.size());
+                stream.close();
 
-                    printf(FUNCTION "Generated Disk Hash Map %u of %u bytes\n", __PRETTY_FUNCTION__, i, vSpace.size());
-                }
-
-                std::fstream* pstream;
-                if(!fileCache->Get(i, pstream))
-                {
-                    pstream = new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream)
-                        return false;
-
-                    fileCache->Put(i, pstream);
-                }
-
-                //pstream->seekg (nFilePos, std::ios::beg);
-                //std::vector<uint8_t> vKeychain(std::min(cKey.vKey.size(), 8ul), 0);
-                //pstream->read((char*) &vKeychain[0], vKeychain.size());
-
-                /* Check that the keys match. */
-                //if(vBlank == vKeychain || cKey.vKey == vKeychain)
-                {
-                    hashmap[nBucket]++;
-
-                    /* Read the key object from disk. */
-                    std::vector<uint8_t> vData(cKey.vKey);
-
-                    /* Read the State and Size of Sector Header. */
-                    SectorKey cKey;
-                    CDataStream ssKey(SER_LLD, DATABASE_VERSION);
-                    ssKey << cKey;
-
-                    /* Insert data into the back of the vector. */
-                    vData.insert(vData.end(), ssKey.begin(), ssKey.end());
-                    pstream->seekp (nFilePos, std::ios::beg);
-                    pstream->write((char*)&vData[0], vData.size());
-
-                    return true;
-                }
+                /* Debug output for monitoring new disk maps. */
+                printf(FUNCTION "Generated Disk Hash Map %u of %u bytes\n", __PRETTY_FUNCTION__, hashmap[nBucket], vSpace.size());
             }
 
-            return false;
+            /* Find the file stream for LRU cache. */
+            std::fstream* pstream;
+            if(!fileCache->Get(hashmap[nBucket], pstream))
+            {
+                /* Set the new stream pointer. */
+                pstream = new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary);
+
+                /* If not in cache, add to the LRU. */
+                fileCache->Put(hashmap[nBucket], pstream);
+            }
+
+            /* Iterate the linked list value in the hashmap. */
+            hashmap[nBucket]++;
+
+            /* Read the State and Size of Sector Header. */
+            CDataStream ssKey(SER_LLD, DATABASE_VERSION);
+            ssKey << cKey;
+
+            //TODO: This serialization wastes time in copying memory. Write better vector based stream
+            std::vector<uint8_t> vData(ssKey.begin(), ssKey.end());
+            vData.insert(vData.end(), cKey.vKey.begin(), cKey.vKey.end());
+
+            /* Flush the key file to disk. */
+            pstream->seekp (nFilePos, std::ios::beg);
+            pstream->write((char*)&vData[0], vData.size());
+
+            return true;
+        }
+
+
+        /* Helper Thread to Batch Write to Disk. */
+        void CacheWriter()
+        {
+            while(!fShutdown)
+            {
+                /* Wait for Database to Initialize. */
+                if(!fInitialized)
+                {
+                    Sleep(10);
+
+                    continue;
+                }
+
+                /* Flush the disk hashmap. */
+                std::vector<uint8_t> vDisk;
+                for(auto bucket : hashmap)
+                    vDisk.insert(vDisk.end(), (uint8_t*)&bucket, (uint8_t*)&bucket + 4);
+
+                /* Create the file handler. */
+                std::string file = strprintf("%s_hashmap.index", strBaseLocation.c_str());
+                std::fstream stream(file, std::ios::out | std::ios::binary);
+                stream.write((char*)&vDisk[0], vDisk.size());
+                stream.close();
+
+                //printf(FUNCTION " Flushed %u Index Bytes to Disk\n", __PRETTY_FUNCTION__, vDisk.size());
+
+                Sleep(1000);
+            }
         }
 
         /** Simple Erase for now, not efficient in Data Usage of HD but quick to get erase function working. **/

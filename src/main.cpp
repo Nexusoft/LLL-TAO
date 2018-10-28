@@ -99,7 +99,7 @@ int main(int argc, char** argv)
     //tx.print();
 
 
-    int nCounter = 0;
+    int nCounter = 1;
     uint32_t nAverage = 0;
     Timer timer;
     timer.Start();
@@ -107,6 +107,16 @@ int main(int argc, char** argv)
     TAO::Ledger::Transaction tx;
     tx.hashGenesis = LLC::GetRand256();
     uint512_t hash = tx.GetHash();
+    tx.print();
+
+    test->Write(hash, tx);
+
+    //Sleep(1000);
+    TAO::Ledger::Transaction tx2;
+    //test->Read(hash, tx2);
+    //tx2.print();
+
+    //return 0;
 
     uint32_t wps = 0;
     while(!fShutdown)
@@ -116,6 +126,7 @@ int main(int argc, char** argv)
         std::vector<uint8_t> vData((uint8_t*)&tx, (uint8_t*)&tx + tx.GetSerializeSize(SER_DISK, LLD::DATABASE_VERSION));
         //cachePool->Put(vKey, vData);
         test->Put(vKey, vData);
+        //test->Write(hash, tx);
 
         //LLC::SK256(hash.GetBytes());
 
@@ -127,6 +138,9 @@ int main(int argc, char** argv)
 
         if(nCounter % 100000 == 0)
         {
+            //if(test->Read(hash, tx))
+            //    tx.print();
+
             nAverage++;
             uint32_t nTimer = timer.ElapsedMilliseconds();
             wps += (100000.0 / nTimer);
