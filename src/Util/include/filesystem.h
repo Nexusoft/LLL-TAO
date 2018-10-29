@@ -22,6 +22,8 @@ bool exists(const std::string &path);
 
 bool is_directory(const std::string &path);
 
+bool create_directories(const std::string &path);
+
 bool create_directory(const std::string &path);
 
 std::string system_complete(const std::string &path);

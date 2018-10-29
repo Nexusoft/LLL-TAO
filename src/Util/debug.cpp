@@ -49,7 +49,7 @@ int OutputDebugStringF(const char* pszFormat, ...)
     // print to debug.log
     if (!fileout)
     {
-        std::string pathDebug = GetDataDir() + "\\debug.log";
+        std::string pathDebug = GetDataDir() + "debug.log";
         fileout = fopen(pathDebug.c_str(), "a");
         if (fileout) setbuf(fileout, NULL); // unbuffered
     }
