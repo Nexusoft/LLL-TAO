@@ -21,8 +21,12 @@ ________________________________________________________________________________
 #endif
 
 #include <stdio.h> //remove()
+#include <errno.h>
+#include <string.h>
 
 #define MAX_PATH 256
+
+extern int errno;
 
 bool remove(const std::string &path)
 {
@@ -57,15 +61,30 @@ bool is_directory(const std::string &path)
 
 bool create_directory(const std::string &path)
 {
-      /* set the directory with read/write/search permissions for owner and group,
-         and read/search permissions for others */
-    mode_t m = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
+    if(exists(path)) //if the directory exists, don't attempt to create it
+        return true;
+
+      /* set directory with read/write/search permissions for owner/group/other */
+    mode_t m = S_IRWXU | S_IRWXG | S_IRWXO;
     int status = mkdir(path.c_str(), m);
 
     if(status < 0)
     {
-        printf("Failed to create directory: %s\n", path.c_str());
+        printf("Failed to create directory: %s\nReason: %s\n", path.c_str(), strerror(errno));
         return false;
+    }
+    return true;
+}
+
+bool create_directories(const std::string &path)
+{
+    for(std::string::const_iterator it = path.begin(); it != path.end(); ++it)
+    {
+        if(*it == '/' && it != path.begin())
+        {
+            if(!create_directory(std::string(path.begin(), it)))
+                return false;
+        }
     }
     return true;
 }
@@ -77,7 +96,11 @@ std::string system_complete(const std::string &path)
 
       //get the path of the current directory and append path name to that
     abs_path = getcwd(buffer, MAX_PATH);
+#ifdef WIN32
     abs_path += "\\";
+#else
+    abs_path += "/";
+#endif
     abs_path += path;
 
     return abs_path;

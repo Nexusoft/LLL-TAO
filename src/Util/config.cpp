@@ -94,7 +94,8 @@ std::string GetDefaultDataDir(std::string strName)
     // Unix: ~/.Nexus
 #ifdef WIN32
     // Windows
-    return MyGetSpecialFolderPath(CSIDL_APPDATA, true) / strName;
+    pathRet = MyGetSpecialFolderPath(CSIDL_APPDATA, true);
+    pathRet.append("\\" + strName + "\\");
 #else
     std::string pathRet;    
     char* pszHome = getenv("HOME");
@@ -105,11 +106,11 @@ std::string GetDefaultDataDir(std::string strName)
 #ifdef MAC_OSX
     // Mac
     pathRet.append("Library/Application Support");
-    create_directory(pathRet);
-    pathRet.append(strName);
+    create_directories(pathRet);
+    pathRet.append("/" + strName + "/");
 #else
     // Unix
-    pathRet.append("/." + strName);
+    pathRet.append("/." + strName + "/");
 #endif
 
     return pathRet;
@@ -133,7 +134,7 @@ std::string GetPidFile()
 {
     std::string pathPidFile(GetDataDir());
 
-    pathPidFile.append("\\" + GetArg("-pid", "nexus.pid"));
+    pathPidFile.append(GetArg("-pid", "nexus.pid"));
 
     return pathPidFile;
 }
@@ -169,9 +170,9 @@ std::string GetDataDir(bool fNetSpecific)
         path = GetDefaultDataDir();
 
     if (fNetSpecific && GetBoolArg("-testnet", false))
-        path.append("\\testnet");
+        path.append("testnet/");
 
-    create_directory(path);
+    create_directories(path);
 
     cachedPath[fNetSpecific]=true;
     return path;
@@ -260,7 +261,7 @@ std::string static GetAutostartDir()
     if (pszHome) 
     {
         autostart_dir = pszHome;
-        autostart_dir.append("autostart");
+        autostart_dir.append("autostart/");
     }
     else
     {
@@ -268,7 +269,7 @@ std::string static GetAutostartDir()
         if (pszHome)
         {
             autostart_dir = pszHome;
-            autostart_dir.append(".config\\autostart"); 
+            autostart_dir.append(".config/autostart/"); 
         }
     }
 
@@ -278,7 +279,7 @@ std::string static GetAutostartDir()
 
 std::string static GetAutostartFilePath()
 {
-    return GetAutostartDir().append("\\nexus.desktop");
+    return GetAutostartDir().append("nexus.desktop");
 }
 
 
@@ -314,7 +315,7 @@ bool SetStartOnSystemStartup(bool fAutoStart)
         if (readlink("/proc/self/exe", pszExePath, sizeof(pszExePath)-1) == -1)
             return false;
 
-        create_directory(GetAutostartDir());
+        create_directories(GetAutostartDir());
 
         std::ofstream optionFile(GetAutostartFilePath(), 
             std::ios_base::out | std::ios_base::trunc);
