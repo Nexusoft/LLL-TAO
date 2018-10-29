@@ -15,39 +15,43 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/mutex.h>
 #include <Util/include/filesystem.h>
-
-#include <boost/filesystem.hpp>
-#include <boost/program_options/detail/config_file.hpp>
-#include <boost/program_options/parsers.hpp>
-
 #include <fstream>
+#include <cstring> //for strlen
 
 /* Read the Config file from the Disk. */
 void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
                     std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet)
 {
-    namespace fs = boost::filesystem;
-    namespace pod = boost::program_options::detail;
-
-    fs::ifstream streamConfig(GetConfigFile());
-    if (!streamConfig.good())
+    std::ifstream streamConfig(GetConfigFile());
+    if(!streamConfig.is_open())
         return; // No nexus.conf file is OK
 
-    std::set<std::string> setOptions;
-    setOptions.insert("*");
+    std::string line;
 
-    for (pod::config_file_iterator it(streamConfig, setOptions), end; it != end; ++it)
+    while(!streamConfig.eof())
     {
-        // Don't overwrite existing settings so command line settings override nexus.conf
-        std::string strKey = std::string("-") + it->string_key;
-        if (mapSettingsRet.count(strKey) == 0)
+        std::getline(streamConfig, line);
+
+        if(streamConfig.eof())
+            break;
+
+        size_t i = line.find('=');
+        if(i == std::string::npos)
+            continue;
+
+        std::string strKey = std::string("-") + std::string(line, 0, i);
+        std::string strVal = std::string(line, i + 1, line.size() - i - 1);
+
+        if(mapSettingsRet.count(strKey) == 0)
         {
-            mapSettingsRet[strKey] = it->value[0];
-            //  interpret nofoo=1 as foo=0 (and nofoo=0 as foo=1) as long as foo not set)
+            mapSettingsRet[strKey] = strVal;
+            // interpret nofoo=1 as foo=0 (and nofoo=0 as foo=1) as long as foo not set
             InterpretNegativeSetting(strKey, mapSettingsRet);
         }
-        mapMultiSettingsRet[strKey].push_back(it->value[0]);
+        
+        mapMultiSettingsRet[strKey].push_back(strVal);
     }
+    streamConfig.close();
 }
 
 
