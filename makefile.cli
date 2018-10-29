@@ -20,39 +20,6 @@ endif
 
 
 #Define default LIB and INCLUDE path variables
-ifndef BOOST_LIB_SUFFIX
-	ifeq ($(detected_OS),Windows)
-		BOOST_LIB_SUFFIX= "-mgw73-mt-s-$(BUILD_ARCH)-1_66"
-	endif
-	ifeq ($(detected_OS),OSX)
-		BOOST_LIB_SUFFIX= -mt
-	endif
-	ifeq ($(detected_OS),Linux)
-		BOOST_LIB_SUFFIX=
-	endif
-endif
-ifndef BOOST_LIB_PATH
-	ifeq ($(detected_OS),Windows)
-		BOOST_LIB_PATH= "C:\deps\lib"
-	endif
-	ifeq ($(detected_OS),OSX)
-		BOOST_LIB_PATH= /usr/local/opt/boost/lib
-	endif
-	ifeq ($(detected_OS),Linux)
-		BOOST_LIB_PATH= /usr/lib/x86_64-linux-gnu
-	endif
-endif
-ifndef BOOST_INCLUDE_PATH
-	ifeq ($(detected_OS),Windows)
-		BOOST_INCLUDE_PATH= "C:\deps\include\boost-1_66"
-	endif
-	ifeq ($(detected_OS),OSX)
-		BOOST_INCLUDE_PATH= /usr/local/opt/boost/include
-	endif
-	ifeq ($(detected_OS),Linux)
-		BOOST_INCLUDE_PATH= /usr/include/boost
-	endif
-endif
 ifndef OPENSSL_LIB_PATH
 	ifeq ($(detected_OS),Windows)
 		OPENSSL_LIB_PATH= "C:\deps\lib"
@@ -120,30 +87,21 @@ endif
 ifneq ($(detected_OS),Windows)
 INCLUDEPATHS+= $(addprefix -I, $(CURDIR) $(CURDIR)/build $(CURDIR)/src )\
 	-I$(BDB_INCLUDE_PATH) \
-	-I$(BOOST_INCLUDE_PATH) \
 	-I$(OPENSSL_INCLUDE_PATH)
 endif
 ifeq ($(detected_OS),Windows)
 INCLUDEPATHS+= -I"$(CURDIR)" -I"$(CURDIR)/build" -I"$(CURDIR)/src" \
 	-I$(BDB_INCLUDE_PATH) \
-	-I$(BOOST_INCLUDE_PATH) \
 	-I$(OPENSSL_INCLUDE_PATH)
 endif
-LIBPATHS+= -L$(BOOST_LIB_PATH) \
-	-L$(BDB_LIB_PATH) \
+LIBPATHS+= -L$(BDB_LIB_PATH) \
 	-L$(OPENSSL_LIB_PATH)
 ifneq ($(detected_OS),OSX)
-LIBS+=-lboost_system$(BOOST_LIB_SUFFIX) \
-	-lboost_filesystem$(BOOST_LIB_SUFFIX) \
-	-lboost_program_options$(BOOST_LIB_SUFFIX) \
-	-lboost_thread$(BOOST_LIB_SUFFIX) \
-	-ldb_cxx \
+LIBS+=-ldb_cxx \
 	-lssl \
 	-lcrypto
 endif
-DEFS+=  -DBOOST_SPIRIT_THREADSAFE \
-	-DBOOST_NO_CXX11_SCOPED_ENUMS \
-	-D$(BUILD_ARCH)
+DEFS+=  -D$(BUILD_ARCH)
 
 #Display Warnings while compiling
 ifdef ENABLE_WARNINGS
@@ -216,9 +174,7 @@ LIBS+= -l kernel32 \
 	-l ws2_32 \
 	-l shlwapi
 DEFS+= -DWIN32 \
-	-D_WINDOWS \
-	-DBOOST_THREAD_USE_LIB \
-	-DBOOST_ASIO_ENABLE_OLD_SERVICES
+	-D_WINDOWS
 
 #OS Specific Compiler Flags
 CXXFLAGS+= -mthreads \
@@ -301,13 +257,8 @@ endif
 
 #Configure OS Specific Build Environment
 DEFS+= -DMAC_OSX \
-	-DMSG_NOSIGNAL=0 \
-	-DBOOST_SPIRIT_THREADSAFE
-LIBS+= $(BOOST_LIB_PATH)/libboost_system-mt.a \
-	$(BOOST_LIB_PATH)/libboost_filesystem-mt.a \
-	$(BOOST_LIB_PATH)/libboost_program_options-mt.a \
-	$(BOOST_LIB_PATH)/libboost_thread-mt.a \
-	$(BDB_LIB_PATH)/libdb_cxx.a \
+	-DMSG_NOSIGNAL=0
+LIBS+= $(BDB_LIB_PATH)/libdb_cxx.a \
 	$(OPENSSL_LIB_PATH)/libssl.a \
 	$(OPENSSL_LIB_PATH)/libcrypto.a
 
