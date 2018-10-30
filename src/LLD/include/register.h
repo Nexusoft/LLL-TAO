@@ -18,14 +18,16 @@ ________________________________________________________________________________
 
 #include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
-#include <LLD/templates/hashmap.h>
+
+#include <LLD/cache/binary_lru.h>
+#include <LLD/keychain/hashmap.h>
 
 #include <TAO/Register/include/state.h>
 
 namespace LLD
 {
 
-    class RegisterDB : public SectorDatabase<BinaryHashMap>
+    class RegisterDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/

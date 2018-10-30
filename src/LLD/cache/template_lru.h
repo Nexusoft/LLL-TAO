@@ -10,8 +10,8 @@
             "ad vocem populi" - To the Voice of the People
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LLD_TEMPLATES_MEMCACHEPOOL_H
-#define NEXUS_LLD_TEMPLATES_MEMCACHEPOOL_H
+#ifndef NEXUS_LLD_CACHE_TEMPLATE_LRU_H
+#define NEXUS_LLD_CACHE_TEMPLATE_LRU_H
 
 #include <Util/templates/serialize.h>
 #include <Util/include/mutex.h>
@@ -23,29 +23,36 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    struct CacheNode
+    /** Template Node
+     *
+     *  Node to hold the key/values of the double linked list.
+     *
+     **/
+    template<typename KeyType, typename DataType>
+    struct TemplateNode
     {
-        CacheNode* pprev;
-        CacheNode* pnext;
+        TemplateNode<KeyType, DataType>* pprev;
+        TemplateNode<KeyType, DataType>* pnext;
 
-        std::vector<uint8_t> vKey;
-        std::vector<uint8_t> vData;
+        KeyType Key;
+        DataType Data;
     };
 
 
     /** Holding Pool:
     *
     * This class is responsible for holding data that is partially processed.
-    * It is also uselef for data that needs to be relayed from cache once recieved.
+    * This class has no types, all objects are in binary forms
     *
     */
-    class MemCachePool
+    template<typename KeyType, typename DataType>
+    class TemplateLRU
     {
 
     protected:
 
         /* The Maximum Size of the Cache. */
-        uint32_t MAX_CACHE_SIZE;
+        uint32_t MAX_CACHE_ELEMENTS;
 
 
         /* The total buckets available. */
@@ -53,7 +60,7 @@ namespace LLD
 
 
         /* The current size of the pool. */
-        uint32_t nCurrentSize;
+        uint32_t nTotalElements;
 
 
         /* Mutex for thread concurrencdy. */
@@ -61,15 +68,15 @@ namespace LLD
 
 
         /* Map of the current holding data. */
-        std::vector<CacheNode*> hashmap;
+        std::vector<TemplateNode<KeyType, DataType>*> hashmap;
 
 
         /* Keep track of the first object in linked list. */
-        CacheNode* pfirst;
+        TemplateNode<KeyType, DataType>* pfirst;
 
 
         /* Keep track of the last object in linked list. */
-        CacheNode* plast;
+        TemplateNode<KeyType, DataType>* plast;
 
 
 
@@ -77,11 +84,11 @@ namespace LLD
 
         /** Base Constructor.
          *
-         * MAX_CACHE_SIZE default value is 32 MB
-         * MAX_CACHE_BUCKETS default value is 65,539 (2 bytes)
+         *  MAX_CACHE_ELEMENTS default value is 256 objects
+         *  MAX_CACHE_BUCKETS default value is number of elements
          *
          */
-        MemCachePool() : MAX_CACHE_SIZE(1024 * 1024), MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 64), nCurrentSize(MAX_CACHE_BUCKETS * 24), pfirst(0), plast(0)
+        TemplateLRU() : MAX_CACHE_ELEMENTS(256), MAX_CACHE_BUCKETS(MAX_CACHE_ELEMENTS), nTotalElements(0), pfirst(0), plast(0)
         {
             /* Resize the hashmap vector. */
             hashmap.resize(MAX_CACHE_BUCKETS);
@@ -92,12 +99,12 @@ namespace LLD
         }
 
 
-        /** Cache Size Constructor
+        /** Total Elements Constructor
          *
-         * @param[in] nCacheSizeIn The maximum size of this Cache Pool
+         * @param[in] nTotalElementsIn The maximum size of this Cache Pool
          *
          */
-        MemCachePool(uint32_t nCacheSizeIn) : MAX_CACHE_SIZE(nCacheSizeIn), MAX_CACHE_BUCKETS(nCacheSizeIn / 64), nCurrentSize(MAX_CACHE_BUCKETS * 24)
+        TemplateLRU(uint32_t nTotalElementsIn) : MAX_CACHE_ELEMENTS(nTotalElementsIn), MAX_CACHE_BUCKETS(MAX_CACHE_ELEMENTS), nTotalElements(0)
         {
             /* Resize the hashmap vector. */
             hashmap.resize(MAX_CACHE_BUCKETS);
@@ -109,7 +116,7 @@ namespace LLD
 
 
         /* Class Destructor. */
-        ~MemCachePool()
+        ~TemplateLRU()
         {
             /* Loop through the linked list. */
             while(pfirst)
@@ -123,37 +130,68 @@ namespace LLD
             }
         }
 
+        TemplateLRU& operator=(TemplateLRU map)
+        {
+            MAX_CACHE_ELEMENTS = map.MAX_CACHE_ELEMENTS;
+            MAX_CACHE_BUCKETS  = map.MAX_CACHE_BUCKETS;
+            nTotalElements     = map.nTotalElements;
+
+            hashmap            = map.hashmap;
+            pfirst             = map.pfirst;
+            plast              = map.plast;
+
+            return *this;
+        }
+
+
+        TemplateLRU(const TemplateLRU& map)
+        {
+            MAX_CACHE_ELEMENTS = map.MAX_CACHE_ELEMENTS;
+            MAX_CACHE_BUCKETS  = map.MAX_CACHE_BUCKETS;
+            nTotalElements     = map.nTotalElements;
+
+            hashmap            = map.hashmap;
+            pfirst             = map.pfirst;
+            plast              = map.plast;
+        }
+
 
         /** Bucket
          *
          *  Find a bucket for cache key management.
          *
-         *  @param[in] vKey The key to get bucket for.
+         *  @param[in] Key The key to get bucket for.
          *
          **/
-        uint32_t Bucket(const std::vector<uint8_t>& vKey) const
+        uint32_t Bucket(const KeyType& Key) const
         {
+            /* Get the bytes from the type object. */
+            std::vector<uint8_t> vKey;
+            vKey.insert(vKey.end(), (uint8_t*)&Key, (uint8_t*)&Key + sizeof(Key));;
+
+            /* Find the bucket through creating an uint64_t from available bytes. */
             uint64_t nBucket = 0;
             for(int i = 0; i < vKey.size() && i < 8; i++)
                 nBucket += vKey[i] << (8 * i);
 
+            /* Round robin to find the bucket. */
             return nBucket % MAX_CACHE_BUCKETS;
         }
 
 
         /** Check if data exists
          *
-         * @param[in] vKey The binary data of the key
+         * @param[in] Key The binary data of the key
          *
          * @return True/False whether pool contains data by index
          *
          */
-        bool Has(std::vector<uint8_t> vKey) const
+        bool Has(KeyType Key) const
         {
             LOCK(MUTEX);
 
-            uint32_t nBucket = Bucket(vKey);
-            return (hashmap[nBucket] != NULL && hashmap[nBucket]->vKey == vKey);
+            uint32_t nBucket = Bucket(Key);
+            return (hashmap[nBucket] != NULL && hashmap[nBucket]->Key == Key);
         }
 
 
@@ -164,7 +202,7 @@ namespace LLD
          *  @param[in] pthis The node to remove from list.
          *
          */
-        void RemoveNode(CacheNode* pthis)
+        void RemoveNode(TemplateNode<KeyType, DataType>* pthis)
         {
             /* Link the next pointer if not null */
             if(pthis->pnext)
@@ -183,7 +221,7 @@ namespace LLD
          *  @param[in] pthis The node to move to front.
          *
          **/
-        void MoveToFront(CacheNode* pthis)
+        void MoveToFront(TemplateNode<KeyType, DataType>* pthis)
         {
             /* Don't move to front if already in the front. */
             if(pthis == pfirst)
@@ -213,25 +251,25 @@ namespace LLD
 
         /** Get the data by index
          *
-         * @param[in] vKey The binary data of the key
-         * @param[out] vData The binary data of the cached record
+         * @param[in] Key The key type
+         * @param[out] Data The data type
          *
          * @return True if object was found, false if none found by index.
          *
          */
-        bool Get(std::vector<uint8_t> vKey, std::vector<uint8_t>& vData)
+        bool Get(KeyType Key, DataType& Data)
         {
             LOCK(MUTEX);
 
             /* Check if the Record Exists. */
-            if(!Has(vKey))
+            if(!Has(Key))
                 return false;
 
             /* Get the data. */
-            CacheNode* pthis = hashmap[Bucket(vKey)];
+            TemplateNode<KeyType, DataType>* pthis = hashmap[Bucket(Key)];
 
             /* Get the data. */
-            vData = pthis->vData;
+            Data = pthis->Data;
 
             /* Move to front of double linked list. */
             MoveToFront(pthis);
@@ -242,32 +280,32 @@ namespace LLD
 
         /** Add data in the Pool
          *
-         * @param[in] vKey The key in binary form
-         * @param[in] vData The input data in binary form
+         * @param[in] Key The key type object
+         * @param[in] Data The data type object
          *
          */
-        void Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
+        void Put(KeyType Key, DataType Data)
         {
             LOCK(MUTEX);
 
             /* If has a key, check for bucket collisions. */
-            uint32_t nBucket = Bucket(vKey);
+            uint32_t nBucket = Bucket(Key);
 
             /* Check for bucket collisions. */
-            CacheNode* pthis = NULL;
-            if(Has(vKey))
+            TemplateNode<KeyType, DataType>* pthis = NULL;
+            if(Has(Key))
             {
                 /* Update the cache node. */
                 pthis = hashmap[nBucket];
-                pthis->vData = vData;
-                pthis->vKey  = vKey;
+                pthis->Data = Data;
+                pthis->Key  = Key;
             }
             else
             {
                 /* Create a new cache node. */
-                pthis = new CacheNode();
-                pthis->vData = vData;
-                pthis->vKey  = vKey;
+                pthis = new TemplateNode<KeyType, DataType>();
+                pthis->Data = Data;
+                pthis->Key  = Key;
 
                 /* Add cache node to objects map. */
                 hashmap[nBucket] = pthis;
@@ -277,56 +315,53 @@ namespace LLD
             MoveToFront(pthis);
 
             /* Remove the last node if cache too large. */
-            if(nCurrentSize > MAX_CACHE_SIZE)
+            if(nTotalElements > MAX_CACHE_ELEMENTS)
             {
                 /* Get the last key. */
                 if(plast->pprev)
                 {
-                    CacheNode* pnode = plast;
+                    TemplateNode<KeyType, DataType>* pnode = plast;
 
                     /* Relink in memory. */
                     plast = plast->pprev;
                     plast->pnext = NULL;
 
-                    /* Reduce the current cache size. */
-                    nCurrentSize += (vKey.size() + vData.size() - pnode->vData.size() - pnode->vKey.size());
-
                     /* Clear the pointers. */
-                    hashmap[Bucket(pnode->vKey)] = NULL; //TODO: hashmap linked list for collisions
+                    hashmap[Bucket(pnode->Key)] = NULL; //TODO: hashmap linked list for collisions
                     delete pnode;
                 }
             }
             else
-                nCurrentSize += (vData.size() + vKey.size());
+                nTotalElements++;
         }
 
 
         /** Force Remove Object by Index
          *
-         * @param[in] vKey Binary Data of the Key
+         * @param[in] Key Binary Data of the Key
          *
          * @return True on successful removal, false if it fails
          *
          */
-        bool Remove(std::vector<uint8_t> vKey)
+        bool Remove(std::vector<uint8_t> Key)
         {
             LOCK(MUTEX);
 
             /* Check if the Record Exists. */
-            if(!Has(vKey))
+            if(!Has(Key))
                 return false;
 
             /* Get the node */
-            CacheNode* pnode = hashmap[Bucket(vKey)];
+            TemplateNode<KeyType, DataType>* pnode = hashmap[Bucket(Key)];
 
             /* Reduce the current cache size. */
-            nCurrentSize -= (pnode->vData.size() + vKey.size());
+            nTotalElements --;
 
             /* Remove from linked list. */
             RemoveNode(pnode);
 
             /* Remove the object from the map. */
-            hashmap[Bucket(vKey)] = NULL;
+            hashmap[Bucket(Key)] = NULL;
             delete pnode;
 
             return true;
