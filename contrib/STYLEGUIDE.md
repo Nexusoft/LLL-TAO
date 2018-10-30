@@ -13,10 +13,11 @@ The variable names have a prefix that defines the type. This helps us not lose t
 * (d)Variable ex. dVar - (d) denotes a floating point number.
 * (f)Variable ex. fVar - (f) denotes a boolean flag.
 * (p)Variable ex. pVar - (p) denotes the variable is a pointer.
+* (s)Variable ex. sVar - (s) denotes the variable is static.
 
 ### STL Types
 
-* (v)Variable ex. vArr - (v) denotes the type is a std::vector.
+* (v)Variable ex. vArr     - (v)   denotes the type is a std::vector.
 * (map)Variable ex. mapVar - (map) denotes the type is a std::map
 * (set)Variable ex. setVar - (set) denotes the type is a std::set
 
@@ -29,6 +30,10 @@ Always use namespaces to keep the code well ordered and organized. The guide to 
 ## Indentation and Formatting
 
 This section involes how to format the code due to carriage return
+
+* Avoid K&R style brackets. Put opening and closing brackets on thier own lines.
+
+* Use tab length 4 and replace tabs with spaces
 
 
 ## Types to avoid

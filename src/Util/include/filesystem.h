@@ -21,6 +21,8 @@ namespace filesystem
 
     /** Remove
      *
+     *  Removes a file or folder from the specified path.
+     *
      *  @param[in] path The path to remove.
      *
      *  @return true if path was deleted
@@ -30,6 +32,8 @@ namespace filesystem
 
 
     /** Exists
+     *
+     *  Determines if the file or folder from the specified path exists.
      *
      *  @param[in] path The path to check
      *
@@ -41,6 +45,8 @@ namespace filesystem
 
     /** is_directory
      *
+     *  Determines if the specified path is a folder.
+     *
      *  @param[in] path The path to check
      *
      *  @return true if path is a directory
@@ -50,6 +56,8 @@ namespace filesystem
 
 
     /** create_directories
+     *
+     *  Recursively create directories along the path if they don't exist.
      *
      *  @param[in] path The path to generate recrusively
      *
@@ -61,6 +69,8 @@ namespace filesystem
 
     /** create_directory
      *
+     *  Create a single directory at the path if it doesn't already exist.
+     *
      *  @param[in] path The path to create
      *
      *  @return true if path was created
@@ -71,12 +81,14 @@ namespace filesystem
 
     /** system_complete
      *
+     *  Obtain the system complete path from a given relative path.
+     *
      *  @param[in] path The path to append to
      *
      *  @return the system complete path from root directory
      *
      **/
     std::string system_complete(const std::string &path);
-    
+
 }
 #endif

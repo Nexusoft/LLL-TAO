@@ -193,20 +193,20 @@ std::string static StartupShortcutPath()
 
 bool GetStartOnSystemStartup()
 {
-    return exists(StartupShortcutPath());
+    return filesystem::exists(StartupShortcutPath());
 }
 
 
 bool SetStartOnSystemStartup(bool fAutoStart)
 {
-    // If the shortcut exists already, remove it for updating
-    remove(StartupShortcutPath());
+    /* If the shortcut exists already, remove it for updating */
+    filesystem::remove(StartupShortcutPath());
 
     if (fAutoStart)
     {
         CoInitialize(NULL);
 
-        // Get a pointer to the IShellLink interface.
+        /* Get a pointer to the IShellLink interface. */
         IShellLink* psl = NULL;
         HRESULT hres = CoCreateInstance(CLSID_ShellLink, NULL,
                                 CLSCTX_INPROC_SERVER, IID_IShellLink,
@@ -214,29 +214,29 @@ bool SetStartOnSystemStartup(bool fAutoStart)
 
         if (SUCCEEDED(hres))
         {
-            // Get the current executable path
+            /* Get the current executable path */
             TCHAR pszExePath[MAX_PATH];
             GetModuleFileName(NULL, pszExePath, sizeof(pszExePath));
 
             TCHAR pszArgs[5] = TEXT("-min");
 
-            // Set the path to the shortcut target
+            /* Set the path to the shortcut target */
             psl->SetPath(pszExePath);
             PathRemoveFileSpec(pszExePath);
             psl->SetWorkingDirectory(pszExePath);
             psl->SetShowCmd(SW_SHOWMINNOACTIVE);
             psl->SetArguments(pszArgs);
 
-            // Query IShellLink for the IPersistFile interface for
-            // saving the shortcut in persistent storage.
+            /* Query IShellLink for the IPersistFile interface for
+               saving the shortcut in persistent storage. */
             IPersistFile* ppf = NULL;
             hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast<void**>(&ppf));
             if (SUCCEEDED(hres))
             {
                 WCHAR pwsz[MAX_PATH];
-                // Ensure that the string is ANSI.
+                /* Ensure that the string is ANSI. */
                 MultiByteToWideChar(CP_ACP, 0, StartupShortcutPath().c_str(), -1, pwsz, MAX_PATH);
-                // Save the link by calling IPersistFile::Save.
+                /* Save the link by calling IPersistFile::Save. */
                 hres = ppf->Save(pwsz, TRUE);
                 ppf->Release();
                 psl->Release();
@@ -311,7 +311,7 @@ bool GetStartOnSystemStartup()
 bool SetStartOnSystemStartup(bool fAutoStart)
 {
     if (!fAutoStart)
-        remove(GetAutostartFilePath());
+        filesystem::remove(GetAutostartFilePath());
     else
     {
         char pszExePath[MAX_PATH+1];
@@ -319,7 +319,7 @@ bool SetStartOnSystemStartup(bool fAutoStart)
         if (readlink("/proc/self/exe", pszExePath, sizeof(pszExePath)-1) == -1)
             return false;
 
-        create_directories(GetAutostartDir());
+        filesystem::create_directories(GetAutostartDir());
 
         std::ofstream optionFile(GetAutostartFilePath(),
             std::ios_base::out | std::ios_base::trunc);

@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_UTIL_MACRO_HEADER_H
 
 
-//Use this in the header file to keep dependencies clean
+/* Use this in the header file to keep dependencies clean */
 #define SERIALIZE_HEADER \
     uint32_t GetSerializeSize(int nSerType, int nSerVersion) const;   \
     template<typename Stream>                                       \

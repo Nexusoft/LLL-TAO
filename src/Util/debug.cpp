@@ -35,18 +35,20 @@ ________________________________________________________________________________
 
 static FILE* fileout = NULL;
 static Mutex_t DEBUG_MUTEX;
+
+
 int OutputDebugStringF(const char* pszFormat, ...)
 {
     LOCK(DEBUG_MUTEX);
 
-    // print to console
+    /* print to console */
     int ret = 0;
     va_list arg_ptr;
     va_start(arg_ptr, pszFormat);
     ret = vprintf(pszFormat, arg_ptr);
     va_end(arg_ptr);
 
-    // print to debug.log
+    /* print to debug.log */
     if (!fileout)
     {
         std::string pathDebug = GetDataDir() + "debug.log";
@@ -65,7 +67,7 @@ int OutputDebugStringF(const char* pszFormat, ...)
 #ifdef WIN32
     if (fPrintToDebugger)
     {
-        // accumulate a line at a time
+        /* accumulate a line at a time */
         {
             static char pszBuffer[50000];
             static char* pend;
@@ -111,10 +113,10 @@ int OutputDebugStringF(const char* pszFormat, ...)
     return ret;
 }
 
-// Safer snprintf
-//  - prints up to limit-1 characters
-//  - output string is always null terminated even if limit reached
-//  - return value is the number of characters actually printed
+/* Safer snprintf
+    - prints up to limit-1 characters
+    - output string is always null terminated even if limit reached
+    - return value is the number of characters actually printed */
 int my_snprintf(char* buffer, size_t limit, const char* format, ...)
 {
     if (limit == 0)
@@ -262,12 +264,12 @@ int GetFilesize(FILE* file)
 
 void ShrinkDebugFile()
 {
-    // Scroll debug.log if it's getting too big
+    /* Scroll debug.log if it's getting too big */
     std::string pathLog = GetDataDir() + "\\debug.log";
     FILE* file = fopen(pathLog.c_str(), "r");
     if (file && GetFilesize(file) > 10 * 1000000)
     {
-        // Restart the file with some of the end
+        /* Restart the file with some of the end */
         char pch[200000];
         fseek(file, -sizeof(pch), SEEK_END);
         int nBytes = fread(pch, 1, sizeof(pch), file);
