@@ -16,18 +16,11 @@ ________________________________________________________________________________
 
 #define PAIRTYPE(t1, t2)    std::pair<t1, t2> // This is needed because the foreach macro can't get over the comma in pair<t1, t2>
 
-#define loop                for (;;)
 #define ARRAYLEN(array)     (sizeof(array)/sizeof((array)[0]))
 
 #include <inttypes.h>
-
 #include <thread>
 #include <chrono>
-
-
-/* Thread Type for easy reference. */
-typedef std::thread                                        Thread_t;
-
 
 /* The location of the unified time seed. To enable a Unified Time System push data to this variable. */
 static int UNIFIED_AVERAGE_OFFSET = 0;

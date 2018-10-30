@@ -63,7 +63,7 @@ namespace LLD
         uint64_t TransactionID;
 
         /** Only let one operation happen on the transaction at one time. **/
-        Mutex_t TX_MUTEX;
+        std::recursive_mutex TX_MUTEX;
 
         /** New Data to be Added. **/
         std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapTransactions;

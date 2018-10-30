@@ -39,7 +39,7 @@ namespace LLD
     protected:
 
         /** Mutex for Thread Synchronization. **/
-        mutable Mutex_t KEY_MUTEX;
+        mutable std::recursive_mutex KEY_MUTEX;
 
 
         /** The string to hold the database location. **/
@@ -78,8 +78,8 @@ namespace LLD
         mutable TemplateLRU<uint32_t, std::vector<uint8_t>>* diskCache;
 
 
-        /** The cache writer thread. **/
-        Thread_t CacheThread;
+        /* The cache writer thread. */
+        std::thread CacheThread;
 
 
     public:

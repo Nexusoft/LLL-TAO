@@ -38,7 +38,7 @@ namespace LLP
 
 
         /* Data Thread. */
-        Thread_t DATA_THREAD;
+        std::thread DATA_THREAD;
 
 
         DataThread<ProtocolType>(uint32_t id, bool isDDOS, uint32_t rScore, uint32_t cScore, uint32_t nTimeout, bool fMeter = false) :

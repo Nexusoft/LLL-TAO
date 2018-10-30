@@ -114,11 +114,10 @@ namespace LLP
     private:
 
         /* Basic Socket Handle Variables. */
-        //Listener_t  LISTENER;
-        Thread_t    LISTEN_THREAD;
-        Thread_t    METER_THREAD;
-        Mutex_t     DDOS_MUTEX;
-        int         hListenSocket;
+        std::thread          LISTEN_THREAD;
+        std::thread          METER_THREAD;
+        std::recursive_mutex DDOS_MUTEX;
+        int                  hListenSocket;
 
 
         /* Determine the thread with the least amount of active connections.

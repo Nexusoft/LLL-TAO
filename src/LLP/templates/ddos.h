@@ -42,7 +42,7 @@ namespace LLP
         std::vector< std::pair<bool, int> > SCORE;
         Timer TIMER;
         int nIterator;
-        Mutex_t MUTEX;
+        std::recursive_mutex MUTEX;
 
 
         /** Reset the Timer and the Score Flags to be Overwritten. **/
@@ -140,7 +140,7 @@ namespace LLP
     public:
         DDOS_Score rSCORE, cSCORE;
         DDOS_Filter(uint32_t nTimespan) : BANTIME(0), TOTALBANS(0), rSCORE(nTimespan), cSCORE(nTimespan) { }
-        Mutex_t MUTEX;
+        std::recursive_mutex MUTEX;
 
         /** Ban a Connection, and Flush its Scores. **/
         void Ban(std::string strViolation = "SCORE THRESHOLD")

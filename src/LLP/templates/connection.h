@@ -37,9 +37,9 @@ namespace LLP
     protected:
 
         /* Basic Connection Variables. */
-        Timer         TIMER;
-        Socket_t      SOCKET;
-        Mutex_t       MUTEX;
+        Timer                TIMER;
+        Socket_t            SOCKET;
+        std::recursive_mutex MUTEX;
 
 
         /*  Pure Virtual Event Function to be Overridden allowing Custom Read Events.

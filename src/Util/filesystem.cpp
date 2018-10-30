@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <Util/include/filesystem.h>
 
-#ifdef WIN32 //GetFullPathNameW
+#ifdef WIN32 //TODO: use GetFullPathNameW in system_complete if getcwd not supported
 
 #else
 #include <sys/stat.h>
@@ -24,12 +24,15 @@ ________________________________________________________________________________
 #include <errno.h>
 #include <string.h>
 
+#ifndef MAX_PATH
 #define MAX_PATH 256
+#endif
 
 extern int errno;
 
 namespace filesystem
 {
+    /* Removes a file or folder from the specified path. */
     bool remove(const std::string &path)
     {
         if(exists(path) == false)
@@ -41,6 +44,7 @@ namespace filesystem
         return false;
     }
 
+    /* Determines if the file or folder from the specified path exists. */
     bool exists(const std::string &path)
     {
         if(access(path.c_str(), F_OK) != -1)
@@ -49,9 +53,11 @@ namespace filesystem
         return false;
     }
 
+    /* Determines if the specified path is a folder. */
     bool is_directory(const std::string &path)
     {
         struct stat statbuf;
+
         if(stat(path.c_str(), &statbuf) != 0)
             return false;
 
@@ -61,26 +67,10 @@ namespace filesystem
         return false;
     }
 
-    bool create_directory(const std::string &path)
-    {
-        if(exists(path)) //if the directory exists, don't attempt to create it
-            return true;
-
-          /* set directory with read/write/search permissions for owner/group/other */
-        mode_t m = S_IRWXU | S_IRWXG | S_IRWXO;
-        int status = mkdir(path.c_str(), m);
-
-        if(status < 0)
-        {
-            printf("Failed to create directory: %s\nReason: %s\n", path.c_str(), strerror(errno));
-            return false;
-        }
-        return true;
-    }
-
+    /*  Recursively create directories along the path if they don't exist. */
     bool create_directories(const std::string &path)
     {
-        for(std::string::const_iterator it = path.begin(); it != path.end(); ++it)
+        for(auto it = path.begin(); it != path.end(); ++it)
         {
             if(*it == '/' && it != path.begin())
             {
@@ -91,6 +81,27 @@ namespace filesystem
         return true;
     }
 
+    /* Create a single directory at the path if it doesn't already exist. */
+    bool create_directory(const std::string &path)
+    {
+        if(exists(path)) //if the directory exists, don't attempt to create it
+            return true;
+
+          /* set directory with read/write/search permissions for
+             owner/group/other */
+        mode_t m = S_IRWXU | S_IRWXG | S_IRWXO;
+        int status = mkdir(path.c_str(), m);
+
+        if(status < 0)
+        {
+            printf("Failed to create directory: %s\nReason: %s\n",
+                path.c_str(), strerror(errno));
+            return false;
+        }
+        return true;
+    }
+
+    /* Obtain the system complete path from a given relative path. */
     std::string system_complete(const std::string &path)
     {
         char buffer[MAX_PATH] = {0};
@@ -104,7 +115,7 @@ namespace filesystem
         abs_path += "/";
     #endif
         abs_path += path;
-        
+
         return abs_path;
     }
 

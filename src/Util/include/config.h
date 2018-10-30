@@ -29,7 +29,8 @@ typedef int pid_t; /* define for windows compatiblity */
 
 
 /* Read the Config file from the Disk. */
-void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet, std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet);
+void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
+    std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet);
 
 
 /* Setup PID file for Linux users. */
