@@ -109,7 +109,7 @@ std::string GetDefaultDataDir(std::string strName)
         pathRet = pszHome;
 #ifdef MAC_OSX
     // Mac
-    pathRet.append("Library/Application Support");
+    pathRet.append("/Library/Application Support");
     filesystem::create_directories(pathRet);
     pathRet.append("/" + strName + "/");
 #else

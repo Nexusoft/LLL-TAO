@@ -104,7 +104,7 @@ namespace filesystem
         abs_path += "/";
     #endif
         abs_path += path;
-
+        
         return abs_path;
     }
 
