@@ -104,7 +104,10 @@ int main(int argc, char** argv)
 
     TAO::Ledger::Transaction tx;
     tx.hashGenesis = LLC::GetRand256();
+    uint512_t rand = LLC::GetRand512();
+    //tx << rand << rand << rand << rand << rand << rand << rand << rand;
     uint512_t hash = tx.GetHash();
+    uint512_t base = tx.GetHash();
     //tx.print();
 
     test->Write(hash, tx);
@@ -117,6 +120,7 @@ int main(int argc, char** argv)
     //return 0;
 
     uint32_t wps = 0;
+    uint32_t total = 0;
     while(!fShutdown)
     {
         hash = hash + 1;
@@ -136,15 +140,22 @@ int main(int argc, char** argv)
 
         if(nCounter % 100000 == 0)
         {
-            //if(test->Read(hash, tx))
-            //    tx.print();
-            
+            timer.Stop();
 
             nAverage++;
             uint32_t nTimer = timer.ElapsedMilliseconds();
             wps += (100000.0 / nTimer);
 
             printf("100k records written in %u ms WPS = %uk / s\n", nTimer, wps / nAverage);
+
+            timer.Reset();
+            for(int i = 0; i < 100000; i++)
+                test->Read(base + i, tx);
+
+            timer.Stop();
+
+            printf("100k records read in %u ms\n", timer.ElapsedMilliseconds());
+
             timer.Reset();
 
             //Sleep(1000);

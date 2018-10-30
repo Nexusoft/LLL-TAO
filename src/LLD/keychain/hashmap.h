@@ -84,13 +84,13 @@ namespace LLD
 
     public:
 
-        BinaryHashMap() : HASHMAP_TOTAL_BUCKETS(256 * 256 * 12), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 15), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>()), diskCache(new TemplateLRU<uint32_t, std::vector<uint8_t>>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
+        BinaryHashMap() : HASHMAP_TOTAL_BUCKETS(256 * 256 * 24), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>()), diskCache(new TemplateLRU<uint32_t, std::vector<uint8_t>>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
         }
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(std::string strBaseLocationIn) : strBaseLocation(strBaseLocationIn), HASHMAP_TOTAL_BUCKETS(256 * 256 * 12), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 15), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>()), diskCache(new TemplateLRU<uint32_t, std::vector<uint8_t>>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
+        BinaryHashMap(std::string strBaseLocationIn) : strBaseLocation(strBaseLocationIn), HASHMAP_TOTAL_BUCKETS(256 * 256 * 24), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>()), diskCache(new TemplateLRU<uint32_t, std::vector<uint8_t>>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
 
@@ -235,7 +235,7 @@ namespace LLD
                 pstream->read((char*) &vBucket[0], vBucket.size());
 
                 /* Check if this bucket has the key */
-                if(std::equal(vBucket.begin() + 15, vBucket.begin() + 15 + vKey.size(), vKey.begin()))
+                if(std::equal(vBucket.begin() + 11, vBucket.begin() + 11 + vKey.size(), vKey.begin()))
                 {
                     /* Deserialie key and return if found. */
                     DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
