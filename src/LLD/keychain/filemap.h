@@ -15,7 +15,6 @@ ________________________________________________________________________________
 #define NEXUS_LLD_TEMPLATES_FILEMAP_H
 
 #include <LLD/templates/key.h>
-#include <Util/include/filesystem.h>
 
 namespace LLD
 {
@@ -151,7 +150,7 @@ namespace LLD
             LOCK(KEY_MUTEX);
 
             /* Create directories if they don't exist yet. */
-            if(create_directories(strBaseLocation))
+            //if(boost::filesystem::create_directories(strBaseLocation))
                 printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
 
             /* Stats variable for collective keychain size. */

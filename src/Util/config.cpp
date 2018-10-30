@@ -48,7 +48,7 @@ void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
             // interpret nofoo=1 as foo=0 (and nofoo=0 as foo=1) as long as foo not set
             InterpretNegativeSetting(strKey, mapSettingsRet);
         }
-        
+
         mapMultiSettingsRet[strKey].push_back(strVal);
     }
     streamConfig.close();
@@ -101,7 +101,7 @@ std::string GetDefaultDataDir(std::string strName)
     pathRet = MyGetSpecialFolderPath(CSIDL_APPDATA, true);
     pathRet.append("\\" + strName + "\\");
 #else
-    std::string pathRet;    
+    std::string pathRet;
     char* pszHome = getenv("HOME");
     if (pszHome == NULL || strlen(pszHome) == 0)
         pathRet = "/";
@@ -110,7 +110,7 @@ std::string GetDefaultDataDir(std::string strName)
 #ifdef MAC_OSX
     // Mac
     pathRet.append("Library/Application Support");
-    create_directories(pathRet);
+    filesystem::create_directories(pathRet);
     pathRet.append("/" + strName + "/");
 #else
     // Unix
@@ -160,23 +160,23 @@ std::string GetDataDir(bool fNetSpecific)
 
     LOCK(csPathCached);
 
-    if (mapArgs.count("-datadir")) 
+    if (mapArgs.count("-datadir"))
     {
-        path = system_complete(mapArgs["-datadir"]);        
+        path = filesystem::system_complete(mapArgs["-datadir"]);
 
-        if(is_directory(path) == false)
+        if(filesystem::is_directory(path) == false)
         {
             path = "";
             return path;
         }
-    } 
-    else 
+    }
+    else
         path = GetDefaultDataDir();
 
     if (fNetSpecific && GetBoolArg("-testnet", false))
         path.append("testnet/");
 
-    create_directories(path);
+    filesystem::create_directories(path);
 
     cachedPath[fNetSpecific]=true;
     return path;
@@ -186,7 +186,7 @@ std::string GetDataDir(bool fNetSpecific)
 #ifdef WIN32
 std::string static StartupShortcutPath()
 {
-    std::string str = MyGetSpecialFolderPath(CSIDL_STARTUP, true); 
+    std::string str = MyGetSpecialFolderPath(CSIDL_STARTUP, true);
     return str.append("\\nexus.lnk");
 }
 
@@ -262,7 +262,7 @@ std::string static GetAutostartDir()
     std::string autostart_dir;
 
     char* pszHome = getenv("XDG_CONFIG_HOME");
-    if (pszHome) 
+    if (pszHome)
     {
         autostart_dir = pszHome;
         autostart_dir.append("autostart/");
@@ -273,7 +273,7 @@ std::string static GetAutostartDir()
         if (pszHome)
         {
             autostart_dir = pszHome;
-            autostart_dir.append(".config/autostart/"); 
+            autostart_dir.append(".config/autostart/");
         }
     }
 
@@ -292,7 +292,7 @@ bool GetStartOnSystemStartup()
     std::ifstream optionFile(GetAutostartFilePath());
     if (!optionFile.good())
         return false;
-    
+
     // Scan through file for "Hidden=true":
     std::string line;
     while (!optionFile.eof())
@@ -321,7 +321,7 @@ bool SetStartOnSystemStartup(bool fAutoStart)
 
         create_directories(GetAutostartDir());
 
-        std::ofstream optionFile(GetAutostartFilePath(), 
+        std::ofstream optionFile(GetAutostartFilePath(),
             std::ios_base::out | std::ios_base::trunc);
 
         if (!optionFile.good())

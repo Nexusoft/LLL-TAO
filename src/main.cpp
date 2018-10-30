@@ -62,7 +62,7 @@ int main(int argc, char** argv)
 
 
     /* Create directories if they don't exist yet. */
-    if(create_directory(GetDataDir(false)))
+    if(filesystem::create_directory(GetDataDir(false)))
         printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, GetDataDir(false).c_str());
 
 
@@ -85,13 +85,6 @@ int main(int argc, char** argv)
             //exit(ret);
         }
     }
-
-<<<<<<< HEAD
-    //LLD::MemCachePool* cachePool = new LLD::MemCachePool(1024 * 1024 * 2048);
-=======
-
-    //LLD::MemCachePool* cachePool = new LLD::MemCachePool(1024 * 1024 * 2048);=
->>>>>>> ledger
 
     TestDB* test = new TestDB();
 
@@ -123,7 +116,6 @@ int main(int argc, char** argv)
 
     //return 0;
 
-    /*
     uint32_t wps = 0;
     while(!fShutdown)
     {

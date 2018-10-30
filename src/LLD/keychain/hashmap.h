@@ -135,12 +135,12 @@ namespace LLD
         void Initialize()
         {
             /* Create directories if they don't exist yet. */
-            if(boost::filesystem::create_directories(strBaseLocation))
+            if(filesystem::create_directories(strBaseLocation))
                 printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
 
             /* Build the hashmap indexes. */
             std::string index = strprintf("%s_hashmap.index", strBaseLocation.c_str());
-            if(!boost::filesystem::exists(index))
+            if(!filesystem::exists(index))
             {
                 /* Generate empty space for new file. */
                 std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * 4, 0);
@@ -175,7 +175,7 @@ namespace LLD
 
             /* Build the first hashmap index file if it doesn't exist. */
             std::string file = strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), 0u).c_str();
-            if(!boost::filesystem::exists(file))
+            if(!filesystem::exists(file))
             {
                 /* Build a vector with empty bytes to flush to disk. */
                 std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * HASHMAP_KEY_ALLOCATION, 0);
@@ -257,7 +257,7 @@ namespace LLD
 
             /* Create a new disk hashmap object in linked list if it doesn't exist. */
             std::string file = strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), hashmap[nBucket]);
-            if(!boost::filesystem::exists(file))
+            if(!filesystem::exists(file))
             {
                 /* Blank vector to write empty space in new disk file. */
                 std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * HASHMAP_KEY_ALLOCATION, 0);

@@ -16,16 +16,67 @@ ________________________________________________________________________________
 
 #include <string>
 
-bool remove(const std::string &path);
+namespace filesystem
+{
 
-bool exists(const std::string &path);
+    /** Remove
+     *
+     *  @param[in] path The path to remove.
+     *
+     *  @return true if path was deleted
+     *
+     **/
+    bool remove(const std::string &path);
 
-bool is_directory(const std::string &path);
 
-bool create_directories(const std::string &path);
+    /** Exists
+     *
+     *  @param[in] path The path to check
+     *
+     *  @return true if path exists
+     *
+     **/
+    bool exists(const std::string &path);
 
-bool create_directory(const std::string &path);
 
-std::string system_complete(const std::string &path);
+    /** is_directory
+     *
+     *  @param[in] path The path to check
+     *
+     *  @return true if path is a directory
+     *
+     **/
+    bool is_directory(const std::string &path);
 
+
+    /** create_directories
+     *
+     *  @param[in] path The path to generate recrusively
+     *
+     *  @return true if path was created
+     *
+     **/
+    bool create_directories(const std::string &path);
+
+
+    /** create_directory
+     *
+     *  @param[in] path The path to create
+     *
+     *  @return true if path was created
+     *
+     **/
+    bool create_directory(const std::string &path);
+
+
+    /** system_complete
+     *
+     *  @param[in] path The path to append to
+     *
+     *  @return the system complete path from root directory
+     *
+     **/
+    std::string system_complete(const std::string &path);
+    
+}
 #endif

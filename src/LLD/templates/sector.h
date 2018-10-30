@@ -137,7 +137,7 @@ namespace LLD
 
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(std::string strNameIn, const char* pszMode="r+") : strName(strNameIn), strBaseLocation(GetDataDir().string() + "/" + strNameIn + "/datachain/"), cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE)), nBytesRead(0), nBytesWrote(0), nCurrentFile(0), nCurrentFileSize(0), CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this)), MeterThread(std::bind(&SectorDatabase::Meter, this)), nBufferBytes(0)
+        SectorDatabase(std::string strNameIn, const char* pszMode="r+") : strName(strNameIn), strBaseLocation(GetDataDir() + "/" + strNameIn + "/datachain/"), cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE)), nBytesRead(0), nBytesWrote(0), nCurrentFile(0), nCurrentFileSize(0), CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this)), MeterThread(std::bind(&SectorDatabase::Meter, this)), nBufferBytes(0)
         {
             if(GetBoolArg("-runtime", false))
                 runtime.Start();
@@ -146,7 +146,7 @@ namespace LLD
             fReadOnly = (!strchr(pszMode, '+') && !strchr(pszMode, 'w'));
 
             /* Initialize the Keys Class. */
-            SectorKeys = new KeychainType((GetDataDir().string() + "/" + strName + "/keychain/"));
+            SectorKeys = new KeychainType((GetDataDir() + "/" + strName + "/keychain/"));
 
             /* Initialize the Database. */
             Initialize();
@@ -171,7 +171,7 @@ namespace LLD
         void Initialize()
         {
             /* Create directories if they don't exist yet. */
-            if(create_directories(strBaseLocation))
+            if(filesystem::create_directories(strBaseLocation))
                 printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
 
             /* Find the most recent append file. */
