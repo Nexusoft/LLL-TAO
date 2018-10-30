@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_DATA_H
 #define NEXUS_LLP_TEMPLATES_DATA_H
 
-#include "types.h"
+#include <LLP/templates/types.h>
 
 namespace LLP
 {
@@ -42,7 +42,7 @@ namespace LLP
 
 
         DataThread<ProtocolType>(uint32_t id, bool isDDOS, uint32_t rScore, uint32_t cScore, uint32_t nTimeout, bool fMeter = false) :
-            fDDOS(isDDOS), fMETER(fMeter), nConnections(0), ID(id), REQUESTS(0), TIMEOUT(nTimeout),  DDOS_rSCORE(rScore), DDOS_cSCORE(cScore), CONNECTIONS(0), DATA_THREAD(boost::bind(&DataThread::Thread, this)) { }
+            fDDOS(isDDOS), fMETER(fMeter), nConnections(0), ID(id), REQUESTS(0), TIMEOUT(nTimeout),  DDOS_rSCORE(rScore), DDOS_cSCORE(cScore), CONNECTIONS(0), DATA_THREAD(std::bind(&DataThread::Thread, this)) { }
 
 
         virtual ~DataThread<ProtocolType>() { fMETER  = false; }
@@ -90,8 +90,6 @@ namespace LLP
 
             if(!CONNECTIONS[nSlot]->Connect(strAddress, nPort))
             {
-                printf("Socket Failure %s\n", strAddress.c_str());
-
                 delete CONNECTIONS[nSlot];
                 CONNECTIONS[nSlot] = NULL;
 
@@ -102,8 +100,6 @@ namespace LLP
                 DDOS -> cSCORE += 1;
 
             CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
-            CONNECTIONS[nSlot]->fCONNECTED = true;
-
             nConnections ++;
 
             return true;
@@ -111,7 +107,7 @@ namespace LLP
 
         /* Removes given connection from current Data Thread.
             Happens with a timeout / error, graceful close, or disconnect command. */
-        void RemoveConnection(int index)
+        void Remove(int index)
         {
             CONNECTIONS[index]->Disconnect();
 
@@ -129,41 +125,40 @@ namespace LLP
             while(!fShutdown)
             {
                 /* Keep data threads at 1000 FPS Maximum. */
-                Sleep(1);
+                if(CONNECTIONS.size() == 0)
+                    Sleep(10);
 
                 /* Check all connections for data and packets. */
                 int nSize = CONNECTIONS.size();
                 for(int nIndex = 0; nIndex < nSize; nIndex++)
                 {
-                    Sleep(1);
-
                     try
                     {
+                        //TODO: Cleanup threads and sleeps. Make more efficient to reduce total CPU cycles
+                        Sleep(1);
 
                         /* Skip over Inactive Connections. */
-                        if(!CONNECTIONS[nIndex])
+                        if(!CONNECTIONS[nIndex] || !CONNECTIONS[nIndex]->Connected())
                             continue;
 
-                        /* Skip over Connection if not Connected. */
-                        if(!CONNECTIONS[nIndex]->Connected())
-                            continue;
-
-                        /* Remove Connection if it has Timed out or had any Errors. */
-                        if(CONNECTIONS[nIndex]->Timeout(TIMEOUT))
-                        {
-                            CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_TIMEOUT);
-
-                            RemoveConnection(nIndex);
-
-                            continue;
-                        }
 
                         /* Remove Connection if it has Timed out or had any Errors. */
                         if(CONNECTIONS[nIndex]->Errors())
                         {
                             CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_ERRORS);
 
-                            RemoveConnection(nIndex);
+                            Remove(nIndex);
+
+                            continue;
+                        }
+
+
+                        /* Remove Connection if it has Timed out or had any Errors. */
+                        if(CONNECTIONS[nIndex]->Timeout(TIMEOUT))
+                        {
+                            CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_TIMEOUT);
+
+                            Remove(nIndex);
 
                             continue;
                         }
@@ -181,7 +176,7 @@ namespace LLP
                             {
                                 CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_DDOS);
 
-                                RemoveConnection(nIndex);
+                                Remove(nIndex);
 
                                 continue;
                             }
@@ -191,24 +186,26 @@ namespace LLP
                         /* Generic event for Connection. */
                         CONNECTIONS[nIndex]->Event(EVENT_GENERIC);
 
+
                         /* Work on Reading a Packet. **/
                         CONNECTIONS[nIndex]->ReadPacket();
+
 
                         /* If a Packet was received successfully, increment request count [and DDOS count if enabled]. */
                         if(CONNECTIONS[nIndex]->PacketComplete())
                         {
 
                             /* Packet Process return value of False will flag Data Thread to Disconnect. */
-                            if(!CONNECTIONS[nIndex] -> ProcessPacket())
+                            if(!CONNECTIONS[nIndex]->ProcessPacket())
                             {
                                 CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_FORCE);
 
-                                RemoveConnection(nIndex);
+                                Remove(nIndex);
 
                                 continue;
                             }
 
-                            CONNECTIONS[nIndex] -> ResetPacket();
+                            CONNECTIONS[nIndex]->ResetPacket();
 
                             if(fMETER)
                                 REQUESTS++;
@@ -224,7 +221,7 @@ namespace LLP
 
                         CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_ERRORS);
 
-                        RemoveConnection(nIndex);
+                        Remove(nIndex);
                     }
                 }
             }

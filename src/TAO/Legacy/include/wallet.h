@@ -57,7 +57,7 @@ namespace Wallet
 
         IMPLEMENT_SERIALIZE
         (
-            if (!(nType & SER_GETHASH))
+            if (!(nSerType & SER_GETHASH))
                 READWRITE(nVersion);
             READWRITE(nTime);
             READWRITE(vchPubKey);
@@ -128,9 +128,9 @@ namespace Wallet
         // Generate a new key
         std::vector<uint8_t> GenerateNewKey();
         // Adds a key to the store, and saves it to disk.
-        bool AddKey(const CKey& key);
+        bool AddKey(const ECKey& key);
         // Adds a key to the store, without saving it to disk (used by LoadWallet)
-        bool LoadKey(const CKey& key) { return CCryptoKeyStore::AddKey(key); }
+        bool LoadKey(const ECKey& key) { return CCryptoKeyStore::AddKey(key); }
 
         bool LoadMinVersion(int nVersion) { nWalletVersion = nVersion; nWalletMaxVersion = std::max(nWalletMaxVersion, nVersion); return true; }
 
@@ -200,7 +200,7 @@ namespace Wallet
         }
         bool IsMine(const Core::CTransaction& tx) const
         {
-            BOOST_FOREACH(const Core::CTxOut& txout, tx.vout)
+            for(const Core::CTxOut& txout : tx.vout)
                 if (IsMine(txout))
                     return true;
             return false;
@@ -212,7 +212,7 @@ namespace Wallet
         int64_t GetDebit(const Core::CTransaction& tx) const
         {
             int64_t nDebit = 0;
-            BOOST_FOREACH(const Core::CTxIn& txin, tx.vin)
+            for(const Core::CTxIn& txin : tx.vin)
             {
                 nDebit += GetDebit(txin);
                 if (!Core::MoneyRange(nDebit))
@@ -223,7 +223,7 @@ namespace Wallet
         int64_t GetCredit(const Core::CTransaction& tx) const
         {
             int64_t nCredit = 0;
-            BOOST_FOREACH(const Core::CTxOut& txout, tx.vout)
+            for(const Core::CTxOut& txout : tx.vout)
             {
                 nCredit += GetCredit(txout);
                 if (!Core::MoneyRange(nCredit))
@@ -234,7 +234,7 @@ namespace Wallet
         int64_t GetChange(const Core::CTransaction& tx) const
         {
             int64_t nChange = 0;
-            BOOST_FOREACH(const Core::CTxOut& txout, tx.vout)
+            for(const Core::CTxOut& txout : tx.vout)
             {
                 nChange += GetChange(txout);
                 if (!Core::MoneyRange(nChange))
@@ -400,7 +400,7 @@ namespace Wallet
                 pthis->mapValue["fromaccount"] = pthis->strFromAccount;
 
                 std::string str;
-                BOOST_FOREACH(char f, vfSpent)
+                for(char f : vfSpent)
                 {
                     str += (f ? '1' : '0');
                     if (f)
@@ -409,7 +409,7 @@ namespace Wallet
                 pthis->mapValue["spent"] = str;
             }
 
-            nSerSize += SerReadWrite(s, *(CMerkleTx*)this, nType, nVersion,ser_action);
+            nSerSize += SerReadWrite(s, *(CMerkleTx*)this, nSerType, nVersion,ser_action);
             READWRITE(vtxPrev);
             READWRITE(mapValue);
             READWRITE(vOrderForm);
@@ -423,7 +423,7 @@ namespace Wallet
                 pthis->strFromAccount = pthis->mapValue["fromaccount"];
 
                 if (mapValue.count("spent"))
-                    BOOST_FOREACH(char c, pthis->mapValue["spent"])
+                    for(char c : pthis->mapValue["spent"])
                         pthis->vfSpent.push_back(c != '0');
                 else
                     pthis->vfSpent.assign(vout.size(), fSpent);
@@ -605,11 +605,11 @@ namespace Wallet
 
                 if (mapPrev.empty())
                 {
-                    BOOST_FOREACH(const Core::CMerkleTx& tx, vtxPrev)
+                    for(const Core::CMerkleTx& tx : vtxPrev)
                         mapPrev[tx.GetHash()] = &tx;
                 }
 
-                BOOST_FOREACH(const Core::CTxIn& txin, ptx->vin)
+                for(const Core::CTxIn& txin : ptx->vin)
                 {
                     if (!mapPrev.count(txin.prevout.hash))
                         return false;
@@ -653,7 +653,7 @@ namespace Wallet
 
         IMPLEMENT_SERIALIZE
         (
-            if (!(nType & SER_GETHASH))
+            if (!(nSerType & SER_GETHASH))
                 READWRITE(nVersion);
             READWRITE(vchPrivKey);
             READWRITE(nTimeCreated);
@@ -715,7 +715,7 @@ namespace Wallet
 
         IMPLEMENT_SERIALIZE
         (
-            if (!(nType & SER_GETHASH))
+            if (!(nSerType & SER_GETHASH))
                 READWRITE(nVersion);
             READWRITE(vchPubKey);
         )
@@ -751,7 +751,7 @@ namespace Wallet
 
         IMPLEMENT_SERIALIZE
         (
-            if (!(nType & SER_GETHASH))
+            if (!(nSerType & SER_GETHASH))
                 READWRITE(nVersion);
             // Note: strAccount is serialized as part of the key, not here.
             READWRITE(nCreditDebit);

@@ -11,48 +11,54 @@
 
 ____________________________________________________________________________________________*/
 
-#include "include/args.h"
-#include "include/config.h"
-#include "include/mutex.h"
-
-#include <boost/program_options/detail/config_file.hpp>
-#include <boost/program_options/parsers.hpp>
-
-#include <boost/filesystem/fstream.hpp>
+#include <Util/include/args.h>
+#include <Util/include/config.h>
+#include <Util/include/mutex.h>
+#include <Util/include/filesystem.h>
+#include <fstream>
+#include <cstring> //for strlen
 
 /* Read the Config file from the Disk. */
 void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
                     std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet)
 {
-    namespace fs = boost::filesystem;
-    namespace pod = boost::program_options::detail;
-
-    fs::ifstream streamConfig(GetConfigFile());
-    if (!streamConfig.good())
+    std::ifstream streamConfig(GetConfigFile());
+    if(!streamConfig.is_open())
         return; // No nexus.conf file is OK
 
-    std::set<std::string> setOptions;
-    setOptions.insert("*");
+    std::string line;
 
-    for (pod::config_file_iterator it(streamConfig, setOptions), end; it != end; ++it)
+    while(!streamConfig.eof())
     {
-        // Don't overwrite existing settings so command line settings override bitcoin.conf
-        std::string strKey = std::string("-") + it->string_key;
-        if (mapSettingsRet.count(strKey) == 0)
+        std::getline(streamConfig, line);
+
+        if(streamConfig.eof())
+            break;
+
+        size_t i = line.find('=');
+        if(i == std::string::npos)
+            continue;
+
+        std::string strKey = std::string("-") + std::string(line, 0, i);
+        std::string strVal = std::string(line, i + 1, line.size() - i - 1);
+
+        if(mapSettingsRet.count(strKey) == 0)
         {
-            mapSettingsRet[strKey] = it->value[0];
-            //  interpret nofoo=1 as foo=0 (and nofoo=0 as foo=1) as long as foo not set)
+            mapSettingsRet[strKey] = strVal;
+            // interpret nofoo=1 as foo=0 (and nofoo=0 as foo=1) as long as foo not set
             InterpretNegativeSetting(strKey, mapSettingsRet);
         }
-        mapMultiSettingsRet[strKey].push_back(it->value[0]);
+        
+        mapMultiSettingsRet[strKey].push_back(strVal);
     }
+    streamConfig.close();
 }
 
 
 /* Setup PID file for Linux users. */
-void CreatePidFile(const boost::filesystem::path &path, pid_t pid)
+void CreatePidFile(const std::string &path, pid_t pid)
 {
-    FILE* file = fopen(path.string().c_str(), "w");
+    FILE* file = fopen(path.c_str(), "w");
     if (file)
     {
         fprintf(file, "%d\n", pid);
@@ -62,91 +68,90 @@ void CreatePidFile(const boost::filesystem::path &path, pid_t pid)
 
 
 #ifdef WIN32
-boost::filesystem::path MyGetSpecialFolderPath(int nFolder, bool fCreate)
+std::string MyGetSpecialFolderPath(int nFolder, bool fCreate)
 {
-    namespace fs = boost::filesystem;
-
     char pszPath[MAX_PATH] = "";
+    std::string p;
+
     if(SHGetSpecialFolderPathA(NULL, pszPath, nFolder, fCreate))
-    {
-        return fs::path(pszPath);
-    }
+        p = pszPath;
     else if (nFolder == CSIDL_STARTUP)
     {
-        return fs::path(getenv("USERPROFILE")) / "Start Menu" / "Programs" / "Startup";
+        p = getenv("USERPROFILE");
+        p.append("\\Start Menu");
+        p.append("\\Programs");
+        p.append("\\Startup");
     }
     else if (nFolder == CSIDL_APPDATA)
-    {
-        return fs::path(getenv("APPDATA"));
-    }
-    return fs::path("");
+        p = getenv("APPDATA");
+
+    return p;
 }
 #endif
 
 
 /* Get the default directory Nexus data is stored in. */
-boost::filesystem::path GetDefaultDataDir(std::string strName)
+std::string GetDefaultDataDir(std::string strName)
 {
-    namespace fs = boost::filesystem;
-
     // Windows: C:\Documents and Settings\username\Application Data\Nexus
     // Mac: ~/Library/Application Support/Nexus
     // Unix: ~/.Nexus
 #ifdef WIN32
     // Windows
-    return MyGetSpecialFolderPath(CSIDL_APPDATA, true) / strName;
+    pathRet = MyGetSpecialFolderPath(CSIDL_APPDATA, true);
+    pathRet.append("\\" + strName + "\\");
 #else
-    fs::path pathRet;
+    std::string pathRet;    
     char* pszHome = getenv("HOME");
     if (pszHome == NULL || strlen(pszHome) == 0)
-        pathRet = fs::path("/");
+        pathRet = "/";
     else
-        pathRet = fs::path(pszHome);
+        pathRet = pszHome;
 #ifdef MAC_OSX
     // Mac
-    pathRet /= "Library/Application Support";
-    fs::create_directory(pathRet);
-    return pathRet / strName;
+    pathRet.append("Library/Application Support");
+    create_directories(pathRet);
+    pathRet.append("/" + strName + "/");
 #else
     // Unix
-    return pathRet / ("." + strName);
+    pathRet.append("/." + strName + "/");
 #endif
+
+    return pathRet;
 #endif
 }
 
 
 /* Get the Location of the Config File. */
-boost::filesystem::path GetConfigFile()
+std::string GetConfigFile()
 {
-    namespace fs = boost::filesystem;
+    std::string pathConfigFile(GetDataDir(false));
 
-    fs::path pathConfigFile(GetArg("-conf", "nexus.conf"));
-    if (!pathConfigFile.is_complete()) pathConfigFile = GetDataDir(false) / pathConfigFile;
+    pathConfigFile.append(GetArg("-conf", "nexus.conf"));
+
     return pathConfigFile;
 }
 
 
 /* Get the Location of the PID File. */
-boost::filesystem::path GetPidFile()
+std::string GetPidFile()
 {
-    namespace fs = boost::filesystem;
+    std::string pathPidFile(GetDataDir());
 
-    fs::path pathPidFile(GetArg("-pid", "nexus.pid"));
-    if (!pathPidFile.is_complete()) pathPidFile = GetDataDir() / pathPidFile;
+    pathPidFile.append(GetArg("-pid", "nexus.pid"));
+
     return pathPidFile;
 }
 
 
 /* Get the location that Nexus data is being stored in. */
-const boost::filesystem::path &GetDataDir(bool fNetSpecific)
+std::string GetDataDir(bool fNetSpecific)
 {
-    namespace fs = boost::filesystem;
-
-    static fs::path pathCached[2];
+    static std::string pathCached[2];
     static Mutex_t csPathCached;
     static bool cachedPath[2] = {false, false};
 
-    fs::path &path = pathCached[fNetSpecific];
+    std::string &path = pathCached[fNetSpecific];
 
     // This can be called during exceptions by printf, so we cache the
     // value so we don't have to do memory allocations after that.
@@ -155,19 +160,23 @@ const boost::filesystem::path &GetDataDir(bool fNetSpecific)
 
     LOCK(csPathCached);
 
-    if (mapArgs.count("-datadir")) {
-        path = fs::system_complete(mapArgs["-datadir"]);
-        if (!fs::is_directory(path)) {
+    if (mapArgs.count("-datadir")) 
+    {
+        path = system_complete(mapArgs["-datadir"]);        
+
+        if(is_directory(path) == false)
+        {
             path = "";
             return path;
         }
-    } else {
+    } 
+    else 
         path = GetDefaultDataDir();
-    }
-    if (fNetSpecific && GetBoolArg("-testnet", false))
-        path /= "testnet";
 
-    fs::create_directories(path);
+    if (fNetSpecific && GetBoolArg("-testnet", false))
+        path.append("testnet/");
+
+    create_directories(path);
 
     cachedPath[fNetSpecific]=true;
     return path;
@@ -175,22 +184,23 @@ const boost::filesystem::path &GetDataDir(bool fNetSpecific)
 
 
 #ifdef WIN32
-boost::filesystem::path static StartupShortcutPath()
+std::string static StartupShortcutPath()
 {
-    return MyGetSpecialFolderPath(CSIDL_STARTUP, true) / "nexus.lnk";
+    std::string str = MyGetSpecialFolderPath(CSIDL_STARTUP, true); 
+    return str.append("\\nexus.lnk");
 }
 
 
 bool GetStartOnSystemStartup()
 {
-    return filesystem::exists(StartupShortcutPath());
+    return exists(StartupShortcutPath());
 }
 
 
 bool SetStartOnSystemStartup(bool fAutoStart)
 {
     // If the shortcut exists already, remove it for updating
-    boost::filesystem::remove(StartupShortcutPath());
+    remove(StartupShortcutPath());
 
     if (fAutoStart)
     {
@@ -220,13 +230,12 @@ bool SetStartOnSystemStartup(bool fAutoStart)
             // Query IShellLink for the IPersistFile interface for
             // saving the shortcut in persistent storage.
             IPersistFile* ppf = NULL;
-            hres = psl->QueryInterface(IID_IPersistFile,
-                                    reinterpret_cast<void**>(&ppf));
+            hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast<void**>(&ppf));
             if (SUCCEEDED(hres))
             {
                 WCHAR pwsz[MAX_PATH];
                 // Ensure that the string is ANSI.
-                MultiByteToWideChar(CP_ACP, 0, StartupShortcutPath().string().c_str(), -1, pwsz, MAX_PATH);
+                MultiByteToWideChar(CP_ACP, 0, StartupShortcutPath().c_str(), -1, pwsz, MAX_PATH);
                 // Save the link by calling IPersistFile::Save.
                 hres = ppf->Save(pwsz, TRUE);
                 ppf->Release();
@@ -248,36 +257,49 @@ bool SetStartOnSystemStartup(bool fAutoStart)
 //  http://standards.freedesktop.org/autostart-spec/autostart-spec-latest.html
 
 
-boost::filesystem::path static GetAutostartDir()
+std::string static GetAutostartDir()
 {
-    namespace fs = boost::filesystem;
+    std::string autostart_dir;
 
-    char* pszConfigHome = getenv("XDG_CONFIG_HOME");
-    if (pszConfigHome) return fs::path(pszConfigHome) / "autostart";
-    char* pszHome = getenv("HOME");
-    if (pszHome) return fs::path(pszHome) / ".config" / "autostart";
-    return fs::path();
+    char* pszHome = getenv("XDG_CONFIG_HOME");
+    if (pszHome) 
+    {
+        autostart_dir = pszHome;
+        autostart_dir.append("autostart/");
+    }
+    else
+    {
+        pszHome = getenv("HOME");
+        if (pszHome)
+        {
+            autostart_dir = pszHome;
+            autostart_dir.append(".config/autostart/"); 
+        }
+    }
+
+    return autostart_dir;
 }
 
 
-boost::filesystem::path static GetAutostartFilePath()
+std::string static GetAutostartFilePath()
 {
-    return GetAutostartDir() / "nexus.desktop";
+    return GetAutostartDir().append("nexus.desktop");
 }
 
 
 bool GetStartOnSystemStartup()
 {
-    boost::filesystem::ifstream optionFile(GetAutostartFilePath());
+    std::ifstream optionFile(GetAutostartFilePath());
     if (!optionFile.good())
         return false;
+    
     // Scan through file for "Hidden=true":
-    string line;
+    std::string line;
     while (!optionFile.eof())
     {
-        getline(optionFile, line);
-        if (line.find("Hidden") != string::npos &&
-            line.find("true") != string::npos)
+        std::getline(optionFile, line);
+        if (line.find("Hidden") != std::string::npos &&
+            line.find("true") != std::string::npos)
             return false;
     }
     optionFile.close();
@@ -289,7 +311,7 @@ bool GetStartOnSystemStartup()
 bool SetStartOnSystemStartup(bool fAutoStart)
 {
     if (!fAutoStart)
-        boost::filesystem::remove(GetAutostartFilePath());
+        remove(GetAutostartFilePath());
     else
     {
         char pszExePath[MAX_PATH+1];
@@ -297,9 +319,11 @@ bool SetStartOnSystemStartup(bool fAutoStart)
         if (readlink("/proc/self/exe", pszExePath, sizeof(pszExePath)-1) == -1)
             return false;
 
-        boost::filesystem::create_directories(GetAutostartDir());
+        create_directories(GetAutostartDir());
 
-        boost::filesystem::ofstream optionFile(GetAutostartFilePath(), ios_base::out|ios_base::trunc);
+        std::ofstream optionFile(GetAutostartFilePath(), 
+            std::ios_base::out | std::ios_base::trunc);
+
         if (!optionFile.good())
             return false;
 

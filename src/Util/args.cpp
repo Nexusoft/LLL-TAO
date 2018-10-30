@@ -11,12 +11,10 @@
 
 ____________________________________________________________________________________________*/
 
-#include "include/args.h"
-#include "include/convert.h"
-#include "include/runtime.h"
-#include "include/strlcpy.h"
-
-#include <boost/foreach.hpp>
+#include <Util/include/args.h>
+#include <Util/include/convert.h>
+#include <Util/include/runtime.h>
+#include <Util/include/strlcpy.h>
 
 std::map<std::string, std::string> mapArgs;
 std::map<std::string, std::vector<std::string> > mapMultiArgs;

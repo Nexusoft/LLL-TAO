@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <cstddef>
 
-#include "include/enum.h"
+#include <TAO/Legacy/types/enum.h>
 
 namespace Legacy
 {

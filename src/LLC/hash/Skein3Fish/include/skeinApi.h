@@ -79,7 +79,7 @@ OTHER DEALINGS IN THE SOFTWARE.
  */
 
 #include <skein.h>
-#include <stdint.h>
+#include <cstdint>
 
 #ifdef __cplusplus
 extern "C"

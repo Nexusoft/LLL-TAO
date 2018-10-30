@@ -14,14 +14,14 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLC_HASH_SK_H
 #define NEXUS_LLC_HASH_SK_H
 
-#include "../types/uint1024.h"
-#include "SK/skein.h"
+#include <LLC/types/uint1024.h>
+#include <LLC/hash/SK/skein.h>
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
-#include "SK/KeccakHash.h"
+#include <LLC/hash/SK/KeccakHash.h>
 
 #if defined(__cplusplus)
 }
@@ -33,13 +33,8 @@ namespace LLC
 
 	static uint8_t pblank[1];
 
-
-	/* Hashing Template to Serialize Object into a 512-bit hash **/
-	template<typename T> uint512_t SerializeHash(const T& obj);
-
-
     /* Hashing template for Checksums */
-	inline uint32_t SK32(const std::vector<uint8_t>& vch)
+	inline uint32_t SK32(const std::vector<uint8_t> vch)
 	{
 		uint32_t skein;
 		Skein_256_Ctxt_t ctx;

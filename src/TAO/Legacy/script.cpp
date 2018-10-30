@@ -11,11 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
-#include <boost/foreach.hpp>
-#include <boost/tuple/tuple.hpp>
+#include <tuple>
 
 using namespace std;
-using namespace boost;
 
 #include "script.h"
 #include "key.h"
@@ -951,13 +949,12 @@ namespace Legacy
     {
     private:
         // sigdata_type is (signature hash, signature, public key):
-        typedef boost::tuple<uint256_t, std::vector<uint8_t>, std::vector<uint8_t> > sigdata_type;
+        typedef std::tuple<uint256_t, std::vector<uint8_t>, std::vector<uint8_t> > sigdata_type;
         std::set< sigdata_type> setValid;
         CCriticalSection cs_sigcache;
 
     public:
-        bool
-        Get(uint256_t hash, const std::vector<uint8_t>& vchSig, const std::vector<uint8_t>& pubKey)
+        bool Get(uint256_t hash, const std::vector<uint8_t>& vchSig, const std::vector<uint8_t>& pubKey)
         {
             LOCK(cs_sigcache);
 
@@ -968,8 +965,7 @@ namespace Legacy
             return false;
         }
 
-        void
-        Set(uint256_t hash, const std::vector<uint8_t>& vchSig, const std::vector<uint8_t>& pubKey)
+        void Set(uint256_t hash, const std::vector<uint8_t>& vchSig, const std::vector<uint8_t>& pubKey)
         {
             // DoS prevention: limit cache size to less than 10MB
             // (~200 bytes per cache entry times 50,000 entries)
@@ -1019,7 +1015,7 @@ namespace Legacy
         if (signatureCache.Get(sighash, vchSig, vchPubKey))
             return true;
 
-        CKey key;
+        ECKey key;
         if (!key.SetPubKey(vchPubKey))
             return false;
 
@@ -1069,7 +1065,7 @@ namespace Legacy
 
         // Scan templates
         const CScript& script1 = scriptPubKey;
-        BOOST_FOREACH(const PAIRTYPE(TransactionType, CScript)& tplate, mTemplates)
+        for(const PAIRTYPE(TransactionType, CScript)& tplate : mTemplates)
         {
             const CScript& script2 = tplate.second;
             vSolutionsRet.clear();
@@ -1154,7 +1150,7 @@ namespace Legacy
 
     bool Sign1(const NexusAddress& address, const CKeyStore& keystore, uint256_t hash, int nHashType, CScript& scriptSigRet)
     {
-        CKey key;
+        ECKey key;
         if (!keystore.GetKey(address, key))
             return false;
 
@@ -1274,7 +1270,7 @@ namespace Legacy
     uint32_t HaveKeys(const vector<std::vector<uint8_t> >& pubkeys, const CKeyStore& keystore)
     {
         uint32_t nResult = 0;
-        BOOST_FOREACH(const std::vector<uint8_t>& pubkey, pubkeys)
+        for(const std::vector<uint8_t>& pubkey : pubkeys)
         {
             NexusAddress address;
             address.SetPubKey(pubkey);
@@ -1548,12 +1544,12 @@ namespace Legacy
             *this << OP_DUP << OP_HASH256 << address.GetHash256() << OP_EQUALVERIFY << OP_CHECKSIG;
     }
 
-    void CScript::SetMultisig(int nRequired, const std::vector<CKey>& keys)
+    void CScript::SetMultisig(int nRequired, const std::vector<ECKey>& keys)
     {
         this->clear();
 
         *this << EncodeOP_N(nRequired);
-        BOOST_FOREACH(const CKey& key, keys)
+        for(const ECKey& key : keys)
             *this << key.GetPubKey();
         *this << EncodeOP_N(keys.size()) << OP_CHECKMULTISIG;
     }

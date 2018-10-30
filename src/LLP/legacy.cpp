@@ -12,32 +12,19 @@
 ____________________________________________________________________________________________*/
 
 
-#include "include/hosts.h"
-#include "include/legacy.h"
-#include "include/inv.h"
+#include <LLC/include/random.h>
 
-#include "../LLC/include/random.h"
+#include <LLP/include/hosts.h>
+#include <LLP/include/inv.h>
+#include <LLP/include/legacy.h>
+#include <LLP/templates/events.h>
 
-#include "../Util/include/args.h"
-#include "../Util/include/hex.h"
-#include "../Util/include/runtime.h"
+#include <Util/include/args.h>
+#include <Util/include/hex.h>
+#include <Util/include/debug.h>
+#include <Util/include/runtime.h>
 
-#include "../LLD/templates/sector.h"
-#include "../LLD/templates/filemap.h"
-
-class TestDB : public LLD::SectorDatabase<LLD::BinaryFileMap>
-{
-public:
-    TestDB(const char* pszMode="r+", const char* pszName = "regdb") : SectorDatabase(pszName, pszMode) {}
-
-    bool WriteSample(uint32_t nRequest, uint64_t nSample)
-    {
-        return Write(nRequest, nSample);
-    }
-};
-
-//TestDB* test = new TestDB("r+", "db1");
-//TestDB* test2 = new TestDB("r+", "db2");
+#include <TAO/Ledger/types/transaction.h>
 
 namespace LLP
 {
@@ -61,7 +48,7 @@ namespace LLP
         uint32_t nBestHeight = 0; //TODO: Chain State Parameters (Ledger Layer)
 
         /* Push the Message to receiving node. */
-        PushMessage("version", PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,
+        PushMessage("version", LLP::PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,
                     nSessionID, strProtocolName, nBestHeight); //Core::nBestHeight);
     }
 
@@ -131,8 +118,10 @@ namespace LLP
         if(EVENT == EVENT_GENERIC)
         {
 
-            if(nLastPing + 1 < UnifiedTimestamp()) {
-                for(int i = 0; i < GetArg("-pings", 1); i++)
+            if(nLastPing + 1 < UnifiedTimestamp())
+            {
+
+                for(int i = 0; i < GetArg("-ping", 1); i++)
                 {
                     RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
 
@@ -142,12 +131,6 @@ namespace LLP
                     mapLatencyTracker[nSessionID].Start();
 
                     PushMessage("ping", nSessionID);
-
-                    unsigned int nRequestID;
-                    RAND_bytes((uint8_t*)&nRequestID, sizeof(nRequestID));
-
-                    mapSentRequests.emplace(nRequestID, UnifiedTimestamp(true));
-                    PushMessage("getoffset", nRequestID, UnifiedTimestamp(true));
                 }
             }
 
@@ -223,8 +206,6 @@ namespace LLP
             uint64_t nTimestamp;
             ssMessage >> nTimestamp;
 
-            //test.WriteSample(nRequestID, nTimestamp);
-
             /* Log into the sent requests Map. */
             mapSentRequests[nRequestID] = UnifiedTimestamp(true);
 
@@ -250,14 +231,13 @@ namespace LLP
             uint64_t nTimestamp;
             ssMessage >> nTimestamp;
 
-            //test2.WriteSample(nRequestID, nTimestamp);
-
             /* Handle the Request ID's. */
             //uint32_t nLatencyTime = (Core::UnifiedTimestamp(true) - nTimestamp);
 
 
             /* Ignore Messages Recieved that weren't Requested. */
-            if(!mapSentRequests.count(nRequestID)) {
+            if(!mapSentRequests.count(nRequestID))
+            {
                 DDOS->rSCORE += 5;
 
                 if(GetArg("-verbose", 0) >= 3)
@@ -268,7 +248,8 @@ namespace LLP
 
 
             /* Reject Samples that are recieved 30 seconds after last check on this node. */
-            if(UnifiedTimestamp(true) - mapSentRequests[nRequestID] > 30000) {
+            if(UnifiedTimestamp(true) - mapSentRequests[nRequestID] > 30000)
+            {
                 mapSentRequests.erase(nRequestID);
 
                 if(GetArg("-verbose", 0) >= 3)
@@ -311,6 +292,15 @@ namespace LLP
         }
 
 
+        else if(INCOMING.GetMessage() == "tritium")
+        {
+            TAO::Ledger::Transaction tx;
+            ssMessage >> tx;
+
+            tx.print();
+        }
+
+
         /* Push a block into the Node's Recieved Blocks Queue. */
         else if (INCOMING.GetMessage() == "block")
         {
@@ -346,7 +336,6 @@ namespace LLP
             /* Calculate the Average Latency of the Connection. */
             uint32_t nLatency = mapLatencyTracker[nonce].ElapsedMilliseconds();
             mapLatencyTracker.erase(nonce);
-
 
             /* Debug Level 3: output Node Latencies. */
             if(GetArg("-verbose", 0) >= 3)
@@ -411,7 +400,8 @@ namespace LLP
             ssMessage >> vAddr;
 
             /* Don't want addr from older versions unless seeding */
-            if (vAddr.size() > 2000){
+            if (vAddr.size() > 2000)
+            {
                 DDOS->rSCORE += 20;
 
                 return error("***** Node message addr size() = %d... Dropping Connection", vAddr.size());
@@ -507,5 +497,4 @@ namespace LLP
 
         return true;
     }
-
 }

@@ -25,7 +25,7 @@ namespace Core
 
 	
 	/* Returns the value of a full minutes reward per channel */
-	int64_t GetSubsidy(int nMinutes, int nType) { return (((decay[nType][0] * exp(decay[nType][1] * nMinutes)) + decay[nType][2]) * (COIN / 2.0)); }
+	int64_t GetSubsidy(int nMinutes, int nSerType) { return (((decay[nSerType][0] * exp(decay[nSerType][1] * nMinutes)) + decay[nSerType][2]) * (COIN / 2.0)); }
 	
 
 	/* Compound the subsidy from a start point to an interval point. */
@@ -35,8 +35,8 @@ namespace Core
 		nInterval += nMinutes;
 		
 		for(int nMinute = nMinutes; nMinute < nInterval; nMinute++)
-			for(int nType = 0; nType < 3; nType++)
-				nMoneySupply += (GetSubsidy(nMinute, nType) * 2);
+			for(int nSerType = 0; nSerType < 3; nSerType++)
+				nMoneySupply += (GetSubsidy(nMinute, nSerType) * 2);
 				
 		return nMoneySupply;
 	}
@@ -47,8 +47,8 @@ namespace Core
     {
 		int64_t nMoneySupply = 0;
 		for(int nMinute = 1; nMinute <= nMinutes; nMinute++)
-			for(int nType = (nTypes == 3 ? 0 : nTypes); nType < (nTypes == 3 ? 4 : nTypes + 1); nType++) //nTypes == 3 designates all channels, nTypes == 0, 1, 2 equals miner, ambassador, and developers
-				nMoneySupply += (GetSubsidy(nMinute, nType) * 2);
+			for(int nSerType = (nTypes == 3 ? 0 : nTypes); nSerType < (nTypes == 3 ? 4 : nTypes + 1); nSerType++) //nTypes == 3 designates all channels, nTypes == 0, 1, 2 equals miner, ambassador, and developers
+				nMoneySupply += (GetSubsidy(nMinute, nSerType) * 2);
 				
 		return nMoneySupply;
 	}
@@ -66,27 +66,27 @@ namespace Core
 	
 	
 	/* Returns the Time Based value of the Block which is a Fraction of Time's worth of Full Minutes Subsidy. */
-    int64_t GetFractionalSubsidy(int nMinutes, int nType, double nFraction)
+    int64_t GetFractionalSubsidy(int nMinutes, int nSerType, double nFraction)
 	{
 		int nInterval = floor(nFraction);
 		double nRemainder   = nFraction - nInterval;
 		
 		int64_t nSubsidy = 0;
 		for(int nMinute = 0; nMinute < nInterval; nMinute++)
-			nSubsidy += GetSubsidy(nMinutes + nMinute, nType);
+			nSubsidy += GetSubsidy(nMinutes + nMinute, nSerType);
 
-		return nSubsidy + (GetSubsidy(nMinutes + nInterval, nType) * nRemainder);
+		return nSubsidy + (GetSubsidy(nMinutes + nInterval, nSerType) * nRemainder);
 	}
 
 
 	/* Releases Nexus into Blockchain for Miners to Create. */
-	int64_t ReleaseRewards(int nTimespan, int nStart, int nType)
+	int64_t ReleaseRewards(int nTimespan, int nStart, int nSerType)
 	{
 		int64_t nSubsidy = 0;
 		for(int nMinutes = nStart; nMinutes < (nStart + nTimespan); nMinutes++)
-			nSubsidy += GetSubsidy(nMinutes, nType);
+			nSubsidy += GetSubsidy(nMinutes, nSerType);
 		
-		//printf("Reserve %i: %f Nexus | Timespan: %i - %i Minutes\n", nType, (double)nSubsidy / COIN, nStart, (nStart + nTimespan));
+		//printf("Reserve %i: %f Nexus | Timespan: %i - %i Minutes\n", nSerType, (double)nSubsidy / COIN, nStart, (nStart + nTimespan));
 		return nSubsidy;
 	}
 	
@@ -102,7 +102,7 @@ namespace Core
     
     
     /* Returns the Coinbase Reward Generated for Block Timespan */
-    int64_t CBlkPool::GetCoinbaseReward(const CBlock blk, int nChannel, int nType)
+    int64_t CBlkPool::GetCoinbaseReward(const CBlock blk, int nChannel, int nSerType)
     {
         const CBlockState blkFirst = GetLastBlock(blk.GetHash(), nChannel);
         if(!blkFirst.hashPrevBlock == 0)
@@ -110,7 +110,7 @@ namespace Core
         
         const CBlockState blkLast = GetLastBlock(blkFirst.GetHash(), nChannel);
         if(!blkLast.hashPrevBlock == 0)
-            return GetSubsidy(1, nType);
+            return GetSubsidy(1, nSerType);
         
         
         int64_t nBlockTime = max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64_t) 1 );
@@ -122,33 +122,33 @@ namespace Core
         {
             
             /* For Block Version 3: Release 3 Minute Reward decayed at Channel Height when Reserves are above 20 Minute Supply. */
-            if(blkFirst.nReleasedReserve[nType] > GetFractionalSubsidy(blkFirst.nChannelHeight, nType, 20.0))
-                return GetFractionalSubsidy(blkFirst.nChannelHeight, nType, 3.0);
+            if(blkFirst.nReleasedReserve[nSerType] > GetFractionalSubsidy(blkFirst.nChannelHeight, nSerType, 20.0))
+                return GetFractionalSubsidy(blkFirst.nChannelHeight, nSerType, 3.0);
             
             
             /* Otherwise release 2.5 Minute Reward decayed at Chain Age when Reserves are above 4 Minute Supply. */
-            else if(blkFirst.nReleasedReserve[nType] > GetFractionalSubsidy(nMinutes, nType, 4.0))
-                return GetFractionalSubsidy(nMinutes, nType, 2.5);
+            else if(blkFirst.nReleasedReserve[nSerType] > GetFractionalSubsidy(nMinutes, nSerType, 4.0))
+                return GetFractionalSubsidy(nMinutes, nSerType, 2.5);
             
         }
         
         /* Block Version 1 Coinbase Tx Calculations: Release 2.5 minute reward if supply is behind 4 minutes */
-        else if(blkFirst.nReleasedReserve[nType] > GetFractionalSubsidy(nMinutes, nType, 4.0))
-            return GetFractionalSubsidy(nMinutes, nType, 2.5);
+        else if(blkFirst.nReleasedReserve[nSerType] > GetFractionalSubsidy(nMinutes, nSerType, 4.0))
+            return GetFractionalSubsidy(nMinutes, nSerType, 2.5);
         
         
         double nFraction = min(nBlockTime / 60.0, 2.5);
         
         //TODO: DEPRECATE AND TEST
-        if(blkFirst.nReleasedReserve[nType] == 0 && ReleaseAvailable(blk, nChannel))
-            return GetFractionalSubsidy(nMinutes, nType, nFraction);
+        if(blkFirst.nReleasedReserve[nSerType] == 0 && ReleaseAvailable(blk, nChannel))
+            return GetFractionalSubsidy(nMinutes, nSerType, nFraction);
         
-        return min(GetFractionalSubsidy(nMinutes, nType, nFraction), blkFirst.nReleasedReserve[nType]);
+        return min(GetFractionalSubsidy(nMinutes, nSerType, nFraction), blkFirst.nReleasedReserve[nSerType]);
     }
 	
 
 	/* Calculates the release of new rewards based on the Network Time */
-    int64_t CBlkPool::GetReleasedReserve(const CBlockState blk, int nChannel, int nType)
+    int64_t CBlkPool::GetReleasedReserve(const CBlockState blk, int nChannel, int nSerType)
 	{
         const CBlockState blkFirst = GetLastBlock(blk.GetHash(), nChannel);
         if(!blkFirst.hashPrevBlock == 0)
@@ -156,14 +156,14 @@ namespace Core
         
         const CBlockState blkLast = GetLastBlock(blkFirst.GetHash(), nChannel);
         if(!blkLast.hashPrevBlock == 0)
-            return ReleaseRewards(nMinutes + 5, 1, nType);
+            return ReleaseRewards(nMinutes + 5, 1, nSerType);
 			
 		/* Only allow rewards to be released one time per minute */
 		int nLastMinutes = GetChainAge(blkLast.GetBlockTime());
 		if(nMinutes == nLastMinutes)
 			return 0;
 		
-		return ReleaseRewards((nMinutes - nLastMinutes), nLastMinutes, nType);
+		return ReleaseRewards((nMinutes - nLastMinutes), nLastMinutes, nSerType);
 	}
 	
 	

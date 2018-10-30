@@ -16,10 +16,10 @@ ________________________________________________________________________________
 
 #include <limits.h>
 #include <stdio.h>
-#include <string.h>
+#include <cstring>
 #include <string>
 #include <vector>
-#include <stdint.h>
+#include <cstdint>
 
 /** Base class without constructors for uint256_t, uint512_t, uint576_t, uint1024_t.
 * This makes the compiler let u use it in a union.
@@ -385,22 +385,22 @@ public:
         return pn[2*n] | (uint64_t)pn[2*n+1] << 32;
     }
 
-//    uint32_t GetSerializeSize(int nType=0, int nVersion=PROTOCOL_VERSION) const
-    uint32_t GetSerializeSize(int nType, int nVersion) const
+//    uint32_t GetSerializeSize(int nSerType=0, int nVersion=LLP::PROTOCOL_VERSION) const
+    uint32_t GetSerializeSize(int nSerType, int nVersion) const
     {
         return sizeof(pn);
     }
 
     template<typename Stream>
-//    void Serialize(Stream& s, int nType=0, int nVersion=PROTOCOL_VERSION) const
-    void Serialize(Stream& s, int nType, int nVersion) const
+//    void Serialize(Stream& s, int nSerType=0, int nVersion=LLP::PROTOCOL_VERSION) const
+    void Serialize(Stream& s, int nSerType, int nVersion) const
     {
         s.write((char*)pn, sizeof(pn));
     }
 
     template<typename Stream>
-//    void Unserialize(Stream& s, int nType=0, int nVersion=PROTOCOL_VERSION)
-    void Unserialize(Stream& s, int nType, int nVersion)
+//    void Unserialize(Stream& s, int nSerType=0, int nVersion=LLP::PROTOCOL_VERSION)
+    void Unserialize(Stream& s, int nSerType, int nVersion)
     {
         s.read((char*)pn, sizeof(pn));
     }

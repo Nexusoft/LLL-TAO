@@ -36,11 +36,13 @@ namespace LLP
     }
 
 
-    /* Checks if the socket is in a valid state */
-    bool Socket::IsValid()
+    /* Returns the error of socket if any */
+    int Socket::Error()
     {
-        return !(nSocket == INVALID_SOCKET ||
-                 nSocket == SOCKET_ERROR);
+        if (nError == WSAEWOULDBLOCK || nError == WSAEMSGSIZE || nError == WSAEINTR || nError == WSAEINPROGRESS)
+            return 0;
+
+        return nError;
     }
 
 
@@ -54,19 +56,7 @@ namespace LLP
         if (nSocket == INVALID_SOCKET)
             return false;
 
-        /* Set sockets to non-blocking. */
-    #ifdef WIN32
-        u_long fNonblock = 1;
-        if (ioctlsocket(nSocket, FIONBIO, &fNonblock) == SOCKET_ERROR)
-    #else
-        int fFlags = fcntl(nSocket, F_GETFL, 0);
-        if (fcntl(nSocket, F_SETFL, fFlags | O_NONBLOCK) == -1)
-    #endif
-        {
-            close(nSocket);
-            return false;
-        }
-
+        /* Set the socket address from the CService. */
         struct sockaddr_in sockaddr;
         addrDest.GetSockAddr(&sockaddr);
 
@@ -144,16 +134,6 @@ namespace LLP
             }
         }
 
-            // Set to nonblocking
-        #ifdef WIN32
-                u_long nOne = 1;
-                if (ioctlsocket(nSocket, FIONBIO, &nOne) == SOCKET_ERROR)
-                    return error("ConnectSocket() : ioctlsocket nonblocking setting failed, error %d\n", GetLastError());
-        #else
-                if (fcntl(nSocket, F_SETFL, O_NONBLOCK) == SOCKET_ERROR)
-                    return error("ConnectSocket() : fcntl nonblocking setting failed, error %d\n", errno);
-        #endif
-
         return true;
     }
 
@@ -172,12 +152,9 @@ namespace LLP
     }
 
 
-    /* Clear resources associated with socket and return to invalid state */
-    void Socket::Disconnect()
+    /* Clear resources associated with socket and return to invalid state. */
+    void Socket::Close()
     {
-        if(!IsValid())
-            return;
-
         close(nSocket);
         nSocket = INVALID_SOCKET;
     }
@@ -190,20 +167,15 @@ namespace LLP
         int nRead = recv(nSocket, pchBuf, nBytes, MSG_DONTWAIT);
         if (nRead < 0)
         {
-            // error
-            int nErr = GetLastError();
-            if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
-            {
-                printf("socket recv error %d %s\n", nErr, strerror(nErr));
+            nError = GetLastError();
+            if(GetArg("-verbose", 0) >= 2)
+                printf("xxxxx Node Read Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
 
-                Disconnect();
-            }
-
-            return -1;
+            return nError;
         }
 
         if(nRead > 0)
-            memcpy(&vData[0], pchBuf, nRead);
+            std::copy(&pchBuf[0], &pchBuf[0] + nRead, vData.begin());
 
         return nRead;
     }
@@ -212,24 +184,18 @@ namespace LLP
     /* Write data into the socket buffer non-blocking */
     int Socket::Write(std::vector<uint8_t> vData, size_t nBytes)
     {
-        if(nBytes > 10)
-            nBytes = 10;
         char pchBuf[nBytes];
-        memcpy(pchBuf, &vData[0], nBytes);
-
-        int nSent = send(nSocket, pchBuf, nBytes, MSG_NOSIGNAL | MSG_DONTWAIT);
+        std::copy(&vData[0], &vData[0] + nBytes, &pchBuf[0]);
 
         /* If there were any errors, handle them gracefully. */
+        int nSent = send(nSocket, pchBuf, nBytes, MSG_NOSIGNAL | MSG_DONTWAIT );
         if(nSent < 0)
         {
-            // error
-            int nErr = GetLastError();
-            if (nErr != WSAEWOULDBLOCK && nErr != WSAEMSGSIZE && nErr != WSAEINTR && nErr != WSAEINPROGRESS)
-                Disconnect();
+            nError = GetLastError();
+            if(GetArg("-verbose", 0) >= 2)
+                printf("xxxxx Node Write Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
 
-            printf("socket send error %d %s\n", nErr, strerror(nErr));
-
-            return -1;
+            return nError;
         }
 
         /* If not all data was sent non-blocking, recurse until it is complete. */

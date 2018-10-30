@@ -1,12 +1,12 @@
 /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
-            
+
             (c) Copyright The Nexus Developers 2014 - 2018
-            
+
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
-            
+
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
@@ -53,6 +53,13 @@ ________________________________________________________________________________
 #define ANSI_COLOR_FUNCTION ANSI_COLOR_BRIGHT_WHITE
 
 #define FUNCTION ANSI_COLOR_FUNCTION "%s" ANSI_COLOR_RESET " : "
+
+#define NODE ANSI_COLOR_FUNCTION "Node" ANSI_COLOR_RESET " : "
+
+//Support for Windoze
+#ifndef __PRETTY_FUNCTION__
+#define __PRETTY_FUNCTION__ __FUNCTION__
+#endif
 
 int OutputDebugStringF(const char* pszFormat, ...);
 

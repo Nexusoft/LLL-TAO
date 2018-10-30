@@ -14,8 +14,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_SERVER_H
 #define NEXUS_LLP_TEMPLATES_SERVER_H
 
-#include "data.h"
-#include "../include/permissions.h"
+#include <functional>
+
+#include <LLP/templates/data.h>
+#include <LLP/include/permissions.h>
 
 namespace LLP
 {
@@ -37,7 +39,7 @@ namespace LLP
 
 
         Server<ProtocolType>(int nPort, int nMaxThreads, int nTimeout = 30, bool isDDOS = false, int cScore = 0, int rScore = 0, int nTimespan = 60, bool fListen = true, bool fMeter = false) :
-            fDDOS(isDDOS), fLISTEN(fListen), fMETER(fMeter), PORT(nPort), MAX_THREADS(nMaxThreads), DDOS_TIMESPAN(nTimespan), DATA_THREADS(0), LISTEN_THREAD(boost::bind(&Server::ListeningThread, this)), METER_THREAD(boost::bind(&Server::MeterThread, this))
+            fDDOS(isDDOS), fLISTEN(fListen), fMETER(fMeter), PORT(nPort), MAX_THREADS(nMaxThreads), DDOS_TIMESPAN(nTimespan), DATA_THREADS(0), LISTEN_THREAD(std::bind(&Server::ListeningThread, this)), METER_THREAD(std::bind(&Server::MeterThread, this))
         {
             for(int index = 0; index < MAX_THREADS; index++)
                 DATA_THREADS.push_back(new DataThread<ProtocolType>(index, fDDOS, rScore, cScore, nTimeout, fMeter));
@@ -182,7 +184,7 @@ namespace LLP
                         /* DDOS Operations: Only executed when DDOS is enabled. */
                         if((fDDOS && DDOS_MAP[(CService)addr]->Banned()))
                         {
-                            printf("***** LLP Server: Connection Request %s refused... Banned.", addr.ToString().c_str());
+                            printf(NODE "Connection Request %s refused... Banned.", addr.ToString().c_str());
                             close(hSocket);
 
                             continue;
@@ -193,7 +195,7 @@ namespace LLP
                         int nThread = FindThread();
                         DATA_THREADS[nThread]->AddConnection(sockNew, DDOS_MAP[(CService)addr]);
 
-                        printf("***** LLP Server: Accepted Connection %s on port %u\n", addr.ToString().c_str(), PORT);
+                        printf(NODE "Accepted Connection %s on port %u\n", addr.ToString().c_str(), PORT);
                     }
                 }
             }
@@ -237,18 +239,6 @@ namespace LLP
             #endif
 
 
-            #ifdef WIN32
-                // Set to nonblocking, incoming connections will also inherit this
-                if (ioctlsocket(hListenSocket, FIONBIO, (u_long*)&nOne) == SOCKET_ERROR)
-            #else
-                if (fcntl(hListenSocket, F_SETFL, O_NONBLOCK) == SOCKET_ERROR)
-            #endif
-            {
-                printf("Error: Couldn't set properties on socket for incoming connections (error %d)", GetLastError());
-
-                return false;
-            }
-
             // The sockaddr_in structure specifies the address family,
             // IP address, and port for the socket that is being bound
             struct sockaddr_in sockaddr;
@@ -266,7 +256,7 @@ namespace LLP
 
                 return false;
             }
-            printf("***** LLP Server: Bound to port %d\n", ntohs(sockaddr.sin_port));
+            printf(NODE "Bound to port %d\n", ntohs(sockaddr.sin_port));
 
             // Listen for incoming connections
             if (listen(hListenSocket, SOMAXCONN) == SOCKET_ERROR)
@@ -283,6 +273,9 @@ namespace LLP
         /* LLP Meter Thread. Tracks the Requests / Second. */
         void MeterThread()
         {
+            if(!GetBoolArg("-meters", false))
+                return;
+
             Timer TIMER;
             TIMER.Start();
 

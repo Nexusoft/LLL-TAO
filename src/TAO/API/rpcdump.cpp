@@ -81,7 +81,7 @@ namespace Net
         if (Wallet::fWalletUnlockMintOnly)
             throw JSONRPCError(-102, "Wallet is unlocked for minting only.");
 
-        Wallet::CKey key;
+        Wallet::ECKey key;
         bool fCompressed;
         Wallet::CSecret secret = vchSecret.GetSecret(fCompressed);
         key.SetSecret(secret, fCompressed);
@@ -156,7 +156,7 @@ namespace Net
                     continue;
                 }
 
-                Wallet::CKey key;
+                Wallet::ECKey key;
                 bool fCompressed;
                 Wallet::CSecret secret = vchSecret.GetSecret(fCompressed);
                 key.SetSecret(secret, fCompressed);

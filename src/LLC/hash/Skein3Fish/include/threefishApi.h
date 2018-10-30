@@ -29,7 +29,7 @@
  */
 
 #include <skein.h>
-#include <stdint.h>
+#include <cstdint>
 
 #define KeyScheduleConst 0x1BD11BDAA9FC1A22L
 

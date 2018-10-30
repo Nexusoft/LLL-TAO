@@ -14,9 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_SOCKET_H
 #define NEXUS_LLP_TEMPLATES_SOCKET_H
 
-#include <string>
 #include <vector>
-#include <stdio.h>
 
 namespace LLP
 {
@@ -31,6 +29,9 @@ namespace LLP
         /** The socket file identifier. **/
         int nSocket;
 
+        /** The error codes for socket. **/
+        int nError;
+
     public:
 
         /** The address of this connection. */
@@ -38,11 +39,11 @@ namespace LLP
 
 
         /** The default constructor. **/
-        Socket() : nSocket() {}
+        Socket() : nSocket(0), nError(0) {}
 
 
         /** The socket constructor. **/
-        Socket(int nSocketIn, CAddress addrIn) : nSocket(nSocketIn), addr(addrIn) {}
+        Socket(int nSocketIn, CAddress addrIn) : nSocket(nSocketIn), nError(0), addr(addrIn) {}
 
 
         /** Constructor for Address
@@ -53,14 +54,15 @@ namespace LLP
         Socket(CService addrDest);
 
 
-        /** IsValid
+
+        /** Error
          *
-         *  Checks if the socket is in a valid state.
+         *  Returns the error of socket if any
          *
-         *  @return true if the socket is in a valid state.
+         *  @return error code of the socket
          *
          **/
-        bool IsValid();
+        int Error();
 
 
         /** Connect
@@ -85,12 +87,12 @@ namespace LLP
         int Available();
 
 
-        /** Disconnect
+        /** Close
          *
          *  Clear resources associated with socket and return to invalid state.
          *
          **/
-        void Disconnect();
+        void Close();
 
 
         /** Read
@@ -119,6 +121,10 @@ namespace LLP
         int Write(std::vector<uint8_t> vData, size_t nBytes);
 
     };
+
+    /** Type Definitions for LLP Functions **/
+    typedef Socket Socket_t;
+
 }
 
 #endif

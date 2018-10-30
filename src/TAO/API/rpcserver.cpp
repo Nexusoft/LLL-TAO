@@ -80,7 +80,7 @@ namespace Net
     int64_t AmountFromValue(const Value& value)
     {
         double dAmount = value.get_real();
-        if (dAmount <= 0.0 || dAmount > Core::MAX_TXOUT_AMOUNT)
+        if (dAmount <= 0.0 || dAmount > Core::MaxTxOut())
             throw JSONRPCError(-3, "Invalid amount");
         int64_t nAmount = roundint64(dAmount * COIN);
         if (!Core::MoneyRange(nAmount))
@@ -131,7 +131,7 @@ namespace Net
     {
         Object result;
         result.push_back(Pair("hash", block.GetHash().GetHex()));
-        result.push_back(Pair("size", (int)::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION)));
+        result.push_back(Pair("size", (int)::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION)));
         result.push_back(Pair("height", (int)blockindex->nHeight));
         result.push_back(Pair("channel", (int)block.nChannel));
         result.push_back(Pair("version", (int)block.nVersion));
@@ -550,7 +550,7 @@ namespace Net
 
         Object obj;
         obj.push_back(Pair("version",       FormatFullVersion()));
-        obj.push_back(Pair("protocolversion",(int)PROTOCOL_VERSION));
+        obj.push_back(Pair("protocolversion",(int)LLP::PROTOCOL_VERSION));
         obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
         obj.push_back(Pair("balance",       ValueFromAmount(pwalletMain->GetBalance())));
         obj.push_back(Pair("newmint",       ValueFromAmount(pwalletMain->GetNewMint())));
@@ -880,7 +880,7 @@ namespace Net
         if (!addr.IsValid())
             throw JSONRPCError(-3, "Invalid address");
 
-        Wallet::CKey key;
+        Wallet::ECKey key;
         if (!pwalletMain->GetKey(addr, key))
             throw JSONRPCError(-4, "Private key not available");
 
@@ -920,7 +920,7 @@ namespace Net
         ss << Core::strMessageMagic;
         ss << strMessage;
 
-        Wallet::CKey key;
+        Wallet::ECKey key;
         if (!key.SetCompactSignature(SK256(ss.begin(), ss.end()), vchSig))
             return false;
 
@@ -1556,7 +1556,7 @@ namespace Net
             throw runtime_error(
                 strprintf("not enough keys supplied "
                           "(got %d keys, but need at least %d to redeem)", keys.size(), nRequired));
-        std::vector<Wallet::CKey> pubkeys;
+        std::vector<Wallet::ECKey> pubkeys;
         pubkeys.resize(keys.size());
         for (uint32_t i = 0; i < keys.size(); i++)
         {
@@ -2076,7 +2076,7 @@ namespace Net
         if (!Core::GetTransaction(hash, tx, hashBlock))
             throw JSONRPCError(-5, "No information available about transaction");
 
-        CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
+        CDataStream ssTx(SER_NETWORK, LLP::PROTOCOL_VERSION);
         ssTx << tx;
         return HexStr(ssTx.begin(), ssTx.end());
     }
@@ -2091,7 +2091,7 @@ namespace Net
 
         // parse hex string from parameter
         vector<uint8_t> txData(ParseHex(params[0].get_str()));
-        CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
+        CDataStream ssData(txData, SER_NETWORK, LLP::PROTOCOL_VERSION);
         bool fCheckInputs = false;
         if (params.size() > 1)
             fCheckInputs = (params[1].get_int() != 0);
@@ -2372,7 +2372,7 @@ namespace Net
                 std::vector<uint8_t> vchPubKey;
                 pwalletMain->GetPubKey(address, vchPubKey);
                 ret.push_back(Pair("pubkey", HexStr(vchPubKey)));
-                Wallet::CKey key;
+                Wallet::ECKey key;
                 key.SetPubKey(vchPubKey);
                 ret.push_back(Pair("iscompressed", key.IsCompressed()));
             }
@@ -2571,7 +2571,7 @@ namespace Net
         if (params.size() > 0)
             strPrefix = params[0].get_str();
 
-        Wallet::CKey key;
+        Wallet::ECKey key;
         int nCount = 0;
         do
         {

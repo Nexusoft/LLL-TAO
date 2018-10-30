@@ -14,7 +14,7 @@
 **
 ************************************************************************/
 
-#include <string.h>
+#include <cstring>
 #include <skein.h>
 
 #ifndef SKEIN_USE_ASM

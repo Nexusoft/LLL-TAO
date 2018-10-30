@@ -21,12 +21,12 @@ ________________________________________________________________________________
 
 #include <inttypes.h>
 
-#include <boost/thread/thread.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <thread>
+#include <chrono>
 
 
 /* Thread Type for easy reference. */
-typedef boost::thread                                        Thread_t;
+typedef std::thread                                        Thread_t;
 
 
 /* The location of the unified time seed. To enable a Unified Time System push data to this variable. */
@@ -36,9 +36,8 @@ static int UNIFIED_AVERAGE_OFFSET = 0;
 /* Return the Current UNIX Timestamp. */
 inline int64_t Timestamp(bool fMilliseconds = false)
 {
-    return fMilliseconds ? ((boost::posix_time::ptime(boost::posix_time::microsec_clock::universal_time()) -
-            boost::posix_time::ptime(boost::gregorian::date(1970,1,1))).total_milliseconds()) : ((boost::posix_time::ptime(boost::posix_time::microsec_clock::universal_time()) -
-            boost::posix_time::ptime(boost::gregorian::date(1970,1,1))).total_seconds());
+    return fMilliseconds ?  std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() :
+                            std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
 
@@ -49,7 +48,11 @@ inline int64_t UnifiedTimestamp(bool fMilliseconds = false)
 
 
 /* Sleep for a duration in Milliseconds. */
-inline void Sleep(uint32_t nTime, bool fMicroseconds = false){ fMicroseconds ? boost::this_thread::sleep(boost::posix_time::microseconds(nTime)) : boost::this_thread::sleep(boost::posix_time::milliseconds(nTime)); }
+inline void Sleep(uint32_t nTime, bool fMicroseconds = false)
+{
+    fMicroseconds ? std::this_thread::sleep_for(std::chrono::microseconds(nTime)) :
+                    std::this_thread::sleep_for(std::chrono::milliseconds(nTime));
+}
 
 
 /* Class the tracks the duration of time elapsed in seconds or milliseconds.
@@ -57,96 +60,59 @@ inline void Sleep(uint32_t nTime, bool fMicroseconds = false){ fMicroseconds ? b
 class Timer
 {
 private:
-    boost::posix_time::ptime TIMER_START, TIMER_END;
-    bool fStopped = false;
+    std::chrono::high_resolution_clock::time_point start_time;
+    std::chrono::high_resolution_clock::time_point end_time;
+    bool fStopped;
 
 public:
-    void Start() { TIMER_START = boost::posix_time::microsec_clock::local_time(); fStopped = false; }
-    void Reset() { Start(); }
-    void Stop()  { TIMER_END = boost::posix_time::microsec_clock::local_time(); fStopped = true; }
+    Timer() : fStopped(false) {}
+
+    void Start()
+    {
+        start_time = std::chrono::high_resolution_clock::now();
+
+        fStopped = false;
+    }
+
+    void Reset()
+    {
+        Start();
+    }
+
+    void Stop()
+    {
+        end_time = std::chrono::high_resolution_clock::now();
+
+        fStopped = true;
+    }
 
     /* Return the Total Seconds Elapsed Since Timer Started. */
     uint32_t Elapsed()
     {
         if(fStopped)
-            return (TIMER_END - TIMER_START).total_seconds();
+            return std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
 
-        return (boost::posix_time::microsec_clock::local_time() - TIMER_START).total_seconds();
+        return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - start_time).count();
     }
 
     /* Return the Total Milliseconds Elapsed Since Timer Started. */
     uint32_t ElapsedMilliseconds()
     {
         if(fStopped)
-            return (TIMER_END - TIMER_START).total_milliseconds();
+            return std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
 
-        return (boost::posix_time::microsec_clock::local_time() - TIMER_START).total_milliseconds();
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count();
     }
 
     /* Return the Total Microseconds Elapsed since Time Started. */
     uint64_t ElapsedMicroseconds()
     {
         if(fStopped)
-            return (TIMER_END - TIMER_START).total_microseconds();
+            return std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
 
-        return (boost::posix_time::microsec_clock::local_time() - TIMER_START).total_microseconds();
+        return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start_time).count();
     }
 };
-
-
-
-/*
-// NOTE: It turns out we might have been able to use boost::thread
-// by using TerminateThread(boost::thread.native_handle(), 0); */
-#ifdef WIN32
-typedef HANDLE bitcoin_pthread_t;
-
-inline bitcoin_pthread_t CreateThread(void(*pfn)(void*), void* parg, bool fWantHandle=false)
-{
-    DWORD nUnused = 0;
-    HANDLE hthread =
-        CreateThread(
-            NULL,                        // default security
-            0,                           // inherit stack size from parent
-            (LPTHREAD_START_ROUTINE)pfn, // function pointer
-            parg,                        // argument
-            0,                           // creation option, start immediately
-            &nUnused);                   // thread identifier
-    if (hthread == NULL)
-    {
-        printf("Error: CreateThread() returned %d\n", GetLastError());
-        return (bitcoin_pthread_t)0;
-    }
-    if (!fWantHandle)
-    {
-        CloseHandle(hthread);
-        return (bitcoin_pthread_t)-1;
-    }
-    return hthread;
-}
-#else
-inline pthread_t CreateThread(void(*pfn)(void*), void* parg, bool fWantHandle=false)
-{
-    pthread_t hthread = 0;
-    int ret = pthread_create(&hthread, NULL, (void*(*)(void*))pfn, parg);
-    if (ret != 0)
-    {
-        printf("Error: pthread_create() returned %d\n", ret);
-        return (pthread_t)0;
-    }
-    if (!fWantHandle)
-    {
-        pthread_detach(hthread);
-        return (pthread_t)-1;
-    }
-    return hthread;
-}
-
-inline void ExitThread(size_t nExitCode)
-{
-    pthread_exit((void*)nExitCode);
-}
-#endif
 
 
 inline uint32_t ByteReverse(uint32_t value)

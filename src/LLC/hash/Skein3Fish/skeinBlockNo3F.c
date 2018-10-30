@@ -1,5 +1,5 @@
 
-#include <string.h>
+#include <cstring>
 #include <skein.h>
 #include <threefishApi.h>
 

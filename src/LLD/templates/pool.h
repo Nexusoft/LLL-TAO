@@ -1,420 +1,335 @@
 /*__________________________________________________________________________________________
-           
+
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
-            
+
             (c) Copyright The Nexus Developers 2014 - 2018
-            
+
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
-            
+
             "ad vocem populi" - To the Voice of the People
 ____________________________________________________________________________________________*/
 
 #ifndef NEXUS_LLD_TEMPLATES_MEMCACHEPOOL_H
 #define NEXUS_LLD_TEMPLATES_MEMCACHEPOOL_H
 
-#include "../../Util/templates/serialize.h"
-#include "../../Util/include/mutex.h"
+#include <Util/templates/serialize.h>
+#include <Util/include/mutex.h>
+#include <Util/include/runtime.h>
+#include <Util/include/hex.h>
 
+
+//TODO: Abstract base class for all cache systems
 namespace LLD
-{	
-    
-    /* The number of buckets available in Cache Pool. */
-    const uint32_t MAX_CACHE_POOL_BUCKETS = 256 * 256;
-    
-    
-    enum
-    {
-        PENDING_WRITE = 0,
-        PENDING_ERASE = 1,
-        
-        MEMORY_ONLY   = 10, //Default State
-        PENDING_TX    = 11,
-        
-        COMPLETED     = 255
-    };
-    
+{
 
-    /* Holding Object for Memory Maps. */
-    struct CachedData
+    struct CacheNode
     {
-        uint8_t  State;
-        uint64_t         Timestamp;
-        std::vector<uint8_t> Data;
+        CacheNode* pprev;
+        CacheNode* pnext;
+
+        std::vector<uint8_t> vKey;
+        std::vector<uint8_t> vData;
     };
-    
-    
+
+
     /** Holding Pool:
-    * 
+    *
     * This class is responsible for holding data that is partially processed.
     * It is also uselef for data that needs to be relayed from cache once recieved.
-    * 
-    * It must adhere to the processing expiration time.
-    * 
-    * A. It can pass data on the relay layers if required.
-    * B. It can process data locked as orphans
-    * 
+    *
     */
     class MemCachePool
     {
-        
+
     protected:
-        
-        /* Destructor flag. */
-        bool fDestruct;
-        
-        
+
         /* The Maximum Size of the Cache. */
         uint32_t MAX_CACHE_SIZE;
-        
-        
+
+
+        /* The total buckets available. */
+        uint32_t MAX_CACHE_BUCKETS;
+
+
         /* The current size of the pool. */
         uint32_t nCurrentSize;
-        
-        
+
+
         /* Mutex for thread concurrencdy. */
-        Mutex_t MUTEX;
-        
-        
+        mutable Mutex_t MUTEX;
+
+
         /* Map of the current holding data. */
-        std::map<std::vector<uint8_t>, CachedData > mapObjects[MAX_CACHE_POOL_BUCKETS];
-        
-        
-        /* Disk Buffer Object to flush objects to disk. */
-        std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vDiskBuffer;
-        
-        
-        /* Transaction Disk Buffer Object. */
-        std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vTransactionBuffer;
-        
-        
-        /* Thread of cache cleaner. */
-        Thread_t CACHE_THREAD;
-        
-        
+        std::vector<CacheNode*> hashmap;
+
+
+        /* Keep track of the first object in linked list. */
+        CacheNode* pfirst;
+
+
+        /* Keep track of the last object in linked list. */
+        CacheNode* plast;
+
+
+
     public:
-        
+
         /** Base Constructor.
-        * 
-        * MAX_CACHE_SIZE default value is 32 MB
-        * MAX_CACHE_BUCKETS default value is 65,539 (2 bytes)
-        * 
-        */
-        MemCachePool() : fDestruct(false), MAX_CACHE_SIZE(1024 * 1024), nCurrentSize(0), CACHE_THREAD(boost::bind(&MemCachePool::CacheCleaner, this)) {}
-        
-        
+         *
+         * MAX_CACHE_SIZE default value is 32 MB
+         * MAX_CACHE_BUCKETS default value is 65,539 (2 bytes)
+         *
+         */
+        MemCachePool() : MAX_CACHE_SIZE(1024 * 1024), MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 64), nCurrentSize(MAX_CACHE_BUCKETS * 24), pfirst(0), plast(0)
+        {
+            /* Resize the hashmap vector. */
+            hashmap.resize(MAX_CACHE_BUCKETS);
+
+            /* Set the start and end pointers. */
+            pfirst = NULL;
+            plast  = NULL;
+        }
+
+
         /** Cache Size Constructor
-        * 
-        * @param[in] nCacheSizeIn The maximum size of this Cache Pool
-        * 
-        */
-        MemCachePool(uint32_t nCacheSizeIn) : fDestruct(false), MAX_CACHE_SIZE(nCacheSizeIn), nCurrentSize(0), CACHE_THREAD(boost::bind(&MemCachePool::CacheCleaner, this)) {}
-        
-        
+         *
+         * @param[in] nCacheSizeIn The maximum size of this Cache Pool
+         *
+         */
+        MemCachePool(uint32_t nCacheSizeIn) : MAX_CACHE_SIZE(nCacheSizeIn), MAX_CACHE_BUCKETS(nCacheSizeIn / 64), nCurrentSize(MAX_CACHE_BUCKETS * 24)
+        {
+            /* Resize the hashmap vector. */
+            hashmap.resize(MAX_CACHE_BUCKETS);
+
+            /* Set the start and end pointers. */
+            pfirst = NULL;
+            plast  = NULL;
+        }
+
+
         /* Class Destructor. */
         ~MemCachePool()
         {
-            fDestruct = true;
-            
-            CACHE_THREAD.join();
+            /* Loop through the linked list. */
+            while(pfirst)
+            {
+                /* Free memory of previous entry. */
+                if(pfirst->pprev)
+                    delete pfirst->pprev;
+
+                /* Iterate forward */
+                pfirst = pfirst->pnext;
+            }
         }
-        
-        
-        /** Get the assigned bucket
-        * 
-        * @param[in] vKey The binary data of key 
-        * 
-        * @return The bucket number through serializaing first two bytes of key.
-        */
-        uint32_t GetBucket(std::vector<uint8_t> vKey) const 
-        { 
+
+
+        /** Bucket
+         *
+         *  Find a bucket for cache key management.
+         *
+         *  @param[in] vKey The key to get bucket for.
+         *
+         **/
+        uint32_t Bucket(const std::vector<uint8_t>& vKey) const
+        {
             uint64_t nBucket = 0;
             for(int i = 0; i < vKey.size() && i < 8; i++)
                 nBucket += vKey[i] << (8 * i);
-            
-            return nBucket % MAX_CACHE_POOL_BUCKETS;
+
+            return nBucket % MAX_CACHE_BUCKETS;
         }
-        
-        
+
+
         /** Check if data exists
-        * 
-        * @param[in] vKey The binary data of the key
-        * 
-        * @return True/False whether pool contains data by index
-        * 
-        */
-        bool Has(std::vector<uint8_t> vKey, uint32_t nBucket = MAX_CACHE_POOL_BUCKETS + 1) const 
-        { 
-            if(nBucket == MAX_CACHE_POOL_BUCKETS + 1)
-                nBucket = GetBucket(vKey);
-            
-            return (mapObjects[nBucket].find(vKey) != mapObjects[nBucket].end());
+         *
+         * @param[in] vKey The binary data of the key
+         *
+         * @return True/False whether pool contains data by index
+         *
+         */
+        bool Has(std::vector<uint8_t> vKey) const
+        {
+            LOCK(MUTEX);
+
+            uint32_t nBucket = Bucket(vKey);
+            return (hashmap[nBucket] != NULL && hashmap[nBucket]->vKey == vKey);
         }
-        
-        
+
+
+        /** Remove Node
+         *
+         *  Remove a node from the double linked list.
+         *
+         *  @param[in] pthis The node to remove from list.
+         *
+         */
+        void RemoveNode(CacheNode* pthis)
+        {
+            /* Link the next pointer if not null */
+            if(pthis->pnext)
+                pthis->pnext->pprev = pthis->pprev;
+
+            /* Link the previous pointer if not null. */
+            if(pthis->pprev)
+                pthis->pprev->pnext = pthis->pnext;
+        }
+
+
+        /** Move to Front
+         *
+         *  Move the node in double linked list to front.
+         *
+         *  @param[in] pthis The node to move to front.
+         *
+         **/
+        void MoveToFront(CacheNode* pthis)
+        {
+            /* Don't move to front if already in the front. */
+            if(pthis == pfirst)
+                return;
+
+            /* Remove the node from linked list. */
+            RemoveNode(pthis);
+
+            /* Set prev to null to signal front of list */
+            pthis->pprev = NULL;
+
+            /* Set next to the current first */
+            pthis->pnext = pfirst;
+
+            /* Update the first reference prev */
+            if(pfirst)
+            {
+                pfirst->pprev = pthis;
+                if(!plast)
+                    plast = pfirst;
+            }
+
+            /* Update the first reference. */
+            pfirst        = pthis;
+        }
+
+
         /** Get the data by index
-        * 
-        * @param[in] vKey The binary data of the key
-        * @param[out] vData The binary data of the cached record
-        * 
-        * @return True if object was found, false if none found by index.
-        * 
-        */
+         *
+         * @param[in] vKey The binary data of the key
+         * @param[out] vData The binary data of the cached record
+         *
+         * @return True if object was found, false if none found by index.
+         *
+         */
         bool Get(std::vector<uint8_t> vKey, std::vector<uint8_t>& vData)
         {
             LOCK(MUTEX);
-            
+
             /* Check if the Record Exists. */
-            auto nBucket = GetBucket(vKey);
-            if(!Has(vKey, nBucket))
+            if(!Has(vKey))
                 return false;
-            
-            /* Get the data record. */
-            vData = mapObjects[nBucket][vKey].Data;
-            
-            /* Update the Object's time (to keep cache of most accessed elements). */
-            mapObjects[nBucket][vKey].Timestamp = Timestamp(true);
-            
+
+            /* Get the data. */
+            CacheNode* pthis = hashmap[Bucket(vKey)];
+
+            /* Get the data. */
+            vData = pthis->vData;
+
+            /* Move to front of double linked list. */
+            MoveToFront(pthis);
+
             return true;
         }
-        
-        
-        /** Get the Bulk Objects in the Pool
-        * 
-        * @param[out] vObjects A list of objects from the pool in binary form
-        * @param[in] nLimit The limit to the number of indexes to get (0 = unlimited)
-        * 
-        * @return Returns true if there are indexes, false if none found.
-        * 
-        * TODO: Determine how data type will be carried forward for serializaing
-        * 
-        */
-        bool Get(std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> >& vObjects, uint8_t nState = MEMORY_ONLY, uint32_t nLimit = 0)
-        {
-            LOCK(MUTEX);
-            
-            for(int nBucket = 0; nBucket < MAX_CACHE_POOL_BUCKETS; nBucket++)
-            {
-                for(auto obj : mapObjects[nBucket])
-                {
-                    if(nLimit != 0 && vObjects.size() >= nLimit)
-                        return true;
-                    
-                    if(nState != obj.second.State)
-                        continue;
-                        
-                    vObjects.push_back(std::make_pair(obj.first, obj.second.Data));
-                }
-            }
-            
-            return (vObjects.size() > 0);
-        }
-        
-        
-        /** Get the indexes in Pool
-        * 
-        * @param[out] vIndexes A list of indexes from the pool in binary form
-        * @param[in] nLimit The limit to the number of indexes to get (0 = unlimited)
-        * 
-        * @return Returns true if there are indexes, false if none found.
-        * 
-        * TODO: Determine how data type will be carried forward for serializaing
-        * 
-        */
-        bool GetIndexes(std::vector< std::vector<uint8_t> >& vIndexes, uint8_t nState = MEMORY_ONLY, uint32_t nLimit = 0)
-        {
-            LOCK(MUTEX);
-            
-            for(int nBucket = 0; nBucket < MAX_CACHE_POOL_BUCKETS; nBucket++)
-            {
-                for(auto obj : mapObjects[nBucket])
-                {
-                    if(nLimit != 0 && vIndexes.size() >= nLimit)
-                        return true;
-                    
-                    if(nState != obj.second.State)
-                        continue;
-                        
-                    vIndexes.push_back(obj.first);
-                }
-            }
-            
-            return (vIndexes.size() > 0);
-        }
-        
-        
+
+
         /** Add data in the Pool
-        * 
-        * @param[in] vKey The key in binary form
-        * @param[in] vData The input data in binary form
-        * @param[in] nState The state of the object being written
-        * @param[in] nTimestamp The Time record was Put (ms)
-        * 
-        */
-        void Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData, uint8_t nState = MEMORY_ONLY, uint64_t nTimestamp = Timestamp(true))
+         *
+         * @param[in] vKey The key in binary form
+         * @param[in] vData The input data in binary form
+         *
+         */
+        void Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
         {
             LOCK(MUTEX);
-            
-            auto nBucket = GetBucket(vKey);
-            if(!Has(vKey, nBucket))
-                nCurrentSize += vData.size();
-            
-            /* Handle the Writing Buffer, out of transaction orders. */
-            if(nState == PENDING_WRITE)
-                vDiskBuffer.push_back(std::make_pair(vKey, vData));
-            
-            /* Handle a Pending Transaction, write to buffer */
-            else if(nState == PENDING_TX)
-                vTransactionBuffer.push_back(std::make_pair(vKey, vData));
-                
-            /* Overwrite existing objects. */
-            CachedData cacheObject = { nState, nTimestamp, vData };
-            mapObjects[nBucket][vKey] = cacheObject;
+
+            /* If has a key, check for bucket collisions. */
+            uint32_t nBucket = Bucket(vKey);
+
+            /* Check for bucket collisions. */
+            CacheNode* pthis = NULL;
+            if(Has(vKey))
+            {
+                /* Update the cache node. */
+                pthis = hashmap[nBucket];
+                pthis->vData = vData;
+                pthis->vKey  = vKey;
+            }
+            else
+            {
+                /* Create a new cache node. */
+                pthis = new CacheNode();
+                pthis->vData = vData;
+                pthis->vKey  = vKey;
+
+                /* Add cache node to objects map. */
+                hashmap[nBucket] = pthis;
+            }
+
+            /* Set the new cache node to the front */
+            MoveToFront(pthis);
+
+            /* Remove the last node if cache too large. */
+            if(nCurrentSize > MAX_CACHE_SIZE)
+            {
+                /* Get the last key. */
+                if(plast->pprev)
+                {
+                    CacheNode* pnode = plast;
+
+                    /* Relink in memory. */
+                    plast = plast->pprev;
+                    plast->pnext = NULL;
+
+                    /* Reduce the current cache size. */
+                    nCurrentSize += (vKey.size() + vData.size() - pnode->vData.size() - pnode->vKey.size());
+
+                    /* Clear the pointers. */
+                    hashmap[Bucket(pnode->vKey)] = NULL; //TODO: hashmap linked list for collisions
+                    delete pnode;
+                }
+            }
+            else
+                nCurrentSize += (vData.size() + vKey.size());
         }
-        
-        
-        /** Get Disk Buffer.
-        * 
-        *  Returns the current disk buffer ready for writing.
-        *
-        */
-        bool GetDiskBuffer(std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> >& vBuffer)
-        {
-            LOCK(MUTEX);
-            
-            if(vDiskBuffer.size() == 0)
-                return false;
-            
-            vBuffer = vDiskBuffer;
-            vDiskBuffer.clear();
-            
-            return true;
-        }
-        
-        
-        /** Get Transaction Buffer.
-        * 
-        *  Returns the current disk buffer ready for writing.
-        *
-        */
-        bool GetTransactionBuffer(std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> >& vBuffer)
-        {
-            LOCK(MUTEX);
-            
-            if(vTransactionBuffer.size() == 0)
-                return false;
-            
-            vBuffer = vTransactionBuffer;
-            vTransactionBuffer.clear();
-            
-            return true;
-        }
-        
-        
-        /** Set the state of the data in cache
-        * 
-        * @param[in] vKey The key in binary form
-        * @param[in] nState The new state of the object.
-        * 
-        */
-        void SetState(std::vector<uint8_t> vKey, uint16_t nState)
-        {
-            auto nBucket = GetBucket(vKey);
-            if(!Has(vKey, nBucket))
-                return;
-            
-            mapObjects[nBucket][vKey].Timestamp = Timestamp(true);
-            mapObjects[nBucket][vKey].State = nState;
-        }
-        
-        
+
+
         /** Force Remove Object by Index
-        * 
-        * @param[in] vKey Binary Data of the Key
-        * 
-        * @return True on successful removal, false if it fails
-        * 
-        */
+         *
+         * @param[in] vKey Binary Data of the Key
+         *
+         * @return True on successful removal, false if it fails
+         *
+         */
         bool Remove(std::vector<uint8_t> vKey)
         {
             LOCK(MUTEX);
-            
+
             /* Check if the Record Exists. */
-            auto nBucket = GetBucket(vKey);
-            if(!Has(vKey, nBucket))
+            if(!Has(vKey))
                 return false;
-            
-            nCurrentSize -= mapObjects[nBucket][vKey].Data.size();
-            
-            //if(mapObjects[nBucket][vKey].State == PENDING_TX)
-            //    mapObjects[nBucket][vKey].State = PENDING_ERASE;
-            //else
-            mapObjects[nBucket].erase(vKey);
-            
+
+            /* Get the node */
+            CacheNode* pnode = hashmap[Bucket(vKey)];
+
+            /* Reduce the current cache size. */
+            nCurrentSize -= (pnode->vData.size() + vKey.size());
+
+            /* Remove from linked list. */
+            RemoveNode(pnode);
+
+            /* Remove the object from the map. */
+            hashmap[Bucket(vKey)] = NULL;
+            delete pnode;
+
             return true;
-        }
-        
-        
-        /** Force Remove Object by Index
-        * 
-        * @param[in] vKey Binary Data of the Key
-        * @param[in] nState The State objects to remove
-        * 
-        * 
-        * NOTE: This is high complexity, use sparingly
-        * 
-        */
-        void Remove(uint8_t nState)
-        {
-            std::vector< std::vector<uint8_t> > vKeys;
-            GetIndexes(vKeys, nState);
-            
-            for(auto Key : vKeys)
-                Remove(Key);
-        }
-        
-        
-        static bool SortByTime(const std::pair< std::vector<uint8_t>, CachedData>& a, const std::pair< std::vector<uint8_t>, CachedData>& b)
-        {
-            return a.second.Timestamp < b.second.Timestamp;
-        }
-        
-        
-        /** Clean up older data from the Cache Pool to keep within Cache Limits. 
-        * 
-        *  This is a Worker Thread.
-        */
-        void CacheCleaner()
-        {
-            while(!fDestruct)
-            {
-                /* Trim off less used objects if reached cache limits. */
-                if(nCurrentSize > MAX_CACHE_SIZE)
-                {
-                    std::vector< std::pair< std::vector<uint8_t>, CachedData > > vKeys;
-                    for(int nBucket = 0; nBucket < MAX_CACHE_POOL_BUCKETS; nBucket++)
-                    {
-                        for(auto obj : mapObjects[nBucket])
-                        {
-                            /* Don't clear objects waiting for writes or transactions. */
-                            if( (obj.second.State != PENDING_WRITE) && (obj.second.State != PENDING_ERASE) && (obj.second.State != PENDING_TX) )
-                                vKeys.push_back(obj);
-                        }
-                    }
-                    
-                    /* Sort by earliest timestamp and remove until cache is balanced. */
-                    std::sort(vKeys.begin(), vKeys.end(), SortByTime);
-                    for(auto obj : vKeys)
-                    {
-                        if(nCurrentSize <= MAX_CACHE_SIZE)
-                            break;
-                        
-                        Remove(obj.first);
-                    }
-                }
-                
-                Sleep(1);
-            }
         }
     };
 }

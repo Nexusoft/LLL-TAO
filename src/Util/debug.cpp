@@ -1,25 +1,29 @@
 /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
-            
+
             (c) Copyright The Nexus Developers 2014 - 2018
-            
+
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
-            
+
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
 
-#include "include/config.h"
-#include "include/debug.h"
-#include "include/args.h"
-#include "include/mutex.h"
-#include "include/runtime.h"
-#include "include/convert.h"
+#include <string>
+
+#include <Util/include/config.h>
+#include <Util/include/debug.h>
+#include <Util/include/args.h>
+#include <Util/include/mutex.h>
+#include <Util/include/runtime.h>
+#include <Util/include/convert.h>
+#include <Util/include/filesystem.h>
 
 #include <stdarg.h>
 #include <stdio.h>
+
 
 #ifndef WIN32
 #include <execinfo.h>
@@ -34,7 +38,7 @@ static Mutex_t DEBUG_MUTEX;
 int OutputDebugStringF(const char* pszFormat, ...)
 {
     LOCK(DEBUG_MUTEX);
-    
+
     // print to console
     int ret = 0;
     va_list arg_ptr;
@@ -45,24 +49,13 @@ int OutputDebugStringF(const char* pszFormat, ...)
     // print to debug.log
     if (!fileout)
     {
-        boost::filesystem::path pathDebug = GetDataDir() / "debug.log";
-        fileout = fopen(pathDebug.string().c_str(), "a");
+        std::string pathDebug = GetDataDir() + "debug.log";
+        fileout = fopen(pathDebug.c_str(), "a");
         if (fileout) setbuf(fileout, NULL); // unbuffered
     }
-    
+
     if (fileout)
     {
-        static bool fStartedNewLine = true;
-
-        // Debug print useful for profiling
-        if (fStartedNewLine)
-            fprintf(fileout, "%s ", DateTimeStrFormat(Timestamp()).c_str());
-        
-        if (pszFormat[strlen(pszFormat) - 1] == '\n')
-            fStartedNewLine = true;
-        else
-            fStartedNewLine = false;
-
         va_list arg_ptr;
         va_start(arg_ptr, pszFormat);
         ret = vfprintf(fileout, pszFormat, arg_ptr);
@@ -90,27 +83,27 @@ int OutputDebugStringF(const char* pszFormat, ...)
             }
             else
                     pend += ret;
-            
+
             *pend = '\0';
-            
+
             char* p1 = pszBuffer;
             char* p2;
-            
+
             while ((p2 = strchr(p1, '\n')))
             {
                 p2++;
                 char c = *p2;
-                
+
                 *p2 = '\0';
-                
+
                 OutputDebugStringA(p1);
                 *p2 = c;
                 p1 = p2;
             }
-            
+
             if (p1 != pszBuffer)
                 memmove(pszBuffer, p1, pend - p1 + 1);
-            
+
             pend -= (p1 - pszBuffer);
         }
     }
@@ -163,7 +156,7 @@ std::string real_strprintf(const std::string &format, int dummy, ...)
     std::string str(p, p+ret);
     if (p != buffer)
         delete[] p;
-    
+
     return str;
 }
 
@@ -180,7 +173,7 @@ bool error(const char *format, ...)
     {
         buffer[limit-1] = 0;
     }
-    
+
     printf(ANSI_COLOR_RED "ERROR: %s" ANSI_COLOR_RESET "\n", buffer);
     return false;
 }
@@ -197,7 +190,7 @@ void debug(const char* base, const char* format, ...)
     {
         buffer[limit-1] = 0;
     }
-    
+
     printf(ANSI_COLOR_FUNCTION "%s::%s()" ANSI_COLOR_RESET " : %s\n", base, __func__, buffer);
 }
 
@@ -270,8 +263,8 @@ int GetFilesize(FILE* file)
 void ShrinkDebugFile()
 {
     // Scroll debug.log if it's getting too big
-    boost::filesystem::path pathLog = GetDataDir() / "debug.log";
-    FILE* file = fopen(pathLog.string().c_str(), "r");
+    std::string pathLog = GetDataDir() + "\\debug.log";
+    FILE* file = fopen(pathLog.c_str(), "r");
     if (file && GetFilesize(file) > 10 * 1000000)
     {
         // Restart the file with some of the end
@@ -280,7 +273,7 @@ void ShrinkDebugFile()
         int nBytes = fread(pch, 1, sizeof(pch), file);
         fclose(file);
 
-        file = fopen(pathLog.string().c_str(), "w");
+        file = fopen(pathLog.c_str(), "w");
         if (file)
         {
             fwrite(pch, 1, nBytes, file);

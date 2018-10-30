@@ -19,11 +19,11 @@ ________________________________________________________________________________
 #include <algorithm>
 #include <openssl/bn.h>
 
-#include "uint1024.h"
+#include <LLC/types/uint1024.h>
 
-#include "../Util/templates/serialize.h" //TODO: This shouldn't be here. Bignum needs to break into header / source combination
+#include <LLP/include/version.h> //for serialization version
 
-#include "../LLP/include/version.h" //for serialization version
+#include <Util/templates/serialize.h> //TODO: This shouldn't be here. Bignum needs to break into header / source combination
 
 namespace LLC
 {
@@ -508,22 +508,22 @@ namespace LLC
             return ToString(16);
         }
 
-        uint32_t GetSerializeSize(int nType=0, int nVersion=PROTOCOL_VERSION) const
+        uint32_t GetSerializeSize(int nSerType=0, int nVersion=LLP::PROTOCOL_VERSION) const
         {
-            return ::GetSerializeSize(getvch(), nType, nVersion);
+            return ::GetSerializeSize(getvch(), nSerType, nVersion);
         }
 
         template<typename Stream>
-        void Serialize(Stream& s, int nType=0, int nVersion=PROTOCOL_VERSION) const
+        void Serialize(Stream& s, int nSerType=0, int nVersion=LLP::PROTOCOL_VERSION) const
         {
-            ::Serialize(s, getvch(), nType, nVersion);
+            ::Serialize(s, getvch(), nSerType, nVersion);
         }
 
         template<typename Stream>
-        void Unserialize(Stream& s, int nType=0, int nVersion=PROTOCOL_VERSION)
+        void Unserialize(Stream& s, int nSerType=0, int nVersion=LLP::PROTOCOL_VERSION)
         {
             std::vector<uint8_t> vch;
-            ::Unserialize(s, vch, nType, nVersion);
+            ::Unserialize(s, vch, nSerType, nVersion);
             setvch(vch);
         }
 

@@ -1,27 +1,26 @@
 /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
-            
+
             (c) Copyright The Nexus Developers 2014 - 2018
-            
+
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
-            
+
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
 
-#include "include/network.h"
-#include "include/hosts.h"
+#include <LLP/include/network.h>
+#include <LLP/include/hosts.h>
 
 #include <vector>
-#include <boost/foreach.hpp>
 
-#include "../Util/include/strlcpy.h"
+#include <Util/include/strlcpy.h>
 
 namespace LLP
 {
-    
+
     /** DNS Query of Domain Names Associated with Seed Nodes **/
     std::vector<CAddress> DNS_Lookup(std::vector<std::string> DNS_Seed)
     {
@@ -32,20 +31,20 @@ namespace LLP
             std::vector<LLP::CNetAddr> vaddr;
             if (LookupHost(DNS_Seed[nSeed].c_str(), vaddr))
             {
-                BOOST_FOREACH(CNetAddr& ip, vaddr)
+                for(CNetAddr& ip : vaddr)
                 {
                     CAddress addr = CAddress(CService(ip, GetDefaultPort()));
                     vNodes.push_back(addr);
-                    
+
                     printf("DNS Seed: %s\n", addr.ToStringIP().c_str());
                 }
             }
         }
-        
+
         return vNodes;
     }
-    
-    
+
+
     bool static LookupIntern(const char *pszName, std::vector<CNetAddr>& vIP, uint32_t nMaxSolutions, bool fAllowLookup)
     {
         vIP.clear();
@@ -100,7 +99,7 @@ namespace LLP
 
         return (vIP.size() > 0);
     }
-    
+
     bool LookupHost(const char *pszName, std::vector<CNetAddr>& vIP, uint32_t nMaxSolutions, bool fAllowLookup)
     {
         if (pszName[0] == 0)
@@ -116,7 +115,7 @@ namespace LLP
 
         return LookupIntern(pszHost, vIP, nMaxSolutions, fAllowLookup);
     }
-    
+
     bool LookupHostNumeric(const char *pszName, std::vector<CNetAddr>& vIP, uint32_t nMaxSolutions)
     {
         return LookupHost(pszName, vIP, nMaxSolutions, false);
@@ -180,4 +179,3 @@ namespace LLP
         return Lookup(pszName, addr, portDefault, false);
     }
 }
-

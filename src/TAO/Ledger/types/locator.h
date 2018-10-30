@@ -37,7 +37,7 @@ namespace TAO
 
 			IMPLEMENT_SERIALIZE
 			(
-				if (!(nType & SER_GETHASH))
+				if (!(nSerType & SER_GETHASH))
 					READWRITE(nVersion);
 				READWRITE(vHave);
 			)

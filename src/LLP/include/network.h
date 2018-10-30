@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_NETWORK_H
 #define NEXUS_LLP_INCLUDE_NETWORK_H
 
-#include <stdint.h>
+#include <cstdint>
 
 #ifdef WIN32
 #define _WIN32_WINNT 0x0501
@@ -214,9 +214,9 @@ namespace LLP
                 CService* pip = (CService*)pthis;
                 if (fRead)
                     pthis->Init();
-                if (nType & SER_DISK)
-                    READWRITE(nVersion);
-                if ((nType & SER_DISK) || (!(nType & SER_GETHASH)))
+                if (nSerType & SER_DISK)
+                    READWRITE(nSerVersion);
+                if ((nSerType & SER_DISK) || (!(nSerType & SER_GETHASH)))
                     READWRITE(nTime);
                 READWRITE(nServices);
                 READWRITE(*pip);
@@ -240,6 +240,7 @@ namespace LLP
     class CAddrInfo : public CAddress
     {
     private:
+        
         /* Who Gave us this Address. */
         CNetAddr source;
 

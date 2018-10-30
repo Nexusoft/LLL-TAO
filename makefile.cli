@@ -20,39 +20,6 @@ endif
 
 
 #Define default LIB and INCLUDE path variables
-ifndef BOOST_LIB_SUFFIX
-	ifeq ($(detected_OS),Windows)
-		BOOST_LIB_SUFFIX= "-mgw73-mt-s-$(BUILD_ARCH)-1_66"
-	endif
-	ifeq ($(detected_OS),OSX)
-		BOOST_LIB_SUFFIX= -mt
-	endif
-	ifeq ($(detected_OS),Linux)
-		BOOST_LIB_SUFFIX=
-	endif
-endif
-ifndef BOOST_LIB_PATH
-	ifeq ($(detected_OS),Windows)
-		BOOST_LIB_PATH= "C:\deps\lib"
-	endif
-	ifeq ($(detected_OS),OSX)
-		BOOST_LIB_PATH= /usr/local/opt/boost/lib
-	endif
-	ifeq ($(detected_OS),Linux)
-		BOOST_LIB_PATH= /usr/lib/x86_64-linux-gnu
-	endif
-endif
-ifndef BOOST_INCLUDE_PATH
-	ifeq ($(detected_OS),Windows)
-		BOOST_INCLUDE_PATH= "C:\deps\include\boost-1_66"
-	endif
-	ifeq ($(detected_OS),OSX)
-		BOOST_INCLUDE_PATH= /usr/local/opt/boost/include
-	endif
-	ifeq ($(detected_OS),Linux)
-		BOOST_INCLUDE_PATH= /usr/include/boost
-	endif
-endif
 ifndef OPENSSL_LIB_PATH
 	ifeq ($(detected_OS),Windows)
 		OPENSSL_LIB_PATH= "C:\deps\lib"
@@ -118,32 +85,23 @@ endif
 
 #Configure Build Environment
 ifneq ($(detected_OS),Windows)
-INCLUDEPATHS+= $(addprefix -I,$(CURDIR) $(CURDIR)/build $(CURDIR)/src $(CURDIR)/src/core $(CURDIR)/src/hash $(CURDIR)/src/json $(CURDIR)/src/json $(CURDIR)/src/LLP $(CURDIR)/src/LLD $(CURDIR)/src/net $(CURDIR)/src/util $(CURDIR)/src/wallet) \
+INCLUDEPATHS+= $(addprefix -I, $(CURDIR) $(CURDIR)/build $(CURDIR)/src )\
 	-I$(BDB_INCLUDE_PATH) \
-	-I$(BOOST_INCLUDE_PATH) \
 	-I$(OPENSSL_INCLUDE_PATH)
 endif
 ifeq ($(detected_OS),Windows)
-INCLUDEPATHS+= -I"$(CURDIR)" -I"$(CURDIR)/build" -I"$(CURDIR)/src" -I"$(CURDIR)/src/core" -I"$(CURDIR)/src/hash" -I"$(CURDIR)/src/json" -I"$(CURDIR)/src/json" -I"$(CURDIR)/src/LLP" -I"$(CURDIR)/src/LLD" -I"$(CURDIR)/src/net" -I"$(CURDIR)/src/util" -I"$(CURDIR)/src/wallet" \
+INCLUDEPATHS+= -I"$(CURDIR)" -I"$(CURDIR)/build" -I"$(CURDIR)/src" \
 	-I$(BDB_INCLUDE_PATH) \
-	-I$(BOOST_INCLUDE_PATH) \
 	-I$(OPENSSL_INCLUDE_PATH)
 endif
-LIBPATHS+= -L$(BOOST_LIB_PATH) \
-	-L$(BDB_LIB_PATH) \
+LIBPATHS+= -L$(BDB_LIB_PATH) \
 	-L$(OPENSSL_LIB_PATH)
 ifneq ($(detected_OS),OSX)
-LIBS+=-lboost_system$(BOOST_LIB_SUFFIX) \
-	-lboost_filesystem$(BOOST_LIB_SUFFIX) \
-	-lboost_program_options$(BOOST_LIB_SUFFIX) \
-	-lboost_thread$(BOOST_LIB_SUFFIX) \
-	-ldb_cxx \
+LIBS+=-ldb_cxx \
 	-lssl \
 	-lcrypto
 endif
-DEFS+=  -DBOOST_SPIRIT_THREADSAFE \
-	-DBOOST_NO_CXX11_SCOPED_ENUMS \
-	-D$(BUILD_ARCH)
+DEFS+=  -D$(BUILD_ARCH)
 
 #Display Warnings while compiling
 ifdef ENABLE_WARNINGS
@@ -169,21 +127,25 @@ OBJS= \
 	build/KeccakSponge.o \
 	build/Keccak-compact64.o \
 	build/KeccakHash.o \
-	build/SK.o \
 	build/random.o \
 	build/key.o \
+	build/global.o \
 	build/network.o \
 	build/hosts.o \
 	build/socket.o \
 	build/inv.o\
 	build/legacy.o \
+	build/tritium.o \
 	build/address.o \
 	build/enum.o \
 	build/secret.o \
+	build/transaction.o \
+	build/block.o \
 	build/args.o \
 	build/base58.o \
 	build/config.o \
-	build/debug.o
+	build/debug.o \
+    build/filesystem.o
 
 ###############################################################################
 ifeq ($(detected_OS),Windows)
@@ -212,9 +174,7 @@ LIBS+= -l kernel32 \
 	-l ws2_32 \
 	-l shlwapi
 DEFS+= -DWIN32 \
-	-D_WINDOWS \
-	-DBOOST_THREAD_USE_LIB \
-	-DBOOST_ASIO_ENABLE_OLD_SERVICES
+	-D_WINDOWS
 
 #OS Specific Compiler Flags
 CXXFLAGS+= -mthreads \
@@ -257,13 +217,7 @@ build/%.o: ./src/LLP/%.cpp $(HEADERS)
 build/%.o: ./src/TAO/API/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/%.o: ./src/TAO/API/json/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -o $@ $<
-
 build/%.o: ./src/TAO/Legacy/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -o $@ $<
-
-build/%.o: ./src/TAO/Legacy/types/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/%.o: ./src/TAO/Ledger/%.cpp $(HEADERS)
@@ -303,13 +257,8 @@ endif
 
 #Configure OS Specific Build Environment
 DEFS+= -DMAC_OSX \
-	-DMSG_NOSIGNAL=0 \
-	-DBOOST_SPIRIT_THREADSAFE
-LIBS+= $(BOOST_LIB_PATH)/libboost_system-mt.a \
-	$(BOOST_LIB_PATH)/libboost_filesystem-mt.a \
-	$(BOOST_LIB_PATH)/libboost_program_options-mt.a \
-	$(BOOST_LIB_PATH)/libboost_thread-mt.a \
-	$(BDB_LIB_PATH)/libdb_cxx.a \
+	-DMSG_NOSIGNAL=0
+LIBS+= $(BDB_LIB_PATH)/libdb_cxx.a \
 	$(OPENSSL_LIB_PATH)/libssl.a \
 	$(OPENSSL_LIB_PATH)/libcrypto.a
 
@@ -384,21 +333,7 @@ build/%.o: src/TAO/API/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/API/json/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
 build/%.o: src/TAO/Legacy/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/%.o: src/TAO/Legacy/types/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -544,21 +479,7 @@ build/%.o: src/TAO/API/%.cpp
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/API/json/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
 build/%.o: src/TAO/Legacy/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/%.o: src/TAO/Legacy/types/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_INV_H
 #define NEXUS_LLP_INCLUDE_INV_H
 
-#include"../../Util/templates/serialize.h"
+#include <Util/templates/serialize.h>
 
 namespace LLP
 {

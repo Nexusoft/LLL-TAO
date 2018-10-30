@@ -1,12 +1,12 @@
 /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
-            
+
             (c) Copyright The Nexus Developers 2014 - 2018
-            
+
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
-            
+
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
@@ -14,13 +14,20 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_OBJECT_H
 #define NEXUS_TAO_REGISTER_INCLUDE_OBJECT_H
 
+#include <TAO/Register/include/state.h>
+#include <TAO/Operation/include/enum.h>
+
+#include <LLP/include/version.h> //stop using protocol version so much here
+
+#include <Util/templates/serialize.h>
+
 namespace TAO
 {
 
     namespace Register
     {
 
-        template<typename TypeObject> class CObjectRegister : public CStateRegister
+        template<typename TypeObject> class Object : public State
         {
         public:
 
@@ -28,13 +35,24 @@ namespace TAO
 
             std::map<uint64_t, std::vector<uint8_t> > mapMethods; //the byte data of the mothods
 
-            CObjectRegister(TypeObject classObjectIn, std::vector<uint8_t> vchOperations)
+            Object(TypeObject classObjectIn, std::vector<uint8_t> vchOperations)
             {
-                CDataStream ssObject;
+                CDataStream ssObject(SER_NETWORK, LLP::PROTOCOL_VERSION);
                 ssObject << classObjectIn;
-                ssObject.insert(ssObject.end(), vchOperations.begin(), vchOperations.end());
 
-                SetState(ssObject);
+                std::vector<uint8_t> vState(ssObject.begin(), ssObject.end());
+                vState.insert(vState.end(), vchOperations.begin(), vchOperations.end());
+
+                SetState(vState);
+            }
+
+            Object(TypeObject classObjectIn)
+            {
+                CDataStream ssObject(SER_NETWORK, LLP::PROTOCOL_VERSION);
+                ssObject << classObjectIn;
+
+                std::vector<uint8_t> vState(ssObject.begin(), ssObject.end());
+                SetState(vState);
             }
 
             std::vector< uint64_t > GetAddresses() //get method addresses
@@ -51,7 +69,7 @@ namespace TAO
             {
                 TypeObject classObject;
 
-                CDataStrem ssObject(vchState.begin(), vchState.begin() + nStateEnd);
+                CDataStream ssObject(vchState, SER_NETWORK, LLP::PROTOCOL_VERSION);
                 ssObject >> classObject;
 
                 return classObject;
@@ -60,20 +78,18 @@ namespace TAO
 
             void ParseMethods()
             {
-                std::vector<uint8_t> vchOperations;
-
-                vchOperations.insert(vchState.begin() + nStateEnd, vchState.end());
+                std::vector<uint8_t> vchOperations(vchState.begin() + nStateEnd, vchState.end());
 
                 //really bad algorithm I know... TODO log(n) rather than O(n) to parse methods. Keep iterator pointer for method point or make a method class with a length field in it
                 std::vector<uint8_t> vchMethod;
                 for(auto chOP : vchOperations)
                 {
-                    if(chOP == OP_METHOD)
+                    if(chOP == TAO::Operation::OP_METHOD)
                     {
                         //get the address of the method out of the data. uint32
                         //state address method call is hashAddress->uint32
 
-                        vchMethods.push_back(vchMethod);
+                        //vchMethods.push_back(vchMethod);
                         vchMethod.clear();
 
                         continue;
@@ -94,8 +110,6 @@ namespace TAO
                     return objReturn; //return a null value if the method address was not found
 
                 std::vector<uint8_t> vchMethod = mapMethods[nAddress];
-
-                COperation opCode(vchMethod);
             }
         };
 

@@ -17,8 +17,8 @@ ________________________________________________________________________________
 #include <stdexcept>
 #include <vector>
 
-#include "../Util/include/allocators.h"
-#include "../types/uint1024.h"
+#include <LLC/types/uint1024.h>
+#include <Util/include/allocators.h>
 
 #include <openssl/ec.h> // for EC_KEY definition
 #include <openssl/obj_mac.h>
@@ -43,7 +43,7 @@ namespace LLC
 
 
     /** An encapsulated OpenSSL Elliptic Curve key (public and/or private) **/
-    class CKey
+    class ECKey
     {
     protected:
         /** The OpenSSL key object. **/
@@ -58,10 +58,6 @@ namespace LLC
         bool fCompressedPubKey;
 
 
-        /** Set a public key in Compression form **/
-        void SetCompressedPubKey();
-
-
         /** The curve type implemented. **/
         int nCurveID;
 
@@ -71,18 +67,22 @@ namespace LLC
 
     public:
 
-        CKey();
-        CKey(const CKey& b);
-        CKey(const int nID, const int nKeySizeIn);
-        ~CKey();
+        ECKey();
+        ECKey(const ECKey& b);
+        ECKey(const int nID, const int nKeySizeIn);
+        ~ECKey();
 
 
         /** Assignment Operator **/
-        CKey& operator=(const CKey& b);
+        ECKey& operator=(const ECKey& b);
 
 
         /** Comparison Operator **/
-        bool operator==(const CKey& b) const;
+        bool operator==(const ECKey& b) const;
+
+
+        /** Set a public key in Compression form **/
+        void SetCompressedPubKey();
 
 
         /** Reset internal key data. **/
@@ -179,6 +179,32 @@ namespace LLC
         std::vector<uint8_t> GetPubKey() const;
 
 
+        /** Nexus sepcific strict DER rules.
+         *
+         *  Fixed length 135 bytes.
+         *  Byte 0         - 0x30 - Header Byte
+         *  Byte 1         - Length without header byte
+         *  Byte 2         - Length without header or 0, 1, and 2
+         *  Byte 3         - 0x20 Integer Flag
+         *  Byte 4         - R length byte
+         *  Byte 5 to 68   - R data
+         *  Byte 69        - 0x20 Integer Flag
+         *  Byte 70        - S length byte
+         *  Byte 71 to 134 - S data
+         *
+         *  R length fixed to 64 Bytes
+         *  S length fixed to 64 Bytes
+         *
+         *  Use strict encoding for easy handling of ledger level scripts.
+         *
+         *  @param[in] vchSig The DER encoded signature to check
+         *
+         *  @return true if encoding check passed.
+         *
+         **/
+        bool Encoding(const std::vector<uint8_t> vchSig);
+
+
         /** Tritium Signing Function.
          *
          *  Based on standard set of byte data as input of any length. Checks for DER encoding
@@ -188,7 +214,7 @@ namespace LLC
          *
          *  @return True if the Signature was created successfully
          **/
-        bool Sign(const std::vector<uint8_t>& vchData, std::vector<uint8_t>& vchSig);
+        bool Sign(const std::vector<uint8_t> vchData, std::vector<uint8_t>& vchSig);
 
 
         /** Tritium Signature Verification Function
@@ -200,7 +226,7 @@ namespace LLC
          *
          *  @return True if the Signature was Verified as Valid
          **/
-        bool Verify(const std::vector<uint8_t>& vchData, const std::vector<uint8_t>& vchSig);
+        bool Verify(const std::vector<uint8_t> vchData, const std::vector<uint8_t>& vchSig);
 
 
         /** Legacy Signing Function
@@ -235,8 +261,6 @@ namespace LLC
          **/
         bool IsValid();
 
-        bool SignCompact(uint256_t hash, std::vector<uint8_t>& vchSig);
-		bool SetCompactSignature(uint256_t hash, const std::vector<uint8_t>& vchSig);
     };
 }
 #endif
