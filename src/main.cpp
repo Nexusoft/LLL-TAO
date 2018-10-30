@@ -105,7 +105,7 @@ int main(int argc, char** argv)
     TAO::Ledger::Transaction tx;
     tx.hashGenesis = LLC::GetRand256();
     uint512_t hash = tx.GetHash();
-    tx.print();
+    //tx.print();
 
     test->Write(hash, tx);
 
@@ -120,11 +120,11 @@ int main(int argc, char** argv)
     while(!fShutdown)
     {
         hash = hash + 1;
-        std::vector<uint8_t> vKey((uint8_t*)&hash, (uint8_t*)&hash + sizeof(hash));
-        std::vector<uint8_t> vData((uint8_t*)&tx, (uint8_t*)&tx + tx.GetSerializeSize(SER_DISK, LLD::DATABASE_VERSION));
+        //std::vector<uint8_t> vKey((uint8_t*)&hash, (uint8_t*)&hash + sizeof(hash));
+        //std::vector<uint8_t> vData((uint8_t*)&tx, (uint8_t*)&tx + tx.GetSerializeSize(SER_DISK, LLD::DATABASE_VERSION));
         //cachePool->Put(vKey, vData);
-        test->Put(vKey, vData);
-        //test->Write(hash, tx);
+        //test->Put(vKey, vData);
+        test->Write(hash, tx);
 
         //LLC::SK256(hash.GetBytes());
 

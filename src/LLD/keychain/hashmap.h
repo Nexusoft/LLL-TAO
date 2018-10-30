@@ -54,7 +54,7 @@ namespace LLD
         uint32_t HASHMAP_MAX_CACHE_SZIE;
 
 
-        /** The MAximum key size for static key sectors. **/
+        /** The Maximum key size for static key sectors. **/
         uint16_t HASHMAP_MAX_KEY_SIZE;
 
 
@@ -62,35 +62,35 @@ namespace LLD
         uint16_t HASHMAP_KEY_ALLOCATION;
 
 
-        /* Initialized flag (used for cache thread) */
+        /** Initialized flag (used for cache thread) **/
         bool fInitialized;
 
 
-        /* Keychain stream object. */
+        /** Keychain stream object. **/
         mutable TemplateLRU<uint32_t, std::fstream*>* fileCache;
 
 
-        /* Total elements in hashmap for quick inserts. */
+        /** Total elements in hashmap for quick inserts. **/
         mutable std::vector<uint32_t> hashmap;
 
 
-        /* The cache for recent files. */
+        /** The cache for recent files. **/
         mutable TemplateLRU<uint32_t, std::vector<uint8_t>>* diskCache;
 
 
-        /* The cache writer thread. */
+        /** The cache writer thread. **/
         Thread_t CacheThread;
 
 
     public:
 
-        BinaryHashMap() : HASHMAP_TOTAL_BUCKETS(256 * 256 * 32), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 15), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>()), diskCache(new TemplateLRU<uint32_t, std::vector<uint8_t>>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
+        BinaryHashMap() : HASHMAP_TOTAL_BUCKETS(256 * 256 * 12), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 15), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>()), diskCache(new TemplateLRU<uint32_t, std::vector<uint8_t>>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
         }
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(std::string strBaseLocationIn) : strBaseLocation(strBaseLocationIn), HASHMAP_TOTAL_BUCKETS(256 * 256 * 32), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 15), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>()), diskCache(new TemplateLRU<uint32_t, std::vector<uint8_t>>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
+        BinaryHashMap(std::string strBaseLocationIn) : strBaseLocation(strBaseLocationIn), HASHMAP_TOTAL_BUCKETS(256 * 256 * 12), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 15), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>()), diskCache(new TemplateLRU<uint32_t, std::vector<uint8_t>>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
 
@@ -166,11 +166,16 @@ namespace LLD
                 stream.close();
 
                 /* Deserialize the values into memory index. */
+                uint32_t nTotalKeys = 0;
                 for(int nBucket = 0; nBucket < HASHMAP_TOTAL_BUCKETS; nBucket++)
+                {
                     std::copy((uint8_t*)&vIndex[nBucket * 4], (uint8_t*)&vIndex[nBucket * 4] + 4, (uint8_t*)&hashmap[nBucket]);
 
+                    nTotalKeys += hashmap[nBucket];
+                }
+
                 /* Debug output showing loading of disk index. */
-                printf(FUNCTION "Loaded Disk Index of %u bytes\n", __PRETTY_FUNCTION__, vIndex.size());
+                printf(FUNCTION "Loaded Disk Index of %u bytes and %u keys\n", __PRETTY_FUNCTION__, vIndex.size(), nTotalKeys);
             }
 
             /* Build the first hashmap index file if it doesn't exist. */

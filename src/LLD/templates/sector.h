@@ -264,23 +264,17 @@ namespace LLD
         bool Read(const Key& key, Type& value)
         {
             /** Serialize Key into Bytes. **/
-            CDataStream ssKey(SER_LLD, DATABASE_VERSION);
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
-            std::vector<uint8_t> vKey(ssKey.begin(), ssKey.end());
 
             /** Get the Data from Sector Database. **/
             std::vector<uint8_t> vData;
-            if(!Get(vKey, vData))
+            if(!Get(ssKey, vData))
                 return false;
 
             /** Deserialize Value. **/
-            try {
-                CDataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
-                ssValue >> value;
-            }
-            catch (std::exception &e) {
-                return false;
-            }
+            DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
+            ssValue >> value;
 
             return true;
         }
@@ -291,29 +285,15 @@ namespace LLD
             if (fReadOnly)
                 assert(!"Write called on database in read-only mode");
 
-            /** Serialize the Key. **/
-            CDataStream ssKey(SER_LLD, DATABASE_VERSION);
+            /* Serialize the Key. */
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
-            std::vector<uint8_t> vKey(ssKey.begin(), ssKey.end());
 
-            /** Serialize the Value **/
-            CDataStream ssValue(SER_LLD, DATABASE_VERSION);
-            ssValue << value;
-            std::vector<uint8_t> vData(ssValue.begin(), ssValue.end());
+            /* Serialize the Value */
+            DataStream ssData(SER_LLD, DATABASE_VERSION);
+            ssData << value;
 
-            /** Commit to the Database. **/
-            if(pTransaction)
-            {
-
-                std::vector<uint8_t> vOriginalData;
-                //Get(vKey, vOriginalData);
-
-                return pTransaction->AddTransaction(vKey, vData, vOriginalData);
-            }
-
-            bool fRet = Put(vKey, vData);
-
-            return fRet;
+            return Put(ssKey, ssData);
         }
 
         /** Get a Record from the Database with Given Key. **/
@@ -429,8 +409,6 @@ namespace LLD
         /** Add / Update A Record in the Database **/
         bool Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
         {
-            nBytesWrote += (vKey.size() + vData.size());
-
             /* Write the data into the memory cache. */
             cachePool->Put(vKey, vData);
             while(!fShutdown && nBufferBytes > MAX_SECTOR_BUFFER_SIZE)
@@ -475,26 +453,30 @@ namespace LLD
                 std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vIndexes;
                 {
                     LOCK(BUFFER_MUTEX);
+                    
                     vIndexes.swap(vDiskBuffer);
                     nBufferBytes = 0;
                 }
 
-                /* Allocate new File if Needed. TODO: Check if sectors go over file size, assign new file if so */
+                /* Create a new file if the sector file size is over file size limits. */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                 {
-                    if(GetArg("-verbose", 0) >= 4)
-                        printf(FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
+                    printf(FUNCTION "Generated Sector File %u\n", __PRETTY_FUNCTION__, nCurrentFile + 1);
 
+                    /* Iterate the current file and reset current file sie. */
                     nCurrentFile ++;
                     nCurrentFileSize = 0;
+
+                    /* Create a new file for next writes. */
+                    std::fstream stream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::out | std::ios::binary | std::ios::trunc);
+                    stream.close();
                 }
 
                 /* Open the Stream to Read the data from Sector on File. */
-                std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
-                std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
+                std::fstream stream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
 
                 /* Seek to the end of the file */
-                fStream.seekp(nCurrentFileSize, std::ios::beg);
+                stream.seekp(nCurrentFileSize, std::ios::beg);
 
                 /* Iterate through buffer to queue disk writes. */
                 std::vector<uint8_t> vWrite;
@@ -515,19 +497,26 @@ namespace LLD
                     /* Add data to the write buffer */
                     vWrite.insert(vWrite.end(), vObj.second.begin(), vObj.second.end());
 
+                    /* Add the file size to the written bytes. */
+                    nBytesWrote += vObj.first.size();
+
                     /* Flush to disk on periodic intervals. */
                     if(vWrite.size() > 10 * 1024 * 1024)
                     {
-                        fStream.write((char*)&vWrite[0], vWrite.size());
+                        nBytesWrote += (vWrite.size());
+
+                        stream.write((char*)&vWrite[0], vWrite.size());
                         vWrite.clear();
                     }
                 }
 
-                /* Flush remaining to disk. */
-                fStream.write((char*)&vWrite[0], vWrite.size());
-                fStream.close();
+                nBytesWrote += (vWrite.size());
 
-                printf(FUNCTION " Flushed %u Bytes to Disk\n", __PRETTY_FUNCTION__, vWrite.size());
+                /* Flush remaining to disk. */
+                stream.write((char*)&vWrite[0], vWrite.size());
+                stream.close();
+
+                printf(FUNCTION "Flushed %u Bytes to Disk\n", __PRETTY_FUNCTION__, vWrite.size());
             }
         }
 
