@@ -33,17 +33,16 @@ namespace LLD
      *  It uses a linked file list based on index to iterate trhough files and binary Positions
      *  when there is a collision that is found
      *
-    **/
+     **/
     class BinaryHashMap
     {
     protected:
+
         /** Mutex for Thread Synchronization. **/
         mutable Mutex_t KEY_MUTEX;
 
 
-        /** The String to hold the Disk Location of Database File.
-            Each Database File Acts as a New Table as in Conventional Design.
-            Key can be any Type, which is how the Database Records are Accessed. **/
+        /** The string to hold the database location. **/
         std::string strBaseLocation;
 
 
