@@ -34,7 +34,7 @@ ________________________________________________________________________________
 #endif
 
 static FILE* fileout = NULL;
-static Mutex_t DEBUG_MUTEX;
+static std::recursive_mutex DEBUG_MUTEX;
 
 
 int OutputDebugStringF(const char* pszFormat, ...)
@@ -140,7 +140,7 @@ std::string real_strprintf(const std::string &format, int dummy, ...)
     char* p = buffer;
     int limit = sizeof(buffer);
     int ret;
-    loop
+    while(true)
     {
         va_list arg_ptr;
         va_start(arg_ptr, dummy);

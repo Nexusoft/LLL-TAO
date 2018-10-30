@@ -29,12 +29,12 @@ extern bool fDaemon;
 extern bool fClient;
 extern bool fServer;
 extern bool fCommandLine;
-extern std::string strMiscWarning;
 extern bool fTestNet;
 extern bool fListen;
 extern bool fUseProxy;
 extern bool fAllowDNS;
 extern bool fLogTimestamps;
+extern std::string strMiscWarning;
 
 
 /**

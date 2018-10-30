@@ -34,7 +34,7 @@ namespace LLD
     {
     protected:
         /** Mutex for Thread Synchronization. **/
-        mutable Mutex_t KEY_MUTEX;
+        mutable std::recursive_mutex KEY_MUTEX;
 
 
         /** The String to hold the Disk Location of Database File.

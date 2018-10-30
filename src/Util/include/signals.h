@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <signal.h>
 #include <Util/include/args.h>
 
-/* Catch Signal Handler functio */
+/* Catch Signal Handler function */
 void HandleSIGTERM(int signum)
 {
     if(signum != SIGPIPE)

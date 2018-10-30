@@ -16,19 +16,6 @@ ________________________________________________________________________________
 
 #include <mutex>
 
-
-/** Wrapped std::mutex supports recursive locking, but no waiting  */
-typedef std::recursive_mutex CCriticalSection;
-
-
-/** Wrapped std::mutex supports waiting but not recursive locking */
-typedef std::mutex CWaitableCriticalSection;
-
-
-/** Location to Change the Global Mutex Object. */
-typedef CCriticalSection                                         Mutex_t;
-
-
 #ifdef DEBUG_LOCKORDER
 void EnterCritical(const char* pszName, const char* pszFile, int nLine, void* cs, bool fTry = false);
 void LeaveCritical();
@@ -110,9 +97,9 @@ public:
     }
 };
 
-typedef CMutexLock<CCriticalSection> CCriticalBlock;
+typedef CMutexLock<std::recursive_mutex> CCriticalBlock;
 
-#define LOCK(cs) std::unique_lock<CCriticalSection> lock(cs)
+#define LOCK(cs) std::unique_lock<std::recursive_mutex> lock(cs)
 //#define LOCK(cs) CCriticalBlock criticalblock(cs, #cs, __FILE__, __LINE__)
 #define LOCK2(cs1,cs2) CCriticalBlock criticalblock1(cs1, #cs1, __FILE__, __LINE__),criticalblock2(cs2, #cs2, __FILE__, __LINE__)
 #define TRY_LOCK(cs,name) CCriticalBlock name(cs, #cs, __FILE__, __LINE__, true)

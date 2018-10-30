@@ -62,7 +62,7 @@ namespace LLD
 
 
         /* Mutex for thread concurrencdy. */
-        mutable Mutex_t MUTEX;
+        mutable std::recursive_mutex MUTEX;
 
 
         /* Map of the current holding data. */

@@ -148,7 +148,7 @@ std::string GetPidFile()
 std::string GetDataDir(bool fNetSpecific)
 {
     static std::string pathCached[2];
-    static Mutex_t csPathCached;
+    static std::recursive_mutex csPathCached;
     static bool cachedPath[2] = {false, false};
 
     std::string &path = pathCached[fNetSpecific];
