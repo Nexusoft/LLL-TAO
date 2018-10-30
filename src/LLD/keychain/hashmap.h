@@ -238,7 +238,7 @@ namespace LLD
                 if(std::equal(vBucket.begin() + 15, vBucket.begin() + 15 + vKey.size(), vKey.begin()))
                 {
                     /* Deserialie key and return if found. */
-                    CDataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
+                    DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
                     ssKey >> cKey;
 
                     return true;
@@ -291,16 +291,15 @@ namespace LLD
             hashmap[nBucket]++;
 
             /* Read the State and Size of Sector Header. */
-            CDataStream ssKey(SER_LLD, DATABASE_VERSION);
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << cKey;
 
-            //TODO: This serialization wastes time in copying memory. Write better vector based stream
-            std::vector<uint8_t> vData(ssKey.begin(), ssKey.end());
-            vData.insert(vData.end(), cKey.vKey.begin(), cKey.vKey.end());
+            /* Serialize the key into the end of the vector. */
+            ssKey.write((char*)&cKey.vKey[0], cKey.vKey.size());
 
             /* Flush the key file to disk. */
             pstream->seekp (nFilePos, std::ios::beg);
-            pstream->write((char*)&vData[0], vData.size());
+            pstream->write((char*)&ssKey[0], ssKey.size());
 
             return true;
         }

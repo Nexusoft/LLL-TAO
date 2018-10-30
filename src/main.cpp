@@ -138,6 +138,7 @@ int main(int argc, char** argv)
         {
             //if(test->Read(hash, tx))
             //    tx.print();
+            
 
             nAverage++;
             uint32_t nTimer = timer.ElapsedMilliseconds();
