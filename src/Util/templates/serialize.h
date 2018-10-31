@@ -28,9 +28,8 @@ ________________________________________________________________________________
 #include <type_traits>
 #include <tuple>
 
-#include <Util/include/allocators.h>
-
 #include <LLC/types/uint1024.h>
+#include <Util/include/allocators.h>
 
 namespace Legacy
 {

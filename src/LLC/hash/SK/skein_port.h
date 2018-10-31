@@ -12,12 +12,12 @@
 **
 ** To port Skein to an "unsupported" platform, change the definitions
 ** in this file appropriately.
-** 
+**
 ********************************************************************/
 
-#include "brg_types.h"                      /* get integer type definitions */
+#include <LLC/hash/SK/brg_types.h>          /* get integer type definitions */
 
-typedef uint32_t    uint_t;             /* native uint32_teger */
+typedef uint32_t    uint_t;                 /* native uint32_teger */
 typedef uint_8t         u08b_t;             /*  8-bit uint32_teger */
 typedef uint_64t        u64b_t;             /* 64-bit uint32_teger */
 
@@ -36,7 +36,7 @@ typedef uint_64t        u64b_t;             /* 64-bit uint32_teger */
  *    Skein_Swap64
  *
  * If SKEIN_NEED_SWAP is defined at compile time, it is used here
- * along with the portable versions of Put64/Get64/Swap64, which 
+ * along with the portable versions of Put64/Get64/Swap64, which
  * are slow in general.
  *
  * Otherwise, an "auto-detect" of endianness is attempted below.

@@ -15,11 +15,11 @@ ________________________________________________________________________________
 
 #include <openssl/ecdsa.h>
 
-#include "include/key.h"
+#include <LLC/include/key.h>
 
-#include "../Util/include/debug.h"
-#include "../Util/include/hex.h"
-#include "../Util/include/mutex.h"
+#include <Util/include/debug.h>
+#include <Util/include/hex.h>
+#include <Util/include/mutex.h>
 
 namespace LLC
 {

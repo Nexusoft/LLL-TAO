@@ -12,8 +12,8 @@ http://creativecommons.org/publicdomain/zero/1.0/
 */
 
 #include <string.h>
-#include "KeccakSponge.h"
-#include "KeccakF-1600-interface.h"
+#include <LLC/hash/SK/KeccakSponge.h>
+#include <LLC/hash/SK/KeccakF-1600-interface.h>
 #ifdef KeccakReference
 #include "displayIntermediateValues.h"
 #endif

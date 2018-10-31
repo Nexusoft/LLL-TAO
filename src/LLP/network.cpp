@@ -11,18 +11,18 @@
 
 ____________________________________________________________________________________________*/
 
-#include "include/network.h"
-#include "include/hosts.h"
+#include <LLP/include/network.h>
+#include <LLP/include/hosts.h>
 
-#include "../Util/include/debug.h"
+#include <LLC/hash/SK.h>
 
-#include "../LLC/hash/SK.h"
+#include <Util/include/debug.h>
+#include <Util/include/strlcpy.h>
 
 #ifndef WIN32
 #include <sys/fcntl.h>
 #endif
 
-#include "../Util/include/strlcpy.h"
 
 namespace LLP
 {

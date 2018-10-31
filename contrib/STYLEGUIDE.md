@@ -31,7 +31,7 @@ Always use namespaces to keep the code well ordered and organized. The guide to 
 
 This section involes how to format the code due to carriage return
 
-* Avoid K&R style brackets. Put opening and closing brackets on thier own lines.
+* Avoid K&R style brackets. Put opening and closing brackets on their own lines.
 
 * Use tab length 4 and replace tabs with spaces
 

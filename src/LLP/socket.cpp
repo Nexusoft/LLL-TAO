@@ -15,10 +15,10 @@ ________________________________________________________________________________
 #include <vector>
 #include <stdio.h>
 
-#include "include/network.h"
-#include "templates/socket.h"
+#include <LLP/include/network.h>
+#include <LLP/templates/socket.h>
 
-#include "../Util/include/debug.h"
+#include <Util/include/debug.h>
 
 #ifndef WIN32
 #include <arpa/inet.h>

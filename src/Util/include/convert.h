@@ -1,12 +1,12 @@
 /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
-            
+
             (c) Copyright The Nexus Developers 2014 - 2018
-            
+
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
-            
+
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
@@ -17,8 +17,7 @@ ________________________________________________________________________________
 #include <cstdlib>
 #include <cstdint>
 #include <string>
-
-#include "debug.h"
+#include <Util/include/debug.h>
 
 inline std::string i64tostr(int64_t n)
 {
@@ -119,7 +118,7 @@ inline std::vector<uint8_t> parse_ip(std::string ip)
 {
     std::vector<uint8_t> bytes(4, 0);
     sscanf(ip.c_str(), "%hhu.%hhu.%hhu.%hhu", &bytes[0], &bytes[1], &bytes[2], &bytes[3]);
-    
+
     return bytes;
 }
 
@@ -132,14 +131,14 @@ inline std::vector<uint8_t> uint2bytes(uint32_t UINT)
     BYTES[1] = UINT >> 16;
     BYTES[2] = UINT >> 8;
     BYTES[3] = UINT;
-                
+
     return BYTES;
 }
 
 
-/* Convert a byte stream into a signed integer 32 bit. */	
+/* Convert a byte stream into a signed integer 32 bit. */
 inline int bytes2int(std::vector<uint8_t> BYTES, int nOffset = 0) { return (BYTES[0 + nOffset] << 24) + (BYTES[1 + nOffset] << 16) + (BYTES[2 + nOffset] << 8) + BYTES[3 + nOffset]; }
-        
+
 
 /* Convert a 32 bit signed Integer to Byte Vector using Bitwise Shifts. */
 inline std::vector<uint8_t> int2bytes(int INT)
@@ -149,30 +148,30 @@ inline std::vector<uint8_t> int2bytes(int INT)
     BYTES[1] = INT >> 16;
     BYTES[2] = INT >> 8;
     BYTES[3] = INT;
-                
+
     return BYTES;
 }
-            
-            
-/* Convert a byte stream into uint32_teger 32 bit. */	
-inline uint32_t bytes2uint(std::vector<uint8_t> BYTES, int nOffset = 0) { return (BYTES[0 + nOffset] << 24) + (BYTES[1 + nOffset] << 16) + (BYTES[2 + nOffset] << 8) + BYTES[3 + nOffset]; }		
-            
-            
+
+
+/* Convert a byte stream into uint32_teger 32 bit. */
+inline uint32_t bytes2uint(std::vector<uint8_t> BYTES, int nOffset = 0) { return (BYTES[0 + nOffset] << 24) + (BYTES[1 + nOffset] << 16) + (BYTES[2 + nOffset] << 8) + BYTES[3 + nOffset]; }
+
+
 /* Convert a 64 bit Unsigned Integer to Byte Vector using Bitwise Shifts. */
 inline std::vector<uint8_t> uint2bytes64(uint64_t UINT)
 {
     std::vector<uint8_t> INTS[2];
     INTS[0] = uint2bytes((uint32_t) UINT);
     INTS[1] = uint2bytes((uint32_t) (UINT >> 32));
-                
+
     std::vector<uint8_t> BYTES;
     BYTES.insert(BYTES.end(), INTS[0].begin(), INTS[0].end());
     BYTES.insert(BYTES.end(), INTS[1].begin(), INTS[1].end());
-                
+
     return BYTES;
 }
 
-            
+
 /* Convert a byte Vector into uint32_teger 64 bit. */
 inline uint64_t bytes2uint64(std::vector<uint8_t> BYTES, int nOffset = 0) { return (bytes2uint(BYTES, nOffset) | ((uint64_t)bytes2uint(BYTES, nOffset + 4) << 32)); }
 

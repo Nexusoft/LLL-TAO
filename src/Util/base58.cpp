@@ -13,9 +13,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/bignum.h>
 #include <LLC/hash/SK.h>
-
 #include <Util/include/base58.h>
-
 #include <algorithm>
 
 /* Encode into base58 returning a std::string */

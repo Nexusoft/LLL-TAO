@@ -15,11 +15,12 @@ ________________________________________________________________________________
 #define NEXUS_UTIL_INCLUDE_ARGS_H
 
 #include <map>
-#include <string>
 #include <vector>
+#include <string>
 
 extern std::map<std::string, std::string> mapArgs;
 extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
+extern std::string strMiscWarning;
 
 extern bool fDebug;
 extern bool fPrintToConsole;
@@ -34,7 +35,6 @@ extern bool fListen;
 extern bool fUseProxy;
 extern bool fAllowDNS;
 extern bool fLogTimestamps;
-extern std::string strMiscWarning;
 
 
 /**

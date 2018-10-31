@@ -11,12 +11,12 @@
 
 ____________________________________________________________________________________________*/
 
+#include <fstream>
+#include <cstring> //for strlen
 #include <Util/include/args.h>
 #include <Util/include/config.h>
 #include <Util/include/mutex.h>
 #include <Util/include/filesystem.h>
-#include <fstream>
-#include <cstring> //for strlen
 
 /* Read the Config file from the Disk. */
 void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,

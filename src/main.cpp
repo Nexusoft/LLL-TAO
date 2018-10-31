@@ -11,27 +11,24 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/Ledger/types/transaction.h>
+
+#include <LLC/include/random.h>
+
+#include <LLD/templates/sector.h>
+#include <LLD/keychain/hashmap.h>
+#include <LLD/keychain/filemap.h>
+#include <LLD/cache/binary_lru.h>
+
+#include <LLP/include/tritium.h>
+#include <LLP/templates/server.h>
+
 #include <Util/include/args.h>
 #include <Util/include/config.h>
 #include <Util/include/signals.h>
 #include <Util/include/convert.h>
 #include <Util/include/runtime.h>
 #include <Util/include/filesystem.h>
-
-
-#include <LLC/include/random.h>
-
-#include <LLD/templates/sector.h>
-
-#include <LLD/keychain/hashmap.h>
-#include <LLD/keychain/filemap.h>
-
-#include <LLD/cache/binary_lru.h>
-
-#include <LLP/include/tritium.h>
-#include <LLP/templates/server.h>
-
-#include <TAO/Ledger/types/transaction.h>
 
 
 class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU>

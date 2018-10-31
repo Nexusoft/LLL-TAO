@@ -14,17 +14,17 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_OPERATION_INCLUDE_EXECUTE_H
 #define NEXUS_TAO_OPERATION_INCLUDE_EXECUTE_H
 
-#include <LLD/include/register.h>
-#include <LLD/include/ledger.h>
-
-#include <Util/include/debug.h>
-
 #include <TAO/Operation/include/stream.h>
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Register/include/state.h>
 #include <TAO/Register/objects/account.h>
 #include <TAO/Register/objects/token.h>
 #include <TAO/Register/include/enum.h>
+
+#include <LLD/include/register.h>
+#include <LLD/include/ledger.h>
+
+#include <Util/include/debug.h>
 
 namespace TAO
 {

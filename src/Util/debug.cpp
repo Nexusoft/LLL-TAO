@@ -12,7 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #include <string>
-
+#include <stdarg.h>
+#include <stdio.h>
 #include <Util/include/config.h>
 #include <Util/include/debug.h>
 #include <Util/include/args.h>
@@ -20,10 +21,6 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
-
-#include <stdarg.h>
-#include <stdio.h>
-
 
 #ifndef WIN32
 #include <execinfo.h>

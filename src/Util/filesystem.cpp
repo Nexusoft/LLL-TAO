@@ -11,8 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Util/include/filesystem.h>
-
 #ifdef WIN32 //TODO: use GetFullPathNameW in system_complete if getcwd not supported
 
 #else
@@ -23,6 +21,7 @@ ________________________________________________________________________________
 #include <stdio.h> //remove()
 #include <errno.h>
 #include <string.h>
+#include <Util/include/filesystem.h>
 
 #ifndef MAX_PATH
 #define MAX_PATH 256
