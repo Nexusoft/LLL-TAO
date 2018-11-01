@@ -33,7 +33,10 @@ inline bool CheckPermissions(std::string strAddress, uint32_t nPort)
     /* Split the Address into String Vector. */
     std::vector<std::string> vAddress = Split(strAddress, '.');
     if(vAddress.size() != 4)
-        return debug::error("Address size not at least 4 bytes.");
+    {
+        debug::error("Address size not at least 4 bytes.");
+        return false;
+    }
 
     /* Check against the commandline parameters. */
     const std::vector<std::string>& vAllow = config::mapMultiArgs["-llpallowip"];
@@ -50,19 +53,26 @@ inline bool CheckPermissions(std::string strAddress, uint32_t nPort)
             continue;
 
         /* Check the Wildcard port. */
-        if(!fWildcardPort) {
+        if(!fWildcardPort)
+        {
             std::vector<std::string> strPort = Split(vCheck[3], ':');
             vCheck[3] = strPort[0];
 
             uint32_t nPortCheck = stoi(strPort[1]);
             if(nPort != nPortCheck)
-                return debug::error("Bad Port.");
+            {
+                debug::error("Bad Port.");
+                return false;
+            }
         }
 
         /* Check the components of IP address. */
         for(int nByte = 0; nByte < 4; nByte++)
             if(vCheck[nByte] != "*" && vCheck[nByte] != vAddress[nByte])
-                return debug::error("Check %s - %s\n", vCheck[nByte].c_str(), vAddress[nByte].c_str());
+            {
+                debug::error("Check %s - %s\n", vCheck[nByte].c_str(), vAddress[nByte].c_str());
+                return false;
+            }
     }
 
     return true;;

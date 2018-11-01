@@ -30,12 +30,13 @@ ________________________________________________________________________________
 #define _strlwr(psz)        to_lower(psz)
 #endif
 
-static FILE* fileout = NULL;
-static std::recursive_mutex DEBUG_MUTEX;
-
 namespace debug
 {
+    static FILE* fileout = NULL;
+    static std::recursive_mutex DEBUG_MUTEX;
 
+    /* Prints output to the console. It may also write output to a debug.log
+     * if the global fileout file is assigned. */
     int printf(const char* pszFormat, ...)
     {
         LOCK(DEBUG_MUTEX);
@@ -58,7 +59,6 @@ namespace debug
 
         if (fileout)
         {
-            va_list arg_ptr;
             va_start(arg_ptr, pszFormat);
             ret = vfprintf(fileout, pszFormat, arg_ptr);
             va_end(arg_ptr);
@@ -73,7 +73,7 @@ namespace debug
                 static char* pend;
                 if (pend == NULL)
                         pend = pszBuffer;
-                    va_list arg_ptr;
+
                 va_start(arg_ptr, pszFormat);
                 int limit = END(pszBuffer) - pend - 2;
                 int ret = _vsnprintf(pend, limit, pszFormat, arg_ptr);
@@ -113,10 +113,8 @@ namespace debug
         return ret;
     }
 
-    /* Safer snprintf
-        - prints up to limit-1 characters
-        - output string is always null terminated even if limit reached
-        - return value is the number of characters actually printed */
+    /*  Safer snprintf output string is always null terminated even if the limit
+     *  is reach. Returns the number of characters printed. */
     int my_snprintf(char* buffer, size_t limit, const char* format, ...)
     {
         if (limit == 0)
@@ -134,7 +132,8 @@ namespace debug
     }
 
 
-    std::string real_strprintf(const std::string &format, int dummy, ...)
+    /* Prints output into a string that is returned. */
+    std::string real_strprintf(const std::string &format, ...)
     {
         char buffer[50000];
         char* p = buffer;
@@ -143,7 +142,7 @@ namespace debug
         while(true)
         {
             va_list arg_ptr;
-            va_start(arg_ptr, dummy);
+            va_start(arg_ptr, 0);
             ret = _vsnprintf(p, limit, format.c_str(), arg_ptr);
             va_end(arg_ptr);
             if (ret >= 0 && ret < limit)
@@ -162,8 +161,9 @@ namespace debug
         return str;
     }
 
-
-    bool error(const char *format, ...)
+    /*  Prints output with a red error caption to the console. It may also write output to a debug.log
+     *  if the global fileout file is assigned. */
+    void error(const char *format, ...)
     {
         char buffer[50000];
         int limit = sizeof(buffer);
@@ -177,9 +177,9 @@ namespace debug
         }
 
         printf(ANSI_COLOR_RED "ERROR: %s" ANSI_COLOR_RESET "\n", buffer);
-        return false;
     }
 
+    /*  Prints output with base class and function information. */
     void print_base(const char* base, const char* format, ...)
     {
         char buffer[50000];
@@ -196,6 +196,23 @@ namespace debug
         printf(ANSI_COLOR_FUNCTION "%s::%s()" ANSI_COLOR_RESET " : %s\n", base, __func__, buffer);
     }
 
+    /*  Prints and logs the stack trace of the code execution call stack up to
+     *  the point where this function is called to debug.log */
+    void LogStackTrace()
+    {
+        printf("\n\n******* exception encountered *******\n");
+        if (fileout)
+        {
+        #ifndef WIN32
+            void* pszBuffer[32];
+            size_t size;
+            size = backtrace(pszBuffer, 32);
+            backtrace_symbols_fd(pszBuffer, size, fileno(fileout));
+        #endif
+        }
+    }
+
+    /* Outputs a formatted string for the calling thread and exception thrown */
     void FormatException(char* pszMessage, std::exception* pex, const char* pszThread)
     {
     #ifdef WIN32
@@ -211,8 +228,9 @@ namespace debug
             else
             snprintf(pszMessage, 1000,
                 "UNKNOWN EXCEPTION       \n%s in %s       \n", pszModule, pszThread);
-        }
+    }
 
+    /*  Prints and logs the exception that is thrown with the named calling thread. */
     void LogException(std::exception* pex, const char* pszThread)
     {
         char pszMessage[10000];
@@ -220,6 +238,7 @@ namespace debug
         printf("\n%s", pszMessage);
     }
 
+    /*  Prints the exception with the named calling thread and throws it */
     void PrintException(std::exception* pex, const char* pszThread)
     {
         char pszMessage[10000];
@@ -230,20 +249,7 @@ namespace debug
         throw;
     }
 
-    void LogStackTrace()
-    {
-        printf("\n\n******* exception encountered *******\n");
-        if (fileout)
-        {
-        #ifndef WIN32
-            void* pszBuffer[32];
-            size_t size;
-            size = backtrace(pszBuffer, 32);
-            backtrace_symbols_fd(pszBuffer, size, fileno(fileout));
-        #endif
-        }
-    }
-
+    /*  Prints the exception with the named calling thread but does not throw it. */
     void PrintExceptionContinue(std::exception* pex, const char* pszThread)
     {
         char pszMessage[10000];
@@ -253,6 +259,7 @@ namespace debug
 
     }
 
+    /*  Gets the size of the file in bytes. */
     int GetFilesize(FILE* file)
     {
         int nSavePos = ftell(file);
@@ -263,6 +270,9 @@ namespace debug
         return nFilesize;
     }
 
+    /*  Shrinks the size of the debug.log file if it has grown exceptionally large.
+     *  It keeps some of the end of the file with most recent log history before
+     *  shrinking it down. */
     void ShrinkDebugFile()
     {
         /* Scroll debug.log if it's getting too big */

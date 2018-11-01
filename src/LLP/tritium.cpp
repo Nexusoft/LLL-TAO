@@ -171,7 +171,10 @@ namespace LLP
 
                     /* Check map known requests. */
                     if(!mapSentRequests.count(nRequestID))
-                        return debug::error(NODE "offset not requested");
+                    {
+                        debug::error(NODE "offset not requested");
+                        return false;
+                    }
 
                     /* Check the time since request was sent. */
                     if(Timestamp() - mapSentRequests[nRequestID] > 10)
@@ -303,7 +306,10 @@ namespace LLP
 
                     /* Check for unsolicted pongs. */
                     if(!mapLatencyTracker.count(nNonce))
-                        return debug::error(NODE "unsolicited pong");
+                    {
+                        debug::error(NODE "unsolicited pong");
+                        return false;
+                    }
 
                     /* Debug output for latency. */
                     if(config::GetArg("-verbose", 0) >= 3)
@@ -315,7 +321,6 @@ namespace LLP
                     break;
                 }
             }
-
 
             return true;
         }

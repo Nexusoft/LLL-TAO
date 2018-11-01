@@ -358,7 +358,10 @@ namespace LLD
                 std::string strFilename = debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile);
                 std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::binary);
                 if(!fStream)
-                    return debug::error(FUNCTION "Sector File %s Doesn't Exist\n", __PRETTY_FUNCTION__, strFilename.c_str());
+                {
+                    debug::error(FUNCTION "Sector File %s Doesn't Exist\n", __PRETTY_FUNCTION__, strFilename.c_str());
+                    return false;
+                }
 
                 /* Seek to the Sector Position on Disk. */
                 fStream.seekg(cKey.nSectorStart, std::ios::beg);
@@ -371,7 +374,10 @@ namespace LLD
                 /* Check the Data Integrity of the Sector by comparing the Checksums. */
                 uint32_t nChecksum = LLC::SK32(vData);
                 if(cKey.nChecksum != nChecksum)
-                    return debug::error(FUNCTION "Checksums don't match data. Corrupted Sector.", __PRETTY_FUNCTION__);
+                {
+                    debug::error(FUNCTION "Checksums don't match data. Corrupted Sector.", __PRETTY_FUNCTION__);
+                    return false;
+                }
 
                 if(config::GetArg("-verbose", 0) >= 4)
                     printf(FUNCTION "%s\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
@@ -379,7 +385,10 @@ namespace LLD
                 return true;
             }
             else
-                return debug::error(FUNCTION "KEY NOT FOUND", __PRETTY_FUNCTION__);
+            {
+                debug::error(FUNCTION "KEY NOT FOUND", __PRETTY_FUNCTION__);
+                return false;
+            }
 
             return false;
         }

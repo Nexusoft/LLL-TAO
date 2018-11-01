@@ -159,11 +159,17 @@ namespace LLP
 
             /* Check the Header Bytes. */
             if(memcmp(HEADER, (config::fTestNet ? MESSAGE_START_TESTNET : MESSAGE_START_MAINNET), sizeof(HEADER)) != 0)
-                return debug::error("Message Packet (Invalid Packet Header");
+            {
+                debug::error("Message Packet (Invalid Packet Header");
+                return false;
+            }
 
             /* Make sure Packet length is within bounds. (Max 512 MB Packet Size) */
             if (LENGTH > (1024 * 1024 * 512))
-                return debug::error("Message Packet (%s, %u bytes) : Message too Large", MESSAGE, LENGTH);
+            {
+                debug::error("Message Packet (%s, %u bytes) : Message too Large", MESSAGE, LENGTH);
+                return false;
+            }
 
             /* Double check the Message Checksum. */
             uint512_t hash = LLC::SK512(DATA.begin(), DATA.end());
@@ -172,8 +178,11 @@ namespace LLP
             memcpy(&nChecksum, &hash, sizeof(nChecksum));
 
             if (nChecksum != CHECKSUM)
-                return debug::error("Message Packet (%s, %u bytes) : CHECKSUM MISMATCH nChecksum=%u hdr.nChecksum=%u",
+            {
+                debug::error("Message Packet (%s, %u bytes) : CHECKSUM MISMATCH nChecksum=%u hdr.nChecksum=%u",
                 MESSAGE, LENGTH, nChecksum, CHECKSUM);
+                return false;
+            }
 
             return true;
         }

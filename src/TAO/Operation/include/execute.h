@@ -66,15 +66,24 @@ namespace TAO
                         /* Read the binary data of the Register. */
                         TAO::Register::State regState;
                         if(!regDB->ReadState(hashAddress, regState))
-                            return debug::error(FUNCTION "Register Address doewn't exist %s", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+                        {
+                            debug::error(FUNCTION "Register Address doewn't exist %s", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+                            return false;
+                        }
 
                         /* Check ReadOnly permissions. */
                         if(regState.fReadOnly)
-                            return debug::error(FUNCTION "Write operation called on read-only register", __PRETTY_FUNCTION__);
+                        {
+                            debug::error(FUNCTION "Write operation called on read-only register", __PRETTY_FUNCTION__);
+                            return false;
+                        }
 
                         /*state Check that the proper owner is commiting the write. */
                         if(hashOwner != regState.hashOwner)
-                            return debug::error(FUNCTION "No write permissions for owner %s", __PRETTY_FUNCTION__, hashOwner.ToString().c_str());
+                        {
+                            debug::error(FUNCTION "No write permissions for owner %s", __PRETTY_FUNCTION__, hashOwner.ToString().c_str());
+                            return false;
+                        }
 
                         /* Deserialize the register from stream. */
                         TAO::Register::State regNew;
@@ -82,14 +91,20 @@ namespace TAO
 
                         /* Check the new data size against register's allocated size. */
                         if(regNew.nLength != regState.nLength)
-                            return debug::error(FUNCTION "New Register State size %u mismatch %u", __PRETTY_FUNCTION__, regNew.nLength, regState.nLength);
+                        {
+                            debug::error(FUNCTION "New Register State size %u mismatch %u", __PRETTY_FUNCTION__, regNew.nLength, regState.nLength);
+                            return false;
+                        }
 
                         /* Set the new state of the register. */
                         regState.SetState(regNew.GetState());
 
                         /* Write the register to the database. */
                         if(!regDB->WriteState(hashAddress, regState))
-                            return debug::error(FUNCTION "Failed to write new state", __PRETTY_FUNCTION__);
+                        {
+                            debug::error(FUNCTION "Failed to write new state", __PRETTY_FUNCTION__);
+                            return false;
+                        }
 
                         break;
                     }
@@ -104,7 +119,10 @@ namespace TAO
 
                         /* Check that the register doesn't exist yet. */
                         if(regDB->HasState(hashAddress))
-                            return debug::error(FUNCTION "Cannot allocate register of same memory address %s", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+                        {
+                            debug::error(FUNCTION "Cannot allocate register of same memory address %s", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+                            return false;
+                        }
 
                         /* Set the register's state */
                         TAO::Register::State regState = TAO::Register::State();
@@ -112,7 +130,10 @@ namespace TAO
 
                         /* Write the register to database. */
                         if(!regDB->WriteState(hashAddress, regState))
-                            return debug::error(FUNCTION "Failed to write state register %s into register DB", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+                        {
+                            debug::error(FUNCTION "Failed to write state register %s into register DB", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+                            return false;
+                        }
 
                         break;
                     }
@@ -132,16 +153,25 @@ namespace TAO
                         /* Read the register from the database. */
                         TAO::Register::State regState = TAO::Register::State();
                         if(!regDB->ReadState(hashAddress, regState))
-                            return debug::error(FUNCTION "Register %s doesn't exist in register DB", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+                        {
+                            debug::error(FUNCTION "Register %s doesn't exist in register DB", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+                            return false;
+                        }
 
                         /* Make sure that you won the rights to register first. */
                         if(regState.hashOwner != hashOwner)
-                            return debug::error(FUNCTION "%s not authorized to transfer register", __PRETTY_FUNCTION__, hashOwner.ToString().c_str());
+                        {
+                            debug::error(FUNCTION "%s not authorized to transfer register", __PRETTY_FUNCTION__, hashOwner.ToString().c_str());
+                            return false;
+                        }
 
                         /* Set the new owner of the register. */
                         regState.hashOwner = hashTransfer;
                         if(!regDB->WriteState(hashAddress, regState))
-                            return debug::error(FUNCTION "Failed to write new owner for register", __PRETTY_FUNCTION__);
+                        {
+                            debug::error(FUNCTION "Failed to write new owner for register", __PRETTY_FUNCTION__);
+                            return false;
+                        }
 
                         break;
                     }
@@ -161,15 +191,24 @@ namespace TAO
                         /* Read the register from the database. */
                         TAO::Register::State regFrom = TAO::Register::State();
                         if(!regDB->ReadState(hashFrom, regFrom))
-                            return debug::error(FUNCTION "Register %s doesn't exist in register DB", __PRETTY_FUNCTION__, hashFrom.ToString().c_str());
+                        {
+                            debug::error(FUNCTION "Register %s doesn't exist in register DB", __PRETTY_FUNCTION__, hashFrom.ToString().c_str());
+                            return false;
+                        }
 
                         /* Check ownership of register. */
                         if(regFrom.hashOwner != hashOwner)
-                            return debug::error(FUNCTION "%s not authorized to debit from register", __PRETTY_FUNCTION__, hashOwner.ToString().c_str());
+                        {
+                            debug::error(FUNCTION "%s not authorized to debit from register", __PRETTY_FUNCTION__, hashOwner.ToString().c_str());
+                            return false;
+                        }
 
                         /* Skip all non account registers for now. */
                         if(regFrom.nType != TAO::Register::OBJECT_ACCOUNT)
-                            return debug::error(FUNCTION "%s is not an account object", __PRETTY_FUNCTION__, hashFrom.ToString().c_str());
+                        {
+                            debug::error(FUNCTION "%s is not an account object", __PRETTY_FUNCTION__, hashFrom.ToString().c_str());
+                            return false;
+                        }
 
                         /* Get the account object from register. */
                         TAO::Register::Account acctFrom;
@@ -177,7 +216,10 @@ namespace TAO
 
                         /* Check the balance of the from account. */
                         if(acctFrom.nBalance < nAmount)
-                            return debug::error(FUNCTION "%s doesn't have sufficient balance", __PRETTY_FUNCTION__, hashFrom.ToString().c_str());
+                        {
+                            debug::error(FUNCTION "%s doesn't have sufficient balance", __PRETTY_FUNCTION__, hashFrom.ToString().c_str());
+                            return false;
+                        }
 
                         /* Change the state of account register. */
                         acctFrom.nBalance -= nAmount;
@@ -201,7 +243,10 @@ namespace TAO
                         /* Read the claimed transaction. */
                         TAO::Ledger::Transaction tx;
                         if(!legDB->ReadTx(hashTx, tx))
-                            return debug::error(FUNCTION "%s tx doesn't exist", __PRETTY_FUNCTION__, hashTx.ToString().c_str());
+                        {
+                            debug::error(FUNCTION "%s tx doesn't exist", __PRETTY_FUNCTION__, hashTx.ToString().c_str());
+                            return false;
+                        }
 
                         /* Extract the state from tx. */
                         uint8_t TX_OP;
@@ -209,7 +254,10 @@ namespace TAO
 
                         /* Check that prev is debit. */
                         if(TX_OP != TAO::Operation::OP_DEBIT)
-                            return debug::error(FUNCTION "%s tx claim is not a debit", __PRETTY_FUNCTION__, hashTx.ToString().c_str());
+                        {
+                            debug::error(FUNCTION "%s tx claim is not a debit", __PRETTY_FUNCTION__, hashTx.ToString().c_str());
+                            return false;
+                        }
 
                         /* Get the debit from account. */
                         uint256_t hashFrom;
@@ -222,19 +270,29 @@ namespace TAO
                         /* Read the to account state. */
                         TAO::Register::State stateTo;
                         if(!regDB->ReadState(hashTo, stateTo))
-                            return debug::error(FUNCTION "%s state to claim not in database", __PRETTY_FUNCTION__, hashTo.ToString().c_str());
+                        {
+                            debug::error(FUNCTION "%s state to claim not in database", __PRETTY_FUNCTION__, hashTo.ToString().c_str());
+                            return false;
+                        }
 
                         /* Credits specific to account objects. */
                         if(stateTo.nType == TAO::Register::OBJECT_ACCOUNT)
                         {
                             /* Check if this is a whole credit that the transaction is not already connected. */
                             if(tx.fConnected)
-                                return debug::error(FUNCTION "transaction is already spent", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "transaction is already spent", __PRETTY_FUNCTION__);
+                                return false;
+                            }
+
 
                             /* Connect the transaction and write its new state to disk. */
                             tx.fConnected = true;
                             if(!legDB->WriteTx(hashTx, tx))
-                                return debug::error(FUNCTION "failed to change debit transaction state", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "failed to change debit transaction state", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* The proof this credit is using to make claims. */
                             uint256_t hashProof;
@@ -254,20 +312,32 @@ namespace TAO
                             /* Read the state from. */
                             TAO::Register::State stateAccount;
                             if(!regDB->ReadState(hashAccount, stateAccount))
-                                return debug::error(FUNCTION "can't read state from", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "can't read state from", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* Check that the creditor has permissions. */
                             if(stateAccount.hashOwner != hashOwner)
-                                return debug::error(FUNCTION "not authorized to credit to this register", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "not authorized to credit to this register", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* Make sure the claimed account is the debited account. */
                             if(hashAccount != hashTo)
-                                return debug::error(FUNCTION "credit claim is not same account as debit", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "credit claim is not same account as debit", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* Read the state from. */
                             TAO::Register::State stateFrom;
                             if(!regDB->ReadState(hashFrom, stateFrom))
-                                return debug::error(FUNCTION "can't read state from", __PRETTY_FUNCTION__);
+                            {
+                                 debug::error(FUNCTION "can't read state from", __PRETTY_FUNCTION__);
+                                 return false;
+                            }
 
                             /* Check the token identifiers. */
                             TAO::Register::Account acctFrom;
@@ -277,7 +347,10 @@ namespace TAO
                             stateTo >> acctTo;
 
                             if(acctFrom.nIdentifier != acctTo.nIdentifier)
-                                return debug::error(FUNCTION "credit can't be of different identifier", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "credit can't be of different identifier", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* The total to be credited. */
                             uint64_t  nAmount;
@@ -289,7 +362,10 @@ namespace TAO
 
                             /* Check the proper balance requirements. */
                             if(nAmount != nTotal)
-                                return debug::error(FUNCTION "credit and debit totals don't match", __PRETTY_FUNCTION__);
+                            {
+                                 debug::error(FUNCTION "credit and debit totals don't match", __PRETTY_FUNCTION__);
+                                 return false;
+                            }
 
                             /* Credit account balance. */
                             acctTo.nBalance += nAmount;
@@ -305,16 +381,25 @@ namespace TAO
                             /* Connect the transaction and write its new state to disk. */
                             tx.fConnected = true;
                             if(!legDB->WriteTx(hashTx, tx))
-                                return debug::error(FUNCTION "failed to change debit transaction state", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "failed to change debit transaction state", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* Get the state register of this register's owner. */
                             TAO::Register::State stateOwner;
                             if(!regDB->ReadState(stateTo.hashOwner, stateOwner))
-                                return debug::error(FUNCTION "credit from raw object can't be without owner", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "credit from raw object can't be without owner", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* Disable any account that's not owned by a token (for now). */
                             if(stateOwner.nType != TAO::Register::OBJECT_TOKEN)
-                                return debug::error(FUNCTION "credit from raw object can't be owned by non token", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "credit from raw object can't be owned by non token", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* Get the token object. */
                             TAO::Register::Token token;
@@ -326,11 +411,17 @@ namespace TAO
 
                             /* Check that this proof has not been used in a partial credit. */
                             if(legDB->HasProof(hashProof, hashTx))
-                                return debug::error(FUNCTION "credit proof has already been spent", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "credit proof has already been spent", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* Write the hash proof to disk. */
                             if(!legDB->WriteProof(hashProof, hashTx))
-                                return debug::error(FUNCTION "failed to write the credit proof", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "failed to write the credit proof", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             //check the hash proof to the transaction database. Proofs claim a debit so it is no longer reversible in validation script
                             //transaction state needs to be update in the transaction database as well. The state will be flagged as true
@@ -340,15 +431,24 @@ namespace TAO
                             /* Check the state register that is being used as proof from creditor. */
                             TAO::Register::State stateProof;
                             if(!regDB->ReadState(hashProof, stateProof))
-                                return debug::error(FUNCTION "credit proof register is not found", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "credit proof register is not found", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* Check that the proof is an account being used. */
                             if(stateProof.nType != TAO::Register::OBJECT_ACCOUNT)
-                                return debug::error(FUNCTION "credit proof register must be account", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "credit proof register must be account", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* Check the ownership of proof register. */
                             if(stateProof.hashOwner != hashOwner)
-                                return debug::error(FUNCTION "not authorized to use this proof register", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "not authorized to use this proof register", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* Get the proof account object. */
                             TAO::Register::Account acctProof;
@@ -356,7 +456,10 @@ namespace TAO
 
                             /* Check that the token indetifier matches token identifier. */
                             if(acctProof.nIdentifier != token.nIdentifier)
-                                return debug::error(FUNCTION "account proof identifier not token identifier", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "account proof identifier not token identifier", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* The account that is being credited. */
                             uint256_t hashAccount;
@@ -365,15 +468,24 @@ namespace TAO
                             /* Get the state of debit to account. */
                             TAO::Register::State stateAccount;
                             if(!regDB->ReadState(hashAccount, stateAccount))
-                                return debug::error(FUNCTION "cannot read credit to account register", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "cannot read credit to account register", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* Make sure the account to is an object account (for now - otherwise you can have chans of chains of chains). */
                             if(stateAccount.nType != TAO::Register::OBJECT_ACCOUNT)
-                                return debug::error(FUNCTION "credit register is not of account type", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "credit register is not of account type", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* Check that the creditor has permissions. */
                             if(stateAccount.hashOwner != hashOwner)
-                                return debug::error(FUNCTION "not authorized to credit to this register", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "not authorized to credit to this register", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* Get the total credit is claiming from previous debit. */
                             uint64_t nCredit;
@@ -388,7 +500,10 @@ namespace TAO
 
                             /* Check that the required credit claim is accurate. */
                             if(nTotal != nCredit)
-                                return debug::error(FUNCTION "claimed credit " PRIu64 " mismatch with token holdings" PRIu64, __PRETTY_FUNCTION__, nCredit, nTotal);
+                            {
+                                debug::error(FUNCTION "claimed credit " PRIu64 " mismatch with token holdings" PRIu64, __PRETTY_FUNCTION__, nCredit, nTotal);
+                                return false;
+                            }
 
                             /* Get the account being credited. */
                             TAO::Register::Account acctTo;
@@ -397,7 +512,10 @@ namespace TAO
                             /* Read the state from. */
                             TAO::Register::State stateFrom;
                             if(!regDB->ReadState(hashFrom, stateFrom))
-                                return debug::error(FUNCTION "can't read state from", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "can't read state from", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* Get the debiter's register. */
                             TAO::Register::Account acctFrom;
@@ -405,7 +523,10 @@ namespace TAO
 
                             /* Check that the debit to credit identifiers match. */
                             if(acctFrom.nIdentifier != acctTo.nIdentifier)
-                                return debug::error(FUNCTION "credit can't be of different identifier", __PRETTY_FUNCTION__);
+                            {
+                                debug::error(FUNCTION "credit can't be of different identifier", __PRETTY_FUNCTION__);
+                                return false;
+                            }
 
                             /* Update the state account balance. */
                             acctTo.nBalance += nCredit;
