@@ -304,7 +304,7 @@ namespace LLD
         /* Helper Thread to Batch Write to Disk. */
         void CacheWriter()
         {
-            while(!fShutdown)
+            while(!config::fShutdown)
             {
                 /* Wait for Database to Initialize. */
                 if(!fInitialized)

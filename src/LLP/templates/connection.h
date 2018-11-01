@@ -118,11 +118,11 @@ namespace LLP
             LOCK(MUTEX);
 
             /* Debug dump of message type. */
-            if(GetArg("-verbose", 0) >= 4)
+            if(config::GetArg("-verbose", 0) >= 4)
                 printf(NODE "Sent Message (%u, %u)\n", PACKET.LENGTH, PACKET.GetBytes().size());
 
             /* Debug dump of packet data. */
-            if(GetArg("-verbose", 0) >= 5) {
+            if(config::GetArg("-verbose", 0) >= 5) {
                 printf(NODE "Pakcet Dump: ");
 
                 PrintHex(PACKET.GetBytes());

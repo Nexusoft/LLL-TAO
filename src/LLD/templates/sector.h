@@ -149,7 +149,7 @@ namespace LLD
             , MeterThread(std::bind(&SectorDatabase::Meter, this))
             , nBufferBytes(0)
         {
-            if(GetBoolArg("-runtime", false))
+            if(config::GetBoolArg("-runtime", false))
                 runtime.Start();
 
             /* Read only flag when instantiating new database. */
@@ -161,7 +161,7 @@ namespace LLD
             /* Initialize the Database. */
             Initialize();
 
-            if(GetBoolArg("-runtime", false))
+            if(config::GetBoolArg("-runtime", false))
                 printf(ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
         }
 
@@ -245,7 +245,7 @@ namespace LLD
         template<typename Key>
         bool Erase(const Key& key)
         {
-            if(GetBoolArg("-runtime", false))
+            if(config::GetBoolArg("-runtime", false))
                 runtime.Start();
 
             /* Serialize Key into Bytes. */
@@ -264,7 +264,7 @@ namespace LLD
             /* Return the Key existance in the Keychain Database. */
             bool fErased = SectorKeys->Erase(vKey);
 
-            if(GetBoolArg("-runtime", false))
+            if(config::GetBoolArg("-runtime", false))
                 printf(ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
 
             return fErased;
@@ -343,7 +343,7 @@ namespace LLD
             {
                 vData = pTransaction->mapTransactions[vKey];
 
-                if(GetArg("-verbose", 0) >= 4)
+                if(config::GetArg("-verbose", 0) >= 4)
                     printf(FUNCTION "%s\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
 
                 return true;
@@ -373,7 +373,7 @@ namespace LLD
                 if(cKey.nChecksum != nChecksum)
                     return debug::error(FUNCTION "Checksums don't match data. Corrupted Sector.", __PRETTY_FUNCTION__);
 
-                if(GetArg("-verbose", 0) >= 4)
+                if(config::GetArg("-verbose", 0) >= 4)
                     printf(FUNCTION "%s\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
 
                 return true;
@@ -393,7 +393,7 @@ namespace LLD
 
             if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
             {
-                if(GetArg("-verbose", 0) >= 4)
+                if(config::GetArg("-verbose", 0) >= 4)
                     printf(FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
 
                 nCurrentFile ++;
@@ -426,10 +426,10 @@ namespace LLD
             SectorKeys->Put(cKey);
 
 
-            if(GetArg("-verbose", 0) >= 4)
+            if(config::GetArg("-verbose", 0) >= 4)
                 printf(FUNCTION "%s | Current File: %u | Current File Size: %u\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
 
-            if(GetBoolArg("-runtime", false))
+            if(config::GetBoolArg("-runtime", false))
                 printf(ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
 
             return true;
@@ -443,7 +443,7 @@ namespace LLD
 
             /* Write the data into the memory cache. */
             cachePool->Put(vKey, vData);
-            while(!fShutdown && nBufferBytes > MAX_SECTOR_BUFFER_SIZE)
+            while(!config::fShutdown && nBufferBytes > MAX_SECTOR_BUFFER_SIZE)
                 Sleep(1);
 
             /* Add to the write buffer thread. */
@@ -460,7 +460,7 @@ namespace LLD
         /* Helper Thread to Batch Write to Disk. */
         void CacheWriter()
         {
-            while(!fShutdown)
+            while(!config::fShutdown)
             {
                 /* Wait for Database to Initialize. */
                 if(!fInitialized)
@@ -493,7 +493,7 @@ namespace LLD
                 /* Allocate new File if Needed. TODO: Check if sectors go over file size, assign new file if so */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                 {
-                    if(GetArg("-verbose", 0) >= 4)
+                    if(config::GetArg("-verbose", 0) >= 4)
                         printf(FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
 
                     nCurrentFile ++;
@@ -545,13 +545,13 @@ namespace LLD
         /* LLP Meter Thread. Tracks the Requests / Second. */
         void Meter()
         {
-            if(!GetBoolArg("-meters", false))
+            if(!config::GetBoolArg("-meters", false))
                 return;
 
             Timer TIMER;
             TIMER.Start();
 
-            while(!fShutdown)
+            while(!config::fShutdown)
             {
                 Sleep(10000);
 
@@ -579,7 +579,7 @@ namespace LLD
             /** Create the new Database Transaction Object. **/
             pTransaction = new SectorTransaction();
 
-            if(GetArg("-verbose", 0) >= 4)
+            if(config::GetArg("-verbose", 0) >= 4)
                 printf(FUNCTION "New Sector Transaction Started.\n", __PRETTY_FUNCTION__);
         }
 
@@ -631,10 +631,10 @@ namespace LLD
         {
             std::unique_lock<std::recursive_mutex> lk(SECTOR_MUTEX);
 
-            if(GetBoolArg("-runtime", false))
+            if(config::GetBoolArg("-runtime", false))
                 runtime.Start();
 
-            if(GetArg("-verbose", 0) >= 4)
+            if(config::GetArg("-verbose", 0) >= 4)
                 printf(FUNCTION "Commiting Transactin to Datachain.\n", __PRETTY_FUNCTION__);
 
             /** Check that there is a valid transaction to apply to the database. **/
@@ -642,7 +642,7 @@ namespace LLD
                 return error(FUNCTION "No Transaction data to Commit.", __PRETTY_FUNCTION__);
 
             /** Habdle setting the sector key flags so the database knows if the transaction was completed properly. **/
-            if(GetArg("-verbose", 0) >= 4)
+            if(config::GetArg("-verbose", 0) >= 4)
                 printf(FUNCTION "Commiting Keys to Keychain.\n", __PRETTY_FUNCTION__);
 
             /** Set the Sector Keys to an Invalid State to know if there are interuptions the sector was not finished successfully. **/
@@ -659,7 +659,7 @@ namespace LLD
             }
 
             /** Update the Keychain with Checksums and READY Flag letting sectors know they were written successfully. **/
-            if(GetArg("-verbose", 0) >= 4)
+            if(config::GetArg("-verbose", 0) >= 4)
                 printf(FUNCTION "Erasing Sector Keys Flagged for Deletion.\n", __PRETTY_FUNCTION__);
 
             /** Erase all the Transactions that are set to be erased. That way if they are assigned a TRANSACTION flag we know to roll back their key to orginal data. **/
@@ -670,7 +670,7 @@ namespace LLD
             }
 
             /** Commit the Sector Data to the Database. **/
-            if(GetArg("-verbose", 0) >= 4)
+            if(config::GetArg("-verbose", 0) >= 4)
                 printf(FUNCTION "Commit Data to Datachain Sector Database.\n", __PRETTY_FUNCTION__);
 
             for(typename std::map< std::vector<uint8_t>, std::vector<uint8_t> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
@@ -684,7 +684,7 @@ namespace LLD
                 {
                     if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                     {
-                        if(GetArg("-verbose", 0) >= 4)
+                        if(config::GetArg("-verbose", 0) >= 4)
                             printf(FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
 
                         nCurrentFile ++;
@@ -755,7 +755,7 @@ namespace LLD
             }
 
             /** Update the Keychain with Checksums and READY Flag letting sectors know they were written successfully. **/
-            if(GetArg("-verbose", 0) >= 4)
+            if(config::GetArg("-verbose", 0) >= 4)
                 printf(FUNCTION "Commiting Key Valid States to Keychain.\n", __PRETTY_FUNCTION__);
 
             for(typename std::map< std::vector<uint8_t>, std::vector<uint8_t> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
@@ -779,7 +779,7 @@ namespace LLD
             delete pTransaction;
             pTransaction = NULL;
 
-            if(GetBoolArg("-runtime", false))
+            if(config::GetBoolArg("-runtime", false))
                 printf(ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
 
             return true;

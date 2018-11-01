@@ -55,7 +55,7 @@ namespace Legacy
     /* Sets the generated hash for address */
     void NexusAddress::SetHash256(const uint256_t& hash256)
     {
-        SetData(fTestNet ? PUBKEY_ADDRESS_TEST : PUBKEY_ADDRESS, &hash256, 32);
+        SetData(config::fTestNet ? PUBKEY_ADDRESS_TEST : PUBKEY_ADDRESS, &hash256, 32);
     }
 
 
@@ -69,7 +69,7 @@ namespace Legacy
     /* Sets the address based on the hash of the script */
     void NexusAddress::SetScriptHash256(const uint256_t& hash256)
     {
-        SetData(fTestNet ? SCRIPT_ADDRESS_TEST : SCRIPT_ADDRESS, &hash256, 32);
+        SetData(config::fTestNet ? SCRIPT_ADDRESS_TEST : SCRIPT_ADDRESS, &hash256, 32);
     }
 
 
@@ -101,7 +101,7 @@ namespace Legacy
             default:
                 return false;
         }
-        return fExpectTestNet == fTestNet && vchData.size() == nExpectedSize;
+        return fExpectTestNet == config::fTestNet && vchData.size() == nExpectedSize;
     }
 
 
@@ -110,7 +110,7 @@ namespace Legacy
     {
         if (!IsValid())
             return false;
-        if (fTestNet)
+        if (config::fTestNet)
             return nVersion == SCRIPT_ADDRESS_TEST;
         return nVersion == SCRIPT_ADDRESS;
     }

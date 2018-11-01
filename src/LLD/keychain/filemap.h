@@ -221,7 +221,7 @@ namespace LLD
                         //mapKeysCache[nBucket][vKey] = cKey;
 
                         /* Debug Output of Sector Key Information. */
-                        if(GetArg("-verbose", 0) >= 5)
+                        if(config::GetArg("-verbose", 0) >= 5)
                             printf(FUNCTION "State: %u Length: %u File: %u Location: %u Key: %s\n", __PRETTY_FUNCTION__, cKey.nState, cKey.nLength, mapKeys[nBucket][vKey].first, mapKeys[nBucket][vKey].second, HexStr(vKey.begin(), vKey.end()).c_str());
 
                         nTotalKeys++;
@@ -230,7 +230,7 @@ namespace LLD
                     {
 
                         /* Debug Output of Sector Key Information. */
-                        if(GetArg("-verbose", 0) >= 5)
+                        if(config::GetArg("-verbose", 0) >= 5)
                             printf(FUNCTION "Skipping Sector State: %u Length: %u\n", __PRETTY_FUNCTION__, cKey.nState, cKey.nLength);
                     }
 
@@ -260,7 +260,7 @@ namespace LLD
                 /* Check the Binary File Size. */
                 if(nCurrentFileSize > FILEMAP_MAX_FILE_SIZE)
                 {
-                    if(GetArg("-verbose", 0) >= 4)
+                    if(config::GetArg("-verbose", 0) >= 4)
                         printf(FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
 
                     nCurrentFile ++;
@@ -298,7 +298,7 @@ namespace LLD
 
 
             /* Debug Output of Sector Key Information. */
-            if(GetArg("-verbose", 0) >= 4)
+            if(config::GetArg("-verbose", 0) >= 4)
                 printf(FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s | Current File: %u | Current File Size: %u\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][cKey.vKey].second, mapKeys[nBucket][cKey.vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str(), nCurrentFile, nCurrentFileSize);
 
 
@@ -376,7 +376,7 @@ namespace LLD
 
 
                 /* Debug Output of Sector Key Information. */
-                if(GetArg("-verbose", 0) >= 4)
+                if(config::GetArg("-verbose", 0) >= 4)
                     printf(FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][vKey].second, mapKeys[nBucket][vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(vKey.begin(), vKey.end()).c_str());
 
 

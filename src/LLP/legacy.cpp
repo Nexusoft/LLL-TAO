@@ -59,7 +59,7 @@ namespace LLP
         /** Handle any DDOS Packet Filters. **/
         if(EVENT == EVENT_HEADER)
         {
-            if(GetArg("-verbose", 0) >= 3)
+            if(config::GetArg("-verbose", 0) >= 3)
                 printf("***** Node recieved Message (%s, %u)\n", INCOMING.GetMessage().c_str(), INCOMING.LENGTH);
 
             if(fDDOS)
@@ -90,7 +90,7 @@ namespace LLP
                 if(INCOMING.Complete() && !INCOMING.IsValid())
                 {
 
-                    if(GetArg("-verbose", 0) >= 3)
+                    if(config::GetArg("-verbose", 0) >= 3)
                         printf("***** Dropped Packet (Complete: %s - Valid: %s)\n", INCOMING.Complete() ? "Y" : "N" , INCOMING.IsValid() ? "Y" : "N" );
 
                     DDOS->rSCORE += 15;
@@ -100,10 +100,10 @@ namespace LLP
 
             if(INCOMING.Complete())
             {
-                if(GetArg("-verbose", 0) >= 4)
+                if(config::GetArg("-verbose", 0) >= 4)
                     printf("***** Node Received Packet (%u, %u)\n", INCOMING.LENGTH, INCOMING.GetBytes().size());
 
-                if(GetArg("-verbose", 0) >= 5) {
+                if(config::GetArg("-verbose", 0) >= 5) {
                     printf("***** Hex Message Dump\n");
 
                     PrintHex(INCOMING.GetBytes());
@@ -121,7 +121,7 @@ namespace LLP
             if(nLastPing + 1 < UnifiedTimestamp())
             {
 
-                for(int i = 0; i < GetArg("-ping", 1); i++)
+                for(int i = 0; i < config::GetArg("-ping", 1); i++)
                 {
                     RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
 
@@ -144,7 +144,7 @@ namespace LLP
             addrThisNode = SOCKET.addr;
             nLastPing    = UnifiedTimestamp();
 
-            if(GetArg("-verbose", 0) >= 1)
+            if(config::GetArg("-verbose", 0) >= 1)
                 printf("***** %s Node %s Connected at Timestamp %" PRIu64 "\n", fOUTGOING ? "Ougoing" : "Incoming", addrThisNode.ToString().c_str(), UnifiedTimestamp());
 
             if(fOUTGOING)
@@ -177,7 +177,7 @@ namespace LLP
                     break;
             }
 
-            if(GetArg("-verbose", 0) >= 1)
+            if(config::GetArg("-verbose", 0) >= 1)
                 printf("xxxxx %s Node %s Disconnected (%s) at Timestamp %" PRIu64 "\n", fOUTGOING ? "Ougoing" : "Incoming", addrThisNode.ToString().c_str(), strReason.c_str(), UnifiedTimestamp());
 
             return;
@@ -213,7 +213,7 @@ namespace LLP
             int   nOffset    = (int)(UnifiedTimestamp(true) - nTimestamp);
             PushMessage("offset", nRequestID, UnifiedTimestamp(true), nOffset);
 
-            if(GetArg("-verbose", 0) >= 3)
+            if(config::GetArg("-verbose", 0) >= 3)
                 printf("***** Node: Sent Offset %i | %s | Unified %" PRIu64 "\n", nOffset, addrThisNode.ToString().c_str(), UnifiedTimestamp());
 
         }
@@ -240,7 +240,7 @@ namespace LLP
             {
                 DDOS->rSCORE += 5;
 
-                if(GetArg("-verbose", 0) >= 3)
+                if(config::GetArg("-verbose", 0) >= 3)
                     printf("***** Node (%s): Invalid Request : Message Not Requested [%x][%u ms]\n", addrThisNode.ToString().c_str(), nRequestID, nNodeLatency);
 
                 return true;
@@ -252,7 +252,7 @@ namespace LLP
             {
                 mapSentRequests.erase(nRequestID);
 
-                if(GetArg("-verbose", 0) >= 3)
+                if(config::GetArg("-verbose", 0) >= 3)
                     printf("***** Node (%s): Invalid Request : Message Stale [%x][%u ms]\n", addrThisNode.ToString().c_str(), nRequestID, nNodeLatency);
 
                 DDOS->rSCORE += 15;
@@ -265,7 +265,7 @@ namespace LLP
             int nOffset;
             ssMessage >> nOffset;
 
-            if(GetArg("-verbose", 0) >= 3)
+            if(config::GetArg("-verbose", 0) >= 3)
                 printf("***** Node (%s): Received Unified Offset %i [%x][%u ms]\n", addrThisNode.ToString().c_str(), nOffset, nRequestID, nNodeLatency);
 
             /* Adjust the Offset for Latency. */
@@ -338,7 +338,7 @@ namespace LLP
             mapLatencyTracker.erase(nonce);
 
             /* Debug Level 3: output Node Latencies. */
-            if(GetArg("-verbose", 0) >= 3)
+            if(config::GetArg("-verbose", 0) >= 3)
                 printf("***** Node %s Latency (Nonce %" PRIu64 " - %u ms)\n", addrThisNode.ToString().c_str(), nonce, nLatency);
         }
 
@@ -371,7 +371,7 @@ namespace LLP
 
             /* Deserialize the rest of the data. */
             ssMessage >> nServices >> nTime >> addrMe >> addrFrom >> nSessionID >> strNodeVersion >> nStartingHeight;
-            if(GetArg("-verbose", 0) >= 1)
+            if(config::GetArg("-verbose", 0) >= 1)
                 printf("***** Node version message: version %d, blocks=%d\n", nCurrentVersion, nStartingHeight);
 
 
@@ -420,7 +420,7 @@ namespace LLP
             ssMessage >> vInv;
 
 
-            if(GetArg("-verbose", 0) >= 1)
+            if(config::GetArg("-verbose", 0) >= 1)
                 printf("***** Inventory Message of %u elements\n", vInv.size());
 
 

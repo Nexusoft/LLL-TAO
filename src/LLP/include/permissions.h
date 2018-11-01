@@ -36,7 +36,7 @@ inline bool CheckPermissions(std::string strAddress, uint32_t nPort)
         return debug::error("Address size not at least 4 bytes.");
 
     /* Check against the commandline parameters. */
-    const std::vector<std::string>& vAllow = mapMultiArgs["-llpallowip"];
+    const std::vector<std::string>& vAllow = config::mapMultiArgs["-llpallowip"];
     for(int nIndex = 0; nIndex < vAllow.size(); nIndex++)
     {
         /* Detect if the port for LLP filtering is a wildcard or not. */

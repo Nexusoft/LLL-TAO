@@ -272,7 +272,7 @@ namespace LLP
         /* LLP Meter Thread. Tracks the Requests / Second. */
         void MeterThread()
         {
-            if(!GetBoolArg("-meters", false))
+            if(!config::GetBoolArg("-meters", false))
                 return;
 
             Timer TIMER;

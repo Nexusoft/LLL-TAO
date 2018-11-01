@@ -23,7 +23,7 @@ void HandleSIGTERM(int signum)
     if(signum != SIGPIPE)
     {
         printf("Shutting Down %d\n", signum);
-        fShutdown = true;
+        config::fShutdown = true;
     }
 }
 

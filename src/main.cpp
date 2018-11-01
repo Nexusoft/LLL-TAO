@@ -55,7 +55,7 @@ int main(int argc, char** argv)
 
 
     /* Parse out the parameters */
-    ParseParameters(argc, argv);
+    config::ParseParameters(argc, argv);
 
 
     /* Create directories if they don't exist yet. */
@@ -65,7 +65,7 @@ int main(int argc, char** argv)
 
 
     /* Read the configuration file. */
-    config::ReadConfigFile(mapArgs, mapMultiArgs);
+    config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
 
 
 
@@ -115,7 +115,7 @@ int main(int argc, char** argv)
     //return 0;
 
     uint32_t wps = 0;
-    while(!fShutdown)
+    while(!config::fShutdown)
     {
         hash = hash + 1;
         std::vector<uint8_t> vKey((uint8_t*)&hash, (uint8_t*)&hash + sizeof(hash));

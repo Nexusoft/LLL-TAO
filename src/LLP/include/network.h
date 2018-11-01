@@ -240,7 +240,7 @@ namespace LLP
     class CAddrInfo : public CAddress
     {
     private:
-        
+
         /* Who Gave us this Address. */
         CNetAddr source;
 
@@ -292,15 +292,15 @@ namespace LLP
 
 
     /* Get the Main Core LLP Port for Nexus. */
-    inline uint16_t GetCorePort(const bool testnet = fTestNet){ return testnet ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT; }
+    inline uint16_t GetCorePort(const bool testnet = config::fTestNet){ return testnet ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT; }
 
 
     /* Get the Main Mining LLP Port for Nexus. */
-    inline uint16_t GetMiningPort(const bool testnet = fTestNet){ return testnet ? TESTNET_MINING_LLP_PORT : MAINNET_MINING_LLP_PORT; }
+    inline uint16_t GetMiningPort(const bool testnet = config::fTestNet){ return testnet ? TESTNET_MINING_LLP_PORT : MAINNET_MINING_LLP_PORT; }
 
 
     /* Get the Main Message LLP Port for Nexus. */
-    inline uint16_t GetDefaultPort(const bool testnet = fTestNet){ return testnet ? TESTNET_PORT : MAINNET_PORT; }
+    inline uint16_t GetDefaultPort(const bool testnet = config::fTestNet){ return testnet ? TESTNET_PORT : MAINNET_PORT; }
 
 
     /** Connect to a socket with given connection timeout flag. **/

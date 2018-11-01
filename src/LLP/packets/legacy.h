@@ -107,7 +107,7 @@ namespace LLP
         /* Set the first four bytes in the packet headcer to be of the byte series selected. */
         void SetHeader()
         {
-            if (fTestNet)
+            if (config::fTestNet)
                 memcpy(HEADER, MESSAGE_START_TESTNET, sizeof(MESSAGE_START_TESTNET));
             else
                 memcpy(HEADER, MESSAGE_START_MAINNET, sizeof(MESSAGE_START_MAINNET));
@@ -158,7 +158,7 @@ namespace LLP
                 return false;
 
             /* Check the Header Bytes. */
-            if(memcmp(HEADER, (fTestNet ? MESSAGE_START_TESTNET : MESSAGE_START_MAINNET), sizeof(HEADER)) != 0)
+            if(memcmp(HEADER, (config::fTestNet ? MESSAGE_START_TESTNET : MESSAGE_START_MAINNET), sizeof(HEADER)) != 0)
                 return debug::error("Message Packet (Invalid Packet Header");
 
             /* Make sure Packet length is within bounds. (Max 512 MB Packet Size) */

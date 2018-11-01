@@ -16,130 +16,133 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/strlcpy.h>
 
-std::map<std::string, std::string> mapArgs;
-std::map<std::string, std::vector<std::string> > mapMultiArgs;
-
-bool fDebug = false;
-bool fPrintToConsole = false;
-bool fRequestShutdown = false;
-bool fShutdown = false;
-bool fDaemon = false;
-bool fServer = false;
-bool fClient = false;
-bool fCommandLine = false;
-bool fTestNet = false;
-bool fListen = false;
-bool fUseProxy = false;
-bool fAllowDNS = false;
-bool fLogTimestamps = false;
-
-void InterpretNegativeSetting(std::string name, std::map<std::string, std::string>& mapSettingsRet)
+namespace config
 {
-    // interpret -nofoo as -foo=0 (and -nofoo=0 as -foo=1) as long as -foo not set
-    if (name.find("-no") == 0)
+    std::map<std::string, std::string> mapArgs;
+    std::map<std::string, std::vector<std::string> > mapMultiArgs;
+
+    bool fDebug = false;
+    bool fPrintToConsole = false;
+    bool fRequestShutdown = false;
+    bool fShutdown = false;
+    bool fDaemon = false;
+    bool fServer = false;
+    bool fClient = false;
+    bool fCommandLine = false;
+    bool fTestNet = false;
+    bool fListen = false;
+    bool fUseProxy = false;
+    bool fAllowDNS = false;
+    bool fLogTimestamps = false;
+
+    void InterpretNegativeSetting(std::string name, std::map<std::string, std::string>& mapSettingsRet)
     {
-        std::string positive("-");
-        positive.append(name.begin()+3, name.end());
-        if (mapSettingsRet.count(positive) == 0)
-        {
-            bool value = !GetBoolArg(name);
-            mapSettingsRet[positive] = (value ? "1" : "0");
-        }
-    }
-}
-
-void ParseParameters(int argc, const char*const argv[])
-{
-    mapArgs.clear();
-    mapMultiArgs.clear();
-    for (int i = 1; i < argc; i++)
-    {
-        char psz[10000];
-        strlcpy(psz, argv[i], sizeof(psz));
-        char* pszValue = (char*)"";
-        if (strchr(psz, '='))
-        {
-            pszValue = strchr(psz, '=');
-            *pszValue++ = '\0';
-        }
-        #ifdef WIN32
-        _strlwr(psz);
-        if (psz[0] == '/')
-            psz[0] = '-';
-        #endif
-        if (psz[0] != '-')
-            break;
-
-        mapArgs[psz] = pszValue;
-        mapMultiArgs[psz].push_back(pszValue);
-    }
-
-    for(auto entry : mapArgs)
-    {
-        std::string name = entry.first;
-
-        //  interpret --foo as -foo (as long as both are not set)
-        if (name.find("--") == 0)
-        {
-            std::string singleDash(name.begin()+1, name.end());
-            if (mapArgs.count(singleDash) == 0)
-                mapArgs[singleDash] = entry.second;
-            name = singleDash;
-        }
-
         // interpret -nofoo as -foo=0 (and -nofoo=0 as -foo=1) as long as -foo not set
-        InterpretNegativeSetting(name, mapArgs);
+        if (name.find("-no") == 0)
+        {
+            std::string positive("-");
+            positive.append(name.begin()+3, name.end());
+            if (mapSettingsRet.count(positive) == 0)
+            {
+                bool value = !GetBoolArg(name);
+                mapSettingsRet[positive] = (value ? "1" : "0");
+            }
+        }
     }
 
-    fDebug                  = GetBoolArg("-debug", false);
-    fPrintToConsole         = GetBoolArg("-printtoconsole", false);
-    fDaemon                 = GetBoolArg("-daemon", false);
-    fServer                 = GetBoolArg("-server", false);
-    fTestNet                = GetBoolArg("-testnet", false) ||
-                              GetBoolArg("-lispnet", false);
-    fListen                 = GetBoolArg("-listen", true);
-    //fUseProxy               = GetBoolArg("-proxy")
-    fAllowDNS               = GetBoolArg("-allowdns", true);
-    fLogTimestamps          = GetBoolArg("-logtimestamps", false);
-}
-
-std::string GetArg(const std::string& strArg, const std::string& strDefault)
-{
-    if (mapArgs.count(strArg))
-        return mapArgs[strArg];
-    return strDefault;
-}
-
-int64_t GetArg(const std::string& strArg, int64_t nDefault)
-{
-    if (mapArgs.count(strArg))
-        return atoi64(mapArgs[strArg]);
-    return nDefault;
-}
-
-bool GetBoolArg(const std::string& strArg, bool fDefault)
-{
-    if (mapArgs.count(strArg))
+    void ParseParameters(int argc, const char*const argv[])
     {
-        if (mapArgs[strArg].empty())
-            return true;
-        return (atoi(mapArgs[strArg]) != 0);
+        mapArgs.clear();
+        mapMultiArgs.clear();
+        for (int i = 1; i < argc; i++)
+        {
+            char psz[10000];
+            strlcpy(psz, argv[i], sizeof(psz));
+            char* pszValue = (char*)"";
+            if (strchr(psz, '='))
+            {
+                pszValue = strchr(psz, '=');
+                *pszValue++ = '\0';
+            }
+            #ifdef WIN32
+            _strlwr(psz);
+            if (psz[0] == '/')
+                psz[0] = '-';
+            #endif
+            if (psz[0] != '-')
+                break;
+
+            mapArgs[psz] = pszValue;
+            mapMultiArgs[psz].push_back(pszValue);
+        }
+
+        for(auto entry : mapArgs)
+        {
+            std::string name = entry.first;
+
+            //  interpret --foo as -foo (as long as both are not set)
+            if (name.find("--") == 0)
+            {
+                std::string singleDash(name.begin()+1, name.end());
+                if (mapArgs.count(singleDash) == 0)
+                    mapArgs[singleDash] = entry.second;
+                name = singleDash;
+            }
+
+            // interpret -nofoo as -foo=0 (and -nofoo=0 as -foo=1) as long as -foo not set
+            InterpretNegativeSetting(name, mapArgs);
+        }
+
+        fDebug                  = GetBoolArg("-debug", false);
+        fPrintToConsole         = GetBoolArg("-printtoconsole", false);
+        fDaemon                 = GetBoolArg("-daemon", false);
+        fServer                 = GetBoolArg("-server", false);
+        fTestNet                = GetBoolArg("-testnet", false) ||
+                                  GetBoolArg("-lispnet", false);
+        fListen                 = GetBoolArg("-listen", true);
+        //fUseProxy               = GetBoolArg("-proxy")
+        fAllowDNS               = GetBoolArg("-allowdns", true);
+        fLogTimestamps          = GetBoolArg("-logtimestamps", false);
     }
-    return fDefault;
-}
 
-bool SoftSetArg(const std::string& strArg, const std::string& strValue)
-{
-    if (mapArgs.count(strArg))
-        return false;
-    mapArgs[strArg] = strValue;
-    return true;
-}
+    std::string GetArg(const std::string& strArg, const std::string& strDefault)
+    {
+        if (mapArgs.count(strArg))
+            return mapArgs[strArg];
+        return strDefault;
+    }
 
-bool SoftSetBoolArg(const std::string& strArg, bool fValue)
-{
-    if (fValue)
-        return SoftSetArg(strArg, std::string("1"));
-    else
-        return SoftSetArg(strArg, std::string("0"));
+    int64_t GetArg(const std::string& strArg, int64_t nDefault)
+    {
+        if (mapArgs.count(strArg))
+            return atoi64(mapArgs[strArg]);
+        return nDefault;
+    }
+
+    bool GetBoolArg(const std::string& strArg, bool fDefault)
+    {
+        if (mapArgs.count(strArg))
+        {
+            if (mapArgs[strArg].empty())
+                return true;
+            return (atoi(mapArgs[strArg]) != 0);
+        }
+        return fDefault;
+    }
+
+    bool SoftSetArg(const std::string& strArg, const std::string& strValue)
+    {
+        if (mapArgs.count(strArg))
+            return false;
+        mapArgs[strArg] = strValue;
+        return true;
+    }
+
+    bool SoftSetBoolArg(const std::string& strArg, bool fValue)
+    {
+        if (fValue)
+            return SoftSetArg(strArg, std::string("1"));
+        else
+            return SoftSetArg(strArg, std::string("0"));
+    }
 }

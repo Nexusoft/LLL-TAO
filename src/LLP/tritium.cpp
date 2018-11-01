@@ -132,7 +132,7 @@ namespace LLP
                     }
 
                     /* Debug output for offsets. */
-                    if(GetArg("-verbose", 0) >= 3)
+                    if(config::GetArg("-verbose", 0) >= 3)
                         printf(NODE "received session identifier (%" PRIx64 ")\n", nSessionID);
 
                     break;
@@ -153,7 +153,7 @@ namespace LLP
                     int32_t nOffset = (Timestamp(true) - nTimestamp);
 
                     /* Debug output for offsets. */
-                    if(GetArg("-verbose", 0) >= 3)
+                    if(config::GetArg("-verbose", 0) >= 3)
                         printf(NODE "received timestamp of (%" PRIu64 ") - sending offset %i\n", nTimestamp, nOffset);
 
                     /* Push a timestamp in response. */
@@ -187,7 +187,7 @@ namespace LLP
                     ssPacket >> nOffset;
 
                     /* Debug output for offsets. */
-                    if(GetArg("-verbose", 0) >= 3)
+                    if(config::GetArg("-verbose", 0) >= 3)
                         printf(NODE "received offset %i\n", nOffset);
 
                     /* Remove sent requests from mpa. */
@@ -236,7 +236,7 @@ namespace LLP
                     if(!LLD::legDB->HasTx(tx.GetHash()))
                     {
                         /* Debug output for tx. */
-                        if(GetArg("-verbose", 0) >= 3)
+                        if(config::GetArg("-verbose", 0) >= 3)
                             printf(NODE "recieved tx %s\n", tx.GetHash().ToString().substr(0, 20).c_str());
 
                         /* Check if tx is valid. */
@@ -265,7 +265,7 @@ namespace LLP
                     }
 
                     /* Debug output for offsets. */
-                    else if(GetArg("-verbose", 0) >= 3)
+                    else if(config::GetArg("-verbose", 0) >= 3)
                         printf(NODE "already have tx %s\n", tx.GetHash().ToString().substr(0, 20).c_str());
 
                     break;
@@ -306,7 +306,7 @@ namespace LLP
                         return debug::error(NODE "unsolicited pong");
 
                     /* Debug output for latency. */
-                    if(GetArg("-verbose", 0) >= 3)
+                    if(config::GetArg("-verbose", 0) >= 3)
                         printf(NODE "latency %u ms\n", Timestamp(true) - mapLatencyTracker[nNonce]);
 
                     /* Clear the latency tracker record. */
