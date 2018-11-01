@@ -59,12 +59,13 @@ int main(int argc, char** argv)
 
 
     /* Create directories if they don't exist yet. */
-    if(filesystem::create_directory(GetDataDir(false)))
-        printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, GetDataDir(false).c_str());
+    if(filesystem::create_directory(config::GetDataDir(false)))
+        printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__,
+            config::GetDataDir(false).c_str());
 
 
     /* Read the configuration file. */
-    ReadConfigFile(mapArgs, mapMultiArgs);
+    config::ReadConfigFile(mapArgs, mapMultiArgs);
 
 
 

@@ -27,38 +27,38 @@ ________________________________________________________________________________
 typedef int pid_t; /* define for windows compatiblity */
 #endif
 
+namespace config
+{
 
-/* Read the Config file from the Disk. */
-void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
-    std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet);
-
-
-/* Setup PID file for Linux users. */
-void CreatePidFile(const std::string &path, pid_t pid);
+    /* Read the Config file from the Disk. */
+    void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
+        std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet);
 
 
-/* Check if set to start when system boots. */
-bool GetStartOnSystemStartup();
+    /* Setup PID file for Linux users. */
+    void CreatePidFile(const std::string &path, pid_t pid);
 
 
-/* Setup to auto start when system boots. */
-bool SetStartOnSystemStartup(bool fAutoStart);
+    /* Get the default directory Nexus data is stored in. */
+    std::string GetDefaultDataDir(std::string strName = "TAO");
 
 
-/* Get the default directory Nexus data is stored in. */
-std::string GetDefaultDataDir(std::string strName = "TAO");
+    /* Get the Location of the Config File. */
+    std::string GetConfigFile();
 
 
-/* Get the Location of the Config File. */
-std::string GetConfigFile();
+    /* Get the Location of the PID File. */
+    std::string GetPidFile();
 
 
-/* Get the Location of the PID File. */
-std::string GetPidFile();
+    /* Get the location that Nexus data is being stored in. */
+    std::string GetDataDir(bool fNetSpecific = true);
 
+    /* Check if set to start when system boots. */
+    bool GetStartOnSystemStartup();
 
-/* Get the location that Nexus data is being stored in. */
-std::string GetDataDir(bool fNetSpecific = true);
+    /* Setup to auto start when system boots. */
+    bool SetStartOnSystemStartup(bool fAutoStart);
 
-
+}
 #endif

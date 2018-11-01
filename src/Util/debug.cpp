@@ -50,7 +50,7 @@ namespace debug
         /* print to debug.log */
         if (!fileout)
         {
-            std::string pathDebug = GetDataDir() + "debug.log";
+            std::string pathDebug = config::GetDataDir() + "debug.log";
             fileout = fopen(pathDebug.c_str(), "a");
             if (fileout)
                 setbuf(fileout, NULL); // unbuffered
@@ -266,7 +266,7 @@ namespace debug
     void ShrinkDebugFile()
     {
         /* Scroll debug.log if it's getting too big */
-        std::string pathLog = GetDataDir() + "\\debug.log";
+        std::string pathLog = config::GetDataDir() + "\\debug.log";
         FILE* file = fopen(pathLog.c_str(), "r");
         if (file && GetFilesize(file) > 10 * 1000000)
         {
