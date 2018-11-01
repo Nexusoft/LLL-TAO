@@ -72,7 +72,7 @@ namespace LLP
 
                 /* Check the Packet Sizes to Unified Time Commands. */
                 if((INCOMING.GetMessage() == "getoffset" || INCOMING.GetMessage() == "offset") && INCOMING.LENGTH != 16)
-                    DDOS->Ban(strprintf("INVALID PACKET SIZE | OFFSET/GETOFFSET | LENGTH %u", INCOMING.LENGTH));
+                    DDOS->Ban(debug::strprintf("INVALID PACKET SIZE | OFFSET/GETOFFSET | LENGTH %u", INCOMING.LENGTH));
             }
 
             return;
@@ -404,7 +404,7 @@ namespace LLP
             {
                 DDOS->rSCORE += 20;
 
-                return error("***** Node message addr size() = %d... Dropping Connection", vAddr.size());
+                return debug::error("***** Node message addr size() = %d... Dropping Connection", vAddr.size());
             }
 
 

@@ -180,7 +180,7 @@ namespace LLD
 
                 /* TODO: Make a worker or thread to check sizes of files and automatically create new file.
                     Keep independent of reads and writes for efficiency. */
-                std::fstream fIncoming(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::in | std::ios::binary);
+                std::fstream fIncoming(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::in | std::ios::binary);
                 if(!fIncoming)
                 {
 
@@ -190,7 +190,7 @@ namespace LLD
                     else
                     {
                         /* Create a new file if it doesn't exist. */
-                        std::ofstream cStream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::binary | std::ios::out | std::ios::trunc);
+                        std::ofstream cStream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::binary | std::ios::out | std::ios::trunc);
                         cStream.close();
                     }
 
@@ -342,13 +342,13 @@ namespace LLD
             SectorKey cKey;
             if(SectorKeys->Get(vKey, cKey))
             {
-                LOCK(SECTOR_MUTEX);
+                std::unique_lock<std::recursive_mutex> lk(SECTOR_MUTEX);
 
                 /* Open the Stream to Read the data from Sector on File. */
-                std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile);
+                std::string strFilename = debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile);
                 std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::binary);
                 if(!fStream)
-                    return error(FUNCTION "Sector File %s Doesn't Exist\n", __PRETTY_FUNCTION__, strFilename.c_str());
+                    return debug::error(FUNCTION "Sector File %s Doesn't Exist\n", __PRETTY_FUNCTION__, strFilename.c_str());
 
                 /* Seek to the Sector Position on Disk. */
                 fStream.seekg(cKey.nSectorStart, std::ios::beg);
@@ -361,7 +361,7 @@ namespace LLD
                 /* Check the Data Integrity of the Sector by comparing the Checksums. */
                 uint32_t nChecksum = LLC::SK32(vData);
                 if(cKey.nChecksum != nChecksum)
-                    return error(FUNCTION "Checksums don't match data. Corrupted Sector.", __PRETTY_FUNCTION__);
+                    return debug::error(FUNCTION "Checksums don't match data. Corrupted Sector.", __PRETTY_FUNCTION__);
 
                 if(GetArg("-verbose", 0) >= 4)
                     printf(FUNCTION "%s\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
@@ -369,7 +369,7 @@ namespace LLD
                 return true;
             }
             else
-                return error(FUNCTION "KEY NOT FOUND", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "KEY NOT FOUND", __PRETTY_FUNCTION__);
 
             return false;
         }
@@ -379,7 +379,7 @@ namespace LLD
         bool Put2(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
         {
             /* Write Header if First Update. */
-            LOCK(SECTOR_MUTEX);
+            std::unique_lock<std::recursive_mutex> lk(SECTOR_MUTEX);
 
             if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
             {
@@ -389,12 +389,12 @@ namespace LLD
                 nCurrentFile ++;
                 nCurrentFileSize = 0;
 
-                std::ofstream fStream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                std::ofstream fStream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
                 fStream.close();
             }
 
             /* Open the Stream to Read the data from Sector on File. */
-            std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
+            std::string strFilename = debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
             std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
 
             /* If it is a New Sector, Assign a Binary Position.
@@ -437,7 +437,8 @@ namespace LLD
                 Sleep(1);
 
             /* Add to the write buffer thread. */
-            { LOCK(BUFFER_MUTEX);
+            {
+                std::unique_lock<std::recursive_mutex> lk(BUFFER_MUTEX);
                 vDiskBuffer.push_back(std::make_pair(vKey, vData));
                 nBufferBytes += (vKey.size() + vData.size());
             }
@@ -474,7 +475,7 @@ namespace LLD
                 /* Swap the buffer object to get ready for writes. */
                 std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vIndexes;
                 {
-                    LOCK(BUFFER_MUTEX);
+                    std::unique_lock<std::recursive_mutex> lk(BUFFER_MUTEX);
                     vIndexes.swap(vDiskBuffer);
                     nBufferBytes = 0;
                 }
@@ -490,7 +491,7 @@ namespace LLD
                 }
 
                 /* Open the Stream to Read the data from Sector on File. */
-                std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
+                std::string strFilename = debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
                 std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
 
                 /* Seek to the end of the file */
@@ -618,7 +619,7 @@ namespace LLD
             **/
         bool TxnCommit()
         {
-            LOCK(SECTOR_MUTEX);
+            std::unique_lock<std::recursive_mutex> lk(SECTOR_MUTEX);
 
             if(GetBoolArg("-runtime", false))
                 runtime.Start();
@@ -679,12 +680,12 @@ namespace LLD
                         nCurrentFile ++;
                         nCurrentFileSize = 0;
 
-                        std::ofstream fStream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                        std::ofstream fStream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
                         fStream.close();
                     }
 
                     /* Open the Stream to Read the data from Sector on File. */
-                    std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
+                    std::string strFilename = debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
                     std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
 
                     /* If it is a New Sector, Assign a Binary Position.
@@ -717,7 +718,7 @@ namespace LLD
                     }
 
                     /* Open the Stream to Read the data from Sector on File. */
-                    std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile);
+                    std::string strFilename = debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile);
                     std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
 
                     /* Locate the Sector Data from Sector Key.

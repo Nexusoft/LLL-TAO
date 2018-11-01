@@ -102,12 +102,12 @@ inline std::string HexStr(const std::vector<uint8_t>& vch, bool fSpaces=false)
 template<typename T>
 inline void PrintHex(const T pbegin, const T pend, const char* pszFormat="%s\n", bool fSpaces=true)
 {
-    printf(pszFormat, HexStr(pbegin, pend, fSpaces).c_str());
+    debug::printf(pszFormat, HexStr(pbegin, pend, fSpaces).c_str());
 }
 
 inline void PrintHex(const std::vector<uint8_t>& vch, const char* pszFormat="%s\n", bool fSpaces=true)
 {
-    printf(pszFormat, HexStr(vch, fSpaces).c_str());
+    debug::printf(pszFormat, HexStr(vch, fSpaces).c_str());
 }
 
 #endif

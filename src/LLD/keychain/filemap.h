@@ -147,7 +147,7 @@ namespace LLD
         /** Read the Database Keys and File Positions. **/
         void Initialize()
         {
-            LOCK(KEY_MUTEX);
+            std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
 
             /* Create directories if they don't exist yet. */
             //if(boost::filesystem::create_directories(strBaseLocation))
@@ -160,7 +160,7 @@ namespace LLD
             /* Iterate through the files detected. */
             while(true)
             {
-                std::string strFilename = strprintf("%s_filemap.%05u", strBaseLocation.c_str(), nCurrentFile);
+                std::string strFilename = debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), nCurrentFile);
                 printf(FUNCTION "Checking File %s\n", __PRETTY_FUNCTION__, strFilename.c_str());
 
                 /* Get the Filename at given File Position. */
@@ -251,7 +251,7 @@ namespace LLD
         /** Add / Update A Record in the Database **/
         bool Put(SectorKey cKey) const
         {
-            LOCK(KEY_MUTEX);
+            std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
 
             /* Write Header if First Update. */
             uint32_t nBucket = GetBucket(cKey.vKey);
@@ -266,7 +266,7 @@ namespace LLD
                     nCurrentFile ++;
                     nCurrentFileSize = 0;
 
-                    std::ofstream ssFile(strprintf("%s_filemap.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                    std::ofstream ssFile(debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
                     ssFile.close();
                 }
 
@@ -275,7 +275,7 @@ namespace LLD
 
 
             /* Establish the Outgoing Stream. */
-            std::fstream ssFile(strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][cKey.vKey].first).c_str(), std::ios::in | std::ios::out | std::ios::binary);
+            std::fstream ssFile(debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][cKey.vKey].first).c_str(), std::ios::in | std::ios::out | std::ios::binary);
 
 
             /* Seek File Pointer */
@@ -308,16 +308,16 @@ namespace LLD
         /** Simple Erase for now, not efficient in Data Usage of HD but quick to get erase function working. **/
         bool Erase(const std::vector<uint8_t> vKey)
         {
-            LOCK(KEY_MUTEX);
+            std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
 
             /* Check for the Key. */
             uint32_t nBucket = GetBucket(vKey);
             if(!mapKeys[nBucket].count(vKey))
-                return error(FUNCTION "Key doesn't Exist", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "Key doesn't Exist", __PRETTY_FUNCTION__);
 
 
             /* Establish the Outgoing Stream. */
-            std::string strFilename = strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][vKey].first);
+            std::string strFilename = debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][vKey].first);
             std::fstream ssFile(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
 
 
@@ -340,7 +340,7 @@ namespace LLD
         /** Get a Record from the Database with Given Key. **/
         bool Get(const std::vector<uint8_t> vKey, SectorKey& cKey)
         {
-            LOCK(KEY_MUTEX);
+            std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
 
 
             /* Check the Memory Cache. */
@@ -357,7 +357,7 @@ namespace LLD
             {
 
                 /* Open the Stream Object. */
-                std::string strFilename = strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][vKey].first);
+                std::string strFilename = debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][vKey].first);
                 std::ifstream ssFile(strFilename.c_str(), std::ios::in | std::ios::binary);
 
 
@@ -389,7 +389,7 @@ namespace LLD
 
                     /* Check the Keys Match Properly. */
                     if(vKeyIn != vKey)
-                        return error(FUNCTION "Key Mistmatch: DB:: %s MEM %s\n", __PRETTY_FUNCTION__, HexStr(vKeyIn.begin(), vKeyIn.end()).c_str(), HexStr(vKey.begin(), vKey.end()).c_str());
+                        return debug::error(FUNCTION "Key Mistmatch: DB:: %s MEM %s\n", __PRETTY_FUNCTION__, HexStr(vKeyIn.begin(), vKeyIn.end()).c_str(), HexStr(vKey.begin(), vKey.end()).c_str());
 
                     /* Assign Key to Sector. */
                     cKey.vKey = vKeyIn;

@@ -171,7 +171,7 @@ namespace LLP
 
                     /* Check map known requests. */
                     if(!mapSentRequests.count(nRequestID))
-                        return error(NODE "offset not requested");
+                        return debug::error(NODE "offset not requested");
 
                     /* Check the time since request was sent. */
                     if(Timestamp() - mapSentRequests[nRequestID] > 10)
@@ -242,7 +242,7 @@ namespace LLP
                         /* Check if tx is valid. */
                         if(!tx.IsValid())
                         {
-                            error(NODE "tx %s REJECTED", tx.GetHash().ToString().substr(0, 20).c_str());
+                            debug::error(NODE "tx %s REJECTED", tx.GetHash().ToString().substr(0, 20).c_str());
 
                             break;
                         }
@@ -250,7 +250,7 @@ namespace LLP
                         /* Write the transaction to ledger database. */
                         if(!LLD::legDB->WriteTx(tx.GetHash(), tx))
                         {
-                            error(NODE "tx failed to write to disk");
+                            debug::error(NODE "tx failed to write to disk");
 
                             break;
                         }
@@ -258,7 +258,7 @@ namespace LLP
                         /* Process the transaction operations. */
                         if(!TAO::Operation::Execute(tx.vchLedgerData, LLD::regDB, LLD::legDB, tx.hashGenesis))
                         {
-                            error(NODE "tx failed to process register/operations");
+                            debug::error(NODE "tx failed to process register/operations");
 
                             break;
                         }
@@ -303,7 +303,7 @@ namespace LLP
 
                     /* Check for unsolicted pongs. */
                     if(!mapLatencyTracker.count(nNonce))
-                        return error(NODE "unsolicited pong");
+                        return debug::error(NODE "unsolicited pong");
 
                     /* Debug output for latency. */
                     if(GetArg("-verbose", 0) >= 3)

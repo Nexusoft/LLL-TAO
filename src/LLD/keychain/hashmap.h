@@ -139,7 +139,7 @@ namespace LLD
                 printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
 
             /* Build the hashmap indexes. */
-            std::string index = strprintf("%s_hashmap.index", strBaseLocation.c_str());
+            std::string index = debug::strprintf("%s_hashmap.index", strBaseLocation.c_str());
             if(!filesystem::exists(index))
             {
                 /* Generate empty space for new file. */
@@ -174,7 +174,7 @@ namespace LLD
             }
 
             /* Build the first hashmap index file if it doesn't exist. */
-            std::string file = strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), 0u).c_str();
+            std::string file = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), 0u).c_str();
             if(!filesystem::exists(file))
             {
                 /* Build a vector with empty bytes to flush to disk. */
@@ -200,7 +200,7 @@ namespace LLD
         /** Get a Record from the Database with Given Key. **/
         bool Get(const std::vector<uint8_t> vKey, SectorKey& cKey)
         {
-            LOCK(KEY_MUTEX);
+            std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
 
             /* Get the assigned bucket for the hashmap. */
             uint32_t nBucket = GetBucket(vKey);
@@ -216,7 +216,7 @@ namespace LLD
                 if(!fileCache->Get(i, pstream))
                 {
                     /* Set the new stream pointer. */
-                    pstream = new std::fstream(strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
+                    pstream = new std::fstream(debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
 
                     /* If file not found add to LRU cache. */
                     fileCache->Put(i, pstream);
@@ -247,7 +247,7 @@ namespace LLD
         /** Add / Update A Record in the Database **/
         bool Put(SectorKey cKey) const
         {
-            LOCK(KEY_MUTEX);
+            std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
 
             /* Get the assigned bucket for the hashmap. */
             uint32_t nBucket = GetBucket(cKey.vKey);
@@ -256,7 +256,7 @@ namespace LLD
             uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
 
             /* Create a new disk hashmap object in linked list if it doesn't exist. */
-            std::string file = strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), hashmap[nBucket]);
+            std::string file = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), hashmap[nBucket]);
             if(!filesystem::exists(file))
             {
                 /* Blank vector to write empty space in new disk file. */
@@ -320,7 +320,7 @@ namespace LLD
                     vDisk.insert(vDisk.end(), (uint8_t*)&bucket, (uint8_t*)&bucket + 4);
 
                 /* Create the file handler. */
-                std::string file = strprintf("%s_hashmap.index", strBaseLocation.c_str());
+                std::string file = debug::strprintf("%s_hashmap.index", strBaseLocation.c_str());
                 std::fstream stream(file, std::ios::out | std::ios::binary);
                 stream.write((char*)&vDisk[0], vDisk.size());
                 stream.close();
@@ -334,7 +334,7 @@ namespace LLD
         /** Simple Erase for now, not efficient in Data Usage of HD but quick to get erase function working. **/
         bool Erase(const std::vector<uint8_t> vKey)
         {
-            LOCK(KEY_MUTEX);
+            std::unique_lock<std::recursive_mutex>(KEY_MUTEX);
 
             /* Check for the Key. */
             uint32_t nBucket = GetBucket(vKey);

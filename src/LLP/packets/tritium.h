@@ -145,11 +145,11 @@ namespace LLP
 
             /* Make sure Packet length is within bounds. (Max 2 MB Packet Size) */
             if (LENGTH > (1024 * 1024 * 2))
-                return error("Tritium Packet (%s, %u bytes) : Message too Large", MESSAGE, LENGTH);
+                return debug::error("Tritium Packet (%s, %u bytes) : Message too Large", MESSAGE, LENGTH);
 
             /* Double check the Message Checksum. */
             if (LLC::SK32(DATA.begin(), DATA.end()) != CHECKSUM)
-                return error("Tritium Packet (%s, %u bytes) : CHECKSUM MISMATCH nChecksum=%u hdr.nChecksum=%u",
+                return debug::error("Tritium Packet (%s, %u bytes) : CHECKSUM MISMATCH nChecksum=%u hdr.nChecksum=%u",
                 MESSAGE, LENGTH, LLC::SK32(DATA.begin(), DATA.end()), CHECKSUM);
 
             return true;

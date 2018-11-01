@@ -68,7 +68,7 @@ namespace LLP
         bool AddConnection(std::string strAddress, int nPort)
         {
             /* Initialize DDOS Protection for Incoming IP Address. */
-            CService addrConnect(strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
+            CService addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
 
             /* Create new DDOS Filter if Needed. */
             if(!DDOS_MAP.count(addrConnect))
@@ -116,7 +116,7 @@ namespace LLP
         /* Basic Socket Handle Variables. */
         std::thread          LISTEN_THREAD;
         std::thread          METER_THREAD;
-        std::recursive_mutex DDOS_MUTEX;
+        std::recursive_mutex           DDOS_MUTEX;
         int                  hListenSocket;
 
 

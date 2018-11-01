@@ -141,7 +141,7 @@ namespace LLP
         /* Connect Socket to a Remote Endpoint. */
         bool Connect(std::string strAddress, int nPort)
         {
-            CService addrConnect(strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
+            CService addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
 
             /// debug print
             printf(NODE "Connecting to %s\n",

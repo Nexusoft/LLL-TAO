@@ -21,13 +21,13 @@ ________________________________________________________________________________
 
 inline std::string i64tostr(int64_t n)
 {
-    return strprintf("%" PRI64d, n);
+    return debug::strprintf("%" PRI64d, n);
 }
 
 
 inline std::string itostr(int n)
 {
-    return strprintf("%d", n);
+    return debug::strprintf("%d", n);
 }
 
 
@@ -110,7 +110,10 @@ inline bool IsSwitchChar(char c)
 }
 
 
-inline std::string ip_string(std::vector<uint8_t> ip) { return strprintf("%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]); }
+inline std::string ip_string(std::vector<uint8_t> ip)
+{
+    return debug::strprintf("%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]); 
+}
 
 
 /* Parse an IP Address into a Byte Vector from Std::String. */

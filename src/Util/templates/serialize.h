@@ -30,6 +30,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 #include <Util/include/allocators.h>
+#include <Util/include/debug.h>
 
 namespace Legacy
 {
@@ -211,10 +212,9 @@ template<typename Stream> inline void Unserialize(Stream& s, bool& a, int, int=0
 #ifndef THROW_WITH_STACKTRACE
 #define THROW_WITH_STACKTRACE(exception)  \
 {                                         \
-    LogStackTrace();                      \
+    debug::LogStackTrace();               \
     throw (exception);                    \
 }
-void LogStackTrace();
 #endif
 
 
