@@ -292,7 +292,7 @@ namespace LLD
             if(nCurrentSize > MAX_CACHE_SIZE)
             {
                 /* Get the last key. */
-                if(!plast->fReserve)
+                if(plast->pprev && !plast->fReserve)
                 {
                     BinaryNode* pnode = plast;
 
@@ -337,7 +337,7 @@ namespace LLD
             if(nCurrentSize > MAX_CACHE_SIZE)
             {
                 /* Get the last key. */
-                if(!plast->fReserve)
+                if(plast->pprev && !plast->fReserve)
                 {
                     BinaryNode* pnode = plast;
 
