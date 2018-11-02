@@ -312,10 +312,7 @@ namespace LLD
             /* Check for the Key. */
             uint32_t nBucket = GetBucket(vKey);
             if(!mapKeys[nBucket].count(vKey))
-            {
-                debug::error(FUNCTION "Key doesn't Exist", __PRETTY_FUNCTION__);
-                return false;
-            }
+                return debug::error(FUNCTION "Key doesn't Exist", __PRETTY_FUNCTION__);
 
 
             /* Establish the Outgoing Stream. */
@@ -391,10 +388,7 @@ namespace LLD
 
                     /* Check the Keys Match Properly. */
                     if(vKeyIn != vKey)
-                    {
-                        debug::error(FUNCTION "Key Mistmatch: DB:: %s MEM %s\n", __PRETTY_FUNCTION__, HexStr(vKeyIn.begin(), vKeyIn.end()).c_str(), HexStr(vKey.begin(), vKey.end()).c_str());
-                        return false;
-                    }
+                        return debug::error(FUNCTION "Key Mistmatch: DB:: %s MEM %s\n", __PRETTY_FUNCTION__, HexStr(vKeyIn.begin(), vKeyIn.end()).c_str(), HexStr(vKey.begin(), vKey.end()).c_str());
 
                     /* Assign Key to Sector. */
                     cKey.vKey = vKeyIn;

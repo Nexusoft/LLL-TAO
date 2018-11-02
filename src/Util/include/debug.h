@@ -123,8 +123,10 @@ namespace debug
      *  @param[in] ... The variable argument list to supply to each format
      *                 specifier in the format string.
      *
+     *  @return Always returns false.
+     *
      **/
-    void error(const char *format, ...);
+    bool error(const char *format, ...);
 
 
     /** print_base

@@ -117,12 +117,7 @@ int main(int argc, char** argv)
     //tx2.print();
 
     uint32_t wps = 0;
-<<<<<<< HEAD
     while(!config::fShutdown)
-=======
-    uint32_t total = 0;
-    while(!fShutdown)
->>>>>>> 6ab0e978655250074156b265952d4e143dbf5db3
     {
         hash = hash + 1;
         //std::vector<uint8_t> vKey((uint8_t*)&hash, (uint8_t*)&hash + sizeof(hash));

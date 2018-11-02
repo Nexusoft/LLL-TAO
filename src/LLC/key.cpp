@@ -293,24 +293,15 @@ namespace LLC
 
         /* Ensure length is within range of first length indicator. */
         if (vchSig[1] != vchSig.size() - 6)
-        {
-            debug::error("length mismatch byte 1 %u %u", vchSig[1], vchSig.size());
-            return false;
-        }
+            return debug::error("length mismatch byte 1 %u %u", vchSig[1], vchSig.size());
 
         /* Ensure length is within range of second length indicator. */
         if (vchSig[2] != vchSig.size() - 3)
-        {
-            debug::error("length mismatch byte 2 %u - %u", vchSig[2], vchSig.size());
-            return false;
-        }
+            return debug::error("length mismatch byte 2 %u - %u", vchSig[2], vchSig.size());
 
         /* Byte 3 needs to indicate integer value for R (0x02) */
         if (vchSig[3] != 0x02)
-        {
-            debug::error("R is not an integer");
-            return false;
-        }
+            return debug::error("R is not an integer");
 
         /* Byte 4 is length of R value. Extract it. */
         uint32_t lenR = vchSig[4];
@@ -321,24 +312,15 @@ namespace LLC
 
         /* Make sure R value is not negative (0x80). */
         if (vchSig[5] & 0x80)
-        {
-            debug::error("negatives not allowed for R");
-            return false;
-        }
+            return debug::error("negatives not allowed for R");
 
         /* No Null value to pad R, unless interpreted as negative. */
         if ((vchSig[5] == 0x00) && !(vchSig[6] & 0x80))
-        {
-            debug::error("no null bytes at start of R");
-            return false;
-        }
+            return debug::error("no null bytes at start of R");
 
         /* Ensure S is flagged as integer (0x02) */
         if (vchSig[5 + lenR] != 0x02)
-        {
-            debug::error("S is not an integer");
-            return false;
-        }
+            return debug::error("S is not an integer");
 
         /* Extract the length of S. */
         uint32_t lenS = vchSig[6 + lenR];
@@ -349,17 +331,11 @@ namespace LLC
 
         /* Make sure S value is not negative (0x80) */
         if (vchSig[lenR + 7] & 0x80)
-        {
-            debug::error("no negatives allowed for S");
-            return false;
-        }
+            return debug::error("no negatives allowed for S");
 
         /* No Null value to pad S, unless interpreted as negative. */
         if ((vchSig[lenR + 7] == 0x00) && !(vchSig[lenR + 8] & 0x80))
-        {
-            debug::error("no null bytes at start of S");
-            return false;
-        }
+            return debug::error("no null bytes at start of S");
 
         return true;
     }
@@ -375,8 +351,7 @@ namespace LLC
         if(ECDSA_sign(0, &vchData[0], vchData.size(), &vchSig[0], &nSize, pkey) != 1)
         {
             vchSig.clear();
-            debug::error("Failed to Sign");
-            return false;
+            return debug::error("Failed to Sign");
         }
 
         vchSig.resize(nSize);

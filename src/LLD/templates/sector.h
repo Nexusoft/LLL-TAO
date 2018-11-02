@@ -137,7 +137,7 @@ namespace LLD
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         SectorDatabase(std::string strNameIn, const char* pszMode="r+")
             : strName(strNameIn)
-            , strBaseLocation(config::GetDataDir() + "/" + strNameIn + "/datachain/")
+            , strBaseLocation(config::GetDataDir() + strNameIn + "/datachain/")
             , cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE))
             , nBytesRead(0)
             , nBytesWrote(0)
@@ -154,7 +154,7 @@ namespace LLD
             fReadOnly = (!strchr(pszMode, '+') && !strchr(pszMode, 'w'));
 
             /* Initialize the Keys Class. */
-            SectorKeys = new KeychainType((config::GetDataDir() + "/" + strName + "/keychain/"));
+            SectorKeys = new KeychainType((config::GetDataDir() + strName + "/keychain/"));
 
             /* Initialize the Database. */
             Initialize();
@@ -330,43 +330,19 @@ namespace LLD
             SectorKey cKey;
             if(SectorKeys->Get(vKey, cKey))
             {
-<<<<<<< HEAD
-                std::unique_lock<std::recursive_mutex> lk(SECTOR_MUTEX);
-
-                /* Open the Stream to Read the data from Sector on File. */
-                std::string strFilename = debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile);
-                std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::binary);
-                if(!fStream)
-                {
-                    debug::error(FUNCTION "Sector File %s Doesn't Exist\n", __PRETTY_FUNCTION__, strFilename.c_str());
-                    return false;
-                }
-=======
                 { LOCK(SECTOR_MUTEX);
 
                     /* Open the Stream to Read the data from Sector on File. */
-                    std::fstream stream(strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::binary);
->>>>>>> 6ab0e978655250074156b265952d4e143dbf5db3
+                    std::fstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::binary);
 
                     /* Error checking if file doens't exist. */
                     if(!stream)
-                        return error(FUNCTION "Sector File Doesn't Exist\n", __PRETTY_FUNCTION__, strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile).c_str());
+                        return debug::error(FUNCTION "Sector File Doesn't Exist\n", __PRETTY_FUNCTION__, debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile).c_str());
 
                     /* Seek to the Sector Position on Disk. */
                     stream.seekg(cKey.nSectorStart, std::ios::beg);
                     vData.resize(cKey.nSectorSize);
 
-<<<<<<< HEAD
-                /* Check the Data Integrity of the Sector by comparing the Checksums. */
-                uint32_t nChecksum = LLC::SK32(vData);
-                if(cKey.nChecksum != nChecksum)
-                {
-                    debug::error(FUNCTION "Checksums don't match data. Corrupted Sector.", __PRETTY_FUNCTION__);
-                    return false;
-                }
-
-                if(config::GetArg("-verbose", 0) >= 4)
-=======
                     /* Read the State and Size of Sector Header. */
                     stream.read((char*) &vData[0], vData.size());
                     stream.close();
@@ -376,17 +352,13 @@ namespace LLD
                 cachePool->Put(vKey, vData);
 
                 /* Verbose Debug Logging. */
-                if(GetArg("-verbose", 0) >= 4)
->>>>>>> 6ab0e978655250074156b265952d4e143dbf5db3
+                if(config::GetArg("-verbose", 0) >= 4)
                     printf(FUNCTION "%s\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
 
                 return true;
             }
             else
-            {
-                debug::error(FUNCTION "KEY NOT FOUND", __PRETTY_FUNCTION__);
-                return false;
-            }
+                return debug::error(FUNCTION "KEY NOT FOUND", __PRETTY_FUNCTION__);
 
             return false;
         }
@@ -446,7 +418,7 @@ namespace LLD
         {
             /* Write the data into the memory cache. */
             cachePool->Put(vKey, vData, true);
-            while(!fShutdown && nBufferBytes > MAX_SECTOR_BUFFER_SIZE)
+            while(!config::fShutdown && nBufferBytes > MAX_SECTOR_BUFFER_SIZE)
                 Sleep(1);
 
             /* Add to the write buffer thread. */

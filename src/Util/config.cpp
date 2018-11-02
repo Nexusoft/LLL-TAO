@@ -11,12 +11,12 @@
 
 ____________________________________________________________________________________________*/
 
-#include <fstream>
-#include <cstring> //for strlen
 #include <Util/include/args.h>
 #include <Util/include/config.h>
 #include <Util/include/mutex.h>
 #include <Util/include/filesystem.h>
+#include <fstream>
+#include <cstring> /* strlen */
 
 namespace config
 {
@@ -27,7 +27,7 @@ namespace config
     {
         std::ifstream streamConfig(GetConfigFile());
         if(!streamConfig.is_open())
-            return; // No nexus.conf file is OK
+            return; /* No nexus.conf file is OK */
 
         std::string line;
 
@@ -48,7 +48,7 @@ namespace config
             if(mapSettingsRet.count(strKey) == 0)
             {
                 mapSettingsRet[strKey] = strVal;
-                // interpret nofoo=1 as foo=0 (and nofoo=0 as foo=1) as long as foo not set
+                /* interpret nofoo=1 as foo=0 (and nofoo=0 as foo=1) as long as foo not set */
                 InterpretNegativeSetting(strKey, mapSettingsRet);
             }
 
@@ -96,9 +96,9 @@ namespace config
     /* Get the default directory Nexus data is stored in. */
     std::string GetDefaultDataDir(std::string strName)
     {
-        // Windows: C:\Documents and Settings\username\Application Data\Nexus
-        // Mac: ~/Library/Application Support/Nexus
-        // Unix: ~/.Nexus
+        /* Windows: C:\Documents and Settings\username\Application Data\Nexus
+         * Mac: ~/Library/Application Support/Nexus
+         * Unix: ~/.Nexus */
     #ifdef WIN32
         // Windows
         pathRet = MyGetSpecialFolderPath(CSIDL_APPDATA, true);

@@ -404,8 +404,7 @@ namespace LLP
             {
                 DDOS->rSCORE += 20;
 
-                debug::error("***** Node message addr size() = %d... Dropping Connection", vAddr.size());
-                return false;
+                return debug::error("***** Node message addr size() = %d... Dropping Connection", vAddr.size());
             }
 
 

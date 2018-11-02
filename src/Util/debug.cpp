@@ -11,9 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <string>
-#include <stdarg.h>
-#include <stdio.h>
 #include <Util/include/config.h>
 #include <Util/include/debug.h>
 #include <Util/include/args.h>
@@ -21,6 +18,9 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
+#include <string>
+#include <stdarg.h>
+#include <stdio.h>
 
 #ifndef WIN32
 #include <execinfo.h>
@@ -163,7 +163,7 @@ namespace debug
 
     /*  Prints output with a red error caption to the console. It may also write output to a debug.log
      *  if the global fileout file is assigned. */
-    void error(const char *format, ...)
+    bool error(const char *format, ...)
     {
         char buffer[50000];
         int limit = sizeof(buffer);
@@ -177,6 +177,7 @@ namespace debug
         }
 
         printf(ANSI_COLOR_RED "ERROR: %s" ANSI_COLOR_RESET "\n", buffer);
+        return false;
     }
 
     /*  Prints output with base class and function information. */
