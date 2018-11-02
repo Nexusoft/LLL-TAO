@@ -523,7 +523,7 @@ namespace LLD
                     cachePool->Reserve(Key.vKey, false);
                 }
 
-                printf(FUNCTION "Flushed %u Records to Disk\n", __PRETTY_FUNCTION__, vKeys.size());
+                //printf(FUNCTION "Flushed %u Records to Disk\n", __PRETTY_FUNCTION__, vKeys.size());
             }
         }
 

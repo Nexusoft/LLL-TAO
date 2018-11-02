@@ -268,6 +268,7 @@ LIBS+= $(BDB_LIB_PATH)/libdb_cxx.a \
 CXXFLAGS+= -mmacosx-version-min=10.10 \
 	-O3 \
 	$(DEFS) \
+	$(DEBUG) \
 	$(INCLUDEPATHS)
 
 #set -std=c++ for all but c compiling
