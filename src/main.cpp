@@ -122,7 +122,7 @@ int main(int argc, char** argv)
     uint32_t total = 0;
     while(!fShutdown)
     {
-        Sleep(10, true);
+        Sleep(5, true);
 
         tx.hashGenesis = LLC::GetRand256();
         hash = tx.GetHash();
