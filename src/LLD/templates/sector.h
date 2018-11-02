@@ -23,8 +23,6 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/filesystem.h>
 
-//static std::fstream* streamTest;
-
 namespace LLD
 {
 
@@ -382,7 +380,7 @@ namespace LLD
                 fStream.seekp(nCurrentFileSize, std::ios::beg);
                 fStream.write((char*) &vData[0], vData.size());
                 fStream.close();
-                
+
             }
 
             /* Create a new Sector Key. */
@@ -409,7 +407,7 @@ namespace LLD
         bool Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
         {
             /* Write the data into the memory cache. */
-            cachePool->Put(vKey, vData);
+            cachePool->Put(vKey, vData, true);
             while(!fShutdown && nBufferBytes > MAX_SECTOR_BUFFER_SIZE)
                 Sleep(1);
 
@@ -479,6 +477,7 @@ namespace LLD
 
                 /* Iterate through buffer to queue disk writes. */
                 std::vector<uint8_t> vWrite;
+                std::vector<SectorKey> vKeys;
                 for(auto vObj : vIndexes)
                 {
                     /* Create a new Sector Key. */
@@ -488,7 +487,7 @@ namespace LLD
                     nCurrentFileSize += vObj.second.size();
 
                     /* Assign the Key to Keychain. */
-                    SectorKeys->Put(cTmp);
+                    vKeys.push_back(cTmp);
 
                     /* Add data to the write buffer */
                     vWrite.insert(vWrite.end(), vObj.second.begin(), vObj.second.end());
@@ -514,7 +513,17 @@ namespace LLD
                 stream.write((char*)&vWrite[0], vWrite.size());
                 stream.close();
 
-                printf(FUNCTION "Flushed %u Bytes to Disk\n", __PRETTY_FUNCTION__, vWrite.size());
+                /* Write Keys to keychain. */
+                for(auto Key : vKeys)
+                {
+                    /* Assign the key to keychain. */
+                    SectorKeys->Put(Key);
+
+                    /* Set cache back to not reserved. */
+                    cachePool->Reserve(Key.vKey, false);
+                }
+
+                printf(FUNCTION "Flushed %u Records to Disk\n", __PRETTY_FUNCTION__, vKeys.size());
             }
         }
 

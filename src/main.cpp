@@ -51,6 +51,7 @@ public:
 };
 
 
+
 int main(int argc, char** argv)
 {
     /* Handle all the signals with signal handler method. */
@@ -116,8 +117,6 @@ int main(int argc, char** argv)
     TAO::Ledger::Transaction tx2;
     //test->Read(hash, tx2);
     //tx2.print();
-
-    //return 0;
 
     uint32_t wps = 0;
     uint32_t total = 0;
