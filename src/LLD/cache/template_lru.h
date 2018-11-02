@@ -318,7 +318,7 @@ namespace LLD
             if(nTotalElements > MAX_CACHE_ELEMENTS)
             {
                 /* Get the last key. */
-                if(plast->pprev)
+                if(plast && plast->pprev)
                 {
                     TemplateNode<KeyType, DataType>* pnode = plast;
 

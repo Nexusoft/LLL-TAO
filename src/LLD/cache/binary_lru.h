@@ -294,7 +294,7 @@ namespace LLD
             while(nCurrentSize > MAX_CACHE_SIZE)
             {
                 /* Get the last key. */
-                if(plast->pprev)
+                if(plast && plast->pprev)
                 {
                     BinaryNode* pnode = plast;
 
