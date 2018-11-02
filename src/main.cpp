@@ -119,7 +119,7 @@ int main(int argc, char** argv)
     uint32_t wps = 0;
     while(!config::fShutdown)
     {
-        Sleep(5, true);
+        //Sleep(5, true);
 
         tx.hashGenesis = LLC::GetRand256();
         hash = tx.GetHash();

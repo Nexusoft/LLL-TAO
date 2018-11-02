@@ -301,7 +301,7 @@ namespace LLD
             DataStream ssData(SER_LLD, DATABASE_VERSION);
             ssData << value;
 
-            return Put(ssKey, ssData);
+            return Put((std::vector<uint8_t>)ssKey, (std::vector<uint8_t>)ssData);
         }
 
         /** Get a Record from the Database with Given Key. **/
