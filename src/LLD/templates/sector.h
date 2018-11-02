@@ -31,11 +31,11 @@ namespace LLD
 
 
     /* Maximum cache buckets for sectors. */
-    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 128; //512 MB Max Cache
+    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 32; //512 MB Max Cache
 
 
     /* The maximum amount of bytes allowed in the memory buffer for disk flushes. **/
-    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 128; //512 MB Max Disk Buffer
+    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 32; //512 MB Max Disk Buffer
 
 
     /** Base Template Class for a Sector Database.
@@ -534,7 +534,7 @@ namespace LLD
                     cachePool->Reserve(Key.vKey, false);
                 }
 
-                printf(FUNCTION "Flushed %u Records to Disk\n", __PRETTY_FUNCTION__, vKeys.size());
+                //printf(FUNCTION "Flushed %u Records to Disk\n", __PRETTY_FUNCTION__, vKeys.size());
             }
         }
 

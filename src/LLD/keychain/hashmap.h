@@ -356,6 +356,7 @@ namespace LLD
             /* Flush the key file to disk. */
             pstream->seekp (nFilePos, std::ios::beg);
             pstream->write((char*)&ssKey[0], ssKey.size());
+            pstream->flush();
 
             return true;
         }
@@ -380,8 +381,7 @@ namespace LLD
                     vDisk.insert(vDisk.end(), (uint8_t*)&bucket, (uint8_t*)&bucket + 4);
 
                 /* Create the file handler. */
-                std::string file = debug::strprintf("%s_hashmap.index", strBaseLocation.c_str());
-                std::fstream stream(file, std::ios::out | std::ios::binary);
+                std::fstream stream(debug::strprintf("%s_hashmap.index", strBaseLocation.c_str()), std::ios::out | std::ios::binary);
                 stream.write((char*)&vDisk[0], vDisk.size());
                 stream.close();
 

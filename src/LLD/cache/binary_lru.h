@@ -241,7 +241,8 @@ namespace LLD
             vData = pthis->vData;
 
             /* Move to front of double linked list. */
-            MoveToFront(pthis);
+            if(!pthis->fReserve)
+                MoveToFront(pthis);
 
             return true;
         }
@@ -283,16 +284,17 @@ namespace LLD
             }
 
             /* Set the new cache node to the front */
-            MoveToFront(pthis);
+            if(!pthis->fReserve)
+                MoveToFront(pthis);
 
             /* Set the new cache size. */
             nCurrentSize += (vData.size() + vKey.size());
 
             /* Remove the last node if cache too large. */
-            if(nCurrentSize > MAX_CACHE_SIZE)
+            while(nCurrentSize > MAX_CACHE_SIZE)
             {
                 /* Get the last key. */
-                if(!plast->fReserve)
+                if(plast->pprev)
                 {
                     BinaryNode* pnode = plast;
 
@@ -306,7 +308,11 @@ namespace LLD
                     /* Clear the pointers. */
                     hashmap[Bucket(pnode->vKey)] = NULL; //TODO: hashmap linked list for collisions
                     delete pnode;
+
+                    continue;
                 }
+
+                break;
             }
         }
 
@@ -333,26 +339,9 @@ namespace LLD
             /* Set object to reserved. */
             pthis->fReserve = fReserve;
 
-            /* Remove the last node if cache too large. */
-            if(nCurrentSize > MAX_CACHE_SIZE)
-            {
-                /* Get the last key. */
-                if(!plast->fReserve)
-                {
-                    BinaryNode* pnode = plast;
-
-                    /* Relink in memory. */
-                    plast = plast->pprev;
-                    plast->pnext = NULL;
-
-                    /* Reduce the current cache size. */
-                    nCurrentSize -= (pnode->vData.size() - pnode->vKey.size());
-
-                    /* Clear the pointers. */
-                    hashmap[Bucket(pnode->vKey)] = NULL; //TODO: hashmap linked list for collisions
-                    delete pnode;
-                }
-            }
+            /* Move back to linked list. */
+            if(!fReserve)
+                MoveToFront(pthis);
         }
 
 

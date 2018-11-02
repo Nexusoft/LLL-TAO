@@ -119,7 +119,11 @@ int main(int argc, char** argv)
     uint32_t wps = 0;
     while(!config::fShutdown)
     {
-        hash = hash + 1;
+        Sleep(5, true);
+
+        tx.hashGenesis = LLC::GetRand256();
+        hash = tx.GetHash();
+
         //std::vector<uint8_t> vKey((uint8_t*)&hash, (uint8_t*)&hash + sizeof(hash));
         //std::vector<uint8_t> vData((uint8_t*)&tx, (uint8_t*)&tx + tx.GetSerializeSize(SER_DISK, LLD::DATABASE_VERSION));
         //cachePool->Put(vKey, vData);
@@ -146,7 +150,7 @@ int main(int argc, char** argv)
 
             timer.Reset();
             for(int i = 0; i < 100000; i++)
-                test->Read(base + i, tx);
+                test->Read(hash, tx);
 
             timer.Stop();
 
