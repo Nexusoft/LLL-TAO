@@ -754,14 +754,155 @@ struct ser_streamplaceholder
 };
 
 
+/** DataStream
+ *
+ *  Class to handle the serializaing and deserializing of data to disk or over the network
+ *
+ **/
+class DataStream : public std::vector<uint8_t>
+{
+
+    /** The current reading position. **/
+    uint32_t nReadPos;
 
 
+    /** The serialization type. **/
+    int32_t nSerType;
 
 
+    /** The serializtion version **/
+    int32_t nSerVersion;
 
 
+public:
+
+    /** Default Constructor. **/
+    DataStream(int32_t nSerTypeIn, int32_t nSerVersionIn) : nReadPos(0), nSerType(nSerTypeIn), nSerVersion(nSerVersion)
+    {
+        clear();
+    }
 
 
+    /** Data Constructor.
+     *
+     *  @param[in] vchDataIn The byte vector to insert.
+     *
+     **/
+    DataStream(std::vector<uint8_t> vchDataIn, int32_t nSerTypeIn, int32_t nSerVersionIn) : nReadPos(0), nSerType(nSerTypeIn), nSerVersion(nSerVersion), std::vector<uint8_t>(vchDataIn) {  }
+
+
+    /** Set null method.
+     *
+     *  Sets the object into null state.
+     *
+     **/
+    void SetNull()
+    {
+        nReadPos = 0;
+        clear();
+    }
+
+
+    /** Is null method
+     *
+     *  Returns if object is in null state.
+     *
+     **/
+    bool IsNull()
+    {
+        return nReadPos == 0 && size() == 0;
+    }
+
+
+    /** Reset
+     *
+     *  Resets the internal read pointer
+     *
+     **/
+    void Reset()
+    {
+        nReadPos = 0;
+    }
+
+
+    /** End
+     *
+     *  Returns if end of stream is found
+     *
+     **/
+    bool End()
+    {
+        return nReadPos == size();
+    }
+
+
+    /** read
+     *
+     *  Reads raw data from the stream
+     *
+     *  @param[in] pch The pointer to beginning of memory to write
+     *  @param[in] nSize The total number of bytes to read
+     *
+     **/
+    DataStream& read(char* pch, int nSize)
+    {
+       /* Copy the bytes into tmp object. */
+       std::copy((uint8_t*)&at(nReadPos), (uint8_t*)&at(nReadPos) + nSize, (uint8_t*)pch);
+
+       /* Iterate the read position. */
+       nReadPos += nSize;
+
+       return *this;
+    }
+
+
+    /** write
+     *
+     *  Writes data into the stream
+     *
+     *  @param[in] pch The pointer to beginning of memory to write
+     *  @param[in] nSize The total number of bytes to copy
+     *
+     **/
+    DataStream& write(const char* pch, int nSize)
+    {
+        /* Push the obj bytes into the vector. */
+        insert(end(), (uint8_t*)pch, (uint8_t*)pch + nSize);
+
+        return *this;
+    }
+
+
+    /** Operator Overload <<
+     *
+     *  Serializes data into vchLedgerData
+     *
+     *  @param[in] obj The object to serialize into ledger data
+     *
+     **/
+    template<typename Type> DataStream& operator<<(const Type& obj)
+    {
+        /* Serialize to the stream. */
+        ::Serialize(*this, obj, nSerType, nSerVersion); //temp versinos for now
+
+        return (*this);
+    }
+
+
+    /** Operator Overload >>
+     *
+     *  Serializes data into vchLedgerData
+     *
+     *  @param[out] obj The object to de-serialize from ledger data
+     *
+     **/
+    template<typename Type> DataStream& operator>>(Type& obj)
+    {
+        /* Unserialize from the stream. */
+        ::Unserialize(*this, obj, nSerType, nSerVersion);
+        return (*this);
+    }
+};
 
 
 /** Double ended buffer combining vector and stream-like interfaces.
@@ -867,6 +1008,7 @@ public:
     void clear()                                     { vch.clear(); nReadPos = 0; }
     iterator insert(iterator it, const char& x=char()) { return vch.insert(it, x); }
     void insert(iterator it, size_type n, const char& x) { vch.insert(it, n, x); }
+    vector_type data() { return vch; }
 
 
     void insert(iterator it, const_iterator first, const_iterator last)

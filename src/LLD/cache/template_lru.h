@@ -326,14 +326,38 @@ namespace LLD
                     plast = plast->pprev;
                     plast->pnext = NULL;
 
-                    /* Clear the pointers. */
+                    /* Reset hashmap pointer */
                     hashmap[Bucket(pnode->Key)] = NULL; //TODO: hashmap linked list for collisions
-                    delete pnode;
+
+                    /* Free memory. */
+                    Delete(pnode->Key);
+                    Delete(pnode->Data);
+                    Delete(pnode);
                 }
             }
             else
                 nTotalElements++;
         }
+
+
+        /** Delete
+         *
+         *  Template function to delete pointer.
+         *  This one is dummy non pointer catch
+         *
+         **/
+        template<typename Type>
+        void Delete(Type data) {}
+
+
+        /** Delete
+         *
+         *  Template function to delete pointer.
+         *  This one is to aid compile time deletes.
+         *
+         **/
+        template<typename Type>
+        void Delete(Type*& data) { delete data; }
 
 
         /** Force Remove Object by Index
@@ -343,7 +367,7 @@ namespace LLD
          * @return True on successful removal, false if it fails
          *
          */
-        bool Remove(std::vector<uint8_t> Key)
+        bool Remove(KeyType Key)
         {
             LOCK(MUTEX);
 
@@ -362,7 +386,11 @@ namespace LLD
 
             /* Remove the object from the map. */
             hashmap[Bucket(Key)] = NULL;
-            delete pnode;
+
+            /* Free memory. */
+            Delete(pnode->Key);
+            Delete(pnode->Data);
+            Delete(pnode);
 
             return true;
         }

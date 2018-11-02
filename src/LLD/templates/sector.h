@@ -23,8 +23,6 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/filesystem.h>
 
-//static std::fstream* streamTest;
-
 namespace LLD
 {
 
@@ -274,23 +272,17 @@ namespace LLD
         bool Read(const Key& key, Type& value)
         {
             /** Serialize Key into Bytes. **/
-            CDataStream ssKey(SER_LLD, DATABASE_VERSION);
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
-            std::vector<uint8_t> vKey(ssKey.begin(), ssKey.end());
 
             /** Get the Data from Sector Database. **/
             std::vector<uint8_t> vData;
-            if(!Get(vKey, vData))
+            if(!Get(ssKey, vData))
                 return false;
 
             /** Deserialize Value. **/
-            try {
-                CDataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
-                ssValue >> value;
-            }
-            catch (std::exception &e) {
-                return false;
-            }
+            DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
+            ssValue >> value;
 
             return true;
         }
@@ -301,29 +293,15 @@ namespace LLD
             if (fReadOnly)
                 assert(!"Write called on database in read-only mode");
 
-            /** Serialize the Key. **/
-            CDataStream ssKey(SER_LLD, DATABASE_VERSION);
+            /* Serialize the Key. */
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
-            std::vector<uint8_t> vKey(ssKey.begin(), ssKey.end());
 
-            /** Serialize the Value **/
-            CDataStream ssValue(SER_LLD, DATABASE_VERSION);
-            ssValue << value;
-            std::vector<uint8_t> vData(ssValue.begin(), ssValue.end());
+            /* Serialize the Value */
+            DataStream ssData(SER_LLD, DATABASE_VERSION);
+            ssData << value;
 
-            /** Commit to the Database. **/
-            if(pTransaction)
-            {
-
-                std::vector<uint8_t> vOriginalData;
-                //Get(vKey, vOriginalData);
-
-                return pTransaction->AddTransaction(vKey, vData, vOriginalData);
-            }
-
-            bool fRet = Put(vKey, vData);
-
-            return fRet;
+            return Put(ssKey, ssData);
         }
 
         /** Get a Record from the Database with Given Key. **/
@@ -352,6 +330,7 @@ namespace LLD
             SectorKey cKey;
             if(SectorKeys->Get(vKey, cKey))
             {
+<<<<<<< HEAD
                 std::unique_lock<std::recursive_mutex> lk(SECTOR_MUTEX);
 
                 /* Open the Stream to Read the data from Sector on File. */
@@ -362,15 +341,22 @@ namespace LLD
                     debug::error(FUNCTION "Sector File %s Doesn't Exist\n", __PRETTY_FUNCTION__, strFilename.c_str());
                     return false;
                 }
+=======
+                { LOCK(SECTOR_MUTEX);
 
-                /* Seek to the Sector Position on Disk. */
-                fStream.seekg(cKey.nSectorStart, std::ios::beg);
+                    /* Open the Stream to Read the data from Sector on File. */
+                    std::fstream stream(strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::binary);
+>>>>>>> 6ab0e978655250074156b265952d4e143dbf5db3
 
-                /* Read the State and Size of Sector Header. */
-                vData.resize(cKey.nSectorSize);
-                fStream.read((char*) &vData[0], vData.size());
-                fStream.close();
+                    /* Error checking if file doens't exist. */
+                    if(!stream)
+                        return error(FUNCTION "Sector File Doesn't Exist\n", __PRETTY_FUNCTION__, strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile).c_str());
 
+                    /* Seek to the Sector Position on Disk. */
+                    stream.seekg(cKey.nSectorStart, std::ios::beg);
+                    vData.resize(cKey.nSectorSize);
+
+<<<<<<< HEAD
                 /* Check the Data Integrity of the Sector by comparing the Checksums. */
                 uint32_t nChecksum = LLC::SK32(vData);
                 if(cKey.nChecksum != nChecksum)
@@ -380,6 +366,18 @@ namespace LLD
                 }
 
                 if(config::GetArg("-verbose", 0) >= 4)
+=======
+                    /* Read the State and Size of Sector Header. */
+                    stream.read((char*) &vData[0], vData.size());
+                    stream.close();
+                }
+
+                /* Add to cache */
+                cachePool->Put(vKey, vData);
+
+                /* Verbose Debug Logging. */
+                if(GetArg("-verbose", 0) >= 4)
+>>>>>>> 6ab0e978655250074156b265952d4e143dbf5db3
                     printf(FUNCTION "%s\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
 
                 return true;
@@ -397,9 +395,6 @@ namespace LLD
         /** Add / Update A Record in the Database **/
         bool Put2(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
         {
-            /* Write Header if First Update. */
-            std::unique_lock<std::recursive_mutex> lk(SECTOR_MUTEX);
-
             if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
             {
                 if(config::GetArg("-verbose", 0) >= 4)
@@ -412,21 +407,22 @@ namespace LLD
                 fStream.close();
             }
 
-            /* Open the Stream to Read the data from Sector on File. */
-            std::string strFilename = debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
-            std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
+            { LOCK(SECTOR_MUTEX);
 
-            /* If it is a New Sector, Assign a Binary Position.
-                TODO: Track Sector Database File Sizes. */
-            fStream.seekp(nCurrentFileSize, std::ios::beg);
-            fStream.write((char*) &vData[0], vData.size());
-            fStream.close();
+                /* Open the Stream to Read the data from Sector on File. */
+                std::string strFilename = debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
+                std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
+
+                /* If it is a New Sector, Assign a Binary Position.
+                    TODO: Track Sector Database File Sizes. */
+                fStream.seekp(nCurrentFileSize, std::ios::beg);
+                fStream.write((char*) &vData[0], vData.size());
+                fStream.close();
+
+            }
 
             /* Create a new Sector Key. */
             SectorKey cKey = SectorKey(READY, vKey, nCurrentFile, nCurrentFileSize, vData.size());
-
-            /* Check the Data Integrity of the Sector by comparing the Checksums. */
-            cKey.nChecksum    = LLC::SK32(vData);
 
             /* Increment the current filesize */
             nCurrentFileSize += vData.size();
@@ -448,11 +444,9 @@ namespace LLD
         /** Add / Update A Record in the Database **/
         bool Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
         {
-            nBytesWrote += (vKey.size() + vData.size());
-
             /* Write the data into the memory cache. */
-            cachePool->Put(vKey, vData);
-            while(!config::fShutdown && nBufferBytes > MAX_SECTOR_BUFFER_SIZE)
+            cachePool->Put(vKey, vData, true);
+            while(!fShutdown && nBufferBytes > MAX_SECTOR_BUFFER_SIZE)
                 Sleep(1);
 
             /* Add to the write buffer thread. */
@@ -494,60 +488,81 @@ namespace LLD
                 /* Swap the buffer object to get ready for writes. */
                 std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vIndexes;
                 {
-                    std::unique_lock<std::recursive_mutex> lk(BUFFER_MUTEX);
+                    LOCK(BUFFER_MUTEX);
+
                     vIndexes.swap(vDiskBuffer);
                     nBufferBytes = 0;
                 }
 
-                /* Allocate new File if Needed. TODO: Check if sectors go over file size, assign new file if so */
+                /* Create a new file if the sector file size is over file size limits. */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                 {
-                    if(config::GetArg("-verbose", 0) >= 4)
-                        printf(FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
+                    printf(FUNCTION "Generated Sector File %u\n", __PRETTY_FUNCTION__, nCurrentFile + 1);
 
+                    /* Iterate the current file and reset current file sie. */
                     nCurrentFile ++;
                     nCurrentFileSize = 0;
+
+                    /* Create a new file for next writes. */
+                    std::fstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::out | std::ios::binary | std::ios::trunc);
+                    stream.close();
                 }
 
                 /* Open the Stream to Read the data from Sector on File. */
-                std::string strFilename = debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
-                std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
+                std::fstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
 
                 /* Seek to the end of the file */
-                fStream.seekp(nCurrentFileSize, std::ios::beg);
+                stream.seekp(nCurrentFileSize, std::ios::beg);
 
                 /* Iterate through buffer to queue disk writes. */
                 std::vector<uint8_t> vWrite;
+                std::vector<SectorKey> vKeys;
                 for(auto vObj : vIndexes)
                 {
                     /* Create a new Sector Key. */
                     SectorKey cTmp = SectorKey(READY, vObj.first, nCurrentFile, nCurrentFileSize, vObj.second.size());
 
-                    /* Check the Data Integrity of the Sector by comparing the Checksums. */
-                    cTmp.nChecksum = LLC::SK32(vObj.second);
-
                     /* Increment the current filesize */
                     nCurrentFileSize += vObj.second.size();
 
                     /* Assign the Key to Keychain. */
-                    SectorKeys->Put(cTmp);
+                    vKeys.push_back(cTmp);
 
                     /* Add data to the write buffer */
                     vWrite.insert(vWrite.end(), vObj.second.begin(), vObj.second.end());
 
+                    /* Add the file size to the written bytes. */
+                    nBytesWrote += vObj.first.size();
+
                     /* Flush to disk on periodic intervals. */
                     if(vWrite.size() > 10 * 1024 * 1024)
                     {
-                        fStream.write((char*)&vWrite[0], vWrite.size());
+                        LOCK(SECTOR_MUTEX);
+
+                        nBytesWrote += (vWrite.size());
+
+                        stream.write((char*)&vWrite[0], vWrite.size());
                         vWrite.clear();
                     }
                 }
 
-                /* Flush remaining to disk. */
-                fStream.write((char*)&vWrite[0], vWrite.size());
-                fStream.close();
+                nBytesWrote += (vWrite.size());
 
-                printf(FUNCTION " Flushed %u Bytes to Disk\n", __PRETTY_FUNCTION__, vWrite.size());
+                /* Flush remaining to disk. */
+                stream.write((char*)&vWrite[0], vWrite.size());
+                stream.close();
+
+                /* Write Keys to keychain. */
+                for(auto Key : vKeys)
+                {
+                    /* Assign the key to keychain. */
+                    SectorKeys->Put(Key);
+
+                    /* Set cache back to not reserved. */
+                    cachePool->Reserve(Key.vKey, false);
+                }
+
+                printf(FUNCTION "Flushed %u Records to Disk\n", __PRETTY_FUNCTION__, vKeys.size());
             }
         }
 
@@ -567,8 +582,8 @@ namespace LLD
                 double WPS = nBytesWrote / (TIMER.Elapsed() * 1024.0);
                 double RPS = nBytesRead / (TIMER.Elapsed() * 1024.0);
 
-                printf(">>>>> LLD Writing at %f Kb/s\n", WPS);
-                printf(">>>>> LLD Reading at %f Kb/s\n", RPS);
+                printf(FUNCTION ">>>>> LLD Writing at %f Kb/s\n", __PRETTY_FUNCTION__, WPS);
+                printf(FUNCTION ">>>>> LLD Reading at %f Kb/s\n", __PRETTY_FUNCTION__, RPS);
 
                 TIMER.Reset();
                 nBytesWrote = 0;
@@ -717,9 +732,6 @@ namespace LLD
                     /* Create a new Sector Key. */
                     SectorKey cKey(READY, vKey, nCurrentFile, nCurrentFileSize, vData.size());
 
-                    /* Check the Data Integrity of the Sector by comparing the Checksums. */
-                    cKey.nChecksum    = LLC::SK32(vData);
-
                     /* Increment the current filesize */
                     nCurrentFileSize += vData.size();
 
@@ -757,7 +769,6 @@ namespace LLD
                     fStream.close();
 
                     cKey.nState    = READY;
-                    cKey.nChecksum = LLC::SK32(vData);
 
                     SectorKeys->Put(cKey);
                 }
@@ -776,7 +787,6 @@ namespace LLD
 
                 /** Set the Sector states back to Active. **/
                 cKey.nState    = READY;
-                cKey.nChecksum = LLC::SK32(nIterator->second);
 
                 /** Commit the Keys to Keychain Database. **/
                 if(!SectorKeys->Put(cKey))

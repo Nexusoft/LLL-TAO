@@ -48,6 +48,7 @@ public:
 };
 
 
+
 int main(int argc, char** argv)
 {
     /* Handle all the signals with signal handler method. */
@@ -102,8 +103,11 @@ int main(int argc, char** argv)
 
     TAO::Ledger::Transaction tx;
     tx.hashGenesis = LLC::GetRand256();
+    uint512_t rand = LLC::GetRand512();
+    //tx << rand << rand << rand << rand << rand << rand << rand << rand;
     uint512_t hash = tx.GetHash();
-    tx.print();
+    uint512_t base = tx.GetHash();
+    //tx.print();
 
     test->Write(hash, tx);
 
@@ -112,17 +116,20 @@ int main(int argc, char** argv)
     //test->Read(hash, tx2);
     //tx2.print();
 
-    //return 0;
-
     uint32_t wps = 0;
+<<<<<<< HEAD
     while(!config::fShutdown)
+=======
+    uint32_t total = 0;
+    while(!fShutdown)
+>>>>>>> 6ab0e978655250074156b265952d4e143dbf5db3
     {
         hash = hash + 1;
-        std::vector<uint8_t> vKey((uint8_t*)&hash, (uint8_t*)&hash + sizeof(hash));
-        std::vector<uint8_t> vData((uint8_t*)&tx, (uint8_t*)&tx + tx.GetSerializeSize(SER_DISK, LLD::DATABASE_VERSION));
+        //std::vector<uint8_t> vKey((uint8_t*)&hash, (uint8_t*)&hash + sizeof(hash));
+        //std::vector<uint8_t> vData((uint8_t*)&tx, (uint8_t*)&tx + tx.GetSerializeSize(SER_DISK, LLD::DATABASE_VERSION));
         //cachePool->Put(vKey, vData);
-        test->Put(vKey, vData);
-        //test->Write(hash, tx);
+        //test->Put(vKey, vData);
+        test->Write(hash, tx);
 
         //LLC::SK256(hash.GetBytes());
 
@@ -134,14 +141,22 @@ int main(int argc, char** argv)
 
         if(nCounter % 100000 == 0)
         {
-            //if(test->Read(hash, tx))
-            //    tx.print();
+            timer.Stop();
 
             nAverage++;
             uint32_t nTimer = timer.ElapsedMilliseconds();
             wps += (100000.0 / nTimer);
 
             printf("100k records written in %u ms WPS = %uk / s\n", nTimer, wps / nAverage);
+
+            timer.Reset();
+            for(int i = 0; i < 100000; i++)
+                test->Read(base + i, tx);
+
+            timer.Stop();
+
+            printf("100k records read in %u ms\n", timer.ElapsedMilliseconds());
+
             timer.Reset();
 
             //Sleep(1000);

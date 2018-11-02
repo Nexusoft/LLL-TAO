@@ -70,16 +70,6 @@ namespace LLD
         /* The binary data of the Sector key. */
         std::vector<uint8_t> vKey;
 
-        /** Checksum of Original Data to ensure no database corrupted sectors.
-            TODO: Consider the Original Data from a checksum.
-            When transactions implemented have transactions stored in a sector Database.
-            Ensure Original keychain and new keychain are stored on disk.
-            If there is failure here before it is commited to the main database it will only
-            corrupt the database backups. This will ensure the core database never gets corrupted.
-            On startup ensure that the checksums match to ensure that the database was not stopped
-            in the middle of a write. **/
-        uint32_t nChecksum;
-
         /* Serialization Macro. */
         IMPLEMENT_SERIALIZE
         (
@@ -88,7 +78,6 @@ namespace LLD
             READWRITE(nSectorFile);
             READWRITE(nSectorSize);
             READWRITE(nSectorStart);
-            READWRITE(nChecksum);
         )
 
         /* Constructors. */
@@ -101,7 +90,7 @@ namespace LLD
 
         ~SectorKey()
         {
-            
+
         }
 
         SectorKey& operator=(SectorKey key)
@@ -111,7 +100,6 @@ namespace LLD
             nSectorFile     = key.nSectorFile;
             nSectorSize     = key.nSectorSize;
             nSectorStart    = key.nSectorStart;
-            nChecksum       = key.nChecksum;
             vKey            = key.vKey;
         }
 
@@ -122,20 +110,19 @@ namespace LLD
             nSectorFile     = key.nSectorFile;
             nSectorSize     = key.nSectorSize;
             nSectorStart    = key.nSectorStart;
-            nChecksum       = key.nChecksum;
             vKey            = key.vKey;
         }
 
         /* Iterator to the beginning of the raw key. */
-        uint32_t Begin() { return 15; }
+        uint32_t Begin() { return 11; }
 
 
         /* Return the Size of the Key Sector on Disk. */
-        uint32_t Size() { return (15 + nLength); }
+        uint32_t Size() { return (11 + nLength); }
 
 
         /* Dump Key to Debug Console. */
-        void Print() { printf("SectorKey(nState=%u, nLength=%u, nSectorFile=%u, nSectorSize=%u, nSectorStart=%u, nChecksum=%" PRIu64 ")\n", nState, nLength, nSectorFile, nSectorSize, nSectorStart, nChecksum); }
+        void Print() { printf("SectorKey(nState=%u, nLength=%u, nSectorFile=%u, nSectorSize=%u, nSectorStart=%u)\n", nState, nLength, nSectorFile, nSectorSize, nSectorStart); }
 
 
         /* Check for Key Activity on Sector. */
