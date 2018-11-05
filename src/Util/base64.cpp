@@ -19,6 +19,7 @@ namespace encoding
 
     static const char *pbase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
+    /* Take a raw byte buffer and a encode it into base 64 */
     std::string EncodeBase64(const uint8_t* pch, size_t len)
     {
         std::string strRet="";
@@ -63,11 +64,13 @@ namespace encoding
         return strRet;
     }
 
+    /* Take a string and a encode it into base 64 */
     inline std::string EncodeBase64(const std::string& str)
     {
         return EncodeBase64((const uint8_t*)str.c_str(), str.size());
     }
 
+    /* Take an encoded base 64 buffer and decode it into it's original message. */
     std::vector<uint8_t> DecodeBase64(const char* p, bool* pfInvalid)
     {
         static const int decode64_table[256] =
@@ -151,6 +154,7 @@ namespace encoding
         return vchRet;
     }
 
+    /* Take an encoded base 64 string and decode it into it's original message. */
     inline std::string DecodeBase64(const std::string& str)
     {
         std::vector<uint8_t> vchRet = DecodeBase64(str.c_str());

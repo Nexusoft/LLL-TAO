@@ -244,27 +244,31 @@ namespace encoding
         return 0;
     }
 
-        //operator overloads
+    /* operator overload == */
     bool CBase58Data::operator==(const CBase58Data& b58) const
     {
         return CompareTo(b58) == 0;
     }
 
+    /* operator overload <= */
     bool CBase58Data::operator<=(const CBase58Data& b58) const
     {
         return CompareTo(b58) <= 0;
     }
 
+    /* operator overload >= */
     bool CBase58Data::operator>=(const CBase58Data& b58) const
     {
         return CompareTo(b58) >= 0;
     }
 
+    /* operator overload < */
     bool CBase58Data::operator< (const CBase58Data& b58) const
     {
         return CompareTo(b58) <  0;
     }
 
+    /* operator overload > */
     bool CBase58Data::operator> (const CBase58Data& b58) const
     {
         return CompareTo(b58) >  0;

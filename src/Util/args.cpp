@@ -35,6 +35,7 @@ namespace config
     bool fAllowDNS = false;
     bool fLogTimestamps = false;
 
+    /* Give Opposite Argument Settings */
     void InterpretNegativeSetting(std::string name, std::map<std::string, std::string>& mapSettingsRet)
     {
         // interpret -nofoo as -foo=0 (and -nofoo=0 as -foo=1) as long as -foo not set
@@ -50,6 +51,7 @@ namespace config
         }
     }
 
+    /* Parse the Argument Parameters */
     void ParseParameters(int argc, const char*const argv[])
     {
         mapArgs.clear();
@@ -105,6 +107,7 @@ namespace config
         fLogTimestamps          = GetBoolArg("-logtimestamps", false);
     }
 
+    /* Return string argument or default value */
     std::string GetArg(const std::string& strArg, const std::string& strDefault)
     {
         if (mapArgs.count(strArg))
@@ -112,6 +115,7 @@ namespace config
         return strDefault;
     }
 
+    /* Return integer argument or default value */
     int64_t GetArg(const std::string& strArg, int64_t nDefault)
     {
         if (mapArgs.count(strArg))
@@ -119,6 +123,7 @@ namespace config
         return nDefault;
     }
 
+    /* Return boolean argument or default value */
     bool GetBoolArg(const std::string& strArg, bool fDefault)
     {
         if (mapArgs.count(strArg))
@@ -130,6 +135,7 @@ namespace config
         return fDefault;
     }
 
+    /* Set an argument if it doesn't already have a value */
     bool SoftSetArg(const std::string& strArg, const std::string& strValue)
     {
         if (mapArgs.count(strArg))
@@ -138,6 +144,7 @@ namespace config
         return true;
     }
 
+    /* Set a boolean argument if it doesn't already have a value */
     bool SoftSetBoolArg(const std::string& strArg, bool fValue)
     {
         if (fValue)

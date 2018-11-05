@@ -23,8 +23,19 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/convert.h>
 
-
-inline void ParseString(const std::string& str, char c, std::vector<std::string>& v)
+/** ParseString
+ *
+ *  Parses a string and tokenizes it into substrings based on the character
+ *  delemiter.
+ *
+ *  @param[in] str The string to parse.
+ *
+ *  @param[in] c The character delimiter.
+ *
+ *  @param[out] v The vector to store the tokens into.
+ *
+ **/
+void ParseString(const std::string& str, char c, std::vector<std::string>& v)
 {
     if (str.empty())
         return;
@@ -46,7 +57,21 @@ inline void ParseString(const std::string& str, char c, std::vector<std::string>
 }
 
 
-inline std::string FormatMoney(int64_t n, bool fPlus = false, int64_t COIN_SIZE = 1000000)
+/** FormatMoney
+ *
+ *  Take as input an encoded money amount and format it into an output string.
+ *
+ *  @param[in] n The encoded money amount
+ *
+ *  @param[in] fPlus Flag for if plus sign should be output for positive values.
+ *
+ *  @param[in] COIN_SIZE The magnitude of the coin amount used for decoding
+ *                       decimal value from integer
+ *
+ *  @return The formatted money string.
+ *
+ **/
+std::string FormatMoney(int64_t n, bool fPlus = false, int64_t COIN_SIZE = 1000000)
 {
     // Note: not using straight sprintf here because we do NOT want
     // localized number formatting.
@@ -72,12 +97,41 @@ inline std::string FormatMoney(int64_t n, bool fPlus = false, int64_t COIN_SIZE 
 }
 
 
+/** ParseMoney
+ *
+ *  Parse the money amount from input string and return the encoded money value.
+ *  Return if there were errors or not.
+ *
+ *  @param[in] str The input string to parse money amount from.
+ *
+ *  @param[out] nRet The amount encoded from the parsed money string
+ *
+ *  @return True if no errors, false otherwise.
+ *
+ **/
 inline bool ParseMoney(const std::string& str, int64_t& nRet)
 {
     return ParseMoney(str.c_str(), nRet);
 }
 
-inline bool ParseMoney(const char* pszIn, int64_t& nRet, int64_t COIN_SIZE = 1000000, int64_t CENT_SIZE = 10000)
+
+/** ParseMoney
+ *
+ *  Parse the money amount from input string and return the encoded money value.
+ *  Return if there were errors or not.
+ *
+ *  @param[in] pszIn The input string to parse money amount from.
+ *
+ *  @param[out] nRet The amount encoded from the parsed money string
+ *
+ *  @param[in] COIN_SIZE max amount of units of coins to encode
+ *
+ *  @param[in] CENT_SIZE max amount of units of cents to encode
+ *
+ *  @return True if no errors, false otherwise.
+ *
+ **/
+bool ParseMoney(const char* pszIn, int64_t& nRet, int64_t COIN_SIZE = 1000000, int64_t CENT_SIZE = 10000)
 {
     std::string strWhole;
     int64_t nUnits = 0;
@@ -124,16 +178,25 @@ inline bool ParseMoney(const char* pszIn, int64_t& nRet, int64_t COIN_SIZE = 100
 }
 
 
-
-
-/* Split a string into it's components by delimiter. */
-inline std::vector<std::string> Split(const std::string& strInput, char strDelimiter)
+/** Split
+ *
+ *  Split a string into it's components by delimiter.
+ *
+ *  @param[in] strInput The input string.
+ *
+ *  @param[in] strDelimiter The delimeter to seperate at.
+ *
+ *  @return The vector of the tokenized strings.
+ *
+ **/
+std::vector<std::string> Split(const std::string& strInput, char strDelimiter)
 {
     std::string::size_type nIndex = 0;
     std::string::size_type nFind  = strInput.find(strDelimiter);
 
-        std::vector<std::string> vData;
-    while (nFind != std::string::npos) {
+    std::vector<std::string> vData;
+    while (nFind != std::string::npos)
+    {
         vData.push_back(strInput.substr(nIndex, nFind - nIndex));
         nIndex = ++ nFind;
         nFind  = strInput.find(strDelimiter, nFind);

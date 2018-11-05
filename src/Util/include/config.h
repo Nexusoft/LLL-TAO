@@ -42,6 +42,7 @@ namespace config
     void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
         std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet);
 
+
     /** CreatePidFile
      *
      *  Setup PID file for Linux users.

@@ -79,6 +79,7 @@ namespace debug
      **/
     int printf(const char* pszFormat, ...);
 
+
     /** my_snprintf
      *
      *  Safer snprintf output string is always null terminated even if the limit
@@ -98,6 +99,7 @@ namespace debug
      **/
     int my_snprintf(char* buffer, size_t limit, const char* format, ...);
 
+
     /** real_strprintf
      *
      *  Prints output into a string that is returned.
@@ -112,6 +114,7 @@ namespace debug
      **/
     std::string real_strprintf(const std::string &format, ...);
     #define strprintf(format, ...) real_strprintf(format, __VA_ARGS__)
+
 
     /** error
      *
@@ -152,6 +155,7 @@ namespace debug
      **/
     void LogStackTrace();
 
+
     /** LogException
      *
      *  Prints and logs the exception with the named calling thread.
@@ -162,6 +166,7 @@ namespace debug
      *
      **/
     void LogException(std::exception* pex, const char* pszThread);
+
 
     /** PrintException
      *
@@ -174,6 +179,7 @@ namespace debug
      **/
     void PrintException(std::exception* pex, const char* pszThread);
 
+
     /** PrintExceptionContinue
      *
      *  Prints the exception with the named calling thread but does not throw it.
@@ -185,6 +191,7 @@ namespace debug
      **/
     void PrintExceptionContinue(std::exception* pex, const char* pszThread);
 
+
     /** GetFilesize
      *
      *  Gets the size of the file in bytes.
@@ -195,6 +202,7 @@ namespace debug
      *
      **/
     int GetFilesize(FILE* file);
+
 
     /** ShrinkDebugFile
      *

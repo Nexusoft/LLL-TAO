@@ -19,18 +19,46 @@ ________________________________________________________________________________
 #include <string>
 #include <Util/include/debug.h>
 
+
+/** i64tostr
+ *
+ *  Converts a 64-bit signed integer into a string.
+ *
+ *  @param[in] n The 64-bit signed integer
+ *
+ *  @return the 64-bit integer string
+ *
+ **/
 inline std::string i64tostr(int64_t n)
 {
     return debug::strprintf("%" PRI64d, n);
 }
 
 
+/** itostr
+ *
+ *  Converts a 32-bit signed integer into a string.
+ *
+ *  @param[in] n The 32-bit signed integer
+ *
+ *  @return the integer string
+ *
+ **/
 inline std::string itostr(int n)
 {
     return debug::strprintf("%d", n);
 }
 
 
+/** atoi64
+ *
+ *  The ASCII to integer wrapper function
+ *
+ *  @param[in] psz The input str
+ *
+ *  @return the 64-bit integer value of the string
+ *
+ **/
 inline int64_t atoi64(const char* psz)
 {
 #ifdef _MSC_VER
@@ -41,6 +69,15 @@ inline int64_t atoi64(const char* psz)
 }
 
 
+/** atoi64
+ *
+ *  The ASCII to 64-bit integer wrapper for the standard string
+ *
+ *  @param[in] str The input str
+ *
+ *  @return the 64-bit integer value of the string
+ *
+ **/
 inline int64_t atoi64(const std::string& str)
 {
 #ifdef _MSC_VER
@@ -51,30 +88,77 @@ inline int64_t atoi64(const std::string& str)
 }
 
 
+/** atoi
+ *
+ *  The ASCII to integer wrapper for the standard string
+ *
+ *  @param[in] str The input str
+ *
+ *  @return the integer value of the string
+ *
+ **/
 inline int atoi(const std::string& str)
 {
     return atoi(str.c_str());
 }
 
 
+/** roundint
+ *
+ *  Rounds the decimal value to the nearest 32-bit integer
+ *
+ *  @param[in] d the value to round
+ *
+ *  @return the rounded 32-bit integer value
+ *
+ **/
 inline int roundint(double d)
 {
     return (int)(d > 0 ? d + 0.5 : d - 0.5);
 }
 
 
+/** roundint64
+ *
+ *  Rounds the decimal value to the nearest 64-bit integer
+ *
+ *  @param[in] d the value to round
+ *
+ *  @return the rounded 64-bit integer value
+ *
+ **/
 inline int64_t roundint64(double d)
 {
     return (int64_t)(d > 0 ? d + 0.5 : d - 0.5);
 }
 
 
+/** abs64
+ *
+ *  Returns the absolute value of the signed 64-bit integer
+ *
+ *  @param[in] n the input value
+ *
+ *  @return the 64-bit absolute value
+ *
+ **/
 inline int64_t abs64(int64_t n)
 {
     return (n >= 0 ? n : -n);
 }
 
 
+/** DateTimeStrFormat
+ *
+ *  Converts a 64-bit time value into a formatted date/time string.
+ *
+ *  @param[in] pszFormat The date/time format specifier string
+ *
+ *  @param[in] nTime The time value to format date and time with
+ *
+ *  @return the formatted date/time string
+ *
+ **/
 inline std::string DateTimeStrFormat(const char* pszFormat, int64_t nTime)
 {
     time_t n = nTime;
@@ -86,12 +170,29 @@ inline std::string DateTimeStrFormat(const char* pszFormat, int64_t nTime)
 
 
 static const std::string strTimestampFormat = "%Y-%m-%d %H:%M:%S UTC";
+
+/** DateTimeStrFormat
+ *
+ *  Converts a 64-bit time value into a formatted date/time string.
+ *
+ *  @param[in] nTime The time value to format date and time with
+ *
+ *  @return the formatted date/time string
+ *
+ **/
 inline std::string DateTimeStrFormat(int64_t nTime)
 {
     return DateTimeStrFormat(strTimestampFormat.c_str(), nTime);
 }
 
 
+/** skipspaces
+ *
+ *  Increments a container iterator while there are spaces to skip
+ *
+ *  @param[in] it the container iterator to increment
+ *
+ **/
 template<typename T>
 void skipspaces(T& it)
 {
@@ -100,6 +201,15 @@ void skipspaces(T& it)
 }
 
 
+/** IsSwitchChar
+ *
+ *  determine if the char is a command line switch token
+ *
+ *  @param[in] c the character to check
+ *
+ *  @return True, if the character is a command line switch, false otherwise
+ *
+ **/
 inline bool IsSwitchChar(char c)
 {
 #ifdef WIN32
@@ -110,13 +220,30 @@ inline bool IsSwitchChar(char c)
 }
 
 
+/** ip_string
+ *
+ *  Converts a byte vector containing ip into an ip string with dots
+ *
+ *  @param[in] ip the ip address element vector
+ *
+ *  @return the ip string
+ *
+ **/
 inline std::string ip_string(std::vector<uint8_t> ip)
 {
-    return debug::strprintf("%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]); 
+    return debug::strprintf("%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
 }
 
 
-/* Parse an IP Address into a Byte Vector from Std::String. */
+/** parse_ip
+ *
+ *  Parse an IP Address into a Byte Vector from Std::String.
+ *
+ *  @param[in] ip The string containing the ip address
+ *
+ *  @return the byte vector containing the 4 elements of the IP address
+ *
+ **/
 inline std::vector<uint8_t> parse_ip(std::string ip)
 {
     std::vector<uint8_t> bytes(4, 0);
@@ -126,7 +253,15 @@ inline std::vector<uint8_t> parse_ip(std::string ip)
 }
 
 
-/* Convert a 32 bit Unsigned Integer to Byte Vector using Bitwise Shifts. */
+/** uint2bytes
+ *
+ * Convert a 32 bit Unsigned Integer to Byte Vector using Bitwise Shifts.
+ *
+ *  @param[in] UINT The 32-bit unsigned integer
+ *
+ *  @return the converted byte vector
+ *
+ **/
 inline std::vector<uint8_t> uint2bytes(uint32_t UINT)
 {
     std::vector<uint8_t> BYTES(4, 0);
@@ -139,11 +274,33 @@ inline std::vector<uint8_t> uint2bytes(uint32_t UINT)
 }
 
 
-/* Convert a byte stream into a signed integer 32 bit. */
-inline int bytes2int(std::vector<uint8_t> BYTES, int nOffset = 0) { return (BYTES[0 + nOffset] << 24) + (BYTES[1 + nOffset] << 16) + (BYTES[2 + nOffset] << 8) + BYTES[3 + nOffset]; }
+/** bytes2int
+ *
+ *  Convert a byte stream into a signed integer 32 bit
+ *
+ *  @param[in] BYTES The byte vector
+ *
+ *  @param[in] nOffset The offset into the byte vector
+ *
+ *  @return the converted 32-bit signed integer
+ *
+ **/
+inline int bytes2int(std::vector<uint8_t> BYTES, int nOffset = 0)
+{
+    return (BYTES[0 + nOffset] << 24) + (BYTES[1 + nOffset] << 16) +
+           (BYTES[2 + nOffset] << 8) + BYTES[3 + nOffset];
+}
 
 
-/* Convert a 32 bit signed Integer to Byte Vector using Bitwise Shifts. */
+/** int2bytes
+ *
+ *  Convert a 32 bit signed integer to byte vector using bitwise shifts.
+ *
+ *  @param[in] INT The signed integer
+ *
+ *  @return the converted byte vector
+ *
+ **/
 inline std::vector<uint8_t> int2bytes(int INT)
 {
     std::vector<uint8_t> BYTES(4, 0);
@@ -156,11 +313,32 @@ inline std::vector<uint8_t> int2bytes(int INT)
 }
 
 
-/* Convert a byte stream into uint32_teger 32 bit. */
-inline uint32_t bytes2uint(std::vector<uint8_t> BYTES, int nOffset = 0) { return (BYTES[0 + nOffset] << 24) + (BYTES[1 + nOffset] << 16) + (BYTES[2 + nOffset] << 8) + BYTES[3 + nOffset]; }
+/** bytes2uint
+ *
+ *  Convert a byte stream into a uint32_t
+ *
+ *  @param[in] BYTES The byte vector
+ *
+ *  @param[in] nOffset The offset into the byte vector
+ *
+ *  @return the converted unsigned integer
+ *
+ **/
+inline uint32_t bytes2uint(std::vector<uint8_t> BYTES, int nOffset = 0)
+{
+    return (BYTES[0 + nOffset] << 24) + (BYTES[1 + nOffset] << 16) + (BYTES[2 + nOffset] << 8) + BYTES[3 + nOffset];
+}
 
 
-/* Convert a 64 bit Unsigned Integer to Byte Vector using Bitwise Shifts. */
+/** uint2bytes64
+ *
+ *  Convert a 64-bit Unsigned Integer to Byte Vector using Bitwise Shifts.
+ *
+ *  @param[in] UINT 64-bit unsigned integer
+ *
+ *  @return the converted byte vector
+ *
+ **/
 inline std::vector<uint8_t> uint2bytes64(uint64_t UINT)
 {
     std::vector<uint8_t> INTS[2];
@@ -175,11 +353,32 @@ inline std::vector<uint8_t> uint2bytes64(uint64_t UINT)
 }
 
 
-/* Convert a byte Vector into uint32_teger 64 bit. */
-inline uint64_t bytes2uint64(std::vector<uint8_t> BYTES, int nOffset = 0) { return (bytes2uint(BYTES, nOffset) | ((uint64_t)bytes2uint(BYTES, nOffset + 4) << 32)); }
+/** bytes2uint64
+ *
+ *  Converts a byte Vector into a uint64_t.
+ *
+ *  @param[in] BYTES The byte vector
+ *
+ *  @param[in] nOffset The offset into the byte vector
+ *
+ *  @return the converted uint64_t
+ *
+ **/
+inline uint64_t bytes2uint64(std::vector<uint8_t> BYTES, int nOffset = 0)
+{
+    return (bytes2uint(BYTES, nOffset) | ((uint64_t)bytes2uint(BYTES, nOffset + 4) << 32));
+}
 
 
-/* Convert Standard String into Byte Vector. */
+/** string2bytes
+ *
+ *  Converts a Standard String into a Byte Vector.
+ *
+ *  @param[in] STRING The standard string
+ *
+ *  @return the converted byte vector
+ *
+ **/
 inline std::vector<uint8_t> string2bytes(std::string STRING)
 {
     std::vector<uint8_t> BYTES(STRING.begin(), STRING.end());
@@ -187,7 +386,15 @@ inline std::vector<uint8_t> string2bytes(std::string STRING)
 }
 
 
-/* Convert Byte Vector into Standard String. */
+/** bytes2string
+ *
+ *  Converts a Byte Vector into a Standard String.
+ *
+ *  @param[in] BYTES The byte vector
+ *
+ *  @return the converted string
+ *
+ **/
 inline std::string bytes2string(std::vector<uint8_t> BYTES)
 {
     std::string STRING(BYTES.begin(), BYTES.end());
