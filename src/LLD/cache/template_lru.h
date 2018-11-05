@@ -293,7 +293,7 @@ namespace LLD
 
             /* Check for bucket collisions. */
             TemplateNode<KeyType, DataType>* pthis = NULL;
-            if(Has(Key))
+            if(hashmap[nBucket] != NULL)
             {
                 /* Update the cache node. */
                 pthis = hashmap[nBucket];
@@ -328,6 +328,9 @@ namespace LLD
 
                     /* Reset hashmap pointer */
                     hashmap[Bucket(pnode->Key)] = NULL; //TODO: hashmap linked list for collisions
+                    pnode->pnext = NULL;
+                    pnode->pprev = NULL;
+                    pnode = NULL;
 
                     /* Free memory. */
                     Delete(pnode->Key);
@@ -357,7 +360,7 @@ namespace LLD
          *
          **/
         template<typename Type>
-        void Delete(Type*& data) { delete data; }
+        void Delete(const Type* data) { delete data; }
 
 
         /** Force Remove Object by Index

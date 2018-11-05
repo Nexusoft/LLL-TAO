@@ -307,6 +307,10 @@ namespace LLD
 
                     /* Clear the pointers. */
                     hashmap[Bucket(pnode->vKey)] = NULL; //TODO: hashmap linked list for collisions
+                    pnode->pprev = NULL;
+                    pnode->pnext = NULL;
+                    pnode = NULL;
+
                     delete pnode;
 
                     continue;

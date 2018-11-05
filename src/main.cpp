@@ -30,6 +30,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/tritium.h>
 #include <LLP/templates/server.h>
+#include <LLP/include/legacy.h>
 
 #include <TAO/Ledger/types/transaction.h>
 
@@ -118,6 +119,20 @@ int main(int argc, char** argv)
     //test->Read(hash, tx2);
     //tx2.print();
 
+
+
+
+    LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(9323, 10, 30, false, 0, 0, 60, GetBoolArg("-listen", true), true);
+
+    if(mapMultiArgs["-addnode"].size() > 0)
+        for(auto node : mapMultiArgs["-addnode"])
+            SERVER->AddConnection(node, 9323);
+
+
+    while(!fShutdown)
+        Sleep(1000);
+        
+
     uint32_t wps = 0;
     uint32_t total = 0;
     while(!fShutdown)
@@ -168,21 +183,6 @@ int main(int argc, char** argv)
 
         nCounter++;
     }
-
-
-    /* Create an LLP Server.
-    LLP::Server<LLP::TritiumNode>* SERVER = new LLP::Server<LLP::TritiumNode>(1111, 10, 30, false, 0, 0, 60, GetBoolArg("-listen", true), true);
-
-    if(mapMultiArgs["-addnode"].size() > 0)
-        for(auto node : mapMultiArgs["-addnode"])
-            SERVER->AddConnection(node, 1111);
-
-    while(!fShutdown)
-    {
-        Sleep(1000);
-    }
-
-    */
 
 
     return 0;
