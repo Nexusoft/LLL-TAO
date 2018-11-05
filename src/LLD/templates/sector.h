@@ -465,12 +465,12 @@ namespace LLD
                     nCurrentFileSize = 0;
 
                     /* Create a new file for next writes. */
-                    std::fstream stream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::out | std::ios::binary | std::ios::trunc);
+                    std::fstream stream(strprintf("%s_block_%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::out | std::ios::binary | std::ios::trunc);
                     stream.close();
                 }
 
                 /* Open the Stream to Read the data from Sector on File. */
-                std::fstream stream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
+                std::fstream stream(strprintf("%s_block_%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
 
                 /* Seek to the end of the file */
                 stream.seekp(nCurrentFileSize, std::ios::beg);
