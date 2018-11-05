@@ -71,6 +71,8 @@ namespace config
 
 
     #ifdef WIN32
+
+    /* Get the system folder path to the special Appdata directory */
     std::string MyGetSpecialFolderPath(int nFolder, bool fCreate)
     {
         char pszPath[MAX_PATH] = "";
@@ -187,19 +189,21 @@ namespace config
 
 
     #ifdef WIN32
+    /* Get the system startup shorcut location */
     std::string static StartupShortcutPath()
     {
         std::string str = MyGetSpecialFolderPath(CSIDL_STARTUP, true);
         return str.append("\\nexus.lnk");
     }
 
-
+    /* Determine if the system startup shortcut path exists */
     bool GetStartOnSystemStartup()
     {
         return filesystem::exists(StartupShortcutPath());
     }
 
 
+    /* Setup to auto start when system boots. */
     bool SetStartOnSystemStartup(bool fAutoStart)
     {
         /* If the shortcut exists already, remove it for updating */
@@ -259,7 +263,7 @@ namespace config
     // Follow the Desktop Application Autostart Spec:
     //  http://standards.freedesktop.org/autostart-spec/autostart-spec-latest.html
 
-
+    /* Get the linux autostart directory path */
     std::string static GetAutostartDir()
     {
         std::string autostart_dir;
@@ -283,13 +287,13 @@ namespace config
         return autostart_dir;
     }
 
-
+    /* Get the nexus autostart file path */
     std::string static GetAutostartFilePath()
     {
         return GetAutostartDir().append("nexus.desktop");
     }
 
-
+    /* Check if set to start when system boots. */
     bool GetStartOnSystemStartup()
     {
         std::ifstream optionFile(GetAutostartFilePath());
@@ -310,7 +314,7 @@ namespace config
         return true;
     }
 
-
+    /* Setup to auto start when system boots. */
     bool SetStartOnSystemStartup(bool fAutoStart)
     {
         if (!fAutoStart)
@@ -346,7 +350,10 @@ namespace config
     // TODO: OSX startup stuff; see:
     // http://developer.apple.com/mac/library/documentation/MacOSX/Conceptual/BPSystemStartup/Articles/CustomLogin.html
 
+    /* Check if set to start when system boots. */
     bool GetStartOnSystemStartup() { return false; }
+
+    /* Setup to auto start when system boots. */
     bool SetStartOnSystemStartup(bool fAutoStart) { return false; }
 
     #endif

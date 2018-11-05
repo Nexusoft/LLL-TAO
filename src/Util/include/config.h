@@ -30,34 +30,93 @@ typedef int pid_t; /* define for windows compatiblity */
 namespace config
 {
 
-    /* Read the Config file from the Disk. */
+    /** ReadConfigFile
+     *
+     *  Read the Config file from the Disk.
+     *
+     *  @param[out] mapSettingsRet The map of config settings.
+     *
+     *  @param[out] mapMultiSettingsRet The map of multiple config settings per key.
+     *
+     **/
     void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
         std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet);
 
-
-    /* Setup PID file for Linux users. */
+    /** CreatePidFile
+     *
+     *  Setup PID file for Linux users.
+     *
+     *  @param[in] path The path to the pid file.
+     *
+     *  @param[in] pid The process ID.
+     *
+     **/
     void CreatePidFile(const std::string &path, pid_t pid);
 
 
-    /* Get the default directory Nexus data is stored in. */
+    /** GetDefaultDataDir
+     *
+     *  Get the default directory Nexus data is stored in.
+     *
+     *  @param[in] strName The name of the default data directory.
+     *
+     *  @return The system complete path to the default data directory.
+     *
+     **/
     std::string GetDefaultDataDir(std::string strName = "TAO");
 
 
-    /* Get the Location of the Config File. */
+    /** GetConfigFile
+     *
+     *  Get the Location of the Config File.
+     *
+     *  @return The system complete path to the config file.
+     *
+     **/
     std::string GetConfigFile();
 
 
-    /* Get the Location of the PID File. */
+    /** GetPidFile
+     *
+     *  Get the Location of the PID File.
+     *
+     *  @return The system complete path to the pid file.
+     *
+     **/
     std::string GetPidFile();
 
 
-    /* Get the location that Nexus data is being stored in. */
+    /** GetDataDir
+     *
+     *  Get the location that Nexus data is being stored in.
+     *
+     *  @param[in] fNetSpecific Flag indicating directory is testnet specific.
+     *
+     *  @return The system complete path to the data directory.
+     *
+     **/
     std::string GetDataDir(bool fNetSpecific = true);
 
-    /* Check if set to start when system boots. */
+
+    /** GetStartOnSystemStartup
+     *
+     *  Check if set to start when system boots.
+     *
+     *  @return True if set to start on system startup, false otherwise.
+     *
+     **/
     bool GetStartOnSystemStartup();
 
-    /* Setup to auto start when system boots. */
+
+    /** SetStartOnSystemStartup
+     *
+     *  Setup to auto start when system boots.
+     *
+     *  @param[in] fAutoStart Flag indicating if program should auto start.
+     *
+     *  @return True if flag set successful, false otherwise.
+     *
+     **/
     bool SetStartOnSystemStartup(bool fAutoStart);
 
 }
