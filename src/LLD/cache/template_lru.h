@@ -350,7 +350,7 @@ namespace LLD
          *
          **/
         template<typename Type>
-        void Delete(Type data) {}
+        void Delete(Type data) { }
 
 
         /** Delete

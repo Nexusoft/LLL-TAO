@@ -31,11 +31,11 @@ namespace LLD
 
 
     /* Maximum cache buckets for sectors. */
-    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 32; //512 MB Max Cache
+    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 512; //512 MB Max Cache
 
 
     /* The maximum amount of bytes allowed in the memory buffer for disk flushes. **/
-    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 32; //512 MB Max Disk Buffer
+    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 512; //512 MB Max Disk Buffer
 
 
     /** Base Template Class for a Sector Database.
@@ -178,7 +178,7 @@ namespace LLD
 
                 /* TODO: Make a worker or thread to check sizes of files and automatically create new file.
                     Keep independent of reads and writes for efficiency. */
-                std::fstream fIncoming(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::in | std::ios::binary);
+                std::fstream fIncoming(strprintf("%s_%05u.data", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::in | std::ios::binary);
                 if(!fIncoming)
                 {
 
@@ -188,7 +188,7 @@ namespace LLD
                     else
                     {
                         /* Create a new file if it doesn't exist. */
-                        std::ofstream cStream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::binary | std::ios::out | std::ios::trunc);
+                        std::ofstream cStream(strprintf("%s_%05u.data", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::binary | std::ios::out | std::ios::trunc);
                         cStream.close();
                     }
 
@@ -323,7 +323,7 @@ namespace LLD
                 { LOCK(SECTOR_MUTEX);
 
                     /* Open the Stream to Read the data from Sector on File. */
-                    std::fstream stream(strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::binary);
+                    std::fstream stream(strprintf("%s_%05u.data", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::binary);
 
                     /* Error checking if file doens't exist. */
                     if(!stream)
@@ -493,7 +493,7 @@ namespace LLD
                     vWrite.insert(vWrite.end(), vObj.second.begin(), vObj.second.end());
 
                     /* Add the file size to the written bytes. */
-                    nBytesWrote += vObj.first.size();
+                    nBytesWrote += vObj.second.size();
 
                     /* Flush to disk on periodic intervals. */
                     if(vWrite.size() > 10 * 1024 * 1024)
@@ -521,6 +521,9 @@ namespace LLD
 
                     /* Set cache back to not reserved. */
                     cachePool->Reserve(Key.vKey, false);
+
+                    /* Set the bytes for meter. */
+                    nBytesWrote += std::min(32u, (uint32_t)Key.vKey.size());
                 }
 
                 //printf(FUNCTION "Flushed %u Records to Disk\n", __PRETTY_FUNCTION__, vKeys.size());

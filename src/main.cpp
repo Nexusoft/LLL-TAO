@@ -121,26 +121,26 @@ int main(int argc, char** argv)
 
 
 
-
-    LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(9323, 10, 30, false, 0, 0, 60, GetBoolArg("-listen", true), true);
+    LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(GetArg("-port", 9323), 10, 30, false, 0, 0, 60, GetBoolArg("-listen", true), true);
 
     if(mapMultiArgs["-addnode"].size() > 0)
         for(auto node : mapMultiArgs["-addnode"])
-            SERVER->AddConnection(node, 9323);
+            SERVER->AddConnection(node, GetArg("-port", 9323));
 
 
     while(!fShutdown)
         Sleep(1000);
-        
+
 
     uint32_t wps = 0;
     uint32_t total = 0;
     while(!fShutdown)
     {
-        //Sleep(5, true);
+        Sleep(5, true);
 
         tx.hashGenesis = LLC::GetRand256();
         hash = tx.GetHash();
+        //hash = hash + 1;
 
         //std::vector<uint8_t> vKey((uint8_t*)&hash, (uint8_t*)&hash + sizeof(hash));
         //std::vector<uint8_t> vData((uint8_t*)&tx, (uint8_t*)&tx + tx.GetSerializeSize(SER_DISK, LLD::DATABASE_VERSION));
