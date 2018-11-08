@@ -121,24 +121,14 @@ int main(int argc, char** argv)
 
 
 
-    LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(GetArg("-port", 9323), 10, 30, false, 0, 0, 60, GetBoolArg("-listen", true), true);
-
-    if(mapMultiArgs["-addnode"].size() > 0)
-        for(auto node : mapMultiArgs["-addnode"])
-            SERVER->AddConnection(node, GetArg("-port", 9323));
-
-
-    while(!fShutdown)
-        Sleep(1000);
-
-
     uint32_t wps = 0;
     uint32_t total = 0;
     while(!fShutdown)
     {
+        //Sleep(2000);
         Sleep(5, true);
 
-        tx.hashGenesis = LLC::GetRand256();
+        tx.hashGenesis ++;
         hash = tx.GetHash();
         //hash = hash + 1;
 

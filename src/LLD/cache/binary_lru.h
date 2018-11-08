@@ -196,8 +196,16 @@ namespace LLD
             if(pthis == pfirst)
                 return;
 
-            /* Remove the node from linked list. */
-            RemoveNode(pthis);
+            /* Move last pointer if moving from back. */
+            if(pthis == plast)
+            {
+                if(plast->pprev)
+                    plast = plast->pprev;
+
+                plast->pnext = NULL;
+            }
+            else
+                RemoveNode(pthis);
 
             /* Set prev to null to signal front of list */
             pthis->pprev = NULL;
@@ -210,7 +218,10 @@ namespace LLD
             {
                 pfirst->pprev = pthis;
                 if(!plast)
+                {
                     plast = pfirst;
+                    plast->pnext = NULL;
+                }
             }
 
             /* Update the first reference. */
@@ -307,11 +318,14 @@ namespace LLD
 
                     /* Clear the pointers. */
                     hashmap[Bucket(pnode->vKey)] = NULL; //TODO: hashmap linked list for collisions
+
+                    /* Reset the memory linking. */
                     pnode->pprev = NULL;
                     pnode->pnext = NULL;
-                    pnode = NULL;
 
+                    /* Free the memory */
                     delete pnode;
+                    pnode = NULL;
 
                     continue;
                 }
@@ -345,7 +359,16 @@ namespace LLD
 
             /* Move back to linked list. */
             if(!fReserve)
-                MoveToFront(pthis);
+            {
+                /* Set prev to null to signal front of list */
+                pthis->pprev = NULL;
+
+                /* Set next to the current first */
+                pthis->pnext = pfirst;
+
+                /* Set the first pointer. */
+                pfirst = pthis;
+            }
         }
 
 

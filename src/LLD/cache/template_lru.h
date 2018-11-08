@@ -88,7 +88,7 @@ namespace LLD
          *  MAX_CACHE_BUCKETS default value is number of elements
          *
          */
-        TemplateLRU() : MAX_CACHE_ELEMENTS(256), MAX_CACHE_BUCKETS(MAX_CACHE_ELEMENTS), nTotalElements(0), pfirst(0), plast(0)
+        TemplateLRU() : MAX_CACHE_ELEMENTS(256), MAX_CACHE_BUCKETS(MAX_CACHE_ELEMENTS * 2), nTotalElements(0), pfirst(0), plast(0)
         {
             /* Resize the hashmap vector. */
             hashmap.resize(MAX_CACHE_BUCKETS);
@@ -104,7 +104,7 @@ namespace LLD
          * @param[in] nTotalElementsIn The maximum size of this Cache Pool
          *
          */
-        TemplateLRU(uint32_t nTotalElementsIn) : MAX_CACHE_ELEMENTS(nTotalElementsIn), MAX_CACHE_BUCKETS(MAX_CACHE_ELEMENTS), nTotalElements(0)
+        TemplateLRU(uint32_t nTotalElementsIn) : MAX_CACHE_ELEMENTS(nTotalElementsIn), MAX_CACHE_BUCKETS(MAX_CACHE_ELEMENTS * 2), nTotalElements(0)
         {
             /* Resize the hashmap vector. */
             hashmap.resize(MAX_CACHE_BUCKETS);
@@ -227,8 +227,16 @@ namespace LLD
             if(pthis == pfirst)
                 return;
 
-            /* Remove the node from linked list. */
-            RemoveNode(pthis);
+            /* Move last pointer if moving from back. */
+            if(pthis == plast)
+            {
+                if(plast->pprev)
+                    plast = plast->pprev;
+
+                plast->pnext = NULL;
+            }
+            else
+                RemoveNode(pthis);
 
             /* Set prev to null to signal front of list */
             pthis->pprev = NULL;
@@ -241,7 +249,10 @@ namespace LLD
             {
                 pfirst->pprev = pthis;
                 if(!plast)
+                {
                     plast = pfirst;
+                    plast->pnext = NULL;
+                }
             }
 
             /* Update the first reference. */
@@ -261,12 +272,12 @@ namespace LLD
         {
             LOCK(MUTEX);
 
-            /* Check if the Record Exists. */
-            if(!Has(Key))
-                return false;
-
             /* Get the data. */
             TemplateNode<KeyType, DataType>* pthis = hashmap[Bucket(Key)];
+
+            /* Check if the Record Exists. */
+            if(pthis == NULL || pthis->Key != Key)
+                return false;
 
             /* Get the data. */
             Data = pthis->Data;
@@ -309,6 +320,9 @@ namespace LLD
 
                 /* Add cache node to objects map. */
                 hashmap[nBucket] = pthis;
+
+                /* Increase the total elements. */
+                nTotalElements++;
             }
 
             /* Set the new cache node to the front */
@@ -317,29 +331,32 @@ namespace LLD
             /* Remove the last node if cache too large. */
             if(nTotalElements > MAX_CACHE_ELEMENTS)
             {
-                /* Get the last key. */
                 if(plast && plast->pprev)
                 {
+                    /* Get the last key. */
                     TemplateNode<KeyType, DataType>* pnode = plast;
 
                     /* Relink in memory. */
-                    plast = plast->pprev;
+                    plast = pnode->pprev;
                     plast->pnext = NULL;
 
                     /* Reset hashmap pointer */
                     hashmap[Bucket(pnode->Key)] = NULL; //TODO: hashmap linked list for collisions
-                    pnode->pnext = NULL;
                     pnode->pprev = NULL;
-                    pnode = NULL;
+                    pnode->pnext = NULL;
 
                     /* Free memory. */
                     Delete(pnode->Key);
                     Delete(pnode->Data);
                     Delete(pnode);
+
+                    /* Clear the pointers. */
+                    pnode = NULL;
+
+                    /* Change the total elements. */
+                    nTotalElements--;
                 }
             }
-            else
-                nTotalElements++;
         }
 
 
@@ -355,12 +372,17 @@ namespace LLD
 
         /** Delete
          *
-         *  Template function to delete pointer.
-         *  This one is to aid compile time deletes.
+         *  Delete a stream object. Closes the file.
          *
          **/
-        template<typename Type>
-        void Delete(const Type* data) { delete data; }
+        void Delete(std::fstream* data)
+        {
+            data->close();
+            delete data;
+        }
+
+
+
 
 
         /** Force Remove Object by Index

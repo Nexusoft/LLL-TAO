@@ -82,13 +82,13 @@ namespace LLD
 
     public:
 
-        BinaryHashMap() : HASHMAP_TOTAL_BUCKETS(256 * 256 * 16), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(32), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
+        BinaryHashMap() : HASHMAP_TOTAL_BUCKETS(256 * 256 * 24), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(32), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
         }
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(std::string strBaseLocationIn) : strBaseLocation(strBaseLocationIn), HASHMAP_TOTAL_BUCKETS(256 * 256 * 16), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(32), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
+        BinaryHashMap(std::string strBaseLocationIn) : strBaseLocation(strBaseLocationIn), HASHMAP_TOTAL_BUCKETS(256 * 256 * 24), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(32), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
 
@@ -352,7 +352,7 @@ namespace LLD
                 /* If not in cache, add to the LRU. */
                 fileCache->Put(hashmap[nBucket], pstream);
 
-                printf(FUNCTION "Imported Disk Hash Map %u\n", __PRETTY_FUNCTION__, hashmap[nBucket]);
+                //printf(FUNCTION "Imported Disk Hash Map %u\n", __PRETTY_FUNCTION__, hashmap[nBucket]);
             }
 
             /* Iterate the linked list value in the hashmap. */
@@ -368,7 +368,7 @@ namespace LLD
             /* Flush the key file to disk. */
             pstream->seekp (nFilePos, std::ios::beg);
             pstream->write((char*)&ssKey[0], ssKey.size());
-            pstream->flush();
+            //pstream->flush();
 
             return true;
         }

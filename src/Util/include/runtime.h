@@ -105,6 +105,15 @@ public:
 
         return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start_time).count();
     }
+
+    /* Return the Total Nanoseconds Elapsed since Time Started. */
+    uint64_t ElapsedNanoseconds()
+    {
+        if(fStopped)
+            return std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
+
+        return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - start_time).count();
+    }
 };
 
 
