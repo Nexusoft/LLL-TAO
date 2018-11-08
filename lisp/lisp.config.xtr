@@ -58,11 +58,18 @@ lisp xtr-parameters {
     flow-logging = no
 }
 lisp map-resolver {
-    dns-name = g-ms2.lispers.net
+    dns-name = node1.nexusoft.io
+}
+lisp map-resolver {
+    dns-name = node2.nexusoft.io
 }
 lisp map-server {
-    dns-name = g-ms2.lispers.net
-    authentication-key = colin
+    dns-name = node1.nexusoft.io
+    authentication-key = [21]testnet1
+}
+lisp map-server {
+    dns-name = node2.nexusoft.io
+    authentication-key = [21]testnet1
 }
 lisp database-mapping {
     prefix {
@@ -91,7 +98,7 @@ lisp group-mapping {
 lisp map-cache {
    prefix {
        instance-id = <iid>
-       eid-prefix = fe::/8
+       eid-prefix = fe00::/8
        send-map-request = yes
     }
 }
