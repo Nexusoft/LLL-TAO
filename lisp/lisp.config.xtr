@@ -98,7 +98,7 @@ lisp group-mapping {
 lisp map-cache {
    prefix {
        instance-id = <iid>
-       eid-prefix = fe::/8
+       eid-prefix = fe00::/8
        send-map-request = yes
     }
 }
