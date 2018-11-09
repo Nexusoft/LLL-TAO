@@ -76,6 +76,11 @@ struct secure_allocator : public std::allocator<T>
     template<typename _Other> struct rebind
     { typedef secure_allocator<_Other> other; };
 
+    /** allocate
+     *
+     *  allocates n elements of type T
+     *
+     **/
     T* allocate(std::size_t n, const void *hint = 0)
     {
         T *p;
@@ -85,6 +90,12 @@ struct secure_allocator : public std::allocator<T>
         return p;
     }
 
+
+    /** deallocate
+     *
+     *  frees n elements of type T from pointer p. clears contents before deletion
+     *
+     **/
     void deallocate(T* p, std::size_t n)
     {
         if (p != NULL)
@@ -122,6 +133,11 @@ struct zero_after_free_allocator : public std::allocator<T>
     template<typename _Other> struct rebind
     { typedef zero_after_free_allocator<_Other> other; };
 
+    /** deallocate
+     *
+     *  frees n elements of type T from pointer p. clears contents before deletion
+     *
+     **/
     void deallocate(T* p, std::size_t n)
     {
         if (p != NULL)

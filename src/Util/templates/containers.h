@@ -34,10 +34,23 @@ private:
     uint32_t nSamples;
 
 public:
+
+
+    /**	CMajority
+     *
+     *  Default constructor
+     *
+     **/
     CMajority() : nSamples(0) {}
 
 
-    /* Add another Element to the Majority Count. */
+    /**	Add
+     *
+     *  Add another Element to the Majority Count.
+     *
+     *  @param[in] value Element to add
+     *
+     **/
     void Add(CType value)
     {
         if(!mapList.count(value))
@@ -49,14 +62,26 @@ public:
     }
 
 
-    /* Return the total number of samples this container holds. */
+    /**	Samples
+     *
+     *  Return the total number of samples this container holds.
+     *
+     *  @return Total number of samples
+     *
+     **/
     uint32_t Samples()
     {
         return nSamples;
     }
 
 
-    /* Return the Element of Type that has the highest Majority. */
+    /**	Majority
+     *
+     *  Return the Element of CType with the highest Majority.
+     *
+     *  @return Element of CType with highest Majority.
+     *
+     **/
     CType Majority()
     {
         if(nSamples == 0)
@@ -99,13 +124,35 @@ private:
     std::vector<T> vList;
 
 public:
+
+
+    /**	CAverage
+     *
+     *  Default constructor
+     *
+     **/
     CAverage(){}
 
+
+    /**	Add
+     *
+     *  Add another Element to the Average Count.
+     *
+     *  @param[in] value Element to add
+     *
+     **/
     void Add(T value)
     {
         vList.push_back(value);
     }
 
+    /**	Average
+     *
+     *  Return an average value of type T.
+     *
+     *  @return Average value
+     *
+     **/
     T Average()
     {
         T average = 0;
