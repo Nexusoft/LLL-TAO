@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <LLC/hash/macro.h>
 #include <LLC/include/key.h>
 
+#include <LLD/include/global.h>
+
 #include <LLP/include/version.h>
 
 #include <Util/templates/serialize.h>
@@ -32,8 +34,9 @@ namespace TAO
         /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
         bool Transaction::IsValid() const
         {
-            //1. read hash genesis
-            //2. check the previous nexthash claims (need INDEX)
+            TAO::Ledger::Transaction tx;
+            if(!LLD::legDB->ReadTx(hashPrevTx, tx))
+                return error("Failed to read Previous TX");
 
             LLC::ECKey keyVerify(NID_brainpoolP512t1, 64);
             keyVerify.SetPubKey(vchPubKey);
@@ -101,7 +104,8 @@ namespace TAO
          /* Debug output - use ANSI colors. TODO: turn ansi colors on or off with a commandline flag */
          void Transaction::print() const
          {
-             printf("%s(" ANSI_COLOR_BRIGHT_WHITE "nVersion" ANSI_COLOR_RESET " = %u, " ANSI_COLOR_BRIGHT_WHITE "nTimestamp" ANSI_COLOR_RESET " = %" PRIu64 ", " ANSI_COLOR_BRIGHT_WHITE "hashNext" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hashPrevTx" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hashGenesis" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "pub" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "sig" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hash" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "ledger" ANSI_COLOR_RESET " = %s)\n", IsGenesis() ? "Genesis" : "Tritium", nVersion, nTimestamp, hashNext.ToString().c_str(), hashPrevTx.ToString().c_str(), hashGenesis.ToString().c_str(), HexStr(vchPubKey).c_str(), HexStr(vchSig).c_str(), GetHash().ToString().c_str(), HexStr(vchLedgerData.begin(), vchLedgerData.end()).c_str());
+             printf("%s(" ANSI_COLOR_BRIGHT_WHITE "nVersion" ANSI_COLOR_RESET " = %u, " ANSI_COLOR_BRIGHT_WHITE "nTimestamp" ANSI_COLOR_RESET " = %" PRIu64 ", " ANSI_COLOR_BRIGHT_WHITE "hashNext" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hashPrevTx" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hashGenesis" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "pub" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "sig" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hash" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "ledger" ANSI_COLOR_RESET " = %s)\n",
+             IsGenesis() ? "Genesis" : "Tritium", nVersion, nTimestamp, hashNext.ToString().c_str(), hashPrevTx.ToString().c_str(), hashGenesis.ToString().c_str(), HexStr(vchPubKey).c_str(), HexStr(vchSig).c_str(), GetHash().ToString().c_str(), HexStr(vchLedgerData.begin(), vchLedgerData.end()).c_str());
          }
     }
 }

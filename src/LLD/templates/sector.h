@@ -27,15 +27,15 @@ namespace LLD
 {
 
     /* Maximum size a file can be in the keychain. */
-    const uint32_t MAX_SECTOR_FILE_SIZE = 1024 * 1024 * 1024; //1 GB per File
+    const uint32_t MAX_SECTOR_FILE_SIZE = 1024 * 1024 * 128; //128 MB per File
 
 
     /* Maximum cache buckets for sectors. */
-    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 64; //512 MB Max Cache
+    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 128; //512 MB Max Cache
 
 
     /* The maximum amount of bytes allowed in the memory buffer for disk flushes. **/
-    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 64; //512 MB Max Disk Buffer
+    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 128; //512 MB Max Disk Buffer
 
 
     /** Base Template Class for a Sector Database.
@@ -495,13 +495,13 @@ namespace LLD
                     nBytesWrote += vObj.first.size();
 
                     /* Flush to disk on periodic intervals. */
-                    if(vWrite.size() > 10 * 1024 * 1024)
+                    if(vWrite.size() > 20 * 1024 * 1024)
                     {
                         LOCK(SECTOR_MUTEX);
 
                         nBytesWrote += (vWrite.size());
 
-                        stream.write((char*)&vWrite[0], vWrite.size());
+                        stream.write((char*)&vObj.second[0], vObj.second.size());
                         vWrite.clear();
                     }
 
@@ -514,8 +514,10 @@ namespace LLD
                 nBytesWrote += (vWrite.size());
 
                 /* Flush remaining to disk. */
-                stream.write((char*)&vWrite[0], vWrite.size());
-                stream.close();
+                { LOCK(SECTOR_MUTEX);
+                    stream.write((char*)&vWrite[0], vWrite.size());
+                    stream.close();
+                }
             }
         }
 
