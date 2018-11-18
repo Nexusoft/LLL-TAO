@@ -23,8 +23,6 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/filesystem.h>
 
-//static std::fstream* streamTest;
-
 namespace LLD
 {
 
@@ -33,11 +31,11 @@ namespace LLD
 
 
     /* Maximum cache buckets for sectors. */
-    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 128; //512 MB Max Cache
+    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 64; //512 MB Max Cache
 
 
     /* The maximum amount of bytes allowed in the memory buffer for disk flushes. **/
-    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 128; //512 MB Max Disk Buffer
+    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 64; //512 MB Max Disk Buffer
 
 
     /** Base Template Class for a Sector Database.
@@ -109,6 +107,7 @@ namespace LLD
         /* For the Meter. */
         uint32_t nBytesRead;
         uint32_t nBytesWrote;
+        uint32_t nRecordsFlushed;
 
 
         /* Cache Pool */
@@ -137,7 +136,7 @@ namespace LLD
 
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(std::string strNameIn, const char* pszMode="r+") : strName(strNameIn), strBaseLocation(GetDataDir() + "/" + strNameIn + "/datachain/"), cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE)), nBytesRead(0), nBytesWrote(0), nCurrentFile(0), nCurrentFileSize(0), CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this)), MeterThread(std::bind(&SectorDatabase::Meter, this)), nBufferBytes(0)
+        SectorDatabase(std::string strNameIn, const char* pszMode="r+") : strName(strNameIn), strBaseLocation(GetDataDir() + "/" + strNameIn + "/datachain/"), cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE)), nBytesRead(0), nBytesWrote(0), nCurrentFile(0), nCurrentFileSize(0), CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this)), MeterThread(std::bind(&SectorDatabase::Meter, this)), nBufferBytes(0), nRecordsFlushed(0)
         {
             if(GetBoolArg("-runtime", false))
                 runtime.Start();
@@ -180,7 +179,7 @@ namespace LLD
 
                 /* TODO: Make a worker or thread to check sizes of files and automatically create new file.
                     Keep independent of reads and writes for efficiency. */
-                std::fstream fIncoming(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::in | std::ios::binary);
+                std::fstream fIncoming(strprintf("%s_%05u.data", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::in | std::ios::binary);
                 if(!fIncoming)
                 {
 
@@ -190,7 +189,7 @@ namespace LLD
                     else
                     {
                         /* Create a new file if it doesn't exist. */
-                        std::ofstream cStream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::binary | std::ios::out | std::ios::trunc);
+                        std::ofstream cStream(strprintf("%s_%05u.data", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::binary | std::ios::out | std::ios::trunc);
                         cStream.close();
                     }
 
@@ -264,16 +263,17 @@ namespace LLD
         bool Read(const Key& key, Type& value)
         {
             /** Serialize Key into Bytes. **/
-            DataStream ssKey(SER_LLD, DATABASE_VERSION);
+            CDataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
+            std::vector<uint8_t> vKey(ssKey.begin(), ssKey.end());
 
             /** Get the Data from Sector Database. **/
             std::vector<uint8_t> vData;
-            if(!Get(ssKey, vData))
+            if(!Get(vKey, vData))
                 return false;
 
             /** Deserialize Value. **/
-            DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
+            CDataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
             ssValue >> value;
 
             return true;
@@ -325,7 +325,7 @@ namespace LLD
                 { LOCK(SECTOR_MUTEX);
 
                     /* Open the Stream to Read the data from Sector on File. */
-                    std::fstream stream(strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::binary);
+                    std::fstream stream(strprintf("%s_%05u.data", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::binary);
 
                     /* Error checking if file doens't exist. */
                     if(!stream)
@@ -367,14 +367,14 @@ namespace LLD
                 nCurrentFile ++;
                 nCurrentFileSize = 0;
 
-                std::ofstream fStream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                std::ofstream fStream(strprintf("%s_%05u.data", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
                 fStream.close();
             }
 
             { LOCK(SECTOR_MUTEX);
 
                 /* Open the Stream to Read the data from Sector on File. */
-                std::string strFilename = strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
+                std::string strFilename = strprintf("%s_%05u.data", strBaseLocation.c_str(), nCurrentFile);
                 std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
 
                 /* If it is a New Sector, Assign a Binary Position.
@@ -382,7 +382,7 @@ namespace LLD
                 fStream.seekp(nCurrentFileSize, std::ios::beg);
                 fStream.write((char*) &vData[0], vData.size());
                 fStream.close();
-                
+
             }
 
             /* Create a new Sector Key. */
@@ -409,7 +409,7 @@ namespace LLD
         bool Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
         {
             /* Write the data into the memory cache. */
-            cachePool->Put(vKey, vData);
+            cachePool->Put(vKey, vData, true);
             while(!fShutdown && nBufferBytes > MAX_SECTOR_BUFFER_SIZE)
                 Sleep(1);
 
@@ -467,12 +467,12 @@ namespace LLD
                     nCurrentFileSize = 0;
 
                     /* Create a new file for next writes. */
-                    std::fstream stream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::out | std::ios::binary | std::ios::trunc);
+                    std::fstream stream(strprintf("%s_%05u.data", strBaseLocation.c_str(), nCurrentFile), std::ios::out | std::ios::binary | std::ios::trunc);
                     stream.close();
                 }
 
                 /* Open the Stream to Read the data from Sector on File. */
-                std::fstream stream(strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
+                std::fstream stream(strprintf("%s_%05u.data", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
 
                 /* Seek to the end of the file */
                 stream.seekp(nCurrentFileSize, std::ios::beg);
@@ -481,14 +481,12 @@ namespace LLD
                 std::vector<uint8_t> vWrite;
                 for(auto vObj : vIndexes)
                 {
-                    /* Create a new Sector Key. */
-                    SectorKey cTmp = SectorKey(READY, vObj.first, nCurrentFile, nCurrentFileSize, vObj.second.size());
+
+                    /* Assign the Key to Keychain. */
+                    SectorKeys->Put(SectorKey(READY, vObj.first, nCurrentFile, nCurrentFileSize, vObj.second.size()));
 
                     /* Increment the current filesize */
                     nCurrentFileSize += vObj.second.size();
-
-                    /* Assign the Key to Keychain. */
-                    SectorKeys->Put(cTmp);
 
                     /* Add data to the write buffer */
                     vWrite.insert(vWrite.end(), vObj.second.begin(), vObj.second.end());
@@ -506,6 +504,11 @@ namespace LLD
                         stream.write((char*)&vWrite[0], vWrite.size());
                         vWrite.clear();
                     }
+
+                    /* Set cache back to not reserved. */
+                    cachePool->Reserve(vObj.first, false);
+
+                    nRecordsFlushed++;
                 }
 
                 nBytesWrote += (vWrite.size());
@@ -513,8 +516,6 @@ namespace LLD
                 /* Flush remaining to disk. */
                 stream.write((char*)&vWrite[0], vWrite.size());
                 stream.close();
-
-                printf(FUNCTION "Flushed %u Bytes to Disk\n", __PRETTY_FUNCTION__, vWrite.size());
             }
         }
 
@@ -536,10 +537,12 @@ namespace LLD
 
                 printf(FUNCTION ">>>>> LLD Writing at %f Kb/s\n", __PRETTY_FUNCTION__, WPS);
                 printf(FUNCTION ">>>>> LLD Reading at %f Kb/s\n", __PRETTY_FUNCTION__, RPS);
+                printf(FUNCTION ">>>>> LLD Flushed %u Records\n", __PRETTY_FUNCTION__, nRecordsFlushed);
 
                 TIMER.Reset();
-                nBytesWrote = 0;
-                nBytesRead  = 0;
+                nBytesWrote     = 0;
+                nBytesRead      = 0;
+                nRecordsFlushed = 0;
             }
         }
 

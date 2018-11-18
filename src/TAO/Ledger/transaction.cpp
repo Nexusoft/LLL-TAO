@@ -52,7 +52,7 @@ namespace TAO
         /* Gets the hash of the transaction object. */
         uint512_t Transaction::GetHash() const
         {
-            CDataStream ss(SER_GETHASH, nVersion);
+            DataStream ss(SER_GETHASH, nVersion);
             ss << *this;
 
             return LLC::SK512(ss.begin(), ss.end());

@@ -30,6 +30,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/tritium.h>
 #include <LLP/templates/server.h>
+#include <LLP/include/legacy.h>
 
 #include <TAO/Ledger/types/transaction.h>
 
@@ -49,6 +50,7 @@ public:
         return Read(std::make_pair(std::string("tx"), hashTransaction), tx);
     }
 };
+
 
 
 int main(int argc, char** argv)
@@ -117,13 +119,19 @@ int main(int argc, char** argv)
     //test->Read(hash, tx2);
     //tx2.print();
 
-    //return 0;
+
 
     uint32_t wps = 0;
     uint32_t total = 0;
     while(!fShutdown)
     {
-        hash = hash + 1;
+        //Sleep(2000);
+        Sleep(5, true);
+
+        tx.hashGenesis ++;
+        hash = tx.GetHash();
+        //hash = hash + 1;
+
         //std::vector<uint8_t> vKey((uint8_t*)&hash, (uint8_t*)&hash + sizeof(hash));
         //std::vector<uint8_t> vData((uint8_t*)&tx, (uint8_t*)&tx + tx.GetSerializeSize(SER_DISK, LLD::DATABASE_VERSION));
         //cachePool->Put(vKey, vData);
@@ -150,7 +158,7 @@ int main(int argc, char** argv)
 
             timer.Reset();
             for(int i = 0; i < 100000; i++)
-                test->Read(base + i, tx);
+                test->Read(hash, tx);
 
             timer.Stop();
 
@@ -165,21 +173,6 @@ int main(int argc, char** argv)
 
         nCounter++;
     }
-
-
-    /* Create an LLP Server.
-    LLP::Server<LLP::TritiumNode>* SERVER = new LLP::Server<LLP::TritiumNode>(1111, 10, 30, false, 0, 0, 60, GetBoolArg("-listen", true), true);
-
-    if(mapMultiArgs["-addnode"].size() > 0)
-        for(auto node : mapMultiArgs["-addnode"])
-            SERVER->AddConnection(node, 1111);
-
-    while(!fShutdown)
-    {
-        Sleep(1000);
-    }
-
-    */
 
 
     return 0;

@@ -32,11 +32,11 @@ if ($status != 1) then
     set v4_eid = 240.$byte2.$byte1.$byte0
     set v6_eid = fe::${byte2}:${byte1}:${byte0}
 #   set iid = 0
-    set iid = 1537
+    set iid = 200
   else
     set v4_eid = 240.0.255.255
     set v6_eid = fe::255:255
-    set iid = 1537
+    set iid = 200
   endif
   set v4_rloc = `ifconfig eth0 | egrep "inet "`
   set v4_rloc = `echo $v4_rloc | cut -d " " -f 2`

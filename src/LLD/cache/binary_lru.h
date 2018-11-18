@@ -35,6 +35,8 @@ namespace LLD
 
         std::vector<uint8_t> vKey;
         std::vector<uint8_t> vData;
+
+        bool fReserve;
     };
 
 
@@ -194,8 +196,16 @@ namespace LLD
             if(pthis == pfirst)
                 return;
 
-            /* Remove the node from linked list. */
-            RemoveNode(pthis);
+            /* Move last pointer if moving from back. */
+            if(pthis == plast)
+            {
+                if(plast->pprev)
+                    plast = plast->pprev;
+
+                plast->pnext = NULL;
+            }
+            else
+                RemoveNode(pthis);
 
             /* Set prev to null to signal front of list */
             pthis->pprev = NULL;
@@ -208,7 +218,10 @@ namespace LLD
             {
                 pfirst->pprev = pthis;
                 if(!plast)
+                {
                     plast = pfirst;
+                    plast->pnext = NULL;
+                }
             }
 
             /* Update the first reference. */
@@ -228,18 +241,19 @@ namespace LLD
         {
             LOCK(MUTEX);
 
-            /* Check if the Record Exists. */
-            if(!Has(vKey))
-                return false;
-
             /* Get the data. */
             BinaryNode* pthis = hashmap[Bucket(vKey)];
+
+            /* Check if the Record Exists. */
+            if (pthis == NULL || pthis->vKey != vKey)
+                return false;
 
             /* Get the data. */
             vData = pthis->vData;
 
             /* Move to front of double linked list. */
-            MoveToFront(pthis);
+            if(!pthis->fReserve)
+                MoveToFront(pthis);
 
             return true;
         }
@@ -251,7 +265,7 @@ namespace LLD
          * @param[in] vData The input data in binary form
          *
          */
-        void Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
+        void Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData, bool fReserve = false)
         {
             LOCK(MUTEX);
 
@@ -260,32 +274,38 @@ namespace LLD
 
             /* Check for bucket collisions. */
             BinaryNode* pthis = NULL;
-            if(Has(vKey))
+            if(hashmap[nBucket] != NULL)
             {
                 /* Update the cache node. */
                 pthis = hashmap[nBucket];
-                pthis->vData = vData;
-                pthis->vKey  = vKey;
+                pthis->vData    = vData;
+                pthis->vKey     = vKey;
+                pthis->fReserve = fReserve;
             }
             else
             {
                 /* Create a new cache node. */
                 pthis = new BinaryNode();
-                pthis->vData = vData;
-                pthis->vKey  = vKey;
+                pthis->vData    = vData;
+                pthis->vKey     = vKey;
+                pthis->fReserve = fReserve;
 
                 /* Add cache node to objects map. */
                 hashmap[nBucket] = pthis;
             }
 
             /* Set the new cache node to the front */
-            MoveToFront(pthis);
+            if(!pthis->fReserve)
+                MoveToFront(pthis);
+
+            /* Set the new cache size. */
+            nCurrentSize += (vData.size() + vKey.size());
 
             /* Remove the last node if cache too large. */
-            if(nCurrentSize > MAX_CACHE_SIZE)
+            while(nCurrentSize > MAX_CACHE_SIZE)
             {
                 /* Get the last key. */
-                if(plast->pprev)
+                if(plast && plast->pprev)
                 {
                     BinaryNode* pnode = plast;
 
@@ -294,16 +314,61 @@ namespace LLD
                     plast->pnext = NULL;
 
                     /* Reduce the current cache size. */
-                    nCurrentSize += (vKey.size() + vData.size() - pnode->vData.size() - pnode->vKey.size());
+                    nCurrentSize -= (pnode->vData.size() - pnode->vKey.size());
 
                     /* Clear the pointers. */
                     hashmap[Bucket(pnode->vKey)] = NULL; //TODO: hashmap linked list for collisions
-                    delete pnode;
-                }
-            }
-            else
-                nCurrentSize += (vData.size() + vKey.size());
 
+                    /* Reset the memory linking. */
+                    pnode->pprev = NULL;
+                    pnode->pnext = NULL;
+
+                    /* Free the memory */
+                    delete pnode;
+                    pnode = NULL;
+
+                    continue;
+                }
+
+                break;
+            }
+        }
+
+
+        /** Reserve
+         *
+         *  Reserve this item in the cache permanently if true, unreserve if false
+         *
+         *  @param[in] vKey The key to flag as reserved true/false
+         *  @param[in] fDisk If this object is to be reserved for disk.
+         *
+         */
+        void Reserve(std::vector<uint8_t> vKey, bool fReserve = true)
+        {
+            LOCK(MUTEX);
+
+            /* Get the data. */
+            BinaryNode* pthis = hashmap[Bucket(vKey)];
+
+            /* Check if the Record Exists. */
+            if (pthis == NULL || pthis->vKey != vKey)
+                return;
+
+            /* Set object to reserved. */
+            pthis->fReserve = fReserve;
+
+            /* Move back to linked list. */
+            if(!fReserve)
+            {
+                /* Set prev to null to signal front of list */
+                pthis->pprev = NULL;
+
+                /* Set next to the current first */
+                pthis->pnext = pfirst;
+
+                /* Set the first pointer. */
+                pfirst = pthis;
+            }
         }
 
 
