@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/Ledger/types/sigchain.h>
+
 #include <Util/include/args.h>
 #include <Util/include/config.h>
 #include <Util/include/signals.h>
@@ -57,6 +59,15 @@ int main(int argc, char** argv)
     }
 
 
+
+    TAO::Ledger::SignatureChain sigChain(GetArg("-username", "user"), GetArg("-password", "default"));
+    uint512_t hashGenesis = sigChain.Generate(0, GetArg("-pin", "1235"));
+
+    printf("Genesis %s\n", hashGenesis.ToString().c_str());
+
+    /* Extract username and password from config. */
+    printf("Username: %s\n", GetArg("-username", "user").c_str());
+    printf("Password: %s\n", GetArg("-password", "default").c_str());
 
     return 0;
 }
