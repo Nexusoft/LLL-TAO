@@ -22,7 +22,7 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <TAO/Legacy/wallet/basickeystore.h>
-#include <TAO/Legacy/wallet/crypter.h> /* for CKeyingMaterial typedef */
+#include <TAO/Legacy/wallet/crypter.h>
 
 /* forward declaration */    
 namespace LLC 
@@ -41,94 +41,197 @@ namespace Legacy
 
     namespace Wallet
     {
+        /** Map to store public key/encrypted private key pairs, mapped by Base 58-encoded address **/
         typedef std::map<Legacy::Types::NexusAddress, std::pair<std::vector<uint8_t>, std::vector<uint8_t> > > CryptedKeyMap;
 
-        /** Keystore which keeps the private keys encrypted.
-        * It derives from the basic key store, which is used if no encryption is active.
-        */
+
+        /** CCryptoKeyStore
+         *
+         * Key store that keeps the private keys encrypted.
+         *
+         * Supports having encryption active or inactive. Must be one or the other for all keys.
+         * It derives from the basic key store, which is used if encryption is inactive.
+         *
+         **/
         class CCryptoKeyStore : public CBasicKeyStore
         {
         private:
+            /** Map containing public key/encrypted private key pairs **/
             CryptedKeyMap mapCryptedKeys;
 
+            /** Key used for mapCryptedKeys encryption and decryption. 
+             *  When present, key store is unlocked and keys can be decrypted and retrieved 
+             *  All keys in a single encrypted key store must be encrypted using the same master key.
+             **/
             CKeyingMaterial vMasterKey;
 
-            // if fUseCrypto is true, mapKeys must be empty
-            // if fUseCrypto is false, vMasterKey must be empty
+            /** Indicates whether key store is storing private keys in encrypted or unencrypted format.
+             *
+             * If fUseCrypto is true, mapCryptedKeys is used and mapKeys must be empty
+             * if fUseCrypto is false, mapKeys (from CBasicKeyStore) is used and vMasterKey/mapCryptedKeys must be empty 
+             */
             bool fUseCrypto;
 
         protected:
+            /** SetCrypted
+             *
+             * Activate encryption for an empty key store.
+             * To activate successfully, the key store cannot contain any unencrypted keys.
+             *
+             * @return true if encryption successfully activated or previously active
+             *
+             **/
             bool SetCrypted();
 
-            // will encrypt previously unencrypted keys
+
+            /** EncryptKeys
+             *
+             *  Convert the key store from unencrypted to encrypted. 
+             *  Activates encryption for the key store and encrypts any previously unencrypted keys.
+             *
+             *  @param[in] vMasterKeyIn Encryption key used to perform encryption. Value is not stored in vMasterKey
+             *                          so key store remains locked after conversion until explictly unlocked
+             *
+             *  @return true if keys successfully encrypted and moved from mapKeys to mapCryptedKeys
+             *          false if key store previously encrypted or encryption not successful
+             **/
             bool EncryptKeys(CKeyingMaterial& vMasterKeyIn);
 
+
+            /** Unlock
+             *
+             *  Attempt to unlock an encrypted key store using the key provided. 
+             *  Encrypted key store cannot be accessed until unlocked by providing the key used to encrypt it.
+             *
+             *  @param[in] vMasterKeyIn Encryption key originally used to perform encryption.
+             *
+             *  @return true if master key matches key used to encrypt the store and unlock is successful
+             **/
             bool Unlock(const CKeyingMaterial& vMasterKeyIn);
 
         public:
+            /** Default constructor
+             *
+             *  Initializes key store as unencrypted
+             *
+             **/
             CCryptoKeyStore() : fUseCrypto(false)
             {
             }
 
-            bool IsCrypted() const
+
+            /** isCrypted
+             *
+             *  Check if key store is encrypted
+             *
+             *  @return true if key store is using encryption
+             **/
+            inline bool IsCrypted() const
             {
                 return fUseCrypto;
             }
 
-            bool IsLocked() const
-            {
-                if (!IsCrypted())
-                    return false;
-                bool result;
-                {
-                    LOCK(cs_KeyStore);
-                    result = vMasterKey.empty();
-                }
-                return result;
-            }
 
-            bool Lock()
-            {
-                if (!SetCrypted())
-                    return false;
+            /** IsLocked
+             *
+             *  Check whether or not the key store is currently locked.
+             *
+             *  @return true if the key store is locked
+             **/
+            bool IsLocked() const;
 
-                {
-                    LOCK(cs_KeyStore);
-                    vMasterKey.clear();
-                }
 
-                return true;
-            }
+            /** Lock
+             *
+             *  Attempt to lock the key store. 
+             *  Can only lock the key store if it is encrypted.
+             *
+             *  @return true if the key store was successfully locked
+             **/
+            bool Lock();
 
+
+            /** AddCryptedKey
+             *
+             *  Add a public/encrypted private key pair to the key store. 
+             *  Key pair must be created from the same master key used to create any other key pairs in the store.
+             *  Key store must have encryption active.
+             *
+             *  @param[in] vchPubKey The public key to add
+             *
+             *  @param[in] vchCryptedSecret The encrypted private key
+             *
+             *  @return true if key successfully added
+             *
+             **/
             virtual bool AddCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret);
-            bool AddKey(const LLC::ECKey& key);
-            bool HaveKey(const Legacy::Types::NexusAddress &address) const
-            {
-                {
-                    LOCK(cs_KeyStore);
-                    if (!IsCrypted())
-                        return CBasicKeyStore::HaveKey(address);
-                    return mapCryptedKeys.count(address) > 0;
-                }
-                return false;
-            }
-            bool GetKey(const Legacy::Types::NexusAddress &address, LLC::ECKey& keyOut) const;
-            bool GetPubKey(const Legacy::Types::NexusAddress &address, std::vector<uint8_t>& vchPubKeyOut) const;
-            void GetKeys(std::set<Legacy::Types::NexusAddress> &setAddress) const
-            {
-                if (!IsCrypted())
-                {
-                    CBasicKeyStore::GetKeys(setAddress);
-                    return;
-                }
-                setAddress.clear();
-                CryptedKeyMap::const_iterator mi = mapCryptedKeys.begin();
-                while (mi != mapCryptedKeys.end())
-                {
-                    setAddress.insert((*mi).first);
-                    mi++;
-                }
-            }
+
+
+            /** AddKey
+             *
+             *  Add a key to the key store. 
+             *  Encrypts the key if encryption is active and key store unlocked. 
+             *  Adds to basic keystore if encryption not active.
+             *
+             *  @param[in] key The key to add
+             *
+             *  @return true if key successfully added
+             *
+             **/
+            virtual bool AddKey(const LLC::ECKey& key) override;
+
+
+            /** GetKey
+             *
+             *  Retrieve a key from the key store. 
+             *  Encrypted key store must be unlocked.
+             *  Decrypts the key if encryption is active. 
+             *
+             *  @param[in] address The Base 58-encoded address of the key to retrieve
+             *
+             *  @param[out] keyOut The retrieved key
+             *
+             *  @return true if key successfully retrieved
+             *
+             **/
+            virtual bool GetKey(const Legacy::Types::NexusAddress &address, LLC::ECKey& keyOut) const override;
+
+
+            /** GetKeys
+             *
+             *  Retrieve the set of public addresses for all keys currently present in the key store. 
+             *  Encrypted key store does not require unlock to retrieve public addresses.
+             *
+             *  @param[out] setAddress A Set containing the Base 58-encoded addresses of the all keys currently in the key store
+             *
+             **/
+            virtual void GetKeys(std::set<Legacy::Types::NexusAddress> &setAddress) const override;
+
+
+            /** HaveKey
+             *
+             *  Check whether a key corresponding to a given address is present in the store. 
+             *
+             *  @param[in] address The Base 58-encoded address of the key to check
+             *
+             *  @return true if key is present in the key store
+             *
+             **/
+            virtual bool HaveKey(const Legacy::Types::NexusAddress &address) const override;
+
+
+            /** GetPubKey
+             *
+             *  Retrieve the public key for a key in the key store. 
+             *
+             *  @param[in] address The Base 58-encoded address of the key to retrieve
+             *
+             *  @param[out] vchPubKeyOut A byte vector containing the retrieved public key
+             *
+             *  @return true if public key was successfully retrieved
+             *
+             **/
+            virtual bool GetPubKey(const Legacy::Types::NexusAddress &address, std::vector<uint8_t>& vchPubKeyOut) const override;
         };
 
     }
