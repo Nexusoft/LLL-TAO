@@ -17,4 +17,5 @@ namespace LLD
 {
     RegisterDB* regDB;
     LedgerDB*   legDB;
+    LocalDB*    locDB;
 }

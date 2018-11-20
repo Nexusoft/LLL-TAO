@@ -94,7 +94,7 @@ namespace TAO
         }
 
 
-        /* Gets the nextHash from the previous transaction */
+        /* Gets the nextHash for the previous transaction */
         uint256_t Transaction::PrevHash() const
         {
             return LLC::SK256(vchPubKey);

@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LLD_INCLUDE_LEDGER_H
-#define NEXUS_LLD_INCLUDE_LEDGER_H
+#ifndef NEXUS_LLD_INCLUDE_LOCAL_H
+#define NEXUS_LLD_INCLUDE_LOCAL_H
 
 #include <LLC/types/uint1024.h>
 
@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <LLD/templates/sector.h>
 
 #include <LLD/cache/binary_lru.h>
-#include <LLD/keychain/filemap.h>
+#include <LLD/keychain/hashmap.h>
 
 #include <TAO/Register/include/state.h>
 #include <TAO/Ledger/types/transaction.h>
@@ -28,7 +28,7 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    class LocalDB : public SectorDatabase<BinaryFileMap, BinaryLRU>
+    class LocalDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/

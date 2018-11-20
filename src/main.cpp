@@ -43,6 +43,7 @@ int main(int argc, char** argv)
     /* Create the database instances. */
     LLD::regDB = new LLD::RegisterDB("r+");
     LLD::legDB = new LLD::LedgerDB("r+");
+    LLD::locDB = new LLD::LocalDB("r+");
 
 
     /* Handle Commandline switch */
