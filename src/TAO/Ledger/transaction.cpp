@@ -82,7 +82,7 @@ namespace TAO
         /* Sets the Next Hash from the key */
         void Transaction::NextHash(uint512_t hashSecret)
         {
-            CDataStream ssData(SER_NETWORK, nVersion);
+            DataStream ssData(SER_NETWORK, nVersion);
             ssData << hashSecret;
 
             LLC::CSecret vchSecret(ssData.begin(), ssData.end());
@@ -104,7 +104,7 @@ namespace TAO
         /* Signs the transaction with the private key and sets the public key */
          bool Transaction::Sign(uint512_t hashSecret)
          {
-            CDataStream ssData(SER_NETWORK, nVersion);
+            DataStream ssData(SER_NETWORK, nVersion);
             ssData << hashSecret;
 
             LLC::CSecret vchSecret(ssData.begin(), ssData.end());
