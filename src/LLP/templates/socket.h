@@ -105,7 +105,20 @@ namespace LLP
          *  @return the total bytes that were read
          *
          **/
-        int Read(std::vector<uint8_t> &vData, size_t nBytes);
+        int Read(std::vector<uint8_t>& vData, size_t nBytes);
+
+
+        /** Read
+         *
+         *  Read data from the socket buffer non-blocking
+         *
+         *  @param[out] vchData The char vector to read into
+         *  @param[in] nBytes The total bytes to read
+         *
+         *  @return the total bytes that were read
+         *
+         **/
+        int Read(std::vector<int8_t>& vchData, size_t nBytes);
 
 
         /** Write

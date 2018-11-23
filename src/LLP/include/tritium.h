@@ -100,7 +100,7 @@ namespace LLP
          *
          *  This keeps thread from spending too much time for each Connection.
          */
-        virtual void ReadPacket()
+        void ReadPacket()
         {
             if(!INCOMING.Complete())
             {

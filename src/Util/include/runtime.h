@@ -14,13 +14,12 @@ ________________________________________________________________________________
 #ifndef NEXUS_UTIL_INCLUDE_RUNTIME_H
 #define NEXUS_UTIL_INCLUDE_RUNTIME_H
 
-#define PAIRTYPE(t1, t2)    std::pair<t1, t2> // This is needed because the foreach macro can't get over the comma in pair<t1, t2>
-
 #define ARRAYLEN(array)     (sizeof(array)/sizeof((array)[0]))
 
 #include <inttypes.h>
 #include <thread>
 #include <chrono>
+#include <locale>
 
 /* The location of the unified time seed. To enable a Unified Time System push data to this variable. */
 static int UNIFIED_AVERAGE_OFFSET = 0;
@@ -47,6 +46,20 @@ inline void Sleep(uint32_t nTime, bool fMicroseconds = false)
                     std::this_thread::sleep_for(std::chrono::milliseconds(nTime));
 }
 
+/* Special Specification for HTTP Protocol.
+    TODO: This could be cleaned up I'd say. */
+inline std::string rfc1123Time()
+{
+    char buffer[64];
+    time_t now;
+    time(&now);
+    struct tm* now_gmt = gmtime(&now);
+    std::string locale(setlocale(LC_TIME, NULL));
+    setlocale(LC_TIME, "C"); // we want posix (aka "C") weekday/month strings
+    strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S +0000", now_gmt);
+    setlocale(LC_TIME, locale.c_str());
+    return std::string(buffer);
+}
 
 /* Class the tracks the duration of time elapsed in seconds or milliseconds.
     Used for socket timers to determine time outs. */

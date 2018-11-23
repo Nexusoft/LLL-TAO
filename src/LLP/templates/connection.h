@@ -119,7 +119,7 @@ namespace LLP
 
             /* Debug dump of message type. */
             if(GetArg("-verbose", 0) >= 4)
-                printf(NODE "Sent Message (%u, %u)\n", PACKET.LENGTH, PACKET.GetBytes().size());
+                printf(NODE "Sent Message (%u bytes)\n", PACKET.GetBytes().size());
 
             /* Debug dump of packet data. */
             if(GetArg("-verbose", 0) >= 5) {
@@ -171,7 +171,7 @@ namespace LLP
         }
 
 
-    protected:
+//    protected:
 
 
         /* Lower level network communications: Read. Interacts with OS sockets. */

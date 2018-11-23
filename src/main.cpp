@@ -22,6 +22,9 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/filesystem.h>
 
+#include <TAO/API/include/core.h>
+#include <LLP/templates/server.h>
+
 
 int main(int argc, char** argv)
 {
@@ -55,9 +58,57 @@ int main(int argc, char** argv)
         {
             //int ret = Net::CommandLineRPC(argc, argv);
             //exit(ret);
+
+            if(argc < i + 2)
+            {
+                printf("Not Enough Parameters\n");
+
+                return 0;
+            }
+
+            TAO::API::Core apiNode;
+            if(!apiNode.Connect("127.0.0.1", 8080))
+            {
+                printf("Couldn't Connect to API\n");
+
+                return 0;
+            }
+
+            std::string strContent = argv[1];
+            std::string strReply = strprintf(
+                    "POST /api/%s/%s HTTP/1.1\r\n"
+                    "Date: %s\r\n"
+                    "Connection: close\r\n"
+                    "Content-Length: %d\r\n"
+                    "Content-Type: application/json\r\n"
+                    "Server: Nexus-JSON-RPC\r\n"
+                    "\r\n"
+                    "%s",
+                argv[1], argv[2],
+                rfc1123Time().c_str(),
+                strContent.size(),
+                strContent.c_str());
+
+            std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
+            apiNode.Write(vBuffer);
+
+            while(!apiNode.INCOMING.Complete())
+            {
+                apiNode.ReadPacket();
+                Sleep(10);
+            }
+
+            printf("%s\n", apiNode.INCOMING.strContent.c_str());
+
+            return 0;
         }
     }
 
+    LLP::Server<TAO::API::Core>* CORE_SERVER = new LLP::Server<TAO::API::Core>(8080, 10);
+    while(!fShutdown)
+    {
+        Sleep(1000);
+    }
 
 
     TAO::Ledger::SignatureChain sigChain(GetArg("-username", "user"), GetArg("-password", "default"));

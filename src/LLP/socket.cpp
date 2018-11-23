@@ -163,7 +163,7 @@ namespace LLP
     /* Read data from the socket buffer non-blocking */
     int Socket::Read(std::vector<uint8_t> &vData, size_t nBytes)
     {
-        char pchBuf[nBytes];
+        int8_t pchBuf[nBytes];
         int nRead = recv(nSocket, pchBuf, nBytes, MSG_DONTWAIT);
         if (nRead < 0)
         {
@@ -176,6 +176,26 @@ namespace LLP
 
         if(nRead > 0)
             std::copy(&pchBuf[0], &pchBuf[0] + nRead, vData.begin());
+
+        return nRead;
+    }
+
+    /* Read data from the socket buffer non-blocking */
+    int Socket::Read(std::vector<int8_t> &vchData, size_t nBytes)
+    {
+        int8_t pchBuf[nBytes];
+        int nRead = recv(nSocket, pchBuf, nBytes, MSG_DONTWAIT);
+        if (nRead < 0)
+        {
+            nError = GetLastError();
+            if(GetArg("-verbose", 0) >= 2)
+                printf("xxxxx Node Read Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
+
+            return nError;
+        }
+
+        if(nRead > 0)
+            std::copy(&pchBuf[0], &pchBuf[0] + nRead, vchData.begin());
 
         return nRead;
     }

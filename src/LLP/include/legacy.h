@@ -117,7 +117,7 @@ namespace LLP
         /** Non-Blocking Packet reader to build a packet from TCP Connection.
         * This keeps thread from spending too much time for each Connection.
         */
-        virtual void ReadPacket()
+        void ReadPacket()
         {
             if(!INCOMING.Complete())
             {
