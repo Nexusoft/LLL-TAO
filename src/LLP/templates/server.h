@@ -194,7 +194,8 @@ namespace LLP
                         int nThread = FindThread();
                         DATA_THREADS[nThread]->AddConnection(sockNew, DDOS_MAP[(CService)addr]);
 
-                        printf(NODE "Accepted Connection %s on port %u\n", addr.ToString().c_str(), PORT);
+                        if(GetArg("-verbose", 0) >= 3)
+                            printf(NODE "Accepted Connection %s on port %u\n", addr.ToString().c_str(), PORT);
                     }
                 }
             }

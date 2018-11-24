@@ -170,8 +170,13 @@ namespace LLP
                     }
 
                     /* Handle normal headers. */
-                    else if(pos != std::string::npos) //TODO: check for spaces here.
+                    else if(pos != std::string::npos)
+                    { //TODO: check for spaces here.
+                        if(strLine.substr(0, pos) == "Content-Length")
+                            INCOMING.nContentLength = stoi(strLine.substr(pos + 2));
+
                         INCOMING.mapHeaders[strLine.substr(0, pos)] = strLine.substr(pos + 2);
+                    }
 
                     /* Erase line read from the read buffer. */
                     vchBuffer.erase(vchBuffer.begin(), it + 1);

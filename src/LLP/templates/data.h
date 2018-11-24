@@ -195,6 +195,12 @@ namespace LLP
                         if(CONNECTIONS[nIndex]->PacketComplete())
                         {
 
+                            if(fMETER)
+                                REQUESTS++;
+
+                            if(fDDOS)
+                                CONNECTIONS[nIndex]->DDOS->rSCORE += 1;
+                                
                             /* Packet Process return value of False will flag Data Thread to Disconnect. */
                             if(!CONNECTIONS[nIndex]->ProcessPacket())
                             {
@@ -206,13 +212,6 @@ namespace LLP
                             }
 
                             CONNECTIONS[nIndex]->ResetPacket();
-
-                            if(fMETER)
-                                REQUESTS++;
-
-                            if(fDDOS)
-                                CONNECTIONS[nIndex]->DDOS->rSCORE += 1;
-
                         }
                     }
                     catch(std::exception& e)

@@ -66,14 +66,6 @@ int main(int argc, char** argv)
                 return 0;
             }
 
-            TAO::API::Core apiNode;
-            if(!apiNode.Connect("127.0.0.1", 8080))
-            {
-                printf("Couldn't Connect to API\n");
-
-                return 0;
-            }
-
             std::string strContent = argv[1];
             std::string strReply = strprintf(
                     "POST /api/%s/%s HTTP/1.1\r\n"
@@ -90,21 +82,35 @@ int main(int argc, char** argv)
                 strContent.c_str());
 
             std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
-            apiNode.Write(vBuffer);
-
-            while(!apiNode.INCOMING.Complete())
+            while(!fShutdown)
             {
-                apiNode.ReadPacket();
-                Sleep(10);
+                TAO::API::Core apiNode;
+                if(!apiNode.Connect("127.0.0.1", 8080))
+                {
+                    printf("Couldn't Connect to API\n");
+
+                    return 0;
+                }
+
+
+                apiNode.Write(vBuffer);
+
+                while(!apiNode.INCOMING.Complete())
+                {
+                    apiNode.ReadPacket();
+                    //Sleep(10);
+                }
+
+                apiNode.INCOMING.SetNull();
             }
 
-            printf("%s\n", apiNode.INCOMING.strContent.c_str());
+            //printf("%s\n", apiNode.INCOMING.strContent.c_str());
 
             return 0;
         }
     }
 
-    LLP::Server<TAO::API::Core>* CORE_SERVER = new LLP::Server<TAO::API::Core>(8080, 10);
+    LLP::Server<TAO::API::Core>* CORE_SERVER = new LLP::Server<TAO::API::Core>(8080, 10, 30, false, 0, 0, 60, true, true);
     while(!fShutdown)
     {
         Sleep(1000);

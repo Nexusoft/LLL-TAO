@@ -49,6 +49,10 @@ namespace LLP
         std::map<std::string, std::string> mapHeaders;
 
 
+        /* The content length. */
+        uint32_t nContentLength;
+
+
         /* HTTP Body or Post content. */
         std::string strContent;
 
@@ -66,6 +70,7 @@ namespace LLP
 
             mapHeaders.clear();
             strContent = "";
+            nContentLength = 0;
 
             fHeader = false;
         }
@@ -84,7 +89,7 @@ namespace LLP
             if(strType == "GET" && fHeader)
                 return true;
 
-            return fHeader && mapHeaders.count("Content-Length") && stoi(mapHeaders["Content-Length"]) == strContent.size();
+            return fHeader && nContentLength > 0 && nContentLength == strContent.size();
         }
 
 

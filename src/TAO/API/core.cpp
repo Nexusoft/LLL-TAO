@@ -29,9 +29,17 @@ namespace TAO
         /** Main message handler once a packet is recieved. **/
         bool Core::ProcessPacket()
         {
-            printf("Received HTTP Request: %s::%s\n", INCOMING.strRequest.c_str(), INCOMING.strContent.c_str());
+            //printf("Received HTTP Request: %s::%s\n", INCOMING.strRequest.c_str(), INCOMING.strContent.c_str());
 
             PushResponse(200, "CONTENT:::" + INCOMING.strContent + "\n\nThis would be test content!");
+
+            /* Handle a connection close header. */
+            if(INCOMING.mapHeaders.count("Connection") && INCOMING.mapHeaders["Connection"] == "close")
+            {
+                //printf("Connection Close\n");
+
+                return false;
+            }
 
             return true;
         }
