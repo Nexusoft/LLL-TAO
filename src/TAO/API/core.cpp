@@ -34,12 +34,8 @@ namespace TAO
             PushResponse(200, "CONTENT:::" + INCOMING.strContent + "\n\nThis would be test content!");
 
             /* Handle a connection close header. */
-            if(INCOMING.mapHeaders.count("Connection") && INCOMING.mapHeaders["Connection"] == "close")
-            {
-                //printf("Connection Close\n");
-
+            if(INCOMING.mapHeaders.count("connection") && INCOMING.mapHeaders["connection"] == "close")
                 return false;
-            }
 
             return true;
         }

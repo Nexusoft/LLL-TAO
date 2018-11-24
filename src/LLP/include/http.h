@@ -150,6 +150,7 @@ namespace LLP
                 {
                     /* Extract the line from the buffer. */
                     std::string strLine = std::string(vchBuffer.begin(), it - 1);
+                    std::transform(strLine.begin(), strLine.end(), strLine.begin(), ::tolower);
 
                     /* Find the delimiter to split. */
                     std::string::size_type pos = strLine.find(':', 0);
@@ -171,8 +172,9 @@ namespace LLP
 
                     /* Handle normal headers. */
                     else if(pos != std::string::npos)
-                    { //TODO: check for spaces here.
-                        if(strLine.substr(0, pos) == "Content-Length")
+                    {
+                         //TODO: check for spaces here.
+                        if(strLine.substr(0, pos) == "content-length")
                             INCOMING.nContentLength = stoi(strLine.substr(pos + 2));
 
                         INCOMING.mapHeaders[strLine.substr(0, pos)] = strLine.substr(pos + 2);

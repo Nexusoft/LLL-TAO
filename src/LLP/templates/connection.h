@@ -144,14 +144,17 @@ namespace LLP
             CService addrConnect(strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
 
             /// debug print
-            printf(NODE "Connecting to %s\n",
+            if(GetArg("-verbose", 0) >= 1)
+                printf(NODE "Connecting to %s\n",
                 addrConnect.ToString().c_str());
 
             // Connect
             if (SOCKET.Connect(addrConnect))
             {
                 /// debug print
-                printf(NODE "Connected to %s\n", addrConnect.ToString().c_str());
+                if(GetArg("-verbose", 0) >= 1)
+                    printf(NODE "Connected to %s\n", addrConnect.ToString().c_str());
+
                 fCONNECTED = true;
                 fOUTGOING  = true;
 

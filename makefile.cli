@@ -142,6 +142,7 @@ OBJS= \
 	build/transaction.o \
 	build/block.o \
 	build/core.o \
+	build/cmd.o \
 	build/args.o \
 	build/base58.o \
 	build/config.o \
