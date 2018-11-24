@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #ifdef snprintf
 #undef snprintf
 #endif
-#define snprintf my_snprintf
+//#define snprintf my_snprintf
 
 #ifndef PRI64d
 #if defined(_MSC_VER) || defined(__MSVCRT__)

@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
+#include <Util/include/json.h>
 
 namespace TAO
 {
