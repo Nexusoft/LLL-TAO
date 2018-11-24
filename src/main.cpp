@@ -82,29 +82,24 @@ int main(int argc, char** argv)
                 strContent.c_str());
 
             std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
-            while(!fShutdown)
+            TAO::API::Core apiNode;
+            if(!apiNode.Connect("127.0.0.1", 8080))
             {
-                TAO::API::Core apiNode;
-                if(!apiNode.Connect("127.0.0.1", 8080))
-                {
-                    printf("Couldn't Connect to API\n");
+                printf("Couldn't Connect to API\n");
 
-                    return 0;
-                }
-
-
-                apiNode.Write(vBuffer);
-
-                while(!apiNode.INCOMING.Complete())
-                {
-                    apiNode.ReadPacket();
-                    //Sleep(10);
-                }
-
-                apiNode.INCOMING.SetNull();
+                return 0;
             }
 
-            //printf("%s\n", apiNode.INCOMING.strContent.c_str());
+
+            apiNode.Write(vBuffer);
+
+            while(!apiNode.INCOMING.Complete())
+            {
+                apiNode.ReadPacket();
+                //Sleep(10);
+            }
+
+            printf("%s\n", apiNode.INCOMING.strContent.c_str());
 
             return 0;
         }
