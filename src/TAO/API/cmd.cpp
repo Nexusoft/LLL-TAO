@@ -25,29 +25,39 @@ namespace TAO
         /* Executes an API call from the commandline */
         int CommandLine(int argc, char** argv, int argn)
         {
-            if(argc < argn + 2)
+            /* Check the parameters. */
+            if(argc < argn + 3)
             {
                 printf("Not Enough Parameters\n");
 
                 return 0;
             }
 
-            std::string strContent = argv[1];
+            /* Build the JSON request object. */
+            nlohmann::json parameters;
+            for(int i = argn + 2; i < argc; i++)
+                parameters.push_back(argv[i]);
+
+            /* Build the HTTP Header. */
+            std::string strContent = parameters.dump();
             std::string strReply = strprintf(
                     "POST /api/%s/%s HTTP/1.1\r\n"
                     "Date: %s\r\n"
                     "Connection: close\r\n"
                     "Content-Length: %d\r\n"
                     "Content-Type: application/json\r\n"
-                    "Server: Nexus-JSON-RPC\r\n"
+                    "Server: Nexus-JSON-API\r\n"
                     "\r\n"
-                    "%s",
-                argv[1], argv[2],
+                    "%s\r\n",
+                argv[argn], argv[argn + 1],
                 rfc1123Time().c_str(),
                 strContent.size(),
                 strContent.c_str());
 
+            /* Convert the content into a byte buffer. */
             std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
+
+            /* Make the connection to the API server. */
             TAO::API::Core apiNode;
             if(!apiNode.Connect("127.0.0.1", 8080))
             {
@@ -56,15 +66,17 @@ namespace TAO
                 return 0;
             }
 
-
+            /* Write the buffer to the socket. */
             apiNode.Write(vBuffer);
 
+            /* Read the response packet. */
             while(!apiNode.INCOMING.Complete())
             {
                 apiNode.ReadPacket();
-                //Sleep(10);
+                Sleep(10);
             }
 
+            /* Dump the response to the console. */
             printf("%s\n", apiNode.INCOMING.strContent.c_str());
 
             return 0;
