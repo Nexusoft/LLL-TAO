@@ -59,6 +59,10 @@ namespace filesystem
     {
         try 
         {
+            // If destination file exists, remove it (ie, we overwrite the file)
+            if (filesystem::exists(pathDest))
+                filesystem::remove(pathDest);
+
             ifstream sourceFile(pathSource, ios::binary);
             sourceFile.exceptions(ios::badbit);
 
