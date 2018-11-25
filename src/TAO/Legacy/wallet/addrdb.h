@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_ADDRDB_H
 #define NEXUS_LEGACY_WALLET_ADDRDB_H
 
+#include <string>
+
 #include <TAO/Legacy/wallet/db.h>
 
 namespace Legacy 
@@ -27,19 +29,68 @@ namespace Legacy
 
     namespace Wallet
     {
-       /** Access to the (IP) address database (addr.dat) */
+       /** @class CAddrDB
+        * 
+        *  Access to the (IP) address database (addr.dat) 
+        **/
         class CAddrDB : public CDB
         {
         public:
-            CAddrDB(const char* pszMode="r+") : CDB("addr.dat", pszMode) { }
+            /** Defines name of address database file **/
+            static const std::string ADDRESS_DB("addr.dat");
+
+
+            /** Constructor
+             *
+             *  Initializes database access to address database for an access mode (see CDB for modes).
+             *
+             *  @param[in] pszMode A string containing one or more access mode characters
+             *                     defaults to r+ (read and append). An empty or null string is
+             *                     equivalent to read only.
+             *
+             **/
+            CAddrDB(const char* pszMode="r+") : CDB(CAddrDB::ADDRESS_DB, pszMode) { }
+
+
         private:
-            CAddrDB(const CAddrDB&);
-            void operator=(const CAddrDB&);
+            /** Copy constructor deleted. No copy allowed **/
+            CAddrDB(const CAddrDB&) = delete;
+ 
+
+            /** Copy assignment operator deleted. No assignment allowed **/
+            void operator=(const CAddrDB&) = delete;
+
+
         public:
+            /** WriteAddrman
+             *
+             *  Writes collection of addresses from CAddrMan to the address database
+             *
+             *  @param[in] addr The addresses to write
+             *
+             *  @return true if addresses written successfully
+             *
+             **/
             bool WriteAddrman(const Legacy::Net::CAddrMan& addr);
+
+
+            /** LoadAddresses
+             *
+             *  Retrieves addresses from address database and loades them into Legacy::Net::addrman.
+             *
+             *  @return true if addresses loaded successfully
+             *
+             **/
             bool LoadAddresses();
         };
 
+
+        /** LoadAddresses
+         *
+         *  A general function to load Legacy::Net::addrman
+         *  Creates an instance of CAddrDB and uses it to load addresses.
+         *
+         **/
         bool LoadAddresses();
 
     }

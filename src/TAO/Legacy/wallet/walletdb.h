@@ -14,26 +14,28 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_WALLETDB_H
 #define NEXUS_LEGACY_WALLET_WALLETDB_H
 
+#include <list>
+#include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <LLC/types/uint1024.h>
 
 #include <TAO/Legacy/wallet/db.h>
 
-/* forward declaration */    
+
 namespace LLC 
 {
+    /* forward declaration */    
     class CPrivKey;
 }
 
 namespace Legacy
 {
     
-    /* forward declaration */    
     namespace Types
     {
+        /* forward declaration */    
         class CScript;
     }
 
@@ -48,7 +50,7 @@ namespace Legacy
         class CWallet;
         class CWalletTx;
 
-        /** Error statuses for the wallet database */
+        /** Error statuses for the wallet database **/
         enum DBErrors
         {
             DB_LOAD_OK,
@@ -58,161 +60,524 @@ namespace Legacy
             DB_NEED_REWRITE
         };
 
-        /** Access to the wallet database (wallet.dat) */
+
+        /** @class CWalletDB
+         *
+         *  Access to the wallet database (wallet.dat).
+         *
+         *  This class implements operations for reading and writing different types
+         *  of entries (keys) into the wallet database.
+         *
+         *  The wallet database, through its supported operations, stores values
+         *  for multiple types of entries (keys) in the database, including:
+         *  
+         *    - "mkey"<ID> = Master key for unlocking/descrypting encrypted database entries
+         *    - "name"<account> = Logical name (label) for an account/Nexus address
+         *    - "defaultkey" = Default public key value
+         *    - "key"<public key> = unencrypted private key
+         *    - "ckey"<public key> = encrypted private key
+         *    - "tx"<tx hash> = serialized wallet transaction
+         *    - "cscript"<script hash> = serialized redeem script
+         *    - "bestblock" = block locator
+         *    - "pool"<ID> = serialized key pool
+         *    - "acc"<account> = public key associated with an account/Nexus address
+         *    - "acentry"<account><counter> = accounting entry (credit/debit) associated with an account/Nexus address
+         *
+         **/
         class CWalletDB : public CDB
         {
-        public:
-            CWalletDB(std::string strFilename, const char* pszMode="r+") : CDB(strFilename.c_str(), pszMode)
-            {
-            }
+        protected:
+            /** Defines name of wallet database file **/
+            static const std::string WALLET_DB("wallet.dat");
+
+
+            /**
+             *  Value indicating how many updates have been written to the wallet database since startup.
+             *  There may be multiple instances of CWalletDB accessing the database, so this
+             *  is a static value stored across instances.
+             *
+             *  Used by the flush wallet thread to track if there have been updates since 
+             *  its last iteration that need to be flushed to disk.
+             *
+             **/
+            static uint32_t nWalletDBUpdated = 0;
+
+
+            /**
+             *  An internal counter for accounting entries. 
+             *  At load time, this value is calculated and assigned when the wallet is loaded,
+             *  then incremented each time a new accounting entry is written to the database.
+             *  The resulting entry number is used as part of the database key.
+             *
+             *  Supports multiple accounting entries for the same account with each having a 
+             *  unique database key.
+             **/
+            static uint64_t nAccountingEntryNumber = 0;
+
 
         private:
-            CWalletDB(const CWalletDB&);
-            void operator=(const CWalletDB&);
+            /** Copy constructor deleted. No copy allowed **/
+            CWalletDB(const CWalletDB&) = delete;
+
+
+            /** Copy assignment operator deleted. No assignment allowed **/
+            void operator=(const CWalletDB&) = delete;
+
 
         public:
-            bool ReadName(const std::string& strAddress, std::string& strName)
+            /** Constructor
+             *
+             *  Initializes database access to wallet database for an access mode (see CDB for modes).
+             *
+             *  @param[in] pszMode A string containing one or more access mode characters
+             *                     defaults to r+ (read and append). An empty or null string is
+             *                     equivalent to read only.
+             *
+             **/
+            CWalletDB(const char* pszMode="r+") : CDB(WALLET_DB, pszMode)
             {
-                strName = "";
-                return Read(std::make_pair(std::string("name"), strAddress), strName);
             }
 
+
+            /** Constructor 
+             *
+             *  Initializes database access for a given file name and access mode.
+             *
+             *  @deprecated This constructor is only included for backward compatability. Previous
+             *  wallet versions included an option to use a different wallet database file name, but
+             *  it was not used. Instead, the wallet.dat file name was hard-coded into the code
+             *  and was the only name supported. This is now reflected in CWalletDB itself, with
+             *  the file name defined by the class as the only name used.
+             *
+             *  @param[in] pszFile The database file name. This value is *IGNORED*. CWalletDB::WALLET_DB is used.
+             *
+             *  @param[in] pszMode A string containing one or more access mode characters
+             *                     defaults to r+ (read and append). An empty or null string is
+             *                     equivalent to read only.
+             *
+             **/
+            CWalletDB(std::string strFilename, const char* pszMode="r+") : CDB(CWalletDB::WALLET_DB, pszMode)
+            {
+            }
+
+
+            /** WriteMasterKey
+             *
+             *  Stores an encrypted master key into the database. Used to lock/unlock access when
+             *  wallet database content has been encrypted. Any old entry for the same key Id is overwritten.
+             *
+             *  CWalletDB supports multiple master key entries, identified by nID. This supports
+             *  the potential for the wallet database to have multiple passphrases.
+             *
+             *  After wallet database content is encrypted, this encryption cannot be reversed. Therefore, 
+             *  the master key entry is *required* and cannot be removed, only overwritten with an
+             *  updated value (after changing the passphrase, for example).
+             *
+             *  Master key settings should be populated with encryption settings and encrypted key value
+             *  before calling this method. The general process looks like this:
+             * 
+             *    - Create CCrypter
+             *    - Create CMasterKey
+             *    - Populate CMasterKey values for salt, derivation method, number of iterations
+             *    - Call CCrypter::SetKeyFromPassphrase to configure encryption context in the crypter
+             *    - Call CCrypter::Encrypt to encrypt the master key value into the CMasterKey vchCryptedKey
+             *    - Call this method to write the encrypted key into the wallet database
+             *
+             *  @see CCrypter::SetKeyFromPassphrase
+             *  @see CCrypter::Encrypt
+             *  @see CMasterKey
+             *
+             *  @param[in] nID The key Id to identify a particuler master key entry. 
+             *
+             *  @param[in] CMasterKey Encrypted key value along with the encryption settings used to encrypt it
+             *
+             *  @return true if master key successfully written to wallet database
+             *
+             **/
+            bool WriteMasterKey(const uint32_t nID, const CMasterKey& kMasterKey);
+
+
+            /** WriteMinVersion
+             *
+             *  Stores the minimum database version supported by this wallet database.
+             *
+             *  @param[in] nVersion Vesion number to store
+             *
+             *  @return true if database entry successfully written
+             *
+             **/
+            bool WriteMinVersion(const int nVersion);
+
+
+            /** ReadAccount
+             *
+             *  Reads the wallet account data associated with an account (Nexus address). 
+             *  This data includes the public key. This key value can then be used to 
+             *  retrieve the corresponding private key as needed.
+             *
+             *  @param[in] strAccount Nexus address in string form of account to read 
+             *
+             *  @param[out] account The wallet account data
+             *
+             *  @return true if account is present in the database and read successfully
+             *
+             **/
+            bool ReadAccount(const std::string& strAccount, CAccount& account);
+
+
+            /** WriteAccount
+             *
+             *  Stores the wallet account data for an address in the database.
+             *
+             *  @param[in] strAccount Nexus address in string form of account to write 
+             *
+             *  @param[in] account The wallet account data
+             *
+             *  @return true if database entry successfully written
+             *
+             **/
+            bool WriteAccount(const std::string& strAccount, const CAccount& account);
+
+
+            /** ReadName
+             *
+             *  Reads a logical name (label) for an address into the database.
+             *
+             *  @param[in] strAddress Nexus address in string form of name to read 
+             *
+             *  @param[out] strName The value of the logical name, or an empty string if address not in database
+             *
+             *  @return true if name is present in the database and read successfully
+             *
+             **/
+            bool ReadName(const std::string& strAddress, std::string& strName);
+
+
+            /** WriteName
+             *
+             *  Stores a logical name (label) for an address in the database.
+             *
+             *  @param[in] strAddress Nexus address in string form of name to write 
+             *
+             *  @param[in] strName Logical name to write
+             *
+             *  @return true if database entry successfully written
+             *
+             **/
             bool WriteName(const std::string& strAddress, const std::string& strName);
 
+
+            /** EraseName
+             *
+             *  Removes the name entry associated with an address.
+             *
+             *  @param[in] strAddress Nexus address in string form of name to erase 
+             *
+             *  @return true if database entry successfully removed 
+             *
+             **/
             bool EraseName(const std::string& strAddress);
 
-            bool ReadTx(uint512_t hash, CWalletTx& wtx)
-            {
-                return Read(std::make_pair(std::string("tx"), hash), wtx);
-            }
 
-            bool WriteTx(uint512_t hash, const CWalletTx& wtx)
-            {
-                nWalletDBUpdated++;
-                return Write(std::make_pair(std::string("tx"), hash), wtx);
-            }
+            /** ReadDefaultKey
+             *
+             *  Reads the default public key from the wallet database.
+             *
+             *  @param[out] vchPubKey The value of the default public key
+             *
+             *  @return true if default key is present in the database and read successfully
+             *
+             **/
+            bool ReadDefaultKey(std::vector<uint8_t>& vchPubKey);
 
-            bool EraseTx(uint512_t hash)
-            {
-                nWalletDBUpdated++;
-                return Erase(std::make_pair(std::string("tx"), hash));
-            }
 
-            bool ReadKey(const std::vector<uint8_t>& vchPubKey, LLC::CPrivKey& vchPrivKey)
-            {
-                vchPrivKey.clear();
-                return Read(std::make_pair(std::string("key"), vchPubKey), vchPrivKey);
-            }
+            /** WriteDefaultKey
+             *
+             *  Stores the default public key to the wallet database.
+             *
+             *  @param[in] vchPubKey The key to write as default public key
+             *
+             *  @return true if database entry successfully written
+             *
+             **/
+            bool WriteDefaultKey(const std::vector<uint8_t>& vchPubKey);
 
-            bool WriteKey(const std::vector<uint8_t>& vchPubKey, const LLC::CPrivKey& vchPrivKey)
-            {
-                nWalletDBUpdated++;
-                return Write(std::make_pair(std::string("key"), vchPubKey), vchPrivKey, false);
-            }
 
-            bool WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret, bool fEraseUnencryptedKey = true)
-            {
-                nWalletDBUpdated++;
-                if (!Write(std::make_pair(std::string("ckey"), vchPubKey), vchCryptedSecret, false))
-                    return false;
-                if (fEraseUnencryptedKey)
-                {
-                    Erase(std::make_pair(std::string("key"), vchPubKey));
-                    Erase(std::make_pair(std::string("wkey"), vchPubKey));
-                }
-                return true;
-            }
+            /** ReadKey
+             *
+             *  Reads the unencrypted private key associated with a public key
+             *
+             *  @param[in] vchPubKey The public key value of the private key to read
+             *
+             *  @param[out] vchPrivKey The value of the private key
+             *
+             *  @return true if unencrypted key is present in the database and read successfully
+             *
+             **/
+            bool ReadKey(const std::vector<uint8_t>& vchPubKey, LLC::CPrivKey& vchPrivKey);
 
-            bool WriteMasterKey(uint32_t nID, const CMasterKey& kMasterKey)
-            {
-                nWalletDBUpdated++;
-                return Write(std::make_pair(std::string("mkey"), nID), kMasterKey, true);
-            }
 
-            bool ReadCScript(const uint256_t &hash, Legacy::Types::CScript& redeemScript)
-            {
-                redeemScript.clear();
-                return Read(std::make_pair(std::string("cscript"), hash), redeemScript);
-            }
+            /** WriteKey
+             *
+             *  Stores an unencrypted private key using the corresponding public key.
+             *
+             *  @param[in] vchPubKey The public key value of the private key to write
+             *
+             *  @param[in] vchPrivKey The value of the private key
+             *
+             *  @return true if database entry successfully written
+             *
+             **/
+            bool WriteKey(const std::vector<uint8_t>& vchPubKey, const LLC::CPrivKey& vchPrivKey);
 
-            bool WriteCScript(const uint256_t& hash, const Legacy::Types::CScript& redeemScript)
-            {
-                nWalletDBUpdated++;
-                return Write(std::make_pair(std::string("cscript"), hash), redeemScript, false);
-            }
 
-            bool WriteBestBlock(const Core::CBlockLocator& locator)
-            {
-                nWalletDBUpdated++;
-                return Write(std::string("bestblock"), locator);
-            }
+            /** WriteCryptedKey
+             *
+             *  Stores an encrypted private key using the corresponding public key. There is no
+             *  complementary read operation for encrypted keys. They are read at startup using
+             *  CWalletDB::LoadWallet
+             *
+             *  @param[in] vchPubKey The public key value of the private key to write
+             *
+             *  @param[in] vchCryptedSecret The encrypted value of the private key
+             *
+             *  @param[in] fEraseUnencryptedKey Set true (default) to remove any unencrypted entries for the same public key
+             *
+             *  @return true if database entry successfully written
+             *
+             **/
+            bool WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret, const bool fEraseUnencryptedKey = true);
 
-            bool ReadBestBlock(Core::CBlockLocator& locator)
-            {
-                return Read(std::string("bestblock"), locator);
-            }
 
-            bool ReadDefaultKey(std::vector<uint8_t>& vchPubKey)
-            {
-                vchPubKey.clear();
-                return Read(std::string("defaultkey"), vchPubKey);
-            }
+            /** ReadTx
+             *
+             *  Reads the wallet transaction for a given transaction hash.
+             *
+             *  @param[in] hash The transaction hash of the wallet transaction to retrieve
+             *
+             *  @param[out] wtx The retrieved wallet transaction
+             *
+             *  @return true if the transaction is present in the database and read successfully
+             *
+             **/
+            bool ReadTx(const uint512_t hash, CWalletTx& wtx);
 
-            bool WriteDefaultKey(const std::vector<uint8_t>& vchPubKey)
-            {
-                nWalletDBUpdated++;
-                return Write(std::string("defaultkey"), vchPubKey);
-            }
 
-            bool ReadPool(int64_t nPool, CKeyPool& keypool)
-            {
-                return Read(std::make_pair(std::string("pool"), nPool), keypool);
-            }
+            /** WriteTx
+             *
+             *  Stores a wallet transaction using its transaction hash.
+             *
+             *  @param[in] hash The transaction hash of the wallet transaction to store
+             *
+             *  @param[in] wtx The wallet transaction to store
+             *
+             *  @return true if database entry successfully written
+             *
+             **/
+            bool WriteTx(const uint512_t hash, const CWalletTx& wtx);
 
-            bool WritePool(int64_t nPool, const CKeyPool& keypool)
-            {
-                nWalletDBUpdated++;
-                return Write(std::make_pair(std::string("pool"), nPool), keypool);
-            }
 
-            bool ErasePool(int64_t nPool)
-            {
-                nWalletDBUpdated++;
-                return Erase(std::make_pair(std::string("pool"), nPool));
-            }
+            /** EraseTx
+             *
+             *  Removes the wallet transaction associated with a transaction hash.
+             *
+             *  @param[in] hash The transaction has of the wallet transaction to remove
+             *
+             *  @return true if database entry successfully removed
+             *
+             **/
+            bool EraseTx(const uint512_t hash);
 
-            // Settings are no longer stored in wallet.dat; these are
-            // used only for backwards compatibility:
-            template<typename T>
-            bool ReadSetting(const std::string& strKey, T& value)
-            {
-                return Read(std::make_pair(std::string("setting"), strKey), value);
-            }
-            template<typename T>
-            bool WriteSetting(const std::string& strKey, const T& value)
-            {
-                nWalletDBUpdated++;
-                return Write(std::make_pair(std::string("setting"), strKey), value);
-            }
-            bool EraseSetting(const std::string& strKey)
-            {
-                nWalletDBUpdated++;
-                return Erase(std::make_pair(std::string("setting"), strKey));
-            }
 
-            bool WriteMinVersion(int nVersion)
-            {
-                return Write(std::string("minversion"), nVersion);
-            }
+            /** ReadCScript
+             *
+             *  Reads the script for a given script hash.
+             *
+             *  @param[in] hash The script hash of the script to retrieve
+             *
+             *  @param[out] redeemScript The retrieved script
+             *
+             *  @return true if the script is present in the database and read successfully
+             *
+             **/
+            bool ReadCScript(const uint256_t &hash, Legacy::Types::CScript& redeemScript);
 
-            bool ReadAccount(const std::string& strAccount, CAccount& account);
-            bool WriteAccount(const std::string& strAccount, const CAccount& account);
+
+            /** WriteCScript
+             *
+             *  Stores a redeem script using its script hash.
+             *
+             *  @param[in] hash The script hash of the script to store
+             *
+             *  @param[in] redeemScript The script to store
+             *
+             *  @return true if database entry successfully written
+             *
+             **/
+            bool WriteCScript(const uint256_t& hash, const Legacy::Types::CScript& redeemScript);
+
+
+            /** ReadBestBlock
+             *
+             *  Reads the stored CBlockLocator of the last recorded best block.
+             *
+             *  @param[out] locator Block locator of the best block as recorded in wallet database
+             *
+             *  @return true if best block entry present in database and successfully read
+             *
+             **/
+            bool ReadBestBlock(Core::CBlockLocator& locator);
+
+
+            /** WriteBestBlock
+             *
+             *  Stores a CBlockLocator to record current best block.
+             *
+             *  @param[in] locator The block locator to store
+             *
+             *  @param[out] wtx The retrieved wallet transaction
+             *
+             *  @return true if database entry successfully written
+             *
+             **/
+            bool WriteBestBlock(const Core::CBlockLocator& locator);
+
+
+            /** ReadPool
+             *
+             *  Reads a key pool entry from the database.
+             *
+             *  @param[in] nPool The ID value associated with the key pool entry
+             *
+             *  @param[out] keypool The retrieved key pool entry
+             *
+             *  @return true if the key pool entry is present in the database and read successfully
+             *
+             **/
+            bool ReadPool(const int64_t nPool, CKeyPool& keypool);
+
+
+            /** WritePool
+             *
+             *  Stores a key pool entry using its pool entry number (ID value).
+             *
+             *  @param[in] nPool The ID value associated with the key pool entry
+             *
+             *  @param[in] keypool The key pool entry to store
+             *
+             *  @return true if database entry successfully written
+             *
+             **/
+            bool WritePool(const int64_t nPool, const CKeyPool& keypool);
+
+
+            /** ErasePool
+             *
+             *  Removes a key pool entry associated with a pool entry number.
+             *
+             *  @param[in] nPool The ID value associated with the key pool entry
+             *
+             *  @return true if database entry successfully removed
+             *
+             **/
+            bool ErasePool(const int64_t nPool);
+
+
+            /** WriteAccountingEntry
+             *
+             *  Stores an accounting entry in the wallet database.
+             *
+             *  @param[in] acentry The accounting entry to store
+             *
+             *  @return true if database entry successfully written
+             *
+             **/
             bool WriteAccountingEntry(const CAccountingEntry& acentry);
+
+
+            /** GetAccountCreditDebit
+             *
+             *  Retrieves the net total of all accounting entries for an account (Nexus address).
+             *
+             *  This method calls ListAccountCreditDebit() so passing * for the account will
+             *  retrieve the net total of all accounting entries in the database, but because all
+             *  entries should be created as credit/debit pairs this net total should always be zero
+             *  and isn't of much use.
+             *
+             *  @param[in] strAccount Nexus address in string form of accounting entries to read
+             *
+             *  @return net credit or debit of all accounting entries for the provided account
+             *
+             **/
             int64_t GetAccountCreditDebit(const std::string& strAccount);
+
+
+            /** ListAccountCreditDebit
+             *
+             *  Retrieves a list of individual accounting entries for an account (Nexus address)
+             *
+             *  @param[in] strAccount Nexus address in string form of accounting entries to read, * lists entries for all accounts
+             *
+             *  @param[out] acentries Accounting entries for the given account will be appended to this list
+             *
+             **/
             void ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& acentries);
 
-            int LoadWallet(CWallet* pwallet);
+
+            /** LoadWallet
+             *
+             *  Initializes a wallet instance from the data in this wallet database.
+             *
+             *  @param[in] pwallet The wallet instance to initialize
+             *
+             *  @return Value from Legacy::Wallet::DBErrors, DB_LOAD_OK on success
+             *
+             **/
+            int LoadWallet(std::shared_ptr<CWallet> pwallet);
         };
+
+
+        /** @fn ThreadFlushWalletDB
+         *
+         *  Function that loops until shutdown and periodically flushes the wallet db
+         *  to disk as needed to ensure all data updates are properly persisted. Execute
+         *  this function in a separate thread to run in the background and handle wallet flush.
+         *
+         *  The actual flush is only performed after any open database handle on the wallet database
+         *  file is closed by calling CloseDb()
+         *
+         *  This operation can be disabled by setting the startup option -flushwallet to false
+         *
+         **/
+        void ThreadFlushWalletDB();
+
+
+        /** @fn ThreadFlushWalletDB
+         *
+         *  @deprecated
+         *  Old form of function to run in wallet flush thread. No longer used becasue
+         *  all wallets use CWalletDB::WALLET_DB as the wallet file name. Included
+         *  for backward compatability
+         *
+         *  This function calls ThreadFlushWalletDB()
+         *
+         **/
+        void ThreadFlushWalletDB(const std::string strWalletFile);
+
+
+        /** @fn BackupWallet
+         *
+         *  Writes a backup copy of a wallet to a designated backup file
+         *
+         *  @param[in] wallet Wallet to back up
+         *
+         *  @param[in] strDest String containing wallet backup file name or directory
+         *                     If a directory, it must exist and same file name as wallet is used
+         *
+         *  @return true if backup file successfully written
+         *
+         **/
+        bool BackupWallet(const CWallet& wallet, const std::string& strDest);
 
     }
 }

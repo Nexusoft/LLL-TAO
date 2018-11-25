@@ -11,16 +11,12 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/LLD/include/version.h>
-
 #include <TAO/Legacy/wallet/db.h>
 
+#include <LLD/include/version.h>
+
 #include <Util/include/filesystem.h>
-
-
-/* What is used from these??? need to update include or update code and remove */
-#include <boost/version.hpp>
-#include "../LLD/index.h"
+#include <Util/templates/serialize.h>
 
 #ifndef WIN32
 #include "sys/stat.h"
@@ -57,7 +53,7 @@ namespace Legacy
                 return;
 
             { //Begin lock scope
-                LOCK(CDB::cs_db);  //Need to lock before test fDbEnvInit
+                std::lock_guard<std::mutex> dbLock(CDB::cs_db); //Need to lock before test fDbEnvIniti
 
                 if (!CDB::fDbEnvInit)
                 {
@@ -102,13 +98,19 @@ namespace Legacy
                                         DB_THREAD     |
                                         DB_RECOVER;
 
-                    /* Mode specifies permission settings for all Berkeley-created files on UNIX systems, ignored on Windows
-                     * S_IRUSR - Readable by owner
-                     * S_IWUSR - Writable by owner
+                    /* Mode specifies permission settings for all Berkeley-created files on UNIX systems
+                     * as defined in the system file sys/stat.h
+                     *
+                     *   S_IRUSR - Readable by owner
+                     *   S_IWUSR - Writable by owner
                      *
                      * This setting overrides default of readable/writable by both owner and group
                      */
+#ifndef WIN32
                     int dbMode = S_IRUSR | S_IWUSR;
+#else
+                    int dbMode = 0;
+#endif
 
                     //Open the Berkely DB environment
                     ret = CDB::dbenv.open(pathDataDir.c_str(), dbFlags, dbMode);
@@ -530,7 +532,7 @@ namespace Legacy
             CDB::dbenv.txn_checkpoint(nMinutes ? GetArg("-dblogsize", 100)*1024 : 0, nMinutes, 0);
 
             {
-                LOCK(CDB::cs_db);
+                std::lock_guard<std::mutex> dbLock(CDB::cs_db); 
                 --CDB::mapFileUseCount[strFile];
             }
 
@@ -544,7 +546,8 @@ namespace Legacy
         void CDB::CloseDb(const std::string& strFile)
         {
             {
-                LOCK(CDB::cs_db);
+                std::lock_guard<std::mutex> dbLock(CDB::cs_db); 
+
                 if (CDB::mapDb.count(strFile) > 0)
                 {
                     // Close the database handle
@@ -567,7 +570,7 @@ namespace Legacy
                 return;
 
             {
-                LOCK(CDB::cs_db);
+                std::lock_guard<std::mutex> dbLock(CDB::cs_db); 
 
                 for (auto mi = CDB::mapFileUseCount.cbegin(); mi != CDB::mapFileUseCount.cend(); /*no increment */)
                 {
@@ -616,7 +619,7 @@ namespace Legacy
             if (!fShutdown)
             {
                 { // Begin lock scope
-                    LOCK(CDB::cs_db);
+                    std::lock_guard<std::mutex> dbLock(CDB::cs_db); 
 
                     if (CDB::mapFileUseCount.count(strFile) == 0 || CDB::mapFileUseCount[strFile] == 0)
                     {
@@ -683,7 +686,7 @@ namespace Legacy
                                     {
                                         // Update version:
                                         ssValue.clear();
-                                        ssValue << DATABASE_VERSION;
+                                        ssValue << LLD::DATABASE_VERSION;
                                     }
 
                                     Dbt datKey(&ssKey[0], ssKey.size());

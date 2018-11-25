@@ -14,17 +14,13 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_DB_H
 #define NEXUS_LEGACY_WALLET_DB_H
 
+#include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
 #include <db_cxx.h> /* Berkeley DB header */
-
-#include <LLC/types/uint1024.h>
-
-#include <LLD/include/version.h>
-
-#include <Util/templates/serialize.h>
 
 
 namespace Legacy 
@@ -35,7 +31,7 @@ namespace Legacy
 
         extern bool fDetachDB;
 
-        /** CDB
+        /** @class CDB
          *  
          *  Provides support for accessing Berkeley databases
          *
@@ -45,7 +41,7 @@ namespace Legacy
         protected:
             /** Mutex for thread concurrency. 
              *  
-             *  Used to manage concurrency for altering CDB static values.
+             *  Used to manage concurrency across CDB databases.
              */
             static std::recursive_mutex cs_db;
 
@@ -124,7 +120,7 @@ namespace Legacy
              *  Calls Close() on the database
              *
              **/
-            ~CDB();
+            virtual ~CDB();
 
 
             /** Read
@@ -134,6 +130,7 @@ namespace Legacy
              *  @param[in] key The key entry of the value to read
              *
              *  @param[out] value The resulting value read from the database
+             *                    Can read object data that is serialized into database and supports >> operator for extraction
              *
              *  @return true if the key exists and the value was successfully read
              *
@@ -153,7 +150,8 @@ namespace Legacy
              *
              *  @param[in] key The key entry to write
              *
-             *  @param[in] value The value to write for the provided key value
+             *  @param[in] value The value to write for the provided key value. 
+             *                   Can write any value/object that is serializable
              *
              *  @param[in] fOverwrite If true (default), overwrites value for given key if it already exists 
              *
@@ -337,20 +335,22 @@ namespace Legacy
              *  Aborts any open transactions, flushes memory to log file, sets pdb to nullptr,
              *  and sets strFile to an empty string. At this point, the CDB instance can be safely destroyed.
              *
-             *  This decrements CDB::mapFileUseCount but does not close the database handle.
-             *  That will remain open until a call to CloseDb() during DBFlush() or shutdown.
-             *  Until then, any new instances created for the same data file will re-use the open handle.
+             *  This decrements CDB::mapFileUseCount but does not close the database handle,
+             *  which remains stored in CDB::mapDb. The handle will remain open until a call to CloseDb() 
+             *  during DBFlush() or shutdown.  Until then, any new instances created for the same data file 
+             *  will re-use the open handle.
              *
              **/
             void Close();
 
 
-            /** CloseDb
+            /** @fn CloseDb
              *
              *  Closes down the open database handle for a database and removes it from CDB::mapDb
              *
              *  Should only be called when CDB::mapFileUseCount is 0 (after Close() called on any in-use
-             *  instances) or the pdb copy in active instances becomes invalid and results are undefined.
+             *  instances) or the pdb copy in active instances will become invalid and results of continued 
+             *  use are undefined.
              *
              *  @param[in] strFile Database to close 
              *
@@ -358,7 +358,7 @@ namespace Legacy
             static void CloseDb(const std::string& strFile);
 
 
-            /** DBFlush
+            /** @fn DBFlush
              *
              *  Flushes log file to data file for any database handles with CDB::mapFileUseCount = 0
              *  then calls CloseDb on that database.
@@ -369,7 +369,7 @@ namespace Legacy
             static void DBFlush(bool fShutdown);
 
 
-            /** Rewrite
+            /** @fn Rewrite
              *
              *  Rewrites a database file by copying all contents to an new file, then 
              *  replacing the old file with the new one. Does nothing if 
@@ -385,7 +385,7 @@ namespace Legacy
             static bool DBRewrite(const std::string& strFile, const char* pszSkip = nullptr);
 
 
-            /** EnvShutdown
+            /** @fn EnvShutdown
              *
              *  Called to shut down the Berkeley database environment in CDB:dbenv
              *

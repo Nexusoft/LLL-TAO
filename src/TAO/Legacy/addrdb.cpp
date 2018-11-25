@@ -11,65 +11,65 @@
 
 ____________________________________________________________________________________________*/
 
-#include "db.h"
-#include "../util/util.h"
-#include "../core/core.h"
-#include <boost/version.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
+#include <memory>
+#include <string>
+#include <vector>
 
-#include "../LLD/index.h"
+#include <db_cxx.h> /* Berkeley DB header */
 
-#ifndef WIN32
-#include "sys/stat.h"
-#endif
+#include <LLD/include/version.h>
 
-using namespace std;
-using namespace boost;
+#include <LLP/include/network.h>
+
+#include <TAO/Legacy/net/addrman.h>
+#include <TAO/Legacy/wallet/addrdb.h>
+
+#include <Util/include/serialize.h>
 
 
 namespace Legacy
 {
-    //
-    // CAddrDB
-    //
-
+    /* WriteAddrman */
     bool CAddrDB::WriteAddrman(const Legacy::Net::CAddrMan& addrman)
     {
-        return Write(string("addrman"), addrman);
+        return Write(std::string("addrman"), addrman);
     }
 
+
+    /* LoadAddresses */
     bool CAddrDB::LoadAddresses()
     {
-        if (Read(string("addrman"), Net::addrman))
+        if (Read(std::string("addrman"), Legacy::Net::addrman))
         {
-            printf("Loaded %i addresses\n", Net::addrman.size());
+            printf("Loaded %i addresses\n", Legacy::Net::addrman.size());
             return true;
         }
 
         // Read pre-0.6 addr records
 
-        vector<Net::CAddress> vAddr;
-        vector<vector<uint8_t> > vDelete;
+        std:vector<Net::CAddress> vAddr;
 
         // Get cursor
-        Dbc* pcursor = GetCursor();
-        if (!pcursor)
+        std::shared_ptr<Dbc> pcursor = GetCursor();
+        if (pcursor == nullptr)
             return false;
 
         loop() {
             // Read next record
-            CDataStream ssKey(SER_DISK, DATABASE_VERSION);
-            CDataStream ssValue(SER_DISK, DATABASE_VERSION);
+            CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
+            CDataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
+
             int ret = ReadAtCursor(pcursor, ssKey, ssValue);
+
             if (ret == DB_NOTFOUND)
                 break;
             else if (ret != 0)
                 return false;
 
             // Unserialize
-            string strType;
+            std::string strType;
             ssKey >> strType;
+
             if (strType == "addr")
             {
                 Net::CAddress addr;
@@ -77,10 +77,11 @@ namespace Legacy
                 vAddr.push_back(addr);
             }
         }
+
         pcursor->close();
 
-        Net::addrman.Add(vAddr, Net::CNetAddr("0.0.0.0"));
-        printf("Loaded %i addresses\n", Net::addrman.size());
+        Legacy::Net::addrman.Add(vAddr, Net::CNetAddr("0.0.0.0"));
+        printf("Loaded %i addresses\n", Legacy::Net::addrman.size());
 
         // Note: old records left; we ran into hangs-on-startup
         // bugs for some users who (we think) were running after
@@ -89,6 +90,8 @@ namespace Legacy
         return true;
     }
 
+
+    /* LoadAddresses - function */
     bool LoadAddresses()
     {
         return CAddrDB("cr+").LoadAddresses();
