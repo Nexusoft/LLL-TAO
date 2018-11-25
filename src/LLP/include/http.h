@@ -173,10 +173,11 @@ namespace LLP
                     /* Handle normal headers. */
                     else if(pos != std::string::npos)
                     {
-                         //TODO: check for spaces here.
+                        /* Parse out the content length field. */
                         if(strLine.substr(0, pos) == "content-length")
                             INCOMING.nContentLength = stoi(strLine.substr(pos + 2));
 
+                        /* Add line to the headers map. */
                         INCOMING.mapHeaders[strLine.substr(0, pos)] = strLine.substr(pos + 2);
                     }
 

@@ -41,14 +41,14 @@ namespace TAO
             /* Build the HTTP Header. */
             std::string strContent = parameters.dump();
             std::string strReply = strprintf(
-                    "POST /api/%s/%s HTTP/1.1\r\n"
+                    "POST /%s/%s HTTP/1.1\r\n"
                     "Date: %s\r\n"
                     "Connection: close\r\n"
                     "Content-Length: %d\r\n"
                     "Content-Type: application/json\r\n"
                     "Server: Nexus-JSON-API\r\n"
                     "\r\n"
-                    "%s\r\n",
+                    "%s",
                 argv[argn], argv[argn + 1],
                 rfc1123Time().c_str(),
                 strContent.size(),

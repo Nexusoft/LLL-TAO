@@ -29,7 +29,14 @@ namespace TAO
         /** Main message handler once a packet is recieved. **/
         bool Core::ProcessPacket()
         {
-            //printf("Received HTTP Request: %s::%s\n", INCOMING.strRequest.c_str(), INCOMING.strContent.c_str());
+            /* Parse the packet request. */
+            std::string::size_type npos = INCOMING.strRequest.find('/', 1);
+
+            /* Extract the API requested. */
+            std::string API = INCOMING.strRequest.substr(1, npos - 1);
+
+            /* Extract the method to invoke. */
+            std::string METHOD = INCOMING.strRequest.substr(npos + 1);
 
             PushResponse(200, "CONTENT:::" + INCOMING.strContent + "\n\nThis would be test content!");
 

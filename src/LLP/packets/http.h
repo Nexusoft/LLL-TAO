@@ -124,7 +124,7 @@ namespace LLP
             }
         }
 
-        /* Serializes class into a Byte Vector. Used to write Packet to Sockets. */
+        /* Serializes class into a byte buffer. Used to write Packet to Sockets. */
         std::vector<uint8_t> GetBytes()
         {
             //TODO: use constant format (not ...) -> ostringstream
