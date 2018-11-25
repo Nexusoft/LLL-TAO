@@ -59,9 +59,13 @@ namespace filesystem
     {
         try 
         {
+            // dest must be file, not an existing directory
+            if (exists(pathDest) && is_directory(pathDest))
+                return false;
+
             // If destination file exists, remove it (ie, we overwrite the file)
-            if (filesystem::exists(pathDest))
-                filesystem::remove(pathDest);
+            if (exists(pathDest))
+                remove(pathDest);
 
             ifstream sourceFile(pathSource, ios::binary);
             sourceFile.exceptions(ios::badbit);
@@ -77,7 +81,7 @@ namespace filesystem
 #ifndef WIN32
             // Set destination file permissions (read/write by owner only for data files)
             mode_t m = S_IRUSR | S_IWUSR;
-            chmod(destFile, m);
+            chmod(pathDest, m);
 #endif
 
         } 
