@@ -75,12 +75,12 @@ if ($status != 1) then
   #
   # Start LISP quietly.
   #
-  /lispers.net/RESTART-LISP 8080 eth0 > /dev/null
+  /lispers.net/RESTART-LISP -9090 eth0 > /dev/null
 else
   echo "Provisioning lisp.config file already performed"
 
   #
   # Start LISP.
   #
-  /lispers.net/RESTART-LISP 8080 eth0
+  /lispers.net/RESTART-LISP -9090 eth0
 endif

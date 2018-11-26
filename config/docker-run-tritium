@@ -12,6 +12,7 @@
 # Note the port number allocated to get to the lispers.net webpage interface
 # can be found in the PORTS column of "docker ps".
 #
+#
 HOSTNAME=`hostname | cut -d "." -f 1`
 RAND=`python -c "import random as r; print hex(r.randint(0, 0xffffffff))[2::]"`
 NAME="nexus-$HOSTNAME-$RAND"
@@ -30,7 +31,7 @@ fi
 #
 # Create container.
 #
-docker create -p $PORT:8080 --privileged --name $NAME -h $NAME \
+docker create -p $PORT:9090 --privileged --name $NAME -h $NAME \
        -ti tritium > /dev/null
 
 #

@@ -31,7 +31,7 @@ ENV LISP_URL https://www.dropbox.com/s/e87heamhl9t5asz/lisp-nexus.tgz
 #
 RUN apt-get update && apt-get -yq install \
     gcc libc-dev python python-dev libffi-dev openssl libpcap-dev \
-    curl iptables iproute2 tcpdump tcsh sudo traceroute iputils-ping \
+    curl wget iptables iproute2 tcpdump tcsh sudo traceroute iputils-ping \
     net-tools procps emacs jq
 
 #
