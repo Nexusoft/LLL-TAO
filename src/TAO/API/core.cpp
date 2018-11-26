@@ -13,11 +13,15 @@ ________________________________________________________________________________
 
 
 #include <TAO/API/include/core.h>
+#include <TAO/API/types/music.h>
+
+#include <Util/include/json.h>
 
 namespace TAO
 {
     namespace API
     {
+
         /* Custom Events for Core API */
         void Core::Event(uint8_t EVENT, uint32_t LENGTH)
         {
@@ -37,6 +41,20 @@ namespace TAO
 
             /* Extract the method to invoke. */
             std::string METHOD = INCOMING.strRequest.substr(npos + 1);
+
+
+            nlohmann::json ret;
+
+            nlohmann::json parameters;// = nlohmann::json::parse(INCOMING.strContent);
+            if(Music::mapFunctions.count("testfunc"))
+            {
+                ret = Music::mapFunctions["testfunc"](false, parameters);
+            }
+            else
+            {
+                ret = { {"result", ""}, {"errors","method not found"} };
+            }
+
 
             PushResponse(200, "CONTENT:::" + INCOMING.strContent + "\n\nThis would be test content!");
 
