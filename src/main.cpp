@@ -26,6 +26,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/core.h>
 #include <LLP/templates/server.h>
 
+#include <TAO/API/types/music.h>
+
 
 int main(int argc, char** argv)
 {
@@ -61,6 +63,8 @@ int main(int argc, char** argv)
     LLD::legDB = new LLD::LedgerDB("r+");
     LLD::locDB = new LLD::LocalDB("r+");
 
+    /* Initialize the API's. */
+    TAO::API::Music::Initialize();
 
     LLP::Server<TAO::API::Core>* CORE_SERVER = new LLP::Server<TAO::API::Core>(8080, 10, 30, false, 0, 0, 60, true, false);
     while(!fShutdown)

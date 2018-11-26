@@ -189,6 +189,8 @@ namespace LLP
         /* Lower level network communications: Write. Interacts with OS sockets. */
         void Write(std::vector<uint8_t> DATA)
         {
+            TIMER.Reset();
+            
             SOCKET.Write(DATA, DATA.size());
         }
 

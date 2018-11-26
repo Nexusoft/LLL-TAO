@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_HTTP_H
 #define NEXUS_LLP_INCLUDE_HTTP_H
 
+#include <algorithm>
+
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
 #include <LLP/packets/http.h>

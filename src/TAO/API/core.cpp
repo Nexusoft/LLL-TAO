@@ -18,6 +18,9 @@ namespace TAO
 {
     namespace API
     {
+
+        std::map<std::string, std::map<std::string, std::function<nlohmann::json(bool, nlohmann::json)> > > mapFunctions;
+
         /* Custom Events for Core API */
         void Core::Event(uint8_t EVENT, uint32_t LENGTH)
         {
@@ -38,7 +41,29 @@ namespace TAO
             /* Extract the method to invoke. */
             std::string METHOD = INCOMING.strRequest.substr(npos + 1);
 
-            PushResponse(200, "CONTENT:::" + INCOMING.strContent + "\n\nThis would be test content!");
+
+            nlohmann::json ret;
+
+            nlohmann::json parameters;// = nlohmann::json::parse(INCOMING.strContent);
+            if(mapFunctions.count(API))
+            {
+
+                if(mapFunctions[API].count(METHOD))
+                {
+                    ret = mapFunctions[API][METHOD](false, parameters); //TODO: add help support as param[0]
+                }
+                else
+                {
+                    ret = { {"result", ""}, {"errors","method not found"} };
+                }
+            }
+            else
+            {
+                ret = { {"result", ""}, {"errors","API not found"} };
+            }
+
+
+            PushResponse(200, ret.dump(4));
 
             /* Handle a connection close header. */
             if(INCOMING.mapHeaders.count("connection") && INCOMING.mapHeaders["connection"] == "close")

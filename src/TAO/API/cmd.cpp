@@ -13,9 +13,11 @@ ________________________________________________________________________________
 
 
 #include <TAO/API/include/core.h>
+#include <TAO/API/include/cmd.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
+
 #include <Util/include/json.h>
 
 namespace TAO
@@ -72,6 +74,32 @@ namespace TAO
             /* Read the response packet. */
             while(!apiNode.INCOMING.Complete())
             {
+
+                /* Catch if the connection was closed. */
+                if(!apiNode.Connected())
+                {
+                    printf("Connection Terminated\n");
+
+                    return 0;
+                }
+
+                /* Catch if the socket experienced errors. */
+                if(apiNode.Errors())
+                {
+                    printf("Socket Error\n");
+
+                    return 0;
+                }
+
+                /* Catch if the connection timed out. */
+                if(apiNode.Timeout(30))
+                {
+                    printf("Socket Timeout\n");
+
+                    return 0;
+                }
+
+                /* Read the response packet. */
                 apiNode.ReadPacket();
                 Sleep(10);
             }
