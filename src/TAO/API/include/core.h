@@ -16,10 +16,18 @@ ________________________________________________________________________________
 
 #include <LLP/include/http.h>
 
+#include <functional>
+
+#include <Util/include/json.h>
+
 namespace TAO
 {
     namespace API
     {
+
+        /* The core function objects for API's. */
+        extern std::map<std::string, std::map<std::string, std::function<nlohmann::json(bool, nlohmann::json)> > > mapFunctions;
+
 
         /** Core API
          *

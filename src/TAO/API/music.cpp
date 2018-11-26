@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/music.h>
+#include <TAO/API/include/core.h>
 
 namespace TAO
 {
@@ -19,8 +20,6 @@ namespace TAO
     {
         namespace Music
         {
-            std::map<std::string, std::function<nlohmann::json(bool, nlohmann::json)> > mapFunctions;
-
             nlohmann::json TestFunc(bool fHelp, nlohmann::json parameters)
             {
                 printf("Test Function!\n");
@@ -33,7 +32,7 @@ namespace TAO
 
             void Initialize()
             {
-                mapFunctions["testfunc"] = TestFunc;
+                mapFunctions["music"]["testfunc"] = TestFunc;
             }
         }
     }

@@ -14,21 +14,13 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_API_TYPES_MUSIC_H
 #define NEXUS_TAO_API_TYPES_MUSIC_H
 
-#include <functional>
-
-#include <Util/include/json.h>
-
 namespace TAO
 {
     namespace API
     {
         namespace Music
         {
-            extern std::map<std::string, std::function<nlohmann::json(bool, nlohmann::json)> > mapFunctions;
-
-            void Initialize();
-
-            nlohmann::json TestFunc(bool fHelp, nlohmann::json parameters);
+            void Initialize(); //this is just a registry function. can be moved to better global API declaratinos
         }
     }
 }

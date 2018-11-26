@@ -13,14 +13,13 @@ ________________________________________________________________________________
 
 
 #include <TAO/API/include/core.h>
-#include <TAO/API/types/music.h>
-
-#include <Util/include/json.h>
 
 namespace TAO
 {
     namespace API
     {
+
+        std::map<std::string, std::map<std::string, std::function<nlohmann::json(bool, nlohmann::json)> > > mapFunctions;
 
         /* Custom Events for Core API */
         void Core::Event(uint8_t EVENT, uint32_t LENGTH)
@@ -46,17 +45,25 @@ namespace TAO
             nlohmann::json ret;
 
             nlohmann::json parameters;// = nlohmann::json::parse(INCOMING.strContent);
-            if(Music::mapFunctions.count("testfunc"))
+            if(mapFunctions.count(API))
             {
-                ret = Music::mapFunctions["testfunc"](false, parameters);
+
+                if(mapFunctions[API].count(METHOD))
+                {
+                    ret = mapFunctions[API][METHOD](false, parameters); //TODO: add help support as param[0]
+                }
+                else
+                {
+                    ret = { {"result", ""}, {"errors","method not found"} };
+                }
             }
             else
             {
-                ret = { {"result", ""}, {"errors","method not found"} };
+                ret = { {"result", ""}, {"errors","API not found"} };
             }
 
 
-            PushResponse(200, "CONTENT:::" + INCOMING.strContent + "\n\nThis would be test content!");
+            PushResponse(200, ret.dump(4));
 
             /* Handle a connection close header. */
             if(INCOMING.mapHeaders.count("connection") && INCOMING.mapHeaders["connection"] == "close")
