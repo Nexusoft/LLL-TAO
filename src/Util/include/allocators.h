@@ -27,10 +27,11 @@ ________________________________________________________________________________
 #define NOMINMAX
 #endif
 #include <windows.h>
-// This is used to attempt to keep keying material out of swap
-// Note that VirtualLock does not provide this as a guarantee on Windows,
-// but, in practice, memory that has been VirtualLock'd almost never gets written to
-// the pagefile except in rare circumstances where memory is extremely low.
+/** This is used to attempt to keep keying material out of swap
+ *  Note that VirtualLock does not provide this as a guarantee on Windows,
+ *  but, in practice, memory that has been VirtualLock'd almost never gets written to
+ *  the pagefile except in rare circumstances where memory is extremely low.
+ **/
 #define mlock(p, n) VirtualLock((p), (n));
 #define munlock(p, n) VirtualUnlock((p), (n));
 #else
@@ -49,14 +50,16 @@ munlock(((void *)(((size_t)(a)) & (~((PAGESIZE)-1)))),\
 (((((size_t)(a)) + (b) - 1) | ((PAGESIZE) - 1)) + 1) - (((size_t)(a)) & (~((PAGESIZE) - 1))))
 #endif
 
-//
-// Allocator that locks its contents from being paged
-// out of memory and clears its contents before deletion.
-//
+/**
+ *
+ * Allocator that locks its contents from being paged
+ * out of memory and clears its contents before deletion.
+ *
+ **/
 template<typename T>
 struct secure_allocator : public std::allocator<T>
 {
-    // MSVC8 default copy constructor is broken
+    /* MSVC8 default copy constructor is broken */
     typedef std::allocator<T> base;
     typedef typename base::size_type size_type;
     typedef typename base::difference_type  difference_type;
@@ -73,6 +76,11 @@ struct secure_allocator : public std::allocator<T>
     template<typename _Other> struct rebind
     { typedef secure_allocator<_Other> other; };
 
+    /** allocate
+     *
+     *  allocates n elements of type T
+     *
+     **/
     T* allocate(std::size_t n, const void *hint = 0)
     {
         T *p;
@@ -82,6 +90,12 @@ struct secure_allocator : public std::allocator<T>
         return p;
     }
 
+
+    /** deallocate
+     *
+     *  frees n elements of type T from pointer p. clears contents before deletion
+     *
+     **/
     void deallocate(T* p, std::size_t n)
     {
         if (p != NULL)
@@ -94,13 +108,15 @@ struct secure_allocator : public std::allocator<T>
 };
 
 
-//
-// Allocator that clears its contents before deletion.
-//
+/**
+ *
+ * Allocator that clears its contents before deletion.
+ *
+ **/
 template<typename T>
 struct zero_after_free_allocator : public std::allocator<T>
 {
-    // MSVC8 default copy constructor is broken
+    /* MSVC8 default copy constructor is broken */
     typedef std::allocator<T> base;
     typedef typename base::size_type size_type;
     typedef typename base::difference_type  difference_type;
@@ -117,6 +133,11 @@ struct zero_after_free_allocator : public std::allocator<T>
     template<typename _Other> struct rebind
     { typedef zero_after_free_allocator<_Other> other; };
 
+    /** deallocate
+     *
+     *  frees n elements of type T from pointer p. clears contents before deletion
+     *
+     **/
     void deallocate(T* p, std::size_t n)
     {
         if (p != NULL)
@@ -125,7 +146,7 @@ struct zero_after_free_allocator : public std::allocator<T>
     }
 };
 
-// This is exactly like std::string, but with a custom allocator.
+/* This is exactly like std::string, but with a custom allocator. */
 typedef std::basic_string<char, std::char_traits<char>, secure_allocator<char> > SecureString;
 
 #endif

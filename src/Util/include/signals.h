@@ -17,18 +17,29 @@ ________________________________________________________________________________
 #include <signal.h>
 #include <Util/include/args.h>
 
-/* Catch Signal Handler function */
+
+/** HandleSIGTERM
+ *
+ *  Catch Signal Handler function
+ *
+ *  @param[in] signum the signal number
+ *
+ **/
 void HandleSIGTERM(int signum)
 {
     if(signum != SIGPIPE)
     {
         printf("Shutting Down %d\n", signum);
-        fShutdown = true;
+        config::fShutdown = true;
     }
 }
 
 
-/* Setup the signal handlers. */
+/** SetupSignals
+ *
+ *  Setup the signal handlers.
+ *
+ **/
 void SetupSignals()
 {
     /* Handle all the signals with signal handler method. */

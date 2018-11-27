@@ -146,6 +146,7 @@ OBJS= \
 	build/music.o \
 	build/args.o \
 	build/base58.o \
+	build/base64.o \
 	build/config.o \
 	build/debug.o \
     build/filesystem.o

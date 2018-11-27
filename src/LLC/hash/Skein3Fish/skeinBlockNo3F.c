@@ -1,7 +1,7 @@
 
 #include <cstring>
 #include <skein.h>
-#include <threefishApi.h>
+#include <LLC/hash/Skein3Fish/include/threefishApi.h>
 
 
 /*****************************  Skein_256 ******************************/
@@ -29,7 +29,7 @@ void Skein_256_Process_Block(Skein_256_Ctxt_t *ctx, const u08b_t *blkPtr,
             carry += words[i];
             words[i] = carry;
             carry >>= 32;
-        }        
+        }
         tweak[0] = words[0] & 0xffffffffL;
         tweak[0] |= (words[1] & 0xffffffffL) << 32;
         tweak[1] |= words[2] & 0xffffffffL;
@@ -79,7 +79,7 @@ void Skein_512_Process_Block(Skein_512_Ctxt_t *ctx, const u08b_t *blkPtr,
             carry += words[i];
             words[i] = carry;
             carry >>= 32;
-        }        
+        }
         tweak[0] = words[0] & 0xffffffffL;
         tweak[0] |= (words[1] & 0xffffffffL) << 32;
         tweak[1] |= words[2] & 0xffffffffL;
@@ -133,7 +133,7 @@ void Skein1024_Process_Block(Skein1024_Ctxt_t *ctx, const u08b_t *blkPtr,
             carry += words[i];
             words[i] = carry;
             carry >>= 32;
-        }        
+        }
         tweak[0] = words[0] & 0xffffffffL;
         tweak[0] |= (words[1] & 0xffffffffL) << 32;
         tweak[1] |= words[2] & 0xffffffffL;

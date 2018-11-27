@@ -11,8 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Util/include/filesystem.h>
-
 #ifdef WIN32 //TODO: use GetFullPathNameW in system_complete if getcwd not supported
 
 #else
@@ -23,6 +21,9 @@ ________________________________________________________________________________
 #include <stdio.h> //remove()
 #include <errno.h>
 #include <string.h>
+#include <iostream>
+#include <fstream>
+#include <Util/include/filesystem.h>
 
 #ifndef MAX_PATH
 #define MAX_PATH 256
@@ -51,6 +52,43 @@ namespace filesystem
             return true;
 
         return false;
+    }
+
+    /* Copy a file. */
+    bool copy_file(const std::string &pathSource, const std::string &pathDest)
+    {
+        try 
+        {
+            // dest must be file, not an existing directory
+            if (exists(pathDest) && is_directory(pathDest))
+                return false;
+
+            // If destination file exists, remove it (ie, we overwrite the file)
+            if (exists(pathDest))
+                remove(pathDest);
+
+            ifstream sourceFile(pathSource, ios::binary);
+            sourceFile.exceptions(ios::badbit);
+
+            ofstream destFile(pathDest, ios::binary);
+            destFile.exceptions(ios::badbit);
+
+            destFile << sourceFile.rdbuf();
+
+            sourceFile.close();
+            destFile.close();
+         
+#ifndef WIN32
+            // Set destination file permissions (read/write by owner only for data files)
+            mode_t m = S_IRUSR | S_IWUSR;
+            chmod(pathDest, m);
+#endif
+
+        } 
+        catch(const std::ios_base::failure &e) 
+            return false;
+
+        return true;
     }
 
     /* Determines if the specified path is a folder. */

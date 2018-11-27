@@ -63,7 +63,7 @@ namespace LLD
         uint32_t nTotalElements;
 
 
-        /* Mutex for thread concurrencdy. */
+        /* Mutex for thread concurrency. */
         mutable std::recursive_mutex MUTEX;
 
 

@@ -9,7 +9,7 @@
 ** This algorithm and source code is released to the public domain.
 **
 ***************************************************************************
-** 
+**
 ** The following compile-time switches may be defined to control some
 ** tradeoffs between speed, code size, error checking, and security.
 **
@@ -20,8 +20,8 @@
 **                            [default: no callouts (no overhead)]
 **
 **  SKEIN_ERR_CHECK        -- how error checking is handled inside Skein
-**                            code. If not defined, most error checking 
-**                            is disabled (for performance). Otherwise, 
+**                            code. If not defined, most error checking
+**                            is disabled (for performance). Otherwise,
 **                            the switch value is interpreted as:
 **                                0: use assert()      to flag errors
 **                                1: return SKEIN_FAIL to flag errors
@@ -32,8 +32,8 @@ extern "C"
 {
 #endif
 
-#include <stddef.h>                          /* get size_t definition */
-#include <skein_port.h>               /* get platform-specific definitions */
+#include <stddef.h>                                 /* get size_t definition */
+#include <LLC/hash/Skein3Fish/include/skein_port.h> /* get platform-specific definitions */
 
 enum
     {
@@ -107,12 +107,12 @@ int  Skein1024_Final (Skein1024_Ctxt_t *ctx, u08b_t * hashVal);
 **   After an InitExt() call, just use Update/Final calls as with Init().
 **
 **   Notes: Same parameters as _Init() calls, plus treeInfo/key/keyBytes.
-**          When keyBytes == 0 and treeInfo == SKEIN_SEQUENTIAL, 
+**          When keyBytes == 0 and treeInfo == SKEIN_SEQUENTIAL,
 **              the results of InitExt() are identical to calling Init().
 **          The function Init() may be called once to "precompute" the IV for
 **              a given hashBitLen value, then by saving a copy of the context
 **              the IV computation may be avoided in later calls.
-**          Similarly, the function InitExt() may be called once per MAC key 
+**          Similarly, the function InitExt() may be called once per MAC key
 **              to precompute the MAC IV, then a copy of the context saved and
 **              reused for each new MAC computation.
 **/
@@ -140,7 +140,7 @@ int  Skein1024_Output   (Skein1024_Ctxt_t *ctx, u08b_t * hashVal);
 
 /*****************************************************************
 ** "Internal" Skein definitions
-**    -- not needed for sequential hashing API, but will be 
+**    -- not needed for sequential hashing API, but will be
 **           helpful for other uses of Skein (e.g., tree hash mode).
 **    -- included here so that they can be shared between
 **           reference and optimized code.
@@ -148,18 +148,18 @@ int  Skein1024_Output   (Skein1024_Ctxt_t *ctx, u08b_t * hashVal);
 
 /* tweak word T[1]: bit field starting positions */
 #define SKEIN_T1_BIT(BIT)       ((BIT) - 64)            /* offset 64 because it's the second word  */
-                                
+
 #define SKEIN_T1_POS_TREE_LVL   SKEIN_T1_BIT(112)       /* bits 112..118: level in hash tree       */
 #define SKEIN_T1_POS_BIT_PAD    SKEIN_T1_BIT(119)       /* bit  119     : partial final input byte */
 #define SKEIN_T1_POS_BLK_TYPE   SKEIN_T1_BIT(120)       /* bits 120..125: type field               */
 #define SKEIN_T1_POS_FIRST      SKEIN_T1_BIT(126)       /* bits 126     : first block flag         */
 #define SKEIN_T1_POS_FINAL      SKEIN_T1_BIT(127)       /* bit  127     : final block flag         */
-                                
+
 /* tweak word T[1]: flag bit definition(s) */
 #define SKEIN_T1_FLAG_FIRST     (((u64b_t)  1 ) << SKEIN_T1_POS_FIRST)
 #define SKEIN_T1_FLAG_FINAL     (((u64b_t)  1 ) << SKEIN_T1_POS_FINAL)
 #define SKEIN_T1_FLAG_BIT_PAD   (((u64b_t)  1 ) << SKEIN_T1_POS_BIT_PAD)
-                                
+
 /* tweak word T[1]: tree level bit field mask */
 #define SKEIN_T1_TREE_LVL_MASK  (((u64b_t)0x7F) << SKEIN_T1_POS_TREE_LVL)
 #define SKEIN_T1_TREE_LEVEL(n)  (((u64b_t) (n)) << SKEIN_T1_POS_TREE_LVL)
@@ -265,11 +265,11 @@ int  Skein1024_Output   (Skein1024_Ctxt_t *ctx, u08b_t * hashVal);
 #define Skein_Assert(x,retCode)/* default: ignore all Asserts, for performance */
 #define Skein_assert(x)
 #elif   defined(SKEIN_ASSERT)
-#include <assert.h>     
-#define Skein_Assert(x,retCode) assert(x) 
-#define Skein_assert(x)         assert(x) 
+#include <assert.h>
+#define Skein_Assert(x,retCode) assert(x)
+#define Skein_assert(x)         assert(x)
 #else
-#include <assert.h>     
+#include <assert.h>
 #define Skein_Assert(x,retCode) { if (!(x)) return retCode; } /*  caller  error */
 #define Skein_assert(x)         assert(x)                     /* internal error */
 #endif
@@ -277,8 +277,8 @@ int  Skein1024_Output   (Skein1024_Ctxt_t *ctx, u08b_t * hashVal);
 /*****************************************************************
 ** Skein block function constants (shared across Ref and Opt code)
 ******************************************************************/
-enum    
-    {   
+enum
+    {
         /* Skein_256 round rotation constants */
     R_256_0_0=14, R_256_0_1=16,
     R_256_1_0=52, R_256_1_1=57,

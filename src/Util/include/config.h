@@ -27,38 +27,98 @@ ________________________________________________________________________________
 typedef int pid_t; /* define for windows compatiblity */
 #endif
 
+namespace config
+{
 
-/* Read the Config file from the Disk. */
-void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
-    std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet);
-
-
-/* Setup PID file for Linux users. */
-void CreatePidFile(const std::string &path, pid_t pid);
-
-
-/* Check if set to start when system boots. */
-bool GetStartOnSystemStartup();
-
-
-/* Setup to auto start when system boots. */
-bool SetStartOnSystemStartup(bool fAutoStart);
+    /** ReadConfigFile
+     *
+     *  Read the Config file from the Disk.
+     *
+     *  @param[out] mapSettingsRet The map of config settings.
+     *
+     *  @param[out] mapMultiSettingsRet The map of multiple config settings per key.
+     *
+     **/
+    void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
+        std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet);
 
 
-/* Get the default directory Nexus data is stored in. */
-std::string GetDefaultDataDir(std::string strName = "TAO");
+    /** CreatePidFile
+     *
+     *  Setup PID file for Linux users.
+     *
+     *  @param[in] path The path to the pid file.
+     *
+     *  @param[in] pid The process ID.
+     *
+     **/
+    void CreatePidFile(const std::string &path, pid_t pid);
 
 
-/* Get the Location of the Config File. */
-std::string GetConfigFile();
+    /** GetDefaultDataDir
+     *
+     *  Get the default directory Nexus data is stored in.
+     *
+     *  @param[in] strName The name of the default data directory.
+     *
+     *  @return The system complete path to the default data directory.
+     *
+     **/
+    std::string GetDefaultDataDir(std::string strName = "TAO");
 
 
-/* Get the Location of the PID File. */
-std::string GetPidFile();
+    /** GetConfigFile
+     *
+     *  Get the Location of the Config File.
+     *
+     *  @return The system complete path to the config file.
+     *
+     **/
+    std::string GetConfigFile();
 
 
-/* Get the location that Nexus data is being stored in. */
-std::string GetDataDir(bool fNetSpecific = true);
+    /** GetPidFile
+     *
+     *  Get the Location of the PID File.
+     *
+     *  @return The system complete path to the pid file.
+     *
+     **/
+    std::string GetPidFile();
 
 
+    /** GetDataDir
+     *
+     *  Get the location that Nexus data is being stored in.
+     *
+     *  @param[in] fNetSpecific Flag indicating directory is testnet specific.
+     *
+     *  @return The system complete path to the data directory.
+     *
+     **/
+    std::string GetDataDir(bool fNetSpecific = true);
+
+
+    /** GetStartOnSystemStartup
+     *
+     *  Check if set to start when system boots.
+     *
+     *  @return True if set to start on system startup, false otherwise.
+     *
+     **/
+    bool GetStartOnSystemStartup();
+
+
+    /** SetStartOnSystemStartup
+     *
+     *  Setup to auto start when system boots.
+     *
+     *  @param[in] fAutoStart Flag indicating if program should auto start.
+     *
+     *  @return True if flag set successful, false otherwise.
+     *
+     **/
+    bool SetStartOnSystemStartup(bool fAutoStart);
+
+}
 #endif

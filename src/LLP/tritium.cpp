@@ -11,17 +11,19 @@
 
 ____________________________________________________________________________________________*/
 
-#include <limits.h>
+#include <TAO/Operation/include/execute.h>
 
 #include <LLC/include/random.h>
+
 #include <LLD/include/global.h>
+
 #include <LLP/include/tritium.h>
 
 #include <Util/include/runtime.h>
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
 
-#include <TAO/Operation/include/execute.h>
+#include <limits.h>
 
 namespace LLP
 {
@@ -130,7 +132,7 @@ namespace LLP
                     }
 
                     /* Debug output for offsets. */
-                    if(GetArg("-verbose", 0) >= 3)
+                    if(config::GetArg("-verbose", 0) >= 3)
                         printf(NODE "received session identifier (%" PRIx64 ")\n", nSessionID);
 
                     break;
@@ -151,7 +153,7 @@ namespace LLP
                     int32_t nOffset = (Timestamp(true) - nTimestamp);
 
                     /* Debug output for offsets. */
-                    if(GetArg("-verbose", 0) >= 3)
+                    if(config::GetArg("-verbose", 0) >= 3)
                         printf(NODE "received timestamp of (%" PRIu64 ") - sending offset %i\n", nTimestamp, nOffset);
 
                     /* Push a timestamp in response. */
@@ -169,7 +171,8 @@ namespace LLP
 
                     /* Check map known requests. */
                     if(!mapSentRequests.count(nRequestID))
-                        return error(NODE "offset not requested");
+                        return debug::error(NODE "offset not requested");
+
 
                     /* Check the time since request was sent. */
                     if(Timestamp() - mapSentRequests[nRequestID] > 10)
@@ -185,7 +188,7 @@ namespace LLP
                     ssPacket >> nOffset;
 
                     /* Debug output for offsets. */
-                    if(GetArg("-verbose", 0) >= 3)
+                    if(config::GetArg("-verbose", 0) >= 3)
                         printf(NODE "received offset %i\n", nOffset);
 
                     /* Remove sent requests from mpa. */
@@ -234,13 +237,13 @@ namespace LLP
                     if(!LLD::legDB->HasTx(tx.GetHash()))
                     {
                         /* Debug output for tx. */
-                        if(GetArg("-verbose", 0) >= 3)
+                        if(config::GetArg("-verbose", 0) >= 3)
                             printf(NODE "recieved tx %s\n", tx.GetHash().ToString().substr(0, 20).c_str());
 
                         /* Check if tx is valid. */
                         if(!tx.IsValid())
                         {
-                            error(NODE "tx %s REJECTED", tx.GetHash().ToString().substr(0, 20).c_str());
+                            debug::error(NODE "tx %s REJECTED", tx.GetHash().ToString().substr(0, 20).c_str());
 
                             break;
                         }
@@ -248,7 +251,7 @@ namespace LLP
                         /* Write the transaction to ledger database. */
                         if(!LLD::legDB->WriteTx(tx.GetHash(), tx))
                         {
-                            error(NODE "tx failed to write to disk");
+                            debug::error(NODE "tx failed to write to disk");
 
                             break;
                         }
@@ -256,14 +259,14 @@ namespace LLP
                         /* Process the transaction operations. */
                         if(!TAO::Operation::Execute(tx.vchLedgerData, LLD::regDB, LLD::legDB, tx.hashGenesis))
                         {
-                            error(NODE "tx failed to process register/operations");
+                            debug::error(NODE "tx failed to process register/operations");
 
                             break;
                         }
                     }
 
                     /* Debug output for offsets. */
-                    else if(GetArg("-verbose", 0) >= 3)
+                    else if(config::GetArg("-verbose", 0) >= 3)
                         printf(NODE "already have tx %s\n", tx.GetHash().ToString().substr(0, 20).c_str());
 
                     break;
@@ -301,10 +304,10 @@ namespace LLP
 
                     /* Check for unsolicted pongs. */
                     if(!mapLatencyTracker.count(nNonce))
-                        return error(NODE "unsolicited pong");
+                        return debug::error(NODE "unsolicited pong");
 
                     /* Debug output for latency. */
-                    if(GetArg("-verbose", 0) >= 3)
+                    if(config::GetArg("-verbose", 0) >= 3)
                         printf(NODE "latency %u ms\n", Timestamp(true) - mapLatencyTracker[nNonce]);
 
                     /* Clear the latency tracker record. */
@@ -313,7 +316,6 @@ namespace LLP
                     break;
                 }
             }
-
 
             return true;
         }

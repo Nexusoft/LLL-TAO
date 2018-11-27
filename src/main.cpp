@@ -36,7 +36,7 @@ int main(int argc, char** argv)
 
 
     /* Parse out the parameters */
-    ParseParameters(argc, argv);
+    config::ParseParameters(argc, argv);
 
 
     /* Handle Commandline switch */

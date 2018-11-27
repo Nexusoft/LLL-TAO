@@ -15,7 +15,7 @@
 ************************************************************************/
 
 #include <cstring>
-#include "skein.h"
+#include <LLC/hash/SK/skein.h>
 
 #ifndef SKEIN_USE_ASM
 #define SKEIN_USE_ASM   (0)                     /* default is all C code (no ASM) */
@@ -28,7 +28,7 @@
 #define BLK_BITS        (WCNT*64)               /* some useful definitions for code here */
 #define KW_TWK_BASE     (0)
 #define KW_KEY_BASE     (3)
-#define ks              (kw + KW_KEY_BASE)                
+#define ks              (kw + KW_KEY_BASE)
 #define ts              (kw + KW_TWK_BASE)
 
 #ifdef SKEIN_DEBUG
@@ -77,7 +77,7 @@ void Skein_256_Process_Block(Skein_256_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
         ts[0] += byteCntAdd;                    /* update processed length */
 
         /* precompute the key schedule for this block */
-        ks[0] = ctx->X[0];     
+        ks[0] = ctx->X[0];
         ks[1] = ctx->X[1];
         ks[2] = ctx->X[2];
         ks[3] = ctx->X[3];
@@ -104,7 +104,7 @@ void Skein_256_Process_Block(Skein_256_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
     X##p0 += X##p1; X##p1 = RotL_64(X##p1,ROT##_0); X##p1 ^= X##p0; \
     X##p2 += X##p3; X##p3 = RotL_64(X##p3,ROT##_1); X##p3 ^= X##p2; \
 
-#if SKEIN_UNROLL_256 == 0                       
+#if SKEIN_UNROLL_256 == 0
 #define R256(p0,p1,p2,p3,ROT,rNum)           /* fully unrolled */   \
     Round256(p0,p1,p2,p3,ROT,rNum)                                  \
     Skein_Show_R_Ptr(BLK_BITS,&ctx->h,rNum,Xptr);
@@ -130,8 +130,8 @@ void Skein_256_Process_Block(Skein_256_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
     Skein_Show_R_Ptr(BLK_BITS,&ctx->h,SKEIN_RND_KEY_INJECT,Xptr);
 
     for (r=1;r < 2*RCNT;r+=2*SKEIN_UNROLL_256)  /* loop thru it */
-#endif  
-        {    
+#endif
+        {
 #define R256_8_rounds(R)                  \
         R256(0,1,2,3,R_256_0,8*(R) + 1);  \
         R256(0,3,2,1,R_256_1,8*(R) + 2);  \
@@ -272,7 +272,7 @@ void Skein_512_Process_Block(Skein_512_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
         ks[5] = ctx->X[5];
         ks[6] = ctx->X[6];
         ks[7] = ctx->X[7];
-        ks[8] = ks[0] ^ ks[1] ^ ks[2] ^ ks[3] ^ 
+        ks[8] = ks[0] ^ ks[1] ^ ks[2] ^ ks[3] ^
                 ks[4] ^ ks[5] ^ ks[6] ^ ks[7] ^ SKEIN_KS_PARITY;
 
         ts[2] = ts[0] ^ ts[1];
@@ -300,7 +300,7 @@ void Skein_512_Process_Block(Skein_512_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
     X##p4 += X##p5; X##p5 = RotL_64(X##p5,ROT##_2); X##p5 ^= X##p4; \
     X##p6 += X##p7; X##p7 = RotL_64(X##p7,ROT##_3); X##p7 ^= X##p6; \
 
-#if SKEIN_UNROLL_512 == 0                       
+#if SKEIN_UNROLL_512 == 0
 #define R512(p0,p1,p2,p3,p4,p5,p6,p7,ROT,rNum)      /* unrolled */  \
     Round512(p0,p1,p2,p3,p4,p5,p6,p7,ROT,rNum)                      \
     Skein_Show_R_Ptr(BLK_BITS,&ctx->h,rNum,Xptr);
@@ -532,7 +532,7 @@ void Skein1024_Process_Block(Skein1024_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
     X##pC += X##pD; X##pD = RotL_64(X##pD,ROT##_6); X##pD ^= X##pC;   \
     X##pE += X##pF; X##pF = RotL_64(X##pF,ROT##_7); X##pF ^= X##pE;   \
 
-#if SKEIN_UNROLL_1024 == 0                      
+#if SKEIN_UNROLL_1024 == 0
 #define R1024(p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,pA,pB,pC,pD,pE,pF,ROT,rn) \
     Round1024(p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,pA,pB,pC,pD,pE,pF,ROT,rn) \
     Skein_Show_R_Ptr(BLK_BITS,&ctx->h,rn,Xptr);
@@ -554,7 +554,7 @@ void Skein1024_Process_Block(Skein1024_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
     X13   += ks[((R)+14) % 17] + ts[((R)+1) % 3];                     \
     X14   += ks[((R)+15) % 17] + ts[((R)+2) % 3];                     \
     X15   += ks[((R)+16) % 17] +     (R)+1;                           \
-    Skein_Show_R_Ptr(BLK_BITS,&ctx->h,SKEIN_RND_KEY_INJECT,Xptr); 
+    Skein_Show_R_Ptr(BLK_BITS,&ctx->h,SKEIN_RND_KEY_INJECT,Xptr);
 #else                                       /* looping version */
 #define R1024(p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,pA,pB,pC,pD,pE,pF,ROT,rn) \
     Round1024(p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,pA,pB,pC,pD,pE,pF,ROT,rn) \
@@ -582,7 +582,7 @@ void Skein1024_Process_Block(Skein1024_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
     Skein_Show_R_Ptr(BLK_BITS,&ctx->h,SKEIN_RND_KEY_INJECT,Xptr);
 
     for (r=1;r <= 2*RCNT;r+=2*SKEIN_UNROLL_1024)    /* loop thru it */
-#endif  
+#endif
         {
 #define R1024_8_rounds(R)    /* do 8 full rounds */                               \
         R1024(00,01,02,03,04,05,06,07,08,09,10,11,12,13,14,15,R1024_0,8*(R) + 1); \
@@ -666,7 +666,7 @@ void Skein1024_Process_Block(Skein1024_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
         ctx->X[15] = X15 ^ w[15];
 
         Skein_Show_Round(BLK_BITS,&ctx->h,SKEIN_RND_FEED_FWD,ctx->X);
-        
+
         ts[1] &= ~SKEIN_T1_FLAG_FIRST;
         blkPtr += SKEIN1024_BLOCK_BYTES;
         }

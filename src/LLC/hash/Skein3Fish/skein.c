@@ -10,9 +10,9 @@
 
 #define  SKEIN_PORT_CODE /* instantiate any code in skein_port.h */
 
-#include <cstring>       /* get the memcpy/memset functions */
-#include <skein.h> /* get the Skein API definitions   */
-#include <skein_iv.h>    /* get precomputed IVs */
+#include <cstring>                                /* get the memcpy/memset functions */
+#include <LLC/hash/Skein3Fish/include/skein.h>    /* get the Skein API definitions   */
+#include <LLC/hash/Skein3Fish/include/skein_iv.h> /* get precomputed IVs */
 
 /*****************************************************************/
 /* External function to process blkCnt (nonzero) full block(s) of data. */

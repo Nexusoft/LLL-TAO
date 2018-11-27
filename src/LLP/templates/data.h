@@ -122,7 +122,7 @@ namespace LLP
             Creates a Packet QUEUE on this connection to be processed by an LLP Messaging Thread. */
         void Thread()
         {
-            while(!fShutdown)
+            while(!config::fShutdown)
             {
                 /* Keep data threads at 1000 FPS Maximum. */
                 if(CONNECTIONS.size() == 0)

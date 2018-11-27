@@ -27,7 +27,7 @@ namespace Legacy
      *  Script-hash-addresses have version 104 (or 196 testnet).
      *  The data vector contains SK256(cscript), where cscript is the serialized redemption script.
      **/
-    class NexusAddress : public CBase58Data
+    class NexusAddress : public encoding::CBase58Data
     {
     public:
 

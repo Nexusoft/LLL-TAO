@@ -21,7 +21,7 @@ namespace Legacy
 {
 
     /** A base58-encoded secret key */
-    class NexusSecret : public CBase58Data
+    class NexusSecret : public encoding::CBase58Data
     {
     public:
 

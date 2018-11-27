@@ -43,6 +43,32 @@ namespace filesystem
     bool exists(const std::string &path);
 
 
+    /** copy_file
+     *
+     *  Copies a data file. If the destination file exists, it is overwritten.
+     *
+     *  @param[in] pathSource Fully qualified path name of source file
+     *
+     *  @param[in] pathDest Fully qualified path name of destination file
+     *
+     *  @return true if the file was successfully copied
+     *
+     **/
+    bool copy_file(const std::string &pathSource, const std::string &pathDest);
+
+
+    /** set_permissions
+     *
+     *  Determines if the file or folder from the specified path exists.
+     *
+     *  @param[in] path The path to check
+     *
+     *  @return true if path exists
+     *
+     **/
+    bool set_permissions(const int fileMode);
+
+
     /** is_directory
      *
      *  Determines if the specified path is a folder.

@@ -122,7 +122,7 @@ namespace LLP
                 printf(NODE "Sent Message (%u bytes)\n", PACKET.GetBytes().size());
 
             /* Debug dump of packet data. */
-            if(GetArg("-verbose", 0) >= 5) {
+            if(config::GetArg("-verbose", 0) >= 5) {
                 printf(NODE "Pakcet Dump: ");
 
                 PrintHex(PACKET.GetBytes());
@@ -141,7 +141,7 @@ namespace LLP
         /* Connect Socket to a Remote Endpoint. */
         bool Connect(std::string strAddress, int nPort)
         {
-            CService addrConnect(strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
+            CService addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
 
             /// debug print
             if(GetArg("-verbose", 0) >= 1)
@@ -190,7 +190,7 @@ namespace LLP
         void Write(std::vector<uint8_t> DATA)
         {
             TIMER.Reset();
-            
+
             SOCKET.Write(DATA, DATA.size());
         }
 

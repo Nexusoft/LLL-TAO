@@ -15,10 +15,10 @@ ________________________________________________________________________________
 #include <vector>
 #include <stdio.h>
 
-#include "include/network.h"
-#include "templates/socket.h"
+#include <LLP/include/network.h>
+#include <LLP/templates/socket.h>
 
-#include "../Util/include/debug.h"
+#include <Util/include/debug.h>
 
 #ifndef WIN32
 #include <arpa/inet.h>
@@ -168,7 +168,7 @@ namespace LLP
         if (nRead < 0)
         {
             nError = GetLastError();
-            if(GetArg("-verbose", 0) >= 2)
+            if(config::GetArg("-verbose", 0) >= 2)
                 printf("xxxxx Node Read Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
 
             return nError;
@@ -212,7 +212,7 @@ namespace LLP
         if(nSent < 0)
         {
             nError = GetLastError();
-            if(GetArg("-verbose", 0) >= 2)
+            if(config::GetArg("-verbose", 0) >= 2)
                 printf("xxxxx Node Write Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
 
             return nError;

@@ -15,88 +15,117 @@ ________________________________________________________________________________
 #define NEXUS_UTIL_INCLUDE_ARGS_H
 
 #include <map>
-#include <string>
 #include <vector>
+#include <string>
 
-extern std::map<std::string, std::string> mapArgs;
-extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
+namespace config
+{
 
-extern bool fDebug;
-extern bool fPrintToConsole;
-extern bool fRequestShutdown;
-extern bool fShutdown;
-extern bool fDaemon;
-extern bool fClient;
-extern bool fServer;
-extern bool fCommandLine;
-extern bool fTestNet;
-extern bool fListen;
-extern bool fUseProxy;
-extern bool fAllowDNS;
-extern bool fLogTimestamps;
-extern std::string strMiscWarning;
+    extern std::map<std::string, std::string> mapArgs;
+    extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
+    extern std::string strMiscWarning;
+
+    extern bool fDebug;
+    extern bool fPrintToConsole;
+    extern bool fRequestShutdown;
+    extern bool fShutdown;
+    extern bool fDaemon;
+    extern bool fClient;
+    extern bool fServer;
+    extern bool fCommandLine;
+    extern bool fTestNet;
+    extern bool fListen;
+    extern bool fUseProxy;
+    extern bool fAllowDNS;
+    extern bool fLogTimestamps;
+
+    /**
+     *
+     * Give Opposite Argument Settings
+     *
+     * @param strArg Argument (e.g. "-foo")
+     *
+     **/
+    void InterpretNegativeSetting(std::string name, std::map<std::string, std::string>& mapSettingsRet);
+
+    /**
+     *
+     * Parse the Argument Parameters
+     *
+     * @param argc Total Number of Arguments
+     *
+     * @param argv The Arguments Array
+     *
+     **/
+    void ParseParameters(int argc, const char*const argv[]);
+    
+
+    /**
+     *
+     * Return string argument or default value
+     *
+     * @param strArg Argument to get (e.g. "-foo")
+     *
+     * @param default (e.g. "1")
+     *
+     * @return command-line argument or default value
+     *
+     **/
+    std::string GetArg(const std::string& strArg, const std::string& strDefault);
 
 
-/**
-* Parse the Argument Parameters
-*
-* @param argc Total Number of Arguments
-* @param argv The Arguments Array
-*/
-void ParseParameters(int argc, const char*const argv[]);
+    /**
+     *
+     * Return integer argument or default value
+     *
+     * @param strArg Argument to get (e.g. "-foo")
+     *
+     * @param default (e.g. 1)
+     *
+     * @return command-line argument (0 if invalid number) or default value
+     *
+     **/
+    int64_t GetArg(const std::string& strArg, int64_t nDefault);
 
 
-/**
-* Give Opposite Argument Settings
-*
-* @param strArg Argument (e.g. "-foo")
-*/
-void InterpretNegativeSetting(std::string name, std::map<std::string, std::string>& mapSettingsRet);
+    /**
+     *
+     * Return boolean argument or default value
+     *
+     * @param strArg Argument to get (e.g. "-foo")
+     *
+     * @param default (true or false)
+     *
+     * @return command-line argument or default value
+     *
+     **/
+    bool GetBoolArg(const std::string& strArg, bool fDefault=false);
 
+    /**
+     *
+     * Set an argument if it doesn't already have a value
+     *
+     * @param strArg Argument to set (e.g. "-foo")
+     *
+     * @param strValue Value (e.g. "1")
+     *
+     * @return true if argument gets set, false if it already had a value
+     *
+     **/
+    bool SoftSetArg(const std::string& strArg, const std::string& strValue);
 
-/**
-* Return string argument or default value
-*
-* @param strArg Argument to get (e.g. "-foo")
-* @param default (e.g. "1")
-* @return command-line argument or default value
-*/
-std::string GetArg(const std::string& strArg, const std::string& strDefault);
+    /**
+     *
+     * Set a boolean argument if it doesn't already have a value
+     *
+     * @param strArg Argument to set (e.g. "-foo")
+     *
+     * @param fValue Value (e.g. false)
+     *
+     * @return true if argument gets set, false if it already had a value
+     *
+     **/
+    bool SoftSetBoolArg(const std::string& strArg, bool fValue);
 
-/**
-* Return integer argument or default value
-*
-* @param strArg Argument to get (e.g. "-foo")
-* @param default (e.g. 1)
-* @return command-line argument (0 if invalid number) or default value
-*/
-int64_t GetArg(const std::string& strArg, int64_t nDefault);
-
-/**
-* Return boolean argument or default value
-*
-* @param strArg Argument to get (e.g. "-foo")
-* @param default (true or false)
-* @return command-line argument or default value
-*/
-bool GetBoolArg(const std::string& strArg, bool fDefault=false);
-
-/**
-* Set an argument if it doesn't already have a value
-*
-* @param strArg Argument to set (e.g. "-foo")
-* @param strValue Value (e.g. "1")
-* @return true if argument gets set, false if it already had a value
-*/
-bool SoftSetArg(const std::string& strArg, const std::string& strValue);
-
-/**
-* Set a boolean argument if it doesn't already have a value
-*
-* @param strArg Argument to set (e.g. "-foo")
-* @param fValue Value (e.g. false)
-* @return true if argument gets set, false if it already had a value
-*/
-bool SoftSetBoolArg(const std::string& strArg, bool fValue);
-
+}
 #endif

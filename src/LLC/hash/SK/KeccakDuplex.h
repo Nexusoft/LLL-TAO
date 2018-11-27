@@ -14,7 +14,7 @@ http://creativecommons.org/publicdomain/zero/1.0/
 #ifndef _KeccakDuplex_h_
 #define _KeccakDuplex_h_
 
-#include "KeccakF-1600-interface.h"
+#include <LLC/hash/SK/KeccakF-1600-interface.h>
 
 #ifdef ALIGN
 #undef ALIGN
@@ -46,26 +46,26 @@ ALIGN typedef struct Keccak_DuplexInstanceStruct {
   * @param  duplexInstance  Pointer to the duplex instance to be initialized.
   * @param  rate        The value of the rate r.
   * @param  capacity    The value of the capacity c.
-  * @pre    One must have r+c=1600 in this implementation. 
+  * @pre    One must have r+c=1600 in this implementation.
   * @pre    3 ≤ @a rate ≤ 1600, and otherwise the value of the rate is unrestricted.
   * @return Zero if successful, 1 otherwise.
   */
 int Keccak_DuplexInitialize(Keccak_DuplexInstance *duplexInstance, uint32_t rate, uint32_t capacity);
 
 /**
-  * Function to make a duplexing call to the duplex object initialized 
+  * Function to make a duplexing call to the duplex object initialized
   * with Keccak_DuplexInitialize().
-  * @param  duplexInstance  Pointer to the duplex instance initialized 
+  * @param  duplexInstance  Pointer to the duplex instance initialized
   *                     by Keccak_DuplexInitialize().
   * @param  sigmaBegin  Pointer to the first part of the input σ given as bytes.
   *                     Trailing bits are given in @a delimitedSigmaEnd.
   * @param  sigmaBeginByteLen   The number of input bytes provided in @a sigmaBegin.
   * @param  Z           Pointer to the buffer where to store the output data Z.
   * @param  ZByteLen    The number of output bytes desired for Z.
-  *                     If @a ZByteLen*8 is greater than the rate r, 
+  *                     If @a ZByteLen*8 is greater than the rate r,
   *                     the last byte contains only r modulo 8 bits,
   *                     in the least significant bits.
-  * @param  delimitedSigmaEnd   Byte containing from 0 to 7 trailing bits that must be 
+  * @param  delimitedSigmaEnd   Byte containing from 0 to 7 trailing bits that must be
   *                     appended to the input data in @a sigmaBegin.
   *                     These <i>n</i>=|σ| mod 8 bits must be in the least significant bit positions.
   *                     These bits must be delimited with a bit 1 at position <i>n</i>

@@ -11,18 +11,18 @@
 
 ____________________________________________________________________________________________*/
 
-#include "include/network.h"
-#include "include/hosts.h"
+#include <LLP/include/network.h>
+#include <LLP/include/hosts.h>
 
-#include "../Util/include/debug.h"
+#include <LLC/hash/SK.h>
 
-#include "../LLC/hash/SK.h"
+#include <Util/include/debug.h>
+#include <Util/include/strlcpy.h>
 
 #ifndef WIN32
 #include <sys/fcntl.h>
 #endif
 
-#include "../Util/include/strlcpy.h"
 
 namespace LLP
 {
@@ -246,9 +246,9 @@ namespace LLP
     std::string CNetAddr::ToStringIP() const
     {
         if (IsIPv4())
-            return strprintf("%u.%u.%u.%u", GetByte(3), GetByte(2), GetByte(1), GetByte(0));
+            return debug::strprintf("%u.%u.%u.%u", GetByte(3), GetByte(2), GetByte(1), GetByte(0));
         else
-            return strprintf("%x:%x:%x:%x:%x:%x:%x:%x",
+            return debug::strprintf("%x:%x:%x:%x:%x:%x:%x:%x",
                             GetByte(15) << 8 | GetByte(14), GetByte(13) << 8 | GetByte(12),
                             GetByte(11) << 8 | GetByte(10), GetByte(9) << 8 | GetByte(8),
                             GetByte(7) << 8 | GetByte(6), GetByte(5) << 8 | GetByte(4),
@@ -516,7 +516,7 @@ namespace LLP
 
     std::string CService::ToStringPort() const
     {
-        return strprintf(":%i", port);
+        return debug::strprintf(":%i", port);
     }
 
 

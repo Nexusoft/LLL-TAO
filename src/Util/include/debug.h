@@ -61,26 +61,157 @@ ________________________________________________________________________________
 #define __PRETTY_FUNCTION__ __FUNCTION__
 #endif
 
-int OutputDebugStringF(const char* pszFormat, ...);
+namespace debug
+{
+    /** printf
+     *
+     *  Prints output to the console. It may also write output to a debug.log
+     *  if the global fileout file is assigned.
+     *
+     *  @param[in] pszFormat The format string specifier.
+     *
+     *  @param[in] ... The variable argument list to supply to each format
+     *                 specifier in the format string.
+     *
+     *  @return the total number of characters written. If a writing error occurs,
+     *          the error indicator (ferror) is set and a negative number is returned.
+     *
+     **/
+    int printf(const char* pszFormat, ...);
 
-int my_snprintf(char* buffer, size_t limit, const char* format, ...);
 
-/* It is not allowed to use va_start with a pass-by-reference argument.
-   (C++ standard, 18.7, paragraph 3). Use a dummy argument to work around this,
-   and use a macro to keep similar semantics. */
-std::string real_strprintf(const std::string &format, int dummy, ...);
+    /** my_snprintf
+     *
+     *  Safer snprintf output string is always null terminated even if the limit
+     *  is reach. Returns the number of characters printed.
+     *
+     *  @param[out] buffer The character buffer where the message is stored
+     *
+     *  @param[in] limit The size of the buffer
+     *
+     *  @param[in] format The format string specifier.
+     *
+     *  @param[in] ... The variable argument list to supply to each format
+     *                 specifier in the format string.
+     *
+     *  @return the total number of characters printed.
+     *
+     **/
+    int my_snprintf(char* buffer, size_t limit, const char* format, ...);
 
-#define strprintf(format, ...) real_strprintf(format, 0, __VA_ARGS__)
-#define printf              	 OutputDebugStringF
 
-void debug(const char * base, const char *format, ...);
-bool error(const char *format, ...);
+    /** real_strprintf
+     *
+     *  Prints output into a string that is returned.
+     *
+     *  @param[in] format The format string specifier.
+     *
+     *  @param[in] ... The variable argument list to supply to each format
+     *                 specifier in the format string.
+     *
+     *  @return the output string of the printed message
+     *
+     **/
+    std::string real_strprintf(const std::string &format, ...);
+    #define strprintf(format, ...) real_strprintf(format, __VA_ARGS__)
 
-void LogException(std::exception* pex, const char* pszThread);
-void PrintException(std::exception* pex, const char* pszThread);
-void PrintExceptionContinue(std::exception* pex, const char* pszThread);
 
-int GetFilesize(FILE* file);
-void ShrinkDebugFile();
+    /** error
+     *
+     *  Prints output with a red error caption to the console. It may also write output to a debug.log
+     *  if the global fileout file is assigned.
+     *
+     *  @param[in] format The format string specifier.
+     *
+     *  @param[in] ... The variable argument list to supply to each format
+     *                 specifier in the format string.
+     *
+     *  @return Always returns false.
+     *
+     **/
+    bool error(const char *format, ...);
 
+
+    /** print_base
+     *
+     *  Prints output with base class and function information.
+     *
+     *  @param[in] base The base class string to print
+     *
+     *  @param[in] format The format string specifier.
+     *
+     *  @param[in] ... The variable argument list to supply to each format
+     *                 specifier in the format string.
+     *
+     **/
+    void print_base(const char * base, const char *format, ...);
+
+
+    /** LogStackTrace
+     *
+     *  Prints and logs the stack trace of the code execution call stack up to
+     *  the point where this function is called to debug.log
+     *
+     **/
+    void LogStackTrace();
+
+
+    /** LogException
+     *
+     *  Prints and logs the exception with the named calling thread.
+     *
+     *  @param[in] pex The pointer to the exception that has been thrown.
+     *
+     *  @param[in] pszThread The name of the calling thread that threw the exception.
+     *
+     **/
+    void LogException(std::exception* pex, const char* pszThread);
+
+
+    /** PrintException
+     *
+     *  Prints the exception with the named calling thread and throws it
+     *
+     *  @param[in] pex The pointer to the exception that has been thrown.
+     *
+     *  @param[in] pszThread The name of the calling thread that threw the exception.
+     *
+     **/
+    void PrintException(std::exception* pex, const char* pszThread);
+
+
+    /** PrintExceptionContinue
+     *
+     *  Prints the exception with the named calling thread but does not throw it.
+     *
+     *  @param[in] pex The pointer to the exception that has been thrown.
+     *
+     *  @param[in] pszThread The name of the calling thread that threw the exception.
+     *
+     **/
+    void PrintExceptionContinue(std::exception* pex, const char* pszThread);
+
+
+    /** GetFilesize
+     *
+     *  Gets the size of the file in bytes.
+     *
+     *  @param[in] file The file pointer of the file get get the size of.
+     *
+     *  @return The size of the file
+     *
+     **/
+    int GetFilesize(FILE* file);
+
+
+    /** ShrinkDebugFile
+     *
+     *  Shrinks the size of the debug.log file if it has grown exceptionally large.
+     *  It keeps some of the end of the file with most recent log history before
+     *  shrinking it down.
+     *
+     **/
+    void ShrinkDebugFile();
+
+}
 #endif
