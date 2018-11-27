@@ -188,7 +188,7 @@ namespace LLP
         if (nRead < 0)
         {
             nError = GetLastError();
-            if(GetArg("-verbose", 0) >= 2)
+            if(config::GetArg("-verbose", 0) >= 2)
                 printf("xxxxx Node Read Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
 
             return nError;

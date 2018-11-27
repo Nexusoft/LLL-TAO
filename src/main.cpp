@@ -50,12 +50,12 @@ int main(int argc, char** argv)
 
 
     /* Create directories if they don't exist yet. */
-    if(filesystem::create_directory(GetDataDir(false)))
-        printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, GetDataDir(false).c_str());
+    if(filesystem::create_directory(config::GetDataDir(false)))
+        printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, config::GetDataDir(false).c_str());
 
 
     /* Read the configuration file. */
-    ReadConfigFile(mapArgs, mapMultiArgs);
+    config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
 
 
     /* Create the database instances. */
@@ -67,20 +67,20 @@ int main(int argc, char** argv)
     TAO::API::Music::Initialize();
 
     LLP::Server<TAO::API::Core>* CORE_SERVER = new LLP::Server<TAO::API::Core>(8080, 10, 30, false, 0, 0, 60, true, false);
-    while(!fShutdown)
+    while(!config::fShutdown)
     {
         Sleep(1000);
     }
 
 
-    TAO::Ledger::SignatureChain sigChain(GetArg("-username", "user"), GetArg("-password", "default"));
-    uint512_t hashGenesis = sigChain.Generate(0, GetArg("-pin", "1235"));
+    TAO::Ledger::SignatureChain sigChain(config::GetArg("-username", "user"), config::GetArg("-password", "default"));
+    uint512_t hashGenesis = sigChain.Generate(0, config::GetArg("-pin", "1235"));
 
     printf("Genesis %s\n", hashGenesis.ToString().c_str());
 
     /* Extract username and password from config. */
-    printf("Username: %s\n", GetArg("-username", "user").c_str());
-    printf("Password: %s\n", GetArg("-password", "default").c_str());
+    printf("Username: %s\n", config::GetArg("-username", "user").c_str());
+    printf("Password: %s\n", config::GetArg("-password", "default").c_str());
 
     return 0;
 }

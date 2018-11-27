@@ -129,7 +129,7 @@ namespace LLP
         {
             //TODO: use constant format (not ...) -> ostringstream
             //TODO: add headers map to build more complex response rather than const as follows
-            std::string strReply = strprintf(
+            std::string strReply = debug::strprintf(
                     "HTTP/1.1 %s\r\n"
                     "Date: %s\r\n"
                     "Connection: close\r\n"

@@ -42,7 +42,7 @@ namespace TAO
 
             /* Build the HTTP Header. */
             std::string strContent = parameters.dump();
-            std::string strReply = strprintf(
+            std::string strReply = debug::strprintf(
                     "POST /%s/%s HTTP/1.1\r\n"
                     "Date: %s\r\n"
                     "Connection: close\r\n"

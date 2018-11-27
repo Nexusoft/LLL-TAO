@@ -37,29 +37,29 @@ namespace TAO
             /* Read the previous transaction from disk. */
             TAO::Ledger::Transaction tx;
             if(!LLD::legDB->ReadTx(hashPrevTx, tx))
-                return error(FUNCTION "failed to read previous transaction", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "failed to read previous transaction", __PRETTY_FUNCTION__);
 
             /* Check the previous next hash that is being claimed. */
             if(tx.hashNext != PrevHash())
-                return error(FUNCTION "next hash mismatch with previous transaction", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "next hash mismatch with previous transaction", __PRETTY_FUNCTION__);
 
             /* Check the previous sequence number. */
             if(tx.nSequence + 1 != nSequence)
-                return error(FUNCTION "previous sequence %u not sequential %u", __PRETTY_FUNCTION__, tx.nSequence, nSequence);
+                return debug::error(FUNCTION "previous sequence %u not sequential %u", __PRETTY_FUNCTION__, tx.nSequence, nSequence);
 
             /* Check the previous genesis. */
             if(tx.hashGenesis != hashGenesis)
-                return error(FUNCTION "previous genesis %s mismatch %s", __PRETTY_FUNCTION__, tx.hashGenesis.ToString().substr(0, 20).c_str(), hashGenesis.ToString().substr(0, 20).c_str());
+                return debug::error(FUNCTION "previous genesis %s mismatch %s", __PRETTY_FUNCTION__, tx.hashGenesis.ToString().substr(0, 20).c_str(), hashGenesis.ToString().substr(0, 20).c_str());
 
             /* Check the size constraints of the ledger data. */
             if(vchLedgerData.size() > 1024) //TODO: implement a constant max size
-                return error(FUNCTION "ledger data outside of maximum size constraints", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "ledger data outside of maximum size constraints", __PRETTY_FUNCTION__);
 
             /* Check the more expensive ECDSA verification. */
             LLC::ECKey ecPub(NID_brainpoolP512t1, 64);
             ecPub.SetPubKey(vchPubKey);
             if(!ecPub.Verify(GetHash().GetBytes(), vchSig))
-                return error(FUNCTION "invalid transaction signature", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "invalid transaction signature", __PRETTY_FUNCTION__);
         }
 
         /* Determines if the transaction is a genesis transaction */

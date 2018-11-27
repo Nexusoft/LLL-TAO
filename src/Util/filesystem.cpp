@@ -23,6 +23,8 @@ ________________________________________________________________________________
 #include <string.h>
 #include <iostream>
 #include <fstream>
+
+#include <Util/include/debug.h>
 #include <Util/include/filesystem.h>
 
 #ifndef MAX_PATH
@@ -57,36 +59,42 @@ namespace filesystem
     /* Copy a file. */
     bool copy_file(const std::string &pathSource, const std::string &pathDest)
     {
-        try 
+        try
         {
-            // dest must be file, not an existing directory
+            /* Make sure destination is a file, not a directory. */
             if (exists(pathDest) && is_directory(pathDest))
                 return false;
 
-            // If destination file exists, remove it (ie, we overwrite the file)
+            /* If destination file exists, remove it (ie, we overwrite the file) */
             if (exists(pathDest))
                 remove(pathDest);
 
-            ifstream sourceFile(pathSource, ios::binary);
-            sourceFile.exceptions(ios::badbit);
+            /* Get the input stream of source file. */
+            std::ifstream sourceFile(pathSource, std::ios::binary);
+            sourceFile.exceptions(std::ios::badbit);
 
-            ofstream destFile(pathDest, ios::binary);
-            destFile.exceptions(ios::badbit);
+            /* Get the output stream of destination file. */
+            std::ofstream destFile(pathDest, std::ios::binary);
+            destFile.exceptions(std::ios::badbit);
 
+            /* Copy the bytes. */
             destFile << sourceFile.rdbuf();
 
+            /* Close the file handles and flush buffers. */
             sourceFile.close();
             destFile.close();
-         
+
 #ifndef WIN32
-            // Set destination file permissions (read/write by owner only for data files)
+            /* Set destination file permissions (read/write by owner only for data files) */
             mode_t m = S_IRUSR | S_IWUSR;
-            chmod(pathDest, m);
+            chmod(pathDest.c_str(), m);
 #endif
 
-        } 
-        catch(const std::ios_base::failure &e) 
-            return false;
+        }
+        catch(const std::ios_base::failure &e)
+        {
+            return debug::error(FUNCTION " failed to write %s", __PRETTY_FUNCTION__, e.what());
+        }
 
         return true;
     }
