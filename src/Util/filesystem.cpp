@@ -133,17 +133,17 @@ namespace filesystem
         if(exists(path)) //if the directory exists, don't attempt to create it
             return true;
 
-          /* set directory with read/write/search permissions for
-             owner/group/other */
+        /* Set directory with read/write/search permissions for owner/group/other */
         mode_t m = S_IRWXU | S_IRWXG | S_IRWXO;
         int status = mkdir(path.c_str(), m);
 
+        /* Handle failures. */
         if(status < 0)
         {
-            printf("Failed to create directory: %s\nReason: %s\n",
+            return debug::error(FUNCTION "Failed to create directory: %s\nReason: %s\n", __PRETTY_FUNCTION__,
                 path.c_str(), strerror(errno));
-            return false;
         }
+
         return true;
     }
 
@@ -153,7 +153,7 @@ namespace filesystem
         char buffer[MAX_PATH] = {0};
         std::string abs_path;
 
-          //get the path of the current directory and append path name to that
+        //get the path of the current directory and append path name to that
         abs_path = getcwd(buffer, MAX_PATH);
     #ifdef WIN32
         abs_path += "\\";
