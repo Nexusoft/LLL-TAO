@@ -94,7 +94,7 @@ namespace TAO
 
 			/** Dump the Checkpoint if not Initializing. **/
 			if(!fInit)
-				printf("===== Hardened Checkpoint %s Height = %u\n",
+				debug::log("===== Hardened Checkpoint %s Height = %u\n",
 				pcheckpoint->pprev->PendingCheckpoint.second.ToString().substr(0, 20).c_str(),
 				pcheckpoint->pprev->PendingCheckpoint.first);
 

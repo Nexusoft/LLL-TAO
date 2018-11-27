@@ -40,7 +40,7 @@ namespace Legacy
 		/* Dump the full object to the console (stdout) */
 		void COutPoint::print() const
 		{
-			printf("%s\n", ToString().c_str());
+			debug::log("%s\n", ToString().c_str());
 		}
     }
 }

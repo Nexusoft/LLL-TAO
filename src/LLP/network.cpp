@@ -370,7 +370,7 @@ namespace LLP
 
     void CNetAddr::print() const
     {
-        printf("CNetAddr(%s)\n", ToString().c_str());
+        debug::log("CNetAddr(%s)\n", ToString().c_str());
     }
 
 
@@ -534,7 +534,7 @@ namespace LLP
 
     void CService::print() const
     {
-        printf("CService(%s)\n", ToString().c_str());
+        debug::log("CService(%s)\n", ToString().c_str());
     }
 
 

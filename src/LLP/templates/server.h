@@ -171,7 +171,7 @@ namespace LLP
                     if (hSocket == INVALID_SOCKET)
                     {
                         if (GetLastError() != WSAEWOULDBLOCK)
-                            printf("socket error accept failed: %d\n", GetLastError());
+                            debug::log("socket error accept failed: %d\n", GetLastError());
                     }
                     else
                     {
@@ -183,7 +183,7 @@ namespace LLP
                         /* DDOS Operations: Only executed when DDOS is enabled. */
                         if((fDDOS && DDOS_MAP[(CService)addr]->Banned()))
                         {
-                            printf(NODE "Connection Request %s refused... Banned.", addr.ToString().c_str());
+                            debug::log(NODE "Connection Request %s refused... Banned.", addr.ToString().c_str());
                             close(hSocket);
 
                             continue;
@@ -195,7 +195,7 @@ namespace LLP
                         DATA_THREADS[nThread]->AddConnection(sockNew, DDOS_MAP[(CService)addr]);
 
                         if(config::GetArg("-verbose", 0) >= 3)
-                            printf(NODE "Accepted Connection %s on port %u\n", addr.ToString().c_str(), PORT);
+                            debug::log(NODE "Accepted Connection %s on port %u\n", addr.ToString().c_str(), PORT);
                     }
                 }
             }
@@ -212,7 +212,7 @@ namespace LLP
                 int ret = WSAStartup(MAKEWORD(2,2), &wsadata);
                 if (ret != NO_ERROR)
                 {
-                    printf("Error: TCP/IP socket library failed to start (WSAStartup returned error %d)", ret);
+                    debug::log("Error: TCP/IP socket library failed to start (WSAStartup returned error %d)", ret);
 
                     return false;
                 }
@@ -222,7 +222,7 @@ namespace LLP
             hListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
             if (hListenSocket == INVALID_SOCKET)
             {
-                printf("Error: Couldn't open socket for incoming connections (socket returned error %d)", GetLastError());
+                debug::log("Error: Couldn't open socket for incoming connections (socket returned error %d)", GetLastError());
 
                 return false;
             }
@@ -250,18 +250,18 @@ namespace LLP
             {
                 int nErr = GetLastError();
                 if (nErr == WSAEADDRINUSE)
-                    printf("Error:Unable to bind to port %d on this computer.  Nexus is probably already running.", ntohs(sockaddr.sin_port));
+                    debug::log("Error:Unable to bind to port %d on this computer.  Nexus is probably already running.", ntohs(sockaddr.sin_port));
                 else
-                    printf("Error: Unable to bind to port %d on this computer (bind returned error %d)", ntohs(sockaddr.sin_port), nErr);
+                    debug::log("Error: Unable to bind to port %d on this computer (bind returned error %d)", ntohs(sockaddr.sin_port), nErr);
 
                 return false;
             }
-            printf(NODE "Bound to port %d\n", ntohs(sockaddr.sin_port));
+            debug::log(NODE "Bound to port %d\n", ntohs(sockaddr.sin_port));
 
             // Listen for incoming connections
             if (listen(hListenSocket, SOMAXCONN) == SOCKET_ERROR)
             {
-                printf("Error: Listening for incoming connections failed (listen returned error %d)", GetLastError());
+                debug::log("Error: Listening for incoming connections failed (listen returned error %d)", GetLastError());
 
                 return false;
             }
@@ -288,7 +288,7 @@ namespace LLP
                     nGlobalConnections += DATA_THREADS[nIndex]->nConnections;
 
                 uint32_t RPS = TotalRequests() / TIMER.Elapsed();
-                printf("***** LLP Running at %u requests/s with %u connections.\n", RPS, nGlobalConnections);
+                debug::log("***** LLP Running at %u requests/s with %u connections.\n", RPS, nGlobalConnections);
 
                 TIMER.Reset();
                 ClearRequests();

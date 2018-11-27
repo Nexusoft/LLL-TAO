@@ -168,7 +168,7 @@ namespace TAO
 		/* Dump the Block data to Console / Debug.log. */
 		void Block::print() const
 		{
-			printf("CBlock(hash=%s, ver=%d, hashPrevBlock=%s, hashMerkleRoot=%s, nTime=%u, nBits=%08x, nChannel = %u, nHeight = %u, nNonce=%" PRIu64 ", vchBlockSig=%s)\n",
+			debug::log("CBlock(hash=%s, ver=%d, hashPrevBlock=%s, hashMerkleRoot=%s, nTime=%u, nBits=%08x, nChannel = %u, nHeight = %u, nNonce=%" PRIu64 ", vchBlockSig=%s)\n",
 					BlockHash().ToString().substr(0,20).c_str(),
 					nVersion,
 					hashPrevBlock.ToString().substr(0,20).c_str(),

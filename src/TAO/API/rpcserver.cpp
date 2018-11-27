@@ -325,12 +325,12 @@ namespace Net
 
         //delete pMiningKey; pMiningKey = NULL;
 
-        printf("ThreadRPCServer exiting\n");
+        debug::log("ThreadRPCServer exiting\n");
     }
 
     void ThreadRPCServer2(void* parg)
     {
-        printf("ThreadRPCServer started\n");
+        debug::log("ThreadRPCServer started\n");
 
         strRPCUserColonPass = mapArgs["-rpcuser"] + ":" + mapArgs["-rpcpassword"];
         if (mapArgs["-rpcpassword"] == "")
@@ -386,12 +386,12 @@ namespace Net
             filesystem::path pathCertFile(GetArg("-rpcsslcertificatechainfile", "server.cert"));
             if (!pathCertFile.is_complete()) pathCertFile = filesystem::path(GetDataDir()) / pathCertFile;
             if (filesystem::exists(pathCertFile)) context.use_certificate_chain_file(pathCertFile.string());
-            else printf("ThreadRPCServer ERROR: missing server certificate file %s\n", pathCertFile.string().c_str());
+            else debug::log("ThreadRPCServer ERROR: missing server certificate file %s\n", pathCertFile.string().c_str());
 
             filesystem::path pathPKFile(GetArg("-rpcsslprivatekeyfile", "server.pem"));
             if (!pathPKFile.is_complete()) pathPKFile = filesystem::path(GetDataDir()) / pathPKFile;
             if (filesystem::exists(pathPKFile)) context.use_private_key_file(pathPKFile.string(), ssl::context::pem);
-            else printf("ThreadRPCServer ERROR: missing server private key file %s\n", pathPKFile.string().c_str());
+            else debug::log("ThreadRPCServer ERROR: missing server private key file %s\n", pathPKFile.string().c_str());
 
             string strCiphers = GetArg("-rpcsslciphers", "TLSv1+HIGH:!SSLv2:!aNULL:!eNULL:!AH:!3DES:@STRENGTH");
             SSL_CTX_set_cipher_list(context.native_handle(), strCiphers.c_str());
@@ -417,7 +417,7 @@ namespace Net
                 if (!fUseSSL)
                     stream << HTTPReply(403, "") << std::flush;
 
-                printf("[RPC] Failed to Authorize New Connection.");
+                debug::log("[RPC] Failed to Authorize New Connection.");
                 continue;
             }
 
@@ -428,7 +428,7 @@ namespace Net
             if (!api_caller.timed_join(boost::posix_time::seconds(GetArg("-rpctimeout", 30))))
             {   // Timed out:
                 acceptor.cancel();
-                printf("ThreadRPCServer ReadHTTP timeout\n");
+                debug::log("ThreadRPCServer ReadHTTP timeout\n");
                 continue;
             }
 
@@ -440,7 +440,7 @@ namespace Net
             }
             if (!HTTPAuthorized(mapHeaders))
             {
-                printf("ThreadRPCServer incorrect password attempt from %s\n",peer.address().to_string().c_str());
+                debug::log("ThreadRPCServer incorrect password attempt from %s\n",peer.address().to_string().c_str());
                 /* Deter brute-forcing short passwords.
                    If this results in a DOS the user really
                    shouldn't have their RPC port exposed.*/
@@ -470,7 +470,7 @@ namespace Net
                 if (valMethod.type() != str_type)
                     throw JSONRPCError(-32600, "Method must be a string");
                 string strMethod = valMethod.get_str();
-                printf("ThreadRPCServer method=%s\n", strMethod.c_str());
+                debug::log("ThreadRPCServer method=%s\n", strMethod.c_str());
 
                 // Parse params
                 Value valParams = find_value(request, "params");

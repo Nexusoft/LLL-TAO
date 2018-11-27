@@ -45,7 +45,7 @@ namespace LLP
                     nLastPing    = Timestamp();
 
                     /* Debut output. */
-                    printf(NODE "%s Connected at timestamp %" PRIu64 "\n", addrThisNode.ToString().c_str(), UnifiedTimestamp());
+                    debug::log(NODE "%s Connected at timestamp %" PRIu64 "\n", addrThisNode.ToString().c_str(), UnifiedTimestamp());
 
                     /* Send version if making the connection. */
                     if(fOUTGOING)
@@ -133,7 +133,7 @@ namespace LLP
 
                     /* Debug output for offsets. */
                     if(config::GetArg("-verbose", 0) >= 3)
-                        printf(NODE "received session identifier (%" PRIx64 ")\n", nSessionID);
+                        debug::log(NODE "received session identifier (%" PRIx64 ")\n", nSessionID);
 
                     break;
                 }
@@ -154,7 +154,7 @@ namespace LLP
 
                     /* Debug output for offsets. */
                     if(config::GetArg("-verbose", 0) >= 3)
-                        printf(NODE "received timestamp of (%" PRIu64 ") - sending offset %i\n", nTimestamp, nOffset);
+                        debug::log(NODE "received timestamp of (%" PRIu64 ") - sending offset %i\n", nTimestamp, nOffset);
 
                     /* Push a timestamp in response. */
                     PushMessage(DAT_OFFSET, nRequestID, nOffset);
@@ -177,7 +177,7 @@ namespace LLP
                     /* Check the time since request was sent. */
                     if(Timestamp() - mapSentRequests[nRequestID] > 10)
                     {
-                        printf(NODE "offset is stale.\n");
+                        debug::log(NODE "offset is stale.\n");
                         mapSentRequests.erase(nRequestID);
 
                         break;
@@ -189,7 +189,7 @@ namespace LLP
 
                     /* Debug output for offsets. */
                     if(config::GetArg("-verbose", 0) >= 3)
-                        printf(NODE "received offset %i\n", nOffset);
+                        debug::log(NODE "received offset %i\n", nOffset);
 
                     /* Remove sent requests from mpa. */
                     mapSentRequests.erase(nRequestID);
@@ -238,7 +238,7 @@ namespace LLP
                     {
                         /* Debug output for tx. */
                         if(config::GetArg("-verbose", 0) >= 3)
-                            printf(NODE "recieved tx %s\n", tx.GetHash().ToString().substr(0, 20).c_str());
+                            debug::log(NODE "recieved tx %s\n", tx.GetHash().ToString().substr(0, 20).c_str());
 
                         /* Check if tx is valid. */
                         if(!tx.IsValid())
@@ -267,7 +267,7 @@ namespace LLP
 
                     /* Debug output for offsets. */
                     else if(config::GetArg("-verbose", 0) >= 3)
-                        printf(NODE "already have tx %s\n", tx.GetHash().ToString().substr(0, 20).c_str());
+                        debug::log(NODE "already have tx %s\n", tx.GetHash().ToString().substr(0, 20).c_str());
 
                     break;
                 }
@@ -308,7 +308,7 @@ namespace LLP
 
                     /* Debug output for latency. */
                     if(config::GetArg("-verbose", 0) >= 3)
-                        printf(NODE "latency %u ms\n", Timestamp(true) - mapLatencyTracker[nNonce]);
+                        debug::log(NODE "latency %u ms\n", Timestamp(true) - mapLatencyTracker[nNonce]);
 
                     /* Clear the latency tracker record. */
                     mapLatencyTracker.erase(nNonce);

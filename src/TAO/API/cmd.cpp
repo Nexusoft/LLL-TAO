@@ -30,7 +30,7 @@ namespace TAO
             /* Check the parameters. */
             if(argc < argn + 3)
             {
-                printf("Not Enough Parameters\n");
+                debug::log("Not Enough Parameters\n");
 
                 return 0;
             }
@@ -63,7 +63,7 @@ namespace TAO
             TAO::API::Core apiNode;
             if(!apiNode.Connect("127.0.0.1", 8080))
             {
-                printf("Couldn't Connect to API\n");
+                debug::log("Couldn't Connect to API\n");
 
                 return 0;
             }
@@ -78,7 +78,7 @@ namespace TAO
                 /* Catch if the connection was closed. */
                 if(!apiNode.Connected())
                 {
-                    printf("Connection Terminated\n");
+                    debug::log("Connection Terminated\n");
 
                     return 0;
                 }
@@ -86,7 +86,7 @@ namespace TAO
                 /* Catch if the socket experienced errors. */
                 if(apiNode.Errors())
                 {
-                    printf("Socket Error\n");
+                    debug::log("Socket Error\n");
 
                     return 0;
                 }
@@ -94,7 +94,7 @@ namespace TAO
                 /* Catch if the connection timed out. */
                 if(apiNode.Timeout(30))
                 {
-                    printf("Socket Timeout\n");
+                    debug::log("Socket Timeout\n");
 
                     return 0;
                 }
@@ -105,7 +105,7 @@ namespace TAO
             }
 
             /* Dump the response to the console. */
-            printf("%s\n", apiNode.INCOMING.strContent.c_str());
+            debug::log("%s\n", apiNode.INCOMING.strContent.c_str());
 
             return 0;
         }

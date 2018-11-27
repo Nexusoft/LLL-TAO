@@ -158,7 +158,7 @@ namespace config
 
         std::string &path = pathCached[fNetSpecific];
 
-        // This can be called during exceptions by printf, so we cache the
+        // This can be called during exceptions by debug::log, so we cache the
         // value so we don't have to do memory allocations after that.
         if (cachedPath[fNetSpecific])
             return path;

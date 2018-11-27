@@ -53,7 +53,7 @@ namespace Core
         // at most 500 megabytes of orphans:
         if (pvMsg->size() > 5000)
         {
-            printf("ignoring large orphan tx (size: %u, hash: %s)\n", pvMsg->size(), hash.ToString().substr(0,10).c_str());
+            debug::log("ignoring large orphan tx (size: %u, hash: %s)\n", pvMsg->size(), hash.ToString().substr(0,10).c_str());
             delete pvMsg;
             return false;
         }
@@ -62,7 +62,7 @@ namespace Core
         for(const CTxIn& txin : tx.vin)
             mapOrphanTransactionsByPrev[txin.prevout.hash].insert(make_pair(hash, pvMsg));
 
-        printf("stored orphan tx %s (mapsz %u)\n", hash.ToString().substr(0,10).c_str(),
+        debug::log("stored orphan tx %s (mapsz %u)\n", hash.ToString().substr(0,10).c_str(),
             mapOrphanTransactions.size());
         return true;
     }
@@ -274,7 +274,7 @@ namespace Core
             {
                 vMerkleBranch.clear();
                 nIndex = -1;
-                printf("ERROR: SetMerkleBranch() : couldn't find tx in block\n");
+                debug::log("ERROR: SetMerkleBranch() : couldn't find tx in block\n");
                 return 0;
             }
 
@@ -470,7 +470,7 @@ namespace Core
                     if (dFreeCount > GetArg("-limitfreerelay", 15)*10*1000 && !IsFromMe(tx))
                         return error("CTxMemPool::accept() : free transaction rejected by rate limiter");
                     if (fDebug)
-                        printf("Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount+nSize);
+                        debug::log("Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount+nSize);
                     dFreeCount += nSize;
                 }
             }
@@ -488,7 +488,7 @@ namespace Core
             LOCK(cs);
             if (ptxOld)
             {
-                printf("CTxMemPool::accept() : replacing tx %s with new version\n", ptxOld->GetHash().ToString().c_str());
+                debug::log("CTxMemPool::accept() : replacing tx %s with new version\n", ptxOld->GetHash().ToString().c_str());
                 remove(*ptxOld);
             }
             addUnchecked(tx);
@@ -499,7 +499,7 @@ namespace Core
         if (ptxOld)
             EraseFromWallets(ptxOld->GetHash());
 
-        printf("CTxMemPool::accept() : accepted %s\n", hash.ToString().substr(0,10).c_str());
+        debug::log("CTxMemPool::accept() : accepted %s\n", hash.ToString().substr(0,10).c_str());
         return true;
     }
 
@@ -510,7 +510,7 @@ namespace Core
 
     bool CTxMemPool::addUnchecked(CTransaction &tx)
     {
-        printf("addUnchecked(): size %lu\n",  mapTx.size());
+        debug::log("addUnchecked(): size %lu\n",  mapTx.size());
         // Add to memory pool without checking anything.  Don't call this directly,
         // call CTxMemPool::accept to properly check the transaction first.
         {
@@ -860,7 +860,7 @@ namespace Core
                 int64_t nInterest;
                 GetCoinstakeInterest(indexdb, nInterest);
 
-                printf("ConnectInputs() : %f Value Out, %f Expected\n", (double)round_coin_digits(vout[0].nValue, 3) / COIN, (double)(round_coin_digits(nInterest + nValueIn, 3)) / COIN);
+                debug::log("ConnectInputs() : %f Value Out, %f Expected\n", (double)round_coin_digits(vout[0].nValue, 3) / COIN, (double)(round_coin_digits(nInterest + nValueIn, 3)) / COIN);
 
                 if (round_coin_digits(vout[0].nValue, 3) > round_coin_digits((nInterest + nValueIn), 3))
                     return DoS(100, error("ConnectInputs() : %s stake reward mismatch", GetHash().ToString().substr(0,10).c_str()));

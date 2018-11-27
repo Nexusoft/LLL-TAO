@@ -96,7 +96,7 @@ namespace LLP
 
 	void CInv::print() const
 	{
-		printf("CInv(%s)\n", ToString().c_str());
+		debug::log("CInv(%s)\n", ToString().c_str());
 	}
 
 

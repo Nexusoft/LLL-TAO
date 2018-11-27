@@ -200,7 +200,7 @@ namespace LLP
 
                             if(fDDOS)
                                 CONNECTIONS[nIndex]->DDOS->rSCORE += 1;
-                                
+
                             /* Packet Process return value of False will flag Data Thread to Disconnect. */
                             if(!CONNECTIONS[nIndex]->ProcessPacket())
                             {
@@ -216,7 +216,7 @@ namespace LLP
                     }
                     catch(std::exception& e)
                     {
-                        printf("data connection:  %s\n", e.what());
+                        debug::log("data connection:  %s\n", e.what());
 
                         CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_ERRORS);
 

@@ -21,7 +21,7 @@ namespace TAO
 
         Account::print() const;
         {
-            printf("Account(id=%s, balance=%u)\n", hashIdentifier.ToString().substr(0, 20).c_str(), nBalance)
+            debug::log("Account(id=%s, balance=%u)\n", hashIdentifier.ToString().substr(0, 20).c_str(), nBalance)
         }
     }
 }

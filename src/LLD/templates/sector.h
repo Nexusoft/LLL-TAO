@@ -161,7 +161,7 @@ namespace LLD
             Initialize();
 
             if(config::GetBoolArg("-runtime", false))
-                printf(ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
+                debug::log(ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
         }
 
         ~SectorDatabase()
@@ -181,7 +181,7 @@ namespace LLD
         {
             /* Create directories if they don't exist yet. */
             if(filesystem::create_directories(strBaseLocation))
-                printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
+                debug::log(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
 
             /* Find the most recent append file. */
             while(true)
@@ -264,7 +264,7 @@ namespace LLD
             bool fErased = SectorKeys->Erase(vKey);
 
             if(config::GetBoolArg("-runtime", false))
-                printf(ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
+                debug::log(ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
 
             return fErased;
         }
@@ -324,7 +324,7 @@ namespace LLD
                 vData = pTransaction->mapTransactions[vKey];
 
                 if(config::GetArg("-verbose", 0) >= 4)
-                    printf(FUNCTION "%s\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
+                    debug::log(FUNCTION "%s\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
 
                 return true;
             }
@@ -355,7 +355,7 @@ namespace LLD
 
                 /* Verbose Debug Logging. */
                 if(config::GetArg("-verbose", 0) >= 4)
-                    printf(FUNCTION "%s\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
+                    debug::log(FUNCTION "%s\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
 
                 return true;
             }
@@ -372,7 +372,7 @@ namespace LLD
             if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
             {
                 if(config::GetArg("-verbose", 0) >= 4)
-                    printf(FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
+                    debug::log(FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
 
                 nCurrentFile ++;
                 nCurrentFileSize = 0;
@@ -406,10 +406,10 @@ namespace LLD
 
 
             if(config::GetArg("-verbose", 0) >= 4)
-                printf(FUNCTION "%s | Current File: %u | Current File Size: %u\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
+                debug::log(FUNCTION "%s | Current File: %u | Current File Size: %u\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
 
             if(config::GetBoolArg("-runtime", false))
-                printf(ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
+                debug::log(ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
 
             return true;
         }
@@ -471,7 +471,7 @@ namespace LLD
                 /* Create a new file if the sector file size is over file size limits. */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                 {
-                    printf(FUNCTION "Generated Sector File %u\n", __PRETTY_FUNCTION__, nCurrentFile + 1);
+                    debug::log(FUNCTION "Generated Sector File %u\n", __PRETTY_FUNCTION__, nCurrentFile + 1);
 
                     /* Iterate the current file and reset current file sie. */
                     nCurrentFile ++;
@@ -548,9 +548,9 @@ namespace LLD
                 double WPS = nBytesWrote / (TIMER.Elapsed() * 1024.0);
                 double RPS = nBytesRead / (TIMER.Elapsed() * 1024.0);
 
-                printf(FUNCTION ">>>>> LLD Writing at %f Kb/s\n", __PRETTY_FUNCTION__, WPS);
-                printf(FUNCTION ">>>>> LLD Reading at %f Kb/s\n", __PRETTY_FUNCTION__, RPS);
-                printf(FUNCTION ">>>>> LLD Flushed %u Records\n", __PRETTY_FUNCTION__, nRecordsFlushed);
+                debug::log(FUNCTION ">>>>> LLD Writing at %f Kb/s\n", __PRETTY_FUNCTION__, WPS);
+                debug::log(FUNCTION ">>>>> LLD Reading at %f Kb/s\n", __PRETTY_FUNCTION__, RPS);
+                debug::log(FUNCTION ">>>>> LLD Flushed %u Records\n", __PRETTY_FUNCTION__, nRecordsFlushed);
 
                 TIMER.Reset();
                 nBytesWrote     = 0;
@@ -572,7 +572,7 @@ namespace LLD
             pTransaction = new SectorTransaction();
 
             if(config::GetArg("-verbose", 0) >= 4)
-                printf(FUNCTION "New Sector Transaction Started.\n", __PRETTY_FUNCTION__);
+                debug::log(FUNCTION "New Sector Transaction Started.\n", __PRETTY_FUNCTION__);
         }
 
         /** Abort the current transaction that is pending in the transaction chain. **/
@@ -627,7 +627,7 @@ namespace LLD
                 runtime.Start();
 
             if(config::GetArg("-verbose", 0) >= 4)
-                printf(FUNCTION "Commiting Transactin to Datachain.\n", __PRETTY_FUNCTION__);
+                debug::log(FUNCTION "Commiting Transactin to Datachain.\n", __PRETTY_FUNCTION__);
 
             /** Check that there is a valid transaction to apply to the database. **/
             if(!pTransaction)
@@ -635,7 +635,7 @@ namespace LLD
 
             /** Habdle setting the sector key flags so the database knows if the transaction was completed properly. **/
             if(config::GetArg("-verbose", 0) >= 4)
-                printf(FUNCTION "Commiting Keys to Keychain.\n", __PRETTY_FUNCTION__);
+                debug::log(FUNCTION "Commiting Keys to Keychain.\n", __PRETTY_FUNCTION__);
 
             /** Set the Sector Keys to an Invalid State to know if there are interuptions the sector was not finished successfully. **/
             for(typename std::map< std::vector<uint8_t>, std::vector<uint8_t> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
@@ -652,7 +652,7 @@ namespace LLD
 
             /** Update the Keychain with Checksums and READY Flag letting sectors know they were written successfully. **/
             if(config::GetArg("-verbose", 0) >= 4)
-                printf(FUNCTION "Erasing Sector Keys Flagged for Deletion.\n", __PRETTY_FUNCTION__);
+                debug::log(FUNCTION "Erasing Sector Keys Flagged for Deletion.\n", __PRETTY_FUNCTION__);
 
             /** Erase all the Transactions that are set to be erased. That way if they are assigned a TRANSACTION flag we know to roll back their key to orginal data. **/
             for(typename std::map< std::vector<uint8_t>, uint32_t >::iterator nIterator = pTransaction->mapEraseData.begin(); nIterator != pTransaction->mapEraseData.end(); nIterator++ )
@@ -663,7 +663,7 @@ namespace LLD
 
             /** Commit the Sector Data to the Database. **/
             if(config::GetArg("-verbose", 0) >= 4)
-                printf(FUNCTION "Commit Data to Datachain Sector Database.\n", __PRETTY_FUNCTION__);
+                debug::log(FUNCTION "Commit Data to Datachain Sector Database.\n", __PRETTY_FUNCTION__);
 
             for(typename std::map< std::vector<uint8_t>, std::vector<uint8_t> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
             {
@@ -677,7 +677,7 @@ namespace LLD
                     if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                     {
                         if(config::GetArg("-verbose", 0) >= 4)
-                            printf(FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
+                            debug::log(FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
 
                         nCurrentFile ++;
                         nCurrentFileSize = 0;
@@ -725,7 +725,7 @@ namespace LLD
                     fStream.seekp(cKey.nSectorStart, std::ios::beg);
                     if(vData.size() > cKey.nSectorSize){
                         fStream.close();
-                        printf(FUNCTION "PUT (TOO LARGE) NO TRUNCATING ALLOWED (Old %u :: New %u):%s\n", __PRETTY_FUNCTION__, cKey.nSectorSize, vData.size(), HexStr(vData.begin(), vData.end()).c_str());
+                        debug::log(FUNCTION "PUT (TOO LARGE) NO TRUNCATING ALLOWED (Old %u :: New %u):%s\n", __PRETTY_FUNCTION__, cKey.nSectorSize, vData.size(), HexStr(vData.begin(), vData.end()).c_str());
 
                         return false;
                     }
@@ -744,7 +744,7 @@ namespace LLD
 
             /** Update the Keychain with Checksums and READY Flag letting sectors know they were written successfully. **/
             if(config::GetArg("-verbose", 0) >= 4)
-                printf(FUNCTION "Commiting Key Valid States to Keychain.\n", __PRETTY_FUNCTION__);
+                debug::log(FUNCTION "Commiting Key Valid States to Keychain.\n", __PRETTY_FUNCTION__);
 
             for(typename std::map< std::vector<uint8_t>, std::vector<uint8_t> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
             {
@@ -767,7 +767,7 @@ namespace LLD
             pTransaction = NULL;
 
             if(config::GetBoolArg("-runtime", false))
-                printf(ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
+                debug::log(ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
 
             return true;
         }

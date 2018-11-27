@@ -63,7 +63,7 @@ ________________________________________________________________________________
 
 namespace debug
 {
-    /** printf
+    /** log
      *
      *  Prints output to the console. It may also write output to a debug.log
      *  if the global fileout file is assigned.
@@ -77,7 +77,7 @@ namespace debug
      *          the error indicator (ferror) is set and a negative number is returned.
      *
      **/
-    int printf(const char* pszFormat, ...);
+    int log(const char* pszFormat, ...);
 
 
     /** my_snprintf

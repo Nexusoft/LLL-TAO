@@ -22,7 +22,7 @@ namespace TAO
         {
             nlohmann::json TestFunc(bool fHelp, nlohmann::json parameters)
             {
-                printf("Test Function!\n");
+                debug::log("Test Function!\n");
 
                 nlohmann::json ret;
                 ret.push_back("Test!");

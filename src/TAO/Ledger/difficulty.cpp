@@ -204,7 +204,7 @@ namespace Core
 			uint32_t nDays, nHours, nMinutes;
 			GetChainTimes(GetChainAge(blkFirst.GetBlockTime()), nDays, nHours, nMinutes);
 			
-			printf("RETARGET weighted time=%" PRId64 " actual time =%" PRId64 "[%f %%]\n\tchain time: [%" PRId64 " / %" PRId64 "]\n\tdifficulty: [%f to %f]\n\ttrust height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n\n", 
+			debug::log("RETARGET weighted time=%" PRId64 " actual time =%" PRId64 "[%f %%]\n\tchain time: [%" PRId64 " / %" PRId64 "]\n\tdifficulty: [%f to %f]\n\ttrust height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n\n", 
 			nBlockTime, max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64_t) 1), ((100.0 * nLowerBound) / nUpperBound), nBlockTarget, nBlockTime, GetDifficulty(blkFirst.nBits, 0), GetDifficulty(bnNew.GetCompact(), 0), blkFirst.nChannelHeight, nDays, nHours, nMinutes);
 		}
 		
@@ -334,7 +334,7 @@ namespace Core
 			uint32_t nDays, nHours, nMinutes;
 			GetChainTimes(GetChainAge(blkFirst.GetBlockTime()), nDays, nHours, nMinutes);
 			
-			printf("RETARGET weighted time=%" PRId64 " actual time %" PRId64 ", [%f %%]\n\tchain time: [%" PRId64 " / %" PRId64 "]\n\treleased reward: %" PRId64 " [%f %%]\n\tdifficulty: [%f to %f]\n\tprime height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n\n", 
+			debug::log("RETARGET weighted time=%" PRId64 " actual time %" PRId64 ", [%f %%]\n\tchain time: [%" PRId64 " / %" PRId64 "]\n\treleased reward: %" PRId64 " [%f %%]\n\tdifficulty: [%f to %f]\n\tprime height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n\n", 
 			nBlockTime, max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64_t) 1), nMod * 100.0, nBlockTarget, nBlockTime, blkFirst.nReleasedReserve[0] / COIN, 100.0 * nChainMod, GetDifficulty(blkFirst.nBits, 1), GetDifficulty(nBits, 1), blkFirst.nChannelHeight, nDays, nHours, nMinutes);
 		}
 		
@@ -460,7 +460,7 @@ namespace Core
 			uint32_t nDays, nHours, nMinutes;
 			GetChainTimes(GetChainAge(blkFirst.GetBlockTime()), nDays, nHours, nMinutes);
 			
-			printf("RETARGET weighted time=%" PRId64 " actual time %" PRId64 " [%f %%]\n\tchain time: [%" PRId64 " / %" PRId64 "]\n\treleased reward: %" PRId64 " [%f %%]\n\tdifficulty: [%f to %f]\n\thash height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n\n", 
+			debug::log("RETARGET weighted time=%" PRId64 " actual time %" PRId64 " [%f %%]\n\tchain time: [%" PRId64 " / %" PRId64 "]\n\treleased reward: %" PRId64 " [%f %%]\n\tdifficulty: [%f to %f]\n\thash height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n\n", 
 			nBlockTime, max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64_t) 1), (100.0 * nLowerBound) / nUpperBound, nBlockTarget, nBlockTime, blkFirst.nReleasedReserve[0] / COIN, 100.0 * nChainMod, GetDifficulty(blkFirst.nBits, 2), GetDifficulty(bnNew.GetCompact(), 2), blkFirst.nChannelHeight, nDays, nHours, nMinutes);
 		}
 		

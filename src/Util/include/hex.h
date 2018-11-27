@@ -169,7 +169,7 @@ inline std::string HexStr(const std::vector<uint8_t>& vch, bool fSpaces=false)
 template<typename T>
 inline void PrintHex(const T pbegin, const T pend, const char* pszFormat="%s\n", bool fSpaces=true)
 {
-    debug::printf(pszFormat, HexStr(pbegin, pend, fSpaces).c_str());
+    debug::log(pszFormat, HexStr(pbegin, pend, fSpaces).c_str());
 }
 
 /** PrintHex
@@ -185,7 +185,7 @@ inline void PrintHex(const T pbegin, const T pend, const char* pszFormat="%s\n",
  **/
 inline void PrintHex(const std::vector<uint8_t>& vch, const char* pszFormat="%s\n", bool fSpaces=true)
 {
-    debug::printf(pszFormat, HexStr(vch, fSpaces).c_str());
+    debug::log(pszFormat, HexStr(vch, fSpaces).c_str());
 }
 
 #endif

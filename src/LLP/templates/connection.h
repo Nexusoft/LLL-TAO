@@ -119,11 +119,11 @@ namespace LLP
 
             /* Debug dump of message type. */
             if(config::GetArg("-verbose", 0) >= 4)
-                printf(NODE "Sent Message (%u bytes)\n", PACKET.GetBytes().size());
+                debug::log(NODE "Sent Message (%u bytes)\n", PACKET.GetBytes().size());
 
             /* Debug dump of packet data. */
             if(config::GetArg("-verbose", 0) >= 5) {
-                printf(NODE "Pakcet Dump: ");
+                debug::log(NODE "Pakcet Dump: ");
 
                 PrintHex(PACKET.GetBytes());
             }
@@ -145,7 +145,7 @@ namespace LLP
 
             /// debug print
             if(config::GetArg("-verbose", 0) >= 1)
-                printf(NODE "Connecting to %s\n",
+                debug::log(NODE "Connecting to %s\n",
                 addrConnect.ToString().c_str());
 
             // Connect
@@ -153,7 +153,7 @@ namespace LLP
             {
                 /// debug print
                 if(config::GetArg("-verbose", 0) >= 1)
-                    printf(NODE "Connected to %s\n", addrConnect.ToString().c_str());
+                    debug::log(NODE "Connected to %s\n", addrConnect.ToString().c_str());
 
                 fCONNECTED = true;
                 fOUTGOING  = true;

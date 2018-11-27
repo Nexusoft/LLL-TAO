@@ -686,7 +686,7 @@ namespace Wallet
 
         void print() const
         {
-            printf("%s\n", ToString().c_str());
+            debug::log("%s\n", ToString().c_str());
         }
     };
 

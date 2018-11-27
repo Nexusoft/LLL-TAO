@@ -21,7 +21,7 @@ ________________________________________________________________________________
 #include "../json/json_spirit_writer_template.h"
 #include "../json/json_spirit_utils.h"
 
-#define printf OutputDebugStringF
+#define debug::log OutputDebugStringF
 
 // using namespace boost::asio;
 using namespace json_spirit;
