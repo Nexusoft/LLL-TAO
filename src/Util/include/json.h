@@ -10619,7 +10619,7 @@ inline char* append_exponent(char* buf, int e)
     if (k < 10)
     {
         // Always print at least two digits in the exponent.
-        // This is for compatibility with debug::log("%g").
+        // This is for compatibility with debug::log(0, "%g").
         *buf++ = '0';
         *buf++ = static_cast<char>('0' + k);
     }
@@ -10766,7 +10766,7 @@ char* to_chars(char* first, const char* last, FloatType value)
 
     assert(len <= std::numeric_limits<FloatType>::max_digits10);
 
-    // Format the buffer like debug::log("%.*g", prec, value)
+    // Format the buffer like debug::log(0, "%.*g", prec, value)
     constexpr int kMinExp = -4;
     // Use digits10 here to increase compatibility with version 2.
     constexpr int kMaxExp = std::numeric_limits<FloatType>::digits10;

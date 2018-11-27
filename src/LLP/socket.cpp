@@ -81,7 +81,7 @@ namespace LLP
                 /* If the connection attempt timed out with select. */
                 if (nRet == 0)
                 {
-                    debug::log("***** Node Connection Timeout %s...\n", addrDest.ToString().c_str());
+                    debug::log(0, "***** Node Connection Timeout %s...\n", addrDest.ToString().c_str());
 
                     close(nSocket);
 
@@ -91,7 +91,7 @@ namespace LLP
                 /* If the select failed. */
                 if (nRet == SOCKET_ERROR)
                 {
-                    debug::log("***** Node Select Failed %s (%i)\n", addrDest.ToString().c_str(), GetLastError());
+                    debug::log(0, "***** Node Select Failed %s (%i)\n", addrDest.ToString().c_str(), GetLastError());
 
                     close(nSocket);
 
@@ -106,7 +106,7 @@ namespace LLP
                 if (getsockopt(nSocket, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
     #endif
                 {
-                    debug::log("***** Node Get Options Failed %s (%i)\n", addrDest.ToString().c_str(), GetLastError());
+                    debug::log(0, "***** Node Get Options Failed %s (%i)\n", addrDest.ToString().c_str(), GetLastError());
                     close(nSocket);
 
                     return false;
@@ -115,7 +115,7 @@ namespace LLP
                 /* If there are no socket options set. TODO: Remove preprocessors for cross platform sockets. */
                 if (nRet != 0)
                 {
-                    debug::log("***** Node Failed after Select %s (%i)\n", addrDest.ToString().c_str(), nRet);
+                    debug::log(0, "***** Node Failed after Select %s (%i)\n", addrDest.ToString().c_str(), nRet);
                     close(nSocket);
 
                     return false;
@@ -127,7 +127,7 @@ namespace LLP
             else
     #endif
             {
-                debug::log("***** Node Connect Failed %s (%i)\n", addrDest.ToString().c_str(), GetLastError());
+                debug::log(0, "***** Node Connect Failed %s (%i)\n", addrDest.ToString().c_str(), GetLastError());
                 close(nSocket);
 
                 return false;
@@ -168,8 +168,7 @@ namespace LLP
         if (nRead < 0)
         {
             nError = GetLastError();
-            if(config::GetArg("-verbose", 0) >= 2)
-                debug::log("xxxxx Node Read Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
+            debug::log(2, "xxxxx Node Read Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
 
             return nError;
         }
@@ -188,8 +187,7 @@ namespace LLP
         if (nRead < 0)
         {
             nError = GetLastError();
-            if(config::GetArg("-verbose", 0) >= 2)
-                debug::log("xxxxx Node Read Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
+            debug::log(2, "xxxxx Node Read Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
 
             return nError;
         }
@@ -212,8 +210,7 @@ namespace LLP
         if(nSent < 0)
         {
             nError = GetLastError();
-            if(config::GetArg("-verbose", 0) >= 2)
-                debug::log("xxxxx Node Write Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
+            debug::log(2, "xxxxx Node Write Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
 
             return nError;
         }

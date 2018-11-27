@@ -56,8 +56,8 @@ public:
         #ifdef DEBUG_LOCKCONTENTION
             if (!lock.try_lock())
             {
-                debug::log("LOCKCONTENTION: %s\n", pszName);
-                debug::log("Locker: %s:%d\n", pszFile, nLine);
+                debug::log(0, "LOCKCONTENTION: %s\n", pszName);
+                debug::log(0, "Locker: %s:%d\n", pszFile, nLine);
         #endif
             lock.lock();
         #ifdef DEBUG_LOCKCONTENTION

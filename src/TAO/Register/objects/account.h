@@ -91,7 +91,7 @@ namespace TAO
              **/
             void print() const
             {
-                debug::log("Account(version=%u, id=%u, balance=%" PRIu64 ")\n", nVersion, nIdentifier, nBalance);
+                debug::log(0, "Account(version=%u, id=%u, balance=%" PRIu64 ")\n", nVersion, nIdentifier, nBalance);
             }
         };
     }

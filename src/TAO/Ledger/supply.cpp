@@ -86,7 +86,7 @@ namespace Core
 		for(int nMinutes = nStart; nMinutes < (nStart + nTimespan); nMinutes++)
 			nSubsidy += GetSubsidy(nMinutes, nSerType);
 		
-		//debug::log("Reserve %i: %f Nexus | Timespan: %i - %i Minutes\n", nSerType, (double)nSubsidy / COIN, nStart, (nStart + nTimespan));
+		//debug::log(0, "Reserve %i: %f Nexus | Timespan: %i - %i Minutes\n", nSerType, (double)nSubsidy / COIN, nStart, (nStart + nTimespan));
 		return nSubsidy;
 	}
 	
@@ -96,7 +96,7 @@ namespace Core
 	{
 		int64_t nSubsidy = GetInflation(nTimespan, CompoundSubsidy(nStart));
 		
-		debug::log("Inflation: %f Nexus | Timespan %i - %i Minutes\n", (double)nSubsidy / COIN, nStart, (nStart + nTimespan));
+		debug::log(0, "Inflation: %f Nexus | Timespan %i - %i Minutes\n", (double)nSubsidy / COIN, nStart, (nStart + nTimespan));
 		return nSubsidy;
 	}
     

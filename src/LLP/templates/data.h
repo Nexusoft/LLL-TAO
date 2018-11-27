@@ -216,7 +216,7 @@ namespace LLP
                     }
                     catch(std::exception& e)
                     {
-                        debug::log("data connection:  %s\n", e.what());
+                        debug::log(0, "data connection:  %s\n", e.what());
 
                         CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_ERRORS);
 

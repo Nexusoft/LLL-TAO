@@ -51,7 +51,7 @@ namespace Legacy
         }
         catch (const DbException& e)
         {
-            debug::log("EnvShutdown exception: %s (%d)\n", e.what(), e.get_errno());
+            debug::log(0, "EnvShutdown exception: %s (%d)\n", e.what(), e.get_errno());
         }
         DbEnv((u_int32_t)0).remove(GetDataDir().string().c_str(), 0);
     }
@@ -92,7 +92,7 @@ namespace Legacy
                 filesystem::path pathLogDir = pathDataDir / "database";
                 filesystem::create_directory(pathLogDir);
                 filesystem::path pathErrorFile = pathDataDir / "db.log";
-                debug::log("dbenv.open LogDir=%s ErrorFile=%s\n", pathLogDir.string().c_str(), pathErrorFile.string().c_str());
+                debug::log(0, "dbenv.open LogDir=%s ErrorFile=%s\n", pathLogDir.string().c_str(), pathErrorFile.string().c_str());
 
                 int nDbCache = GetArg("-dbcache", 25);
                 dbenv.set_lg_dir(pathLogDir.string().c_str());
@@ -216,7 +216,7 @@ namespace Legacy
                     mapFileUseCount.erase(strFile);
 
                     bool fSuccess = true;
-                    debug::log("Rewriting %s...\n", strFile.c_str());
+                    debug::log(0, "Rewriting %s...\n", strFile.c_str());
                     string strFileRes = strFile + ".rewrite";
                     { // surround usage of db with extra {}
                         CDB db(strFile.c_str(), "r");
@@ -230,7 +230,7 @@ namespace Legacy
                                                 0);
                         if (ret > 0)
                         {
-                            debug::log("Cannot create database file %s\n", strFileRes.c_str());
+                            debug::log(0, "Cannot create database file %s\n", strFileRes.c_str());
                             fSuccess = false;
                         }
 
@@ -286,7 +286,7 @@ namespace Legacy
                             fSuccess = false;
                     }
                     if (!fSuccess)
-                        debug::log("Rewriting of %s FAILED!\n", strFileRes.c_str());
+                        debug::log(0, "Rewriting of %s FAILED!\n", strFileRes.c_str());
                     return fSuccess;
                 }
             }
@@ -300,7 +300,7 @@ namespace Legacy
     {
         // Flush log data to the actual data file
         //  on all files that are not in use
-        debug::log("DBFlush(%s)%s\n", fShutdown ? "true" : "false", fDbEnvInit ? "" : " db not started");
+        debug::log(0, "DBFlush(%s)%s\n", fShutdown ? "true" : "false", fDbEnvInit ? "" : " db not started");
         if (!fDbEnvInit)
             return;
         {
@@ -310,18 +310,18 @@ namespace Legacy
             {
                 string strFile = (*mi).first;
                 int nRefCount = (*mi).second;
-                debug::log("%s refcount=%d\n", strFile.c_str(), nRefCount);
+                debug::log(0, "%s refcount=%d\n", strFile.c_str(), nRefCount);
                 if (nRefCount == 0)
                 {
                     // Move log data to the dat file
                     CloseDb(strFile);
-                    debug::log("%s checkpoint\n", strFile.c_str());
+                    debug::log(0, "%s checkpoint\n", strFile.c_str());
                     dbenv.txn_checkpoint(0, 0, 0);
                     if ((strFile != "blkindex.dat" && strFile != "addr.dat") || fDetachDB) {
-                        debug::log("%s detach\n", strFile.c_str());
+                        debug::log(0, "%s detach\n", strFile.c_str());
                         dbenv.lsn_reset(strFile.c_str(), 0);
                     }
-                    debug::log("%s closed\n", strFile.c_str());
+                    debug::log(0, "%s closed\n", strFile.c_str());
                     mapFileUseCount.erase(mi++);
                 }
                 else
@@ -523,7 +523,7 @@ namespace Legacy
     {
         if (Read(string("addrman"), Net::addrman))
         {
-            debug::log("Loaded %i addresses\n", Net::addrman.size());
+            debug::log(0, "Loaded %i addresses\n", Net::addrman.size());
             return true;
         }
 
@@ -560,7 +560,7 @@ namespace Legacy
         pcursor->close();
 
         Net::addrman.Add(vAddr, Net::CNetAddr("0.0.0.0"));
-        debug::log("Loaded %i addresses\n", Net::addrman.size());
+        debug::log(0, "Loaded %i addresses\n", Net::addrman.size());
 
         // Note: old records left; we ran into hangs-on-startup
         // bugs for some users who (we think) were running after

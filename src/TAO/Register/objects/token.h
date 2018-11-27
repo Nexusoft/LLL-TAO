@@ -107,7 +107,7 @@ namespace TAO
              **/
             void print() const
             {
-                debug::log("Token(version=%u, id=%u, maxsupply=%" PRIu64 ", digits=%u)\n", nVersion, nIdentifier, nMaxSupply, nCoinDigits);
+                debug::log(0, "Token(version=%u, id=%u, maxsupply=%" PRIu64 ", digits=%u)\n", nVersion, nIdentifier, nMaxSupply, nCoinDigits);
             }
         };
     }

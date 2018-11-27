@@ -68,6 +68,8 @@ namespace debug
      *  Prints output to the console. It may also write output to a debug.log
      *  if the global fileout file is assigned.
      *
+     *  @param[in] nLevel The logging level to Output
+     *
      *  @param[in] pszFormat The format string specifier.
      *
      *  @param[in] ... The variable argument list to supply to each format
@@ -77,7 +79,7 @@ namespace debug
      *          the error indicator (ferror) is set and a negative number is returned.
      *
      **/
-    int log(const char* pszFormat, ...);
+    int log(uint32_t nLevel, const char* pszFormat, ...);
 
 
     /** my_snprintf

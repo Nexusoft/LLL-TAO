@@ -223,7 +223,7 @@ namespace TAO
 
             void print()
             {
-                debug::log("State(version=%u, type=%u, length=%u, owner=%s, checksum=%" PRIu64 ", state=%s)\n", nVersion, nType, nLength, hashOwner.ToString().substr(0, 20).c_str(), hashChecksum, HexStr(vchState.begin(), vchState.end()).c_str());
+                debug::log(0, "State(version=%u, type=%u, length=%u, owner=%s, checksum=%" PRIu64 ", state=%s)\n", nVersion, nType, nLength, hashOwner.ToString().substr(0, 20).c_str(), hashChecksum, HexStr(vchState.begin(), vchState.end()).c_str());
             }
 
         };

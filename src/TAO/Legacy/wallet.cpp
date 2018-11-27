@@ -128,7 +128,7 @@ namespace Wallet
                     if (pMasterKey.second.nDeriveIterations < 25000)
                         pMasterKey.second.nDeriveIterations = 25000;
 
-                    debug::log("Wallet passphrase changed to an nDeriveIterations of %i\n", pMasterKey.second.nDeriveIterations);
+                    debug::log(0, "Wallet passphrase changed to an nDeriveIterations of %i\n", pMasterKey.second.nDeriveIterations);
 
                     if (!crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
                         return false;
@@ -229,7 +229,7 @@ namespace Wallet
         if (kMasterKey.nDeriveIterations < 25000)
             kMasterKey.nDeriveIterations = 25000;
 
-        debug::log("Encrypting Wallet with an nDeriveIterations of %i\n", kMasterKey.nDeriveIterations);
+        debug::log(0, "Encrypting Wallet with an nDeriveIterations of %i\n", kMasterKey.nDeriveIterations);
 
         if (!crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, kMasterKey.nDeriveIterations, kMasterKey.nDerivationMethod))
             return false;
@@ -291,7 +291,7 @@ namespace Wallet
                     CWalletTx& wtx = (*mi).second;
                     if (!wtx.IsSpent(txin.prevout.n) && IsMine(wtx.vout[txin.prevout.n]))
                     {
-                        debug::log("WalletUpdateSpent found spent coin %s Nexus %s\n", FormatMoney(wtx.GetCredit()).c_str(), wtx.GetHash().ToString().c_str());
+                        debug::log(0, "WalletUpdateSpent found spent coin %s Nexus %s\n", FormatMoney(wtx.GetCredit()).c_str(), wtx.GetHash().ToString().c_str());
                         wtx.MarkSpent(txin.prevout.n);
                         wtx.WriteToDisk();
                         vWalletUpdated.push_back(txin.prevout.hash);
@@ -348,7 +348,7 @@ namespace Wallet
             }
 
             //// debug print
-            debug::log("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString().substr(0,10).c_str(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+            debug::log(0, "AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString().substr(0,10).c_str(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
 
             // Write to disk
             if (fInsertedNew || fUpdated)
@@ -552,7 +552,7 @@ namespace Wallet
             vector<uint8_t> vchPubKey;
             if (!ExtractAddress(txout.scriptPubKey, address))
             {
-                debug::log("CWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",
+                debug::log(0, "CWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",
                     this->GetHash().ToString().c_str());
                 address = " unknown ";
             }
@@ -649,7 +649,7 @@ namespace Wallet
                     }
                     else
                     {
-                        debug::log("ERROR: AddSupportingTransactions() : unsupported transaction\n");
+                        debug::log(0, "ERROR: AddSupportingTransactions() : unsupported transaction\n");
                         continue;
                     }
 
@@ -729,7 +729,7 @@ namespace Wallet
                     // Update fSpent if a tx got spent somewhere else by a copy of wallet.dat
                     if (txindex.vSpent.size() != wtx.vout.size())
                     {
-                        debug::log("ERROR: ReacceptWalletTransactions() : txindex.vSpent.size() %d != wtx.vout.size() %d\n", txindex.vSpent.size(), wtx.vout.size());
+                        debug::log(0, "ERROR: ReacceptWalletTransactions() : txindex.vSpent.size() %d != wtx.vout.size() %d\n", txindex.vSpent.size(), wtx.vout.size());
                         continue;
                     }
                     for (uint32_t i = 0; i < txindex.vSpent.size(); i++)
@@ -745,7 +745,7 @@ namespace Wallet
                     }
                     if (fUpdated)
                     {
-                        debug::log("ReacceptWalletTransactions found spent coin %s Nexus %s\n", FormatMoney(wtx.GetCredit()).c_str(), wtx.GetHash().ToString().c_str());
+                        debug::log(0, "ReacceptWalletTransactions found spent coin %s Nexus %s\n", FormatMoney(wtx.GetCredit()).c_str(), wtx.GetHash().ToString().c_str());
                         wtx.MarkDirty();
                         wtx.WriteToDisk();
                     }
@@ -782,7 +782,7 @@ namespace Wallet
             uint512_t hash = GetHash();
             if (!indexdb.ContainsTx(hash))
             {
-                debug::log("Relaying wtx %s\n", hash.ToString().substr(0,10).c_str());
+                debug::log(0, "Relaying wtx %s\n", hash.ToString().substr(0,10).c_str());
                 RelayMessage(Net::CInv(Net::MSG_TX, hash), (Core::CTransaction)*this);
             }
         }
@@ -813,7 +813,7 @@ namespace Wallet
         nLastTime = GetUnifiedTimestamp();
 
         // Rebroadcast any of our txes that aren't in a block yet
-        debug::log("ResendWalletTransactions()\n");
+        debug::log(0, "ResendWalletTransactions()\n");
         LLD::CIndexDB indexdb("r");
         {
             LOCK(cs_wallet);
@@ -833,7 +833,7 @@ namespace Wallet
                 if (wtx.CheckTransaction())
                     wtx.RelayWalletTransaction(indexdb);
                 else
-                    debug::log("ResendWalletTransactions() : CheckTransaction failed for transaction %s\n", wtx.GetHash().ToString().c_str());
+                    debug::log(0, "ResendWalletTransactions() : CheckTransaction failed for transaction %s\n", wtx.GetHash().ToString().c_str());
             }
         }
     }
@@ -1034,11 +1034,11 @@ namespace Wallet
         //// debug print
         if (GetBoolArg("-printselectcoin"))
         {
-            debug::log("SelectCoins() selected: ");
+            debug::log(0, "SelectCoins() selected: ");
             for(PAIRTYPE(const CWalletTx*, uint32_t) pcoin : setCoinsRet)
                 pcoin.first->print();
 
-            debug::log("total %s\n", FormatMoney(nValueRet).c_str());
+            debug::log(0, "total %s\n", FormatMoney(nValueRet).c_str());
         }
 
         //Ensure total inputs does not exceed maximum
@@ -1204,7 +1204,7 @@ namespace Wallet
     {
         {
             LOCK2(Core::cs_main, cs_wallet);
-            debug::log("CommitTransaction:\n%s", wtxNew.ToString().c_str());
+            debug::log(0, "CommitTransaction:\n%s", wtxNew.ToString().c_str());
             {
                 // This is only to keep the database open to defeat the auto-flush for the
                 // duration of this scope.  This is the only place where this optimization
@@ -1240,7 +1240,7 @@ namespace Wallet
             if (!wtxNew.AcceptToMemoryPool())
             {
                 // This must not fail. The transaction has already been signed and recorded.
-                debug::log("CommitTransaction() : Error: Transaction not valid");
+                debug::log(0, "CommitTransaction() : Error: Transaction not valid");
                 return false;
             }
             wtxNew.RelayWalletTransaction();
@@ -1260,13 +1260,13 @@ namespace Wallet
         if (IsLocked())
         {
             string strError = _("Error: Wallet locked, unable to create transaction  ");
-            debug::log("SendMoney() : %s", strError.c_str());
+            debug::log(0, "SendMoney() : %s", strError.c_str());
             return strError;
         }
         if (fWalletUnlockMintOnly)
         {
             string strError = _("Error: Wallet unlocked for block minting only, unable to create transaction.");
-            debug::log("SendMoney() : %s", strError.c_str());
+            debug::log(0, "SendMoney() : %s", strError.c_str());
             return strError;
         }
         if (!CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired))
@@ -1276,7 +1276,7 @@ namespace Wallet
                 strError = strprintf(_("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  "), FormatMoney(nFeeRequired).c_str());
             else
                 strError = _("Error: Transaction creation failed  ");
-            debug::log("SendMoney() : %s", strError.c_str());
+            debug::log(0, "SendMoney() : %s", strError.c_str());
             return strError;
         }
 
@@ -1363,15 +1363,15 @@ namespace Wallet
             if (block.IsProofOfWork() && mapWallet.count(block.vtx[0].GetHash()))
             {
                 CWalletTx& wtx = mapWallet[block.vtx[0].GetHash()];
-                debug::log("    mine:  %d  %d  %s", wtx.GetDepthInMainChain(), wtx.GetBlocksToMaturity(), FormatMoney(wtx.GetCredit()).c_str());
+                debug::log(0, "    mine:  %d  %d  %s", wtx.GetDepthInMainChain(), wtx.GetBlocksToMaturity(), FormatMoney(wtx.GetCredit()).c_str());
             }
             if (block.IsProofOfStake() && mapWallet.count(block.vtx[1].GetHash()))
             {
                 CWalletTx& wtx = mapWallet[block.vtx[1].GetHash()];
-                debug::log("    stake: %d  %d  %s", wtx.GetDepthInMainChain(), wtx.GetBlocksToMaturity(), FormatMoney(wtx.GetCredit()).c_str());
+                debug::log(0, "    stake: %d  %d  %s", wtx.GetDepthInMainChain(), wtx.GetBlocksToMaturity(), FormatMoney(wtx.GetCredit()).c_str());
             }
         }
-        debug::log("\n");
+        debug::log(0, "\n");
     }
 
     bool CWallet::GetTransaction(const uint512_t &hashTx, CWalletTx& wtx)
@@ -1430,7 +1430,7 @@ namespace Wallet
                 walletdb.WritePool(nIndex, CKeyPool(GenerateNewKey()));
                 setKeyPool.insert(nIndex);
             }
-            debug::log("CWallet::NewKeyPool wrote %" PRI64d " new keys\n", nKeys);
+            debug::log(0, "CWallet::NewKeyPool wrote %" PRI64d " new keys\n", nKeys);
         }
         return true;
     }
@@ -1455,7 +1455,7 @@ namespace Wallet
                 if (!walletdb.WritePool(nEnd, CKeyPool(GenerateNewKey())))
                     throw runtime_error("TopUpKeyPool() : writing generated key failed");
                 setKeyPool.insert(nEnd);
-                debug::log("keypool added key %" PRI64d ", size=%d\n", nEnd, setKeyPool.size());
+                debug::log(0, "keypool added key %" PRI64d ", size=%d\n", nEnd, setKeyPool.size());
             }
         }
         return true;
@@ -1487,7 +1487,7 @@ namespace Wallet
 
             assert(!keypool.vchPubKey.empty());
             if (fDebug && GetBoolArg("-printkeypool"))
-                debug::log("keypool reserve %" PRI64d "\n", nIndex);
+                debug::log(0, "keypool reserve %" PRI64d "\n", nIndex);
         }
     }
 
@@ -1514,7 +1514,7 @@ namespace Wallet
             CWalletDB walletdb(strWalletFile);
             walletdb.ErasePool(nIndex);
         }
-        debug::log("keypool keep %" PRI64d "\n", nIndex);
+        debug::log(0, "keypool keep %" PRI64d "\n", nIndex);
     }
 
     void CWallet::ReturnKey(int64_t nIndex)
@@ -1525,7 +1525,7 @@ namespace Wallet
             setKeyPool.insert(nIndex);
         }
         if (fDebug && GetBoolArg("-printkeypool"))
-            debug::log("keypool return %" PRI64d "\n", nIndex);
+            debug::log(0, "keypool return %" PRI64d "\n", nIndex);
     }
 
     bool CWallet::GetKeyFromPool(vector<uint8_t>& result, bool fAllowReuse)
@@ -1590,7 +1590,7 @@ namespace Wallet
                 /* Handle the Index on Disk for Transaction being inconsistent from the Wallet's accounting to the UTXO. */
                 if (IsMine(pcoin->vout[n]) && pcoin->IsSpent(n) && (txindex.vSpent.size() <= n || txindex.vSpent[n].IsNull()))
                 {
-                    debug::log("FixSpentCoins found lost coin %s Nexus %s[%d], %s\n",
+                    debug::log(0, "FixSpentCoins found lost coin %s Nexus %s[%d], %s\n",
                         FormatMoney(pcoin->vout[n].nValue).c_str(), pcoin->GetHash().ToString().c_str(), n, fCheckOnly? "repair not attempted" : "repairing");
                     nMismatchFound++;
                     nBalanceInQuestion += pcoin->vout[n].nValue;
@@ -1604,7 +1604,7 @@ namespace Wallet
                 /* Handle the wallet missing a spend that was updated in the indexes. The index is updated on connect inputs. */
                 else if (IsMine(pcoin->vout[n]) && !pcoin->IsSpent(n) && (txindex.vSpent.size() > n && !txindex.vSpent[n].IsNull()))
                 {
-                    debug::log("FixSpentCoins found spent coin %s Nexus %s[%d], %s\n",
+                    debug::log(0, "FixSpentCoins found spent coin %s Nexus %s[%d], %s\n",
                         FormatMoney(pcoin->vout[n].nValue).c_str(), pcoin->GetHash().ToString().c_str(), n, fCheckOnly? "repair not attempted" : "repairing");
                     nMismatchFound++;
                     nBalanceInQuestion += pcoin->vout[n].nValue;
@@ -1650,7 +1650,7 @@ namespace Wallet
                 vchPubKey = keypool.vchPubKey;
             else
             {
-                debug::log("CReserveKey::GetReservedKey(): Warning: using default key instead of a new key, top up your keypool.");
+                debug::log(0, "CReserveKey::GetReservedKey(): Warning: using default key instead of a new key, top up your keypool.");
                 vchPubKey = pwallet->vchDefaultKey;
             }
         }

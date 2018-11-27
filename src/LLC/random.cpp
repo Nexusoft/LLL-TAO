@@ -49,7 +49,7 @@ namespace LLC
         {
             RAND_add(pdata, nSize, nSize/100.0);
             memset(pdata, 0, nSize);
-            debug::log("%s RandAddSeed() %d bytes\n", DateTimeStrFormat(Timestamp()).c_str(), nSize);
+            debug::log(0, "%s RandAddSeed() %d bytes\n", DateTimeStrFormat(Timestamp()).c_str(), nSize);
         }
     #endif
     }

@@ -29,7 +29,7 @@ void HandleSIGTERM(int signum)
 {
     if(signum != SIGPIPE)
     {
-        debug::log("Shutting Down %d\n", signum);
+        debug::log(0, "Shutting Down %d\n", signum);
         config::fShutdown = true;
     }
 }

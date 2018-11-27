@@ -171,7 +171,7 @@ namespace LLP
                     if (hSocket == INVALID_SOCKET)
                     {
                         if (GetLastError() != WSAEWOULDBLOCK)
-                            debug::log("socket error accept failed: %d\n", GetLastError());
+                            debug::error("socket error accept failed: %d\n", GetLastError());
                     }
                     else
                     {
@@ -183,7 +183,7 @@ namespace LLP
                         /* DDOS Operations: Only executed when DDOS is enabled. */
                         if((fDDOS && DDOS_MAP[(CService)addr]->Banned()))
                         {
-                            debug::log(NODE "Connection Request %s refused... Banned.", addr.ToString().c_str());
+                            debug::log(0, NODE "Connection Request %s refused... Banned.", addr.ToString().c_str());
                             close(hSocket);
 
                             continue;
@@ -194,8 +194,7 @@ namespace LLP
                         int nThread = FindThread();
                         DATA_THREADS[nThread]->AddConnection(sockNew, DDOS_MAP[(CService)addr]);
 
-                        if(config::GetArg("-verbose", 0) >= 3)
-                            debug::log(NODE "Accepted Connection %s on port %u\n", addr.ToString().c_str(), PORT);
+                        debug::log(3, NODE "Accepted Connection %s on port %u\n", addr.ToString().c_str(), PORT);
                     }
                 }
             }
@@ -212,7 +211,7 @@ namespace LLP
                 int ret = WSAStartup(MAKEWORD(2,2), &wsadata);
                 if (ret != NO_ERROR)
                 {
-                    debug::log("Error: TCP/IP socket library failed to start (WSAStartup returned error %d)", ret);
+                    debug::error("TCP/IP socket library failed to start (WSAStartup returned error %d)", ret);
 
                     return false;
                 }
@@ -222,7 +221,7 @@ namespace LLP
             hListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
             if (hListenSocket == INVALID_SOCKET)
             {
-                debug::log("Error: Couldn't open socket for incoming connections (socket returned error %d)", GetLastError());
+                debug::error("Couldn't open socket for incoming connections (socket returned error %d)", GetLastError());
 
                 return false;
             }
@@ -250,18 +249,18 @@ namespace LLP
             {
                 int nErr = GetLastError();
                 if (nErr == WSAEADDRINUSE)
-                    debug::log("Error:Unable to bind to port %d on this computer.  Nexus is probably already running.", ntohs(sockaddr.sin_port));
+                    debug::error("Unable to bind to port %d on this computer.  Nexus is probably already running.", ntohs(sockaddr.sin_port));
                 else
-                    debug::log("Error: Unable to bind to port %d on this computer (bind returned error %d)", ntohs(sockaddr.sin_port), nErr);
+                    debug::error("Unable to bind to port %d on this computer (bind returned error %d)", ntohs(sockaddr.sin_port), nErr);
 
                 return false;
             }
-            debug::log(NODE "Bound to port %d\n", ntohs(sockaddr.sin_port));
+            debug::log(0, NODE "Bound to port %d\n", ntohs(sockaddr.sin_port));
 
             // Listen for incoming connections
             if (listen(hListenSocket, SOMAXCONN) == SOCKET_ERROR)
             {
-                debug::log("Error: Listening for incoming connections failed (listen returned error %d)", GetLastError());
+                debug::error("Listening for incoming connections failed (listen returned error %d)", GetLastError());
 
                 return false;
             }
@@ -288,7 +287,7 @@ namespace LLP
                     nGlobalConnections += DATA_THREADS[nIndex]->nConnections;
 
                 uint32_t RPS = TotalRequests() / TIMER.Elapsed();
-                debug::log("***** LLP Running at %u requests/s with %u connections.\n", RPS, nGlobalConnections);
+                debug::log(0, 0, "***** LLP Running at %u requests/s with %u connections.\n", RPS, nGlobalConnections);
 
                 TIMER.Reset();
                 ClearRequests();

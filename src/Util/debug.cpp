@@ -37,8 +37,12 @@ namespace debug
 
     /* Prints output to the console. It may also write output to a debug.log
      * if the global fileout file is assigned. */
-    int log(const char* pszFormat, ...)
+    int log(uint32_t nLevel, const char* pszFormat, ...)
     {
+        /* Don't write if log level is below set level. */
+        if(config::GetArg("-verbose", 0) < nLevel)
+            return 0;
+
         LOCK(DEBUG_MUTEX);
 
         /* print to console */
@@ -176,7 +180,7 @@ namespace debug
             buffer[limit-1] = 0;
         }
 
-        debug::log(ANSI_COLOR_RED "ERROR: %s" ANSI_COLOR_RESET "\n", buffer);
+        debug::log(0, ANSI_COLOR_RED "ERROR: %s" ANSI_COLOR_RESET "\n", buffer);
         return false;
     }
 
@@ -194,14 +198,14 @@ namespace debug
             buffer[limit-1] = 0;
         }
 
-        debug::log(ANSI_COLOR_FUNCTION "%s::%s()" ANSI_COLOR_RESET " : %s\n", base, __func__, buffer);
+        debug::log(0, ANSI_COLOR_FUNCTION "%s::%s()" ANSI_COLOR_RESET " : %s\n", base, __func__, buffer);
     }
 
     /*  Prints and logs the stack trace of the code execution call stack up to
      *  the point where this function is called to debug.log */
     void LogStackTrace()
     {
-        debug::log("\n\n******* exception encountered *******\n");
+        debug::log(0, "\n\n******* exception encountered *******\n");
         if (fileout)
         {
         #ifndef WIN32
@@ -236,7 +240,7 @@ namespace debug
     {
         char pszMessage[10000];
         FormatException(pszMessage, pex, pszThread);
-        debug::log("\n%s", pszMessage);
+        debug::log(0, "\n%s", pszMessage);
     }
 
     /*  Prints the exception with the named calling thread and throws it */
@@ -244,7 +248,7 @@ namespace debug
     {
         char pszMessage[10000];
         FormatException(pszMessage, pex, pszThread);
-        debug::log("\n\n************************\n%s\n", pszMessage);
+        debug::log(0, "\n\n************************\n%s\n", pszMessage);
         fprintf(stderr, "\n\n************************\n%s\n", pszMessage);
 
         throw;
@@ -255,7 +259,7 @@ namespace debug
     {
         char pszMessage[10000];
         FormatException(pszMessage, pex, pszThread);
-        debug::log("\n\n************************\n%s\n", pszMessage);
+        debug::log(0, "\n\n************************\n%s\n", pszMessage);
         fprintf(stderr, "\n\n************************\n%s\n", pszMessage);
 
     }
