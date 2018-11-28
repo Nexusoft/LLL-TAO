@@ -188,7 +188,7 @@ namespace Legacy
 
         
         /* Function to encrypt a private key using a master key and IV pair. */
-        bool EncryptSecret(CKeyingMaterial& vMasterKey, const CSecret &vchPlaintext, const uint576_t& nIV, std::vector<uint8_t> &vchCiphertext)
+        bool EncryptSecret(const CKeyingMaterial& vMasterKey, const CSecret &vchPlaintext, const uint576_t& nIV, std::vector<uint8_t> &vchCiphertext)
         {
             CCrypter cKeyCrypter;
 

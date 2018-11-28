@@ -45,7 +45,7 @@ namespace Legacy
         /* forward declarations */
         class CAccount;
         class CAccountingEntry;
-        class CKeyPool;
+        class CKeyPoolEntry;
         class CMasterKey;
         class CWallet;
         class CWalletTx;
@@ -88,12 +88,12 @@ namespace Legacy
         {
         protected:
             /** Defines name of wallet database file **/
-            static const std::string WALLET_DB("wallet.dat");
+            static const std::string DEFAULT_WALLET_DB("wallet.dat");
 
 
             /**
-             *  Value indicating how many updates have been written to the wallet database since startup.
-             *  There may be multiple instances of CWalletDB accessing the database, so this
+             *  Value indicating how many updates have been written to any wallet database since startup.
+             *  There may be multiple instances of CWalletDB accessing a database, so this
              *  is a static value stored across instances.
              *
              *  Used by the flush wallet thread to track if there have been updates since 
@@ -115,50 +115,50 @@ namespace Legacy
             static uint64_t nAccountingEntryNumber = 0;
 
 
-        private:
-            /** Copy constructor deleted. No copy allowed **/
-            CWalletDB(const CWalletDB&) = delete;
-
-
-            /** Copy assignment operator deleted. No assignment allowed **/
-            void operator=(const CWalletDB&) = delete;
-
-
         public:
             /** Constructor
              *
-             *  Initializes database access to wallet database for an access mode (see CDB for modes).
+             *  Initializes database access to wallet database using CWalletDB::DEFAULT_WALLET_DB
+             *  for the file name.
+             *  
              *
              *  @param[in] pszMode A string containing one or more access mode characters
              *                     defaults to r+ (read and append). An empty or null string is
              *                     equivalent to read only.
              *
+             *  @see CDB for modes
+             *
              **/
-            CWalletDB(const char* pszMode="r+") : CDB(WALLET_DB, pszMode)
-            {
-            }
+            CWalletDB(const char* pszMode="r+") : 
+                CDB(CWalletDB::DEFAULT_WALLET_DB, pszMode)
+            { }
 
 
             /** Constructor 
              *
              *  Initializes database access for a given file name and access mode.
              *
-             *  @deprecated This constructor is only included for backward compatability. Previous
-             *  wallet versions included an option to use a different wallet database file name, but
-             *  it was not used. Instead, the wallet.dat file name was hard-coded into the code
-             *  and was the only name supported. This is now reflected in CWalletDB itself, with
-             *  the file name defined by the class as the only name used.
-             *
-             *  @param[in] pszFile The database file name. This value is *IGNORED*. CWalletDB::WALLET_DB is used.
+             *  @param[in] strFilename The database file name. Should be file name only. Database
+             *                     will put the file in data directory automatically.
              *
              *  @param[in] pszMode A string containing one or more access mode characters
              *                     defaults to r+ (read and append). An empty or null string is
              *                     equivalent to read only.
              *
+             *  @see CDB for modes
+             *
              **/
-            CWalletDB(std::string strFilename, const char* pszMode="r+") : CDB(CWalletDB::WALLET_DB, pszMode)
-            {
-            }
+            CWalletDB(std::string strFilename, const char* pszMode="r+") : 
+                CDB(strFileName, pszMode)
+            { }
+
+
+            /** Copy constructor deleted. No copy allowed **/
+            CWalletDB(const CWalletDB&) = delete;
+
+
+            /** Copy assignment operator deleted. No assignment allowed **/
+            CWalletDB& operator=(const CWalletDB&) = delete;
 
 
             /** WriteMasterKey
@@ -187,19 +187,20 @@ namespace Legacy
              *  @see CCrypter::Encrypt
              *  @see CMasterKey
              *
-             *  @param[in] nID The key Id to identify a particuler master key entry. 
+             *  @param[in] nMasterKeyId The key Id to identify a particuler master key entry. 
              *
-             *  @param[in] CMasterKey Encrypted key value along with the encryption settings used to encrypt it
+             *  @param[in] kMasterKey Encrypted key value along with the encryption settings used to encrypt it
              *
              *  @return true if master key successfully written to wallet database
              *
              **/
-            bool WriteMasterKey(const uint32_t nID, const CMasterKey& kMasterKey);
+            bool WriteMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey);
 
 
             /** WriteMinVersion
              *
              *  Stores the minimum database version supported by this wallet database.
+             *  Overwrites any previous value.
              *
              *  @param[in] nVersion Vesion number to store
              *
@@ -447,35 +448,35 @@ namespace Legacy
              *
              *  Reads a key pool entry from the database.
              *
-             *  @param[in] nPool The ID value associated with the key pool entry
+             *  @param[in] nPool The pool entry ID value associated with the key pool entry
              *
-             *  @param[out] keypool The retrieved key pool entry
+             *  @param[out] keypoolEntry The retrieved key pool entry
              *
              *  @return true if the key pool entry is present in the database and read successfully
              *
              **/
-            bool ReadPool(const int64_t nPool, CKeyPool& keypool);
+            bool ReadPool(const int64_t nPool, CKeyPoolEntry& keypoolEntry);
 
 
             /** WritePool
              *
              *  Stores a key pool entry using its pool entry number (ID value).
              *
-             *  @param[in] nPool The ID value associated with the key pool entry
+             *  @param[in] nPool The pool entry ID value associated with the key pool entry
              *
-             *  @param[in] keypool The key pool entry to store
+             *  @param[in] keypoolEntry The key pool entry to store
              *
              *  @return true if database entry successfully written
              *
              **/
-            bool WritePool(const int64_t nPool, const CKeyPool& keypool);
+            bool WritePool(const int64_t nPool, const CKeyPoolEntry& keypoolEntry);
 
 
             /** ErasePool
              *
              *  Removes a key pool entry associated with a pool entry number.
              *
-             *  @param[in] nPool The ID value associated with the key pool entry
+             *  @param[in] nPool The pool entry ID value associated with the key pool entry
              *
              *  @return true if database entry successfully removed
              *
@@ -533,7 +534,7 @@ namespace Legacy
              *  @return Value from Legacy::Wallet::DBErrors, DB_LOAD_OK on success
              *
              **/
-            int LoadWallet(std::shared_ptr<CWallet> pwallet);
+            int LoadWallet(CWallet* pwallet);
         };
 
 
@@ -554,12 +555,16 @@ namespace Legacy
 
         /** @fn ThreadFlushWalletDB
          *
-         *  @deprecated
-         *  Old form of function to run in wallet flush thread. No longer used becasue
-         *  all wallets use CWalletDB::WALLET_DB as the wallet file name. Included
-         *  for backward compatability
+         *  Function that loops until shutdown and periodically flushes a wallet db
+         *  to disk as needed to ensure all data updates are properly persisted. Execute
+         *  this function in a separate thread to run in the background and handle wallet flush.
          *
-         *  This function calls ThreadFlushWalletDB()
+         *  The actual flush is only performed after any open database handle on the wallet database
+         *  file is closed by calling CloseDb()
+         *
+         *  This operation can be disabled by setting the startup option -flushwallet to false
+         *
+         *  @param[in] strWalletFile The wallet database file to flush
          *
          **/
         void ThreadFlushWalletDB(const std::string strWalletFile);

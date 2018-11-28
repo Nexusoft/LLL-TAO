@@ -270,7 +270,7 @@ namespace Legacy
  
 
             /** Copy assignment operator deleted. No assignment allowed **/
-            void operator= (const CDB&) = delete;
+            CDB& operator= (const CDB&) = delete;
 
 
             /** TxnBegin
@@ -369,7 +369,7 @@ namespace Legacy
             static void DBFlush(bool fShutdown);
 
 
-            /** @fn Rewrite
+            /** @fn DBRewrite
              *
              *  Rewrites a database file by copying all contents to an new file, then 
              *  replacing the old file with the new one. Does nothing if 
@@ -377,12 +377,12 @@ namespace Legacy
              *
              *  @param[in] strFile The database file to rewrite
              *
-             *  @param[in] pszSkip An optional key value. Any database entries with this key are not copied to the rewritten file
+             *  @param[in] strSkip An optional key type. Any database entries with this key are not copied to the rewritten file
              *
              *  @return true if rewrite was successful
              *
              **/
-            static bool DBRewrite(const std::string& strFile, const char* pszSkip = nullptr);
+            static bool DBRewrite(const std::string& strFile, const std::string& strSkip = "");
 
 
             /** @fn EnvShutdown

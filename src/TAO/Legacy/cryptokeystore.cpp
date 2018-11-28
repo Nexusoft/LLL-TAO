@@ -28,7 +28,7 @@ namespace Legacy
         bool CCryptoKeyStore::SetCrypted()
         {
             {
-                LOCK(cs_KeyStore);
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
                 if (fUseCrypto)
                     return true;
 
@@ -44,10 +44,10 @@ namespace Legacy
 
 
         /*  Convert the key store from unencrypted to encrypted. */
-        bool CCryptoKeyStore::EncryptKeys(CKeyingMaterial& vMasterKeyIn)
+        bool CCryptoKeyStore::EncryptKeys(const CKeyingMaterial& vMasterKeyIn)
         {
             {
-                LOCK(cs_KeyStore);
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
 
                 //Check whether key store already encrypted
                 if (!mapCryptedKeys.empty() || IsCrypted())
@@ -91,17 +91,17 @@ namespace Legacy
         bool CCryptoKeyStore::Unlock(const CKeyingMaterial& vMasterKeyIn)
         {
             {
-                LOCK(cs_KeyStore);
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
 
                 //Cannot unlock unencrypted key store (it is unlocked by default)
                 if (!SetCrypted())
                     return false;
 
-                CryptedKeyMap::const_iterator mi = mapCryptedKeys.begin();
+                auto mi = mapCryptedKeys.cbegin();
 
                 //Only need to check first entry in map to determine successful/unsuccessful unlock
                 //Will also unlock successfully if map has no entries
-                if (mi != mapCryptedKeys.end())
+                if (mi != mapCryptedKeys.cend())
                 {
                     const std::vector<uint8_t> &vchPubKey = (*mi).second.first;
                     const std::vector<uint8_t> &vchCryptedSecret = (*mi).second.second;
@@ -141,7 +141,7 @@ namespace Legacy
             bool result;
 
             {
-                LOCK(cs_KeyStore);
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
 
                 //If encryption key is not stored, cannot decrypt keys and key store is locked
                 result = vMasterKey.empty();
@@ -159,7 +159,7 @@ namespace Legacy
                 return false;
 
             {
-                LOCK(cs_KeyStore);
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
 
                 //Remove any stored encryption key so key store values cannot be decrypted, locking the key store
                 vMasterKey.clear();
@@ -173,7 +173,7 @@ namespace Legacy
         bool CCryptoKeyStore::AddCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret)
         {
             {
-                LOCK(cs_KeyStore);
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
 
                 //Key store must be encrypted
                 if (!SetCrypted())
@@ -190,7 +190,7 @@ namespace Legacy
         bool CCryptoKeyStore::AddKey(const LLC::ECKey& key)
         {
             {
-                LOCK(cs_KeyStore);
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
 
                 //Add key to basic key store if encryption not active
                 if (!IsCrypted())
@@ -220,7 +220,7 @@ namespace Legacy
         bool CCryptoKeyStore::GetKey(const Legacy::Types::NexusAddress &address, LLC::ECKey& keyOut) const
         {
             {
-                LOCK(cs_KeyStore);
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
  
                 //Cannot decrypt key if key store is encrypted and locked
                 if (IsLocked())
@@ -253,7 +253,7 @@ namespace Legacy
         void CCryptoKeyStore::GetKeys(std::set<Legacy::Types::NexusAddress> &setAddress) const 
         {
             {
-                LOCK(cs_KeyStore);
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
 
                 if (!IsCrypted())
                 {
@@ -263,8 +263,8 @@ namespace Legacy
 
                 setAddress.clear();
 
-                for (auto mKey : mapCryptedKeys)
-                    setAddress.insert(mKey.first);
+                for (auto &mapEntry : mapCryptedKeys)
+                    setAddress.insert(mapEntry.first);
             }
         }
 
@@ -273,7 +273,7 @@ namespace Legacy
         bool CCryptoKeyStore::HaveKey(const Legacy::Types::NexusAddress &address) const 
         {
             {
-                LOCK(cs_KeyStore);
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
  
                 if (!IsCrypted())
                     return CBasicKeyStore::HaveKey(address);
@@ -289,7 +289,7 @@ namespace Legacy
         bool CCryptoKeyStore::GetPubKey(const NexusAddress &address, std::vector<uint8_t>& vchPubKeyOut) const
         {
             {
-                LOCK(cs_KeyStore);
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
 
                 if (!IsCrypted())
                     return CKeyStore::GetPubKey(address, vchPubKeyOut);

@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <vector>
 
+#include <Util/include/runtime.h>
 #include <Util/templates/serialize.h>
 
 namespace Legacy 
@@ -52,7 +53,7 @@ namespace Legacy
              **/
             CKeyPoolEntry()
             {
-                nTime = GetUnifiedTimestamp();
+                nTime = UnifiedTimestamp();
             }
 
 
@@ -65,7 +66,7 @@ namespace Legacy
              **/
             CKeyPoolEntry(const std::vector<uint8_t>& vchPubKeyIn)
             {
-                nTime = GetUnifiedTimestamp();
+                nTime = UnifiedTimestamp();
                 vchPubKey = vchPubKeyIn;
             }
 

@@ -114,6 +114,17 @@ namespace Legacy
             bool TopUpKeyPool();
 
 
+            /** ClearKeyPool
+             *
+             *  Empties the current key pool. 
+             *
+             **/
+            inline void ClearKeyPool() 
+            {
+                setKeyPool.clear();
+            }
+
+
             /** AddKey
              *
              *  Manually adds a key pool entry. This only adds the entry to the pool.

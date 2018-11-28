@@ -19,8 +19,6 @@ ________________________________________________________________________________
 #include <utility>
 #include <vector>
 
-#include <LLC/types/uint1024.h>
-
 #include <TAO/Legacy/wallet/basickeystore.h>
 #include <TAO/Legacy/wallet/crypter.h>
 
@@ -45,7 +43,7 @@ namespace Legacy
         typedef std::map<Legacy::Types::NexusAddress, std::pair<std::vector<uint8_t>, std::vector<uint8_t> > > CryptedKeyMap;
 
 
-        /** CCryptoKeyStore
+        /** @class CCryptoKeyStore
          *
          * Key store that keeps the private keys encrypted.
          *
@@ -81,7 +79,7 @@ namespace Legacy
              * @return true if encryption successfully activated or previously active
              *
              **/
-            bool SetCrypted();
+            virtual bool SetCrypted();
 
 
             /** EncryptKeys
@@ -95,7 +93,7 @@ namespace Legacy
              *  @return true if keys successfully encrypted and moved from mapKeys to mapCryptedKeys
              *          false if key store previously encrypted or encryption not successful
              **/
-            bool EncryptKeys(CKeyingMaterial& vMasterKeyIn);
+            virtual bool EncryptKeys(const CKeyingMaterial& vMasterKeyIn);
 
 
             /** Unlock
@@ -106,8 +104,9 @@ namespace Legacy
              *  @param[in] vMasterKeyIn Encryption key originally used to perform encryption.
              *
              *  @return true if master key matches key used to encrypt the store and unlock is successful
+             *
              **/
-            bool Unlock(const CKeyingMaterial& vMasterKeyIn);
+            virtual bool Unlock(const CKeyingMaterial& vMasterKeyIn);
 
         public:
             /** Default constructor
@@ -138,7 +137,7 @@ namespace Legacy
              *
              *  @return true if the key store is locked
              **/
-            bool IsLocked() const;
+            virtual bool IsLocked() const;
 
 
             /** Lock
@@ -148,7 +147,7 @@ namespace Legacy
              *
              *  @return true if the key store was successfully locked
              **/
-            bool Lock();
+            virtual bool Lock();
 
 
             /** AddCryptedKey

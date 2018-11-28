@@ -33,7 +33,7 @@ namespace Legacy
 
     namespace Wallet
     {
-        /**  CKeyStrore
+        /** @class CKeyStrore
          *
          *  An abstract base class for key stores. 
          * 

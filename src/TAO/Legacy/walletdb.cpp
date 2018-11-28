@@ -22,10 +22,13 @@ ________________________________________________________________________________
 
 #include <LLD/include/version.h>
 
+#include <TAO/Legacy/types/script.h>
 #include <TAO/Legacy/wallet/wallet.h>
 #include <TAO/Legacy/wallet/walletdb.h>
 
+#include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
+#include <Util/include/runtime.h>
 #include <Util/templates/serialize.h>
 
 
@@ -36,17 +39,17 @@ namespace Legacy
     {
 
         /* WriteMasterKey */
-        bool WriteMasterKey(const uint32_t nID, const CMasterKey& kMasterKey)
+        bool WriteMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey)
         {
             CWalletDB::nWalletDBUpdated++;
-            return Write(std::make_pair(std::string("mkey"), nID), kMasterKey, true);
+            return Write(std::make_pair(std::string("mkey"), nMasterKeyId), kMasterKey, true);
         }
 
 
         /* WriteMinVersion */
         bool WriteMinVersion(const int nVersion)
         {
-            return Write(std::string("minversion"), nVersion);
+            return Write(std::string("minversion"), nVersion, true);
         }
 
 
@@ -192,17 +195,17 @@ namespace Legacy
 
 
         /* ReadPool */
-        bool ReadPool(const int64_t nPool, CKeyPool& keypool)
+        bool ReadPool(const int64_t nPool, CKeyPoolEntry& keypoolEntry)
         {
-            return Read(std::make_pair(std::string("pool"), nPool), keypool);
+            return Read(std::make_pair(std::string("pool"), nPool), keypoolEntry);
         }
 
 
         /* WritePool */
-        bool WritePool(const int64_t nPool, const CKeyPool& keypool)
+        bool WritePool(const int64_t nPool, const CKeyPoolEntry& keypoolEntry)
         {
             CWalletDB::nWalletDBUpdated++;
-            return Write(std::make_pair(std::string("pool"), nPool), keypool);
+            return Write(std::make_pair(std::string("pool"), nPool), keypoolEntry);
         }
 
 
@@ -296,9 +299,8 @@ namespace Legacy
 
 
         /* LoadWallet */
-        int CWalletDB::LoadWallet(std::shared_ptr<CWallet> pwallet)
+        int CWalletDB::LoadWallet(CWallet* pwallet)
         {
-            pwallet->vchDefaultKey.clear();
             int nFileVersion = 0;
             std::vector<uint512_t> vWalletUpgrade;
             std::vector<uint512_t> vWalletRemove;
@@ -306,7 +308,9 @@ namespace Legacy
             bool fIsEncrypted = false;
 
             { //Begin lock scope 
-                LOCK(pwallet->cs_wallet);
+                std::lock_guard<std::mutex> walletLock(pwallet->cs_wallet); 
+
+                pwallet->vchDefaultKey.clear();
 
                 // Read and validate minversion required by database file
                 int nMinVersion = 0;
@@ -331,6 +335,7 @@ namespace Legacy
                     // Read next record
                     CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
                     CDataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
+
                     int ret = ReadAtCursor(pcursor, ssKey, ssValue);
 
                     if (ret == DB_NOTFOUND)
@@ -366,6 +371,7 @@ namespace Legacy
                         if(GetBoolArg("-walletclean", false)) {
                             // Add all transactions to remove list if -walletclean argument is set
                             vWalletRemove.push_back(hash);
+
                         }
                         else if (wtx.GetHash() != hash) {
                             printf("Error in wallet.dat, hash mismatch. Removing Transaction from wallet map. Run the rescan command to restore.\n");
@@ -471,23 +477,17 @@ namespace Legacy
                     }
                     else if (strType == "mkey")
                     {
-                        uint32_t nID;
-                        ssKey >> nID;
+                        uint32_t nMasterKeyId;
+                        ssKey >> nMasterKeyId;
                         CMasterKey kMasterKey;
                         ssValue >> kMasterKey;
 
-                        // Validate the master key data
-                        if(pwallet->mapMasterKeys.count(nID) != 0)
-                        {
-                            printf("Error reading wallet database: duplicate CMasterKey id %u\n", nID);
+                        // Load the master key into the wallet
+                        if (!pWallet->LoadMasterKey(nMasterKeyId, kMasterKey))
+                        }
+                            printf("Error reading wallet database: duplicate CMasterKey id %u\n", nMasterKeyId);
                             return DB_CORRUPT;
                         }
-
-                        pwallet->mapMasterKeys[nID] = kMasterKey;
-
-                        // After load, wallet nMasterKeyMaxID will contain the maximum key ID currently stored in the database
-                        if (pwallet->nMasterKeyMaxID < nID)
-                            pwallet->nMasterKeyMaxID = nID;
 
                     }
                     else if (strType == "ckey")
@@ -514,20 +514,17 @@ namespace Legacy
                     }
                     else if (strType == "pool")
                     {
-                        int64_t nIndex;
-                        ssKey >> nIndex;
+                        int64_t nPoolIndex;
+                        ssKey >> nPoolIndex;
 
-                        // Only the key ID (index) is added to the wallet now
-                        // Key pool values will be read from the database as needed
-                        pwallet->setKeyPool.insert(nIndex);
+                        // Only the pool index is stored in the key pool
+                        // Key pool entry will be read from the database as needed
+                        pwallet->GetKeyPool().setKeyPool.insert(nPoolIndex);
 
                     }
                     else if (strType == "version")
                     {
                         ssValue >> nFileVersion;
-
-                        if (nFileVersion == 10300)
-                            nFileVersion = 300;
 
                     }
                     else if (strType == "cscript")
@@ -565,12 +562,11 @@ namespace Legacy
                 }
             }
 
-            printf("nFileVersion = %d\n", nFileVersion);
-
-
             // Update file version to latest version
             if (nFileVersion < LLD::DATABASE_VERSION) 
                 WriteVersion(LLD::DATABASE_VERSION);
+
+            printf("nFileVersion = %d\n", nFileVersion);
 
             return DB_LOAD_OK;
         }
@@ -591,23 +587,23 @@ namespace Legacy
             const int64_t minTimeSinceLastUpdate = 2;
             uint32_t nLastSeen = CWalletDB::nWalletDBUpdated;
             uint32_t nLastFlushed = CWalletDB::nWalletDBUpdated;
-            int64_t nLastWalletUpdate = GetUnifiedTimestamp();
+            int64_t nLastWalletUpdate = UnifiedTimestamp();
 
             while (!fShutdown)
             {
-                Sleep(500);
+                Sleep(1000);
 
                 if (nLastSeen != CWalletDB::nWalletDBUpdated)
                 {
                     // Database is update. Record time update recognized
                     nLastSeen = CWalletDB::nWalletDBUpdated;
-                    nLastWalletUpdate = GetUnifiedTimestamp();
+                    nLastWalletUpdate = UnifiedTimestamp();
                 }
 
-                // Perform flush if database updated, and the minimum required time has passed since recognizing the update
-                if (nLastFlushed != CWalletDB::nWalletDBUpdated && (GetUnifiedTimestamp() - nLastWalletUpdate) >= minTimeSinceLastUpdate)
+                // Perform flush if any wallet database updated, and the minimum required time has passed since recognizing the update
+                if (nLastFlushed != CWalletDB::nWalletDBUpdated && (UnifiedTimestamp() - nLastWalletUpdate) >= minTimeSinceLastUpdate)
                 {
-                    // Try to lock but don't wait for it. Skip this iteration fail to get lock.
+                    // Try to lock but don't wait for it. Skip this iteration if fail to get lock.
                     if (CDB::cs_db.try_lock())
                     {
                         // Check ref count and skip flush attempt if any databases are in use (have an open file handle indicated by usage map count > 0)
@@ -623,21 +619,24 @@ namespace Legacy
 
                         if (nRefCount == 0 && !fShutdown)
                         {
-                            auto mi = CDB::mapFileUseCount.find(CWalletDB::WALLET_DB);
-                            if (mi != CDB::mapFileUseCount.end())
+                            // If strWalletFile has not been opened since startup, no need to flush even if nWalletDBUpdated count has changed. 
+                            // An entry in mapFileUseCount verifies that this particular wallet file has been used at some point, so it will be flushed.
+                            // Should also never have an entry in mapFileUseCount if dbenv is not initialized, but it is checked to be sure.
+                            auto mi = CDB::mapFileUseCount.find(strWalletFile);
+                            if (CDB::fDbEnvInit && mi != CDB::mapFileUseCount.end())
                             {
-                                printf("%s ", DateTimeStrFormat(GetUnifiedTimestamp()).c_str());
+                                printf("%s ", DateTimeStrFormat(UnifiedTimestamp()).c_str());
                                 printf("Flushing wallet.dat\n");
                                 nLastFlushed = CWalletDB::nWalletDBUpdated;
                                 int64_t nStart = GetTimeMillis();
 
-                                // Flush wallet.dat so it's self contained
-                                CloseDb(strFile);
-                                dbenv.txn_checkpoint(0, 0, 0);
-                                dbenv.lsn_reset(strFile.c_str(), 0);
+                                // Flush wallet file so it's self contained
+                                CloseDb(strWalletFile);
+                                CDB::dbenv.txn_checkpoint(0, 0, 0);
+                                CDB::dbenv.lsn_reset(strWalletFile.c_str(), 0);
 
                                 mapFileUseCount.erase(mi++);
-                                printf("Flushed wallet.dat %" PRI64d "ms\n", GetTimeMillis() - nStart);
+                                printf("Flushed %s %" PRI64d "ms\n", strWalletFile, GetTimeMillis() - nStart);
                             }
                         }
 
@@ -660,24 +659,20 @@ namespace Legacy
                     std::lock_guard<std::mutex> dbLock(CDB::cs_db); 
 
                     // If wallet database is in use, will wait and repeat loop until it becomes available
-                    if (CDB::mapFileUseCount.count(CWalletDB::WALLET_DB) == 0 || CDB::mapFileUseCount[CWalletDB::WALLET_DB] == 0)
+                    if (CDB::mapFileUseCount.count(strFile) == 0 || CDB::mapFileUseCount[strFile] == 0)
                     {
                         // Flush log data to the dat file
                         CloseDb(wallet.strWalletFile);
                         dbenv.txn_checkpoint(0, 0, 0);
                         dbenv.lsn_reset(wallet.strWalletFile.c_str(), 0);
-                        CDB::mapFileUseCount.erase(CWalletDB::WALLET_DB);
+                        CDB::mapFileUseCount.erase(strFile);
 
-                        std::string pathSrc(GetDataDir() + "/" + CWalletDB::WALLET_DB);
+                        std::string pathSrc(GetDataDir() + "/" + strFile);
                         std::string pathDest(strDest);
 
                         // If destination is a folder, use wallet database name
                         if (filesystem::is_directory(pathDest))
-                            pathDest = pathDest + "/" + CWalletDB::WALLET_DB;
-
-                        // If destination file exists, remove it (ie, we overwrite the file)
-                        if (filesystem::exists(pathDest))
-                            filesystem::remove(pathDest);
+                            pathDest = pathDest + "/" + strFile;
 
                         // Copy wallet.dat (this method is a bit slow, but is simple and should be ok for an occasional copy)
                         if filesystem::copy_file(pathSource, pathDest)

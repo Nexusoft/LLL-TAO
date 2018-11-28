@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <mutex>
+
 #include <TAO/Legacy/wallet/basickeystore.h>
 
 namespace Legacy
@@ -25,7 +27,7 @@ namespace Legacy
             bool fCompressed = false;
             CSecret secret = key.GetSecret(fCompressed);
             {
-                LOCK(cs_KeyStore);
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
                 mapKeys[NexusAddress(key.GetPubKey())] = make_pair(secret, fCompressed);
             }
             return true;
@@ -36,8 +38,8 @@ namespace Legacy
         bool CBasicKeyStore::GetKey(const Legacy::Types::NexusAddress &address, LLC::ECKey &keyOut) const
         {
             {
-                LOCK(cs_KeyStore);
-                KeyMap::const_iterator mi = mapKeys.find(address);
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+                auto mi = mapKeys.find(address);
                 if (mi != mapKeys.end())
                 {
                     keyOut.Reset();
@@ -54,13 +56,13 @@ namespace Legacy
         {
             setAddress.clear();
             {
-                LOCK(cs_KeyStore);
-                KeyMap::const_iterator mi = mapKeys.begin();
-                while (mi != mapKeys.end())
-                {
-                    setAddress.insert((*mi).first);
-                    mi++;
-                }
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+
+                setAddress.clear();
+
+                for (auto &mapEntry : mapKeys)
+                    setAddress.insert(mKey.mapEntry);
+
             }
         }
 
@@ -70,7 +72,7 @@ namespace Legacy
         {
             bool result;
             {
-                LOCK(cs_KeyStore);
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
                 result = (mapKeys.count(address) > 0);
             }
             return result;
@@ -81,7 +83,7 @@ namespace Legacy
         bool CBasicKeyStore::AddCScript(const CScript& redeemScript)
         {
             {
-                LOCK(cs_KeyStore);
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
                 mapScripts[SK256(redeemScript)] = redeemScript;
             }
             return true;
@@ -92,7 +94,7 @@ namespace Legacy
         bool CBasicKeyStore::GetCScript(const uint256_t &hash, CScript& redeemScriptOut) const
         {
             {
-                LOCK(cs_KeyStore);
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
                 ScriptMap::const_iterator mi = mapScripts.find(hash);
                 if (mi != mapScripts.end())
                 {
@@ -109,7 +111,7 @@ namespace Legacy
         {
             bool result;
             {
-                LOCK(cs_KeyStore);
+                std::lock_guard<std::mutex> ksLock(cs_KeyStore);
                 result = (mapScripts.count(hash) > 0);
             }
             return result;

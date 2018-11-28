@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <TAO/Legacy/wallet/wallet.h>
 #include <TAO/Legacy/wallet/walletdb.h>
 
+#include <Util/include/runtime.h>
+
 namespace Legacy
 {
     
@@ -37,7 +39,7 @@ namespace Legacy
 		        if (pWallet->IsLocked())
 		            return false;
 
-                CWalletDB walletdb(pWallete->strWalletFile);
+                CWalletDB walletdb(pWallet->strWalletFile);
 
                 // Remove all entries for old key pool from database
                 for(int64_t nPoolIndex : setKeyPool)
@@ -279,7 +281,7 @@ namespace Legacy
             ReserveKeyFromPool(nPoolIndex, keypoolEntry);
 
             if (nPoolIndex == -1)
-                return GetUnifiedTimestamp();
+                return UnifiedTimestamp();
 
             // Reserve call was just to access oldest key pool entry, not to use it, so return it immediately
             ReturnKey(nPoolIndex);

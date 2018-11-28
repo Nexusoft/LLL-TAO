@@ -29,10 +29,10 @@ namespace Legacy
         const uint32_t WALLET_CRYPTO_KEY_SIZE = 72;
         const uint32_t WALLET_CRYPTO_SALT_SIZE = 18;
 
-        /* Same as standard byte vector, but with a custom allocator. */
-        typedef std::vector<uint8_t, secure_allocator<uint8_t> > CKeyingMaterial;
+        /** CKeyingMaterial is type alias defining a byte vector with a custom, secure allocator. **/
+        using CKeyingMaterial = std::vector<uint8_t, secure_allocator<uint8_t> >;
 
-        /** CCrypter
+        /** @class CCrypter
          *
          * Encryption/decryption context with key information 
          *
@@ -166,7 +166,7 @@ namespace Legacy
         };
 
 
-        /** EncryptSecret
+        /** @fn EncryptSecret
          *
          *  Function to encrypt a private key using a master key and IV pair. 
          *  Creates a CCrypter instance and assigns the key context to perform the actual encryption.
@@ -182,10 +182,10 @@ namespace Legacy
          *  @return true if the private key was successfully encrypted
          *
          **/
-        bool EncryptSecret(CKeyingMaterial& vMasterKey, const LLC::CSecret &vchPlaintext, const uint576_t& nIV, std::vector<uint8_t> &vchCiphertext);
+        bool EncryptSecret(const CKeyingMaterial& vMasterKey, const LLC::CSecret &vchPlaintext, const uint576_t& nIV, std::vector<uint8_t> &vchCiphertext);
 
 
-        /** DecryptSecret
+        /** @fn DecryptSecret
          *
          *  Function to encrypt a private key using a master key and IV pair. 
          *  Creates a CCrypter instance and assigns the key context to perform the actual decryption.

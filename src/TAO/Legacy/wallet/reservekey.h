@@ -25,7 +25,7 @@ namespace Legacy
     namespace Wallet
     {
         /* forward declaration */
-        CWallet;
+        class CWallet;
 
         /** @class CReserveKey
          *

@@ -53,7 +53,7 @@ namespace Legacy
                 return;
 
             { //Begin lock scope
-                std::lock_guard<std::mutex> dbLock(CDB::cs_db); //Need to lock before test fDbEnvIniti
+                std::lock_guard<std::mutex> dbLock(CDB::cs_db); //Need to lock before test fDbEnvInit
 
                 if (!CDB::fDbEnvInit)
                 {
@@ -614,7 +614,7 @@ namespace Legacy
 
 
         /* Rewwrite */
-        bool CDB::DBRewrite(const std::string& strFile, const char* pszSkip)
+        bool CDB::DBRewrite(const std::string& strFile, const std::string& strSkip)
         {
             if (!fShutdown)
             {
@@ -640,7 +640,7 @@ namespace Legacy
                             std::unique_ptr<Db> pdbCopy(Db(&CDB::dbenv, 0));
 
                             // Open database handle to temp file 
-                            int ret = pdbCopy->open(NULL,               // Txn pointer
+                            int ret = pdbCopy->open(nullptr,            // Txn pointer
                                                     strFileRes.c_str(), // Filename
                                                     "main",             // Logical db name
                                                     DB_BTREE,           // Database type
@@ -677,12 +677,12 @@ namespace Legacy
                                         break;
                                     }
 
-                                    // Skip any key value defined by pszSkip argument
-                                    if (pszSkip && strncmp(&ssKey[0], pszSkip, std::min(ssKey.size(), strlen(pszSkip))) == 0)
+                                    // Skip any key value defined by strSkip argument
+                                    if (strSkip.size() > 0 && ssKey.compare(0, strSkip.size(), strSkip) == 0)
                                         continue;
 
                                     // Don't copy the version, instead use latest version
-                                    if (strncmp(&ssKey[0], "\x07version", 8) == 0)
+                                    if (ssKey.compare(0, 7, "version") == 0)
                                     {
                                         // Update version:
                                         ssValue.clear();
