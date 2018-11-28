@@ -24,6 +24,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/cmd.h>
 #include <TAO/API/include/core.h>
+#include <TAO/API/include/rpc.h>
 #include <LLP/templates/server.h>
 
 #include <TAO/API/types/music.h>
@@ -65,8 +66,12 @@ int main(int argc, char** argv)
 
     /* Initialize the API's. */
     TAO::API::Music::Initialize();
-
+    
     LLP::Server<TAO::API::Core>* CORE_SERVER = new LLP::Server<TAO::API::Core>(8080, 10, 30, false, 0, 0, 60, true, false);
+
+    /* Set up RPC server */ 
+    LLP::Server<TAO::API::RPC::RPCServer>* RPC_SERVER = new LLP::Server<TAO::API::RPC::RPCServer>(config::GetArg("-rpcport", config::fTestNet? 9336 : 8336), 1, 30, false, 0, 0, 60, true, false);
+
     while(!config::fShutdown)
     {
         Sleep(1000);
