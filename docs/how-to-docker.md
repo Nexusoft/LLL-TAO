@@ -17,7 +17,7 @@ Running:
 
 (1) To create and start the container, type:
 
-    docker run -p 9999:8080 --privileged --name nexus-<fill-in> \
+    docker run -p 9090 --privileged --name nexus-<fill-in> \
                -h nexus-<fill-in> -ti tritium
 
 You should pick a unique container name so your container is unique with the
@@ -49,10 +49,10 @@ You should see a container named "nexus-&lt;fill-in&gt;"
 
 (4) You can monitor the LISP subsystem by pointing your browser to:
 
-    https://localhost:9999/lisp
+    http://localhost:9090/lisp
 
 By default, the username is "root" with no password on the lispers.net login
-webpage. Note if port number 9999 is used by another application on your
+webpage. Note if port number 9090 is used by another application on your
 system, just choose another port number on the "docker run" command and
 reference that port in the above URL.
 
