@@ -16,8 +16,6 @@ ________________________________________________________________________________
 
 #include <string>
 
-#include <LLC/types/uint1024.h>
-
 #include <Util/templates/serialize.h>
 
 namespace Legacy 
@@ -25,23 +23,74 @@ namespace Legacy
 
     namespace Wallet
     {
-         /** Internal transfers.
-        * Database key is acentry<account><counter>.
-        */
+        /** @class CAccountingEntry
+         * 
+         * Supports accounting entries that internally transfer balance between wallet accounts
+         * without a corresponding blockchain transaction.
+         *
+         * Accounting entries should be created in pairs. One will debit the "from" account
+         * while the other will credit the "to" account. These accounts are recorded
+         * as the strAccount value. Each entry also references the account on the other
+         * side as the strOtherAccount value.
+         *
+         * Example: to record an internal transfer of 10 NXS from account A to account B
+         * 
+         * First accounting entry, debit from account A:
+         *   - strAccount = account A
+         *   - credit/debit amount = -10 
+         *   - strOtherAccount = account B
+         *
+         * Second accounting entry, creidt to account B:
+         *   - strAccount = account B
+         *   - credit/debit amount = 10 
+         *   - strOtherAccount = account A
+         * 
+         * Database key is acentry<account><counter>
+         */
         class CAccountingEntry
         {
         public:
+            /** Accounting entry is for this account **/
             std::string strAccount;
-            int64_t nCreditDebit;
-            int64_t nTime;
+
+
+            /** References the account on the other side of this accounting entry**/
             std::string strOtherAccount;
+
+
+            /** Accounting entry amount
+             *
+             *  Positive amount
+             *  Negative amount
+             **/
+            int64_t nCreditDebit;
+
+
+            /** Timestamp for creation of accounting entry **/
+            int64_t nTime;
+
+
+            /** General comment related to this accounting entry **/
             std::string strComment;
 
+
+            /** Constructor
+             *
+             *  Calls SetNull() to initialize a null accounting entry 
+             *
+             **/
             CAccountingEntry()
             {
                 SetNull();
             }
 
+
+            /** SetNull
+             *
+             *  Clears an accounting entry by setting the credit/debit amount and
+             *  and time timestamp to zero, and the account and comment strings to empty strings.
+             *
+             **/
             void SetNull()
             {
                 nCreditDebit = 0;

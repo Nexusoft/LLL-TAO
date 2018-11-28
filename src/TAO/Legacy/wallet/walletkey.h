@@ -14,8 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_WALLETKEY_H
 #define NEXUS_LEGACY_WALLET_WALLETKEY_H
 
-#include <LLC/types/uint1024.h>
-
+#include <Util/include/runtime.h>
 #include <Util/templates/serialize.h>
 
 /* forward declaration */    
@@ -29,22 +28,43 @@ namespace Legacy
     
     namespace Wallet
     {
-         /** Class to hold Private key binary data. */
+        /** @class CWalletKey
+         *
+         *  Class to hold unencrypted private key binary data. 
+         *
+         *  @deprecated This class is no longer used or written to the wallet database. It
+         *              is supported for backward compatability, so values can be read
+         *              that were previously written into the database.
+         *
+         *  Database key is wkey<publickey>
+         **/
         class CWalletKey
         {
         public:
+            /** Unencrypted private key data **/
             LLC::CPrivKey vchPrivKey;
-            int64_t nTimeCreated;
-            int64_t nTimeExpires;
-            std::string strComment;
-            //// todo: add something to note what created it (user, getnewaddress, change)
-            ////   maybe should have a map<string, string> property map
 
-            CWalletKey(int64_t nExpires=0)
+            /** Timestamp when this wallet key was created. Only relevant if nTimeExpires has a value **/
+            uint64_t nTimeCreated;
+
+            /** Number of seconds after nTimeCreated that this wallet key expires **/
+            uint64_t nTimeExpires;
+
+            /** Space to include comments **/
+            std::string strComment;
+
+
+            /** Constructor
+             *
+             *  Sets nTimeCreated to current time if nExpires has a value. 
+             *
+             **/
+            CWalletKey(uint64_t nExpires=0)
             {
-                nTimeCreated = (nExpires ? GetUnifiedTimestamp() : 0);
+                nTimeCreated = (nExpires ? UnifiedTimestamp() : 0);
                 nTimeExpires = nExpires;
             }
+
 
             IMPLEMENT_SERIALIZE
             (

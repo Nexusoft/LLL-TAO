@@ -16,8 +16,6 @@ ________________________________________________________________________________
 
 #include <vector>
 
-#include <LLC/types/uint1024.h>
-
 #include <Util/templates/serialize.h>
 
 namespace Legacy
@@ -25,23 +23,44 @@ namespace Legacy
     
     namespace Wallet
     {
-        /** Account information.
-        * Stored in wallet with key "acc"+string account name.
-        */
+        /** @class CAccount
+         *
+         *  Account information.
+         *
+         *  A wallet account is basically an alias of the public key value
+         *  for an account/Nexus address (which is not stored here. These are 
+         *  used to store public keys in the wallet database.
+         *  
+         *  Database key is acc<account> 
+         **/
         class CAccount
         {
         public:
+            /** Public key for the account **/
             std::vector<uint8_t> vchPubKey;
 
+
+            /** Constructor
+             *
+             *  Calls SetNull() to initialize the account. 
+             *
+             **/
             CAccount()
             {
                 SetNull();
             }
 
+
+            /** SetNull
+             *
+             *  Clears the current public key value. 
+             *
+             **/
             void SetNull()
             {
                 vchPubKey.clear();
             }
+
 
             IMPLEMENT_SERIALIZE
             (
