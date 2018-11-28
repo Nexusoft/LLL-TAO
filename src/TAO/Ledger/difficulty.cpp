@@ -31,8 +31,7 @@ namespace Core
 			return nBits / 10000000.0;
 
 		/* Get the Proportion of the Bits First. */
-		double dDiff =
-			(double)0x0000ffff / (double)(nBits & 0x00ffffff);
+		double dDiff = (double)0x0000ffff / (double)(nBits & 0x00ffffff);
 
 		/* Calculate where on Compact Scale Difficulty is. */
 		int nShift = nBits >> 24;
@@ -153,11 +152,11 @@ namespace Core
 			uint64_t nOverlap = (uint64_t)min((nBlockTime - nBlockTarget), (nBlockTarget * 2));
 
 			/* Get the Mod from the Proportion of Overlap in one Interval. */
-			double nProportions = (double)nOverlap / (nBlockTarget * 2);
+			uint32_t nProportions = 1000 * nOverlap / (nBlockTarget * 2);
 
 			/* Get Mod from Maximum Decrease Equation with Decimal portions multiplied by Propotions. */
-			double nMod = 1.0 - (0.15 * nProportions);
-			nLowerBound = nBlockTarget * nMod;
+			uint32_t nMod = 1000 - (150 * nProportions);
+			nLowerBound = (nBlockTarget * nMod) / 1000;
 		}
 
 
@@ -169,11 +168,11 @@ namespace Core
 			uint64_t nOverlap = nBlockTarget - nBlockTime;
 
 			/* Get the mod from overlap proportion. Time of 1 will be closest to mod of 1. */
-			double nProportions = (double) nOverlap / nBlockTarget;
+			uin32_t nProportions = 1000 * nOverlap / nBlockTarget;
 
 			/* Get the Mod from the Maximum Increase Equation with Decimal portion multiplied by Proportions. */
-			double nMod = 1.0 + (nProportions * 0.075);
-			nLowerBound = nBlockTarget * nMod;
+			uint32_t nMod = 1000 + (nProportions * 75);
+			nLowerBound = (nBlockTarget * nMod) / 1000;
 		}
 
 

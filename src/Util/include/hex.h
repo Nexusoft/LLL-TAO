@@ -128,7 +128,9 @@ std::string HexStr(const T itbegin, const T itend, bool fSpaces=false)
     for(T it = itbegin; it < itend; ++it, nTotal++)
     {
         uint8_t val = (uint8_t)(*it);
-        if(fSpaces && it != itbegin && it != itend && nTotal % 4 == 0)
+        if(fSpaces && it != itbegin && nTotal % 32 == 0)
+            rv.push_back('\n');
+        else if(fSpaces && it != itbegin && it != itend && nTotal % 4 == 0)
             rv.push_back(' ');
         rv.push_back(hexmap[val>>4]);
         rv.push_back(hexmap[val&15]);

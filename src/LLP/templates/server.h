@@ -51,8 +51,6 @@ namespace LLP
         {
             for(int index = 0; index < MAX_THREADS; index++)
                 DATA_THREADS.push_back(new DataThread<ProtocolType>(index, fDDOS, rScore, cScore, nTimeout, fMeter));
-
-
         }
 
         virtual ~Server<ProtocolType>()
