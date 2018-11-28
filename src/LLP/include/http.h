@@ -49,6 +49,8 @@ namespace LLP
 
 
     protected:
+
+        /* The local address of this node. */
         CAddress addrThisNode;
 
 
@@ -195,6 +197,7 @@ namespace LLP
          *  Returns an HTTP packet with response code and content.
          *
          *  @param[in] nMsg The status code to respond with.
+         *
          *  @param[in] strContent The content to post return with.
          *
          **/
