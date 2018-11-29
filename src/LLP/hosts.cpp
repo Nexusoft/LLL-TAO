@@ -53,22 +53,12 @@ namespace LLP
 
         aiHint.ai_socktype = SOCK_STREAM;
         aiHint.ai_protocol = IPPROTO_TCP;
-    #ifdef WIN32
-    #  ifdef USE_IPV6
+    #ifdef WIN32ßßßß
         aiHint.ai_family = AF_UNSPEC;
         aiHint.ai_flags = fAllowLookup ? 0 : AI_NUMERICHOST;
-    #  else
-        aiHint.ai_family = AF_INET;
-        aiHint.ai_flags = fAllowLookup ? 0 : AI_NUMERICHOST;
-    #  endif
     #else
-    #  ifdef USE_IPV6
         aiHint.ai_family = AF_UNSPEC;
         aiHint.ai_flags = AI_ADDRCONFIG | (fAllowLookup ? 0 : AI_NUMERICHOST);
-    #  else
-        aiHint.ai_family = AF_INET;
-        aiHint.ai_flags = AI_ADDRCONFIG | (fAllowLookup ? 0 : AI_NUMERICHOST);
-    #  endif
     #endif
         struct addrinfo *aiRes = NULL;
         int nErr = getaddrinfo(pszName, NULL, &aiHint, &aiRes);
@@ -84,13 +74,11 @@ namespace LLP
                 vIP.push_back(CNetAddr(((struct sockaddr_in*)(aiTrav->ai_addr))->sin_addr));
             }
 
-    #ifdef USE_IPV6
             if (aiTrav->ai_family == AF_INET6)
             {
                 assert(aiTrav->ai_addrlen >= sizeof(sockaddr_in6));
                 vIP.push_back(CNetAddr(((struct sockaddr_in6*)(aiTrav->ai_addr))->sin6_addr));
             }
-    #endif
 
             aiTrav = aiTrav->ai_next;
         }

@@ -74,12 +74,10 @@ namespace LLP
     }
 
 
-    #ifdef USE_IPV6
     CNetAddr::CNetAddr(const struct in6_addr& ipv6Addr)
     {
         memcpy(ip, &ipv6Addr, 16);
     }
-    #endif
 
 
     CNetAddr::CNetAddr(const char *pszIp, bool fAllowLookup)
@@ -289,13 +287,11 @@ namespace LLP
     }
 
 
-    #ifdef USE_IPV6
     bool CNetAddr::GetIn6Addr(struct in6_addr* pipv6Addr) const
     {
         memcpy(pipv6Addr, ip, 16);
         return true;
     }
-    #endif
 
 
     // get canonical identifier of an address' group
@@ -396,11 +392,9 @@ namespace LLP
     }
 
 
-    #ifdef USE_IPV6
     CService::CService(const struct in6_addr& ipv6Addr, uint16_t portIn) : CNetAddr(ipv6Addr), port(portIn)
     {
     }
-    #endif
 
 
     CService::CService(const struct sockaddr_in& addr) : CNetAddr(addr.sin_addr), port(ntohs(addr.sin_port))
@@ -409,12 +403,10 @@ namespace LLP
     }
 
 
-    #ifdef USE_IPV6
     CService::CService(const struct sockaddr_in6 &addr) : CNetAddr(addr.sin6_addr), port(ntohs(addr.sin6_port))
     {
     assert(addr.sin6_family == AF_INET6);
     }
-    #endif
 
 
     CService::CService(const char *pszIpPort, bool fAllowLookup)
@@ -490,7 +482,6 @@ namespace LLP
     }
 
 
-    #ifdef USE_IPV6
     bool CService::GetSockAddr6(struct sockaddr_in6* paddr) const
     {
         memset(paddr, 0, sizeof(struct sockaddr_in6));
@@ -500,7 +491,6 @@ namespace LLP
         paddr->sin6_port = htons(port);
         return true;
     }
-    #endif
 
 
     std::vector<uint8_t> CService::GetKey() const

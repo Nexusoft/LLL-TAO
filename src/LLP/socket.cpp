@@ -50,21 +50,42 @@ namespace LLP
     bool Socket::Connect(CService addrDest, int nTimeout)
     {
         /* Create the Socket Object (Streaming TCP/IP). */
-        nSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if(addrDest.IsIPv4())
+            nSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        else
+            nSocket = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 
         /* Catch failure if socket couldn't be initialized. */
         if (nSocket == INVALID_SOCKET)
             return false;
 
-        /* Set the socket address from the CService. */
-        struct sockaddr_in sockaddr;
-        addrDest.GetSockAddr(&sockaddr);
+        /* Open the socket connection for IPv4 / IPv6. */
+        bool fConnected = false;
+        if(addrDest.IsIPv4())
+        {
+            /* Set the socket address from the CService. */
+            struct sockaddr_in sockaddr;
+            addrDest.GetSockAddr(&sockaddr);
 
-        /* Copy in the new address. */
-        addr = CAddress(sockaddr);
+            /* Copy in the new address. */
+            addr = CAddress(sockaddr);
 
-        /* Open the socket connection. */
-        if (connect(nSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
+            fConnected = (connect(nSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
+        }
+        else
+        {
+            /* Set the socket address from the CService. */
+            struct sockaddr_in6 sockaddr;
+            addrDest.GetSockAddr6(&sockaddr);
+
+            /* Copy in the new address. */
+            addr = CAddress(sockaddr);
+
+            fConnected = (connect(nSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
+        }
+
+        /* Handle final socket checks if connection established with no errors. */
+        if (fConnected)
         {
             // WSAEINVAL is here because some legacy version of winsock uses it
             if (GetLastError() == WSAEINPROGRESS || GetLastError() == WSAEWOULDBLOCK || GetLastError() == WSAEINVAL)

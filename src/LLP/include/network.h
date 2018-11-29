@@ -137,10 +137,8 @@ namespace LLP
             std::vector<uint8_t> GetGroup() const;
             void print() const;
 
-    #ifdef USE_IPV6
             CNetAddr(const struct in6_addr& pipv6Addr);
             bool GetIn6Addr(struct in6_addr* pipv6Addr) const;
-    #endif
 
             friend bool operator==(const CNetAddr& a, const CNetAddr& b);
             friend bool operator!=(const CNetAddr& a, const CNetAddr& b);
@@ -181,11 +179,9 @@ namespace LLP
             std::string ToStringIPPort() const;
             void print() const;
 
-    #ifdef USE_IPV6
             CService(const struct in6_addr& ipv6Addr, uint16_t port);
             bool GetSockAddr6(struct sockaddr_in6* paddr) const;
             CService(const struct sockaddr_in6& addr);
-    #endif
 
             IMPLEMENT_SERIALIZE
             (
