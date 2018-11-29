@@ -10,6 +10,7 @@ alias h          'history'
 alias t          'nice top -d 1'
 alias td         'tcpdump -i any -n'
 alias aptget     'sudo apt-get -o Acquire::ForceIPv4=true install'
+alias ns         'netstat -an'
 
 #
 # Nexus handy aliases.
