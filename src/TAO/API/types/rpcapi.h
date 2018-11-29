@@ -26,10 +26,10 @@ namespace TAO::API::RPC
         /** Abstract method implementations**/
         virtual void Initialize() ; 
         virtual std::string GetAPIName() const {return "RPC";};
-        virtual nlohmann::json HandleJSONAPIMethod(std::string METHOD, nlohmann::json parameters);
+        virtual nlohmann::json HandleJSONAPIMethod(std::string strMethod, nlohmann::json jsonParameters);
 
         /* API commands*/
-        nlohmann::json TestFunc(bool fHelp, nlohmann::json parameters);
+        nlohmann::json TestFunc(bool fHelp, nlohmann::json jsonParameters);
 
         
     };
