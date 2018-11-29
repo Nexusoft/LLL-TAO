@@ -71,7 +71,7 @@ int main(int argc, char** argv)
 
 
     /* Initialize the Legacy Server. */
-    LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(9323, 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
+    LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(config::GetArg("-port", config::fTestNet ? 8323 : 9323), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
     if(config::mapMultiArgs["-addnode"].size() > 0)
         for(auto node : config::mapMultiArgs["-addnode"])
             SERVER->AddConnection(node, 9323);
@@ -80,7 +80,7 @@ int main(int argc, char** argv)
     /* Create the Core RPC Server. */
     LLP::Server<TAO::API::Core>* CORE_SERVER = new LLP::Server<TAO::API::Core>(8080, 10, 30, false, 0, 0, 60, true, false);
 
-    /* Set up RPC server */ 
+    /* Set up RPC server */
     LLP::Server<TAO::API::RPC::RPCServer>* RPC_SERVER = new LLP::Server<TAO::API::RPC::RPCServer>(config::GetArg("-rpcport", config::fTestNet? 9336 : 8336), 1, 30, false, 0, 0, 60, true, false);
 
     while(!config::fShutdown)
