@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/cmd.h>
 #include <TAO/API/include/core.h>
 #include <LLP/templates/server.h>
+#include <LLP/include/legacy.h>
 
 #include <TAO/API/types/music.h>
 
@@ -63,9 +64,19 @@ int main(int argc, char** argv)
     LLD::legDB = new LLD::LedgerDB("r+");
     LLD::locDB = new LLD::LocalDB("r+");
 
+
     /* Initialize the API's. */
     TAO::API::Music::Initialize();
 
+
+    /* Initialize the Legacy Server. */
+    LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(9323, 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
+    if(config::mapMultiArgs["-addnode"].size() > 0)
+        for(auto node : config::mapMultiArgs["-addnode"])
+            SERVER->AddConnection(node, 9323);
+
+
+    /* Create the Core RPC Server. */
     LLP::Server<TAO::API::Core>* CORE_SERVER = new LLP::Server<TAO::API::Core>(8080, 10, 30, false, 0, 0, 60, true, false);
     while(!config::fShutdown)
     {
