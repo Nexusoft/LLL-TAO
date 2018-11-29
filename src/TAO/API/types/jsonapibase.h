@@ -23,33 +23,51 @@ namespace TAO::API
 {
     class JSONAPIBase;
 
-    /** Base class for all JSON based API methods**/
+    /**Base class for all JSON based API methods 
+     * Encapsulates the function pointer to the method to process the API request
+     */
     class JSONAPIMethod
     {
         public:
             JSONAPIMethod(){};
             JSONAPIMethod(std::function<nlohmann::json(bool, nlohmann::json)> function){JSONAPIMethod::function = function;} 
             std::function<nlohmann::json(bool, nlohmann::json)> function;
-            bool enabled;
+            bool fEnabled;
     };
 
-    /* Base class for all JSON based API's.*/
+    /**Base class for all JSON based API's.
+     * Instances of JSONAPIBase derivations must be registered with the JSONAPINode processing the HTTP requests. 
+     * This class holds a map of JSONAPIMethod instances that in turn perform the processing for each API method request.
+     * 
+
+    */
     class JSONAPIBase
     {
     public:
-        JSONAPIBase() : INITIALIZED(false) { }
+        JSONAPIBase() : fInitialized(false) { }
 
         virtual void Initialize() = 0; //abstract initializor that all derived API's must implement to register their specific APICommands
 
-        /* Name of this API.  Derivations should set this */
+        /**Name of this API.  Derivations should implement this and return an appropriate API name */
         virtual std::string GetAPIName() const = 0;
 
-        /* Handles the specific API method */
-        virtual nlohmann::json HandleJSONAPIMethod(std::string METHOD, nlohmann::json parameters) = 0; 
+        /** HandleJSONAPIMethod
+        *
+        * Handles the processing of the requested method.  
+        * Derivations should implement this to lookup the requested method in the mapFunctions map and pass the processing on.
+        * Derivations should also form the response JSON according to the API specification
+        *
+        *  @param[in] strMethod The requested API method.
+        *  @param[in] jsonParameters The parameters that the caller has passed to the API request.
+        *
+        *  @return JSON encoded response.
+        *
+        **/
+        virtual nlohmann::json HandleJSONAPIMethod(std::string strMethod, nlohmann::json jsonParameters) = 0; 
     protected:
-        bool INITIALIZED;
+        bool fInitialized;
 
-        /* The function objects for the API. */
+        /* Map of method names to method function pointer objects for each method supported by this API. */
         std::map<std::string, JSONAPIMethod > mapFunctions;
     };
 
@@ -59,15 +77,24 @@ namespace TAO::API
         JSONAPINode() : LLP::HTTPNode() {}
         JSONAPINode( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false ) : LLP::HTTPNode( SOCKET_IN, DDOS_IN, isDDOS ){}
 
-
-        void RegisterAPI(JSONAPIBase* API)
+        /** RegisterAPI
+        *
+        *  Registers the API instance with this API Node by adding it to an internal map, keyed by the API instance's unique name.
+        *  The calling code is not responsible for cleaning up the pAPI parameter as that is taken care of by this class.
+        *
+        *  @param[in] pAPI Pointer to the JSONAPIBase instance being registered.
+        *
+        **/
+        void RegisterAPI(JSONAPIBase* pAPI)
         {
             /* wrap the API pointer in a unique_ptr so that we don't have to concern ourselves with cleanup*/
-            JSONAPI_HANDLERS[API->GetAPIName()] = std::unique_ptr<JSONAPIBase>(API);
+            mapJSONAPIHandlers[pAPI->GetAPIName()] = std::unique_ptr<JSONAPIBase>(pAPI);
         }
 
+
+
     protected:
-        std::map<std::string, std::unique_ptr<JSONAPIBase>> JSONAPI_HANDLERS; 
+        std::map<std::string, std::unique_ptr<JSONAPIBase>> mapJSONAPIHandlers; 
 
     };
 }

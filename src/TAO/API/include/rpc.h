@@ -19,15 +19,16 @@ ________________________________________________________________________________
 
 namespace TAO::API::RPC
 {
+    /** Derived JSON API Method to include the fOkSafeMode flag **/
     class RPCMethod : public JSONAPIMethod
     {
         public:
-            RPCMethod(std::function<nlohmann::json(bool, nlohmann::json)> function, bool okSafeMode) : JSONAPIMethod(function), okSafeMode(okSafeMode){}
-            bool okSafeMode;
+            RPCMethod(std::function<nlohmann::json(bool, nlohmann::json)> function, bool okSafeMode) : JSONAPIMethod(function), fOkSafeMode(okSafeMode){}
+            bool fOkSafeMode;
     };
 
     
-    /** RPC API
+    /** RPC API Server Node
      *
      *  A node that can speak over HTTP protocols.
      *
@@ -35,8 +36,6 @@ namespace TAO::API::RPC
      *  HTTP-JSON-RPC - Nexus Ledger Level API
      *  POST / HTTP/1.1
      *  {"method":"", "params":[]}
-     *
-     *  This could also be used as the base for a HTTP-LLP server implementation.
      **/
     class RPCServer : public TAO::API::JSONAPINode
     {

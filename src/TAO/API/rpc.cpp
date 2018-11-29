@@ -44,25 +44,25 @@ namespace TAO::API::RPC
     bool RPCServer::ProcessPacket()
     {
         /* Parse the packet request. */
-        std::string::size_type npos = INCOMING.strRequest.find('/', 1);
+        std::string::size_type nPos = INCOMING.strRequest.find('/', 1);
 
         /* Extract the method to invoke. */
-        std::string METHOD = INCOMING.strRequest.substr(1, npos - 1);
+        std::string strMethod = INCOMING.strRequest.substr(1, nPos - 1);
 
 
-        nlohmann::json ret;
+        nlohmann::json jsonRet;
 
-        nlohmann::json parameters;// = nlohmann::json::parse(INCOMING.strContent);
+        nlohmann::json jsonParameters;// = nlohmann::json::parse(INCOMING.strContent);
 
         // for RPC there is only one API called "RPC"
         // for Core this would be...
         // std::string API = INCOMING.strRequest.substr(1, npos - 1);
         // std::string METHOD = INCOMING.strRequest.substr(npos + 1);
-        // ret = JSONAPI_HANDLERS[API].HandleJSONAPIMethod(METHOD, parameters) 
-        ret = JSONAPI_HANDLERS["RPC"]->HandleJSONAPIMethod(METHOD, parameters);
+        // ret = mapJSONAPIHandlers[API].HandleJSONAPIMethod(METHOD, parameters) 
+        jsonRet = mapJSONAPIHandlers["RPC"]->HandleJSONAPIMethod(strMethod, jsonParameters);
 
 
-        PushResponse(200, ret.dump(4));
+        PushResponse(200, jsonRet.dump(4));
 
         /* Handle a connection close header. */
         if(INCOMING.mapHeaders.count("connection") && INCOMING.mapHeaders["connection"] == "close")

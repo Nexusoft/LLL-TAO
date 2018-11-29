@@ -26,16 +26,16 @@ namespace TAO::API::RPC
     }   
 
     /** Handler for this API, conforms to the JSON-RPC spec **/
-    nlohmann::json RPCAPI::HandleJSONAPIMethod(std::string METHOD, nlohmann::json parameters)
+    nlohmann::json RPCAPI::HandleJSONAPIMethod(std::string strMethod, nlohmann::json jsonParameters)
     {
-        if(!INITIALIZED)
+        if(!fInitialized)
             Initialize();
 
         nlohmann::json ret;
 
-        if(mapFunctions.count(METHOD))
+        if(mapFunctions.count(strMethod))
         {
-            ret = mapFunctions[METHOD].function(false, parameters); //TODO: add help support as param[0]
+            ret = mapFunctions[strMethod].function(false, jsonParameters); //TODO: add help support as param[0]
         }
         else
         {
@@ -46,7 +46,7 @@ namespace TAO::API::RPC
     }
 
     /** API Method implementations **/
-    nlohmann::json RPCAPI::TestFunc(bool fHelp, nlohmann::json parameters)
+    nlohmann::json RPCAPI::TestFunc(bool fHelp, nlohmann::json jsonParameters)
     {
         printf("Test Function!\n");
 
