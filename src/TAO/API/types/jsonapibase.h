@@ -30,7 +30,11 @@ namespace TAO::API
     {
         public:
             JSONAPIMethod(){};
-            JSONAPIMethod(std::function<nlohmann::json(bool, nlohmann::json)> function){JSONAPIMethod::function = function;}
+            JSONAPIMethod(std::function<nlohmann::json(bool, nlohmann::json)> function)
+            {
+                JSONAPIMethod::function = function;
+            }
+            
             std::function<nlohmann::json(bool, nlohmann::json)> function;
             bool fEnabled;
     };
@@ -83,6 +87,7 @@ namespace TAO::API
     public:
         JSONAPINode() : LLP::HTTPNode() {}
         JSONAPINode( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false ) : LLP::HTTPNode( SOCKET_IN, DDOS_IN, isDDOS ){}
+
 
         /** RegisterAPI
         *

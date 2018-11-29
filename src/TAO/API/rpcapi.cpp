@@ -18,12 +18,12 @@ ________________________________________________________________________________
 
 namespace TAO::API::RPC
 {
-    
+
     void RPCAPI::Initialize()
     {
         // register the commands for this API with the global function pointer map
         mapFunctions["testfunc"] = RPCMethod( std::bind(&RPCAPI::TestFunc, this, std::placeholders::_1, std::placeholders::_2), true);
-    }   
+    }
 
     /** Handler for this API, conforms to the JSON-RPC spec **/
     nlohmann::json RPCAPI::HandleJSONAPIMethod(std::string strMethod, nlohmann::json jsonParameters)

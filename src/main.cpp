@@ -44,9 +44,12 @@ int main(int argc, char** argv)
     /* Handle Commandline switch */
     for (int i = 1; i < argc; i++)
     {
-        if (!IsSwitchChar(argv[i][0]) && !(strlen(argv[i]) >= 7 && strncasecmp(argv[i], "Nexus:", 7) == 0))
+        if (!IsSwitchChar(argv[i][0]))
         {
-            return TAO::API::CommandLine(argc, argv, i);
+            if(config::GetBoolArg("-api"))
+                return TAO::API::CommandLineAPI(argc, argv, i);
+
+            return TAO::API::CommandLineRPC(argc, argv, i);
         }
     }
 
@@ -74,15 +77,18 @@ int main(int argc, char** argv)
     LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(config::GetArg("-port", config::fTestNet ? 8323 : 9323), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
     if(config::mapMultiArgs["-addnode"].size() > 0)
         for(auto node : config::mapMultiArgs["-addnode"])
-            SERVER->AddConnection(node, 9323);
+            SERVER->AddConnection(node, config::GetArg("-port", config::fTestNet ? 8323 : 9323));
 
 
     /* Create the Core RPC Server. */
     LLP::Server<TAO::API::Core>* CORE_SERVER = new LLP::Server<TAO::API::Core>(config::GetArg("-apiport", 8080), 10, 30, false, 0, 0, 60, true, false);
 
+
     /* Set up RPC server */
     LLP::Server<TAO::API::RPC::RPCServer>* RPC_SERVER = new LLP::Server<TAO::API::RPC::RPCServer>(config::GetArg("-rpcport", config::fTestNet? 8336 : 9336), 1, 30, false, 0, 0, 60, true, false);
 
+
+    /* Wait for Shutdown. */
     while(!config::fShutdown)
     {
         Sleep(1000);
