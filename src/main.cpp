@@ -81,7 +81,7 @@ int main(int argc, char** argv)
     LLP::Server<TAO::API::Core>* CORE_SERVER = new LLP::Server<TAO::API::Core>(config::GetArg("-apiport", 8080), 10, 30, false, 0, 0, 60, true, false);
 
     /* Set up RPC server */
-    LLP::Server<TAO::API::RPC::RPCServer>* RPC_SERVER = new LLP::Server<TAO::API::RPC::RPCServer>(config::GetArg("-rpcport", config::fTestNet? 9336 : 8336), 1, 30, false, 0, 0, 60, true, false);
+    LLP::Server<TAO::API::RPC::RPCServer>* RPC_SERVER = new LLP::Server<TAO::API::RPC::RPCServer>(config::GetArg("-rpcport", config::fTestNet? 8336 : 9336), 1, 30, false, 0, 0, 60, true, false);
 
     while(!config::fShutdown)
     {

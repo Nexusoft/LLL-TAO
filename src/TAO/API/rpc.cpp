@@ -19,16 +19,16 @@ namespace TAO::API::RPC
 {
 
     /** Main Constructor used to initialize the node and register the API's supported this protocol **/
-    RPCServer::RPCServer( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS ) 
+    RPCServer::RPCServer( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS )
         : JSONAPINode( SOCKET_IN, DDOS_IN, isDDOS )
     {
-        // for RPC there is only one API. 
+        // for RPC there is only one API.
         //For Core we would have many different API's and they can be optionally added depending on configuration
         // e.g.
         // RegisterAPI(new MusicAPI());
         // RegisterAPI(new SupplyChainAPI());
         // if( APIEnabled(SomeCustomerPrivateAPI) )
-        //      RegisterAPI(new SomeCustomerPrivateAPI());  
+        //      RegisterAPI(new SomeCustomerPrivateAPI());
         RegisterAPI(new RPCAPI());
     }
 
@@ -43,23 +43,15 @@ namespace TAO::API::RPC
     /** Main message handler once a packet is received. **/
     bool RPCServer::ProcessPacket()
     {
-        /* Parse the packet request. */
-        std::string::size_type nPos = INCOMING.strRequest.find('/', 1);
-
-        /* Extract the method to invoke. */
-        std::string strMethod = INCOMING.strRequest.substr(1, nPos - 1);
-
-
-        nlohmann::json jsonRet;
-
-        nlohmann::json jsonParameters;// = nlohmann::json::parse(INCOMING.strContent);
+        /* Get the parameters from the HTTP Packet. */
+        nlohmann::json jsonParams = nlohmann::json::parse(INCOMING.strContent);
 
         // for RPC there is only one API called "RPC"
         // for Core this would be...
         // std::string API = INCOMING.strRequest.substr(1, npos - 1);
         // std::string METHOD = INCOMING.strRequest.substr(npos + 1);
-        // ret = mapJSONAPIHandlers[API].HandleJSONAPIMethod(METHOD, parameters) 
-        jsonRet = mapJSONAPIHandlers["RPC"]->HandleJSONAPIMethod(strMethod, jsonParameters);
+        // ret = mapJSONAPIHandlers[API].HandleJSONAPIMethod(METHOD, parameters)
+        nlohmann::json jsonRet = mapJSONAPIHandlers["RPC"]->HandleJSONAPIMethod(jsonParams["method"], jsonParams["params"]);
 
 
         PushResponse(200, jsonRet.dump(4));
@@ -70,5 +62,5 @@ namespace TAO::API::RPC
 
         return true;
     }
-    
+
 }

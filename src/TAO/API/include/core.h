@@ -35,7 +35,7 @@ namespace TAO
          *
          *  Core API Functionality:
          *  HTTP-JSON-API - Nexus Contracts API
-         *  POST <command> HTTP/1.1
+         *  POST /<api>/<command> HTTP/1.1
          *  {"params":[]}
          *
          *  This could also be used as the base for a HTTP-LLP server implementation.
