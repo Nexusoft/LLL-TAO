@@ -147,10 +147,7 @@ OBJS= \
 	build/block.o \
 	build/core.o \
 	build/cmd.o \
-	build/jsonapibase.o \
-	build/music.o \
 	build/rpc.o \
-	build/rpcapi.o \
 	build/args.o \
 	build/base58.o \
 	build/base64.o \

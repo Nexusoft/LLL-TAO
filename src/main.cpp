@@ -25,10 +25,9 @@ ________________________________________________________________________________
 #include <TAO/API/include/cmd.h>
 #include <TAO/API/include/core.h>
 #include <TAO/API/include/rpc.h>
+
 #include <LLP/templates/server.h>
 #include <LLP/include/legacy.h>
-
-#include <TAO/API/types/music.h>
 
 
 int main(int argc, char** argv)
@@ -69,10 +68,6 @@ int main(int argc, char** argv)
     LLD::locDB = new LLD::LocalDB("r+");
 
 
-    /* Initialize the API's. */
-    TAO::API::Music::Initialize();
-
-
     /* Initialize the Legacy Server. */
     LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(config::GetArg("-port", config::fTestNet ? 8323 : 9323), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
     if(config::mapMultiArgs["-addnode"].size() > 0)
@@ -81,11 +76,11 @@ int main(int argc, char** argv)
 
 
     /* Create the Core RPC Server. */
-    LLP::Server<TAO::API::Core>* CORE_SERVER = new LLP::Server<TAO::API::Core>(config::GetArg("-apiport", 8080), 10, 30, false, 0, 0, 60, true, false);
+    LLP::Server<TAO::API::Core>* CORE_SERVER = new LLP::Server<TAO::API::Core>(config::GetArg("-apiport", 8080), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), false);
 
 
     /* Set up RPC server */
-    LLP::Server<TAO::API::RPC::RPCServer>* RPC_SERVER = new LLP::Server<TAO::API::RPC::RPCServer>(config::GetArg("-rpcport", config::fTestNet? 8336 : 9336), 1, 30, false, 0, 0, 60, true, false);
+    LLP::Server<TAO::API::RPC>* RPC_SERVER = new LLP::Server<TAO::API::RPC>(config::GetArg("-rpcport", config::fTestNet? 8336 : 9336), 1, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), false);
 
 
     /* Wait for Shutdown. */

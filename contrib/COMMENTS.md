@@ -5,24 +5,28 @@ Comments in this library should be written as you develop new code. The practice
 
 ## Header Files
 
+**/
 class Test
 {
 public:
 
-    /** Describe Data Memberm. **/
+    /* Describe Data Members. */
     uint32_t nDataMember;
 
-    /** Function
+    /* Function
      *
      *  Function Description
      *
      *  @param[in] nArg The argument for...
      *
-     **/
+     */
     void Function(uint32_t nArg);
 }
+/**
 
 ## Source Files
+
+**/
 
 /* Function Description */
 void Test::Function(uint32_t nArg)
@@ -36,3 +40,4 @@ void Test::Function(uint32_t nArg)
         nSum += nSum;
     }
 }
+/**
