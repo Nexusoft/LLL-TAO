@@ -8,11 +8,17 @@ Comments in this library should be written as you develop new code. The practice
 Comments should be included to support Doxygen building over methods and classes in header files.
 
 ```
+/** Test Class
+ *  
+ *  Description of the class.
+ *  Can be in as many lines as needed.
+ *
+ **/
 class Test
 {
 public:
 
-    /** Describe Data Members. **/
+    /** Describe Data Member. **/
     uint32_t nDataMember;
 
     /** Function
@@ -20,9 +26,12 @@ public:
      *  Function Description
      *
      *  @param[in] nArg The argument for...
+     *  @param[out] nRet The argument outputed for...
+     *
+     *  @return returns the...
      *
      **/
-    void Function(uint32_t nArg);
+    bool Function(uint32_t nArg, uint32_t& nRet);
 }
 ```
 
@@ -32,7 +41,7 @@ Inside the corresponding source files, the method description should be non-doxy
 
 ```
 /* Function Description */
-void Test::Function(uint32_t nArg)
+bool Test::Function(uint32_t nArg, uint32_t& nRet)
 {
     /* Brief Description of Local Variable. */
     uin32_t nSum = 0;
