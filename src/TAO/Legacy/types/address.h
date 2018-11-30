@@ -32,7 +32,7 @@ namespace Legacy
     public:
 
         /** Default Constructor. **/
-        NexusAddress() {}
+        NexusAddress() { }
 
 
         /** Constructor

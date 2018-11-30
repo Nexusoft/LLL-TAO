@@ -156,7 +156,8 @@ namespace LLP
                 return;
 
             /* Bind the Listener. */
-            BindListenPort(hListenSocket, fIPv4);
+            if(!BindListenPort(hListenSocket, fIPv4))
+                return;
 
             /* Don't listen until all data threads are created. */
             while(DATA_THREADS.size() < MAX_THREADS)

@@ -115,6 +115,7 @@ namespace LLP
         /** Main message handler once a packet is recieved. **/
         bool TritiumNode::ProcessPacket()
         {
+
             CDataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
             switch(INCOMING.MESSAGE)
             {

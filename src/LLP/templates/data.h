@@ -194,10 +194,16 @@ namespace LLP
                         /* If a Packet was received successfully, increment request count [and DDOS count if enabled]. */
                         if(CONNECTIONS[nIndex]->PacketComplete())
                         {
+                            /* Debug dump of message type. */
+                            debug::log(4, NODE "Sent Message (%u bytes)\n", CONNECTIONS[nIndex]->INCOMING.GetBytes().size());
 
+                            /* Debug dump of packet data. */
+                            if(config::GetArg("-verbose", 0) >= 5)
+                                PrintHex(CONNECTIONS[nIndex]->INCOMING.GetBytes());
+
+                            /* Handle Meters and DDOS. */
                             if(fMETER)
                                 REQUESTS++;
-
                             if(fDDOS)
                                 CONNECTIONS[nIndex]->DDOS->rSCORE += 1;
 

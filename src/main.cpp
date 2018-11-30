@@ -27,7 +27,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/rpc.h>
 
 #include <LLP/templates/server.h>
-#include <LLP/include/legacy.h>
+#include <LLP/include/tritium.h>
 
 
 int main(int argc, char** argv)
@@ -69,10 +69,10 @@ int main(int argc, char** argv)
 
 
     /* Initialize the Legacy Server. */
-    LLP::Server<LLP::LegacyNode>* SERVER = new LLP::Server<LLP::LegacyNode>(config::GetArg("-port", config::fTestNet ? 8323 : 9323), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
+    LLP::Server<LLP::TritiumNode>* TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(config::GetArg("-port", config::fTestNet ? 8888 : 9888), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
     if(config::mapMultiArgs["-addnode"].size() > 0)
         for(auto node : config::mapMultiArgs["-addnode"])
-            SERVER->AddConnection(node, config::GetArg("-port", config::fTestNet ? 8323 : 9323));
+            TRITIUM_SERVER->AddConnection(node, config::GetArg("-port", config::fTestNet ? 8888 : 9888));
 
 
     /* Create the Core RPC Server. */
