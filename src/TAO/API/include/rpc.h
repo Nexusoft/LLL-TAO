@@ -14,20 +14,11 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_API_INCLUDE_RPC_H
 #define NEXUS_TAO_API_INCLUDE_RPC_H
 
+#include <LLP/include/http.h>
 
-#include <TAO/API/types/jsonapibase.h>
-
-namespace TAO::API::RPC
+namespace TAO::API
 {
-    /** Derived JSON API Method to include the fOkSafeMode flag **/
-    class RPCMethod : public JSONAPIMethod
-    {
-        public:
-            RPCMethod(std::function<nlohmann::json(bool, nlohmann::json)> function, bool okSafeMode) : JSONAPIMethod(function), fOkSafeMode(okSafeMode){}
-            bool fOkSafeMode;
-    };
 
-    
     /** RPC API Server Node
      *
      *  A node that can speak over HTTP protocols.
@@ -37,13 +28,13 @@ namespace TAO::API::RPC
      *  POST / HTTP/1.1
      *  {"method":"", "params":[]}
      **/
-    class RPCServer : public TAO::API::JSONAPINode
+    class RPC : public LLP::HTTPNode
     {
     public:
 
         /* Constructors for Message LLP Class. */
-        RPCServer() : JSONAPINode() {}
-        RPCServer( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false );
+        RPC() : HTTPNode() {}
+        RPC( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false ) : HTTPNode(SOCKET_IN, DDOS_IN, isDDOS) {}
 
 
         /** Virtual Functions to Determine Behavior of Message LLP.
@@ -57,8 +48,8 @@ namespace TAO::API::RPC
 
         /** Main message handler once a packet is recieved. **/
         bool ProcessPacket();
-    
-    
+
+
     };
 }
 

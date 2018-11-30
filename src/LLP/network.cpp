@@ -405,7 +405,7 @@ namespace LLP
 
     CService::CService(const struct sockaddr_in6 &addr) : CNetAddr(addr.sin6_addr), port(ntohs(addr.sin6_port))
     {
-    assert(addr.sin6_family == AF_INET6);
+        assert(addr.sin6_family == AF_INET6);
     }
 
 

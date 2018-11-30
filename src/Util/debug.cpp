@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
+
 #include <string>
 #include <stdarg.h>
 #include <stdio.h>
@@ -44,6 +45,8 @@ namespace debug
             return 0;
 
         LOCK(DEBUG_MUTEX);
+
+        //TODO: add timestamps to log messages
 
         /* print to console */
         int ret = 0;

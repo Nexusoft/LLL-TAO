@@ -46,7 +46,8 @@ namespace LLP
             MAX_THREADS(nMaxThreads),
             DDOS_TIMESPAN(nTimespan),
             DATA_THREADS(0),
-            LISTEN_THREAD(std::bind(&Server::ListeningThread, this)),
+            LISTEN_THREAD_V4(std::bind(&Server::ListeningThread, this, true)),  //IPv4 Listener
+            LISTEN_THREAD_V6(std::bind(&Server::ListeningThread, this, false)), //IPv6 Listener
             METER_THREAD(std::bind(&Server::MeterThread, this))
         {
             for(int index = 0; index < MAX_THREADS; index++)
@@ -120,10 +121,11 @@ namespace LLP
     private:
 
         /* Basic Socket Handle Variables. */
-        std::thread          LISTEN_THREAD;
+        std::thread          LISTEN_THREAD_V4;
+        std::thread          LISTEN_THREAD_V6;
+
         std::thread          METER_THREAD;
-        std::recursive_mutex           DDOS_MUTEX;
-        int                  hListenSocket;
+        std::recursive_mutex DDOS_MUTEX;
 
 
         /* Determine the thread with the least amount of active connections.
@@ -145,14 +147,16 @@ namespace LLP
 
 
         /** Main Listening Thread of LLP Server. Handles new Connections and DDOS associated with Connection if enabled. **/
-        void ListeningThread()
+        void ListeningThread(bool fIPv4)
         {
+            int hListenSocket;
+
             /* End the listening thread if LLP set to not listen. */
             if(!fLISTEN)
                 return;
 
             /* Bind the Listener. */
-            BindListenPort();
+            BindListenPort(hListenSocket, fIPv4);
 
             /* Don't listen until all data threads are created. */
             while(DATA_THREADS.size() < MAX_THREADS)
@@ -165,14 +169,27 @@ namespace LLP
 
                 if (hListenSocket != INVALID_SOCKET)
                 {
-                    struct sockaddr_in sockaddr;
-                    socklen_t len = sizeof(sockaddr);
-
-                    SOCKET hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len);
-
+                    SOCKET hSocket;
                     CAddress addr;
-                    if (hSocket != INVALID_SOCKET)
-                        addr = CAddress(sockaddr);
+
+                    if(fIPv4)
+                    {
+                        struct sockaddr_in sockaddr;
+                        socklen_t len = sizeof(sockaddr);
+
+                        hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len);
+                        if (hSocket != INVALID_SOCKET)
+                            addr = CAddress(sockaddr);
+                    }
+                    else
+                    {
+                        struct sockaddr_in6 sockaddr;
+                        socklen_t len = sizeof(sockaddr);
+
+                        hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len);
+                        if (hSocket != INVALID_SOCKET)
+                            addr = CAddress(sockaddr);
+                    }
 
                     if (hSocket == INVALID_SOCKET)
                     {
@@ -206,7 +223,7 @@ namespace LLP
             }
         }
 
-        bool BindListenPort()
+        bool BindListenPort(int & hListenSocket, bool fIPv4 = true)
         {
             std::string strError = "";
             int nOne = 1;
@@ -224,7 +241,7 @@ namespace LLP
             #endif
 
             // Create socket for listening for incoming connections
-            hListenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+            hListenSocket = socket(fIPv4 ? AF_INET : AF_INET6, SOCK_STREAM, IPPROTO_TCP);
             if (hListenSocket == INVALID_SOCKET)
             {
                 debug::error("Couldn't open socket for incoming connections (socket returned error %d)", GetLastError());
@@ -246,22 +263,46 @@ namespace LLP
 
             // The sockaddr_in structure specifies the address family,
             // IP address, and port for the socket that is being bound
-            struct sockaddr_in sockaddr;
-            memset(&sockaddr, 0, sizeof(sockaddr));
-            sockaddr.sin_family = AF_INET;
-            sockaddr.sin_addr.s_addr = INADDR_ANY; // bind to all IPs on this computer
-            sockaddr.sin_port = htons(PORT);
-            if (::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
+            if(fIPv4)
             {
-                int nErr = GetLastError();
-                if (nErr == WSAEADDRINUSE)
-                    debug::error("Unable to bind to port %d on this computer.  Nexus is probably already running.", ntohs(sockaddr.sin_port));
-                else
-                    debug::error("Unable to bind to port %d on this computer (bind returned error %d)", ntohs(sockaddr.sin_port), nErr);
+                struct sockaddr_in sockaddr;
+                memset(&sockaddr, 0, sizeof(sockaddr));
+                sockaddr.sin_family = AF_INET;
+                sockaddr.sin_addr.s_addr = INADDR_ANY; // bind to all IPs on this computer
+                sockaddr.sin_port = htons(PORT);
+                if (::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
+                {
+                    int nErr = GetLastError();
+                    if (nErr == WSAEADDRINUSE)
+                        debug::error("Unable to bind to port %d on this computer.  Nexus is probably already running.", ntohs(sockaddr.sin_port));
+                    else
+                        debug::error("Unable to bind to port %d on this computer (bind returned error %d)", ntohs(sockaddr.sin_port), nErr);
 
-                return false;
+                    return false;
+                }
+
+                debug::log(0, NODE "(v4) Bound to port %d\n", ntohs(sockaddr.sin_port));
             }
-            debug::log(0, NODE "Bound to port %d\n", ntohs(sockaddr.sin_port));
+            else
+            {
+                struct sockaddr_in6 sockaddr;
+                memset(&sockaddr, 0, sizeof(sockaddr));
+                sockaddr.sin6_family = AF_INET6;
+                sockaddr.sin6_addr = IN6ADDR_ANY_INIT; // bind to all IPs on this computer
+                sockaddr.sin6_port = htons(PORT);
+                if (::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
+                {
+                    int nErr = GetLastError();
+                    if (nErr == WSAEADDRINUSE)
+                        debug::error("Unable to bind to port %d on this computer.  Nexus is probably already running.", ntohs(sockaddr.sin6_port));
+                    else
+                        debug::error("Unable to bind to port %d on this computer (bind returned error %d)", ntohs(sockaddr.sin6_port), nErr);
+
+                    return false;
+                }
+
+                debug::log(0, NODE "(v6) Bound to port %d\n", ntohs(sockaddr.sin6_port));
+            }
 
             // Listen for incoming connections
             if (listen(hListenSocket, SOMAXCONN) == SOCKET_ERROR)

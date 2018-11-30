@@ -29,7 +29,7 @@ namespace TAO
 {
 	namespace Ledger
 	{
-		
+
 		/** Nodes collect new transactions into a block, hash them into a hash tree,
 		 * and scan through nonce values to make the block's hash satisfy proof-of-work
 		 * requirements.  When they solve the proof-of-work, they broadcast the block
@@ -265,7 +265,7 @@ namespace TAO
 			 *	@return True if signature is valid, false otherwise
 			 *
 			 **/
-			bool VerifySignature() const;
+			bool VerifySignature(const LLC::ECKey key) const;
 
 
 		};
