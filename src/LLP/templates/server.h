@@ -250,6 +250,13 @@ namespace LLP
                 return false;
             }
 
+            int enable = 1;
+            if (setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0)
+                debug::error("setsockopt(SO_REUSEADDR) failed");
+
+            if (setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEPORT, (const char*)&enable, sizeof(int)) < 0)
+                debug::error("setsockopt(SO_REUSEPORT) failed");
+
             #ifdef SO_NOSIGPIPE
                 // Different way of disabling SIGPIPE on BSD
                 setsockopt(hListenSocket, SOL_SOCKET, SO_NOSIGPIPE, (void*)&nOne, sizeof(int));
@@ -275,7 +282,7 @@ namespace LLP
                 {
                     int nErr = GetLastError();
                     if (nErr == WSAEADDRINUSE)
-                        debug::error("Unable to bind to port %d on this computer.  Nexus is probably already running.", ntohs(sockaddr.sin_port));
+                        debug::error("Unable to bind to port %d on this computer. Address already in use.", ntohs(sockaddr.sin_port));
                     else
                         debug::error("Unable to bind to port %d on this computer (bind returned error %d)", ntohs(sockaddr.sin_port), nErr);
 
@@ -295,7 +302,7 @@ namespace LLP
                 {
                     int nErr = GetLastError();
                     if (nErr == WSAEADDRINUSE)
-                        debug::error("Unable to bind to port %d on this computer.  Nexus is probably already running.", ntohs(sockaddr.sin6_port));
+                        debug::error("Unable to bind to port %d on this computer. Address already in use.", ntohs(sockaddr.sin6_port));
                     else
                         debug::error("Unable to bind to port %d on this computer (bind returned error %d)", ntohs(sockaddr.sin6_port), nErr);
 
