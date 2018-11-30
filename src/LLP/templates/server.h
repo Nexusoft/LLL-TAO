@@ -232,7 +232,7 @@ namespace LLP
             #ifdef WIN32
                 // Initialize Windows Sockets
                 WSADATA wsadata;
-                int ret = WSAStartup(MAKEWORD(2,2), &wsadata);
+                int ret = WSAStartup(MAKEWORD(2, 2), &wsadata);
                 if (ret != NO_ERROR)
                 {
                     debug::error("TCP/IP socket library failed to start (WSAStartup returned error %d)", ret);
@@ -241,7 +241,7 @@ namespace LLP
                 }
             #endif
 
-            // Create socket for listening for incoming connections
+            /* Create socket for listening for incoming connections */
             hListenSocket = socket(fIPv4 ? AF_INET : AF_INET6, SOCK_STREAM, IPPROTO_TCP);
             if (hListenSocket == INVALID_SOCKET)
             {
@@ -250,27 +250,20 @@ namespace LLP
                 return false;
             }
 
-            int enable = 1;
-            if (setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0)
-                debug::error("setsockopt(SO_REUSEADDR) failed");
-
-            if (setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEPORT, (const char*)&enable, sizeof(int)) < 0)
-                debug::error("setsockopt(SO_REUSEPORT) failed");
-
+            /* Different way of disabling SIGPIPE on BSD */
             #ifdef SO_NOSIGPIPE
-                // Different way of disabling SIGPIPE on BSD
                 setsockopt(hListenSocket, SOL_SOCKET, SO_NOSIGPIPE, (void*)&nOne, sizeof(int));
             #endif
 
+
+            /* Allow binding if the port is still in TIME_WAIT state after the program was closed and restarted.  Not an issue on windows. */
             #ifndef WIN32
-                // Allow binding if the port is still in TIME_WAIT state after
-                // the program was closed and restarted.  Not an issue on windows.
                 setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEADDR, (void*)&nOne, sizeof(int));
+                setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEPORT, (void*)&nOne, sizeof(int));
             #endif
 
 
-            // The sockaddr_in structure specifies the address family,
-            // IP address, and port for the socket that is being bound
+            /* The sockaddr_in structure specifies the address family, IP address, and port for the socket that is being bound */
             if(fIPv4)
             {
                 struct sockaddr_in sockaddr;
@@ -312,7 +305,7 @@ namespace LLP
                 debug::log(0, NODE "(v6) Bound to port %d\n", ntohs(sockaddr.sin6_port));
             }
 
-            // Listen for incoming connections
+            /* Listen for incoming connections */
             if (listen(hListenSocket, SOMAXCONN) == SOCKET_ERROR)
             {
                 debug::error("Listening for incoming connections failed (listen returned error %d)", GetLastError());
