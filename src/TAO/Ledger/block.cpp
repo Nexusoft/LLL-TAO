@@ -203,9 +203,10 @@ namespace TAO
 		{
 			return false;
 		}
+		
 
 		/* Check that the block signature is a valid signature. */
-		bool Block::VerifySignature() const
+		bool Block::VerifySignature(const LLC::ECKey key) const
 		{
 			return false;
 		}

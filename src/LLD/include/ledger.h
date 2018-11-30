@@ -45,6 +45,7 @@ namespace LLD
             return Read(std::make_pair(std::string("tx"), hashTransaction), tx);
         }
 
+
         bool HasTx(uint512_t hashTransaction)
         {
             return Exists(std::make_pair(std::string("tx"), hashTransaction));
