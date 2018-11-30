@@ -138,7 +138,7 @@ namespace LLP
             addrThisNode = SOCKET.addr;
             nLastPing    = UnifiedTimestamp();
 
-            debug::log(1, "***** %s Node %s Connected at Timestamp %" PRIu64 "\n", fOUTGOING ? "Ougoing" : "Incoming", addrThisNode.ToString().c_str(), UnifiedTimestamp());
+            debug::log(1, "***** %s Node %s Connected at Timestamp %" PRIu64 "\n", fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), UnifiedTimestamp());
 
             if(fOUTGOING)
                 PushVersion();
@@ -170,7 +170,7 @@ namespace LLP
                     break;
             }
 
-            debug::log(1, "xxxxx %s Node %s Disconnected (%s) at Timestamp %" PRIu64 "\n", fOUTGOING ? "Ougoing" : "Incoming", addrThisNode.ToString().c_str(), strReason.c_str(), UnifiedTimestamp());
+            debug::log(1, "xxxxx %s Node %s Disconnected (%s) at Timestamp %" PRIu64 "\n", fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), strReason.c_str(), UnifiedTimestamp());
 
             return;
         }
