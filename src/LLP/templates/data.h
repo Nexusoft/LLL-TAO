@@ -195,7 +195,7 @@ namespace LLP
                         if(CONNECTIONS[nIndex]->PacketComplete())
                         {
                             /* Debug dump of message type. */
-                            debug::log(4, NODE "Sent Message (%u bytes)\n", CONNECTIONS[nIndex]->INCOMING.GetBytes().size());
+                            debug::log(4, NODE "Recieved Message (%u bytes)\n", CONNECTIONS[nIndex]->INCOMING.GetBytes().size());
 
                             /* Debug dump of packet data. */
                             if(config::GetArg("-verbose", 0) >= 5)
