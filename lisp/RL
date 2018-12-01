@@ -63,7 +63,7 @@ if ($status != 1) then
   sysctl -w net.ipv6.conf.all.forwarding=1 > /dev/null
 
   #
-  # An IPv6 EID MUST not be assigned to interface lo or it will be unreachable. 
+  # An IPv6 EID MUST not be assigned to interface lo or it will be unreachable.
   #
   sudo ip addr add $v6_eid/128 dev eth0 >& /dev/null
   sudo ip neighbor add fe80::1 lladdr 0:0:0:0:0:1 dev eth0
@@ -73,11 +73,21 @@ if ($status != 1) then
   sudo ip route add ff00::/8 via fe80::1 dev eth0 src $v6_eid
 
   #
+  # Set MTU for eth0 interface.
+  #
+  sudo ifconfig eth mtu 1400
+
+  #
   # Start LISP quietly.
   #
   /lispers.net/RESTART-LISP -9090 eth0 > /dev/null
 else
   echo "Provisioning lisp.config file already performed"
+
+  #
+  # Set MTU for eth0 interface.
+  #
+  sudo ifconfig eth0 mtu 1400
 
   #
   # Start LISP.
