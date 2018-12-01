@@ -35,7 +35,7 @@ ________________________________________________________________________________
  *  @param[out] v The vector to store the tokens into.
  *
  **/
-void ParseString(const std::string& str, char c, std::vector<std::string>& v)
+inline void ParseString(const std::string& str, char c, std::vector<std::string>& v)
 {
     if (str.empty())
         return;
@@ -71,7 +71,7 @@ void ParseString(const std::string& str, char c, std::vector<std::string>& v)
  *  @return The formatted money string.
  *
  **/
-std::string FormatMoney(int64_t n, bool fPlus = false, int64_t COIN_SIZE = 1000000)
+inline std::string FormatMoney(int64_t n, bool fPlus = false, int64_t COIN_SIZE = 1000000)
 {
     // Note: not using straight sprintf here because we do NOT want
     // localized number formatting.
@@ -131,7 +131,7 @@ inline bool ParseMoney(const std::string& str, int64_t& nRet)
  *  @return True if no errors, false otherwise.
  *
  **/
-bool ParseMoney(const char* pszIn, int64_t& nRet, int64_t COIN_SIZE = 1000000, int64_t CENT_SIZE = 10000)
+inline bool ParseMoney(const char* pszIn, int64_t& nRet, int64_t COIN_SIZE = 1000000, int64_t CENT_SIZE = 10000)
 {
     std::string strWhole;
     int64_t nUnits = 0;
@@ -189,7 +189,7 @@ bool ParseMoney(const char* pszIn, int64_t& nRet, int64_t COIN_SIZE = 1000000, i
  *  @return The vector of the tokenized strings.
  *
  **/
-std::vector<std::string> Split(const std::string& strInput, char strDelimiter)
+inline std::vector<std::string> Split(const std::string& strInput, char strDelimiter)
 {
     std::string::size_type nIndex = 0;
     std::string::size_type nFind  = strInput.find(strDelimiter);
