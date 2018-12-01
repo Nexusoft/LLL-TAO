@@ -56,7 +56,7 @@ namespace LLP
             MAX_THREADS(nMaxThreads),
             DDOS_TIMESPAN(nTimespan),
             DATA_THREADS(0),
-            //MANAGER(std::bind(&Server::Manager, this)),
+            MANAGER(std::bind(&Server::Manager, this)),
             LISTEN_THREAD_V4(std::bind(&Server::ListeningThread, this, true)),  //IPv4 Listener
             LISTEN_THREAD_V6(std::bind(&Server::ListeningThread, this, false)), //IPv6 Listener
             METER_THREAD(std::bind(&Server::MeterThread, this))

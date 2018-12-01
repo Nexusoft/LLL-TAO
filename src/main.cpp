@@ -88,8 +88,7 @@ int main(int argc, char** argv)
         for(auto node : config::mapMultiArgs["-addnode"])
         {
             LLP::CAddress addr = LLP::CAddress(LLP::CService(debug::strprintf("%s:%i", node.c_str(), config::GetArg("-port", config::fTestNet ? 8888 : 9888)).c_str(), false));
-            //LLP::TRITIUM_SERVER->AddAddress(addr);
-            LLP::TRITIUM_SERVER->AddConnection(addr.ToStringIP(), addr.GetPort());
+            LLP::TRITIUM_SERVER->AddAddress(addr);
         }
     }
 
