@@ -3,7 +3,8 @@
 # docker-run-tritium
 #
 # This script is used on your host OS to create and start a docker container
-# that runs the Nexus Daemon and the lispers.net LISP subsystem.
+# that runs the Nexus Daemon and the lispers.net LISP subsystem for a client
+# (non-seed) node..
 #
 # You can run this script multiple times and it will create as many containers
 # as you wish. The docker image "tritium" must already be built by using
