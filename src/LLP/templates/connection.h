@@ -157,6 +157,12 @@ namespace LLP
             return false;
         }
 
+        /* Get Address. Returns the address of socket. */
+        CAddress GetAddress()
+        {
+            return SOCKET.addr;
+        }
+
 
         /* Disconnect Socket. Cleans up memory usage to prevent "memory runs" from poor memory management. */
         void Disconnect()

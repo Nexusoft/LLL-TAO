@@ -133,7 +133,6 @@ OBJS= \
 	build/KeccakHash.o \
 	build/random.o \
 	build/key.o \
-	build/global.o \
 	build/network.o \
 	build/hosts.o \
 	build/socket.o \

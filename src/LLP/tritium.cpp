@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/global.h>
 #include <LLP/include/tritium.h>
 
 #include <Util/include/runtime.h>
@@ -131,6 +132,8 @@ namespace LLP
                         uint64_t nSession = LLC::GetRand(std::numeric_limits<uint64_t>::max());
                         PushMessage(DAT_VERSION, nSession);
                     }
+                    else
+                        PushMessage(GET_ADDRESSES);
 
                     /* Debug output for offsets. */
                     debug::log(3, NODE "received session identifier (%" PRIx64 ")\n", nSessionID);
@@ -271,12 +274,26 @@ namespace LLP
 
                 case GET_ADDRESSES:
                 {
+                    /* Grab the connections. */
+                    std::vector<CAddress> vAddr = TRITIUM_SERVER->GetAddresses();
+
+                    /* Push the response addresses. */
+                    PushMessage(DAT_ADDRESSES, vAddr);
+
                     break;
                 }
 
 
                 case DAT_ADDRESSES:
                 {
+                    /* De-Serialize the Addresses. */
+                    std::vector<CAddress> vAddr;
+                    ssPacket >> vAddr;
+
+                    /* Add the connections to Tritium Server. */
+                    for(auto addr : vAddr)
+                        TRITIUM_SERVER->AddAddress(addr);
+
                     break;
                 }
 

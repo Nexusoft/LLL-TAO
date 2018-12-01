@@ -17,10 +17,12 @@ ________________________________________________________________________________
 #include <LLP/include/legacy.h>
 #include <LLP/include/tritium.h>
 
+#include <LLP/templates/server.h>
+
 namespace LLP
 {
-    extern Server<LegacyPacket>*   LEGACY_SERVER;
-    extern Server<TritiumPacket>* TRITIUM_SERVER;
+    extern Server<LegacyNode>*   LEGACY_SERVER;
+    extern Server<TritiumNode>* TRITIUM_SERVER;
 }
 
 #endif

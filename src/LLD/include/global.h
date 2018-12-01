@@ -24,4 +24,5 @@ namespace LLD
     extern LedgerDB*     legDB;
     extern LocalDB*      locDB;
 }
+
 #endif

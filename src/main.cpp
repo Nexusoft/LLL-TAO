@@ -26,8 +26,21 @@ ________________________________________________________________________________
 #include <TAO/API/include/core.h>
 #include <TAO/API/include/rpc.h>
 
-#include <LLP/templates/server.h>
-#include <LLP/include/tritium.h>
+#include <LLP/include/global.h>
+
+/* Declare the Global LLD Instances. */
+namespace LLD
+{
+    RegisterDB* regDB;
+    LedgerDB*   legDB;
+    LocalDB*    locDB;
+}
+
+/* Declare the Global LLP Instances. */
+namespace LLP
+{
+    Server<TritiumNode>* TRITIUM_SERVER;
+}
 
 
 int main(int argc, char** argv)
@@ -69,10 +82,16 @@ int main(int argc, char** argv)
 
 
     /* Initialize the Legacy Server. */
-    LLP::Server<LLP::TritiumNode>* TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(config::GetArg("-port", config::fTestNet ? 8888 : 9888), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
+    LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(config::GetArg("-port", config::fTestNet ? 8888 : 9888), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
     if(config::mapMultiArgs["-addnode"].size() > 0)
+    {
         for(auto node : config::mapMultiArgs["-addnode"])
-            TRITIUM_SERVER->AddConnection(node, config::GetArg("-port", config::fTestNet ? 8888 : 9888));
+        {
+            LLP::CAddress addr = LLP::CAddress(LLP::CService(debug::strprintf("%s:%i", node.c_str(), config::GetArg("-port", config::fTestNet ? 8888 : 9888)).c_str(), false));
+            //LLP::TRITIUM_SERVER->AddAddress(addr);
+            LLP::TRITIUM_SERVER->AddConnection(addr.ToStringIP(), addr.GetPort());
+        }
+    }
 
 
     /* Create the Core RPC Server. */

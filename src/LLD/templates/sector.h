@@ -449,7 +449,7 @@ namespace LLD
                     if(fDestruct)
                         return;
 
-                    Sleep(1);
+                    Sleep(10);
 
                     continue;
                 }

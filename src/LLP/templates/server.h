@@ -37,6 +37,16 @@ namespace LLP
         /* The data type to keep track of current running threads. */
         std::vector< DataThread<ProtocolType>* > DATA_THREADS;
 
+        /* List of internal addresses. */
+        std::recursive_mutex MUTEX;
+        std::vector<CAddress> vAddr;
+
+        /* Connection Manager. */
+        std::thread MANAGER;
+
+        /* Address of this instance. */
+        CAddress addrThisNode;
+
 
         Server<ProtocolType>(int nPort, int nMaxThreads, int nTimeout = 30, bool isDDOS = false, int cScore = 0, int rScore = 0, int nTimespan = 60, bool fListen = true, bool fMeter = false) :
             fDDOS(isDDOS),
@@ -46,6 +56,7 @@ namespace LLP
             MAX_THREADS(nMaxThreads),
             DDOS_TIMESPAN(nTimespan),
             DATA_THREADS(0),
+            //MANAGER(std::bind(&Server::Manager, this)),
             LISTEN_THREAD_V4(std::bind(&Server::ListeningThread, this, true)),  //IPv4 Listener
             LISTEN_THREAD_V6(std::bind(&Server::ListeningThread, this, false)), //IPv6 Listener
             METER_THREAD(std::bind(&Server::MeterThread, this))
@@ -53,6 +64,7 @@ namespace LLP
             for(int index = 0; index < MAX_THREADS; index++)
                 DATA_THREADS.push_back(new DataThread<ProtocolType>(index, fDDOS, rScore, cScore, nTimeout, fMeter));
         }
+
 
         virtual ~Server<ProtocolType>()
         {
@@ -65,17 +77,18 @@ namespace LLP
         }
 
 
-
         /** Public Wraper to Add a Connection Manually.
-
-            @param[in] strAddress	IPv4 Address of outgoing connection
-            @param[in] strPort		Port of outgoing connection
-
-            @return	Returns true if the connection was established successfully */
+         *
+         *  @param[in] strAddress	IPv4 Address of outgoing connection
+         *  @param[in] strPort		Port of outgoing connection
+         *
+         *  @return	Returns true if the connection was established successfully
+         *
+         **/
         bool AddConnection(std::string strAddress, int nPort)
         {
             /* Initialize DDOS Protection for Incoming IP Address. */
-            CService addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
+            CService addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), false);
 
             /* Create new DDOS Filter if Needed. */
             if(!DDOS_MAP.count(addrConnect))
@@ -94,11 +107,30 @@ namespace LLP
         }
 
 
-        /** Get the active connection pointers from data threads.
-        *
-        * @return Returns the list of active connections in a vector
-        *
-        **/
+        /** Add Address
+         *
+         *  Add a connection to internal list.
+         *
+         *  @param[in] addr The address to add
+         *
+         **/
+        void AddAddress(CAddress addr)
+        {
+            LOCK(MUTEX);
+
+            /* Set default port */
+            addr.SetPort(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
+            vAddr.push_back(addr);
+        }
+
+
+        /** Get Connections
+         *
+         *  Get the active connection pointers from data threads.
+         *
+         *  @return Returns the list of active connections in a vector
+         *
+         **/
         std::vector<ProtocolType*> GetConnections()
         {
             std::vector<ProtocolType*> vConnections;
@@ -115,6 +147,72 @@ namespace LLP
             }
 
             return vConnections;
+        }
+
+
+        /** Get Addresses
+         *
+         *  Get the active connection pointers from data threads.
+         *
+         *  @return Returns the list of active connections in a vector
+         *
+         **/
+        std::vector<CAddress> GetAddresses()
+        {
+            std::vector<CAddress> vAddr;
+            for(int nThread = 0; nThread < MAX_THREADS; nThread++)
+            {
+                int nSize = DATA_THREADS[nThread]->CONNECTIONS.size();
+                for(int nIndex = 0; nIndex < nSize; nIndex ++)
+                {
+                    if(!DATA_THREADS[nThread]->CONNECTIONS[nIndex] || !DATA_THREADS[nThread]->CONNECTIONS[nIndex]->Connected())
+                        continue;
+
+                    vAddr.push_back(DATA_THREADS[nThread]->CONNECTIONS[nIndex]->GetAddress());
+                }
+            }
+
+            return vAddr;
+        }
+
+
+        /** Manager
+         *
+         *  Connection Manager Thread.
+         *
+         **/
+        void Manager()
+        {
+            /* Loop connections. */
+            while(!config::fShutdown)
+            {
+                Sleep(1000);
+                if(vAddr.empty())
+                    continue;
+
+                { LOCK(MUTEX);
+
+                    /* Get list of currently connected addresses. */
+                    std::vector<CAddress> vConnected = GetAddresses();
+
+                    /* Randomize the selection. */
+                    std::random_shuffle(vAddr.begin(), vAddr.end());
+                    CAddress addr = vAddr.back();
+                    vAddr.pop_back();
+
+                    /* Check if the address is already connected. */
+                    if(std::find(vConnected.begin(), vConnected.end(), addr) != vConnected.end())
+                    {
+                        debug::log(0, FUNCTION "Address already connected %s\n", __PRETTY_FUNCTION__, addr.ToStringIP().c_str());
+
+                        continue;
+                    }
+
+                    /* Attempt the connection. */
+                    debug::log(0, FUNCTION "Attempting Connection %s\n", __PRETTY_FUNCTION__, addr.ToStringIP().c_str());
+                    AddConnection(addr.ToStringIP(), addr.GetPort());
+                }
+            }
         }
 
 
