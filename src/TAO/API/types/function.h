@@ -62,7 +62,7 @@ namespace TAO::API
         nlohmann::json Execute(bool fHelp, nlohmann::json params)
         {
             if(!fEnabled)
-                return nlohmann::json::object("error", "method disabled");
+                return nlohmann::json::object({"error", "method disabled"});
 
             return function(fHelp, params);
         }

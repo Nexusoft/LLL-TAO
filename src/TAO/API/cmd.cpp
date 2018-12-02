@@ -59,7 +59,7 @@ namespace TAO::API
         std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
 
         /* Make the connection to the API server. */
-        TAO::API::Core apiNode;
+        TAO::API::CoreNode apiNode;
         if(!apiNode.Connect("127.0.0.1", 8080))
         {
             debug::log(0, "Couldn't Connect to API\n");
@@ -146,7 +146,7 @@ namespace TAO::API
         std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
 
         /* Make the connection to the API server. */
-        TAO::API::Core rpcNode;
+        TAO::API::CoreNode rpcNode;
         if(!rpcNode.Connect("127.0.0.1", 8080))
         {
             debug::log(0, "Couldn't Connect to API\n");

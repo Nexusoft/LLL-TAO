@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_TAO_API_INCLUDE_RPC_H
 
 #include <LLP/include/http.h>
+#include <TAO/API/types/base.h>
 
 namespace TAO::API
 {
@@ -28,13 +29,13 @@ namespace TAO::API
      *  POST / HTTP/1.1
      *  {"method":"", "params":[]}
      **/
-    class RPC : public LLP::HTTPNode
+    class RPCNode : public LLP::HTTPNode
     {
     public:
 
         /* Constructors for Message LLP Class. */
-        RPC() : HTTPNode() {}
-        RPC( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false ) : HTTPNode(SOCKET_IN, DDOS_IN, isDDOS) {}
+        RPCNode() : HTTPNode() {}
+        RPCNode( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false ) : HTTPNode(SOCKET_IN, DDOS_IN, isDDOS) {}
 
 
         /** Virtual Functions to Determine Behavior of Message LLP.

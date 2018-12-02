@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_API_TYPES_BASE_H
 #define NEXUS_TAO_API_TYPES_BASE_H
 
-#include <TAO/API/tyles/method.h>
+#include <TAO/API/types/function.h>
 
 namespace TAO::API
 {
@@ -39,7 +39,7 @@ namespace TAO::API
         virtual std::string GetName() const = 0;
 
 
-        /** HandleJSONAPIMethod
+        /** Execute
          *
          *  Handles the processing of the requested method.
          *  Derivations should implement this to lookup the requested method in the mapFunctions map and pass the processing on.
@@ -47,11 +47,15 @@ namespace TAO::API
          *
          *  @param[in] strMethod The requested API method.
          *  @param[in] jsonParameters The parameters that the caller has passed to the API request.
+         *  @param[in] fHelp Flag to determine if command help is requested.
          *
          *  @return JSON encoded response.
          *
          **/
-        virtual nlohmann::json HandleJSONAPIMethod(std::string strMethod, nlohmann::json jsonParams) = 0;
+        nlohmann::json Execute(std::string strMethod, nlohmann::json jsonParams, bool fHelp = false)
+        {
+            return mapFunctions[strMethod].Execute(fHelp, jsonParams);
+        }
 
     protected:
 
@@ -60,7 +64,7 @@ namespace TAO::API
 
 
         /** Map of method names to method function pointer objects for each method supported by this API. **/
-        std::map<std::string, Method > mapFunctions;
+        std::map<std::string, Function > mapFunctions;
     };
 }
 

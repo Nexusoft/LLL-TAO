@@ -14,64 +14,59 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/core.h>
 
-namespace TAO
+namespace TAO::API
 {
-    namespace API
+    std::map<std::string, std::map<std::string, std::function<nlohmann::json(bool, nlohmann::json)> > > mapFunctions;
+
+    /* Custom Events for Core API */
+    void CoreNode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
+        //no events for now
+        //TODO: see if at all possible to call from down in inheritance heirarchy
+    }
 
-        std::map<std::string, std::map<std::string, std::function<nlohmann::json(bool, nlohmann::json)> > > mapFunctions;
 
-        /* Custom Events for Core API */
-        void Core::Event(uint8_t EVENT, uint32_t LENGTH)
+    /** Main message handler once a packet is recieved. **/
+    bool CoreNode::ProcessPacket()
+    {
+        /* Parse the packet request. */
+        std::string::size_type npos = INCOMING.strRequest.find('/', 1);
+
+        /* Extract the API requested. */
+        std::string API = INCOMING.strRequest.substr(1, npos - 1);
+
+        /* Extract the method to invoke. */
+        std::string METHOD = INCOMING.strRequest.substr(npos + 1);
+
+
+        nlohmann::json ret;
+
+        nlohmann::json parameters;// = nlohmann::json::parse(INCOMING.strContent);
+        if(mapFunctions.count(API))
         {
-            //no events for now
-            //TODO: see if at all possible to call from down in inheritance heirarchy
-        }
 
-
-        /** Main message handler once a packet is recieved. **/
-        bool Core::ProcessPacket()
-        {
-            /* Parse the packet request. */
-            std::string::size_type npos = INCOMING.strRequest.find('/', 1);
-
-            /* Extract the API requested. */
-            std::string API = INCOMING.strRequest.substr(1, npos - 1);
-
-            /* Extract the method to invoke. */
-            std::string METHOD = INCOMING.strRequest.substr(npos + 1);
-
-
-            nlohmann::json ret;
-
-            nlohmann::json parameters;// = nlohmann::json::parse(INCOMING.strContent);
-            if(mapFunctions.count(API))
+            if(mapFunctions[API].count(METHOD))
             {
-
-                if(mapFunctions[API].count(METHOD))
-                {
-                    ret = mapFunctions[API][METHOD](false, parameters); //TODO: add help support as param[0]
-                }
-                else
-                {
-                    ret = { {"result", ""}, {"errors","method not found"} };
-                }
+                ret = mapFunctions[API][METHOD](false, parameters); //TODO: add help support as param[0]
             }
             else
             {
-                ret = { {"result", ""}, {"errors","API not found"} };
+                ret = { {"result", ""}, {"errors","method not found"} };
             }
-
-
-            PushResponse(200, ret.dump(4));
-
-            /* Handle a connection close header. */
-            if(INCOMING.mapHeaders.count("connection") && INCOMING.mapHeaders["connection"] == "close")
-                return false;
-
-            return true;
+        }
+        else
+        {
+            ret = { {"result", ""}, {"errors","API not found"} };
         }
 
+
+        PushResponse(200, ret.dump(4));
+
+        /* Handle a connection close header. */
+        if(INCOMING.mapHeaders.count("connection") && INCOMING.mapHeaders["connection"] == "close")
+            return false;
+
+        return true;
     }
 
 }

@@ -20,51 +20,46 @@ ________________________________________________________________________________
 
 #include <Util/include/json.h>
 
-namespace TAO
+namespace TAO::API
 {
-    namespace API
+    /* The core function objects for API's. */
+    extern std::map<std::string, std::map<std::string, std::function<nlohmann::json(bool, nlohmann::json)> > > mapFunctions;
+
+
+    /** Core API
+     *
+     *  A node that can speak over HTTP protocols.
+     *
+     *  Core API Functionality:
+     *  HTTP-JSON-API - Nexus Contracts API
+     *  POST /<api>/<command> HTTP/1.1
+     *  {"params":[]}
+     *
+     *  This could also be used as the base for a HTTP-LLP server implementation.
+     **/
+    class CoreNode : public LLP::HTTPNode
     {
+    public:
 
-        /* The core function objects for API's. */
-        extern std::map<std::string, std::map<std::string, std::function<nlohmann::json(bool, nlohmann::json)> > > mapFunctions;
+        /* Constructors for Message LLP Class. */
+        CoreNode() : LLP::HTTPNode() {}
+        CoreNode( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false ) : LLP::HTTPNode( SOCKET_IN, DDOS_IN ) { }
 
 
-        /** Core API
+        /** Virtual Functions to Determine Behavior of Message LLP.
          *
-         *  A node that can speak over HTTP protocols.
+         *  @param[in] EVENT The byte header of the event type
+         *  @param[in[ LENGTH The size of bytes read on packet read events
          *
-         *  Core API Functionality:
-         *  HTTP-JSON-API - Nexus Contracts API
-         *  POST /<api>/<command> HTTP/1.1
-         *  {"params":[]}
-         *
-         *  This could also be used as the base for a HTTP-LLP server implementation.
-         **/
-        class Core : public LLP::HTTPNode
-        {
-        public:
-
-            /* Constructors for Message LLP Class. */
-            Core() : LLP::HTTPNode() {}
-            Core( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false ) : LLP::HTTPNode( SOCKET_IN, DDOS_IN ) { }
+         */
+        void Event(uint8_t EVENT, uint32_t LENGTH = 0);
 
 
-            /** Virtual Functions to Determine Behavior of Message LLP.
-             *
-             *  @param[in] EVENT The byte header of the event type
-             *  @param[in[ LENGTH The size of bytes read on packet read events
-             *
-             */
-            void Event(uint8_t EVENT, uint32_t LENGTH = 0);
+        /** Main message handler once a packet is recieved. **/
+        bool ProcessPacket();
 
 
-            /** Main message handler once a packet is recieved. **/
-            bool ProcessPacket();
-
-
-        };
-    }
-
+    };
 }
 
 #endif

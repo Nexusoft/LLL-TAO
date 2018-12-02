@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/cmd.h>
 #include <TAO/API/include/core.h>
 #include <TAO/API/include/rpc.h>
+#include <TAO/API/types/rpc.h>
 
 #include <LLP/include/global.h>
 
@@ -94,11 +95,12 @@ int main(int argc, char** argv)
 
 
     /* Create the Core RPC Server. */
-    LLP::Server<TAO::API::Core>* CORE_SERVER = new LLP::Server<TAO::API::Core>(config::GetArg("-apiport", 8080), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), false);
+    LLP::Server<TAO::API::CoreNode>* CORE_SERVER = new LLP::Server<TAO::API::CoreNode>(config::GetArg("-apiport", 8080), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), false);
 
 
     /* Set up RPC server */
-    LLP::Server<TAO::API::RPC>* RPC_SERVER = new LLP::Server<TAO::API::RPC>(config::GetArg("-rpcport", config::fTestNet? 8336 : 9336), 1, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), false);
+    TAO::API::RPCCommands = new TAO::API::RPC();
+    LLP::Server<TAO::API::RPCNode>* RPC_SERVER = new LLP::Server<TAO::API::RPCNode>(config::GetArg("-rpcport", config::fTestNet? 8336 : 9336), 1, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), false);
 
 
     /* Wait for Shutdown. */
