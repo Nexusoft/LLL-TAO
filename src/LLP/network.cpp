@@ -244,13 +244,19 @@ namespace LLP
     std::string CNetAddr::ToStringIP() const
     {
         if (IsIPv4())
-            return debug::strprintf("%u.%u.%u.%u", GetByte(3), GetByte(2), GetByte(1), GetByte(0));
+        {
+            char dst[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, ip + 12, dst, INET_ADDRSTRLEN);
+
+            return std::string(dst);
+        }
         else
-            return debug::strprintf("%x:%x:%x:%x:%x:%x:%x:%x",
-                            GetByte(15) << 8 | GetByte(14), GetByte(13) << 8 | GetByte(12),
-                            GetByte(11) << 8 | GetByte(10), GetByte(9) << 8 | GetByte(8),
-                            GetByte(7) << 8 | GetByte(6), GetByte(5) << 8 | GetByte(4),
-                            GetByte(3) << 8 | GetByte(2), GetByte(1) << 8 | GetByte(0));
+        {
+            char dst[INET6_ADDRSTRLEN];
+            inet_ntop(AF_INET6, ip, dst, INET6_ADDRSTRLEN);
+
+            return std::string(dst);
+        }
     }
 
 
