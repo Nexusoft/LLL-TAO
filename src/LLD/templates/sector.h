@@ -23,6 +23,8 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/filesystem.h>
 
+#include <condition_variable>
+
 namespace LLD
 {
 
@@ -74,6 +76,10 @@ namespace LLD
             Will allow higher efficiency for thread concurrency. */
         std::recursive_mutex SECTOR_MUTEX;
         std::recursive_mutex BUFFER_MUTEX;
+
+
+        /* The condition for thread sleeping. */
+        std::condition_variable CONDITION;
 
 
         /* The String to hold the Disk Location of Database File. */
@@ -424,6 +430,8 @@ namespace LLD
                 std::unique_lock<std::recursive_mutex> lk(BUFFER_MUTEX);
                 vDiskBuffer.push_back(std::make_pair(vKey, vData));
                 nBufferBytes += (vKey.size() + vData.size());
+
+                CONDITION.notify_all();
             }
 
             return true;
@@ -433,26 +441,15 @@ namespace LLD
         /* Helper Thread to Batch Write to Disk. */
         void CacheWriter()
         {
+            /* The mutex for the condition. */
+            std::mutex CONDITION_MUTEX;
+
             while(!config::fShutdown)
             {
-                /* Wait for Database to Initialize. */
-                if(!fInitialized)
-                {
-                    Sleep(10);
-
-                    continue;
-                }
 
                 /* Check for data to be written. */
-                if(nBufferBytes == 0)
-                {
-                    if(fDestruct)
-                        return;
-
-                    Sleep(10);
-
-                    continue;
-                }
+                std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+                CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(1000), [this]{ return nBufferBytes > 0; });
 
 
                 /* Swap the buffer object to get ready for writes. */
