@@ -52,7 +52,7 @@ namespace TAO::API
          *  @return JSON encoded response.
          *
          **/
-        nlohmann::json Execute(std::string strMethod, nlohmann::json jsonParams, bool fHelp = false)
+        json::json Execute(std::string strMethod, json::json jsonParams, bool fHelp = false)
         {
             return mapFunctions[strMethod].Execute(fHelp, jsonParams);
         }

@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/hosts.h>
 #include <LLP/include/inv.h>
-#include <LLP/include/legacy.h>
+#include <LLP/types/legacy.h>
 #include <LLP/templates/events.h>
 
 #include <Util/include/args.h>

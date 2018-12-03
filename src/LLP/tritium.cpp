@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <LLP/include/global.h>
-#include <LLP/include/tritium.h>
+#include <LLP/types/tritium.h>
 
 #include <Util/include/runtime.h>
 #include <Util/include/args.h>

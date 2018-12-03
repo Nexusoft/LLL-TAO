@@ -11,47 +11,39 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_API_INCLUDE_RPC_H
-#define NEXUS_TAO_API_INCLUDE_RPC_H
+#ifndef NEXUS_TAO_API_TYPES_RPC_H
+#define NEXUS_TAO_API_TYPES_RPC_H
 
-#include <LLP/include/http.h>
 #include <TAO/API/types/base.h>
 
 namespace TAO::API
 {
 
-    /** RPC API Server Node
+    /** RPC API Class
      *
-     *  A node that can speak over HTTP protocols.
+     *  Manages the function pointers for all RPC commands.
      *
-     *  RPC API Functionality:
-     *  HTTP-JSON-RPC - Nexus Ledger Level API
-     *  POST / HTTP/1.1
-     *  {"method":"", "params":[]}
      **/
-    class RPCNode : public LLP::HTTPNode
+    class RPC : public Base
     {
     public:
+        RPC() {}
 
-        /* Constructors for Message LLP Class. */
-        RPCNode() : HTTPNode() {}
-        RPCNode( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false ) : HTTPNode(SOCKET_IN, DDOS_IN, isDDOS) {}
+        void Initialize();
 
+        std::string GetName() const
+        {
+            return "RPC";
+        }
 
-        /** Virtual Functions to Determine Behavior of Message LLP.
-         *
-         *  @param[in] EVENT The byte header of the event type
-         *  @param[in[ LENGTH The size of bytes read on packet read events
-         *
-         */
-        void Event(uint8_t EVENT, uint32_t LENGTH = 0);
+        /** RPC API command implementations */
+        json::json Echo( bool fHelp, json::json jsonParams);
 
-
-        /** Main message handler once a packet is recieved. **/
-        bool ProcessPacket();
-
-
+        json::json GetInfo(bool fHelp, json::json jsonParams);
     };
+
+    /** The instance of RPC commands. */
+    extern RPC* RPCCommands;
 }
 
 #endif

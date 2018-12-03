@@ -11,28 +11,43 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LLP_INCLUDE_TRITIUM_H
-#define NEXUS_LLP_INCLUDE_TRITIUM_H
+#ifndef NEXUS_LLP_TYPES_LEGACY_H
+#define NEXUS_LLP_TYPES_LEGACY_H
 
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
-#include <LLP/packets/tritium.h>
+#include <LLP/packets/legacy.h>
 #include <LLP/templates/connection.h>
 
 namespace LLP
 {
+    extern CAddress addrMyNode; //TODO: move this to a better location
 
-    class TritiumNode : public BaseConnection<TritiumPacket>
+    class LegacyNode : public BaseConnection<LegacyPacket>
     {
+        CAddress addrThisNode;
+
     public:
 
         /* Constructors for Message LLP Class. */
-        TritiumNode() : BaseConnection<TritiumPacket>(), nSessionID(0), fInbound(false), nNodeLatency(0), nLastPing(0), nLastSamples(0) {}
-        TritiumNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false ) : BaseConnection<TritiumPacket>( SOCKET_IN, DDOS_IN ), nSessionID(0), fInbound(false), nNodeLatency(0), nLastPing(0), nLastSamples(0) { }
+        LegacyNode() : BaseConnection<LegacyPacket>() {}
+        LegacyNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false ) : BaseConnection<LegacyPacket>( SOCKET_IN, DDOS_IN ) { }
 
 
         /** Randomly genearted session ID. **/
         uint64_t nSessionID;
+
+
+        /** String version of this Node's Version. **/
+        std::string strNodeVersion;
+
+
+        /** The current Protocol Version of this Node. **/
+        int nCurrentVersion;
+
+
+        /** LEGACY: The height of this ndoe given at the version message. **/
+        int nStartingHeight;
 
 
         /** Flag to determine if a connection is Inbound. **/
@@ -47,12 +62,8 @@ namespace LLP
         uint32_t nLastPing;
 
 
-        /** Counter to keep track of last time sample request. */
-        uint32_t nLastSamples;
-
-
         /** Timer object to keep track of ping latency. **/
-        std::map<uint32_t, uint64_t> mapLatencyTracker;
+        std::map<uint64_t, Timer> mapLatencyTracker;
 
 
         /** Mao to keep track of sent request ID's while witing for them to return. **/
@@ -60,11 +71,11 @@ namespace LLP
 
 
         /** Virtual Functions to Determine Behavior of Message LLP.
-         *
-         *  @param[in] EVENT The byte header of the event type
-         *  @param[in[ LENGTH The size of bytes read on packet read events
-         *
-         */
+        *
+        * @param[in] EVENT The byte header of the event type
+        * @param[in[ LENGTH The size of bytes read on packet read events
+        *
+        */
         void Event(uint8_t EVENT, uint32_t LENGTH = 0);
 
 
@@ -72,12 +83,24 @@ namespace LLP
         bool ProcessPacket();
 
 
+        /** Handle for version message **/
+        void PushVersion();
+
+
+        /** Send an Address to Node.
+        *
+        * @param[in] addr The address to send to nodes
+        *
+        */
+        void PushAddress(const CAddress& addr);
+
+
         /** Send the DoS Score to DDOS Filte
-         *
-         *  @param[in] nDoS The score to add for DoS banning
-         *  @param[in] fReturn The value to return (False disconnects this node)
-         *
-         */
+        *
+        * @param[in] nDoS The score to add for DoS banning
+        * @param[in] fReturn The value to return (False disconnects this node)
+        *
+        */
         inline bool DoS(int nDoS, bool fReturn)
         {
             if(fDDOS)
@@ -87,19 +110,22 @@ namespace LLP
         }
 
 
+        /** Get the current IP address of this node. **/
+        CAddress GetAddress();
+
+
         /** Non-Blocking Packet reader to build a packet from TCP Connection.
-         *
-         *  This keeps thread from spending too much time for each Connection.
-         */
+        * This keeps thread from spending too much time for each Connection.
+        */
         void ReadPacket()
         {
             if(!INCOMING.Complete())
             {
                 /** Handle Reading Packet Length Header. **/
-                if(INCOMING.IsNull() && SOCKET.Available() >= 10)
+                if(INCOMING.IsNull() && SOCKET.Available() >= 24)
                 {
-                    std::vector<uint8_t> BYTES(10, 0);
-                    if(Read(BYTES, 10) == 10)
+                    std::vector<uint8_t> BYTES(24, 0);
+                    if(Read(BYTES, 24) == 24)
                     {
                         CDataStream ssHeader(BYTES, SER_NETWORK, MIN_PROTO_VERSION);
                         ssHeader >> INCOMING;
@@ -126,20 +152,20 @@ namespace LLP
         }
 
 
-        TritiumPacket NewMessage(const uint16_t nMsg, CDataStream ssData)
+        LegacyPacket NewMessage(const char* chCommand, CDataStream ssData)
         {
-            TritiumPacket RESPONSE(nMsg);
+            LegacyPacket RESPONSE(chCommand);
             RESPONSE.SetData(ssData);
 
             return RESPONSE;
         }
 
 
-        void PushMessage(const uint16_t nMsg)
+        void PushMessage(const char* chCommand)
         {
             try
             {
-                TritiumPacket RESPONSE(nMsg);
+                LegacyPacket RESPONSE(chCommand);
                 RESPONSE.SetChecksum();
 
                 this->WritePacket(RESPONSE);
@@ -151,14 +177,14 @@ namespace LLP
         }
 
         template<typename T1>
-        void PushMessage(const uint16_t nMsg, const T1& t1)
+        void PushMessage(const char* chMessage, const T1& t1)
         {
             try
             {
                 CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1;
 
-                this->WritePacket(NewMessage(nMsg, ssData));
+                this->WritePacket(NewMessage(chMessage, ssData));
             }
             catch(...)
             {
@@ -167,14 +193,14 @@ namespace LLP
         }
 
         template<typename T1, typename T2>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2)
+        void PushMessage(const char* chMessage, const T1& t1, const T2& t2)
         {
             try
             {
                 CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1 << t2;
 
-                this->WritePacket(NewMessage(nMsg, ssData));
+                this->WritePacket(NewMessage(chMessage, ssData));
             }
             catch(...)
             {
@@ -183,14 +209,14 @@ namespace LLP
         }
 
         template<typename T1, typename T2, typename T3>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3)
+        void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3)
         {
             try
             {
                 CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1 << t2 << t3;
 
-                this->WritePacket(NewMessage(nMsg, ssData));
+                this->WritePacket(NewMessage(chMessage, ssData));
             }
             catch(...)
             {
@@ -199,14 +225,14 @@ namespace LLP
         }
 
         template<typename T1, typename T2, typename T3, typename T4>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4)
+        void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4)
         {
             try
             {
                 CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1 << t2 << t3 << t4;
 
-                this->WritePacket(NewMessage(nMsg, ssData));
+                this->WritePacket(NewMessage(chMessage, ssData));
             }
             catch(...)
             {
@@ -215,14 +241,14 @@ namespace LLP
         }
 
         template<typename T1, typename T2, typename T3, typename T4, typename T5>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5)
+        void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5)
         {
             try
             {
                 CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1 << t2 << t3 << t4 << t5;
 
-                this->WritePacket(NewMessage(nMsg, ssData));
+                this->WritePacket(NewMessage(chMessage, ssData));
             }
             catch(...)
             {
@@ -231,14 +257,14 @@ namespace LLP
         }
 
         template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6)
+        void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6)
         {
             try
             {
                 CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1 << t2 << t3 << t4 << t5 << t6;
 
-                this->WritePacket(NewMessage(nMsg, ssData));
+                this->WritePacket(NewMessage(chMessage, ssData));
             }
             catch(...)
             {
@@ -247,14 +273,14 @@ namespace LLP
         }
 
         template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7)
+        void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7)
         {
             try
             {
                 CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7;
 
-                this->WritePacket(NewMessage(nMsg, ssData));
+                this->WritePacket(NewMessage(chMessage, ssData));
             }
             catch(...)
             {
@@ -263,14 +289,14 @@ namespace LLP
         }
 
         template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7, const T8& t8)
+        void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7, const T8& t8)
         {
             try
             {
                 CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7 << t8;
 
-                this->WritePacket(NewMessage(nMsg, ssData));
+                this->WritePacket(NewMessage(chMessage, ssData));
             }
             catch(...)
             {
@@ -279,14 +305,14 @@ namespace LLP
         }
 
         template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9>
-        void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7, const T8& t8, const T9& t9)
+        void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7, const T8& t8, const T9& t9)
         {
             try
             {
                 CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7 << t8 << t9;
 
-                this->WritePacket(NewMessage(nMsg, ssData));
+                this->WritePacket(NewMessage(chMessage, ssData));
             }
             catch(...)
             {

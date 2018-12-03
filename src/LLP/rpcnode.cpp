@@ -12,16 +12,12 @@
 ____________________________________________________________________________________________*/
 
 
+#include <LLP/types/rpcnode.h>
 #include <TAO/API/include/rpc.h>
-#include <TAO/API/types/rpc.h>
 #include <Util/include/json.h>
 
-namespace TAO::API
+namespace LLP
 {
-
-    /* Create the list of commands. */
-    RPC* RPCCommands;
-
 
     /* Custom Events for Core API */
     void RPCNode::Event(uint8_t EVENT, uint32_t LENGTH)
@@ -35,17 +31,13 @@ namespace TAO::API
     bool RPCNode::ProcessPacket()
     {
         /* Get the parameters from the HTTP Packet. */
-        nlohmann::json jsonParams = nlohmann::json::parse(INCOMING.strContent);
+        json::json jsonIncoming = json::json::parse(INCOMING.strContent);
+    
+        std::string strMethod = jsonIncoming["method"].get<std::string>();
+        auto jsonParams = !jsonIncoming["params"].is_null() ? jsonIncoming["params"] : "";
 
-        // for RPC there is only one API called "RPC"
-        // for Core this would be...
-        // std::string API = INCOMING.strRequest.substr(1, npos - 1);
-        // std::string METHOD = INCOMING.strRequest.substr(npos + 1);
-        // ret = mapJSONAPIHandlers[API].HandleJSONAPIMethod(METHOD, parameters)
 
-        nlohmann::json ret = RPCCommands->Execute(jsonParams['method'], jsonParams['params'], false);
-
-        // = mapJSONAPIHandlers["RPC"]->HandleJSONAPIMethod(jsonParams["method"], jsonParams["params"]);
+        json::json ret = TAO::API::RPCCommands->Execute(strMethod, jsonParams, false);
 
 
         PushResponse(200, ret.dump(4));
@@ -57,9 +49,5 @@ namespace TAO::API
         return true;
     }
 
-    void RPC::Initialize()
-    {
-
-    }
 
 }

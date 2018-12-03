@@ -12,7 +12,8 @@
 ____________________________________________________________________________________________*/
 
 
-#include <TAO/API/include/core.h>
+#include <LLP/types/corenode.h>
+#include <LLP/types/rpcnode.h>
 #include <TAO/API/include/cmd.h>
 
 #include <Util/include/debug.h>
@@ -35,7 +36,7 @@ namespace TAO::API
         }
 
         /* Build the JSON request object. */
-        nlohmann::json parameters;
+        json::json parameters;
         for(int i = argn + 2; i < argc; i++)
             parameters.push_back(argv[i]);
 
@@ -59,7 +60,7 @@ namespace TAO::API
         std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
 
         /* Make the connection to the API server. */
-        TAO::API::CoreNode apiNode;
+        LLP::CoreNode apiNode;
         if(!apiNode.Connect("127.0.0.1", 8080))
         {
             debug::log(0, "Couldn't Connect to API\n");
@@ -122,12 +123,12 @@ namespace TAO::API
         }
 
         /* Build the JSON request object. */
-        nlohmann::json parameters;
-        for(int i = argn + 2; i < argc; i++)
+        json::json parameters;
+        for(int i = argn + 1; i < argc; i++)
             parameters.push_back(argv[i]);
 
         /* Build the HTTP Header. */
-        nlohmann::json body = { {"method", argv[argn]}, {"params", parameters} };
+        json::json body = { {"method", argv[argn]}, {"params", parameters} };
         std::string strContent = body.dump();
         std::string strReply = debug::strprintf(
                 "POST / HTTP/1.1\r\n"
@@ -146,8 +147,8 @@ namespace TAO::API
         std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
 
         /* Make the connection to the API server. */
-        TAO::API::CoreNode rpcNode;
-        if(!rpcNode.Connect("127.0.0.1", 8080))
+        LLP::RPCNode rpcNode;
+        if(!rpcNode.Connect("127.0.0.1", config::fTestNet? 8336 : 9336))
         {
             debug::log(0, "Couldn't Connect to API\n");
 

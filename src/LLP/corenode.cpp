@@ -12,11 +12,11 @@
 ____________________________________________________________________________________________*/
 
 
-#include <TAO/API/include/core.h>
+#include <LLP/types/corenode.h>
 
-namespace TAO::API
+namespace LLP
 {
-    std::map<std::string, std::map<std::string, std::function<nlohmann::json(bool, nlohmann::json)> > > mapFunctions;
+    std::map<std::string, std::map<std::string, std::function<json::json(bool, json::json)> > > mapFunctions;
 
     /* Custom Events for Core API */
     void CoreNode::Event(uint8_t EVENT, uint32_t LENGTH)
@@ -39,9 +39,9 @@ namespace TAO::API
         std::string METHOD = INCOMING.strRequest.substr(npos + 1);
 
 
-        nlohmann::json ret;
+        json::json ret;
 
-        nlohmann::json parameters;// = nlohmann::json::parse(INCOMING.strContent);
+        json::json parameters;// = json::json::parse(INCOMING.strContent);
         if(mapFunctions.count(API))
         {
 

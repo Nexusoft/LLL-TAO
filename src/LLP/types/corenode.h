@@ -11,19 +11,19 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_API_INCLUDE_CORE_H
-#define NEXUS_TAO_API_INCLUDE_CORE_H
+#ifndef NEXUS_LLP_TYPES_CORENODE_H
+#define NEXUS_LLP_TYPES_CORENODE_H
 
-#include <LLP/include/http.h>
+#include <LLP/types/http.h>
 
 #include <functional>
 
 #include <Util/include/json.h>
 
-namespace TAO::API
+namespace LLP
 {
     /* The core function objects for API's. */
-    extern std::map<std::string, std::map<std::string, std::function<nlohmann::json(bool, nlohmann::json)> > > mapFunctions;
+    extern std::map<std::string, std::map<std::string, std::function<json::json(bool, json::json)> > > mapFunctions;
 
 
     /** Core API

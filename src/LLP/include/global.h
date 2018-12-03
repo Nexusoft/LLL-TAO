@@ -14,8 +14,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_GLOBAL_H
 #define NEXUS_LLP_INCLUDE_GLOBAL_H
 
-#include <LLP/include/legacy.h>
-#include <LLP/include/tritium.h>
+#include <LLP/types/legacy.h>
+#include <LLP/types/tritium.h>
 
 #include <LLP/templates/server.h>
 

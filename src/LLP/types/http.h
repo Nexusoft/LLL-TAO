@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LLP_INCLUDE_HTTP_H
-#define NEXUS_LLP_INCLUDE_HTTP_H
+#ifndef NEXUS_LLP_TYPES_HTTP_H
+#define NEXUS_LLP_TYPES_HTTP_H
 
 #include <algorithm>
 
