@@ -42,17 +42,16 @@ namespace LLP
                 case EVENT_CONNECT:
                 {
                     /* Setup the variables for this node. */
-                    addrThisNode = SOCKET.addr;
                     nLastPing    = Timestamp();
 
                     /* Debut output. */
-                    debug::log(0, NODE "%s Connected at timestamp %" PRIu64 "\n", addrThisNode.ToString().c_str(), UnifiedTimestamp());
+                    debug::log(0, NODE "%s Connected at timestamp %" PRIu64 "\n", GetAddress().ToString().c_str(), UnifiedTimestamp());
 
                     /* Send version if making the connection. */
                     if(fOUTGOING)
                     {
                         uint64_t nSession = LLC::GetRand(std::numeric_limits<uint64_t>::max());
-                        PushMessage(DAT_VERSION, nSession);
+                        PushMessage(DAT_VERSION, nSession, GetAddress());
                     }
 
                     break;
@@ -126,11 +125,23 @@ namespace LLP
                     /* Deserialize the session identifier. */
                     ssPacket >> nSessionID;
 
+                    /* Get your address. */
+                    CAddress addr;
+                    ssPacket >> addr;
+
+                    /* Check the server if it is set. */
+                    if(!TRITIUM_SERVER->addrThisNode.IsValid())
+                    {
+                        addr.SetPort(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
+                        debug::log(1, NODE "recieved external address %s\n", addr.ToString().c_str());
+                        TRITIUM_SERVER->addrThisNode = addr;
+                    }
+
                     /* Send version message if connection is inbound. */
                     if(!fOUTGOING)
                     {
                         uint64_t nSession = LLC::GetRand(std::numeric_limits<uint64_t>::max());
-                        PushMessage(DAT_VERSION, nSession);
+                        PushMessage(DAT_VERSION, nSession, GetAddress());
                     }
                     else
                         PushMessage(GET_ADDRESSES);
@@ -174,7 +185,6 @@ namespace LLP
                     /* Check map known requests. */
                     if(!mapSentRequests.count(nRequestID))
                         return debug::error(NODE "offset not requested");
-
 
                     /* Check the time since request was sent. */
                     if(Timestamp() - mapSentRequests[nRequestID] > 10)

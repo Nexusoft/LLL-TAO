@@ -24,8 +24,6 @@ namespace LLP
 
     class TritiumNode : public BaseConnection<TritiumPacket>
     {
-        CAddress addrThisNode;
-
     public:
 
         /* Constructors for Message LLP Class. */
@@ -86,13 +84,6 @@ namespace LLP
                 DDOS->rSCORE += nDoS;
 
             return fReturn;
-        }
-
-
-        /** Get the current IP address of this node. **/
-        CAddress GetAddress() const
-        {
-            return addrThisNode;
         }
 
 

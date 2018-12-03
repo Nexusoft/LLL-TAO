@@ -57,6 +57,7 @@ namespace LLP
             DDOS_TIMESPAN(nTimespan),
             DATA_THREADS(0),
             MANAGER(std::bind(&Server::Manager, this)),
+            addrThisNode(),
             LISTEN_THREAD_V4(std::bind(&Server::ListeningThread, this, true)),  //IPv4 Listener
             LISTEN_THREAD_V6(std::bind(&Server::ListeningThread, this, false)), //IPv6 Listener
             METER_THREAD(std::bind(&Server::MeterThread, this))
@@ -120,7 +121,13 @@ namespace LLP
 
             /* Set default port */
             addr.SetPort(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
-            vAddr.push_back(addr);
+
+            if(addrThisNode != addr)
+            {
+                vAddr.push_back(addr);
+
+                debug::log(1, FUNCTION "added address %s\n", __PRETTY_FUNCTION__, addr.ToString().c_str());
+            }
         }
 
 
