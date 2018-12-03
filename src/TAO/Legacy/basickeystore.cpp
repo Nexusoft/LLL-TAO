@@ -61,7 +61,7 @@ namespace Legacy
                 setAddress.clear();
 
                 for (auto &mapEntry : mapKeys)
-                    setAddress.insert(mKey.mapEntry);
+                    setAddress.insert(mapEntry.first);
 
             }
         }

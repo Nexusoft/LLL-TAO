@@ -60,7 +60,7 @@ namespace Legacy
                 //mKey will have pair for each map entry
                 //mKey.first = base 58 address (map key)
                 //mKey.second = std::pair<LLC::CSecret, bool> where bool indicates key compressed true/false
-                for(auto mKey : mapKeys)
+                for(const auto mKey : mapKeys)
                 {
                     LLC::ECKey key;
                     LLC::CSecret vchSecret = mKey.second.first;

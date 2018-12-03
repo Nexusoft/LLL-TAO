@@ -40,15 +40,12 @@ ________________________________________________________________________________
 namespace Legacy
 {
     
-    namespace Types
-    {
-        /* forward declarations */    
-        class CScript;
-        class CTransaction;
-        class CTxIn;
-        class CTxOut;
-        class NexusAddress;
-    }
+    /* forward declarations */    
+    class CScript;
+    class CTransaction;
+    class CTxIn;
+    class CTxOut;
+    class NexusAddress;
 
     namespace Wallet
     {
@@ -59,6 +56,8 @@ namespace Legacy
         class CWalletDB;
         class CWalletTx;
 
+
+        /** Nexus: Setting to unlock wallet for block minting only **/
         extern bool fWalletUnlockMintOnly;
 
 
@@ -73,51 +72,77 @@ namespace Legacy
         /** MasterKeyMap is type alias defining a map for storing master keys by key Id. **/
         using MasterKeyMap = std::map<uint32_t, CMasterKey>;
 
+        /** TransactionMap is type alias defining a map for storing wallet transactions by hash. **/
+        using TransactionMap = std::map<uint512_t, CWalletTx>;
+
 
         /** @class CWallet
          *
          *  A CWallet is an extension of a keystore, which also maintains a set of transactions and balances,
-         * and provides the ability to create new transactions.
+         *  and provides the ability to create new transactions.
          **/
         class CWallet : public CCryptoKeyStore
         {
+            friend class CWalletDB;
+
         private:
-            bool SelectCoinsMinConf(int64_t nTargetValue, uint32_t nSpendTime, int nConfMine, int nConfTheirs, std::set<std::pair<const CWalletTx*,uint32_t> >& setCoinsRet, int64_t& nValueRet) const;
-            bool SelectCoins(int64_t nTargetValue, uint32_t nSpendTime, std::set<std::pair<const CWalletTx*,uint32_t> >& setCoinsRet, int64_t& nValueRet) const;
-
-            CWalletDB *pwalletdbEncryption;
-
-            // the current wallet version: clients below this version are not able to load the wallet
+            /** The current wallet version: clients below this version are not able to load the wallet **/
             int nWalletVersion;
 
-            // the maxmimum wallet format version: memory-only variable that specifies to what version this wallet may be upgraded
+
+            /** The maximum wallet version: memory-only variable that specifies to what version this wallet may be upgraded **/
             int nWalletMaxVersion;
 
+
+            /** Flag indicating whether or not wallet is backed by a wallet database. When true, strWalletFile contains database file name. **/
+            bool fFileBacked;
+
+
+            /** Flag indicating whether or not a file backed wallet has been loaded. 
+             *  Set true after successful call to CWallet::LoadWallet().
+             *  Prevents LoadWallet() from executing more than once.
+             **/
+            bool fLoaded;
+
+
+            /** File name of database file backing this wallet when fFileBacked is true. **/
+            std::string strWalletFile;
+
+
+            /** Map of master keys. Map has one master key per passphrase. **/
             MasterKeyMap mapMasterKeys;
+
+
+            /** Current max master key Id (max Id in mapMasterKeys). Incremented for each master key added **/
             uint32_t nMasterKeyMaxID;
+
+
+            /** The address book contained by this wallet **/
+            CAddressBook addressBook;
+
+
+            /** The key pool contained by this wallet **/
+            CKeyPool keyPool;
+
+
+            /** The default public key value for this wallet. 
+             *  Must be assigned using SetDefaultKey() to assure value is written to 
+             *  wallet database for a file backed wallet.
+             **/
+            std::vector<uint8_t> vchDefaultKey;
+
 
         public:
             /** Mutex for thread concurrency across wallet operations **/
             mutable std::recursive_mutex cs_wallet;
 
-            /** Flag indicating whether or not wallet is backed by a wallet database. When true, strWalletFile contains database file name. **/
-            bool fFileBacked;
 
-            /** File name of database file backing wallet when fFileBacked is true. **/
-            std::string strWalletFile;
+            /** Map of wallet transactions contained in this wallet **/
+            TransactionMap mapWallet;
 
-            /** The key pool contained by this wallet **/
-            CKeyPool keyPool;
-
-            /** This default public key value for this wallet. **/
-            std::vector<uint8_t> vchDefaultKey;
-
-            std::map<uint512_t, CWalletTx> mapWallet;
-            std::vector<uint512_t> vWalletUpdated;
 
             std::map<uint1024_t, int> mapRequestCount;
 
-            std::map<Legacy::Types::NexusAddress, std::string> mapAddressBook;
 
 
             /** Constructor
@@ -128,9 +153,12 @@ namespace Legacy
             CWallet() :
                 nWalletVersion(FEATURE_BASE),
                 nWalletMaxVersion(FEATURE_BASE),
+                strWalletFile(""),
                 fFileBacked(false),
-                nMasterKeyMaxID(0),
-                pwalletdbEncryption(nullptr);
+                fLoaded(false),
+                addressBook(CAddressBook()),
+                keyPool(CKeyPool(*this)),
+                nMasterKeyMaxID(0)
             { }
 
 
@@ -151,8 +179,10 @@ namespace Legacy
                 nWalletMaxVersion(FEATURE_BASE),
                 strWalletFile(strWalletFileIn),
                 fFileBacked(true),
-                nMasterKeyMaxID(0),
-                pwalletdbEncryption(nullptr);
+                fLoaded(false),
+                addressBook(CAddressBook()),
+                keyPool(CKeyPool(*this)),
+                nMasterKeyMaxID(0)
             { }
 
 
@@ -222,6 +252,26 @@ namespace Legacy
             inline bool IsFileBacked() const { return fFileBacked; }
 
 
+            /** GetAddressBook
+             *
+             *  Retrieve a reference to the address book for this wallet.
+             *
+             *  @return this wallet's address book
+             *
+             */
+            inline CAddressBook& GetAddressBook() const { return addressBook; }
+
+
+            /** GetWalletFile
+             *
+             *  Retrieves the database file name for a file backed wallet.
+             *
+             *  @return the wallet database file name, or empty string if not file backed
+             *
+             */
+            inline std::string GetWalletFile() const { return strWalletFile; }
+
+
             /** LoadWallet
              *
              *  Loads all data for a file backed wallet from the database.
@@ -238,6 +288,19 @@ namespace Legacy
              *
              */
             int LoadWallet(bool& fFirstRunRet);
+
+
+            /** Inventory
+             *
+             *  Tracks requests for blocks that contain transactions in this wallet.
+             *
+             *  When mapRequestCount contains the given block hash, wallet has one or more
+             *  transactions in that block and increments the request count.
+             *
+             *  @param[in] hash Block hash to track
+             *
+             */
+            void Inventory(const uint1024_t &hash);  //Not really a very intuitive method name
 
 
         /*----------------------------------------------------------------------------------------*/
@@ -265,9 +328,9 @@ namespace Legacy
             /** AddKey
              *
              *  Add a key to the key store. 
+             *  Encrypts the key if encryption is active and key store unlocked. 
              *
-             *  Wallet overrides this method to only add the key if wallet is unencrypted (returns false if encrypted wallet).
-             *  Also stores the key in the wallet database for file backed wallets.
+             *  Wallet overrides this method to also store the key in the wallet database for file backed wallets.
              *
              *  @param[in] key The key to add
              *
@@ -288,15 +351,515 @@ namespace Legacy
              *  @return true if script was successfully added
              *
              **/
-            bool AddCScript(const Legacy::Types::CScript& redeemScript) override;
+            bool AddCScript(const Legacy::CScript& redeemScript) override;
 
 
         /*----------------------------------------------------------------------------------------*/
-        /*  Load Wallet                                                                           */
+        /*  Key, Encryption, and Passphrase                                                       */
+        /*----------------------------------------------------------------------------------------*/
+            /** GenerateNewKey
+             *
+             *  Generates a new key and adds it to the key store.
+             *
+             *  @return the public key value for the newly generated key
+             *
+             */
+            std::vector<uint8_t> GenerateNewKey();
+
+
+            /** GetDefaultKey
+             *
+             *  Retrieves the default key for this wallet. 
+             *
+             *  @return the default key value
+             *
+             */
+            inline std::vector<uint8_t> GetDefaultKey() const { return vchDefaultKey; }
+
+
+            /** SetDefaultKey
+             *
+             *  Assigns a new default key to this wallet. The key itself
+             *  should already have been added to the wallet.
+             *
+             *  Wallet also stores the key in the wallet database for file backed wallets.
+             *
+             *  @param[in] vchPubKey The key to make default
+             *
+             *  @return true if setting default key successful
+             *
+             */
+            bool SetDefaultKey(const std::vector<uint8_t> &vchPubKey);
+
+
+            /** GetKeyPool
+             *
+             *  Retrieve a reference to the key pool for this wallet.
+             *
+             *  @return this wallet's key pool
+             *
+             */
+            inline CKeyPool& GetKeyPool() const { return keyPool; }
+
+
+            /** EncryptWallet
+             *
+             *  Encrypts the wallet in both memory and file backing, assigning a passphrase that will be required 
+             *  to unlock and access the wallet. Will not work if wallet already encrypted.
+             *
+             *  @param[in] strWalletPassphrase The wallet's passphrase
+             *
+             *  @return true if encryption successful
+             *
+             */
+            bool EncryptWallet(const SecureString& strWalletPassphrase);
+
+
+            /** Unlock
+             *
+             *  Attempt to unlock an encrypted wallet using the passphrase provided. 
+             *  Encrypted wallet cannot be used until unlocked by providing the passphrase used to encrypt it.
+             *
+             *  @param[in] strWalletPassphrase The wallet's passphrase
+             *
+             *  @return true if wallet was locked, passphrase matches the one used to encrypt it, and unlock is successful
+             *
+             */
+            bool Unlock(const SecureString& strWalletPassphrase);
+
+
+            /** ChangeWalletPassphrase
+             *
+             *  Replaces the existing wallet passphrase with a new one.
+             *
+             *  @param[in] strOldWalletPassphrase The old passphrase. Must match or change will be unsuccessful
+             *
+             *  @param[in] strNewWalletPassphrase The new passphrase to use
+             *
+             *  @return true if old passphrase matched and passphrase changed successfully
+             *
+             */
+            bool ChangeWalletPassphrase(const SecureString& strOldWalletPassphrase, const SecureString& strNewWalletPassphrase);
+
+
+        /*----------------------------------------------------------------------------------------*/
+        /*  Balance                                                                               */
+        /*----------------------------------------------------------------------------------------*/
+            /** GetBalance
+             *
+             *  Retrieves the total wallet balance for all confirmed, mature transactions.
+             *
+             *  @return The current total wallet balance
+             *
+             */
+            int64_t GetBalance() const;
+
+
+            /** GetUnconfirmedBalance
+             *
+             *  Retrieves the current wallet balance for unconfirmed transactions (non-spendable until confirmed).
+             *
+             *  @return The current wallet unconfirmed balance
+             *
+             */
+            int64_t GetUnconfirmedBalance() const;
+
+
+            /** GetStake
+             *
+             *  Retrieves the current immature stake balance (non-spendable until maturity).
+             *
+             *  @return The current wallet stake balance
+             *
+             */
+            int64_t GetStake() const;
+
+
+            /** GetNewMint
+             *
+             *  Retrieves the current immature minted (mined) balance (non-spendable until maturity).
+             *
+             *  @return The current wallet minted balance
+             *
+             */
+            int64_t GetNewMint() const;
+
+
+            /** AvailableCoins
+             *
+             *  Populate vCoins with vector identifying spendable outputs.
+             *
+             *  @param[in] nSpendTime Cutoff timestamp for result. Any transactions after this time are filtered
+             *
+             *  @param[in] vCoins Vector of COutput listing spendable outputs
+             * 
+             *  @param[in] fOnlyConfirmed Set false to include unconfirmed transactions in output
+             *
+             **/
+            void AvailableCoins(const uint32_t nSpendTime, std::vector<COutput>& vCoins, const bool fOnlyConfirmed = true) const;
+
+
+        /*----------------------------------------------------------------------------------------*/
+        /*  Wallet Transactions                                                                   */
+        /*----------------------------------------------------------------------------------------*/
+            /** MarkDirty
+             *
+             *  Mark all transactions in the wallet as "dirty" to force balance recalculation.
+             *
+             **/
+            void MarkDirty();
+
+
+            /** GetTransaction
+             *
+             *  Retrieves the transaction for a given transaction hash.
+             * 
+             *  @param[in] hashTx The hash of the requested transaction
+             *
+             *  @param[out] wtx The wallet transaction matching the requested hash, if found
+             *
+             *  @return true if transaction found
+             *
+             **/
+            bool GetTransaction(const uint512_t &hashTx, CWalletTx& wtx);
+
+
+            /** AddToWallet
+             *
+             *  Adds a wallet transaction to the wallet. If this transaction already exists
+             *  in the wallet, the new one is merged into it.
+             * 
+             *  @param[in] wtxIn The wallet transaction to add
+             *
+             *  @return true if transaction found
+             *
+             **/
+            bool AddToWallet(const CWalletTx& wtxIn);
+
+
+            /** AddToWalletIfInvolvingMe
+             *
+             *  Checks whether a transaction has inputs or outputs belonging to this wallet, and adds 
+             *  it to the wallet when it does.
+             *
+             *  pblock is optional, but should be provided if the transaction is known to be in a block.
+             *  If fUpdate is true, existing transactions will be updated.
+             *
+             *  @param[in] tx The transaction to check
+             *
+             *  @param[in] pblock The block containing the transaction
+             *
+             *  @param[in] fUpdate Flag indicating whether or not to update transaction already in wallet
+             *
+             *  @param[in] fFindBlock No longer used
+             *
+             * @return true if the transactions was added/updated
+             *
+             */
+            bool AddToWalletIfInvolvingMe(const Legacy::Types::CTransaction& tx, const Core::CBlock* pblock, bool fUpdate = false, bool fFindBlock = false);
+
+
+            /** EraseFromWallet
+             *
+             *  Removes a wallet transaction from the wallet, if present.
+             * 
+             *  @param[in] hash The transaction hash of the wallet transaction to remove
+             *
+             *  @return true if the transaction was erased 
+             *
+             **/
+            bool EraseFromWallet(const uint512_t hash);
+
+
+            /** DisableTransaction
+             *
+             *  When disconnecting a coinstake transaction, this method to marks
+             *  any previous outputs from this wallet as unspent.
+             * 
+             *  @param[in] tx The coinstake transaction to disable
+             *
+             **/
+            void DisableTransaction(const Legacy::Types::CTransaction &tx);
+
+
+            /** ScanForWalletTransactions
+             *
+             *  Scan the block chain for transactions from or to keys in this wallet.
+             *  Add/update the current wallet transactions for any found.
+             * 
+             *  @param[in] pindexStart Location in block chain index to start the scan
+             *
+             *  @param[in] fUpdate If true, found transaction already in the wallet will be updated
+             *
+             *  @return The number of transactions added/updated by the scan
+             *
+             **/
+            int ScanForWalletTransactions(Core::CBlockIndex* pindexStart, const bool fUpdate = false);
+
+
+            /** ResendWalletTransactions
+             *
+             *  Looks through wallet for transactions that should already have been added to a block, but are
+             *  still pending, and re-broadcasts them to then network.
+             * 
+             **/
+            void ResendWalletTransactions();
+
+
+            /** WalletUpdateSpent
+             *
+             *  Checks a transaction to see if any of its inputs match outputs from wallet transactions 
+             *  in this wallet. For any it finds, verifies that the outputs are marked as spent, updating 
+             *  them as needed.
+             * 
+             *  @param[in] tx The transaction to check
+             *
+             **/
+            void WalletUpdateSpent(const Legacy::Types::CTransaction& tx);
+
+
+            /** FixSpentCoins
+             *
+             *  Identifies and fixes mismatches of spent coins between the wallet and the index db. 
+             * 
+             *  @param[out] nMismatchFound Count of mismatches found
+             *
+             *  @param[out] nBalanceInQuestion Total balance of mismatches found
+             *
+             *  @param[in] fCheckOnly Set true to identify mismatches only, but not fix them
+             *
+             *  @return true process executed successfully
+             *
+             **/
+            void FixSpentCoins(int& nMismatchFound, int64_t& nBalanceInQuestion, const bool fCheckOnly = false);
+
+
+        /*----------------------------------------------------------------------------------------*/
+        /*  Transaction Ownership                                                                 */
+        /*----------------------------------------------------------------------------------------*/
+            /** IsMine
+             *
+             *  Checks whether a transaction contains any outputs belonging to this 
+             *  wallet. 
+             * 
+             *  @param[in] tx The transaction to check
+             *
+             *  @return true if this wallet receives balance via this transaction 
+             *
+             **/
+            bool IsMine(const Legacy::Types::CTransaction& tx) const;
+
+
+            /** IsMine
+             *
+             *  Checks whether a specific transaction input represents a send
+             *  from this wallet. 
+             * 
+             *  @param[in] txin The transaction input to check
+             *
+             *  @return true if the txin sends balance from this wallet 
+             *
+             **/
+            bool IsMine(const Legacy::Types::CTxIn& txin) const;
+
+
+            /** IsMine
+             *
+             *  Checks whether a specific transaction output represents balance
+             *  received by this wallet. 
+             * 
+             *  @param[in] txout The transaction output to check
+             *
+             *  @return true if this wallet receives balance via this txout 
+             *
+             **/
+            bool IsMine(const Legacy::Types::CTxOut& txout) const;
+
+
+            /** IsFromMe
+             *
+             *  Checks whether a transaction contains any inputs belonging to this 
+             *  wallet. 
+             * 
+             *  @param[in] tx The transaction to check
+             *
+             *  @return true if this wallet sends balance via this transaction 
+             *
+             **/
+            bool IsFromMe(const Legacy::Types::CTransaction& tx) const;
+
+
+        /*----------------------------------------------------------------------------------------*/
+        /*  Wallet Accounting                                                                     */
+        /*----------------------------------------------------------------------------------------*/
+            /** GetDebit
+             *
+             *  Calculates the total value for all inputs sent from this wallet by a transaction. 
+             * 
+             *  @param[in] tx The transaction to process
+             *
+             *  @return total transaction debit amount
+             *
+             **/
+            int64_t GetDebit(const Legacy::Types::CTransaction& tx) const;
+
+
+            /** GetCredit
+             *
+             *  Calculates the total value for all outputs received by this wallet in a transaction. 
+             *
+             *  Includes any change returned to the wallet.
+             * 
+             *  @param[in] tx The transaction to process
+             *
+             *  @return total transaction credit amount
+             *
+             **/
+            int64_t GetCredit(const Legacy::Types::CTransaction& tx) const;
+
+
+            /** GetChange
+             *
+             *  Calculates the total amount of change returned to this wallet by a transaction. 
+             * 
+             *  @param[in] tx The transaction to process
+             *
+             *  @return total transaction change amount
+             *
+             **/
+            int64_t GetChange(const Legacy::Types::CTransaction& tx) const;
+
+
+            /** GetDebit
+             *
+             *  Returns the debit amount for this wallet represented by a transaction input.
+             *
+             *  An input will spend the full amount of its previous output. If that previous
+             *  output belongs to this wallet, then its value is the amount of the debit. 
+             *  If the previous output does not belong to this wallet, debit amount is 0.
+             * 
+             *  @param[in] txin The transaction input to process
+             *
+             *  @return debit amount to this wallet from the given tx input
+             *
+             **/
+            int64_t GetDebit(const Legacy::Types::CTxIn& txin) const;
+
+
+            /** GetCredit
+             *
+             *  Returns the credit amount for this wallet represented by a transaction output. 
+             * 
+             *  If an output belongs to this wallet, then its value is the credit amount.
+             *  Otherwise the credit amount is 0.
+             * 
+             *  @param[in] txout The transaction output to process
+             *
+             *  @return credit amount to this wallet from the given tx output
+             *
+             **/
+            int64_t GetCredit(const Legacy::Types::CTxOut& txout) const;
+
+
+            /** GetChange
+             *
+             *  Returns the change amount for this wallet represented by a transaction output. 
+             * 
+             *  If an output is a change credit, then its value is the change amount.
+             *  Otherwise, the change amount is zero.
+             * 
+             *  @param[in] txout The transaction output to process
+             *
+             *  @return change amount to this wallet from the given tx output
+             *
+             **/
+            int64_t GetChange(const Legacy::Types::CTxOut& txout) const;
+
+
+            /** IsChange
+             *
+             *  Checks whether a transaction output belongs to this wallet and
+             *  represents change returned to it. 
+             * 
+             *  @param[in] txout The transaction output to check
+             *
+             *  @return true if this is a change output
+             *
+             **/
+            bool IsChange(const Legacy::Types::CTxOut& txout) const;
+
+
+        /*----------------------------------------------------------------------------------------*/
+        /*  Transaction Creation                                                                  */
+        /*----------------------------------------------------------------------------------------*/
+            /** SendToNexusAddress
+             *
+             *  Generate a transaction to send balance to a given Nexus address. 
+             * 
+             *  @param[in] address Nexus address where we are sending balance
+             *
+             *  @param[in,out] wtxNew Wallet transaction, send will populate with transaction data
+             *
+             *  @param[in] fAskFee For old QT fee verification popup, no longer used (setting ignored)
+             *
+             *  @return empty string if successful, otherwise contains a displayable error message
+             *
+             **/
+            std::string SendToNexusAddress(const Legacy::Types::NexusAddress& address, int64_t nValue, CWalletTx& wtxNew, bool fAskFee=false);
+
+
+            /** CreateTransaction
+             *
+             *  Create and populate a new transaction. 
+             * 
+             *  @param[in] vecSend List of scripts set with Nexus Address of recipient paired with amount to send to that recipient.
+             *                     Each entry will generate a transaction output.
+             *
+             *  @param[in,out] wtxNew Wallet transaction, create will populate with transaction data
+             *
+             *  @param[in,out] reservekey Key reserved for use by change output, key will be returned if no change output
+             *
+             *  @param[out] nFeeRet Fee paid to send the created transaction
+             *
+             *  @return true if transaction successfully created
+             *
+             **/
+            bool CreateTransaction(const std::vector<std::pair<Legacy::CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, int64_t& nFeeRet);
+
+
+            /** CommitTransaction
+             *
+             *  Commits a transaction and broadcasts it to the network. 
+             * 
+             *  @param[in,out] wtxNew Wallet transaction, create will populate with transaction data
+             *
+             *  @param[in,out] reservekey Key reserved for use by change output, key will be kept on successful commit
+             *
+             *  @return true if transaction successfully committed
+             *
+             **/
+            bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey);
+
+
+            /** AddCoinstakeInputs
+             *
+             *  Add inputs to the coinstake txin for a coinstake transaction 
+             * 
+             *  @param[in,out] txNew Transaction to process
+             *
+             *  @return true if coinstake inputs successfully added
+             *
+             **/
+            bool AddCoinstakeInputs(Legacy::Types::CTransaction& txNew);
+
+
+        private:
+        /*----------------------------------------------------------------------------------------*/
+        /*  Load Wallet operations - require CWalletDB declared friend                            */
         /*----------------------------------------------------------------------------------------*/
             /** LoadMinVersion
              *
-             *  Assigns the minimum supported version without updating the data store (for file backed wallet).
+             *  Assigns the minimum supported version without updating the database (for file backed wallet).
              *  For use by LoadWallet.
              *
              *  @param[in] nVersion The new minimum version
@@ -328,7 +891,7 @@ namespace Legacy
 
             /** LoadCryptedKey
              *
-             *  Add a public/encrypted private key pair to the key store without updating the data store (for file backed wallet). 
+             *  Add a public/encrypted private key pair to the key store without updating the database (for file backed wallet). 
              *  For use by LoadWallet.
              *
              *  @param[in] vchPubKey The public key to add
@@ -345,7 +908,7 @@ namespace Legacy
 
             /** LoadKey
              *
-             *  Add a key to the key store without updating the data store (for file backed wallet).
+             *  Add a key to the key store without updating the database (for file backed wallet).
              *  For use by LoadWallet.
              *
              *  @param[in] key The key to add
@@ -360,7 +923,7 @@ namespace Legacy
 
             /** LoadCScript
              *
-             *  Add a script to the key store without updating the data store (for file backed wallet).
+             *  Add a script to the key store without updating the database (for file backed wallet).
              *  For use by LoadWallet.
              *
              *  @param[in] redeemScript The script to add
@@ -370,163 +933,58 @@ namespace Legacy
              *  @see CWalletDB::LoadWallet
              *
              **/
-            bool LoadCScript(const Legacy::Types::CScript& redeemScript);
+            bool LoadCScript(const Legacy::CScript& redeemScript);
 
 
         /*----------------------------------------------------------------------------------------*/
-        /*  Key Operations                                                                        */
+        /*  Helper Methods                                                                        */
         /*----------------------------------------------------------------------------------------*/
-            /** GenerateNewKey
+           /** SelectCoins
              *
-             *  Generates a new key and adds it to the key store.
+             *  Selects the unspent transaction outputs to use as inputs when creating a transaction that sends
+             *  balance from this wallet.
              *
-             *  @return the public key value for the newly generated key
+             *  This method uses SelectCoinsMinConf to perform the actual selection.
              *
-             */
-            std::vector<uint8_t> GenerateNewKey();
+             *  @param[in] nTargetValue The amount we are looking to send
+             *
+             *  @param[in] nSpendTime Time of send. Results only include transactions before this time
+             *
+             *  @param[in,out] setCoinsRet Set to be populated with selected pairs of transaction and vout index (each identifies selected txout)
+             *
+             *  @param[out] nValueRet Total value of selected unspent txouts in the result set
+             *
+             *  @return true if result set was successfully populated
+             *
+             **/
+            bool SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::set<std::pair<const CWalletTx&,uint32_t> >& setCoinsRet, int64_t& nValueRet) const;
 
 
-            /** SetDefaultKey
+            /** SelectCoinsMinConf
              *
-             *  Assigns a new default key to this wallet. The key itself
-             *  should already have been added to the wallet.
+             *  Selects the unspent outputs to use as inputs when creating a transaction to send
+             *  balance from this wallet while requiring a minimum confirmation depth to be included in result.
              *
-             *  @param[in] vchPubKey The key to make default
+             *  @param[in] nTargetValue The amount we are looking to send
              *
-             *  @return true if setting default key successful
+             *  @param[in] nSpendTime Time of send. Results only include transactions before this time
              *
-             */
-            bool SetDefaultKey(const std::vector<uint8_t> &vchPubKey);
-
-
-            /** GetKeyPool
+             *  @param[in] nConfMine Require this number of confirmations if transaction with unspent output was from this wallet
+             *                       (eg, spending a change transaction), 
              *
-             *  Retrieve a reference to the key pool for this wallet.
+             *  @param[in] nConfTheirs Require this number of confirmations if transaction with unspent output was received from elsewhere
              *
-             *  @return this wallet's key pool
+             *  @param[in,out] setCoinsRet Set of selected unspent txouts as pairs consisting of transaction and vout index
              *
-             */
-            inline CKeyPool& GetKeyPool() const { return keyPool; }
-
-
-        /*----------------------------------------------------------------------------------------*/
-        /*  Encryption and Passphrase                                                             */
-        /*----------------------------------------------------------------------------------------*/
-            /** Unlock
+             *  @param[out] nValueRet Total value of selected unspent txouts in the result set
              *
-             *  Attempt to unlock an encrypted wallet using the passphrase provided. 
-             *  Encrypted wallet cannot be used until unlocked by providing the passphrase used to encrypt it.
+             *  @return true if script was successfully added
              *
-             *  @param[in] strWalletPassphrase The wallet's passphrase
-             *
-             *  @return true if wallet was locked, passphrase matches the one used to encrypt it, and unlock is successful
-             *
-             */
-            bool Unlock(const SecureString& strWalletPassphrase);
+             **/
+            bool SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const int nConfMine, const int nConfTheirs, 
+                                    std::set<std::pair<const CWalletTx&,uint32_t> >& setCoinsRet, int64_t& nValueRet) const;
 
-
-            /** EncryptWallet
-             *
-             *  Encrypts the wallet in both memory and file backing, assigning a passphrase that will be required 
-             *  to unlock and access the wallet. Will not work if wallet already encrypted.
-             *
-             *  @param[in] strWalletPassphrase The wallet's passphrase
-             *
-             *  @return true if encryption successful
-             *
-             */
-            bool EncryptWallet(const SecureString& strWalletPassphrase);
-
-
-            /** ChangeWalletPassphrase
-             *
-             *  Replaces the existing wallet passphrase with a new one.
-             *
-             *  @param[in] strOldWalletPassphrase The old passphrase. Must match or change will be unsuccessful
-             *
-             *  @param[in] strNewWalletPassphrase The new passphrase to use
-             *
-             *  @return true if old passphrase matched and passphrase changed successfully
-             *
-             */
-            bool ChangeWalletPassphrase(const SecureString& strOldWalletPassphrase, const SecureString& strNewWalletPassphrase);
-
-
-        /*----------------------------------------------------------------------------------------*/
-        /*  Balance                                                                               */
-        /*----------------------------------------------------------------------------------------*/
-            int64_t GetBalance() const;
-            int64_t GetUnconfirmedBalance() const;
-            int64_t GetStake() const;
-            int64_t GetNewMint() const;
-
-            void AvailableCoins(uint32_t nSpendTime, std::vector<COutput>& vCoins, bool fOnlyConfirmed) const;
-
-        /*----------------------------------------------------------------------------------------*/
-        /*  Wallet Transactions                                                                   */
-        /*----------------------------------------------------------------------------------------*/
-            void MarkDirty();
-            bool AddToWallet(const CWalletTx& wtxIn);
-            bool AddToWalletIfInvolvingMe(const Legacy::Types::CTransaction& tx, const Core::CBlock* pblock, bool fUpdate = false, bool fFindBlock = false);
-            bool EraseFromWallet(uint512_t hash);
-            void WalletUpdateSpent(const Legacy::Types::CTransaction& prevout);
-            int ScanForWalletTransactions(Core::CBlockIndex* pindexStart, bool fUpdate = false);
-            int ScanForWalletTransaction(const uint512_t& hashTx);
-            void ReacceptWalletTransactions();
-            void ResendWalletTransactions();
-
-            bool CreateTransaction(const std::vector<std::pair<Legacy::CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, int64_t& nFeeRet);
-            bool CreateTransaction(Legacy::Types::CScript scriptPubKey, int64_t nValue, CWalletTx& wtxNew, CReserveKey& reservekey, int64_t& nFeeRet);
-            bool AddCoinstakeInputs(Legacy::Types::CTransaction& txNew);
-            bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey);
-            std::string SendMoney(Legacy::Types::CScript scriptPubKey, int64_t nValue, CWalletTx& wtxNew, bool fAskFee=false);
-            std::string SendToNexusAddress(const Legacy::Types::NexusAddress& address, int64_t nValue, CWalletTx& wtxNew, bool fAskFee=false);
-
-
-
-        /*----------------------------------------------------------------------------------------*/
-        /*  Blockchain Transactions                                                               */
-        /*----------------------------------------------------------------------------------------*/
-            bool IsMine(const Legacy::Types::CTxIn& txin) const;
-            int64_t GetDebit(const Legacy::Types::CTxIn& txin) const;
-            bool IsMine(const Legacy::Types::CTxOut& txout) const;
-            int64_t GetCredit(const Legacy::Types::CTxOut& txout) const;
-            bool IsChange(const Legacy::Types::CTxOut& txout) const;
-            int64_t GetChange(const Legacy::Types::CTxOut& txout) const;
-            bool IsMine(const Legacy::Types::CTransaction& tx) const;
-            bool IsFromMe(const Legacy::Types::CTransaction& tx) const;
-            int64_t GetDebit(const Legacy::Types::CTransaction& tx) const;
-            int64_t GetCredit(const Legacy::Types::CTransaction& tx) const;
-            int64_t GetChange(const Legacy::Types::CTransaction& tx) const;
-            bool GetTransaction(const uint512_t &hashTx, CWalletTx& wtx);
-            void UpdatedTransaction(const uint512_t &hashTx);
-
-            void SetBestChain(const Core::CBlockLocator& loc);
-
-
-        /*----------------------------------------------------------------------------------------*/
-        /*  Address Book                                                                          */
-        /*----------------------------------------------------------------------------------------*/
-            bool AvailableAddresses(uint32_t nSpendTime, std::map<Legacy::Types::NexusAddress, int64_t>& mapAddresses, bool fOnlyConfirmed = false) const;
-            bool SetAddressBookName(const Legacy::Types::NexusAddress& address, const std::string& strName);
-            bool DelAddressBookName(const Legacy::Types::NexusAddress& address);
-
-            void Inventory(const uint1024_t &hash)
-            {
-                {
-                    LOCK(cs_wallet);
-                    std::map<uint1024_t, int>::iterator mi = mapRequestCount.find(hash);
-                    if (mi != mapRequestCount.end())
-                        (*mi).second++;
-                }
-            }
-
-            void FixSpentCoins(int& nMismatchSpent, int64_t& nBalanceInQuestion, bool fCheckOnly = false);
-            void DisableTransaction(const Legacy::Types::CTransaction &tx);
         };
-
-
-        bool GetWalletFile(CWallet* pwallet, std::string &strWalletFileOut);
 
     }
 }
