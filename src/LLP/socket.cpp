@@ -59,6 +59,9 @@ namespace LLP
         if (nSocket == INVALID_SOCKET)
             return false;
 
+        /* Set the socket to non blocking. */
+        fcntl(nSocket, F_SETFL, O_NONBLOCK);
+
         /* Open the socket connection for IPv4 / IPv6. */
         bool fConnected = false;
         if(addrDest.IsIPv4())
