@@ -32,14 +32,14 @@ namespace Legacy
         bool CKeyPool::NewKeyPool()
         {
 
-	        if (pWallet->IsFileBacked())
+	        if (poolWallet.IsFileBacked())
             {
-                std::lock_guard<std::mutex> walletLock(pWallet->cs_wallet);
+                std::lock_guard<std::mutex> walletLock(poolWallet.cs_wallet);
 
-		        if (pWallet->IsLocked())
+		        if (poolWallet.IsLocked())
 		            return false;
 
-                CWalletDB walletdb(pWallet->strWalletFile);
+                CWalletDB walletdb(poolWallet.GetWalletFile());
 
                 // Remove all entries for old key pool from database
                 for(int64_t nPoolIndex : setKeyPool)
@@ -54,7 +54,7 @@ namespace Legacy
                 {
                     int64_t nPoolIndex = i + 1;
 
-                    if (!walletdb.WritePool(nPoolIndex, CKeyPoolEntry(pWallet->GenerateNewKey())))
+                    if (!walletdb.WritePool(nPoolIndex, CKeyPoolEntry(poolWallet.GenerateNewKey())))
                         throw runtime_error("CKeyPool::NewKeyPool() : writing generated key failed");
 
                     setKeyPool.insert(nPoolIndex);
@@ -76,9 +76,9 @@ namespace Legacy
         	bool fPrintKeyPool = GetBoolArg("-printkeypool"); // avoids having to call arg function repeatedly
         	bool fKeysAdded = false;
 
-	        if (pWallet->IsFileBacked())
+	        if (poolWallet.IsFileBacked())
             {
-                std::lock_guard<std::mutex> walletLock(pWallet->cs_wallet);
+                std::lock_guard<std::mutex> walletLock(poolWallet.cs_wallet);
 
                 // Current key pool size
                 uint32_t nStartingSize = setKeyPool.size();
@@ -92,7 +92,7 @@ namespace Legacy
                 if (IsLocked())
                     return false;
 
-                CWalletDB walletdb(pWallet->strWalletFile);
+                CWalletDB walletdb(poolWallet.GetWalletFile());
 
                 // Current max pool index in the pool
                 int64_t nCurrentMaxPoolIndex = 0;
@@ -108,7 +108,7 @@ namespace Legacy
                     ++nNewPoolIndex;
 
                     // Generate a new key and add the key pool entry to the wallet database
-                    if (!walletdb.WritePool(nNewPoolIndex, CKeyPoolEntry(pWallet->GenerateNewKey())))
+                    if (!walletdb.WritePool(nNewPoolIndex, CKeyPoolEntry(poolWallet.GenerateNewKey())))
                         throw runtime_error("CKeyPool::TopUpKeyPool() : writing generated key failed");
 
                     // Store the pool index for the new key in the key pool
@@ -133,11 +133,11 @@ namespace Legacy
         /* AddKey */
         int64_t CKeyPool::AddKey(const CKeyPoolEntry& keypoolEntry)
         {
-	        if (pWallet->IsFileBacked())
+	        if (poolWallet.IsFileBacked())
             {
-                std::lock_guard<std::mutex> walletLock(pWallet->cs_wallet);
+                std::lock_guard<std::mutex> walletLock(poolWallet.cs_wallet);
 
-                CWalletDB walletdb(pWallet->strWalletFile);
+                CWalletDB walletdb(poolWallet.GetWalletFile());
 
                 int64_t nPoolIndex = 1 + *(--setKeyPool.cend());
 
@@ -162,23 +162,26 @@ namespace Legacy
             CKeyPoolEntry keypoolEntry;
 
             {
-                std::lock_guard<std::mutex> walletLock(pWallet->cs_wallet);
+                std::lock_guard<std::mutex> walletLock(poolWallet.cs_wallet);
 
-                // Attempt to reserve a key from the key pool
+                /* Attempt to reserve a key from the key pool */
                 ReserveKeyFromPool(nPoolIndex, keypoolEntry);
 
                 if (nPoolIndex == -1)
                 {
-                	// Key pool is empty, attempt to use default key
-                    if (fUseDefaultWhenEmpty && !pWallet->vchDefaultKey.empty())
+                	/* Key pool is empty, attempt to use default key when requested */
+                    auto vchPoolWalletDefaultKey = poolWallet.GetDefaultKey();
+
+                    if (fUseDefaultWhenEmpty && !vchPoolWalletDefaultKey.empty())
                     {
-                        key = pWallet->vchDefaultKey;
+                        key = vchPoolWalletDefaultKey;
                         return true;
                     }
 
-                    if (pWallet->IsLocked()) return false;
+                    /* When not using default key, generate a new key */
+                    if (poolWallet.IsLocked()) return false;
 
-                    key = pWallet->GenerateNewKey();
+                    key = poolWallet.GenerateNewKey();
 
                     return true;
                 }
@@ -198,17 +201,17 @@ namespace Legacy
             nPoolIndex = -1;
             keypoolEntry.vchPubKey.clear();
 
-	        if (pWallet->IsFileBacked())
+	        if (poolWallet.IsFileBacked())
             {
-                std::lock_guard<std::mutex> walletLock(pWallet->cs_wallet);
+                std::lock_guard<std::mutex> walletLock(poolWallet.cs_wallet);
 
-                if (!pWallet->IsLocked())
+                if (!poolWallet.IsLocked())
                     TopUpKeyPool();
 
                 if(setKeyPool.empty())
                     return;
 
-                CWalletDB walletdb(pWallet->strWalletFile);
+                CWalletDB walletdb(poolWallet.GetWalletFile());
 
                 // Get the oldest key (smallest key pool index)
                 auto si = setKeyPool.begin();
@@ -224,7 +227,7 @@ namespace Legacy
                     throw runtime_error("CKeyPool::ReserveKeyFromPool() : unable to read key pool entry");
 
                 // Validate that the key is a valid key for the containing wallet
-                if (!pWallet->HaveKey(SK256(keypoolEntry.vchPubKey)))
+                if (!poolWallet.HaveKey(SK256(keypoolEntry.vchPubKey)))
                     throw runtime_error("CKeyPool::ReserveKeyFromPool() : unknown key in key pool");
 
                 assert(!keypoolEntry.vchPubKey.empty());
@@ -239,12 +242,12 @@ namespace Legacy
  		/* KeepKey */
         void CKeyPool::KeepKey(int64_t nPoolIndex)
         {
-            if (pWallet->fFileBacked)
+            if (poolWallet.IsFileBacked())
             {
-                std::lock_guard<std::mutex> walletLock(pWallet->cs_wallet);
+                std::lock_guard<std::mutex> walletLock(poolWallet.cs_wallet);
 
 	            // Remove from key pool
-                CWalletDB walletdb(pWallet->strWalletFile);
+                CWalletDB walletdb(poolWallet.GetWalletFile());
                 walletdb.ErasePool(nPoolIndex);
 
 	            if (GetBoolArg("-printkeypool"))
@@ -259,9 +262,9 @@ namespace Legacy
         /* ReturnKey */
         void CKeyPool::ReturnKey(int64_t nPoolIndex)
         {
-            if (pWallet->fFileBacked)
+            if (poolWallet.IsFileBacked())
             {
-                std::lock_guard<std::mutex> walletLock(pWallet->cs_wallet);
+                std::lock_guard<std::mutex> walletLock(poolWallet.cs_wallet);
 
                 setKeyPool.insert(nPoolIndex);
             }

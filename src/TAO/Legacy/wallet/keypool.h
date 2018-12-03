@@ -25,6 +25,7 @@ namespace Legacy
         /* forward declarations */    
         class CKeyPoolEntry;
         class CWallet;
+        class CWalletDB;
 
 
         /** @class CKeyPool
@@ -47,9 +48,17 @@ namespace Legacy
          *  the containing wallet is not file backed, using the key pool collapses
          *  into an empty pool of limited use.
          *
+         *  If multiple copies of the same key pool were allowed, it could 
+         *  result in a situation where a key is added to one copy and not the
+         *  other, or potential problems from having a key reserved in one
+         *  copy and not the other, and so forth. Therefore, copy operations
+         *  are disabled on CKeyPool instances.
+         *
          **/
         class CKeyPool
         {
+            friend class CWalletDB;
+            
         public:
             /** Defines the default number of keys contained by a key pool **/
             static const int DEFAULT_KEY_POOL_SIZE = 100;
@@ -64,7 +73,7 @@ namespace Legacy
 
 
             /** The wallet containing this key pool **/
-            CWallet* pWallet;
+            CWallet& poolWallet;
 
 
         public:
@@ -72,10 +81,10 @@ namespace Legacy
              *
              *  Initializes a key pool associated with a given wallet.
              *
-             *  @param[in] pWalletIn The wallet containing this key pool
+             *  @param[in] walletIn The wallet containing this key pool
              *
              **/
-            CKeyPool(CWallet* pWalletIn) : pWallet(pWalletIn) {}
+            CKeyPool(CWallet& walletIn) : poolWallet(walletIn) {}
 
 
             /** Copy constructor deleted. No copy allowed **/

@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <list>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <LLC/types/uint1024.h>
@@ -382,7 +383,7 @@ namespace Legacy
              *
              *  Removes the wallet transaction associated with a transaction hash.
              *
-             *  @param[in] hash The transaction has of the wallet transaction to remove
+             *  @param[in] hash The transaction hash of the wallet transaction to remove
              *
              *  @return true if database entry successfully removed
              *
@@ -534,30 +535,15 @@ namespace Legacy
              *  @return Value from Legacy::Wallet::DBErrors, DB_LOAD_OK on success
              *
              **/
-            int LoadWallet(CWallet* pwallet);
+            int LoadWallet(CWallet& wallet);
         };
-
-
-        /** @fn ThreadFlushWalletDB
-         *
-         *  Function that loops until shutdown and periodically flushes the wallet db
-         *  to disk as needed to ensure all data updates are properly persisted. Execute
-         *  this function in a separate thread to run in the background and handle wallet flush.
-         *
-         *  The actual flush is only performed after any open database handle on the wallet database
-         *  file is closed by calling CloseDb()
-         *
-         *  This operation can be disabled by setting the startup option -flushwallet to false
-         *
-         **/
-        void ThreadFlushWalletDB();
 
 
         /** @fn ThreadFlushWalletDB
          *
          *  Function that loops until shutdown and periodically flushes a wallet db
          *  to disk as needed to ensure all data updates are properly persisted. Execute
-         *  this function in a separate thread to run in the background and handle wallet flush.
+         *  this function in a background thread to handle wallet flush.
          *
          *  The actual flush is only performed after any open database handle on the wallet database
          *  file is closed by calling CloseDb()

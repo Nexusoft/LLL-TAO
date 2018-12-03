@@ -34,14 +34,14 @@ namespace Legacy
             {
                 // Don't have a reserved key in this instance, yet, so need to reserve one
                 CKeyPoolEntry keypoolEntry;
-                pWallet->GetKeyPool().ReserveKeyFromPool(nPoolIndex, keypoolEntry);
+                wallet.GetKeyPool().ReserveKeyFromPool(nPoolIndex, keypoolEntry);
 
                 if (nPoolIndex != -1)
                     vchPubKey = keypoolEntry.vchPubKey;
                 else
                 {
                     printf("CReserveKey::GetReservedKey(): Warning: using default key instead of a new key, top up your keypool.");
-                    vchPubKey = pwallet->vchDefaultKey;
+                    vchPubKey = wallet.GetDefaultKey();
                 }
             }
 
@@ -54,7 +54,7 @@ namespace Legacy
         void CReserveKey::KeepKey()
         {
             if (nPoolIndex != -1)
-                pWallet->GetKeyPool().KeepKey(nPoolIndex);
+                wallet.GetKeyPool().KeepKey(nPoolIndex);
 
             nPoolIndex = -1;
             vchPubKey.clear();
@@ -65,7 +65,7 @@ namespace Legacy
         void CReserveKey::ReturnKey()
         {
             if (nPoolIndex != -1)
-                pWallet->GetKeyPool().ReturnKey(nPoolIndex);
+                wallet.GetKeyPool().ReturnKey(nPoolIndex);
 
             nPoolIndex = -1;
             vchPubKey.clear();

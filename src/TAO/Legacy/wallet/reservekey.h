@@ -38,7 +38,7 @@ namespace Legacy
         {
         protected:
             /** Wallet containing the key pool where we want to reserve keys **/
-            CWallet* pWallet;
+            CWallet& wallet;
 
             /** The key pool index of a reserved key in the key pool, or -1 if no key reserved **/
             int64_t nPoolIndex;
@@ -50,12 +50,29 @@ namespace Legacy
         public:
             /** Constructor
              *
-             *  @param[in] pWalletIn The wallet where keys will be reserved
+             *  Initializes reserve key from wallet pointer. 
+             *  
+             *  @param[in] pWalletIn The wallet where keys will be reserved, cannot be nullptr
+             *
+             *  @deprecated supported for backward compatability
              *
              **/
             CReserveKey(CWallet* pwalletIn) :
                 nIndex(-1),
-                pWallet(pWalletIn)
+                wallet(*pWalletIn)
+            { }
+
+ 
+            /** Constructor
+             *
+             *  Initializes reserve key from wallet reference.
+             * 
+             *  @param[in] walletIn The wallet where keys will be reserved
+             *
+             **/
+            CReserveKey(CWallet& walletIn) :
+                nIndex(-1),
+                wallet(walletIn)
             { }
 
  
@@ -71,6 +88,12 @@ namespace Legacy
             }
 
  
+            /* If you copy a CReturnKey that has a key reserved, then keep/return it in one copy, the other  
+             * copy becomes invalid but could still be used. For example, it would be a problem if KeepKey() 
+             * were called on one copy, then ReturnKey() called on the other. The key would be put back into 
+             * the key pool even though it had been used. All of this is why copy disallowed.                
+             */
+
             /** Copy constructor deleted. No copy allowed **/
             CReserveKey(const CReserveKey&) = delete;
 
