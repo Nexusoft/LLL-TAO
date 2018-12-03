@@ -21,6 +21,10 @@ ________________________________________________________________________________
 
 #include <algorithm>
 
+#include <condition_variable>
+
+#include <atomic>
+
 
 //TODO: Abstract base class for all keychains
 namespace LLD
@@ -44,6 +48,10 @@ namespace LLD
         mutable std::recursive_mutex KEY_MUTEX;
 
 
+        /* The condition for thread sleeping. */
+        std::condition_variable CONDITION;
+
+
         /** The string to hold the database location. **/
         std::string strBaseLocation;
 
@@ -65,7 +73,7 @@ namespace LLD
 
 
         /** Initialized flag (used for cache thread) **/
-        bool fInitialized;
+        std::atomic<bool> fCacheActive;
 
 
         /** Keychain stream object. **/
@@ -82,13 +90,13 @@ namespace LLD
 
     public:
 
-        BinaryHashMap() : HASHMAP_TOTAL_BUCKETS(256 * 256 * 24), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(32), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
+        BinaryHashMap() : HASHMAP_TOTAL_BUCKETS(256 * 256 * 24), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(32), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11), fCacheActive(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
         }
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(std::string strBaseLocationIn) : strBaseLocation(strBaseLocationIn), HASHMAP_TOTAL_BUCKETS(256 * 256 * 24), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(32), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
+        BinaryHashMap(std::string strBaseLocationIn) : strBaseLocation(strBaseLocationIn), HASHMAP_TOTAL_BUCKETS(256 * 256 * 24), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(32), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11), fCacheActive(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
 
@@ -233,7 +241,10 @@ namespace LLD
             fileCache->Put(0, new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary));
 
             /* Set the initialization flag to complete. */
-            fInitialized = true;
+            fCacheActive = true;
+
+            /* Notify threads it is initialized. */
+            CONDITION.notify_all();
         }
 
 
@@ -370,6 +381,10 @@ namespace LLD
             pstream->write((char*)&ssKey[0], ssKey.size());
             //pstream->flush();
 
+            /* Signal the cache thread to wake up. */
+            fCacheActive = true;
+            CONDITION.notify_all();
+
             return true;
         }
 
@@ -377,20 +392,16 @@ namespace LLD
         /* Helper Thread to Batch Write to Disk. */
         void CacheWriter()
         {
+            std::mutex CONDITION_MUTEX;
             while(!config::fShutdown)
             {
                 /* Wait for Database to Initialize. */
-                if(!fInitialized)
-                {
-                    Sleep(10);
-
-                    continue;
-                }
+                std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+                CONDITION.wait(CONDITION_LOCK, [this]{ return fCacheActive.load(); });
 
                 /* Flush the disk hashmap. */
                 std::vector<uint8_t> vDisk;
-                for(auto bucket : hashmap)
-                    vDisk.insert(vDisk.end(), (uint8_t*)&bucket, (uint8_t*)&bucket + 4);
+                vDisk.insert(vDisk.end(), (uint8_t*)&hashmap[0], (uint8_t*)&hashmap[0] + (4 * hashmap.size()));
 
                 /* Create the file handler. */
                 std::fstream stream(debug::strprintf("%s_hashmap.index", strBaseLocation.c_str()), std::ios::out | std::ios::binary);
@@ -399,7 +410,7 @@ namespace LLD
 
                 //debug::log(0, FUNCTION " Flushed %u Index Bytes to Disk\n", __PRETTY_FUNCTION__, vDisk.size());
 
-                Sleep(1000);
+                fCacheActive = false;
             }
         }
 

@@ -16,6 +16,8 @@ ________________________________________________________________________________
 
 #include <LLP/templates/types.h>
 
+#include <condition_variable>
+
 namespace LLP
 {
 
@@ -35,6 +37,10 @@ namespace LLP
 
         /* Vector to store Connections. */
         std::vector< ProtocolType* > CONNECTIONS;
+
+
+        /* The condition for thread sleeping. */
+        std::condition_variable CONDITION;
 
 
         /* Data Thread. */
@@ -74,6 +80,8 @@ namespace LLP
             CONNECTIONS[nSlot]->fCONNECTED = true;
 
             nConnections ++;
+
+            CONDITION.notify_all();
         }
 
         /* Adds a new connection to current Data Thread */
@@ -102,6 +110,8 @@ namespace LLP
             CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
             nConnections ++;
 
+            CONDITION.notify_all();
+
             return true;
         }
 
@@ -122,11 +132,15 @@ namespace LLP
             Creates a Packet QUEUE on this connection to be processed by an LLP Messaging Thread. */
         void Thread()
         {
+            /* The mutex for the condition. */
+            std::mutex CONDITION_MUTEX;
+
+            /* The main connection handler loop. */
             while(!config::fShutdown)
             {
-                /* Keep data threads at 1000 FPS Maximum. */
-                if(CONNECTIONS.size() == 0)
-                    Sleep(10);
+                /* Keep data threads waiting for work. */
+                std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+                CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(1000), [this]{ return CONNECTIONS.size() > 0; });
 
                 /* Check all connections for data and packets. */
                 int nSize = CONNECTIONS.size();
