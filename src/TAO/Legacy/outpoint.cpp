@@ -11,36 +11,33 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/Legacy/types/outpoint.h>
 
-#include "../../../LLC/types/uint1024.h"
-#include "../../../Util/templates/serialize"
+#include <LLC/types/uint1024.h>
+#include <Util/templates/serialize.h>
+#include <Util/include/debug.h>
 
 namespace Legacy
 {
+	//the serizliation methods
+	SERIALIZE_SOURCE
+	(
+		COutPoint,
 
-	namespace Types
+		READWRITE(FLATDATA(*this));
+	)
+
+
+	/* Full object debug output */
+	std::string COutPoint::ToString() const
 	{
-
-		//the serizliation methods
-		SERIALIZE_SOURCE
-		(
-			COutPoint,
-
-			READWRITE(FLATDATA(*this));
-		)
+		return debug::strprintf("COutPoint(%s, %d)", hash.ToString().substr(0,10).c_str(), n);
+	}
 
 
-		/* Full object debug output */
-		std::string COutPoint::ToString() const
-		{
-			return strprintf("COutPoint(%s, %d)", hash.ToString().substr(0,10).c_str(), n);
-		}
-
-
-		/* Dump the full object to the console (stdout) */
-		void COutPoint::print() const
-		{
-			debug::log(0, "%s\n", ToString().c_str());
-		}
-    }
+	/* Dump the full object to the console (stdout) */
+	void COutPoint::print() const
+	{
+		debug::log(0, "%s\n", ToString().c_str());
+	}
 }
