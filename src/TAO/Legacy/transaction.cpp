@@ -272,12 +272,13 @@ namespace Legacy
         if (IsCoinBase())
             return 0;
 
-        unsigned int nSigOps = 0;
-        for (unsigned int i = (int) IsCoinStake(); i < vin.size(); i++)
+        uint32_t nSigOps = 0;
+        for (uint32_t i = (uint32_t) IsCoinStake(); i < vin.size(); i++)
         {
             const CTxOut& prevout = GetOutputFor(vin[i], mapInputs);
             nSigOps += prevout.scriptPubKey.GetSigOpCount(vin[i].scriptSig);
         }
+
         return nSigOps;
     }
 
@@ -300,7 +301,16 @@ namespace Legacy
 	/* Amount of Coins coming in to this transaction */
 	int64_t Transaction::GetValueIn(const std::map<uint512_t, Transaction>& mapInputs) const
     {
-        //TODO: GetOutputFor
+        if (IsCoinBase())
+            return 0;
+
+        int64_t nResult = 0;
+        for (uint32_t i = (uint32_t) IsCoinStake(); i < vin.size(); i++)
+        {
+            nResult += GetOutputFor(vin[i], mapInputs).nValue;
+        }
+
+        return nResult;
     }
 
 
