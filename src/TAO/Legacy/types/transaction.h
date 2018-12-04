@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_TRANSACTION_H
 #define NEXUS_TAO_LEGACY_TYPES_TRANSACTION_H
 
+#include <Util/macro/header.h>
+
 
 namespace Legacy
 {
@@ -39,12 +41,12 @@ namespace Legacy
 	        //To hold the spend data on disk transactions.
 	        //If it is unspent the vout index will false
 
-			CTransaction()
+			Transaction()
 			{
 				SetNull();
 			}
 
-			IMPLEMENT_SERIALIZE
+			SERIALIZE_HEADER
 			(
 				READWRITE(this->nVersion);
 				nVersion = this->nVersion;
