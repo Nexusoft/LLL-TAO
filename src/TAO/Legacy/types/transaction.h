@@ -15,16 +15,8 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEGACY_TYPES_INCLUDE_TRANSACTION_H
 
 
-namespace LLD
-{
-	class CIndexDB;
-}
-
 namespace Legacy
 {
-
-	namespace Types
-	{
 
 		/** Typedef for reading previous transaction inputs. TODO: deprecate txindex **/
 		typedef std::map<uint512_t, std::pair<TxIndex, Transaction> > MapPrevTx;
@@ -336,7 +328,6 @@ namespace Legacy
 		protected:
 			const CTxOut& GetOutputFor(const CTxIn& input, const MapPrevTx& inputs) const;
 		};
-	}
 }
 
 

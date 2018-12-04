@@ -11,15 +11,16 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_TYPES_INCLUDE_SCRIPT_H
-#define NEXUS_TAO_LEGACY_TYPES_INCLUDE_SCRIPT_H
+#ifndef NEXUS_TAO_LEGACY_TYPES_SCRIPT_H
+#define NEXUS_TAO_LEGACY_TYPES_SCRIPT_H
 
+
+#include <LLC/types/bignum.h>
 #include <Util/include/base58.h>
 
 #include <string>
 #include <vector>
 
-namespace LLC { class CBigNum; }
 namespace Legacy
 {
     class Transaction;
@@ -189,7 +190,7 @@ namespace Legacy
          *  @return the int representing code.
          *
          **/
-        int DecodeOP_N(opcodetype opcode);
+        int32_t DecodeOP_N(opcodetype opcode) const;
 
 
         /** EncodeOP_N
@@ -201,7 +202,7 @@ namespace Legacy
          *  @return the opcode corresponding to n
          *
          **/
-        opcodetype EncodeOP_N(int n);
+        opcodetype EncodeOP_N(int32_t n);
 
 
         /** FindAndDelete
@@ -213,7 +214,7 @@ namespace Legacy
          *  @return the place in which was overwritten.
          *
          **/
-        int FindAndDelete(const CScript& b);
+        int32_t FindAndDelete(const CScript& b);
 
 
         /** Find
@@ -225,7 +226,7 @@ namespace Legacy
          *  @return the byte location where code was found.
          *
          **/
-        int Find(opcodetype op) const;
+        int32_t Find(opcodetype op) const;
 
 
         /** GetSigOpCount
@@ -300,7 +301,7 @@ namespace Legacy
          *  @param[in] keys The keys to be added into the multi-sig contract
          *
          **/
-        void SetMultisig(int nRequired, const std::vector<ECKey>& keys);
+        void SetMultisig(int nRequired, const std::vector<LLC::ECKey>& keys);
 
 
         /** SetPayToScriptHash
@@ -408,7 +409,7 @@ namespace Legacy
             return *this;
         }
 
-        CScript& operator<<(const CBigNum& b)
+        CScript& operator<<(const LLC::CBigNum& b)
         {
             *this << b.getvch();
             return *this;
@@ -449,39 +450,6 @@ namespace Legacy
             return *this;
         }
     };
-
-
-
-
-
-    bool EvalScript(std::vector<std::vector<uint8_t> >& stack, const CScript& script, const Core::CTransaction& txTo, uint32_t nIn, int nHashType);
-    bool Solver(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<std::vector<uint8_t> >& vSolutionsRet);
-
-    //used in standard inputs function check in transaction. potential to remove
-    int ScriptSigArgsExpected(TransactionType t, const std::vector<std::vector<uint8_t> >& vSolutions);
-
-    bool IsStandard(const CScript& scriptPubKey);
-
-    bool IsMine(const CKeyStore& keystore, const CScript& scriptPubKey);
-
-
-
-
-    bool ExtractAddress(const CScript& scriptPubKey, NexusAddress& addressRet);
-
-
-    bool ExtractAddresses(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<NexusAddress>& addressRet, int& nRequiredRet);
-
-
-    //important to keep
-    bool SignSignature(const CKeyStore& keystore, const Transaction& txFrom, Transaction& txTo, uint32_t nIn, int nHashType=SIGHASH_ALL);
-
-    //important to keep
-    bool VerifySignature(const Transaction& txFrom, const Transaction& txTo, uint32_t nIn, int nHashType);
-
-    //used twice. Potential to clean up TODO
-    bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const Transaction& txTo, uint32_t nIn, int nHashType);
-
 }
 
 #endif

@@ -142,6 +142,7 @@ OBJS= \
 	build/address.o \
 	build/enum.o \
 	build/secret.o \
+	build/script.o \
 	build/transaction.o \
 	build/block.o \
 	build/prime.o \

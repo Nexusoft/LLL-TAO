@@ -11,11 +11,16 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/types/bignum.h>
+#include <LLC/include/key.h>
+#include <LLC/hash/SK.h>
+
 
 #include <Util/include/debug.h>
+#include <Util/include/hex.h>
 
-#include <TAO/Legacy/include/script.h>
+#include <TAO/Legacy/types/enum.h>
+#include <TAO/Legacy/types/address.h>
+#include <TAO/Legacy/types/script.h>
 
 #include <cstring>
 #include <vector>
@@ -27,14 +32,14 @@ namespace Legacy
     std::string ValueString(const std::vector<uint8_t>& vch)
     {
         if (vch.size() <= 4)
-            return strprintf("%d", CBigNum(vch).getint());
+            return debug::strprintf("%d", LLC::CBigNum(vch).getint());
         else
             return HexStr(vch);
     }
 
 
     /* Builds a string of values in a stack seperated by spaces */
-    inline std::string StackString(const std::vector<std::vector<uint8_t> >& vStack)
+    std::string StackString(const std::vector<std::vector<uint8_t> >& vStack)
     {
         std::string str;
         for(auto vch : vStack)
@@ -169,7 +174,7 @@ namespace Legacy
 
 
     /* Decodes the operation code. */
-    int CScript::DecodeOP_N(opcodetype opcode)
+    int32_t CScript::DecodeOP_N(opcodetype opcode) const
     {
         if (opcode == OP_0)
             return 0;
@@ -320,7 +325,7 @@ namespace Legacy
 
 
     /* Set script based on multi-sig data */
-    void CScript::SetMultisig(int nRequired, const std::vector<ECKey>& keys)
+    void CScript::SetMultisig(int nRequired, const std::vector<LLC::ECKey>& keys)
     {
         this->clear();
 
@@ -349,7 +354,7 @@ namespace Legacy
 
 
     /* Print the Hex output of the script into a std::string */
-    std::string CScript::ToString(bool fShort=false) const;
+    std::string CScript::ToString(bool fShort) const
     {
         std::string str;
         opcodetype opcode;
@@ -374,38 +379,8 @@ namespace Legacy
 
 
     /* Dump the Hex data into std::out or console */
-    void print() const
+    void CScript::print() const
     {
         printf("%s\n", ToString().c_str());
     }
-
-
-    bool EvalScript(std::vector<std::vector<uint8_t> >& stack, const CScript& script, const Transaction& txTo, uint32_t nIn, int nHashType);
-    bool Solver(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<std::vector<uint8_t> >& vSolutionsRet);
-
-    //used in standard inputs function check in transaction. potential to remove
-    int ScriptSigArgsExpected(TransactionType t, const std::vector<std::vector<uint8_t> >& vSolutions);
-
-    bool IsStandard(const CScript& scriptPubKey);
-
-    bool IsMine(const CKeyStore& keystore, const CScript& scriptPubKey);
-
-
-
-
-    bool ExtractAddress(const CScript& scriptPubKey, NexusAddress& addressRet);
-
-
-    bool ExtractAddresses(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<NexusAddress>& addressRet, int& nRequiredRet);
-
-
-    //important to keep
-    bool SignSignature(const CKeyStore& keystore, const Transaction& txFrom, Transaction& txTo, uint32_t nIn, int nHashType=SIGHASH_ALL);
-
-    //important to keep
-    bool VerifySignature(const Transaction& txFrom, const Transaction& txTo, uint32_t nIn, int nHashType);
-
-    //used twice. Potential to clean up TODO
-    bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const Transaction& txTo, uint32_t nIn, int nHashType);
-
 }
