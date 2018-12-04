@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEGACY_TYPES_TXIN_H
 
 #include <limits>
-#include <stdint.h>
+#include <cstdint>
 
 #include <Util/macro/header.h>
 

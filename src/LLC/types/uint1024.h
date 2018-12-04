@@ -11,11 +11,11 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_UINT1024_H
-#define NEXUS_UINT1024_H
+#ifndef NEXUS_LLC_TYPES_UINT1024_H
+#define NEXUS_LLC_TYPES_UINT1024_H
 
-#include <limits.h>
-#include <stdio.h>
+#include <climits>
+#include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>

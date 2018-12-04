@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_UTIL_INCLUDE_RUNTIME_H
 #define NEXUS_UTIL_INCLUDE_RUNTIME_H
 
-#include <inttypes.h>
+#include <cinttypes>
 #include <thread>
 #include <chrono>
 #include <locale>

@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_OBJECTS_ACCOUNT_H
 #define NEXUS_TAO_REGISTER_OBJECTS_ACCOUNT_H
 
-#include <stdio.h>
+#include <cstdio>
 #include <cstdint>
 
 namespace TAO

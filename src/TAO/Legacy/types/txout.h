@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_TXOUT_H
 #define NEXUS_TAO_LEGACY_TYPES_TXOUT_H
 
-#include <stdint.h>
+#include <cstdint>
 #include <cstring>
 
 #include <Util/macro/header.h>
