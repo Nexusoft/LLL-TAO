@@ -14,12 +14,9 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_ADDRESS_H
 #define NEXUS_TAO_LEGACY_TYPES_ADDRESS_H
 
-#include <string>
-#include <vector>
-
-#include <LLC/types/uint1024.h>
-
 #include <Util/include/base58.h>
+
+class uint256_t;
 
 namespace Legacy
 {
@@ -35,7 +32,7 @@ namespace Legacy
     public:
 
         /** Default Constructor. **/
-        NexusAddress() {}
+        NexusAddress() { }
 
 
         /** Constructor

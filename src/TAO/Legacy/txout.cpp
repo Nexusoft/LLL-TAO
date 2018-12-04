@@ -11,12 +11,17 @@
 
 ____________________________________________________________________________________________*/
 
-#include "include/txout.h"
-#include "../"
+#include <LLC/hash/SK.h>
+
+#include <LLP/include/version.h>
+
+#include <Util/include/parse.h>
+
+#include <TAO/Legacy/types/txout.h>
+#include <TAO/Legacy/types/script.h>
 
 namespace Legacy
 {
-
 	//the serialization methods
 	SERIALIZE_SOURCE
 	(
@@ -60,14 +65,20 @@ namespace Legacy
 	/* Get the hash of the object. */
 	uint512_t CTxOut::GetHash() const
 	{
-		return SerializeHash(*this);
+		// Most of the time is spent allocating and deallocating CDataStream's
+	    // buffer.  If this ever needs to be optimized further, make a CStaticStream
+	    // class with its buffer on the stack.
+	    CDataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+	    ss.reserve(10000);
+	    ss << *this;
+	    return LLC::SK512(ss.begin(), ss.end());
 	}
 
 
 	/* Short Hand debug output of the object */
 	std::string CTxOut::ToStringShort() const
 	{
-		return strprintf(" out %s %s", FormatMoney(nValue).c_str(), scriptPubKey.ToString(true).c_str());
+		return debug::strprintf(" out %s %s", FormatMoney(nValue).c_str(), scriptPubKey.ToString(true).c_str());
 	}
 
 
@@ -77,13 +88,13 @@ namespace Legacy
 		if (IsEmpty()) return "CTxOut(empty)";
 		if (scriptPubKey.size() < 6)
 			return "CTxOut(error)";
-		return strprintf("CTxOut(nValue=%s, scriptPubKey=%s)", FormatMoney(nValue).c_str(), scriptPubKey.ToString().c_str());
+		return debug::strprintf("CTxOut(nValue=%s, scriptPubKey=%s)", FormatMoney(nValue).c_str(), scriptPubKey.ToString().c_str());
 	}
 
 
 	/* Dump the full object to the console (stdout) */
 	void CTxOut::print() const
 	{
-			debug::log(0, "%s\n", ToString().c_str());
+		debug::log(0, "%s\n", ToString().c_str());
 	}
 }

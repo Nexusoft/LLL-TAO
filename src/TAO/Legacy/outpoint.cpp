@@ -11,13 +11,14 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/Legacy/types/outpoint.h>
 
-#include "../../../LLC/types/uint1024.h"
-#include "../../../Util/templates/serialize"
+#include <LLC/types/uint1024.h>
+#include <Util/templates/serialize.h>
+#include <Util/include/debug.h>
 
 namespace Legacy
 {
-
 	//the serizliation methods
 	SERIALIZE_SOURCE
 	(

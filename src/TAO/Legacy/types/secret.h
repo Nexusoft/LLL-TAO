@@ -14,14 +14,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_SECRET_H
 #define NEXUS_TAO_LEGACY_TYPES_SECRET_H
 
-#include <string>
-
+#include <LLC/include/key.h>
 #include <Util/include/base58.h>
-
-/* forward declaration */
-namespace LLC { 
-    class CSecret; 
-}
 
 namespace Legacy
 {

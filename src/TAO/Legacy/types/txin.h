@@ -15,18 +15,15 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEGACY_TYPES_TXIN_H
 
 #include <limits>
+#include <stdint.h>
 
-#include <LLC/types/uint1024.h>
+#include <Util/macro/header.h>
 
+#include <TAO/Legacy/types/outpoint.h>
 #include <TAO/Legacy/types/script.h>
-
-#include <Util/templates/serialize.h>
 
 namespace Legacy
 {
-
-	/* forward declarations */
-	class COutPoint;
 
 	/** An input of a transaction.  It contains the location of the previous
 	 * transaction's output that it claims and a signature that matches the
@@ -166,7 +163,6 @@ namespace Legacy
 
 
 	};
-
 }
 
 #endif

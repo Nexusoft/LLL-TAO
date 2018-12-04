@@ -14,8 +14,11 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_SCRIPT_H
 #define NEXUS_TAO_LEGACY_TYPES_SCRIPT_H
 
+#include <TAO/Legacy/types/enum.h>
+#include <TAO/Legacy/types/address.h>
 
 #include <LLC/types/bignum.h>
+#include <LLC/include/key.h>
 #include <Util/include/base58.h>
 
 #include <string>

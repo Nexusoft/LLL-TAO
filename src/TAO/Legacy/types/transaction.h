@@ -14,280 +14,58 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_TRANSACTION_H
 #define NEXUS_TAO_LEGACY_TYPES_TRANSACTION_H
 
-#include <cstdio>
-#include <map>
-#include <utility>
-#include <vector>
+#include <Util/macro/header.h>
 
-#include <LLC/types/uint1024.h>
-
-#include <TAO/Ledger/include/global.h>
-
-#include <Util/include/runtime.h>
-#include <Util/templates/serialize.h>
-
-class CBlockIndex;
-
-namespace LLD
-{
-	class CIndexDB;
-}
+#include <TAO/Legacy/types/txin.h>
+#include <TAO/Legacy/types/txout.h>
+#include <TAO/Legacy/types/enum.h>
 
 namespace Legacy
 {
 
-	/*forward declarations */
-    class CDiskTxPos;
-    class COutPoint;
-    class CTxIndex;
-	class CTxIn;
-	class CTxOut;
-
-	/** Typedef for reading previous transaction inputs. TODO: deprecate txindex **/
-		typedef std::map<uint512_t, std::pair<TxIndex, Transaction> > MapPrevTx;
-
-
-	/** The basic transaction that is broadcasted on the network and contained in
+	/** Transaction Class
+	 *
+	 * The basic transaction that is broadcasted on the network and contained in
 	 * blocks.  A transaction can contain multiple inputs and outputs.
+	 *
 	 */
-		class Transaction
+	class Transaction
 	{
 	public:
-		int nVersion;
+
+		/** The version specifier of transaction. **/
+		int32_t nVersion;
+
+
+		/** The timestamp of transaction. **/
 		uint32_t nTime;
+
+
+		/** The inputs for the transaction. **/
 		std::vector<CTxIn> vin;
+
+
+		/** The outputs for the transaction. **/
 		std::vector<CTxOut> vout;
+
+
+		/** The time this transaction is locked to. **/
 		uint32_t nLockTime;
 
-        //TODO: CTransactionState (hash) - get from prevout on ctxIn
-        //{ std::vector<bool> vSpent; { out1, out2, out3 } }
-        //To hold the spend data on disk transactions.
-        //If it is unspent the vout index will false
 
-		CTransaction()
+		/** Default Constructor. **/
+		Transaction()
 		{
 			SetNull();
 		}
 
-		IMPLEMENT_SERIALIZE
-		(
-			READWRITE(this->nVersion);
-			nVersion = this->nVersion;
-			READWRITE(nTime);
-			READWRITE(vin);
-			READWRITE(vout);
-			READWRITE(nLockTime);
-		)
 
-		void SetNull()
-		{
-			nVersion = 1;
-			nTime = UnifiedTimestamp();
-			vin.clear();
-			vout.clear();
-			nLockTime = 0;
-		}
-
-		bool IsNull() const
-		{
-			return (vin.empty() && vout.empty());
-		}
-
-		uint512_t GetHash() const
-		{
-			return SerializeHash(*this);
-		}
-
-		bool IsFinal(int nBlockHeight=0, int64_t nBlockTime=0) const
-		{
-			// Time based nLockTime implemented in 0.1.6
-			if (nLockTime == 0)
-				return true;
-			if (nBlockHeight == 0)
-				nBlockHeight = nBestHeight;
-			if (nBlockTime == 0)
-				nBlockTime = Timestamp();
-			if ((int64_t)nLockTime < ((int64_t)nLockTime < LOCKTIME_THRESHOLD ? (int64_t)nBlockHeight : nBlockTime))
-				return true;
-			for(auto txin : vin)
-				if (!txin.IsFinal())
-					return false;
-			return true;
-		}
-
-		bool IsNewerThan(const CTransaction& old) const
-		{
-			if (vin.size() != old.vin.size())
-				return false;
-			for (uint32_t i = 0; i < vin.size(); i++)
-				if (vin[i].prevout != old.vin[i].prevout)
-					return false;
-
-			bool fNewer = false;
-			uint32_t nLowest = std::numeric_limits<uint32_t>::max();
-			for (uint32_t i = 0; i < vin.size(); i++)
-			{
-				if (vin[i].nSequence != old.vin[i].nSequence)
-				{
-					if (vin[i].nSequence <= nLowest)
-					{
-						fNewer = false;
-						nLowest = vin[i].nSequence;
-					}
-					if (old.vin[i].nSequence < nLowest)
-					{
-						fNewer = true;
-						nLowest = old.vin[i].nSequence;
-					}
-				}
-			}
-			return fNewer;
-		}
-
-		/** Coinbase Transaction Rules: **/
-		bool IsCoinBase() const
-		{
-			/** A] Input Size must be 1. **/
-			if(vin.size() != 1)
-				return false;
-
-			/** B] First Input must be Empty. **/
-			if(!vin[0].prevout.IsNull())
-				return false;
-
-			/** C] Outputs Count must Exceed 1. **/
-			if(vout.size() < 1)
-				return false;
-
-			return true;
-		}
-
-		/** Coinstake Transaction Rules: **/
-		bool IsCoinStake() const
-		{
-			/* A] Must have more than one Input. */
-			if(vin.size() <= 1)
-				return false;
-
-			/* B] First Input Script Signature must be 8 Bytes. */
-			if(vin[0].scriptSig.size() != 8)
-				return false;
-
-			/* C] First Input Script Signature must Contain Fibanacci Byte Series. */
-			if(!vin[0].IsStakeSig())
-				return false;
-
-			/* D] All Remaining Previous Inputs must not be Empty. */
-			for(int nIndex = 1; nIndex < vin.size(); nIndex++)
-				if(vin[nIndex].prevout.IsNull())
-					return false;
-
-			/* E] Must Contain only 1 Outputs. */
-			if(vout.size() != 1)
-				return false;
-
-			return true;
-		}
-
-		/** Flag to determine if the transaction is a genesis transaction. **/
-		bool IsGenesis() const
-		{
-			/* A] Genesis Transaction must be Coin Stake. */
-			if(!IsCoinStake())
-				return false;
-
-			/* B] First Input Previous Transaction must be Empty. */
-			if(!vin[0].prevout.IsNull())
-				return false;
-
-			return true;
-		}
+		//serialization methods
+		SERIALIZE_HEADER;
 
 
-		/** Flag to determine if the transaction is a Trust Transaction. **/
-		bool IsTrust() const
-		{
-			/** A] Genesis Transaction must be Coin Stake. **/
-			if(!IsCoinStake())
-				return false;
-
-			/** B] First Input Previous Transaction must not be Empty. **/
-			if(vin[0].prevout.IsNull())
-				return false;
-
-			/** C] First Input Previous Transaction Hash must not be 0. **/
-			if(vin[0].prevout.hash == 0)
-				return false;
-
-			/** D] First Input Previous Transaction Index must be 0. **/
-			if(vin[0].prevout.n != 0)
-				return false;
-
-			return true;
-		}
-
-		/** Check for standard transaction types
-			@return True if all outputs (scriptPubKeys) use only standard transaction forms
-		*/
-		bool IsStandard() const;
-
-		/** Check for standard transaction types
-			@param[in] mapInputs	Map of previous transactions that have outputs we're spending
-			@return True if all inputs (scriptSigs) use only standard transaction forms
-			@see CTransaction::FetchInputs
-		*/
-		bool AreInputsStandard(const MapPrevTx& mapInputs) const;
-
-		/** Count ECDSA signature operations the old-fashioned (pre-0.6) way
-			@return number of sigops this transaction's outputs will produce when spent
-			@see CTransaction::FetchInputs
-		*/
-		uint32_t GetLegacySigOpCount() const;
-
-		/** Count ECDSA signature operations in pay-to-script-hash inputs.
-
-			@param[in] mapInputs	Map of previous transactions that have outputs we're spending
-			@return maximum number of sigops required to validate this transaction's inputs
-			@see CTransaction::FetchInputs
-		 */
-		uint32_t TotalSigOps(const MapPrevTx& mapInputs) const;
-
-		/** Amount of Coins spent by this transaction.
-			@return sum of all outputs (note: does not include fees)
-		 */
-		int64_t GetValueOut() const
-		{
-			int64_t nValueOut = 0;
-			for(const CTxOut& txout : vout)
-			{
-				nValueOut += txout.nValue;
-				if (!MoneyRange(txout.nValue) || !MoneyRange(nValueOut))
-					throw std::runtime_error("CTransaction::GetValueOut() : value out of range");
-			}
-			return nValueOut;
-		}
-
-		/** Amount of Coins coming in to this transaction
-
-			@param[in] mapInputs	Map of previous transactions that have outputs we're spending
-			@return	Sum of value of all inputs (scriptSigs)
-			@see CTransaction::FetchInputs
-		 */
-		int64_t GetValueIn(const MapPrevTx& mapInputs) const;
-
-		static bool AllowFree(double dPriority)
-		{
-			// Large (in bytes) low-priority (new, small-coin) transactions
-			// need a fee.
-			return dPriority > COIN * 144 / 250;
-		}
-
-		int64_t GetMinFee(uint32_t nBlockSize=1, bool fAllowFree=false, enum GetMinFee_mode mode=GMF_BLOCK) const;
-
-
-		bool ReadFromDisk(CDiskTxPos pos, FILE** pfileRet=NULL);
-
-		friend bool operator==(const CTransaction& a, const CTransaction& b)
+		/** Comparison overload (equals). **/
+		friend bool operator==(const Transaction& a, const Transaction& b)
 		{
 			return (a.nVersion  == b.nVersion &&
 					a.nTime     == b.nTime &&
@@ -296,87 +74,252 @@ namespace Legacy
 					a.nLockTime == b.nLockTime);
 		}
 
-		friend bool operator!=(const CTransaction& a, const CTransaction& b)
+
+		/** Comparision overload (not equals). **/
+		friend bool operator!=(const Transaction& a, const Transaction& b)
 		{
 			return !(a == b);
 		}
 
 
+		/** Set Null
+		 *
+		 *  Sets the transaciton object to a null state.
+		 *
+		 **/
+		void SetNull();
+
+
+		/** Is Null
+		 *
+		 *  Determines if object is in a null state.
+		 *
+		 **/
+		bool IsNull() const;
+
+
+		/** Get Hash
+		 *
+		 *  Returns the hash of this object.
+		 *
+		 *  @return the 512-bit hash of this object.
+		 *
+		 **/
+		uint512_t GetHash() const;
+
+
+		/** Is Final
+		 *
+		 *  Determine if a transaction is within LOCKTIME_THRESHOLD
+		 *
+		 *  @param[in] nBlockHeight The block to check at
+		 *  @param[in] nBlockTime The time of the block
+		 *
+		 *  @return true if the transaction is in a final state.
+		 *
+		 **/
+		bool IsFinal(int32_t nBlockHeight=0, int64_t nBlockTime=0) const;
+
+
+		/** Is Newer Than
+		 *
+		 *  Determine if a transaction is newer than supplied argument.
+		 *
+		 *  @param[in] old The transaction to compare to.
+		 *
+		 *  @return true if the transaction is newer.
+		 *
+		 **/
+		bool IsNewerThan(const Transaction& old) const;
+
+
+		/** Is Coinbase
+		 *
+		 *  Check the flags that denote a coinbase transaction.
+		 *
+		 *  @return true if this is a coinbase.
+		 *
+		 **/
+		bool IsCoinBase() const;
+
+
+		/** Is Coinstake
+		 *
+		 *  Check the flags that denote a coinstake transaction.
+		 *
+		 *  @return true if this is a coinstake.
+		 *
+		 **/
+		bool IsCoinStake() const;
+
+
+		/** Is Genesis
+		 *
+		 *  Check the flags that denote a genesis transaction.
+		 *
+		 *  @return true if this is a genesis.
+		 *
+		 **/
+		bool IsGenesis() const;
+
+
+		/** Is Trust
+		 *
+		 *  Check the flags that denote a trust transaction.
+		 *
+		 *  @return true if this is a trust transaction.
+		 *
+		 **/
+		bool IsTrust() const;
+
+
+		/** Is Standard
+		 *
+		 *  Check for standard transaction types
+		 *
+		 *  @return True if all outputs (scriptPubKeys) use only standard transaction forms
+		 *
+		 **/
+		bool IsStandard() const;
+
+
+		/** Are Inputs Standard
+		 *
+		 *  Check for standard transaction types
+		 *
+		 *  @param[in] mapInputs Map of previous transactions that have outputs we're spending
+		 *
+		 *  @return True if all inputs (scriptSigs) use only standard transaction forms
+		 *  @see CTransaction::FetchInputs
+		 *
+		 **/
+		bool AreInputsStandard(const std::map<uint512_t, Transaction>& mapInputs) const;
+
+
+		/** Get Legacy SigOp Count
+		 *
+		 *  Count ECDSA signature operations the old-fashioned (pre-0.6) way
+		 *
+		 *  @return number of sigops this transaction's outputs will produce when spent
+		 *  @see CTransaction::FetchInputs
+		 *
+		 **/
+		uint32_t GetLegacySigOpCount() const;
+
+
+		/** Total SigOps
+		 *
+		 *  Count ECDSA signature operations in pay-to-script-hash inputs.
+		 *
+		 *  @param[in] mapInputs Map of previous transactions that have outputs we're spending
+		 *
+		 *  @return maximum number of sigops required to validate this transaction's inputs
+		 *  @see CTransaction::FetchInputs
+		 *
+		 **/
+		uint32_t TotalSigOps(const std::map<uint512_t, Transaction>& mapInputs) const;
+
+
+		/** Get Value Out
+		 *
+		 *  Amount of Coins spent by this transaction.
+		 *
+		 *  @return sum of all outputs (note: does not include fees)
+		 *
+		 **/
+		int64_t GetValueOut() const;
+
+
+		/** Get Value In
+		 *
+		 *  Amount of Coins coming in to this transaction
+		 *
+		 *  @param[in] mapInputs Map of previous transactions that have outputs we're spending
+		 *
+		 *  @return	Sum of value of all inputs (scriptSigs)
+		 *  @see CTransaction::FetchInputs
+		 *
+		 **/
+		int64_t GetValueIn(const std::map<uint512_t, Transaction>& mapInputs) const;
+
+
+		/** Allow Free
+		 *
+		 *  Determine if transaction qualifies to be free.
+		 *
+		 *  @param[in] dPriority The priority of requested transaction.
+		 *
+		 *  @return true if can be free.
+		 *
+		 **/
+		bool AllowFree(double dPriority);
+
+
+		/** Get Min Fee
+		 *
+		 *  Get the minimum fee to pay for broadcast.
+		 *
+		 *  @param[in] nBlockSize The current block size
+		 *  @param[in] fAllowFree Flag to tell if free is allowed.
+		 *  @param[in] mode The mode in which this will be relayed.
+		 *
+		 *  @return The fee in satoshi's for transaction.
+		 *
+		 **/
+		int64_t GetMinFee(uint32_t nBlockSize=1, bool fAllowFree=false, enum GetMinFee_mode mode=GMF_BLOCK) const;
+
+
+		/** To String Short
+		 *
+		 *  Short form of the debug output.
+		 *
+		 *  @return The string value to return;
+		 *
+		 **/
 		std::string ToStringShort() const;
 
+
+		/** To String
+		 *
+		 *  Long form of the debug output.
+		 *
+		 *  @return The string value to return.
+		 *
+		 **/
 		std::string ToString() const;
 
+
+		/** Print
+		 *
+		 *  Dump the transaction data to the console.
+		 *
+		 **/
 		void print() const;
 
 
-		bool GetCoinstakeInterest(LLD::CIndexDB& txdb, int64_t& nInterest) const;
-		bool GetCoinstakeAge(LLD::CIndexDB& txdb, uint64_t& nAge) const;
-
-
-		bool ReadFromDisk(LLD::CIndexDB& indexdb, COutPoint prevout, CTxIndex& txindexRet);
-		bool ReadFromDisk(LLD::CIndexDB& indexdb, COutPoint prevout);
-		bool ReadFromDisk(COutPoint prevout);
-		bool DisconnectInputs(LLD::CIndexDB& indexdb);
-
-		/** Fetch from memory and/or disk. inputsRet keys are transaction hashes.
-
-		 @param[in] txdb	Transaction database
-		 @param[in] mapTestPool	List of pending changes to the transaction index database
-		 @param[in] fBlock	True if being called to add a new best-block to the chain
-		 @param[in] fMiner	True if being called by CreateNewBlock
-		 @param[out] inputsRet	Pointers to this transaction's inputs
-		 @param[out] fInvalid	returns true if transaction is invalid
-		 @return	Returns true if all inputs are in txdb or mapTestPool
-		 */
-		bool FetchInputs(LLD::CIndexDB& indexdb, const std::map<uint512_t, CTxIndex>& mapTestPool,
-						 bool fBlock, bool fMiner, MapPrevTx& inputsRet, bool& fInvalid);
-
-		/** Sanity check previous transactions, then, if all checks succeed,
-			mark them as spent by this transaction.
-
-			@param[in] inputs	Previous transactions (from FetchInputs)
-			@param[out] mapTestPool	Keeps track of inputs that need to be updated on disk
-			@param[in] posThisTx	Position of this transaction on disk
-			@param[in] pindexBlock
-			@param[in] fBlock	true if called from ConnectBlock
-			@param[in] fMiner	true if called from CreateNewBlock
-			@return Returns true if all checks succeed
-		 */
-		bool ConnectInputs(LLD::CIndexDB& indexdb, MapPrevTx inputs,
-						   std::map<uint512_t, CTxIndex>& mapTestPool, const CDiskTxPos& posThisTx,
-						   const CBlockIndex* pindexBlock, bool fBlock, bool fMiner);
-
-		bool ClientConnectInputs();
+		/** Check Transaction
+		 *
+		 *  Check the transaction for validity.
+		 *
+		 **/
 		bool CheckTransaction() const;
 
 
 	protected:
-		const CTxOut& GetOutputFor(const CTxIn& input, const MapPrevTx& inputs) const;
+
+		/** Get Output For
+		 *
+		 *  Get the corresponding output from input.
+		 *
+		 *  @param[in] input The input to get output for
+		 *  @param[in] inputs The inputs map that has prev transactions
+		 *
+		 *  @return the output that was found.
+		 *
+		 **/
+		const CTxOut& GetOutputFor(const CTxIn& input, const std::map<uint512_t, Transaction>& inputs) const;
 	};
-
-
-
-
-	/* __________________________________________________ (Transaction Methods) __________________________________________________  */
-
-
-
-
-	/* Add an oprhan transaction to the Orphans Memory Map. */
-	bool AddOrphanTx(const CDataStream& vMsg);
-
-
-	/* Remove an Orphaned Transaction from the Memory Mao. */
-	void EraseOrphanTx(uint512_t hash);
-
-
-	/* Set the Limit of the Orphan Transaction Sizes Dynamically. */
-	uint32_t LimitOrphanTxSize(uint32_t nMaxOrphans);
-
-
-	/* Get a specific transaction from the Database or from a block's binary position. */
-	bool GetTransaction(const uint512_t &hash, CTransaction &tx, uint1024_t &hashBlock);
-
 }
+
 
 #endif

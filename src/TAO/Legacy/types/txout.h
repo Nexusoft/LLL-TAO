@@ -11,18 +11,17 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_TYPES_TXIN_H
-#define NEXUS_TAO_LEGACY_TYPES_TXIN_H
+#ifndef NEXUS_TAO_LEGACY_TYPES_TXOUT_H
+#define NEXUS_TAO_LEGACY_TYPES_TXOUT_H
 
-#include <LLC/types/uint1024.h>
+#include <stdint.h>
+#include <cstring>
 
-#include <Util/templates/serialize.h>
+#include <Util/macro/header.h>
+#include <TAO/Legacy/types/script.h>
 
 namespace Legacy
 {
-
-    /* forward declarations */
-	class CScript;
 
     /** An output of a transaction.  It contains the public key that the next input
 	 * must be able to sign with to claim it.
@@ -163,7 +162,6 @@ namespace Legacy
 		 **/
 		void print() const;
 	};
-
 }
 
 #endif

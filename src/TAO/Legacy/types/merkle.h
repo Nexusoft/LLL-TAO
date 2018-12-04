@@ -14,21 +14,9 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_MERKLE_H
 #define NEXUS_TAO_LEGACY_TYPES_MERKLE_H
 
-#include <vector>
-
-#include <LLC/types/uint1024.h>
-
-#include <TAO/Legacy/types/transaction.h>
-
-#include <Util/templates/serialize.h>
-
-/* forward declarations */
-class CBlock;
-class CBLockIndex;
 
 namespace Legacy
 {
-
     /** A transaction with a merkle branch linking it to the block chain. */
 	class CMerkleTx : public CTransaction
 	{
@@ -75,5 +63,6 @@ namespace Legacy
 		bool IsInMainChain() const { return GetDepthInMainChain() > 0; }
 		int GetBlocksToMaturity() const;
 	};
-
 }
+
+#endif
