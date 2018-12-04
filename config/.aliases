@@ -8,9 +8,8 @@ alias ll         'ls -lag'
 alias ld         'ls -lgd'
 alias h          'history'            
 alias t          'nice top -d 1'
-alias td         'tcpdump -i any -n'
 alias aptget     'sudo apt-get -o Acquire::ForceIPv4=true install'
-alias ns         'netstat -an'
+
 
 #
 # Nexus handy aliases.
@@ -25,6 +24,14 @@ alias ncli       '/nexus/nexus -testnet'
 alias ninfo      'ncli getinfo'
 alias npeers     'ncli getpeerinfo'
 alias npeercount 'ncli getconnectioncount'
+
+#
+# Handy network aliases.
+#
+alias ns          'netstat -an'
+alias ping-seed4  'ping 240.0.255.255'
+alias ping-seed6  'ping fe::255:255'
+alias td          'tcpdump -i any -n'
 
 #
 # LISP handy aliases.
