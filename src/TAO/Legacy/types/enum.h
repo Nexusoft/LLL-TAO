@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_TYPES_INCLUDE_ENUM_H
-#define NEXUS_TAO_LEGACY_TYPES_INCLUDE_ENUM_H
+#ifndef NEXUS_TAO_LEGACY_TYPES_ENUM_H
+#define NEXUS_TAO_LEGACY_TYPES_ENUM_H
 
 
 namespace Legacy
@@ -229,6 +229,7 @@ namespace Legacy
      *
      **/
     const char* GetOpName(opcodetype opcode);
+
 }
 
 #endif

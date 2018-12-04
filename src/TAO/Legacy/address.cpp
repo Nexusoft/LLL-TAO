@@ -23,7 +23,6 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-
     /* Constructor Set the hash256 */
     NexusAddress::NexusAddress(uint256_t hash256In)
     {
@@ -124,4 +123,5 @@ namespace Legacy
         memcpy(&hash256, &vchData[0], 32);
         return hash256;
     }
+
 }

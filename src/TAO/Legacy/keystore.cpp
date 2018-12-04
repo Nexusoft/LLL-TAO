@@ -16,31 +16,27 @@ ________________________________________________________________________________
 namespace Legacy 
 {
     
-    namespace Wallet
+    /*  Retrieve the public key for a key in the key store. */
+    bool CKeyStore::GetPubKey(const NexusAddress &address, std::vector<uint8_t> &vchPubKeyOut) const
     {
-
-        /*  Retrieve the public key for a key in the key store. */
-        bool CKeyStore::GetPubKey(const NexusAddress &address, std::vector<uint8_t> &vchPubKeyOut) const
-        {
-            ECKey key;
-            if (!GetKey(address, key))
-                return false;
-            vchPubKeyOut = key.GetPubKey();
-            return true;
-        }
-
-
-        /*  Retrieve the private key associated with an address. */
-        bool CKeyStore::GetSecret(const Legacy::Types::NexusAddress &address, LLC::CSecret& vchSecret, bool &fCompressed) const
-        {
-            LLC::ECKey key;
-            if (!GetKey(address, key))
-                return false;
-
-            vchSecret = key.GetSecret(fCompressed);
-
-            return true;
-        }
-
+        ECKey key;
+        if (!GetKey(address, key))
+            return false;
+        vchPubKeyOut = key.GetPubKey();
+        return true;
     }
+
+
+    /*  Retrieve the private key associated with an address. */
+    bool CKeyStore::GetSecret(const NexusAddress &address, LLC::CSecret& vchSecret, bool &fCompressed) const
+    {
+        LLC::ECKey key;
+        if (!GetKey(address, key))
+            return false;
+
+        vchSecret = key.GetSecret(fCompressed);
+
+        return true;
+    }
+
 }

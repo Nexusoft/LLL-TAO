@@ -17,77 +17,73 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-	namespace Types
+	//the serialization methods
+	SERIALIZE_SOURCE
+	(
+		CTxOut,
+
+		READWRITE(nValue);
+		READWRITE(scriptPubKey);
+	)
+
+
+	/* Set the object to null state. */
+	void CTxOut::SetNull()
 	{
-
-		//the serialization methods
-		SERIALIZE_SOURCE
-		(
-			CTxOut,
-
-			READWRITE(nValue);
-			READWRITE(scriptPubKey);
-		)
+		nValue = -1;
+		scriptPubKey.clear();
+	}
 
 
-		/* Set the object to null state. */
-		void CTxOut::SetNull()
-		{
-			nValue = -1;
-			scriptPubKey.clear();
-		}
+	/* Determine if the object is in a null state. */
+	bool CTxOut::IsNull()
+	{
+		return (nValue == -1);
+	}
 
 
-		/* Determine if the object is in a null state. */
-		bool CTxOut::IsNull()
-		{
-			return (nValue == -1);
-		}
+	/* Clear the object and reset value to 0. */
+	void CTxOut::SetEmpty()
+	{
+		nValue = 0;
+		scriptPubKey.clear();
+	}
 
 
-		/* Clear the object and reset value to 0. */
-		void CTxOut::SetEmpty()
-		{
-			nValue = 0;
-			scriptPubKey.clear();
-		}
+	/* Determine if the object is in an empty state. */
+	bool CTxOut::IsEmpty() const
+	{
+		return (nValue == 0 && scriptPubKey.empty());
+	}
 
 
-		/* Determine if the object is in an empty state. */
-		bool CTxOut::IsEmpty() const
-		{
-			return (nValue == 0 && scriptPubKey.empty());
-		}
+	/* Get the hash of the object. */
+	uint512_t CTxOut::GetHash() const
+	{
+		return SerializeHash(*this);
+	}
 
 
-		/* Get the hash of the object. */
-		uint512_t CTxOut::GetHash() const
-		{
-			return SerializeHash(*this);
-		}
+	/* Short Hand debug output of the object */
+	std::string CTxOut::ToStringShort() const
+	{
+		return strprintf(" out %s %s", FormatMoney(nValue).c_str(), scriptPubKey.ToString(true).c_str());
+	}
 
 
-		/* Short Hand debug output of the object */
-		std::string CTxOut::ToStringShort() const
-		{
-			return strprintf(" out %s %s", FormatMoney(nValue).c_str(), scriptPubKey.ToString(true).c_str());
-		}
+	/* Full object debug output */
+	std::string CTxOut::ToString() const
+	{
+		if (IsEmpty()) return "CTxOut(empty)";
+		if (scriptPubKey.size() < 6)
+			return "CTxOut(error)";
+		return strprintf("CTxOut(nValue=%s, scriptPubKey=%s)", FormatMoney(nValue).c_str(), scriptPubKey.ToString().c_str());
+	}
 
 
-		/* Full object debug output */
-		std::string CTxOut::ToString() const
-		{
-			if (IsEmpty()) return "CTxOut(empty)";
-			if (scriptPubKey.size() < 6)
-				return "CTxOut(error)";
-			return strprintf("CTxOut(nValue=%s, scriptPubKey=%s)", FormatMoney(nValue).c_str(), scriptPubKey.ToString().c_str());
-		}
-
-
-		/* Dump the full object to the console (stdout) */
-		void CTxOut::print() const
-		{
+	/* Dump the full object to the console (stdout) */
+	void CTxOut::print() const
+	{
 			debug::log(0, "%s\n", ToString().c_str());
-		}
 	}
 }

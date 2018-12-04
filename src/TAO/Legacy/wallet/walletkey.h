@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
 			(c) Copyright The Nexus Developers 2014 - 2018
 
@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LEGACY_WALLET_WALLETKEY_H
-#define NEXUS_LEGACY_WALLET_WALLETKEY_H
+#ifndef NEXUS_TAO_LEGACY_WALLET_WALLETKEY_H
+#define NEXUS_TAO_LEGACY_WALLET_WALLETKEY_H
 
 #include <Util/include/runtime.h>
 #include <Util/templates/serialize.h>
@@ -26,58 +26,55 @@ namespace LLC
 namespace Legacy
 {
     
-    namespace Wallet
+    /** @class CWalletKey
+     *
+     *  Class to hold unencrypted private key binary data. 
+     *
+     *  @deprecated This class is no longer used or written to the wallet database. It
+     *              is supported for backward compatability, so values can be read
+     *              that were previously written into the database.
+     *
+     *  Database key is wkey<publickey>
+     **/
+    class CWalletKey
     {
-        /** @class CWalletKey
+    public:
+        /** Unencrypted private key data **/
+        LLC::CPrivKey vchPrivKey;
+
+        /** Timestamp when this wallet key was created. Only relevant if nTimeExpires has a value **/
+        uint64_t nTimeCreated;
+
+        /** Number of seconds after nTimeCreated that this wallet key expires **/
+        uint64_t nTimeExpires;
+
+        /** Space to include comments **/
+        std::string strComment;
+
+
+        /** Constructor
          *
-         *  Class to hold unencrypted private key binary data. 
+         *  Sets nTimeCreated to current time if nExpires has a value. 
          *
-         *  @deprecated This class is no longer used or written to the wallet database. It
-         *              is supported for backward compatability, so values can be read
-         *              that were previously written into the database.
-         *
-         *  Database key is wkey<publickey>
          **/
-        class CWalletKey
+        CWalletKey(uint64_t nExpires=0)
         {
-        public:
-            /** Unencrypted private key data **/
-            LLC::CPrivKey vchPrivKey;
-
-            /** Timestamp when this wallet key was created. Only relevant if nTimeExpires has a value **/
-            uint64_t nTimeCreated;
-
-            /** Number of seconds after nTimeCreated that this wallet key expires **/
-            uint64_t nTimeExpires;
-
-            /** Space to include comments **/
-            std::string strComment;
+            nTimeCreated = (nExpires ? UnifiedTimestamp() : 0);
+            nTimeExpires = nExpires;
+        }
 
 
-            /** Constructor
-             *
-             *  Sets nTimeCreated to current time if nExpires has a value. 
-             *
-             **/
-            CWalletKey(uint64_t nExpires=0)
-            {
-                nTimeCreated = (nExpires ? UnifiedTimestamp() : 0);
-                nTimeExpires = nExpires;
-            }
+        IMPLEMENT_SERIALIZE
+        (
+            if (!(nSerType & SER_GETHASH))
+                READWRITE(nVersion);
+            READWRITE(vchPrivKey);
+            READWRITE(nTimeCreated);
+            READWRITE(nTimeExpires);
+            READWRITE(strComment);
+        )
+    };
 
-
-            IMPLEMENT_SERIALIZE
-            (
-                if (!(nSerType & SER_GETHASH))
-                    READWRITE(nVersion);
-                READWRITE(vchPrivKey);
-                READWRITE(nTimeCreated);
-                READWRITE(nTimeExpires);
-                READWRITE(strComment);
-            )
-        };
-
-    }
 }
 
 #endif

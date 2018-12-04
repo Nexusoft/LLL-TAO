@@ -20,8 +20,18 @@ ________________________________________________________________________________
 
 using namespace std;
 
-namespace Core
+namespace Legacy
 {
+
+    void CTxMemPool::queryHashes(std::vector<uint512_t>& vtxid)
+    {
+        vtxid.clear();
+
+        LOCK(cs);
+        vtxid.reserve(mapTx.size());
+        for (map<uint512_t, CTransaction>::iterator mi = mapTx.begin(); mi != mapTx.end(); ++mi)
+            vtxid.push_back((*mi).first);
+    }
 
 
     bool AddOrphanTx(const CDataStream& vMsg)
@@ -929,28 +939,3 @@ bool GetTransaction(const uint512_t &hash, CTransaction &tx, uint1024_t &hashBlo
 
 }
 
-bool Wallet::CWalletTx::AcceptWalletTransaction(LLD::CIndexDB& indexdb, bool fCheckInputs)
-{
-
-    {
-        LOCK(Core::mempool.cs);
-        // Add previous supporting transactions first
-        for(Core::CMerkleTx& tx : vtxPrev)
-        {
-            if (!(tx.IsCoinBase() || tx.IsCoinStake()))
-            {
-                uint512_t hash = tx.GetHash();
-                if (!Core::mempool.exists(hash) && !indexdb.ContainsTx(hash))
-                    tx.AcceptToMemoryPool(indexdb, fCheckInputs);
-            }
-        }
-        return AcceptToMemoryPool(indexdb, fCheckInputs);
-    }
-    return false;
-}
-
-bool Wallet::CWalletTx::AcceptWalletTransaction()
-{
-    LLD::CIndexDB indexdb("r");
-    return AcceptWalletTransaction(indexdb);
-}

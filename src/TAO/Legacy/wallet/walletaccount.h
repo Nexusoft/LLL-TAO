@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
 			(c) Copyright The Nexus Developers 2014 - 2018
 
@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LEGACY_WALLET_WALLETACCOUNT_H
-#define NEXUS_LEGACY_WALLET_WALLETACCOUNT_H
+#ifndef NEXUS_TAO_LEGACY_WALLET_WALLETACCOUNT_H
+#define NEXUS_TAO_LEGACY_WALLET_WALLETACCOUNT_H
 
 #include <vector>
 
@@ -21,56 +21,53 @@ ________________________________________________________________________________
 namespace Legacy
 {
     
-    namespace Wallet
+    /** @class CAccount
+     *
+     *  Account information.
+     *
+     *  A wallet account is basically an alias of the public key value
+     *  for an account/Nexus address (which is not stored here. These are 
+     *  used to store public keys in the wallet database.
+     *  
+     *  Database key is acc<account> 
+     **/
+    class CAccount
     {
-        /** @class CAccount
+    public:
+        /** Public key for the account **/
+        std::vector<uint8_t> vchPubKey;
+
+
+        /** Constructor
          *
-         *  Account information.
+         *  Calls SetNull() to initialize the account. 
          *
-         *  A wallet account is basically an alias of the public key value
-         *  for an account/Nexus address (which is not stored here. These are 
-         *  used to store public keys in the wallet database.
-         *  
-         *  Database key is acc<account> 
          **/
-        class CAccount
+        CAccount()
         {
-        public:
-            /** Public key for the account **/
-            std::vector<uint8_t> vchPubKey;
+            SetNull();
+        }
 
 
-            /** Constructor
-             *
-             *  Calls SetNull() to initialize the account. 
-             *
-             **/
-            CAccount()
-            {
-                SetNull();
-            }
+        /** SetNull
+         *
+         *  Clears the current public key value. 
+         *
+         **/
+        void SetNull()
+        {
+            vchPubKey.clear();
+        }
 
 
-            /** SetNull
-             *
-             *  Clears the current public key value. 
-             *
-             **/
-            void SetNull()
-            {
-                vchPubKey.clear();
-            }
+        IMPLEMENT_SERIALIZE
+        (
+            if (!(nSerType & SER_GETHASH))
+                READWRITE(nVersion);
+            READWRITE(vchPubKey);
+        )
+    };
 
-
-            IMPLEMENT_SERIALIZE
-            (
-                if (!(nSerType & SER_GETHASH))
-                    READWRITE(nVersion);
-                READWRITE(vchPubKey);
-            )
-        };
-
-    }
 }
 
 #endif

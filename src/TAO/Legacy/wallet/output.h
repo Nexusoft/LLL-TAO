@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
 			(c) Copyright The Nexus Developers 2014 - 2018
 
@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LEGACY_WALLET_OUTPUT_H
-#define NEXUS_LEGACY_WALLET_OUTPUT_H
+#ifndef NEXUS_TAO_LEGACY_WALLET_OUTPUT_H
+#define NEXUS_TAO_LEGACY_WALLET_OUTPUT_H
 
 #include <string>
 
@@ -21,76 +21,73 @@ ________________________________________________________________________________
 namespace Legacy
 {
     
-    namespace Wallet
+    /* forward declaration */
+    class CWalletTx;
+
+     /** @class COutput
+      *
+      *  Class to determine the value and depth of a specific transaction output.
+      *
+      *  Used for the Available Coins Method located in Wallet.cpp mainly.
+      *  To be used for further purpose in the future. 
+      **/
+    class COutput
     {
-        /* forward declaration */
-        class CWalletTx;
+    public:
+        /** The wallet transaction containing this output **/
+        const CWalletTx& walletTx;
 
-         /** @class COutput
-          *
-          *  Class to determine the value and depth of a specific transaction output.
-          *
-          *  Used for the Available Coins Method located in Wallet.cpp mainly.
-          *  To be used for further purpose in the future. 
-          **/
-        class COutput
+
+        /** Index for this output in the transaction vout **/
+        int i;
+
+
+        /** Depth of transaction in chain at the time this COutput created **/
+        int nDepth;
+
+
+        /** Constructor
+         *
+         *  Initializes this COutput with the provided parameter values
+         *
+         *  @param[in] walletTxIn The transaction containing the corresponding output
+         *
+         *  @param[in] iIn The index of the output within the transactions's vout
+         * 
+         *  @param[in] nDepthIn The depth of the transaction at time of COutput creation
+         *
+         **/
+        COutput(const CWalletTx& walletTxIn, int iIn, int nDepthIn) :
+            walletTx(walletTxIn), 
+            i(iIn),
+            nDepth(nDepthIn)
+        { }
+
+
+        /** ToString
+         *
+         *  Generate a string representation of this output.
+         * 
+         *  @return String representation of this output
+         *
+         **/
+        std::string ToString() const
         {
-        public:
-            /** The wallet transaction containing this output **/
-            const CWalletTx* tx;
+            return strprintf("COutput(%s, %d, %d) [%s]", walletTx.GetHash().ToString().substr(0,10).c_str(), i, nDepth, FormatMoney(walletTx.vout[i].nValue).c_str());
+        }
 
 
-            /** Index for this output in the transaction vout **/
-            int i;
+        /** print
+         *
+         *  Print a string representation of this output
+         *
+         **/
+        inline void print() const
+        {
+            printf("%s\n", ToString().c_str());
+        }
+    };
 
-
-            /** Depth of transaction in chain at the time this COutput created **/
-            int nDepth;
-
-
-            /** Constructor
-             *
-             *  Initializes this COutput with the provided parameter values
-             *
-             *  @param[in] txIn 
-             *
-             *  @param[in] iIn
-             * 
-             *  @param[in] nDepthIn
-             *
-             **/
-            COutput(const CWalletTx* txIn, int iIn, int nDepthIn) :
-                tx(txIn), 
-                i(iIn),
-                nDepth(nDepthIn)
-            { }
-
-
-            /** ToString
-             *
-             *  Generate a string representation of this output.
-             * 
-             *  @return String representation of this output
-             *
-             **/
-            std::string ToString() const
-            {
-                return strprintf("COutput(%s, %d, %d) [%s]", tx->GetHash().ToString().substr(0,10).c_str(), i, nDepth, FormatMoney(tx->vout[i].nValue).c_str());
-            }
-
-
-            /** print
-             *
-             *  Print a string representation of this output
-             *
-             **/
-            inline void print() const
-            {
-                printf("%s\n", ToString().c_str());
-            }
-        };
-
-    }
 }
 
 #endif

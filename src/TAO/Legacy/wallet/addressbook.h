@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LEGACY_WALLET_ADDRESSBOOK_H
-#define NEXUS_LEGACY_WALLET_ADDRESSBOOK_H
+#ifndef NEXUS_TAO_LEGACY_WALLET_ADDRESSBOOK_H
+#define NEXUS_TAO_LEGACY_WALLET_ADDRESSBOOK_H
 
 #include <map>
 #include <string>
@@ -26,7 +26,7 @@ namespace Legacy
 
 
     /** AddressBookMap is type alias defining a map for storing address book labels by Nexus address. **/
-    using AddressBookMap = std::map<Legacy::Types::NexusAddress, std::string>;
+    using AddressBookMap = std::map<NexusAddress, std::string>;
 
 
     /** @class CAddressBook
@@ -140,8 +140,10 @@ namespace Legacy
          *  @return the address label
          *
          **/
-        bool AvailableAddresses(uint32_t nSpendTime, std::map<Legacy::Types::NexusAddress, int64_t>& mapAddressBalances, bool fOnlyConfirmed = false) const;
+        bool AvailableAddresses(uint32_t nSpendTime, std::map<NexusAddress, int64_t>& mapAddressBalances, bool fOnlyConfirmed = false) const;
 
     };
 
 }
+
+#endif
