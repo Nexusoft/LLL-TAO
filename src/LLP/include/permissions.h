@@ -27,7 +27,7 @@ ________________________________________________________________________________
 inline bool CheckPermissions(std::string strAddress, uint32_t nPort)
 {
     /* Bypass localhost addresses first. */
-    if(strAddress == "127.0.0.1")
+    if(strAddress == "127.0.0.1" || strAddress == "::1")
         return true;
 
     /* Split the Address into String Vector. */
