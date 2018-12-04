@@ -60,6 +60,19 @@ When the container is started, the Nexus daemon and the LISP subsystem will
 be operational and the Nexus daemon can run on the LISP overlay and/or the
 Internet underlay concurrently.
 
+Important!:
+
+To get IPv6 to work in the container (which Nexus uses for crypto-EID support),
+you need to configure your docker daemon on your OS platform with the
+following:
+
+{
+  "ipv6": true, "fixed-cidr-v6": '2001:db8:1::/64"
+}
+
+Look for preferences in Windows and MacOS docker daemons and on Linux put/add
+the above clause in /etc/docker/daemon.json.
+
 -------------------------------------------------------------------------------
 
 
