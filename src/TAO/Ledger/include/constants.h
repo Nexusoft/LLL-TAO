@@ -41,6 +41,10 @@ namespace TAO::Ledger
 	const LLC::CBigNum bnPrimeMinOrigins    =   LLC::CBigNum(~uint1024_t(0) >> 8); //minimum prime origins of 1016 bits
 
 
+	/** Maximum size a block can be in transit. **/
+	const uint32_t MAX_BLOCK_SIZE = 2000000;
+
+
 	/** Maximum size a block can be generated as. **/
 	const uint32_t MAX_BLOCK_SIZE_GEN = 1000000;
 

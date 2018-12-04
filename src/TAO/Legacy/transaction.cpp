@@ -405,8 +405,8 @@ namespace Legacy
             return debug::error(FUNCTION "vout empty", __PRETTY_FUNCTION__);
 
         /* Check for size limits. */
-        //if (::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
-        //    return debug::error(FUNCTION "size limits failed", __PRETTY_FUNCTION__);
+        if (::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > TAO::Ledger::MAX_BLOCK_SIZE)
+            return debug::error(FUNCTION "size limits failed", __PRETTY_FUNCTION__);
 
         /* Check for negative or overflow output values */
         int64_t nValueOut = 0;
