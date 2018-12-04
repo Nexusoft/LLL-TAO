@@ -269,7 +269,16 @@ namespace Legacy
 	/* Count ECDSA signature operations in pay-to-script-hash inputs. */
 	uint32_t Transaction::TotalSigOps(const std::map<uint512_t, Transaction>& mapInputs) const
     {
-        //TODO: GetOutputFor
+        if (IsCoinBase())
+            return 0;
+
+        unsigned int nSigOps = 0;
+        for (unsigned int i = (int) IsCoinStake(); i < vin.size(); i++)
+        {
+            const CTxOut& prevout = GetOutputFor(vin[i], mapInputs);
+            nSigOps += prevout.scriptPubKey.GetSigOpCount(vin[i].scriptSig);
+        }
+        return nSigOps;
     }
 
 
