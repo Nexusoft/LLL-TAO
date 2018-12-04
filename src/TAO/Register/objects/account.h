@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -91,7 +91,7 @@ namespace TAO
              **/
             void print() const
             {
-                printf("Account(version=%u, id=%u, balance=%" PRIu64 ")\n", nVersion, nIdentifier, nBalance);
+                debug::log(0, "Account(version=%u, id=%u, balance=%" PRIu64 ")\n", nVersion, nIdentifier, nBalance);
             }
         };
     }

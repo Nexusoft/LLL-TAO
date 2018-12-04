@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -223,7 +223,7 @@ namespace TAO
 
             void print()
             {
-                printf("State(version=%u, type=%u, length=%u, owner=%s, checksum=%" PRIu64 ", state=%s)\n", nVersion, nType, nLength, hashOwner.ToString().substr(0, 20).c_str(), hashChecksum, HexStr(vchState.begin(), vchState.end()).c_str());
+                debug::log(0, "State(version=%u, type=%u, length=%u, owner=%s, checksum=%" PRIu64 ", state=%s)\n", nVersion, nType, nLength, hashOwner.ToString().substr(0, 20).c_str(), hashChecksum, HexStr(vchState.begin(), vchState.end()).c_str());
             }
 
         };

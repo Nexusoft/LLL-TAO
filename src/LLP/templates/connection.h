@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -118,15 +118,11 @@ namespace LLP
             LOCK(MUTEX);
 
             /* Debug dump of message type. */
-            if(GetArg("-verbose", 0) >= 4)
-                printf(NODE "Sent Message (%u, %u)\n", PACKET.LENGTH, PACKET.GetBytes().size());
+            debug::log(4, NODE "Sent Message (%u bytes)\n", PACKET.GetBytes().size());
 
             /* Debug dump of packet data. */
-            if(GetArg("-verbose", 0) >= 5) {
-                printf(NODE "Pakcet Dump: ");
-
+            if(config::GetArg("-verbose", 0) >= 5)
                 PrintHex(PACKET.GetBytes());
-            }
 
             /* Write the packet to socket buffer. */
             Write(PACKET.GetBytes());
@@ -141,17 +137,17 @@ namespace LLP
         /* Connect Socket to a Remote Endpoint. */
         bool Connect(std::string strAddress, int nPort)
         {
-            CService addrConnect(strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
+            CService addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
 
             /// debug print
-            printf(NODE "Connecting to %s\n",
-                addrConnect.ToString().c_str());
+            debug::log(1, NODE "Connecting to %s\n", addrConnect.ToString().c_str());
 
             // Connect
             if (SOCKET.Connect(addrConnect))
             {
                 /// debug print
-                printf(NODE "Connected to %s\n", addrConnect.ToString().c_str());
+                debug::log(1, NODE "Connected to %s\n", addrConnect.ToString().c_str());
+
                 fCONNECTED = true;
                 fOUTGOING  = true;
 
@@ -159,6 +155,12 @@ namespace LLP
             }
 
             return false;
+        }
+
+        /* Get Address. Returns the address of socket. */
+        CAddress GetAddress()
+        {
+            return SOCKET.addr;
         }
 
 
@@ -171,7 +173,7 @@ namespace LLP
         }
 
 
-    protected:
+//    protected:
 
 
         /* Lower level network communications: Read. Interacts with OS sockets. */
@@ -186,6 +188,8 @@ namespace LLP
         /* Lower level network communications: Write. Interacts with OS sockets. */
         void Write(std::vector<uint8_t> DATA)
         {
+            TIMER.Reset();
+
             SOCKET.Write(DATA, DATA.size());
         }
 

@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -11,6 +11,10 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLD/include/global.h>
+
+#include <TAO/Ledger/types/sigchain.h>
+
 #include <Util/include/args.h>
 #include <Util/include/config.h>
 #include <Util/include/signals.h>
@@ -18,39 +22,26 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/filesystem.h>
 
+#include <TAO/API/include/cmd.h>
+#include <LLP/types/corenode.h>
+#include <LLP/types/rpcnode.h>
+#include <TAO/API/include/rpc.h>
 
-#include <LLC/include/random.h>
+#include <LLP/include/global.h>
 
-#include <LLD/templates/sector.h>
-
-#include <LLD/keychain/hashmap.h>
-#include <LLD/keychain/filemap.h>
-
-#include <LLD/cache/binary_lru.h>
-
-#include <LLP/include/tritium.h>
-#include <LLP/templates/server.h>
-#include <LLP/include/legacy.h>
-
-#include <TAO/Ledger/types/transaction.h>
-
-
-class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU>
+/* Declare the Global LLD Instances. */
+namespace LLD
 {
-public:
-    TestDB(const char* pszMode="r+") : SectorDatabase("testdb", pszMode) {}
+    RegisterDB* regDB;
+    LedgerDB*   legDB;
+    LocalDB*    locDB;
+}
 
-    bool WriteTx(uint512_t hashTransaction, TAO::Ledger::Transaction tx)
-    {
-        return Write(std::make_pair(std::string("tx"), hashTransaction), tx);
-    }
-
-    bool ReadTx(uint512_t hashTransaction, TAO::Ledger::Transaction& tx)
-    {
-        return Read(std::make_pair(std::string("tx"), hashTransaction), tx);
-    }
-};
-
+/* Declare the Global LLP Instances. */
+namespace LLP
+{
+    Server<TritiumNode>* TRITIUM_SERVER;
+}
 
 
 int main(int argc, char** argv)
@@ -60,120 +51,74 @@ int main(int argc, char** argv)
 
 
     /* Parse out the parameters */
-    ParseParameters(argc, argv);
-
-
-    /* Create directories if they don't exist yet. */
-    if(filesystem::create_directory(GetDataDir(false)))
-        printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, GetDataDir(false).c_str());
-
-
-    /* Read the configuration file. */
-    ReadConfigFile(mapArgs, mapMultiArgs);
-
-
-
-    /* Create the database instances. */
-    //LLD::regDB = new LLD::RegisterDB("r+");
-    //LLD::legDB = new LLD::LedgerDB("r+");
+    config::ParseParameters(argc, argv);
 
 
     /* Handle Commandline switch */
     for (int i = 1; i < argc; i++)
     {
-        if (!IsSwitchChar(argv[i][0]) && !(strlen(argv[i]) >= 7 && strncasecmp(argv[i], "Nexus:", 7) == 0))
+        if (!IsSwitchChar(argv[i][0]))
         {
-            //int ret = Net::CommandLineRPC(argc, argv);
-            //exit(ret);
+            if(config::GetBoolArg("-api"))
+                return TAO::API::CommandLineAPI(argc, argv, i);
+
+            return TAO::API::CommandLineRPC(argc, argv, i);
         }
     }
 
-    TestDB* test = new TestDB();
 
-    uint512_t  hashTest("c861dffe8d1f5f59c05b726546b05a1e57742004317519a4dee454dcefb3f838c4005625d4799646aac8694aad41a9c447686d26da05a95fe5d20ce7ce979962");
-
-    //TAO::Ledger::Transaction tx;
-    //if(!test->ReadTx(hashTest, tx))
-    //    return error("FAILED");
-
-    //tx.print();
+    /* Create directories if they don't exist yet. */
+    if(filesystem::create_directory(config::GetDataDir(false)))
+        debug::log(0, FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, config::GetDataDir(false).c_str());
 
 
-    int nCounter = 1;
-    uint32_t nAverage = 0;
-    Timer timer;
-    timer.Start();
-
-    TAO::Ledger::Transaction tx;
-    tx.hashGenesis = LLC::GetRand256();
-    uint512_t rand = LLC::GetRand512();
-    //tx << rand << rand << rand << rand << rand << rand << rand << rand;
-    uint512_t hash = tx.GetHash();
-    uint512_t base = tx.GetHash();
-    //tx.print();
-
-    test->Write(hash, tx);
-
-    //Sleep(1000);
-    TAO::Ledger::Transaction tx2;
-    //test->Read(hash, tx2);
-    //tx2.print();
+    /* Read the configuration file. */
+    config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
 
 
+    /* Create the database instances. */
+    LLD::regDB = new LLD::RegisterDB("r+");
+    LLD::legDB = new LLD::LedgerDB("r+");
+    LLD::locDB = new LLD::LocalDB("r+");
 
-    uint32_t wps = 0;
-    uint32_t total = 0;
-    while(!fShutdown)
+
+    /* Initialize the Legacy Server. */
+    LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(config::GetArg("-port", config::fTestNet ? 8888 : 9888), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
+    if(config::mapMultiArgs["-addnode"].size() > 0)
     {
-        //Sleep(2000);
-        Sleep(5, true);
-
-        tx.hashGenesis ++;
-        hash = tx.GetHash();
-        //hash = hash + 1;
-
-        //std::vector<uint8_t> vKey((uint8_t*)&hash, (uint8_t*)&hash + sizeof(hash));
-        //std::vector<uint8_t> vData((uint8_t*)&tx, (uint8_t*)&tx + tx.GetSerializeSize(SER_DISK, LLD::DATABASE_VERSION));
-        //cachePool->Put(vKey, vData);
-        //test->Put(vKey, vData);
-        test->Write(hash, tx);
-
-        //LLC::SK256(hash.GetBytes());
-
-        //TAO::Ledger::Transaction tx1;
-        //test->ReadTx(hash, tx1);
-
-        //tx1.print();
-        //Sleep(10);
-
-        if(nCounter % 100000 == 0)
+        for(auto node : config::mapMultiArgs["-addnode"])
         {
-            timer.Stop();
-
-            nAverage++;
-            uint32_t nTimer = timer.ElapsedMilliseconds();
-            wps += (100000.0 / nTimer);
-
-            printf("100k records written in %u ms WPS = %uk / s\n", nTimer, wps / nAverage);
-
-            timer.Reset();
-            for(int i = 0; i < 100000; i++)
-                test->Read(hash, tx);
-
-            timer.Stop();
-
-            printf("100k records read in %u ms\n", timer.ElapsedMilliseconds());
-
-            timer.Reset();
-
-            //Sleep(1000);
+            LLP::CAddress addr = LLP::CAddress(LLP::CService(debug::strprintf("%s:%i", node.c_str(), config::GetArg("-port", config::fTestNet ? 8888 : 9888)).c_str(), false));
+            LLP::TRITIUM_SERVER->AddAddress(addr);
         }
-
-        //Sleep(true, 1);
-
-        nCounter++;
     }
 
+
+    /* Create the Core RPC Server. */
+    LLP::Server<LLP::CoreNode>* CORE_SERVER = new LLP::Server<LLP::CoreNode>(config::GetArg("-apiport", 8080), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), false);
+
+
+    /* Set up RPC server */
+    TAO::API::RPCCommands = new TAO::API::RPC();
+    TAO::API::RPCCommands->Initialize();
+    LLP::Server<LLP::RPCNode>* RPC_SERVER = new LLP::Server<LLP::RPCNode>(config::GetArg("-rpcport", config::fTestNet? 8336 : 9336), 1, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), false);
+
+
+    /* Wait for Shutdown. */
+    while(!config::fShutdown)
+    {
+        Sleep(1000);
+    }
+
+
+    TAO::Ledger::SignatureChain sigChain(config::GetArg("-username", "user"), config::GetArg("-password", "default"));
+    uint512_t hashGenesis = sigChain.Generate(0, config::GetArg("-pin", "1235"));
+
+    debug::log(0, "Genesis %s\n", hashGenesis.ToString().c_str());
+
+    /* Extract username and password from config. */
+    debug::log(0, "Username: %s\n", config::GetArg("-username", "user").c_str());
+    debug::log(0, "Password: %s\n", config::GetArg("-password", "default").c_str());
 
     return 0;
 }

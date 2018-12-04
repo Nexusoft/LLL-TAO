@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -32,7 +32,7 @@ namespace Legacy
     void NexusSecret::SetSecret(const LLC::CSecret& vchSecret, bool fCompressed)
     {
         assert(vchSecret.size() == 72);
-        SetData(128 + (fTestNet ? PUBKEY_ADDRESS_TEST : PUBKEY_ADDRESS), &vchSecret[0], vchSecret.size());
+        SetData(128 + (config::fTestNet ? PUBKEY_ADDRESS_TEST : PUBKEY_ADDRESS), &vchSecret[0], vchSecret.size());
         if (fCompressed)
             vchData.push_back(1);
     }
@@ -65,7 +65,7 @@ namespace Legacy
             default:
                 return false;
         }
-        return fExpectTestNet == fTestNet && (vchData.size() == 72 || (vchData.size() == 73 && vchData[72] == 1));
+        return fExpectTestNet == config::fTestNet && (vchData.size() == 72 || (vchData.size() == 73 && vchData[72] == 1));
     }
 
 

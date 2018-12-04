@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -44,6 +44,7 @@ namespace LLD
         {
             return Read(std::make_pair(std::string("tx"), hashTransaction), tx);
         }
+
 
         bool HasTx(uint512_t hashTransaction)
         {

@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
 			(c) Copyright The Nexus Developers 2014 - 2018
 
@@ -15,33 +15,17 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEGACY_TYPES_INCLUDE_TRANSACTION_H
 
 
-namespace LLD
-{
-	class CIndexDB;
-}
-
 namespace Legacy
 {
 
-	namespace Types
-	{
-
-		/** Transaction Fee Based Relay Codes. **/
-		enum GetMinFee_mode
-		{
-			GMF_BLOCK,
-			GMF_RELAY,
-			GMF_SEND,
-		};
-
 		/** Typedef for reading previous transaction inputs. TODO: deprecate txindex **/
-		typedef std::map<uint512_t, std::pair<CTxIndex, CTransaction> > MapPrevTx;
+		typedef std::map<uint512_t, std::pair<TxIndex, Transaction> > MapPrevTx;
 
 
 		/** The basic transaction that is broadcasted on the network and contained in
 		 * blocks.  A transaction can contain multiple inputs and outputs.
 		 */
-		class CTransaction
+		class Transaction
 		{
 		public:
 			int nVersion;
@@ -344,7 +328,6 @@ namespace Legacy
 		protected:
 			const CTxOut& GetOutputFor(const CTxIn& input, const MapPrevTx& inputs) const;
 		};
-	}
 }
 
 

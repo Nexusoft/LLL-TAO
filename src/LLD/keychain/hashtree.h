@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -117,7 +117,7 @@ namespace LLD
         {
             /* Create directories if they don't exist yet. */
             if(filesystem::create_directories(strBaseLocation))
-                printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
+                debug::log(0, FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
 
             /* Build the hashmap indexes. */
             std::string index = strprintf("%s_hashmap.index", strBaseLocation.c_str());
@@ -132,7 +132,7 @@ namespace LLD
                 stream.close();
 
                 /* Debug output showing generation of disk index. */
-                printf(FUNCTION "Generated Disk Index of %u bytes\n", __PRETTY_FUNCTION__, vSpace.size());
+                debug::log(0, FUNCTION "Generated Disk Index of %u bytes\n", __PRETTY_FUNCTION__, vSpace.size());
             }
 
             /* Read the hashmap indexes. */
@@ -156,7 +156,7 @@ namespace LLD
                 }
 
                 /* Debug output showing loading of disk index. */
-                printf(FUNCTION "Loaded Disk Index of %u bytes and %u keys\n", __PRETTY_FUNCTION__, vIndex.size(), nTotalKeys);
+                debug::log(0, FUNCTION "Loaded Disk Index of %u bytes and %u keys\n", __PRETTY_FUNCTION__, vIndex.size(), nTotalKeys);
             }
 
             /* Build the first hashmap index file if it doesn't exist. */
@@ -172,7 +172,7 @@ namespace LLD
                 stream.close();
 
                 /* Debug output showing generating of the hashmap file. */
-                printf(FUNCTION "Generated Disk Hash Map %u of %u bytes\n", __PRETTY_FUNCTION__, 0u, vSpace.size());
+                debug::log(0, FUNCTION "Generated Disk Hash Map %u of %u bytes\n", __PRETTY_FUNCTION__, 0u, vSpace.size());
             }
 
             /* Load the stream object into the stream LRU cache. */
@@ -254,7 +254,7 @@ namespace LLD
                 stream.close();
 
                 /* Debug output for monitoring new disk maps. */
-                printf(FUNCTION "Generated Disk Hash Map %u of %u bytes\n", __PRETTY_FUNCTION__, hashmap[nBucket], vSpace.size());
+                debug::log(0, FUNCTION "Generated Disk Hash Map %u of %u bytes\n", __PRETTY_FUNCTION__, hashmap[nBucket], vSpace.size());
             }
 
             /* Find the file stream for LRU cache. */
@@ -310,7 +310,7 @@ namespace LLD
                 stream.write((char*)&vDisk[0], vDisk.size());
                 stream.close();
 
-                //printf(FUNCTION " Flushed %u Index Bytes to Disk\n", __PRETTY_FUNCTION__, vDisk.size());
+                //debug::log(0, FUNCTION " Flushed %u Index Bytes to Disk\n", __PRETTY_FUNCTION__, vDisk.size());
 
                 Sleep(1000);
             }

@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -16,10 +16,13 @@ ________________________________________________________________________________
 
 #include <LLD/include/register.h>
 #include <LLD/include/ledger.h>
+#include <LLD/include/local.h>
 
 namespace LLD
 {
     extern RegisterDB*   regDB;
     extern LedgerDB*     legDB;
+    extern LocalDB*      locDB;
 }
+
 #endif

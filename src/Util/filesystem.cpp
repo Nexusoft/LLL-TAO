@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -10,8 +10,6 @@
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
-
-#include <Util/include/filesystem.h>
 
 #ifdef WIN32 //TODO: use GetFullPathNameW in system_complete if getcwd not supported
 
@@ -23,6 +21,11 @@ ________________________________________________________________________________
 #include <stdio.h> //remove()
 #include <errno.h>
 #include <string.h>
+#include <iostream>
+#include <fstream>
+
+#include <Util/include/debug.h>
+#include <Util/include/filesystem.h>
 
 #ifndef MAX_PATH
 #define MAX_PATH 256
@@ -51,6 +54,49 @@ namespace filesystem
             return true;
 
         return false;
+    }
+
+    /* Copy a file. */
+    bool copy_file(const std::string &pathSource, const std::string &pathDest)
+    {
+        try
+        {
+            /* Make sure destination is a file, not a directory. */
+            if (exists(pathDest) && is_directory(pathDest))
+                return false;
+
+            /* If destination file exists, remove it (ie, we overwrite the file) */
+            if (exists(pathDest))
+                remove(pathDest);
+
+            /* Get the input stream of source file. */
+            std::ifstream sourceFile(pathSource, std::ios::binary);
+            sourceFile.exceptions(std::ios::badbit);
+
+            /* Get the output stream of destination file. */
+            std::ofstream destFile(pathDest, std::ios::binary);
+            destFile.exceptions(std::ios::badbit);
+
+            /* Copy the bytes. */
+            destFile << sourceFile.rdbuf();
+
+            /* Close the file handles and flush buffers. */
+            sourceFile.close();
+            destFile.close();
+
+#ifndef WIN32
+            /* Set destination file permissions (read/write by owner only for data files) */
+            mode_t m = S_IRUSR | S_IWUSR;
+            chmod(pathDest.c_str(), m);
+#endif
+
+        }
+        catch(const std::ios_base::failure &e)
+        {
+            return debug::error(FUNCTION " failed to write %s", __PRETTY_FUNCTION__, e.what());
+        }
+
+        return true;
     }
 
     /* Determines if the specified path is a folder. */
@@ -87,17 +133,17 @@ namespace filesystem
         if(exists(path)) //if the directory exists, don't attempt to create it
             return true;
 
-          /* set directory with read/write/search permissions for
-             owner/group/other */
+        /* Set directory with read/write/search permissions for owner/group/other */
         mode_t m = S_IRWXU | S_IRWXG | S_IRWXO;
         int status = mkdir(path.c_str(), m);
 
+        /* Handle failures. */
         if(status < 0)
         {
-            printf("Failed to create directory: %s\nReason: %s\n",
+            return debug::error(FUNCTION "Failed to create directory: %s\nReason: %s\n", __PRETTY_FUNCTION__,
                 path.c_str(), strerror(errno));
-            return false;
         }
+
         return true;
     }
 
@@ -107,7 +153,7 @@ namespace filesystem
         char buffer[MAX_PATH] = {0};
         std::string abs_path;
 
-          //get the path of the current directory and append path name to that
+        //get the path of the current directory and append path name to that
         abs_path = getcwd(buffer, MAX_PATH);
     #ifdef WIN32
         abs_path += "\\";

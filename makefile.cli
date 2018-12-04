@@ -110,12 +110,16 @@ else
 	CXXFLAGS+= -w
 endif
 
-#Display Warnings while compiling
+#Enable / Disable debug symbols and set appropriate optimization level
 ifdef ENABLE_DEBUG
 	DEBUG+=-g
+	OPTIMIZATION+=-O0
 else
 	DEBUG+=-s
+	OPTIMIZATION+=-O3
 endif
+
+
 
 #Source File List
 HEADERS= $(wildcard *.h)
@@ -129,7 +133,6 @@ OBJS= \
 	build/KeccakHash.o \
 	build/random.o \
 	build/key.o \
-	build/global.o \
 	build/network.o \
 	build/hosts.o \
 	build/socket.o \
@@ -139,10 +142,20 @@ OBJS= \
 	build/address.o \
 	build/enum.o \
 	build/secret.o \
+	build/script.o \
+	build/outpoint.o \
 	build/transaction.o \
 	build/block.o \
+	build/prime.o \
+	build/global.o \
+	build/corenode.o \
+	build/cmd.o \
+	build/rpcnode.o \
+	build/rpc.o \
+	build/info.o \
 	build/args.o \
 	build/base58.o \
+	build/base64.o \
 	build/config.o \
 	build/debug.o \
     build/filesystem.o
@@ -181,7 +194,7 @@ CXXFLAGS+= -mthreads \
 	-static \
 	-static-libgcc \
 	-static-libstdc++ \
-	-O3 \
+	$(OPTIMIZATION) \
 	$(DEBUG) \
 	$(DEFS) \
 	$(INCLUDEPATHS)
@@ -215,6 +228,9 @@ build/%.o: ./src/LLP/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/%.o: ./src/TAO/API/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/%.o: ./src/TAO/API/RPC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/%.o: ./src/TAO/Legacy/%.cpp $(HEADERS)
@@ -328,6 +344,13 @@ build/%.o: src/LLP/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/%.o: src/TAO/API/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/TAO/API/RPC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -474,6 +497,13 @@ build/%.o: src/LLP/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/%.o: src/TAO/API/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/%.o: src/TAO/API/RPC/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

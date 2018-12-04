@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -122,7 +122,7 @@ namespace LLD
 
 
         /* Dump Key to Debug Console. */
-        void Print() { printf("SectorKey(nState=%u, nLength=%u, nSectorFile=%u, nSectorSize=%u, nSectorStart=%u)\n", nState, nLength, nSectorFile, nSectorSize, nSectorStart); }
+        void Print() { debug::log(0, "SectorKey(nState=%u, nLength=%u, nSectorFile=%u, nSectorSize=%u, nSectorStart=%u)\n", nState, nLength, nSectorFile, nSectorSize, nSectorStart); }
 
 
         /* Check for Key Activity on Sector. */

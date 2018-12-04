@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -147,11 +147,11 @@ namespace LLD
         /** Read the Database Keys and File Positions. **/
         void Initialize()
         {
-            LOCK(KEY_MUTEX);
+            std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
 
             /* Create directories if they don't exist yet. */
             //if(boost::filesystem::create_directories(strBaseLocation))
-                printf(FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
+                debug::log(0, FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
 
             /* Stats variable for collective keychain size. */
             uint32_t nKeychainSize = 0, nTotalKeys = 0;
@@ -160,8 +160,8 @@ namespace LLD
             /* Iterate through the files detected. */
             while(true)
             {
-                std::string strFilename = strprintf("%s_filemap.%05u", strBaseLocation.c_str(), nCurrentFile);
-                printf(FUNCTION "Checking File %s\n", __PRETTY_FUNCTION__, strFilename.c_str());
+                std::string strFilename = debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), nCurrentFile);
+                debug::log(0, FUNCTION "Checking File %s\n", __PRETTY_FUNCTION__, strFilename.c_str());
 
                 /* Get the Filename at given File Position. */
                 std::fstream fIncoming(strFilename.c_str(), std::ios::in | std::ios::binary);
@@ -183,7 +183,7 @@ namespace LLD
                 nCurrentFileSize = fIncoming.gcount();
                 nKeychainSize += nCurrentFileSize;
 
-                printf(FUNCTION "Keychain File %u Loading [%u bytes]...\n", __PRETTY_FUNCTION__, nCurrentFile, nCurrentFileSize);
+                debug::log(0, FUNCTION "Keychain File %u Loading [%u bytes]...\n", __PRETTY_FUNCTION__, nCurrentFile, nCurrentFileSize);
 
 
                 fIncoming.seekg (0, std::ios::beg);
@@ -220,8 +220,7 @@ namespace LLD
                         mapKeys[nBucket][vKey] = std::make_pair(nCurrentFile, nIterator);
 
                         /* Debug Output of Sector Key Information. */
-                        if(GetArg("-verbose", 0) >= 5)
-                            printf(FUNCTION "State: %u Length: %u File: %u Location: %u Key: %s\n", __PRETTY_FUNCTION__, cKey.nState, cKey.nLength, mapKeys[nBucket][vKey].first, mapKeys[nBucket][vKey].second, HexStr(vKey.begin(), vKey.end()).c_str());
+                        debug::log(5, FUNCTION "State: %u Length: %u File: %u Location: %u Key: %s\n", __PRETTY_FUNCTION__, cKey.nState, cKey.nLength, mapKeys[nBucket][vKey].first, mapKeys[nBucket][vKey].second, HexStr(vKey.begin(), vKey.end()).c_str());
 
                         nTotalKeys++;
                     }
@@ -229,8 +228,7 @@ namespace LLD
                     {
 
                         /* Debug Output of Sector Key Information. */
-                        if(GetArg("-verbose", 0) >= 5)
-                            printf(FUNCTION "Skipping Sector State: %u Length: %u\n", __PRETTY_FUNCTION__, cKey.nState, cKey.nLength);
+                        debug::log(5, FUNCTION "Skipping Sector State: %u Length: %u\n", __PRETTY_FUNCTION__, cKey.nState, cKey.nLength);
                     }
 
                     /* Increment the Iterator. */
@@ -244,13 +242,13 @@ namespace LLD
                 vKeychain.clear();
             }
 
-            printf(FUNCTION "Initialized with %u Keys | Total Size %u | Total Files %u | Current Size %u\n", __PRETTY_FUNCTION__, nTotalKeys, nKeychainSize, nCurrentFile + 1, nCurrentFileSize);
+            debug::log(0, FUNCTION "Initialized with %u Keys | Total Size %u | Total Files %u | Current Size %u\n", __PRETTY_FUNCTION__, nTotalKeys, nKeychainSize, nCurrentFile + 1, nCurrentFileSize);
         }
 
         /** Add / Update A Record in the Database **/
         bool Put(SectorKey cKey) const
         {
-            LOCK(KEY_MUTEX);
+            std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
 
             /* Write Header if First Update. */
             uint32_t nBucket = GetBucket(cKey.vKey);
@@ -259,13 +257,12 @@ namespace LLD
                 /* Check the Binary File Size. */
                 if(nCurrentFileSize > FILEMAP_MAX_FILE_SIZE)
                 {
-                    if(GetArg("-verbose", 0) >= 4)
-                        printf(FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
+                    debug::log(4, FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
 
                     nCurrentFile ++;
                     nCurrentFileSize = 0;
 
-                    std::ofstream ssFile(strprintf("%s_filemap.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                    std::ofstream ssFile(debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
                     ssFile.close();
                 }
 
@@ -274,7 +271,7 @@ namespace LLD
 
 
             /* Establish the Outgoing Stream. */
-            std::fstream ssFile(strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][cKey.vKey].first).c_str(), std::ios::in | std::ios::out | std::ios::binary);
+            std::fstream ssFile(debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][cKey.vKey].first).c_str(), std::ios::in | std::ios::out | std::ios::binary);
 
 
             /* Seek File Pointer */
@@ -297,8 +294,7 @@ namespace LLD
 
 
             /* Debug Output of Sector Key Information. */
-            if(GetArg("-verbose", 0) >= 4)
-                printf(FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s | Current File: %u | Current File Size: %u\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][cKey.vKey].second, mapKeys[nBucket][cKey.vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str(), nCurrentFile, nCurrentFileSize);
+            debug::log(4, FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s | Current File: %u | Current File Size: %u\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][cKey.vKey].second, mapKeys[nBucket][cKey.vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str(), nCurrentFile, nCurrentFileSize);
 
 
             return true;
@@ -307,16 +303,16 @@ namespace LLD
         /** Simple Erase for now, not efficient in Data Usage of HD but quick to get erase function working. **/
         bool Erase(const std::vector<uint8_t> vKey)
         {
-            LOCK(KEY_MUTEX);
+            std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
 
             /* Check for the Key. */
             uint32_t nBucket = GetBucket(vKey);
             if(!mapKeys[nBucket].count(vKey))
-                return error(FUNCTION "Key doesn't Exist", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "Key doesn't Exist", __PRETTY_FUNCTION__);
 
 
             /* Establish the Outgoing Stream. */
-            std::string strFilename = strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][vKey].first);
+            std::string strFilename = debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][vKey].first);
             std::fstream ssFile(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
 
 
@@ -339,7 +335,7 @@ namespace LLD
         /** Get a Record from the Database with Given Key. **/
         bool Get(const std::vector<uint8_t> vKey, SectorKey& cKey)
         {
-            LOCK(KEY_MUTEX);
+            std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
 
 
             /* Check the Memory Cache. */
@@ -356,7 +352,7 @@ namespace LLD
             {
 
                 /* Open the Stream Object. */
-                std::string strFilename = strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][vKey].first);
+                std::string strFilename = debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][vKey].first);
                 std::ifstream ssFile(strFilename.c_str(), std::ios::in | std::ios::binary);
 
 
@@ -375,8 +371,7 @@ namespace LLD
 
 
                 /* Debug Output of Sector Key Information. */
-                if(GetArg("-verbose", 0) >= 4)
-                    printf(FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][vKey].second, mapKeys[nBucket][vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(vKey.begin(), vKey.end()).c_str());
+                debug::log(4, FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][vKey].second, mapKeys[nBucket][vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(vKey.begin(), vKey.end()).c_str());
 
 
                 /* Skip Empty Sectors for Now. (TODO: Expand to Reads / Writes) */
@@ -388,7 +383,7 @@ namespace LLD
 
                     /* Check the Keys Match Properly. */
                     if(vKeyIn != vKey)
-                        return error(FUNCTION "Key Mistmatch: DB:: %s MEM %s\n", __PRETTY_FUNCTION__, HexStr(vKeyIn.begin(), vKeyIn.end()).c_str(), HexStr(vKey.begin(), vKey.end()).c_str());
+                        return debug::error(FUNCTION "Key Mistmatch: DB:: %s MEM %s\n", __PRETTY_FUNCTION__, HexStr(vKeyIn.begin(), vKeyIn.end()).c_str(), HexStr(vKey.begin(), vKey.end()).c_str());
 
                     /* Assign Key to Sector. */
                     cKey.vKey = vKeyIn;

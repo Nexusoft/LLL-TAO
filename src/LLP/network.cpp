@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -11,18 +11,18 @@
 
 ____________________________________________________________________________________________*/
 
-#include "include/network.h"
-#include "include/hosts.h"
+#include <LLP/include/network.h>
+#include <LLP/include/hosts.h>
 
-#include "../Util/include/debug.h"
+#include <LLC/hash/SK.h>
 
-#include "../LLC/hash/SK.h"
+#include <Util/include/debug.h>
+#include <Util/include/strlcpy.h>
 
 #ifndef WIN32
 #include <sys/fcntl.h>
 #endif
 
-#include "../Util/include/strlcpy.h"
 
 namespace LLP
 {
@@ -74,12 +74,10 @@ namespace LLP
     }
 
 
-    #ifdef USE_IPV6
     CNetAddr::CNetAddr(const struct in6_addr& ipv6Addr)
     {
         memcpy(ip, &ipv6Addr, 16);
     }
-    #endif
 
 
     CNetAddr::CNetAddr(const char *pszIp, bool fAllowLookup)
@@ -246,13 +244,19 @@ namespace LLP
     std::string CNetAddr::ToStringIP() const
     {
         if (IsIPv4())
-            return strprintf("%u.%u.%u.%u", GetByte(3), GetByte(2), GetByte(1), GetByte(0));
+        {
+            char dst[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, ip + 12, dst, INET_ADDRSTRLEN);
+
+            return std::string(dst);
+        }
         else
-            return strprintf("%x:%x:%x:%x:%x:%x:%x:%x",
-                            GetByte(15) << 8 | GetByte(14), GetByte(13) << 8 | GetByte(12),
-                            GetByte(11) << 8 | GetByte(10), GetByte(9) << 8 | GetByte(8),
-                            GetByte(7) << 8 | GetByte(6), GetByte(5) << 8 | GetByte(4),
-                            GetByte(3) << 8 | GetByte(2), GetByte(1) << 8 | GetByte(0));
+        {
+            char dst[INET6_ADDRSTRLEN];
+            inet_ntop(AF_INET6, ip, dst, INET6_ADDRSTRLEN);
+
+            return std::string(dst);
+        }
     }
 
 
@@ -289,13 +293,11 @@ namespace LLP
     }
 
 
-    #ifdef USE_IPV6
     bool CNetAddr::GetIn6Addr(struct in6_addr* pipv6Addr) const
     {
         memcpy(pipv6Addr, ip, 16);
         return true;
     }
-    #endif
 
 
     // get canonical identifier of an address' group
@@ -370,7 +372,7 @@ namespace LLP
 
     void CNetAddr::print() const
     {
-        printf("CNetAddr(%s)\n", ToString().c_str());
+        debug::log(0, "CNetAddr(%s)\n", ToString().c_str());
     }
 
 
@@ -396,11 +398,9 @@ namespace LLP
     }
 
 
-    #ifdef USE_IPV6
     CService::CService(const struct in6_addr& ipv6Addr, uint16_t portIn) : CNetAddr(ipv6Addr), port(portIn)
     {
     }
-    #endif
 
 
     CService::CService(const struct sockaddr_in& addr) : CNetAddr(addr.sin_addr), port(ntohs(addr.sin_port))
@@ -409,12 +409,10 @@ namespace LLP
     }
 
 
-    #ifdef USE_IPV6
     CService::CService(const struct sockaddr_in6 &addr) : CNetAddr(addr.sin6_addr), port(ntohs(addr.sin6_port))
     {
-    assert(addr.sin6_family == AF_INET6);
+        assert(addr.sin6_family == AF_INET6);
     }
-    #endif
 
 
     CService::CService(const char *pszIpPort, bool fAllowLookup)
@@ -490,7 +488,6 @@ namespace LLP
     }
 
 
-    #ifdef USE_IPV6
     bool CService::GetSockAddr6(struct sockaddr_in6* paddr) const
     {
         memset(paddr, 0, sizeof(struct sockaddr_in6));
@@ -500,7 +497,6 @@ namespace LLP
         paddr->sin6_port = htons(port);
         return true;
     }
-    #endif
 
 
     std::vector<uint8_t> CService::GetKey() const
@@ -516,7 +512,7 @@ namespace LLP
 
     std::string CService::ToStringPort() const
     {
-        return strprintf(":%i", port);
+        return debug::strprintf(":%i", port);
     }
 
 
@@ -534,7 +530,7 @@ namespace LLP
 
     void CService::print() const
     {
-        printf("CService(%s)\n", ToString().c_str());
+        debug::log(0, "CService(%s)\n", ToString().c_str());
     }
 
 

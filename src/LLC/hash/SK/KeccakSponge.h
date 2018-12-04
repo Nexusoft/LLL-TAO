@@ -14,7 +14,7 @@ http://creativecommons.org/publicdomain/zero/1.0/
 #ifndef _KeccakSponge_h_
 #define _KeccakSponge_h_
 
-#include "KeccakF-1600-interface.h"
+#include <LLC/hash/SK/KeccakF-1600-interface.h>
 
 // on Mac OS-X and possibly others, ALIGN(x) is defined in param.h, and -Werror chokes on the redef.
 #ifdef ALIGN
@@ -61,7 +61,7 @@ int Keccak_SpongeInitialize(Keccak_SpongeInstance *spongeInstance, uint32_t rate
 /**
   * Function to give input data bytes for the sponge function to absorb.
   * @param  spongeInstance  Pointer to the sponge instance initialized by Keccak_SpongeInitialize().
-  * @param  data        Pointer to the input data. 
+  * @param  data        Pointer to the input data.
   * @param  dataByteLen  The number of input bytes provided in the input data.
   * @pre    The sponge function must be in the absorbing phase,
   *         i.e., Keccak_SpongeSqueeze() or Keccak_SpongeAbsorbLastFewBits()
@@ -74,7 +74,7 @@ int Keccak_SpongeAbsorb(Keccak_SpongeInstance *spongeInstance, const uint8_t *da
   * Function to give input data bits for the sponge function to absorb
   * and then to switch to the squeezing phase.
   * @param  spongeInstance  Pointer to the sponge instance initialized by Keccak_SpongeInitialize().
-  * @param  delimitedData   Byte containing from 0 to 7 trailing bits 
+  * @param  delimitedData   Byte containing from 0 to 7 trailing bits
   *                     that must be absorbed.
   *                     These <i>n</i> bits must be in the least significant bit positions.
   *                     These bits must be delimited with a bit 1 at position <i>n</i>
@@ -96,8 +96,8 @@ int Keccak_SpongeAbsorbLastFewBits(Keccak_SpongeInstance *spongeInstance, uint8_
 
 /**
   * Function to squeeze output data from the sponge function.
-  * If the sponge function was in the absorbing phase, this function 
-  * switches it to the squeezing phase 
+  * If the sponge function was in the absorbing phase, this function
+  * switches it to the squeezing phase
   * as if Keccak_SpongeAbsorbLastFewBits(spongeInstance, 0x01) was called.
   * @param  spongeInstance  Pointer to the sponge instance initialized by Keccak_SpongeInitialize().
   * @param  data        Pointer to the buffer where to store the output data.

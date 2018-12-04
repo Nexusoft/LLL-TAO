@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -11,10 +11,18 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/include/global.h>
+#ifndef NEXUS_LLP_INCLUDE_GLOBAL_H
+#define NEXUS_LLP_INCLUDE_GLOBAL_H
 
-namespace LLD
+#include <LLP/types/legacy.h>
+#include <LLP/types/tritium.h>
+
+#include <LLP/templates/server.h>
+
+namespace LLP
 {
-    RegisterDB* regDB;
-    LedgerDB*   legDB;
+    extern Server<LegacyNode>*   LEGACY_SERVER;
+    extern Server<TritiumNode>* TRITIUM_SERVER;
 }
+
+#endif

@@ -12,14 +12,14 @@
 **
 ** To port Skein to an "unsupported" platform, change the definitions
 ** in this file appropriately.
-** 
+**
 ********************************************************************/
 
-#include <brg_types.h>                      /* get integer type definitions */
+#include <LLC/hash/Skein3Fish/include/brg_types.h>  /* get integer type definitions */
 
-typedef uint32_t    uint_t;             /* native uint32_teger */
-typedef uint_8t         u08b_t;             /*  8-bit uint32_teger */
-typedef uint_64t        u64b_t;             /* 64-bit uint32_teger */
+typedef uint32_t    uint_t;        /* native uint32_teger */
+typedef uint_8t         u08b_t;    /*  8-bit uint32_teger */
+typedef uint_64t        u64b_t;    /* 64-bit uint32_teger */
 
 #ifndef RotL_64
 #define RotL_64(x,N)    (((x) << (N)) | ((x) >> (64-(N))))
@@ -36,7 +36,7 @@ typedef uint_64t        u64b_t;             /* 64-bit uint32_teger */
  *    Skein_Swap64
  *
  * If SKEIN_NEED_SWAP is defined at compile time, it is used here
- * along with the portable versions of Put64/Get64/Swap64, which 
+ * along with the portable versions of Put64/Get64/Swap64, which
  * are slow in general.
  *
  * Otherwise, an "auto-detect" of endianness is attempted below.
@@ -46,7 +46,7 @@ typedef uint_64t        u64b_t;             /* 64-bit uint32_teger */
  */
 #ifndef SKEIN_NEED_SWAP /* compile-time "override" for endianness? */
 
-#include <brg_endian.h>              /* get endianness selection */
+#include <LLC/include/brg_endian.h>    /* get endianness selection */
 #if   PLATFORM_BYTE_ORDER == IS_BIG_ENDIAN
     /* here for big-endian CPUs */
 #define SKEIN_NEED_SWAP   (1)

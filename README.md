@@ -1,6 +1,6 @@
 # Lower Level Library / TAO Framework
 
-Series of Templates for developing Crypto, Database, or Protocol. Base templates for the TAO framework, which will inhereit these templates and create higher level functionality. This TAO framework is the foundation to Nexus as an integrated series of core upgrades for a live blockchain to upgrade into a multi-dimensional chain. This is named the acronym TAO standing for Tritium, Amine, and Obsidian.
+Series of Templates for developing Crypto, Database, or Protocol. Base templates for the TAO framework, which will inherit these templates and create higher level functionality. This TAO framework is the foundation to Nexus as an integrated series of core upgrades for a live blockchain to upgrade into a multi-dimensional chain. This is named the acronym TAO standing for Tritium, Amine, and Obsidian.
 
 
 ## TAO Framework
@@ -35,7 +35,7 @@ The third of the three updates in the TAO Framework. Obsidian will include the f
 * L3 Distributed Mining Pool
 * L3 Trust Locking and Reputation
 * Distributed Autonomous Community
-* Ambassador / Developer Contracts (Validated on Ledger)
+* Ambassador / Developer Contracts
 * Advanced Contracts (Phase 3)
 
 
@@ -47,24 +47,38 @@ Following will include descriptions of the core components of the Lower Level Li
 
 Set of Operations for handling Crypto including:
 
-* Digital Signatures (ECDSA, Schnorr, Hash Based)
+* Digital Signatures (ECDSA, Hash Based)
 * Hashing (SHA3 / Notable Secure Algorithms)
-* Encyrption (Symmetric / Assymetric)
-* Post-Quantum Cyrptography (Experimental)
+* Encryption (Symmetric / Asymmetric)
+* Post-Quantum Cryptography (Experimental)
+
+Currently Implemented:
+
+* SK Hashing (Skein and Keccak)
+* OpenSSL wrapping functions (EC_KEY, BIGNUM)
+
+To Implement:
+
+* Experimental Lattice Based Signature Schemes
 
 
 ### Lower Level Database
 
 Set of Templates for designing high efficiency database systems. Core templates can be expanded into higher level database types.
 
-* Key Database
+* Keychain Database
 * Sector Database
-* Transaction Database (ACID)
-* Checkpoint Database (Journal)
+
+Keychains Included:
+
+* Binary File Map
+* Binary Hash Map
+
+We welcome any contributions of new keychains to provide different indexing data structures of the sector data.
 
 ### Lower Level Protocol
 
-Set of Client / Server templates for efficient data handling. Processes over 10k connections per server. Inhereit and create custom packet types to write a new protocol with ease and no network programming required.
+Set of Client / Server templates for efficient data handling. Inherit and create custom packet types to write a new protocol with ease and no network programming required.
 
 * Data Server
 * Listening Server
@@ -72,6 +86,12 @@ Set of Client / Server templates for efficient data handling. Processes over 10k
 * Packet Styles
 * Event Triggers
 * DDOS Throttling
+
+LLP Protocols Implemented:
+
+* Legacy
+* Tritium
+* HTTP
 
 
 ### Utilities
@@ -81,11 +101,13 @@ Set of useful tools for developing any program such as:
 * Serialization
 * Runtime
 * Debug
+* Json
 * Arguments
 * Containers
 * Configuration
 * Sorting
 * Allocators
+* Filesystem
 
 
 ## License
@@ -110,4 +132,4 @@ These core templates can be expanded in any way by inheriting the base templates
 
 
 ## Why?
-A lot of software that we use today for databases, or protocols, or cyrptography was created back in the 1990's as open source software. Since then the industry has expanded and bloated this code causing performance degragation. The aim of these templates is performance in simplicity. Include only what is needed, no more, and no less. This allows extremely high performance and scaleability necessary for the new distributed systems that will continue to evolve over the next few decades.
+A lot of software that we use today for databases, or protocols, or cryptography was created back in the 1990's as open source software. Since then the industry has expanded and bloated this code causing performance degradation. The aim of these templates is performance in simplicity. Include only what is needed, no more, and no less. This allows extremely high performance and scaleability necessary for the new distributed systems that will continue to evolve over the next few decades.

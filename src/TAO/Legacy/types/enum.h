@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -17,6 +17,14 @@ ________________________________________________________________________________
 
 namespace Legacy
 {
+
+    /** Transaction Fee Based Relay Codes. **/
+    enum GetMinFee_mode
+    {
+        GMF_BLOCK,
+        GMF_RELAY,
+        GMF_SEND,
+    };
 
     /** Enumeration of scripts. **/
     enum

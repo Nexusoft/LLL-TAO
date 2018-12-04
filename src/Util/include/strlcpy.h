@@ -20,11 +20,13 @@
 #include <stdlib.h>
 #include <cstring>
 
-/*
- * Copy src to string dst of size siz.  At most siz-1 characters
- * will be copied.  Always NUL terminates (unless siz == 0).
- * Returns strlen(src); if retval >= siz, truncation occurred.
- */
+/** strlcpy
+ *
+ *  Copy src to string dst of size siz.  At most siz-1 characters
+ *  will be copied.  Always NUL terminates (unless siz == 0).
+ *  Returns strlen(src); if retval >= siz, truncation occurred.
+ *
+ **/
 inline size_t strlcpy(char *dst, const char *src, size_t siz)
 {
     char *d = dst;
@@ -53,13 +55,15 @@ inline size_t strlcpy(char *dst, const char *src, size_t siz)
     return(s - src - 1); /* count does not include NUL */
 }
 
-/*
- * Appends src to string dst of size siz (unlike strncat, siz is the
- * full size of dst, not space left).  At most siz-1 characters
- * will be copied.  Always NUL terminates (unless siz <= strlen(dst)).
- * Returns strlen(src) + MIN(siz, strlen(initial dst)).
- * If retval >= siz, truncation occurred.
- */
+/** strlcat
+ *
+ *  Appends src to string dst of size siz (unlike strncat, siz is the
+ *  full size of dst, not space left).  At most siz-1 characters
+ *  will be copied.  Always NUL terminates (unless siz <= strlen(dst)).
+ *  Returns strlen(src) + MIN(siz, strlen(initial dst)).
+ *  If retval >= siz, truncation occurred.
+ *
+ **/
 inline size_t strlcat(char *dst, const char *src, size_t siz)
 {
     char *d = dst;

@@ -8,7 +8,8 @@ alias ll         'ls -lag'
 alias ld         'ls -lgd'
 alias h          'history'            
 alias t          'nice top -d 1'
-alias td         'tcpdump -i any -n'
+alias aptget     'sudo apt-get -o Acquire::ForceIPv4=true install'
+
 
 #
 # Nexus handy aliases.
@@ -16,18 +17,29 @@ alias td         'tcpdump -i any -n'
 alias run-nexus  '/nexus/run-nexus'
 alias ps-nexus   'psg nexus'
 alias tcp-nexus  'netstat -an | egrep "9323|9324|9325"'
+alias tcp-nexus-testnet 'netstat -an | egrep "7323|7324|7325"'
+alias ns-prod    'tcp-nexus'
+alias ns-testnet 'tcp-nexus-testnet'
 alias ncli       '/nexus/nexus -testnet'
 alias ninfo      'ncli getinfo'
 alias npeers     'ncli getpeerinfo'
 alias npeercount 'ncli getconnectioncount'
 
 #
+# Handy network aliases.
+#
+alias ns          'netstat -an'
+alias ping-seed4  'ping 240.0.255.255'
+alias ping-seed6  'ping fe::255:255'
+alias td          'tcpdump -i any -n'
+
+#
 # LISP handy aliases.
 #            
 alias ps-lisp   'pushd /lispers.net > /dev/null; ./pslisp; popd > /dev/null'
-alias ver       'curl --silent --insecure -u root: https://localhost:8080/lisp/api/data/system | jq .'
+alias ver       'curl --silent --insecure -u root: http://localhost:9090/lisp/api/data/system | jq .'
 alias eids      'mc | egrep "eid-prefix|group-prefix"'
-alias myeids    'curl --silent --insecure -u root: https://localhost:8080/lisp/api/database-mapping | jq .| egrep "eid-prefix"'
-alias mc        'curl --silent --insecure -u root: https://localhost:8080/lisp/api/data/map-cache | jq .'
+alias myeids    'curl --silent --insecure -u root: http://localhost:9090/lisp/api/database-mapping | jq .| egrep "eid-prefix"'
+alias mc        'curl --silent --insecure -u root: http://localhost:9090/lisp/api/data/map-cache | jq .'
 alias rate      'mc | egrep "stats|address|state"'
 alias rate-loop 'echo "while 1 \n rate | sort -bu \n echo \n sleep 1 \n end \n" | tcsh'

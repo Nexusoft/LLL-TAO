@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -15,10 +15,10 @@ ________________________________________________________________________________
 #include <vector>
 #include <stdio.h>
 
-#include "include/network.h"
-#include "templates/socket.h"
+#include <LLP/include/network.h>
+#include <LLP/templates/socket.h>
 
-#include "../Util/include/debug.h"
+#include <Util/include/debug.h>
 
 #ifndef WIN32
 #include <arpa/inet.h>
@@ -50,21 +50,45 @@ namespace LLP
     bool Socket::Connect(CService addrDest, int nTimeout)
     {
         /* Create the Socket Object (Streaming TCP/IP). */
-        nSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if(addrDest.IsIPv4())
+            nSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        else
+            nSocket = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 
         /* Catch failure if socket couldn't be initialized. */
         if (nSocket == INVALID_SOCKET)
             return false;
 
-        /* Set the socket address from the CService. */
-        struct sockaddr_in sockaddr;
-        addrDest.GetSockAddr(&sockaddr);
+        /* Set the socket to non blocking. */
+        fcntl(nSocket, F_SETFL, O_NONBLOCK);
 
-        /* Copy in the new address. */
-        addr = CAddress(sockaddr);
+        /* Open the socket connection for IPv4 / IPv6. */
+        bool fConnected = false;
+        if(addrDest.IsIPv4())
+        {
+            /* Set the socket address from the CService. */
+            struct sockaddr_in sockaddr;
+            addrDest.GetSockAddr(&sockaddr);
 
-        /* Open the socket connection. */
-        if (connect(nSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
+            /* Copy in the new address. */
+            addr = CAddress(sockaddr);
+
+            fConnected = (connect(nSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
+        }
+        else
+        {
+            /* Set the socket address from the CService. */
+            struct sockaddr_in6 sockaddr;
+            addrDest.GetSockAddr6(&sockaddr);
+
+            /* Copy in the new address. */
+            addr = CAddress(sockaddr);
+
+            fConnected = (connect(nSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
+        }
+
+        /* Handle final socket checks if connection established with no errors. */
+        if (fConnected)
         {
             // WSAEINVAL is here because some legacy version of winsock uses it
             if (GetLastError() == WSAEINPROGRESS || GetLastError() == WSAEWOULDBLOCK || GetLastError() == WSAEINVAL)
@@ -81,7 +105,7 @@ namespace LLP
                 /* If the connection attempt timed out with select. */
                 if (nRet == 0)
                 {
-                    printf("***** Node Connection Timeout %s...\n", addrDest.ToString().c_str());
+                    debug::log(0, "***** Node Connection Timeout %s...\n", addrDest.ToString().c_str());
 
                     close(nSocket);
 
@@ -91,7 +115,7 @@ namespace LLP
                 /* If the select failed. */
                 if (nRet == SOCKET_ERROR)
                 {
-                    printf("***** Node Select Failed %s (%i)\n", addrDest.ToString().c_str(), GetLastError());
+                    debug::log(0, "***** Node Select Failed %s (%i)\n", addrDest.ToString().c_str(), GetLastError());
 
                     close(nSocket);
 
@@ -106,7 +130,7 @@ namespace LLP
                 if (getsockopt(nSocket, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
     #endif
                 {
-                    printf("***** Node Get Options Failed %s (%i)\n", addrDest.ToString().c_str(), GetLastError());
+                    debug::log(0, "***** Node Get Options Failed %s (%i)\n", addrDest.ToString().c_str(), GetLastError());
                     close(nSocket);
 
                     return false;
@@ -115,7 +139,7 @@ namespace LLP
                 /* If there are no socket options set. TODO: Remove preprocessors for cross platform sockets. */
                 if (nRet != 0)
                 {
-                    printf("***** Node Failed after Select %s (%i)\n", addrDest.ToString().c_str(), nRet);
+                    debug::log(0, "***** Node Failed after Select %s (%i)\n", addrDest.ToString().c_str(), nRet);
                     close(nSocket);
 
                     return false;
@@ -127,7 +151,7 @@ namespace LLP
             else
     #endif
             {
-                printf("***** Node Connect Failed %s (%i)\n", addrDest.ToString().c_str(), GetLastError());
+                debug::log(0, "***** Node Connect Failed %s (%i)\n", addrDest.ToString().c_str(), GetLastError());
                 close(nSocket);
 
                 return false;
@@ -163,19 +187,37 @@ namespace LLP
     /* Read data from the socket buffer non-blocking */
     int Socket::Read(std::vector<uint8_t> &vData, size_t nBytes)
     {
-        char pchBuf[nBytes];
+        int8_t pchBuf[nBytes];
         int nRead = recv(nSocket, pchBuf, nBytes, MSG_DONTWAIT);
         if (nRead < 0)
         {
             nError = GetLastError();
-            if(GetArg("-verbose", 0) >= 2)
-                printf("xxxxx Node Read Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
+            debug::log(2, "xxxxx Node Read Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
 
             return nError;
         }
 
         if(nRead > 0)
             std::copy(&pchBuf[0], &pchBuf[0] + nRead, vData.begin());
+
+        return nRead;
+    }
+
+    /* Read data from the socket buffer non-blocking */
+    int Socket::Read(std::vector<int8_t> &vchData, size_t nBytes)
+    {
+        int8_t pchBuf[nBytes];
+        int nRead = recv(nSocket, pchBuf, nBytes, MSG_DONTWAIT);
+        if (nRead < 0)
+        {
+            nError = GetLastError();
+            debug::log(2, "xxxxx Node Read Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
+
+            return nError;
+        }
+
+        if(nRead > 0)
+            std::copy(&pchBuf[0], &pchBuf[0] + nRead, vchData.begin());
 
         return nRead;
     }
@@ -192,8 +234,7 @@ namespace LLP
         if(nSent < 0)
         {
             nError = GetLastError();
-            if(GetArg("-verbose", 0) >= 2)
-                printf("xxxxx Node Write Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
+            debug::log(2, "xxxxx Node Write Failed %s (%i %s)\n", addr.ToString().c_str(), nError, strerror(nError));
 
             return nError;
         }

@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -13,8 +13,8 @@ ________________________________________________________________________________
 
 #include <string>
 
-#include "../../../LLC/hash/SK.h"
-#include "../../../LLC/hash/macro.h"
+#include <LLC/hash/SK.h>
+#include <LLC/hash/macro.h>
 
 namespace TAO
 {
@@ -49,7 +49,7 @@ namespace TAO
 
             /** Generate Function
             *
-            * This function is responsible for genearting the privat ekey in the keychain of a specific account.
+            * This function is responsible for genearting the private key in the keychain of a specific account.
             * The keychain is a series of keys seeded from a secret phrase and a PIN number.
             *
             * @param[in] nKeyID The key number in the keychian
@@ -80,8 +80,12 @@ namespace TAO
                 uint1024_t hashSecret = LLC::SK1024(vSecret);
                 uint1024_t hashPIN    = LLC::SK1024(vPin);
 
+                std::vector<uint8_t> vFinal;
+                vFinal.insert(vFinal.end(), (uint8_t*)&hashSecret, (uint8_t*)&hashSecret + 128);
+                vFinal.insert(vFinal.end(), (uint8_t*)&hashPIN, (uint8_t*)&hashPIN + 128);
+
                 /* Generate the Final Root Hash. */
-                return LLC::SK512(BEGIN(hashSecret), END(hashPIN));
+                return LLC::SK512(vFinal);
             }
         };
     }

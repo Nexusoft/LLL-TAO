@@ -17,6 +17,7 @@ The variable names have a prefix that defines the type. This helps us not lose t
 
 ### STL Types
 
+* (str)Variable ex. strVar - (str) denotes the type is a std::string.
 * (v)Variable ex. vArr     - (v)   denotes the type is a std::vector.
 * (map)Variable ex. mapVar - (map) denotes the type is a std::map
 * (set)Variable ex. setVar - (set) denotes the type is a std::set
@@ -31,7 +32,7 @@ Always use namespaces to keep the code well ordered and organized. The guide to 
 
 This section involes how to format the code due to carriage return
 
-* Avoid K&R style brackets. Put opening and closing brackets on thier own lines.
+* Avoid K&R style brackets. Put opening and closing brackets on their own lines.
 
 * Use tab length 4 and replace tabs with spaces
 

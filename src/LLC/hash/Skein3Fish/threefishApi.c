@@ -1,6 +1,6 @@
 
 
-#include <threefishApi.h>
+#include <LLC/hash/Skein3Fish/include/threefishApi.h>
 #include <stdlib.h>
 #include <cstring>
 
@@ -28,7 +28,7 @@ void threefishEncryptBlockBytes(ThreefishKey_t* keyCtx, uint8_t* in,
 {
     u64b_t plain[SKEIN_MAX_STATE_WORDS];        /* max number of words*/
     u64b_t cipher[SKEIN_MAX_STATE_WORDS];
-    
+
     Skein_Get64_LSB_First(plain, in, keyCtx->stateSize / 64);   /* bytes to words */
     threefishEncryptBlockWords(keyCtx, plain, cipher);
     Skein_Put64_LSB_First(out, cipher, keyCtx->stateSize / 8);  /* words to bytes */
@@ -55,7 +55,7 @@ void threefishDecryptBlockBytes(ThreefishKey_t* keyCtx, uint8_t* in,
 {
     u64b_t plain[SKEIN_MAX_STATE_WORDS];        /* max number of words*/
     u64b_t cipher[SKEIN_MAX_STATE_WORDS];
-    
+
     Skein_Get64_LSB_First(cipher, in, keyCtx->stateSize / 64);  /* bytes to words */
     threefishDecryptBlockWords(keyCtx, cipher, plain);
     Skein_Put64_LSB_First(out, plain, keyCtx->stateSize / 8);   /* words to bytes */
@@ -76,4 +76,3 @@ void threefishDecryptBlockWords(ThreefishKey_t* keyCtx, uint64_t* in,
             break;
     }
 }
-

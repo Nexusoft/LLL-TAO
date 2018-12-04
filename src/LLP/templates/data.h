@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TEMPLATES_DATA_H
 
 #include <LLP/templates/types.h>
+
+#include <condition_variable>
 
 namespace LLP
 {
@@ -35,6 +37,10 @@ namespace LLP
 
         /* Vector to store Connections. */
         std::vector< ProtocolType* > CONNECTIONS;
+
+
+        /* The condition for thread sleeping. */
+        std::condition_variable CONDITION;
 
 
         /* Data Thread. */
@@ -74,6 +80,8 @@ namespace LLP
             CONNECTIONS[nSlot]->fCONNECTED = true;
 
             nConnections ++;
+
+            CONDITION.notify_all();
         }
 
         /* Adds a new connection to current Data Thread */
@@ -102,6 +110,8 @@ namespace LLP
             CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
             nConnections ++;
 
+            CONDITION.notify_all();
+
             return true;
         }
 
@@ -122,11 +132,15 @@ namespace LLP
             Creates a Packet QUEUE on this connection to be processed by an LLP Messaging Thread. */
         void Thread()
         {
-            while(!fShutdown)
+            /* The mutex for the condition. */
+            std::mutex CONDITION_MUTEX;
+
+            /* The main connection handler loop. */
+            while(!config::fShutdown)
             {
-                /* Keep data threads at 1000 FPS Maximum. */
-                if(CONNECTIONS.size() == 0)
-                    Sleep(10);
+                /* Keep data threads waiting for work. */
+                std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+                CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(1000), [this]{ return CONNECTIONS.size() > 0; });
 
                 /* Check all connections for data and packets. */
                 int nSize = CONNECTIONS.size();
@@ -135,7 +149,7 @@ namespace LLP
                     try
                     {
                         //TODO: Cleanup threads and sleeps. Make more efficient to reduce total CPU cycles
-                        Sleep(1);
+                        Sleep(10);
 
                         /* Skip over Inactive Connections. */
                         if(!CONNECTIONS[nIndex] || !CONNECTIONS[nIndex]->Connected())
@@ -194,6 +208,18 @@ namespace LLP
                         /* If a Packet was received successfully, increment request count [and DDOS count if enabled]. */
                         if(CONNECTIONS[nIndex]->PacketComplete())
                         {
+                            /* Debug dump of message type. */
+                            debug::log(4, NODE "Recieved Message (%u bytes)\n", CONNECTIONS[nIndex]->INCOMING.GetBytes().size());
+
+                            /* Debug dump of packet data. */
+                            if(config::GetArg("-verbose", 0) >= 5)
+                                PrintHex(CONNECTIONS[nIndex]->INCOMING.GetBytes());
+
+                            /* Handle Meters and DDOS. */
+                            if(fMETER)
+                                REQUESTS++;
+                            if(fDDOS)
+                                CONNECTIONS[nIndex]->DDOS->rSCORE += 1;
 
                             /* Packet Process return value of False will flag Data Thread to Disconnect. */
                             if(!CONNECTIONS[nIndex]->ProcessPacket())
@@ -206,18 +232,11 @@ namespace LLP
                             }
 
                             CONNECTIONS[nIndex]->ResetPacket();
-
-                            if(fMETER)
-                                REQUESTS++;
-
-                            if(fDDOS)
-                                CONNECTIONS[nIndex]->DDOS->rSCORE += 1;
-
                         }
                     }
                     catch(std::exception& e)
                     {
-                        printf("data connection:  %s\n", e.what());
+                        debug::log(0, "data connection:  %s\n", e.what());
 
                         CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_ERRORS);
 

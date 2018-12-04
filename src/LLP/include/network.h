@@ -1,6 +1,6 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
             (c) Copyright The Nexus Developers 2014 - 2018
 
@@ -137,10 +137,8 @@ namespace LLP
             std::vector<uint8_t> GetGroup() const;
             void print() const;
 
-    #ifdef USE_IPV6
             CNetAddr(const struct in6_addr& pipv6Addr);
             bool GetIn6Addr(struct in6_addr* pipv6Addr) const;
-    #endif
 
             friend bool operator==(const CNetAddr& a, const CNetAddr& b);
             friend bool operator!=(const CNetAddr& a, const CNetAddr& b);
@@ -181,11 +179,9 @@ namespace LLP
             std::string ToStringIPPort() const;
             void print() const;
 
-    #ifdef USE_IPV6
             CService(const struct in6_addr& ipv6Addr, uint16_t port);
             bool GetSockAddr6(struct sockaddr_in6* paddr) const;
             CService(const struct sockaddr_in6& addr);
-    #endif
 
             IMPLEMENT_SERIALIZE
             (
@@ -240,7 +236,7 @@ namespace LLP
     class CAddrInfo : public CAddress
     {
     private:
-        
+
         /* Who Gave us this Address. */
         CNetAddr source;
 
@@ -292,15 +288,15 @@ namespace LLP
 
 
     /* Get the Main Core LLP Port for Nexus. */
-    inline uint16_t GetCorePort(const bool testnet = fTestNet){ return testnet ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT; }
+    inline uint16_t GetCorePort(const bool testnet = config::fTestNet){ return testnet ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT; }
 
 
     /* Get the Main Mining LLP Port for Nexus. */
-    inline uint16_t GetMiningPort(const bool testnet = fTestNet){ return testnet ? TESTNET_MINING_LLP_PORT : MAINNET_MINING_LLP_PORT; }
+    inline uint16_t GetMiningPort(const bool testnet = config::fTestNet){ return testnet ? TESTNET_MINING_LLP_PORT : MAINNET_MINING_LLP_PORT; }
 
 
     /* Get the Main Message LLP Port for Nexus. */
-    inline uint16_t GetDefaultPort(const bool testnet = fTestNet){ return testnet ? TESTNET_PORT : MAINNET_PORT; }
+    inline uint16_t GetDefaultPort(const bool testnet = config::fTestNet){ return testnet ? TESTNET_PORT : MAINNET_PORT; }
 
 
     /** Connect to a socket with given connection timeout flag. **/

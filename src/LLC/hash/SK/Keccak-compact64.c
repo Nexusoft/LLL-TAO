@@ -15,8 +15,8 @@ http://creativecommons.org/publicdomain/zero/1.0/
 #include <stdlib.h>
 #include <inttypes.h>
 
-#include "brg_endian.h"
-#include "KeccakF-1600-interface.h"
+#include <LLC/hash/SK/brg_endian.h>
+#include <LLC/hash/SK/KeccakF-1600-interface.h>
 
 #define USE_MEMSET
 //#define DIVISION_INSTRUCTION    //comment if no division instruction or more compact when not using division
