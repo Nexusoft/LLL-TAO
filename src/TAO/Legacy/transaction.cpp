@@ -21,7 +21,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/state.h>
 
-#include <Util/templates/serialize.h>
 #include <Util/include/runtime.h>
 
 namespace Legacy
@@ -31,17 +30,6 @@ namespace Legacy
     //keep here for now.
     const int64_t LOCKTIME_THRESHOLD = 500000000;
 
-
-    SERIALIZE_SOURCE
-    (
-        Transaction,
-
-        READWRITE(nVersion);
-        READWRITE(nTime);
-        READWRITE(vin);
-        READWRITE(vout);
-        READWRITE(nLockTime);
-    )
 
 	/* Sets the transaciton object to a null state. */
 	void Transaction::SetNull()

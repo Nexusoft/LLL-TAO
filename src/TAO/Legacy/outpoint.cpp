@@ -19,14 +19,6 @@ ________________________________________________________________________________
 
 namespace Legacy
 {
-	//the serizliation methods
-	SERIALIZE_SOURCE
-	(
-		COutPoint,
-
-		READWRITE(FLATDATA(*this));
-	)
-
 
 	/* Full object debug output */
 	std::string COutPoint::ToString() const

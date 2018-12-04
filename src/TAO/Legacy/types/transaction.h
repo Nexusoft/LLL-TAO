@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_TRANSACTION_H
 #define NEXUS_TAO_LEGACY_TYPES_TRANSACTION_H
 
-#include <Util/macro/header.h>
+#include <Util/templates/serialize.h>
 
 #include <TAO/Legacy/types/txin.h>
 #include <TAO/Legacy/types/txout.h>
@@ -61,7 +61,14 @@ namespace Legacy
 
 
 		//serialization methods
-		SERIALIZE_HEADER;
+		IMPLEMENT_SERIALIZE
+		(
+			READWRITE(nVersion);
+			READWRITE(nTime);
+			READWRITE(vin);
+			READWRITE(vout);
+			READWRITE(nLockTime);
+		)
 
 
 		/** Comparison overload (equals). **/
