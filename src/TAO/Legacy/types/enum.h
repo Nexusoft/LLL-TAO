@@ -18,6 +18,14 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+    /** Transaction Fee Based Relay Codes. **/
+    enum GetMinFee_mode
+    {
+        GMF_BLOCK,
+        GMF_RELAY,
+        GMF_SEND,
+    };
+
     /** Enumeration of scripts. **/
     enum
     {

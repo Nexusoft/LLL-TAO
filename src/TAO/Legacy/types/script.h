@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_INCLUDE_SCRIPT_H
 #define NEXUS_TAO_LEGACY_TYPES_INCLUDE_SCRIPT_H
 
-#include "base58.h"
+#include <Util/include/base58.h>
 
 #include <string>
 #include <vector>
@@ -23,6 +23,30 @@ namespace LLC { class CBigNum; }
 namespace Legacy
 {
     class Transaction;
+
+    /** Value String
+     *
+     *  Returns a string in integer value.
+     *
+     *  @param[in] vch the byte sequence to convert.
+     *
+     *  @return The return string with value output
+     *
+     **/
+    std::string ValueString(const std::vector<uint8_t>& vch);
+
+
+    /** Stack String
+     *
+     *  Builds a string of values in a stack seperated by spaces
+     *
+     *  @param[in] vStack The stack of data to output.
+     *
+     *  @return the return string with stack output.
+     *
+     **/
+    std::string StackString(const std::vector<std::vector<uint8_t> >& vStack);
+
 
     /** Serialized script, used inside transaction inputs and outputs */
     class CScript : public std::vector<uint8_t>

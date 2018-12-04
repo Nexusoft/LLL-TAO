@@ -26,22 +26,14 @@ namespace Legacy
 	namespace Types
 	{
 
-		/** Transaction Fee Based Relay Codes. **/
-		enum GetMinFee_mode
-		{
-			GMF_BLOCK,
-			GMF_RELAY,
-			GMF_SEND,
-		};
-
 		/** Typedef for reading previous transaction inputs. TODO: deprecate txindex **/
-		typedef std::map<uint512_t, std::pair<CTxIndex, CTransaction> > MapPrevTx;
+		typedef std::map<uint512_t, std::pair<TxIndex, Transaction> > MapPrevTx;
 
 
 		/** The basic transaction that is broadcasted on the network and contained in
 		 * blocks.  A transaction can contain multiple inputs and outputs.
 		 */
-		class CTransaction
+		class Transaction
 		{
 		public:
 			int nVersion;
