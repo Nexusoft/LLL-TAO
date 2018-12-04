@@ -29,6 +29,8 @@ ________________________________________________________________________________
 
 #include <LLP/include/global.h>
 
+#include <TAO/Legacy/types/inpoint.h>
+
 /* Declare the Global LLD Instances. */
 namespace LLD
 {

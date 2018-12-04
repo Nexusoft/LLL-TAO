@@ -41,7 +41,7 @@ namespace LLP
         }
         if (!HTTPAuthorized(INCOMING.mapHeaders))
         {
-            debug::log(0, "RPC incorrect password attempt from %s\n",this->SOCKET.addr.ToString()); //PS TODO this address of the peer is incorrect
+            debug::log(0, "RPC incorrect password attempt from %s\n",this->SOCKET.addr.ToString().c_str()); //PS TODO this address of the peer is incorrect
             /* Deter brute-forcing short passwords.
                 If this results in a DOS the user really
                 shouldn't have their RPC port exposed.*/
@@ -54,7 +54,7 @@ namespace LLP
 
         /* Get the parameters from the HTTP Packet. */
         json::json jsonIncoming = json::json::parse(INCOMING.strContent);
-    
+
         std::string strMethod = jsonIncoming["method"].get<std::string>();
         auto jsonParams = !jsonIncoming["params"].is_null() ? jsonIncoming["params"] : "";
 
@@ -76,7 +76,7 @@ namespace LLP
         std::string strAuth = mapHeaders["authorization"];
         if (strAuth.substr(0,6) != "Basic ")
             return false;
-        std::string strUserPass64 = strAuth.substr(6); 
+        std::string strUserPass64 = strAuth.substr(6);
         trim(strUserPass64);
         std::string strUserPass = encoding::DecodeBase64(strUserPass64);
         std::string strRPCUserColonPass = config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"];

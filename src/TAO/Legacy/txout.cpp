@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/version.h>
 
-#include <Util/include/parse.h>
+#include <Util/include/string.h>
 
 #include <TAO/Legacy/types/txout.h>
 #include <TAO/Legacy/types/script.h>

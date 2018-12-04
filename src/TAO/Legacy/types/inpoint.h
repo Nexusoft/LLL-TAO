@@ -11,72 +11,70 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_TYPES_INCLUDE_INPOINT_H
-#define NEXUS_TAO_LEGACY_TYPES_INCLUDE_INPOINT_H
+#ifndef NEXUS_TAO_LEGACY_TYPES_INPOINT_H
+#define NEXUS_TAO_LEGACY_TYPES_INPOINT_H
 
+#include <TAO/Legacy/types/transaction.h>
 
 namespace Legacy
 {
 
-	namespace Types
+	/** An inpoint - a combination of a transaction and an index n into its vin */
+	class CInPoint
 	{
+	public:
 
-		/** An inpoint - a combination of a transaction and an index n into its vin */
-		class CInPoint
+		/** The transaction pointer. **/
+		Transaction* ptx;
+
+
+		/** The index n of transaction input. **/
+		uint32_t n;
+
+
+		/** Default Constructor
+		 *
+		 *	Sets object to null state.
+		 *
+		 **/
+		CInPoint() { SetNull(); }
+
+
+		/** Constructor
+		 *
+		 *	@param[in] ptxIn The transaction input pointer
+		 *	@param[in] nIn The index input
+		 *
+		 **/
+		CInPoint(Transaction* ptxIn, uint32_t nIn)
 		{
-		public:
-
-			/** The transaction pointer. **/
-			CTransaction* ptx;
-
-
-			/** The index n of transaction input. **/
-			uint32_t n;
+			ptx = ptxIn;
+			n = nIn;
+		}
 
 
-			/** Default Constructor
-			 *
-			 *	Sets object to null state.
-			 *
-			 **/
-			CInPoint() { SetNull(); }
+		/** Set Null
+		 *
+		 *	Sets the object to null state
+		 *
+		 **/
+		void SetNull()
+		{
+			ptx = NULL;
+			n = -1;
+		}
 
 
-			/** Constructor
-			 *
-			 *	@param[in] ptxIn The transaction input pointer
-			 *	@param[in] nIn The index input
-			 *
-			 **/
-			CInPoint(CTransaction* ptxIn, uint32_t nIn)
-			{
-				ptx = ptxIn;
-				n = nIn;
-			}
-
-
-			/** Set Null
-			 *
-			 *	Sets the object to null state
-			 *
-			 **/
-			void SetNull()
-			{
-				ptx = NULL;
-				n = -1;
-			}
-
-
-			/** Is Null
-			 *
-			 *	Checks the objects null state.
-			 *
-			 **/
-			bool IsNull() const
-			{
-				return (ptx == NULL && n == -1);
-			}
-		};
-
-	}
+		/** Is Null
+		 *
+		 *	Checks the objects null state.
+		 *
+		 **/
+		bool IsNull() const
+		{
+			return (ptx == NULL && n == -1);
+		}
+	};
 }
+
+#endif
