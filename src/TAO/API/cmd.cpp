@@ -20,6 +20,9 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 
 #include <Util/include/json.h>
+#include <Util/include/config.h>
+#include <Util/include/base64.h>
+
 
 namespace TAO::API
 {
@@ -122,6 +125,16 @@ namespace TAO::API
             return 0;
         }
 
+        /** Check RPC user/pass are set */
+        if (config::mapArgs["-rpcuser"] == "" && config::mapArgs["-rpcpassword"] == "")
+            throw std::runtime_error(debug::strprintf(
+                "You must set rpcpassword=<password> in the configuration file:\n%s\n"
+                  "If the file does not exist, create it with owner-readable-only file permissions.",
+                    config::GetConfigFile().c_str())); 
+
+         // HTTP basic authentication
+        std::string strUserPass64 = encoding::EncodeBase64(config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"]);
+
         /* Build the JSON request object. */
         json::json parameters;
         for(int i = argn + 1; i < argc; i++)
@@ -137,10 +150,12 @@ namespace TAO::API
                 "Content-Length: %d\r\n"
                 "Content-Type: application/json\r\n"
                 "Server: Nexus-JSON-RPC\r\n"
+                "Authorization: Basic %s\r\n"
                 "\r\n"
                 "%s",
             rfc1123Time().c_str(),
             strContent.size(),
+            strUserPass64.c_str(),
             strContent.c_str());
 
         /* Convert the content into a byte buffer. */
@@ -148,9 +163,9 @@ namespace TAO::API
 
         /* Make the connection to the API server. */
         LLP::RPCNode rpcNode;
-        if(!rpcNode.Connect("127.0.0.1", config::fTestNet? 8336 : 9336))
+        if(!rpcNode.Connect(config::GetArg("-rpcconnect", "127.0.0.1"), config::GetArg("-rpcport",config::fTestNet? 8336 : 9336)))
         {
-            debug::log(0, "Couldn't Connect to API\n");
+            debug::log(0, "Couldn't Connect to RPC\n");
 
             return 0;
         }

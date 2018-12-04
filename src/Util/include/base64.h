@@ -43,7 +43,7 @@ namespace encoding
      *  @return The string of the base 64 encoded buffer
      *
      **/
-    inline std::string EncodeBase64(const std::string& str);
+    std::string EncodeBase64(const std::string& str);
 
 
     /** DecodeBase64
@@ -68,7 +68,7 @@ namespace encoding
      *  @return The string containing the decoded base 64 message.
      *
      **/
-    inline std::string DecodeBase64(const std::string& str);
+    std::string DecodeBase64(const std::string& str);
 
 }
 #endif

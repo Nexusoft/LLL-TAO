@@ -15,6 +15,9 @@ ________________________________________________________________________________
 #include <LLP/types/rpcnode.h>
 #include <TAO/API/include/rpc.h>
 #include <Util/include/json.h>
+#include <Util/include/config.h>
+#include <Util/include/base64.h>
+#include <Util/include/string.h>
 
 namespace LLP
 {
@@ -30,6 +33,25 @@ namespace LLP
     /** Main message handler once a packet is received. **/
     bool RPCNode::ProcessPacket()
     {
+        /** Check HTTP authorization */
+        if (INCOMING.mapHeaders.count("authorization") == 0)
+        {
+            PushResponse(401, "");
+            return true;
+        }
+        if (!HTTPAuthorized(INCOMING.mapHeaders))
+        {
+            debug::log(0, "RPC incorrect password attempt from %s\n",this->SOCKET.addr.ToString()); //PS TODO this address of the peer is incorrect
+            /* Deter brute-forcing short passwords.
+                If this results in a DOS the user really
+                shouldn't have their RPC port exposed.*/
+            if (config::mapArgs["-rpcpassword"].size() < 20)
+                Sleep(250);
+
+            PushResponse(401, "");
+            return true;
+        }
+
         /* Get the parameters from the HTTP Packet. */
         json::json jsonIncoming = json::json::parse(INCOMING.strContent);
     
@@ -47,6 +69,18 @@ namespace LLP
             return false;
 
         return true;
+    }
+
+    bool RPCNode::HTTPAuthorized(std::map<std::string, std::string>& mapHeaders)
+    {
+        std::string strAuth = mapHeaders["authorization"];
+        if (strAuth.substr(0,6) != "Basic ")
+            return false;
+        std::string strUserPass64 = strAuth.substr(6); 
+        trim(strUserPass64);
+        std::string strUserPass = encoding::DecodeBase64(strUserPass64);
+        std::string strRPCUserColonPass = config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"];
+        return strUserPass == strRPCUserColonPass;
     }
 
 

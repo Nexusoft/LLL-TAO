@@ -50,7 +50,9 @@ namespace LLP
         /** Main message handler once a packet is recieved. **/
         bool ProcessPacket();
 
+    protected:
 
+        bool HTTPAuthorized(std::map<std::string, std::string>& mapHeaders);
     };
 }
 
