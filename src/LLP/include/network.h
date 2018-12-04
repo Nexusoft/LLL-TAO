@@ -86,8 +86,8 @@ typedef int socklen_t;
 #define TESTNET_MINING_LLP_PORT 8325
 #endif
 
-#include "../../Util/include/args.h"
-#include "../../Util/templates/serialize.h"
+#include <Util/include/args.h>
+#include <Util/templates/serialize.h>
 
 namespace LLP
 {

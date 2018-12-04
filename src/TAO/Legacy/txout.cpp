@@ -11,83 +11,90 @@
 
 ____________________________________________________________________________________________*/
 
-#include "include/txout.h"
-#include "../"
+#include <LLC/hash/SK.h>
+
+#include <LLP/include/version.h>
+
+#include <Util/include/parse.h>
+
+#include <TAO/Legacy/types/txout.h>
+#include <TAO/Legacy/types/script.h>
 
 namespace Legacy
 {
+	//the serialization methods
+	SERIALIZE_SOURCE
+	(
+		CTxOut,
 
-	namespace Types
+		READWRITE(nValue);
+		READWRITE(scriptPubKey);
+	)
+
+
+	/* Set the object to null state. */
+	void CTxOut::SetNull()
 	{
-
-		//the serialization methods
-		SERIALIZE_SOURCE
-		(
-			CTxOut,
-
-			READWRITE(nValue);
-			READWRITE(scriptPubKey);
-		)
+		nValue = -1;
+		scriptPubKey.clear();
+	}
 
 
-		/* Set the object to null state. */
-		void CTxOut::SetNull()
-		{
-			nValue = -1;
-			scriptPubKey.clear();
-		}
+	/* Determine if the object is in a null state. */
+	bool CTxOut::IsNull()
+	{
+		return (nValue == -1);
+	}
 
 
-		/* Determine if the object is in a null state. */
-		bool CTxOut::IsNull()
-		{
-			return (nValue == -1);
-		}
+	/* Clear the object and reset value to 0. */
+	void CTxOut::SetEmpty()
+	{
+		nValue = 0;
+		scriptPubKey.clear();
+	}
 
 
-		/* Clear the object and reset value to 0. */
-		void CTxOut::SetEmpty()
-		{
-			nValue = 0;
-			scriptPubKey.clear();
-		}
+	/* Determine if the object is in an empty state. */
+	bool CTxOut::IsEmpty() const
+	{
+		return (nValue == 0 && scriptPubKey.empty());
+	}
 
 
-		/* Determine if the object is in an empty state. */
-		bool CTxOut::IsEmpty() const
-		{
-			return (nValue == 0 && scriptPubKey.empty());
-		}
+	/* Get the hash of the object. */
+	uint512_t CTxOut::GetHash() const
+	{
+		// Most of the time is spent allocating and deallocating CDataStream's
+	    // buffer.  If this ever needs to be optimized further, make a CStaticStream
+	    // class with its buffer on the stack.
+	    CDataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+	    ss.reserve(10000);
+	    ss << *this;
+	    return LLC::SK512(ss.begin(), ss.end());
+	}
 
 
-		/* Get the hash of the object. */
-		uint512_t CTxOut::GetHash() const
-		{
-			return SerializeHash(*this);
-		}
+	/* Short Hand debug output of the object */
+	std::string CTxOut::ToStringShort() const
+	{
+		return debug::strprintf(" out %s %s", FormatMoney(nValue).c_str(), scriptPubKey.ToString(true).c_str());
+	}
 
 
-		/* Short Hand debug output of the object */
-		std::string CTxOut::ToStringShort() const
-		{
-			return strprintf(" out %s %s", FormatMoney(nValue).c_str(), scriptPubKey.ToString(true).c_str());
-		}
+	/* Full object debug output */
+	std::string CTxOut::ToString() const
+	{
+		if (IsEmpty()) return "CTxOut(empty)";
+		if (scriptPubKey.size() < 6)
+			return "CTxOut(error)";
+		return debug::strprintf("CTxOut(nValue=%s, scriptPubKey=%s)", FormatMoney(nValue).c_str(), scriptPubKey.ToString().c_str());
+	}
 
 
-		/* Full object debug output */
-		std::string CTxOut::ToString() const
-		{
-			if (IsEmpty()) return "CTxOut(empty)";
-			if (scriptPubKey.size() < 6)
-				return "CTxOut(error)";
-			return strprintf("CTxOut(nValue=%s, scriptPubKey=%s)", FormatMoney(nValue).c_str(), scriptPubKey.ToString().c_str());
-		}
-
-
-		/* Dump the full object to the console (stdout) */
-		void CTxOut::print() const
-		{
-			debug::log(0, "%s\n", ToString().c_str());
-		}
+	/* Dump the full object to the console (stdout) */
+	void CTxOut::print() const
+	{
+		debug::log(0, "%s\n", ToString().c_str());
 	}
 }

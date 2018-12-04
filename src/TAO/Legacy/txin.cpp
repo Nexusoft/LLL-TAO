@@ -16,12 +16,12 @@ ________________________________________________________________________________
 #include <TAO/Legacy/types/address.h>
 #include <TAO/Legacy/types/txin.h>
 
+#include <Util/include/hex.h>
 #include <Util/templates/serialize.h>
 
 namespace Legacy
 {
 
-	/* Serizliation Method Body. */
 	SERIALIZE_SOURCE
 	(
 		CTxIn,
@@ -30,10 +30,10 @@ namespace Legacy
 		READWRITE(scriptSig);
 		READWRITE(nSequence);
 	)
-
+	
 
 	/* Basic Constructor. */
-	CTxIn::CTxIn(uint512_t hashPrevTx, uint32_t nOut, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max())
+	CTxIn::CTxIn(uint512_t hashPrevTx, uint32_t nOut, CScript scriptSigIn, uint32_t nSequenceIn)
 	{
 		prevout = COutPoint(hashPrevTx, nOut);
 		scriptSig = scriptSigIn;
@@ -58,7 +58,7 @@ namespace Legacy
 	/* Short Hand debug output of the object (hash, n) */
 	std::string CTxIn::ToStringShort() const
     {
-        return strprintf(" %s %d", prevout.hash.ToString().c_str(), prevout.n);
+        return debug::strprintf(" %s %d", prevout.hash.ToString().c_str(), prevout.n);
     }
 
 
@@ -71,16 +71,16 @@ namespace Legacy
         if (prevout.IsNull())
         {
             if(IsStakeSig())
-                str += strprintf(", genesis %s", HexStr(scriptSig).c_str());
+                str += debug::strprintf(", genesis %s", HexStr(scriptSig).c_str());
             else
-                str += strprintf(", coinbase %s", HexStr(scriptSig).c_str());
+                str += debug::strprintf(", coinbase %s", HexStr(scriptSig).c_str());
         }
         else if(IsStakeSig())
-            str += strprintf(", trust %s", HexStr(scriptSig).c_str());
+            str += debug::strprintf(", trust %s", HexStr(scriptSig).c_str());
         else
-            str += strprintf(", scriptSig=%s", scriptSig.ToString().substr(0,24).c_str());
+            str += debug::strprintf(", scriptSig=%s", scriptSig.ToString().substr(0,24).c_str());
         if (nSequence != std::numeric_limits<uint32_t>::max())
-            str += strprintf(", nSequence=%u", nSequence);
+            str += debug::strprintf(", nSequence=%u", nSequence);
         str += ")";
         return str;
     }

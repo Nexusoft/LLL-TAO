@@ -11,156 +11,157 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_TYPES_INCLUDE_TXIN_H
-#define NEXUS_TAO_LEGACY_TYPES_INCLUDE_TXIN_H
+#ifndef NEXUS_TAO_LEGACY_TYPES_TXOUT_H
+#define NEXUS_TAO_LEGACY_TYPES_TXOUT_H
 
-#include "../../../Util/templates/serialize"
+#include <stdint.h>
+#include <cstring>
+
+#include <Util/macro/header.h>
+#include <TAO/Legacy/types/script.h>
 
 namespace Legacy
 {
-	namespace Types
+
+    /** An output of a transaction.  It contains the public key that the next input
+	 * must be able to sign with to claim it.
+	 */
+	class CTxOut
 	{
-		class CScript;
+	public:
 
-        /** An output of a transaction.  It contains the public key that the next input
-    	 * must be able to sign with to claim it.
-    	 */
-    	class CTxOut
-    	{
-    	public:
-
-			/** The amount of NXS being transferred into output. **/
-    		int64_t nValue;
+		/** The amount of NXS being transferred into output. **/
+		int64_t nValue;
 
 
-			/** The output script required to evaluate to true to be spent. **/
-    		CScript scriptPubKey;
+		/** The output script required to evaluate to true to be spent. **/
+		CScript scriptPubKey;
 
 
-			//the serialization methods
-			SERIALIZE_HEADER
+		//the serialization methods
+		SERIALIZE_HEADER
 
 
-			/** Default constructor
-			 *
-			 *	Sets object to null state.
-			 *
-			 **/
-    		CTxOut()
-    		{
-    			SetNull();
-    		}
+		/** Default constructor
+		 *
+		 *	Sets object to null state.
+		 *
+		 **/
+		CTxOut()
+		{
+			SetNull();
+		}
 
 
-			/** Constructor
-			 *
-			 *	@param[in] nValueIn The value to be transferred in output.
-			 *	@param[in] scriptPubKeyIn The script to be evaluated on spend.
-			 *
-			 **/
-    		CTxOut(int64_t nValueIn, CScript scriptPubKeyIn)
-    		{
-    			nValue = nValueIn;
-    			scriptPubKey = scriptPubKeyIn;
-    		}
+		/** Constructor
+		 *
+		 *	@param[in] nValueIn The value to be transferred in output.
+		 *	@param[in] scriptPubKeyIn The script to be evaluated on spend.
+		 *
+		 **/
+		CTxOut(int64_t nValueIn, CScript scriptPubKeyIn)
+		{
+			nValue = nValueIn;
+			scriptPubKey = scriptPubKeyIn;
+		}
 
 
-			/** SetNull
-			 *
-			 *	Set the object to null state.
-			 *
-			 **/
-    		void SetNull();
+		/** SetNull
+		 *
+		 *	Set the object to null state.
+		 *
+		 **/
+		void SetNull();
 
 
-			/** IsNull
-			 *
-			 *	Determine if the object is in a null state.
-			 *
-			 **/
-    		bool IsNull();
+		/** IsNull
+		 *
+		 *	Determine if the object is in a null state.
+		 *
+		 **/
+		bool IsNull();
 
 
-			/** SetEmpty
-			 *
-			 *	Clear the object and reset value to 0.
-			 *
-			 **/
-    		void SetEmpty();
+		/** SetEmpty
+		 *
+		 *	Clear the object and reset value to 0.
+		 *
+		 **/
+		void SetEmpty();
 
 
-			/** IsEmpty
-			 *
-			 *	Determine if the object is in an empty state.
-			 *
-			 **/
-    		bool IsEmpty() const;
+		/** IsEmpty
+		 *
+		 *	Determine if the object is in an empty state.
+		 *
+		 **/
+		bool IsEmpty() const;
 
 
-			/** GetHash
-			 *
-			 *	Get the hash of the object.
-			 *
-			 **/
-    		uint512_t GetHash() const;
+		/** GetHash
+		 *
+		 *	Get the hash of the object.
+		 *
+		 **/
+		uint512_t GetHash() const;
 
 
-			/** Equals operator overload
-			 *
-			 *	@param[in] a The first object to compare
-			 *	@param[in] b The second object to compare
-			 *
-			 *	@return true if the objects are equivilent.
-			 *
-			 **/
-    		friend bool operator==(const CTxOut& a, const CTxOut& b)
-    		{
-    			return (a.nValue       == b.nValue &&
-    					a.scriptPubKey == b.scriptPubKey);
-    		}
+		/** Equals operator overload
+		 *
+		 *	@param[in] a The first object to compare
+		 *	@param[in] b The second object to compare
+		 *
+		 *	@return true if the objects are equivilent.
+		 *
+		 **/
+		friend bool operator==(const CTxOut& a, const CTxOut& b)
+		{
+			return (a.nValue       == b.nValue &&
+					a.scriptPubKey == b.scriptPubKey);
+		}
 
 
-			/** Not Equals operator overload
-			 *
-			 *	@param[in] a The first object to compare
-			 *	@param[in] b The second object to compare
-			 *
-			 *	@return true if the objects are not equivilent.
-			 *
-			 **/
-    		friend bool operator!=(const CTxOut& a, const CTxOut& b)
-    		{
-    			return !(a == b);
-    		}
+		/** Not Equals operator overload
+		 *
+		 *	@param[in] a The first object to compare
+		 *	@param[in] b The second object to compare
+		 *
+		 *	@return true if the objects are not equivilent.
+		 *
+		 **/
+		friend bool operator!=(const CTxOut& a, const CTxOut& b)
+		{
+			return !(a == b);
+		}
 
 
-			/** ToStringShort
-			 *
-			 *	Short Hand debug output of the object (hash, n)
-			 *
-			 *	@return string containing the shorthand output
-			 *
-			 **/
-    		std::string ToStringShort() const;
+		/** ToStringShort
+		 *
+		 *	Short Hand debug output of the object (hash, n)
+		 *
+		 *	@return string containing the shorthand output
+		 *
+		 **/
+		std::string ToStringShort() const;
 
 
-			/** ToString
-			 *
-			 *	Full object debug output
-			 *
-			 *	@return string containing the object output.
-			 *
-			 **/
-    		std::string ToString() const;
+		/** ToString
+		 *
+		 *	Full object debug output
+		 *
+		 *	@return string containing the object output.
+		 *
+		 **/
+		std::string ToString() const;
 
 
-			/** print
-			 *
-			 *	Dump the full object to the console (stdout)
-			 *
-			 **/
-    		void print() const;
-    	};
-	}
-
+		/** print
+		 *
+		 *	Dump the full object to the console (stdout)
+		 *
+		 **/
+		void print() const;
+	};
 }
+
+#endif
