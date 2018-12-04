@@ -14,16 +14,43 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_INCLUDE_EVALUATE_H
 #define NEXUS_TAO_LEGACY_INCLUDE_EVALUATE_H
 
+#include <LLC/types/bignum.h>
+
 #include <Util/include/base58.h>
 
 #include <string>
 #include <vector>
 
-namespace LLC { class CBigNum; }
 namespace Legacy
 {
 
+    /** Eval Script
+     *
+     *  Evaluate a script to true or false based on operation codes.
+     *
+     *  @param[in] stack The stack byte code to execute
+     *  @param[in] script The script object to run
+     *  @param[in] txTo The transaction this is executing for.
+     *  @param[in] nIn The input in.
+     *  @param[in] nHashType The hash type enumeration.
+     *
+     *  @return true if the script evaluates to true.
+     *
+     **/
     bool EvalScript(std::vector<std::vector<uint8_t> >& stack, const CScript& script, const Core::CTransaction& txTo, uint32_t nIn, int nHashType);
+
+
+    /** Solver
+     *
+     *  Extract data from a script object.
+     *
+     *  @param[in] scriptPubKey The script object to solve for
+     *  @param[in] typeRet The transaction type being processed
+     *  @param[out] vSolutionsRet The solutions returned
+     *
+     *  @return true if the script was solved successfully.
+     *
+     **/
     bool Solver(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<std::vector<uint8_t> >& vSolutionsRet);
 
     //used in standard inputs function check in transaction. potential to remove

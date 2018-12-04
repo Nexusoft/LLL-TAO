@@ -371,30 +371,26 @@ namespace Legacy
 
 
         //explicit CScript(char b) is not portable.  Use 'signed char' or 'uint8_t'.
-        explicit CScript(signed char b)                 { operator<<(b); }
-        explicit CScript(short b)                       { operator<<(b); }
-        explicit CScript(int b)                         { operator<<(b); }
-        explicit CScript(long b)                        { operator<<(b); }
+        explicit CScript(int8_t b)                      { operator<<(b); }
+        explicit CScript(int16_t b)                     { operator<<(b); }
+        explicit CScript(int32_t b)                     { operator<<(b); }
         explicit CScript(int64_t b)                     { operator<<(b); }
         explicit CScript(uint8_t b)                     { operator<<(b); }
-        explicit CScript(uint32_t b)                    { operator<<(b); }
         explicit CScript(uint16_t b)                    { operator<<(b); }
-        explicit CScript(unsigned long b)               { operator<<(b); }
+        explicit CScript(uint32_t b)                    { operator<<(b); }
         explicit CScript(uint64_t b)                    { operator<<(b); }
         explicit CScript(opcodetype b)                  { operator<<(b); }
         explicit CScript(const uint256_t& b)            { operator<<(b); }
         explicit CScript(const LLC::CBigNum& b)         { operator<<(b); }
         explicit CScript(const std::vector<uint8_t>& b) { operator<<(b); }
 
-        CScript& operator<<(signed char b)              { return push_int64(b); }
-        CScript& operator<<(short b)                    { return push_int64(b); }
-        CScript& operator<<(int b)                      { return push_int64(b); }
-        CScript& operator<<(long b)                     { return push_int64(b); }
+        CScript& operator<<(int8_t b)                   { return push_int64(b); }
+        CScript& operator<<(int16_t b)                  { return push_int64(b); }
+        CScript& operator<<(int32_t b)                  { return push_int64(b); }
         CScript& operator<<(int64_t b)                  { return push_int64(b); }
         CScript& operator<<(uint8_t b)                  { return push_uint64(b); }
-        CScript& operator<<(uint32_t b)                 { return push_uint64(b); }
         CScript& operator<<(uint16_t b)                 { return push_uint64(b); }
-        CScript& operator<<(unsigned long b)            { return push_uint64(b); }
+        CScript& operator<<(uint32_t b)                 { return push_uint64(b); }
         CScript& operator<<(uint64_t b)                 { return push_uint64(b); }
 
         CScript& operator<<(opcodetype opcode)
