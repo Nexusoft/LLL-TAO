@@ -11,11 +11,10 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEDGER_TYPES_BLOCK_H
-#define NEXUS_TAO_LEDGER_TYPES_BLOCK_H
+#ifndef NEXUS_TAO_LEDGER_TYPES_BASE_BLOCK_H
+#define NEXUS_TAO_LEDGER_TYPES_BASE_BLOCK_H
 
 #include <LLC/types/uint1024.h>
-
 #include <Util/macro/header.h>
 
 //forward declerations for BigNum
@@ -30,15 +29,12 @@ namespace TAO
 	namespace Ledger
 	{
 
-		/** Nodes collect new transactions into a block, hash them into a hash tree,
-		 * and scan through nonce values to make the block's hash satisfy proof-of-work
-		 * requirements.  When they solve the proof-of-work, they broadcast the block
-		 * to everyone and the block is added to the block chain.  The first transaction
-		 * in the block is a special one that creates a new coin owned by the creator
-		 * of the block.
+		/** Block Class
 		 *
-		 * Blocks are appended to blk0001.dat files on disk.  Their location on disk
-		 * is indexed by CBlockIndex objects in memory.
+		 *  Nodes collect new transactions into a block, hash them into a hash tree,
+		 *  and scan through nonce values to make the block's hash satisfy validation
+		 *  requirements.
+		 *
 		 */
 		class Block
 		{
@@ -180,7 +176,7 @@ namespace TAO
 			 *	@return 1024-bit block hash
 			 *
 			 **/
-			uint1024_t BlockHash() const;
+			uint1024_t GetHash() const;
 
 
 			/** UpdateTime

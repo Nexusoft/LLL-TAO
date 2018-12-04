@@ -144,6 +144,8 @@ OBJS= \
 	build/secret.o \
 	build/transaction.o \
 	build/block.o \
+	build/prime.o \
+	build/global.o \
 	build/corenode.o \
 	build/cmd.o \
 	build/rpcnode.o \

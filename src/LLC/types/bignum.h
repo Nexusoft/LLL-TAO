@@ -208,7 +208,7 @@ namespace LLC
             BN_mpi2bn(pch, p - pch, m_BN);
         }
 
-        uint64_t getuint64()
+        uint64_t getuint64() const
         {
             uint32_t nSize = BN_bn2mpi(m_BN, NULL);
             if (nSize < 4)
@@ -251,7 +251,7 @@ namespace LLC
             BN_mpi2bn(pch, p - pch, m_BN);
         }
 
-        uint256_t getuint256()
+        uint256_t getuint256() const
         {
             uint32_t nSize = BN_bn2mpi(m_BN, NULL);
             if (nSize < 4)
@@ -294,7 +294,7 @@ namespace LLC
             BN_mpi2bn(pch, p - pch, m_BN);
         }
 
-        uint512_t getuint512()
+        uint512_t getuint512() const
         {
             uint32_t nSize = BN_bn2mpi(m_BN, NULL);
             if (nSize < 4)
@@ -337,7 +337,7 @@ namespace LLC
             BN_mpi2bn(pch, p - pch, m_BN);
         }
 
-        uint576_t getuint576()
+        uint576_t getuint576() const
         {
             uint32_t nSize = BN_bn2mpi(m_BN, NULL);
             if (nSize < 4)
@@ -380,7 +380,7 @@ namespace LLC
             BN_mpi2bn(pch, p - pch, m_BN);
         }
 
-        uint1024_t getuint1024()
+        uint1024_t getuint1024() const
         {
             uint32_t nSize = BN_bn2mpi(m_BN, NULL);
             if (nSize < 4)
