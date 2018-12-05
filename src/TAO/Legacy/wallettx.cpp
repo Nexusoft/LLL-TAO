@@ -414,8 +414,8 @@ namespace Legacy
             /* Get the Nexus address from the txout public key */
             if (!ExtractAddress(txout.scriptPubKey, address))
             {
-                printf("CWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",
-                    this->GetHash().ToString().c_str());
+                debug::log(0, "CWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",
+                           this->GetHash().ToString().c_str());
 
                 address = " unknown ";
             }
@@ -541,7 +541,7 @@ namespace Legacy
                     }
                     else
                     {
-                        printf("ERROR: AddSupportingTransactions() : unsupported transaction\n");
+                        debug::log(0, "CWalletTx::AddSupportingTransactions: Error: AddSupportingTransactions() : unsupported transaction\n");
                         continue;
                     }
 
@@ -583,7 +583,7 @@ namespace Legacy
             /* Relay this tx if we don't have it in our database, yet */
             if (!indexdb.ContainsTx(hash))
             {
-                printf("Relaying wtx %s\n", hash.ToString().substr(0,10).c_str());
+                debug::log(0, "Relaying wtx %s\n", hash.ToString().substr(0,10).c_str());
                 RelayMessage(Net::CInv(Net::MSG_TX, hash), (CTransaction)*this);
             }
         }

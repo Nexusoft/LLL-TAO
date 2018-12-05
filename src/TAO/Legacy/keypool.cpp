@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <TAO/Legacy/wallet/wallet.h>
 #include <TAO/Legacy/wallet/walletdb.h>
 
+#include <Util/include/args.h>
+#include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 
 namespace Legacy
@@ -59,8 +61,8 @@ namespace Legacy
                 setKeyPool.insert(nPoolIndex);
             }
             
-            if (GetBoolArg("-printkeypool"))
-                printf("CKeyPool::NewKeyPool wrote %" PRI64d " new keys\n", nKeys);
+            if (config::GetBoolArg("-printkeypool"))
+                debug::log(0, "CKeyPool::NewKeyPool wrote %" PRI64d " new keys\n", nKeys);
 
             walletdb.Close();
         }
@@ -72,7 +74,7 @@ namespace Legacy
     /* Adds keys to key pool to top up the number of entries. */
     bool CKeyPool::TopUpKeyPool()
     {
-    	bool fPrintKeyPool = GetBoolArg("-printkeypool"); // avoids having to call arg function repeatedly
+    	bool fPrintKeyPool = config::GetBoolArg("-printkeypool"); // avoids having to call arg function repeatedly
     	bool fKeysAdded = false;
 
         if (poolWallet.IsFileBacked())
@@ -114,13 +116,13 @@ namespace Legacy
                 setKeyPool.insert(nNewPoolIndex);
 
                 if (fPrintKeyPool)
-                    printf("Keypool added key %" PRI64d "\n", nNewPoolIndex);
+                    debug::log(0, "Keypool added key %" PRI64d "\n", nNewPoolIndex);
 
                 fKeysAdded = true;
             }
 
             if (fPrintKeyPool && fKeysAdded)
-                printf("Keypool topped up, %d keys added, new size=%d\n", (nTargetSize - nStartingSize), nTargetSize);
+                debug::log(0, "Keypool topped up, %d keys added, new size=%d\n", (nTargetSize - nStartingSize), nTargetSize);
 
             walletdb.Close();
         }
@@ -235,8 +237,8 @@ namespace Legacy
                 throw runtime_error("CKeyPool::ReserveKeyFromPool() : unknown key in key pool");
 
             assert(!keypoolEntry.vchPubKey.empty());
-            if (GetBoolArg("-printkeypool"))
-                printf("Keypool reserve %" PRI64d "\n", nPoolIndex);
+            if (config::GetBoolArg("-printkeypool"))
+                debug::log(0, "Keypool reserve %" PRI64d "\n", nPoolIndex);
 
             walletdb.Close();
         }
@@ -254,8 +256,8 @@ namespace Legacy
             CWalletDB walletdb(poolWallet.GetWalletFile());
             walletdb.ErasePool(nPoolIndex);
 
-            if (GetBoolArg("-printkeypool"))
-	            printf("Keypool keep %" PRI64d "\n", nPoolIndex);
+            if (config::GetBoolArg("-printkeypool"))
+	            debug::log(0, "Keypool keep %" PRI64d "\n", nPoolIndex);
 
 	        walletdb.Close();
         }
@@ -273,8 +275,8 @@ namespace Legacy
             setKeyPool.insert(nPoolIndex);
         }
 
-        if (GetBoolArg("-printkeypool"))
-            printf("Keypool return %" PRI64d "\n", nPoolIndex);
+        if (config::GetBoolArg("-printkeypool"))
+            debug::log(0, "Keypool return %" PRI64d "\n", nPoolIndex);
     }
 
 

@@ -35,6 +35,14 @@ namespace Legacy
      **/
     class CDB
     {
+    private:
+        /** Init
+         *
+         *  Performs work of initialization for constructors.
+         *
+         **/
+        void Init(const std::string strFile, const char* pszMode);
+
     protected:
         /** Mutex for thread concurrency. 
          *  
@@ -109,7 +117,19 @@ namespace Legacy
          *                     equivalent to read only.
          *
          **/
-        explicit CDB(const char* pszFile, const char* pszMode="r+");
+        explicit CDB(const char* pszFileIn, const char* pszMode="r+");
+
+
+        /** Constructor
+         *
+         *  Alternative version that takes filename as std::string
+         *
+         *  @param[in] strFile The database file name
+         *
+         *  @param[in] pszMode A string containing one or more access mode characters
+         *
+         **/
+        explicit CDB(const std::string strFileIn, const char* pszMode="r+");
 
 
         /** Destructor

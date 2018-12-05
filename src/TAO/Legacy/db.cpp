@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/version.h>
 
+#include <Util/include/debug.h>
 #include <Util/include/filesystem.h>
 #include <Util/templates/serialize.h>
 
@@ -41,13 +42,45 @@ namespace Legacy
 
     /* Constructor */
     /* Initializes database environment on first use */
-    CDB::CDB(const char *pszFile, const char* pszMode) : pdb(nullptr)
+    CDB::CDB(const char *pszFileIn, const char* pszMode) : pdb(nullptr)
+    {
+        /* Passing a null string will initialize a null instance */
+        if (pszFileIn == nullptr)
+            return;
+
+        std::string strFileIn(pszFileIn);
+
+        Init(strFileIn, pszMode);
+
+        return;
+    }
+
+
+    /* Constructor */
+    /* Initializes database environment on first use */
+    CDB::CDB(const std::string strFileIn, const char* pszMode) : pdb(nullptr)
+    {
+        /* Passing an empty string will initialize a null instance */
+        if (strFileIn.empty())
+            return;
+
+        Init(strFileIn, pszMode);
+
+        return;
+    }
+
+
+    /* Destructor */
+    CDB::~CDB() 
+    { 
+        Close(); 
+    }
+
+
+    /* Performs work of initialization for constructors. */
+    CDB::Init(const std::string strFile, const char* pszMode)
     {
         int ret;
-
-        /* Passing a null string will initialize a null instance */
-        if (pszFile == nullptr)
-            return;
 
         { /* Begin lock scope */
             std::lock_guard<std::mutex> dbLock(CDB::cs_db); // Need to lock before test fDbEnvInit
@@ -63,7 +96,7 @@ namespace Legacy
                 filesystem::create_directory(pathLogDir);
 
                 std::string pathErrorFile(pathDataDir + "/db.log");
-                printf("dbenv.open LogDir=%s ErrorFile=%s\n", pathLogDir.c_str(), pathErrorFile.c_str());
+                debug::log(0, "dbenv.open LogDir=%s ErrorFile=%s\n", pathLogDir.c_str(), pathErrorFile.c_str());
 
                 int nDbCache = GetArg("-dbcache", 25);
 
@@ -113,13 +146,13 @@ namespace Legacy
                 ret = CDB::dbenv.open(pathDataDir.c_str(), dbFlags, dbMode);
 
                 if (ret > 0)
-                    throw runtime_error(strprintf("CDB() : error %d opening database environment", ret));
+                    throw runtime_error(debug::strprintf("CDB() : error %d opening database environment", ret));
 
                 CDB::fDbEnvInit = true;
             }
 
             /* Initialize current CDB instance */
-            strFile = pszFile;
+            strFile = strFileIn;
 
             /* Usage count will be incremented whether we use pdb from mapDb or open a new one */
             if (CDB::mapFileUseCount.count(strFile) == 0)
@@ -151,11 +184,11 @@ namespace Legacy
                 if (fCreate)
                     nFlags |= DB_CREATE; // Add flag to create database file if does not exist
 
-                ret = pdb->open(nullptr,   // Txn pointer
-                                pszFile,   // Filename
-                                "main",    // Logical db name
-                                DB_BTREE,  // Database type
-                                nFlags,    // Flags
+                ret = pdb->open(nullptr,         // Txn pointer
+                                strFile.c_str(), // Filename
+                                "main",          // Logical db name
+                                DB_BTREE,        // Database type
+                                nFlags,          // Flags
                                 0);
 
                 if (ret == 0)
@@ -176,24 +209,17 @@ namespace Legacy
                 }
                 else
                 {
-                    /8 Error opening db, reset db (no need to delete the shared pointer) */
+                    /* Error opening db, reset db (no need to delete the shared pointer) */
                     pdb = nullptr;
                     strFile = "";
 
                     --CDB::mapFileUseCount[strFile];
 
-                    throw runtime_error(strprintf("CDB() : can't open database file %s, error %d", pszFile, ret));
+                    throw runtime_error(debug::strprintf("CDB() : can't open database file %s, error %d", strFile.c_str(), ret));
                 }
             }
         } /* End lock scope */
 
-    }
-
-
-    /* Destructor */
-    CDB::~CDB() 
-    { 
-        Close(); 
     }
 
 
@@ -565,7 +591,7 @@ namespace Legacy
     void CDB::DBFlush(bool fShutdown)
     {
         /* Flush log data to the actual data file on all files that are not in use */
-        printf("DBFlush(%s)%s\n", fShutdown ? "true" : "false", CDB::fDbEnvInit ? "" : " db not started");
+        debug::log(0, "DBFlush(%s)%s\n", fShutdown ? "true" : "false", CDB::fDbEnvInit ? "" : " db not started");
 
         if (!CDB::fDbEnvInit)
             return;
@@ -578,23 +604,23 @@ namespace Legacy
                 const std::string strFile = (*mi).first;
                 const int nRefCount = (*mi).second;
                 
-                printf("%s refcount=%d\n", strFile.c_str(), nRefCount);
+                debug::log(0, "%s refcount=%d\n", strFile.c_str(), nRefCount);
 
                 if (nRefCount == 0)
                 {
                     /* Move log data to the dat file */
                     CloseDb(strFile);
 
-                    printf("%s checkpoint\n", strFile.c_str());
+                    debug::log(0, "%s checkpoint\n", strFile.c_str());
                     CDB::dbenv.txn_checkpoint(0, 0, 0);
 
                     if (strFile != "addr.dat" || fDetachDB) 
                     {
-                        printf("%s detach\n", strFile.c_str());
+                        debug::log(0, "%s detach\n", strFile.c_str());
                         CDB::dbenv.lsn_reset(strFile.c_str(), 0);
                     }
 
-                    printf("%s closed\n", strFile.c_str());
+                    debug::log(0, "%s closed\n", strFile.c_str());
                     CDB::mapFileUseCount.erase(mi++);
                 }
                 else
@@ -631,7 +657,7 @@ namespace Legacy
                     CDB::mapFileUseCount.erase(strFile);
 
                     bool fSuccess = true;
-                    printf("Rewriting %s...\n", strFile.c_str());
+                    debug::log(0, "Rewriting %s...\n", strFile.c_str());
 
                     /* Define temporary file name where copy will be written */
                     std::string strFileRes = strFile + ".rewrite";
@@ -650,7 +676,7 @@ namespace Legacy
                                                 0);
                         if (ret > 0)
                         {
-                            printf("Cannot create database file %s\n", strFileRes.c_str());
+                            debug::log(0, "Cannot create database file %s\n", strFileRes.c_str());
                             fSuccess = false;
                         }
 
@@ -728,7 +754,7 @@ namespace Legacy
                     }
 
                     if (!fSuccess)
-                        printf("Rewriting of %s FAILED!\n", strFile.c_str());
+                        debug::log(0, "Rewriting of %s FAILED!\n", strFile.c_str());
 
                     return fSuccess;
                 }
@@ -753,7 +779,7 @@ namespace Legacy
         }
         catch (const DbException& e)
         {
-            printf("EnvShutdown exception: %s (%d)\n", e.what(), e.get_errno());
+            debug::log(0, "EnvShutdown exception: %s (%d)\n", e.what(), e.get_errno());
         }
 
         /* Use of DB_FORCE should not be necessary after calling dbenv.close() but included in case there is an exception */
