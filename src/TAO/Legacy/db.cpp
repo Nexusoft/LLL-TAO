@@ -45,16 +45,16 @@ namespace Legacy
     {
         int ret;
 
-        //Passing a null string will initialize a null instance
+        /* Passing a null string will initialize a null instance */
         if (pszFile == nullptr)
             return;
 
-        { //Begin lock scope
-            std::lock_guard<std::mutex> dbLock(CDB::cs_db); //Need to lock before test fDbEnvInit
+        { /* Begin lock scope */
+            std::lock_guard<std::mutex> dbLock(CDB::cs_db); // Need to lock before test fDbEnvInit
 
             if (!CDB::fDbEnvInit)
             {
-                //Need to initialize database environment. This is only done once upon construction of the first CDB instance
+                /* Need to initialize database environment. This is only done once upon construction of the first CDB instance */
                 if (fShutdown)
                     return;
 
@@ -109,7 +109,7 @@ namespace Legacy
                 int dbMode = 0;
 #endif
 
-                //Open the Berkely DB environment
+                /* Open the Berkely DB environment */
                 ret = CDB::dbenv.open(pathDataDir.c_str(), dbFlags, dbMode);
 
                 if (ret > 0)
@@ -118,38 +118,38 @@ namespace Legacy
                 CDB::fDbEnvInit = true;
             }
 
-            //Initialize current CDB instance
+            /* Initialize current CDB instance */
             strFile = pszFile;
 
-            //Usage count will be incremented whether we use pdb from mapDb or open a new one
+            /* Usage count will be incremented whether we use pdb from mapDb or open a new one */
             if (CDB::mapFileUseCount.count(strFile) == 0)
                 CDB::mapFileUseCount.insert(strFile, 1);
             else
                 ++CDB::mapFileUseCount[strFile];
 
-            //Extract mode settings
+            /* Extract mode settings */
             bool fCreate = (strchr(pszMode, 'c') != nullptr);
             bool fWrite = (strchr(pszMode, 'w') != nullptr);
             bool fAppend = (strchr(pszMode, '+') != nullptr);
 
-            //Set database read-only if not write or append mode
+            /* Set database read-only if not write or append mode */
             fReadOnly = !(fWrite || fAppend);
 
             if (CDB::mapDb.count(strFile) > 0)
             {
-                //mapDb contains entry for strFile, so database is already open
+                /* mapDb contains entry for strFile, so database is already open */
                 pdb = CDB::mapDb[strFile];
             }
             else
             {
-                //Database not already open, so open it now
+                /* Database not already open, so open it now */
                 pdb = std::make_shared<Db>(Db(&CDB::dbenv, 0));
 
-                //Opened database will support multi-threaded access
+                /* Opened database will support multi-threaded access */
                 uint32_t nFlags = DB_THREAD;
 
                 if (fCreate)
-                    nFlags |= DB_CREATE; //Add flag to create database file if does not exist
+                    nFlags |= DB_CREATE; // Add flag to create database file if does not exist
 
                 ret = pdb->open(nullptr,   // Txn pointer
                                 pszFile,   // Filename
@@ -160,13 +160,14 @@ namespace Legacy
 
                 if (ret == 0)
                 {
-                    //Database opened successfully. Add database to open database map
+                    /* Database opened successfully. Add database to open database map */
                     CDB::mapDb[strFile] = pdb;
 
                     if (fCreate && !Exists(std::string("version")))
                     {
-                        //For new database file, write the database version as the first entry
-                        //This is written even if the new database was created as read-only
+                        /* For new database file, write the database version as the first entry
+                         * This is written even if the new database was created as read-only
+                         */
                         bool fTmp = fReadOnly;
                         fReadOnly = false;
                         WriteVersion(LLD::DATABASE_VERSION);
@@ -175,7 +176,7 @@ namespace Legacy
                 }
                 else
                 {
-                    //Error opening db, reset db (no need to delete the shared pointer)
+                    /8 Error opening db, reset db (no need to delete the shared pointer) */
                     pdb = nullptr;
                     strFile = "";
 
@@ -184,7 +185,7 @@ namespace Legacy
                     throw runtime_error(strprintf("CDB() : can't open database file %s, error %d", pszFile, ret));
                 }
             }
-        } //End lock scope
+        } /* End lock scope */
 
     }
 
@@ -196,44 +197,44 @@ namespace Legacy
     }
 
 
-    /* Read */
+    /* Read a value from a database key-value pair. */
     template<typename K, typename T>
     bool CDB::Read(const K& key, T& value)
     {
         if (pdb == nullptr)
             return false;
 
-        // Key
+        /* Key */
         CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
         ssKey.reserve(1000);
         ssKey << key;
         Dbt datKey(&ssKey[0], ssKey.size());
 
-        // Value
+        /* Value */
         Dbt datValue;
         datValue.set_flags(DB_DBT_MALLOC); // Berkeley will allocate memory for returned value, will need to free before return
 
-        // Read
+        /* Read */
         int ret = pdb->get(GetRawTxn(), &datKey, &datValue, 0);
 
-        // Clear the key memory
+        /*  Clear the key memory */
         memset(datKey.get_data(), 0, datKey.get_size());
 
         if (datValue.get_data() == nullptr)
             return false; // Key not found or no value present, can safely return without free() because there is nothing to free
 
-        // Unserialize value
+        /* Unserialize value */
         try {
-            // get_data returns a void* and currently uses a C-style cast to load into CDataStream
+            /* get_data returns a void* and currently uses a C-style cast to load into CDataStream */
             CDataStream ssValue((char*)datValue.get_data(), (char*)datValue.get_data() + datValue.get_size(), SER_DISK, LLD::DATABASE_VERSION);
             ssValue >> value;
         }
         catch (std::exception &e) {
-            // Still need to free any memory allocated for datValue, so do not return here. Just set ret so it returns false
+            /* Still need to free any memory allocated for datValue, so do not return here. Just set ret so it returns false */
             ret = -1;
         }
 
-        // Clear and free value memory
+        /* Clear and free value memory */
         memset(datValue.get_data(), 0, datValue.get_size());
         free(datValue.get_data());
 
@@ -241,7 +242,7 @@ namespace Legacy
     }
 
 
-    /* Write */
+    /* Write a key-value pair to the database. */
     template<typename K, typename T>
     bool CDB::Write(const K& key, const T& value, bool fOverwrite=true)
     {
@@ -251,22 +252,22 @@ namespace Legacy
         if (fReadOnly)
             assert(!"Write called on database in read-only mode");
 
-        // Key
+        /* Key */
         CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
         ssKey.reserve(1000);
         ssKey << key;
         Dbt datKey(&ssKey[0], ssKey.size());
 
-        // Value
+        /* Value */
         CDataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
         ssValue.reserve(10000);
         ssValue << value;
         Dbt datValue(&ssValue[0], ssValue.size());
 
-        // Write
+        /* Write */
         int ret = pdb->put(GetRawTxn(), &datKey, &datValue, (fOverwrite ? 0 : DB_NOOVERWRITE));
 
-        // Clear memory in case it was a private key
+        /* Clear memory in case it was a private key */
         memset(datKey.get_data(), 0, datKey.get_size());
         memset(datValue.get_data(), 0, datValue.get_size());
 
@@ -274,7 +275,7 @@ namespace Legacy
     }
 
 
-    /* Erase */
+    /* Remove a key-value pair from the database */
     template<typename K>
     bool CDB::Erase(const K& key)
     {
@@ -284,52 +285,53 @@ namespace Legacy
         if (fReadOnly)
             assert(!"Erase called on database in read-only mode");
 
-        // Key
+        /* Key */
         CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
         ssKey.reserve(1000);
         ssKey << key;
         Dbt datKey(&ssKey[0], ssKey.size());
 
-        // Erase
+        /* Erase */
         int ret = pdb->del(GetRawTxn(), &datKey, 0);
 
-        // Clear memory
+        /* Clear memory */
         memset(datKey.get_data(), 0, datKey.get_size());
 
         return (ret == 0 || ret == DB_NOTFOUND);
     }
 
 
-    /* Exists */
+    /* Tests whether an entry exists in the database for a given key */
     template<typename K>
     bool CDB::Exists(const K& key)
     {
         if (pdb == nullptr)
             return false;
 
-        // Key
+        /* Key */
         CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
         ssKey.reserve(1000);
         ssKey << key;
         Dbt datKey(&ssKey[0], ssKey.size());
 
-        // Exists
+        /* Exists */
         int ret = pdb->exists(GetRawTxn(), &datKey, 0);
 
-        // Clear memory
+        /* Clear memory */
         memset(datKey.get_data(), 0, datKey.get_size());
         return (ret == 0);
     }
 
 
-    /* GetCursor */
+    /* Open a cursor at the beginning of the database. */
     std::shared_ptr<Dbc> CDB::GetCursor()
     {
         if (pdb == nullptr)
             return nullptr;
 
-        // To play nicely with Berkeley API, cannot define as shared_ptr for API call. 
-        // Instead, need to construct shared_ptr from the returned Dbc*
+        /* To play nicely with Berkeley API, cannot define as shared_ptr for API call. 
+         * Instead, need to construct shared_ptr from the returned Dbc*
+         */
         Dbc* dbcursor = nullptr;
 
         int ret = pdb->cursor(nullptr, &dbcursor, 0);
@@ -339,14 +341,14 @@ namespace Legacy
 
         std::make_shared<Dbc> pcursor(dbcursor);
 
-        return pcursor; //dereference to pass Dbc to make-shared
+        return pcursor; 
     }
 
 
-    /* ReadAtCursor */
+    /* Read a database key-value pair from the current cursor location. */
     int CDB::ReadAtCursor(std::shared_ptr<Dbc> pcursor, CDataStream& ssKey, CDataStream& ssValue, uint32_t fFlags)
     {
-        // Key - Initialize with argument data for flag settings that need it
+        /* Key - Initialize with argument data for flag settings that need it */
         Dbt datKey;
         if (fFlags == DB_SET || fFlags == DB_SET_RANGE || fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE)
         {
@@ -354,7 +356,7 @@ namespace Legacy
             datKey.set_size(ssKey.size());
         }
 
-        // Value - Initialize with argument data for flag settings that need it
+        /* Value - Initialize with argument data for flag settings that need it */
         Dbt datValue;
         if (fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE)
         {
@@ -362,11 +364,11 @@ namespace Legacy
             datValue.set_size(ssValue.size());
         }
 
-        // Berkeley will allocate memory for returned data, will need to free before return
+        /* Berkeley will allocate memory for returned data, will need to free before return */
         datKey.set_flags(DB_DBT_MALLOC);
         datValue.set_flags(DB_DBT_MALLOC);
 
-        // Execute cursor operation
+        /* Execute cursor operation */
         int ret = pcursor->get(&datKey, &datValue, fFlags);
 
         if (ret != 0)
@@ -375,7 +377,7 @@ namespace Legacy
         else if (datKey.get_data() == nullptr || datValue.get_data() == nullptr)
             return 99999;
 
-        // Convert to streams
+        /* Convert to streams */
         ssKey.SetType(SER_DISK);
         ssKey.clear();
         ssKey.write((char*)datKey.get_data(), datKey.get_size());
@@ -384,7 +386,7 @@ namespace Legacy
         ssValue.clear();
         ssValue.write((char*)datValue.get_data(), datValue.get_size());
 
-        // Clear and free memory
+        /* Clear and free memory */
         memset(datKey.get_data(), 0, datKey.get_size());
         memset(datValue.get_data(), 0, datValue.get_size());
 
@@ -395,7 +397,7 @@ namespace Legacy
     }
 
 
-    /* CloseCursor */
+    /* Closes and discards a cursor. After calling this method, the cursor is no longer valid for use. */
     CDB::CloseCursor(std::shared_ptr<Dbc> pcursor)
     {
         if (pdb == nullptr)
@@ -407,7 +409,7 @@ namespace Legacy
     }
 
 
-    /* GetTxn */
+    /*  Retrieves the most recently started database transaction. */
     std::shared_ptr<DbTxn> CDB::GetTxn()
     {
         if (!vTxn.empty())
@@ -417,7 +419,7 @@ namespace Legacy
     }
 
 
-    /* GetRawTxn */
+    /* Retrieves the raw pointer for the most recently started database transaction. */
     DbTxn* CDB::GetRawTxn()
     {
         DbTxn* dbTxn = nullptr; 
@@ -430,22 +432,22 @@ namespace Legacy
     }
 
 
-    /* TxnBegin */
+    /* Start a new database transaction and add it to vTxn */
     bool CDB::TxnBegin()
     {
         if (pdb == nullptr)
             return false;
 
-        // Start a new database transaction. Need to use raw pointer with Berkeley API
+        /* Start a new database transaction. Need to use raw pointer with Berkeley API */
         DbTxn* dbTxn = nullptr;
 
-        // Begin new transaction
+        /* Begin new transaction */
         int ret = CDB::dbenv.txn_begin(getRawTxn(), &dbTxn, DB_TXN_WRITE_NOSYNC);
 
         if (dbTxn == nullptr || ret != 0)
             return false;
 
-        // Add new transaction to the end of vTxn
+        /* Add new transaction to the end of vTxn */
         std::shared_ptr<DbTxn> pTxn(dbTxn);
         vTxn.push_back(pTxn);
 
@@ -453,7 +455,7 @@ namespace Legacy
     }
 
 
-    /* TxnCommit */
+    /* Commit the transaction most recently added to vTxn */
     bool CDB::TxnCommit()
     {
         if (pdb == nullptr)
@@ -472,7 +474,7 @@ namespace Legacy
     }
 
 
-    /* TxnAbort */
+    /* Abort the transaction most recently added to vTxn, reversing any updates performed. */
     bool CDB::TxnAbort()
     {
         if (pdb == nullptr)
@@ -491,7 +493,7 @@ namespace Legacy
     }
 
 
-    /* ReadVersion */
+    /* Read the current value for key "version" from the database */
     bool CDB::ReadVersion(int& nVersion)
     {
         nVersion = 0;
@@ -499,26 +501,26 @@ namespace Legacy
     }
 
 
-    /* WriteVersion */
+    /* Writes a number into the database using the key "version". */
     bool CDB::WriteVersion(int nVersion)
     {
         return Write(std::string("version"), nVersion);
     }
 
 
-    /* Close */
+    /* Close this instance for database access. */
     void CDB::Close()
     {
         if (pdb == nullptr)
             return;
 
-        // Abort any in-progress transactions on this database
+        /* Abort any in-progress transactions on this database */
         if (!vTxn.empty())
             vTxn.front()->abort();
 
         vTxn.clear();
 
-        // Flush database activity from memory pool to disk log
+        /* Flush database activity from memory pool to disk log */
         uint32_t nMinutes = 0;
         if (fReadOnly)
             nMinutes = 1;
@@ -539,7 +541,7 @@ namespace Legacy
     }
 
 
-    /* CloseDb */
+    /* Closes down the open database handle for a database and removes it from CDB::mapDb */
     void CDB::CloseDb(const std::string& strFile)
     {
         {
@@ -547,7 +549,7 @@ namespace Legacy
 
             if (CDB::mapDb.count(strFile) > 0)
             {
-                // Close the database handle
+                /* Close the database handle */
                 auto pdb = CDB::mapDb[strFile];
                 pdb->close(0);
 
@@ -557,10 +559,12 @@ namespace Legacy
     }
 
 
-    /* DBFlush */
+    /* Flushes log file to data file for any database handles with CDB::mapFileUseCount = 0
+     * then calls CloseDb on that database.
+     */
     void CDB::DBFlush(bool fShutdown)
     {
-        // Flush log data to the actual data file on all files that are not in use
+        /* Flush log data to the actual data file on all files that are not in use */
         printf("DBFlush(%s)%s\n", fShutdown ? "true" : "false", CDB::fDbEnvInit ? "" : " db not started");
 
         if (!CDB::fDbEnvInit)
@@ -578,7 +582,7 @@ namespace Legacy
 
                 if (nRefCount == 0)
                 {
-                    // Move log data to the dat file
+                    /* Move log data to the dat file */
                     CloseDb(strFile);
 
                     printf("%s checkpoint\n", strFile.c_str());
@@ -610,17 +614,17 @@ namespace Legacy
     }
 
 
-    /* Rewwrite */
+    /* Rewrites a database file by copying all contents */
     bool CDB::DBRewrite(const std::string& strFile, const std::string& strSkip)
     {
         if (!fShutdown)
         {
-            { // Begin lock scope
+            { /* Begin lock scope */
                 std::lock_guard<std::mutex> dbLock(CDB::cs_db); 
 
                 if (CDB::mapFileUseCount.count(strFile) == 0 || CDB::mapFileUseCount[strFile] == 0)
                 {
-                    // Flush log data to the dat file and detach the file
+                    /* Flush log data to the dat file and detach the file */
                     CloseDb(strFile);
                     CDB::dbenv.txn_checkpoint(0, 0, 0);
                     CDB::dbenv.lsn_reset(strFile.c_str(), 0);
@@ -629,14 +633,15 @@ namespace Legacy
                     bool fSuccess = true;
                     printf("Rewriting %s...\n", strFile.c_str());
 
-                    //Define temporary file name where copy will be written
+                    /* Define temporary file name where copy will be written */
                     std::string strFileRes = strFile + ".rewrite";
 
-                    { // surround usage of db with extra {}
+                    /* Surround usage of db with extra {} */
+                    { 
                         CDB dbToRewrite(strFile.c_str(), "r");
                         std::unique_ptr<Db> pdbCopy(Db(&CDB::dbenv, 0));
 
-                        // Open database handle to temp file 
+                        /* Open database handle to temp file */
                         int ret = pdbCopy->open(nullptr,            // Txn pointer
                                                 strFileRes.c_str(), // Filename
                                                 "main",             // Logical db name
@@ -657,31 +662,31 @@ namespace Legacy
                                 CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
                                 CDataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
 
-                                // Read next key-value pair to copy
+                                /* Read next key-value pair to copy */
                                 int ret = dbToRewrite.ReadAtCursor(pcursor, ssKey, ssValue, DB_NEXT);
 
                                 if (ret == DB_NOTFOUND)
                                 {
-                                    // No more data
+                                    /* No more data */
                                     pcursor->close();
                                     break;
                                 }
                                 else if (ret != 0)
                                 {
-                                    // Error reading cursor
+                                    /* Error reading cursor */
                                     pcursor->close();
                                     fSuccess = false;
                                     break;
                                 }
 
-                                // Skip any key value defined by strSkip argument
+                                /* Skip any key value defined by strSkip argument */
                                 if (strSkip.size() > 0 && ssKey.compare(0, strSkip.size(), strSkip) == 0)
                                     continue;
 
-                                // Don't copy the version, instead use latest version
+                                /* Don't copy the version, instead use latest version */
                                 if (ssKey.compare(0, 7, "version") == 0)
                                 {
-                                    // Update version:
+                                    /* Update version */
                                     ssValue.clear();
                                     ssValue << LLD::DATABASE_VERSION;
                                 }
@@ -689,7 +694,7 @@ namespace Legacy
                                 Dbt datKey(&ssKey[0], ssKey.size());
                                 Dbt datValue(&ssValue[0], ssValue.size());
 
-                                // Write the data to temp file 
+                                /* Write the data to temp file */
                                 int ret2 = pdbCopy->put(nullptr, &datKey, &datValue, DB_NOOVERWRITE);
 
                                 if (ret2 > 0)
@@ -708,7 +713,7 @@ namespace Legacy
 
                     if (fSuccess)
                     {
-                        // Remove original database file
+                        /* Remove original database file */
                         Db dbA(&CDB::dbenv, 0);
                         if (dbA.remove(strFile.c_str(), nullptr, 0) != 0)
                             fSuccess = false;
@@ -716,7 +721,7 @@ namespace Legacy
 
                     if (fSuccess)
                     {
-                        // Rename temp file to original file name
+                        /* Rename temp file to original file name */
                         Db dbB(&CDB::dbenv, 0);
                         if (dbB.rename(strFileRes.c_str(), nullptr, strFile.c_str(), 0) != 0)
                             fSuccess = false;
@@ -727,14 +732,15 @@ namespace Legacy
 
                     return fSuccess;
                 }
-            } // End lock scope
+            } /* End lock scope */
         }
 
-        return false; // Return false if fShutdown
+        /* Return false if fShutdown */
+        return false; 
     }
 
 
-    /* EnvShutdown */
+    /* Called to shut down the Berkeley database environment in CDB:dbenv */
     void CDB::EnvShutdown()
     {
         if (!CDB::fDbEnvInit)
@@ -750,7 +756,7 @@ namespace Legacy
             printf("EnvShutdown exception: %s (%d)\n", e.what(), e.get_errno());
         }
 
-        // Use of DB_FORCE should not be necessary after calling dbenv.close() but included in case there is an exception
+        /* Use of DB_FORCE should not be necessary after calling dbenv.close() but included in case there is an exception */
         CDB::dbenv.remove(GetDataDir().c_str(), DB_FORCE);
     }
 

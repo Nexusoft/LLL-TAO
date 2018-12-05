@@ -90,9 +90,10 @@ namespace Legacy
             return 0;
 
         /* When calculation previously cached, use cached value */
-        //Disable caching 
-        //if (fUseCache && fAvailableCreditCached)
-        //    return nAvailableCreditCached;
+        /* Disable caching -- this was commented out in old QT code, left here for reference
+        if (fUseCache && fAvailableCreditCached)
+            return nAvailableCreditCached;
+        */
 
         int64_t nCredit = 0;
         for (uint32_t i = 0; i < vout.size(); i++)

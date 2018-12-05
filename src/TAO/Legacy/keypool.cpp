@@ -25,7 +25,9 @@ ________________________________________________________________________________
 namespace Legacy
 {
     
-	/* NewKeyPool */
+    /*  Clears any existing keys in the pool and the wallet database
+     *  and generates a completely new key set.
+     */
     bool CKeyPool::NewKeyPool()
     {
 
@@ -38,13 +40,13 @@ namespace Legacy
 
             CWalletDB walletdb(poolWallet.GetWalletFile());
 
-            // Remove all entries for old key pool from database
+            /* Remove all entries for old key pool from database */
             for(int64_t nPoolIndex : setKeyPool)
                 walletdb.ErasePool(nPoolIndex);
 
             setKeyPool.clear();
 
-            // Generate a new key pool with a full set of keys
+            /* Generate a new key pool with a full set of keys */
             int nKeys = max(GetArg("-keypool", KeyPool::DEFAULT_KEY_POOL_SIZE), 0);
 
             for (int i = 0; i < nKeys; i++)
@@ -67,7 +69,7 @@ namespace Legacy
     }
 
 
-    /* TopUpKeyPool */
+    /* Adds keys to key pool to top up the number of entries. */
     bool CKeyPool::TopUpKeyPool()
     {
     	bool fPrintKeyPool = GetBoolArg("-printkeypool"); // avoids having to call arg function repeatedly
@@ -77,10 +79,10 @@ namespace Legacy
         {
             std::lock_guard<std::mutex> walletLock(poolWallet.cs_wallet);
 
-            // Current key pool size
+            /* Current key pool size */
             uint32_t nStartingSize = setKeyPool.size();
 
-            // Desired key pool size
+            /* Desired key pool size */
             uint32_t nTargetSize = max(GetArg("-keypool", KeyPool::DEFAULT_KEY_POOL_SIZE), 0);
 
             if (nStartingSize >= nTargetSize)
@@ -91,24 +93,24 @@ namespace Legacy
 
             CWalletDB walletdb(poolWallet.GetWalletFile());
 
-            // Current max pool index in the pool
+            /* Current max pool index in the pool */
             int64_t nCurrentMaxPoolIndex = 0;
             if (!setKeyPool.empty())
                 nCurrentMaxPoolIndex = *(--setKeyPool.cend());
 
-            // New pool indexes will begin from the current max
+            /* New pool indexes will begin from the current max */
             int64_t nNewPoolIndex = nCurrentMaxPoolIndex;
 
-            // Top up key pool
+            /* Top up key pool */
             for (uint32_t i = nStartingSize; i < nTargetSize; ++i)
             {
                 ++nNewPoolIndex;
 
-                // Generate a new key and add the key pool entry to the wallet database
+                /* Generate a new key and add the key pool entry to the wallet database */
                 if (!walletdb.WritePool(nNewPoolIndex, CKeyPoolEntry(poolWallet.GenerateNewKey())))
                     throw runtime_error("CKeyPool::TopUpKeyPool() : writing generated key failed");
 
-                // Store the pool index for the new key in the key pool
+                /* Store the pool index for the new key in the key pool */
                 setKeyPool.insert(nNewPoolIndex);
 
                 if (fPrintKeyPool)
@@ -127,7 +129,7 @@ namespace Legacy
     }
 
 
-    /* AddKey */
+    /* Manually adds a key pool entry. This only adds the entry to the pool. */
     int64_t CKeyPool::AddKey(const CKeyPoolEntry& keypoolEntry)
     {
         if (poolWallet.IsFileBacked())
@@ -152,7 +154,9 @@ namespace Legacy
     }
 
 
-    /* GetKeyFromPool */
+    /* Extracts a key from the key pool. This both reserves and keeps the key,
+     * removing it from the pool.
+     */
     bool CKeyPool::GetKeyFromPool(vector<uint8_t>& key, bool fUseDefaultWhenEmpty)
     {
         int64_t nPoolIndex = 0;
@@ -192,7 +196,9 @@ namespace Legacy
     }
 
 
-    /* ReserveKeyFromPool*/
+    /* Reserves a key pool entry out of this key pool. After reserving it, the
+     * key pool entry is unavailable for other use. 
+     */
     void CKeyPool::ReserveKeyFromPool(int64_t& nPoolIndex, CKeyPoolEntry& keypoolEntry)
     {
         nPoolIndex = -1;
@@ -210,20 +216,21 @@ namespace Legacy
 
             CWalletDB walletdb(poolWallet.GetWalletFile());
 
-            // Get the oldest key (smallest key pool index)
+            /* Get the oldest key (smallest key pool index) */
             auto si = setKeyPool.begin();
             nPoolIndex = *(si);
 
-            // Reserve key removes it from the key pool, but leaves the key pool entry in the wallet database.
-            // This will later be removed by KeepKey() or the key will be re-added to the pool by ReturnKey().
-            // Shutting down and later restarting has the same effect as ReturnKey().
+            /* Reserve key removes it from the key pool, but leaves the key pool entry in the wallet database.
+             * This will later be removed by KeepKey() or the key will be re-added to the pool by ReturnKey().
+             * Shutting down and later restarting has the same effect as ReturnKey().
+             */
             setKeyPool.erase(si);
 
-            // Retrieve the key pool entry from the database
+            /* Retrieve the key pool entry from the database */
             if (!walletdb.ReadPool(nPoolIndex, keypoolEntry))
                 throw runtime_error("CKeyPool::ReserveKeyFromPool() : unable to read key pool entry");
 
-            // Validate that the key is a valid key for the containing wallet
+            /* Validate that the key is a valid key for the containing wallet */
             if (!poolWallet.HaveKey(SK256(keypoolEntry.vchPubKey)))
                 throw runtime_error("CKeyPool::ReserveKeyFromPool() : unknown key in key pool");
 
@@ -236,14 +243,14 @@ namespace Legacy
     }
 
 
-		/* KeepKey */
+    /* Marks a reserved key as used, removing it from the key pool. */
     void CKeyPool::KeepKey(int64_t nPoolIndex)
     {
         if (poolWallet.IsFileBacked())
         {
             std::lock_guard<std::mutex> walletLock(poolWallet.cs_wallet);
 
-            // Remove from key pool
+            /* Remove from key pool */
             CWalletDB walletdb(poolWallet.GetWalletFile());
             walletdb.ErasePool(nPoolIndex);
 
@@ -256,7 +263,7 @@ namespace Legacy
     }
 
 
-    /* ReturnKey */
+    /* Returns a reserved key to the key pool. */
     void CKeyPool::ReturnKey(int64_t nPoolIndex)
     {
         if (poolWallet.IsFileBacked())
@@ -271,19 +278,19 @@ namespace Legacy
     }
 
 
-    /* GetOldestKeyPoolTime */
+    /* Retrieves the creation time for the pool's oldest entry. */
     int64_t CKeyPool::GetOldestKeyPoolTime()
     {
         int64_t nPoolIndex = 0;
         CKeyPoolEntry keypoolEntry;
 
-        // ReserveKeyFromPool returns the oldest key pool entry
+        /* ReserveKeyFromPool returns the oldest key pool entry */
         ReserveKeyFromPool(nPoolIndex, keypoolEntry);
 
         if (nPoolIndex == -1)
             return UnifiedTimestamp();
 
-        // Reserve call was just to access oldest key pool entry, not to use it, so return it immediately
+        /* Reserve call was just to access oldest key pool entry, not to use it, so return it immediately */
         ReturnKey(nPoolIndex);
 
         return keypoolEntry.nTime;

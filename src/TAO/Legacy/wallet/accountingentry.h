@@ -102,7 +102,7 @@ namespace Legacy
         (
             if (!(nSerType & SER_GETHASH))
                 READWRITE(nVersion);
-            // Note: strAccount is serialized as part of the key, not here.
+            /* Note: strAccount is serialized as part of the key, not here. */
             READWRITE(nCreditDebit);
             READWRITE(nTime);
             READWRITE(strOtherAccount);

@@ -25,12 +25,12 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    /* GetReservedKey */
+    /* Retrieves the public key value for the currently reserved key. */
     vector<uint8_t> CReserveKey::GetReservedKey()
     {
         if (nPoolIndex == -1)
         {
-            // Don't have a reserved key in this instance, yet, so need to reserve one
+            /* Don't have a reserved key in this instance, yet, so need to reserve one */
             CKeyPoolEntry keypoolEntry;
             wallet.GetKeyPool().ReserveKeyFromPool(nPoolIndex, keypoolEntry);
 
@@ -48,7 +48,7 @@ namespace Legacy
     }
 
 
-    /* KeepKey */
+    /* Marks the reserved key as used, removing it from the key pool. */
     void CReserveKey::KeepKey()
     {
         if (nPoolIndex != -1)
@@ -59,7 +59,7 @@ namespace Legacy
     }
 
 
-    /* ReturnKey */
+    /* Returns a reserved key to the key pool. After call, it is no longer reserved. */
     void CReserveKey::ReturnKey()
     {
         if (nPoolIndex != -1)

@@ -35,7 +35,7 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    /* WriteMasterKey */
+    /* Stores an encrypted master key into the database. */
     bool WriteMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey)
     {
         CWalletDB::nWalletDBUpdated++;
@@ -43,14 +43,14 @@ namespace Legacy
     }
 
 
-    /* WriteMinVersion */
+    /* Stores the minimum database version supported by this wallet database. */
     bool WriteMinVersion(const int nVersion)
     {
         return Write(std::string("minversion"), nVersion, true);
     }
 
 
-    /* ReadAccount */
+    /* Reads the wallet account data associated with an account (Nexus address). */
     bool CWalletDB::ReadAccount(const std::string& strAccount, CAccount& account)
     {
         account.SetNull();
@@ -58,14 +58,14 @@ namespace Legacy
     }
 
 
-    /* WriteAccount */
+    /* Stores the wallet account data for an address in the database. */
     bool CWalletDB::WriteAccount(const std::string& strAccount, const CAccount& account)
     {
         return Write(std::make_pair(std::string("acc"), strAccount), account);
     }
 
 
-    /* ReadName */
+    /* Reads a logical name (label) for an address into the database. */
     bool ReadName(const std::string& strAddress, std::string& strName)
     {
         strName = "";
@@ -73,7 +73,7 @@ namespace Legacy
     }
 
 
-    /* WriteName */
+    /* Stores a logical name (label) for an address in the database. */
     bool CWalletDB::WriteName(const std::string& strAddress, const std::string& strName)
     {
         CWalletDB::nWalletDBUpdated++;
@@ -81,7 +81,7 @@ namespace Legacy
     }
 
 
-    /* EraseName */
+    /* Removes the name entry associated with an address. */
     bool CWalletDB::EraseName(const std::string& strAddress)
     {
         CWalletDB::nWalletDBUpdated++;
@@ -89,7 +89,7 @@ namespace Legacy
     }
 
 
-    /* ReadDefaultKey */
+    /* Reads the default public key from the wallet database. */
     bool ReadDefaultKey(std::vector<uint8_t>& vchPubKey)
     {
         vchPubKey.clear();
@@ -97,7 +97,7 @@ namespace Legacy
     }
 
 
-    /* WriteDefaultkey */
+    /* Stores the default public key to the wallet database. */
     bool WriteDefaultKey(const std::vector<uint8_t>& vchPubKey)
     {
         CWalletDB::nWalletDBUpdated++;
@@ -105,7 +105,7 @@ namespace Legacy
     }
 
 
-    /* ReadKey */
+    /* Reads the unencrypted private key associated with a public key */
     bool ReadKey(const std::vector<uint8_t>& vchPubKey, LLC::CPrivKey& vchPrivKey)
     {
         vchPrivKey.clear();
@@ -113,7 +113,7 @@ namespace Legacy
     }
 
 
-    /* WriteKey */
+    /* Stores an unencrypted private key using the corresponding public key. */
     bool WriteKey(const std::vector<uint8_t>& vchPubKey, const LLC::CPrivKey& vchPrivKey)
     {
         CWalletDB::nWalletDBUpdated++;
@@ -121,7 +121,7 @@ namespace Legacy
     }
 
 
-    /* WriteCryptedKey */
+    /* Stores an encrypted private key using the corresponding public key. */
     bool WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret, bool fEraseUnencryptedKey = true)
     {
         CWalletDB::nWalletDBUpdated++;
@@ -137,14 +137,14 @@ namespace Legacy
     }
 
 
-    /* ReadTx */
+    /* Reads the wallet transaction for a given transaction hash. */
     bool ReadTx(const uint512_t hash, CWalletTx& wtx)
     {
         return Read(std::make_pair(std::string("tx"), hash), wtx);
     }
 
 
-    /* WriteTx */
+    /* Stores a wallet transaction using its transaction hash. */
     bool WriteTx(const uint512_t hash, const CWalletTx& wtx)
     {
         CWalletDB::nWalletDBUpdated++;
@@ -152,7 +152,7 @@ namespace Legacy
     }
 
 
-    /* EraseTx */
+    /* Removes the wallet transaction associated with a transaction hash. */
     bool EraseTx(const uint512_t hash)
     {
         CWalletDB::nWalletDBUpdated++;
@@ -160,7 +160,7 @@ namespace Legacy
     }
 
 
-    /* ReadCScript */
+    /* Reads the script for a given script hash. */
     bool ReadCScript(const uint256_t &hash, CScript& redeemScript)
     {
         redeemScript.clear();
@@ -168,7 +168,7 @@ namespace Legacy
     }
 
 
-    /* WriteCScript */
+    /* Stores a redeem script using its script hash. */
     bool WriteCScript(const uint256_t& hash, const CScript& redeemScript)
     {
         CWalletDB::nWalletDBUpdated++;
@@ -176,14 +176,14 @@ namespace Legacy
     }
 
 
-    /* ReadBestBlock */
+    /* Reads the stored CBlockLocator of the last recorded best block. */
     bool ReadBestBlock(Core::CBlockLocator& locator)
     {
         return Read(std::string("bestblock"), locator);
     }
 
 
-    /* WriteBestBlock */
+    /* Stores a CBlockLocator to record current best block. */
     bool WriteBestBlock(const Core::CBlockLocator& locator)
     {
         CWalletDB::nWalletDBUpdated++;
@@ -191,14 +191,14 @@ namespace Legacy
     }
 
 
-    /* ReadPool */
+    /* Reads a key pool entry from the database. */
     bool ReadPool(const int64_t nPool, CKeyPoolEntry& keypoolEntry)
     {
         return Read(std::make_pair(std::string("pool"), nPool), keypoolEntry);
     }
 
 
-    /* WritePool */
+    /* Stores a key pool entry using its pool entry number (ID value). */
     bool WritePool(const int64_t nPool, const CKeyPoolEntry& keypoolEntry)
     {
         CWalletDB::nWalletDBUpdated++;
@@ -206,7 +206,7 @@ namespace Legacy
     }
 
 
-    /* ErasePool */
+    /* Removes a key pool entry associated with a pool entry number. */
     bool ErasePool(const int64_t nPool)
     {
         CWalletDB::nWalletDBUpdated++;
@@ -214,14 +214,14 @@ namespace Legacy
     }
 
 
-    /* WriteAccountingEntry */
+    /* Stores an accounting entry in the wallet database. */
     bool CWalletDB::WriteAccountingEntry(const CAccountingEntry& acentry)
     {
         return Write(std::make_tuple(std::string("acentry"), acentry.strAccount, ++CWalletDB::nAccountingEntryNumber), acentry);
     }
 
 
-    /* GetAccountCreditDebit */
+    /* Retrieves the net total of all accounting entries for an account (Nexus address). */
     int64_t CWalletDB::GetAccountCreditDebit(const std::string& strAccount)
     {
         std::list<CAccountingEntry> entries;
@@ -235,7 +235,7 @@ namespace Legacy
     }
 
 
-    /* ListAccountCreditDebit */
+    /* Retrieves a list of individual accounting entries for an account (Nexus address) */
     void CWalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& entries)
     {
         bool fAllAccounts = (strAccount == "*");
@@ -248,34 +248,35 @@ namespace Legacy
         uint32_t fFlags = DB_SET_RANGE;
 
         loop() {
-            // Read next record
+            /* Read next record */
             CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             if (fFlags == DB_SET_RANGE)
             {
-                // Set key input to acentry<account><0> when set range flag is set (first iteration)
-                // This will return all entries beginning with ID 0, with DB_NEXT reading the next entry each time
-                // Read until key does not begin with acentry, does not match requested account, or DB_NOTFOUND (end of database)
+                /* Set key input to acentry<account><0> when set range flag is set (first iteration)
+                 * This will return all entries beginning with ID 0, with DB_NEXT reading the next entry each time
+                 * Read until key does not begin with acentry, does not match requested account, or DB_NOTFOUND (end of database)
+                 */
                 ssKey << std::::make_tuple(std::string("acentry"), (fAllAccounts? std::string("") : strAccount), uint64_t(0));
             }
 
             CDataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
             int ret = ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
 
-            // After initial read, change flag setting to DB_NEXT so additional reads just get the next database entry
+            /* After initial read, change flag setting to DB_NEXT so additional reads just get the next database entry */
             fFlags = DB_NEXT;
             if (ret == DB_NOTFOUND)
             {
-                // End of database reached, no further entries to read
+                /* End of database reached, no further entries to read */
                 break;
             }
             else if (ret != 0)
             {
-                // Error retrieving accounting entries
+                /* Error retrieving accounting entries */
                 pcursor->close();
                 throw runtime_error("CWalletDB::ListAccountCreditDebit() : error scanning DB");
             }
 
-            // Unserialize
+            /* Unserialize */
             std::string strType;
             ssKey >> strType;
             if (strType != "acentry")
@@ -286,7 +287,7 @@ namespace Legacy
             if (!fAllAccounts && acentry.strAccount != strAccount)
                 break; // Read an entry for a different account (finished with read)
 
-            // Database entry read matches both acentry key type and requested account, add to list
+            /* Database entry read matches both acentry key type and requested account, add to list */
             ssValue >> acentry;
             entries.push_back(acentry);
         }
@@ -295,7 +296,7 @@ namespace Legacy
     }
 
 
-    /* LoadWallet */
+    /* Initializes a wallet instance from the data in this wallet database. */
     int CWalletDB::LoadWallet(CWallet& wallet)
     {
         int nFileVersion = 0;
@@ -303,7 +304,7 @@ namespace Legacy
 
         bool fIsEncrypted = false;
 
-        { //Begin lock scope 
+        { /* Begin lock scope */
             std::lock_guard<std::mutex> walletLock(wallet.cs_wallet); 
 
             std::vector<uint8_t> vchLoadedDefaultKey;
@@ -460,7 +461,7 @@ namespace Legacy
                         key.SetPubKey(vchPubKey);
                         key.SetPrivKey(wkey.vchPrivKey);
 
-                        // Validate the key data 
+                        /* Validate the key data  */
                         if (key.GetPubKey() != vchPubKey)
                         {
                             printf("Error reading wallet database: CWalletKey pubkey inconsistency\n");
@@ -554,7 +555,7 @@ namespace Legacy
 
             pcursor->close();
 
-        } //End lock scope
+        } /* End lock scope */
 
         /* Remove transactions flagged for removal */
         if(vWalletRemove.size() > 0) 
@@ -578,7 +579,7 @@ namespace Legacy
     }
 
 
-    /* ThreadFlushWalletDB */
+    /* Function that loops until shutdown and periodically flushes a wallet db */
     void ThreadFlushWalletDB(const std::string strWalletFile)
     {
         if (!GetBoolArg("-flushwallet", true))
@@ -655,7 +656,7 @@ namespace Legacy
     }
 
 
-    /* BackupWallet */
+    /* Writes a backup copy of a wallet to a designated backup file */
     bool BackupWallet(const CWallet& wallet, const std::string& strDest)
     {
         if (!wallet.IsFileBacked())
@@ -666,10 +667,10 @@ namespace Legacy
             {
                 std::lock_guard<std::mutex> dbLock(CDB::cs_db); 
 
-                // If wallet database is in use, will wait and repeat loop until it becomes available
+                /* If wallet database is in use, will wait and repeat loop until it becomes available */
                 if (CDB::mapFileUseCount.count(strFile) == 0 || CDB::mapFileUseCount[strFile] == 0)
                 {
-                    // Flush log data to the dat file
+                    /* Flush log data to the dat file */
                     CloseDb(wallet.GetWalletFile());
                     dbenv.txn_checkpoint(0, 0, 0);
                     dbenv.lsn_reset(wallet.GetWalletFile().c_str(), 0);
@@ -678,11 +679,11 @@ namespace Legacy
                     std::string pathSrc(GetDataDir() + "/" + strFile);
                     std::string pathDest(strDest);
 
-                    // If destination is a folder, use wallet database name
+                    /* If destination is a folder, use wallet database name */
                     if (filesystem::is_directory(pathDest))
                         pathDest = pathDest + "/" + strFile;
 
-                    // Copy wallet.dat (this method is a bit slow, but is simple and should be ok for an occasional copy)
+                    /* Copy wallet.dat (this method is a bit slow, but is simple and should be ok for an occasional copy) */
                     if filesystem::copy_file(pathSource, pathDest)
                     {
                         printf("Copied wallet.dat to %s\n", pathDest.c_str());
@@ -697,7 +698,7 @@ namespace Legacy
                 }
             }
 
-            // Wait for usage to end when database is in use
+            /* Wait for usage to end when database is in use */
             Sleep(100);
         }
 

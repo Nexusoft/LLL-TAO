@@ -29,7 +29,7 @@ namespace Legacy
             if (fUseCrypto)
                 return true;
 
-            // Cannot activate encryption if key store contains any unencrypted keys
+            /* Cannot activate encryption if key store contains any unencrypted keys */
             if (!mapKeys.empty())
                 return false;
 
@@ -46,17 +46,18 @@ namespace Legacy
         {
             std::lock_guard<std::mutex> ksLock(cs_KeyStore);
 
-            //Check whether key store already encrypted
+            /* Check whether key store already encrypted */
             if (!mapCryptedKeys.empty() || IsCrypted())
                 return false;
 
-            //Set key store as encrypted
+            /* Set key store as encrypted */
             fUseCrypto = true;
 
-            //Convert unencrypted keys from mapKeys to encrypted keys in mapCryptedKeys
-            //mKey will have pair for each map entry
-            //mKey.first = base 58 address (map key)
-            //mKey.second = std::pair<LLC::CSecret, bool> where bool indicates key compressed true/false
+            /* Convert unencrypted keys from mapKeys to encrypted keys in mapCryptedKeys
+             * mKey will have pair for each map entry
+             * mKey.first = base 58 address (map key)
+             * mKey.second = std::pair<LLC::CSecret, bool> where bool indicates key compressed true/false
+             */
             for(const auto mKey : mapKeys)
             {
                 LLC::ECKey key;
@@ -69,7 +70,7 @@ namespace Legacy
                 std::vector<uint8_t> vchCryptedSecret;
                 bool fCompressed;
 
-                //Successful encryption will place encrypted private key into vchCryptedSecret
+                /* Successful encryption will place encrypted private key into vchCryptedSecret */
                 if (!EncryptSecret(vMasterKeyIn, key.GetSecret(fCompressed), LLC::SK576(vchPubKey.begin(), vchPubKey.end()), vchCryptedSecret))
                     return false;
 
@@ -90,21 +91,22 @@ namespace Legacy
         {
             std::lock_guard<std::mutex> ksLock(cs_KeyStore);
 
-            //Cannot unlock unencrypted key store (it is unlocked by default)
+            /* Cannot unlock unencrypted key store (it is unlocked by default) */
             if (!SetCrypted())
                 return false;
 
             auto mi = mapCryptedKeys.cbegin();
 
-            //Only need to check first entry in map to determine successful/unsuccessful unlock
-            //Will also unlock successfully if map has no entries
+            /* Only need to check first entry in map to determine successful/unsuccessful unlock
+             * Will also unlock successfully if map has no entries
+             */
             if (mi != mapCryptedKeys.cend())
             {
                 const std::vector<uint8_t> &vchPubKey = (*mi).second.first;
                 const std::vector<uint8_t> &vchCryptedSecret = (*mi).second.second;
                 LLC::CSecret vchSecret;
 
-                //Successful decryption will place decrypted private key into vchSecret
+                /* Successful decryption will place decrypted private key into vchSecret */
                 if(!DecryptSecret(vMasterKeyIn, vchCryptedSecret, SK576(vchPubKey.begin(), vchPubKey.end()), vchSecret))
                     return false;
 
@@ -115,12 +117,12 @@ namespace Legacy
                 key.SetPubKey(vchPubKey);
                 key.SetSecret(vchSecret);
 
-                //When these are equal, the decryption is successful and vMasterKeyIn is a match
+                /* When these are equal, the decryption is successful and vMasterKeyIn is a match */
                 if (key.GetPubKey() != vchPubKey)
                     return false;
             }
 
-            //Key store unlocked, store encryption key for further use
+            /* Key store unlocked, store encryption key for further use */
             vMasterKey = vMasterKeyIn;
         }
 
@@ -131,7 +133,7 @@ namespace Legacy
     /*  Check whether or not the key store is currently locked. */
     bool CCryptoKeyStore::IsLocked() const
     {
-        //Unencrypted key store is not locked
+        /* Unencrypted key store is not locked */
         if (!IsCrypted())
             return false;
 
@@ -140,7 +142,7 @@ namespace Legacy
         {
             std::lock_guard<std::mutex> ksLock(cs_KeyStore);
 
-            //If encryption key is not stored, cannot decrypt keys and key store is locked
+            /* If encryption key is not stored, cannot decrypt keys and key store is locked */
             result = vMasterKey.empty();
         }
 
@@ -151,14 +153,14 @@ namespace Legacy
     /*  Attempt to lock the key store. */
     bool CCryptoKeyStore::Lock()
     {
-        //Cannot lock unencrypted key store
+        /* Cannot lock unencrypted key store */
         if (!SetCrypted())
             return false;
 
         {
             std::lock_guard<std::mutex> ksLock(cs_KeyStore);
 
-            //Remove any stored encryption key so key store values cannot be decrypted, locking the key store
+            /* Remove any stored encryption key so key store values cannot be decrypted, locking the key store */
             vMasterKey.clear();
         }
 
@@ -172,7 +174,7 @@ namespace Legacy
         {
             std::lock_guard<std::mutex> ksLock(cs_KeyStore);
 
-            //Key store must be encrypted
+            /* Key store must be encrypted */
             if (!SetCrypted())
                 return false;
 
@@ -189,20 +191,20 @@ namespace Legacy
         {
             std::lock_guard<std::mutex> ksLock(cs_KeyStore);
 
-            //Add key to basic key store if encryption not active
+            /* Add key to basic key store if encryption not active */
             if (!IsCrypted())
                 return CBasicKeyStore::AddKey(key);
 
-            //Cannot add key if key store is encrypted and locked
+            /* Cannot add key if key store is encrypted and locked */  
             if (IsLocked())
                 return false;
 
-            //When encryption active, first encrypt the key using vMaster key, then add to key store
+            /* When encryption active, first encrypt the key using vMaster key, then add to key store */
             std::vector<uint8_t> vchCryptedSecret;
             std::vector<uint8_t> vchPubKey = key.GetPubKey();
             bool fCompressed;
 
-            //Successful encryption will place encrypted private key into vchCryptedSecret
+            /* Successful encryption will place encrypted private key into vchCryptedSecret */
             if (!EncryptSecret(vMasterKey, key.GetSecret(fCompressed), LLC::SK576(vchPubKey.begin(), vchPubKey.end()), vchCryptedSecret))
                 return false;
 
@@ -219,7 +221,7 @@ namespace Legacy
         {
             std::lock_guard<std::mutex> ksLock(cs_KeyStore);
 
-            //Cannot decrypt key if key store is encrypted and locked
+            /* Cannot decrypt key if key store is encrypted and locked */
             if (IsLocked())
                 return false;
 

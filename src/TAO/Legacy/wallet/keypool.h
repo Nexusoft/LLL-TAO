@@ -149,7 +149,7 @@ namespace Legacy
 
         /** GetKeyPoolSize
          *
-         *  Retrieves the current number of keys in the pool
+         *  Retrieves the current number of keys in the pool.
          *
          *  @return key pool size
          *

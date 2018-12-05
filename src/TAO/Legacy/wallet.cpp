@@ -348,14 +348,19 @@ namespace Legacy
                 if (fFileBacked)
                     walletdb.TxnAbort();
 
-                /* We now probably have half of our keys encrypted in memory, and half not...die to let the user reload their unencrypted wallet. */
+                /* We now probably have half of our keys encrypted in memory, 
+                 * and half not...die to let the user reload their unencrypted wallet. 
+                 */
                 exit(1); 
             }
 
             if (fFileBacked)
             {
                 if (walletdb.TxnCommit())
-                    exit(1); //We now have keys encrypted in memory, but not on disk...die to let the user reload their unencrypted wallet.
+                {
+                    /* Keys encrypted in memory, but not on disk...die to let the user reload their unencrypted wallet. */
+                    exit(1); 
+                }
 
                 walletdb.Close();
             }

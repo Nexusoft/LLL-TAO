@@ -66,9 +66,11 @@ namespace Legacy
         if (chNewKey.size() != WALLET_CRYPTO_KEY_SIZE || chNewIV.size() != WALLET_CRYPTO_KEY_SIZE)
             return false;
 
-        // Try to keep the keydata out of swap
-        // Note that this does nothing about suspend-to-disk (which will put all our key data on disk)
-        // Note as well that at no point in this program is any attempt made to prevent stealing of keys by reading the memory of the running process.
+        /* Try to keep the keydata out of swap
+         * Note that this does nothing about suspend-to-disk (which will put all our key data on disk)
+         * Note as well that at no point in this program is any attempt made to prevent stealing of keys 
+         * by reading the memory of the running process.
+         */
         mlock(&chKey[0], sizeof chKey);
         mlock(&chIV[0], sizeof chIV);
 
@@ -86,9 +88,11 @@ namespace Legacy
         if (nRounds < 1 || chSalt.size() != WALLET_CRYPTO_SALT_SIZE)
             return false;
 
-        // Try to keep the keydata out of swap 
-        // Note that this does nothing about suspend-to-disk (which will put all our key data on disk)
-        // Note as well that at no point in this program is any attempt made to prevent stealing of keys by reading the memory of the running process.
+        /* Try to keep the keydata out of swap 
+         * Note that this does nothing about suspend-to-disk (which will put all our key data on disk)
+         * Note as well that at no point in this program is any attempt made to prevent stealing of keys 
+         * by reading the memory of the running process.
+         */
         mlock(&chKey[0], sizeof chKey);
         mlock(&chIV[0], sizeof chIV);
 
@@ -128,8 +132,7 @@ namespace Legacy
         if (!IsKeySet())
             return false;
 
-        // max ciphertext len for a n bytes of plaintext is
-        // n + AES_BLOCK_SIZE - 1 bytes
+        /* max ciphertext len for a n bytes of plaintext is (n + AES_BLOCK_SIZE - 1) bytes */
         int nLen = vchPlaintext.size();
         int nCLen = nLen + AES_BLOCK_SIZE, nFLen = 0;
         vchCiphertext = std::vector<uint8_t> (nCLen);
@@ -159,7 +162,7 @@ namespace Legacy
         if (!IsKeySet())
             return false;
 
-        // plaintext will always be equal to or lesser than length of ciphertext
+        /* Plain text will always be equal to or lesser than length of ciphertext */
         int nLen = vchCiphertext.size();
         int nPLen = nLen, nFLen = 0;
 
