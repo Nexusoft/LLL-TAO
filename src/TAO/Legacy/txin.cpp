@@ -17,20 +17,9 @@ ________________________________________________________________________________
 #include <TAO/Legacy/types/txin.h>
 
 #include <Util/include/hex.h>
-#include <Util/templates/serialize.h>
 
 namespace Legacy
 {
-
-	SERIALIZE_SOURCE
-	(
-		CTxIn,
-
-		READWRITE(prevout);
-		READWRITE(scriptSig);
-		READWRITE(nSequence);
-	)
-	
 
 	/* Basic Constructor. */
 	CTxIn::CTxIn(uint512_t hashPrevTx, uint32_t nOut, CScript scriptSigIn, uint32_t nSequenceIn)

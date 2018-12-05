@@ -22,15 +22,6 @@ ________________________________________________________________________________
 
 namespace Legacy
 {
-	//the serialization methods
-	SERIALIZE_SOURCE
-	(
-		CTxOut,
-
-		READWRITE(nValue);
-		READWRITE(scriptPubKey);
-	)
-
 
 	/* Set the object to null state. */
 	void CTxOut::SetNull()

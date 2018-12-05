@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <cstdint>
 #include <cstring>
 
-#include <Util/macro/header.h>
+#include <Util/templates/serialize.h>
 #include <TAO/Legacy/types/script.h>
 
 namespace Legacy
@@ -39,7 +39,11 @@ namespace Legacy
 
 
 		//the serialization methods
-		SERIALIZE_HEADER
+		IMPLEMENT_SERIALIZE
+		(
+			READWRITE(nValue);
+			READWRITE(scriptPubKey);
+		)
 
 
 		/** Default constructor
