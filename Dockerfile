@@ -1,4 +1,4 @@
-# 
+#
 # Build Nexus/LISP docker image based on a Debian Linux kernel. This
 # Dockerfile is for the Tritium release of the TAO. The docker image name
 # should be called "tritium". To build, use the "docker build" command in
@@ -18,7 +18,7 @@
 
 #
 # We prefer Debian as a base OS.
-#        
+#
 FROM debian:latest
 
 #
@@ -44,7 +44,7 @@ RUN apt-get update && apt-get -yq install \
 #
 # Install LISP release in /lispers.net directory.
 #
-RUN mkdir /lispers.net; cd /lispers.net; curl --insecure -L $LISP_URL | gzip -dc | tar -xf - 
+RUN mkdir /lispers.net; cd /lispers.net; curl --insecure -L $LISP_URL | gzip -dc | tar -xf -
 
 #
 # Install python modules the lispers.net directory depends on.
@@ -65,14 +65,15 @@ RUN mkdir /nexus
 RUN mkdir /nexus/build
 COPY ./makefile.cli /nexus
 COPY ./src /nexus/src/
-RUN cd /nexus; make -f makefile.cli
+RUN cd /nexus; make -f makefile.cli clean;
+RUN cd /nexus; make -j 8 -f makefile.cli;
 
 #
 # Copy Nexus startup files.
 #
 COPY config/nexus.conf /root/.Nexus/nexus.conf
 COPY config/run-nexus /nexus/run-nexus
-    
+
 #
 # Copy LISP startup config.
 #

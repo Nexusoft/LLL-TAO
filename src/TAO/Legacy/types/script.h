@@ -52,6 +52,7 @@ namespace Legacy
     std::string StackString(const std::vector<std::vector<uint8_t> >& vStack);
 
 
+
     /** Serialized script, used inside transaction inputs and outputs */
     class CScript : public std::vector<uint8_t>
     {
