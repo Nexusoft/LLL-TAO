@@ -27,8 +27,8 @@ namespace Legacy
      *
      *  Evaluate a script to true or false based on operation codes.
      *
-     *  @param[in] stack The stack byte code to execute
-     *  @param[in] script The script object to run
+     *  @param[in] stack The stack byte code to execute.
+     *  @param[in] script The script object to run.
      *  @param[in] txTo The transaction this is executing for.
      *  @param[in] nIn The input in.
      *  @param[in] nHashType The hash type enumeration.
@@ -36,16 +36,16 @@ namespace Legacy
      *  @return true if the script evaluates to true.
      *
      **/
-    bool EvalScript(std::vector<std::vector<uint8_t> >& stack, const CScript& script, const Core::CTransaction& txTo, uint32_t nIn, int nHashType);
+    bool EvalScript(std::vector< std::vector<uint8_t> >& stack, const CScript& script, const Core::CTransaction& txTo, uint32_t nIn, int32_t nHashType);
 
 
     /** Solver
      *
      *  Extract data from a script object.
      *
-     *  @param[in] scriptPubKey The script object to solve for
-     *  @param[in] typeRet The transaction type being processed
-     *  @param[out] vSolutionsRet The solutions returned
+     *  @param[in] scriptPubKey The script object to solve for.
+     *  @param[in] typeRet The transaction type being processed.
+     *  @param[out] vSolutionsRet The solutions returned.
      *
      *  @return true if the script was solved successfully.
      *
@@ -57,13 +57,30 @@ namespace Legacy
      *
      *  Used in standard inputs function check in transaction. potential to remove
      *
-     *  @param[in] t Transaction type in
+     *  @param[in] t Transaction type in.
      *  @param[out] vSolutions The solutions to pass back.
      *
      *  @return the total expected arguments.
      *
      **/
     int ScriptSigArgsExpected(TransactionType t, const std::vector<std::vector<uint8_t> >& vSolutions);
+
+
+    /** Check Sig
+     *
+     *  Checks that the signature supplied is a valid one.
+     *
+     *  @param[in] vchSig The byte vector of signature data.
+     *  @param[in] vchPubKey The byte vector of the public key.
+     *  @param[in] scriptCode The input script object to check from.
+     *  @param[in] txTo The transaction being sent to.
+     *  @param[in] nIn The input being spent.
+     *  @param[in] nHashType The hash type used for signature.
+     *
+     *  @return true if the signature is valid.
+     *
+     **/
+    bool CheckSig(std::vector<uint8_t> vchSig, std::vector<uint8_t> vchPubKey, CScript scriptCode, const Transaction& txTo, uint32_t nIn, int32_t nHashType);
 
 
     /** Is Standard
@@ -76,6 +93,19 @@ namespace Legacy
      *
      **/
     bool IsStandard(const CScript& scriptPubKey);
+
+
+    /** Have Keys
+     *
+     *  Determines if given list of public keys exist in the keystore object.
+     *
+     *  @param[in] pubKeys The list of public keys to check for.
+     *  @param[in] keystore The keystore object to check for keys in.
+     *
+     *  @return Return the total number of keys that have been found.
+     *
+     **/
+    uint32_t HaveKeys(const std::vector< std::vector<uint8_t> >& pubkeys, const CKeyStore& keystore);
 
 
     /** Is Mine
@@ -118,7 +148,7 @@ namespace Legacy
      *  @return true if addresses were extracted successfully.
      *
      **/
-    bool ExtractAddresses(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<NexusAddress>& addressRet, int& nRequiredRet);
+    bool ExtractAddresses(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<NexusAddress>& addressRet, int32_t& nRequiredRet);
 
 
     /** Sign Signature
@@ -134,7 +164,7 @@ namespace Legacy
      *  @return true if signature was generated successfully.
      *
      **/
-    bool SignSignature(const CKeyStore& keystore, const Transaction& txFrom, Transaction& txTo, uint32_t nIn, int nHashType=SIGHASH_ALL);
+    bool SignSignature(const CKeyStore& keystore, const Transaction& txFrom, Transaction& txTo, uint32_t nIn, int32_t nHashType=SIGHASH_ALL);
 
 
     /** Verify Signature
@@ -149,7 +179,7 @@ namespace Legacy
      *  @return true if signature was verified successfully.
      *
      **/
-    bool VerifySignature(const Transaction& txFrom, const Transaction& txTo, uint32_t nIn, int nHashType);
+    bool VerifySignature(const Transaction& txFrom, const Transaction& txTo, uint32_t nIn, int32_t nHashType);
 
 
     /** Verify Script
@@ -165,7 +195,7 @@ namespace Legacy
      *  @return true if the script was verified valid.
      *
      **/
-    bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const Transaction& txTo, uint32_t nIn, int nHashType);
+    bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const Transaction& txTo, uint32_t nIn, int32_t nHashType);
 
 }
 
