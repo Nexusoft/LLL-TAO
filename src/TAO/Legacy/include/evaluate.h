@@ -129,6 +129,7 @@ namespace Legacy
      *  @param[in] keystore The keystore object to pull key from
      *  @param[in] txFrom The transaction from which is being spent.
      *  @param[in] txTo The destination transaciton being signed.
+     *  @param[in] nIn The output that is being signed
      *  @param[in] nHashType The hash type for signature.
      *
      *  @return true if signature was generated successfully.
@@ -136,11 +137,35 @@ namespace Legacy
      **/
     bool SignSignature(const CKeyStore& keystore, const Transaction& txFrom, Transaction& txTo, uint32_t nIn, int nHashType=SIGHASH_ALL);
 
-    //important to keep
-    
+
+    /** Verify Signature
+     *
+     *  Verify a signature was valid
+     *
+     *  @param[in] txFrom The transaction from which is being spent.
+     *  @param[in] txTo The destination transaciton being signed.
+     *  @param[in] nIn The output to verify signature for.
+     *  @param[in] nHashType The hash type for signature.
+     *
+     *  @return true if signature was verified successfully.
+     *
+     **/
     bool VerifySignature(const Transaction& txFrom, const Transaction& txTo, uint32_t nIn, int nHashType);
 
-    //used twice. Potential to clean up TODO
+
+    /** Verify Script
+     *
+     *  Verify a script is a valid one
+     *
+     *  @param[in] scriptSig The script to verify
+     *  @param[in] scriptPubKey The script to verify against.
+     *  @param[in] txTo The destination transaciton being signed.
+     *  @param[in] nIn The output to verify signature for.
+     *  @param[in] nHashType The hash type for signature.
+     *
+     *  @return true if the script was verified valid.
+     *
+     **/
     bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const Transaction& txTo, uint32_t nIn, int nHashType);
 
 }
