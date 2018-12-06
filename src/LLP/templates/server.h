@@ -18,6 +18,7 @@ ________________________________________________________________________________
 
 #include <LLP/templates/data.h>
 #include <LLP/include/permissions.h>
+#include <LLP/include/manager.h>
 
 namespace LLP
 {
@@ -31,6 +32,7 @@ namespace LLP
         std::map<CService,   DDOS_Filter*> DDOS_MAP;
         bool fDDOS, fLISTEN, fMETER;
 
+
     public:
         uint32_t PORT, MAX_THREADS, DDOS_TIMESPAN;
 
@@ -39,10 +41,12 @@ namespace LLP
 
         /* List of internal addresses. */
         std::recursive_mutex MUTEX;
-        std::vector<CAddress> vAddr;
 
         /* Connection Manager. */
         std::thread MANAGER;
+
+        /* Address manager */
+        CAddressManager cAddressManager;
 
         /* Address of this instance. */
         CAddress addrThisNode;
@@ -60,7 +64,8 @@ namespace LLP
             addrThisNode(),
             LISTEN_THREAD_V4(std::bind(&Server::ListeningThread, this, true)),  //IPv4 Listener
             LISTEN_THREAD_V6(std::bind(&Server::ListeningThread, this, false)), //IPv6 Listener
-            METER_THREAD(std::bind(&Server::MeterThread, this))
+            METER_THREAD(std::bind(&Server::MeterThread, this)),
+            cAddressManager()
         {
             for(int index = 0; index < MAX_THREADS; index++)
                 DATA_THREADS.push_back(new DataThread<ProtocolType>(index, fDDOS, rScore, cScore, nTimeout, fMeter));
@@ -124,7 +129,7 @@ namespace LLP
 
             if(addrThisNode != addr)
             {
-                vAddr.push_back(addr);
+                cAddressManager.AddAddress(addr, ConnectState::NEW);
 
                 debug::log(1, FUNCTION "added address %s\n", __PRETTY_FUNCTION__, addr.ToString().c_str());
             }
@@ -146,7 +151,8 @@ namespace LLP
                 int nSize = DATA_THREADS[nThread]->CONNECTIONS.size();
                 for(int nIndex = 0; nIndex < nSize; nIndex ++)
                 {
-                    if(!DATA_THREADS[nThread]->CONNECTIONS[nIndex] || !DATA_THREADS[nThread]->CONNECTIONS[nIndex]->Connected())
+                    if(!DATA_THREADS[nThread]->CONNECTIONS[nIndex] ||
+                       !DATA_THREADS[nThread]->CONNECTIONS[nIndex]->Connected())
                         continue;
 
                     vConnections.push_back(DATA_THREADS[nThread]->CONNECTIONS[nIndex]);
@@ -194,30 +200,23 @@ namespace LLP
             while(!config::fShutdown)
             {
                 Sleep(1000);
-                if(vAddr.empty())
-                    continue;
 
                 { LOCK(MUTEX);
 
-                    /* Get list of currently connected addresses. */
-                    std::vector<CAddress> vConnected = GetAddresses();
+                    CAddress addr;
+                    uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
 
-                    /* Randomize the selection. */
-                    std::random_shuffle(vAddr.begin(), vAddr.end());
-                    CAddress addr = vAddr.back();
-                    vAddr.pop_back();
-
-                    /* Check if the address is already connected. */
-                    if(std::find(vConnected.begin(), vConnected.end(), addr) != vConnected.end())
+                    /*pick a weighted random priority from a sorted list of addresses */
+                    if(cAddressManager.StochasticSelect(addr))
                     {
-                        debug::log(0, FUNCTION "Address already connected %s\n", __PRETTY_FUNCTION__, addr.ToStringIP().c_str());
+                        /* Attempt the connection. */
+                        debug::log(0, FUNCTION "Attempting Connection %s\n", __PRETTY_FUNCTION__, addr.ToStringIP().c_str());
+                        if(AddConnection(addr.ToStringIP(), addr.GetPort()))
+                            state = static_cast<uint8_t>(ConnectState::CONNECTED);
 
-                        continue;
+
+                        cAddressManager.AddAddress(addr, state);
                     }
-
-                    /* Attempt the connection. */
-                    debug::log(0, FUNCTION "Attempting Connection %s\n", __PRETTY_FUNCTION__, addr.ToStringIP().c_str());
-                    AddConnection(addr.ToStringIP(), addr.GetPort());
                 }
             }
         }

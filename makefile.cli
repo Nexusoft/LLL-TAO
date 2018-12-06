@@ -141,6 +141,7 @@ OBJS= \
 	build/LLP_tritium.o \
 	build/LLP_corenode.o \
 	build/LLP_rpcnode.o \
+    build/LLP_manager.o \
 	build/Legacy_address.o \
 	build/Legacy_enum.o \
 	build/Legacy_secret.o \

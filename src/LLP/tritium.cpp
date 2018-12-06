@@ -106,6 +106,8 @@ namespace LLP
 
                 case EVENT_DISCONNECT:
                 {
+                    TRITIUM_SERVER->cAddressManager.AddAddress(GetAddress(), ConnectState::DROPPED);
+
                     break;
                 }
             }
@@ -329,8 +331,13 @@ namespace LLP
                     if(!mapLatencyTracker.count(nNonce))
                         return debug::error(NODE "unsolicited pong");
 
+                    uint32_t lat = Timestamp(true) - mapLatencyTracker[nNonce];
+
+                    /* Set the latency used for address manager within server */
+                    TRITIUM_SERVER->cAddressManager.SetLatency(lat, GetAddress());
+
                     /* Debug output for latency. */
-                    debug::log(3, NODE "latency %u ms\n", Timestamp(true) - mapLatencyTracker[nNonce]);
+                    debug::log(3, NODE "latency %u ms\n", lat);
 
                     /* Clear the latency tracker record. */
                     mapLatencyTracker.erase(nNonce);
