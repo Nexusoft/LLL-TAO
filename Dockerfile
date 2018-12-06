@@ -38,8 +38,7 @@ RUN apt-get update && apt-get -yq install \
 # Install Nexus dependencies.
 #
 RUN apt-get update && apt-get -yq install \
-    build-essential libboost-all-dev libdb-dev libdb++-dev libssl1.0-dev \
-    libminiupnpc-dev libqrencode-dev qt4-qmake libqt4-dev lib32z1-dev
+    build-essential libdb++-dev libssl1.0-dev
 
 #
 # Install LISP release in /lispers.net directory.

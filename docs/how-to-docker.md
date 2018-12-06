@@ -3,7 +3,7 @@ Quickstart Guide to Building Nexus/LISP Docker Images
 -----------------------------------------------------
 
 Building:
-        
+
 (1) Install docker on your host computer system. Download docker from the
     docker download website https://download.docker.com for your OS platform.
 
@@ -81,8 +81,3 @@ Look for preferences in Windows and MacOS docker daemons and on Linux put/add
 the above clause in /etc/docker/daemon.json.
 
 -------------------------------------------------------------------------------
-
-
-
-
-

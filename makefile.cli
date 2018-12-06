@@ -419,7 +419,6 @@ endif
 
 #Configure OS Specific Build Environment
 LIBS+= -Wl,-Bdynamic \
-	-lz \
 	-ldl \
 	-lpthread
 
