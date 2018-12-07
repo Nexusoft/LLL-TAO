@@ -22,7 +22,7 @@ namespace Core
 {
 	/* Determines the Decimal of nBits per Channel for a decent "Frame of Reference".
 		Has no functionality in Network Operation. */
-	double GetDifficulty(uint32_t nBits, int nChannel)
+	double GetDifficulty(uint32_t nBits, int32_t nChannel)
 	{
 
 		/* Prime Channel is just Decimal Held in Integer
@@ -30,11 +30,15 @@ namespace Core
 		if(nChannel == 1)
 			return nBits / 10000000.0;
 
+		/* Check for divide by zero. */
+		if(nBits & 0xff000000)
+			return 0.0;
+
 		/* Get the Proportion of the Bits First. */
 		double dDiff = (double)0x0000ffff / (double)(nBits & 0x00ffffff);
 
 		/* Calculate where on Compact Scale Difficulty is. */
-		int nShift = nBits >> 24;
+		int32_t nShift = nBits >> 24;
 
 		/* Shift down if Position on Compact Scale is above 124. */
 		while(nShift > 124)
@@ -54,14 +58,6 @@ namespace Core
 		return dDiff * ((nChannel == 2) ? 64 : 1024 * 1024 * 256);
 	}
 
-
-	/* Break the Chain Age in Minutes into Days, Hours, and Minutes. */
-	void GetChainTimes(uint32_t nAge, uint32_t& nDays, uint32_t& nHours, uint32_t& nMinutes)
-	{
-		nDays = nAge / 1440;
-		nHours = (nAge - (nDays * 1440)) / 60;
-		nMinutes = nAge % 60;
-	}
 
 
 	/* Get Weighted Times functions to weight the average on an iterator to give more weight to the most recent blocks

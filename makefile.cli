@@ -155,6 +155,7 @@ OBJS= \
 	build/Legacy_transaction.o \
 	build/Ledger_block.o \
 	build/Ledger_prime.o \
+	build/Ledger_tritium.o \
 	build/Ledger_transaction.o \
 	build/API_cmd.o \
 	build/API_rpc.o \
