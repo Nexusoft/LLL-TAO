@@ -14,13 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_KEYSTORE_BASIC_H
 #define NEXUS_TAO_LEGACY_KEYSTORE_BASIC_H
 
-#include <LLC/include/key.h>
-
-#include <TAO/Legacy/types/address.h>
-#include <TAO/Legacy/types/secret.h>
-#include <TAO/Legacy/types/script.h>
-
-#include <Util/include/mutex.h>
+#include <TAO/Legacy/types/base.h>
 
 namespace Legacy
 {

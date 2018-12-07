@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_TYPES_KEYSTORE_H
-#define NEXUS_TAO_LEGACY_TYPES_KEYSTORE_H
+#ifndef NEXUS_TAO_LEGACY_KEYSTORE_BASE_H
+#define NEXUS_TAO_LEGACY_KEYSTORE_BASE_H
 
 #include <LLC/include/key.h>
 
