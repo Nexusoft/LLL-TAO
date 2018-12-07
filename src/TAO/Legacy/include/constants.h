@@ -55,3 +55,5 @@ namespace Legacy
     const size_t nMaxNumSize = 4;
 
 }
+
+#endif

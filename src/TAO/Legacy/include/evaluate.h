@@ -17,6 +17,9 @@ ________________________________________________________________________________
 #include <LLC/types/bignum.h>
 #include <Util/include/base58.h>
 
+#include <TAO/Legacy/keystore/base.h>
+#include <TAO/Legacy/types/script.h>
+
 #include <string>
 #include <vector>
 
@@ -36,7 +39,7 @@ namespace Legacy
      *  @return true if the script evaluates to true.
      *
      **/
-    bool EvalScript(std::vector< std::vector<uint8_t> >& stack, const CScript& script, const Core::CTransaction& txTo, uint32_t nIn, int32_t nHashType);
+    bool EvalScript(std::vector< std::vector<uint8_t> >& stack, const CScript& script, const Transaction& txTo, uint32_t nIn, int32_t nHashType);
 
 
     /** Solver
@@ -51,6 +54,22 @@ namespace Legacy
      *
      **/
     bool Solver(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<std::vector<uint8_t> >& vSolutionsRet);
+
+
+    /** Solver
+     *
+     *  Sign scriptPubKey with private keys, given transaction hash and hash type.
+     *
+     *  @param[in] keystore The keystore object used to sign.
+     *  @param[in] scriptPubKey The script to sign.
+     *  @param[in] hash The hash to sign.
+     *  @param[out] scriptSigRet The script signature to return.
+     *  @param[out] whichTypeRet The return type.
+     *
+     *  @return returns true if this was solved.
+     *
+     **/
+    bool Solver(const CKeyStore& keystore, const CScript& scriptPubKey, uint256_t hash, int32_t nHashType, CScript& scriptSigRet, TransactionType& whichTypeRet);
 
 
     /** Script Sig Args Expected

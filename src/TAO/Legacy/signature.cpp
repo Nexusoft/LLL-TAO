@@ -12,9 +12,15 @@
 ____________________________________________________________________________________________*/
 
 #include <LLC/types/bignum.h>
+#include <LLC/hash/SK.h>
+
 #include <Util/include/base58.h>
 
+#include <TAO/Legacy/include/signature.h>
+#include <TAO/Legacy/include/evaluate.h>
+
 #include <TAO/Legacy/types/enum.h>
+#include <TAO/Legacy/types/transaction.h>
 #include <TAO/Legacy/types/script.h>
 
 #include <string>
@@ -130,7 +136,7 @@ namespace Legacy
 
 
     /* Checks that the signature supplied is a valid one. */
-    bool CheckSig(std::vector<uint8_t> vchSig, std::vector<uint8_t> vchPubKey, CScript scriptCode, const Transaction& txTo, uint32_t nIn, int32_t nHashType)
+    bool CheckSig(std::vector<uint8_t> vchSig, std::vector<uint8_t> vchPubKey, CScript scriptCode, Transaction& txTo, uint32_t nIn, int32_t nHashType)
     {
         // Hash type is one byte tacked on to the end of the signature
         if (vchSig.empty())

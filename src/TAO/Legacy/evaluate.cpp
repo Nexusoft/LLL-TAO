@@ -14,11 +14,17 @@ ________________________________________________________________________________
 #include <LLC/types/bignum.h>
 #include <Util/include/base58.h>
 
+#include <TAO/Legacy/include/constants.h>
+#include <TAO/Legacy/include/evaluate.h>
+#include <TAO/Legacy/include/signature.h>
+
 #include <TAO/Legacy/types/enum.h>
 #include <TAO/Legacy/types/script.h>
 
 #include <string>
 #include <vector>
+
+#include <stdexcept>
 
 namespace Legacy
 {
@@ -34,18 +40,49 @@ namespace Legacy
      * returning a bool indicating valid or not.  There are no loops.
      *
      **/
-    static inline void popstack(vector<std::vector<unsigned char> >& stack)
+    static inline void popstack(std::vector< std::vector<uint8_t> >& stack)
     {
         if (stack.empty())
-            throw runtime_error("popstack() : stack empty");
+            throw std::runtime_error("popstack() : stack empty");
+
         stack.pop_back();
     }
 
 
-    /* Evaluate a script to true or false based on operation codes. */
-    bool EvalScript(std::vector<std::vector<uint8_t> >& stack, const CScript& script, const Core::CTransaction& txTo, uint32_t nIn, int32_t nHashType);
+    /** Conversion function to bignum value. **/
+    LLC::CBigNum CastToBigNum(const std::vector<uint8_t>& vch)
     {
-        
+        if (vch.size() > nMaxNumSize)
+            throw std::runtime_error("CastToBigNum() : overflow");
+
+        // Get rid of extra leading zeros
+        return LLC::CBigNum(LLC::CBigNum(vch).getvch());
+    }
+
+
+    /** Conversion function to boolean value. **/
+    bool CastToBool(const std::vector<uint8_t>& vch)
+    {
+        for (unsigned int i = 0; i < vch.size(); i++)
+        {
+            if (vch[i] != 0)
+            {
+                // Can be negative zero
+                if (i == vch.size() - 1 && vch[i] == 0x80)
+                    return false;
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
+    /* Evaluate a script to true or false based on operation codes. */
+    bool EvalScript(std::vector<std::vector<uint8_t> >& stack, const CScript& script, const Transaction& txTo, uint32_t nIn, int32_t nHashType)
+    {
+
     }
 
 
@@ -84,7 +121,7 @@ namespace Legacy
             vSolutionsRet.clear();
 
             opcodetype opcode1, opcode2;
-            vector<uint8_t> vch1, vch2;
+            std::vector<uint8_t> vch1, vch2;
 
             // Compare
             CScript::const_iterator pc1 = script1.begin();
@@ -135,7 +172,7 @@ namespace Legacy
 
                 else if (opcode2 == OP_PUBKEYHASH)
                 {
-                    if (vch1.size() != sizeof(uint256))
+                    if (vch1.size() != sizeof(uint256_t))
                         break;
                     vSolutionsRet.push_back(vch1);
                 }
@@ -165,8 +202,51 @@ namespace Legacy
     }
 
 
+    /* Sign scriptPubKey with private keys, given transaction hash and hash type. */
+    bool Solver(const CKeyStore& keystore, const CScript& scriptPubKey, uint256_t hash, int32_t nHashType, CScript& scriptSigRet, TransactionType& whichTypeRet)
+    {
+        scriptSigRet.clear();
+
+        std::vector< std::vector<uint8_t> > vSolutions;
+        if (!Solver(scriptPubKey, whichTypeRet, vSolutions))
+            return false;
+
+        NexusAddress address;
+        switch (whichTypeRet)
+        {
+            case TX_NONSTANDARD:
+                return false;
+
+            case TX_PUBKEY:
+                address.SetPubKey(vSolutions[0]);
+                return Sign1(address, keystore, hash, nHashType, scriptSigRet);
+
+            case TX_PUBKEYHASH:
+                address.SetHash256(uint256_t(vSolutions[0]));
+                if (!Sign1(address, keystore, hash, nHashType, scriptSigRet))
+                    return false;
+                else
+                {
+                    std::vector<uint8_t> vch;
+                    keystore.GetPubKey(address, vch);
+                    scriptSigRet << vch;
+                }
+                return true;
+
+            case TX_SCRIPTHASH:
+                return keystore.GetCScript(uint256_t(vSolutions[0]), scriptSigRet);
+
+            case TX_MULTISIG:
+                scriptSigRet << OP_0; // workaround CHECKMULTISIG bug
+                return (SignN(vSolutions, keystore, hash, nHashType, scriptSigRet));
+        }
+
+        return false;
+    }
+
+
     /* Used in standard inputs function check in transaction. potential to remove */
-    int ScriptSigArgsExpected(TransactionType t, const std::vector<std::vector<uint8_t> >& vSolutions);
+    int ScriptSigArgsExpected(TransactionType t, const std::vector<std::vector<uint8_t> >& vSolutions)
     {
         switch (t)
         {
@@ -235,7 +315,7 @@ namespace Legacy
     /* Checks an output to your keystore to detect if you have a key that is involed in the output or transaction. */
     bool IsMine(const CKeyStore& keystore, const CScript& scriptPubKey)
     {
-        vector<std::vector<uint8_t> > vSolutions;
+        std::vector< std::vector<uint8_t> > vSolutions;
         TransactionType whichType;
         if (!Solver(scriptPubKey, whichType, vSolutions))
             return false;
@@ -251,13 +331,13 @@ namespace Legacy
                 return keystore.HaveKey(address);
 
             case TX_PUBKEYHASH:
-                address.SetHash256(uint256(vSolutions[0]));
+                address.SetHash256(uint256_t(vSolutions[0]));
                 return keystore.HaveKey(address);
 
             case TX_SCRIPTHASH:
             {
                 CScript subscript;
-                if (!keystore.GetCScript(uint256(vSolutions[0]), subscript))
+                if (!keystore.GetCScript(uint256_t(vSolutions[0]), subscript))
                     return false;
 
                 return IsMine(keystore, subscript);
@@ -294,12 +374,12 @@ namespace Legacy
         }
         else if (whichType == TX_PUBKEYHASH)
         {
-            addressRet.SetHash256(uint256(vSolutions[0]));
+            addressRet.SetHash256(uint256_t(vSolutions[0]));
             return true;
         }
         else if (whichType == TX_SCRIPTHASH)
         {
-            addressRet.SetScriptHash256(uint256(vSolutions[0]));
+            addressRet.SetScriptHash256(uint256_t(vSolutions[0]));
             return true;
         }
 
@@ -313,7 +393,7 @@ namespace Legacy
     {
         addressRet.clear();
         typeRet = TX_NONSTANDARD;
-        std::vector< std::vector<uint32_t> > vSolutions;
+        std::vector< std::vector<uint8_t> > vSolutions;
         if (!Solver(scriptPubKey, typeRet, vSolutions))
             return false;
 
@@ -332,9 +412,9 @@ namespace Legacy
             nRequiredRet = 1;
             NexusAddress address;
             if (typeRet == TX_PUBKEYHASH)
-                address.SetHash256(uint256(vSolutions.front()));
+                address.SetHash256(uint256_t(vSolutions.front()));
             else if (typeRet == TX_SCRIPTHASH)
-                address.SetScriptHash256(uint256(vSolutions.front()));
+                address.SetScriptHash256(uint256_t(vSolutions.front()));
             else if (typeRet == TX_PUBKEY)
                 address.SetPubKey(vSolutions.front());
 
