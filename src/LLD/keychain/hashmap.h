@@ -103,6 +103,13 @@ namespace LLD
             Initialize();
         }
 
+        BinaryHashMap(std::string strBaseLocationIn, uint32_t nTotalBuckets, uint32_t nMaxCacheSize) : strBaseLocation(strBaseLocationIn), HASHMAP_TOTAL_BUCKETS(nTotalBuckets), HASHMAP_MAX_CACHE_SZIE(nMaxCacheSize), HASHMAP_MAX_KEY_SIZE(32), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11), fCacheActive(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
+        {
+            hashmap.resize(HASHMAP_TOTAL_BUCKETS);
+
+            Initialize();
+        }
+
         //TODO: cleanup copy constructors
         BinaryHashMap& operator=(BinaryHashMap map)
         {
