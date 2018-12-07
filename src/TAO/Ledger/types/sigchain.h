@@ -60,11 +60,7 @@ namespace TAO
             uint512_t Generate(uint32_t nKeyID, std::string strSecret)
             {
                 /* Serialize the Key ID (Big Endian). */
-                std::vector<uint8_t> vKeyID;
-                vKeyID.push_back(nKeyID >> 24 & 0xff);
-                vKeyID.push_back(nKeyID >> 16 & 0xff);
-                vKeyID.push_back(nKeyID >> 8  & 0xff);
-                vKeyID.push_back(nKeyID       & 0xff);
+                std::vector<uint8_t> vKeyID((uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
 
                 /* Generate the Secret Phrase */
                 std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
