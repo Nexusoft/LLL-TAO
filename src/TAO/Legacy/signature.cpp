@@ -53,12 +53,12 @@ namespace Legacy
             address.SetPubKey(pubkey);
             if (Sign1(address, keystore, hash, nHashType, scriptSigRet))
             {
-                ++nSigned;
+                nSigned ++;
                 if (nSigned == nRequired) break;
             }
         }
 
-        return nSigned==nRequired;
+        return nSigned == nRequired;
     }
 
 
