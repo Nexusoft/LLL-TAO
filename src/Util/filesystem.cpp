@@ -18,9 +18,9 @@ ________________________________________________________________________________
 #include <unistd.h>
 #endif
 
-#include <stdio.h> //remove()
-#include <errno.h>
-#include <string.h>
+#include <cstdio> //remove()
+#include <cerrno>
+#include <cstring>
 #include <iostream>
 #include <fstream>
 

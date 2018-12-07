@@ -23,7 +23,8 @@ NAME="nexus-$HOSTNAME-$RAND"
 # restful API. If a user wants to run multiple containers, then use a random
 # 
 CONTAINER=`docker ps | egrep nexus-$HOSTNAME | egrep 9090`
-if [ "$CONTAINER" == "" ] ; then
+echo $CONTAINER
+if [ -z "$CONTAINER" ] ; then
     PORT="9090"
 else
     PORT=""

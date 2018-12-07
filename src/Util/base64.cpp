@@ -65,7 +65,7 @@ namespace encoding
     }
 
     /* Take a string and a encode it into base 64 */
-    inline std::string EncodeBase64(const std::string& str)
+    std::string EncodeBase64(const std::string& str)
     {
         return EncodeBase64((const uint8_t*)str.c_str(), str.size());
     }
@@ -155,7 +155,7 @@ namespace encoding
     }
 
     /* Take an encoded base 64 string and decode it into it's original message. */
-    inline std::string DecodeBase64(const std::string& str)
+    std::string DecodeBase64(const std::string& str)
     {
         std::vector<uint8_t> vchRet = DecodeBase64(str.c_str());
         return std::string((const char*)&vchRet[0], vchRet.size());

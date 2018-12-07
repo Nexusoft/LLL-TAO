@@ -14,13 +14,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_INPOINT_H
 #define NEXUS_TAO_LEGACY_TYPES_INPOINT_H
 
-#include <LLC/types/uint1024.h>
+#include <TAO/Legacy/types/transaction.h>
 
 namespace Legacy
 {
-
-	/* forward declaration */
-	class CTransaction;
 
 	/** An inpoint - a combination of a transaction and an index n into its vin */
 	class CInPoint
@@ -28,7 +25,7 @@ namespace Legacy
 	public:
 
 		/** The transaction pointer. **/
-		CTransaction* ptx;
+		Transaction* ptx;
 
 
 		/** The index n of transaction input. **/
@@ -49,7 +46,7 @@ namespace Legacy
 		 *	@param[in] nIn The index input
 		 *
 		 **/
-		CInPoint(CTransaction* ptxIn, uint32_t nIn)
+		CInPoint(Transaction* ptxIn, uint32_t nIn)
 		{
 			ptx = ptxIn;
 			n = nIn;
@@ -78,5 +75,6 @@ namespace Legacy
 			return (ptx == NULL && n == -1);
 		}
 	};
-
 }
+
+#endif

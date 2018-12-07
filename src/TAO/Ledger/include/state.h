@@ -11,32 +11,24 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEDGER_INCLUDE_GLOBAL_H
-#define NEXUS_TAO_LEDGER_INCLUDE_GLOBAL_H
+#ifndef NEXUS_TAO_LEDGER_INCLUDE_STATE_H
+#define NEXUS_TAO_LEDGER_INCLUDE_STATE_H
 
 #include <LLC/types/bignum.h>
 
 namespace TAO::Ledger
 {
 
-	/** Very first block hash in the blockchain. **/
-	extern const uint1024_t hashGenesisMainnet;
+	/** The best block height in the chain. **/
+	uint32_t nBestHeight;
 
 
-	/** Hash to start the Testnet Blockchain. **/
-	extern const uint1024_t hashGenesisTestnet;
+    /** The best hash in the chain. */
+    uint1024_t hashBestChain;
 
 
-	/** Minimum channels difficulty. **/
-	extern const LLC::CBigNum bnProofOfWorkLimit[];
-
-
-	/** Starting channels difficulty. **/
-	extern const LLC::CBigNum bnProofOfWorkStart[];
-
-
-	/** Minimum prime zero bits (1016-bits). **/
-	extern const LLC::CBigNum bnPrimeMinOrigins;
+    /** The best trust in the chain. **/
+    uint64_t nBestChainTrust;
 
 }
 

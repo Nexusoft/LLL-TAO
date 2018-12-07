@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_UTIL_INCLUDE_DEBUG_H
 
 #include <string>
-#include <inttypes.h>
+#include <cinttypes>
 
 #ifdef snprintf
 #undef snprintf

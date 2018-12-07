@@ -125,40 +125,46 @@ endif
 HEADERS= $(wildcard *.h)
 OBJS= \
 	build/main.o \
-	build/skein.o \
-	build/skein_block.o \
-	build/KeccakDuplex.o \
-	build/KeccakSponge.o \
-	build/Keccak-compact64.o \
-	build/KeccakHash.o \
-	build/random.o \
-	build/key.o \
-	build/network.o \
-	build/hosts.o \
-	build/socket.o \
-	build/inv.o\
-	build/legacy.o \
-	build/tritium.o \
-	build/address.o \
-	build/enum.o \
-	build/secret.o \
-	build/script.o \
-	build/outpoint.o \
-	build/transaction.o \
-	build/block.o \
-	build/prime.o \
-	build/global.o \
-	build/corenode.o \
-	build/cmd.o \
-	build/rpcnode.o \
-	build/rpc.o \
-	build/info.o \
-	build/args.o \
-	build/base58.o \
-	build/base64.o \
-	build/config.o \
-	build/debug.o \
-    build/filesystem.o
+	build/LLC_skein.o \
+	build/LLC_skein_block.o \
+	build/LLC_KeccakDuplex.o \
+	build/LLC_KeccakSponge.o \
+	build/LLC_Keccak-compact64.o \
+	build/LLC_KeccakHash.o \
+	build/LLC_random.o \
+	build/LLC_key.o \
+	build/LLP_network.o \
+	build/LLP_hosts.o \
+	build/LLP_socket.o \
+	build/LLP_inv.o\
+	build/LLP_legacy.o \
+	build/LLP_tritium.o \
+	build/LLP_corenode.o \
+	build/LLP_rpcnode.o \
+	build/Legacy_base.o \
+	build/Legacy_basic.o \
+	build/Legacy_signature.o \
+	build/Legacy_evaluate.o \
+	build/Legacy_address.o \
+	build/Legacy_enum.o \
+	build/Legacy_secret.o \
+	build/Legacy_script.o \
+	build/Legacy_outpoint.o \
+	build/Legacy_txin.o \
+	build/Legacy_txout.o \
+	build/Legacy_transaction.o \
+	build/Ledger_block.o \
+	build/Ledger_prime.o \
+	build/Ledger_transaction.o \
+	build/API_cmd.o \
+	build/API_rpc.o \
+	build/API_info.o \
+	build/Util_args.o \
+	build/Util_base58.o \
+	build/Util_base64.o \
+	build/Util_config.o \
+	build/Util_debug.o \
+    build/Util_filesystem.o
 
 ###############################################################################
 ifeq ($(detected_OS),Windows)
@@ -209,43 +215,43 @@ all: release/nexus.exe
 build/%.o: ./src/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/%.o: ./src/LLC/%.cpp $(HEADERS)
+build/LLC_%.o: ./src/LLC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/%.o: ./src/LLC/hash/%.cpp $(HEADERS)
+build/LLC_%.o: ./src/LLC/hash/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/%.o: ./src/LLC/hash/SK/%.cpp $(HEADERS)
+build/LLC_%.o: ./src/LLC/hash/SK/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/%.o: ./src/LLC/hash/SK/%.c $(HEADERS)
+build/LLC_%.o: ./src/LLC/hash/SK/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -o $@ $<
 
-build/%.o: ./src/LLD/%.cpp $(HEADERS)
+build/LLD_%.o: ./src/LLD/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/%.o: ./src/LLP/%.cpp $(HEADERS)
+build/LLP_%.o: ./src/LLP/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/%.o: ./src/TAO/API/%.cpp $(HEADERS)
+build/API_%.o: ./src/TAO/API/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/%.o: ./src/TAO/API/RPC/%.cpp $(HEADERS)
+build/API_%.o: ./src/TAO/API/RPC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/%.o: ./src/TAO/Legacy/%.cpp $(HEADERS)
+build/Legacy_%.o: ./src/TAO/Legacy/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/%.o: ./src/TAO/Ledger/%.cpp $(HEADERS)
+build/Ledger_%.o: ./src/TAO/Ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/%.o: ./src/TAO/Operation/%.cpp $(HEADERS)
+build/Operation_%.o: ./src/TAO/Operation/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/%.o: ./src/TAO/Register/%.cpp $(HEADERS)
+build/Register_%.o: ./src/TAO/Register/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/%.o: ./src/Util/%.cpp $(HEADERS)
+build/Util_%.o: ./src/Util/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 release/nexus.exe: $(OBJS:build/%=build/%)
@@ -301,91 +307,91 @@ build/%.o: src/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/LLC/%.cpp $(HEADERS)
+build/LLC_%.o: src/LLC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/LLC/hash/%.cpp $(HEADERS)
+build/LLC_%.o: src/LLC/hash/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/LLC/hash/SK/%.c $(HEADERS)
+build/LLC_%.o: src/LLC/hash/SK/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/LLC/hash/SK/%.cpp $(HEADERS)
+build/LLC_%.o: src/LLC/hash/SK/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/LLD/%.cpp $(HEADERS)
+build/LLD_%.o: src/LLD/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/LLP/%.cpp $(HEADERS)
+build/LLP_%.o: src/LLP/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/API/%.cpp $(HEADERS)
+build/API_%.o: src/TAO/API/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/API/RPC/%.cpp $(HEADERS)
+build/API_%.o: src/TAO/API/RPC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/Legacy/%.cpp $(HEADERS)
+build/Legacy_%.o: src/TAO/Legacy/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/Ledger/%.cpp $(HEADERS)
+build/Ledger_%.o: src/TAO/Ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/Operation/%.cpp $(HEADERS)
+build/Operation_%.o: src/TAO/Operation/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/Register/%.cpp $(HEADERS)
+build/Register_%.o: src/TAO/Register/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/Util/%.cpp $(HEADERS)
+build/Util_%.o: src/Util/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -417,7 +423,6 @@ endif
 
 #Configure OS Specific Build Environment
 LIBS+= -Wl,-Bdynamic \
-	-lz \
 	-ldl \
 	-lpthread
 
@@ -454,91 +459,91 @@ build/%.o: src/%.cpp
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/LLC/%.cpp
+build/LLC_%.o: src/LLC/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/LLC/hash/%.cpp
+build/LLC_%.o: src/LLC/hash/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/LLC/hash/SK/%.c $(HEADERS)
+build/LLC_%.o: src/LLC/hash/SK/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/LLC/hash/SK/%.cpp
+build/LLC_%.o: src/LLC/hash/SK/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/LLD/%.cpp
+build/LLD_%.o: src/LLD/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/LLP/%.cpp
+build/LLP_%.o: src/LLP/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/API/%.cpp
+build/API_%.o: src/TAO/API/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/API/RPC/%.cpp
+build/API_%.o: src/TAO/API/RPC/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/Legacy/%.cpp
+build/Legacy_%.o: src/TAO/Legacy/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/Ledger/%.cpp
+build/Ledger_%.o: src/TAO/Ledger/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/Operation/%.cpp
+build/Operation_%.o: src/TAO/Operation/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/TAO/Register/%.cpp
+build/Register_%.o: src/TAO/Register/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/%.o: src/Util/%.cpp
+build/Util_%.o: src/Util/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

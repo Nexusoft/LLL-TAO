@@ -94,7 +94,7 @@ int main(int argc, char** argv)
     }
 
 
-    /* Create the Core RPC Server. */
+    /* Create the Core API Server. */
     LLP::Server<LLP::CoreNode>* CORE_SERVER = new LLP::Server<LLP::CoreNode>(config::GetArg("-apiport", 8080), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), false);
 
 

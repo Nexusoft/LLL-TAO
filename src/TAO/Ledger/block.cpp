@@ -22,7 +22,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/block.h>
 #include <TAO/Ledger/include/prime.h>
-#include <TAO/Ledger/include/global.h>
+#include <TAO/Ledger/include/constants.h>
 
 namespace TAO::Ledger
 {

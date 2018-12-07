@@ -20,8 +20,8 @@ ________________________________________________________________________________
 #include <Util/include/filesystem.h>
 
 #include <string>
-#include <stdarg.h>
-#include <stdio.h>
+#include <cstdarg>
+#include <cstdio>
 
 #ifndef WIN32
 #include <execinfo.h>

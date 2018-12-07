@@ -14,10 +14,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_TXOUT_H
 #define NEXUS_TAO_LEGACY_TYPES_TXOUT_H
 
-#include <stdint.h>
+#include <cstdint>
 #include <cstring>
 
-#include <Util/macro/header.h>
+#include <Util/templates/serialize.h>
 #include <TAO/Legacy/types/script.h>
 
 namespace Legacy
@@ -39,7 +39,11 @@ namespace Legacy
 
 
 		//the serialization methods
-		SERIALIZE_HEADER
+		IMPLEMENT_SERIALIZE
+		(
+			READWRITE(nValue);
+			READWRITE(scriptPubKey);
+		)
 
 
 		/** Default constructor

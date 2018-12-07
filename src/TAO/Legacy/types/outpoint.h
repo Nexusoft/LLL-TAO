@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEGACY_TYPES_OUTPOINT_H
 
 #include <LLC/types/uint1024.h>
-#include <Util/macro/header.h>
+#include <Util/templates/serialize.h>
 
 namespace Legacy
 {
@@ -34,7 +34,10 @@ namespace Legacy
 
 
 		//the serizliation methods
-		SERIALIZE_HEADER
+		IMPLEMENT_SERIALIZE
+		(
+			READWRITE(FLATDATA(*this));
+		)
 
 
 		/** Constructor.

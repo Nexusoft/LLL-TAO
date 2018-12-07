@@ -15,22 +15,13 @@ ________________________________________________________________________________
 
 #include <LLP/include/version.h>
 
-#include <Util/include/parse.h>
+#include <Util/include/string.h>
 
 #include <TAO/Legacy/types/txout.h>
 #include <TAO/Legacy/types/script.h>
 
 namespace Legacy
 {
-	//the serialization methods
-	SERIALIZE_SOURCE
-	(
-		CTxOut,
-
-		READWRITE(nValue);
-		READWRITE(scriptPubKey);
-	)
-
 
 	/* Set the object to null state. */
 	void CTxOut::SetNull()

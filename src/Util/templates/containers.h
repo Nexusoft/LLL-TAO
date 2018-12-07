@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <vector>
 #include <map>
-#include <math.h>
+#include <cmath>
 
 
 /**	CMajority

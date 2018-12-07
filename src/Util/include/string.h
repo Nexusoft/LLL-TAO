@@ -11,12 +11,16 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_UTIL_INCLUDE_PARSE_H
-#define NEXUS_UTIL_INCLUDE_PARSE_H
+#ifndef NEXUS_UTIL_INCLUDE_STRING_H
+#define NEXUS_UTIL_INCLUDE_STRING_H
 
 #include <vector>
 #include <string>
 #include <cstdint>
+#include <algorithm>
+#include <functional>
+#include <cctype>
+#include <locale>
 
 #include <LLC/types/uint1024.h>
 
@@ -206,6 +210,52 @@ inline std::vector<std::string> Split(const std::string& strInput, char strDelim
     }
 
     return vData;
+}
+
+/** ltrim
+*
+*  Trims spaces from the left of a std::string
+*
+*  @param[in] s The string to be trimmed
+*
+*  @return The string with all leading spaces removed
+*
+**/
+static inline std::string &ltrim(std::string &s)
+{
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(),
+            std::not1(std::ptr_fun<int, int>(std::isspace))));
+    return s;
+}
+
+/** rtrim
+*
+*  Trims spaces from the right of a std::string
+*
+*  @param[in] s The string to be trimmed
+*
+*  @return The string with all trailing spaces removed
+*
+**/
+static inline std::string &rtrim(std::string &s)
+{
+    s.erase(std::find_if(s.rbegin(), s.rend(),
+            std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+    return s;
+}
+
+/** trim
+*
+*  Trims spaces from both ends of a std::string
+*
+*  @param[in] s The string to be trimmed
+*
+*  @return The string with all leading and trailing spaces removed
+*
+**/
+static inline std::string &trim(std::string &s)
+{
+    return ltrim(rtrim(s));
 }
 
 #endif

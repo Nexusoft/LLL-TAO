@@ -14,10 +14,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_TXIN_H
 #define NEXUS_TAO_LEGACY_TYPES_TXIN_H
 
-#include <limits>
-#include <stdint.h>
+#include <climits>
+#include <cstdint>
 
-#include <Util/macro/header.h>
+#include <Util/templates/serialize.h>
 
 #include <TAO/Legacy/types/outpoint.h>
 #include <TAO/Legacy/types/script.h>
@@ -46,7 +46,12 @@ namespace Legacy
 
 
 		//for serizliation macros
-		SERIALIZE_HEADER
+		IMPLEMENT_SERIALIZE
+		(
+			READWRITE(prevout);
+			READWRITE(scriptSig);
+			READWRITE(nSequence);
+		)
 
 
 		/** Default Constructor

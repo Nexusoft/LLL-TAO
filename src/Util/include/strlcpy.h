@@ -17,7 +17,7 @@
 #ifndef NEXUS_UTIL_INCLUDE_STRLCPY_H
 #define NEXUS_UTIL_INCLUDE_STRLCPY_H
 
-#include <stdlib.h>
+#include <cstdlib>
 #include <cstring>
 
 /** strlcpy

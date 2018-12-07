@@ -36,7 +36,7 @@ ________________________________________________________________________________
 #define munlock(p, n) VirtualUnlock((p), (n));
 #else
 #include <sys/mman.h>
-#include <limits.h>
+#include <climits>
 /* This comes from limits.h if it's not defined there set a sane default */
 #ifndef PAGESIZE
 #include <unistd.h>

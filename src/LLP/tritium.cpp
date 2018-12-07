@@ -24,7 +24,7 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
 
-#include <limits.h>
+#include <climits>
 
 namespace LLP
 {
