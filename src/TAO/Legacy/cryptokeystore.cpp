@@ -25,7 +25,7 @@ namespace Legacy
     bool CCryptoKeyStore::SetCrypted()
     {
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
             if (fUseCrypto)
                 return true;
 
@@ -44,7 +44,7 @@ namespace Legacy
     bool CCryptoKeyStore::EncryptKeys(const CKeyingMaterial& vMasterKeyIn)
     {
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
 
             /* Check whether key store already encrypted */
             if (!mapCryptedKeys.empty() || IsCrypted())
@@ -89,7 +89,7 @@ namespace Legacy
     bool CCryptoKeyStore::Unlock(const CKeyingMaterial& vMasterKeyIn)
     {
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
 
             /* Cannot unlock unencrypted key store (it is unlocked by default) */
             if (!SetCrypted())
@@ -140,7 +140,7 @@ namespace Legacy
         bool result;
 
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
 
             /* If encryption key is not stored, cannot decrypt keys and key store is locked */
             result = vMasterKey.empty();
@@ -158,7 +158,7 @@ namespace Legacy
             return false;
 
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
 
             /* Remove any stored encryption key so key store values cannot be decrypted, locking the key store */
             vMasterKey.clear();
@@ -172,7 +172,7 @@ namespace Legacy
     bool CCryptoKeyStore::AddCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret)
     {
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
 
             /* Key store must be encrypted */
             if (!SetCrypted())
@@ -189,7 +189,7 @@ namespace Legacy
     bool CCryptoKeyStore::AddKey(const LLC::ECKey& key)
     {
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
 
             /* Add key to basic key store if encryption not active */
             if (!IsCrypted())
@@ -219,7 +219,7 @@ namespace Legacy
     bool CCryptoKeyStore::GetKey(const NexusAddress &address, LLC::ECKey& keyOut) const
     {
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
 
             /* Cannot decrypt key if key store is encrypted and locked */
             if (IsLocked())
@@ -252,7 +252,7 @@ namespace Legacy
     void CCryptoKeyStore::GetKeys(std::set<NexusAddress> &setAddress) const 
     {
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
 
             if (!IsCrypted())
             {
@@ -272,7 +272,7 @@ namespace Legacy
     bool CCryptoKeyStore::HaveKey(const NexusAddress &address) const 
     {
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
 
             if (!IsCrypted())
                 return CBasicKeyStore::HaveKey(address);
@@ -288,7 +288,7 @@ namespace Legacy
     bool CCryptoKeyStore::GetPubKey(const NexusAddress &address, std::vector<uint8_t>& vchPubKeyOut) const
     {
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
 
             if (!IsCrypted())
                 return CKeyStore::GetPubKey(address, vchPubKeyOut);

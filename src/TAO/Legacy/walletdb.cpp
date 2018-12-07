@@ -18,8 +18,6 @@ ________________________________________________________________________________
 
 #include <db_cxx.h> /* Berkeley DB header */
 
-#include <LLC/include/key.h>
-
 #include <LLD/include/version.h>
 
 #include <TAO/Legacy/types/script.h>
@@ -27,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/Legacy/wallet/walletdb.h>
 
 #include <Util/include/args.h>
+#include <Util/include/debug.h>
 #include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
 #include <Util/include/runtime.h>
@@ -36,8 +35,16 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+    /* Initialize static values */
+    static const std::string CWalletDB::DEFAULT_WALLET_DB("wallet.dat");
+
+    static uint32_t CWalletDB::nWalletDBUpdated = 0;
+
+    static uint64_t CWalletDB::nAccountingEntryNumber = 0;
+
+
     /* Stores an encrypted master key into the database. */
-    bool WriteMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey)
+    bool CWalletDB::WriteMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey)
     {
         CWalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("mkey"), nMasterKeyId), kMasterKey, true);
@@ -45,7 +52,7 @@ namespace Legacy
 
 
     /* Stores the minimum database version supported by this wallet database. */
-    bool WriteMinVersion(const int nVersion)
+    bool CWalletDB::WriteMinVersion(const int nVersion)
     {
         return Write(std::string("minversion"), nVersion, true);
     }
@@ -67,7 +74,7 @@ namespace Legacy
 
 
     /* Reads a logical name (label) for an address into the database. */
-    bool ReadName(const std::string& strAddress, std::string& strName)
+    bool CWalletDB::ReadName(const std::string& strAddress, std::string& strName)
     {
         strName = "";
         return Read(std::make_pair(std::string("name"), strAddress), strName);
@@ -91,7 +98,7 @@ namespace Legacy
 
 
     /* Reads the default public key from the wallet database. */
-    bool ReadDefaultKey(std::vector<uint8_t>& vchPubKey)
+    bool CWalletDB::ReadDefaultKey(std::vector<uint8_t>& vchPubKey)
     {
         vchPubKey.clear();
         return Read(std::string("defaultkey"), vchPubKey);
@@ -99,7 +106,7 @@ namespace Legacy
 
 
     /* Stores the default public key to the wallet database. */
-    bool WriteDefaultKey(const std::vector<uint8_t>& vchPubKey)
+    bool CWalletDB::WriteDefaultKey(const std::vector<uint8_t>& vchPubKey)
     {
         CWalletDB::nWalletDBUpdated++;
         return Write(std::string("defaultkey"), vchPubKey);
@@ -107,7 +114,7 @@ namespace Legacy
 
 
     /* Reads the unencrypted private key associated with a public key */
-    bool ReadKey(const std::vector<uint8_t>& vchPubKey, LLC::CPrivKey& vchPrivKey)
+    bool CWalletDB::ReadKey(const std::vector<uint8_t>& vchPubKey, LLC::CPrivKey& vchPrivKey)
     {
         vchPrivKey.clear();
         return Read(std::make_pair(std::string("key"), vchPubKey), vchPrivKey);
@@ -115,7 +122,7 @@ namespace Legacy
 
 
     /* Stores an unencrypted private key using the corresponding public key. */
-    bool WriteKey(const std::vector<uint8_t>& vchPubKey, const LLC::CPrivKey& vchPrivKey)
+    bool CWalletDB::WriteKey(const std::vector<uint8_t>& vchPubKey, const LLC::CPrivKey& vchPrivKey)
     {
         CWalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("key"), vchPubKey), vchPrivKey, false);
@@ -123,7 +130,7 @@ namespace Legacy
 
 
     /* Stores an encrypted private key using the corresponding public key. */
-    bool WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret, bool fEraseUnencryptedKey = true)
+    bool CWalletDB::WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret, bool fEraseUnencryptedKey = true)
     {
         CWalletDB::nWalletDBUpdated++;
         if (!Write(std::make_pair(std::string("ckey"), vchPubKey), vchCryptedSecret, false))
@@ -139,14 +146,14 @@ namespace Legacy
 
 
     /* Reads the wallet transaction for a given transaction hash. */
-    bool ReadTx(const uint512_t hash, CWalletTx& wtx)
+    bool CWalletDB::ReadTx(const uint512_t hash, CWalletTx& wtx)
     {
         return Read(std::make_pair(std::string("tx"), hash), wtx);
     }
 
 
     /* Stores a wallet transaction using its transaction hash. */
-    bool WriteTx(const uint512_t hash, const CWalletTx& wtx)
+    bool CWalletDB::WriteTx(const uint512_t hash, const CWalletTx& wtx)
     {
         CWalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("tx"), hash), wtx);
@@ -154,7 +161,7 @@ namespace Legacy
 
 
     /* Removes the wallet transaction associated with a transaction hash. */
-    bool EraseTx(const uint512_t hash)
+    bool CWalletDB::EraseTx(const uint512_t hash)
     {
         CWalletDB::nWalletDBUpdated++;
         return Erase(std::make_pair(std::string("tx"), hash));
@@ -162,7 +169,7 @@ namespace Legacy
 
 
     /* Reads the script for a given script hash. */
-    bool ReadCScript(const uint256_t &hash, CScript& redeemScript)
+    bool CWalletDB::ReadCScript(const uint256_t &hash, CScript& redeemScript)
     {
         redeemScript.clear();
         return Read(std::make_pair(std::string("cscript"), hash), redeemScript);
@@ -170,7 +177,7 @@ namespace Legacy
 
 
     /* Stores a redeem script using its script hash. */
-    bool WriteCScript(const uint256_t& hash, const CScript& redeemScript)
+    bool CWalletDB::WriteCScript(const uint256_t& hash, const CScript& redeemScript)
     {
         CWalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("cscript"), hash), redeemScript, false);
@@ -178,14 +185,14 @@ namespace Legacy
 
 
     /* Reads the stored CBlockLocator of the last recorded best block. */
-    bool ReadBestBlock(Core::CBlockLocator& locator)
+    bool CWalletDB::ReadBestBlock(Core::CBlockLocator& locator)
     {
         return Read(std::string("bestblock"), locator);
     }
 
 
     /* Stores a CBlockLocator to record current best block. */
-    bool WriteBestBlock(const Core::CBlockLocator& locator)
+    bool CWalletDB::WriteBestBlock(const Core::CBlockLocator& locator)
     {
         CWalletDB::nWalletDBUpdated++;
         return Write(std::string("bestblock"), locator);
@@ -193,14 +200,14 @@ namespace Legacy
 
 
     /* Reads a key pool entry from the database. */
-    bool ReadPool(const int64_t nPool, CKeyPoolEntry& keypoolEntry)
+    bool CWalletDB::ReadPool(const int64_t nPool, CKeyPoolEntry& keypoolEntry)
     {
         return Read(std::make_pair(std::string("pool"), nPool), keypoolEntry);
     }
 
 
     /* Stores a key pool entry using its pool entry number (ID value). */
-    bool WritePool(const int64_t nPool, const CKeyPoolEntry& keypoolEntry)
+    bool CWalletDB::WritePool(const int64_t nPool, const CKeyPoolEntry& keypoolEntry)
     {
         CWalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("pool"), nPool), keypoolEntry);
@@ -208,7 +215,7 @@ namespace Legacy
 
 
     /* Removes a key pool entry associated with a pool entry number. */
-    bool ErasePool(const int64_t nPool)
+    bool CWalletDB::ErasePool(const int64_t nPool)
     {
         CWalletDB::nWalletDBUpdated++;
         return Erase(std::make_pair(std::string("pool"), nPool));
@@ -306,7 +313,7 @@ namespace Legacy
         bool fIsEncrypted = false;
 
         { /* Begin lock scope */
-            std::lock_guard<std::mutex> walletLock(wallet.cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(wallet.cs_wallet); 
 
             std::vector<uint8_t> vchLoadedDefaultKey;
 
@@ -395,7 +402,7 @@ namespace Legacy
                         vWalletRemove.push_back(hash);
                     }
                     else
-                        wtx.BindWallet(wallet);
+                        wtx.BindWallet(&wallet);
 
                 }
 
@@ -666,7 +673,7 @@ namespace Legacy
         while (!fShutdown)
         {
             {
-                std::lock_guard<std::mutex> dbLock(CDB::cs_db); 
+                std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db); 
 
                 /* If wallet database is in use, will wait and repeat loop until it becomes available */
                 if (CDB::mapFileUseCount.count(strFile) == 0 || CDB::mapFileUseCount[strFile] == 0)

@@ -20,21 +20,17 @@ ________________________________________________________________________________
 #include <thread>
 #include <vector>
 
+#include <LLC/include/key.h>
 #include <LLC/types/uint1024.h>
 
 #include <TAO/Legacy/wallet/db.h>
 
 
-namespace LLC 
-{
-    /* forward declaration */    
-    class CPrivKey;
-}
-
 namespace Legacy
 {
     
     /* forward declarations */    
+    class CBlockLocator;
     class CScript;
     class CAccount;
     class CAccountingEntry;
@@ -80,8 +76,8 @@ namespace Legacy
     class CWalletDB : public CDB
     {
     protected:
-        /** Defines name of wallet database file **/
-        static const std::string DEFAULT_WALLET_DB("wallet.dat");
+        /** Defines default name of wallet database file **/
+        static const std::string DEFAULT_WALLET_DB;
 
 
         /**
@@ -93,7 +89,7 @@ namespace Legacy
          *  its last iteration that need to be flushed to disk.
          *
          **/
-        static uint32_t nWalletDBUpdated = 0;
+        static uint32_t nWalletDBUpdated;
 
 
         /**
@@ -105,7 +101,7 @@ namespace Legacy
          *  Supports multiple accounting entries for the same account with each having a 
          *  unique database key.
          **/
-        static uint64_t nAccountingEntryNumber = 0;
+        static uint64_t nAccountingEntryNumber;
 
 
     public:
@@ -131,7 +127,7 @@ namespace Legacy
          *
          *  Initializes database access for a given file name and access mode.
          *
-         *  @param[in] strFilename The database file name. Should be file name only. Database
+         *  @param[in] strFileName The database file name. Should be file name only. Database
          *                     will put the file in data directory automatically.
          *
          *  @param[in] pszMode A string containing one or more access mode characters
@@ -141,7 +137,7 @@ namespace Legacy
          *  @see CDB for modes
          *
          **/
-        CWalletDB(std::string strFilename, const char* pszMode="r+") : 
+        CWalletDB(std::string strFileName, const char* pszMode="r+") : 
             CDB(strFileName, pszMode)
         { }
 
@@ -420,7 +416,7 @@ namespace Legacy
          *  @return true if best block entry present in database and successfully read
          *
          **/
-        bool ReadBestBlock(Core::CBlockLocator& locator);
+        bool ReadBestBlock(Legacy::CBlockLocator& locator);
 
 
         /** WriteBestBlock
@@ -434,7 +430,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteBestBlock(const Core::CBlockLocator& locator);
+        bool WriteBestBlock(const Legacy::CBlockLocator& locator);
 
 
         /** ReadPool

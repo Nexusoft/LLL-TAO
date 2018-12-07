@@ -20,7 +20,9 @@ ________________________________________________________________________________
 #include <vector>
 
 #include <TAO/Legacy/types/merkle.h>
+#include <TAO/Legacy/wallet/wallet.h>
 
+#include <Util/include/debug.h>
 #include <Util/templates/serialize.h>
 
 
@@ -36,7 +38,6 @@ namespace Legacy
     class NexusAddress;
     class CTxIn;
     class CTxOut;
-    class CWallet;
 
     /** @class CWalletTx
      *
@@ -48,7 +49,7 @@ namespace Legacy
     class CWalletTx : public CMerkleTx
     {
     private:
-        const CWallet& transactionWallet;
+        CWallet* ptransactionWallet;
 
         bool fHaveWallet;
 
@@ -155,7 +156,8 @@ namespace Legacy
          *  Initializes an empty wallet transaction
          *
          **/
-        CWalletTx() : fHaveWallet(false)
+        /* Have to initialize ptransactionWallet reference, but set fHaveWallet to false so it isn't used, need BindWallet first */
+        CWalletTx() : ptransactionWallet(nullptr), fHaveWallet(false)
         {                
             InitWalletTx();
         }
@@ -172,7 +174,7 @@ namespace Legacy
          *  @see CWallet::AddToWallet()
          *
          **/
-        CWalletTx(const CWallet& walletIn) : transactionWallet(walletIn), fHaveWallet(true)
+        CWalletTx(CWallet& walletIn) : ptransactionWallet(&walletIn), fHaveWallet(true)
         {
             InitWalletTx();
         }
@@ -186,14 +188,12 @@ namespace Legacy
          *
          *  @param[in] pwalletIn Pointer to the wallet for this wallet transaction
          *
-         *  @deprecated Included for backward compatability
-         *
          *  @see CWallet::AddToWallet()
          *
          *  @deprecated Included for backward compatability
          *
          **/
-        CWalletTx(const CWallet* pwalletIn) : transactionWallet(*pwalletIn), fHaveWallet(true)
+        CWalletTx(CWallet* pwalletIn) : ptransactionWallet(pwalletIn), fHaveWallet(true)
         {
             InitWalletTx();
         }
@@ -205,14 +205,14 @@ namespace Legacy
          *
          *  This does not add the transaction to the wallet.
          *
-         *  @param[in] walletIn The wallet for this wallet transaction
+         *  @param[in] pwalletIn The wallet for this wallet transaction
          *
          *  @param[in] txIn Transaction data to copy into this wallet transaction
          *
          *  @see CWallet::AddToWallet()
          *
          **/
-        CWalletTx(const CWallet& walletIn, const CMerkleTx& txIn) : CMerkleTx(txIn), transactionWallet(walletIn), fHaveWallet(true)
+        CWalletTx(CWallet* pwalletIn, const CMerkleTx& txIn) : CMerkleTx(txIn), ptransactionWallet(pwalletIn), fHaveWallet(true)
         {
             InitWalletTx();
         }
@@ -220,18 +220,18 @@ namespace Legacy
 
         /** Constructor
          *
-         *  Initializes a wallet transaction bound to a given wallet with data copied from a CTransaction. 
+         *  Initializes a wallet transaction bound to a given wallet with data copied from a Transaction. 
          *
          *  This does not add the transaction to the wallet.
          *
-         *  @param[in] walletIn The wallet for this wallet transaction
+         *  @param[in] pwalletIn The wallet for this wallet transaction
          *
          *  @param[in] txIn Transaction data to copy into this wallet transaction
          *
          *  @see CWallet::AddToWallet()
          *
          **/
-        CWalletTx(const CWallet& walletIn, const CTransaction& txIn) : CMerkleTx(txIn), transactionWallet(walletIn), fHaveWallet(true)
+        CWalletTx(CWallet* pwalletIn, const Transaction& txIn) : CMerkleTx(txIn), ptransactionWallet(pwalletIn), fHaveWallet(true)
         {
             InitWalletTx();
         }
@@ -243,8 +243,9 @@ namespace Legacy
             CWalletTx* pthis = const_cast<CWalletTx*>(this);
             if (fRead)
             {
-                fHaveWallet = false;
-                pthis->Init();
+                pthis->fHaveWallet = false;
+                pthis->ptransactionWallet = nullptr;
+                pthis->InitWalletTx();
             }
             char fSpent = false;
 
@@ -262,7 +263,7 @@ namespace Legacy
                 pthis->mapValue["spent"] = str;
             }
 
-            nSerSize += SerReadWrite(s, *(CMerkleTx*)this, nSerType, nVersion,ser_action);
+            nSerSize += SerReadWrite(s, *(CMerkleTx*)this, nSerType, nVersion, ser_action);
             READWRITE(vtxPrev);
             READWRITE(mapValue);
             READWRITE(vOrderForm);
@@ -293,12 +294,12 @@ namespace Legacy
          *
          *  This does not add the transaction to the wallet.
          *
-         *  @param[in] walletIn The wallet for this wallet transaction
+         *  @param[in] pwalletIn Pointer to the wallet to be bound
          *
          *  @see CWallet::AddToWallet()
          *
          **/
-        void BindWallet(CWallet& walletIn);
+        void BindWallet(CWallet *pwalletIn);
 
 
         /** GetDebit
@@ -366,7 +367,7 @@ namespace Legacy
          *  Coinbase and Coinstake transactions are tracked at the block level,
          *  so count records requests for the block containing them.
          *
-         *  @return The request count as recorded by request tracking
+         *  @return The request count as recorded by request tracking, -1 if not tracked, 0 if no wallet bound
          *
          **/
         int GetRequestCount() const;
@@ -506,7 +507,8 @@ namespace Legacy
 
         /** AddSupportingTransactions
          *
-         *  Populates transaction data for previous transactions into vtxPrev
+         *  Populates transaction data for previous transactions into vtxPrev.
+         *  Adds no transaction of no wallet bound.
          *
          *  @param[in] indexdb Local index database containing previous transaction data
          *

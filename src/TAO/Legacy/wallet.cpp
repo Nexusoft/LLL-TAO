@@ -18,8 +18,8 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 #include <LLC/include/random.h>
 
-#include <TAO/Ledger/include/global.h>
-
+#include <TAO/Legacy/include/money.h>
+#include <TAO/Legacy/include/signature.h>
 #include <TAO/Legacy/types/enum.h> // For GMF_SEND
 #include <TAO/Legacy/wallet/crypter.h>
 #include <TAO/Legacy/wallet/output.h>
@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <TAO/Legacy/wallet/walletdb.h>
 
 #include <Util/include/args.h>
+#include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 
 namespace Legacy
@@ -41,7 +42,7 @@ namespace Legacy
     bool CWallet::SetMinVersion(const enum Legacy::WalletFeature nVersion, const bool fForceLatest)
     {
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             /* Ignore new setting if current setting is higher version */
             if (nWalletVersion >= nVersion)
@@ -74,7 +75,7 @@ namespace Legacy
     bool CWallet::SetMaxVersion(const int nVersion)
     {
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             /* Cannot downgrade below current version */
             if (nWalletVersion > nVersion)
@@ -98,7 +99,7 @@ namespace Legacy
             return DB_LOAD_OK;
 
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             fFirstRunRet = false;
 
@@ -130,7 +131,7 @@ namespace Legacy
     void CWallet::Inventory(const uint1024_t &hash)
     {
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             auto mi = mapRequestCount.find(hash);
 
@@ -147,7 +148,7 @@ namespace Legacy
     bool CWallet::AddCryptedKey(const vector<uint8_t> &vchPubKey, const vector<uint8_t> &vchCryptedSecret)
     {
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             /* Call overridden inherited method to add key to key store */
             if (!CCryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret))
@@ -188,7 +189,7 @@ namespace Legacy
          * It violates encapsulation, though, because we should not have to rely on how CCryptoKeyStore implements AddKey
          */
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             /* Call overridden method to add key to key store */
             /* For encrypted wallet, this adds to both key store and wallet database (as described above) */
@@ -214,7 +215,7 @@ namespace Legacy
     bool CWallet::AddCScript(const CScript& redeemScript)
     {
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             /* Call overridden inherited method to add key to key store */
             if (!CCryptoKeyStore::AddCScript(redeemScript))
@@ -256,7 +257,7 @@ namespace Legacy
     bool CWallet::SetDefaultKey(const std::vector<uint8_t> &vchPubKey)
     {
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             if (fFileBacked) 
             {
@@ -321,7 +322,7 @@ namespace Legacy
 
         /* kMasterKey now contains the master key encrypted by the provided passphrase. Ready to perform wallet encryption. */
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             mapMasterKeys[++nMasterKeyMaxID] = kMasterKey;
 
@@ -390,7 +391,7 @@ namespace Legacy
         CKeyingMaterial vMasterKey;
 
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             /* If more than one master key in wallet's map (unusual), this will attempt each one with the passphrase. 
              * If any one master key decryption works and unlocks the wallet, then the unlock is successful.
@@ -425,7 +426,7 @@ namespace Legacy
          */
 
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             /* Save current lock state so it can be reset when done */
             bool fWasLocked = IsLocked();
@@ -503,7 +504,7 @@ namespace Legacy
         int64_t nTotalBalance = 0;
 
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             for (const auto& item : mapWallet)
             {
@@ -527,7 +528,7 @@ namespace Legacy
         int64_t nUnconfirmedBalance = 0;
 
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             for (const auto& item : mapWallet)
             {
@@ -550,7 +551,7 @@ namespace Legacy
         int64_t nTotalStake = 0;
 
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             for (const auto& item : mapWallet)
             {
@@ -571,7 +572,7 @@ namespace Legacy
         int64_t nTotalMint = 0;
 
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             for (const auto& item : mapWallet)
             {
@@ -590,7 +591,7 @@ namespace Legacy
     void CWallet::AvailableCoins(const uint32_t nSpendTime, vector<COutput>& vCoins, const bool fOnlyConfirmed) const
     {
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             vCoins.clear();
 
@@ -633,7 +634,7 @@ namespace Legacy
     void CWallet::MarkDirty()
     {
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             for(auto& item : mapWallet)
                 item.second.MarkDirty();
@@ -645,7 +646,7 @@ namespace Legacy
     bool CWallet::GetTransaction(const uint512_t &hashTx, CWalletTx& wtx)
     {
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             /* Find the requested transaction in the wallet */
             TransactionMap::iterator mi = mapWallet.find(hashTx);
@@ -667,14 +668,14 @@ namespace Legacy
         uint512_t hash = wtxIn.GetHash();
 
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             /* Inserts only if not already there, returns tx inserted or tx found */
             pair<TransactionMap::iterator, bool> ret = mapWallet.insert(std::make_pair(hash, wtxIn));
 
             /* Use the returned tx, not wtxIn, in case insert returned an existing transaction */
             CWalletTx& wtx = (*ret.first).second;
-            wtx.BindWallet(*this);
+            wtx.BindWallet(this);
 
             bool fInsertedNew = ret.second;
             if (fInsertedNew)
@@ -748,12 +749,12 @@ namespace Legacy
     /*  Checks whether a transaction has inputs or outputs belonging to this wallet, and adds 
      *  it to the wallet when it does.
      */
-    bool CWallet::AddToWalletIfInvolvingMe(const Core::CTransaction& tx, const Core::CBlock* pblock, bool fUpdate, bool fFindBlock)
+    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const Core::CBlock* pblock, bool fUpdate, bool fFindBlock)
     {
         uint512_t hash = tx.GetHash();
 
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             /* Check to see if transaction hash in this wallet */
             bool fExisted = mapWallet.count(hash);
@@ -788,7 +789,7 @@ namespace Legacy
         if (!fFileBacked)
             return false;
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             if (mapWallet.erase(hash))
             {
@@ -805,7 +806,7 @@ namespace Legacy
     /* When disconnecting a coinstake transaction, this method to marks
      *  any previous outputs from this wallet as unspent.
      */
-    void CWallet::DisableTransaction(const CTransaction &tx)
+    void CWallet::DisableTransaction(const Transaction &tx)
     {
         /* If transaction is not coinstake or not from this wallet, nothing to process */
         if (!tx.IsCoinStake() || !IsFromMe(tx))
@@ -813,7 +814,7 @@ namespace Legacy
 
         {
             /* Disconnecting coinstake requires marking input unspent */
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             for(const CTxIn& txin : tx.vin)
             {
@@ -845,7 +846,7 @@ namespace Legacy
 
         Core::CBlockIndex* pindex = pindexStart;
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             while (pindex)
             {
@@ -854,7 +855,7 @@ namespace Legacy
                 block.ReadFromDisk(pindex, true);
 
                 /* Scan each transaction in the block and process those related to this wallet */
-                for(Core::CTransaction& tx : block.vtx)
+                for(Transaction& tx : block.vtx)
                 {
                     if (AddToWalletIfInvolvingMe(tx, &block, fUpdate))
                         nTransactionCount++;
@@ -910,7 +911,7 @@ namespace Legacy
         LLD::CIndexDB indexdb("r");
 
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             /* Find any sent tx not in block and sort them in chronological order */
             multimap<uint64_t, CWalletTx&> mapSorted;
@@ -942,10 +943,10 @@ namespace Legacy
      * in this wallet. For any it finds, verifies that the outputs are marked as spent, updating 
      * them as needed.
      */
-    void CWallet::WalletUpdateSpent(const CTransaction &tx)
+    void CWallet::WalletUpdateSpent(const Transaction &tx)
     {
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             /* Loop through and the tx inputs, checking each separately */
             for(const auto& txin : tx.vin)
@@ -982,7 +983,7 @@ namespace Legacy
         nBalanceInQuestion = 0;
 
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             vector<CWalletTx&> vCoins;
             vCoins.reserve(mapWallet.size());
@@ -1043,7 +1044,7 @@ namespace Legacy
 
 
     /* Checks whether a transaction contains any outputs belonging to this wallet. */
-    bool CWallet::IsMine(const CTransaction& tx) const
+    bool CWallet::IsMine(const Transaction& tx) const
     {
         for(const CTxOut& txout : tx.vout)
         {
@@ -1059,7 +1060,7 @@ namespace Legacy
     bool CWallet::IsMine(const Core::CTxIn &txin) const
     {
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             /* Any input from this wallet will have a corresponding UTXO in the previous transaction 
              * Thus, if the wallet doesn't contain the previous transaction, the input is not from this wallet.
@@ -1093,7 +1094,7 @@ namespace Legacy
 
 
     /* Calculates the total value for all inputs sent from this wallet by a transaction. */
-    int64_t CWallet::GetDebit(const CTransaction& tx) const
+    int64_t CWallet::GetDebit(const Transaction& tx) const
     {
         int64_t nDebit = 0;
 
@@ -1101,7 +1102,7 @@ namespace Legacy
         {
             nDebit += GetDebit(txin);
 
-            if (!Core::MoneyRange(nDebit))
+            if (!MoneyRange(nDebit))
                 throw std::runtime_error("CWallet::GetDebit() : value out of range");
         }
 
@@ -1110,7 +1111,7 @@ namespace Legacy
 
 
     /* Calculates the total value for all outputs received by this wallet in a transaction. */
-    int64_t CWallet::GetCredit(const CTransaction& tx) const
+    int64_t CWallet::GetCredit(const Transaction& tx) const
     {
         int64_t nCredit = 0;
 
@@ -1118,7 +1119,7 @@ namespace Legacy
         {
             nCredit += GetCredit(txout);
 
-            if (!Core::MoneyRange(nCredit))
+            if (!MoneyRange(nCredit))
                 throw std::runtime_error("CWallet::GetCredit() : value out of range");
         }
 
@@ -1127,7 +1128,7 @@ namespace Legacy
 
 
     /* Calculates the total change amount returned to this wallet by a transaction. */
-    int64_t CWallet::GetChange(const CTransaction& tx) const
+    int64_t CWallet::GetChange(const Transaction& tx) const
     {
         int64_t nChange = 0;
 
@@ -1135,7 +1136,7 @@ namespace Legacy
         {
             nChange += GetChange(txout);
 
-            if (!Core::MoneyRange(nChange))
+            if (!MoneyRange(nChange))
                 throw std::runtime_error("CWallet::GetChange() : value out of range");
         }
 
@@ -1150,7 +1151,7 @@ namespace Legacy
             return 0;
 
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             /* A debit spends the txout value from a previous output 
              * so begin by finding the previous transaction in the wallet
@@ -1177,7 +1178,7 @@ namespace Legacy
     /* Returns the credit amount for this wallet represented by a transaction output. */
     int64_t CWallet::GetCredit(const CTxOut& txout) const
     {
-        if (!Core::MoneyRange(txout.nValue))
+        if (!MoneyRange(txout.nValue))
             throw std::runtime_error("CWallet::GetCredit() : value out of range");
 
         return (IsMine(txout) ? txout.nValue : 0);
@@ -1187,7 +1188,7 @@ namespace Legacy
     /* Returns the change amount for this wallet represented by a transaction output. */
     int64_t CWallet::GetChange(const CTxOut& txout) const
     {
-        if (!Core::MoneyRange(txout.nValue))
+        if (!MoneyRange(txout.nValue))
             throw std::runtime_error("CWallet::GetChange() : value out of range");
 
         return (IsChange(txout) ? txout.nValue : 0);
@@ -1210,7 +1211,7 @@ namespace Legacy
          * which output, if any, was change).
          */
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             if (ExtractAddress(txout.scriptPubKey, address) && HaveKey(address))
             {
@@ -1317,7 +1318,7 @@ namespace Legacy
         wtxNew.BindWallet(this);
 
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             LLD::CIndexDB indexdb("r");
 
@@ -1389,7 +1390,7 @@ namespace Legacy
                         return false;
 
                 /* Limit tx size to 20% of max block size */
-                uint32_t nBytes = ::GetSerializeSize(*(CTransaction*)&wtxNew, SER_NETWORK, LLP::PROTOCOL_VERSION);
+                uint32_t nBytes = ::GetSerializeSize(*(Transaction*)&wtxNew, SER_NETWORK, LLP::PROTOCOL_VERSION);
                 if (nBytes >= Core::MAX_BLOCK_SIZE_GEN/5)
                     return false; // tx size too large
 
@@ -1423,7 +1424,7 @@ namespace Legacy
     bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
     {
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             debug::log(0, "CommitTransaction:\n%s", wtxNew.ToString().c_str());
 
@@ -1446,7 +1447,7 @@ namespace Legacy
             for(const Core::CTxIn& txin : wtxNew.vin)
             {
                 CWalletTx& prevTx = mapWallet[txin.prevout.hash];
-                prevTx.BindWallet(*this);
+                prevTx.BindWallet(this);
                 prevTx.MarkSpent(txin.prevout.n);
                 prevTx.WriteToDisk();
             }
@@ -1485,7 +1486,7 @@ namespace Legacy
         block.vtx[0].vout[0].nValue = 0;
 
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             vCoins.reserve(mapWallet.size());
 
@@ -1632,7 +1633,7 @@ namespace Legacy
         nValueRet = 0;
 
         {
-            std::lock_guard<std::mutex> walletLock(cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             vallWalletTx.reserve(mapWallet.size());
 
@@ -1692,7 +1693,7 @@ namespace Legacy
         }
 
         /* Ensure input total value does not exceed maximum allowed */
-        if(!Core::MoneyRange(nValueRet))
+        if(!MoneyRange(nValueRet))
             return error("CWallet::SelectCoins() : Input total over TX limit Total: %" PRI64d " Limit %" PRI64d, nValueRet, Core::MaxTxOut());
 
         /* Ensure balance is sufficient to cover transaction */

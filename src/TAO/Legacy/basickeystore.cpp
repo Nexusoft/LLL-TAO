@@ -24,7 +24,7 @@ namespace Legacy
         bool fCompressed = false;
         CSecret secret = key.GetSecret(fCompressed);
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
             mapKeys[NexusAddress(key.GetPubKey())] = make_pair(secret, fCompressed);
         }
         return true;
@@ -35,7 +35,7 @@ namespace Legacy
     bool CBasicKeyStore::GetKey(const NexusAddress &address, LLC::ECKey &keyOut) const
     {
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
             auto mi = mapKeys.find(address);
             if (mi != mapKeys.end())
             {
@@ -53,7 +53,7 @@ namespace Legacy
     {
         setAddress.clear();
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
 
             setAddress.clear();
 
@@ -69,7 +69,7 @@ namespace Legacy
     {
         bool result;
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
             result = (mapKeys.count(address) > 0);
         }
         return result;
@@ -80,7 +80,7 @@ namespace Legacy
     bool CBasicKeyStore::AddCScript(const CScript& redeemScript)
     {
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
             mapScripts[SK256(redeemScript)] = redeemScript;
         }
         return true;
@@ -91,7 +91,7 @@ namespace Legacy
     bool CBasicKeyStore::GetCScript(const uint256_t &hash, CScript& redeemScriptOut) const
     {
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
             ScriptMap::const_iterator mi = mapScripts.find(hash);
             if (mi != mapScripts.end())
             {
@@ -108,7 +108,7 @@ namespace Legacy
     {
         bool result;
         {
-            std::lock_guard<std::mutex> ksLock(cs_KeyStore);
+            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
             result = (mapScripts.count(hash) > 0);
         }
         return result;

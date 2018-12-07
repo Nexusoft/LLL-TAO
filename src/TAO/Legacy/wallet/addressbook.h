@@ -36,10 +36,6 @@ namespace Legacy
      *  For a file backed wallet, adding or removing address book entries will also update
      *  the wallet database. 
      *
-     *  Copy operations are disabled on CAddressBook. This prevents the possibility of 
-     *  having multiple copies where an address gets added or removed from one copy and not
-     *  the other.
-     *
      *  Database key for address book entries is name<address> where address is string representation of Nexus address.
      **/
     class CAddressBook
@@ -79,14 +75,6 @@ namespace Legacy
          *
          **/
         CAddressBook(CWallet& walletIn) : addressBookWallet(walletIn) {}
-
-
-        /** Copy constructor deleted. No copy allowed **/
-        CAddressBook(const CAddressBook&) = delete;
-
-
-        /** Copy assignment operator deleted. No copy allowed **/
-        CAddressBook& operator= (const CAddressBook &rhs) = delete;
 
 
         /** GetAddressBookName

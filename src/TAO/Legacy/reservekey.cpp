@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <TAO/Legacy/wallet/keypoolentry.h>
 
+#include <Util/include/debug.h>
 #include <Util/include/serialize.h>
 
 

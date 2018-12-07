@@ -14,11 +14,25 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_MERKLE_H
 #define NEXUS_TAO_LEGACY_TYPES_MERKLE_H
 
+#include <TAO/Legacy/types/transaction.h>
+
+#include <Util/templates/serialize.h>
+
+
+namespace TAO
+{
+	namespace Ledger
+	{
+		class Block;
+	}
+}
 
 namespace Legacy
 {
+	class CBlockIndex;
+	 
     /** A transaction with a merkle branch linking it to the block chain. */
-	class CMerkleTx : public CTransaction
+	class CMerkleTx : public Transaction
 	{
 	public:
 		uint1024_t hashBlock;
@@ -34,7 +48,7 @@ namespace Legacy
 			Init();
 		}
 
-		CMerkleTx(const CTransaction& txIn) : CTransaction(txIn)
+		CMerkleTx(const Transaction& txIn) : Transaction(txIn)
 		{
 			Init();
 		}
@@ -49,15 +63,15 @@ namespace Legacy
 
 		IMPLEMENT_SERIALIZE
 		(
-			nSerSize += SerReadWrite(s, *(CTransaction*)this, nSerType, nVersion, ser_action);
-			nVersion = this->nVersion;
+			nSerSize += SerReadWrite(s, *(Transaction*)this, nSerType, nVersion, ser_action);
+			nSerVersion = this->nVersion;
 			READWRITE(hashBlock);
 			READWRITE(vMerkleBranch);
 			READWRITE(nIndex);
 		)
 
 
-		int SetMerkleBranch(const CBlock* pblock=NULL);
+		int SetMerkleBranch(const TAO::Ledger::Block* pblock=NULL);
 		int GetDepthInMainChain(CBlockIndex* &pindexRet) const;
 		int GetDepthInMainChain() const { CBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
 		bool IsInMainChain() const { return GetDepthInMainChain() > 0; }

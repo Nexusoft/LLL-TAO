@@ -35,7 +35,7 @@ namespace Legacy
 
         if (poolWallet.IsFileBacked())
         {
-            std::lock_guard<std::mutex> walletLock(poolWallet.cs_wallet);
+            std::lock_guard<std::recursive_mutex> walletLock(poolWallet.cs_wallet);
 
 	        if (poolWallet.IsLocked())
 	            return false;
@@ -79,7 +79,7 @@ namespace Legacy
 
         if (poolWallet.IsFileBacked())
         {
-            std::lock_guard<std::mutex> walletLock(poolWallet.cs_wallet);
+            std::lock_guard<std::recursive_mutex> walletLock(poolWallet.cs_wallet);
 
             /* Current key pool size */
             uint32_t nStartingSize = setKeyPool.size();
@@ -136,7 +136,7 @@ namespace Legacy
     {
         if (poolWallet.IsFileBacked())
         {
-            std::lock_guard<std::mutex> walletLock(poolWallet.cs_wallet);
+            std::lock_guard<std::recursive_mutex> walletLock(poolWallet.cs_wallet);
 
             CWalletDB walletdb(poolWallet.GetWalletFile());
 
@@ -165,7 +165,7 @@ namespace Legacy
         CKeyPoolEntry keypoolEntry;
 
         {
-            std::lock_guard<std::mutex> walletLock(poolWallet.cs_wallet);
+            std::lock_guard<std::recursive_mutex> walletLock(poolWallet.cs_wallet);
 
             /* Attempt to reserve a key from the key pool */
             ReserveKeyFromPool(nPoolIndex, keypoolEntry);
@@ -208,7 +208,7 @@ namespace Legacy
 
         if (poolWallet.IsFileBacked())
         {
-            std::lock_guard<std::mutex> walletLock(poolWallet.cs_wallet);
+            std::lock_guard<std::recursive_mutex> walletLock(poolWallet.cs_wallet);
 
             if (!poolWallet.IsLocked())
                 TopUpKeyPool();
@@ -250,7 +250,7 @@ namespace Legacy
     {
         if (poolWallet.IsFileBacked())
         {
-            std::lock_guard<std::mutex> walletLock(poolWallet.cs_wallet);
+            std::lock_guard<std::recursive_mutex> walletLock(poolWallet.cs_wallet);
 
             /* Remove from key pool */
             CWalletDB walletdb(poolWallet.GetWalletFile());
@@ -270,7 +270,7 @@ namespace Legacy
     {
         if (poolWallet.IsFileBacked())
         {
-            std::lock_guard<std::mutex> walletLock(poolWallet.cs_wallet);
+            std::lock_guard<std::recursive_mutex> walletLock(poolWallet.cs_wallet);
 
             setKeyPool.insert(nPoolIndex);
         }

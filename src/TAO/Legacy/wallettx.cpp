@@ -25,9 +25,10 @@ namespace Legacy
 {
 
     /* Assigns the wallet for this wallet transaction. */
-    void CWalletTx::BindWallet(CWallet& walletIn)
+    void CWalletTx::BindWallet(CWallet *pwalletIn)
     {
-        transactionWallet = walletIn;
+        ptransactionWallet = *pwalletIn;
+        fHaveWallet = true;
         MarkDirty();
     }
 
@@ -44,7 +45,7 @@ namespace Legacy
             return nDebitCached;
 
         /* Call corresponding method in wallet that will check which txin entries belong to it */
-        nDebitCached = transactionWallet.GetDebit(*this);
+        nDebitCached = ptransactionWallet->GetDebit(*this);
 
         /* Set cached flag */
         fDebitCached = true;
@@ -69,7 +70,7 @@ namespace Legacy
             return nCreditCached;
 
         /* Call corresponding method in wallet that will check which txout entries belong to it */
-        nCreditCached = transactionWallet.GetCredit(*this);
+        nCreditCached = ptransactionWallet->GetCredit(*this);
 
         /* Set cached flag */
         fCreditCached = true;
@@ -104,7 +105,7 @@ namespace Legacy
             if (!IsSpent(i) && vout[i].nValue > 0)
             {
                 /* Call corresponding method in wallet that will check which txout entries belong to it */
-                nCredit += transactionWallet.GetCredit(txout);
+                nCredit += ptransactionWallet->GetCredit(txout);
 
                 if (!Core::MoneyRange(nCredit))
                     throw std::runtime_error("CWalletTx::GetAvailableCredit() : value out of range");
@@ -133,7 +134,7 @@ namespace Legacy
             return nChangeCached;
 
         /* Call corresponding method in wallet that will find the change transaction, if any */
-        nChangeCached = transactionWallet.GetChange(*this);
+        nChangeCached = ptransactionWallet->GetChange(*this);
 
         /* Set cached flag */
         fChangeCached = true;
@@ -144,11 +145,15 @@ namespace Legacy
 
     int CWalletTx::GetRequestCount() const
     {
+        /* Return 0 if no wallet bound */
+        if (!fHaveWallet)
+            return 0;
+
         /* Returns -1 if it wasn't being tracked */
         int nRequests = -1;
 
         {
-            std::lock_guard<std::mutex> walletLock(transactionWallet.cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(ptransactionWallet->cs_wallet); 
 
             if (IsCoinBase() || IsCoinStake())
             {
@@ -156,25 +161,25 @@ namespace Legacy
                 /* Blocks created via staking/mining have block hash added to request tracking */
                 if (hashBlock != 0)
                 {
-                    auto mi = transactionWallet.mapRequestCount.find(hashBlock);
+                    auto mi = ptransactionWallet->mapRequestCount.find(hashBlock);
 
-                    if (mi != transactionWallet.mapRequestCount.end())
+                    if (mi != ptransactionWallet->mapRequestCount.end())
                         nRequests = (*mi).second;
                 }
             }
             else
             {
                 /* Did anyone request this transaction? */
-               auto mi = transactionWallet.mapRequestCount.find(GetHash());
-                if (mi != transactionWallet.mapRequestCount.end())
+               auto mi = ptransactionWallet->mapRequestCount.find(GetHash());
+                if (mi != ptransactionWallet->mapRequestCount.end())
                 {
                     nRequests = (*mi).second;
 
                     /* If no request specifically for the transaction hash, check the count for the block containing it */
                     if (nRequests == 0 && hashBlock != 0)
                     {
-                        auto mi = transactionWallet.mapRequestCount.find(hashBlock);
-                        if (mi != transactionWallet.mapRequestCount.end())
+                        auto mi = ptransactionWallet->mapRequestCount.find(hashBlock);
+                        if (mi != ptransactionWallet->mapRequestCount.end())
                             nRequests = (*mi).second;
                         else
                             nRequests = 1; // If it's in someone else's block it must have got out
@@ -235,7 +240,7 @@ namespace Legacy
             if (currentTx.GetDepthInMainChain() >= 1)
                 continue;
 
-            if (!transactionWallet.IsFromMe(currentTx))
+            if (!ptransactionWallet->IsFromMe(currentTx))
                 return false;
 
             /* On first iteration, loads mapPrev with vtxPrev from this transaction (this one is first one processed) */
@@ -363,9 +368,9 @@ namespace Legacy
     /* Store this transaction in the database for the bound wallet */
     bool CWalletTx::WriteToDisk()
     {
-        if (transactionWallet.IsFileBacked())
+        if (fHaveWallet && ptransactionWallet->IsFileBacked())
         {
-            CWalletDB walletDB(transactionWallet.GetWalletFile());
+            CWalletDB walletDB(ptransactionWallet->GetWalletFile());
             bool ret = walletDB.WriteTx(GetHash(), *this);
             walletDB.Close();
 
@@ -388,7 +393,7 @@ namespace Legacy
         if (IsCoinBase() || IsCoinStake())
         {
             if (GetBlocksToMaturity() > 0)
-                nGeneratedImmature = transactionWallet.GetCredit(*this);
+                nGeneratedImmature = ptransactionWallet->GetCredit(*this);
             else
                 nGeneratedMature = GetCredit();
 
@@ -421,7 +426,7 @@ namespace Legacy
             }
 
             /* Don't report 'change' txouts */
-            if (nDebit > 0 && transactionWallet.IsChange(txout))
+            if (nDebit > 0 && ptransactionWallet->IsChange(txout))
                 continue;
 
             /* For tx from us, txouts represent the sent value, add to the sent list */
@@ -429,7 +434,7 @@ namespace Legacy
                 listSent.push_back(make_pair(address, txout.nValue));
 
             /* For txout received (sent to address in bound wallet), add to the received list */
-            if (transactionWallet.IsMine(txout))
+            if (ptransactionWallet->IsMine(txout))
                 listReceived.push_back(make_pair(address, txout.nValue));
         }
 
@@ -465,17 +470,18 @@ namespace Legacy
             nFee = allFee;
         }
 
+        if (fHaveWallet)
         {
-            std::lock_guard<std::mutex> walletLock(transactionWallet.cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(ptransactionWallet->cs_wallet); 
 
             for(const auto& r : listReceived)
             {
-                if (transactionWallet.mapAddressBook.count(r.first))
+                if (ptransactionWallet->mapAddressBook.count(r.first))
                 {
                     /* Received address is in wallet address book, included in nReceived amount if matches requested account */
-                    auto mi = transactionWallet.GetAddressBook().mapAddressBook.find(r.first);
+                    auto mi = ptransactionWallet->GetAddressBook().mapAddressBook.find(r.first);
 
-                    if (mi != transactionWallet.GetAddressBook().mapAddressBook.end() && (*mi).second == strAccount)
+                    if (mi != ptransactionWallet->GetAddressBook().mapAddressBook.end() && (*mi).second == strAccount)
                         nReceived += r.second;
                 }
                 else if (strAccount.empty())
@@ -495,7 +501,7 @@ namespace Legacy
 
         const int COPY_DEPTH = 3;
 
-        if (SetMerkleBranch() < COPY_DEPTH)
+        if (fHaveWallet && SetMerkleBranch() < COPY_DEPTH)
         {
             /* Create list of tx hashes for previous transactions referenced by this transaction's inputs */
             std::vector<uint512_t> vWorkQueue;
@@ -503,7 +509,7 @@ namespace Legacy
                 vWorkQueue.push_back(txin.prevout.hash);
 
             {
-                std::lock_guard<std::mutex> walletLock(transactionWallet.cs_wallet); 
+                std::lock_guard<std::recursive_mutex> walletLock(ptransactionWallet->cs_wallet); 
 
                 std::map<uint512_t, const CMerkleTx*> mapWalletPrev;
                 std::set<uint512_t> setAlreadyDone;
@@ -520,9 +526,9 @@ namespace Legacy
 
                     CMerkleTx& tx;
 
-                    auto mi = transactionWallet.mapWallet.find(hash);
+                    auto mi = ptransactionWallet->mapWallet.find(hash);
 
-                    if (mi != transactionWallet.mapWallet.end())
+                    if (mi != ptransactionWallet->mapWallet.end())
                     {
                         tx = (*mi).second;
 
@@ -572,7 +578,7 @@ namespace Legacy
                 uint512_t hash = tx.GetHash();
 
                 if (!indexdb.ContainsTx(hash))
-                    RelayMessage(Net::CInv(Net::MSG_TX, hash), (CTransaction)tx);
+                    RelayMessage(Net::CInv(Net::MSG_TX, hash), (Transaction)tx);
             }
         }
 
@@ -584,7 +590,7 @@ namespace Legacy
             if (!indexdb.ContainsTx(hash))
             {
                 debug::log(0, "Relaying wtx %s\n", hash.ToString().substr(0,10).c_str());
-                RelayMessage(Net::CInv(Net::MSG_TX, hash), (CTransaction)*this);
+                RelayMessage(Net::CInv(Net::MSG_TX, hash), (Transaction)*this);
             }
         }
     }

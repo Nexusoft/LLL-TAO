@@ -11,12 +11,16 @@
 
 ____________________________________________________________________________________________*/
 
+#include <exception>
 #include <mutex>
 
+#include <TAO/Legacy/include/evaluate.h>
 #include <TAO/Legacy/types/address.h>
 #include <TAO/Legacy/types/script.h>
+#include <TAO/Legacy/wallet/addressbook.h>
 #include <TAO/Legacy/wallet/wallet.h>
 #include <TAO/Legacy/wallet/walletdb.h>
+#include <TAO/Legacy/wallet/wallettx.h>
 
 namespace Legacy
 {
@@ -25,7 +29,7 @@ namespace Legacy
     bool CAddressBook::SetAddressBookName(const NexusAddress& address, const std::string& strName)
     {
         {
-            std::lock_guard<std::mutex> walletLock(addressBookWallet.cs_wallet);
+            std::lock_guard<std::recursive_mutex> walletLock(addressBookWallet.cs_wallet);
 
             mapAddressBook[address] = strName;
 
@@ -34,7 +38,7 @@ namespace Legacy
                 CWalletDB walletdb(addressBookWallet.GetWalletFile());
 
                 if (!walletdb.WriteName(address.ToString(), strName))
-                    throw runtime_error("CAddressBook::AddAddressBookName() : writing added address book entry failed");
+                    throw std::runtime_error("CAddressBook::AddAddressBookName() : writing added address book entry failed");
 
                 walletdb.Close();
             }
@@ -48,7 +52,7 @@ namespace Legacy
     bool CAddressBook::DelAddressBookName(const NexusAddress& address)
     {
         {
-            std::lock_guard<std::mutex> walletLock(addressBookWallet.cs_wallet);
+            std::lock_guard<std::recursive_mutex> walletLock(addressBookWallet.cs_wallet);
 
             mapAddressBook.erase(address);
 
@@ -57,23 +61,23 @@ namespace Legacy
                 CWalletDB walletdb(addressBookWallet.GetWalletFile());
 
                 if (!walletdb.EraseName(address.ToString()))
-                    throw runtime_error("CAddressBook::DelAddressBookName() : removing address book entry failed");
+                    throw std::runtime_error("CAddressBook::DelAddressBookName() : removing address book entry failed");
 
                 walletdb.Close();
             }
         }
 
-        return;
+        return true;
     }
 
 
     /* Get Nexus addresses that have a balance associated with the wallet for this address book */
-    bool CAddressBook::AvailableAddresses(uint32_t nSpendTime, map<NexusAddress, int64_t>& mapAddressBalances, bool fOnlyConfirmed) const
+    bool CAddressBook::AvailableAddresses(uint32_t nSpendTime, std::map<NexusAddress, int64_t>& mapAddressBalances, bool fOnlyConfirmed) const
     {
         {
-            std::lock_guard<std::mutex> walletLock(addressBookWallet.cs_wallet);
+            std::lock_guard<std::recursive_mutex> walletLock(addressBookWallet.cs_wallet);
 
-            for (auto& item : mapWallet)
+            for (auto& item : addressBookWallet.mapWallet)
             {
                 const CWalletTx& walletTx = item.second;
 
@@ -95,7 +99,7 @@ namespace Legacy
                 for (int i = 0; i < walletTx.vout.size(); i++)
                 {
                     /* For all unfiltered transactions, add any unspent output belonging to this wallet to the available balance */
-                    if (!(walletTx.IsSpent(i)) && IsMine(walletTx.vout[i]) && walletTx.vout[i].nValue > 0) 
+                    if (!(walletTx.IsSpent(i)) && addressBookWallet.IsMine(walletTx.vout[i]) && walletTx.vout[i].nValue > 0) 
                     {
                         NexusAddress address;
 

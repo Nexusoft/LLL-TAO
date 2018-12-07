@@ -83,7 +83,7 @@ namespace Legacy
         int ret;
 
         { /* Begin lock scope */
-            std::lock_guard<std::mutex> dbLock(CDB::cs_db); // Need to lock before test fDbEnvInit
+            std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db); // Need to lock before test fDbEnvInit
 
             if (!CDB::fDbEnvInit)
             {
@@ -557,7 +557,7 @@ namespace Legacy
         CDB::dbenv.txn_checkpoint(nMinutes ? GetArg("-dblogsize", 100)*1024 : 0, nMinutes, 0);
 
         {
-            std::lock_guard<std::mutex> dbLock(CDB::cs_db); 
+            std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db); 
             --CDB::mapFileUseCount[strFile];
         }
 
@@ -571,7 +571,7 @@ namespace Legacy
     void CDB::CloseDb(const std::string& strFile)
     {
         {
-            std::lock_guard<std::mutex> dbLock(CDB::cs_db); 
+            std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db); 
 
             if (CDB::mapDb.count(strFile) > 0)
             {
@@ -597,7 +597,7 @@ namespace Legacy
             return;
 
         {
-            std::lock_guard<std::mutex> dbLock(CDB::cs_db); 
+            std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db); 
 
             for (auto mi = CDB::mapFileUseCount.cbegin(); mi != CDB::mapFileUseCount.cend(); /*no increment */)
             {
@@ -646,7 +646,7 @@ namespace Legacy
         if (!fShutdown)
         {
             { /* Begin lock scope */
-                std::lock_guard<std::mutex> dbLock(CDB::cs_db); 
+                std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db); 
 
                 if (CDB::mapFileUseCount.count(strFile) == 0 || CDB::mapFileUseCount[strFile] == 0)
                 {

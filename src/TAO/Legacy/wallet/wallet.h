@@ -24,33 +24,42 @@ ________________________________________________________________________________
 #include <LLC/include/key.h>
 #include <LLC/types/uint1024.h>
 
-#include <TAO/Ledger/include/global.h>
-
+#include <TAO/Legacy/wallet/addressbook.h>
 #include <TAO/Legacy/wallet/cryptokeystore.h>
+#include <TAO/Legacy/wallet/keypool.h>
+#include <TAO/Legacy/wallet/masterkey.h>
+#include <TAO/Legacy/wallet/wallettx.h>
 
 #include <Util/include/allocators.h> /* for SecureString */
 
-/******************************************/
-/*                                        */
-/* Needs updates for CBlock, CBlockIndex, */
-/* CBlockLocator, MoneyRange()            */
-/*                                        */
-/******************************************/
+/************************************************/
+/*                                              */
+/* Needs updates for CBlockIndex, CBlockLocator */
+/*                                              */
+/************************************************/
+
+namespace TAO
+{
+    namespace Ledger
+    {
+        class Block;
+    }
+}
 
 namespace Legacy
 {
     
     /* forward declarations */    
+    class CBlockIndex;
     class CScript;
-    class CTransaction;
+    class Transaction;
     class CTxIn;
     class CTxOut;
     class NexusAddress;
-    class CKeyPool;
+
     class COutput;
     class CReserveKey;
     class CWalletDB;
-    class CWalletTx;
 
 
     /** Nexus: Setting to unlock wallet for block minting only **/
@@ -152,10 +161,10 @@ namespace Legacy
             strWalletFile(""),
             fFileBacked(false),
             fLoaded(false),
-            addressBook(CAddressBook()),
+            addressBook(CAddressBook(*this)),
             keyPool(CKeyPool(*this)),
             nMasterKeyMaxID(0)
-        { }
+        {}
 
 
         /** Constructor
@@ -176,10 +185,10 @@ namespace Legacy
             strWalletFile(strWalletFileIn),
             fFileBacked(true),
             fLoaded(false),
-            addressBook(CAddressBook()),
+            addressBook(CAddressBook(*this)),
             keyPool(CKeyPool(*this)),
             nMasterKeyMaxID(0)
-        { }
+        {}
 
 
     /*----------------------------------------------------------------------------------------*/
@@ -255,7 +264,7 @@ namespace Legacy
          *  @return this wallet's address book
          *
          */
-        inline CAddressBook& GetAddressBook() const { return addressBook; }
+        inline CAddressBook& GetAddressBook() { return addressBook; }
 
 
         /** GetWalletFile
@@ -395,7 +404,7 @@ namespace Legacy
          *  @return this wallet's key pool
          *
          */
-        inline CKeyPool& GetKeyPool() const { return keyPool; }
+        inline CKeyPool& GetKeyPool() { return keyPool; }
 
 
         /** EncryptWallet
@@ -552,7 +561,7 @@ namespace Legacy
          * @return true if the transactions was added/updated
          *
          */
-        bool AddToWalletIfInvolvingMe(const CTransaction& tx, const Core::CBlock* pblock, bool fUpdate = false, bool fFindBlock = false);
+        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::Block* pblock, bool fUpdate = false, bool fFindBlock = false);
 
 
         /** EraseFromWallet
@@ -575,7 +584,7 @@ namespace Legacy
          *  @param[in] tx The coinstake transaction to disable
          *
          **/
-        void DisableTransaction(const CTransaction &tx);
+        void DisableTransaction(const Transaction &tx);
 
 
         /** ScanForWalletTransactions
@@ -590,7 +599,7 @@ namespace Legacy
          *  @return The number of transactions added/updated by the scan
          *
          **/
-        int ScanForWalletTransactions(Core::CBlockIndex* pindexStart, const bool fUpdate = false);
+        int ScanForWalletTransactions(Legacy::CBlockIndex* pindexStart, const bool fUpdate = false);
 
 
         /** ResendWalletTransactions
@@ -611,7 +620,7 @@ namespace Legacy
          *  @param[in] tx The transaction to check
          *
          **/
-        void WalletUpdateSpent(const CTransaction& tx);
+        void WalletUpdateSpent(const Transaction& tx);
 
 
         /** FixSpentCoins
@@ -643,7 +652,7 @@ namespace Legacy
          *  @return true if this wallet receives balance via this transaction 
          *
          **/
-        bool IsMine(const CTransaction& tx) const;
+        bool IsMine(const Transaction& tx) const;
 
 
         /** IsMine
@@ -682,7 +691,7 @@ namespace Legacy
          *  @return true if this wallet sends balance via this transaction 
          *
          **/
-        inline bool IsFromMe(const CTransaction& tx) const { return (GetDebit(tx) > 0); }
+        inline bool IsFromMe(const Transaction& tx) const { return (GetDebit(tx) > 0); }
 
 
     /*----------------------------------------------------------------------------------------*/
@@ -697,7 +706,7 @@ namespace Legacy
          *  @return total transaction debit amount
          *
          **/
-        int64_t GetDebit(const CTransaction& tx) const;
+        int64_t GetDebit(const Transaction& tx) const;
 
 
         /** GetCredit
@@ -711,7 +720,7 @@ namespace Legacy
          *  @return total transaction credit amount
          *
          **/
-        int64_t GetCredit(const CTransaction& tx) const;
+        int64_t GetCredit(const Transaction& tx) const;
 
 
         /** GetChange
@@ -723,7 +732,7 @@ namespace Legacy
          *  @return total transaction change amount
          *
          **/
-        int64_t GetChange(const CTransaction& tx) const;
+        int64_t GetChange(const Transaction& tx) const;
 
 
         /** GetDebit
@@ -846,7 +855,7 @@ namespace Legacy
          *  @return true if coinstake inputs successfully added
          *
          **/
-        bool AddCoinstakeInputs(CTransaction& txNew);
+        bool AddCoinstakeInputs(Transaction& txNew);
 
 
     private:
@@ -978,7 +987,7 @@ namespace Legacy
          *
          **/
         bool SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const int nConfMine, const int nConfTheirs, 
-                                std::set<std::pair<const CWalletTx&,uint32_t> >& setCoinsRet, int64_t& nValueRet) const;
+                                std::set<std::pair<const CWalletTx&, uint32_t> >& setCoinsRet, int64_t& nValueRet) const;
 
     };
 

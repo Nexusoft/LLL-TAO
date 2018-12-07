@@ -46,12 +46,6 @@ namespace Legacy
      *  the containing wallet is not file backed, using the key pool collapses
      *  into an empty pool of limited use.
      *
-     *  If multiple copies of the same key pool were allowed, it could 
-     *  result in a situation where a key is added to one copy and not the
-     *  other, or potential problems from having a key reserved in one
-     *  copy and not the other, and so forth. Therefore, copy operations
-     *  are disabled on CKeyPool instances.
-     *
      **/
     class CKeyPool
     {
@@ -83,14 +77,6 @@ namespace Legacy
          *
          **/
         CKeyPool(CWallet& walletIn) : poolWallet(walletIn) {}
-
-
-        /** Copy constructor deleted. No copy allowed **/
-        CKeyPool(const CKeyPool&) = delete;
-
-
-        /** Copy assignment operator deleted. No copy allowed **/
-        CKeyPool& operator= (const CKeyPool &rhs) = delete;
 
 
         /** NewKeyPool
