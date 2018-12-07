@@ -142,6 +142,7 @@ OBJS= \
 	build/LLP_corenode.o \
 	build/LLP_rpcnode.o \
 	build/Legacy_base.o \
+	build/Legacy_basic.o \
 	build/Legacy_address.o \
 	build/Legacy_enum.o \
 	build/Legacy_secret.o \
