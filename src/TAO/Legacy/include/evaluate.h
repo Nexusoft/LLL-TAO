@@ -66,23 +66,6 @@ namespace Legacy
     int ScriptSigArgsExpected(TransactionType t, const std::vector<std::vector<uint8_t> >& vSolutions);
 
 
-    /** Check Sig
-     *
-     *  Checks that the signature supplied is a valid one.
-     *
-     *  @param[in] vchSig The byte vector of signature data.
-     *  @param[in] vchPubKey The byte vector of the public key.
-     *  @param[in] scriptCode The input script object to check from.
-     *  @param[in] txTo The transaction being sent to.
-     *  @param[in] nIn The input being spent.
-     *  @param[in] nHashType The hash type used for signature.
-     *
-     *  @return true if the signature is valid.
-     *
-     **/
-    bool CheckSig(std::vector<uint8_t> vchSig, std::vector<uint8_t> vchPubKey, CScript scriptCode, const Transaction& txTo, uint32_t nIn, int32_t nHashType);
-
-
     /** Is Standard
      *
      *  Detects if a script object is of a standard type.
@@ -149,37 +132,6 @@ namespace Legacy
      *
      **/
     bool ExtractAddresses(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<NexusAddress>& addressRet, int32_t& nRequiredRet);
-
-
-    /** Sign Signature
-     *
-     *  Sign an input to a transaction from keystore
-     *
-     *  @param[in] keystore The keystore object to pull key from
-     *  @param[in] txFrom The transaction from which is being spent.
-     *  @param[in] txTo The destination transaciton being signed.
-     *  @param[in] nIn The output that is being signed
-     *  @param[in] nHashType The hash type for signature.
-     *
-     *  @return true if signature was generated successfully.
-     *
-     **/
-    bool SignSignature(const CKeyStore& keystore, const Transaction& txFrom, Transaction& txTo, uint32_t nIn, int32_t nHashType=SIGHASH_ALL);
-
-
-    /** Verify Signature
-     *
-     *  Verify a signature was valid
-     *
-     *  @param[in] txFrom The transaction from which is being spent.
-     *  @param[in] txTo The destination transaciton being signed.
-     *  @param[in] nIn The output to verify signature for.
-     *  @param[in] nHashType The hash type for signature.
-     *
-     *  @return true if signature was verified successfully.
-     *
-     **/
-    bool VerifySignature(const Transaction& txFrom, const Transaction& txTo, uint32_t nIn, int32_t nHashType);
 
 
     /** Verify Script

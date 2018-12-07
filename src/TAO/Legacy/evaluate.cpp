@@ -23,12 +23,146 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+    //stack preprocessors
+    #define stacktop(i)  (stack.at(stack.size()+(i)))
+    #define altstacktop(i)  (altstack.at(altstack.size()+(i)))
+
+
+    /**
+     *
+     * Script is a stack machine (like Forth) that evaluates a predicate
+     * returning a bool indicating valid or not.  There are no loops.
+     *
+     **/
+    static inline void popstack(vector<std::vector<unsigned char> >& stack)
+    {
+        if (stack.empty())
+            throw runtime_error("popstack() : stack empty");
+        stack.pop_back();
+    }
+
+
     /* Evaluate a script to true or false based on operation codes. */
     bool EvalScript(std::vector<std::vector<uint8_t> >& stack, const CScript& script, const Core::CTransaction& txTo, uint32_t nIn, int32_t nHashType);
+    {
+        
+    }
 
 
     /* Extract data from a script object. */
-    bool Solver(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<std::vector<uint8_t> >& vSolutionsRet);
+    bool Solver(const CScript& scriptPubKey, TransactionType& typeRet, std::vector< std::vector<uint8_t> >& vSolutionsRet)
+    {
+        // Templates
+        static std::map<TransactionType, CScript> mTemplates;
+        if (mTemplates.empty())
+        {
+            // Standard tx, sender provides pubkey, receiver adds signature
+            mTemplates.insert(make_pair(TX_PUBKEY, CScript() << OP_PUBKEY << OP_CHECKSIG));
+
+            // Nexus address tx, sender provides hash of pubkey, receiver provides signature and pubkey
+            mTemplates.insert(make_pair(TX_PUBKEYHASH, CScript() << OP_DUP << OP_HASH256 << OP_PUBKEYHASH << OP_EQUALVERIFY << OP_CHECKSIG));
+
+            // Sender provides N pubkeys, receivers provides M signatures
+            mTemplates.insert(make_pair(TX_MULTISIG, CScript() << OP_SMALLINTEGER << OP_PUBKEYS << OP_SMALLINTEGER << OP_CHECKMULTISIG));
+        }
+
+        // Shortcut for pay-to-script-hash, which are more constrained than the other types:
+        // it is always OP_HASH256 20 [20 byte hash] OP_EQUAL
+        if (scriptPubKey.IsPayToScriptHash())
+        {
+            typeRet = TX_SCRIPTHASH;
+            std::vector<uint8_t> hashBytes(scriptPubKey.begin() + 2, scriptPubKey.begin() + 22);
+            vSolutionsRet.push_back(hashBytes);
+            return true;
+        }
+
+        // Scan templates
+        const CScript& script1 = scriptPubKey;
+        for(auto tplate : mTemplates)
+        {
+            const CScript& script2 = tplate.second;
+            vSolutionsRet.clear();
+
+            opcodetype opcode1, opcode2;
+            vector<uint8_t> vch1, vch2;
+
+            // Compare
+            CScript::const_iterator pc1 = script1.begin();
+            CScript::const_iterator pc2 = script2.begin();
+            while(true)
+            {
+                if (pc1 == script1.end() && pc2 == script2.end())
+                {
+                    // Found a match
+                    typeRet = tplate.first;
+                    if (typeRet == TX_MULTISIG)
+                    {
+                        // Additional checks for TX_MULTISIG:
+                        uint8_t m = vSolutionsRet.front()[0];
+                        uint8_t n = vSolutionsRet.back()[0];
+                        if (m < 1 || n < 1 || m > n || vSolutionsRet.size()-2 != n)
+                            return false;
+                    }
+                    return true;
+                }
+                if (!script1.GetOp(pc1, opcode1, vch1))
+                    break;
+
+                if (!script2.GetOp(pc2, opcode2, vch2))
+                    break;
+
+                // Template matching opcodes:
+                if (opcode2 == OP_PUBKEYS)
+                {
+                    while (vch1.size() >= 33 && vch1.size() <= 120)
+                    {
+                        vSolutionsRet.push_back(vch1);
+                        if (!script1.GetOp(pc1, opcode1, vch1))
+                            break;
+                    }
+                    if (!script2.GetOp(pc2, opcode2, vch2))
+                        break;
+                    // Normal situation is to fall through
+                    // to other if/else statments
+                }
+
+                if (opcode2 == OP_PUBKEY)
+                {
+                    if (vch1.size() < 33 || vch1.size() > 120)
+                        break;
+                    vSolutionsRet.push_back(vch1);
+                }
+
+                else if (opcode2 == OP_PUBKEYHASH)
+                {
+                    if (vch1.size() != sizeof(uint256))
+                        break;
+                    vSolutionsRet.push_back(vch1);
+                }
+
+                else if (opcode2 == OP_SMALLINTEGER)
+                {   // Single-byte small integer pushed onto vSolutions
+                    if (opcode1 == OP_0 ||
+                        (opcode1 >= OP_1 && opcode1 <= OP_16))
+                    {
+                        char n = (int8_t)scriptPubKey.DecodeOP_N(opcode1);
+                        vSolutionsRet.push_back(std::vector<uint8_t>(1, n));
+                    }
+                    else
+                        break;
+                }
+                else if (opcode1 != opcode2 || vch1 != vch2)
+                {
+                    // Others must match exactly
+                    break;
+                }
+            }
+        }
+
+        vSolutionsRet.clear();
+        typeRet = TX_NONSTANDARD;
+        return false;
+    }
 
 
     /* Used in standard inputs function check in transaction. potential to remove */
@@ -55,30 +189,6 @@ namespace Legacy
         }
 
         return -1;
-    }
-
-
-    /** Checks that the signature supplied is a valid one. **/
-    bool CheckSig(std::vector<uint8_t> vchSig, std::vector<uint8_t> vchPubKey, CScript scriptCode, const Transaction& txTo, uint32_t nIn, int32_t nHashType)
-    {
-        // Hash type is one byte tacked on to the end of the signature
-        if (vchSig.empty())
-            return false;
-        if (nHashType == 0)
-            nHashType = vchSig.back();
-        else if (nHashType != vchSig.back())
-            return false;
-
-        vchSig.pop_back();
-        uint256_t sighash = SignatureHash(scriptCode, txTo, nIn, nHashType);
-
-        LLC::ECKey key(NID_sect571r1, 72);
-        if (!key.SetPubKey(vchPubKey))
-            return false;
-        if (!key.Verify(sighash, vchSig, 256))
-            return false;
-
-        return true;
     }
 
 
@@ -230,70 +340,6 @@ namespace Legacy
 
             addressRet.push_back(address);
         }
-
-        return true;
-    }
-
-
-    /* Sign an input to a transaction from keystore */
-    bool SignSignature(const CKeyStore& keystore, const Transaction& txFrom, Transaction& txTo, uint32_t nIn, int32_t nHashType)
-    {
-        assert(nIn < txTo.vin.size());
-        CTxIn& txin = txTo.vin[nIn];
-
-        assert(txin.prevout.n < txFrom.vout.size());
-        assert(txin.prevout.hash == txFrom.GetHash());
-        const CTxOut& txout = txFrom.vout[txin.prevout.n];
-
-        // Leave out the signature from the hash, since a signature can't sign itself.
-        // The checksig op will also drop the signatures from its hash.
-        uint256_t hash = SignatureHash(txout.scriptPubKey, txTo, nIn, nHashType);
-
-        TransactionType whichType;
-        if (!Solver(keystore, txout.scriptPubKey, hash, nHashType, txin.scriptSig, whichType))
-            return false;
-
-        if (whichType == TX_SCRIPTHASH)
-        {
-            // Solver returns the subscript that need to be evaluated;
-            // the final scriptSig is the signatures from that
-            // and then the serialized subscript:
-            CScript subscript = txin.scriptSig;
-
-            // Recompute txn hash using subscript in place of scriptPubKey:
-            uint256_t hash2 = SignatureHash(subscript, txTo, nIn, nHashType);
-            TransactionType subType;
-            if (!Solver(keystore, subscript, hash2, nHashType, txin.scriptSig, subType))
-                return false;
-
-            if (subType == TX_SCRIPTHASH)
-                return false;
-
-            txin.scriptSig << static_cast< std::vector<uint8_t> >(subscript); // Append serialized subscript
-        }
-
-        // Test solution
-        if (!VerifyScript(txin.scriptSig, txout.scriptPubKey, txTo, nIn, 0))
-            return false;
-
-        return true;
-    }
-
-
-    /* Verify a signature was valid */
-    bool VerifySignature(const Transaction& txFrom, const Transaction& txTo, uint32_t nIn, int nHashType)
-    {
-        assert(nIn < txTo.vin.size());
-        const CTxIn& txin = txTo.vin[nIn];
-        if (txin.prevout.n >= txFrom.vout.size())
-            return false;
-
-        const CTxOut& txout = txFrom.vout[txin.prevout.n];
-        if (txin.prevout.hash != txFrom.GetHash())
-            return false;
-
-        if (!VerifyScript(txin.scriptSig, txout.scriptPubKey, txTo, nIn, nHashType))
-            return false;
 
         return true;
     }
