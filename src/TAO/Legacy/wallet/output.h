@@ -16,14 +16,14 @@ ________________________________________________________________________________
 
 #include <string>
 
-#include <Util/include/parse.h> /* for FormatMoney() */
+#include <TAO/Legacy/wallet/wallettx.h>
+
+#include <Util/include/debug.h> 
+#include <Util/include/string.h> /* for FormatMoney() */
 
 namespace Legacy
 {
     
-    /* forward declaration */
-    class CWalletTx;
-
      /** @class COutput
       *
       *  Class to determine the value and depth of a specific transaction output.
@@ -73,7 +73,7 @@ namespace Legacy
          **/
         std::string ToString() const
         {
-            return strprintf("COutput(%s, %d, %d) [%s]", walletTx.GetHash().ToString().substr(0,10).c_str(), i, nDepth, FormatMoney(walletTx.vout[i].nValue).c_str());
+            return debug::strprintf("COutput(%s, %d, %d) [%s]", walletTx.GetHash().ToString().substr(0,10).c_str(), i, nDepth, FormatMoney(walletTx.vout[i].nValue).c_str());
         }
 
 

@@ -21,66 +21,62 @@ ________________________________________________________________________________
 
 namespace Legacy 
 {
-    
-    namespace Wallet
+    /** @class CKeyPoolEntry
+     *
+     *  Defines the public key of a key pool entry.
+     *  The CKeyPoolEntry is written to the wallet database to store a pre-generated pool of 
+     *  available public keys for use by the wallet. The private keys corresponding to
+     *  public keys in the key pool are not included. 
+     *
+     *  These key pool entries can then be read from the database as new keys are needed
+     *  for use by the wallet.
+     *
+     *  Database key is pool<nPool> where nPool is the pool entry ID number
+     **/
+    class CKeyPoolEntry
     {
-        /** @class CKeyPoolEntry
+    public:
+        /** Timestamp when key pool entry created **/
+        uint64_t nTime;
+
+        /** Public key for this key pool entry **/
+        std::vector<uint8_t> vchPubKey;
+
+
+        /** Constructor
          *
-         *  Defines the public key of a key pool entry.
-         *  The CKeyPoolEntry is written to the wallet database to store a pre-generated pool of 
-         *  available public keys for use by the wallet. The private keys corresponding to
-         *  public keys in the key pool are not included. 
+         *  Initializes a key pool entry with an empty public key. 
          *
-         *  These key pool entries can then be read from the database as new keys are needed
-         *  for use by the wallet.
-         *
-         *  Database key is pool<nPool> where nPool is the pool entry ID number
          **/
-        class CKeyPoolEntry
+        CKeyPoolEntry()
         {
-        public:
-            /** Timestamp when key pool entry created **/
-            uint64_t nTime;
-
-            /** Public key for this key pool entry **/
-            std::vector<uint8_t> vchPubKey;
+            nTime = UnifiedTimestamp();
+        }
 
 
-            /** Constructor
-             *
-             *  Initializes a key pool entry with an empty public key. 
-             *
-             **/
-            CKeyPoolEntry()
-            {
-                nTime = UnifiedTimestamp();
-            }
+        /** Constructor
+         *
+         *  Initializes a key pool entry with the provided public key. 
+         *
+         *  @param[in] vchPubKeyIn The public key to use for initialization
+         *
+         **/
+        CKeyPoolEntry(const std::vector<uint8_t>& vchPubKeyIn)
+        {
+            nTime = UnifiedTimestamp();
+            vchPubKey = vchPubKeyIn;
+        }
 
 
-            /** Constructor
-             *
-             *  Initializes a key pool entry with the provided public key. 
-             *
-             *  @param[in] vchPubKeyIn The public key to use for initialization
-             *
-             **/
-            CKeyPoolEntry(const std::vector<uint8_t>& vchPubKeyIn)
-            {
-                nTime = UnifiedTimestamp();
-                vchPubKey = vchPubKeyIn;
-            }
+        IMPLEMENT_SERIALIZE
+        (
+            if (!(nSerType & SER_GETHASH))
+                READWRITE(nSerVersion);
+            READWRITE(nTime);
+            READWRITE(vchPubKey);
+        )
+    };
 
-
-            IMPLEMENT_SERIALIZE
-            (
-                if (!(nSerType & SER_GETHASH))
-                    READWRITE(nVersion);
-                READWRITE(nTime);
-                READWRITE(vchPubKey);
-            )
-        };
-
-    }
 }
 
 #endif

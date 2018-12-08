@@ -11,8 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
-#include <iostream>
+#include <exception>
 #include <fstream>
+#include <iostream>
 #include <map>
 #include <utility>
 
@@ -21,10 +22,15 @@ ________________________________________________________________________________
 #include <LLD/include/version.h>
 
 #include <TAO/Legacy/types/script.h>
+#include <TAO/Legacy/wallet/accountingentry.h>
 #include <TAO/Legacy/wallet/wallet.h>
+#include <TAO/Legacy/wallet/walletaccount.h>
 #include <TAO/Legacy/wallet/walletdb.h>
+#include <TAO/Legacy/wallet/walletkey.h>
+#include <TAO/Legacy/wallet/wallettx.h>
 
 #include <Util/include/args.h>
+#include <Util/include/config.h>
 #include <Util/include/debug.h>
 #include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
@@ -36,11 +42,11 @@ namespace Legacy
 {
 
     /* Initialize static values */
-    static const std::string CWalletDB::DEFAULT_WALLET_DB("wallet.dat");
+    const std::string CWalletDB::DEFAULT_WALLET_DB("wallet.dat");
 
-    static uint32_t CWalletDB::nWalletDBUpdated = 0;
+    uint32_t CWalletDB::nWalletDBUpdated = 0;
 
-    static uint64_t CWalletDB::nAccountingEntryNumber = 0;
+    uint64_t CWalletDB::nAccountingEntryNumber = 0;
 
 
     /* Stores an encrypted master key into the database. */
@@ -130,7 +136,7 @@ namespace Legacy
 
 
     /* Stores an encrypted private key using the corresponding public key. */
-    bool CWalletDB::WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret, bool fEraseUnencryptedKey = true)
+    bool CWalletDB::WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret, bool fEraseUnencryptedKey)
     {
         CWalletDB::nWalletDBUpdated++;
         if (!Write(std::make_pair(std::string("ckey"), vchPubKey), vchCryptedSecret, false))
@@ -185,14 +191,14 @@ namespace Legacy
 
 
     /* Reads the stored CBlockLocator of the last recorded best block. */
-    bool CWalletDB::ReadBestBlock(Core::CBlockLocator& locator)
+    bool CWalletDB::ReadBestBlock(TAO::Ledger::CBlockLocator& locator)
     {
         return Read(std::string("bestblock"), locator);
     }
 
 
     /* Stores a CBlockLocator to record current best block. */
-    bool CWalletDB::WriteBestBlock(const Core::CBlockLocator& locator)
+    bool CWalletDB::WriteBestBlock(const TAO::Ledger::CBlockLocator& locator)
     {
         CWalletDB::nWalletDBUpdated++;
         return Write(std::string("bestblock"), locator);
@@ -251,11 +257,11 @@ namespace Legacy
         auto pcursor = GetCursor();
 
         if (pcursor == nullptr)
-            throw runtime_error("CWalletDB::ListAccountCreditDebit : Cannot create DB cursor");
+            throw std::runtime_error("CWalletDB::ListAccountCreditDebit : Cannot create DB cursor");
 
         uint32_t fFlags = DB_SET_RANGE;
 
-        loop() {
+        while(true) {
             /* Read next record */
             CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             if (fFlags == DB_SET_RANGE)
@@ -264,7 +270,7 @@ namespace Legacy
                  * This will return all entries beginning with ID 0, with DB_NEXT reading the next entry each time
                  * Read until key does not begin with acentry, does not match requested account, or DB_NOTFOUND (end of database)
                  */
-                ssKey << std::::make_tuple(std::string("acentry"), (fAllAccounts? std::string("") : strAccount), uint64_t(0));
+                ssKey << std::make_tuple(std::string("acentry"), (fAllAccounts? std::string("") : strAccount), uint64_t(0));
             }
 
             CDataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
@@ -281,7 +287,7 @@ namespace Legacy
             {
                 /* Error retrieving accounting entries */
                 pcursor->close();
-                throw runtime_error("CWalletDB::ListAccountCreditDebit : Error scanning DB");
+                throw std::runtime_error("CWalletDB::ListAccountCreditDebit : Error scanning DB");
             }
 
             /* Unserialize */
@@ -318,7 +324,7 @@ namespace Legacy
             std::vector<uint8_t> vchLoadedDefaultKey;
 
             /* Set empty default key into wallet to clear any current value. (done now so it stays empty if none loaded) */
-            wallet.LoadDefaultkey(vchLoadedDefaultKey);
+            wallet.SetDefaultKey(vchLoadedDefaultKey);
 
             /* Read and validate minversion required by database file */
             int nMinVersion = 0;
@@ -339,7 +345,7 @@ namespace Legacy
             }
 
             /* Loop to read all entries from wallet database */
-            loop() 
+            while(true) 
             {
                 /* Read next record */
                 CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
@@ -422,7 +428,7 @@ namespace Legacy
                     ssValue >> kMasterKey;
 
                     /* Load the master key into the wallet */
-                    if (!pWallet->LoadMasterKey(nMasterKeyId, kMasterKey))
+                    if (!wallet.LoadMasterKey(nMasterKeyId, kMasterKey))
                     {
                         debug::log(0, "CWalletDB::LoadWallet : Error reading wallet database: duplicate CMasterKey id %u\n", nMasterKeyId);
                         return DB_CORRUPT;
@@ -440,7 +446,7 @@ namespace Legacy
                     if (strType == "key")
                     {
                         /* key entry stores unencrypted private key */
-                        CPrivKey privateKey;
+                        LLC::CPrivKey privateKey;
                         ssValue >> privateKey;
                         key.SetPubKey(vchPubKey);
                         key.SetPrivKey(privateKey);
@@ -605,7 +611,7 @@ namespace Legacy
         uint32_t nLastFlushed = CWalletDB::nWalletDBUpdated;
         int64_t nLastWalletUpdate = UnifiedTimestamp();
 
-        while (!fShutdown)
+        while (!config::fShutdown)
         {
             Sleep(1000);
 
@@ -633,7 +639,7 @@ namespace Legacy
                         mi++;
                     }
 
-                    if (nRefCount == 0 && !fShutdown)
+                    if (nRefCount == 0 && !config::fShutdown)
                     {
                         /* If strWalletFile has not been opened since startup, no need to flush even if nWalletDBUpdated count has changed. 
                          * An entry in mapFileUseCount verifies that this particular wallet file has been used at some point, so it will be flushed.
@@ -645,15 +651,15 @@ namespace Legacy
                             debug::log(0, "%s ", DateTimeStrFormat(UnifiedTimestamp()).c_str());
                             debug::log(0, "ThreadFlushWalletDB : Flushing wallet.dat\n");
                             nLastFlushed = CWalletDB::nWalletDBUpdated;
-                            int64_t nStart = GetTimeMillis();
+                            int64_t nStart = Timestamp(true);
 
                             /* Flush wallet file so it's self contained */
-                            CloseDb(strWalletFile);
+                            CDB::CloseDb(strWalletFile);
                             CDB::dbenv.txn_checkpoint(0, 0, 0);
                             CDB::dbenv.lsn_reset(strWalletFile.c_str(), 0);
 
-                            mapFileUseCount.erase(mi++);
-                            debug::log(0, "ThreadFlushWalletDB : Flushed %s %" PRI64d "ms\n", strWalletFile, GetTimeMillis() - nStart);
+                            CDB::mapFileUseCount.erase(mi++);
+                            debug::log(0, "ThreadFlushWalletDB : Flushed %s %" PRI64d "ms\n", strWalletFile, Timestamp(true) - nStart);
                         }
                     }
 
@@ -670,29 +676,31 @@ namespace Legacy
         if (!wallet.IsFileBacked())
             return false;
 
-        while (!fShutdown)
+        while (!config::fShutdown)
         {
             {
                 std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db); 
 
+                std::string strSource = wallet.GetWalletFile();
+
                 /* If wallet database is in use, will wait and repeat loop until it becomes available */
-                if (CDB::mapFileUseCount.count(strFile) == 0 || CDB::mapFileUseCount[strFile] == 0)
+                if (CDB::mapFileUseCount.count(strSource) == 0 || CDB::mapFileUseCount[strSource] == 0)
                 {
                     /* Flush log data to the dat file */
-                    CloseDb(wallet.GetWalletFile());
-                    dbenv.txn_checkpoint(0, 0, 0);
-                    dbenv.lsn_reset(wallet.GetWalletFile().c_str(), 0);
-                    CDB::mapFileUseCount.erase(strFile);
+                    CDB::CloseDb(strSource);
+                    CDB::dbenv.txn_checkpoint(0, 0, 0);
+                    CDB::dbenv.lsn_reset(strSource.c_str(), 0);
+                    CDB::mapFileUseCount.erase(strSource);
 
-                    std::string pathSrc(GetDataDir() + "/" + strFile);
+                    std::string pathSource(config::GetDataDir() + "/" + strSource);
                     std::string pathDest(strDest);
 
                     /* If destination is a folder, use wallet database name */
                     if (filesystem::is_directory(pathDest))
-                        pathDest = pathDest + "/" + strFile;
+                        pathDest = pathDest + "/" + strSource;
 
                     /* Copy wallet.dat (this method is a bit slow, but is simple and should be ok for an occasional copy) */
-                    if filesystem::copy_file(pathSource, pathDest)
+                    if (filesystem::copy_file(pathSource, pathDest))
                     {
                         debug::log(0, "BackupWallet : Copied wallet.dat to %s\n", pathDest.c_str());
                         return true;

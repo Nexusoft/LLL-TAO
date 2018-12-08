@@ -19,12 +19,11 @@ ________________________________________________________________________________
 #include <TAO/Legacy/wallet/keypool.h>
 #include <TAO/Legacy/wallet/wallet.h>
 
+#include <Util/include/args.h>
+
 namespace Legacy
 {
     
-    /* forward declaration */
-    class CWallet;
-
     /** @class CReserveKey
      *
      *  Holds the public key value of a key reserved in the key pool but not
@@ -55,8 +54,8 @@ namespace Legacy
          *  @deprecated supported for backward compatability
          *
          **/
-        CReserveKey(CWallet* pwalletIn) :
-            nIndex(-1),
+        CReserveKey(CWallet* pWalletIn) :
+            nPoolIndex(-1),
             wallet(*pWalletIn)
         { }
 
@@ -69,7 +68,7 @@ namespace Legacy
          *
          **/
         CReserveKey(CWallet& walletIn) :
-            nIndex(-1),
+            nPoolIndex(-1),
             wallet(walletIn)
         { }
 
@@ -81,7 +80,7 @@ namespace Legacy
          **/
         ~CReserveKey()
         {
-            if (!fShutdown)
+            if (!config::fShutdown)
                 ReturnKey();
         }
 

@@ -25,12 +25,18 @@ ________________________________________________________________________________
 
 #include <TAO/Legacy/wallet/db.h>
 
+namespace TAO
+{
+    namespace Ledger
+    {
+        class CBlockLocator;
+    }
+}
 
 namespace Legacy
 {
     
     /* forward declarations */    
-    class CBlockLocator;
     class CScript;
     class CAccount;
     class CAccountingEntry;
@@ -75,7 +81,7 @@ namespace Legacy
      **/
     class CWalletDB : public CDB
     {
-    protected:
+    public:
         /** Defines default name of wallet database file **/
         static const std::string DEFAULT_WALLET_DB;
 
@@ -104,7 +110,6 @@ namespace Legacy
         static uint64_t nAccountingEntryNumber;
 
 
-    public:
         /** Constructor
          *
          *  Initializes database access to wallet database using CWalletDB::DEFAULT_WALLET_DB
@@ -336,7 +341,8 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret, const bool fEraseUnencryptedKey = true);
+        bool WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret, 
+                             const bool fEraseUnencryptedKey = true);
 
 
         /** ReadTx
@@ -416,7 +422,7 @@ namespace Legacy
          *  @return true if best block entry present in database and successfully read
          *
          **/
-        bool ReadBestBlock(Legacy::CBlockLocator& locator);
+        bool ReadBestBlock(TAO::Ledger::CBlockLocator& locator);
 
 
         /** WriteBestBlock
@@ -430,7 +436,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteBestBlock(const Legacy::CBlockLocator& locator);
+        bool WriteBestBlock(const TAO::Ledger::CBlockLocator& locator);
 
 
         /** ReadPool
@@ -524,39 +530,39 @@ namespace Legacy
          *
          **/
         int LoadWallet(CWallet& wallet);
+
+
+         /** @fn ThreadFlushWalletDB
+         *
+         *  Function that loops until shutdown and periodically flushes a wallet db
+         *  to disk as needed to ensure all data updates are properly persisted. Execute
+         *  this function in a background thread to handle wallet flush.
+         *
+         *  The actual flush is only performed after any open database handle on the wallet database
+         *  file is closed by calling CloseDb()
+         *
+         *  This operation can be disabled by setting the startup option -flushwallet to false
+         *
+         *  @param[in] strWalletFile The wallet database file to flush
+         *
+         **/
+        static void ThreadFlushWalletDB(const std::string strWalletFile);
+
+
+       /** @fn BackupWallet
+         *
+         *  Writes a backup copy of a wallet to a designated backup file
+         *
+         *  @param[in] wallet Wallet to back up
+         *
+         *  @param[in] strDest String containing wallet backup file name or directory
+         *                     If a directory, it must exist and same file name as wallet is used
+         *
+         *  @return true if backup file successfully written
+         *
+         **/
+        static bool BackupWallet(const CWallet& wallet, const std::string& strDest);
     };
-
-
-    /** @fn ThreadFlushWalletDB
-     *
-     *  Function that loops until shutdown and periodically flushes a wallet db
-     *  to disk as needed to ensure all data updates are properly persisted. Execute
-     *  this function in a background thread to handle wallet flush.
-     *
-     *  The actual flush is only performed after any open database handle on the wallet database
-     *  file is closed by calling CloseDb()
-     *
-     *  This operation can be disabled by setting the startup option -flushwallet to false
-     *
-     *  @param[in] strWalletFile The wallet database file to flush
-     *
-     **/
-    void ThreadFlushWalletDB(const std::string strWalletFile);
-
-
-    /** @fn BackupWallet
-     *
-     *  Writes a backup copy of a wallet to a designated backup file
-     *
-     *  @param[in] wallet Wallet to back up
-     *
-     *  @param[in] strDest String containing wallet backup file name or directory
-     *                     If a directory, it must exist and same file name as wallet is used
-     *
-     *  @return true if backup file successfully written
-     *
-     **/
-    bool BackupWallet(const CWallet& wallet, const std::string& strDest);
 
 }
 

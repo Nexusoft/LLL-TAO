@@ -21,15 +21,13 @@ ________________________________________________________________________________
 #include <LLC/include/key.h>
 #include <LLC/types/uint1024.h>
 
+#include <TAO/Legacy/types/address.h>
+#include <TAO/Legacy/types/script.h>
 #include <TAO/Legacy/wallet/keystore.h>
 
 namespace Legacy 
 {
     
-    /* forward declarations */    
-    class NexusAddress;
-    class CScript;
-
     /* Map to store private keys, keyed by Base 58-encoded address. bool=true indicates compressed key */
     typedef std::map<NexusAddress, std::pair<LLC::CSecret, bool> > KeyMap;
 

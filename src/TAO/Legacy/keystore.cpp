@@ -19,7 +19,7 @@ namespace Legacy
     /*  Retrieve the public key for a key in the key store. */
     bool CKeyStore::GetPubKey(const NexusAddress &address, std::vector<uint8_t> &vchPubKeyOut) const
     {
-        ECKey key;
+        LLC::ECKey key;
         if (!GetKey(address, key))
             return false;
         vchPubKeyOut = key.GetPubKey();

@@ -13,16 +13,18 @@ ________________________________________________________________________________
 
 #include <mutex>
 
+#include <LLC/hash/SK.h>
+
 #include <TAO/Legacy/wallet/basickeystore.h>
 
 namespace Legacy
 {
 
     /*  Add a key to the key store. */
-    bool CBasicKeyStore::AddKey(const ECKey& key)
+    bool CBasicKeyStore::AddKey(const LLC::ECKey& key)
     {
         bool fCompressed = false;
-        CSecret secret = key.GetSecret(fCompressed);
+        LLC::CSecret secret = key.GetSecret(fCompressed);
         {
             std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
             mapKeys[NexusAddress(key.GetPubKey())] = make_pair(secret, fCompressed);
@@ -81,7 +83,7 @@ namespace Legacy
     {
         {
             std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
-            mapScripts[SK256(redeemScript)] = redeemScript;
+            mapScripts[LLC::SK256(redeemScript)] = redeemScript;
         }
         return true;
     }

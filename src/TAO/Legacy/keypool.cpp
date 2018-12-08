@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#include <exception>
 #include <mutex>
 
 #include <LLC/hash/SK.h>
@@ -49,14 +50,14 @@ namespace Legacy
             setKeyPool.clear();
 
             /* Generate a new key pool with a full set of keys */
-            int nKeys = max(GetArg("-keypool", KeyPool::DEFAULT_KEY_POOL_SIZE), 0);
+            const int64_t nKeys = std::max(config::GetArg("-keypool", CKeyPool::DEFAULT_KEY_POOL_SIZE), MINIMUM_KEY_POOL_SIZE);
 
-            for (int i = 0; i < nKeys; i++)
+            for (int64_t i = 0; i < nKeys; i++)
             {
                 int64_t nPoolIndex = i + 1;
 
                 if (!walletdb.WritePool(nPoolIndex, CKeyPoolEntry(poolWallet.GenerateNewKey())))
-                    throw runtime_error("CKeyPool::NewKeyPool() : writing generated key failed");
+                    throw std::runtime_error("CKeyPool::NewKeyPool() : writing generated key failed");
 
                 setKeyPool.insert(nPoolIndex);
             }
@@ -82,15 +83,15 @@ namespace Legacy
             std::lock_guard<std::recursive_mutex> walletLock(poolWallet.cs_wallet);
 
             /* Current key pool size */
-            uint32_t nStartingSize = setKeyPool.size();
+            int64_t nStartingSize = setKeyPool.size();
 
             /* Desired key pool size */
-            uint32_t nTargetSize = max(GetArg("-keypool", KeyPool::DEFAULT_KEY_POOL_SIZE), 0);
+            const int64_t nTargetSize = std::max(config::GetArg("-keypool", CKeyPool::DEFAULT_KEY_POOL_SIZE), MINIMUM_KEY_POOL_SIZE);
 
             if (nStartingSize >= nTargetSize)
             	return true; // pool already filled
 
-            if (IsLocked())
+            if (poolWallet.IsLocked())
                 return false;
 
             CWalletDB walletdb(poolWallet.GetWalletFile());
@@ -104,13 +105,13 @@ namespace Legacy
             int64_t nNewPoolIndex = nCurrentMaxPoolIndex;
 
             /* Top up key pool */
-            for (uint32_t i = nStartingSize; i < nTargetSize; ++i)
+            for (int64_t i = nStartingSize; i < nTargetSize; ++i)
             {
                 ++nNewPoolIndex;
 
                 /* Generate a new key and add the key pool entry to the wallet database */
                 if (!walletdb.WritePool(nNewPoolIndex, CKeyPoolEntry(poolWallet.GenerateNewKey())))
-                    throw runtime_error("CKeyPool::TopUpKeyPool() : writing generated key failed");
+                    throw std::runtime_error("CKeyPool::TopUpKeyPool() : writing generated key failed");
 
                 /* Store the pool index for the new key in the key pool */
                 setKeyPool.insert(nNewPoolIndex);
@@ -143,7 +144,7 @@ namespace Legacy
             int64_t nPoolIndex = 1 + *(--setKeyPool.cend());
 
             if (!walletdb.WritePool(nPoolIndex, keypoolEntry))
-                throw runtime_error("CKeyPool::AddKey() : writing added key failed");
+                throw std::runtime_error("CKeyPool::AddKey() : writing added key failed");
 
             setKeyPool.insert(nPoolIndex);
 
@@ -159,7 +160,7 @@ namespace Legacy
     /* Extracts a key from the key pool. This both reserves and keeps the key,
      * removing it from the pool.
      */
-    bool CKeyPool::GetKeyFromPool(vector<uint8_t>& key, bool fUseDefaultWhenEmpty)
+    bool CKeyPool::GetKeyFromPool(std::vector<uint8_t>& key, bool fUseDefaultWhenEmpty)
     {
         int64_t nPoolIndex = 0;
         CKeyPoolEntry keypoolEntry;
@@ -230,11 +231,11 @@ namespace Legacy
 
             /* Retrieve the key pool entry from the database */
             if (!walletdb.ReadPool(nPoolIndex, keypoolEntry))
-                throw runtime_error("CKeyPool::ReserveKeyFromPool() : unable to read key pool entry");
+                throw std::runtime_error("CKeyPool::ReserveKeyFromPool() : unable to read key pool entry");
 
             /* Validate that the key is a valid key for the containing wallet */
-            if (!poolWallet.HaveKey(SK256(keypoolEntry.vchPubKey)))
-                throw runtime_error("CKeyPool::ReserveKeyFromPool() : unknown key in key pool");
+            if (!poolWallet.HaveKey(LLC::SK256(keypoolEntry.vchPubKey)))
+                throw std::runtime_error("CKeyPool::ReserveKeyFromPool() : unknown key in key pool");
 
             assert(!keypoolEntry.vchPubKey.empty());
             if (config::GetBoolArg("-printkeypool"))

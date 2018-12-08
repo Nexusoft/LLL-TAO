@@ -53,7 +53,10 @@ namespace Legacy
         
     public:
         /** Defines the default number of keys contained by a key pool **/
-        static const int DEFAULT_KEY_POOL_SIZE = 100;
+        static const int64_t DEFAULT_KEY_POOL_SIZE = 100;
+
+        /** Defines the minimum key pool size **/
+        static const int64_t MINIMUM_KEY_POOL_SIZE = 0;
 
     private:
         /** 

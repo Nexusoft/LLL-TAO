@@ -28,7 +28,7 @@ ________________________________________________________________________________
 
 /* forward declaration */
 namespace LLD {
-    class CIndexDB;
+    class LedgerDB;
 }
 
 namespace Legacy
@@ -238,9 +238,13 @@ namespace Legacy
 
 
         /* Wallet transaction serialize/unserialize needs some customization to set up data*/
+//TODO need to fix - Why does template instantiate with T=char for *(CMerkleTx *)this
+/*
+
         IMPLEMENT_SERIALIZE
         (
             CWalletTx* pthis = const_cast<CWalletTx*>(this);
+            //const CMerkleTx& thisAsBaseReference = *this;
             if (fRead)
             {
                 pthis->fHaveWallet = false;
@@ -263,7 +267,8 @@ namespace Legacy
                 pthis->mapValue["spent"] = str;
             }
 
-            nSerSize += SerReadWrite(s, *(CMerkleTx*)this, nSerType, nVersion, ser_action);
+            nSerSize += SerReadWrite(s, *(CMerkleTx *)this, nSerType, nVersion, ser_action);
+
             READWRITE(vtxPrev);
             READWRITE(mapValue);
             READWRITE(vOrderForm);
@@ -287,7 +292,8 @@ namespace Legacy
             pthis->mapValue.erase("version");
             pthis->mapValue.erase("spent");
         )
-
+*/
+        
         /** BindWallet
          *
          *  Assigns the wallet for this wallet transaction. 
@@ -489,9 +495,9 @@ namespace Legacy
          *
          *  Retrieve information about the current transaction for a specified account Nexus address.
          *
-         *  @param[in] strSentAccount The Nexus address to get amounts for
+         *  @param[in] strAccount The account label to get amounts for
          *
-         *  @param[out] nGenerated When strSentAccount empty, returns any mature Coinbase/Coinstake generated
+         *  @param[out] nGenerated When strAccount empty, returns any mature Coinbase/Coinstake generated
          *
          *  @param[out] nReceived Received amount for requested account. 
          *                        If account empty, totals amounts for accounts not in wallet's address book
@@ -513,7 +519,7 @@ namespace Legacy
          *  @param[in] indexdb Local index database containing previous transaction data
          *
          **/
-        void AddSupportingTransactions(LLD::CIndexDB& indexdb);
+        void AddSupportingTransactions(LLD::LedgerDB& ledgerdb);
 
 
         /** RelayWalletTransaction
@@ -523,7 +529,7 @@ namespace Legacy
          *  @param[in] indexdb Local index database to check
          *
          **/
-        void RelayWalletTransaction(LLD::CIndexDB& indexdb);
+        void RelayWalletTransaction(LLD::LedgerDB& indexdb);
 
 
         /** RelayWalletTransaction

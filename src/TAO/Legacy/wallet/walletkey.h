@@ -14,14 +14,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_WALLET_WALLETKEY_H
 #define NEXUS_TAO_LEGACY_WALLET_WALLETKEY_H
 
+#include <LLC/include/key.h>
+
 #include <Util/include/runtime.h>
 #include <Util/templates/serialize.h>
-
-/* forward declaration */    
-namespace LLC 
-{
-    class CPrivKey;
-}
 
 namespace Legacy
 {
@@ -67,7 +63,7 @@ namespace Legacy
         IMPLEMENT_SERIALIZE
         (
             if (!(nSerType & SER_GETHASH))
-                READWRITE(nVersion);
+                READWRITE(nSerVersion);
             READWRITE(vchPrivKey);
             READWRITE(nTimeCreated);
             READWRITE(nTimeExpires);

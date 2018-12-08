@@ -47,6 +47,7 @@ namespace Legacy
         /** Set to true when chKey and chIV have values **/
         bool fKeySet;
 
+
     public:
         /** Default constructor
          *
@@ -118,7 +119,7 @@ namespace Legacy
          *  @return true if key assigned
          *
          **/
-        inline bool IsKeySet()
+        inline bool IsKeySet() const
         {
             return fKeySet;
         }

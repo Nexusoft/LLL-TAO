@@ -15,13 +15,13 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEGACY_WALLET_DB_H
 
 #include <map>
-#include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
 
 #include <db_cxx.h> /* Berkeley DB header */
 
+class CDataStream;
 
 namespace Legacy 
 {
@@ -35,15 +35,7 @@ namespace Legacy
      **/
     class CDB
     {
-    private:
-        /** Init
-         *
-         *  Performs work of initialization for constructors.
-         *
-         **/
-        void Init(const std::string strFile, const char* pszMode);
-
-    protected:
+    public:
         /** Mutex for thread concurrency. 
          *  
          *  Used to manage concurrency across CDB databases.
@@ -74,13 +66,23 @@ namespace Legacy
 
 
         /** Stores pdb copy for each open database handle, keyed by file name.  **/
-        static std::map<std::string, std::shared_ptr<Db>> mapDb;
+        static std::map<std::string, Db*> mapDb;
 
 
+    private:
+        /** Init
+         *
+         *  Performs work of initialization for constructors.
+         *
+         **/
+        void Init(const std::string strFileIn, const char* pszMode);
+
+
+    protected:
         /* Instance data members */
 
         /** Pointer to handle for a Berkeley database, for opening/accessing database underlying this CDB instance **/
-        std::shared_ptr<Db> pdb;
+        Db* pdb;
 
 
         /** The file name of the current database **/
@@ -88,7 +90,7 @@ namespace Legacy
 
 
         /** Contains all current open (uncommitted) transactions for the database in the order they were begun **/
-        std::vector<std::shared_ptr<DbTxn>> vTxn;
+        std::vector<DbTxn*> vTxn;
 
 
         /** Indicates whether or not this database is in read-only mode **/
@@ -214,7 +216,7 @@ namespace Legacy
          *  @return a pointer to a Berkeley Dbc cursor, nullptr if unable to open cursor
          *
          **/
-        std::shared_ptr<Dbc> GetCursor();
+        Dbc* GetCursor();
 
 
         /** ReadAtCursor
@@ -248,7 +250,7 @@ namespace Legacy
          *  @return true if value was successfully read
          *
          **/
-        int ReadAtCursor(std::shared_ptr<Dbc> pcursor, CDataStream& ssKey, CDataStream& ssValue, uint32_t fFlags=DB_NEXT);
+        int ReadAtCursor(Dbc* pcursor, CDataStream& ssKey, CDataStream& ssValue, uint32_t fFlags=DB_NEXT);
 
 
         /** CloseCursor
@@ -258,7 +260,7 @@ namespace Legacy
          *  @param[in] pcursor The cursor to close
          *
          **/
-        void CloseCursor(std::shared_ptr<Dbc> pcursor);
+        void CloseCursor(Dbc* pcursor);
 
 
         /** GetTxn
@@ -268,18 +270,7 @@ namespace Legacy
          *  @return pointer to most recent database transaction, or nullptr if none started
          *
          **/
-        std::shared_ptr<DbTxn> GetTxn();
-
-
-        /** GetRawTxn
-         *
-         *  Retrieves the raw pointer for the most recently started database transaction.
-         *  Use this where need to pass this pointer to Berkeley API.
-         *
-         *  @return raw pointer to most recent database transaction, or nullptr if none started
-         *
-         **/
-        DbTxn* GetRawTxn();
+        DbTxn* GetTxn();
 
 
     public:
@@ -395,12 +386,12 @@ namespace Legacy
          *
          *  @param[in] strFile The database file to rewrite
          *
-         *  @param[in] strSkip An optional key type. Any database entries with this key are not copied to the rewritten file
+         *  @param[in] pszSkip An optional key type. Any database entries with this key are not copied to the rewritten file
          *
          *  @return true if rewrite was successful
          *
          **/
-        static bool DBRewrite(const std::string& strFile, const std::string& strSkip = "");
+        static bool DBRewrite(const std::string& strFile, const char* pszSkip = nullptr);
 
 
         /** @fn EnvShutdown

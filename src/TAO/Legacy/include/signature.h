@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <LLC/types/bignum.h>
 #include <Util/include/base58.h>
 
-#include <TAO/Legacy/keystore/base.h>
+#include <TAO/Legacy/wallet/basickeystore.h>
 
 #include <string>
 #include <vector>

@@ -11,15 +11,22 @@
 
 ____________________________________________________________________________________________*/
 
+#include <exception>
 #include <set>
+#include <utility>
 
 #include <LLC/types/uint1024.h>
 
-#include <TAO/Ledger/include/global.h>
+#include <LLD/include/ledger.h>
 
+#include <TAO/Legacy/include/evaluate.h>
+#include <TAO/Legacy/include/money.h>
 #include <TAO/Legacy/types/txout.h>
 #include <TAO/Legacy/wallet/wallet.h>
+#include <TAO/Legacy/wallet/walletdb.h>
 #include <TAO/Legacy/wallet/wallettx.h>
+
+#include <Util/include/args.h>
 
 namespace Legacy
 {
@@ -27,7 +34,7 @@ namespace Legacy
     /* Assigns the wallet for this wallet transaction. */
     void CWalletTx::BindWallet(CWallet *pwalletIn)
     {
-        ptransactionWallet = *pwalletIn;
+        ptransactionWallet = pwalletIn;
         fHaveWallet = true;
         MarkDirty();
     }
@@ -107,7 +114,7 @@ namespace Legacy
                 /* Call corresponding method in wallet that will check which txout entries belong to it */
                 nCredit += ptransactionWallet->GetCredit(txout);
 
-                if (!Core::MoneyRange(nCredit))
+                if (!Legacy::MoneyRange(nCredit))
                     throw std::runtime_error("CWalletTx::GetAvailableCredit() : value out of range");
             }
         }
@@ -208,14 +215,14 @@ namespace Legacy
             return false;
 
         /* If no confirmations but it's from us, we can still consider it confirmed if all dependencies are confirmed */
-        std::map<uint512_t, const CMerkleTx&> mapPrev;
+        std::map<uint512_t, const CMerkleTx*> mapPrev;
 
-        std::vector<const CMerkleTx&> vWorkQueue;
+        std::vector<const CMerkleTx*> vWorkQueue;
 
         vWorkQueue.reserve(vtxPrev.size() + 1);
 
         /* Seed the for loop with this transaction for the first iteration */
-        vWorkQueue.push_back(*this);
+        vWorkQueue.push_back(this);
 
         /* We only get here if this transaction has depth 0 and it is from us.
          *
@@ -232,22 +239,22 @@ namespace Legacy
          */
         for (uint32_t i = 0; i < vWorkQueue.size(); i++)
         {
-            const CMerkleTx& currentTx = vWorkQueue[i];
+            const CMerkleTx* ptx = vWorkQueue[i];
 
-            if (!currentTx.IsFinal())
+            if (!ptx->IsFinal())
                 return false;
 
-            if (currentTx.GetDepthInMainChain() >= 1)
+            if (ptx->GetDepthInMainChain() >= 1)
                 continue;
 
-            if (!ptransactionWallet->IsFromMe(currentTx))
+            if (!ptransactionWallet->IsFromMe(*ptx))
                 return false;
 
             /* On first iteration, loads mapPrev with vtxPrev from this transaction (this one is first one processed) */
             if (mapPrev.empty())
             {
                 for(const auto& prevTx : vtxPrev)
-                    mapPrev[prevTx.GetHash()] = prevTx;
+                    mapPrev[prevTx.GetHash()] = &prevTx;
             }
 
             /* This is repeated each time through the loop for the current transaction 
@@ -259,7 +266,7 @@ namespace Legacy
              * after initial iteration is for everything loaded in vWorkQueue here to have 
              * depth > 0 
              */
-            for(const auto& txin : currentTx.vin)
+            for(const auto& txin : ptx->vin)
             {
                 if (!mapPrev.count(txin.prevout.hash))
                     return false;
@@ -382,8 +389,8 @@ namespace Legacy
 
 
     /* Retrieve information about the current transaction. */
-   void CWalletTx::GetAmounts(int64_t& nGeneratedImmature, int64_t& nGeneratedMature, std::list<pair<NexusAddress, int64_t> >& listReceived,
-                              std::list<pair<NexusAddress, int64_t> >& listSent, int64_t& nFee, std::string& strSentAccount) const
+   void CWalletTx::GetAmounts(int64_t& nGeneratedImmature, int64_t& nGeneratedMature, std::list<std::pair<NexusAddress, int64_t> >& listReceived,
+                              std::list<std::pair<NexusAddress, int64_t> >& listSent, int64_t& nFee, std::string& strSentAccount) const
     {
         nGeneratedImmature = nGeneratedMature = nFee = 0;
         listReceived.clear();
@@ -431,11 +438,11 @@ namespace Legacy
 
             /* For tx from us, txouts represent the sent value, add to the sent list */
             if (nDebit > 0)
-                listSent.push_back(make_pair(address, txout.nValue));
+                listSent.push_back(std::make_pair(address, txout.nValue));
 
             /* For txout received (sent to address in bound wallet), add to the received list */
             if (ptransactionWallet->IsMine(txout))
-                listReceived.push_back(make_pair(address, txout.nValue));
+                listReceived.push_back(std::make_pair(address, txout.nValue));
         }
 
     }
@@ -452,8 +459,8 @@ namespace Legacy
         /* GetAmounts will return the strFromAccount for this transaction */
         std::string strSentAccount;
 
-        std::list<pair<NexusAddress, int64_t> > listReceived;
-        std::list<pair<NexusAddress, int64_t> > listSent;
+        std::list<std::pair<NexusAddress, int64_t> > listReceived;
+        std::list<std::pair<NexusAddress, int64_t> > listSent;
 
         GetAmounts(allGeneratedImmature, allGeneratedMature, listReceived, listSent, allFee, strSentAccount);
 
@@ -476,12 +483,12 @@ namespace Legacy
 
             for(const auto& r : listReceived)
             {
-                if (ptransactionWallet->mapAddressBook.count(r.first))
+                if (ptransactionWallet->GetAddressBook().HasAddress(r.first))
                 {
-                    /* Received address is in wallet address book, included in nReceived amount if matches requested account */
-                    auto mi = ptransactionWallet->GetAddressBook().mapAddressBook.find(r.first);
-
-                    if (mi != ptransactionWallet->GetAddressBook().mapAddressBook.end() && (*mi).second == strAccount)
+                    /* When received Nexus Address (r.first) is in wallet address book, 
+                     * include it in nReceived amount if its label matches requested account label
+                     */
+                    if (ptransactionWallet->GetAddressBook().GetAddressBookName(r.first) == strAccount)
                         nReceived += r.second;
                 }
                 else if (strAccount.empty())
@@ -495,7 +502,7 @@ namespace Legacy
 
 
     /* Populates transaction data for previous transactions into vtxPrev */
-    void CWalletTx::AddSupportingTransactions(LLD::CIndexDB& indexdb)
+    void CWalletTx::AddSupportingTransactions(LLD::LedgerDB& ledgerdb)
     {
         vtxPrev.clear();
 
@@ -524,7 +531,7 @@ namespace Legacy
 
                     setAlreadyDone.insert(hash);
 
-                    CMerkleTx& tx;
+                    CMerkleTx tx;
 
                     auto mi = ptransactionWallet->mapWallet.find(hash);
 
@@ -532,19 +539,22 @@ namespace Legacy
                     {
                         tx = (*mi).second;
 
-                        for(const CMerkleTx& txWalletPrev : tx.vtxPrev)
+                        for(const CMerkleTx& txWalletPrev : (*mi).second.vtxPrev)
                             mapWalletPrev[txWalletPrev.GetHash()] = &txWalletPrev;
 
                     }
                     else if (mapWalletPrev.count(hash))
                     {
-                        tx = mapWalletPrev[hash];
+                        tx = *mapWalletPrev[hash];
 
                     }
-                    else if (!Net::fClient && indexdb.ReadDiskTx(hash, tx))
+//TODO ReadTx uses TAO::Ledger::Transaction, we have TAO::Legacy::Transaction, need to resolve
+/*                    
+                    else if (!config::fClient && ledgerdb.ReadTx(hash, tx))
                     {
 
                     }
+*/
                     else
                     {
                         debug::log(0, "CWalletTx::AddSupportingTransactions: Error: AddSupportingTransactions() : unsupported transaction\n");
@@ -556,7 +566,7 @@ namespace Legacy
 
                     if (nDepth < COPY_DEPTH)
                     {
-                        for(const Core::CTxIn& txin : tx.vin)
+                        for(const CTxIn& txin : tx.vin)
                             vWorkQueue.push_back(txin.prevout.hash);
                     }
                 }
@@ -568,7 +578,7 @@ namespace Legacy
 
 
     /* Send this transaction to the network if not in our database, yet. */
-    void CWalletTx::RelayWalletTransaction(LLD::CIndexDB& indexdb)
+    void CWalletTx::RelayWalletTransaction(LLD::LedgerDB& ledgerdb)
     {
         for(const CMerkleTx& tx : vtxPrev)
         {
@@ -577,8 +587,9 @@ namespace Legacy
             {
                 uint512_t hash = tx.GetHash();
 
-                if (!indexdb.ContainsTx(hash))
-                    RelayMessage(Net::CInv(Net::MSG_TX, hash), (Transaction)tx);
+// TODO: Need implementation to support RelayMessage()
+                if (!ledgerdb.HasTx(hash))
+                    ;//RelayMessage(LLP::CInv(LLP::MSG_TX, hash), (Transaction)tx);
             }
         }
 
@@ -587,10 +598,11 @@ namespace Legacy
             uint512_t hash = GetHash();
 
             /* Relay this tx if we don't have it in our database, yet */
-            if (!indexdb.ContainsTx(hash))
+            if (!ledgerdb.HasTx(hash))
             {
                 debug::log(0, "Relaying wtx %s\n", hash.ToString().substr(0,10).c_str());
-                RelayMessage(Net::CInv(Net::MSG_TX, hash), (Transaction)*this);
+// TODO: Need implementation to support RelayMessage()
+                //RelayMessage(LLP::CInv(LLP::MSG_TX, hash), (Transaction)*this);
             }
         }
     }
@@ -599,8 +611,8 @@ namespace Legacy
     /* Send this transaction to the network if not in our database, yet. */
     void CWalletTx::RelayWalletTransaction()
     {
-        LLD::CIndexDB indexdb("r");
-        RelayWalletTransaction(indexdb);
+        LLD::LedgerDB ledgerdb("r");
+        RelayWalletTransaction(ledgerdb);
     }
 
 }

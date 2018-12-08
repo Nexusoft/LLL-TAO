@@ -18,16 +18,17 @@ ________________________________________________________________________________
 #include <LLP/include/network.h>
 
 #include <TAO/Legacy/wallet/keypoolentry.h>
+#include <TAO/Legacy/wallet/reservekey.h>
 
 #include <Util/include/debug.h>
-#include <Util/include/serialize.h>
+#include <Util/templates/serialize.h>
 
 
 namespace Legacy
 {
 
     /* Retrieves the public key value for the currently reserved key. */
-    vector<uint8_t> CReserveKey::GetReservedKey()
+    std::vector<uint8_t> CReserveKey::GetReservedKey()
     {
         if (nPoolIndex == -1)
         {

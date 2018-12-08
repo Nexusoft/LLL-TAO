@@ -13,23 +13,36 @@ ________________________________________________________________________________
 
 #include <openssl/rand.h>   // For RAND_bytes
 
+#include <algorithm>
 #include <thread>
+#include <utility>
 
 #include <LLC/hash/SK.h>
 #include <LLC/include/random.h>
 
+#include <LLD/include/ledger.h>
+
+#include <LLP/include/version.h>
+
+#include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/types/block.h>
+
+#include <TAO/Legacy/include/evaluate.h>
 #include <TAO/Legacy/include/money.h>
 #include <TAO/Legacy/include/signature.h>
 #include <TAO/Legacy/types/enum.h> // For GMF_SEND
+#include <TAO/Legacy/types/script.h>
+
 #include <TAO/Legacy/wallet/crypter.h>
 #include <TAO/Legacy/wallet/output.h>
-#include <TAO/Legacy/wallet/script.h>
+#include <TAO/Legacy/wallet/reservekey.h>
 #include <TAO/Legacy/wallet/wallet.h>
 #include <TAO/Legacy/wallet/walletdb.h>
 
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
+#include <Util/templates/serialize.h>
 
 namespace Legacy
 {
@@ -44,26 +57,29 @@ namespace Legacy
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
+            /* Allows potential to override nVersion with FEATURE_LATEST */
+            Legacy::WalletFeature nVersionToSet = nVersion;
+
             /* Ignore new setting if current setting is higher version */
-            if (nWalletVersion >= nVersion)
+            if (nWalletVersion >= nVersionToSet)
                 return true; 
 
             /* When force, if we pass the max version currently supported, use latest */
-            if (fForceLatest && nVersion > nWalletMaxVersion)
-                    nVersion = FEATURE_LATEST;
+            if (fForceLatest && nVersionToSet > nWalletMaxVersion)
+                    nVersionToSet = FEATURE_LATEST;
 
-            nWalletVersion = nVersion;
+            nWalletVersion = nVersionToSet;
 
             /* If new min version exceeds old max version, update the max version */
-            if (nVersion > nWalletMaxVersion)
-                nWalletMaxVersion = nVersion;
+            if (nVersionToSet > nWalletMaxVersion)
+                nWalletMaxVersion = nVersionToSet;
 
             if (fFileBacked)
             {
                 /* Store new version to database (overwrites old) */
                 CWalletDB walletdb(strWalletFile);
                 walletdb.WriteMinVersion(nWalletVersion);
-                walletdb.close();
+                walletdb.Close();
             }
         }
 
@@ -118,7 +134,7 @@ namespace Legacy
         }
 
         /* Launch background thread to periodically flush the wallet to the backing database */
-        std::thread flushThread(Legacy::ThreadFlushWalletDB, std::string(strWalletFile));
+        std::thread flushThread(Legacy::CWalletDB::ThreadFlushWalletDB, std::string(strWalletFile));
         flushThread.detach();
 
         fLoaded = true;
@@ -145,7 +161,7 @@ namespace Legacy
 
 
     /* Add a public/encrypted private key pair to the key store. */
-    bool CWallet::AddCryptedKey(const vector<uint8_t> &vchPubKey, const vector<uint8_t> &vchCryptedSecret)
+    bool CWallet::AddCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret)
     {
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
@@ -169,7 +185,7 @@ namespace Legacy
 
 
     /* Add a key to the key store. */
-    bool CWallet::AddKey(const ECKey& key)
+    bool CWallet::AddKey(const LLC::ECKey& key)
     {
         /*
          * This works in a convoluted manner for encrypted wallets.
@@ -224,7 +240,7 @@ namespace Legacy
             if (fFileBacked) 
             {
                 CWalletDB walletdb(strWalletFile);
-                bool result = walletdb.WriteCScript(SK256(redeemScript), redeemScript);
+                bool result = walletdb.WriteCScript(LLC::SK256(redeemScript), redeemScript);
                 walletdb.Close();
 
                 return result;
@@ -240,8 +256,8 @@ namespace Legacy
     {
         bool fCompressed = true;
 
-        RandAddSeedPerfmon();
-        ECKey key;
+        LLC::RandAddSeedPerfmon();
+        LLC::ECKey key;
         key.MakeNewKey(fCompressed);
 
         /* AddKey adds to key store, encrypting it first if wallet is encrypted, and writes key to database if file backed */
@@ -250,29 +266,6 @@ namespace Legacy
             throw std::runtime_error("CWallet::GenerateNewKey : AddKey failed");
 
         return key.GetPubKey();
-    }
-
-
-    /* Assigns a new default key to this wallet. */
-    bool CWallet::SetDefaultKey(const std::vector<uint8_t> &vchPubKey)
-    {
-        {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
-
-            if (fFileBacked) 
-            {
-                CWalletDB walletdb(strWalletFile);
-                bool result = WriteDefaultKey(vchPubKey);
-                walletdb.Close();
-
-                if (!result)
-                    return false;
-            }
-
-            vchDefaultKey = vchPubKey;
-        }
-
-        return true;
     }
 
 
@@ -288,13 +281,13 @@ namespace Legacy
         CMasterKey kMasterKey;
 
         CKeyingMaterial vMasterKey;
-        RandAddSeedPerfmon();
+        LLC::RandAddSeedPerfmon();
 
         /* Fill keying material (unencrypted key value) and new master key salt with random data using OpenSSL RAND_bytes */
         vMasterKey.resize(WALLET_CRYPTO_KEY_SIZE);
         RAND_bytes(&vMasterKey[0], WALLET_CRYPTO_KEY_SIZE);
 
-        RandAddSeedPerfmon();
+        LLC::RandAddSeedPerfmon();
         kMasterKey.vchSalt.resize(WALLET_CRYPTO_SALT_SIZE);
         RAND_bytes(&kMasterKey.vchSalt[0], WALLET_CRYPTO_SALT_SIZE);
 
@@ -326,14 +319,19 @@ namespace Legacy
 
             mapMasterKeys[++nMasterKeyMaxID] = kMasterKey;
 
+            /* Declaration needs to be in this scope, but cannot instantiate until afer check fFileBacked.
+             * Use pointer to do this.
+             */
+            CWalletDB* pwalletdb;
+
             if (fFileBacked)
             {
-                CWalletDB walletdb(strWalletFile);
+                pwalletdb = new CWalletDB(strWalletFile);
 
-                if (!walletdb->TxnBegin())
+                if (!pwalletdb->TxnBegin())
                     return false;
 
-                walletdb.WriteMasterKey(nMasterKeyMaxID, kMasterKey);
+                pwalletdb->WriteMasterKey(nMasterKeyMaxID, kMasterKey);
             }
 
             /* EncryptKeys() in CCryptoKeyStore will encrypt every public key/private key pair in the key store, including those that 
@@ -347,7 +345,7 @@ namespace Legacy
             if (!EncryptKeys(vMasterKey))
             {
                 if (fFileBacked)
-                    walletdb.TxnAbort();
+                    pwalletdb->TxnAbort();
 
                 /* We now probably have half of our keys encrypted in memory, 
                  * and half not...die to let the user reload their unencrypted wallet. 
@@ -357,13 +355,14 @@ namespace Legacy
 
             if (fFileBacked)
             {
-                if (walletdb.TxnCommit())
+                if (pwalletdb->TxnCommit())
                 {
                     /* Keys encrypted in memory, but not on disk...die to let the user reload their unencrypted wallet. */
                     exit(1); 
                 }
 
-                walletdb.Close();
+                pwalletdb->Close();
+                delete pwalletdb;
             }
 
             Lock();
@@ -499,7 +498,7 @@ namespace Legacy
 
 
     /* Retrieves the total wallet balance for all confirmed, mature transactions. */
-    int64_t CWallet::GetBalance() const
+    int64_t CWallet::GetBalance() 
     {
         int64_t nTotalBalance = 0;
 
@@ -523,7 +522,7 @@ namespace Legacy
 
 
     /* Retrieves the current wallet balance for unconfirmed transactions. */
-    int64_t CWallet::GetUnconfirmedBalance() const
+    int64_t CWallet::GetUnconfirmedBalance() 
     {
         int64_t nUnconfirmedBalance = 0;
 
@@ -546,7 +545,7 @@ namespace Legacy
 
 
     /* Retrieves the current immature stake balance. */
-    int64_t CWallet::GetStake() const
+    int64_t CWallet::GetStake() 
     {
         int64_t nTotalStake = 0;
 
@@ -567,7 +566,7 @@ namespace Legacy
 
 
     /* Retrieves the current immature minted (mined) balance. */
-    int64_t CWallet::GetNewMint() const
+    int64_t CWallet::GetNewMint()
     {
         int64_t nTotalMint = 0;
 
@@ -588,7 +587,7 @@ namespace Legacy
 
 
     /* Populate vCoins with vector identifying spendable outputs. */
-    void CWallet::AvailableCoins(const uint32_t nSpendTime, vector<COutput>& vCoins, const bool fOnlyConfirmed) const
+    void CWallet::AvailableCoins(const uint32_t nSpendTime, std::vector<COutput>& vCoins, const bool fOnlyConfirmed) 
     {
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
@@ -671,7 +670,7 @@ namespace Legacy
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             /* Inserts only if not already there, returns tx inserted or tx found */
-            pair<TransactionMap::iterator, bool> ret = mapWallet.insert(std::make_pair(hash, wtxIn));
+            std::pair<TransactionMap::iterator, bool> ret = mapWallet.insert(std::make_pair(hash, wtxIn));
 
             /* Use the returned tx, not wtxIn, in case insert returned an existing transaction */
             CWalletTx& wtx = (*ret.first).second;
@@ -732,7 +731,7 @@ namespace Legacy
                     if (keyPool.GetKeyFromPool(newDefaultKey, false))
                     {
                         SetDefaultKey(newDefaultKey);
-                        SetAddressBookName(NexusAddress(vchDefaultKey), "");
+                        addressBook.SetAddressBookName(NexusAddress(vchDefaultKey), "");
                     }
                 }
             }
@@ -749,7 +748,7 @@ namespace Legacy
     /*  Checks whether a transaction has inputs or outputs belonging to this wallet, and adds 
      *  it to the wallet when it does.
      */
-    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const Core::CBlock* pblock, bool fUpdate, bool fFindBlock)
+    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::Block* pblock, bool fUpdate, bool fFindBlock)
     {
         uint512_t hash = tx.GetHash();
 
@@ -793,7 +792,7 @@ namespace Legacy
 
             if (mapWallet.erase(hash))
             {
-                CWalletDB(strWalletFile) walletdb;
+                CWalletDB walletdb(strWalletFile);
                 walletdb.EraseTx(hash);
                 walletdb.Close();
             }
@@ -839,35 +838,37 @@ namespace Legacy
     /* Scan the block chain for transactions from or to keys in this wallet.
      * Add/update the current wallet transactions for any found.
      */
-    int CWallet::ScanForWalletTransactions(Core::CBlockIndex* pindexStart, const bool fUpdate)
-    {
-        /* Count the number of transactions process for this wallet to use as return value */
-        int nTransactionCount = 0;
-
-        Core::CBlockIndex* pindex = pindexStart;
-        {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
-
-            while (pindex)
-            {
-                /* Get next block in the chain */
-                Core::CBlock block;
-                block.ReadFromDisk(pindex, true);
-
-                /* Scan each transaction in the block and process those related to this wallet */
-                for(Transaction& tx : block.vtx)
-                {
-                    if (AddToWalletIfInvolvingMe(tx, &block, fUpdate))
-                        nTransactionCount++;
-                }
-
-                /* Move to next block. Will be nullptr when reach end of chain, ending the while loop */
-                pindex = pindex->pnext;
-            }
-        }
-
-        return nTransactionCount;
-    }
+//TODO replace CBlockIndex, block.ReadFromDisk()
+//
+//    int CWallet::ScanForWalletTransactions(Legacy::CBlockIndex* pindexStart, const bool fUpdate)
+//    {
+//        /* Count the number of transactions process for this wallet to use as return value */
+//        int nTransactionCount = 0;
+//
+//        Legacy::CBlockIndex* pindex = pindexStart;
+//        {
+//            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
+//
+//            while (pindex)
+//            {
+//                /* Get next block in the chain */
+//                TAO::Ledger::Block block;
+//                block.ReadFromDisk(pindex, true);
+//
+//                /* Scan each transaction in the block and process those related to this wallet */
+//                for(Transaction& tx : block.vtx)
+//                {
+//                    if (AddToWalletIfInvolvingMe(tx, &block, fUpdate))
+//                        nTransactionCount++;
+//                }
+//
+//                /* Move to next block. Will be nullptr when reach end of chain, ending the while loop */
+//                pindex = pindex->pnext;
+//            }
+//        }
+//
+//        return nTransactionCount;
+//    }
 
 
     /* Looks through wallet for transactions that should already have been added to a block, but are
@@ -890,7 +891,7 @@ namespace Legacy
             return;
 
         /* Set a random time until resend is processed */
-        snNextTime = UnifiedTimestamp() + GetRand(30 * 60);
+        snNextTime = UnifiedTimestamp() + LLC::GetRand(30 * 60);
 
         /* On first iteration, just return. All it does is set snNextTime */
         if (fFirst)
@@ -900,37 +901,43 @@ namespace Legacy
          * If no new block, nothing has changed, so just returns. Would only be true if random snNextTime
          * interval were less than the block interval.
          */
+//TODO replace Core::nTimeBestReceived
+/*
         if (Core::nTimeBestReceived < snLastTime)
             return;
+*/
 
         /* Record that it is processing resend now */
         snLastTime = UnifiedTimestamp();
 
         /* Rebroadcast any of our tx that aren't in a block yet */
         debug::log(0, "ResendWalletTransactions\n");
-        LLD::CIndexDB indexdb("r");
+        LLD::LedgerDB ledgerdb("r");
 
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             /* Find any sent tx not in block and sort them in chronological order */
-            multimap<uint64_t, CWalletTx&> mapSorted;
-            for(auto item& : mapWallet)
+            std::multimap<uint64_t, CWalletTx> mapSorted;
+            for(auto item : mapWallet)
             {
                 CWalletTx& wtx = item.second;
 
                 /* Don't put in sorted map for rebroadcast until it's had enough time to be added to a block */
+//TODO replace Core::nTimeBestReceived
+/*
                 if (Core::nTimeBestReceived - wtx.nTimeReceived > 5 * 60)
                     mapSorted.insert(std::make_pair(wtx.nTimeReceived, wtx));
+*/
             }
 
-            for(auto item& : mapSorted)
+            for(auto item : mapSorted)
             {
                 CWalletTx& wtx = item.second;
 
                 /* Validate the transaction, then process rebroadcast on it */
                 if (wtx.CheckTransaction())
-                    wtx.RelayWalletTransaction(indexdb);
+                    wtx.RelayWalletTransaction(ledgerdb);
                 else
                     debug::log(0, "ResendWalletTransactions : CheckTransaction failed for transaction %s\n", 
                                wtx.GetHash().ToString().c_str());
@@ -985,66 +992,69 @@ namespace Legacy
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
-            vector<CWalletTx&> vCoins;
+            std::vector<CWalletTx> vCoins;
             vCoins.reserve(mapWallet.size());
 
             for (auto& item : mapWallet)
                 vCoins.push_back(item.second);
 
-            LLD::CIndexDB indexdb("r");
+            LLD::LedgerDB ledgerdb("r");
+
             for(CWalletTx& walletTx : vCoins)
             {
                 /* Find the corresponding transaction index */
-                Core::CTxIndex txindex;
-                if(!indexdb.ReadTxIndex(walletTx.GetHash(), txindex))
-                    continue;
-
-                /* Check all the outputs to make sure the flags are all set properly. */
-                for (int n=0; n < walletTx.vout.size(); n++)
-                {
-                    /* Handle the Index on Disk for Transaction being inconsistent from the Wallet's accounting to the UTXO. */
-                    if (IsMine(walletTx.vout[n]) && walletTx.IsSpent(n) && (txindex.vSpent.size() <= n || txindex.vSpent[n].IsNull()))
-                    {
-                        debug::log(0, "FixSpentCoins found lost coin %s Nexus %s[%d], %s\n",
-                                   FormatMoney(walletTx.vout[n].nValue).c_str(), walletTx.GetHash().ToString().c_str(), 
-                                   n, fCheckOnly? "repair not attempted" : "repairing");
-
-                        nMismatchFound++;
-
-                        nBalanceInQuestion += walletTx.vout[n].nValue;
-
-                        if (!fCheckOnly)
-                        {
-                            walletTx.MarkUnspent(n);
-                            walletTx.WriteToDisk();
-                        }
-                    }
-
-                    /* Handle the wallet missing a spend that was updated in the indexes. The index is updated on connect inputs. */
-                    else if (IsMine(walletTx.vout[n]) && !walletTx.IsSpent(n) && (txindex.vSpent.size() > n && !txindex.vSpent[n].IsNull()))
-                    {
-                        debug::log(0, "FixSpentCoins found spent coin %s Nexus %s[%d], %s\n",
-                                   FormatMoney(walletTx.vout[n].nValue).c_str(), walletTx.GetHash().ToString().c_str(), 
-                                   n, fCheckOnly? "repair not attempted" : "repairing");
-
-                        nMismatchFound++;
-
-                        nBalanceInQuestion += walletTx.vout[n].nValue;
-
-                        if (!fCheckOnly)
-                        {
-                            walletTx.MarkSpent(n);
-                            walletTx.WriteToDisk();
-                        }
-                    }
-                }
+//TODO Replacement for CTxIndex? ledgerdb does not support ReadTxIndex
+//                Core::CTxIndex txindex;
+//
+//                if(!ledgerdb.ReadTxIndex(walletTx.GetHash(), txindex))
+//                    continue;
+//
+//                /* Check all the outputs to make sure the flags are all set properly. */
+//                for (int n=0; n < walletTx.vout.size(); n++)
+//                {
+//                    /* Handle the Index on Disk for Transaction being inconsistent from the Wallet's accounting to the UTXO. */
+//                    if (IsMine(walletTx.vout[n]) && walletTx.IsSpent(n) && (txindex.vSpent.size() <= n || txindex.vSpent[n].IsNull()))
+//                    {
+//                        debug::log(0, "FixSpentCoins found lost coin %s Nexus %s[%d], %s\n",
+//                                   FormatMoney(walletTx.vout[n].nValue).c_str(), walletTx.GetHash().ToString().c_str(), 
+//                                   n, fCheckOnly? "repair not attempted" : "repairing");
+//
+//                        nMismatchFound++;
+//
+//                        nBalanceInQuestion += walletTx.vout[n].nValue;
+//
+//                        if (!fCheckOnly)
+//                        {
+//                            walletTx.MarkUnspent(n);
+//                            walletTx.WriteToDisk();
+//                        }
+//                    }
+//
+//                    /* Handle the wallet missing a spend that was updated in the indexes. The index is updated on connect inputs. */
+//                    else if (IsMine(walletTx.vout[n]) && !walletTx.IsSpent(n) && (txindex.vSpent.size() > n && !txindex.vSpent[n].IsNull()))
+//                    {
+//                        debug::log(0, "FixSpentCoins found spent coin %s Nexus %s[%d], %s\n",
+//                                   FormatMoney(walletTx.vout[n].nValue).c_str(), walletTx.GetHash().ToString().c_str(), 
+//                                   n, fCheckOnly? "repair not attempted" : "repairing");
+//
+//                        nMismatchFound++;
+//
+//                        nBalanceInQuestion += walletTx.vout[n].nValue;
+//
+//                        if (!fCheckOnly)
+//                        {
+//                            walletTx.MarkSpent(n);
+//                            walletTx.WriteToDisk();
+//                        }
+//                    }
+//                }
             }
         }
     }
 
 
     /* Checks whether a transaction contains any outputs belonging to this wallet. */
-    bool CWallet::IsMine(const Transaction& tx) const
+    bool CWallet::IsMine(const Transaction& tx) 
     {
         for(const CTxOut& txout : tx.vout)
         {
@@ -1057,7 +1067,7 @@ namespace Legacy
 
 
      /* Checks whether a specific transaction input represents a send from this wallet. */
-    bool CWallet::IsMine(const Core::CTxIn &txin) const
+    bool CWallet::IsMine(const CTxIn &txin) 
     {
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
@@ -1086,15 +1096,15 @@ namespace Legacy
 
 
     /* Checks whether a specific transaction output represents balance received by this wallet. */
-    bool CWallet::IsMine(const CTxOut& txout) const
+    bool CWallet::IsMine(const CTxOut& txout) 
     {
         /* Output belongs to this wallet if it has a key matching the output script */
-        return IsMine(*this, txout.scriptPubKey);
+        return Legacy::IsMine(*this, txout.scriptPubKey);
     }
 
 
     /* Calculates the total value for all inputs sent from this wallet by a transaction. */
-    int64_t CWallet::GetDebit(const Transaction& tx) const
+    int64_t CWallet::GetDebit(const Transaction& tx) 
     {
         int64_t nDebit = 0;
 
@@ -1111,7 +1121,7 @@ namespace Legacy
 
 
     /* Calculates the total value for all outputs received by this wallet in a transaction. */
-    int64_t CWallet::GetCredit(const Transaction& tx) const
+    int64_t CWallet::GetCredit(const Transaction& tx) 
     {
         int64_t nCredit = 0;
 
@@ -1128,7 +1138,7 @@ namespace Legacy
 
 
     /* Calculates the total change amount returned to this wallet by a transaction. */
-    int64_t CWallet::GetChange(const Transaction& tx) const
+    int64_t CWallet::GetChange(const Transaction& tx) 
     {
         int64_t nChange = 0;
 
@@ -1145,7 +1155,7 @@ namespace Legacy
 
 
     /* Returns the debit amount for this wallet represented by a transaction input. */
-    int64_t CWallet::GetDebit(const Core::CTxIn &txin) const
+    int64_t CWallet::GetDebit(const CTxIn &txin) 
     {
         if(txin.prevout.IsNull())
             return 0;
@@ -1176,7 +1186,7 @@ namespace Legacy
 
 
     /* Returns the credit amount for this wallet represented by a transaction output. */
-    int64_t CWallet::GetCredit(const CTxOut& txout) const
+    int64_t CWallet::GetCredit(const CTxOut& txout) 
     {
         if (!MoneyRange(txout.nValue))
             throw std::runtime_error("CWallet::GetCredit() : value out of range");
@@ -1186,7 +1196,7 @@ namespace Legacy
 
 
     /* Returns the change amount for this wallet represented by a transaction output. */
-    int64_t CWallet::GetChange(const CTxOut& txout) const
+    int64_t CWallet::GetChange(const CTxOut& txout) 
     {
         if (!MoneyRange(txout.nValue))
             throw std::runtime_error("CWallet::GetChange() : value out of range");
@@ -1198,7 +1208,7 @@ namespace Legacy
     /* Checks whether a transaction output belongs to this wallet and
      *  represents change returned to it. 
      */
-    bool CWallet::IsChange(const Core::CTxOut& txout) const
+    bool CWallet::IsChange(const CTxOut& txout)
     {
         NexusAddress address;
 
@@ -1215,7 +1225,7 @@ namespace Legacy
 
             if (ExtractAddress(txout.scriptPubKey, address) && HaveKey(address))
             {
-                if (!mapAddressBook.count(address))
+                if (!addressBook.HasAddress(address))
                     return true;
             }
         }
@@ -1229,18 +1239,18 @@ namespace Legacy
     {
         /* Validate amount */
         if (nValue <= 0)
-            return _("Invalid amount");
+            return std::string("Invalid amount");
 
         /* Validate balance supports value + fees */
-        if (nValue + Core::nTransactionFee > GetBalance())
-            return _("Insufficient funds");
+        if (nValue + MIN_TX_FEE > GetBalance())
+            return std::string("Insufficient funds");
 
-        /* Parse nexus address */
+        /* Parse Nexus address */
         CScript scriptPubKey;
         scriptPubKey.SetNexusAddress(address);
 
         /* Place the script and amount into sending vector */
-        vector< pair<CScript, int64_t> > vecSend;
+        std::vector< std::pair<CScript, int64_t> > vecSend;
         vecSend.push_back(make_pair(scriptPubKey, nValue));
 
         /* Key will be reserved for any change transaction, kept on commit */
@@ -1251,7 +1261,7 @@ namespace Legacy
         if (IsLocked())
         {
             /* Cannot create transaction when wallet locked */
-            string strError = _("Error: Wallet locked, unable to create transaction  ");
+            std::string strError = std::string("Error: Wallet locked, unable to create transaction  ");
             debug::log(0, "SendMoney() : %s", strError.c_str());
             return strError;
         }
@@ -1259,7 +1269,7 @@ namespace Legacy
         if (fWalletUnlockMintOnly)
         {
             /* Cannot create transaction if unlocked for mint only */
-            string strError = _("Error: Wallet unlocked for block minting only, unable to create transaction.");
+            std::string strError = std::string("Error: Wallet unlocked for block minting only, unable to create transaction.");
             debug::log(0, "SendMoney() : %s", strError.c_str());
             return strError;
         }
@@ -1267,20 +1277,20 @@ namespace Legacy
         if (!CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired))
         {
             /* Transaction creation failed */
-            string strError;
+            std::string strError;
             if (nValue + nFeeRequired > GetBalance())
             {
                 /* Failure resulted because required fee caused transaction amount to exceed available balance. 
                  * Really should not get this because of initial check at start of function. Could only happen
-                 * if nFeeRequired > Core::nTransactionFee
+                 * if nFeeRequired > MIN_TX_FEE
                  */
-                strError = debug::strprintf(_("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  "), 
+                strError = debug::strprintf(std::string("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  "), 
                                             FormatMoney(nFeeRequired).c_str());
             }
             else
             {
                 /* Other transaction creation failure */
-                strError = _("Error: Transaction creation failed  ");
+                strError = std::string("Error: Transaction creation failed  ");
             }
 
             debug::log(0, "SendMoney() : %s", strError.c_str());
@@ -1290,14 +1300,14 @@ namespace Legacy
 
         /* With QT interface removed, we no longer display the fee confirmation here. Successful transaction creation will be committed automatically */
         if (!CommitTransaction(wtxNew, reservekey))
-            return _("Error: The transaction was rejected.  This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+            return std::string("Error: The transaction was rejected.  This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
 
         return "";
     }
 
 
     /* Create and populate a new transaction. */
-    bool CWallet::CreateTransaction(const vector<pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, int64_t& nFeeRet)
+    bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, int64_t& nFeeRet)
     {
         int64_t nValue = 0;
 
@@ -1320,15 +1330,15 @@ namespace Legacy
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
-            LLD::CIndexDB indexdb("r");
+            LLD::LedgerDB ledgerdb("r");
 
-            nFeeRet = Core::nTransactionFee;
+            nFeeRet = MIN_TX_FEE;
 
             /* This loop is generally executed only once, unless the size of the transaction requires a fee increase.
              * When fee increased, it is possible that selected inputs do not cover it, so repeat the process to 
              * assure we have enough value in. It also has to re-do the change calculation and output.
              */
-            loop() {
+            while(true) {
                 /* Reset transaction contents */
                 wtxNew.vin.clear();
                 wtxNew.vout.clear();
@@ -1337,11 +1347,11 @@ namespace Legacy
                 int64_t nTotalValue = nValue + nFeeRet;
 
                 /* Add transactions outputs to vout */
-                for (auto s& : vecSend)
+                for (auto& s : vecSend)
                     wtxNew.vout.push_back(CTxOut(s.second, s.first));
 
                 /* This set will hold txouts to use as input for this transaction as transaction/vout index pairs */
-                set<pair<const CWalletTx&,uint32_t> > setSelectedCoins;
+                std::set<std::pair<const CWalletTx*,uint32_t> > setSelectedCoins;
 
                 /* Initialize total value of all inputs */
                 int64_t nValueIn = 0;
@@ -1354,7 +1364,7 @@ namespace Legacy
                 CScript scriptChange;
                 for(auto item : setSelectedCoins)
                 {
-                    CWalletTx& selectedTransaction = = item.first;
+                    const CWalletTx& selectedTransaction = *(item.first);
 
                     /* When done, this will contain scriptPubKey of last transaction in the set */
                     scriptChange = selectedTransaction.vout[item.second].scriptPubKey;
@@ -1366,50 +1376,50 @@ namespace Legacy
                 if (nChange > 0)
                 {
                     /* Reserve a new key pair from key pool to use for change */
-                    vector<uint8_t> vchPubKeyChange = reservekey.GetReservedKey();
+                    std::vector<uint8_t> vchPubKeyChange = reservekey.GetReservedKey();
 
                     /* Fill a vout to return change */
                     scriptChange.SetNexusAddress(vchPubKeyChange);
 
                     /* Insert change output at random position: */
-                    auto position = wtxNew.vout.begin() + GetRandInt(wtxNew.vout.size());
-                    wtxNew.vout.insert(position, Core::CTxOut(nChange, scriptChange));
+                    auto position = wtxNew.vout.begin() + LLC::GetRandInt(wtxNew.vout.size());
+                    wtxNew.vout.insert(position, CTxOut(nChange, scriptChange));
 
                 }
                 else
                     reservekey.ReturnKey();
 
                 /* Fill vin with selected inputs */
-                for(const auto coin : setCoins)
-                    wtxNew.vin.push_back(Core::CTxIn(coin.first->GetHash(),coin.second));
+                for(const auto coin : setSelectedCoins)
+                    wtxNew.vin.push_back(CTxIn(coin.first->GetHash(),coin.second));
 
                 /* Sign inputs to unlock previously unspent outputs */
                 int nIn = 0;
-                for(const auto coin& : setSelectedCoins)
-                    if (!SignSignature(*this, coin.first, wtxNew, nIn++))
+                for(const auto coin : setSelectedCoins)
+                    if (!SignSignature(*this, *(coin.first), wtxNew, nIn++))
                         return false;
 
                 /* Limit tx size to 20% of max block size */
                 uint32_t nBytes = ::GetSerializeSize(*(Transaction*)&wtxNew, SER_NETWORK, LLP::PROTOCOL_VERSION);
-                if (nBytes >= Core::MAX_BLOCK_SIZE_GEN/5)
+                if (nBytes >= TAO::Ledger::MAX_BLOCK_SIZE_GEN/5)
                     return false; // tx size too large
 
                 /* Each multiple of 1000 bytes of tx size multiplies the fee paid */
-                int64_t nPayFee = Core::nTransactionFee * (1 + (int64_t)nBytes / 1000);
+                int64_t nPayFee = MIN_TX_FEE * (1 + (int64_t)nBytes / 1000);
 
                 /* Get minimum required fee from transaction */
                 int64_t nMinFee = wtxNew.GetMinFee(1, false, Legacy::GMF_SEND);
 
                 /* Check that enough fee is included */
-                if (nFeeRet < max(nPayFee, nMinFee))
+                if (nFeeRet < std::max(nPayFee, nMinFee))
                 {
                     /* More fee required, so increase fee and repeat loop */
-                    nFeeRet = max(nPayFee, nMinFee);
+                    nFeeRet = std::max(nPayFee, nMinFee);
                     continue;
                 }
 
                 /* Fill vtxPrev by copying from previous transactions vtxPrev */
-                wtxNew.AddSupportingTransactions(indexdb);
+                wtxNew.AddSupportingTransactions(ledgerdb);
 
                 wtxNew.fTimeReceivedIsTxTime = true;
 
@@ -1432,19 +1442,21 @@ namespace Legacy
              * duration of this scope.  This is the only place where this optimization
              * maybe makes sense; please don't do it anywhere else.
              */
-            CWalletDB& walletdb;
+            CWalletDB* pwalletdb;
             if (fFileBacked)
-                walletdb = CWalletDB(strWalletFile,"r");
+                pwalletdb = new CWalletDB(strWalletFile,"r");
 
             /* Take key pair from key pool so it won't be used again */
             reservekey.KeepKey();
 
-            /* Add tx to wallet, because if it has change it's also ours, otherwise just for transaction history. */
+            /* Add tx to wallet, because if it has change it's also ours, otherwise just for transaction history. 
+             * This will update to wallet database
+             */
             AddToWallet(wtxNew);
 
             /* Mark old coins as spent */
-            set<CWalletTx*> setCoins;
-            for(const Core::CTxIn& txin : wtxNew.vin)
+            std::set<CWalletTx*> setCoins;
+            for (const CTxIn& txin : wtxNew.vin)
             {
                 CWalletTx& prevTx = mapWallet[txin.prevout.hash];
                 prevTx.BindWallet(this);
@@ -1453,48 +1465,50 @@ namespace Legacy
             }
 
             if (fFileBacked)
+            {
+                pwalletdb->Close();
                 delete pwalletdb;
+            }
 
             /* Add to tracking for how many getdata requests our transaction gets */
             /* This entry track the transaction hash (not block hash) */
             mapRequestCount[wtxNew.GetHash()] = 0;
 
             /* Broadcast transaction to network */
-            if (!wtxNew.AcceptToMemoryPool())
-            {
-                /* This must not fail. The transaction has already been signed and recorded. */
-                debug::log(0, "CWallet::CommitTransaction : Error: Transaction not valid");
-                return false;
-            }
+//TODO replacement for AcceptToMemoryPool()
+//            if (!wtxNew.AcceptToMemoryPool())
+//            {
+//                /* This must not fail. The transaction has already been signed and recorded. */
+//                debug::log(0, "CWallet::CommitTransaction : Error: Transaction not valid");
+//                return false;
+//            }
 
             wtxNew.RelayWalletTransaction();
-
-            if (fFileBacked)
-                walletdb.Close();
         }
 
         return true;
     }
 
 
-    bool CWallet::AddCoinstakeInputs(Core::CBlock& block)
+    bool CWallet::AddCoinstakeInputs(TAO::Ledger::Block& block)
     {
         /* Add Each Input to Transaction. */
-        vector<const CWalletTx&> vInputs;
-        vector<const CWalletTx&> vCoins;
+        std::vector<CWalletTx> vInputs;
+        std::vector<CWalletTx> vCoins;
 
-        block.vtx[0].vout[0].nValue = 0;
+//TODO How to work with block?  no vtx in TAO::Ledger::Block (all references commented out below)
+//        block.vtx[0].vout[0].nValue = 0;
 
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
             vCoins.reserve(mapWallet.size());
 
-            for (auto& item : mapWallet)
+            for (const auto item : mapWallet)
                 vCoins.push_back(item.second);
         }
 
-        random_shuffle(vCoins.begin(), vCoins.end(), GetRandInt);
+        std::random_shuffle(vCoins.begin(), vCoins.end(), LLC::GetRandInt);
 
         for(auto walletTx : vCoins)
         {
@@ -1507,48 +1521,48 @@ namespace Legacy
                 continue;
 
             /* Do not add coins to Genesis block if age less than trust timestamp */
-            if (block.vtx[0].IsGenesis() && (block.vtx[0].nTime - walletTx.nTime) < (config::fTestNet ? Core::TRUST_KEY_TIMESPAN_TESTNET : Core::TRUST_KEY_TIMESPAN))
-                continue;
+//            if (block.vtx[0].IsGenesis() && (block.vtx[0].nTime - walletTx.nTime) < (config::fTestNet ? Core::TRUST_KEY_TIMESPAN_TESTNET : Core::TRUST_KEY_TIMESPAN))
+//                continue;
 
             /* Can't spend transaction from after block time */
-            if (walletTx.nTime > block.vtx[0].nTime)
-                continue;
+//            if (walletTx.nTime > block.vtx[0].nTime)
+//                continue;
 
-            for (unsigned int i = 0; i < walletTx.vout.size(); i++)
+            for (uint32_t i = 0; i < walletTx.vout.size(); i++)
             {
                 /* Can't spend outputs that are already spent or not belonging to this wallet */
                 if (walletTx.IsSpent(i) || !IsMine(walletTx.vout[i]))
                     continue;
 
                 /* Stop adding Inputs if has reached Maximum Transaction Size. */
-                unsigned int nBytes = ::GetSerializeSize(block.vtx[0], SER_NETWORK, PROTOCOL_VERSION);
-                if (nBytes >= Core::MAX_BLOCK_SIZE_GEN / 5)
-                    break;
+//                unsigned int nBytes = ::GetSerializeSize(block.vtx[0], SER_NETWORK, LLP::PROTOCOL_VERSION);
+//                if (nBytes >= TAO::Ledger::MAX_BLOCK_SIZE_GEN / 5)
+//                    break;
 
-                block.vtx[0].vin.push_back(CTxIn(walletTx.GetHash(), i));
+//                block.vtx[0].vin.push_back(CTxIn(walletTx.GetHash(), i));
                 vInputs.push_back(walletTx);
 
                 /** Add the value to the first Output for Coinstake. **/
-                block.vtx[0].vout[0].nValue += walletTx.vout[i].nValue;
+//                block.vtx[0].vout[0].nValue += walletTx.vout[i].nValue;
             }
         }
 
-        if(block.vtx[0].vin.size() == 1)
-            return false; // No transactions added
+//        if(block.vtx[0].vin.size() == 1)
+//            return false; // No transactions added
 
         /* Calculate the Interest for the Coinstake Transaction. */
-        int64 nInterest;
-        LLD::CIndexDB indexdb("cr");
-        if(!block.vtx[0].GetCoinstakeInterest(block, indexdb, nInterest))
-            return error("AddCoinstakeInputs() : Failed to Get Interest");
+        int64_t nInterest;
+        LLD::LedgerDB ledgerdb("cr");
+//        if(!block.vtx[0].GetCoinstakeInterest(block, ledgerdb, nInterest))
+//            return debug::error("AddCoinstakeInputs() : Failed to Get Interest");
 
-        block.vtx[0].vout[0].nValue += nInterest;
+//        block.vtx[0].vout[0].nValue += nInterest;
 
         /* Sign Each Input to Transaction. */
         for(int nIndex = 0; nIndex < vInputs.size(); nIndex++)
         {
-            if (!SignSignature(*this, vInputs[nIndex], block.vtx[0], nIndex + 1))
-                return error("AddCoinstakeInputs() : Unable to sign Coinstake Transaction Input.");
+//            if (!SignSignature(*this, vInputs[nIndex], block.vtx[0], nIndex + 1))
+//                return debug::error("AddCoinstakeInputs() : Unable to sign Coinstake Transaction Input.");
 
         }
 
@@ -1561,8 +1575,31 @@ namespace Legacy
      *  Everyone else uses corresponding set/add operation.
      */
 
+    /* Assigns a new default key to this wallet. */
+    bool CWallet::SetDefaultKey(const std::vector<uint8_t> &vchPubKey)
+    {
+        {
+            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
+
+            if (fFileBacked) 
+            {
+                CWalletDB walletdb(strWalletFile);
+                bool result = walletdb.WriteDefaultKey(vchPubKey);
+                walletdb.Close();
+
+                if (!result)
+                    return false;
+            }
+
+            vchDefaultKey = vchPubKey;
+        }
+
+        return true;
+    }
+
+
     /* Load the minimum supported version without updating the database */
-    bool LoadMinVersion(const int nVersion) 
+    bool CWallet::LoadMinVersion(const int nVersion) 
     { 
         nWalletVersion = nVersion; 
         nWalletMaxVersion = std::max(nWalletMaxVersion, nVersion); 
@@ -1571,7 +1608,7 @@ namespace Legacy
 
     
     /* Loads a master key into the wallet, identified by its key Id. */
-    bool LoadMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey) 
+    bool CWallet::LoadMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey) 
     { 
         if (mapMasterKeys.count(nMasterKeyId) != 0)
             return false;
@@ -1587,36 +1624,37 @@ namespace Legacy
 
 
     /* Load a public/encrypted private key pair to the key store without updating the database. */
-    bool LoadCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret) 
+    bool CWallet::LoadCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret) 
     { 
         return CCryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret); 
     }
 
 
     /* Load a key to the key store without updating the database. */
-    bool LoadKey(const LLC::ECKey& key) 
+    bool CWallet::LoadKey(const LLC::ECKey& key) 
     { 
         return CCryptoKeyStore::AddKey(key); 
     }
 
     
     /* Load a script to the key store without updating the database. */
-    bool LoadCScript(const CScript& redeemScript) 
+    bool CWallet::LoadCScript(const CScript& redeemScript) 
     { 
         return CCryptoKeyStore::AddCScript(redeemScript); 
     }
 
 
     /* Selects the unspent transaction outputs to use as inputs when creating a transaction that sends balance from this wallet. */
-    bool CWallet::SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, set<pair<const CWalletTx,uint32_t> >& setCoinsRet, int64_t& nValueRet) const
+    bool CWallet::SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::set<std::pair<const CWalletTx*, uint32_t> >& setCoinsRet, 
+                              int64_t& nValueRet, std::string strAccount, int nMinDepth) 
     {
         /* Call detailed select up to 3 times if it fails, using the returns from the first successful call.
          * This allows it to attempt multiple input sets if it doesn't find a workable one on the first try.
          * (example, it chooses an input set with total value exceeding maximum allowed value)
          */
-        return (SelectCoinsMinConf(nTargetValue, nSpendTime, 3, 3, setCoinsRet, nValueRet) ||
-                SelectCoinsMinConf(nTargetValue, nSpendTime, 3, 3, setCoinsRet, nValueRet) ||
-                SelectCoinsMinConf(nTargetValue, nSpendTime, 3, 3, setCoinsRet, nValueRet));
+        return (SelectCoinsMinConf(nTargetValue, nSpendTime, nMinDepth, nMinDepth, setCoinsRet, nValueRet, strAccount) ||
+                SelectCoinsMinConf(nTargetValue, nSpendTime, nMinDepth, nMinDepth, setCoinsRet, nValueRet, strAccount) ||
+                SelectCoinsMinConf(nTargetValue, nSpendTime, nMinDepth, nMinDepth, setCoinsRet, nValueRet, strAccount));
     }
 
 
@@ -1624,11 +1662,11 @@ namespace Legacy
      * balance from this wallet while requiring a minimum confirmation depth to be included in result.
      */
     bool CWallet::SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const int nConfMine, const int nConfTheirs, 
-                                     set<pair<const CWalletTx&,uint32_t> >& setCoinsRet, int64_t& nValueRet) const
+                                std::set<std::pair<const CWalletTx*, uint32_t> >& setCoinsRet, int64_t& nValueRet, std::string strAccount) 
     {
         /* Add Each Input to Transaction. */
         setCoinsRet.clear();
-        vector<const CWalletTx&> vallWalletTx;
+        std::vector<CWalletTx> vallWalletTx;
 
         nValueRet = 0;
 
@@ -1642,7 +1680,7 @@ namespace Legacy
 
         }
 
-        random_shuffle(vallWalletTx.begin(), vallWalletTx.end(), GetRandInt);
+        std::random_shuffle(vallWalletTx.begin(), vallWalletTx.end(), LLC::GetRandInt);
 
         for(const CWalletTx& walletTx : vallWalletTx)
         {
@@ -1669,11 +1707,45 @@ namespace Legacy
                 if (walletTx.IsSpent(i) || !IsMine(walletTx.vout[i]))
                     continue;
 
-                /* Add reference to transaction with selected vout index to result set */
-                setCoinsRet.insert(make_pair(walletTx, i));
+                /* Handle account selection here. */
+                if(strAccount != "*")
+                {
+                    NexusAddress address;
+                    if(!ExtractAddress(walletTx.vout[i].scriptPubKey, address) || !address.IsValid())
+                        continue;
 
-                /* Accumulate total value available to spend in result set */
-                nValueRet += walletTx.vout[i].nValue;
+                    if(addressBook.HasAddress(address))
+                    {
+                        std::string strEntry = addressBook.GetAddressBookName(address);
+                        if(strEntry == "")
+                            strEntry = "default";
+
+                        if(strEntry == strAccount)
+                        {
+                            /* Account label for transaction address matches request, include in result */
+                            setCoinsRet.insert(std::make_pair(&walletTx, i));
+                            nValueRet += walletTx.vout[i].nValue;
+                        }
+                    }
+                    else if(strAccount == "default")
+                    {
+                        /* Not in address book (no label), include if default requested */
+                        setCoinsRet.insert(std::make_pair(&walletTx, i));
+                        nValueRet += walletTx.vout[i].nValue;
+                    }
+                }
+
+                /* Handle wildcard here, include all transactions. */
+                else
+                {
+                    /* Add transaction with selected vout index to result set */
+                    setCoinsRet.insert(std::make_pair(&walletTx, i));
+
+                    /* Accumulate total value available to spend in result set */
+                    nValueRet += walletTx.vout[i].nValue;
+                }
+
+
             }
 
             /* If value available to spend in result set exceeds target value, we are done */
@@ -1694,11 +1766,11 @@ namespace Legacy
 
         /* Ensure input total value does not exceed maximum allowed */
         if(!MoneyRange(nValueRet))
-            return error("CWallet::SelectCoins() : Input total over TX limit Total: %" PRI64d " Limit %" PRI64d, nValueRet, Core::MaxTxOut());
+            return debug::error("CWallet::SelectCoins() : Input total over TX limit Total: %" PRI64d " Limit %" PRI64d, nValueRet, MaxTxOut());
 
         /* Ensure balance is sufficient to cover transaction */
         if(nValueRet < nTargetValue)
-            return error("CWallet::SelectCoins() : Insufficient Balance Target: %" PRI64d " Actual %" PRI64d, nTargetValue, nValueRet);
+            return debug::error("CWallet::SelectCoins() : Insufficient Balance Target: %" PRI64d " Actual %" PRI64d, nTargetValue, nValueRet);
 
         return true;
     }

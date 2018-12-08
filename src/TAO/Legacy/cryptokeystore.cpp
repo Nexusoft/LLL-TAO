@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/hash/sk.h>
+#include <LLC/hash/SK.h>
 #include <LLC/include/key.h>
 
 #include <TAO/Legacy/types/address.h>
@@ -107,7 +107,7 @@ namespace Legacy
                 LLC::CSecret vchSecret;
 
                 /* Successful decryption will place decrypted private key into vchSecret */
-                if(!DecryptSecret(vMasterKeyIn, vchCryptedSecret, SK576(vchPubKey.begin(), vchPubKey.end()), vchSecret))
+                if(!DecryptSecret(vMasterKeyIn, vchCryptedSecret, LLC::SK576(vchPubKey.begin(), vchPubKey.end()), vchSecret))
                     return false;
 
                 if (vchSecret.size() != 72)

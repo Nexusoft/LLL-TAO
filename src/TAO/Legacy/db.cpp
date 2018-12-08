@@ -11,10 +11,14 @@
 
 ____________________________________________________________________________________________*/
 
+#include <exception>
+
 #include <TAO/Legacy/wallet/db.h>
 
 #include <LLD/include/version.h>
 
+#include <Util/include/args.h>
+#include <Util/include/config.h>
 #include <Util/include/debug.h>
 #include <Util/include/filesystem.h>
 #include <Util/templates/serialize.h>
@@ -31,13 +35,13 @@ namespace Legacy
     bool fDetachDB = false;
 
     /* Initialization for class static variables */
-    DbEnv CDB::dbenv = DbEnv((uint32_t)0);
+    DbEnv CDB::dbenv((uint32_t)0);
 
     bool CDB::fDbEnvInit = false;
 
     std::map<std::string, int> CDB::mapFileUseCount; //initializes empty map
 
-    std::map<std::string, std::shared_ptr<Db>> CDB::mapDb;  //initializes empty map
+    std::map<std::string, Db*> CDB::mapDb;  //initializes empty map
 
 
     /* Constructor */
@@ -78,7 +82,7 @@ namespace Legacy
 
 
     /* Performs work of initialization for constructors. */
-    CDB::Init(const std::string strFile, const char* pszMode)
+    void CDB::Init(const std::string strFileIn, const char* pszMode)
     {
         int ret;
 
@@ -88,17 +92,17 @@ namespace Legacy
             if (!CDB::fDbEnvInit)
             {
                 /* Need to initialize database environment. This is only done once upon construction of the first CDB instance */
-                if (fShutdown)
+                if (config::fShutdown)
                     return;
 
-                std::string pathDataDir(GetDataDir());
+                std::string pathDataDir(config::GetDataDir());
                 std::string pathLogDir(pathDataDir + "/database");
                 filesystem::create_directory(pathLogDir);
 
                 std::string pathErrorFile(pathDataDir + "/db.log");
                 debug::log(0, "dbenv.open LogDir=%s ErrorFile=%s\n", pathLogDir.c_str(), pathErrorFile.c_str());
 
-                int nDbCache = GetArg("-dbcache", 25);
+                int nDbCache = config::GetArg("-dbcache", 25);
 
                 CDB::dbenv.set_lg_dir(pathLogDir.c_str());
                 CDB::dbenv.set_cachesize(nDbCache / 1024, (nDbCache % 1024)*1048576, 1);
@@ -146,7 +150,7 @@ namespace Legacy
                 ret = CDB::dbenv.open(pathDataDir.c_str(), dbFlags, dbMode);
 
                 if (ret > 0)
-                    throw runtime_error(debug::strprintf("CDB() : error %d opening database environment", ret));
+                    throw std::runtime_error(debug::strprintf("CDB() : error %d opening database environment", ret));
 
                 CDB::fDbEnvInit = true;
             }
@@ -156,7 +160,7 @@ namespace Legacy
 
             /* Usage count will be incremented whether we use pdb from mapDb or open a new one */
             if (CDB::mapFileUseCount.count(strFile) == 0)
-                CDB::mapFileUseCount.insert(strFile, 1);
+                CDB::mapFileUseCount[strFile] = 1;
             else
                 ++CDB::mapFileUseCount[strFile];
 
@@ -176,7 +180,7 @@ namespace Legacy
             else
             {
                 /* Database not already open, so open it now */
-                pdb = std::make_shared<Db>(Db(&CDB::dbenv, 0));
+                pdb = new Db(&CDB::dbenv, 0);
 
                 /* Opened database will support multi-threaded access */
                 uint32_t nFlags = DB_THREAD;
@@ -209,13 +213,14 @@ namespace Legacy
                 }
                 else
                 {
-                    /* Error opening db, reset db (no need to delete the shared pointer) */
+                    /* Error opening db, reset db */
+                    delete pdb;
                     pdb = nullptr;
                     strFile = "";
 
                     --CDB::mapFileUseCount[strFile];
 
-                    throw runtime_error(debug::strprintf("CDB() : can't open database file %s, error %d", strFile.c_str(), ret));
+                    throw std::runtime_error(debug::strprintf("CDB() : can't open database file %s, error %d", strFile.c_str(), ret));
                 }
             }
         } /* End lock scope */
@@ -241,7 +246,7 @@ namespace Legacy
         datValue.set_flags(DB_DBT_MALLOC); // Berkeley will allocate memory for returned value, will need to free before return
 
         /* Read */
-        int ret = pdb->get(GetRawTxn(), &datKey, &datValue, 0);
+        int ret = pdb->get(GetTxn(), &datKey, &datValue, 0);
 
         /*  Clear the key memory */
         memset(datKey.get_data(), 0, datKey.get_size());
@@ -270,7 +275,7 @@ namespace Legacy
 
     /* Write a key-value pair to the database. */
     template<typename K, typename T>
-    bool CDB::Write(const K& key, const T& value, bool fOverwrite=true)
+    bool CDB::Write(const K& key, const T& value, bool fOverwrite)
     {
         if (pdb == nullptr)
             return false;
@@ -291,7 +296,7 @@ namespace Legacy
         Dbt datValue(&ssValue[0], ssValue.size());
 
         /* Write */
-        int ret = pdb->put(GetRawTxn(), &datKey, &datValue, (fOverwrite ? 0 : DB_NOOVERWRITE));
+        int ret = pdb->put(GetTxn(), &datKey, &datValue, (fOverwrite ? 0 : DB_NOOVERWRITE));
 
         /* Clear memory in case it was a private key */
         memset(datKey.get_data(), 0, datKey.get_size());
@@ -318,7 +323,7 @@ namespace Legacy
         Dbt datKey(&ssKey[0], ssKey.size());
 
         /* Erase */
-        int ret = pdb->del(GetRawTxn(), &datKey, 0);
+        int ret = pdb->del(GetTxn(), &datKey, 0);
 
         /* Clear memory */
         memset(datKey.get_data(), 0, datKey.get_size());
@@ -341,7 +346,7 @@ namespace Legacy
         Dbt datKey(&ssKey[0], ssKey.size());
 
         /* Exists */
-        int ret = pdb->exists(GetRawTxn(), &datKey, 0);
+        int ret = pdb->exists(GetTxn(), &datKey, 0);
 
         /* Clear memory */
         memset(datKey.get_data(), 0, datKey.get_size());
@@ -350,29 +355,24 @@ namespace Legacy
 
 
     /* Open a cursor at the beginning of the database. */
-    std::shared_ptr<Dbc> CDB::GetCursor()
+    Dbc* CDB::GetCursor()
     {
         if (pdb == nullptr)
             return nullptr;
 
-        /* To play nicely with Berkeley API, cannot define as shared_ptr for API call. 
-         * Instead, need to construct shared_ptr from the returned Dbc*
-         */
-        Dbc* dbcursor = nullptr;
+        Dbc* pcursor = nullptr;
 
-        int ret = pdb->cursor(nullptr, &dbcursor, 0);
+        int ret = pdb->cursor(nullptr, &pcursor, 0);
 
         if (ret != 0)
             return nullptr;
-
-        std::make_shared<Dbc> pcursor(dbcursor);
 
         return pcursor; 
     }
 
 
     /* Read a database key-value pair from the current cursor location. */
-    int CDB::ReadAtCursor(std::shared_ptr<Dbc> pcursor, CDataStream& ssKey, CDataStream& ssValue, uint32_t fFlags)
+    int CDB::ReadAtCursor(Dbc* pcursor, CDataStream& ssKey, CDataStream& ssValue, uint32_t fFlags)
     {
         /* Key - Initialize with argument data for flag settings that need it */
         Dbt datKey;
@@ -424,7 +424,7 @@ namespace Legacy
 
 
     /* Closes and discards a cursor. After calling this method, the cursor is no longer valid for use. */
-    CDB::CloseCursor(std::shared_ptr<Dbc> pcursor)
+    void CDB::CloseCursor(Dbc* pcursor)
     {
         if (pdb == nullptr)
             return;
@@ -436,25 +436,12 @@ namespace Legacy
 
 
     /*  Retrieves the most recently started database transaction. */
-    std::shared_ptr<DbTxn> CDB::GetTxn()
+    DbTxn* CDB::GetTxn()
     {
         if (!vTxn.empty())
             return vTxn.back();
         else
             return nullptr;
-    }
-
-
-    /* Retrieves the raw pointer for the most recently started database transaction. */
-    DbTxn* CDB::GetRawTxn()
-    {
-        DbTxn* dbTxn = nullptr; 
-        auto pTxn = GetTxn();
-
-        if (pTxn != nullptr)
-            dbTxn = pTxn.get(); 
-
-        return dbTxn;
     }
 
 
@@ -465,16 +452,15 @@ namespace Legacy
             return false;
 
         /* Start a new database transaction. Need to use raw pointer with Berkeley API */
-        DbTxn* dbTxn = nullptr;
+        DbTxn* pTxn = nullptr;
 
         /* Begin new transaction */
-        int ret = CDB::dbenv.txn_begin(getRawTxn(), &dbTxn, DB_TXN_WRITE_NOSYNC);
+        int ret = CDB::dbenv.txn_begin(GetTxn(), &pTxn, DB_TXN_WRITE_NOSYNC);
 
-        if (dbTxn == nullptr || ret != 0)
+        if (pTxn == nullptr || ret != 0)
             return false;
 
         /* Add new transaction to the end of vTxn */
-        std::shared_ptr<DbTxn> pTxn(dbTxn);
         vTxn.push_back(pTxn);
 
         return true;
@@ -554,7 +540,7 @@ namespace Legacy
         if (strFile == "addr.dat")
             nMinutes = 2;
 
-        CDB::dbenv.txn_checkpoint(nMinutes ? GetArg("-dblogsize", 100)*1024 : 0, nMinutes, 0);
+        CDB::dbenv.txn_checkpoint(nMinutes ? config::GetArg("-dblogsize", 100)*1024 : 0, nMinutes, 0);
 
         {
             std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db); 
@@ -573,11 +559,12 @@ namespace Legacy
         {
             std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db); 
 
-            if (CDB::mapDb.count(strFile) > 0)
+            if (CDB::mapDb.count(strFile) > 0 && CDB::mapDb[strFile] != nullptr)
             {
                 /* Close the database handle */
                 auto pdb = CDB::mapDb[strFile];
                 pdb->close(0);
+                delete pdb;
 
                 CDB::mapDb.erase(strFile);
             }
@@ -627,7 +614,7 @@ namespace Legacy
                     mi++;
             }
 
-            if (fShutdown)
+            if (config::fShutdown)
             {
                 char** listp;
                 if (CDB::mapFileUseCount.empty())
@@ -641,9 +628,9 @@ namespace Legacy
 
 
     /* Rewrites a database file by copying all contents */
-    bool CDB::DBRewrite(const std::string& strFile, const std::string& strSkip)
+    bool CDB::DBRewrite(const std::string& strFile, const char* pszSkip)
     {
-        if (!fShutdown)
+        if (!config::fShutdown)
         {
             { /* Begin lock scope */
                 std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db); 
@@ -656,7 +643,8 @@ namespace Legacy
                     CDB::dbenv.lsn_reset(strFile.c_str(), 0);
                     CDB::mapFileUseCount.erase(strFile);
 
-                    bool fSuccess = true;
+                    bool fOpenSuccess = true;
+                    bool fProcessSuccess = true;
                     debug::log(0, "Rewriting %s...\n", strFile.c_str());
 
                     /* Define temporary file name where copy will be written */
@@ -665,7 +653,7 @@ namespace Legacy
                     /* Surround usage of db with extra {} */
                     { 
                         CDB dbToRewrite(strFile.c_str(), "r");
-                        std::unique_ptr<Db> pdbCopy(Db(&CDB::dbenv, 0));
+                        Db* pdbCopy = new Db(&CDB::dbenv, 0);
 
                         /* Open database handle to temp file */
                         int ret = pdbCopy->open(nullptr,            // Txn pointer
@@ -677,13 +665,13 @@ namespace Legacy
                         if (ret > 0)
                         {
                             debug::log(0, "Cannot create database file %s\n", strFileRes.c_str());
-                            fSuccess = false;
+                            fOpenSuccess = false;
                         }
 
                         auto pcursor = dbToRewrite.GetCursor();
 
                         if (pcursor != nullptr)
-                            while (fSuccess)
+                            while (fProcessSuccess)
                             {
                                 CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
                                 CDataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
@@ -701,16 +689,16 @@ namespace Legacy
                                 {
                                     /* Error reading cursor */
                                     pcursor->close();
-                                    fSuccess = false;
+                                    fProcessSuccess = false;
                                     break;
                                 }
 
-                                /* Skip any key value defined by strSkip argument */
-                                if (strSkip.size() > 0 && ssKey.compare(0, strSkip.size(), strSkip) == 0)
+                                /* Skip any key value defined by pszSkip argument */
+                                if (pszSkip != nullptr && strncmp(&ssKey[0], pszSkip, std::min(ssKey.size(), strlen(pszSkip))) == 0)
                                     continue;
 
                                 /* Don't copy the version, instead use latest version */
-                                if (ssKey.compare(0, 7, "version") == 0)
+                                if (strncmp(&ssKey[0], "version", 7) == 0)
                                 {
                                     /* Update version */
                                     ssValue.clear();
@@ -724,39 +712,41 @@ namespace Legacy
                                 int ret2 = pdbCopy->put(nullptr, &datKey, &datValue, DB_NOOVERWRITE);
 
                                 if (ret2 > 0)
-                                    fSuccess = false;
+                                    fProcessSuccess = false;
                             }
 
-                        if (fSuccess)
+                        if (fOpenSuccess)
                         {
                             dbToRewrite.Close();
                             CloseDb(strFile);
 
                             if (pdbCopy->close(0) != 0)
-                                fSuccess = false;
+                                fProcessSuccess = false;
+
+                            delete pdbCopy;
                         }
                     }
 
-                    if (fSuccess)
+                    if (fProcessSuccess)
                     {
                         /* Remove original database file */
                         Db dbA(&CDB::dbenv, 0);
                         if (dbA.remove(strFile.c_str(), nullptr, 0) != 0)
-                            fSuccess = false;
+                            fProcessSuccess = false;
                     }
 
-                    if (fSuccess)
+                    if (fProcessSuccess)
                     {
                         /* Rename temp file to original file name */
                         Db dbB(&CDB::dbenv, 0);
                         if (dbB.rename(strFileRes.c_str(), nullptr, strFile.c_str(), 0) != 0)
-                            fSuccess = false;
+                            fProcessSuccess = false;
                     }
 
-                    if (!fSuccess)
+                    if (!fProcessSuccess)
                         debug::log(0, "Rewriting of %s FAILED!\n", strFile.c_str());
 
-                    return fSuccess;
+                    return fProcessSuccess;
                 }
             } /* End lock scope */
         }
@@ -783,7 +773,7 @@ namespace Legacy
         }
 
         /* Use of DB_FORCE should not be necessary after calling dbenv.close() but included in case there is an exception */
-        CDB::dbenv.remove(GetDataDir().c_str(), DB_FORCE);
+        CDB::dbenv.remove(config::GetDataDir().c_str(), DB_FORCE);
     }
 
 }

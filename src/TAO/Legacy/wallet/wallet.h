@@ -32,11 +32,6 @@ ________________________________________________________________________________
 
 #include <Util/include/allocators.h> /* for SecureString */
 
-/************************************************/
-/*                                              */
-/* Needs updates for CBlockIndex, CBlockLocator */
-/*                                              */
-/************************************************/
 
 namespace TAO
 {
@@ -50,7 +45,6 @@ namespace Legacy
 {
     
     /* forward declarations */    
-    class CBlockIndex;
     class CScript;
     class Transaction;
     class CTxIn;
@@ -60,6 +54,7 @@ namespace Legacy
     class COutput;
     class CReserveKey;
     class CWalletDB;
+    class CWalletTx;
 
 
     /** Nexus: Setting to unlock wallet for block minting only **/
@@ -379,22 +374,7 @@ namespace Legacy
          *  @return the default key value
          *
          */
-        inline std::vector<uint8_t> GetDefaultKey() const { return vchDefaultKey; }
-
-
-        /** SetDefaultKey
-         *
-         *  Assigns a new default key to this wallet. The key itself
-         *  should already have been added to the wallet.
-         *
-         *  Wallet also stores the key in the wallet database for file backed wallets.
-         *
-         *  @param[in] vchPubKey The key to make default
-         *
-         *  @return true if setting default key successful
-         *
-         */
-        bool SetDefaultKey(const std::vector<uint8_t> &vchPubKey);
+        inline std::vector<uint8_t> GetDefaultKey() { return vchDefaultKey; }
 
 
         /** GetKeyPool
@@ -457,7 +437,7 @@ namespace Legacy
          *  @return The current total wallet balance
          *
          */
-        int64_t GetBalance() const;
+        int64_t GetBalance();
 
 
         /** GetUnconfirmedBalance
@@ -467,7 +447,7 @@ namespace Legacy
          *  @return The current wallet unconfirmed balance
          *
          */
-        int64_t GetUnconfirmedBalance() const;
+        int64_t GetUnconfirmedBalance();
 
 
         /** GetStake
@@ -477,7 +457,7 @@ namespace Legacy
          *  @return The current wallet stake balance
          *
          */
-        int64_t GetStake() const;
+        int64_t GetStake();
 
 
         /** GetNewMint
@@ -487,7 +467,7 @@ namespace Legacy
          *  @return The current wallet minted balance
          *
          */
-        int64_t GetNewMint() const;
+        int64_t GetNewMint();
 
 
         /** AvailableCoins
@@ -501,7 +481,7 @@ namespace Legacy
          *  @param[in] fOnlyConfirmed Set false to include unconfirmed transactions in output
          *
          **/
-        void AvailableCoins(const uint32_t nSpendTime, std::vector<COutput>& vCoins, const bool fOnlyConfirmed = true) const;
+        void AvailableCoins(const uint32_t nSpendTime, std::vector<COutput>& vCoins, const bool fOnlyConfirmed = true);
 
 
     /*----------------------------------------------------------------------------------------*/
@@ -599,7 +579,10 @@ namespace Legacy
          *  @return The number of transactions added/updated by the scan
          *
          **/
+//TODO replace CBlockIndex
+/*
         int ScanForWalletTransactions(Legacy::CBlockIndex* pindexStart, const bool fUpdate = false);
+*/
 
 
         /** ResendWalletTransactions
@@ -652,7 +635,7 @@ namespace Legacy
          *  @return true if this wallet receives balance via this transaction 
          *
          **/
-        bool IsMine(const Transaction& tx) const;
+        bool IsMine(const Transaction& tx);
 
 
         /** IsMine
@@ -665,7 +648,7 @@ namespace Legacy
          *  @return true if the txin sends balance from this wallet 
          *
          **/
-        bool IsMine(const CTxIn& txin) const;
+        bool IsMine(const CTxIn& txin);
 
 
         /** IsMine
@@ -678,7 +661,7 @@ namespace Legacy
          *  @return true if this wallet receives balance via this txout 
          *
          **/
-        bool IsMine(const CTxOut& txout) const;
+        bool IsMine(const CTxOut& txout);
 
 
         /** IsFromMe
@@ -691,7 +674,7 @@ namespace Legacy
          *  @return true if this wallet sends balance via this transaction 
          *
          **/
-        inline bool IsFromMe(const Transaction& tx) const { return (GetDebit(tx) > 0); }
+        inline bool IsFromMe(const Transaction& tx) { return (GetDebit(tx) > 0); }
 
 
     /*----------------------------------------------------------------------------------------*/
@@ -706,7 +689,7 @@ namespace Legacy
          *  @return total transaction debit amount
          *
          **/
-        int64_t GetDebit(const Transaction& tx) const;
+        int64_t GetDebit(const Transaction& tx);
 
 
         /** GetCredit
@@ -720,7 +703,7 @@ namespace Legacy
          *  @return total transaction credit amount
          *
          **/
-        int64_t GetCredit(const Transaction& tx) const;
+        int64_t GetCredit(const Transaction& tx);
 
 
         /** GetChange
@@ -732,7 +715,7 @@ namespace Legacy
          *  @return total transaction change amount
          *
          **/
-        int64_t GetChange(const Transaction& tx) const;
+        int64_t GetChange(const Transaction& tx);
 
 
         /** GetDebit
@@ -748,7 +731,7 @@ namespace Legacy
          *  @return debit amount to this wallet from the given tx input
          *
          **/
-        int64_t GetDebit(const CTxIn& txin) const;
+        int64_t GetDebit(const CTxIn& txin);
 
 
         /** GetCredit
@@ -763,7 +746,7 @@ namespace Legacy
          *  @return credit amount to this wallet from the given tx output
          *
          **/
-        int64_t GetCredit(const CTxOut& txout) const;
+        int64_t GetCredit(const CTxOut& txout);
 
 
         /** GetChange
@@ -778,7 +761,7 @@ namespace Legacy
          *  @return change amount to this wallet from the given tx output
          *
          **/
-        int64_t GetChange(const CTxOut& txout) const;
+        int64_t GetChange(const CTxOut& txout);
 
 
         /** IsChange
@@ -791,7 +774,7 @@ namespace Legacy
          *  @return true if this is a change output
          *
          **/
-        bool IsChange(const CTxOut& txout) const;
+        bool IsChange(const CTxOut& txout);
 
 
     /*----------------------------------------------------------------------------------------*/
@@ -848,17 +831,32 @@ namespace Legacy
 
         /** AddCoinstakeInputs
          *
-         *  Add inputs to the coinstake txin for a coinstake transaction 
+         *  Add inputs to the coinstake txin for a coinstake block 
          * 
-         *  @param[in,out] txNew Transaction to process
+         *  @param[in,out] block Target block to add coinstake inputs
          *
          *  @return true if coinstake inputs successfully added
          *
          **/
-        bool AddCoinstakeInputs(Transaction& txNew);
+        bool AddCoinstakeInputs(TAO::Ledger::Block& block);
 
 
     private:
+        /** SetDefaultKey
+         *
+         *  Assigns a new default key to this wallet. The key itself
+         *  should already have been added to the wallet.
+         *
+         *  Wallet also stores the key in the wallet database for file backed wallets.
+         *
+         *  @param[in] vchPubKey The key to make default
+         *
+         *  @return true if setting default key successful
+         *
+         */
+        bool SetDefaultKey(const std::vector<uint8_t> &vchPubKey);
+
+
     /*----------------------------------------------------------------------------------------*/
     /*  Load Wallet operations - require CWalletDB declared friend                            */
     /*----------------------------------------------------------------------------------------*/
@@ -959,10 +957,15 @@ namespace Legacy
          *
          *  @param[out] nValueRet Total value of selected unspent txouts in the result set
          *
+         *  @param[in] strAccount (optional) Only include outputs for this account label, "default" for wallet default account
+         *
+         *  @param[in] nMinDepth (optional) Only include outputs with at least this many confirms
+         *
          *  @return true if result set was successfully populated
          *
          **/
-        bool SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::set<std::pair<const CWalletTx&,uint32_t> >& setCoinsRet, int64_t& nValueRet) const;
+        bool SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::set<std::pair<const CWalletTx*, uint32_t> >& setCoinsRet, 
+                        int64_t& nValueRet, const std::string strAccount = "*", const int nMinDepth = 1);
 
 
         /** SelectCoinsMinConf
@@ -983,11 +986,14 @@ namespace Legacy
          *
          *  @param[out] nValueRet Total value of selected unspent txouts in the result set
          *
+         *  @param[in] strAccount (optional) Only include outputs for this account label, "default" for wallet default account
+         *
          *  @return true if script was successfully added
          *
          **/
         bool SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const int nConfMine, const int nConfTheirs, 
-                                std::set<std::pair<const CWalletTx&, uint32_t> >& setCoinsRet, int64_t& nValueRet) const;
+                                std::set<std::pair<const CWalletTx*, uint32_t> >& setCoinsRet, 
+                                int64_t& nValueRet, const std::string strAccount = "*");
 
     };
 

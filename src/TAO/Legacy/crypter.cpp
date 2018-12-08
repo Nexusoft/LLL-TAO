@@ -31,13 +31,21 @@ namespace Legacy
     CCrypter::CCrypter(const CCrypter &c) 
     {
         if (c.IsKeySet())
-            SetKey(c.chKey, c.chIV);
+        {
+            mlock(&chKey[0], sizeof chKey);
+            mlock(&chIV[0], sizeof chIV);
+
+            memcpy(&chKey[0], &c.chKey[0], sizeof chKey);
+            memcpy(&chIV[0], &c.chIV[0], sizeof chIV);
+
+            fKeySet = true;
+        }
         else
             fKeySet = false;
     }
 
 
-     /* Copy assignment operator */
+    /* Copy assignment operator */
     CCrypter& CCrypter::operator= (const CCrypter &rhs)
     {
         if (this != &rhs)
@@ -46,7 +54,15 @@ namespace Legacy
                 CleanKey();
 
             if (rhs.IsKeySet())
-                SetKey(rhs.chKey, rhs.chIV);
+            {
+                mlock(&chKey[0], sizeof chKey);
+                mlock(&chIV[0], sizeof chIV);
+
+                memcpy(&chKey[0], &rhs.chKey[0], sizeof chKey);
+                memcpy(&chIV[0], &rhs.chIV[0], sizeof chIV);
+
+                fKeySet = true;
+            }
         }
 
         return *this;
@@ -188,7 +204,7 @@ namespace Legacy
 
     
     /* Function to encrypt a private key using a master key and IV pair. */
-    bool EncryptSecret(const CKeyingMaterial& vMasterKey, const CSecret &vchPlaintext, const uint576_t& nIV, std::vector<uint8_t> &vchCiphertext)
+    bool EncryptSecret(const CKeyingMaterial& vMasterKey, const LLC::CSecret &vchPlaintext, const uint576_t& nIV, std::vector<uint8_t> &vchCiphertext)
     {
         CCrypter cKeyCrypter;
 
@@ -205,7 +221,7 @@ namespace Legacy
 
 
     /* Function to encrypt a private key using a master key and IV pair. */
-    bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<uint8_t>& vchCiphertext, const uint576_t& nIV, CSecret& vchPlaintext)
+    bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<uint8_t>& vchCiphertext, const uint576_t& nIV, LLC::CSecret& vchPlaintext)
     {
         CCrypter cKeyCrypter;
 

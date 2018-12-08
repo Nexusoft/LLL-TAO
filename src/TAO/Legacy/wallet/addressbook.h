@@ -77,6 +77,18 @@ namespace Legacy
         CAddressBook(CWallet& walletIn) : addressBookWallet(walletIn) {}
 
 
+        /** HasAddress
+         *
+         *  Checks whether this address book has an entry for a given address.
+         *
+         *  @param[in] address The Nexus address to check
+         *
+         *  @return true if address is in the address book
+         *
+         **/
+        inline bool HasAddress(const NexusAddress& address) { return mapAddressBook.count(address) > 0; }
+
+
         /** GetAddressBookName
          *
          *  Retrieves the name (label) associated with an address.
