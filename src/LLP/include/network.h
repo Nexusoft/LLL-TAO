@@ -231,55 +231,86 @@ namespace LLP
             int64_t nLastTry;
     };
 
-
-    /** Extended statistics about a CAddress */
-    class CAddrInfo : public CAddress
+    enum ConnectState
     {
-    private:
+        NEW        = (1 << 0),
+        FAILED     = (1 << 1),
+        DROPPED    = (1 << 2),
+        CONNECTED  = (1 << 3)
+    };
 
-        /* Who Gave us this Address. */
-        CNetAddr source;
-
-
-        /* The last time this connection was seen. */
-        uint32_t nLastSuccess;
-
-
-        /* The last time this node was tried. */
-        uint32_t nLastAttempt;
+    #define CONNECT_FLAGS_ALL ConnectState::NEW       | \
+                              ConnectState::FAILED    | \
+                              ConnectState::DROPPED   | \
+                              ConnectState::CONNECTED
 
 
-        /* Number of attempts to connect since last try. */
-        uint32_t nAttempts;
+    /** CAddressInfo
+     *
+     *  This is a basic struct for keeping statistics on addresses and is used
+     *  for handling and tracking connections in a meaningful way
+     *
+     **/
+    struct CAddressInfo
+    {
+
+        /** CAddressInfo
+         *
+         *  Default constructor
+         *
+         *  @param[in] addr The address to initalize associated hash
+         *
+         **/
+        CAddressInfo(const CAddress &addr);
+        CAddressInfo();
 
 
+        /** ~CAddressInfo
+         *
+         *  Default destructor
+         *
+         **/
+        ~CAddressInfo();
 
-    public:
 
+        /* Serialization */
         IMPLEMENT_SERIALIZE(
-            CAddress* pthis = (CAddress*)(this);
-            READWRITE(*pthis);
-            READWRITE(source);
-            READWRITE(nLastSuccess);
-            READWRITE(nAttempts);
+            READWRITE(nLastSeen);
+            READWRITE(nSession);
+            READWRITE(nConnected);
+            READWRITE(nDropped);
+            READWRITE(nFailed);
+            READWRITE(nFails);
+            READWRITE(nLatency);
         )
 
-        void Init()
-        {
-            nLastSuccess = 0;
-            nLastAttempt = 0;
-            nAttempts    = 0;
-        }
 
-        CAddrInfo(const CAddress &addrIn, const CNetAddr &addrSource) : CAddress(addrIn), source(addrSource)
-        {
-            Init();
-        }
+        /** Init
+         *
+         *  Initalizes stats to zero.
+         *
+         **/
+        void Init();
 
-        CAddrInfo() : CAddress(), source()
-        {
-            Init();
-        }
+
+        /** Score
+         *
+         *  Calculates a score based on stats. Lower is better
+         *
+         **/
+        uint32_t Score() const;
+
+        uint64_t nHash;       //hash associated with CAddress
+        int64_t  nLastSeen;   //unified time last seen
+        int64_t  nSession;    //total time since connected
+        uint32_t nConnected;  //total number of successful connections
+        uint32_t nDropped;    //total number of dropped connections
+        uint32_t nFailed;     //total number of failed connections
+        uint32_t nFails;      //consecutive number of failed connections
+        uint32_t nLatency;    //the latency experienced by the connection
+        uint8_t  nState;      //the flag for the state of connection
+
+        friend bool operator<(const CAddressInfo &info1, const CAddressInfo &info2);
     };
 
 

@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/hosts.h>
 #include <LLP/include/inv.h>
+#include <LLP/include/global.h>
 #include <LLP/types/legacy.h>
 #include <LLP/templates/events.h>
 
@@ -169,6 +170,8 @@ namespace LLP
                     strReason = "Forced";
                     break;
             }
+
+            LEGACY_SERVER->cAddressManager.AddAddress(GetAddress(), ConnectState::DROPPED);
 
             debug::log(1, "xxxxx %s Node %s Disconnected (%s) at Timestamp %" PRIu64 "\n", fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), strReason.c_str(), UnifiedTimestamp());
 
@@ -325,6 +328,9 @@ namespace LLP
             uint32_t nLatency = mapLatencyTracker[nonce].ElapsedMilliseconds();
             mapLatencyTracker.erase(nonce);
 
+            /* Set the latency used for address manager within server */
+            LEGACY_SERVER->cAddressManager.SetLatency(nLatency, GetAddress());
+
             /* Debug Level 3: output Node Latencies. */
             debug::log(3, "***** Node %s Latency (Nonce %" PRIu64 " - %u ms)\n", addrThisNode.ToString().c_str(), nonce, nLatency);
         }
@@ -393,6 +399,8 @@ namespace LLP
                 return debug::error("***** Node message addr size() = %d... Dropping Connection", vAddr.size());
             }
 
+            /* Set the latency used for address manager within server */
+            LEGACY_SERVER->cAddressManager.AddAddress(vAddr);
 
         }
 

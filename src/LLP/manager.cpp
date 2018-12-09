@@ -21,60 +21,6 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    bool operator<(const CAddressInfo &info1, const CAddressInfo &info2)
-    {
-        return info1.Score() < info2.Score();
-    }
-
-
-    CAddressInfo::CAddressInfo(const CAddress &addr)
-    : nHash(addr.GetHash())
-    {
-        Init();
-    }
-
-
-    CAddressInfo::CAddressInfo()
-    : nHash(0)
-    {
-        Init();
-    }
-
-
-    CAddressInfo::~CAddressInfo() { }
-
-
-    void CAddressInfo::Init()
-    {
-        nLastSeen = 0;
-        nSession = 0;
-        nConnected = 0;
-        nDropped = 0;
-        nFailed = 0;
-        nFails = 0;
-        nLatency = 0;
-    }
-
-
-    /*  Calculates a score based on stats. Lower is better */
-    uint32_t CAddressInfo::Score() const
-    {
-        uint32_t score = 0;
-
-        //add up the bad stats
-        score += nDropped;
-        score += nFailed * 2;
-        score += nFails  * 3;
-        score += nLatency / 10;
-
-        //divide by the good stats
-        score = score / (nConnected + 1);
-
-        //divide the score by the total session, in hours
-        return score / (nSession / 3600000) + 1;
-    }
-
-
     /* Default constructor */
     CAddressManager::CAddressManager()
     : mapAddr()
@@ -115,7 +61,7 @@ namespace LLP
 
 
     /*  Adds the address to the manager and sets the connect state for that address */
-    void CAddressManager::AddAddress(const CAddress &addr, const uint8_t &state)
+    void CAddressManager::AddAddress(const CAddress &addr, const uint8_t state)
     {
         uint64_t hash = addr.GetHash();
 
@@ -132,6 +78,9 @@ namespace LLP
 
         switch(state)
         {
+        case ConnectState::NEW:
+            break;
+
         case ConnectState::FAILED:
             ++(pInfo->nFailed);
             ++(pInfo->nFails);
@@ -164,8 +113,17 @@ namespace LLP
             break;
         }
 
-        debug::log(1, FUNCTION "%s - %lu, %u %u %u\n", __PRETTY_FUNCTION__, addr.ToString().c_str(),
-         pInfo->nSession, pInfo->nFails, pInfo->nConnected, pInfo->nDropped);
+        debug::log(5, FUNCTION "%s - S=%lu, C=%u, D=%u, F=%u, L=%u, TC=%u, TD=%u, TF=%u, size=%u\n", __PRETTY_FUNCTION__, addr.ToString().c_str(),
+         pInfo->nSession, pInfo->nConnected, pInfo->nDropped, pInfo->nFailed, pInfo->nLatency, get_info(ConnectState::CONNECTED).size(),
+         get_info(ConnectState::DROPPED).size(), get_info(ConnectState::FAILED).size(), mapAddr.size());
+    }
+
+    /*  Adds the address to the manager and sets the connect state for that address */
+    void CAddressManager::AddAddress(const std::vector<CAddress> &addrs, const uint8_t state)
+    {
+        debug::log(5, FUNCTION "CAddressManager\n", __PRETTY_FUNCTION__);
+        for(uint32_t i = 0; i < addrs.size(); ++i)
+            AddAddress(addrs[i], state);
     }
 
 
@@ -176,9 +134,12 @@ namespace LLP
         std::unique_lock<std::mutex> lk(mutex);
 
         auto it = mapInfo.find(addr.GetHash());
-
         if(it != mapInfo.end())
+        {
             it->second.nLatency = lat;
+            //debug::log(5, FUNCTION "%s - S=%lu, C=%u, D=%u, F=%u, L=%u\n", __PRETTY_FUNCTION__, addr.ToString().c_str(),
+            // it->second.nSession, it->second.nConnected, it->second.nDropped, it->second.nFailed, it->second.nLatency);
+        }
     }
 
 
@@ -187,13 +148,15 @@ namespace LLP
     {
         std::unique_lock<std::mutex> lk(mutex);
 
-        if(!mapInfo.size())
-            return false;
 
         //put unconnected address info scores into a vector and sort
-        uint8_t flags = CONNECT_FLAGS_DEFAULT ^ ConnectState::CONNECTED;
+        uint8_t flags = ConnectState::NEW | ConnectState::FAILED | ConnectState::DROPPED;
 
         std::vector<CAddressInfo> vInfo = get_info(flags);
+
+        if(!vInfo.size())
+            return false;
+
         std::sort(vInfo.begin(), vInfo.end());
 
         //get a hash from the timestamp
@@ -206,12 +169,16 @@ namespace LLP
         uint8_t size = static_cast<uint8_t>(vInfo.size() - 1);
         uint8_t i = std::min(byte, size);
 
+        //debug::log(5, FUNCTION "Selected: %u %u %u\n", __PRETTY_FUNCTION__, byte, size, i);
+
         //find the address from the info and return it if it exists
         auto it = mapAddr.find(vInfo[i].nHash);
         if(it == mapAddr.end())
             return false;
 
         addr = it->second;
+
+        //debug::log(5, FUNCTION "Selected: %s\n", __PRETTY_FUNCTION__, addr.ToString().c_str());
 
         return true;
     }

@@ -111,7 +111,7 @@ namespace LLP
 
 
         /** Get the current IP address of this node. **/
-        CAddress GetAddress();
+        //CAddress GetAddress();
 
 
         /** Non-Blocking Packet reader to build a packet from TCP Connection.

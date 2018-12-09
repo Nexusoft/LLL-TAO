@@ -14,8 +14,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_MANAGER_H
 #define NEXUS_LLP_INCLUDE_MANAGER_H
 
+#include <LLD/include/address.h>
 #include <LLP/include/network.h>
 #include <Util/templates/serialize.h>
+
 
 #include <unordered_map>
 #include <vector>
@@ -25,87 +27,6 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    enum ConnectState
-    {
-        NEW        = (1 << 0),
-        FAILED     = (1 << 1),
-        DROPPED    = (1 << 2),
-        CONNECTED  = (1 << 3)
-    };
-
-    #define CONNECT_FLAGS_DEFAULT ConnectState::NEW       | \
-                                  ConnectState::FAILED    | \
-                                  ConnectState::DROPPED   | \
-                                  ConnectState::CONNECTED
-
-
-    /** CAddressInfo
-     *
-     *  This is a basic struct for keeping statistics on addresses and is used
-     *  for handling and tracking connections in a meaningful way
-     *
-     **/
-    struct CAddressInfo
-    {
-
-        /** CAddressInfo
-         *
-         *  Default constructor
-         *
-         *  @param[in] addr The address to initalize associated hash
-         *
-         **/
-        CAddressInfo(const CAddress &addr);
-        CAddressInfo();
-
-
-        /** ~CAddressInfo
-         *
-         *  Default destructor
-         *
-         **/
-        ~CAddressInfo();
-
-
-        /* Serialization */
-        IMPLEMENT_SERIALIZE(
-            READWRITE(nLastSeen);
-            READWRITE(nSession);
-            READWRITE(nConnected);
-            READWRITE(nDropped);
-            READWRITE(nFailed);
-            READWRITE(nFails);
-            READWRITE(nLatency);
-        )
-
-
-        /** Init
-         *
-         *  Initalizes stats to zero.
-         *
-         **/
-        void Init();
-
-
-        /** Score
-         *
-         *  Calculates a score based on stats. Lower is better
-         *
-         **/
-        uint32_t Score() const;
-
-        uint64_t nHash;       //hash associated with CAddress
-        int64_t  nLastSeen;   //unified time last seen
-        int64_t  nSession;    //total time since connected
-        uint32_t nConnected;  //total number of successful connections
-        uint32_t nDropped;    //total number of dropped connections
-        uint32_t nFailed;     //total number of failed connections
-        uint32_t nFails;      //consecutive number of failed connections
-        uint32_t nLatency;    //the latency experienced by the connection
-        uint8_t  nState;      //the flag for the state of connection
-
-        friend bool operator<(const CAddressInfo &info1, const CAddressInfo &info2);
-    };
 
 
     /** CAddressManager
@@ -142,7 +63,7 @@ namespace LLP
          *  @return A list of addresses in the manager
          *
          **/
-        std::vector<CAddress> GetAddresses(const uint8_t flags = CONNECT_FLAGS_DEFAULT);
+        std::vector<CAddress> GetAddresses(const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
         /** GetInfo
@@ -152,7 +73,7 @@ namespace LLP
          *  @return A list of address info in the manager
          *
          **/
-        std::vector<CAddressInfo> GetInfo(const uint8_t flags = CONNECT_FLAGS_DEFAULT);
+        std::vector<CAddressInfo> GetInfo(const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
         /** AddAddress
@@ -165,7 +86,20 @@ namespace LLP
          *  @param[in] state The state of the connection for the address
          *
          **/
-        void AddAddress(const CAddress &addr, const uint8_t &state = ConnectState::NEW);
+        void AddAddress(const CAddress &addr, const uint8_t state = ConnectState::NEW);
+
+
+        /** AddAddress
+         *
+         *  Adds the addresses to the manager and sets the connect state for that
+         *  address
+         *
+         *  @param[in] addrs The addresses to add
+         *
+         *  @param[in] state The state of the connection for the address
+         *
+         **/
+        void AddAddress(const std::vector<CAddress> &addrs, const uint8_t state = ConnectState::NEW);
 
 
         /** SetLatency
@@ -200,7 +134,10 @@ namespace LLP
          *  by flags
          *
          **/
-        std::vector<CAddressInfo> get_info(const uint8_t flags = CONNECT_FLAGS_DEFAULT) const;
+
+        LLD::AddressDB *addrDatabase;
+
+        std::vector<CAddressInfo> get_info(const uint8_t flags = CONNECT_FLAGS_ALL) const;
 
         std::unordered_map<uint64_t, CAddress> mapAddr;
         std::unordered_map<uint64_t, CAddressInfo> mapInfo;

@@ -538,4 +538,59 @@ namespace LLP
     {
         port = portIn;
     }
+
+    bool operator<(const CAddressInfo &info1, const CAddressInfo &info2)
+    {
+        return info1.Score() < info2.Score();
+    }
+
+
+    CAddressInfo::CAddressInfo(const CAddress &addr)
+    : nHash(addr.GetHash())
+    {
+        Init();
+    }
+
+
+    CAddressInfo::CAddressInfo()
+    : nHash(0)
+    {
+        Init();
+    }
+
+
+    CAddressInfo::~CAddressInfo() { }
+
+
+    void CAddressInfo::Init()
+    {
+        nLastSeen = 0;
+        nSession = 0;
+        nConnected = 0;
+        nDropped = 0;
+        nFailed = 0;
+        nFails = 0;
+        nLatency = 0;
+        nState = static_cast<uint8_t>(ConnectState::NEW);
+    }
+
+
+    /*  Calculates a score based on stats. Lower is better */
+    uint32_t CAddressInfo::Score() const
+    {
+        uint32_t score = 0;
+
+        //add up the bad stats
+        score += nDropped;
+        score += nFailed * 2;
+        score += nFails  * 3;
+        score += nLatency / 10;
+
+        //divide by the good stats
+
+        score = score / (nConnected == 0 ? 1 : nConnected);
+
+        //divide the score by the total session, in hours
+        return score / ((nSession / 3600000) + 1);
+    }
 }

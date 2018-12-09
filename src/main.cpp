@@ -41,6 +41,7 @@ namespace LLD
 namespace LLP
 {
     Server<TritiumNode>* TRITIUM_SERVER;
+    Server<LegacyNode> *LEGACY_SERVER;
 }
 
 
@@ -83,14 +84,21 @@ int main(int argc, char** argv)
 
 
     /* Initialize the Legacy Server. */
-    LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(config::GetArg("-port", config::fTestNet ? 8888 : 9888), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
+    //LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(config::GetArg("-port", config::fTestNet ? 8888 : 9888), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
+    //if(config::mapMultiArgs["-addnode"].size() > 0)
+    //{
+    //    for(auto node : config::mapMultiArgs["-addnode"])
+    //    {
+    //        LLP::CAddress addr = LLP::CAddress(LLP::CService(debug::strprintf("%s:%i", node.c_str(), config::GetArg("-port", config::fTestNet ? 8888 : 9888)).c_str(), false));
+    //        LLP::TRITIUM_SERVER->AddAddress(addr);
+    //    }
+    //}
+
+    LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(config::GetArg("-port", config::fTestNet ? 8323 : 9323), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
     if(config::mapMultiArgs["-addnode"].size() > 0)
     {
         for(auto node : config::mapMultiArgs["-addnode"])
-        {
-            LLP::CAddress addr = LLP::CAddress(LLP::CService(debug::strprintf("%s:%i", node.c_str(), config::GetArg("-port", config::fTestNet ? 8888 : 9888)).c_str(), false));
-            LLP::TRITIUM_SERVER->AddAddress(addr);
-        }
+            LLP::LEGACY_SERVER->AddConnection(node, config::GetArg("-port", config::fTestNet ? 8323 : 9323));
     }
 
 

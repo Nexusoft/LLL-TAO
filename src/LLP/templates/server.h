@@ -196,6 +196,8 @@ namespace LLP
          **/
         void Manager()
         {
+            CAddress addr;
+
             /* Loop connections. */
             while(!config::fShutdown)
             {
@@ -203,7 +205,7 @@ namespace LLP
 
                 { LOCK(MUTEX);
 
-                    CAddress addr;
+
                     uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
 
                     /*pick a weighted random priority from a sorted list of addresses */
