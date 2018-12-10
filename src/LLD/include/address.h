@@ -24,7 +24,6 @@ ________________________________________________________________________________
 
 namespace LLD
 {
-
     class AddressDB : public SectorDatabase<BinaryFileMap, BinaryLRU>
     {
     public:
@@ -32,24 +31,24 @@ namespace LLD
         AddressDB(const char* pszMode="r+")
         : SectorDatabase("addr", pszMode) { }
 
-        bool WriteAddress(LLP::CAddress addr)
+        bool WriteAddress(uint32_t key, LLP::Address addr)
         {
-            return Write(std::string("address"), addr);
+            return Write(std::make_pair(std::string("address"), key), addr);
         }
 
-        bool ReadAddress(LLP::CAddress &addr)
+        bool ReadAddress(uint32_t key, LLP::Address &addr)
         {
-            return Read(std::string("address"), addr);
+            return Read(std::make_pair(std::string("address"), key), addr);
         }
 
-        bool WriteInfo(LLP::CAddressInfo info)
+        bool WriteInfo(uint32_t key, LLP::AddressInfo info)
         {
-            return Write(std::string("info"), info);
+            return Write(std::make_pair(std::string("info"), key), info);
         }
 
-        bool ReadInfo(LLP::CAddressInfo &info)
+        bool ReadInfo(uint32_t key, LLP::AddressInfo &info)
         {
-            return Read(std::string("address"), info);
+            return Read(std::make_pair(std::string("address"), key), info);
         }
     };
 }

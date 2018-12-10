@@ -18,8 +18,8 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    class CService;
-    class CAddress;
+    class Service;
+    class Address;
 
     /* Base Template class to handle outgoing / incoming LLP data for both Client and Server. */
     class Socket
@@ -35,7 +35,7 @@ namespace LLP
     public:
 
         /** The address of this connection. */
-        CAddress addr;
+        Address addr;
 
 
         /** The default constructor. **/
@@ -43,7 +43,7 @@ namespace LLP
 
 
         /** The socket constructor. **/
-        Socket(int nSocketIn, CAddress addrIn) : nSocket(nSocketIn), nError(0), addr(addrIn) {}
+        Socket(int nSocketIn, Address addrIn) : nSocket(nSocketIn), nError(0), addr(addrIn) {}
 
 
         /** Constructor for Address
@@ -51,7 +51,7 @@ namespace LLP
          *  @param[in] addrConnect The address to connect socket to
          *
          **/
-        Socket(CService addrDest);
+        Socket(Service addrDest);
 
 
 
@@ -74,7 +74,7 @@ namespace LLP
          *  @return true if the socket is in a valid state.
          *
          **/
-        bool Connect(CService addrDest, int nTimeout = 5000);
+        bool Connect(Service addrDest, int nTimeout = 5000);
 
 
         /** Available

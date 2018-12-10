@@ -43,7 +43,7 @@ extern int UNIFIED_AVERAGE_OFFSET;
 /** Vector to Contain list of Unified Time Offset from Time Seeds, Seed Nodes, and Peers. **/
 extern std::vector<int> UNIFIED_TIME_DATA;
 
-extern std::vector<Net::CAddress> SEED_NODES;
+extern std::vector<Net::Address> SEED_NODES;
 
 
 
@@ -71,7 +71,7 @@ int GetUnifiedAverage();
     Checks current time against itself, if there is too much drift, your local offset adjusts to Unified Average. **/
 void ThreadUnifiedSamples(void* parg);
 
-std::vector<Net::CAddress> DNS_Lookup(const std::vector<std::string>& DNS_Seed);
+std::vector<Net::Address> DNS_Lookup(const std::vector<std::string>& DNS_Seed);
 
 
 #endif

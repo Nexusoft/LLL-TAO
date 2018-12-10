@@ -21,11 +21,11 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    extern CAddress addrMyNode; //TODO: move this to a better location
+    extern Address addrMyNode; //TODO: move this to a better location
 
     class LegacyNode : public BaseConnection<LegacyPacket>
     {
-        CAddress addrThisNode;
+        Address addrThisNode;
 
     public:
 
@@ -92,7 +92,7 @@ namespace LLP
         * @param[in] addr The address to send to nodes
         *
         */
-        void PushAddress(const CAddress& addr);
+        void PushAddress(const Address& addr);
 
 
         /** Send the DoS Score to DDOS Filte
@@ -111,7 +111,7 @@ namespace LLP
 
 
         /** Get the current IP address of this node. **/
-        //CAddress GetAddress();
+        //Address GetAddress();
 
 
         /** Non-Blocking Packet reader to build a packet from TCP Connection.

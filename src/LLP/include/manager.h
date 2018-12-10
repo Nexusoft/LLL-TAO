@@ -14,8 +14,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_MANAGER_H
 #define NEXUS_LLP_INCLUDE_MANAGER_H
 
-#include <LLD/include/address.h>
-#include <LLP/include/network.h>
+#include <LLP/include/address.h>
+#include <LLP/include/addressinfo.h>
 #include <Util/templates/serialize.h>
 
 
@@ -23,37 +23,42 @@ ________________________________________________________________________________
 #include <vector>
 #include <stdint.h>
 #include <mutex>
+#include <memory>
 
+/* forward declarations */
+namespace LLD
+{
+    class AddressDB;
+}
 
 namespace LLP
 {
 
-
-    /** CAddressManager
+    /** AddressManager
      *
      *  This class is a shared resource that servers can utilize that will
      *  manage state information on addresses used for selecting good connections
      *  to make
      *
      **/
-    class CAddressManager
+    class AddressManager
     {
     public:
 
-        /** CAddressManager
+        /** AddressManager
          *
          *  Default constructor
          *
          */
-        CAddressManager();
+        AddressManager();
 
 
-        /** CAddressManager
+        /** AddressManager
          *
          *  Default destructor
          *
          */
-        ~CAddressManager();
+        ~AddressManager();
 
 
         /** GetAddresses
@@ -63,7 +68,7 @@ namespace LLP
          *  @return A list of addresses in the manager
          *
          **/
-        std::vector<CAddress> GetAddresses(const uint8_t flags = CONNECT_FLAGS_ALL);
+        std::vector<Address> GetAddresses(const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
         /** GetInfo
@@ -73,7 +78,7 @@ namespace LLP
          *  @return A list of address info in the manager
          *
          **/
-        std::vector<CAddressInfo> GetInfo(const uint8_t flags = CONNECT_FLAGS_ALL);
+        std::vector<AddressInfo> GetInfo(const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
         /** AddAddress
@@ -86,7 +91,7 @@ namespace LLP
          *  @param[in] state The state of the connection for the address
          *
          **/
-        void AddAddress(const CAddress &addr, const uint8_t state = ConnectState::NEW);
+        void AddAddress(const Address &addr, const uint8_t state = ConnectState::NEW);
 
 
         /** AddAddress
@@ -99,7 +104,7 @@ namespace LLP
          *  @param[in] state The state of the connection for the address
          *
          **/
-        void AddAddress(const std::vector<CAddress> &addrs, const uint8_t state = ConnectState::NEW);
+        void AddAddress(const std::vector<Address> &addrs, const uint8_t state = ConnectState::NEW);
 
 
         /** SetLatency
@@ -112,7 +117,7 @@ namespace LLP
          *  @param[in] addr The address in reference to
          *
          **/
-        void SetLatency(uint32_t lat, const CAddress &addr);
+        void SetLatency(uint32_t lat, const Address &addr);
 
 
         /** StochasticSelect
@@ -124,23 +129,34 @@ namespace LLP
          *  @return True is successful, false otherwise
          *
          **/
-        bool StochasticSelect(CAddress &addr);
+        bool StochasticSelect(Address &addr);
 
     private:
+
 
         /** get_info
          *
          *  Helper function to get an array of info on the connected states specified
          *  by flags
          *
+         *  @param[in] flags Specify which types of connections to get the info from.
+         *
          **/
+        std::vector<AddressInfo> get_info(const uint8_t flags = CONNECT_FLAGS_ALL) const;
 
-        LLD::AddressDB *addrDatabase;
 
-        std::vector<CAddressInfo> get_info(const uint8_t flags = CONNECT_FLAGS_ALL) const;
+        /** get_count
+         *
+         *  Helper function to get the number of addresses of the connect type
+         *
+         *  *  @param[in] flags Specify which types of connections to get the info from.
+         *
+         **/
+        uint32_t get_count(const uint8_t flags = CONNECT_FLAGS_ALL) const;
 
-        std::unordered_map<uint64_t, CAddress> mapAddr;
-        std::unordered_map<uint64_t, CAddressInfo> mapInfo;
+        std::unique_ptr<LLD::AddressDB> pDatabase;
+        std::unordered_map<uint64_t, Address> mapAddr;
+        std::unordered_map<uint64_t, AddressInfo> mapInfo;
 
         std::mutex mutex;
     };

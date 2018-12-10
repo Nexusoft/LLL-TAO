@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/manager.h>
+#include <LLD/include/address.h>
 #include <LLC/hash/macro.h>
 #include <LLC/hash/SK.h>
 #include <Util/include/runtime.h>
@@ -22,20 +23,32 @@ namespace LLP
 {
 
     /* Default constructor */
-    CAddressManager::CAddressManager()
-    : mapAddr()
-    , mapInfo() { }
+    AddressManager::AddressManager()
+    : pDatabase(new LLD::AddressDB)
+    , mapAddr()
+    , mapInfo()
+    {
+        if(!pDatabase)
+            debug::error(FUNCTION "Failed to allocate memory for AddressManager\n", __PRETTY_FUNCTION__);
+    }
 
 
     /* Default destructor */
-    CAddressManager::~CAddressManager() { }
+    AddressManager::~AddressManager()
+    {
+        for(auto it = mapAddr.begin(); it != mapAddr.end(); ++it)
+            pDatabase->WriteAddress(it->first, it->second);
+
+        for(auto it = mapInfo.begin(); it != mapInfo.end(); ++it)
+            pDatabase->WriteInfo(it->first, it->second);
+    }
 
 
     /*  Gets a list of addresses in the manager */
-    std::vector<CAddress> CAddressManager::GetAddresses(const uint8_t flags)
+    std::vector<Address> AddressManager::GetAddresses(const uint8_t flags)
     {
-        std::vector<CAddress> vAddr;
-        std::vector<CAddressInfo> vInfo;
+        std::vector<Address> vAddr;
+        std::vector<AddressInfo> vInfo;
 
         std::unique_lock<std::mutex> lk(mutex);
 
@@ -53,7 +66,7 @@ namespace LLP
 
 
     /*  Gets a list of address info in the manager */
-    std::vector<CAddressInfo> CAddressManager::GetInfo(const uint8_t flags)
+    std::vector<AddressInfo> AddressManager::GetInfo(const uint8_t flags)
     {
         std::unique_lock<std::mutex> lk(mutex);
         return get_info(flags);
@@ -61,7 +74,7 @@ namespace LLP
 
 
     /*  Adds the address to the manager and sets the connect state for that address */
-    void CAddressManager::AddAddress(const CAddress &addr, const uint8_t state)
+    void AddressManager::AddAddress(const Address &addr, const uint8_t state)
     {
         uint64_t hash = addr.GetHash();
 
@@ -70,10 +83,10 @@ namespace LLP
         if(mapAddr.find(hash) == mapAddr.end())
         {
             mapAddr[hash] = addr;
-            mapInfo[hash] = CAddressInfo(addr);
+            mapInfo[hash] = AddressInfo(&addr);
         }
 
-        CAddressInfo *pInfo = &mapInfo[hash];
+        AddressInfo *pInfo = &mapInfo[hash];
         int64_t timestamp_ms = UnifiedTimestamp(true);
 
         switch(state)
@@ -114,14 +127,14 @@ namespace LLP
         }
 
         debug::log(5, FUNCTION "%s - S=%lu, C=%u, D=%u, F=%u, L=%u, TC=%u, TD=%u, TF=%u, size=%u\n", __PRETTY_FUNCTION__, addr.ToString().c_str(),
-         pInfo->nSession, pInfo->nConnected, pInfo->nDropped, pInfo->nFailed, pInfo->nLatency, get_info(ConnectState::CONNECTED).size(),
-         get_info(ConnectState::DROPPED).size(), get_info(ConnectState::FAILED).size(), mapAddr.size());
+         pInfo->nSession, pInfo->nConnected, pInfo->nDropped, pInfo->nFailed, pInfo->nLatency,
+         get_count(ConnectState::CONNECTED), get_count(ConnectState::DROPPED), get_count(ConnectState::FAILED), get_count());
     }
 
     /*  Adds the address to the manager and sets the connect state for that address */
-    void CAddressManager::AddAddress(const std::vector<CAddress> &addrs, const uint8_t state)
+    void AddressManager::AddAddress(const std::vector<Address> &addrs, const uint8_t state)
     {
-        debug::log(5, FUNCTION "CAddressManager\n", __PRETTY_FUNCTION__);
+        debug::log(5, FUNCTION "AddressManager\n", __PRETTY_FUNCTION__);
         for(uint32_t i = 0; i < addrs.size(); ++i)
             AddAddress(addrs[i], state);
     }
@@ -129,7 +142,7 @@ namespace LLP
 
     /*  Finds the managed address info and sets the latency experienced by
      *  that address. */
-    void CAddressManager::SetLatency(uint32_t lat, const CAddress &addr)
+    void AddressManager::SetLatency(uint32_t lat, const Address &addr)
     {
         std::unique_lock<std::mutex> lk(mutex);
 
@@ -144,7 +157,7 @@ namespace LLP
 
 
     /*  Select a good address to connect to that isn't already connected. */
-    bool CAddressManager::StochasticSelect(CAddress &addr)
+    bool AddressManager::StochasticSelect(Address &addr)
     {
         std::unique_lock<std::mutex> lk(mutex);
 
@@ -152,7 +165,7 @@ namespace LLP
         //put unconnected address info scores into a vector and sort
         uint8_t flags = ConnectState::NEW | ConnectState::FAILED | ConnectState::DROPPED;
 
-        std::vector<CAddressInfo> vInfo = get_info(flags);
+        std::vector<AddressInfo> vInfo = get_info(flags);
 
         if(!vInfo.size())
             return false;
@@ -186,9 +199,9 @@ namespace LLP
 
     /*  Helper function to get an array of info on the connected states specified
      *  by flags */
-    std::vector<CAddressInfo> CAddressManager::get_info(const uint8_t flags) const
+    std::vector<AddressInfo> AddressManager::get_info(const uint8_t flags) const
     {
-        std::vector<CAddressInfo> addrs;
+        std::vector<AddressInfo> addrs;
         for(auto it = mapInfo.begin(); it != mapInfo.end(); ++it)
         {
             if(it->second.nState & flags)
@@ -196,6 +209,12 @@ namespace LLP
         }
 
         return addrs;
+    }
+
+    /*  Helper function to get the number of addresses of the connect type */
+    uint32_t AddressManager::get_count(const uint8_t flags) const
+    {
+        return static_cast<uint32_t>(get_info(flags).size());
     }
 
 }

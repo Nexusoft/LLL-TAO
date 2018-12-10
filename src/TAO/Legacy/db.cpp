@@ -529,7 +529,7 @@ namespace Legacy
 
         // Read pre-0.6 addr records
 
-        vector<Net::CAddress> vAddr;
+        vector<Net::Address> vAddr;
         vector<vector<uint8_t> > vDelete;
 
         // Get cursor
@@ -552,14 +552,14 @@ namespace Legacy
             ssKey >> strType;
             if (strType == "addr")
             {
-                Net::CAddress addr;
+                Net::Address addr;
                 ssValue >> addr;
                 vAddr.push_back(addr);
             }
         }
         pcursor->close();
 
-        Net::addrman.Add(vAddr, Net::CNetAddr("0.0.0.0"));
+        Net::addrman.Add(vAddr, Net::NetAddr("0.0.0.0"));
         debug::log(0, "Loaded %i addresses\n", Net::addrman.size());
 
         // Note: old records left; we ran into hangs-on-startup

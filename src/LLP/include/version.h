@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_VERSION_H
 #define NEXUS_LLP_INCLUDE_VERSION_H
 
-#include <cstring>
+#include <string>
 
 namespace LLP
 {

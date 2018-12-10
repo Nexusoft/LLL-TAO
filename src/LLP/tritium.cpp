@@ -128,7 +128,7 @@ namespace LLP
                     ssPacket >> nSessionID;
 
                     /* Get your address. */
-                    CAddress addr;
+                    Address addr;
                     ssPacket >> addr;
 
                     /* Check the server if it is set. */
@@ -287,7 +287,7 @@ namespace LLP
                 case GET_ADDRESSES:
                 {
                     /* Grab the connections. */
-                    std::vector<CAddress> vAddr = TRITIUM_SERVER->GetAddresses();
+                    std::vector<Address> vAddr = TRITIUM_SERVER->GetAddresses();
 
                     /* Push the response addresses. */
                     PushMessage(DAT_ADDRESSES, vAddr);
@@ -299,7 +299,7 @@ namespace LLP
                 case DAT_ADDRESSES:
                 {
                     /* De-Serialize the Addresses. */
-                    std::vector<CAddress> vAddr;
+                    std::vector<Address> vAddr;
                     ssPacket >> vAddr;
 
                     /* Add the connections to Tritium Server. */

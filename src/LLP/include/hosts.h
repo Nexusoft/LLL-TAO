@@ -20,9 +20,9 @@ ________________________________________________________________________________
 namespace LLP
 {
     
-    class CAddress;
-    class CNetAddr;
-    class CService;
+    class Address;
+    class NetAddr;
+    class Service;
     
     /** These addresses are the first point of contact on the P2P network
     *  They are established and maintained by the owners of each domain.
@@ -113,15 +113,15 @@ namespace LLP
     
     
     /* The DNS Lookup Routine to find the Nodes that are set as DNS seeds. */
-    std::vector<CAddress> DNS_Lookup(std::vector<std::string> DNS_Seed);
+    std::vector<Address> DNS_Lookup(std::vector<std::string> DNS_Seed);
     
     
     /* Standard Wrapper Function to Interact with cstdlib DNS functions. */
-    bool LookupHost(const char *pszName, std::vector<CNetAddr>& vIP, uint32_t nMaxSolutions = 0, bool fAllowLookup = true);
-    bool LookupHostNumeric(const char *pszName, std::vector<CNetAddr>& vIP, uint32_t nMaxSolutions = 0);
-    bool Lookup(const char *pszName, CService& addr, int portDefault = 0, bool fAllowLookup = true);
-    bool Lookup(const char *pszName, std::vector<CService>& vAddr, int portDefault = 0, bool fAllowLookup = true, uint32_t nMaxSolutions = 0);
-    bool LookupNumeric(const char *pszName, CService& addr, int portDefault = 0);
+    bool LookupHost(const char *pszName, std::vector<NetAddr>& vIP, uint32_t nMaxSolutions = 0, bool fAllowLookup = true);
+    bool LookupHostNumeric(const char *pszName, std::vector<NetAddr>& vIP, uint32_t nMaxSolutions = 0);
+    bool Lookup(const char *pszName, Service& addr, int portDefault = 0, bool fAllowLookup = true);
+    bool Lookup(const char *pszName, std::vector<Service>& vAddr, int portDefault = 0, bool fAllowLookup = true, uint32_t nMaxSolutions = 0);
+    bool LookupNumeric(const char *pszName, Service& addr, int portDefault = 0);
 }
 
 #endif

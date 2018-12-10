@@ -43,8 +43,8 @@ namespace LLP
         uint64_t nLocalServices = 0;
 
         /* Relay Your Address. */
-        CAddress addrMe  = CAddress(CService("0.0.0.0",0));
-        CAddress addrYou = CAddress(CService("0.0.0.0",0));
+        Address addrMe  = Address(Service("0.0.0.0",0));
+        Address addrYou = Address(Service("0.0.0.0",0));
 
         uint32_t nBestHeight = 0; //TODO: Chain State Parameters (Ledger Layer)
 
@@ -353,8 +353,8 @@ namespace LLP
         {
 
             int64_t nTime;
-            CAddress addrMe;
-            CAddress addrFrom;
+            Address addrMe;
+            Address addrFrom;
             uint64_t nServices = 0;
 
 
@@ -388,7 +388,7 @@ namespace LLP
         */
         else if (INCOMING.GetMessage() == "addr")
         {
-            std::vector<CAddress> vAddr;
+            std::vector<Address> vAddr;
             ssMessage >> vAddr;
 
             /* Don't want addr from older versions unless seeding */
@@ -480,7 +480,7 @@ namespace LLP
         /* TODO: Change this Algorithm. */
         else if (INCOMING.GetMessage() == "getaddr")
         {
-            //std::vector<LLP::CAddress> vAddr = Core::pManager->GetAddresses();
+            //std::vector<LLP::Address> vAddr = Core::pManager->GetAddresses();
 
             //PushMessage("addr", vAddr);
         }

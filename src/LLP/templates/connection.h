@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <vector>
 #include <stdio.h>
 
-#include <LLP/include/network.h>
+#include <LLP/include/address.h>
 #include <LLP/packets/packet.h>
 #include <LLP/templates/socket.h>
 #include <LLP/templates/ddos.h>
@@ -32,7 +32,8 @@ namespace LLP
 {
 
     /* Base Template class to handle outgoing / incoming LLP data for both Client and Server. */
-    template<typename PacketType = Packet> class BaseConnection
+    template<typename PacketType = Packet>
+    class BaseConnection
     {
     protected:
 
@@ -137,7 +138,7 @@ namespace LLP
         /* Connect Socket to a Remote Endpoint. */
         bool Connect(std::string strAddress, int nPort)
         {
-            CService addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
+            Service addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
 
             /// debug print
             debug::log(1, NODE "Connecting to %s\n", addrConnect.ToString().c_str());
@@ -158,7 +159,7 @@ namespace LLP
         }
 
         /* Get Address. Returns the address of socket. */
-        CAddress GetAddress()
+        Address GetAddress()
         {
             return SOCKET.addr;
         }

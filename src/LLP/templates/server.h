@@ -19,17 +19,20 @@ ________________________________________________________________________________
 #include <LLP/templates/data.h>
 #include <LLP/include/permissions.h>
 #include <LLP/include/manager.h>
+#include <LLP/include/address.h>
+#include <LLP/include/addressinfo.h>
 
 namespace LLP
 {
 
     /** Base Class to create a Custom LLP Server. Protocol Type class must inherit Connection,
     * and provide a ProcessPacket method. Optional Events by providing GenericEvent method.  */
-    template <class ProtocolType> class Server
+    template <class ProtocolType>
+    class Server
     {
         /* The DDOS variables. Tracks the Requests and Connections per Second
             from each connected address. */
-        std::map<CService,   DDOS_Filter*> DDOS_MAP;
+        std::map<Service,   DDOS_Filter*> DDOS_MAP;
         bool fDDOS, fLISTEN, fMETER;
 
 
@@ -46,10 +49,10 @@ namespace LLP
         std::thread MANAGER;
 
         /* Address manager */
-        CAddressManager cAddressManager;
+        AddressManager cAddressManager;
 
         /* Address of this instance. */
-        CAddress addrThisNode;
+        Address addrThisNode;
 
 
         Server<ProtocolType>(int nPort, int nMaxThreads, int nTimeout = 30, bool isDDOS = false, int cScore = 0, int rScore = 0, int nTimespan = 60, bool fListen = true, bool fMeter = false) :
@@ -94,7 +97,7 @@ namespace LLP
         bool AddConnection(std::string strAddress, int nPort)
         {
             /* Initialize DDOS Protection for Incoming IP Address. */
-            CService addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), false);
+            Service addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), false);
 
             /* Create new DDOS Filter if Needed. */
             if(!DDOS_MAP.count(addrConnect))
@@ -120,7 +123,7 @@ namespace LLP
          *  @param[in] addr The address to add
          *
          **/
-        void AddAddress(CAddress addr)
+        void AddAddress(Address addr)
         {
             LOCK(MUTEX);
 
@@ -170,9 +173,9 @@ namespace LLP
          *  @return Returns the list of active connections in a vector
          *
          **/
-        std::vector<CAddress> GetAddresses()
+        std::vector<Address> GetAddresses()
         {
-            std::vector<CAddress> vAddr;
+            std::vector<Address> vAddr;
             for(int nThread = 0; nThread < MAX_THREADS; nThread++)
             {
                 int nSize = DATA_THREADS[nThread]->CONNECTIONS.size();
@@ -196,7 +199,7 @@ namespace LLP
          **/
         void Manager()
         {
-            CAddress addr;
+            Address addr;
 
             /* Loop connections. */
             while(!config::fShutdown)
@@ -277,7 +280,7 @@ namespace LLP
                 if (hListenSocket != INVALID_SOCKET)
                 {
                     SOCKET hSocket;
-                    CAddress addr;
+                    Address addr;
 
                     if(fIPv4)
                     {
@@ -286,7 +289,7 @@ namespace LLP
 
                         hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len);
                         if (hSocket != INVALID_SOCKET)
-                            addr = CAddress(sockaddr);
+                            addr = Address(sockaddr);
                     }
                     else
                     {
@@ -295,7 +298,7 @@ namespace LLP
 
                         hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len);
                         if (hSocket != INVALID_SOCKET)
-                            addr = CAddress(sockaddr);
+                            addr = Address(sockaddr);
                     }
 
                     if (hSocket == INVALID_SOCKET)
@@ -307,11 +310,11 @@ namespace LLP
                     {
 
                         /* Create new DDOS Filter if Needed. */
-                        if(!DDOS_MAP.count((CService)addr))
+                        if(!DDOS_MAP.count((Service)addr))
                             DDOS_MAP[addr] = new DDOS_Filter(DDOS_TIMESPAN);
 
                         /* DDOS Operations: Only executed when DDOS is enabled. */
-                        if((fDDOS && DDOS_MAP[(CService)addr]->Banned()))
+                        if((fDDOS && DDOS_MAP[(Service)addr]->Banned()))
                         {
                             debug::log(0, NODE "Connection Request %s refused... Banned.", addr.ToString().c_str());
                             close(hSocket);
@@ -322,7 +325,7 @@ namespace LLP
                         Socket_t sockNew(hSocket, addr);
 
                         int nThread = FindThread();
-                        DATA_THREADS[nThread]->AddConnection(sockNew, DDOS_MAP[(CService)addr]);
+                        DATA_THREADS[nThread]->AddConnection(sockNew, DDOS_MAP[(Service)addr]);
 
                         debug::log(3, NODE "Accepted Connection %s on port %u\n", addr.ToString().c_str(), PORT);
                     }
