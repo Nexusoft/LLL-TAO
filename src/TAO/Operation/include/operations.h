@@ -89,6 +89,20 @@ namespace TAO::Operation
      **/
     bool Credit(uint512_t hashTx, uint256_t hashProof, uint256_t hashTo, uint64_t nAmount, uint256_t hashCaller);
 
+
+    /** Authorize
+     *
+     *  Authorizes an action if holder of a token.
+     *
+     *  @param[in] hashTx The transaction being authorized for.
+     *  @param[in] hashProof The register temporal proof to use.
+     *  @param[in] hashCaller The calling signature chain.
+     *
+     *  @return true if successful.
+     *
+     **/
+    bool Authorize(uint512_t hashTx, uint256_t hashProof, uint256_t hashCaller);
+
 }
 
 #endif
