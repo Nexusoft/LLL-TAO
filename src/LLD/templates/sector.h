@@ -107,7 +107,7 @@ namespace LLD
 
 
         /* Sector Keys Database. */
-        KeychainType* SectorKeys;
+        KeychainType* pSectorKeys;
 
 
         /* For the Meter. */
@@ -161,7 +161,7 @@ namespace LLD
             fReadOnly = (!strchr(pszMode, '+') && !strchr(pszMode, 'w'));
 
             /* Initialize the Keys Class. */
-            SectorKeys = new KeychainType((config::GetDataDir() + strName + "/keychain/"));
+            pSectorKeys = new KeychainType((config::GetDataDir() + strName + "/keychain/"));
 
             /* Initialize the Database. */
             Initialize();
@@ -178,7 +178,7 @@ namespace LLD
 
             delete pTransaction;
             delete cachePool;
-            delete SectorKeys;
+            delete pSectorKeys;
         }
 
 
@@ -229,7 +229,7 @@ namespace LLD
         /* Get the keys for this sector database from the keychain.  */
         std::vector< std::vector<uint8_t> > GetKeys()
         {
-            return SectorKeys->GetKeys();
+            return pSectorKeys->GetKeys();
         }
 
 
@@ -244,7 +244,7 @@ namespace LLD
 
             /* Return the Key existance in the Keychain Database. */
             SectorKey cKey;
-            return SectorKeys->Get(vKey, cKey);
+            return pSectorKeys->Get(vKey, cKey);
         }
 
         template<typename Key>
@@ -267,7 +267,7 @@ namespace LLD
 
 
             /* Return the Key existance in the Keychain Database. */
-            bool fErased = SectorKeys->Erase(vKey);
+            bool fErased = pSectorKeys->Erase(vKey);
 
             if(config::GetBoolArg("-runtime", false))
                 debug::log(0, ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
@@ -335,7 +335,7 @@ namespace LLD
             }
 
             SectorKey cKey;
-            if(SectorKeys->Get(vKey, cKey))
+            if(pSectorKeys->Get(vKey, cKey))
             {
                 { LOCK(SECTOR_MUTEX);
 
@@ -405,7 +405,7 @@ namespace LLD
             nCurrentFileSize += vData.size();
 
             /* Assign the Key to Keychain. */
-            SectorKeys->Put(cKey);
+            pSectorKeys->Put(cKey);
 
             /* Verboe output. */
             debug::log(4, FUNCTION "%s | Current File: %u | Current File Size: %u\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
@@ -487,7 +487,7 @@ namespace LLD
                 {
 
                     /* Assign the Key to Keychain. */
-                    SectorKeys->Put(SectorKey(READY, vObj.first, nCurrentFile, nCurrentFileSize, vObj.second.size()));
+                    pSectorKeys->Put(SectorKey(READY, vObj.first, nCurrentFile, nCurrentFileSize, vObj.second.size()));
 
                     /* Increment the current filesize */
                     nCurrentFileSize += vObj.second.size();
@@ -632,12 +632,12 @@ namespace LLD
             for(typename std::map< std::vector<uint8_t>, std::vector<uint8_t> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
             {
                 SectorKey cKey;
-                if(SectorKeys->HasKey(nIterator->first)) {
-                    if(!SectorKeys->Get(nIterator->first, cKey))
+                if(pSectorKeys->HasKey(nIterator->first)) {
+                    if(!pSectorKeys->Get(nIterator->first, cKey))
                         return error(FUNCTION "Couldn't get the Active Sector Key.", __PRETTY_FUNCTION__);
 
                     cKey.nState = TRANSACTION;
-                    SectorKeys->Put(cKey);
+                    pSectorKeys->Put(cKey);
                 }
             }
 
@@ -647,7 +647,7 @@ namespace LLD
             /** Erase all the Transactions that are set to be erased. That way if they are assigned a TRANSACTION flag we know to roll back their key to orginal data. **/
             for(typename std::map< std::vector<uint8_t>, uint32_t >::iterator nIterator = pTransaction->mapEraseData.begin(); nIterator != pTransaction->mapEraseData.end(); nIterator++ )
             {
-                if(!SectorKeys->Erase(nIterator->first))
+                if(!pSectorKeys->Erase(nIterator->first))
                     return error(FUNCTION "Couldn't get the Active Sector Key for Delete.", __PRETTY_FUNCTION__);
             }
 
@@ -661,7 +661,7 @@ namespace LLD
                 std::vector<uint8_t> vData = nIterator->second;
 
                 /* Write Header if First Update. */
-                if(!SectorKeys->HasKey(vKey))
+                if(!pSectorKeys->HasKey(vKey))
                 {
                     if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                     {
@@ -692,14 +692,14 @@ namespace LLD
                     nCurrentFileSize += vData.size();
 
                     /* Assign the Key to Keychain. */
-                    SectorKeys->Put(cKey);
+                    pSectorKeys->Put(cKey);
                 }
                 else
                 {
                     /* Get the Sector Key from the Keychain. */
                     SectorKey cKey;
-                    if(!SectorKeys->Get(vKey, cKey)) {
-                        SectorKeys->Erase(vKey);
+                    if(!pSectorKeys->Get(vKey, cKey)) {
+                        pSectorKeys->Erase(vKey);
 
                         return false;
                     }
@@ -726,7 +726,7 @@ namespace LLD
 
                     cKey.nState    = READY;
 
-                    SectorKeys->Put(cKey);
+                    pSectorKeys->Put(cKey);
                 }
             }
 
@@ -737,14 +737,14 @@ namespace LLD
             {
                 /** Assign the Writing State for Sector. **/
                 SectorKey cKey;
-                if(!SectorKeys->Get(nIterator->first, cKey))
+                if(!pSectorKeys->Get(nIterator->first, cKey))
                     return error(FUNCTION "Failed to Get Key from Keychain.", __PRETTY_FUNCTION__);
 
                 /** Set the Sector states back to Active. **/
                 cKey.nState    = READY;
 
                 /** Commit the Keys to Keychain Database. **/
-                if(!SectorKeys->Put(cKey))
+                if(!pSectorKeys->Put(cKey))
                     return error(FUNCTION "Failed to Commit Key to Keychain.", __PRETTY_FUNCTION__);
             }
 

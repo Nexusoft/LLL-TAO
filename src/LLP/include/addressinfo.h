@@ -16,11 +16,10 @@ ________________________________________________________________________________
 
 #include <cstdint>
 #include <Util/templates/serialize.h>
+#include <LLP/include/address.h>
 
 namespace LLP
 {
-    class Address; //forward declared
-
     enum ConnectState
     {
         NEW        = (1 << 0),
@@ -41,9 +40,9 @@ namespace LLP
      *  for handling and tracking connections in a meaningful way
      *
      **/
-    struct AddressInfo
+    class AddressInfo : public Address
     {
-
+    public:
         /** AddressInfo
          *
          *  Default constructor
@@ -51,7 +50,7 @@ namespace LLP
          *  @param[in] addr The address to initalize associated hash
          *
          **/
-        AddressInfo(const Address *addr);
+        AddressInfo(const Address &addr);
         AddressInfo();
 
 
@@ -66,6 +65,10 @@ namespace LLP
         /* Serialization */
         IMPLEMENT_SERIALIZE
         (
+            AddressInfo *pthis = const_cast<AddressInfo *>(this);
+            Address *pAddr = static_cast<Address *>(pthis);
+
+            READWRITE(*pAddr);
             READWRITE(nLastSeen);
             READWRITE(nSession);
             READWRITE(nConnected);
@@ -91,7 +94,7 @@ namespace LLP
          **/
         uint32_t Score() const;
 
-        uint64_t nHash;       //hash associated with Address
+
         int64_t  nLastSeen;   //unified time last seen
         int64_t  nSession;    //total time since connected
         uint32_t nConnected;  //total number of successful connections

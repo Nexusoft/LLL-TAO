@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/filemap.h>
 
-#include <LLP/include/network.h>
+#include <LLP/include/addressinfo.h>
 
 namespace LLD
 {
@@ -28,27 +28,17 @@ namespace LLD
     {
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        AddressDB(const char* pszMode="r+")
-        : SectorDatabase("addr", pszMode) { }
+        AddressDB(uint16_t port, const char* pszMode="r+")
+        : SectorDatabase("addr" + std::to_string(port), pszMode) { }
 
-        bool WriteAddress(uint32_t key, LLP::Address addr)
+        bool WriteAddressInfo(uint32_t key, LLP::AddressInfo info)
         {
-            return Write(std::make_pair(std::string("address"), key), addr);
+            return Write(key, info);
         }
 
-        bool ReadAddress(uint32_t key, LLP::Address &addr)
+        bool ReadAddressInfo(uint32_t key, LLP::AddressInfo &info)
         {
-            return Read(std::make_pair(std::string("address"), key), addr);
-        }
-
-        bool WriteInfo(uint32_t key, LLP::AddressInfo info)
-        {
-            return Write(std::make_pair(std::string("info"), key), info);
-        }
-
-        bool ReadInfo(uint32_t key, LLP::AddressInfo &info)
-        {
-            return Read(std::make_pair(std::string("address"), key), info);
+            return Read(key, info);
         }
     };
 }

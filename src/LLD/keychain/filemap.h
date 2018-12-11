@@ -130,7 +130,10 @@ namespace LLD
 
 
         /** Return Whether a Key Exists in the Database. **/
-        bool HasKey(const std::vector<uint8_t>& vKey) { return mapKeys[GetBucket(vKey)].count(vKey); }
+        bool HasKey(const std::vector<uint8_t>& vKey)
+        {
+            return mapKeys[GetBucket(vKey)].count(vKey);
+        }
 
 
         /** Handle the Assigning of a Map Bucket. **/
@@ -150,7 +153,7 @@ namespace LLD
             std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
 
             /* Create directories if they don't exist yet. */
-            //if(boost::filesystem::create_directories(strBaseLocation))
+            if(filesystem::create_directories(strBaseLocation))
                 debug::log(0, FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
 
             /* Stats variable for collective keychain size. */

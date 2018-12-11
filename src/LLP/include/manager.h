@@ -14,14 +14,13 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_MANAGER_H
 #define NEXUS_LLP_INCLUDE_MANAGER_H
 
-#include <LLP/include/address.h>
 #include <LLP/include/addressinfo.h>
 #include <Util/templates/serialize.h>
 
 
 #include <unordered_map>
 #include <vector>
-#include <stdint.h>
+#include <cstdint>
 #include <mutex>
 #include <memory>
 
@@ -50,7 +49,7 @@ namespace LLP
          *  Default constructor
          *
          */
-        AddressManager();
+        AddressManager(uint16_t port);
 
 
         /** AddressManager
@@ -131,6 +130,22 @@ namespace LLP
          **/
         bool StochasticSelect(Address &addr);
 
+
+        /** ReadDatabase
+         *
+         *  Read the address database into the manager
+         *
+         **/
+        void ReadDatabase();
+
+
+        /** WriteDatabase
+         *
+         *  Write the addresses from the manager into the address database
+         *
+         **/
+        void WriteDatabase();
+
     private:
 
 
@@ -155,8 +170,7 @@ namespace LLP
         uint32_t get_count(const uint8_t flags = CONNECT_FLAGS_ALL) const;
 
         std::unique_ptr<LLD::AddressDB> pDatabase;
-        std::unordered_map<uint64_t, Address> mapAddr;
-        std::unordered_map<uint64_t, AddressInfo> mapInfo;
+        std::unordered_map<uint64_t, AddressInfo> mapAddrInfo;
 
         std::mutex mutex;
     };

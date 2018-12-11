@@ -12,7 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/addressinfo.h>
-#include <LLP/include/address.h>
 
 namespace LLP
 {
@@ -22,22 +21,18 @@ namespace LLP
     }
 
 
-    AddressInfo::AddressInfo(const Address *addr)
-    : nHash(0)
+    AddressInfo::AddressInfo(const Address &addr)
+    : Address(addr)
     {
-        if(addr)
-            nHash = addr->GetHash();
-
         Init();
     }
 
 
     AddressInfo::AddressInfo()
-    : nHash(0)
+    : Address()
     {
         Init();
     }
-
 
     AddressInfo::~AddressInfo() { }
 
