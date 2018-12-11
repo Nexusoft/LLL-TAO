@@ -319,7 +319,7 @@ namespace Legacy
         bool fIsEncrypted = false;
 
         { /* Begin lock scope */
-            std::lock_guard<std::recursive_mutex> walletLock(wallet.cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(wallet.cs_wallet);
 
             std::vector<uint8_t> vchLoadedDefaultKey;
 
@@ -345,7 +345,7 @@ namespace Legacy
             }
 
             /* Loop to read all entries from wallet database */
-            while(true) 
+            while(true)
             {
                 /* Read next record */
                 CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
@@ -572,9 +572,9 @@ namespace Legacy
         } /* End lock scope */
 
         /* Remove transactions flagged for removal */
-        if(vWalletRemove.size() > 0) 
+        if(vWalletRemove.size() > 0)
         {
-            for(auto hash : vWalletRemove) 
+            for(auto hash : vWalletRemove)
             {
                 EraseTx(hash);
                 wallet.mapWallet.erase(hash);
@@ -584,7 +584,7 @@ namespace Legacy
         }
 
         /* Update file version to latest version */
-        if (nFileVersion < LLD::DATABASE_VERSION) 
+        if (nFileVersion < LLD::DATABASE_VERSION)
             WriteVersion(LLD::DATABASE_VERSION);
 
         debug::log(0, "CWalletDB::LoadWallet : nFileVersion = %d\n", nFileVersion);
@@ -594,7 +594,7 @@ namespace Legacy
 
 
     /* Function that loops until shutdown and periodically flushes a wallet db */
-    void ThreadFlushWalletDB(const std::string strWalletFile)
+    void CWalletDB::ThreadFlushWalletDB(const std::string strWalletFile)
     {
         if (!config::GetBoolArg("-flushwallet", true))
             return;
@@ -641,7 +641,7 @@ namespace Legacy
 
                     if (nRefCount == 0 && !config::fShutdown)
                     {
-                        /* If strWalletFile has not been opened since startup, no need to flush even if nWalletDBUpdated count has changed. 
+                        /* If strWalletFile has not been opened since startup, no need to flush even if nWalletDBUpdated count has changed.
                          * An entry in mapFileUseCount verifies that this particular wallet file has been used at some point, so it will be flushed.
                          * Should also never have an entry in mapFileUseCount if dbenv is not initialized, but it is checked to be sure.
                          */
@@ -659,7 +659,7 @@ namespace Legacy
                             CDB::dbenv.lsn_reset(strWalletFile.c_str(), 0);
 
                             CDB::mapFileUseCount.erase(mi++);
-                            debug::log(0, "ThreadFlushWalletDB : Flushed %s %" PRI64d "ms\n", strWalletFile, Timestamp(true) - nStart);
+                            debug::log(0, "ThreadFlushWalletDB : Flushed %s %" PRI64d "ms\n", strWalletFile.c_str(), Timestamp(true) - nStart);
                         }
                     }
 
@@ -679,7 +679,7 @@ namespace Legacy
         while (!config::fShutdown)
         {
             {
-                std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db); 
+                std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db);
 
                 std::string strSource = wallet.GetWalletFile();
 

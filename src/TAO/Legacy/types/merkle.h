@@ -30,7 +30,7 @@ namespace TAO
 namespace Legacy
 {
 	class CBlockIndex;
-	 
+
     /** A transaction with a merkle branch linking it to the block chain. */
 	class CMerkleTx : public Transaction
 	{
@@ -71,11 +71,11 @@ namespace Legacy
 		)
 
 
-		int SetMerkleBranch(const TAO::Ledger::Block* pblock=NULL);
-		int GetDepthInMainChain(CBlockIndex* &pindexRet) const;
-		int GetDepthInMainChain() const { CBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
+		int SetMerkleBranch(const TAO::Ledger::Block* pblock=NULL) {}
+		//int GetDepthInMainChain(CBlockIndex* &pindexRet) const;
+		int GetDepthInMainChain() const { return 0; }
 		bool IsInMainChain() const { return GetDepthInMainChain() > 0; }
-		int GetBlocksToMaturity() const;
+		int GetBlocksToMaturity() const { return 0; }
 	};
 }
 

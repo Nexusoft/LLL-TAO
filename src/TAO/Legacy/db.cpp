@@ -30,7 +30,7 @@ ________________________________________________________________________________
 
 namespace Legacy
 {
-    
+
     /* Initialize namespace-scope variable */
     bool fDetachDB = false;
 
@@ -42,6 +42,8 @@ namespace Legacy
     std::map<std::string, int> CDB::mapFileUseCount; //initializes empty map
 
     std::map<std::string, Db*> CDB::mapDb;  //initializes empty map
+
+    std::recursive_mutex CDB::cs_db; //initializes the mutex
 
 
     /* Constructor */
@@ -75,9 +77,9 @@ namespace Legacy
 
 
     /* Destructor */
-    CDB::~CDB() 
-    { 
-        Close(); 
+    CDB::~CDB()
+    {
+        Close();
     }
 
 
@@ -122,7 +124,7 @@ namespace Legacy
                  * DB_INIT_MPOOL - Enable shared memory pool
                  * DB_INIT_TXN   - Enable transaction management and recovery
                  * DB_THREAD     - Enable multithreaded access
-                 * DB_RECOVER    - Run recovery before opening environment, if necessary 
+                 * DB_RECOVER    - Run recovery before opening environment, if necessary
                  */
                 uint32_t dbFlags =  DB_CREATE     |
                                     DB_INIT_LOCK  |
@@ -367,7 +369,7 @@ namespace Legacy
         if (ret != 0)
             return nullptr;
 
-        return pcursor; 
+        return pcursor;
     }
 
 
@@ -543,7 +545,7 @@ namespace Legacy
         CDB::dbenv.txn_checkpoint(nMinutes ? config::GetArg("-dblogsize", 100)*1024 : 0, nMinutes, 0);
 
         {
-            std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db); 
+            std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db);
             --CDB::mapFileUseCount[strFile];
         }
 
@@ -557,7 +559,7 @@ namespace Legacy
     void CDB::CloseDb(const std::string& strFile)
     {
         {
-            std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db); 
+            std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db);
 
             if (CDB::mapDb.count(strFile) > 0 && CDB::mapDb[strFile] != nullptr)
             {
@@ -584,13 +586,13 @@ namespace Legacy
             return;
 
         {
-            std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db); 
+            std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db);
 
             for (auto mi = CDB::mapFileUseCount.cbegin(); mi != CDB::mapFileUseCount.cend(); /*no increment */)
             {
                 const std::string strFile = (*mi).first;
                 const int nRefCount = (*mi).second;
-                
+
                 debug::log(0, "%s refcount=%d\n", strFile.c_str(), nRefCount);
 
                 if (nRefCount == 0)
@@ -601,7 +603,7 @@ namespace Legacy
                     debug::log(0, "%s checkpoint\n", strFile.c_str());
                     CDB::dbenv.txn_checkpoint(0, 0, 0);
 
-                    if (strFile != "addr.dat" || fDetachDB) 
+                    if (strFile != "addr.dat" || fDetachDB)
                     {
                         debug::log(0, "%s detach\n", strFile.c_str());
                         CDB::dbenv.lsn_reset(strFile.c_str(), 0);
@@ -633,7 +635,7 @@ namespace Legacy
         if (!config::fShutdown)
         {
             { /* Begin lock scope */
-                std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db); 
+                std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db);
 
                 if (CDB::mapFileUseCount.count(strFile) == 0 || CDB::mapFileUseCount[strFile] == 0)
                 {
@@ -651,7 +653,7 @@ namespace Legacy
                     std::string strFileRes = strFile + ".rewrite";
 
                     /* Surround usage of db with extra {} */
-                    { 
+                    {
                         CDB dbToRewrite(strFile.c_str(), "r");
                         Db* pdbCopy = new Db(&CDB::dbenv, 0);
 
@@ -752,7 +754,7 @@ namespace Legacy
         }
 
         /* Return false if fShutdown */
-        return false; 
+        return false;
     }
 
 
