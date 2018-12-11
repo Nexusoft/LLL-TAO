@@ -171,7 +171,7 @@ OBJS= \
 	build/Util_base64.o \
 	build/Util_config.o \
 	build/Util_debug.o \
-    build/Util_filesystem.o
+	build/Util_filesystem.o
 
 ###############################################################################
 ifeq ($(detected_OS),Windows)
