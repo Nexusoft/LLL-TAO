@@ -11,24 +11,18 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEDGER_INCLUDE_STATE_H
-#define NEXUS_TAO_LEDGER_INCLUDE_STATE_H
+#ifndef NEXUS_TAO_LEDGER_INCLUDE_ENUM_H
+#define NEXUS_TAO_LEDGER_INCLUDE_ENUM_H
 
 namespace TAO::Ledger
 {
 
-	/** The best block height in the chain. **/
-	uint32_t nBestHeight;
-
-
-    /** The best hash in the chain. */
-    uint1024_t hashBestChain;
-
-
-    /** The best trust in the chain. **/
-    uint64_t nBestChainTrust;
-
+    /** Enumeration for transaction types. */
+    enum
+    {
+        TRITIUM = 0x00,
+        LEGACY  = 0x01
+    }
 }
-
 
 #endif

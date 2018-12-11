@@ -267,7 +267,7 @@ namespace LLP
                         }
 
                         /* Process the transaction operations. */
-                        if(!TAO::Operation::Execute(tx.vchLedgerData, LLD::regDB, LLD::legDB, tx.hashGenesis))
+                        if(!TAO::Operation::Execute(tx.vchLedgerData, tx.hashGenesis))
                         {
                             debug::error(NODE "tx failed to process register/operations");
 
