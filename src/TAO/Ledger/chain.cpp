@@ -26,9 +26,22 @@ namespace TAO::Ledger
 
 
     /* Get the block state at given hash. */
-     bool GetBlockState(uint1024_t hashBlock, BlockState blockState)
-     {
+    bool GetBlockState(uint1024_t hashBlock, BlockState blockState)
+    {
 
-     }
-     
+    }
+
+
+    /* Get the previous block state at given hash. */
+    bool PrevState(BlockState& blockState)
+    {
+
+    }
+
+
+    /* Get the next block state at given hash. */
+    bool NextState(BlockState& blockState)
+    {
+
+    }
 }

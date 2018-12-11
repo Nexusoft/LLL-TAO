@@ -54,6 +54,10 @@ namespace TAO::Ledger
 		uint1024_t hashNextBlock;
 
 
+		/** Used to store the checkpoint. **/
+		uint1024_t hashCheckpoint;
+
+
 		/* Serialization Macros */
 		IMPLEMENT_SERIALIZE
 		(
@@ -67,6 +71,7 @@ namespace TAO::Ledger
 
 			//for disk operations only
 			READWRITE(hashNextBlock);
+			READWRITE(hashCheckpoint);
 		)
 
 

@@ -43,9 +43,12 @@ namespace LLP
     Server<TritiumNode>* TRITIUM_SERVER;
 }
 
+#include <LLC/include/random.h>
+#include <cmath>
 
 int main(int argc, char** argv)
 {
+
     /* Handle all the signals with signal handler method. */
     SetupSignals();
 

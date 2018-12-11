@@ -33,7 +33,7 @@ namespace TAO::Ledger
 
 
 
-    /** Get Block State
+    /** Get State
      *
      *  Get the block state at given hash.
      *
@@ -43,7 +43,31 @@ namespace TAO::Ledger
      *  @return true if the block state was found.
      *
      **/
-     bool GetBlockState(uint1024_t hashBlock, BlockState blockState);
+    bool GetState(uint1024_t hashBlock, BlockState blockState);
+
+
+     /** Prev State
+      *
+      *  Get the previous block state at given hash.
+      *
+      *  @param[out] blockState The block state object.
+      *
+      *  @return true if the block state was found.
+      *
+      **/
+     bool PrevState(BlockState& blockState);
+
+
+      /** Next State
+       *
+       *  Get the next block state at given hash.
+       *
+       *  @param[out] blockState The block state object.
+       *
+       *  @return true if the block state was found.
+       *
+       **/
+      bool NextState(BlockState& blockState);
 }
 
 #endif

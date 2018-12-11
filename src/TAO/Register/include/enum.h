@@ -14,20 +14,16 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_ENUM_H
 #define NEXUS_TAO_REGISTER_INCLUDE_ENUM_H
 
-namespace TAO
+namespace TAO::Register
 {
-    namespace Register
+    /** Operation Layer Byte Code. **/
+    enum OBJECT
     {
-
-        /** Operation Layer Byte Code. **/
-        enum
-        {
-            OBJECT_RAW      = 0x00,
-            OBJECT_ACCOUNT  = 0x01,
-            OBJECT_TOKEN    = 0x02,
-            OBJECT_ESCROW   = 0x03
-        };
-    }
+        READONLY = 0x00, //this type of register cannot have the data changed
+        RAW      = 0x01, //this type of register is just raw data that can be changed
+        ACCOUNT  = 0x02, //this type of register handles general accounts and DEBITS / CREDITS
+        TOKEN    = 0x03, //this type of register to hold token parameters
+    };
 }
 
 #endif

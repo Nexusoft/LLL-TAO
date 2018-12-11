@@ -34,7 +34,7 @@ namespace TAO::Ledger
 	public:
 
 		/** The transaction history. **/
-        std::vector<uint512_t> vtx;
+        std::vector< std::pair<uint8_t, uint512_t> > vtx;
 
 
 		IMPLEMENT_SERIALIZE

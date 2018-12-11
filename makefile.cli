@@ -157,6 +157,11 @@ OBJS= \
 	build/Ledger_prime.o \
 	build/Ledger_tritium.o \
 	build/Ledger_transaction.o \
+	build/Operation_write.o \
+	build/Operation_register.o \
+	build/Operation_transfer.o \
+	build/Operation_debit.o \
+	build/Operation_credit.o \
 	build/API_cmd.o \
 	build/API_rpc.o \
 	build/API_info.o \

@@ -42,7 +42,7 @@ namespace TAO
             {
                 uint8_t OP;
                 stream >> OP;
-                switch(vchOperations[nIterator])
+                switch(OP)
                 {
 
                 }
