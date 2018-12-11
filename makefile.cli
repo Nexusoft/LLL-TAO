@@ -162,6 +162,7 @@ OBJS= \
 	build/Operation_transfer.o \
 	build/Operation_debit.o \
 	build/Operation_credit.o \
+	build/Operation_authorize.o \
 	build/API_cmd.o \
 	build/API_rpc.o \
 	build/API_info.o \

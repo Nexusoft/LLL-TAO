@@ -156,9 +156,19 @@ namespace TAO
 
                     case OP::AUTHORIZE:
                     {
-                        //authorization of keys here. logs that a key has been authorized by this hashOwner
-                        //this will require an indexing system to be able to collect all OP_AUTHORIZE relating to hashOwner
-                        //an authorization token will generally be a hased public key. This key can be used for access control in private systems
+                        /* The transaction that you are authorizing. */
+                        uint512_t hashTx;
+                        stream >> hashTx;
+
+                        /* The proof you are using that you have rights. */
+                        uint256_t hashProof;
+                        stream >> hashProof;
+
+                        /* Execute the operation method. */
+                        if(!Authorize(hashTx, hashProof, hashOwner))
+                            return false;
+
+                        break;
                     }
 
                     case OP::VOTE:
