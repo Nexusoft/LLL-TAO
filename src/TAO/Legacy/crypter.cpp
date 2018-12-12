@@ -13,24 +13,102 @@ ________________________________________________________________________________
 
 #include <openssl/aes.h>
 #include <openssl/evp.h>
+
 #include <vector>
 #include <string>
+
 #ifdef WIN32
 #include <windows.h>
 #endif
 
-#include "crypter.h"
+#include <TAO/Legacy/wallet/crypter.h>
+
 
 namespace Legacy
 {
+    
+    /* Copy constructor */
+    CCrypter::CCrypter(const CCrypter &c) 
+    {
+        if (c.IsKeySet())
+        {
+            mlock(&chKey[0], sizeof chKey);
+            mlock(&chIV[0], sizeof chIV);
+
+            memcpy(&chKey[0], &c.chKey[0], sizeof chKey);
+            memcpy(&chIV[0], &c.chIV[0], sizeof chIV);
+
+            fKeySet = true;
+        }
+        else
+            fKeySet = false;
+    }
+
+
+    /* Copy assignment operator */
+    CCrypter& CCrypter::operator= (const CCrypter &rhs)
+    {
+        if (this != &rhs)
+        {
+            if (IsKeySet())
+                CleanKey();
+
+            if (rhs.IsKeySet())
+            {
+                mlock(&chKey[0], sizeof chKey);
+                mlock(&chIV[0], sizeof chIV);
+
+                memcpy(&chKey[0], &rhs.chKey[0], sizeof chKey);
+                memcpy(&chIV[0], &rhs.chIV[0], sizeof chIV);
+
+                fKeySet = true;
+            }
+        }
+
+        return *this;
+    }
+
+
+    /* Destructor */
+    CCrypter::~CCrypter()
+    {
+        CleanKey();
+    }
+
+
+    /* Assign new encryption key context (chKey and chIV). */
+    bool CCrypter::SetKey(const CKeyingMaterial& chNewKey, const std::vector<uint8_t>& chNewIV)
+    {
+        if (chNewKey.size() != WALLET_CRYPTO_KEY_SIZE || chNewIV.size() != WALLET_CRYPTO_KEY_SIZE)
+            return false;
+
+        /* Try to keep the keydata out of swap
+         * Note that this does nothing about suspend-to-disk (which will put all our key data on disk)
+         * Note as well that at no point in this program is any attempt made to prevent stealing of keys 
+         * by reading the memory of the running process.
+         */
+        mlock(&chKey[0], sizeof chKey);
+        mlock(&chIV[0], sizeof chIV);
+
+        memcpy(&chKey[0], &chNewKey[0], sizeof chKey);
+        memcpy(&chIV[0], &chNewIV[0], sizeof chIV);
+
+        fKeySet = true;
+        return true;
+    }
+
+
+    /* Generate new encryption key context (chKey and chIV) from a passphrase. */
     bool CCrypter::SetKeyFromPassphrase(const SecureString& strKeyData, const std::vector<uint8_t>& chSalt, const uint32_t nRounds, const uint32_t nDerivationMethod)
     {
         if (nRounds < 1 || chSalt.size() != WALLET_CRYPTO_SALT_SIZE)
             return false;
 
-        // Try to keep the keydata out of swap (and be a bit over-careful to keep the IV that we don't even use out of swap)
-        // Note that this does nothing about suspend-to-disk (which will put all our key data on disk)
-        // Note as well that at no point in this program is any attempt made to prevent stealing of keys by reading the memory of the running process.
+        /* Try to keep the keydata out of swap 
+         * Note that this does nothing about suspend-to-disk (which will put all our key data on disk)
+         * Note as well that at no point in this program is any attempt made to prevent stealing of keys 
+         * by reading the memory of the running process.
+         */
         mlock(&chKey[0], sizeof chKey);
         mlock(&chIV[0], sizeof chIV);
 
@@ -50,31 +128,27 @@ namespace Legacy
         return true;
     }
 
-    bool CCrypter::SetKey(const CKeyingMaterial& chNewKey, const std::vector<uint8_t>& chNewIV)
+
+    /* Clear the current encryption key from memory. */
+    void CCrypter::CleanKey()
     {
-        if (chNewKey.size() != WALLET_CRYPTO_KEY_SIZE || chNewIV.size() != WALLET_CRYPTO_KEY_SIZE)
-            return false;
+        memset(&chKey, 0, sizeof chKey);
+        memset(&chIV, 0, sizeof chIV);
 
-        // Try to keep the keydata out of swap
-        // Note that this does nothing about suspend-to-disk (which will put all our key data on disk)
-        // Note as well that at no point in this program is any attempt made to prevent stealing of keys by reading the memory of the running process.
-        mlock(&chKey[0], sizeof chKey);
-        mlock(&chIV[0], sizeof chIV);
+        munlock(&chKey, sizeof chKey);
+        munlock(&chIV, sizeof chIV);
 
-        memcpy(&chKey[0], &chNewKey[0], sizeof chKey);
-        memcpy(&chIV[0], &chNewIV[0], sizeof chIV);
-
-        fKeySet = true;
-        return true;
+        fKeySet = false;
     }
 
+
+    /* Encrypt a plain text value using the current encryption key settings. */
     bool CCrypter::Encrypt(const CKeyingMaterial& vchPlaintext, std::vector<uint8_t> &vchCiphertext)
     {
-        if (!fKeySet)
+        if (!IsKeySet())
             return false;
 
-        // max ciphertext len for a n bytes of plaintext is
-        // n + AES_BLOCK_SIZE - 1 bytes
+        /* max ciphertext len for a n bytes of plaintext is (n + AES_BLOCK_SIZE - 1) bytes */
         int nLen = vchPlaintext.size();
         int nCLen = nLen + AES_BLOCK_SIZE, nFLen = 0;
         vchCiphertext = std::vector<uint8_t> (nCLen);
@@ -86,7 +160,7 @@ namespace Legacy
         bool fOk = true;
 
         EVP_CIPHER_CTX_init(ctx);
-        if (fOk) fOk = EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, chKey, chIV);
+        if (fOk) fOk = EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr, chKey, chIV);
         if (fOk) fOk = EVP_EncryptUpdate(ctx, &vchCiphertext[0], &nCLen, &vchPlaintext[0], nLen);
         if (fOk) fOk = EVP_EncryptFinal_ex(ctx, (&vchCiphertext[0])+nCLen, &nFLen);
         EVP_CIPHER_CTX_free(ctx);
@@ -97,12 +171,14 @@ namespace Legacy
         return true;
     }
 
+
+    /* Decrypt an encrypted text value using the current encryption key settings. */
     bool CCrypter::Decrypt(const std::vector<uint8_t>& vchCiphertext, CKeyingMaterial& vchPlaintext)
     {
-        if (!fKeySet)
+        if (!IsKeySet())
             return false;
 
-        // plaintext will always be equal to or lesser than length of ciphertext
+        /* Plain text will always be equal to or lesser than length of ciphertext */
         int nLen = vchCiphertext.size();
         int nPLen = nLen, nFLen = 0;
 
@@ -115,7 +191,7 @@ namespace Legacy
         bool fOk = true;
 
         EVP_CIPHER_CTX_init(ctx);
-        if (fOk) fOk = EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, chKey, chIV);
+        if (fOk) fOk = EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr, chKey, chIV);
         if (fOk) fOk = EVP_DecryptUpdate(ctx, &vchPlaintext[0], &nPLen, &vchCiphertext[0], nLen);
         if (fOk) fOk = EVP_DecryptFinal_ex(ctx, (&vchPlaintext[0])+nPLen, &nFLen);
         EVP_CIPHER_CTX_free(ctx);
@@ -126,24 +202,37 @@ namespace Legacy
         return true;
     }
 
-
-    bool EncryptSecret(CKeyingMaterial& vMasterKey, const CSecret &vchPlaintext, const uint576_t& nIV, std::vector<uint8_t> &vchCiphertext)
+    
+    /* Function to encrypt a private key using a master key and IV pair. */
+    bool EncryptSecret(const CKeyingMaterial& vMasterKey, const LLC::CSecret &vchPlaintext, const uint576_t& nIV, std::vector<uint8_t> &vchCiphertext)
     {
         CCrypter cKeyCrypter;
+
         std::vector<uint8_t> chIV(WALLET_CRYPTO_KEY_SIZE);
         memcpy(&chIV[0], &nIV, WALLET_CRYPTO_KEY_SIZE);
+
         if(!cKeyCrypter.SetKey(vMasterKey, chIV))
             return false;
+
+        /* This works on the assumption that CKeyingMaterial and CSecret are both std::vector<uint8_t, secure_allocator<uint8_t> > */
+        /* Can remove this assumption (and the old fashioned C-style cast) by copying CSecret into a CKeyMaterial variable */
         return cKeyCrypter.Encrypt((CKeyingMaterial)vchPlaintext, vchCiphertext);
     }
 
-    bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<uint8_t>& vchCiphertext, const uint576_t& nIV, CSecret& vchPlaintext)
+
+    /* Function to encrypt a private key using a master key and IV pair. */
+    bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<uint8_t>& vchCiphertext, const uint576_t& nIV, LLC::CSecret& vchPlaintext)
     {
         CCrypter cKeyCrypter;
+
         std::vector<uint8_t> chIV(WALLET_CRYPTO_KEY_SIZE);
         memcpy(&chIV[0], &nIV, WALLET_CRYPTO_KEY_SIZE);
+
         if(!cKeyCrypter.SetKey(vMasterKey, chIV))
             return false;
+
+        /* This works on the assumption that CKeyingMaterial and CSecret are both std::vector<uint8_t, secure_allocator<uint8_t> > */
+        /* Can remove this assumption (and the old fashioned C-style cast) by copying CSecret into a CKeyMaterial variable */
         return cKeyCrypter.Decrypt(vchCiphertext, *((CKeyingMaterial*)&vchPlaintext));
     }
 

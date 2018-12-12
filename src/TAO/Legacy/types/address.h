@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_TYPES_INCLUDE_ADDRESS_H
-#define NEXUS_TAO_LEGACY_TYPES_INCLUDE_ADDRESS_H
+#ifndef NEXUS_TAO_LEGACY_TYPES_ADDRESS_H
+#define NEXUS_TAO_LEGACY_TYPES_ADDRESS_H
 
 #include <Util/include/base58.h>
 

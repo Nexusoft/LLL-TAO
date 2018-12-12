@@ -24,28 +24,68 @@ namespace TAO
 
 
         /** Operation Layer Byte Code. **/
-        enum
+        enum OP
         {
             //register operations
-            OP_WRITE      = 0x01, //OP_WRITE <vchRegAddress> <vchData> return fSuccess
-            OP_READ       = 0x02, //OP_READ <vchRegAddress> return <vchData>
-            OP_REGISTER   = 0x03, //OP_REGISTER <vchRegData> return fSuccess
-            OP_AUTHORIZE  = 0x04, //OP_AUTHORIZE OP_GETHASH <vchPubKey> return fSuccess
-            OP_TRANSFER   = 0x05, //OP_TRANSFER <vchRegAddress> <vchGenesisID> return fSuccess
+            WRITE      = 0x01, //OP_WRITE <vchRegAddress> <vchData> return fSuccess
+            REGISTER   = 0x02, //OP_REGISTER <vchRegData> return fSuccess
+            AUTHORIZE  = 0x03, //OP_AUTHORIZE OP_GETHASH <vchPubKey> return fSuccess
+            TRANSFER   = 0x04, //OP_TRANSFER <vchRegAddress> <vchGenesisID> return fSuccess
+            REQUIRE    = 0x05, //OP_REQUIRE <boolean=expression> must validate to true.
 
             //financial operations
-            OP_DEBIT      = 0x10,
-            OP_CREDIT     = 0x11,
-            OP_EXCHANGE   = 0x12,
+            DEBIT      = 0x10,
+            CREDIT     = 0x11,
 
             //crypto operations
-            OP_SIGNATURE  = 0x20,
+            SIGNATURE  = 0x20,
 
             //consensus operations
-            OP_VOTE       = 0x50, //OP_VOTE <vchData> <bool> return fSuccess - vote for or against a memory location (piece of data)
+            VOTE       = 0x50, //OP_VOTE <vchData> <bool> return fSuccess - vote for or against a memory location (piece of data)
+        };
 
 
-            OP_METHOD     = 0xff //OP_METHOD <vchAddress> return <vchData>
+        //Exchange would be:
+        //OP_DEBIT <hash-from-a> <%hash-to%> 100 OP_REQUIRE OP_DEBIT <hash-from-b> 500 <token-id> OP_IF VAL_TIMESTAMP OP_LESSTHAN <future=time> OP_OR OP_CREDIT <%txid%> <hash-proof=0xff> <hash-to-a> 100
+
+        //second debit:
+        //OP_VALIDATE <txid> OP_DEBIT <hash-from-b> <hash-to-my-token> = 0xff> 500 <token-id>
+        //---> OP_VALIDATE executes txid, if OP_REQUIRE satisfied
+
+        //return to self
+        //OP_VALIDATE <txid> OP_CREDIT <txid> <hash-proof=0xff> <hash-to-a> 100
+
+
+        //claims
+        //OP_CREDIT <txid of your debit> <hash-proof=0xff> <hash-to-b> 100
+        //---> check state of locking transaction
+
+        //OP_CREDIT <txid of your debit> <hash-proof=0xff> <hash-to-a> 500
+
+        /** Validation Byte Code. **/
+        enum VALIDATE
+        {
+            //register operations
+            IF         = 0xf0,
+            ELSE       = 0xf1,
+            ENDIF      = 0xf2,
+            AND        = 0xf3,
+            OR         = 0xf4,
+            EQUALS     = 0xf5,
+            NOT        = 0xf6,
+
+            LESSTHAN   = 0xf7,
+            GREATTHAN  = 0xf8,
+
+            RETURN     = 0xff
+        };
+
+
+        /** Values. **/
+        enum
+        {
+            VAL_TIMESTAMP      = 0xe0
+
         };
 
     }

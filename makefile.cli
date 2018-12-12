@@ -141,21 +141,39 @@ OBJS= \
 	build/LLP_tritium.o \
 	build/LLP_corenode.o \
 	build/LLP_rpcnode.o \
-	build/Legacy_base.o \
-	build/Legacy_basic.o \
-	build/Legacy_signature.o \
 	build/Legacy_evaluate.o \
 	build/Legacy_address.o \
+	build/Legacy_addressbook.o \
+	build/Legacy_basickeystore.o \
+	build/Legacy_crypted.o \
+	build/Legacy_crypter.o \
+	build/Legacy_cryptokeystore.o \
+	build/Legacy_db.o \
 	build/Legacy_enum.o \
-	build/Legacy_secret.o \
-	build/Legacy_script.o \
+	build/Legacy_evaluate.o \
+	build/Legacy_keypool.o \
+	build/Legacy_keystore.o \
 	build/Legacy_outpoint.o \
+	build/Legacy_reservekey.o \
+	build/Legacy_script.o \
+	build/Legacy_secret.o \
+	build/Legacy_signature.o \
+	build/Legacy_transaction.o \
 	build/Legacy_txin.o \
 	build/Legacy_txout.o \
-	build/Legacy_transaction.o \
+	build/Legacy_wallet.o \
+	build/Legacy_walletdb.o \
+	build/Legacy_wallettx.o \
 	build/Ledger_block.o \
 	build/Ledger_prime.o \
+	build/Ledger_tritium.o \
 	build/Ledger_transaction.o \
+	build/Operation_write.o \
+	build/Operation_register.o \
+	build/Operation_transfer.o \
+	build/Operation_debit.o \
+	build/Operation_credit.o \
+	build/Operation_authorize.o \
 	build/API_cmd.o \
 	build/API_rpc.o \
 	build/API_info.o \
@@ -164,7 +182,7 @@ OBJS= \
 	build/Util_base64.o \
 	build/Util_config.o \
 	build/Util_debug.o \
-    build/Util_filesystem.o
+	build/Util_filesystem.o
 
 ###############################################################################
 ifeq ($(detected_OS),Windows)

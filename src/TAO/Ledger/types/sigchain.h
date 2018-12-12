@@ -40,31 +40,27 @@ namespace TAO
 
         public:
             /** Constructor to generate Keychain
-            *
-            * @param[in] strUsernameIn The username to seed the signature chain
-            * @param[in] strPasswordIn The password to seed the signature chain
-            */
+             *
+             * @param[in] strUsernameIn The username to seed the signature chain
+             * @param[in] strPasswordIn The password to seed the signature chain
+             **/
             SignatureChain(std::string strUsernameIn, std::string strPasswordIn) : strUsername(strUsernameIn), strPassword(strPasswordIn) {}
 
 
             /** Generate Function
-            *
-            * This function is responsible for genearting the private key in the keychain of a specific account.
-            * The keychain is a series of keys seeded from a secret phrase and a PIN number.
-            *
-            * @param[in] nKeyID The key number in the keychian
-            * @param[in] strSecret The secret phrase to use (Never Cached)
-            *
-            * @return The 512 bit hash of this key in the series.
-            */
+             *
+             *  This function is responsible for genearting the private key in the keychain of a specific account.
+             *  The keychain is a series of keys seeded from a secret phrase and a PIN number.
+             *
+             *  @param[in] nKeyID The key number in the keychian
+             *  @param[in] strSecret The secret phrase to use (Never Cached)
+             *
+             *  @return The 512 bit hash of this key in the series.
+             **/
             uint512_t Generate(uint32_t nKeyID, std::string strSecret)
             {
                 /* Serialize the Key ID (Big Endian). */
-                std::vector<uint8_t> vKeyID;
-                vKeyID.push_back(nKeyID >> 24 & 0xff);
-                vKeyID.push_back(nKeyID >> 16 & 0xff);
-                vKeyID.push_back(nKeyID >> 8  & 0xff);
-                vKeyID.push_back(nKeyID       & 0xff);
+                std::vector<uint8_t> vKeyID((uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
 
                 /* Generate the Secret Phrase */
                 std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());

@@ -95,14 +95,14 @@ namespace LLC
         }
 
         //CBigNum(char n) is not portable.  Use 'signed char' or 'uint8_t'.
-        CBigNum(signed char n)       { allocate(); if (n >= 0) setulong(n); else setint64(n); }
-        CBigNum(short n)             { allocate(); if (n >= 0) setulong(n); else setint64(n); }
-        CBigNum(int n)               { allocate(); if (n >= 0) setulong(n); else setint64(n); }
+        CBigNum(int8_t n)              { allocate(); if (n >= 0) setulong(n); else setint64(n); }
+        CBigNum(int16_t n)             { allocate(); if (n >= 0) setulong(n); else setint64(n); }
+        CBigNum(int32_t n)             { allocate(); if (n >= 0) setulong(n); else setint64(n); }
         //CBigNum(long n)              { allocate(); if (n >= 0) setulong(n); else setint64(n); }
         CBigNum(int64_t n)             { allocate(); setint64(n); }
-        CBigNum(uint8_t n)     { allocate(); setulong(n); }
-        CBigNum(uint16_t n)    { allocate(); setulong(n); }
-        CBigNum(uint32_t n)      { allocate(); setulong(n); }
+        CBigNum(uint8_t n)             { allocate(); setulong(n); }
+        CBigNum(uint16_t n)            { allocate(); setulong(n); }
+        CBigNum(uint32_t n)            { allocate(); setulong(n); }
         //CBigNum(unsigned long n)     { allocate(); setulong(n); }
         CBigNum(uint64_t n)            { allocate(); setuint64(n); }
         explicit CBigNum(uint256_t n)  { allocate(); setuint256(n); }

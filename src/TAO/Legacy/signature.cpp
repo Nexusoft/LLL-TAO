@@ -69,7 +69,7 @@ namespace Legacy
 
 
     /* Returns a hash that is used to sign inputs or verify the signature is a valid signature of this hash. */
-    uint256_t SignatureHash(CScript scriptCode, Transaction& txTo, uint32_t nIn, int32_t nHashType)
+    uint256_t SignatureHash(CScript scriptCode, const Transaction& txTo, uint32_t nIn, int32_t nHashType)
     {
         if (nIn >= txTo.vin.size())
         {
@@ -136,7 +136,7 @@ namespace Legacy
 
 
     /* Checks that the signature supplied is a valid one. */
-    bool CheckSig(std::vector<uint8_t> vchSig, std::vector<uint8_t> vchPubKey, CScript scriptCode, Transaction& txTo, uint32_t nIn, int32_t nHashType)
+    bool CheckSig(std::vector<uint8_t> vchSig, std::vector<uint8_t> vchPubKey, CScript scriptCode, const Transaction& txTo, uint32_t nIn, int32_t nHashType)
     {
         // Hash type is one byte tacked on to the end of the signature
         if (vchSig.empty())

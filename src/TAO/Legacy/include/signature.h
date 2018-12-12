@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <LLC/types/bignum.h>
 #include <Util/include/base58.h>
 
-#include <TAO/Legacy/keystore/base.h>
+#include <TAO/Legacy/wallet/basickeystore.h>
 
 #include <string>
 #include <vector>
@@ -69,7 +69,7 @@ namespace Legacy
      *  @return The hash for use in signing.
      *
      **/
-    uint256_t SignatureHash(CScript scriptCode, Transaction& txTo, uint32_t nIn, int32_t nHashType);
+    uint256_t SignatureHash(CScript scriptCode, const Transaction& txTo, uint32_t nIn, int32_t nHashType);
 
 
     /** Check Sig
@@ -86,7 +86,7 @@ namespace Legacy
      *  @return true if the signature is valid.
      *
      **/
-    bool CheckSig(std::vector<uint8_t> vchSig, std::vector<uint8_t> vchPubKey, CScript scriptCode, Transaction& txTo, uint32_t nIn, int32_t nHashType);
+    bool CheckSig(std::vector<uint8_t> vchSig, std::vector<uint8_t> vchPubKey, CScript scriptCode, const Transaction& txTo, uint32_t nIn, int32_t nHashType);
 
 
     /** Sign Signature

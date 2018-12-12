@@ -76,9 +76,6 @@ namespace TAO
 			std::vector<uint8_t> vchBlockSig;
 
 
-			//standard serialization methods
-			SERIALIZE_HEADER
-
 
 			/** The default constructor. Sets block state to Null. **/
 			Block() { SetNull(); }

@@ -14,8 +14,6 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_STATE_H
 #define NEXUS_TAO_LEDGER_INCLUDE_STATE_H
 
-#include <LLC/types/bignum.h>
-
 namespace TAO::Ledger
 {
 
