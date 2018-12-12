@@ -57,6 +57,10 @@ int main(int argc, char** argv)
     config::ParseParameters(argc, argv);
 
 
+    /* Read the configuration file. */
+    config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
+
+
     /* Handle Commandline switch */
     for (int i = 1; i < argc; i++)
     {
@@ -75,10 +79,6 @@ int main(int argc, char** argv)
         debug::log(0, FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, config::GetDataDir(false).c_str());
 
 
-    /* Read the configuration file. */
-    config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
-
-
     /* Create the database instances. */
     LLD::regDB = new LLD::RegisterDB("r+");
     LLD::legDB = new LLD::LedgerDB("r+");
@@ -86,25 +86,25 @@ int main(int argc, char** argv)
 
 
     /* Initialize the Legacy Server. */
-    LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(config::GetArg("-port", config::fTestNet ? 8888 : 9888), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
+    LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(config::GetArg("-port", config::fTestNet ? 8888 : 9888), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), config::GetBoolArg("-meters", false));
     if(config::mapMultiArgs["-addnode"].size() > 0)
     {
         for(auto node : config::mapMultiArgs["-addnode"])
         {
-            LLP::CAddress addr = LLP::CAddress(LLP::CService(debug::strprintf("%s:%i", node.c_str(), config::GetArg("-port", config::fTestNet ? 8888 : 9888)).c_str(), false));
+            LLP::CAddress addr = LLP::CAddress(LLP::CService(debug::strprintf("%s:%i", node.c_str(), config::GetArg("-port", config::fTestNet ? 8888 : 9888)).c_str(), config::GetBoolArg("-meters", false)));
             LLP::TRITIUM_SERVER->AddAddress(addr);
         }
     }
 
 
     /* Create the Core API Server. */
-    LLP::Server<LLP::CoreNode>* CORE_SERVER = new LLP::Server<LLP::CoreNode>(config::GetArg("-apiport", 8080), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), false);
+    LLP::Server<LLP::CoreNode>* CORE_SERVER = new LLP::Server<LLP::CoreNode>(config::GetArg("-apiport", 8080), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), config::GetBoolArg("-meters", false));
 
 
     /* Set up RPC server */
     TAO::API::RPCCommands = new TAO::API::RPC();
     TAO::API::RPCCommands->Initialize();
-    LLP::Server<LLP::RPCNode>* RPC_SERVER = new LLP::Server<LLP::RPCNode>(config::GetArg("-rpcport", config::fTestNet? 8336 : 9336), 1, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), false);
+    LLP::Server<LLP::RPCNode>* RPC_SERVER = new LLP::Server<LLP::RPCNode>(config::GetArg("-rpcport", config::fTestNet? 8336 : 9336), 1, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), config::GetBoolArg("-meters", false));
 
 
     /* Wait for Shutdown. */
