@@ -108,7 +108,7 @@ namespace Legacy
          *  Not serialized directly. Values are copied into an entry in mapValue 
          *  using the "spent" key for serialization/deserialization.
          **/
-        std::vector<char> vfSpent; 
+        std::vector<bool> vfSpent; 
 
 
         /** Flag indicating that the received time is also the transaction time.
@@ -125,7 +125,7 @@ namespace Legacy
          *  This is set by transaction creation, but generally not used.
          *  The IsFromMe() method should be used instead. 
          **/
-        char fFromMe;
+        bool fFromMe;
 
 
         /* Memory only data (not serialized) */
@@ -238,27 +238,23 @@ namespace Legacy
 
 
         /* Wallet transaction serialize/unserialize needs some customization to set up data*/
-//TODO need to fix - Why does template instantiate with T=char for *(CMerkleTx *)this
-/*
-
         IMPLEMENT_SERIALIZE
         (
             CWalletTx* pthis = const_cast<CWalletTx*>(this);
-            //const CMerkleTx& thisAsBaseReference = *this;
             if (fRead)
             {
                 pthis->fHaveWallet = false;
                 pthis->ptransactionWallet = nullptr;
                 pthis->InitWalletTx();
             }
-            char fSpent = false;
+            bool fSpent = false;
 
             if (!fRead)
             {
                 pthis->mapValue["fromaccount"] = pthis->strFromAccount;
 
                 std::string str;
-                for(char f : vfSpent)
+                for(bool f : vfSpent)
                 {
                     str += (f ? '1' : '0');
                     if (f)
@@ -267,7 +263,7 @@ namespace Legacy
                 pthis->mapValue["spent"] = str;
             }
 
-            nSerSize += SerReadWrite(s, *(CMerkleTx *)this, nSerType, nVersion, ser_action);
+            nSerSize += SerReadWrite(s, *(CMerkleTx *)this, nSerType, nSerVersion, ser_action);
 
             READWRITE(vtxPrev);
             READWRITE(mapValue);
@@ -292,7 +288,7 @@ namespace Legacy
             pthis->mapValue.erase("version");
             pthis->mapValue.erase("spent");
         )
-*/
+
         
         /** BindWallet
          *
@@ -452,7 +448,7 @@ namespace Legacy
          *  @return true if spent status of any output is updated
          *
          **/
-        bool UpdateSpent(const std::vector<char>& vfNewSpent);
+        bool UpdateSpent(const std::vector<bool>& vfNewSpent);
 
 
         /** WriteToDisk
