@@ -60,7 +60,7 @@ namespace LLP
             addrThisNode(),
             LISTEN_THREAD_V4(std::bind(&Server::ListeningThread, this, true)),  //IPv4 Listener
             LISTEN_THREAD_V6(std::bind(&Server::ListeningThread, this, false)), //IPv6 Listener
-            METER_THREAD(std::bind(&Server::MeterThread, this))
+            METER_THREAD(std::bind(&Server::Meter, this))
         {
             for(int index = 0; index < MAX_THREADS; index++)
                 DATA_THREADS.push_back(new DataThread<ProtocolType>(index, fDDOS, rScore, cScore, nTimeout, fMeter));
@@ -423,7 +423,7 @@ namespace LLP
 
 
         /* LLP Meter Thread. Tracks the Requests / Second. */
-        void MeterThread()
+        void Meter()
         {
             if(!config::GetBoolArg("-meters", false))
                 return;
@@ -440,7 +440,7 @@ namespace LLP
                     nGlobalConnections += DATA_THREADS[nIndex]->nConnections;
 
                 uint32_t RPS = TotalRequests() / TIMER.Elapsed();
-                debug::log(0, 0, "***** LLP Running at %u requests/s with %u connections.\n", RPS, nGlobalConnections);
+                debug::log(0, FUNCTION "LLP Running at %u requests/s with %u connections.\n", __PRETTY_FUNCTION__, RPS, nGlobalConnections);
 
                 TIMER.Reset();
                 ClearRequests();
