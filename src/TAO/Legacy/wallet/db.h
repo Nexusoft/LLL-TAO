@@ -21,7 +21,9 @@ ________________________________________________________________________________
 
 #include <db_cxx.h> /* Berkeley DB header */
 
-class CDataStream;
+#include <LLD/include/version.h>
+
+#include <Util/templates/serialize.h>
 
 namespace Legacy
 {
@@ -155,7 +157,47 @@ namespace Legacy
          *
          **/
         template<typename K, typename T>
-        bool Read(const K& key, T& value);
+        bool Read(const K& key, T& value)
+        {
+            if (pdb == nullptr)
+                return false;
+
+            /* Key */
+            CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
+            ssKey.reserve(1000);
+            ssKey << key;
+            Dbt datKey(&ssKey[0], ssKey.size());
+
+            /* Value */
+            Dbt datValue;
+            datValue.set_flags(DB_DBT_MALLOC); // Berkeley will allocate memory for returned value, will need to free before return
+
+            /* Read */
+            int ret = pdb->get(GetTxn(), &datKey, &datValue, 0);
+
+            /*  Clear the key memory */
+            memset(datKey.get_data(), 0, datKey.get_size());
+
+            if (datValue.get_data() == nullptr)
+                return false; // Key not found or no value present, can safely return without free() because there is nothing to free
+
+            /* Unserialize value */
+            try {
+                /* get_data returns a void* and currently uses a C-style cast to load into CDataStream */
+                CDataStream ssValue((char*)datValue.get_data(), (char*)datValue.get_data() + datValue.get_size(), SER_DISK, LLD::DATABASE_VERSION);
+                ssValue >> value;
+            }
+            catch (std::exception &e) {
+                /* Still need to free any memory allocated for datValue, so do not return here. Just set ret so it returns false */
+                ret = -1;
+            }
+
+            /* Clear and free value memory */
+            memset(datValue.get_data(), 0, datValue.get_size());
+            free(datValue.get_data());
+
+            return (ret == 0);
+        }
 
 
         /** Write
@@ -178,7 +220,35 @@ namespace Legacy
          *
          **/
         template<typename K, typename T>
-        bool Write(const K& key, const T& value, bool fOverwrite=true);
+        bool Write(const K& key, const T& value, bool fOverwrite=true)
+        {
+            if (pdb == nullptr)
+                return false;
+
+            if (fReadOnly)
+                assert(!"Write called on database in read-only mode");
+
+            /* Key */
+            CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
+            ssKey.reserve(1000);
+            ssKey << key;
+            Dbt datKey(&ssKey[0], ssKey.size());
+
+            /* Value */
+            CDataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
+            ssValue.reserve(10000);
+            ssValue << value;
+            Dbt datValue(&ssValue[0], ssValue.size());
+
+            /* Write */
+            int ret = pdb->put(GetTxn(), &datKey, &datValue, (fOverwrite ? 0 : DB_NOOVERWRITE));
+
+            /* Clear memory in case it was a private key */
+            memset(datKey.get_data(), 0, datKey.get_size());
+            memset(datValue.get_data(), 0, datValue.get_size());
+
+            return (ret == 0);
+        }
 
 
         /** Erase
@@ -193,7 +263,28 @@ namespace Legacy
          *
          **/
         template<typename K>
-        bool Erase(const K& key);
+        inline bool Erase(const K& key)
+        {
+            if (pdb == nullptr)
+                return false;
+
+            if (fReadOnly)
+                assert(!"Erase called on database in read-only mode");
+
+            /* Key */
+            CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
+            ssKey.reserve(1000);
+            ssKey << key;
+            Dbt datKey(&ssKey[0], ssKey.size());
+
+            /* Erase */
+            int ret = pdb->del(GetTxn(), &datKey, 0);
+
+            /* Clear memory */
+            memset(datKey.get_data(), 0, datKey.get_size());
+
+            return (ret == 0 || ret == DB_NOTFOUND);
+        }
 
 
         /** Exists
@@ -206,7 +297,24 @@ namespace Legacy
          *
          **/
         template<typename K>
-        bool Exists(const K& key);
+        inline bool Exists(const K& key)
+        {
+            if (pdb == nullptr)
+                return false;
+
+            /* Key */
+            CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
+            ssKey.reserve(1000);
+            ssKey << key;
+            Dbt datKey(&ssKey[0], ssKey.size());
+
+            /* Exists */
+            int ret = pdb->exists(GetTxn(), &datKey, 0);
+
+            /* Clear memory */
+            memset(datKey.get_data(), 0, datKey.get_size());
+            return (ret == 0);
+        }
 
 
         /** GetCursor

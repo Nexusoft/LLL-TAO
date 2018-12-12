@@ -17,12 +17,11 @@ ________________________________________________________________________________
 #include <map>
 #include <utility>
 
-#include <db_cxx.h> /* Berkeley DB header */
-
 #include <LLD/include/version.h>
 
 #include <TAO/Legacy/types/script.h>
 #include <TAO/Legacy/wallet/accountingentry.h>
+#include <TAO/Legacy/wallet/keypoolentry.h>
 #include <TAO/Legacy/wallet/wallet.h>
 #include <TAO/Legacy/wallet/walletaccount.h>
 #include <TAO/Legacy/wallet/walletdb.h>
@@ -35,7 +34,6 @@ ________________________________________________________________________________
 #include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
 #include <Util/include/runtime.h>
-#include <Util/templates/serialize.h>
 
 
 namespace Legacy
@@ -187,21 +185,6 @@ namespace Legacy
     {
         CWalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("cscript"), hash), redeemScript, false);
-    }
-
-
-    /* Reads the stored CBlockLocator of the last recorded best block. */
-    bool CWalletDB::ReadBestBlock(TAO::Ledger::CBlockLocator& locator)
-    {
-        return Read(std::string("bestblock"), locator);
-    }
-
-
-    /* Stores a CBlockLocator to record current best block. */
-    bool CWalletDB::WriteBestBlock(const TAO::Ledger::CBlockLocator& locator)
-    {
-        CWalletDB::nWalletDBUpdated++;
-        return Write(std::string("bestblock"), locator);
     }
 
 
