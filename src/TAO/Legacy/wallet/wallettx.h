@@ -41,8 +41,8 @@ namespace Legacy
 
     /** @class CWalletTx
      *
-     * A transaction with a bunch of additional info that only the owner cares about.
-     * It includes any unrecorded transactions needed to link it back to the block chain.
+     * A transaction with additional information relevant to the owner and the owner's wallet which owns it.
+     * It includes any unrecorded previoius transactions needed to link it back to the block chain.
      *
      *  Database key is tx<hash> where hash is the transaction hash
      **/
@@ -86,8 +86,7 @@ namespace Legacy
         std::vector<CMerkleTx> vtxPrev;
 
 
-        /** Map used by RPC server to record certain argument for send commands.
-         *  Also used by serialization to store vfSpent settings.
+        /** Used by serialization to store vfSpent settings.
          **/
         std::map<std::string, std::string> mapValue;
 
@@ -96,7 +95,9 @@ namespace Legacy
         std::vector<std::pair<std::string, std::string> > vOrderForm;
 
 
-        /** Used by RPC server to record and report "fromaccount" for send operations. **/
+        /** Used by RPC server to record and report "fromaccount" for send operations. 
+         *  @deprecated - no longer used except for deserialization of previously stored transactions
+         **/
         std::string strFromAccount;
 
 
@@ -156,7 +157,6 @@ namespace Legacy
          *  Initializes an empty wallet transaction
          *
          **/
-        /* Have to initialize ptransactionWallet reference, but set fHaveWallet to false so it isn't used, need BindWallet first */
         CWalletTx() : ptransactionWallet(nullptr), fHaveWallet(false)
         {                
             InitWalletTx();

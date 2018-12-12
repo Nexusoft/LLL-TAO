@@ -31,28 +31,19 @@ namespace Legacy
 {
 	class CBlockIndex;
 
-    /** A transaction with a merkle branch linking it to the block chain. */
+    /** @class CMerkleTx
+     *
+     * A transaction with a merkle branch linking it to the block chain.
+     *
+     **/
 	class CMerkleTx : public Transaction
 	{
-	public:
-		uint1024_t hashBlock;
-		std::vector<uint512_t> vMerkleBranch;
-		int nIndex;
-
-		// memory only
-		mutable bool fMerkleVerified;
-
-
-		CMerkleTx()
-		{
-			Init();
-		}
-
-		CMerkleTx(const Transaction& txIn) : Transaction(txIn)
-		{
-			Init();
-		}
-
+	private:
+        /** Init
+         *
+         *  Initializes an empty merkle transaction
+         *
+         **/
 		void Init()
 		{
 			hashBlock = 0;
@@ -61,6 +52,49 @@ namespace Legacy
 		}
 
 
+	public:
+		/** The block hash of the block containing this transaction **/
+		uint1024_t hashBlock;
+
+		/** The merkle branch for this transaction **/
+		std::vector<uint512_t> vMerkleBranch;
+
+		/** Index of transaction within containing block **/
+		int nIndex;
+
+		/** Memory only, true if merkle branch confirmed as connecting to containing block **/
+		mutable bool fMerkleVerified;
+
+
+        /** Constructor
+         *
+         *  Initializes an empty merkle transaction
+         *
+         **/
+		CMerkleTx()
+		{
+			Init();
+		}
+
+
+        /** Constructor
+         *
+         *  Initializes a merkle transaction with data copied from a Transaction. 
+         *
+         *  @param[in] pwalletIn The wallet for this wallet transaction
+         *
+         *  @param[in] txIn Transaction data to copy into this merkle transaction
+         *
+         **/
+		CMerkleTx(const Transaction& txIn) : Transaction(txIn)
+		{
+			Init();
+		}
+
+
+		/* Implement serialization/deserializaiton for CMerkleTx, first by serializing/deserializing 
+		 * base class data then processing local data 
+		 */
 		IMPLEMENT_SERIALIZE
 		(
 			nSerSize += SerReadWrite(s, *(Transaction*)this, nSerType, nVersion, ser_action);
@@ -71,11 +105,56 @@ namespace Legacy
 		)
 
 
-		int SetMerkleBranch(const TAO::Ledger::Block* pblock=NULL) {}
+        /** SetMerkleBranch
+         *
+         *  Populates the merkle branch for this transaction from its containing block. 
+         *
+         *  @param[in] pblock The containing block, if nullptr method will look it up
+         *
+         *  @return Depth in chain of block containing this transaction, 0 if not in main chain or merkle branch not set
+         *
+         **/
+		int SetMerkleBranch(const TAO::Ledger::Block* pblock=nullptr);
+
+
+        /** GetDepthInMainChain
+         *
+         *  Retrieve the depth in chain of block containing this transaction
+         *
+         *  @return Depth in chain, 0 if not in main chain
+         *
+         **/
+		int GetDepthInMainChain() const;
+
+
+        /** IsInMainChain
+         *
+         *  Tests whether the block containing this transaction part of the main chain.
+         *
+         *  @return true if block containing this transaction is in main chain
+         *
+         **/
+		inline bool IsInMainChain() const { return GetDepthInMainChain() > 0; }
+
+
+        /** GetBlocksToMaturity
+         *
+         *  Retrieve the number of blocks remaining until transaction outputs are spendable.
+         *
+         *  @return Blocks remaining until transaction is mature, 
+         *          0 if not Coinbase or Coinstake transaction (spendable immediately upon confirm)
+         *
+         **/
+		int GetBlocksToMaturity() const;
+
+
+//TODO - Do these require implementation or can they be removed?
 		//int GetDepthInMainChain(CBlockIndex* &pindexRet) const;
-		int GetDepthInMainChain() const { return 0; }
-		bool IsInMainChain() const { return GetDepthInMainChain() > 0; }
-		int GetBlocksToMaturity() const { return 0; }
+
+		//bool AcceptToMemoryPool(LLD::CIndexDB& indexdb, bool fCheckInputs=true);
+
+		//bool AcceptToMemoryPool();
+
 	};
 }
 
