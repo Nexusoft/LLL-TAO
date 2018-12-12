@@ -153,6 +153,7 @@ OBJS= \
 	build/Legacy_evaluate.o \
 	build/Legacy_keypool.o \
 	build/Legacy_keystore.o \
+	build/Legacy_merkle.o \
 	build/Legacy_outpoint.o \
 	build/Legacy_reservekey.o \
 	build/Legacy_script.o \
