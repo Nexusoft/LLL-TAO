@@ -16,9 +16,11 @@ ________________________________________________________________________________
 
 #include <LLP/types/http.h>
 #include <TAO/API/types/base.h>
+#include <Util/include/json.h>
 
 namespace LLP
 {
+
 
     /** RPC API Server Node
      *
@@ -52,6 +54,8 @@ namespace LLP
 
     protected:
 
+        json::json JSONRPCReply(const json::json& jsonResponse, const json::json& jsonError, const json::json& jsonID);
+        void ErrorReply(const json::json& jsonError, const json::json& jsonID);
         bool HTTPAuthorized(std::map<std::string, std::string>& mapHeaders);
     };
 }

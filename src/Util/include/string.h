@@ -258,4 +258,40 @@ static inline std::string &trim(std::string &s)
     return ltrim(rtrim(s));
 }
 
+/** EqualsNoCase
+*
+*  Compares the two string parameters and returns true if they are the same, ignoring the case of each.
+*  Uses a lambda function for the character comparison function to pass to std::equal, just so that we can 
+*  implement this in one function
+*
+*  @param[in] str1 First string to be compared.
+*  @param[in] str2 Second string to be compared.
+*
+*  @return true if they are equal, otherwise false.
+*
+**/
+static inline bool EqualsNoCase(const std::string& str1, const std::string& str2)
+{
+	return ((str1.size() == str2.size()) && std::equal(str1.cbegin(), str1.cend(), str2.cbegin(), [](const char & c1, const char & c2){
+							return (c1 == c2 || std::toupper(c1) == std::toupper(c2));
+								}));
+}
+
+/** ToLower
+*
+*  Converts the string parameter to lowercase.  Does not modify the string parameter 
+*
+*  @param[in] strIn The string to be converted
+*
+*  @return A string representing the the lowercase version of the parameter string
+*
+**/
+static inline std::string ToLower(const std::string& strIn)
+{
+    std::string strOut = strIn;
+    std::transform(strOut.begin(), strOut.end(), strOut.begin(), ::tolower);
+    return strOut;
+}
+
+
 #endif

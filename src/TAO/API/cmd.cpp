@@ -141,7 +141,7 @@ namespace TAO::API
             parameters.push_back(argv[i]);
 
         /* Build the HTTP Header. */
-        json::json body = { {"method", argv[argn]}, {"params", parameters} };
+        json::json body = { {"method", argv[argn]}, {"params", parameters}, {"id", 1} };
         std::string strContent = body.dump();
         std::string strReply = debug::strprintf(
                 "POST / HTTP/1.1\r\n"

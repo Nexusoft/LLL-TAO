@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #define NEXUS_TAO_API_TYPES_BASE_H
 
 #include <TAO/API/types/function.h>
+#include <TAO/API/types/exception.h>
+#include <Util/include/debug.h>
 
 namespace TAO::API
 {
@@ -52,9 +54,12 @@ namespace TAO::API
          *  @return JSON encoded response.
          *
          **/
-        json::json Execute(std::string strMethod, json::json jsonParams, bool fHelp = false)
+        json::json Execute(const std::string& strMethod, const json::json& jsonParams, bool fHelp = false)
         {
-            return mapFunctions[strMethod].Execute(fHelp, jsonParams);
+            if( mapFunctions.find(strMethod) != mapFunctions.end())
+                return mapFunctions[strMethod].Execute(fHelp, jsonParams);
+            else
+                throw APIException(-32601, debug::strprintf("Method not found: %s", strMethod.c_str()));
         }
 
     protected:

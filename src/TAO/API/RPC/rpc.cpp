@@ -26,7 +26,7 @@ namespace TAO::API
         mapFunctions["getinfo"] = Function(std::bind(&RPC::GetInfo, this, std::placeholders::_1, std::placeholders::_2));
     }
 
-    json::json RPC::Echo(bool fHelp, json::json jsonParams)
+    json::json RPC::Echo(bool fHelp, const json::json& jsonParams)
     {
         printf("Echo Function!\n");
 

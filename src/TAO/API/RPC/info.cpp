@@ -21,7 +21,7 @@ namespace TAO::API
 {
 
 
-    json::json RPC::GetInfo(bool fHelp, json::json jsonParams)
+    json::json RPC::GetInfo(bool fHelp, const json::json& jsonParams)
     {
         /*if (fHelp || jsonParams.size() != 0)
             throw std::runtime_error(

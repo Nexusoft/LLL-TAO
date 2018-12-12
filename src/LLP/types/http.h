@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/include/version.h>
 #include <LLP/packets/http.h>
 #include <LLP/templates/connection.h>
+#include <Util/include/string.h>
 
 namespace LLP
 {
@@ -154,8 +155,7 @@ namespace LLP
                 {
                     /* Extract the line from the buffer. */
                     std::string strLine = std::string(vchBuffer.begin(), it - 1);
-                    std::transform(strLine.begin(), strLine.end(), strLine.begin(), ::tolower);
-
+                    
                     /* Find the delimiter to split. */
                     std::string::size_type pos = strLine.find(':', 0);
 
@@ -164,21 +164,21 @@ namespace LLP
                     {
                         /* Find the end of request type. */
                         std::string::size_type npos = strLine.find(' ', 0);
-                        INCOMING.strType = strLine.substr(0, npos);
+                        INCOMING.strType = ToLower( strLine.substr(0, npos));
 
                         /* Find the start of version. */
                         std::string::size_type npos2 = strLine.find(' ', npos + 1);
-                        INCOMING.strVersion = strLine.substr(npos2 + 1);
+                        INCOMING.strVersion = ToLower(strLine.substr(npos2 + 1));
 
                         /* Parse request from between the two. */
-                        INCOMING.strRequest = strLine.substr(npos + 1, npos2 - INCOMING.strType.length() - 1);
+                        INCOMING.strRequest = ToLower(strLine.substr(npos + 1, npos2 - INCOMING.strType.length() - 1));
                     }
 
                     /* Handle normal headers. */
                     else if(pos != std::string::npos)
                     {
                         /* Parse out the content length field. */
-                        if(strLine.substr(0, pos) == "content-length")
+                        if(EqualsNoCase(strLine.substr(0, pos), "content-length"))
                             INCOMING.nContentLength = stoi(strLine.substr(pos + 2));
 
                         /* Add line to the headers map. */
