@@ -76,7 +76,7 @@ int main(int argc, char** argv)
 
     /* Create directories if they don't exist yet. */
     if(filesystem::create_directory(config::GetDataDir(false)))
-        debug::log(0, FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, config::GetDataDir(false).c_str());
+        debug::log(0, FUNCTION "Generated Path %s", __PRETTY_FUNCTION__, config::GetDataDir(false).c_str());
 
 
     /* Create the database instances. */
@@ -117,11 +117,11 @@ int main(int argc, char** argv)
     TAO::Ledger::SignatureChain sigChain(config::GetArg("-username", "user"), config::GetArg("-password", "default"));
     uint512_t hashGenesis = sigChain.Generate(0, config::GetArg("-pin", "1235"));
 
-    debug::log(0, "Genesis %s\n", hashGenesis.ToString().c_str());
+    debug::log(0, "Genesis %s", hashGenesis.ToString().c_str());
 
     /* Extract username and password from config. */
-    debug::log(0, "Username: %s\n", config::GetArg("-username", "user").c_str());
-    debug::log(0, "Password: %s\n", config::GetArg("-password", "default").c_str());
+    debug::log(0, "Username: %s", config::GetArg("-username", "user").c_str());
+    debug::log(0, "Password: %s", config::GetArg("-password", "default").c_str());
 
     return 0;
 }

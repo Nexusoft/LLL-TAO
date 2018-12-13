@@ -56,7 +56,7 @@ namespace LLP
 
         if (!HTTPAuthorized(INCOMING.mapHeaders))
         {
-            debug::log(0, "RPC incorrect password attempt from %s\n", this->SOCKET.addr.ToString().c_str()); //PS TODO this address of the peer is incorrect
+            debug::log(0, "RPC incorrect password attempt from %s", this->SOCKET.addr.ToString().c_str()); //PS TODO this address of the peer is incorrect
 
             /* Deter brute-forcing short passwords.
              * If this results in a DOS the user really
@@ -170,11 +170,11 @@ namespace LLP
         }
         catch( APIException& e)
         {
-            debug::log(0, "RPC Exception: %s\n", e.what());
+            debug::error("RPC Exception: %s", e.what());
         }
         catch (std::exception& e)
         {
-            debug::log(0, "RPC Exception: %s\n", e.what());
+            debug::error("RPC Exception: %s", e.what());
         }
     }
 

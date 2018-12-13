@@ -182,22 +182,16 @@ namespace Core
 		bnNew /= nLowerBound;
 
 
-		/** Don't allow Difficulty to decrease below minimum. **/
-		if (GetBoolArg("-regtest",false)) {
-			if (bnNew > bnProofOfWorkLimitRegtest[0])
-				bnNew = bnProofOfWorkLimitRegtest[0];
-		}
-		else {
-			if (bnNew > bnProofOfWorkLimit[0])
-				bnNew = bnProofOfWorkLimit[0];
-		}
+		/* Don't allow Difficulty to decrease below minimum. */
+		if (bnNew > bnProofOfWorkLimit[0])
+			bnNew = bnProofOfWorkLimit[0];
 
 
 		/* Verbose Debug Output. */
 		uint32_t nDays, nHours, nMinutes;
 		GetChainTimes(GetChainAge(blkFirst.GetBlockTime()), nDays, nHours, nMinutes);
 
-		debug::log(3, "RETARGET weighted time=%" PRId64 " actual time =%" PRId64 "[%f %%]\n\tchain time: [%" PRId64 " / %" PRId64 "]\n\tdifficulty: [%f to %f]\n\ttrust height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n\n",
+		debug::log(3, "RETARGET weighted time=%" PRId64 " actual time =%" PRId64 "[%f %%]\tchain time: [%" PRId64 " / %" PRId64 "]\tdifficulty: [%f to %f]\ttrust height: %" PRId64 " [AGE %u days, %u hours, %u minutes]",
 		nBlockTime, max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64_t) 1), ((100.0 * nLowerBound) / nUpperBound), nBlockTarget, nBlockTime, GetDifficulty(blkFirst.nBits, 0), GetDifficulty(bnNew.GetCompact(), 0), blkFirst.nChannelHeight, nDays, nHours, nMinutes);
 
 		return bnNew.GetCompact();
@@ -324,7 +318,7 @@ namespace Core
 		uint32_t nDays, nHours, nMinutes;
 		GetChainTimes(GetChainAge(blkFirst.GetBlockTime()), nDays, nHours, nMinutes);
 
-		debug::log(3, "RETARGET weighted time=%" PRId64 " actual time %" PRId64 ", [%f %%]\n\tchain time: [%" PRId64 " / %" PRId64 "]\n\treleased reward: %" PRId64 " [%f %%]\n\tdifficulty: [%f to %f]\n\tprime height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n\n", nBlockTime, max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64_t) 1), nMod * 100.0, nBlockTarget, nBlockTime, blkFirst.nReleasedReserve[0] / COIN, 100.0 * nChainMod, GetDifficulty(blkFirst.nBits, 1), GetDifficulty(nBits, 1), blkFirst.nChannelHeight, nDays, nHours, nMinutes);
+		debug::log(3, "RETARGET weighted time=%" PRId64 " actual time %" PRId64 ", [%f %%]\tchain time: [%" PRId64 " / %" PRId64 "]\treleased reward: %" PRId64 " [%f %%]\tdifficulty: [%f to %f]\tprime height: %" PRId64 " [AGE %u days, %u hours, %u minutes]", nBlockTime, max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64_t) 1), nMod * 100.0, nBlockTarget, nBlockTime, blkFirst.nReleasedReserve[0] / COIN, 100.0 * nChainMod, GetDifficulty(blkFirst.nBits, 1), GetDifficulty(nBits, 1), blkFirst.nChannelHeight, nDays, nHours, nMinutes);
 
 
 		return nBits;
@@ -446,7 +440,7 @@ namespace Core
 		uint32_t nDays, nHours, nMinutes;
 		GetChainTimes(GetChainAge(blkFirst.GetBlockTime()), nDays, nHours, nMinutes);
 
-		debug::log(3, "RETARGET weighted time=%" PRId64 " actual time %" PRId64 " [%f %%]\n\tchain time: [%" PRId64 " / %" PRId64 "]\n\treleased reward: %" PRId64 " [%f %%]\n\tdifficulty: [%f to %f]\n\thash height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n\n", nBlockTime, max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64_t) 1), (100.0 * nLowerBound) / nUpperBound, nBlockTarget, nBlockTime, blkFirst.nReleasedReserve[0] / COIN, 100.0 * nChainMod, GetDifficulty(blkFirst.nBits, 2), GetDifficulty(bnNew.GetCompact(), 2), blkFirst.nChannelHeight, nDays, nHours, nMinutes);
+		debug::log(3, "RETARGET weighted time=%" PRId64 " actual time %" PRId64 " [%f %%]\tchain time: [%" PRId64 " / %" PRId64 "]\treleased reward: %" PRId64 " [%f %%]\tdifficulty: [%f to %f]\thash height: %" PRId64 " [AGE %u days, %u hours, %u minutes]", nBlockTime, max(blkFirst.GetBlockTime() - blkLast.GetBlockTime(), (int64_t) 1), (100.0 * nLowerBound) / nUpperBound, nBlockTarget, nBlockTime, blkFirst.nReleasedReserve[0] / COIN, 100.0 * nChainMod, GetDifficulty(blkFirst.nBits, 2), GetDifficulty(bnNew.GetCompact(), 2), blkFirst.nChannelHeight, nDays, nHours, nMinutes);
 
 		return bnNew.GetCompact();
 	}

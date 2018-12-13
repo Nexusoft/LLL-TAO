@@ -63,7 +63,7 @@ inline bool CheckPermissions(std::string strAddress, uint32_t nPort)
         /* Check the components of IP address. */
         for(int nByte = 0; nByte < 4; nByte++)
             if(vCheck[nByte] != "*" && vCheck[nByte] != vAddress[nByte])
-                return debug::error("Check %s - %s\n", vCheck[nByte].c_str(), vAddress[nByte].c_str());
+                return debug::error("Check %s - %s", vCheck[nByte].c_str(), vAddress[nByte].c_str());
     }
 
     return true;

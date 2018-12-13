@@ -28,7 +28,7 @@ namespace TAO::API
 
     json::json RPC::Echo(bool fHelp, const json::json& jsonParams)
     {
-        printf("Echo Function!\n");
+        printf("Echo Function!");
 
         json::json ret;
         ret["echo"] = jsonParams;

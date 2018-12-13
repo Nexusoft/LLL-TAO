@@ -118,7 +118,7 @@ namespace LLP
             LOCK(MUTEX);
 
             /* Debug dump of message type. */
-            debug::log(4, NODE "Sent Message (%u bytes)\n", PACKET.GetBytes().size());
+            debug::log(4, NODE "Sent Message (%u bytes)", PACKET.GetBytes().size());
 
             /* Debug dump of packet data. */
             if(config::GetArg("-verbose", 0) >= 5)
@@ -140,13 +140,13 @@ namespace LLP
             CService addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
 
             /// debug print
-            debug::log(1, NODE "Connecting to %s\n", addrConnect.ToString().c_str());
+            debug::log(1, NODE "Connecting to %s", addrConnect.ToString().c_str());
 
             // Connect
             if (SOCKET.Connect(addrConnect))
             {
                 /// debug print
-                debug::log(1, NODE "Connected to %s\n", addrConnect.ToString().c_str());
+                debug::log(1, NODE "Connected to %s", addrConnect.ToString().c_str());
 
                 fCONNECTED = true;
                 fOUTGOING  = true;

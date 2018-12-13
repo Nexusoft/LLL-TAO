@@ -68,7 +68,7 @@ namespace Legacy
 //            {
 //                vMerkleBranch.clear();
 //                nIndex = -1;
-//                debug::log(0, "ERROR: SetMerkleBranch() : couldn't find tx in block\n");
+//                debug::log(0, "ERROR: SetMerkleBranch() : couldn't find tx in block");
 //                return 0;
 //            }
 //

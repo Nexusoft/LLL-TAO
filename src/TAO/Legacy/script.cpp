@@ -349,7 +349,7 @@ namespace Legacy
     /* Print the Hex output of the script */
     void CScript::PrintHex() const
     {
-        debug::log(0, "CScript(%s)\n", HexStr(begin(), end(), true).c_str());
+        debug::log(0, "CScript(%s)", HexStr(begin(), end(), true).c_str());
     }
 
 
@@ -381,6 +381,6 @@ namespace Legacy
     /* Dump the Hex data into std::out or console */
     void CScript::print() const
     {
-        printf("%s\n", ToString().c_str());
+        printf("%s", ToString().c_str());
     }
 }

@@ -25,7 +25,7 @@ namespace TAO::API
     {
         /*if (fHelp || jsonParams.size() != 0)
             throw std::runtime_error(
-                "getinfo\n"
+                "getinfo"
                 "Returns an object containing various state info.");
 */
         json::json obj;
@@ -71,7 +71,7 @@ namespace TAO::API
     {
         if (fHelp || params.size() != 0)
             throw runtime_error(
-                "getmininginfo\n"
+                "getmininginfo"
                 "Returns an object containing mining-related information.");
 
         uint64 nPrimePS = 0;

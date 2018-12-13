@@ -98,11 +98,11 @@ namespace Consensus
         if(GetHash() > hashTarget)
             return debug::error("CBlock::VerifyStake() : Proof of Stake Hash not meeting Target.");
 
-        debug::log(2, "CBlock::VerifyStake() : Stake Hash  %s\n", GetHash().ToString().substr(0, 20).c_str());
-        debug::log(2, "CBlock::VerifyStake() : Target Hash %s\n", hashTarget.ToString().substr(0, 20).c_str());
-        debug::log(2, "CBlock::VerifyStake() : Coin Age %" PRIu64 " Trust Age %" PRIu64 " Block Age %" PRIu64 "\n", nCoinAge, nTrustAge, nBlockAge);
-        debug::log(2, "CBlock::VerifyStake() : Trust Weight %f Block Weight %f\n", nTrustWeight, nBlockWeight);
-        debug::log(2, "CBlock::VerifyStake() : Threshold %f Required %f Time %u nNonce %" PRIu64 "\n", nThreshold, nRequired, (uint32_t)(nTime - vtx[0].nTime), nNonce);
+        debug::log(2, "CBlock::VerifyStake() : Stake Hash  %s", GetHash().ToString().substr(0, 20).c_str());
+        debug::log(2, "CBlock::VerifyStake() : Target Hash %s", hashTarget.ToString().substr(0, 20).c_str());
+        debug::log(2, "CBlock::VerifyStake() : Coin Age %" PRIu64 " Trust Age %" PRIu64 " Block Age %" PRIu64 "", nCoinAge, nTrustAge, nBlockAge);
+        debug::log(2, "CBlock::VerifyStake() : Trust Weight %f Block Weight %f", nTrustWeight, nBlockWeight);
+        debug::log(2, "CBlock::VerifyStake() : Threshold %f Required %f Time %u nNonce %" PRIu64 "", nThreshold, nRequired, (uint32_t)(nTime - vtx[0].nTime), nNonce);
 
         return true;
     }
@@ -262,7 +262,7 @@ namespace Consensus
                 {
                     keyBestTrust = i->second;
 
-                    debug::log(0, "CTrustPool::HasTrustKey() : Trying Trust Key %s\n", HexStr(keyBestTrust.vchPubKey.begin(), keyBestTrust.vchPubKey.end()).c_str());
+                    debug::log(0, "CTrustPool::HasTrustKey() : Trying Trust Key %s", HexStr(keyBestTrust.vchPubKey.begin(), keyBestTrust.vchPubKey.end()).c_str());
                 }
             }
         }
@@ -271,7 +271,7 @@ namespace Consensus
         if(!keyBestTrust.IsNull())
         {
             /* Assigned Extracted Key to Trust Pool. */
-            debug::log(0, "CTrustPool::HasTrustKey() : Selected Trust Key %s\n", HexStr(keyBestTrust.vchPubKey.begin(), keyBestTrust.vchPubKey.end()).c_str());
+            debug::log(0, "CTrustPool::HasTrustKey() : Selected Trust Key %s", HexStr(keyBestTrust.vchPubKey.begin(), keyBestTrust.vchPubKey.end()).c_str());
             keyBestTrust.Print();
 
             /* Set the Interest Rate from Key. */
@@ -517,8 +517,8 @@ namespace Consensus
 
             /* Only Debug when Not Initializing. */
             if(GetArg("-verbose", 0) >= 1 && !fInit) {
-                debug::log(1, "CTrustPool::Connect() : New Genesis Coinstake Transaction From Block %u\n", cBlock.nHeight);
-                debug::log(1, "CTrustPool::ACCEPTED %s\n", cKey.ToString().substr(0, 20).c_str());
+                debug::log(1, "CTrustPool::Connect() : New Genesis Coinstake Transaction From Block %u", cBlock.nHeight);
+                debug::log(1, "CTrustPool::ACCEPTED %s", cKey.ToString().substr(0, 20).c_str());
             }
 
             return true;
@@ -547,7 +547,7 @@ namespace Consensus
                 This Secures and Anchors the Trust Key to all Descending Trust Blocks of that Key. */
             if(cBlock.vtx[0].vin[0].prevout.hash != mapTrustKeys[cKey].GetHash()) {
 
-                return debug::error("CTrustPool::Connect() : Trust Block Input Hash Mismatch to Trust Key Hash\n%s\n%s", cBlock.vtx[0].vin[0].prevout.hash.ToString().c_str(), mapTrustKeys[cKey].GetHash().ToString().c_str());
+                return debug::error("CTrustPool::Connect() : Trust Block Input Hash Mismatch to Trust Key Hash%s%s", cBlock.vtx[0].vin[0].prevout.hash.ToString().c_str(), mapTrustKeys[cKey].GetHash().ToString().c_str());
             }
 
             /* Read the Genesis Transaction's Block from Disk. */
@@ -586,7 +586,7 @@ namespace Consensus
 
             /* Only Debug when Not Initializing. */
             if(!fInit && GetArg("-verbose", 0) >= 1) {
-                debug::log(0, "CTrustPool::ACCEPTED %s\n", cKey.ToString().substr(0, 20).c_str());
+                debug::log(0, "CTrustPool::ACCEPTED %s", cKey.ToString().substr(0, 20).c_str());
             }
 
             return true;
@@ -625,13 +625,13 @@ namespace Consensus
         {
             /** Only Remove Trust Key from Map if Key Exists. **/
             if(!mapTrustKeys.count(cKey))
-                return debug::error("CTrustPool::Disconnect() : Key %s Doesn't Exist in Trust Pool\n", cKey.ToString().substr(0, 20).c_str());
+                return debug::error("CTrustPool::Disconnect() : Key %s Doesn't Exist in Trust Pool", cKey.ToString().substr(0, 20).c_str());
 
             /** Remove the Trust Key from the Trust Pool. **/
             mapTrustKeys.erase(cKey);
 
             if(GetArg("-verbose", 0) >= 2)
-                debug::log(0, "CTrustPool::Disconnect() : Removed Genesis Trust Key %s From Trust Pool\n", cKey.ToString().substr(0, 20).c_str());
+                debug::log(0, "CTrustPool::Disconnect() : Removed Genesis Trust Key %s From Trust Pool", cKey.ToString().substr(0, 20).c_str());
 
             return true;
         }
@@ -651,7 +651,7 @@ namespace Consensus
             else
                 (*it).second = false;
 
-            debug::log(0, "CTrustPool::Disconnect() : Removed Block %s From Trust Key\n", cBlock.GetHash().ToString().substr(0, 20).c_str());
+            debug::log(0, "CTrustPool::Disconnect() : Removed Block %s From Trust Key", cBlock.GetHash().ToString().substr(0, 20).c_str());
 
             return true;
         }
@@ -699,8 +699,8 @@ namespace Consensus
 
             /* Only Debug when Not Initializing. */
             if(GetArg("-verbose", 0) >= 1 && !fInit) {
-                debug::log(0, "CTrustPool::accept() : New Genesis Coinstake Transaction From Block %u\n", cBlock.nHeight);
-                debug::log(0, "CTrustPool::ACCEPTED %s\n", cKey.ToString().substr(0, 20).c_str());
+                debug::log(0, "CTrustPool::accept() : New Genesis Coinstake Transaction From Block %u", cBlock.nHeight);
+                debug::log(0, "CTrustPool::ACCEPTED %s", cKey.ToString().substr(0, 20).c_str());
             }
 
             return true;
@@ -714,7 +714,7 @@ namespace Consensus
 
             /** Only Debug when Not Initializing. **/
             if(!fInit && GetArg("-verbose", 0) >= 1) {
-                debug::log(0, "CTrustPool::ACCEPTED %s\n", cKey.ToString().substr(0, 20).c_str());
+                debug::log(0, "CTrustPool::ACCEPTED %s", cKey.ToString().substr(0, 20).c_str());
             }
 
             return true;
@@ -775,7 +775,7 @@ namespace Consensus
 
         /** Set the Public Key. **/
         if(vKeys[0] != vchPubKey)
-            return debug::error("CTrustKey::CheckGenesis() : Trust Key Public Key and Genesis Trust Block Public Key Mismatch\n");
+            return debug::error("CTrustKey::CheckGenesis() : Trust Key Public Key and Genesis Trust Block Public Key Mismatch");
 
         return true;
     }
@@ -833,7 +833,7 @@ namespace Consensus
     /** Proof of Stake local CPU miner. Uses minimal resources. **/
     void StakeMinter(void* parg)
     {
-        debug::log(0, "Stake Minter Started\n");
+        debug::log(0, "Stake Minter Started");
         SetThreadPriority(THREAD_PRIORITY_LOWEST);
 
         // Each thread has its own key and counter
@@ -953,12 +953,12 @@ namespace Consensus
 
             /* Assigned Extracted Key to Trust Pool. */
             if(GetArg("-verbose", 0) >= 0 && cTrustPool.Exists(cKey))
-                debug::log(0, "Stake Minter : Active Trust Key %s\n", HexStr(cTrustPool.vchTrustKey.begin(), cTrustPool.vchTrustKey.end()).c_str());
+                debug::log(0, "Stake Minter : Active Trust Key %s", HexStr(cTrustPool.vchTrustKey.begin(), cTrustPool.vchTrustKey.end()).c_str());
 
             if(GetArg("-verbose", 0) >= 2)
             {
-                debug::log(0, "Stake Minter : Created New Block %s\n", block[0].GetHash().ToString().substr(0, 20).c_str());
-                debug::log(0, "Stake Minter : Total Nexus to Stake %f at %f %% Variable Interest\n", (double)block[0].vtx[0].GetValueOut() / COIN, cTrustPool.InterestRate(cKey, pindexBest->GetBlockTime()) * 100.0);
+                debug::log(0, "Stake Minter : Created New Block %s", block[0].GetHash().ToString().substr(0, 20).c_str());
+                debug::log(0, "Stake Minter : Total Nexus to Stake %f at %f %% Variable Interest", (double)block[0].vtx[0].GetValueOut() / COIN, cTrustPool.InterestRate(cKey, pindexBest->GetBlockTime()) * 100.0);
             }
 
 
@@ -968,7 +968,7 @@ namespace Consensus
 
 
             if(GetArg("-verbose", 0) >= 0)
-                debug::log(0, "Stake Minter : Staking at Total Weight %u | Trust Weight %f | Block Weight %f | Coin Age %" PRIu64 " | Trust Age %" PRIu64 "| Block Age %" PRIu64 "\n", nTotalWeight, nTrustWeight, nBlockWeight, nCoinAge, nTrustAge, nBlockAge);
+                debug::log(0, "Stake Minter : Staking at Total Weight %u | Trust Weight %f | Block Weight %f | Coin Age %" PRIu64 " | Trust Age %" PRIu64 "| Block Age %" PRIu64 "", nTotalWeight, nTrustWeight, nBlockWeight, nCoinAge, nTrustAge, nBlockAge);
 
             bool fFound = false;
             while(!fFound)
@@ -978,7 +978,7 @@ namespace Consensus
                 if(hashBestChain != hashBest)
                 {
                     if(GetArg("-verbose", 0) >= 2)
-                        debug::log(0, "Stake Minter : New Best Block\n");
+                        debug::log(0, "Stake Minter : New Best Block");
 
                     break;
                 }
@@ -1005,14 +1005,14 @@ namespace Consensus
                     hashTarget.SetCompact(block[i].nBits);
 
                     if(block[i].nNonce % (uint32_t)((nTrustWeight + nBlockWeight) * 5) == 0 && GetArg("-verbose", 0) >= 3)
-                        debug::log(0, "Stake Minter : Below Threshold %f Required %f Incrementing nNonce %" PRIu64 "\n", nThreshold, nRequired, block[i].nNonce);
+                        debug::log(0, "Stake Minter : Below Threshold %f Required %f Incrementing nNonce %" PRIu64 "", nThreshold, nRequired, block[i].nNonce);
 
                     if (block[i].GetHash() < hashTarget.getuint1024())
                     {
 
                         /* Sign the new Proof of Stake Block. */
                         if(GetArg("-verbose", 0) >= 0)
-                            debug::log(0, "Stake Minter : Found New Block Hash %s\n", block[i].GetHash().ToString().substr(0, 20).c_str());
+                            debug::log(0, "Stake Minter : Found New Block Hash %s", block[i].GetHash().ToString().substr(0, 20).c_str());
 
                         if (!block[i].SignBlock(*pwalletMain))
                         {

@@ -46,13 +46,16 @@ namespace debug
 
         LOCK(DEBUG_MUTEX);
 
+        std::string strFormat(pszFormat);
+        strFormat += "\n";
+
         //TODO: add timestamps to log messages
 
         /* print to console */
         int ret = 0;
         va_list arg_ptr;
         va_start(arg_ptr, pszFormat);
-        ret = vprintf(pszFormat, arg_ptr);
+        ret = vprintf(strFormat.c_str(), arg_ptr);
         va_end(arg_ptr);
 
         /* print to debug.log */
@@ -67,7 +70,7 @@ namespace debug
         if (fileout)
         {
             va_start(arg_ptr, pszFormat);
-            ret = vfprintf(fileout, pszFormat, arg_ptr);
+            ret = vfprintf(fileout, strFormat.c_str(), arg_ptr);
             va_end(arg_ptr);
         }
 
@@ -88,7 +91,7 @@ namespace debug
                 if (ret < 0 || ret >= limit)
                 {
                         pend = END(pszBuffer) - 2;
-                        *pend++ = '\n';
+                        *pend++ = '';
                 }
                 else
                         pend += ret;
@@ -98,7 +101,7 @@ namespace debug
                 char* p1 = pszBuffer;
                 char* p2;
 
-                while ((p2 = strchr(p1, '\n')))
+                while ((p2 = strchr(p1, '')))
                 {
                     p2++;
                     char c = *p2;
@@ -183,7 +186,7 @@ namespace debug
             buffer[limit-1] = 0;
         }
 
-        debug::log(0, ANSI_COLOR_RED "ERROR: %s" ANSI_COLOR_RESET "\n", buffer);
+        debug::log(0, ANSI_COLOR_RED "ERROR: %s" ANSI_COLOR_RESET "", buffer);
         return false;
     }
 
@@ -201,14 +204,14 @@ namespace debug
             buffer[limit-1] = 0;
         }
 
-        debug::log(0, ANSI_COLOR_FUNCTION "%s::%s()" ANSI_COLOR_RESET " : %s\n", base, __func__, buffer);
+        debug::log(0, ANSI_COLOR_FUNCTION "%s::%s()" ANSI_COLOR_RESET " : %s", base, __func__, buffer);
     }
 
     /*  Prints and logs the stack trace of the code execution call stack up to
      *  the point where this function is called to debug.log */
     void LogStackTrace()
     {
-        debug::log(0, "\n\n******* exception encountered *******\n");
+        debug::log(0, "******* exception encountered *******");
         if (fileout)
         {
         #ifndef WIN32
@@ -232,10 +235,10 @@ namespace debug
     #endif
         if (pex)
             snprintf(pszMessage, 1000,
-                "EXCEPTION: %s       \n%s       \n%s in %s       \n", typeid(*pex).name(), pex->what(), pszModule, pszThread);
+                "EXCEPTION: %s       %s       %s in %s       ", typeid(*pex).name(), pex->what(), pszModule, pszThread);
             else
             snprintf(pszMessage, 1000,
-                "UNKNOWN EXCEPTION       \n%s in %s       \n", pszModule, pszThread);
+                "UNKNOWN EXCEPTION       %s in %s       ", pszModule, pszThread);
     }
 
     /*  Prints and logs the exception that is thrown with the named calling thread. */
@@ -243,7 +246,7 @@ namespace debug
     {
         char pszMessage[10000];
         FormatException(pszMessage, pex, pszThread);
-        debug::log(0, "\n%s", pszMessage);
+        debug::log(0, "%s", pszMessage);
     }
 
     /*  Prints the exception with the named calling thread and throws it */
@@ -251,8 +254,8 @@ namespace debug
     {
         char pszMessage[10000];
         FormatException(pszMessage, pex, pszThread);
-        debug::log(0, "\n\n************************\n%s\n", pszMessage);
-        fprintf(stderr, "\n\n************************\n%s\n", pszMessage);
+        debug::log(0, "************************%s", pszMessage);
+        fprintf(stderr, "************************%s", pszMessage);
 
         throw;
     }
@@ -262,8 +265,8 @@ namespace debug
     {
         char pszMessage[10000];
         FormatException(pszMessage, pex, pszThread);
-        debug::log(0, "\n\n************************\n%s\n", pszMessage);
-        fprintf(stderr, "\n\n************************\n%s\n", pszMessage);
+        debug::log(0, "************************%s", pszMessage);
+        fprintf(stderr, "************************%s", pszMessage);
 
     }
 

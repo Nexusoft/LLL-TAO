@@ -304,7 +304,7 @@ namespace Legacy
         if (kMasterKey.nDeriveIterations < 25000)
             kMasterKey.nDeriveIterations = 25000;
 
-        debug::log(0, "Encrypting Wallet with nDeriveIterations of %i\n", kMasterKey.nDeriveIterations);
+        debug::log(0, "Encrypting Wallet with nDeriveIterations of %i", kMasterKey.nDeriveIterations);
 
         /* Encrypt the master key value using the new passphrase */
         if (!crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, kMasterKey.nDeriveIterations, kMasterKey.nDerivationMethod))
@@ -467,7 +467,7 @@ namespace Legacy
                     if (pMasterKey.second.nDeriveIterations < 25000)
                         pMasterKey.second.nDeriveIterations = 25000;
 
-                    debug::log(0, "Wallet passphrase changed to use nDeriveIterations of %i\n", pMasterKey.second.nDeriveIterations);
+                    debug::log(0, "Wallet passphrase changed to use nDeriveIterations of %i", pMasterKey.second.nDeriveIterations);
 
                     /* Re-encrypt the master key using the new passphrase */
                     if (!crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
@@ -708,7 +708,7 @@ namespace Legacy
             }
 
             /* debug print */
-            debug::log(0, "CWallet::AddToWallet : %s  %s%s\n", 
+            debug::log(0, "CWallet::AddToWallet : %s  %s%s", 
                        wtxIn.GetHash().ToString().substr(0,10).c_str(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
 
             /* Write to disk */
@@ -911,7 +911,7 @@ namespace Legacy
         snLastTime = UnifiedTimestamp();
 
         /* Rebroadcast any of our tx that aren't in a block yet */
-        debug::log(0, "ResendWalletTransactions\n");
+        debug::log(0, "ResendWalletTransactions");
         LLD::LedgerDB ledgerdb("r");
 
         {
@@ -939,7 +939,7 @@ namespace Legacy
                 if (wtx.CheckTransaction())
                     wtx.RelayWalletTransaction(ledgerdb);
                 else
-                    debug::log(0, "ResendWalletTransactions : CheckTransaction failed for transaction %s\n", 
+                    debug::log(0, "ResendWalletTransactions : CheckTransaction failed for transaction %s", 
                                wtx.GetHash().ToString().c_str());
             }
         }
@@ -971,7 +971,7 @@ namespace Legacy
                      */
                     if (!wtx.IsSpent(txin.prevout.n) && IsMine(wtx.vout[txin.prevout.n]))
                     {
-                        debug::log(0, "WalletUpdateSpent found spent coin %s Nexus %s\n", 
+                        debug::log(0, "WalletUpdateSpent found spent coin %s Nexus %s", 
                                    FormatMoney(wtx.GetCredit()).c_str(), wtx.GetHash().ToString().c_str());
 
                         wtx.MarkSpent(txin.prevout.n);
@@ -1015,7 +1015,7 @@ namespace Legacy
 //                    /* Handle the Index on Disk for Transaction being inconsistent from the Wallet's accounting to the UTXO. */
 //                    if (IsMine(walletTx.vout[n]) && walletTx.IsSpent(n) && (txindex.vSpent.size() <= n || txindex.vSpent[n].IsNull()))
 //                    {
-//                        debug::log(0, "FixSpentCoins found lost coin %s Nexus %s[%d], %s\n",
+//                        debug::log(0, "FixSpentCoins found lost coin %s Nexus %s[%d], %s",
 //                                   FormatMoney(walletTx.vout[n].nValue).c_str(), walletTx.GetHash().ToString().c_str(), 
 //                                   n, fCheckOnly? "repair not attempted" : "repairing");
 //
@@ -1033,7 +1033,7 @@ namespace Legacy
 //                    /* Handle the wallet missing a spend that was updated in the indexes. The index is updated on connect inputs. */
 //                    else if (IsMine(walletTx.vout[n]) && !walletTx.IsSpent(n) && (txindex.vSpent.size() > n && !txindex.vSpent[n].IsNull()))
 //                    {
-//                        debug::log(0, "FixSpentCoins found spent coin %s Nexus %s[%d], %s\n",
+//                        debug::log(0, "FixSpentCoins found spent coin %s Nexus %s[%d], %s",
 //                                   FormatMoney(walletTx.vout[n].nValue).c_str(), walletTx.GetHash().ToString().c_str(), 
 //                                   n, fCheckOnly? "repair not attempted" : "repairing");
 //
@@ -1436,7 +1436,7 @@ namespace Legacy
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet); 
 
-            debug::log(0, "CommitTransaction:\n%s", wtxNew.ToString().c_str());
+            debug::log(0, "CommitTransaction:%s", wtxNew.ToString().c_str());
 
             /* This is only to keep the database open to defeat the auto-flush for the
              * duration of this scope.  This is the only place where this optimization
@@ -1761,7 +1761,7 @@ namespace Legacy
             for(auto item : setCoinsRet)
                 item.first->print();
 
-            debug::log(0, "total %s\n", FormatMoney(nValueRet).c_str());
+            debug::log(0, "total %s", FormatMoney(nValueRet).c_str());
         }
 
         /* Ensure input total value does not exceed maximum allowed */
