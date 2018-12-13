@@ -143,16 +143,16 @@ namespace LLD
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         SectorDatabase(std::string strNameIn, const char* pszMode="r+")
-            : strName(strNameIn)
-            , strBaseLocation(config::GetDataDir() + strNameIn + "/datachain/")
-            , cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE))
-            , nBytesRead(0)
-            , nBytesWrote(0)
-            , nCurrentFile(0)
-            , nCurrentFileSize(0)
-            , CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this))
-            , MeterThread(std::bind(&SectorDatabase::Meter, this))
-            , nBufferBytes(0)
+        : strName(strNameIn)
+        , strBaseLocation(config::GetDataDir() + strNameIn + "/datachain/")
+        , cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE))
+        , nBytesRead(0)
+        , nBytesWrote(0)
+        , nCurrentFile(0)
+        , nCurrentFileSize(0)
+        , CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this))
+        , MeterThread(std::bind(&SectorDatabase::Meter, this))
+        , nBufferBytes(0)
         {
             if(config::GetBoolArg("-runtime", false))
                 runtime.Start();
@@ -279,7 +279,7 @@ namespace LLD
         bool Read(const Key& key, Type& value)
         {
             /** Serialize Key into Bytes. **/
-            CDataStream ssKey(SER_LLD, DATABASE_VERSION);
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
             std::vector<uint8_t> vKey(ssKey.begin(), ssKey.end());
 
@@ -289,7 +289,7 @@ namespace LLD
                 return false;
 
             /** Deserialize Value. **/
-            CDataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
+            DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
             ssValue >> value;
 
             return true;

@@ -14,13 +14,14 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_SERVER_H
 #define NEXUS_LLP_TEMPLATES_SERVER_H
 
-#include <functional>
-
 #include <LLP/templates/data.h>
 #include <LLP/include/permissions.h>
 #include <LLP/include/manager.h>
 #include <LLP/include/address.h>
 #include <LLP/include/addressinfo.h>
+
+#include <functional>
+#include <numeric>
 
 namespace LLP
 {
@@ -30,59 +31,85 @@ namespace LLP
     template <class ProtocolType>
     class Server
     {
+    private:
         /* The DDOS variables. Tracks the Requests and Connections per Second
             from each connected address. */
-        std::map<Service,   DDOS_Filter*> DDOS_MAP;
-        bool fDDOS, fLISTEN, fMETER;
+        std::map<Service, DDOS_Filter *> DDOS_MAP;
+        bool fDDOS;
+        bool fLISTEN;
+        bool fMETER;
 
 
     public:
         uint32_t PORT, MAX_THREADS, DDOS_TIMESPAN;
 
         /* The data type to keep track of current running threads. */
-        std::vector< DataThread<ProtocolType>* > DATA_THREADS;
+        std::vector<DataThread<ProtocolType> *> DATA_THREADS;
 
         /* List of internal addresses. */
         std::recursive_mutex MUTEX;
 
         /* Connection Manager. */
-        std::thread MANAGER;
+        std::thread MANAGER_THREAD;
 
         /* Address manager */
-        AddressManager cAddressManager;
+        AddressManager addressManager;
 
-        /* Address of this instance. */
         Address addrThisNode;
 
-
-        Server<ProtocolType>(int nPort, int nMaxThreads, int nTimeout = 30, bool isDDOS = false, int cScore = 0, int rScore = 0, int nTimespan = 60, bool fListen = true, bool fMeter = false) :
-            fDDOS(isDDOS),
-            fLISTEN(fListen),
-            fMETER(fMeter),
-            PORT(nPort),
-            MAX_THREADS(nMaxThreads),
-            DDOS_TIMESPAN(nTimespan),
-            DATA_THREADS(0),
-            MANAGER(std::bind(&Server::Manager, this)),
-            addrThisNode(),
-            LISTEN_THREAD_V4(std::bind(&Server::ListeningThread, this, true)),  //IPv4 Listener
-            LISTEN_THREAD_V6(std::bind(&Server::ListeningThread, this, false)), //IPv6 Listener
-            METER_THREAD(std::bind(&Server::MeterThread, this)),
-            cAddressManager()
+        Server<ProtocolType>(int32_t nPort, int32_t nMaxThreads, int32_t nTimeout = 30, bool isDDOS = false,
+                             int32_t cScore = 0, int32_t rScore = 0, int32_t nTimespan = 60, bool fListen = true,
+                             bool fMeter = false)
+            : fDDOS(isDDOS)
+            , fLISTEN(fListen)
+            , fMETER(fMeter)
+            , PORT(nPort)
+            , MAX_THREADS(nMaxThreads)
+            , DDOS_TIMESPAN(nTimespan)
+            , DATA_THREADS(0)
+            , MANAGER_THREAD(std::bind(&Server::Manager, this))
+            , LISTEN_THREAD_V4(std::bind(&Server::ListeningThread, this, true))  //IPv4 Listener
+            , LISTEN_THREAD_V6(std::bind(&Server::ListeningThread, this, false)) //IPv6 Listener
+            , METER_THREAD(std::bind(&Server::MeterThread, this))
+            , addressManager(nPort)
+            , addrThisNode()
         {
-            for(int index = 0; index < MAX_THREADS; index++)
-                DATA_THREADS.push_back(new DataThread<ProtocolType>(index, fDDOS, rScore, cScore, nTimeout, fMeter));
+            for(int32_t index = 0; index < MAX_THREADS; index++)
+                DATA_THREADS.push_back(new DataThread<ProtocolType>(
+                    index, fDDOS, rScore, cScore, nTimeout, fMeter));
+
+            addressManager.ReadDatabase();
         }
 
 
         virtual ~Server<ProtocolType>()
         {
-
             fLISTEN = false;
             fMETER  = false;
+            fDDOS   = false;
 
-            for(int index = 0; index < MAX_THREADS; index++)
+            MANAGER_THREAD.join();
+            METER_THREAD.join();
+
+            //addressManager.WriteDatabase();
+
+            for(int32_t index = 0; index < MAX_THREADS; ++index)
+            {
                 delete DATA_THREADS[index];
+                DATA_THREADS[index] = 0;
+            }
+
+            auto it = DDOS_MAP.begin();
+            for(; it != DDOS_MAP.end(); ++it)
+            {
+                if(it->second)
+                {
+                    delete it->second;
+                }
+            }
+            DDOS_MAP.clear();
+
+
         }
 
 
@@ -94,7 +121,7 @@ namespace LLP
          *  @return	Returns true if the connection was established successfully
          *
          **/
-        bool AddConnection(std::string strAddress, int nPort)
+        bool AddConnection(std::string strAddress, int32_t nPort)
         {
             /* Initialize DDOS Protection for Incoming IP Address. */
             Service addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), false);
@@ -108,34 +135,20 @@ namespace LLP
                 return false;
 
             /* Find a balanced Data Thread to Add Connection to. */
-            int nThread = FindThread();
-            if(!DATA_THREADS[nThread]->AddConnection(strAddress, nPort, DDOS_MAP[addrConnect]))
+            int32_t nThread = FindThread();
+
+            if(nThread < 0)
+                return false;
+
+            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+
+            if(!dt)
+                return false;
+
+            if(!dt->AddConnection(strAddress, nPort, DDOS_MAP[addrConnect]))
                 return false;
 
             return true;
-        }
-
-
-        /** Add Address
-         *
-         *  Add a connection to internal list.
-         *
-         *  @param[in] addr The address to add
-         *
-         **/
-        void AddAddress(Address addr)
-        {
-            LOCK(MUTEX);
-
-            /* Set default port */
-            addr.SetPort(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
-
-            if(addrThisNode != addr)
-            {
-                cAddressManager.AddAddress(addr, ConnectState::NEW);
-
-                debug::log(1, FUNCTION "added address %s\n", __PRETTY_FUNCTION__, addr.ToString().c_str());
-            }
         }
 
 
@@ -148,17 +161,22 @@ namespace LLP
          **/
         std::vector<ProtocolType*> GetConnections()
         {
-            std::vector<ProtocolType*> vConnections;
-            for(int nThread = 0; nThread < MAX_THREADS; nThread++)
+            std::vector<ProtocolType *> vConnections;
+            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
             {
-                int nSize = DATA_THREADS[nThread]->CONNECTIONS.size();
-                for(int nIndex = 0; nIndex < nSize; nIndex ++)
+                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+
+                if(!dt)
+                    continue;
+
+                int32_t nSize = dt->CONNECTIONS.size();
+                for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
                 {
-                    if(!DATA_THREADS[nThread]->CONNECTIONS[nIndex] ||
-                       !DATA_THREADS[nThread]->CONNECTIONS[nIndex]->Connected())
+                    if(!dt->CONNECTIONS[nIndex] ||
+                       !dt->CONNECTIONS[nIndex]->Connected())
                         continue;
 
-                    vConnections.push_back(DATA_THREADS[nThread]->CONNECTIONS[nIndex]);
+                    vConnections.push_back(dt->CONNECTIONS[nIndex]);
                 }
             }
 
@@ -176,15 +194,20 @@ namespace LLP
         std::vector<Address> GetAddresses()
         {
             std::vector<Address> vAddr;
-            for(int nThread = 0; nThread < MAX_THREADS; nThread++)
+            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
             {
-                int nSize = DATA_THREADS[nThread]->CONNECTIONS.size();
-                for(int nIndex = 0; nIndex < nSize; nIndex ++)
+                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+
+                if(!dt)
+                    continue;
+
+                int32_t nSize = dt->CONNECTIONS.size();
+                for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
                 {
-                    if(!DATA_THREADS[nThread]->CONNECTIONS[nIndex] || !DATA_THREADS[nThread]->CONNECTIONS[nIndex]->Connected())
+                    if(!dt->CONNECTIONS[nIndex] || !dt->CONNECTIONS[nIndex]->Connected())
                         continue;
 
-                    vAddr.push_back(DATA_THREADS[nThread]->CONNECTIONS[nIndex]->GetAddress());
+                    vAddr.push_back(dt->CONNECTIONS[nIndex]->GetAddress());
                 }
             }
 
@@ -205,23 +228,25 @@ namespace LLP
             while(!config::fShutdown)
             {
                 Sleep(1000);
-
-                { LOCK(MUTEX);
-
-
-                    uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
-
-                    /*pick a weighted random priority from a sorted list of addresses */
-                    if(cAddressManager.StochasticSelect(addr))
-                    {
-                        /* Attempt the connection. */
-                        debug::log(0, FUNCTION "Attempting Connection %s\n", __PRETTY_FUNCTION__, addr.ToStringIP().c_str());
-                        if(AddConnection(addr.ToStringIP(), addr.GetPort()))
-                            state = static_cast<uint8_t>(ConnectState::CONNECTED);
+                uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
 
 
-                        cAddressManager.AddAddress(addr, state);
-                    }
+                std::unique_lock<std::recursive_mutex> lk(MUTEX);
+
+                /*pick a weighted random priority from a sorted list of addresses */
+                if(addressManager.StochasticSelect(addr))
+                {
+
+                    std::string ip = addr.ToStringIP();
+                    uint16_t port = addr.GetPort();
+
+                    /* Attempt the connection. */
+                    debug::log(0, FUNCTION "Attempting Connection %s:%u\n", __PRETTY_FUNCTION__, ip.c_str(), port);
+                    if(AddConnection(ip, port))
+                        state = static_cast<uint8_t>(ConnectState::CONNECTED);
+
+
+                    addressManager.AddAddress(addr, state);
                 }
             }
         }
@@ -239,15 +264,22 @@ namespace LLP
 
         /* Determine the thread with the least amount of active connections.
             This keeps the load balanced across all server threads. */
-        int FindThread()
+        int32_t FindThread()
         {
-            int nIndex = 0, nConnections = DATA_THREADS[0]->nConnections;
-            for(int index = 1; index < MAX_THREADS; index++)
+            int32_t nIndex = -1;
+            int32_t nConnections = std::numeric_limits<int32_t>::max();
+
+            for(int32_t index = 0; index < MAX_THREADS; ++index)
             {
-                if(DATA_THREADS[index]->nConnections < nConnections)
+                DataThread<ProtocolType> *dt = DATA_THREADS[index];
+
+                if(!dt)
+                    continue;
+
+                if(dt->nConnections < nConnections)
                 {
                     nIndex = index;
-                    nConnections = DATA_THREADS[index]->nConnections;
+                    nConnections = dt->nConnections;
                 }
             }
 
@@ -258,7 +290,11 @@ namespace LLP
         /** Main Listening Thread of LLP Server. Handles new Connections and DDOS associated with Connection if enabled. **/
         void ListeningThread(bool fIPv4)
         {
-            int hListenSocket;
+            int32_t hListenSocket;
+            SOCKET hSocket;
+            Address addr;
+            socklen_t len_v4 = sizeof(struct sockaddr_in);
+            socklen_t len_v6 = sizeof(struct sockaddr_in6);
 
             /* End the listening thread if LLP set to not listen. */
             if(!fLISTEN)
@@ -273,30 +309,25 @@ namespace LLP
                 Sleep(1000);
 
             /* Main listener loop. */
-            while(true)
+            while(fLISTEN)
             {
                 Sleep(10);
 
                 if (hListenSocket != INVALID_SOCKET)
                 {
-                    SOCKET hSocket;
-                    Address addr;
-
                     if(fIPv4)
                     {
                         struct sockaddr_in sockaddr;
-                        socklen_t len = sizeof(sockaddr);
 
-                        hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len);
+                        hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v4);
                         if (hSocket != INVALID_SOCKET)
                             addr = Address(sockaddr);
                     }
                     else
                     {
                         struct sockaddr_in6 sockaddr;
-                        socklen_t len = sizeof(sockaddr);
 
-                        hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len);
+                        hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v6);
                         if (hSocket != INVALID_SOCKET)
                             addr = Address(sockaddr);
                     }
@@ -308,7 +339,6 @@ namespace LLP
                     }
                     else
                     {
-
                         /* Create new DDOS Filter if Needed. */
                         if(!DDOS_MAP.count((Service)addr))
                             DDOS_MAP[addr] = new DDOS_Filter(DDOS_TIMESPAN);
@@ -324,28 +354,35 @@ namespace LLP
 
                         Socket_t sockNew(hSocket, addr);
 
-                        int nThread = FindThread();
-                        DATA_THREADS[nThread]->AddConnection(sockNew, DDOS_MAP[(Service)addr]);
+                        int32_t nThread = FindThread();
 
+                        if(nThread < 0)
+                            continue;
+
+                        DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+
+                        if(!dt)
+                            continue;
+
+                        dt->AddConnection(sockNew, DDOS_MAP[(Service)addr]);
                         debug::log(3, NODE "Accepted Connection %s on port %u\n", addr.ToString().c_str(), PORT);
                     }
                 }
             }
         }
 
-        bool BindListenPort(int & hListenSocket, bool fIPv4 = true)
+        bool BindListenPort(int32_t & hListenSocket, bool fIPv4 = true)
         {
             std::string strError = "";
-            int nOne = 1;
+            int32_t nOne = 1;
 
             #ifdef WIN32
                 // Initialize Windows Sockets
                 WSADATA wsadata;
-                int ret = WSAStartup(MAKEWORD(2, 2), &wsadata);
+                int32_t ret = WSAStartup(MAKEWORD(2, 2), &wsadata);
                 if (ret != NO_ERROR)
                 {
                     debug::error("TCP/IP socket library failed to start (WSAStartup returned error %d)", ret);
-
                     return false;
                 }
             #endif
@@ -355,20 +392,19 @@ namespace LLP
             if (hListenSocket == INVALID_SOCKET)
             {
                 debug::error("Couldn't open socket for incoming connections (socket returned error %d)", GetLastError());
-
                 return false;
             }
 
             /* Different way of disabling SIGPIPE on BSD */
             #ifdef SO_NOSIGPIPE
-                setsockopt(hListenSocket, SOL_SOCKET, SO_NOSIGPIPE, (void*)&nOne, sizeof(int));
+                setsockopt(hListenSocket, SOL_SOCKET, SO_NOSIGPIPE, (void*)&nOne, sizeof(int32_t));
             #endif
 
 
             /* Allow binding if the port is still in TIME_WAIT state after the program was closed and restarted.  Not an issue on windows. */
             #ifndef WIN32
-                setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEADDR, (void*)&nOne, sizeof(int));
-                setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEPORT, (void*)&nOne, sizeof(int));
+                setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEADDR, (void*)&nOne, sizeof(int32_t));
+                setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEPORT, (void*)&nOne, sizeof(int32_t));
             #endif
 
 
@@ -382,7 +418,7 @@ namespace LLP
                 sockaddr.sin_port = htons(PORT);
                 if (::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
                 {
-                    int nErr = GetLastError();
+                    int32_t nErr = GetLastError();
                     if (nErr == WSAEADDRINUSE)
                         debug::error("Unable to bind to port %d on this computer. Address already in use.", ntohs(sockaddr.sin_port));
                     else
@@ -402,7 +438,7 @@ namespace LLP
                 sockaddr.sin6_port = htons(PORT);
                 if (::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
                 {
-                    int nErr = GetLastError();
+                    int32_t nErr = GetLastError();
                     if (nErr == WSAEADDRINUSE)
                         debug::error("Unable to bind to port %d on this computer. Address already in use.", ntohs(sockaddr.sin6_port));
                     else
@@ -418,7 +454,6 @@ namespace LLP
             if (listen(hListenSocket, SOMAXCONN) == SOCKET_ERROR)
             {
                 debug::error("Listening for incoming connections failed (listen returned error %d)", GetLastError());
-
                 return false;
             }
 
@@ -440,8 +475,16 @@ namespace LLP
                 Sleep(10000);
 
                 uint32_t nGlobalConnections = 0;
-                for(int nIndex = 0; nIndex < MAX_THREADS; nIndex++)
-                    nGlobalConnections += DATA_THREADS[nIndex]->nConnections;
+                for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+                {
+                    DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+
+                    if(!dt)
+                        continue;
+
+                    nGlobalConnections += dt->nConnections;
+                }
+
 
                 uint32_t RPS = TotalRequests() / TIMER.Elapsed();
                 debug::log(0, 0, "***** LLP Running at %u requests/s with %u connections.\n", RPS, nGlobalConnections);
@@ -453,11 +496,17 @@ namespace LLP
 
 
         /** Used for Meter. Adds up the total amount of requests from each Data Thread. **/
-        int TotalRequests()
+        int32_t TotalRequests()
         {
-            int nTotalRequests = 0;
-            for(int nThread = 0; nThread < MAX_THREADS; nThread++)
-                nTotalRequests += DATA_THREADS[nThread]->REQUESTS;
+            int32_t nTotalRequests = 0;
+            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            {
+                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+                if(!dt)
+                    continue;
+
+                nTotalRequests += dt->REQUESTS;
+            }
 
             return nTotalRequests;
         }
@@ -465,8 +514,15 @@ namespace LLP
         /** Used for Meter. Resets the REQUESTS variable to 0 in each Data Thread. **/
         void ClearRequests()
         {
-            for(int nThread = 0; nThread < MAX_THREADS; nThread++)
-                DATA_THREADS[nThread]->REQUESTS = 0;
+            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            {
+                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+
+                if(!dt)
+                    continue;
+
+                dt->REQUESTS = 0;
+            }
         }
     };
 

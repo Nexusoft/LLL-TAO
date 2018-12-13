@@ -106,7 +106,7 @@ namespace LLP
 
                 case EVENT_DISCONNECT:
                 {
-                    TRITIUM_SERVER->cAddressManager.AddAddress(GetAddress(), ConnectState::DROPPED);
+                    TRITIUM_SERVER->addressManager.AddAddress(GetAddress(), ConnectState::DROPPED);
 
                     break;
                 }
@@ -303,8 +303,12 @@ namespace LLP
                     ssPacket >> vAddr;
 
                     /* Add the connections to Tritium Server. */
-                    for(auto addr : vAddr)
-                        TRITIUM_SERVER->AddAddress(addr);
+                    auto it = vAddr.begin();
+                    for(; it != vAddr.end(); ++it)
+                    {
+                        TRITIUM_SERVER->addressManager.AddAddress(*it);
+                    }
+
 
                     break;
                 }
@@ -334,7 +338,7 @@ namespace LLP
                     uint32_t lat = Timestamp(true) - mapLatencyTracker[nNonce];
 
                     /* Set the latency used for address manager within server */
-                    TRITIUM_SERVER->cAddressManager.SetLatency(lat, GetAddress());
+                    TRITIUM_SERVER->addressManager.SetLatency(lat, GetAddress());
 
                     /* Debug output for latency. */
                     debug::log(3, NODE "latency %u ms\n", lat);

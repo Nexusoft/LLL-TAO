@@ -66,7 +66,7 @@ namespace LLP
         IMPLEMENT_SERIALIZE
         (
             AddressInfo *pthis = const_cast<AddressInfo *>(this);
-            Address *pAddr = static_cast<Address *>(pthis);
+            Address *pAddr = (Address *)pthis;
 
             READWRITE(*pAddr);
             READWRITE(nLastSeen);

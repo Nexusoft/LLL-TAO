@@ -32,7 +32,8 @@ namespace LLD
     {
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LedgerDB(const char* pszMode="r+") : SectorDatabase("ledger", pszMode) {}
+        LedgerDB(const char* pszMode="r+")
+        : SectorDatabase("ledger", pszMode) {}
 
         bool WriteTx(uint512_t hashTransaction, TAO::Ledger::Transaction tx)
         {

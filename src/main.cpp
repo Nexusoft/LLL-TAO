@@ -78,9 +78,9 @@ int main(int argc, char** argv)
 
 
     /* Create the database instances. */
-    LLD::regDB = new LLD::RegisterDB("r+");
-    LLD::legDB = new LLD::LedgerDB("r+");
-    LLD::locDB = new LLD::LocalDB("r+");
+    //LLD::regDB = new LLD::RegisterDB("r+");
+    //LLD::legDB = new LLD::LedgerDB("r+");
+    //LLD::locDB = new LLD::LocalDB("r+");
 
 
     /* Initialize the Legacy Server. */
@@ -103,13 +103,13 @@ int main(int argc, char** argv)
 
 
     /* Create the Core API Server. */
-    LLP::Server<LLP::CoreNode>* CORE_SERVER = new LLP::Server<LLP::CoreNode>(config::GetArg("-apiport", 8080), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), false);
+    //LLP::Server<LLP::CoreNode>* CORE_SERVER = new LLP::Server<LLP::CoreNode>(config::GetArg("-apiport", 8080), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), false);
 
 
     /* Set up RPC server */
-    TAO::API::RPCCommands = new TAO::API::RPC();
-    TAO::API::RPCCommands->Initialize();
-    LLP::Server<LLP::RPCNode>* RPC_SERVER = new LLP::Server<LLP::RPCNode>(config::GetArg("-rpcport", config::fTestNet? 8336 : 9336), 1, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), false);
+    //TAO::API::RPCCommands = new TAO::API::RPC();
+    //TAO::API::RPCCommands->Initialize();
+    //LLP::Server<LLP::RPCNode>* RPC_SERVER = new LLP::Server<LLP::RPCNode>(config::GetArg("-rpcport", config::fTestNet? 8336 : 9336), 1, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), false);
 
 
     /* Wait for Shutdown. */
@@ -118,15 +118,23 @@ int main(int argc, char** argv)
         Sleep(1000);
     }
 
+    //if(LLP::LEGACY_SERVER)
+    //{
+    //    delete LLP::LEGACY_SERVER;
+    //    LLP::LEGACY_SERVER = 0;
+    //}
 
-    TAO::Ledger::SignatureChain sigChain(config::GetArg("-username", "user"), config::GetArg("-password", "default"));
-    uint512_t hashGenesis = sigChain.Generate(0, config::GetArg("-pin", "1235"));
 
-    debug::log(0, "Genesis %s\n", hashGenesis.ToString().c_str());
+
+    //TAO::Ledger::SignatureChain sigChain(config::GetArg("-username", "user"), config::GetArg("-password", "default"));
+    //uint512_t hashGenesis = sigChain.Generate(0, config::GetArg("-pin", "1235"));
+
+    //debug::log(0, "Genesis %s\n", hashGenesis.ToString().c_str());
 
     /* Extract username and password from config. */
-    debug::log(0, "Username: %s\n", config::GetArg("-username", "user").c_str());
-    debug::log(0, "Password: %s\n", config::GetArg("-password", "default").c_str());
+    //debug::log(0, "Username: %s\n", config::GetArg("-username", "user").c_str());
+    //debug::log(0, "Password: %s\n", config::GetArg("-password", "default").c_str());
+
 
     return 0;
 }

@@ -31,7 +31,9 @@ namespace LLP
 
         /* Constructors for Message LLP Class. */
         LegacyNode() : BaseConnection<LegacyPacket>() {}
-        LegacyNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false ) : BaseConnection<LegacyPacket>( SOCKET_IN, DDOS_IN ) { }
+
+        LegacyNode(Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
+        : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN) { }
 
 
         /** Randomly genearted session ID. **/

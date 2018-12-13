@@ -13,10 +13,12 @@ ________________________________________________________________________________
 
 #include <LLP/include/manager.h>
 #include <LLD/include/address.h>
+#include <LLD/include/version.h>
 #include <LLC/hash/macro.h>
 #include <LLC/hash/SK.h>
 #include <LLC/include/random.h>
 #include <Util/include/debug.h>
+#include <Util/templates/serialize.h>
 #include <algorithm>
 #include <numeric>
 #include <cmath>
@@ -31,15 +33,17 @@ namespace LLP
     {
         if(!pDatabase)
             debug::error(FUNCTION "Failed to allocate memory for AddressManager\n", __PRETTY_FUNCTION__);
-
-        ReadDatabase();
     }
 
 
     /* Default destructor */
     AddressManager::~AddressManager()
     {
-        WriteDatabase();
+        if(pDatabase)
+        {
+            delete pDatabase;
+            pDatabase = 0;
+        }
     }
 
 
@@ -54,7 +58,7 @@ namespace LLP
         vAddrInfo = get_info(flags);
 
         for(auto it = vAddrInfo.begin(); it != vAddrInfo.end(); ++it)
-            vAddr.push_back(static_cast<Address>(it->second));
+            vAddr.push_back(static_cast<Address>(*it));
 
         return vAddr;
     }
@@ -118,16 +122,18 @@ namespace LLP
             break;
         }
 
-        debug::log(5, FUNCTION "%s - S=%lu, C=%u, D=%u, F=%u, L=%u, TC=%u, TD=%u, TF=%u, size=%u\n", __PRETTY_FUNCTION__, addr.ToString().c_str(),
-         pInfo->nSession, pInfo->nConnected, pInfo->nDropped, pInfo->nFailed, pInfo->nLatency,
-         get_count(ConnectState::CONNECTED), get_count(ConnectState::DROPPED), get_count(ConnectState::FAILED), get_count());
+        /* update the LLD Database with a new entry */
+        pDatabase->WriteAddressInfo(hash, *pInfo);
+
+        debug::log(5, FUNCTION "%s | C=%u D=%u F=%u | TC=%u TD=%u TF=%u | size=%lu \n", __PRETTY_FUNCTION__, addr.ToString().c_str(),
+         get_current_count(ConnectState::CONNECTED), get_current_count(ConnectState::DROPPED), get_current_count(ConnectState::FAILED),
+         get_total_count(ConnectState::CONNECTED),     get_total_count(ConnectState::DROPPED),   get_total_count(ConnectState::FAILED),   mapAddrInfo.size());
     }
 
 
-    /*  Adds the address to the manager and sets the connect state for that address */
-    void AddressManager::AddAddress(const std::vector<Address> &addrs, const uint8_t state)
+    /*  Adds the addresses to the manager and sets the connect state for that address */
+    void AddressManager::AddAddresses(const std::vector<Address> &addrs, const uint8_t state)
     {
-        debug::log(5, FUNCTION "AddressManager\n", __PRETTY_FUNCTION__);
         for(uint32_t i = 0; i < addrs.size(); ++i)
             AddAddress(addrs[i], state);
     }
@@ -137,15 +143,12 @@ namespace LLP
      *  that address. */
     void AddressManager::SetLatency(uint32_t lat, const Address &addr)
     {
+        uint64_t hash = addr.GetHash();
         std::unique_lock<std::mutex> lk(mutex);
 
-        auto it = mapAddrInfo.find(addr.GetHash());
+        auto it = mapAddrInfo.find(hash);
         if(it != mapAddrInfo.end())
-        {
             it->second.nLatency = lat;
-            //debug::log(5, FUNCTION "%s - S=%lu, C=%u, D=%u, F=%u, L=%u\n", __PRETTY_FUNCTION__, addr.ToString().c_str(),
-            // it->second.nSession, it->second.nConnected, it->second.nDropped, it->second.nFailed, it->second.nLatency);
-        }
     }
 
 
@@ -171,11 +174,7 @@ namespace LLP
         uint32_t nSelect = ((std::numeric_limits<uint64_t>::max() /
             std::max((uint64_t)std::pow(nHash, 1.912) + 1, (uint64_t)1)) - 7) % vInfo.size();
 
-        //debug::log(5, FUNCTION "Selected: %u %u %u\n", __PRETTY_FUNCTION__, byte, size, i);
-
         addr = vInfo[nSelect];
-
-        //debug::log(5, FUNCTION "Selected: %s\n", __PRETTY_FUNCTION__, addr.ToString().c_str());
 
         return true;
     }
@@ -184,16 +183,26 @@ namespace LLP
     /*  Read the address database into the manager */
     void AddressManager::ReadDatabase()
     {
+        std::unique_lock<std::mutex> lk(mutex);
+
         std::vector<std::vector<uint8_t> > keys = pDatabase->GetKeys();
 
         uint32_t s = static_cast<uint32_t>(keys.size());
+
+        printf("keys.size() = %u\n", s);
         for(uint32_t i = 0; i < s; ++i)
         {
-            uint32_t nKey;
-            CAddressInfo addr_info;
+            std::string str;
+            uint64_t nKey;
+            AddressInfo addr_info;
 
-            DataStream ssKey(keys[i], SER_LLD, DATABASE_VERSION);
+            printf("%s\n", HexStr(keys[i].begin(), keys[i].end()).c_str());
+
+            DataStream ssKey(keys[i], SER_LLD, LLD::DATABASE_VERSION);
+            ssKey >> str;
             ssKey >> nKey;
+
+            debug::log(5, "reading %s %" PRIu64 " \n", str.c_str(), nKey);
 
             pDatabase->ReadAddressInfo(nKey, addr_info);
 
@@ -201,15 +210,21 @@ namespace LLP
 
             mapAddrInfo[nHash] = addr_info;
         }
-
     }
 
 
     /*  Write the addresses from the manager into the address database */
     void AddressManager::WriteDatabase()
     {
+        std::unique_lock<std::mutex> lk(mutex);
+
+        debug::log(5, "map_size: %d \n", get_current_count());
+
         for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
-            pDatabase->WriteAddress(it->first, it->second);
+        {
+            //debug::log(5, "writing %08X \n", it->first);
+            pDatabase->WriteAddressInfo(it->first, it->second);
+        }
     }
 
 
@@ -228,9 +243,29 @@ namespace LLP
     }
 
     /*  Helper function to get the number of addresses of the connect type */
-    uint32_t AddressManager::get_count(const uint8_t flags) const
+    uint32_t AddressManager::get_current_count(const uint8_t flags) const
     {
         return static_cast<uint32_t>(get_info(flags).size());
+    }
+
+    uint32_t AddressManager::get_total_count(const uint8_t flags) const
+    {
+        std::vector<AddressInfo> vInfo = get_info();
+        uint32_t total = 0;
+        uint32_t s = vInfo.size();
+
+        for(uint32_t i = 0; i < s; ++i)
+        {
+            AddressInfo &addr = vInfo[i];
+
+            if(flags & ConnectState::CONNECTED)
+                total += addr.nConnected;
+            if(flags & ConnectState::DROPPED)
+                total += addr.nDropped;
+            if(flags & ConnectState::FAILED)
+                total += addr.nFailed;
+        }
+        return total;
     }
 
 }

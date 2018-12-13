@@ -17,14 +17,12 @@ ________________________________________________________________________________
 #include <LLD/include/register.h>
 #include <LLD/include/ledger.h>
 #include <LLD/include/local.h>
-#include <LLD/include/address.h>
 
 namespace LLD
 {
     extern RegisterDB*   regDB;
     extern LedgerDB*     legDB;
     extern LocalDB*      locDB;
-    extern AddressDB   *addrDB;
 }
 
 #endif

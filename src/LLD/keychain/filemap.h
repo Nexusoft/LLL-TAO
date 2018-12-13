@@ -19,9 +19,6 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    /** Total buckets for memory accessing. */
-    const uint32_t FILEMAP_TOTAL_BUCKETS = 256 * 256;
-
     /* Maximum size a file can be in the keychain. */
     const uint32_t FILEMAP_MAX_FILE_SIZE = 1024 * 1024 * 1024; //1 GB per File
 
@@ -68,12 +65,7 @@ namespace LLD
             Used to Quickly Read the Database File at Given Position
             To Obtain the Record from its Database Key. This is Read
             Into Memory on Database Initialization. **/
-        mutable typename std::map< std::vector<uint8_t>, std::pair<uint16_t, uint32_t> > mapKeys[FILEMAP_TOTAL_BUCKETS];
-
-
-        /** Caching Memory Map. Keep within caching limits. Pop on and off like a stack
-            using seperate caching class if over limits. **/
-        mutable typename std::map< std::vector<uint8_t>, SectorKey > mapKeysCache[FILEMAP_TOTAL_BUCKETS];
+        mutable typename std::map< std::vector<uint8_t>, std::pair<uint16_t, uint32_t> > mapKeys;
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
@@ -121,9 +113,8 @@ namespace LLD
         std::vector< std::vector<uint8_t> > GetKeys()
         {
             std::vector< std::vector<uint8_t> > vKeys;
-            for(int i = 0; i < FILEMAP_TOTAL_BUCKETS; i++)
-                for(typename std::map< std::vector<uint8_t>, std::pair<uint16_t, uint32_t> >::iterator nIterator = mapKeys[i].begin(); nIterator != mapKeys[i].end(); nIterator++ )
-                    vKeys.push_back(nIterator->first);
+            for(typename std::map< std::vector<uint8_t>, std::pair<uint16_t, uint32_t> >::iterator nIterator = mapKeys.begin(); nIterator != mapKeys.end(); nIterator++ )
+                vKeys.push_back(nIterator->first);
 
             return vKeys;
         }
@@ -132,18 +123,7 @@ namespace LLD
         /** Return Whether a Key Exists in the Database. **/
         bool HasKey(const std::vector<uint8_t>& vKey)
         {
-            return mapKeys[GetBucket(vKey)].count(vKey);
-        }
-
-
-        /** Handle the Assigning of a Map Bucket. **/
-        uint32_t GetBucket(const std::vector<uint8_t>& vKey) const
-        {
-            uint64_t nBucket = 0;
-            for(int i = 0; i < vKey.size() && i < 8; i++)
-                nBucket += vKey[i] << (8 * i);
-
-            return nBucket % FILEMAP_TOTAL_BUCKETS;
+            return mapKeys.count(vKey);
         }
 
 
@@ -201,12 +181,12 @@ namespace LLD
                 {
 
                     /* Get Binary Data */
-                    std::vector<uint8_t> vKey(vKeychain.begin() + nIterator, vKeychain.begin() + nIterator + 11);
+                    std::vector<uint8_t> vData(vKeychain.begin() + nIterator, vKeychain.begin() + nIterator + 11);
 
 
                     /* Read the State and Size of Sector Header. */
                     SectorKey cKey;
-                    CDataStream ssKey(vKey, SER_LLD, DATABASE_VERSION);
+                    CDataStream ssKey(vData, SER_LLD, DATABASE_VERSION);
                     ssKey >> cKey;
 
 
@@ -219,11 +199,10 @@ namespace LLD
                         std::vector<uint8_t> vKey(vKeychain.begin() + nIterator + 11, vKeychain.begin() + nIterator + 11 + cKey.nLength);
 
                         /* Set the Key Data. */
-                        uint32_t nBucket = GetBucket(vKey);
-                        mapKeys[nBucket][vKey] = std::make_pair(nCurrentFile, nIterator);
+                        mapKeys[vKey] = std::make_pair(nCurrentFile, nIterator);
 
                         /* Debug Output of Sector Key Information. */
-                        debug::log(5, FUNCTION "State: %u Length: %u File: %u Location: %u Key: %s\n", __PRETTY_FUNCTION__, cKey.nState, cKey.nLength, mapKeys[nBucket][vKey].first, mapKeys[nBucket][vKey].second, HexStr(vKey.begin(), vKey.end()).c_str());
+                        debug::log(5, FUNCTION "State: %u Length: %u File: %u Location: %u Key: %s\n", __PRETTY_FUNCTION__, cKey.nState, cKey.nLength, mapKeys[vKey].first, mapKeys[vKey].second, HexStr(vKey.begin(), vKey.end()).c_str());
 
                         nTotalKeys++;
                     }
@@ -254,8 +233,7 @@ namespace LLD
             std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
 
             /* Write Header if First Update. */
-            uint32_t nBucket = GetBucket(cKey.vKey);
-            if(!mapKeys[nBucket].count(cKey.vKey))
+            if(!mapKeys.count(cKey.vKey))
             {
                 /* Check the Binary File Size. */
                 if(nCurrentFileSize > FILEMAP_MAX_FILE_SIZE)
@@ -269,16 +247,16 @@ namespace LLD
                     ssFile.close();
                 }
 
-                mapKeys[nBucket][cKey.vKey] = std::make_pair(nCurrentFile, nCurrentFileSize);
+                mapKeys[cKey.vKey] = std::make_pair(nCurrentFile, nCurrentFileSize);
             }
 
 
             /* Establish the Outgoing Stream. */
-            std::fstream ssFile(debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][cKey.vKey].first).c_str(), std::ios::in | std::ios::out | std::ios::binary);
+            std::fstream ssFile(debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[cKey.vKey].first).c_str(), std::ios::in | std::ios::out | std::ios::binary);
 
 
             /* Seek File Pointer */
-            ssFile.seekp(mapKeys[nBucket][cKey.vKey].second, std::ios::beg);
+            ssFile.seekp(mapKeys[cKey.vKey].second, std::ios::beg);
 
 
             /* Handle the Sector Key Serialization. */
@@ -297,7 +275,7 @@ namespace LLD
 
 
             /* Debug Output of Sector Key Information. */
-            debug::log(4, FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s | Current File: %u | Current File Size: %u\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][cKey.vKey].second, mapKeys[nBucket][cKey.vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str(), nCurrentFile, nCurrentFileSize);
+            debug::log(4, FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s | Current File: %u | Current File Size: %u\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[cKey.vKey].second, mapKeys[cKey.vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str(), nCurrentFile, nCurrentFileSize);
 
 
             return true;
@@ -309,18 +287,17 @@ namespace LLD
             std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
 
             /* Check for the Key. */
-            uint32_t nBucket = GetBucket(vKey);
-            if(!mapKeys[nBucket].count(vKey))
+            if(!mapKeys.count(vKey))
                 return debug::error(FUNCTION "Key doesn't Exist", __PRETTY_FUNCTION__);
 
 
             /* Establish the Outgoing Stream. */
-            std::string strFilename = debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][vKey].first);
+            std::string strFilename = debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[vKey].first);
             std::fstream ssFile(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
 
 
             /* Set to put at the right file and sector position. */
-            ssFile.seekp(mapKeys[nBucket][vKey].second, std::ios::beg);
+            ssFile.seekp(mapKeys[vKey].second, std::ios::beg);
 
 
             /* Establish the Sector State as Empty. */
@@ -329,7 +306,7 @@ namespace LLD
 
 
             /* Remove the Sector Key from the Memory Map. */
-            mapKeys[nBucket].erase(vKey);
+            mapKeys.erase(vKey);
 
 
             return true;
@@ -341,31 +318,21 @@ namespace LLD
             std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
 
 
-            /* Check the Memory Cache. */
-            uint32_t nBucket = GetBucket(vKey);
-            if(mapKeysCache[nBucket].count(vKey)) {
-                cKey = mapKeysCache[nBucket][vKey];
-
-                return true;
-            }
-
-
             /* Read a Record from Binary Data. */
-            if(mapKeys[nBucket].count(vKey))
+            if(mapKeys.count(vKey))
             {
-
                 /* Open the Stream Object. */
-                std::string strFilename = debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[nBucket][vKey].first);
+                std::string strFilename = debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[vKey].first);
                 std::ifstream ssFile(strFilename.c_str(), std::ios::in | std::ios::binary);
 
 
                 /* Seek to the Sector Position on Disk. */
-                ssFile.seekg(mapKeys[nBucket][vKey].second, std::ios::beg);
+                ssFile.seekg(mapKeys[vKey].second, std::ios::beg);
 
 
                 /* Read the State and Size of Sector Header. */
-                std::vector<uint8_t> vData(15, 0);
-                ssFile.read((char*) &vData[0], 15);
+                std::vector<uint8_t> vData(11, 0);
+                ssFile.read((char*) &vData[0], 11);
 
 
                 /* De-serialize the Header. */
@@ -374,7 +341,7 @@ namespace LLD
 
 
                 /* Debug Output of Sector Key Information. */
-                debug::log(4, FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[nBucket][vKey].second, mapKeys[nBucket][vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(vKey.begin(), vKey.end()).c_str());
+                debug::log(4, FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[vKey].second, mapKeys[vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(vKey.begin(), vKey.end()).c_str());
 
 
                 /* Skip Empty Sectors for Now. (TODO: Expand to Reads / Writes) */
@@ -393,7 +360,6 @@ namespace LLD
 
                     return true;
                 }
-
             }
 
             return false;

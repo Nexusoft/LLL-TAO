@@ -84,7 +84,8 @@ namespace LLP
         {
 
             /* Check a packet's validity once it is finished being read. */
-            if(fDDOS) {
+            if(fDDOS)
+            {
 
                 /* Give higher score for Bad Packets. */
                 if(INCOMING.Complete() && !INCOMING.IsValid())
@@ -171,7 +172,8 @@ namespace LLP
                     break;
             }
 
-            LEGACY_SERVER->cAddressManager.AddAddress(GetAddress(), ConnectState::DROPPED);
+            if(LEGACY_SERVER)
+                LEGACY_SERVER->addressManager.AddAddress(GetAddress(), ConnectState::DROPPED);
 
             debug::log(1, "xxxxx %s Node %s Disconnected (%s) at Timestamp %" PRIu64 "\n", fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), strReason.c_str(), UnifiedTimestamp());
 
@@ -278,8 +280,6 @@ namespace LLP
             /* Deserialize the Transaction. */
             //Core::CTransaction tx;
             //ssMessage >> tx;
-
-
         }
 
 
@@ -329,7 +329,8 @@ namespace LLP
             mapLatencyTracker.erase(nonce);
 
             /* Set the latency used for address manager within server */
-            LEGACY_SERVER->cAddressManager.SetLatency(nLatency, GetAddress());
+            if(LEGACY_SERVER)
+                LEGACY_SERVER->addressManager.SetLatency(nLatency, GetAddress());
 
             /* Debug Level 3: output Node Latencies. */
             debug::log(3, "***** Node %s Latency (Nonce %" PRIu64 " - %u ms)\n", addrThisNode.ToString().c_str(), nonce, nLatency);
@@ -399,8 +400,14 @@ namespace LLP
                 return debug::error("***** Node message addr size() = %d... Dropping Connection", vAddr.size());
             }
 
-            /* Set the latency used for address manager within server */
-            LEGACY_SERVER->cAddressManager.AddAddress(vAddr);
+            for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
+            {
+                it->SetPort(LEGACY_SERVER->PORT);
+                debug::log(5, "port=%u\n", it->GetPort());
+            }
+
+            if(LEGACY_SERVER)
+                LEGACY_SERVER->addressManager.AddAddresses(vAddr);
 
         }
 

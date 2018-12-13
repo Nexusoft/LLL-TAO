@@ -22,7 +22,6 @@ ________________________________________________________________________________
 #include <vector>
 #include <cstdint>
 #include <mutex>
-#include <memory>
 
 /* forward declarations */
 namespace LLD
@@ -93,7 +92,7 @@ namespace LLP
         void AddAddress(const Address &addr, const uint8_t state = ConnectState::NEW);
 
 
-        /** AddAddress
+        /** AddAddresses
          *
          *  Adds the addresses to the manager and sets the connect state for that
          *  address
@@ -103,7 +102,7 @@ namespace LLP
          *  @param[in] state The state of the connection for the address
          *
          **/
-        void AddAddress(const std::vector<Address> &addrs, const uint8_t state = ConnectState::NEW);
+        void AddAddresses(const std::vector<Address> &addrs, const uint8_t state = ConnectState::NEW);
 
 
         /** SetLatency
@@ -167,9 +166,20 @@ namespace LLP
          *  *  @param[in] flags Specify which types of connections to get the info from.
          *
          **/
-        uint32_t get_count(const uint8_t flags = CONNECT_FLAGS_ALL) const;
+        uint32_t get_current_count(const uint8_t flags = CONNECT_FLAGS_ALL) const;
 
-        std::unique_ptr<LLD::AddressDB> pDatabase;
+
+        /** get_total_count
+         *
+         *  Helper function to get the total connected, dropped, or failed attempts
+         *  from the entire data set
+         *
+         *  @param[in] flags Specify which types of connections to get the info from.
+         *
+         **/
+        uint32_t get_total_count(const uint8_t flags) const;
+
+        LLD::AddressDB *pDatabase;
         std::unordered_map<uint64_t, AddressInfo> mapAddrInfo;
 
         std::mutex mutex;

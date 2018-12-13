@@ -31,7 +31,8 @@ namespace LLD
     {
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        RegisterDB(const char* pszMode="r+") : SectorDatabase("registers", pszMode) {}
+        RegisterDB(const char* pszMode="r+")
+        : SectorDatabase("registers", pszMode) {}
 
         bool WriteState(uint256_t hashRegister, TAO::Register::State state)
         {

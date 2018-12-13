@@ -32,7 +32,8 @@ namespace LLD
     {
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LocalDB(const char* pszMode="r+") : SectorDatabase("local", pszMode) {}
+        LocalDB(const char* pszMode="r+")
+        : SectorDatabase("local", pszMode) {}
 
         bool WriteGenesis(TAO::Ledger::Transaction tx)
         {

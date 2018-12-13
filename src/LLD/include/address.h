@@ -29,16 +29,16 @@ namespace LLD
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         AddressDB(uint16_t port, const char* pszMode="r+")
-        : SectorDatabase("addr" + std::to_string(port), pszMode) { }
+        : SectorDatabase("addr/" + std::to_string(port), pszMode) { }
 
-        bool WriteAddressInfo(uint32_t key, LLP::AddressInfo info)
+        bool WriteAddressInfo(uint64_t key, LLP::AddressInfo info)
         {
-            return Write(key, info);
+            return Write(std::make_pair(std::string("info"), key), info);
         }
 
-        bool ReadAddressInfo(uint32_t key, LLP::AddressInfo &info)
+        bool ReadAddressInfo(uint64_t key, LLP::AddressInfo &info)
         {
-            return Read(key, info);
+            return Read(std::make_pair(std::string("info"), key), info);
         }
     };
 }

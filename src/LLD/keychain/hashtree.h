@@ -80,13 +80,28 @@ namespace LLD
 
     public:
 
-        BinaryHashTree() : HASHMAP_TOTAL_BUCKETS(256 * 256 * 24), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>()), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
+        BinaryHashTree()
+        : HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
+        , HASHMAP_MAX_CACHE_SZIE(10 * 1024)
+        , HASHMAP_MAX_KEY_SIZE(128)
+        , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11)
+        , fInitialized(false)
+        , fileCache(new TemplateLRU<uint32_t, std::fstream*>())
+        , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
         }
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashTree(std::string strBaseLocationIn) : strBaseLocation(strBaseLocationIn), HASHMAP_TOTAL_BUCKETS(256 * 256 * 24), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(128), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11), fInitialized(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>()), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
+        BinaryHashTree(std::string strBaseLocationIn)
+        : strBaseLocation(strBaseLocationIn)
+        , HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
+        , HASHMAP_MAX_CACHE_SZIE(10 * 1024)
+        , HASHMAP_MAX_KEY_SIZE(128)
+        , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11)
+        , fInitialized(false)
+        , fileCache(new TemplateLRU<uint32_t, std::fstream*>())
+        , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
 
