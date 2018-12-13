@@ -153,7 +153,7 @@ namespace LLP
         /* Check the Validity of the Packet. */
         bool IsValid()
         {
-            /* Check that the packet isn't NULL. */
+            /* Check that the packet isn't nullptr. */
             if(IsNull())
                 return false;
 

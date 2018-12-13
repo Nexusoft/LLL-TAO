@@ -56,7 +56,7 @@ namespace TAO::Ledger
 	}
 
 
-	/* Check the NULL state of the block. */
+	/* Check the nullptr state of the block. */
 	bool Block::IsNull() const
 	{
 		return (nBits == 0);

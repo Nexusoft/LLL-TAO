@@ -141,6 +141,19 @@ OBJS= \
 	build/LLP_tritium.o \
 	build/LLP_corenode.o \
 	build/LLP_rpcnode.o \
+	build/Ledger_block.o \
+	build/Ledger_prime.o \
+	build/Ledger_tritium.o \
+	build/Ledger_transaction.o \
+	build/Operation_write.o \
+	build/Operation_register.o \
+	build/Operation_transfer.o \
+	build/Operation_debit.o \
+	build/Operation_credit.o \
+	build/Operation_authorize.o \
+	build/API_cmd.o \
+	build/API_rpc.o \
+	build/API_info.o \
 	build/Legacy_evaluate.o \
 	build/Legacy_address.o \
 	build/Legacy_addressbook.o \
@@ -165,19 +178,6 @@ OBJS= \
 	build/Legacy_wallet.o \
 	build/Legacy_walletdb.o \
 	build/Legacy_wallettx.o \
-	build/Ledger_block.o \
-	build/Ledger_prime.o \
-	build/Ledger_tritium.o \
-	build/Ledger_transaction.o \
-	build/Operation_write.o \
-	build/Operation_register.o \
-	build/Operation_transfer.o \
-	build/Operation_debit.o \
-	build/Operation_credit.o \
-	build/Operation_authorize.o \
-	build/API_cmd.o \
-	build/API_rpc.o \
-	build/API_info.o \
 	build/Util_args.o \
 	build/Util_base58.o \
 	build/Util_base64.o \

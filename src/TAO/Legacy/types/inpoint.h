@@ -60,7 +60,7 @@ namespace Legacy
 		 **/
 		void SetNull()
 		{
-			ptx = NULL;
+			ptx = nullptr;
 			n = -1;
 		}
 
@@ -72,7 +72,7 @@ namespace Legacy
 		 **/
 		bool IsNull() const
 		{
-			return (ptx == NULL && n == -1);
+			return (ptx == nullptr && n == -1);
 		}
 	};
 }

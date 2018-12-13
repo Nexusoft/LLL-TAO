@@ -57,7 +57,7 @@ namespace encoding
      *  @return The vector containing the decoded base 64 message.
      *
      **/
-    std::vector<uint8_t> DecodeBase64(const char* p, bool* pfInvalid = NULL);
+    std::vector<uint8_t> DecodeBase64(const char* p, bool* pfInvalid = nullptr);
 
     /** DecodeBase64
      *

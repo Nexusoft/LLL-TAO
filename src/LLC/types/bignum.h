@@ -46,20 +46,20 @@ namespace LLC
         CAutoBN_CTX()
         {
             pctx = BN_CTX_new();
-            if (pctx == NULL)
-                throw bignum_error("CAutoBN_CTX : BN_CTX_new() returned NULL");
+            if (pctx == nullptr)
+                throw bignum_error("CAutoBN_CTX : BN_CTX_new() returned nullptr");
         }
 
         ~CAutoBN_CTX()
         {
-            if (pctx != NULL)
+            if (pctx != nullptr)
                 BN_CTX_free(pctx);
         }
 
         operator BN_CTX*() { return pctx; }
         BN_CTX& operator*() { return *pctx; }
         BN_CTX** operator&() { return &pctx; }
-        bool operator!() { return (pctx == NULL); }
+        bool operator!() { return (pctx == nullptr); }
     };
 
 
@@ -210,7 +210,7 @@ namespace LLC
 
         uint64_t getuint64() const
         {
-            uint32_t nSize = BN_bn2mpi(m_BN, NULL);
+            uint32_t nSize = BN_bn2mpi(m_BN, nullptr);
             if (nSize < 4)
                 return 0;
             std::vector<uint8_t> vch(nSize);
@@ -253,7 +253,7 @@ namespace LLC
 
         uint256_t getuint256() const
         {
-            uint32_t nSize = BN_bn2mpi(m_BN, NULL);
+            uint32_t nSize = BN_bn2mpi(m_BN, nullptr);
             if (nSize < 4)
                 return 0;
             std::vector<uint8_t> vch(nSize);
@@ -296,7 +296,7 @@ namespace LLC
 
         uint512_t getuint512() const
         {
-            uint32_t nSize = BN_bn2mpi(m_BN, NULL);
+            uint32_t nSize = BN_bn2mpi(m_BN, nullptr);
             if (nSize < 4)
                 return 0;
             std::vector<uint8_t> vch(nSize);
@@ -339,7 +339,7 @@ namespace LLC
 
         uint576_t getuint576() const
         {
-            uint32_t nSize = BN_bn2mpi(m_BN, NULL);
+            uint32_t nSize = BN_bn2mpi(m_BN, nullptr);
             if (nSize < 4)
                 return 0;
             std::vector<uint8_t> vch(nSize);
@@ -382,7 +382,7 @@ namespace LLC
 
         uint1024_t getuint1024() const
         {
-            uint32_t nSize = BN_bn2mpi(m_BN, NULL);
+            uint32_t nSize = BN_bn2mpi(m_BN, nullptr);
             if (nSize < 4)
                 return 0;
             std::vector<uint8_t> vch(nSize);
@@ -412,7 +412,7 @@ namespace LLC
 
         std::vector<uint8_t> getvch() const
         {
-            uint32_t nSize = BN_bn2mpi(m_BN, NULL);
+            uint32_t nSize = BN_bn2mpi(m_BN, nullptr);
             if (nSize <= 4)
                 return std::vector<uint8_t>();
             std::vector<uint8_t> vch(nSize);
@@ -436,7 +436,7 @@ namespace LLC
 
         uint32_t GetCompact() const
         {
-            uint32_t nSize = BN_bn2mpi(m_BN, NULL);
+            uint32_t nSize = BN_bn2mpi(m_BN, nullptr);
             std::vector<uint8_t> vch(nSize);
             nSize -= 4;
             BN_bn2mpi(m_BN, &vch[0]);
@@ -681,7 +681,7 @@ namespace LLC
     {
         CAutoBN_CTX pctx;
         CBigNum r;
-        if (!BN_div(r.getBN(), NULL, a.getBN(), b.getBN(), pctx))
+        if (!BN_div(r.getBN(), nullptr, a.getBN(), b.getBN(), pctx))
             throw bignum_error("CBigNum::operator/ : BN_div failed");
         return r;
     }

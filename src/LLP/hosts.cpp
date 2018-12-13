@@ -60,13 +60,13 @@ namespace LLP
         aiHint.ai_family = AF_UNSPEC;
         aiHint.ai_flags = AI_ADDRCONFIG | (fAllowLookup ? 0 : AI_NUMERICHOST);
     #endif
-        struct addrinfo *aiRes = NULL;
-        int nErr = getaddrinfo(pszName, NULL, &aiHint, &aiRes);
+        struct addrinfo *aiRes = nullptr;
+        int nErr = getaddrinfo(pszName, nullptr, &aiHint, &aiRes);
         if (nErr)
             return false;
 
         struct addrinfo *aiTrav = aiRes;
-        while (aiTrav != NULL && (nMaxSolutions == 0 || vIP.size() < nMaxSolutions))
+        while (aiTrav != nullptr && (nMaxSolutions == 0 || vIP.size() < nMaxSolutions))
         {
             if (aiTrav->ai_family == AF_INET)
             {
@@ -118,7 +118,7 @@ namespace LLP
         char *pszHost = psz;
         strlcpy(psz, pszName, sizeof(psz));
         char* pszColon = strrchr(psz+1,':');
-        char *pszPortEnd = NULL;
+        char *pszPortEnd = nullptr;
         int portParsed = pszColon ? strtoul(pszColon+1, &pszPortEnd, 10) : 0;
         if (pszColon && pszPortEnd && pszPortEnd[0] == 0)
         {

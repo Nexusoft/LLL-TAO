@@ -98,7 +98,7 @@ namespace Legacy
     bool CScript::GetOp(iterator& pc, opcodetype& opcodeRet)
     {
         const_iterator pc2 = pc;
-        bool fRet = GetOp2(pc2, opcodeRet, NULL);
+        bool fRet = GetOp2(pc2, opcodeRet, nullptr);
         pc = begin() + (pc2 - begin());
         return fRet;
     }
@@ -114,7 +114,7 @@ namespace Legacy
     /* Get the op codes from stack */
     bool CScript::GetOp(const_iterator& pc, opcodetype& opcodeRet) const
     {
-        return GetOp2(pc, opcodeRet, NULL);
+        return GetOp2(pc, opcodeRet, nullptr);
     }
 
 

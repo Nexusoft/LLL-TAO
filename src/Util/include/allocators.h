@@ -85,7 +85,7 @@ struct secure_allocator : public std::allocator<T>
     {
         T *p;
         p = std::allocator<T>::allocate(n, hint);
-        if (p != NULL)
+        if (p != nullptr)
             mlock(p, sizeof(T) * n);
         return p;
     }
@@ -98,7 +98,7 @@ struct secure_allocator : public std::allocator<T>
      **/
     void deallocate(T* p, std::size_t n)
     {
-        if (p != NULL)
+        if (p != nullptr)
         {
             memset(p, 0, sizeof(T) * n);
             munlock(p, sizeof(T) * n);
@@ -140,7 +140,7 @@ struct zero_after_free_allocator : public std::allocator<T>
      **/
     void deallocate(T* p, std::size_t n)
     {
-        if (p != NULL)
+        if (p != nullptr)
             memset(p, 0, sizeof(T) * n);
         std::allocator<T>::deallocate(p, n);
     }

@@ -170,7 +170,7 @@ extern "C"
      * @param ctx
      *     Pointer to an empty or preinitialized Skein MAC context
      * @param key
-     *     Pointer to key bytes or NULL
+     *     Pointer to key bytes or nullptr
      * @param keyLen
      *     Length of the key in bytes or zero
      * @param hashBitLen

@@ -51,11 +51,11 @@ void SetupSignals()
         sa.sa_flags = 0;
 
         //catch all signals to flag fShutdown for all threads
-        sigaction(SIGABRT, &sa, NULL);
-        sigaction(SIGILL, &sa, NULL);
-        sigaction(SIGINT, &sa, NULL);
-        sigaction(SIGTERM, &sa, NULL);
-        sigaction(SIGPIPE, &sa, NULL);
+        sigaction(SIGABRT, &sa, nullptr);
+        sigaction(SIGILL, &sa, nullptr);
+        sigaction(SIGINT, &sa, nullptr);
+        sigaction(SIGTERM, &sa, nullptr);
+        sigaction(SIGPIPE, &sa, nullptr);
 
     #else
         //catch all signals to flag fShutdown for all threads

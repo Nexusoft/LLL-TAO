@@ -94,8 +94,8 @@ namespace LLD
             hashmap.resize(MAX_CACHE_BUCKETS);
 
             /* Set the start and end pointers. */
-            pfirst = NULL;
-            plast  = NULL;
+            pfirst = nullptr;
+            plast  = nullptr;
         }
 
 
@@ -110,8 +110,8 @@ namespace LLD
             hashmap.resize(MAX_CACHE_BUCKETS);
 
             /* Set the start and end pointers. */
-            pfirst = NULL;
-            plast  = NULL;
+            pfirst = nullptr;
+            plast  = nullptr;
         }
 
 
@@ -191,7 +191,7 @@ namespace LLD
             LOCK(MUTEX);
 
             uint32_t nBucket = Bucket(Key);
-            return (hashmap[nBucket] != NULL && hashmap[nBucket]->Key == Key);
+            return (hashmap[nBucket] != nullptr && hashmap[nBucket]->Key == Key);
         }
 
 
@@ -233,13 +233,13 @@ namespace LLD
                 if(plast->pprev)
                     plast = plast->pprev;
 
-                plast->pnext = NULL;
+                plast->pnext = nullptr;
             }
             else
                 RemoveNode(pthis);
 
             /* Set prev to null to signal front of list */
-            pthis->pprev = NULL;
+            pthis->pprev = nullptr;
 
             /* Set next to the current first */
             pthis->pnext = pfirst;
@@ -251,7 +251,7 @@ namespace LLD
                 if(!plast)
                 {
                     plast = pfirst;
-                    plast->pnext = NULL;
+                    plast->pnext = nullptr;
                 }
             }
 
@@ -276,7 +276,7 @@ namespace LLD
             TemplateNode<KeyType, DataType>* pthis = hashmap[Bucket(Key)];
 
             /* Check if the Record Exists. */
-            if(pthis == NULL || pthis->Key != Key)
+            if(pthis == nullptr || pthis->Key != Key)
                 return false;
 
             /* Get the data. */
@@ -303,8 +303,8 @@ namespace LLD
             uint32_t nBucket = Bucket(Key);
 
             /* Check for bucket collisions. */
-            TemplateNode<KeyType, DataType>* pthis = NULL;
-            if(hashmap[nBucket] != NULL)
+            TemplateNode<KeyType, DataType>* pthis = nullptr;
+            if(hashmap[nBucket] != nullptr)
             {
                 /* Update the cache node. */
                 pthis = hashmap[nBucket];
@@ -338,12 +338,12 @@ namespace LLD
 
                     /* Relink in memory. */
                     plast = pnode->pprev;
-                    plast->pnext = NULL;
+                    plast->pnext = nullptr;
 
                     /* Reset hashmap pointer */
-                    hashmap[Bucket(pnode->Key)] = NULL; //TODO: hashmap linked list for collisions
-                    pnode->pprev = NULL;
-                    pnode->pnext = NULL;
+                    hashmap[Bucket(pnode->Key)] = nullptr; //TODO: hashmap linked list for collisions
+                    pnode->pprev = nullptr;
+                    pnode->pnext = nullptr;
 
                     /* Free memory. */
                     Delete(pnode->Key);
@@ -351,7 +351,7 @@ namespace LLD
                     Delete(pnode);
 
                     /* Clear the pointers. */
-                    pnode = NULL;
+                    pnode = nullptr;
 
                     /* Change the total elements. */
                     nTotalElements--;
@@ -410,7 +410,7 @@ namespace LLD
             RemoveNode(pnode);
 
             /* Remove the object from the map. */
-            hashmap[Bucket(Key)] = NULL;
+            hashmap[Bucket(Key)] = nullptr;
 
             /* Free memory. */
             Delete(pnode->Key);

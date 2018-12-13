@@ -66,14 +66,14 @@ namespace TAO
 			}
 
 
-			/* Set the State of Object to NULL. */
+			/* Set the State of Object to nullptr. */
 			void SetNull()
 			{
 				vHave.clear();
 			}
 
 
-			/* Check the State of Object as NULL. */
+			/* Check the State of Object as nullptr. */
 			bool IsNull()
 			{
 				return vHave.empty();

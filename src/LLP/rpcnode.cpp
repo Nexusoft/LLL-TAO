@@ -71,7 +71,7 @@ namespace LLP
         {
             /* Get the parameters from the HTTP Packet. */
             json::json jsonIncoming = json::json::parse(INCOMING.strContent);
- 
+
             if(jsonIncoming["method"].is_null())
                 throw APIException(-32600, "Missing method");
             if (!jsonIncoming["method"].is_string())
@@ -127,7 +127,7 @@ namespace LLP
             jsonReply["result"] = jsonResponse;
             jsonReply["error"] = nullptr;
         }
-        
+
         jsonReply["id"] = jsonID;
         return jsonReply;
     }
@@ -141,7 +141,7 @@ namespace LLP
             int code = jsonError["code"].get<int>();
             if (code == -32600) nStatus = 400;
             else if (code == -32601) nStatus = 404;
-            json::json jsonReply = JSONRPCReply(json::json(NULL), jsonError, jsonID);
+            json::json jsonReply = JSONRPCReply(json::json(nullptr), jsonError, jsonID);
             PushResponse(nStatus, jsonReply.dump(4));
         }
         catch( APIException& e)
@@ -159,10 +159,13 @@ namespace LLP
         std::string strAuth = mapHeaders["Authorization"];
         if (strAuth.substr(0,6) != "Basic ")
             return false;
+
         std::string strUserPass64 = strAuth.substr(6);
         trim(strUserPass64);
         std::string strUserPass = encoding::DecodeBase64(strUserPass64);
         std::string strRPCUserColonPass = config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"];
+
+        printf("%s - %s\n", strRPCUserColonPass.c_str(), strUserPass.c_str());
         return strUserPass == strRPCUserColonPass;
     }
 

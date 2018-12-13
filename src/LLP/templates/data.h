@@ -70,7 +70,7 @@ namespace LLP
         {
             int nSlot = FindSlot();
             if(nSlot == CONNECTIONS.size())
-                CONNECTIONS.push_back(NULL);
+                CONNECTIONS.push_back(nullptr);
 
             if(fDDOS)
                 DDOS -> cSCORE += 1;
@@ -89,7 +89,7 @@ namespace LLP
         {
             int nSlot = FindSlot();
             if(nSlot == CONNECTIONS.size())
-                CONNECTIONS.push_back(NULL);
+                CONNECTIONS.push_back(nullptr);
 
 
             Socket_t SOCKET;
@@ -99,7 +99,7 @@ namespace LLP
             if(!CONNECTIONS[nSlot]->Connect(strAddress, nPort))
             {
                 delete CONNECTIONS[nSlot];
-                CONNECTIONS[nSlot] = NULL;
+                CONNECTIONS[nSlot] = nullptr;
 
                 return false;
             }
@@ -123,7 +123,7 @@ namespace LLP
 
             delete CONNECTIONS[index];
 
-            CONNECTIONS[index] = NULL;
+            CONNECTIONS[index] = nullptr;
 
             nConnections --;
         }

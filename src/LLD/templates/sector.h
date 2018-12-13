@@ -64,9 +64,6 @@ namespace LLD
         ability to use free space that becomes available upon an erase of a
         record. Use this Database purely for fixed size structures. Overflow
         attempts will trigger an error code.
-
-        TODO:: Add in the Database File Searching from Sector Keys. Allow Multiple Files.
-
     **/
     template<typename KeychainType, typename CacheType> class SectorDatabase
     {
@@ -221,7 +218,7 @@ namespace LLD
                 nCurrentFile++;
             }
 
-            pTransaction = NULL;
+            pTransaction = nullptr;
             fInitialized = true;
         }
 
@@ -576,7 +573,7 @@ namespace LLD
                 delete pTransaction;
 
             /** Set the transaction pointer to null also acting like a flag **/
-            pTransaction = NULL;
+            pTransaction = nullptr;
         }
 
         /** Return the database state back to its original state before transactions are commited. **/
@@ -751,7 +748,7 @@ namespace LLD
             /** Clean up the Sector Transaction Key.
                 TODO: Delete the Sector and Keychain for Current Transaction Commit ID. **/
             delete pTransaction;
-            pTransaction = NULL;
+            pTransaction = nullptr;
 
             if(config::GetBoolArg("-runtime", false))
                 debug::log(0, ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());

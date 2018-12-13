@@ -61,13 +61,13 @@ private:
 };
 
 #if defined(_WIN32)
-#define MAP_FAILED NULL
+#define MAP_FAILED nullptr
 #endif
 
 inline MemoryMappedFile::MemoryMappedFile(const char* path)
 #if defined(_WIN32)
-    : hFile_(NULL)
-    , hMapping_(NULL)
+    : hFile_(nullptr)
+    , hMapping_(nullptr)
 #else
     : fd_(-1)
 #endif
@@ -79,20 +79,20 @@ inline MemoryMappedFile::MemoryMappedFile(const char* path)
         path,
         GENERIC_READ,
         FILE_SHARE_READ,
-        NULL,
+        nullptr,
         OPEN_EXISTING,
         FILE_ATTRIBUTE_NORMAL,
-        NULL);
+        nullptr);
 
     if (hFile_ == INVALID_HANDLE_VALUE) {
         std::runtime_error("");
     }
 
-    size_ = ::GetFileSize(hFile_, NULL);
+    size_ = ::GetFileSize(hFile_, nullptr);
 
-    hMapping_ = ::CreateFileMapping(hFile_, NULL, PAGE_READONLY, 0, 0, NULL);
+    hMapping_ = ::CreateFileMapping(hFile_, nullptr, PAGE_READONLY, 0, 0, nullptr);
 
-    if (hMapping_ == NULL) {
+    if (hMapping_ == nullptr) {
         cleanup();
         std::runtime_error("");
     }
@@ -111,7 +111,7 @@ inline MemoryMappedFile::MemoryMappedFile(const char* path)
     }
     size_ = sb.st_size;
 
-    addr_ = mmap(NULL, size_, PROT_READ, MAP_PRIVATE, fd_, 0);
+    addr_ = mmap(nullptr, size_, PROT_READ, MAP_PRIVATE, fd_, 0);
 #endif
 
     if (addr_ == MAP_FAILED) {
@@ -150,7 +150,7 @@ inline void MemoryMappedFile::cleanup()
 
     if (hMapping_) {
         ::CloseHandle(hMapping_);
-        hMapping_ = NULL;
+        hMapping_ = nullptr;
     }
 
     if (hFile_ != INVALID_HANDLE_VALUE) {
