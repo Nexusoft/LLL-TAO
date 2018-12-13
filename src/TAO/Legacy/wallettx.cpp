@@ -426,7 +426,7 @@ namespace Legacy
             /* Get the Nexus address from the txout public key */
             if (!ExtractAddress(txout.scriptPubKey, address))
             {
-                debug::log(0, "CWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",
+                debug::log(0, "CWalletTx::GetAmounts: Unknown transaction type found, txid %s",
                            this->GetHash().ToString().c_str());
 
                 address = " unknown ";
@@ -557,7 +557,7 @@ namespace Legacy
 */
                     else
                     {
-                        debug::log(0, "CWalletTx::AddSupportingTransactions: Error: AddSupportingTransactions() : unsupported transaction\n");
+                        debug::log(0, "CWalletTx::AddSupportingTransactions: Error: AddSupportingTransactions() : unsupported transaction");
                         continue;
                     }
 
@@ -600,7 +600,7 @@ namespace Legacy
             /* Relay this tx if we don't have it in our database, yet */
             if (!ledgerdb.HasTx(hash))
             {
-                debug::log(0, "Relaying wtx %s\n", hash.ToString().substr(0,10).c_str());
+                debug::log(0, "Relaying wtx %s", hash.ToString().substr(0,10).c_str());
 // TODO: Need implementation to support RelayMessage()
                 //RelayMessage(LLP::CInv(LLP::MSG_TX, hash), (Transaction)*this);
             }

@@ -164,7 +164,7 @@ namespace LLD
             Initialize();
 
             if(config::GetBoolArg("-runtime", false))
-                debug::log(0, ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
+                debug::log(0, ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
         }
 
         ~SectorDatabase()
@@ -184,7 +184,7 @@ namespace LLD
         {
             /* Create directories if they don't exist yet. */
             if(filesystem::create_directories(strBaseLocation))
-                debug::log(0, FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
+                debug::log(0, FUNCTION "Generated Path %s", __PRETTY_FUNCTION__, strBaseLocation.c_str());
 
             /* Find the most recent append file. */
             while(true)
@@ -267,7 +267,7 @@ namespace LLD
             bool fErased = SectorKeys->Erase(vKey);
 
             if(config::GetBoolArg("-runtime", false))
-                debug::log(0, ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
+                debug::log(0, ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
 
             return fErased;
         }
@@ -326,7 +326,7 @@ namespace LLD
             {
                 vData = pTransaction->mapTransactions[vKey];
 
-                debug::log(4, FUNCTION "%s\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
+                debug::log(4, FUNCTION "%s", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
 
                 return true;
             }
@@ -341,7 +341,7 @@ namespace LLD
 
                     /* Error checking if file doens't exist. */
                     if(!stream)
-                        return debug::error(FUNCTION "Sector File Doesn't Exist\n", __PRETTY_FUNCTION__, debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile).c_str());
+                        return debug::error(FUNCTION "Sector File Doesn't Exist", __PRETTY_FUNCTION__, debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile).c_str());
 
                     /* Seek to the Sector Position on Disk. */
                     stream.seekg(cKey.nSectorStart, std::ios::beg);
@@ -356,7 +356,7 @@ namespace LLD
                 cachePool->Put(vKey, vData);
 
                 /* Verbose Debug Logging. */
-                debug::log(4, FUNCTION "%s\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
+                debug::log(4, FUNCTION "%s", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
 
                 return true;
             }
@@ -372,7 +372,7 @@ namespace LLD
         {
             if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
             {
-                debug::log(4, FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
+                debug::log(4, FUNCTION "Current File too Large, allocating new File %u", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
 
                 nCurrentFile ++;
                 nCurrentFileSize = 0;
@@ -405,10 +405,10 @@ namespace LLD
             SectorKeys->Put(cKey);
 
             /* Verboe output. */
-            debug::log(4, FUNCTION "%s | Current File: %u | Current File Size: %u\n", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
+            debug::log(4, FUNCTION "%s | Current File: %u | Current File Size: %u", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
 
             if(config::GetBoolArg("-runtime", false))
-                debug::log(0, ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
+                debug::log(0, ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
 
             return true;
         }
@@ -461,7 +461,7 @@ namespace LLD
                 /* Create a new file if the sector file size is over file size limits. */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                 {
-                    debug::log(0, FUNCTION "Generated Sector File %u\n", __PRETTY_FUNCTION__, nCurrentFile + 1);
+                    debug::log(0, FUNCTION "Generated Sector File %u", __PRETTY_FUNCTION__, nCurrentFile + 1);
 
                     /* Iterate the current file and reset current file sie. */
                     nCurrentFile ++;
@@ -538,9 +538,9 @@ namespace LLD
                 double WPS = nBytesWrote / (TIMER.Elapsed() * 1024.0);
                 double RPS = nBytesRead / (TIMER.Elapsed() * 1024.0);
 
-                debug::log(0, FUNCTION ">>>>> LLD Writing at %f Kb/s\n", __PRETTY_FUNCTION__, WPS);
-                debug::log(0, FUNCTION ">>>>> LLD Reading at %f Kb/s\n", __PRETTY_FUNCTION__, RPS);
-                debug::log(0, FUNCTION ">>>>> LLD Flushed %u Records\n", __PRETTY_FUNCTION__, nRecordsFlushed);
+                debug::log(0, FUNCTION ">>>>> LLD Writing at %f Kb/s", __PRETTY_FUNCTION__, WPS);
+                debug::log(0, FUNCTION ">>>>> LLD Reading at %f Kb/s", __PRETTY_FUNCTION__, RPS);
+                debug::log(0, FUNCTION ">>>>> LLD Flushed %u Records", __PRETTY_FUNCTION__, nRecordsFlushed);
 
                 TIMER.Reset();
                 nBytesWrote     = 0;
@@ -562,7 +562,7 @@ namespace LLD
             pTransaction = new SectorTransaction();
 
             /* Debug Output. */
-            debug::log(4, FUNCTION "New Sector Transaction Started.\n", __PRETTY_FUNCTION__);
+            debug::log(4, FUNCTION "New Sector Transaction Started.", __PRETTY_FUNCTION__);
         }
 
         /** Abort the current transaction that is pending in the transaction chain. **/
@@ -616,14 +616,14 @@ namespace LLD
             if(config::GetBoolArg("-runtime", false))
                 runtime.Start();
 
-            debug::log(4, FUNCTION "Commiting Transactin to Datachain.\n", __PRETTY_FUNCTION__);
+            debug::log(4, FUNCTION "Commiting Transactin to Datachain.", __PRETTY_FUNCTION__);
 
             /** Check that there is a valid transaction to apply to the database. **/
             if(!pTransaction)
                 return error(FUNCTION "No Transaction data to Commit.", __PRETTY_FUNCTION__);
 
             /** Habdle setting the sector key flags so the database knows if the transaction was completed properly. **/
-            debug::log(4, FUNCTION "Commiting Keys to Keychain.\n", __PRETTY_FUNCTION__);
+            debug::log(4, FUNCTION "Commiting Keys to Keychain.", __PRETTY_FUNCTION__);
 
             /** Set the Sector Keys to an Invalid State to know if there are interuptions the sector was not finished successfully. **/
             for(typename std::map< std::vector<uint8_t>, std::vector<uint8_t> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
@@ -639,7 +639,7 @@ namespace LLD
             }
 
             /** Update the Keychain with Checksums and READY Flag letting sectors know they were written successfully. **/
-            debug::log(4, FUNCTION "Erasing Sector Keys Flagged for Deletion.\n", __PRETTY_FUNCTION__);
+            debug::log(4, FUNCTION "Erasing Sector Keys Flagged for Deletion.", __PRETTY_FUNCTION__);
 
             /** Erase all the Transactions that are set to be erased. That way if they are assigned a TRANSACTION flag we know to roll back their key to orginal data. **/
             for(typename std::map< std::vector<uint8_t>, uint32_t >::iterator nIterator = pTransaction->mapEraseData.begin(); nIterator != pTransaction->mapEraseData.end(); nIterator++ )
@@ -649,7 +649,7 @@ namespace LLD
             }
 
             /** Commit the Sector Data to the Database. **/
-            debug::log(4, FUNCTION "Commit Data to Datachain Sector Database.\n", __PRETTY_FUNCTION__);
+            debug::log(4, FUNCTION "Commit Data to Datachain Sector Database.", __PRETTY_FUNCTION__);
 
             for(typename std::map< std::vector<uint8_t>, std::vector<uint8_t> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
             {
@@ -662,7 +662,7 @@ namespace LLD
                 {
                     if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                     {
-                        debug::log(4, FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
+                        debug::log(4, FUNCTION "Current File too Large, allocating new File %u", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
 
                         nCurrentFile ++;
                         nCurrentFileSize = 0;
@@ -710,7 +710,7 @@ namespace LLD
                     fStream.seekp(cKey.nSectorStart, std::ios::beg);
                     if(vData.size() > cKey.nSectorSize){
                         fStream.close();
-                        debug::log(0, FUNCTION "PUT (TOO LARGE) NO TRUNCATING ALLOWED (Old %u :: New %u):%s\n", __PRETTY_FUNCTION__, cKey.nSectorSize, vData.size(), HexStr(vData.begin(), vData.end()).c_str());
+                        debug::log(0, FUNCTION "PUT (TOO LARGE) NO TRUNCATING ALLOWED (Old %u :: New %u):%s", __PRETTY_FUNCTION__, cKey.nSectorSize, vData.size(), HexStr(vData.begin(), vData.end()).c_str());
 
                         return false;
                     }
@@ -728,7 +728,7 @@ namespace LLD
             }
 
             /** Update the Keychain with Checksums and READY Flag letting sectors know they were written successfully. **/
-            debug::log(4, FUNCTION "Commiting Key Valid States to Keychain.\n", __PRETTY_FUNCTION__);
+            debug::log(4, FUNCTION "Commiting Key Valid States to Keychain.", __PRETTY_FUNCTION__);
 
             for(typename std::map< std::vector<uint8_t>, std::vector<uint8_t> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
             {
@@ -751,7 +751,7 @@ namespace LLD
             pTransaction = nullptr;
 
             if(config::GetBoolArg("-runtime", false))
-                debug::log(0, ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds\n" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
+                debug::log(0, ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
 
             return true;
         }

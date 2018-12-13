@@ -84,7 +84,7 @@ namespace Legacy
          **/
         inline void print() const
         {
-            printf("%s\n", ToString().c_str());
+            printf("%s", ToString().c_str());
         }
     };
 

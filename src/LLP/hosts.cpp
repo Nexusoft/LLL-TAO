@@ -27,7 +27,7 @@ namespace LLP
         std::vector<CAddress> vNodes;
         for (int nSeed = 0; nSeed < DNS_Seed.size(); nSeed ++ )
         {
-            debug::log(0, "%u Host: %s\n", nSeed, DNS_Seed[nSeed].c_str());
+            debug::log(0, "%u Host: %s", nSeed, DNS_Seed[nSeed].c_str());
             std::vector<LLP::CNetAddr> vaddr;
             if (LookupHost(DNS_Seed[nSeed].c_str(), vaddr))
             {
@@ -36,7 +36,7 @@ namespace LLP
                     CAddress addr = CAddress(CService(ip, GetDefaultPort()));
                     vNodes.push_back(addr);
 
-                    debug::log(0, "DNS Seed: %s\n", addr.ToStringIP().c_str());
+                    debug::log(0, "DNS Seed: %s", addr.ToStringIP().c_str());
                 }
             }
         }

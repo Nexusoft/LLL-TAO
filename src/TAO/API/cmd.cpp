@@ -33,7 +33,7 @@ namespace TAO::API
         /* Check the parameters. */
         if(argc < argn + 3)
         {
-            debug::log(0, "Not Enough Parameters\n");
+            debug::log(0, "Not Enough Parameters");
 
             return 0;
         }
@@ -66,7 +66,7 @@ namespace TAO::API
         LLP::CoreNode apiNode;
         if(!apiNode.Connect("127.0.0.1", 8080))
         {
-            debug::log(0, "Couldn't Connect to API\n");
+            debug::log(0, "Couldn't Connect to API");
 
             return 0;
         }
@@ -81,7 +81,7 @@ namespace TAO::API
             /* Catch if the connection was closed. */
             if(!apiNode.Connected())
             {
-                debug::log(0, "Connection Terminated\n");
+                debug::log(0, "Connection Terminated");
 
                 return 0;
             }
@@ -89,7 +89,7 @@ namespace TAO::API
             /* Catch if the socket experienced errors. */
             if(apiNode.Errors())
             {
-                debug::log(0, "Socket Error\n");
+                debug::log(0, "Socket Error");
 
                 return 0;
             }
@@ -97,7 +97,7 @@ namespace TAO::API
             /* Catch if the connection timed out. */
             if(apiNode.Timeout(30))
             {
-                debug::log(0, "Socket Timeout\n");
+                debug::log(0, "Socket Timeout");
 
                 return 0;
             }
@@ -108,7 +108,7 @@ namespace TAO::API
         }
 
         /* Dump the response to the console. */
-        debug::log(0, "%s\n", apiNode.INCOMING.strContent.c_str());
+        debug::log(0, "%s", apiNode.INCOMING.strContent.c_str());
 
         return 0;
     }
@@ -120,7 +120,7 @@ namespace TAO::API
         /* Check the parameters. */
         if(argc < argn + 1)
         {
-            debug::log(0, "Not Enough Parameters\n");
+            debug::log(0, "Not Enough Parameters");
 
             return 0;
         }
@@ -128,9 +128,9 @@ namespace TAO::API
         /** Check RPC user/pass are set */
         if (config::mapArgs["-rpcuser"] == "" && config::mapArgs["-rpcpassword"] == "")
             throw std::runtime_error(debug::strprintf(
-                "You must set rpcpassword=<password> in the configuration file:\n%s\n"
+                "You must set rpcpassword=<password> in the configuration file:%s"
                   "If the file does not exist, create it with owner-readable-only file permissions.",
-                    config::GetConfigFile().c_str())); 
+                    config::GetConfigFile().c_str()));
 
          // HTTP basic authentication
         std::string strUserPass64 = encoding::EncodeBase64(config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"]);
@@ -165,7 +165,7 @@ namespace TAO::API
         LLP::RPCNode rpcNode;
         if(!rpcNode.Connect(config::GetArg("-rpcconnect", "127.0.0.1"), config::GetArg("-rpcport",config::fTestNet? 8336 : 9336)))
         {
-            debug::log(0, "Couldn't Connect to RPC\n");
+            debug::log(0, "Couldn't Connect to RPC");
 
             return 0;
         }
@@ -180,7 +180,7 @@ namespace TAO::API
             /* Catch if the connection was closed. */
             if(!rpcNode.Connected())
             {
-                debug::log(0, "Connection Terminated\n");
+                debug::log(0, "Connection Terminated");
 
                 return 0;
             }
@@ -188,7 +188,7 @@ namespace TAO::API
             /* Catch if the socket experienced errors. */
             if(rpcNode.Errors())
             {
-                debug::log(0, "Socket Error\n");
+                debug::log(0, "Socket Error");
 
                 return 0;
             }
@@ -196,7 +196,7 @@ namespace TAO::API
             /* Catch if the connection timed out. */
             if(rpcNode.Timeout(30))
             {
-                debug::log(0, "Socket Timeout\n");
+                debug::log(0, "Socket Timeout");
 
                 return 0;
             }

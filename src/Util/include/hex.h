@@ -169,7 +169,7 @@ inline std::string HexStr(const std::vector<uint8_t>& vch, bool fSpaces=false)
  *
  **/
 template<typename T>
-inline void PrintHex(const T pbegin, const T pend, const char* pszFormat="%s\n", bool fSpaces=true)
+inline void PrintHex(const T pbegin, const T pend, const char* pszFormat="%s", bool fSpaces=true)
 {
     debug::log(0, pszFormat, HexStr(pbegin, pend, fSpaces).c_str());
 }
@@ -185,7 +185,7 @@ inline void PrintHex(const T pbegin, const T pend, const char* pszFormat="%s\n",
  *  @param[in] fSpaces The flag for if there should be spaces
  *
  **/
-inline void PrintHex(const std::vector<uint8_t>& vch, const char* pszFormat="%s\n", bool fSpaces=true)
+inline void PrintHex(const std::vector<uint8_t>& vch, const char* pszFormat="%s", bool fSpaces=true)
 {
     debug::log(0, pszFormat, HexStr(vch, fSpaces).c_str());
 }

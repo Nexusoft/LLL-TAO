@@ -140,7 +140,7 @@ namespace filesystem
         /* Handle failures. */
         if(status < 0)
         {
-            return debug::error(FUNCTION "Failed to create directory: %s\nReason: %s\n", __PRETTY_FUNCTION__,
+            return debug::error(FUNCTION "Failed to create directory: %sReason: %s", __PRETTY_FUNCTION__,
                 path.c_str(), strerror(errno));
         }
 

@@ -753,8 +753,8 @@ namespace Legacy
                         std::vector<uint8_t>& vchPubKey = stacktop(-1);
 
                         ////// debug print
-                        //PrintHex(vchSig.begin(), vchSig.end(), "sig: %s\n");
-                        //PrintHex(vchPubKey.begin(), vchPubKey.end(), "pubkey: %s\n");
+                        //PrintHex(vchSig.begin(), vchSig.end(), "sig: %s");
+                        //PrintHex(vchPubKey.begin(), vchPubKey.end(), "pubkey: %s");
 
                         // Subset of script starting at the most recent codeseparator
                         CScript scriptCode(pbegincodehash, pend);

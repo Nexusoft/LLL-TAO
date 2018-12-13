@@ -64,7 +64,7 @@ namespace config
         FILE* file = fopen(path.c_str(), "w");
         if (file)
         {
-            fprintf(file, "%d\n", pid);
+            fprintf(file, "%d", pid);
             fclose(file);
         }
     }
@@ -193,7 +193,7 @@ namespace config
     std::string static StartupShortcutPath()
     {
         std::string str = MyGetSpecialFolderPath(CSIDL_STARTUP, true);
-        return str.append("\\nexus.lnk");
+        return str.append("\exus.lnk");
     }
 
     /* Determine if the system startup shortcut path exists */
@@ -335,12 +335,12 @@ namespace config
                 return false;
 
             // Write a nexus.desktop file to the autostart directory:
-            optionFile << "[Desktop Entry]\n";
-            optionFile << "Type=Application\n";
-            optionFile << "Name=Nexus\n";
-            optionFile << "Exec=" << pszExePath << " -min\n";
-            optionFile << "Terminal=false\n";
-            optionFile << "Hidden=false\n";
+            optionFile << "[Desktop Entry]";
+            optionFile << "Type=Application";
+            optionFile << "Name=Nexus";
+            optionFile << "Exec=" << pszExePath << " -min";
+            optionFile << "Terminal=false";
+            optionFile << "Hidden=false";
             optionFile.close();
         }
         return true;

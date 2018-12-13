@@ -126,7 +126,7 @@ namespace LLP
             {
                 vAddr.push_back(addr);
 
-                debug::log(1, FUNCTION "added address %s\n", __PRETTY_FUNCTION__, addr.ToString().c_str());
+                debug::log(1, FUNCTION "added address %s", __PRETTY_FUNCTION__, addr.ToString().c_str());
             }
         }
 
@@ -210,13 +210,13 @@ namespace LLP
                     /* Check if the address is already connected. */
                     if(std::find(vConnected.begin(), vConnected.end(), addr) != vConnected.end())
                     {
-                        debug::log(0, FUNCTION "Address already connected %s\n", __PRETTY_FUNCTION__, addr.ToStringIP().c_str());
+                        debug::log(0, FUNCTION "Address already connected %s", __PRETTY_FUNCTION__, addr.ToStringIP().c_str());
 
                         continue;
                     }
 
                     /* Attempt the connection. */
-                    debug::log(0, FUNCTION "Attempting Connection %s\n", __PRETTY_FUNCTION__, addr.ToStringIP().c_str());
+                    debug::log(0, FUNCTION "Attempting Connection %s", __PRETTY_FUNCTION__, addr.ToStringIP().c_str());
                     AddConnection(addr.ToStringIP(), addr.GetPort());
                 }
             }
@@ -298,7 +298,7 @@ namespace LLP
                     if (hSocket == INVALID_SOCKET)
                     {
                         if (GetLastError() != WSAEWOULDBLOCK)
-                            debug::error("socket error accept failed: %d\n", GetLastError());
+                            debug::error("socket error accept failed: %d", GetLastError());
                     }
                     else
                     {
@@ -321,7 +321,7 @@ namespace LLP
                         int nThread = FindThread();
                         DATA_THREADS[nThread]->AddConnection(sockNew, DDOS_MAP[(CService)addr]);
 
-                        debug::log(3, NODE "Accepted Connection %s on port %u\n", addr.ToString().c_str(), PORT);
+                        debug::log(3, NODE "Accepted Connection %s on port %u", addr.ToString().c_str(), PORT);
                     }
                 }
             }
@@ -385,7 +385,7 @@ namespace LLP
                     return false;
                 }
 
-                debug::log(0, NODE "(v4) Bound to port %d\n", ntohs(sockaddr.sin_port));
+                debug::log(0, NODE "(v4) Bound to port %d", ntohs(sockaddr.sin_port));
             }
             else
             {
@@ -405,7 +405,7 @@ namespace LLP
                     return false;
                 }
 
-                debug::log(0, NODE "(v6) Bound to port %d\n", ntohs(sockaddr.sin6_port));
+                debug::log(0, NODE "(v6) Bound to port %d", ntohs(sockaddr.sin6_port));
             }
 
             /* Listen for incoming connections */
@@ -438,7 +438,7 @@ namespace LLP
                     nGlobalConnections += DATA_THREADS[nIndex]->nConnections;
 
                 uint32_t RPS = TotalRequests() / TIMER.Elapsed();
-                debug::log(0, FUNCTION "LLP Running at %u requests/s with %u connections.\n", __PRETTY_FUNCTION__, RPS, nGlobalConnections);
+                debug::log(0, FUNCTION "LLP Running at %u requests/s with %u connections.", __PRETTY_FUNCTION__, RPS, nGlobalConnections);
 
                 TIMER.Reset();
                 ClearRequests();

@@ -209,7 +209,7 @@ namespace LLP
                         if(CONNECTIONS[nIndex]->PacketComplete())
                         {
                             /* Debug dump of message type. */
-                            debug::log(4, NODE "Recieved Message (%u bytes)\n", CONNECTIONS[nIndex]->INCOMING.GetBytes().size());
+                            debug::log(4, NODE "Recieved Message (%u bytes)", CONNECTIONS[nIndex]->INCOMING.GetBytes().size());
 
                             /* Debug dump of packet data. */
                             if(config::GetArg("-verbose", 0) >= 5)
@@ -236,7 +236,7 @@ namespace LLP
                     }
                     catch(std::exception& e)
                     {
-                        debug::log(0, "data connection:  %s\n", e.what());
+                        debug::log(0, "data connection:  %s", e.what());
 
                         CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_ERRORS);
 

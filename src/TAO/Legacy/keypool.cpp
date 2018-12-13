@@ -63,7 +63,7 @@ namespace Legacy
             }
             
             if (config::GetBoolArg("-printkeypool"))
-                debug::log(0, "CKeyPool::NewKeyPool wrote %" PRI64d " new keys\n", nKeys);
+                debug::log(0, "CKeyPool::NewKeyPool wrote %" PRI64d " new keys", nKeys);
 
             walletdb.Close();
         }
@@ -117,13 +117,13 @@ namespace Legacy
                 setKeyPool.insert(nNewPoolIndex);
 
                 if (fPrintKeyPool)
-                    debug::log(0, "Keypool added key %" PRI64d "\n", nNewPoolIndex);
+                    debug::log(0, "Keypool added key %" PRI64d "", nNewPoolIndex);
 
                 fKeysAdded = true;
             }
 
             if (fPrintKeyPool && fKeysAdded)
-                debug::log(0, "Keypool topped up, %d keys added, new size=%d\n", (nTargetSize - nStartingSize), nTargetSize);
+                debug::log(0, "Keypool topped up, %d keys added, new size=%d", (nTargetSize - nStartingSize), nTargetSize);
 
             walletdb.Close();
         }
@@ -239,7 +239,7 @@ namespace Legacy
 
             assert(!keypoolEntry.vchPubKey.empty());
             if (config::GetBoolArg("-printkeypool"))
-                debug::log(0, "Keypool reserve %" PRI64d "\n", nPoolIndex);
+                debug::log(0, "Keypool reserve %" PRI64d "", nPoolIndex);
 
             walletdb.Close();
         }
@@ -258,7 +258,7 @@ namespace Legacy
             walletdb.ErasePool(nPoolIndex);
 
             if (config::GetBoolArg("-printkeypool"))
-	            debug::log(0, "Keypool keep %" PRI64d "\n", nPoolIndex);
+	            debug::log(0, "Keypool keep %" PRI64d "", nPoolIndex);
 
 	        walletdb.Close();
         }
@@ -277,7 +277,7 @@ namespace Legacy
         }
 
         if (config::GetBoolArg("-printkeypool"))
-            debug::log(0, "Keypool return %" PRI64d "\n", nPoolIndex);
+            debug::log(0, "Keypool return %" PRI64d "", nPoolIndex);
     }
 
 

@@ -155,7 +155,7 @@ namespace LLP
                 {
                     /* Extract the line from the buffer. */
                     std::string strLine = std::string(vchBuffer.begin(), it - 1);
-                    
+
                     /* Find the delimiter to split. */
                     std::string::size_type pos = strLine.find(':', 0);
 
