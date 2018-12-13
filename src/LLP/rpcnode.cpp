@@ -47,18 +47,20 @@ namespace LLP
     /** Main message handler once a packet is received. **/
     bool RPCNode::ProcessPacket()
     {
-        /** Check HTTP authorization */
-        if (INCOMING.mapHeaders.count("Authorization") == 0)
+        /* Check HTTP authorization */
+        if (!INCOMING.mapHeaders.count("Authorization"))
         {
             PushResponse(401, "");
             return true;
         }
+
         if (!HTTPAuthorized(INCOMING.mapHeaders))
         {
-            debug::log(0, "RPC incorrect password attempt from %s\n",this->SOCKET.addr.ToString().c_str()); //PS TODO this address of the peer is incorrect
+            debug::log(0, "RPC incorrect password attempt from %s\n", this->SOCKET.addr.ToString().c_str()); //PS TODO this address of the peer is incorrect
+
             /* Deter brute-forcing short passwords.
-                If this results in a DOS the user really
-                shouldn't have their RPC port exposed.*/
+             * If this results in a DOS the user really
+             * shouldn't have their RPC port exposed. */
             if (config::mapArgs["-rpcpassword"].size() < 20)
                 Sleep(250);
 
@@ -164,8 +166,7 @@ namespace LLP
         trim(strUserPass64);
         std::string strUserPass = encoding::DecodeBase64(strUserPass64);
         std::string strRPCUserColonPass = config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"];
-
-        printf("%s - %s\n", strRPCUserColonPass.c_str(), strUserPass.c_str());
+        
         return strUserPass == strRPCUserColonPass;
     }
 
