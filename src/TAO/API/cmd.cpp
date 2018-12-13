@@ -136,7 +136,7 @@ namespace TAO::API
         std::string strUserPass64 = encoding::EncodeBase64(config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"]);
 
         /* Build the JSON request object. */
-        json::json parameters;
+        json::json parameters = json::json::array();
         for(int i = argn + 1; i < argc; i++)
             parameters.push_back(argv[i]);
 
@@ -207,8 +207,33 @@ namespace TAO::API
         }
 
         /* Dump the response to the console. */
-        printf("%s\n", rpcNode.INCOMING.strContent.c_str());
+        try
+        {
+            int nRet = 0;
+            std::string strPrint = "";
+            json::json jsonResponse = json::json::parse(rpcNode.INCOMING.strContent);
+            if( !jsonResponse["error"].is_null())
+            {
+                strPrint = jsonResponse["error"]["message"];
+                nRet = jsonResponse["error"]["code"];
 
+            }
+            else
+            {
+                strPrint = jsonResponse["result"].dump(4);
+
+            }
+
+            // output to console
+            //printf("%s\n", rpcNode.INCOMING.strContent.c_str());
+            printf("%s\n", strPrint.c_str());
+            return nRet;
+
+        }
+        catch( std::exception& e)
+        {
+
+        }
         return 0;
     }
 }

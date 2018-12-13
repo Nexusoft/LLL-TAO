@@ -110,6 +110,7 @@ namespace LLP
         /* Handle for custom API exceptions. */
         catch(APIException& e)
         {
+            debug::error("RPC Exception: %s", e.what());
             ErrorReply(e.ToJSON(), jsonID);
 
             return debug::error("RPC Exception: %s", e.what());
@@ -118,6 +119,7 @@ namespace LLP
         /* Handle for JSON exceptions. */
         catch (json::detail::exception& e)
         {
+            debug::error("RPC Exception: %s", e.what());
             ErrorReply(APIException(e.id, e.what()).ToJSON(), jsonID);
 
             return debug::error("RPC Exception: %s", e.what());
@@ -126,6 +128,7 @@ namespace LLP
         /* Handle for STD exceptions. */
         catch (std::exception& e)
         {
+            debug::error("RPC Exception: %s", e.what());
             ErrorReply(APIException(-32700, e.what()).ToJSON(), jsonID);
 
             return debug::error("RPC Exception: %s", e.what());

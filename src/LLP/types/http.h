@@ -22,6 +22,8 @@ ________________________________________________________________________________
 #include <LLP/templates/connection.h>
 #include <Util/include/string.h>
 
+#define HTTPNODE ANSI_COLOR_FUNCTION "HTTPNode" ANSI_COLOR_RESET " : "
+
 namespace LLP
 {
 
@@ -128,7 +130,6 @@ namespace LLP
                 {
                     INCOMING.strContent += std::string(vchBuffer.begin(), vchBuffer.end());
                     vchBuffer.clear();
-
                     return;
                 }
 
@@ -145,7 +146,6 @@ namespace LLP
                     INCOMING.fHeader = true;
 
                     vchBuffer.erase(vchBuffer.begin(), it + 1); //erase the CLRF
-
                     //this->Event()
                     //TODO: assess the events code and calling virutal method from lower class in the inheritance heirarchy
                 }
@@ -172,6 +172,7 @@ namespace LLP
 
                         /* Parse request from between the two. */
                         INCOMING.strRequest = ToLower(strLine.substr(npos + 1, npos2 - INCOMING.strType.length() - 1));
+
                     }
 
                     /* Handle normal headers. */
@@ -180,9 +181,9 @@ namespace LLP
                         /* Parse out the content length field. */
                         if(EqualsNoCase(strLine.substr(0, pos), "content-length"))
                             INCOMING.nContentLength = stoi(strLine.substr(pos + 2));
-
                         /* Add line to the headers map. */
                         INCOMING.mapHeaders[strLine.substr(0, pos)] = strLine.substr(pos + 2);
+
                     }
 
                     /* Erase line read from the read buffer. */
