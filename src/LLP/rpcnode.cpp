@@ -93,17 +93,17 @@ namespace LLP
         }
         catch( APIException& e)
         {
-            debug::log(0, "RPC Exception: %s\n", e.what());
+            debug::error("RPC Exception: %s", e.what());
             ErrorReply(e.ToJSON(), jsonID);
         }
         catch (json::detail::exception& e)
         {
-            debug::log(0, "RPC Exception: %s\n", e.what());
+            debug::error("RPC Exception: %s", e.what());
             ErrorReply(APIException(e.id, e.what()).ToJSON(), jsonID);
         }
         catch (std::exception& e)
         {
-            debug::log(0, "RPC Exception: %s\n", e.what());
+            debug::error("RPC Exception: %s", e.what());
             ErrorReply(APIException(-32700, e.what()).ToJSON(), jsonID);
         }
 
@@ -146,11 +146,11 @@ namespace LLP
         }
         catch( APIException& e)
         {
-            debug::log(0, "RPC Exception: %s\n", e.what());
+            debug::error("RPC Exception: %s", e.what());
         }
         catch (std::exception& e)
         {
-            debug::log(0, "RPC Exception: %s\n", e.what());
+            debug::error("RPC Exception: %s", e.what());
         }
     }
 
