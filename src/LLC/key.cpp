@@ -28,22 +28,22 @@ namespace LLC
     int EC_KEY_regenerate_key(EC_KEY *eckey, BIGNUM *priv_key)
     {
         int ok = 0;
-        BN_CTX *ctx = NULL;
-        EC_POINT *pub_key = NULL;
+        BN_CTX *ctx = nullptr;
+        EC_POINT *pub_key = nullptr;
 
         if (!eckey) return 0;
 
         const EC_GROUP *group = EC_KEY_get0_group(eckey);
 
-        if ((ctx = BN_CTX_new()) == NULL)
+        if ((ctx = BN_CTX_new()) == nullptr)
             goto err;
 
         pub_key = EC_POINT_new(group);
 
-        if (pub_key == NULL)
+        if (pub_key == nullptr)
             goto err;
 
-        if (!EC_POINT_mul(group, pub_key, priv_key, NULL, NULL, ctx))
+        if (!EC_POINT_mul(group, pub_key, priv_key, nullptr, nullptr, ctx))
             goto err;
 
         EC_KEY_set_private_key(eckey, priv_key);
@@ -55,7 +55,7 @@ namespace LLC
 
         if (pub_key)
             EC_POINT_free(pub_key);
-        if (ctx != NULL)
+        if (ctx != nullptr)
             BN_CTX_free(ctx);
 
         return(ok);
@@ -90,7 +90,7 @@ namespace LLC
     ECKey::ECKey(const ECKey& b)
     {
         pkey = EC_KEY_dup(b.pkey);
-        if (pkey == NULL)
+        if (pkey == nullptr)
             throw key_error("ECKey::ECKey(const ECKey&) : EC_KEY_dup failed");
 
         nCurveID   = b.nCurveID;
@@ -136,7 +136,7 @@ namespace LLC
     {
         fCompressedPubKey = false;
         pkey = EC_KEY_new_by_curve_name(nCurveID);
-        if (pkey == NULL)
+        if (pkey == nullptr)
             throw key_error("ECKey::ECKey() : EC_KEY_new_by_curve_name failed");
         fSet = false;
     }
@@ -189,14 +189,14 @@ namespace LLC
         EC_KEY_free(pkey);
         pkey = EC_KEY_new_by_curve_name(nCurveID);
 
-        if (pkey == NULL)
+        if (pkey == nullptr)
             throw key_error("ECKey::SetSecret() : EC_KEY_new_by_curve_name failed");
 
         if (vchSecret.size() != nKeySize)
             throw key_error("ECKey::SetSecret() : secret key size mismatch");
 
         BIGNUM *bn = BN_bin2bn(&vchSecret[0], nKeySize, BN_new());
-        if (bn == NULL)
+        if (bn == nullptr)
             throw key_error("ECKey::SetSecret() : BN_bin2bn failed");
 
         if (!EC_KEY_regenerate_key(pkey, bn))
@@ -223,7 +223,7 @@ namespace LLC
 
         const BIGNUM *bn = EC_KEY_get0_private_key(pkey);
         int nBytes = BN_num_bytes(bn);
-        if (bn == NULL)
+        if (bn == nullptr)
             throw key_error("ECKey::GetSecret() : EC_KEY_get0_private_key failed");
 
         int n = BN_bn2bin(bn, &vchRet[nKeySize - nBytes]);
@@ -238,7 +238,7 @@ namespace LLC
     /* Obtain the private key and all associated data */
     CPrivKey ECKey::GetPrivKey() const
     {
-        int nSize = i2d_ECPrivateKey(pkey, NULL);
+        int nSize = i2d_ECPrivateKey(pkey, nullptr);
         if (!nSize)
             throw key_error("ECKey::GetPrivKey() : i2d_ECPrivateKey failed");
 
@@ -269,7 +269,7 @@ namespace LLC
     /* Returns the Public key in a byte vector */
     std::vector<uint8_t> ECKey::GetPubKey() const
     {
-        int nSize = i2o_ECPublicKey(pkey, NULL);
+        int nSize = i2o_ECPublicKey(pkey, nullptr);
         if (!nSize)
             throw key_error("ECKey::GetPubKey() : i2o_ECPublicKey failed");
 

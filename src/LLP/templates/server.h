@@ -271,8 +271,6 @@ namespace LLP
             /* Main listener loop. */
             while(true)
             {
-                Sleep(10);
-
                 if (hListenSocket != INVALID_SOCKET)
                 {
                     SOCKET hSocket;

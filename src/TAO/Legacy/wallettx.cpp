@@ -345,7 +345,7 @@ namespace Legacy
 
 
     /* Marks one or more outputs for this transaction as spent. */
-    bool CWalletTx::UpdateSpent(const std::vector<char>& vfNewSpent)
+    bool CWalletTx::UpdateSpent(const std::vector<bool>& vfNewSpent)
     {
         bool fReturn = false;
 

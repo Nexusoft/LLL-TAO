@@ -43,7 +43,7 @@ namespace LLC
         uint8_t pdata[250000];
         memset(pdata, 0, sizeof(pdata));
         unsigned long nSize = sizeof(pdata);
-        long ret = RegQueryValueExA(HKEY_PERFORMANCE_DATA, "Global", NULL, NULL, pdata, &nSize);
+        long ret = RegQueryValueExA(HKEY_PERFORMANCE_DATA, "Global", nullptr, nullptr, pdata, &nSize);
         RegCloseKey(HKEY_PERFORMANCE_DATA);
         if (ret == ERROR_SUCCESS)
         {

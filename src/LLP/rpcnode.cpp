@@ -47,18 +47,20 @@ namespace LLP
     /** Main message handler once a packet is received. **/
     bool RPCNode::ProcessPacket()
     {
-        /** Check HTTP authorization */
-        if (INCOMING.mapHeaders.count("Authorization") == 0)
+        /* Check HTTP authorization */
+        if (!INCOMING.mapHeaders.count("Authorization"))
         {
             PushResponse(401, "");
             return true;
         }
+
         if (!HTTPAuthorized(INCOMING.mapHeaders))
         {
-            debug::log(0, "RPC incorrect password attempt from %s\n",this->SOCKET.addr.ToString().c_str()); //PS TODO this address of the peer is incorrect
+            debug::log(0, "RPC incorrect password attempt from %s\n", this->SOCKET.addr.ToString().c_str()); //PS TODO this address of the peer is incorrect
+
             /* Deter brute-forcing short passwords.
-                If this results in a DOS the user really
-                shouldn't have their RPC port exposed.*/
+             * If this results in a DOS the user really
+             * shouldn't have their RPC port exposed. */
             if (config::mapArgs["-rpcpassword"].size() < 20)
                 Sleep(250);
 
@@ -71,40 +73,65 @@ namespace LLP
         {
             /* Get the parameters from the HTTP Packet. */
             json::json jsonIncoming = json::json::parse(INCOMING.strContent);
- 
+
+            /* Ensure the method is in the calling json. */
             if(jsonIncoming["method"].is_null())
                 throw APIException(-32600, "Missing method");
+
+            /* Ensure the method is correct type. */
             if (!jsonIncoming["method"].is_string())
                 throw APIException(-32600, "Method must be a string");
+
+            /* Get the method string. */
             std::string strMethod = jsonIncoming["method"].get<std::string>();
 
-            json::json jsonParams = !jsonIncoming["params"].is_null() ? jsonIncoming["params"] : "{}";
-            jsonID = !jsonIncoming["id"].is_null() ? jsonIncoming["id"] : json::json(nullptr);
+            /* Check for parameters, if none set default value to empty array. */
+            json::json jsonParams = jsonIncoming["params"].is_null() ? "[]" : jsonIncoming["params"];
 
+            /* Extract the ID from the json */
+            if(!jsonIncoming["id"].is_null())
+                jsonID = jsonIncoming["id"];
+
+            /* Check the parameters type for array. */
             if(!jsonParams.is_array())
                 throw APIException(-32600, "Params must be an array");
 
+            /* Execute the RPC method. */
             json::json jsonResult = TAO::API::RPCCommands->Execute(strMethod, jsonParams, false);
 
+            /* Reply with the results from method execution. */
             json::json jsonReply = JSONRPCReply(jsonResult, nullptr, jsonID);
 
+            /* Push the response data with json payload. */
             PushResponse(200, jsonReply.dump(4));
 
         }
-        catch( APIException& e)
+
+        /* Handle for custom API exceptions. */
+        catch(APIException& e)
         {
             debug::error("RPC Exception: %s", e.what());
             ErrorReply(e.ToJSON(), jsonID);
+
+            return debug::error("RPC Exception: %s", e.what());
         }
+
+        /* Handle for JSON exceptions. */
         catch (json::detail::exception& e)
         {
             debug::error("RPC Exception: %s", e.what());
             ErrorReply(APIException(e.id, e.what()).ToJSON(), jsonID);
+
+            return debug::error("RPC Exception: %s", e.what());
         }
+
+        /* Handle for STD exceptions. */
         catch (std::exception& e)
         {
             debug::error("RPC Exception: %s", e.what());
             ErrorReply(APIException(-32700, e.what()).ToJSON(), jsonID);
+
+            return debug::error("RPC Exception: %s", e.what());
         }
 
         /* Handle a connection close header. */
@@ -127,7 +154,7 @@ namespace LLP
             jsonReply["result"] = jsonResponse;
             jsonReply["error"] = nullptr;
         }
-        
+
         jsonReply["id"] = jsonID;
         return jsonReply;
     }
@@ -141,7 +168,7 @@ namespace LLP
             int code = jsonError["code"].get<int>();
             if (code == -32600) nStatus = 400;
             else if (code == -32601) nStatus = 404;
-            json::json jsonReply = JSONRPCReply(json::json(NULL), jsonError, jsonID);
+            json::json jsonReply = JSONRPCReply(json::json(nullptr), jsonError, jsonID);
             PushResponse(nStatus, jsonReply.dump(4));
         }
         catch( APIException& e)
@@ -159,10 +186,12 @@ namespace LLP
         std::string strAuth = mapHeaders["Authorization"];
         if (strAuth.substr(0,6) != "Basic ")
             return false;
+
         std::string strUserPass64 = strAuth.substr(6);
         trim(strUserPass64);
         std::string strUserPass = encoding::DecodeBase64(strUserPass64);
         std::string strRPCUserColonPass = config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"];
+
         return strUserPass == strRPCUserColonPass;
     }
 

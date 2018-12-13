@@ -91,7 +91,7 @@ namespace LLC
 
         /** Is Null
          *
-         *  @return True if the key is in NULL state
+         *  @return True if the key is in nullptr state
          **/
         bool IsNull() const;
 

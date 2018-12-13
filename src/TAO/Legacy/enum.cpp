@@ -32,7 +32,7 @@ namespace Legacy
             case TX_MULTISIG: return "multisig";
         }
 
-        return NULL;
+        return nullptr;
     }
 
 

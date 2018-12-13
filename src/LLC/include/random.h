@@ -33,7 +33,7 @@ namespace LLC
         QueryPerformanceCounter((LARGE_INTEGER*)&nCounter);
     #else
         timeval t;
-        gettimeofday(&t, NULL);
+        gettimeofday(&t, nullptr);
         nCounter = t.tv_sec * 1000000 + t.tv_usec;
     #endif
         return nCounter;

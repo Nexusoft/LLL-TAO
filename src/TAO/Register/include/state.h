@@ -92,7 +92,7 @@ namespace TAO::Register
         }
 
 
-        /** Set the State Register into a NULL state. **/
+        /** Set the State Register into a nullptr state. **/
         void SetNull()
         {
             nVersion     = 0;
@@ -105,7 +105,7 @@ namespace TAO::Register
         }
 
 
-        /** NULL Checking flag for a State Register. **/
+        /** nullptr Checking flag for a State Register. **/
         bool IsNull()
         {
             return (nVersion == 0 && nLength == 0 && vchState.size() == 0 && hashChecksum == 0);

@@ -33,7 +33,7 @@ ________________________________________________________________________________
 
 namespace debug
 {
-    static FILE* fileout = NULL;
+    static FILE* fileout = nullptr;
     static std::recursive_mutex DEBUG_MUTEX;
 
     /* Prints output to the console. It may also write output to a debug.log
@@ -61,7 +61,7 @@ namespace debug
             std::string pathDebug = config::GetDataDir() + "debug.log";
             fileout = fopen(pathDebug.c_str(), "a");
             if (fileout)
-                setbuf(fileout, NULL); // unbuffered
+                setbuf(fileout, nullptr); // unbuffered
         }
 
         if (fileout)
@@ -78,7 +78,7 @@ namespace debug
             {
                 static char pszBuffer[50000];
                 static char* pend;
-                if (pend == NULL)
+                if (pend == nullptr)
                         pend = pszBuffer;
 
                 va_start(arg_ptr, pszFormat);
@@ -158,7 +158,7 @@ namespace debug
                 delete[] p;
             limit *= 2;
             p = new char[limit];
-            if (p == NULL)
+            if (p == nullptr)
                 throw std::bad_alloc();
         }
         std::string str(p, p+ret);
@@ -226,7 +226,7 @@ namespace debug
     #ifdef WIN32
         char pszModule[MAX_PATH];
         pszModule[0] = '\0';
-        GetModuleFileNameA(NULL, pszModule, sizeof(pszModule));
+        GetModuleFileNameA(nullptr, pszModule, sizeof(pszModule));
     #else
         const char* pszModule = "Nexus";
     #endif

@@ -94,8 +94,8 @@ namespace LLD
             hashmap.resize(MAX_CACHE_BUCKETS);
 
             /* Set the start and end pointers. */
-            pfirst = NULL;
-            plast  = NULL;
+            pfirst = nullptr;
+            plast  = nullptr;
         }
 
 
@@ -110,8 +110,8 @@ namespace LLD
             hashmap.resize(MAX_CACHE_BUCKETS);
 
             /* Set the start and end pointers. */
-            pfirst = NULL;
-            plast  = NULL;
+            pfirst = nullptr;
+            plast  = nullptr;
         }
 
 
@@ -160,7 +160,7 @@ namespace LLD
             LOCK(MUTEX);
 
             uint32_t nBucket = Bucket(vKey);
-            return (hashmap[nBucket] != NULL && hashmap[nBucket]->vKey == vKey);
+            return (hashmap[nBucket] != nullptr && hashmap[nBucket]->vKey == vKey);
         }
 
 
@@ -202,13 +202,13 @@ namespace LLD
                 if(plast->pprev)
                     plast = plast->pprev;
 
-                plast->pnext = NULL;
+                plast->pnext = nullptr;
             }
             else
                 RemoveNode(pthis);
 
             /* Set prev to null to signal front of list */
-            pthis->pprev = NULL;
+            pthis->pprev = nullptr;
 
             /* Set next to the current first */
             pthis->pnext = pfirst;
@@ -220,7 +220,7 @@ namespace LLD
                 if(!plast)
                 {
                     plast = pfirst;
-                    plast->pnext = NULL;
+                    plast->pnext = nullptr;
                 }
             }
 
@@ -245,7 +245,7 @@ namespace LLD
             BinaryNode* pthis = hashmap[Bucket(vKey)];
 
             /* Check if the Record Exists. */
-            if (pthis == NULL || pthis->vKey != vKey)
+            if (pthis == nullptr || pthis->vKey != vKey)
                 return false;
 
             /* Get the data. */
@@ -273,8 +273,8 @@ namespace LLD
             uint32_t nBucket = Bucket(vKey);
 
             /* Check for bucket collisions. */
-            BinaryNode* pthis = NULL;
-            if(hashmap[nBucket] != NULL)
+            BinaryNode* pthis = nullptr;
+            if(hashmap[nBucket] != nullptr)
             {
                 /* Update the cache node. */
                 pthis = hashmap[nBucket];
@@ -311,21 +311,21 @@ namespace LLD
 
                     /* Relink in memory. */
                     plast = plast->pprev;
-                    plast->pnext = NULL;
+                    plast->pnext = nullptr;
 
                     /* Reduce the current cache size. */
                     nCurrentSize -= (pnode->vData.size() - pnode->vKey.size());
 
                     /* Clear the pointers. */
-                    hashmap[Bucket(pnode->vKey)] = NULL; //TODO: hashmap linked list for collisions
+                    hashmap[Bucket(pnode->vKey)] = nullptr; //TODO: hashmap linked list for collisions
 
                     /* Reset the memory linking. */
-                    pnode->pprev = NULL;
-                    pnode->pnext = NULL;
+                    pnode->pprev = nullptr;
+                    pnode->pnext = nullptr;
 
                     /* Free the memory */
                     delete pnode;
-                    pnode = NULL;
+                    pnode = nullptr;
 
                     continue;
                 }
@@ -351,7 +351,7 @@ namespace LLD
             BinaryNode* pthis = hashmap[Bucket(vKey)];
 
             /* Check if the Record Exists. */
-            if (pthis == NULL || pthis->vKey != vKey)
+            if (pthis == nullptr || pthis->vKey != vKey)
                 return;
 
             /* Set object to reserved. */
@@ -361,7 +361,7 @@ namespace LLD
             if(!fReserve)
             {
                 /* Set prev to null to signal front of list */
-                pthis->pprev = NULL;
+                pthis->pprev = nullptr;
 
                 /* Set next to the current first */
                 pthis->pnext = pfirst;
@@ -397,7 +397,7 @@ namespace LLD
             RemoveNode(pnode);
 
             /* Remove the object from the map. */
-            hashmap[Bucket(vKey)] = NULL;
+            hashmap[Bucket(vKey)] = nullptr;
             delete pnode;
 
             return true;

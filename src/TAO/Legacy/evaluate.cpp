@@ -651,7 +651,7 @@ namespace Legacy
                             break;
 
                         case OP_DIV:
-                            if (!BN_div(bn.getBN(), NULL, bn1.getBN(), bn2.getBN(), pctx))
+                            if (!BN_div(bn.getBN(), nullptr, bn1.getBN(), bn2.getBN(), pctx))
                                 return false;
                             break;
 

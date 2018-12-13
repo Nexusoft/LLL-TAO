@@ -43,7 +43,7 @@ int skeinInit(SkeinCtx_t* ctx, size_t hashBitLen)
 {
     int ret = SKEIN_FAIL;
     size_t Xlen = 0;
-    u64b_t*  X = NULL;
+    u64b_t*  X = nullptr;
     uint64_t treeInfo = SKEIN_CFG_TREE_INFO_SEQUENTIAL;
 
     Skein_Assert(ctx, SKEIN_FAIL);
@@ -61,15 +61,15 @@ int skeinInit(SkeinCtx_t* ctx, size_t hashBitLen)
     switch (ctx->skeinSize) {
     case Skein256:
         ret = Skein_256_InitExt(&ctx->m.s256, hashBitLen,
-                                treeInfo, NULL, 0);
+                                treeInfo, nullptr, 0);
         break;
     case Skein512:
         ret = Skein_512_InitExt(&ctx->m.s512, hashBitLen,
-                                treeInfo, NULL, 0);
+                                treeInfo, nullptr, 0);
         break;
     case Skein1024:
         ret = Skein1024_InitExt(&ctx->m.s1024, hashBitLen,
-                                treeInfo, NULL, 0);
+                                treeInfo, nullptr, 0);
         break;
     }
 
@@ -84,7 +84,7 @@ int skeinMacInit(SkeinCtx_t* ctx, const uint8_t *key, size_t keyLen,
                  size_t hashBitLen)
 {
     int ret = SKEIN_FAIL;
-    u64b_t*  X = NULL;
+    u64b_t*  X = nullptr;
     size_t Xlen = 0;
     uint64_t treeInfo = SKEIN_CFG_TREE_INFO_SEQUENTIAL;
 
@@ -124,7 +124,7 @@ int skeinMacInit(SkeinCtx_t* ctx, const uint8_t *key, size_t keyLen,
 void skeinReset(SkeinCtx_t* ctx)
 {
     size_t Xlen = 0;
-    u64b_t*  X = NULL;
+    u64b_t*  X = nullptr;
 
     /*
      * The following two lines rely of the fact that the real Skein contexts are

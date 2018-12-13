@@ -100,7 +100,7 @@ namespace LLP
                 fd_set fdset;
                 FD_ZERO(&fdset);
                 FD_SET(nSocket, &fdset);
-                int nRet = select(nSocket + 1, NULL, &fdset, NULL, &timeout);
+                int nRet = select(nSocket + 1, nullptr, &fdset, nullptr, &timeout);
 
                 /* If the connection attempt timed out with select. */
                 if (nRet == 0)

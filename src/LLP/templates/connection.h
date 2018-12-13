@@ -79,7 +79,7 @@ namespace LLP
 
 
         /* Build Base Connection with no parameters */
-        BaseConnection() : SOCKET(), INCOMING(), DDOS(NULL), fDDOS(false), fOUTGOING(false), fCONNECTED(false) { INCOMING.SetNull(); }
+        BaseConnection() : SOCKET(), INCOMING(), DDOS(nullptr), fDDOS(false), fOUTGOING(false), fCONNECTED(false) { INCOMING.SetNull(); }
 
 
         /* Build Base Connection with all Parameters. */
