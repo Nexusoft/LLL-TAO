@@ -91,7 +91,7 @@ namespace debug
                 if (ret < 0 || ret >= limit)
                 {
                         pend = END(pszBuffer) - 2;
-                        *pend++ = '';
+                        *pend++ = '\n';
                 }
                 else
                         pend += ret;
@@ -101,7 +101,7 @@ namespace debug
                 char* p1 = pszBuffer;
                 char* p2;
 
-                while ((p2 = strchr(p1, '')))
+                while ((p2 = strchr(p1, '\n')))
                 {
                     p2++;
                     char c = *p2;
@@ -186,7 +186,7 @@ namespace debug
             buffer[limit-1] = 0;
         }
 
-        debug::log(0, ANSI_COLOR_RED "ERROR: %s" ANSI_COLOR_RESET "", buffer);
+        debug::log(0, ANSI_COLOR_RED "ERROR: %s" ANSI_COLOR_RESET, buffer);
         return false;
     }
 
@@ -211,7 +211,7 @@ namespace debug
      *  the point where this function is called to debug.log */
     void LogStackTrace()
     {
-        debug::log(0, "******* exception encountered *******");
+        debug::log(0, "\n\n******* exception encountered *******");
         if (fileout)
         {
         #ifndef WIN32
@@ -235,10 +235,10 @@ namespace debug
     #endif
         if (pex)
             snprintf(pszMessage, 1000,
-                "EXCEPTION: %s       %s       %s in %s       ", typeid(*pex).name(), pex->what(), pszModule, pszThread);
+                "EXCEPTION: %s       \n%s       \n%s in %s       \n", typeid(*pex).name(), pex->what(), pszModule, pszThread);
             else
             snprintf(pszMessage, 1000,
-                "UNKNOWN EXCEPTION       %s in %s       ", pszModule, pszThread);
+                "UNKNOWN EXCEPTION       \n%s in %s       \n", pszModule, pszThread);
     }
 
     /*  Prints and logs the exception that is thrown with the named calling thread. */
@@ -254,8 +254,8 @@ namespace debug
     {
         char pszMessage[10000];
         FormatException(pszMessage, pex, pszThread);
-        debug::log(0, "************************%s", pszMessage);
-        fprintf(stderr, "************************%s", pszMessage);
+        debug::log(0, "\n\n************************\n%s", pszMessage);
+        fprintf(stderr, "\n\n************************\n%s\n", pszMessage);
 
         throw;
     }

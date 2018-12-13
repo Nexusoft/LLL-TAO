@@ -335,12 +335,12 @@ namespace config
                 return false;
 
             // Write a nexus.desktop file to the autostart directory:
-            optionFile << "[Desktop Entry]";
-            optionFile << "Type=Application";
-            optionFile << "Name=Nexus";
-            optionFile << "Exec=" << pszExePath << " -min";
-            optionFile << "Terminal=false";
-            optionFile << "Hidden=false";
+            optionFile << "[Desktop Entry]\n";
+            optionFile << "Type=Application\n";
+            optionFile << "Name=Nexus\n";
+            optionFile << "Exec=" << pszExePath << " -min\n";
+            optionFile << "Terminal=false\n";
+            optionFile << "Hidden=false\n";
             optionFile.close();
         }
         return true;

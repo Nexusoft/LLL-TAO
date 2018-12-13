@@ -108,7 +108,7 @@ namespace TAO::API
         }
 
         /* Dump the response to the console. */
-        debug::log(0, "%s", apiNode.INCOMING.strContent.c_str());
+        printf("%s\n", apiNode.INCOMING.strContent.c_str());
 
         return 0;
     }
@@ -128,9 +128,9 @@ namespace TAO::API
         /** Check RPC user/pass are set */
         if (config::mapArgs["-rpcuser"] == "" && config::mapArgs["-rpcpassword"] == "")
             throw std::runtime_error(debug::strprintf(
-                "You must set rpcpassword=<password> in the configuration file:%s"
-                  "If the file does not exist, create it with owner-readable-only file permissions.",
-                    config::GetConfigFile().c_str()));
+                "You must set rpcpassword=<password> in the configuration file:%s\n"
+                "If the file does not exist, create it with owner-readable-only file permissions.\n",
+                config::GetConfigFile().c_str()));
 
          // HTTP basic authentication
         std::string strUserPass64 = encoding::EncodeBase64(config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"]);
@@ -207,7 +207,7 @@ namespace TAO::API
         }
 
         /* Dump the response to the console. */
-        debug::log(0, "%s", rpcNode.INCOMING.strContent.c_str());
+        printf("%s\n", rpcNode.INCOMING.strContent.c_str());
 
         return 0;
     }
