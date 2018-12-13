@@ -74,39 +74,61 @@ namespace LLP
             /* Get the parameters from the HTTP Packet. */
             json::json jsonIncoming = json::json::parse(INCOMING.strContent);
 
+            /* Ensure the method is in the calling json. */
             if(jsonIncoming["method"].is_null())
                 throw APIException(-32600, "Missing method");
+
+            /* Ensure the method is correct type. */
             if (!jsonIncoming["method"].is_string())
                 throw APIException(-32600, "Method must be a string");
+
+            /* Get the method string. */
             std::string strMethod = jsonIncoming["method"].get<std::string>();
 
-            json::json jsonParams = !jsonIncoming["params"].is_null() ? jsonIncoming["params"] : "{}";
-            jsonID = !jsonIncoming["id"].is_null() ? jsonIncoming["id"] : json::json(nullptr);
+            /* Check for parameters, if none set default value to empty array. */
+            json::json jsonParams = jsonIncoming["params"].is_null() ? "[]" : jsonIncoming["params"];
 
+            /* Extract the ID from the json */
+            if(!jsonIncoming["id"].is_null())
+                jsonID = jsonIncoming["id"];
+
+            /* Check the parameters type for array. */
             if(!jsonParams.is_array())
                 throw APIException(-32600, "Params must be an array");
 
+            /* Execute the RPC method. */
             json::json jsonResult = TAO::API::RPCCommands->Execute(strMethod, jsonParams, false);
 
+            /* Reply with the results from method execution. */
             json::json jsonReply = JSONRPCReply(jsonResult, nullptr, jsonID);
 
+            /* Push the response data with json payload. */
             PushResponse(200, jsonReply.dump(4));
 
         }
-        catch( APIException& e)
+
+        /* Handle for custom API exceptions. */
+        catch(APIException& e)
         {
-            debug::log(0, "RPC Exception: %s\n", e.what());
             ErrorReply(e.ToJSON(), jsonID);
+
+            return debug::error("RPC Exception: %s\n", e.what());
         }
+
+        /* Handle for JSON exceptions. */
         catch (json::detail::exception& e)
         {
-            debug::log(0, "RPC Exception: %s\n", e.what());
             ErrorReply(APIException(e.id, e.what()).ToJSON(), jsonID);
+
+            return debug::error("RPC Exception: %s\n", e.what());
         }
+
+        /* Handle for STD exceptions. */
         catch (std::exception& e)
         {
-            debug::log(0, "RPC Exception: %s\n", e.what());
             ErrorReply(APIException(-32700, e.what()).ToJSON(), jsonID);
+
+            return debug::error("RPC Exception: %s\n", e.what());
         }
 
         /* Handle a connection close header. */
@@ -166,7 +188,7 @@ namespace LLP
         trim(strUserPass64);
         std::string strUserPass = encoding::DecodeBase64(strUserPass64);
         std::string strRPCUserColonPass = config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"];
-        
+
         return strUserPass == strRPCUserColonPass;
     }
 
