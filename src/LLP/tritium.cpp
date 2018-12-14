@@ -106,6 +106,8 @@ namespace LLP
 
                 case EVENT_DISCONNECT:
                 {
+                    TRITIUM_SERVER->addressManager.AddAddress(GetAddress(), ConnectState::DROPPED);
+
                     break;
                 }
             }
@@ -126,7 +128,7 @@ namespace LLP
                     ssPacket >> nSessionID;
 
                     /* Get your address. */
-                    CAddress addr;
+                    Address addr;
                     ssPacket >> addr;
 
                     /* Check the server if it is set. */
@@ -285,7 +287,7 @@ namespace LLP
                 case GET_ADDRESSES:
                 {
                     /* Grab the connections. */
-                    std::vector<CAddress> vAddr = TRITIUM_SERVER->GetAddresses();
+                    std::vector<Address> vAddr = TRITIUM_SERVER->GetAddresses();
 
                     /* Push the response addresses. */
                     PushMessage(DAT_ADDRESSES, vAddr);
@@ -297,12 +299,16 @@ namespace LLP
                 case DAT_ADDRESSES:
                 {
                     /* De-Serialize the Addresses. */
-                    std::vector<CAddress> vAddr;
+                    std::vector<Address> vAddr;
                     ssPacket >> vAddr;
 
                     /* Add the connections to Tritium Server. */
-                    for(auto addr : vAddr)
-                        TRITIUM_SERVER->AddAddress(addr);
+                    auto it = vAddr.begin();
+                    for(; it != vAddr.end(); ++it)
+                    {
+                        TRITIUM_SERVER->addressManager.AddAddress(*it);
+                    }
+
 
                     break;
                 }
@@ -329,8 +335,13 @@ namespace LLP
                     if(!mapLatencyTracker.count(nNonce))
                         return debug::error(NODE "unsolicited pong");
 
+                    uint32_t lat = Timestamp(true) - mapLatencyTracker[nNonce];
+
+                    /* Set the latency used for address manager within server */
+                    TRITIUM_SERVER->addressManager.SetLatency(lat, GetAddress());
+
                     /* Debug output for latency. */
-                    debug::log(3, NODE "latency %u ms", Timestamp(true) - mapLatencyTracker[nNonce]);
+                    debug::log(3, NODE "latency %u ms\n", lat);
 
                     /* Clear the latency tracker record. */
                     mapLatencyTracker.erase(nNonce);

@@ -65,7 +65,8 @@ namespace LLD
         record. Use this Database purely for fixed size structures. Overflow
         attempts will trigger an error code.
     **/
-    template<typename KeychainType, typename CacheType> class SectorDatabase
+    template<typename KeychainType, typename CacheType>
+    class SectorDatabase
     {
     protected:
         /* Mutex for Thread Synchronization.
@@ -104,7 +105,7 @@ namespace LLD
 
 
         /* Sector Keys Database. */
-        KeychainType* SectorKeys;
+        KeychainType* pSectorKeys;
 
 
         /* For the Meter. */
@@ -140,16 +141,16 @@ namespace LLD
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         SectorDatabase(std::string strNameIn, const char* pszMode="r+")
-            : strName(strNameIn)
-            , strBaseLocation(config::GetDataDir() + strNameIn + "/datachain/")
-            , cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE))
-            , nBytesRead(0)
-            , nBytesWrote(0)
-            , nCurrentFile(0)
-            , nCurrentFileSize(0)
-            , CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this))
-            , MeterThread(std::bind(&SectorDatabase::Meter, this))
-            , nBufferBytes(0)
+        : strName(strNameIn)
+        , strBaseLocation(config::GetDataDir() + strNameIn + "/datachain/")
+        , cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE))
+        , nBytesRead(0)
+        , nBytesWrote(0)
+        , nCurrentFile(0)
+        , nCurrentFileSize(0)
+        , CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this))
+        , MeterThread(std::bind(&SectorDatabase::Meter, this))
+        , nBufferBytes(0)
         {
             if(config::GetBoolArg("-runtime", false))
                 runtime.Start();
@@ -158,7 +159,7 @@ namespace LLD
             fReadOnly = (!strchr(pszMode, '+') && !strchr(pszMode, 'w'));
 
             /* Initialize the Keys Class. */
-            SectorKeys = new KeychainType((config::GetDataDir() + strName + "/keychain/"));
+            pSectorKeys = new KeychainType((config::GetDataDir() + strName + "/keychain/"));
 
             /* Initialize the Database. */
             Initialize();
@@ -175,7 +176,7 @@ namespace LLD
 
             delete pTransaction;
             delete cachePool;
-            delete SectorKeys;
+            delete pSectorKeys;
         }
 
 
@@ -198,7 +199,7 @@ namespace LLD
 
                     /* Assign the Current Size and File. */
                     if(nCurrentFile > 0)
-                        nCurrentFile--;
+                        --nCurrentFile;
                     else
                     {
                         /* Create a new file if it doesn't exist. */
@@ -215,7 +216,7 @@ namespace LLD
                 fIncoming.close();
 
                 /* Increment the Current File */
-                nCurrentFile++;
+                ++nCurrentFile;
             }
 
             pTransaction = nullptr;
@@ -226,7 +227,7 @@ namespace LLD
         /* Get the keys for this sector database from the keychain.  */
         std::vector< std::vector<uint8_t> > GetKeys()
         {
-            return SectorKeys->GetKeys();
+            return pSectorKeys->GetKeys();
         }
 
 
@@ -241,7 +242,7 @@ namespace LLD
 
             /* Return the Key existance in the Keychain Database. */
             SectorKey cKey;
-            return SectorKeys->Get(vKey, cKey);
+            return pSectorKeys->Get(vKey, cKey);
         }
 
         template<typename Key>
@@ -256,7 +257,8 @@ namespace LLD
             ssKey << key;
             std::vector<uint8_t> vKey(ssKey.begin(), ssKey.end());
 
-            if(pTransaction){
+            if(pTransaction)
+            {
                 pTransaction->EraseTransaction(vKey);
 
                 return true;
@@ -264,7 +266,7 @@ namespace LLD
 
 
             /* Return the Key existance in the Keychain Database. */
-            bool fErased = SectorKeys->Erase(vKey);
+            bool fErased = pSectorKeys->Erase(vKey);
 
             if(config::GetBoolArg("-runtime", false))
                 debug::log(0, ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
@@ -276,7 +278,7 @@ namespace LLD
         bool Read(const Key& key, Type& value)
         {
             /** Serialize Key into Bytes. **/
-            CDataStream ssKey(SER_LLD, DATABASE_VERSION);
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
             std::vector<uint8_t> vKey(ssKey.begin(), ssKey.end());
 
@@ -286,7 +288,7 @@ namespace LLD
                 return false;
 
             /** Deserialize Value. **/
-            CDataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
+            DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
             ssValue >> value;
 
             return true;
@@ -332,9 +334,10 @@ namespace LLD
             }
 
             SectorKey cKey;
-            if(SectorKeys->Get(vKey, cKey))
+            if(pSectorKeys->Get(vKey, cKey))
             {
-                { LOCK(SECTOR_MUTEX);
+                {
+                    LOCK(SECTOR_MUTEX);
 
                     /* Open the Stream to Read the data from Sector on File. */
                     std::fstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::binary);
@@ -374,14 +377,15 @@ namespace LLD
             {
                 debug::log(4, FUNCTION "Current File too Large, allocating new File %u", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
 
-                nCurrentFile ++;
+                ++ nCurrentFile;
                 nCurrentFileSize = 0;
 
                 std::ofstream fStream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
                 fStream.close();
             }
 
-            { LOCK(SECTOR_MUTEX);
+            {
+                LOCK(SECTOR_MUTEX);
 
                 /* Open the Stream to Read the data from Sector on File. */
                 std::string strFilename = debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
@@ -402,7 +406,7 @@ namespace LLD
             nCurrentFileSize += vData.size();
 
             /* Assign the Key to Keychain. */
-            SectorKeys->Put(cKey);
+            pSectorKeys->Put(cKey);
 
             /* Verboe output. */
             debug::log(4, FUNCTION "%s | Current File: %u | Current File Size: %u", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
@@ -441,8 +445,11 @@ namespace LLD
             /* The mutex for the condition. */
             std::mutex CONDITION_MUTEX;
 
-            while(!config::fShutdown)
+            while(true)
             {
+                /* Wait for buffer to empty before shutting down. */
+                if(config::fShutdown && nBufferBytes == 0)
+                    return;
 
                 /* Check for data to be written. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
@@ -464,7 +471,7 @@ namespace LLD
                     debug::log(0, FUNCTION "Generated Sector File %u", __PRETTY_FUNCTION__, nCurrentFile + 1);
 
                     /* Iterate the current file and reset current file sie. */
-                    nCurrentFile ++;
+                    ++nCurrentFile;
                     nCurrentFileSize = 0;
 
                     /* Create a new file for next writes. */
@@ -484,7 +491,7 @@ namespace LLD
                 {
 
                     /* Assign the Key to Keychain. */
-                    SectorKeys->Put(SectorKey(READY, vObj.first, nCurrentFile, nCurrentFileSize, vObj.second.size()));
+                    pSectorKeys->Put(SectorKey(READY, vObj.first, nCurrentFile, nCurrentFileSize, vObj.second.size()));
 
                     /* Increment the current filesize */
                     nCurrentFileSize += vObj.second.size();
@@ -509,13 +516,14 @@ namespace LLD
                     /* Set cache back to not reserved. */
                     cachePool->Reserve(vObj.first, false);
 
-                    nRecordsFlushed++;
+                    ++nRecordsFlushed;
                 }
 
                 nBytesWrote += (vWrite.size());
 
                 /* Flush remaining to disk. */
-                { LOCK(SECTOR_MUTEX);
+                {
+                    LOCK(SECTOR_MUTEX);
                     stream.write((char*)&vWrite[0], vWrite.size());
                     stream.close();
                 }
@@ -629,12 +637,13 @@ namespace LLD
             for(typename std::map< std::vector<uint8_t>, std::vector<uint8_t> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
             {
                 SectorKey cKey;
-                if(SectorKeys->HasKey(nIterator->first)) {
-                    if(!SectorKeys->Get(nIterator->first, cKey))
+                if(pSectorKeys->HasKey(nIterator->first))
+                {
+                    if(!pSectorKeys->Get(nIterator->first, cKey))
                         return error(FUNCTION "Couldn't get the Active Sector Key.", __PRETTY_FUNCTION__);
 
                     cKey.nState = TRANSACTION;
-                    SectorKeys->Put(cKey);
+                    pSectorKeys->Put(cKey);
                 }
             }
 
@@ -644,7 +653,7 @@ namespace LLD
             /** Erase all the Transactions that are set to be erased. That way if they are assigned a TRANSACTION flag we know to roll back their key to orginal data. **/
             for(typename std::map< std::vector<uint8_t>, uint32_t >::iterator nIterator = pTransaction->mapEraseData.begin(); nIterator != pTransaction->mapEraseData.end(); nIterator++ )
             {
-                if(!SectorKeys->Erase(nIterator->first))
+                if(!pSectorKeys->Erase(nIterator->first))
                     return error(FUNCTION "Couldn't get the Active Sector Key for Delete.", __PRETTY_FUNCTION__);
             }
 
@@ -658,13 +667,13 @@ namespace LLD
                 std::vector<uint8_t> vData = nIterator->second;
 
                 /* Write Header if First Update. */
-                if(!SectorKeys->HasKey(vKey))
+                if(!pSectorKeys->HasKey(vKey))
                 {
                     if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                     {
                         debug::log(4, FUNCTION "Current File too Large, allocating new File %u", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
 
-                        nCurrentFile ++;
+                        ++nCurrentFile;
                         nCurrentFileSize = 0;
 
                         std::ofstream fStream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
@@ -689,14 +698,15 @@ namespace LLD
                     nCurrentFileSize += vData.size();
 
                     /* Assign the Key to Keychain. */
-                    SectorKeys->Put(cKey);
+                    pSectorKeys->Put(cKey);
                 }
                 else
                 {
                     /* Get the Sector Key from the Keychain. */
                     SectorKey cKey;
-                    if(!SectorKeys->Get(vKey, cKey)) {
-                        SectorKeys->Erase(vKey);
+                    if(!pSectorKeys->Get(vKey, cKey))
+                    {
+                        pSectorKeys->Erase(vKey);
 
                         return false;
                     }
@@ -708,7 +718,8 @@ namespace LLD
                     /* Locate the Sector Data from Sector Key.
                         TODO: Make Paging more Efficient in Keys by breaking data into different locations in Database. */
                     fStream.seekp(cKey.nSectorStart, std::ios::beg);
-                    if(vData.size() > cKey.nSectorSize){
+                    if(vData.size() > cKey.nSectorSize)
+                    {
                         fStream.close();
                         debug::log(0, FUNCTION "PUT (TOO LARGE) NO TRUNCATING ALLOWED (Old %u :: New %u):%s", __PRETTY_FUNCTION__, cKey.nSectorSize, vData.size(), HexStr(vData.begin(), vData.end()).c_str());
 
@@ -723,7 +734,7 @@ namespace LLD
 
                     cKey.nState    = READY;
 
-                    SectorKeys->Put(cKey);
+                    pSectorKeys->Put(cKey);
                 }
             }
 
@@ -734,14 +745,14 @@ namespace LLD
             {
                 /** Assign the Writing State for Sector. **/
                 SectorKey cKey;
-                if(!SectorKeys->Get(nIterator->first, cKey))
+                if(!pSectorKeys->Get(nIterator->first, cKey))
                     return error(FUNCTION "Failed to Get Key from Keychain.", __PRETTY_FUNCTION__);
 
                 /** Set the Sector states back to Active. **/
                 cKey.nState    = READY;
 
                 /** Commit the Keys to Keychain Database. **/
-                if(!SectorKeys->Put(cKey))
+                if(!pSectorKeys->Put(cKey))
                     return error(FUNCTION "Failed to Commit Key to Keychain.", __PRETTY_FUNCTION__);
             }
 

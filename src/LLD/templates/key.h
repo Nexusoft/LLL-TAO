@@ -81,8 +81,19 @@ namespace LLD
         )
 
         /* Constructors. */
-        SectorKey() : nState(0), nLength(0), nSectorFile(0), nSectorSize(0), nSectorStart(0) { }
-        SectorKey(uint8_t nStateIn, std::vector<uint8_t> vKeyIn, uint16_t nSectorFileIn, uint32_t nSectorStartIn, uint16_t nSectorSizeIn) : nState(nStateIn), nSectorFile(nSectorFileIn), nSectorSize(nSectorSizeIn), nSectorStart(nSectorStartIn)
+        SectorKey()
+        : nState(0)
+        , nLength(0)
+        , nSectorFile(0)
+        , nSectorSize(0)
+        , nSectorStart(0) { }
+
+        SectorKey(uint8_t nStateIn, std::vector<uint8_t> vKeyIn,
+                  uint16_t nSectorFileIn, uint32_t nSectorStartIn, uint16_t nSectorSizeIn)
+        : nState(nStateIn)
+        , nSectorFile(nSectorFileIn)
+        , nSectorSize(nSectorSizeIn)
+        , nSectorStart(nSectorStartIn)
         {
             nLength = vKeyIn.size();
             vKey    = vKeyIn;
@@ -122,7 +133,11 @@ namespace LLD
 
 
         /* Dump Key to Debug Console. */
-        void Print() { debug::log(0, "SectorKey(nState=%u, nLength=%u, nSectorFile=%u, nSectorSize=%u, nSectorStart=%u)", nState, nLength, nSectorFile, nSectorSize, nSectorStart); }
+        void Print()
+        {
+            debug::log(0, "SectorKey(nState=%u, nLength=%u, nSectorFile=%u, nSectorSize=%u, nSectorStart=%u)\n",
+            nState, nLength, nSectorFile, nSectorSize, nSectorStart);
+        }
 
 
         /* Check for Key Activity on Sector. */

@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <stdio.h>
 
 #include <LLP/include/network.h>
+#include <LLP/include/address.h>
 #include <LLP/templates/socket.h>
 
 #include <Util/include/debug.h>
@@ -30,7 +31,7 @@ namespace LLP
 {
 
     /* Constructor for Address */
-    Socket::Socket(CService addrConnect)
+    Socket::Socket(Service addrConnect)
     {
         Connect(addrConnect);
     }
@@ -47,7 +48,7 @@ namespace LLP
 
 
     /* Connects the socket to an external address */
-    bool Socket::Connect(CService addrDest, int nTimeout)
+    bool Socket::Connect(Service addrDest, int nTimeout)
     {
         /* Create the Socket Object (Streaming TCP/IP). */
         if(addrDest.IsIPv4())
@@ -66,23 +67,23 @@ namespace LLP
         bool fConnected = false;
         if(addrDest.IsIPv4())
         {
-            /* Set the socket address from the CService. */
+            /* Set the socket address from the Service. */
             struct sockaddr_in sockaddr;
             addrDest.GetSockAddr(&sockaddr);
 
             /* Copy in the new address. */
-            addr = CAddress(sockaddr);
+            addr = Address(sockaddr);
 
             fConnected = (connect(nSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
         else
         {
-            /* Set the socket address from the CService. */
+            /* Set the socket address from the Service. */
             struct sockaddr_in6 sockaddr;
             addrDest.GetSockAddr6(&sockaddr);
 
             /* Copy in the new address. */
-            addr = CAddress(sockaddr);
+            addr = Address(sockaddr);
 
             fConnected = (connect(nSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }

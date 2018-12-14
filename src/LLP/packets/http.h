@@ -14,9 +14,11 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_PACKETS_HTTP_H
 #define NEXUS_LLP_PACKETS_HTTP_H
 
-#include <vector>
+
 #include <Util/include/runtime.h>
 #include <Util/include/debug.h>
+#include <vector>
+#include <map>
 
 namespace LLP
 {

@@ -11,106 +11,80 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLP/include/netaddr.h>
 #include <LLP/include/network.h>
-#include <LLP/include/hosts.h>
+#include <LLP/include/hosts.h>  //LookupHost
+#include <Util/include/debug.h> //debug::log
+#include <LLC/hash/SK.h>        //LLC::SK64
 
-#include <LLC/hash/SK.h>
-
-#include <Util/include/debug.h>
-#include <Util/include/strlcpy.h>
-
-#ifndef WIN32
-#include <sys/fcntl.h>
-#endif
-
+#include <cstring> //memset, memcmp, memcpy
 
 namespace LLP
 {
+    static const uint8_t pchIPv4[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff };
 
-
-    CAddress::CAddress() : CService()
-    {
-        Init();
-    }
-
-
-    CAddress::CAddress(CService ipIn, uint64_t nServicesIn) : CService(ipIn)
-    {
-        Init();
-        nServices = nServicesIn;
-    }
-
-
-    void CAddress::Init()
-    {
-        nServices = NODE_NETWORK;
-        nTime = 100000000;
-        nLastTry = 0;
-    }
-
-
-    void CNetAddr::Init()
+    void NetAddr::Init()
     {
         memset(ip, 0, 16);
     }
 
 
-    void CNetAddr::SetIP(const CNetAddr& ipIn)
+    void NetAddr::SetIP(const NetAddr& ipIn)
     {
         memcpy(ip, ipIn.ip, sizeof(ip));
     }
 
 
-    CNetAddr::CNetAddr()
+    NetAddr::NetAddr()
     {
         Init();
     }
 
 
-    CNetAddr::CNetAddr(const struct in_addr& ipv4Addr)
+    NetAddr::NetAddr(const struct in_addr& ipv4Addr)
     {
         memcpy(ip,    pchIPv4, 12);
         memcpy(ip+12, &ipv4Addr, 4);
     }
 
 
-    CNetAddr::CNetAddr(const struct in6_addr& ipv6Addr)
+    NetAddr::NetAddr(const struct in6_addr& ipv6Addr)
     {
         memcpy(ip, &ipv6Addr, 16);
     }
 
 
-    CNetAddr::CNetAddr(const char *pszIp, bool fAllowLookup)
+    NetAddr::NetAddr(const char *pszIp, bool fAllowLookup)
     {
         Init();
-        std::vector<CNetAddr> vIP;
+        std::vector<NetAddr> vIP;
         if (LookupHost(pszIp, vIP, 1, fAllowLookup))
             *this = vIP[0];
     }
 
 
-    CNetAddr::CNetAddr(const std::string &strIp, bool fAllowLookup)
+    NetAddr::NetAddr(const std::string &strIp, bool fAllowLookup)
     {
         Init();
-        std::vector<CNetAddr> vIP;
+        std::vector<NetAddr> vIP;
         if (LookupHost(strIp.c_str(), vIP, 1, fAllowLookup))
             *this = vIP[0];
     }
 
 
-    int CNetAddr::GetByte(int n) const
+    int NetAddr::GetByte(int n) const
     {
         return ip[15-n];
     }
 
 
-    bool CNetAddr::IsIPv4() const
+    bool NetAddr::IsIPv4() const
     {
         return (memcmp(ip, pchIPv4, sizeof(pchIPv4)) == 0);
     }
 
 
-    bool CNetAddr::IsRFC1918() const
+    bool NetAddr::IsRFC1918() const
     {
         return IsIPv4() && (
             GetByte(3) == 10 ||
@@ -119,64 +93,64 @@ namespace LLP
     }
 
 
-    bool CNetAddr::IsRFC3927() const
+    bool NetAddr::IsRFC3927() const
     {
         return IsIPv4() && (GetByte(3) == 169 && GetByte(2) == 254);
     }
 
 
-    bool CNetAddr::IsRFC3849() const
+    bool NetAddr::IsRFC3849() const
     {
         return GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0x0D && GetByte(12) == 0xB8;
     }
 
 
-    bool CNetAddr::IsRFC3964() const
+    bool NetAddr::IsRFC3964() const
     {
         return (GetByte(15) == 0x20 && GetByte(14) == 0x02);
     }
 
 
-    bool CNetAddr::IsRFC6052() const
+    bool NetAddr::IsRFC6052() const
     {
         static const uint8_t pchRFC6052[] = {0,0x64,0xFF,0x9B,0,0,0,0,0,0,0,0};
         return (memcmp(ip, pchRFC6052, sizeof(pchRFC6052)) == 0);
     }
 
 
-    bool CNetAddr::IsRFC4380() const
+    bool NetAddr::IsRFC4380() const
     {
         return (GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0 && GetByte(12) == 0);
     }
 
 
-    bool CNetAddr::IsRFC4862() const
+    bool NetAddr::IsRFC4862() const
     {
         static const uint8_t pchRFC4862[] = {0xFE,0x80,0,0,0,0,0,0};
         return (memcmp(ip, pchRFC4862, sizeof(pchRFC4862)) == 0);
     }
 
 
-    bool CNetAddr::IsRFC4193() const
+    bool NetAddr::IsRFC4193() const
     {
         return ((GetByte(15) & 0xFE) == 0xFC);
     }
 
 
-    bool CNetAddr::IsRFC6145() const
+    bool NetAddr::IsRFC6145() const
     {
         static const uint8_t pchRFC6145[] = {0,0,0,0,0,0,0,0,0xFF,0xFF,0,0};
         return (memcmp(ip, pchRFC6145, sizeof(pchRFC6145)) == 0);
     }
 
 
-    bool CNetAddr::IsRFC4843() const
+    bool NetAddr::IsRFC4843() const
     {
         return (GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0x00 && (GetByte(12) & 0xF0) == 0x10);
     }
 
 
-    bool CNetAddr::IsLocal() const
+    bool NetAddr::IsLocal() const
     {
         // IPv4 loopback
     if (IsIPv4() && (GetByte(3) == 127 || GetByte(3) == 0))
@@ -191,14 +165,14 @@ namespace LLP
     }
 
 
-    bool CNetAddr::IsMulticast() const
+    bool NetAddr::IsMulticast() const
     {
         return    (IsIPv4() && (GetByte(3) & 0xF0) == 0xE0)
             || (GetByte(15) == 0xFF);
     }
 
 
-    bool CNetAddr::IsValid() const
+    bool NetAddr::IsValid() const
     {
         // Clean up 3-byte shifted addresses caused by garbage in size field
         // of addr messages from versions before 0.2.9 checksum.
@@ -235,13 +209,13 @@ namespace LLP
     }
 
 
-    bool CNetAddr::IsRoutable() const
+    bool NetAddr::IsRoutable() const
     {
         return IsValid() && !(IsRFC1918() || IsRFC3927() || IsRFC4862() || IsRFC4193() || IsRFC4843() || IsLocal());
     }
 
 
-    std::string CNetAddr::ToStringIP() const
+    std::string NetAddr::ToStringIP() const
     {
         if (IsIPv4())
         {
@@ -260,31 +234,31 @@ namespace LLP
     }
 
 
-    std::string CNetAddr::ToString() const
+    std::string NetAddr::ToString() const
     {
         return ToStringIP();
     }
 
 
-    bool operator==(const CNetAddr& a, const CNetAddr& b)
+    bool operator==(const NetAddr& a, const NetAddr& b)
     {
         return (memcmp(a.ip, b.ip, 16) == 0);
     }
 
 
-    bool operator!=(const CNetAddr& a, const CNetAddr& b)
+    bool operator!=(const NetAddr& a, const NetAddr& b)
     {
         return (memcmp(a.ip, b.ip, 16) != 0);
     }
 
 
-    bool operator<(const CNetAddr& a, const CNetAddr& b)
+    bool operator<(const NetAddr& a, const NetAddr& b)
     {
         return (memcmp(a.ip, b.ip, 16) < 0);
     }
 
 
-    bool CNetAddr::GetInAddr(struct in_addr* pipv4Addr) const
+    bool NetAddr::GetInAddr(struct in_addr* pipv4Addr) const
     {
         if (!IsIPv4())
             return false;
@@ -293,7 +267,7 @@ namespace LLP
     }
 
 
-    bool CNetAddr::GetIn6Addr(struct in6_addr* pipv6Addr) const
+    bool NetAddr::GetIn6Addr(struct in6_addr* pipv6Addr) const
     {
         memcpy(pipv6Addr, ip, 16);
         return true;
@@ -302,7 +276,7 @@ namespace LLP
 
     // get canonical identifier of an address' group
     // no two connections will be attempted to addresses with the same group
-    std::vector<uint8_t> CNetAddr::GetGroup() const
+    std::vector<uint8_t> NetAddr::GetGroup() const
     {
         std::vector<uint8_t> vchRet;
         int nClass = 0; // 0=IPv6, 1=IPv4, 254=local, 255=unroutable
@@ -364,178 +338,14 @@ namespace LLP
     }
 
 
-    uint64_t CNetAddr::GetHash() const
+    uint64_t NetAddr::GetHash() const
     {
         return LLC::SK64(&ip[0], &ip[16]);
     }
 
 
-    void CNetAddr::print() const
+    void NetAddr::print() const
     {
-        debug::log(0, "CNetAddr(%s)", ToString().c_str());
-    }
-
-
-    void CService::Init()
-    {
-        port = 0;
-    }
-
-
-    CService::CService()
-    {
-        Init();
-    }
-
-
-    CService::CService(const CNetAddr& cip, uint16_t portIn) : CNetAddr(cip), port(portIn)
-    {
-    }
-
-
-    CService::CService(const struct in_addr& ipv4Addr, uint16_t portIn) : CNetAddr(ipv4Addr), port(portIn)
-    {
-    }
-
-
-    CService::CService(const struct in6_addr& ipv6Addr, uint16_t portIn) : CNetAddr(ipv6Addr), port(portIn)
-    {
-    }
-
-
-    CService::CService(const struct sockaddr_in& addr) : CNetAddr(addr.sin_addr), port(ntohs(addr.sin_port))
-    {
-        assert(addr.sin_family == AF_INET);
-    }
-
-
-    CService::CService(const struct sockaddr_in6 &addr) : CNetAddr(addr.sin6_addr), port(ntohs(addr.sin6_port))
-    {
-        assert(addr.sin6_family == AF_INET6);
-    }
-
-
-    CService::CService(const char *pszIpPort, bool fAllowLookup)
-    {
-        Init();
-        CService ip;
-        if (Lookup(pszIpPort, ip, 0, fAllowLookup))
-            *this = ip;
-    }
-
-
-    CService::CService(const char *pszIpPort, int portDefault, bool fAllowLookup)
-    {
-        Init();
-        CService ip;
-        if (Lookup(pszIpPort, ip, portDefault, fAllowLookup))
-            *this = ip;
-    }
-
-
-    CService::CService(const std::string &strIpPort, bool fAllowLookup)
-    {
-        Init();
-        CService ip;
-        if (Lookup(strIpPort.c_str(), ip, 0, fAllowLookup))
-            *this = ip;
-    }
-
-
-    CService::CService(const std::string &strIpPort, int portDefault, bool fAllowLookup)
-    {
-        Init();
-        CService ip;
-        if (Lookup(strIpPort.c_str(), ip, portDefault, fAllowLookup))
-            *this = ip;
-    }
-
-
-    uint16_t CService::GetPort() const
-    {
-        return port;
-    }
-
-
-    bool operator==(const CService& a, const CService& b)
-    {
-        return (CNetAddr)a == (CNetAddr)b && a.port == b.port;
-    }
-
-
-    bool operator!=(const CService& a, const CService& b)
-    {
-        return (CNetAddr)a != (CNetAddr)b || a.port != b.port;
-    }
-
-
-    bool operator<(const CService& a, const CService& b)
-    {
-        return (CNetAddr)a < (CNetAddr)b || ((CNetAddr)a == (CNetAddr)b && a.port < b.port);
-    }
-
-
-    bool CService::GetSockAddr(struct sockaddr_in* paddr) const
-    {
-        if (!IsIPv4())
-            return false;
-        memset(paddr, 0, sizeof(struct sockaddr_in));
-        if (!GetInAddr(&paddr->sin_addr))
-            return false;
-        paddr->sin_family = AF_INET;
-        paddr->sin_port = htons(port);
-        return true;
-    }
-
-
-    bool CService::GetSockAddr6(struct sockaddr_in6* paddr) const
-    {
-        memset(paddr, 0, sizeof(struct sockaddr_in6));
-        if (!GetIn6Addr(&paddr->sin6_addr))
-            return false;
-        paddr->sin6_family = AF_INET6;
-        paddr->sin6_port = htons(port);
-        return true;
-    }
-
-
-    std::vector<uint8_t> CService::GetKey() const
-    {
-        std::vector<uint8_t> vKey;
-        vKey.resize(18);
-        memcpy(&vKey[0], ip, 16);
-        vKey[16] = port / 0x100;
-        vKey[17] = port & 0x0FF;
-        return vKey;
-    }
-
-
-    std::string CService::ToStringPort() const
-    {
-        return debug::strprintf(":%i", port);
-    }
-
-
-    std::string CService::ToStringIPPort() const
-    {
-        return ToStringIP() + ToStringPort();
-    }
-
-
-    std::string CService::ToString() const
-    {
-        return ToStringIPPort();
-    }
-
-
-    void CService::print() const
-    {
-        debug::log(0, "CService(%s)", ToString().c_str());
-    }
-
-
-    void CService::SetPort(uint16_t portIn)
-    {
-        port = portIn;
+        debug::log(0, "NetAddr(%s)\n", ToString().c_str());
     }
 }

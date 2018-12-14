@@ -54,7 +54,7 @@ namespace LLP
     protected:
 
         /* The local address of this node. */
-        CAddress addrThisNode;
+        Address addrThisNode;
 
 
     public:
@@ -95,7 +95,7 @@ namespace LLP
 
 
         /** Get the current IP address of this node. **/
-        CAddress GetAddress() const
+        Address GetAddress() const
         {
             return addrThisNode;
         }

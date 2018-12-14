@@ -90,7 +90,14 @@ namespace LLD
 
     public:
 
-        BinaryHashMap() : HASHMAP_TOTAL_BUCKETS(256 * 256 * 24), HASHMAP_MAX_CACHE_SZIE(10 * 1024), HASHMAP_MAX_KEY_SIZE(32), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11), fCacheActive(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
+        BinaryHashMap()
+        : HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
+        , HASHMAP_MAX_CACHE_SZIE(10 * 1024)
+        , HASHMAP_MAX_KEY_SIZE(32)
+        , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11)
+        , fCacheActive(false)
+        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(32))
+        , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
         }

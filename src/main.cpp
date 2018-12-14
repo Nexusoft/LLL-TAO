@@ -41,6 +41,7 @@ namespace LLD
 namespace LLP
 {
     Server<TritiumNode>* TRITIUM_SERVER;
+    Server<LegacyNode> *LEGACY_SERVER;
 }
 
 #include <LLC/include/random.h>
@@ -80,20 +81,27 @@ int main(int argc, char** argv)
 
 
     /* Create the database instances. */
-    LLD::regDB = new LLD::RegisterDB("r+");
-    LLD::legDB = new LLD::LedgerDB("r+");
-    LLD::locDB = new LLD::LocalDB("r+");
+    //LLD::regDB = new LLD::RegisterDB("r+");
+    //LLD::legDB = new LLD::LedgerDB("r+");
+    //LLD::locDB = new LLD::LocalDB("r+");
 
 
     /* Initialize the Legacy Server. */
-    LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(config::GetArg("-port", config::fTestNet ? 8888 : 9888), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), config::GetBoolArg("-meters", false));
+    LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(config::GetArg("-port", config::fTestNet ? 8888 : 9888), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
     if(config::mapMultiArgs["-addnode"].size() > 0)
     {
         for(auto node : config::mapMultiArgs["-addnode"])
         {
-            LLP::CAddress addr = LLP::CAddress(LLP::CService(debug::strprintf("%s:%i", node.c_str(), config::GetArg("-port", config::fTestNet ? 8888 : 9888)).c_str(), config::GetBoolArg("-meters", false)));
-            LLP::TRITIUM_SERVER->AddAddress(addr);
+            LLP::Address addr = LLP::Address(LLP::Service(debug::strprintf("%s:%i", node.c_str(), config::GetArg("-port", config::fTestNet ? 8888 : 9888)).c_str(), false));
+            LLP::LEGACY_SERVER->AddConnection(node, config::GetArg("-port", config::fTestNet ? 8888 : 9888));
         }
+    }
+
+    LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(config::GetArg("-port", config::fTestNet ? 8323 : 9323), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
+    if(config::mapMultiArgs["-addnode"].size() > 0)
+    {
+        for(auto node : config::mapMultiArgs["-addnode"])
+            LLP::LEGACY_SERVER->AddConnection(node, config::GetArg("-port", config::fTestNet ? 8323 : 9323));
     }
 
 
@@ -113,15 +121,7 @@ int main(int argc, char** argv)
         Sleep(1000);
     }
 
-
-    TAO::Ledger::SignatureChain sigChain(config::GetArg("-username", "user"), config::GetArg("-password", "default"));
-    uint512_t hashGenesis = sigChain.Generate(0, config::GetArg("-pin", "1235"));
-
-    debug::log(0, "Genesis %s", hashGenesis.ToString().c_str());
-
-    /* Extract username and password from config. */
-    debug::log(0, "Username: %s", config::GetArg("-username", "user").c_str());
-    debug::log(0, "Password: %s", config::GetArg("-password", "default").c_str());
+    //LLP::LEGACY_SERVER->addressManager.WriteDatabase();
 
     return 0;
 }

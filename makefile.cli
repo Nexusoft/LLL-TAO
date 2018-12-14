@@ -133,7 +133,10 @@ OBJS= \
 	build/LLC_KeccakHash.o \
 	build/LLC_random.o \
 	build/LLC_key.o \
-	build/LLP_network.o \
+	build/LLP_netaddr.o \
+	build/LLP_service.o \
+	build/LLP_address.o \
+	build/LLP_addressinfo.o \
 	build/LLP_hosts.o \
 	build/LLP_socket.o \
 	build/LLP_inv.o\
@@ -141,6 +144,7 @@ OBJS= \
 	build/LLP_tritium.o \
 	build/LLP_corenode.o \
 	build/LLP_rpcnode.o \
+    build/LLP_manager.o \
 	build/Ledger_block.o \
 	build/Ledger_prime.o \
 	build/Ledger_tritium.o \

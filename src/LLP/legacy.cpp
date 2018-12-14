@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/hosts.h>
 #include <LLP/include/inv.h>
+#include <LLP/include/global.h>
 #include <LLP/types/legacy.h>
 #include <LLP/templates/events.h>
 
@@ -42,8 +43,8 @@ namespace LLP
         uint64_t nLocalServices = 0;
 
         /* Relay Your Address. */
-        CAddress addrMe  = CAddress(CService("0.0.0.0",0));
-        CAddress addrYou = CAddress(CService("0.0.0.0",0));
+        Address addrMe  = Address(Service("0.0.0.0",0));
+        Address addrYou = Address(Service("0.0.0.0",0));
 
         uint32_t nBestHeight = 0; //TODO: Chain State Parameters (Ledger Layer)
 
@@ -83,7 +84,8 @@ namespace LLP
         {
 
             /* Check a packet's validity once it is finished being read. */
-            if(fDDOS) {
+            if(fDDOS)
+            {
 
                 /* Give higher score for Bad Packets. */
                 if(INCOMING.Complete() && !INCOMING.IsValid())
@@ -170,7 +172,10 @@ namespace LLP
                     break;
             }
 
-            debug::log(1, "xxxxx %s Node %s Disconnected (%s) at Timestamp %" PRIu64 "", fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), strReason.c_str(), UnifiedTimestamp());
+            if(LEGACY_SERVER)
+                LEGACY_SERVER->addressManager.AddAddress(GetAddress(), ConnectState::DROPPED);
+
+            debug::log(1, "xxxxx %s Node %s Disconnected (%s) at Timestamp %" PRIu64 "\n", fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), strReason.c_str(), UnifiedTimestamp());
 
             return;
         }
@@ -275,8 +280,6 @@ namespace LLP
             /* Deserialize the Transaction. */
             //Core::CTransaction tx;
             //ssMessage >> tx;
-
-
         }
 
 
@@ -325,6 +328,10 @@ namespace LLP
             uint32_t nLatency = mapLatencyTracker[nonce].ElapsedMilliseconds();
             mapLatencyTracker.erase(nonce);
 
+            /* Set the latency used for address manager within server */
+            if(LEGACY_SERVER)
+                LEGACY_SERVER->addressManager.SetLatency(nLatency, GetAddress());
+
             /* Debug Level 3: output Node Latencies. */
             debug::log(3, "***** Node %s Latency (Nonce %" PRIu64 " - %u ms)", addrThisNode.ToString().c_str(), nonce, nLatency);
         }
@@ -347,8 +354,8 @@ namespace LLP
         {
 
             int64_t nTime;
-            CAddress addrMe;
-            CAddress addrFrom;
+            Address addrMe;
+            Address addrFrom;
             uint64_t nServices = 0;
 
 
@@ -382,7 +389,7 @@ namespace LLP
         */
         else if (INCOMING.GetMessage() == "addr")
         {
-            std::vector<CAddress> vAddr;
+            std::vector<Address> vAddr;
             ssMessage >> vAddr;
 
             /* Don't want addr from older versions unless seeding */
@@ -393,6 +400,14 @@ namespace LLP
                 return debug::error("***** Node message addr size() = %d... Dropping Connection", vAddr.size());
             }
 
+            for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
+            {
+                it->SetPort(LEGACY_SERVER->PORT);
+                debug::log(5, "port=%u\n", it->GetPort());
+            }
+
+            if(LEGACY_SERVER)
+                LEGACY_SERVER->addressManager.AddAddresses(vAddr);
 
         }
 
@@ -472,7 +487,7 @@ namespace LLP
         /* TODO: Change this Algorithm. */
         else if (INCOMING.GetMessage() == "getaddr")
         {
-            //std::vector<LLP::CAddress> vAddr = Core::pManager->GetAddresses();
+            //std::vector<LLP::Address> vAddr = Core::pManager->GetAddresses();
 
             //PushMessage("addr", vAddr);
         }

@@ -11,42 +11,34 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LLD_INCLUDE_REGISTER_H
-#define NEXUS_LLD_INCLUDE_REGISTER_H
-
-#include <LLC/types/uint1024.h>
+#ifndef NEXUS_LLD_INCLUDE_ADDRESS_H
+#define NEXUS_LLD_INCLUDE_ADDRESS_H
 
 #include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
 
 #include <LLD/cache/binary_lru.h>
-#include <LLD/keychain/hashmap.h>
+#include <LLD/keychain/filemap.h>
 
-#include <TAO/Register/include/state.h>
+#include <LLP/include/addressinfo.h>
 
 namespace LLD
 {
-
-    class RegisterDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
+    class AddressDB : public SectorDatabase<BinaryFileMap, BinaryLRU>
     {
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        RegisterDB(const char* pszMode="r+")
-        : SectorDatabase("registers", pszMode) {}
+        AddressDB(uint16_t port, const char* pszMode="r+")
+        : SectorDatabase("addr/" + std::to_string(port), pszMode) { }
 
-        bool WriteState(uint256_t hashRegister, TAO::Register::State state)
+        bool WriteAddressInfo(uint64_t key, LLP::AddressInfo info)
         {
-            return Write(std::make_pair(std::string("state"), hashRegister), state);
+            return Write(std::make_pair(std::string("info"), key), info);
         }
 
-        bool ReadState(uint256_t hashRegister, TAO::Register::State& state)
+        bool ReadAddressInfo(uint64_t key, LLP::AddressInfo &info)
         {
-            return Read(std::make_pair(std::string("state"), hashRegister), state);
-        }
-
-        bool HasState(uint256_t hashRegister)
-        {
-            return Exists(std::make_pair(std::string("state"), hashRegister));
+            return Read(std::make_pair(std::string("info"), key), info);
         }
     };
 }

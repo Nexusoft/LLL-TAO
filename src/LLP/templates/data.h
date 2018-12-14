@@ -15,8 +15,8 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TEMPLATES_DATA_H
 
 #include <LLP/templates/types.h>
-
 #include <condition_variable>
+#include <functional>
 
 namespace LLP
 {
@@ -108,7 +108,7 @@ namespace LLP
                 DDOS -> cSCORE += 1;
 
             CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
-            nConnections ++;
+            ++nConnections;
 
             CONDITION.notify_all();
 
@@ -125,7 +125,9 @@ namespace LLP
 
             CONNECTIONS[index] = nullptr;
 
-            nConnections --;
+            --nConnections;
+
+            CONDITION.notify_all();
         }
 
         /* Thread that handles all the Reading / Writing of Data from Sockets.
