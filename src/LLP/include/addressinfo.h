@@ -92,7 +92,7 @@ namespace LLP
          *  Calculates a score based on stats. Lower is better
          *
          **/
-        uint32_t Score() const;
+        double Score() const;
 
 
         int64_t  nLastSeen;   //unified time last seen

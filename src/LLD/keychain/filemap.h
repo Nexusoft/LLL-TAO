@@ -248,6 +248,9 @@ namespace LLD
                 }
 
                 mapKeys[cKey.vKey] = std::make_pair(nCurrentFile, nCurrentFileSize);
+
+                /* Increment current File Size. */
+                nCurrentFileSize += cKey.Size();
             }
 
 
@@ -269,9 +272,6 @@ namespace LLD
             std::vector<uint8_t> vData(ssKey.begin(), ssKey.end());
             vData.insert(vData.end(), cKey.vKey.begin(), cKey.vKey.end());
             ssFile.write((char*) &vData[0], vData.size());
-
-            /* Increment current File Size. */
-            nCurrentFileSize += cKey.Size();
 
 
             /* Debug Output of Sector Key Information. */

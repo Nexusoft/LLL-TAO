@@ -380,7 +380,7 @@ namespace LLD
             {
                 debug::log(4, FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
 
-                nCurrentFile ++;
+                ++ nCurrentFile;
                 nCurrentFileSize = 0;
 
                 std::ofstream fStream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);

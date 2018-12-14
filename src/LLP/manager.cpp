@@ -168,12 +168,14 @@ namespace LLP
 
         std::sort(vInfo.begin(), vInfo.end());
 
+        std::reverse(vInfo.begin(), vInfo.end());
+
         uint256_t nRand = LLC::GetRand256();
         uint32_t nHash = LLC::SK32(BEGIN(nRand), END(nRand));
 
         /*select an index with a good random weight bias toward the front of the list */
         uint32_t nSelect = ((std::numeric_limits<uint64_t>::max() /
-            std::max((uint64_t)std::pow(nHash, 1.912) + 1, (uint64_t)1)) - 7) % vInfo.size();
+            std::max((uint64_t)std::pow(nHash, 1.95) + 1, (uint64_t)1)) - 3) % vInfo.size();
 
         addr = vInfo[nSelect];
 

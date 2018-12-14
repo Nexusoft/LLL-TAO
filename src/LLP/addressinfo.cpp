@@ -50,21 +50,21 @@ namespace LLP
     }
 
 
-    /*  Calculates a score based on stats. Lower is better */
-    uint32_t AddressInfo::Score() const
+    /*  Calculates a score based on stats. Higher is better */
+    double AddressInfo::Score() const
     {
-        /* add up the bad stats */
-        uint32_t bad = (nFailed * 8) + (nFails * 12 ) + (nLatency / 100);
+        /* Add up the bad stats */
+        double bad = (nFailed * 8) + (nFails * 12 ) + (nLatency / 100);
 
-        /* add up the good stats */
-        uint32_t good = (nDropped * 50) + (nConnected * 100) + (nSession / 3600000);
+        /* Divide by zero check */
+        if(bad == 0)
+            bad = 1;
 
-        /* divide by zero check */
-        if(good == 0)
-            good = 1;
+        /* Add up the good stats */
+        double good = (nDropped * 50) + (nConnected * 100) + (nSession / 3600000);
 
-        /* divide bad stats by good stats */
-        return bad / good;
+
+        /* Subtract good stats by bad stats */
+        return good - bad;
     }
-
 }
