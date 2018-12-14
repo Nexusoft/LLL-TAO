@@ -38,6 +38,7 @@ namespace TAO::API
 
         /** RPC API command implementations */
         json::json Echo( bool fHelp, const json::json& jsonParams);
+        json::json Help( bool fHelp, const json::json& jsonParams);
 
         json::json GetInfo(bool fHelp, const json::json& jsonParams);
     };

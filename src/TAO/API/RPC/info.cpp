@@ -23,11 +23,11 @@ namespace TAO::API
 
     json::json RPC::GetInfo(bool fHelp, const json::json& jsonParams)
     {
-        /*if (fHelp || jsonParams.size() != 0)
-            throw std::runtime_error(
+        if (fHelp || jsonParams.size() != 0)
+            return std::string(
                 "getinfo"
-                "Returns an object containing various state info.");
-*/
+                " - Returns an object containing various state info.");
+
         json::json obj;
         obj["version"] = LLP::strProtocolName; //PS TODO
         obj["protocolversion"] = LLP::PROTOCOL_VERSION;

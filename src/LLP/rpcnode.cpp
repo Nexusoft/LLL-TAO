@@ -56,7 +56,7 @@ namespace LLP
 
         if (!HTTPAuthorized(INCOMING.mapHeaders))
         {
-            debug::log(0, "RPC incorrect password attempt from %s", this->SOCKET.addr.ToString().c_str()); //PS TODO this address of the peer is incorrect
+            debug::log(0, "RPC incorrect password attempt from %s\n", this->SOCKET.addr.ToString().c_str()); //PS TODO this address of the peer is incorrect
 
             /* Deter brute-forcing short passwords.
              * If this results in a DOS the user really
@@ -143,9 +143,22 @@ namespace LLP
     json::json RPCNode::JSONRPCReply(const json::json& jsonResponse, const json::json& jsonError, const json::json& jsonID)
     {
         json::json jsonReply;
-        jsonReply["result"] = jsonResponse.is_null() ? "" : jsonResponse;
-        jsonReply["error"]  = jsonError.is_null() ? "" : jsonError;
-        jsonReply["id"]     = jsonID;
+        if (!jsonError.is_null() )
+        {
+            jsonReply["result"] = nullptr;
+            jsonReply["error"] = jsonError;
+        }
+        else
+        {
+            //special case to handle help response so that we put the multiline help response striaght into
+            if( jsonResponse.is_string())
+                jsonReply["result"] = jsonResponse.get<std::string>();
+            else
+                jsonReply["result"] = jsonResponse;
+            jsonReply["error"] = nullptr;
+
+
+        }
 
         return jsonReply;
     }

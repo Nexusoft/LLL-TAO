@@ -222,11 +222,14 @@ namespace TAO::API
             }
             else
             {
-                strPrint = jsonResponse["result"].dump(4);
+                if( jsonResponse["result"].is_string())
+                    strPrint = jsonResponse["result"].get<std::string>();
+                else
+                    strPrint = jsonResponse["result"].dump(4);
+
             }
 
             // output to console
-            //printf("%s\n", rpcNode.INCOMING.strContent.c_str());
             printf("%s\n", strPrint.c_str());
             return nRet;
 
