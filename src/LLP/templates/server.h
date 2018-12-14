@@ -59,7 +59,7 @@ namespace LLP
 
         Server<ProtocolType>(int32_t nPort, int32_t nMaxThreads, int32_t nTimeout = 30, bool isDDOS = false,
                              int32_t cScore = 0, int32_t rScore = 0, int32_t nTimespan = 60, bool fListen = true,
-                             bool fMeter = false)
+                             bool fMeter = false, bool fManager = false)
             : fDDOS(isDDOS)
             , fLISTEN(fListen)
             , fMETER(fMeter)
@@ -241,7 +241,7 @@ namespace LLP
                     uint16_t port = addr.GetPort();
 
                     /* Attempt the connection. */
-                    debug::log(0, FUNCTION "Attempting Connection %s:%u\n", __PRETTY_FUNCTION__, ip.c_str(), port);
+                    debug::log(0, FUNCTION "Attempting Connection %s:%u", __PRETTY_FUNCTION__, ip.c_str(), port);
                     if(AddConnection(ip, port))
                         state = static_cast<uint8_t>(ConnectState::CONNECTED);
 
@@ -363,7 +363,7 @@ namespace LLP
                             continue;
 
                         dt->AddConnection(sockNew, DDOS_MAP[(Service)addr]);
-                        debug::log(3, NODE "Accepted Connection %s on port %u\n", addr.ToString().c_str(), PORT);
+                        debug::log(3, NODE "Accepted Connection %s on port %u", addr.ToString().c_str(), PORT);
                     }
                 }
             }

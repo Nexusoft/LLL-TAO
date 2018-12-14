@@ -32,7 +32,7 @@ namespace LLP
     , mapAddrInfo()
     {
         if(!pDatabase)
-            debug::error(FUNCTION "Failed to allocate memory for AddressManager\n", __PRETTY_FUNCTION__);
+            debug::error(FUNCTION "Failed to allocate memory for AddressManager", __PRETTY_FUNCTION__);
     }
 
 
@@ -122,7 +122,7 @@ namespace LLP
             break;
         }
 
-        debug::log(5, FUNCTION "%s:%u \n", __PRETTY_FUNCTION__,
+        debug::log(5, FUNCTION "%s:%u ", __PRETTY_FUNCTION__,
             addr.ToString().c_str(), addr.GetPort());
 
         print();
@@ -199,13 +199,13 @@ namespace LLP
             uint64_t nKey;
             AddressInfo addr_info;
 
-            //printf("%s\n", HexStr(keys[i].begin(), keys[i].end()).c_str());
+            //printf("%s", HexStr(keys[i].begin(), keys[i].end()).c_str());
 
             DataStream ssKey(keys[i], SER_LLD, LLD::DATABASE_VERSION);
             ssKey >> str;
             ssKey >> nKey;
 
-            //debug::log(5, "reading %s %" PRIu64 " \n", str.c_str(), nKey);
+            //debug::log(5, "reading %s %" PRIu64 " ", str.c_str(), nKey);
 
             pDatabase->ReadAddressInfo(nKey, addr_info);
 
@@ -214,7 +214,7 @@ namespace LLP
             mapAddrInfo[nHash] = addr_info;
         }
 
-        printf("keys.size() = %u\n", s);
+        printf("keys.size() = %u", s);
 
         print();
     }
@@ -229,7 +229,7 @@ namespace LLP
             pDatabase->WriteAddressInfo(it->first, it->second);
 
 
-        printf("keys.size() = %u\n", (uint32_t)pDatabase->GetKeys().size());
+        printf("keys.size() = %u", (uint32_t)pDatabase->GetKeys().size());
 
         print();
     }
@@ -277,7 +277,7 @@ namespace LLP
 
     void AddressManager::print() const
     {
-        debug::log(5, "C=%u D=%u F=%u | TC=%u TD=%u TF=%u | size=%lu \n",
+        debug::log(3, "C=%u D=%u F=%u | TC=%u TD=%u TF=%u | size=%lu",
          get_current_count(ConnectState::CONNECTED),
          get_current_count(ConnectState::DROPPED),
          get_current_count(ConnectState::FAILED),

@@ -134,7 +134,7 @@ namespace LLD
 
             /* Create directories if they don't exist yet. */
             if(filesystem::create_directories(strBaseLocation))
-                debug::log(0, FUNCTION "Generated Path %s\n", __PRETTY_FUNCTION__, strBaseLocation.c_str());
+                debug::log(0, FUNCTION "Generated Path %s", __PRETTY_FUNCTION__, strBaseLocation.c_str());
 
             /* Stats variable for collective keychain size. */
             uint32_t nKeychainSize = 0, nTotalKeys = 0;
@@ -202,7 +202,7 @@ namespace LLD
                         mapKeys[vKey] = std::make_pair(nCurrentFile, nIterator);
 
                         /* Debug Output of Sector Key Information. */
-                        debug::log(5, FUNCTION "State: %u Length: %u File: %u Location: %u Key: %s\n", __PRETTY_FUNCTION__, cKey.nState, cKey.nLength, mapKeys[vKey].first, mapKeys[vKey].second, HexStr(vKey.begin(), vKey.end()).c_str());
+                        debug::log(5, FUNCTION "State: %u Length: %u File: %u Location: %u Key: %s", __PRETTY_FUNCTION__, cKey.nState, cKey.nLength, mapKeys[vKey].first, mapKeys[vKey].second, HexStr(vKey.begin(), vKey.end()).c_str());
 
                         ++nTotalKeys;
                     }
@@ -275,7 +275,7 @@ namespace LLD
 
 
             /* Debug Output of Sector Key Information. */
-            debug::log(4, FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s | Current File: %u | Current File Size: %u\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[cKey.vKey].second, mapKeys[cKey.vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str(), nCurrentFile, nCurrentFileSize);
+            debug::log(4, FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s | Current File: %u | Current File Size: %u", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[cKey.vKey].second, mapKeys[cKey.vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str(), nCurrentFile, nCurrentFileSize);
 
 
             return true;
@@ -341,7 +341,7 @@ namespace LLD
 
 
                 /* Debug Output of Sector Key Information. */
-                debug::log(4, FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s\n", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[vKey].second, mapKeys[vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(vKey.begin(), vKey.end()).c_str());
+                debug::log(4, FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[vKey].second, mapKeys[vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(vKey.begin(), vKey.end()).c_str());
 
 
                 /* Skip Empty Sectors for Now. (TODO: Expand to Reads / Writes) */

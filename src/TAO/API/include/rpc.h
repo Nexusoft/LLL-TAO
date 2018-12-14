@@ -37,7 +37,28 @@ namespace TAO::API
         }
 
         /** RPC API command implementations */
+
+        /** Echo
+        *
+        *  Test method to echo back the parameters passed by the caller
+        *
+        *  @param[in] jsonParams Parameters array passed by the caller
+        *
+        *  @return JSON containing the user supplied parameters array
+        *
+        **/
         json::json Echo( bool fHelp, const json::json& jsonParams);
+
+
+        /** Help
+        *
+        *  Returns help list.  Iterates through all functions in mapFunctions and calls each one with fHelp=true
+        *
+        *  @param[in] jsonParams Parameters array passed by the caller
+        *
+        *  @return JSON containing the help list
+        *
+        **/
         json::json Help( bool fHelp, const json::json& jsonParams);
 
         json::json GetInfo(bool fHelp, const json::json& jsonParams);

@@ -135,7 +135,7 @@ namespace LLD
         /* Dump Key to Debug Console. */
         void Print()
         {
-            debug::log(0, "SectorKey(nState=%u, nLength=%u, nSectorFile=%u, nSectorSize=%u, nSectorStart=%u)\n",
+            debug::log(0, "SectorKey(nState=%u, nLength=%u, nSectorFile=%u, nSectorSize=%u, nSectorStart=%u)",
             nState, nLength, nSectorFile, nSectorSize, nSectorStart);
         }
 

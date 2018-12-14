@@ -29,7 +29,7 @@ namespace LLP
         std::vector<Address> vNodes;
         for (int nSeed = 0; nSeed < DNS_Seed.size(); nSeed ++ )
         {
-            debug::log(0, "%u Host: %s\n", nSeed, DNS_Seed[nSeed].c_str());
+            debug::log(0, "%u Host: %s", nSeed, DNS_Seed[nSeed].c_str());
             std::vector<LLP::NetAddr> vaddr;
             if (LookupHost(DNS_Seed[nSeed].c_str(), vaddr))
             {

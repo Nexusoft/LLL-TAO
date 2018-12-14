@@ -175,7 +175,7 @@ namespace LLP
             if(LEGACY_SERVER)
                 LEGACY_SERVER->addressManager.AddAddress(GetAddress(), ConnectState::DROPPED);
 
-            debug::log(1, "xxxxx %s Node %s Disconnected (%s) at Timestamp %" PRIu64 "\n", fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), strReason.c_str(), UnifiedTimestamp());
+            debug::log(1, "xxxxx %s Node %s Disconnected (%s) at Timestamp %" PRIu64, fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), strReason.c_str(), UnifiedTimestamp());
 
             return;
         }
@@ -403,7 +403,7 @@ namespace LLP
             for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
             {
                 it->SetPort(LEGACY_SERVER->PORT);
-                debug::log(5, "port=%u\n", it->GetPort());
+                debug::log(5, "port=%u", it->GetPort());
             }
 
             if(LEGACY_SERVER)

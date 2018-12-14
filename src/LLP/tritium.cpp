@@ -341,7 +341,7 @@ namespace LLP
                     TRITIUM_SERVER->addressManager.SetLatency(lat, GetAddress());
 
                     /* Debug output for latency. */
-                    debug::log(3, NODE "latency %u ms\n", lat);
+                    debug::log(3, NODE "latency %u ms", lat);
 
                     /* Clear the latency tracker record. */
                     mapLatencyTracker.erase(nNonce);
