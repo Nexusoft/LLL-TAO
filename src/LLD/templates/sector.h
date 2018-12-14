@@ -68,7 +68,8 @@ namespace LLD
         TODO:: Add in the Database File Searching from Sector Keys. Allow Multiple Files.
 
     **/
-    template<typename KeychainType, typename CacheType> class SectorDatabase
+    template<typename KeychainType, typename CacheType>
+    class SectorDatabase
     {
     protected:
         /* Mutex for Thread Synchronization.
@@ -201,7 +202,7 @@ namespace LLD
 
                     /* Assign the Current Size and File. */
                     if(nCurrentFile > 0)
-                        nCurrentFile--;
+                        --nCurrentFile;
                     else
                     {
                         /* Create a new file if it doesn't exist. */
@@ -218,7 +219,7 @@ namespace LLD
                 fIncoming.close();
 
                 /* Increment the Current File */
-                nCurrentFile++;
+                ++nCurrentFile;
             }
 
             pTransaction = NULL;
@@ -259,7 +260,8 @@ namespace LLD
             ssKey << key;
             std::vector<uint8_t> vKey(ssKey.begin(), ssKey.end());
 
-            if(pTransaction){
+            if(pTransaction)
+            {
                 pTransaction->EraseTransaction(vKey);
 
                 return true;
@@ -337,7 +339,8 @@ namespace LLD
             SectorKey cKey;
             if(pSectorKeys->Get(vKey, cKey))
             {
-                { LOCK(SECTOR_MUTEX);
+                {
+                    LOCK(SECTOR_MUTEX);
 
                     /* Open the Stream to Read the data from Sector on File. */
                     std::fstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::binary);
@@ -384,7 +387,8 @@ namespace LLD
                 fStream.close();
             }
 
-            { LOCK(SECTOR_MUTEX);
+            {
+                LOCK(SECTOR_MUTEX);
 
                 /* Open the Stream to Read the data from Sector on File. */
                 std::string strFilename = debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
@@ -444,8 +448,11 @@ namespace LLD
             /* The mutex for the condition. */
             std::mutex CONDITION_MUTEX;
 
-            while(!config::fShutdown)
+            while(true)
             {
+                /* Wait for buffer to empty before shutting down. */
+                if(config::fShutdown && nBufferBytes == 0)
+                    return;
 
                 /* Check for data to be written. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
@@ -467,7 +474,7 @@ namespace LLD
                     debug::log(0, FUNCTION "Generated Sector File %u\n", __PRETTY_FUNCTION__, nCurrentFile + 1);
 
                     /* Iterate the current file and reset current file sie. */
-                    nCurrentFile ++;
+                    ++nCurrentFile;
                     nCurrentFileSize = 0;
 
                     /* Create a new file for next writes. */
@@ -512,13 +519,14 @@ namespace LLD
                     /* Set cache back to not reserved. */
                     cachePool->Reserve(vObj.first, false);
 
-                    nRecordsFlushed++;
+                    ++nRecordsFlushed;
                 }
 
                 nBytesWrote += (vWrite.size());
 
                 /* Flush remaining to disk. */
-                { LOCK(SECTOR_MUTEX);
+                {
+                    LOCK(SECTOR_MUTEX);
                     stream.write((char*)&vWrite[0], vWrite.size());
                     stream.close();
                 }
@@ -632,7 +640,8 @@ namespace LLD
             for(typename std::map< std::vector<uint8_t>, std::vector<uint8_t> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
             {
                 SectorKey cKey;
-                if(pSectorKeys->HasKey(nIterator->first)) {
+                if(pSectorKeys->HasKey(nIterator->first))
+                {
                     if(!pSectorKeys->Get(nIterator->first, cKey))
                         return error(FUNCTION "Couldn't get the Active Sector Key.", __PRETTY_FUNCTION__);
 
@@ -667,7 +676,7 @@ namespace LLD
                     {
                         debug::log(4, FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
 
-                        nCurrentFile ++;
+                        ++nCurrentFile;
                         nCurrentFileSize = 0;
 
                         std::ofstream fStream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
@@ -698,7 +707,8 @@ namespace LLD
                 {
                     /* Get the Sector Key from the Keychain. */
                     SectorKey cKey;
-                    if(!pSectorKeys->Get(vKey, cKey)) {
+                    if(!pSectorKeys->Get(vKey, cKey))
+                    {
                         pSectorKeys->Erase(vKey);
 
                         return false;
@@ -711,7 +721,8 @@ namespace LLD
                     /* Locate the Sector Data from Sector Key.
                         TODO: Make Paging more Efficient in Keys by breaking data into different locations in Database. */
                     fStream.seekp(cKey.nSectorStart, std::ios::beg);
-                    if(vData.size() > cKey.nSectorSize){
+                    if(vData.size() > cKey.nSectorSize)
+                    {
                         fStream.close();
                         debug::log(0, FUNCTION "PUT (TOO LARGE) NO TRUNCATING ALLOWED (Old %u :: New %u):%s\n", __PRETTY_FUNCTION__, cKey.nSectorSize, vData.size(), HexStr(vData.begin(), vData.end()).c_str());
 

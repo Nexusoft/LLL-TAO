@@ -204,7 +204,7 @@ namespace LLD
                         /* Debug Output of Sector Key Information. */
                         debug::log(5, FUNCTION "State: %u Length: %u File: %u Location: %u Key: %s\n", __PRETTY_FUNCTION__, cKey.nState, cKey.nLength, mapKeys[vKey].first, mapKeys[vKey].second, HexStr(vKey.begin(), vKey.end()).c_str());
 
-                        nTotalKeys++;
+                        ++nTotalKeys;
                     }
                     else
                     {
@@ -218,7 +218,7 @@ namespace LLD
                 }
 
                 /* Iterate the current file. */
-                nCurrentFile++;
+                ++nCurrentFile;
 
                 /* Clear the keychain data. */
                 vKeychain.clear();
@@ -240,7 +240,7 @@ namespace LLD
                 {
                     debug::log(4, FUNCTION "Current File too Large, allocating new File %u\n", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
 
-                    nCurrentFile ++;
+                    ++nCurrentFile;
                     nCurrentFileSize = 0;
 
                     std::ofstream ssFile(debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
@@ -345,7 +345,8 @@ namespace LLD
 
 
                 /* Skip Empty Sectors for Now. (TODO: Expand to Reads / Writes) */
-                if(cKey.Ready() || cKey.IsTxn()) {
+                if(cKey.Ready() || cKey.IsTxn())
+                {
 
                     /* Read the Key Data. */
                     std::vector<uint8_t> vKeyIn(cKey.nLength, 0);

@@ -409,7 +409,7 @@ namespace Wallet
                 pthis->mapValue["spent"] = str;
             }
 
-            nSerSize += SerReadWrite(s, *(CMerkleTx*)this, nSerType, nVersion,ser_action);
+            nSerSize += SerReadWrite(s, *(CMerkleTx*)this, nSerType, nVersion, ser_action);
             READWRITE(vtxPrev);
             READWRITE(mapValue);
             READWRITE(vOrderForm);

@@ -68,7 +68,6 @@ namespace LLP
             AddressInfo *pthis = const_cast<AddressInfo *>(this);
             Address *pAddr = (Address *)pthis;
 
-            READWRITE(*pAddr);
             READWRITE(nLastSeen);
             READWRITE(nSession);
             READWRITE(nConnected);
@@ -76,6 +75,7 @@ namespace LLP
             READWRITE(nFailed);
             READWRITE(nFails);
             READWRITE(nLatency);
+            READWRITE(*pAddr);
         )
 
 

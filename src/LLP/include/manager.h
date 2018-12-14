@@ -179,10 +179,18 @@ namespace LLP
          **/
         uint32_t get_total_count(const uint8_t flags) const;
 
+        /** print
+         *
+         *  print the current state of the address manager
+         *
+         **/
+        void print() const;
+
+
         LLD::AddressDB *pDatabase;
         std::unordered_map<uint64_t, AddressInfo> mapAddrInfo;
 
-        std::mutex mutex;
+        std::mutex mut;
     };
 }
 

@@ -118,6 +118,8 @@ int main(int argc, char** argv)
         Sleep(1000);
     }
 
+    LLP::LEGACY_SERVER->addressManager.WriteDatabase();
+
     //if(LLP::LEGACY_SERVER)
     //{
     //    delete LLP::LEGACY_SERVER;
