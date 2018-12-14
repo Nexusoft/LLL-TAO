@@ -212,16 +212,17 @@ namespace TAO::API
             int nRet = 0;
             std::string strPrint = "";
             json::json jsonResponse = json::json::parse(rpcNode.INCOMING.strContent);
-            if( !jsonResponse["error"].is_null())
+
+            //printf("%s\n", jsonResponse.dump(4).c_str());
+
+            if(jsonResponse["error"] != "")
             {
                 strPrint = jsonResponse["error"]["message"];
                 nRet = jsonResponse["error"]["code"];
-
             }
             else
             {
                 strPrint = jsonResponse["result"].dump(4);
-
             }
 
             // output to console

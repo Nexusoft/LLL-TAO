@@ -99,18 +99,18 @@ namespace LLP
             /* Execute the RPC method. */
             json::json jsonResult = TAO::API::RPCCommands->Execute(strMethod, jsonParams, false);
 
-            /* Reply with the results from method execution. */
             json::json jsonReply = JSONRPCReply(jsonResult, nullptr, jsonID);
 
+            printf("%s\n", jsonReply.dump().c_str());
+
             /* Push the response data with json payload. */
-            PushResponse(200, jsonReply.dump(4));
+            PushResponse(200, jsonReply.dump());
 
         }
 
         /* Handle for custom API exceptions. */
         catch(APIException& e)
         {
-            debug::error("RPC Exception: %s", e.what());
             ErrorReply(e.ToJSON(), jsonID);
 
             return debug::error("RPC Exception: %s", e.what());
@@ -119,7 +119,6 @@ namespace LLP
         /* Handle for JSON exceptions. */
         catch (json::detail::exception& e)
         {
-            debug::error("RPC Exception: %s", e.what());
             ErrorReply(APIException(e.id, e.what()).ToJSON(), jsonID);
 
             return debug::error("RPC Exception: %s", e.what());
@@ -128,7 +127,6 @@ namespace LLP
         /* Handle for STD exceptions. */
         catch (std::exception& e)
         {
-            debug::error("RPC Exception: %s", e.what());
             ErrorReply(APIException(-32700, e.what()).ToJSON(), jsonID);
 
             return debug::error("RPC Exception: %s", e.what());
@@ -141,21 +139,14 @@ namespace LLP
         return true;
     }
 
+    /* JSON Spec 1.0 Reply including error messages. */
     json::json RPCNode::JSONRPCReply(const json::json& jsonResponse, const json::json& jsonError, const json::json& jsonID)
     {
         json::json jsonReply;
-        if (!jsonError.is_null() )
-        {
-            jsonReply["result"] = nullptr;
-            jsonReply["error"] = jsonError;
-        }
-        else
-        {
-            jsonReply["result"] = jsonResponse;
-            jsonReply["error"] = nullptr;
-        }
+        jsonReply["result"] = jsonResponse.is_null() ? "" : jsonResponse;
+        jsonReply["error"]  = jsonError.is_null() ? "" : jsonError;
+        jsonReply["id"]     = jsonID;
 
-        jsonReply["id"] = jsonID;
         return jsonReply;
     }
 
@@ -163,13 +154,26 @@ namespace LLP
     {
         try
         {
-            // Send error reply from json-rpc error object
-            int nStatus = 500;
-            int code = jsonError["code"].get<int>();
-            if (code == -32600) nStatus = 400;
-            else if (code == -32601) nStatus = 404;
-            json::json jsonReply = JSONRPCReply(json::json(nullptr), jsonError, jsonID);
-            PushResponse(nStatus, jsonReply.dump(4));
+            /* Default error status code is 500. */
+            int32_t nStatus = 500;
+
+            /* Get the error code from json. */
+            int32_t nError = jsonError["code"].get<int>();
+
+            /* Set status by error code. */
+            switch(nError)
+            {
+                case -32600:
+                    nStatus = 400;
+                    break;
+
+                case -32601:
+                    nStatus = 404;
+                    break;
+            }
+
+            /* Send the response packet. */
+            PushResponse(nStatus, JSONRPCReply(json::json(nullptr), jsonError, jsonID).dump());
         }
         catch( APIException& e)
         {
@@ -183,12 +187,16 @@ namespace LLP
 
     bool RPCNode::HTTPAuthorized(std::map<std::string, std::string>& mapHeaders)
     {
+        /* Check the headers. */
         std::string strAuth = mapHeaders["Authorization"];
         if (strAuth.substr(0,6) != "Basic ")
             return false;
 
+        /* Get the encoded content */
         std::string strUserPass64 = strAuth.substr(6);
         trim(strUserPass64);
+
+        /* Decode from base64 */
         std::string strUserPass = encoding::DecodeBase64(strUserPass64);
         std::string strRPCUserColonPass = config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"];
 

@@ -30,6 +30,9 @@ namespace TAO::API
     {
         printf("Echo Function!\n");
 
+        if(jsonParams.size() == 0)
+            throw APIException(-11, "Not enough parameters");
+
         json::json ret;
         ret["echo"] = jsonParams;
 
