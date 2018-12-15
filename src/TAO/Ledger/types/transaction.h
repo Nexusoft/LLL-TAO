@@ -102,7 +102,15 @@ namespace TAO
 
 
             /** Default Constructor. **/
-            Transaction() : nVersion(1), nSequence(0), nTimestamp(UnifiedTimestamp()), hashNext(0), hashGenesis(0), hashPrevTx(0), fConnected(false), nReadPos(0) {}
+            Transaction()
+            : nVersion(1)
+            , nSequence(0)
+            , nTimestamp(UnifiedTimestamp())
+            , hashNext(0)
+            , hashGenesis(0)
+            , hashPrevTx(0)
+            , fConnected(false)
+            , nReadPos(0) {}
 
 
             /** Operator Overload <<

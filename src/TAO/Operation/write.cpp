@@ -49,5 +49,4 @@ namespace TAO::Operation
 
         return true;
     }
-
 }

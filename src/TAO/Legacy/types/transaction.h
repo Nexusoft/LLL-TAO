@@ -53,13 +53,6 @@ namespace Legacy
 		uint32_t nLockTime;
 
 
-		/** Default Constructor. **/
-		Transaction()
-		{
-			SetNull();
-		}
-
-
 		//serialization methods
 		IMPLEMENT_SERIALIZE
 		(
@@ -69,6 +62,21 @@ namespace Legacy
 			READWRITE(vout);
 			READWRITE(nLockTime);
 		)
+
+
+		/** Default Constructor. **/
+		Transaction()
+		: nVersion(1)
+		, nTime(0)
+		, vin()
+		, vout()
+		, nLockTime(0)
+		{
+			SetNull();
+		}
+
+		/** Default destructor. **/
+		~Transaction() {}
 
 
 		/** Comparison overload (equals). **/

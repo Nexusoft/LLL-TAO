@@ -29,6 +29,8 @@ ________________________________________________________________________________
 
 #include <LLP/include/global.h>
 
+#include <TAO/Ledger/types/mempool.h>
+
 /* Declare the Global LLD Instances. */
 namespace LLD
 {
