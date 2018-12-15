@@ -40,7 +40,7 @@ namespace LLP
     class DDOS_Score
     {
         std::vector< std::pair<bool, int> > SCORE;
-        Timer TIMER;
+        runtime::Timer TIMER;
         int nIterator;
         std::recursive_mutex MUTEX;
 
@@ -134,7 +134,7 @@ namespace LLP
     /** Filter to Contain DDOS Scores and Handle DDOS Bans. **/
     class DDOS_Filter
     {
-        Timer TIMER;
+        runtime::Timer TIMER;
         uint32_t BANTIME, TOTALBANS;
 
     public:

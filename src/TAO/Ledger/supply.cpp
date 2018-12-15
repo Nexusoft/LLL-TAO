@@ -176,6 +176,6 @@ namespace Core
 		if(blkLast.hashPrevBlock == 0)
 			return true;
 			
-		return !(GetChainAge(UnifiedTimestamp()) == GetChainAge(blkLast.GetBlockTime()));
+		return !(GetChainAge(runtime::UnifiedTimestamp()) == GetChainAge(blkLast.GetBlockTime()));
 	}
 }

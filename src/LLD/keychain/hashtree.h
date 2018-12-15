@@ -309,7 +309,7 @@ namespace LLD
                 /* Wait for Database to Initialize. */
                 if(!fInitialized)
                 {
-                    Sleep(10);
+                    runtime::Sleep(10);
 
                     continue;
                 }
@@ -327,7 +327,7 @@ namespace LLD
 
                 //debug::log(0, FUNCTION " Flushed %u Index Bytes to Disk", __PRETTY_FUNCTION__, vDisk.size());
 
-                Sleep(1000);
+                runtime::Sleep(1000);
             }
         }
 

@@ -38,8 +38,8 @@ namespace LLP
     protected:
 
         /* Basic Connection Variables. */
-        Timer                TIMER;
-        Socket_t            SOCKET;
+        runtime::Timer       TIMER;
+        Socket_t             SOCKET;
         std::recursive_mutex MUTEX;
 
 

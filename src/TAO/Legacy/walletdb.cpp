@@ -592,21 +592,21 @@ namespace Legacy
         const int64_t minTimeSinceLastUpdate = 2;
         uint32_t nLastSeen = CWalletDB::nWalletDBUpdated;
         uint32_t nLastFlushed = CWalletDB::nWalletDBUpdated;
-        int64_t nLastWalletUpdate = UnifiedTimestamp();
+        int64_t nLastWalletUpdate = runtime::UnifiedTimestamp();
 
         while (!config::fShutdown)
         {
-            Sleep(1000);
+            runtime::Sleep(1000);
 
             if (nLastSeen != CWalletDB::nWalletDBUpdated)
             {
                 /* Database is updated. Record time update recognized */
                 nLastSeen = CWalletDB::nWalletDBUpdated;
-                nLastWalletUpdate = UnifiedTimestamp();
+                nLastWalletUpdate = runtime::UnifiedTimestamp();
             }
 
             /* Perform flush if any wallet database updated, and the minimum required time has passed since recognizing the update */
-            if (nLastFlushed != CWalletDB::nWalletDBUpdated && (UnifiedTimestamp() - nLastWalletUpdate) >= minTimeSinceLastUpdate)
+            if (nLastFlushed != CWalletDB::nWalletDBUpdated && (runtime::UnifiedTimestamp() - nLastWalletUpdate) >= minTimeSinceLastUpdate)
             {
                 /* Try to lock but don't wait for it. Skip this iteration if fail to get lock. */
                 if (CDB::cs_db.try_lock())
@@ -631,10 +631,10 @@ namespace Legacy
                         auto mi = CDB::mapFileUseCount.find(strWalletFile);
                         if (CDB::fDbEnvInit && mi != CDB::mapFileUseCount.end())
                         {
-                            debug::log(0, "%s ", DateTimeStrFormat(UnifiedTimestamp()).c_str());
+                            debug::log(0, "%s ", DateTimeStrFormat(runtime::UnifiedTimestamp()).c_str());
                             debug::log(0, "ThreadFlushWalletDB : Flushing wallet.dat");
                             nLastFlushed = CWalletDB::nWalletDBUpdated;
-                            int64_t nStart = Timestamp(true);
+                            int64_t nStart = runtime::Timestamp(true);
 
                             /* Flush wallet file so it's self contained */
                             CDB::CloseDb(strWalletFile);
@@ -642,7 +642,7 @@ namespace Legacy
                             CDB::dbenv.lsn_reset(strWalletFile.c_str(), 0);
 
                             CDB::mapFileUseCount.erase(mi++);
-                            debug::log(0, "ThreadFlushWalletDB : Flushed %s %" PRI64d "ms", strWalletFile.c_str(), Timestamp(true) - nStart);
+                            debug::log(0, "ThreadFlushWalletDB : Flushed %s %" PRI64d "ms", strWalletFile.c_str(), runtime::Timestamp(true) - nStart);
                         }
                     }
 
@@ -698,7 +698,7 @@ namespace Legacy
             }
 
             /* Wait for usage to end when database is in use */
-            Sleep(100);
+            runtime::Sleep(100);
         }
 
         return false;

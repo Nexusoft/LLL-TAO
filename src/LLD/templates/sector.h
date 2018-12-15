@@ -97,7 +97,7 @@ namespace LLD
 
 
         /* Timer for Runtime Calculations. */
-        Timer runtime;
+        runtime::Timer runtime;
 
 
         /* Class to handle Transaction Data. */
@@ -424,7 +424,7 @@ namespace LLD
             /* Write the data into the memory cache. */
             cachePool->Put(vKey, vData, true);
             while(!config::fShutdown && nBufferBytes > MAX_SECTOR_BUFFER_SIZE)
-                Sleep(1);
+                runtime::Sleep(1);
 
             /* Add to the write buffer thread. */
             {
@@ -536,12 +536,12 @@ namespace LLD
             if(!config::GetBoolArg("-meters", false))
                 return;
 
-            Timer TIMER;
+            runtime::Timer TIMER;
             TIMER.Start();
 
             while(!config::fShutdown)
             {
-                Sleep(10000);
+                runtime::Sleep(10000);
 
                 double WPS = nBytesWrote / (TIMER.Elapsed() * 1024.0);
                 double RPS = nBytesRead / (TIMER.Elapsed() * 1024.0);

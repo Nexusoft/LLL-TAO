@@ -291,7 +291,7 @@ namespace Legacy
         ReserveKeyFromPool(nPoolIndex, keypoolEntry);
 
         if (nPoolIndex == -1)
-            return UnifiedTimestamp();
+            return runtime::UnifiedTimestamp();
 
         /* Reserve call was just to access oldest key pool entry, not to use it, so return it immediately */
         ReturnKey(nPoolIndex);

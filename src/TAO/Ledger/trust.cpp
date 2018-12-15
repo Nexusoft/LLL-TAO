@@ -404,7 +404,7 @@ namespace Consensus
             }
 
             /* Get the time since last block. */
-            uint64_t nTrustAge = mapTrustKeys[cKey].Age(GetUnifiedTimestamp());
+            uint64_t nTrustAge = mapTrustKeys[cKey].Age(runtime::UnifiedTimestamp());
             uint64_t nBlockAge = mapTrustKeys[cKey].BlockAge(cBlock.GetHash(), cBlock.hashPrevBlock);
 
             /* Genesis Rules: Less than 1000 NXS in block. */
@@ -442,7 +442,7 @@ namespace Consensus
             return debug::error("CTrustPool::check() : Cannot Accept non Coinstake Transactions.");
 
         /* Check the Coinstake Time is before Unified Timestamp. */
-        if(cBlock.vtx[0].nTime > (GetUnifiedTimestamp() + MAX_UNIFIED_DRIFT))
+        if(cBlock.vtx[0].nTime > (runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT))
             return debug::error("CTrustPool::check() : Coinstake Transaction too far in Future.");
 
         /* Make Sure Coinstake Transaction is First. */
@@ -842,7 +842,7 @@ namespace Consensus
         while(!fShutdown)
         {
             /* Sleep call to keep the thread from running. */
-            Sleep(10);
+            runtime::Sleep(10);
 
             /* Don't stake if the wallet is locked. */
             if (pwalletMain->IsLocked())
@@ -903,7 +903,7 @@ namespace Consensus
                     if(GetArg("-verbose", 0) >= 2)
                         debug::error("Stake Minter : Genesis - Failed to Add Coinstake Inputs");
 
-                    Sleep(1000);
+                    runtime::Sleep(1000);
 
                     continue;
                 }
@@ -913,7 +913,7 @@ namespace Consensus
                     if(GetArg("-verbose", 0) >= 2)
                         debug::error("Stake Minter : Genesis - Failed to Get Coinstake Age.");
 
-                    Sleep(1000);
+                    runtime::Sleep(1000);
 
                     continue;
                 }
@@ -973,7 +973,7 @@ namespace Consensus
             bool fFound = false;
             while(!fFound)
             {
-                Sleep(120);
+                runtime::Sleep(120);
 
                 if(hashBestChain != hashBest)
                 {

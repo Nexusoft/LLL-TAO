@@ -120,7 +120,7 @@ int main(int argc, char** argv)
     /* Wait for Shutdown. */
     while(!config::fShutdown)
     {
-        Sleep(1000);
+        runtime::Sleep(1000);
     }
 
     //LLP::LEGACY_SERVER->addressManager.WriteDatabase();

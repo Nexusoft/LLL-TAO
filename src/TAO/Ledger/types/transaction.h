@@ -105,7 +105,7 @@ namespace TAO
             Transaction()
             : nVersion(1)
             , nSequence(0)
-            , nTimestamp(UnifiedTimestamp())
+            , nTimestamp(runtime::UnifiedTimestamp())
             , hashNext(0)
             , hashGenesis(0)
             , hashPrevTx(0)

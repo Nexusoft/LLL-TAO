@@ -141,7 +141,7 @@ namespace LLP
                     "\r\n"
                     "%s",
                 strType.c_str(),
-                rfc1123Time().c_str(),
+                runtime::rfc1123Time().c_str(),
                 strContent.size(),
                 strContent.c_str());
 

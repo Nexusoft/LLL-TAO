@@ -83,7 +83,7 @@ namespace LLP
             mapAddrInfo[hash] = AddressInfo(addr);
 
         AddressInfo *pInfo = &mapAddrInfo[hash];
-        int64_t ms = UnifiedTimestamp(true);
+        int64_t ms = runtime::UnifiedTimestamp(true);
 
         switch(state)
         {

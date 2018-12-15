@@ -55,7 +55,7 @@ namespace TAO::API
                 "\r\n"
                 "%s",
             argv[argn], argv[argn + 1],
-            rfc1123Time().c_str(),
+            runtime::rfc1123Time().c_str(),
             strContent.size(),
             strContent.c_str());
 
@@ -104,7 +104,7 @@ namespace TAO::API
 
             /* Read the response packet. */
             apiNode.ReadPacket();
-            Sleep(10);
+            runtime::Sleep(10);
         }
 
         /* Dump the response to the console. */
@@ -153,7 +153,7 @@ namespace TAO::API
                 "Authorization: Basic %s\r\n"
                 "\r\n"
                 "%s",
-            rfc1123Time().c_str(),
+            runtime::rfc1123Time().c_str(),
             strContent.size(),
             strUserPass64.c_str(),
             strContent.c_str());
@@ -203,7 +203,7 @@ namespace TAO::API
 
             /* Read the response packet. */
             rpcNode.ReadPacket();
-            Sleep(10);
+            runtime::Sleep(10);
         }
 
         /* Dump the response to the console. */

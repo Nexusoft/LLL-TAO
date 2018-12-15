@@ -47,7 +47,7 @@ namespace TAO::API
 
     //   obj.push_back(std::make_pair("blocks",        (int)Core::nBestHeight));
 
-        obj["timestamp"] =  (int)UnifiedTimestamp();
+        obj["timestamp"] =  (int)runtime::UnifiedTimestamp();
 
     //   obj.push_back(std::make_pair("connections",   (int)::vNodes.size()));
     //    obj.push_back(std::make_pair("proxy",         (fUseProxy ? addrProxy.ToStringIPPort() : string())));
@@ -115,7 +115,7 @@ namespace TAO::API
 
         Object obj;
         obj.push_back(Pair("blocks",        (int)Core::nBestHeight));
-        obj.push_back(Pair("timestamp", (int)GetUnifiedTimestamp()));
+        obj.push_back(Pair("timestamp", (int)runtime::UnifiedTimestamp()));
 
         obj.push_back(Pair("currentblocksize",(uint64_t)Core::nLastBlockSize));
         obj.push_back(Pair("currentblocktx",(uint64_t)Core::nLastBlockTx));

@@ -104,7 +104,7 @@ namespace Core
 			uint576_t cKey;
 			cKey.SetBytes(vchPubKey);
 
-			return strprintf("CTrustKey(Hash = %s, Key = %s, Genesis = %s, Tx = %s, Time = %u, Age = %" PRIu64 ", BlockAge = %" PRIu64 ", Expired = %s)", GetHash().ToString().c_str(), cKey.ToString().c_str(), hashGenesisBlock.ToString().c_str(), hashGenesisTx.ToString().c_str(), nGenesisTime, Age(Timestamp()), BlockAge(Timestamp()), Expired(Timestamp()) ? "TRUE" : "FALSE");
+			return strprintf("CTrustKey(Hash = %s, Key = %s, Genesis = %s, Tx = %s, Time = %u, Age = %" PRIu64 ", BlockAge = %" PRIu64 ", Expired = %s)", GetHash().ToString().c_str(), cKey.ToString().c_str(), hashGenesisBlock.ToString().c_str(), hashGenesisTx.ToString().c_str(), nGenesisTime, Age(Timestamp()), BlockAge(runtime::Timestamp()), Expired(runtime::Timestamp()) ? "TRUE" : "FALSE");
 		}
 
 		void Print(){ debug::log(0, "%s", ToString().c_str()); }

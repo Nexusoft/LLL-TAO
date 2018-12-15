@@ -45,7 +45,7 @@ namespace TAO::Ledger
             return debug::error(FUNCTION "previous sequence %u not sequential %u", __PRETTY_FUNCTION__, tx.nSequence, nSequence);
 
         /* Check the timestamp. */
-        if(tx.nTimestamp > UnifiedTimestamp() + MAX_UNIFIED_DRIFT)
+        if(tx.nTimestamp > runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT)
             return debug::error(FUNCTION "transaction timestamp too far in the future %u", __PRETTY_FUNCTION__, tx.nTimestamp);
 
         /* Check the previous genesis. */

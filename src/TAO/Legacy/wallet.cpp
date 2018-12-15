@@ -292,13 +292,13 @@ namespace Legacy
         RAND_bytes(&kMasterKey.vchSalt[0], WALLET_CRYPTO_SALT_SIZE);
 
         /* Use time to process 2 calls to SetKeyFromPassphrase to create a nDeriveIterations value for master key */
-        int64_t nStartTime = Timestamp(true);
+        int64_t nStartTime = runtime::Timestamp(true);
         crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, 25000, kMasterKey.nDerivationMethod);
-        kMasterKey.nDeriveIterations = 2500000 / ((double)(Timestamp(true) - nStartTime));
+        kMasterKey.nDeriveIterations = 2500000 / ((double)(runtime::Timestamp(true) - nStartTime));
 
-        nStartTime = Timestamp(true);
+        nStartTime = runtime::Timestamp(true);
         crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, kMasterKey.nDeriveIterations, kMasterKey.nDerivationMethod);
-        kMasterKey.nDeriveIterations = (kMasterKey.nDeriveIterations + kMasterKey.nDeriveIterations * 100 / ((double)(Timestamp(true) - nStartTime))) / 2;
+        kMasterKey.nDeriveIterations = (kMasterKey.nDeriveIterations + kMasterKey.nDeriveIterations * 100 / ((double)(runtime::Timestamp(true) - nStartTime))) / 2;
 
         /* Assure a minimum value */
         if (kMasterKey.nDeriveIterations < 25000)
@@ -455,13 +455,13 @@ namespace Legacy
                      */
 
                     /* Use time to process 2 calls to SetKeyFromPassphrase to create a new nDeriveIterations value for master key */
-                    int64_t nStartTime = Timestamp(true);
+                    int64_t nStartTime = runtime::Timestamp(true);
                     crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod);
-                    pMasterKey.second.nDeriveIterations = pMasterKey.second.nDeriveIterations * (100 / ((double)(Timestamp(true) - nStartTime)));
+                    pMasterKey.second.nDeriveIterations = pMasterKey.second.nDeriveIterations * (100 / ((double)(runtime::Timestamp(true) - nStartTime)));
 
-                    nStartTime = Timestamp(true);
+                    nStartTime = runtime::Timestamp(true);
                     crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod);
-                    pMasterKey.second.nDeriveIterations = (pMasterKey.second.nDeriveIterations + pMasterKey.second.nDeriveIterations * 100 / ((double)(Timestamp(true) - nStartTime))) / 2;
+                    pMasterKey.second.nDeriveIterations = (pMasterKey.second.nDeriveIterations + pMasterKey.second.nDeriveIterations * 100 / ((double)(runtime::Timestamp(true) - nStartTime))) / 2;
 
                     /* Assure a minimum value */
                     if (pMasterKey.second.nDeriveIterations < 25000)
@@ -510,7 +510,7 @@ namespace Legacy
                 const CWalletTx& walletTx = item.second;
 
                 /* Skip any transaction that isn't final, isn't completely confirmed, or has a future timestamp */
-                if (!walletTx.IsFinal() || !walletTx.IsConfirmed() || walletTx.nTime > UnifiedTimestamp())
+                if (!walletTx.IsFinal() || !walletTx.IsConfirmed() || walletTx.nTime > runtime::UnifiedTimestamp())
                     continue;
 
                 nTotalBalance += walletTx.GetAvailableCredit();
@@ -678,7 +678,7 @@ namespace Legacy
 
             bool fInsertedNew = ret.second;
             if (fInsertedNew)
-                wtx.nTimeReceived = UnifiedTimestamp();
+                wtx.nTimeReceived = runtime::UnifiedTimestamp();
 
             bool fUpdated = false;
             if (!fInsertedNew)
@@ -887,11 +887,11 @@ namespace Legacy
         bool fFirst = (snNextTime == 0);
 
         /* Always false on first iteration */
-        if (UnifiedTimestamp() < snNextTime)
+        if (runtime::UnifiedTimestamp() < snNextTime)
             return;
 
         /* Set a random time until resend is processed */
-        snNextTime = UnifiedTimestamp() + LLC::GetRand(30 * 60);
+        snNextTime = runtime::UnifiedTimestamp() + LLC::GetRand(30 * 60);
 
         /* On first iteration, just return. All it does is set snNextTime */
         if (fFirst)
@@ -908,7 +908,7 @@ namespace Legacy
 */
 
         /* Record that it is processing resend now */
-        snLastTime = UnifiedTimestamp();
+        snLastTime = runtime::UnifiedTimestamp();
 
         /* Rebroadcast any of our tx that aren't in a block yet */
         debug::log(0, "ResendWalletTransactions");

@@ -35,7 +35,7 @@ namespace Legacy
 	void Transaction::SetNull()
 	{
 		nVersion = 1;
-		nTime = UnifiedTimestamp();
+		nTime = runtime::UnifiedTimestamp();
 		vin.clear();
 		vout.clear();
 		nLockTime = 0;
@@ -73,7 +73,7 @@ namespace Legacy
 			nBlockHeight = TAO::Ledger::nBestHeight;
 
 		if (nBlockTime == 0)
-			nBlockTime = UnifiedTimestamp();
+			nBlockTime = runtime::UnifiedTimestamp();
 
 		if ((int64_t)nLockTime < ((int64_t)nLockTime < LOCKTIME_THRESHOLD ? (int64_t)nBlockHeight : nBlockTime))
 			return true;

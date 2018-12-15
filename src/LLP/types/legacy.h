@@ -65,7 +65,7 @@ namespace LLP
 
 
         /** Timer object to keep track of ping latency. **/
-        std::map<uint64_t, Timer> mapLatencyTracker;
+        std::map<uint64_t, runtime::Timer> mapLatencyTracker;
 
 
         /** Mao to keep track of sent request ID's while witing for them to return. **/

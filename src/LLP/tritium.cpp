@@ -42,10 +42,10 @@ namespace LLP
                 case EVENT_CONNECT:
                 {
                     /* Setup the variables for this node. */
-                    nLastPing    = Timestamp();
+                    nLastPing = runtime::Timestamp();
 
                     /* Debut output. */
-                    debug::log(0, NODE "%s Connected at timestamp %" PRIu64 "", GetAddress().ToString().c_str(), UnifiedTimestamp());
+                    debug::log(0, NODE "%s Connected at timestamp %" PRIu64 "", GetAddress().ToString().c_str(), runtime::UnifiedTimestamp());
 
                     /* Send version if making the connection. */
                     if(fOUTGOING)
@@ -70,35 +70,35 @@ namespace LLP
                 case EVENT_GENERIC:
                 {
                     /* Generic event - pings. */
-                    if(Timestamp() - nLastPing > 5)
+                    if(runtime::Timestamp() - nLastPing > 5)
                     {
                         /* Generate the nNonce. */
                         uint64_t nNonce = LLC::GetRand(std::numeric_limits<uint64_t>::max());
 
                         /* Add to latency tracker. */
-                        mapLatencyTracker[nNonce] = Timestamp(true);
+                        mapLatencyTracker[nNonce] = runtime::Timestamp(true);
 
                         /* Push a ping request. */
                         PushMessage(DAT_PING, nNonce);
 
                         /* Update the last ping. */
-                        nLastPing = Timestamp();
+                        nLastPing = runtime::Timestamp();
                     }
 
                     /* Generic events - unified time. */
-                    if(Timestamp() - nLastSamples > 30)
+                    if(runtime::Timestamp() - nLastSamples > 30)
                     {
                         /* Generate the request identification. */
                         uint32_t nRequestID = LLC::GetRand(std::numeric_limits<int32_t>::max());
 
                         /* Add sent requests. */
-                        mapSentRequests[nRequestID] = Timestamp();
+                        mapSentRequests[nRequestID] = runtime::Timestamp();
 
                         /* Request time samples. */
-                        PushMessage(GET_OFFSET, nRequestID, Timestamp(true));
+                        PushMessage(GET_OFFSET, nRequestID, runtime::Timestamp(true));
 
                         /* Update the samples timer. */
-                        nLastSamples = Timestamp();
+                        nLastSamples = runtime::Timestamp();
                     }
 
                     break;
@@ -166,7 +166,7 @@ namespace LLP
                     ssPacket >> nTimestamp;
 
                     /* Find the sample offset. */
-                    int32_t nOffset = (Timestamp(true) - nTimestamp);
+                    int32_t nOffset = (runtime::Timestamp(true) - nTimestamp);
 
                     /* Debug output for offsets. */
                     debug::log(3, NODE "received timestamp of (%" PRIu64 ") - sending offset %i", nTimestamp, nOffset);
@@ -189,7 +189,7 @@ namespace LLP
                         return debug::error(NODE "offset not requested");
 
                     /* Check the time since request was sent. */
-                    if(Timestamp() - mapSentRequests[nRequestID] > 10)
+                    if(runtime::Timestamp() - mapSentRequests[nRequestID] > 10)
                     {
                         debug::log(0, NODE "offset is stale.");
                         mapSentRequests.erase(nRequestID);
@@ -335,7 +335,7 @@ namespace LLP
                     if(!mapLatencyTracker.count(nNonce))
                         return debug::error(NODE "unsolicited pong");
 
-                    uint32_t lat = Timestamp(true) - mapLatencyTracker[nNonce];
+                    uint32_t lat = runtime::Timestamp(true) - mapLatencyTracker[nNonce];
 
                     /* Set the latency used for address manager within server */
                     TRITIUM_SERVER->addressManager.SetLatency(lat, GetAddress());

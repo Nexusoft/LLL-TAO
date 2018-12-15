@@ -62,7 +62,7 @@ namespace LLP
              * If this results in a DOS the user really
              * shouldn't have their RPC port exposed. */
             if (config::mapArgs["-rpcpassword"].size() < 20)
-                Sleep(250);
+                runtime::Sleep(250);
 
             PushResponse(401, "");
             return true;

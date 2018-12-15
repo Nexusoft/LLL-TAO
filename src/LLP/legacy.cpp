@@ -37,7 +37,7 @@ namespace LLP
         RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
 
         /* Current Unified Timestamp. */
-        int64_t nTime = UnifiedTimestamp();
+        int64_t nTime = runtime::UnifiedTimestamp();
 
         /* Dummy Variable NOTE: Remove in Tritium ++ */
         uint64_t nLocalServices = 0;
@@ -114,16 +114,16 @@ namespace LLP
         if(EVENT == EVENT_GENERIC)
         {
 
-            if(nLastPing + 1 < UnifiedTimestamp())
+            if(nLastPing + 1 < runtime::UnifiedTimestamp())
             {
 
                 for(int i = 0; i < config::GetArg("-ping", 1); i++)
                 {
                     RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
 
-                    nLastPing = UnifiedTimestamp();
+                    nLastPing = runtime::UnifiedTimestamp();
 
-                    mapLatencyTracker.emplace(nSessionID, Timer());
+                    mapLatencyTracker.emplace(nSessionID, runtime::Timer());
                     mapLatencyTracker[nSessionID].Start();
 
                     PushMessage("ping", nSessionID);
@@ -138,9 +138,9 @@ namespace LLP
         if(EVENT == EVENT_CONNECT)
         {
             addrThisNode = SOCKET.addr;
-            nLastPing    = UnifiedTimestamp();
+            nLastPing    = runtime::UnifiedTimestamp();
 
-            debug::log(1, "***** %s Node %s Connected at Timestamp %" PRIu64 "", fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), UnifiedTimestamp());
+            debug::log(1, "***** %s Node %s Connected at Timestamp %" PRIu64 "", fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), runtime::UnifiedTimestamp());
 
             if(fOUTGOING)
                 PushVersion();
@@ -175,7 +175,7 @@ namespace LLP
             if(LEGACY_SERVER)
                 LEGACY_SERVER->addressManager.AddAddress(GetAddress(), ConnectState::DROPPED);
 
-            debug::log(1, "xxxxx %s Node %s Disconnected (%s) at Timestamp %" PRIu64, fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), strReason.c_str(), UnifiedTimestamp());
+            debug::log(1, "xxxxx %s Node %s Disconnected (%s) at Timestamp %" PRIu64, fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), strReason.c_str(), runtime::UnifiedTimestamp());
 
             return;
         }
@@ -204,14 +204,14 @@ namespace LLP
             ssMessage >> nTimestamp;
 
             /* Log into the sent requests Map. */
-            mapSentRequests[nRequestID] = UnifiedTimestamp(true);
+            mapSentRequests[nRequestID] = runtime::UnifiedTimestamp(true);
 
             /* Calculate the offset to current clock. */
-            int   nOffset    = (int)(UnifiedTimestamp(true) - nTimestamp);
-            PushMessage("offset", nRequestID, UnifiedTimestamp(true), nOffset);
+            int   nOffset    = (int)(runtime::UnifiedTimestamp(true) - nTimestamp);
+            PushMessage("offset", nRequestID, runtime::UnifiedTimestamp(true), nOffset);
 
             /* Verbose logging. */
-            debug::log(3, "***** Node: Sent Offset %i | %s | Unified %" PRIu64 "", nOffset, addrThisNode.ToString().c_str(), UnifiedTimestamp());
+            debug::log(3, "***** Node: Sent Offset %i | %s | Unified %" PRIu64 "", nOffset, addrThisNode.ToString().c_str(), runtime::UnifiedTimestamp());
         }
 
         /* Recieve a Time Offset from this Node. */
@@ -228,7 +228,7 @@ namespace LLP
             ssMessage >> nTimestamp;
 
             /* Handle the Request ID's. */
-            //uint32_t nLatencyTime = (Core::UnifiedTimestamp(true) - nTimestamp);
+            //uint32_t nLatencyTime = (Core::runtime::UnifiedTimestamp(true) - nTimestamp);
 
 
             /* Ignore Messages Recieved that weren't Requested. */
@@ -243,7 +243,7 @@ namespace LLP
 
 
             /* Reject Samples that are recieved 30 seconds after last check on this node. */
-            if(UnifiedTimestamp(true) - mapSentRequests[nRequestID] > 30000)
+            if(runtime::UnifiedTimestamp(true) - mapSentRequests[nRequestID] > 30000)
             {
                 mapSentRequests.erase(nRequestID);
 
