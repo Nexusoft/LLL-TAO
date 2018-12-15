@@ -67,6 +67,14 @@ namespace TAO::Ledger
             /* Check that the transaction is in a valid state. */
             if(!txIn.IsValid())
                 return false;
+
+            /* Calculate the future potential states. */
+            //TODO: execute the operations layer
+        }
+
+        bool Add(Legacy::Transaction txIn)
+        {
+            
         }
     };
 }

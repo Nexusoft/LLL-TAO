@@ -140,6 +140,10 @@ namespace TAO::Operation
             stateOwner >> token;
 
             /* Check that this proof has not been used in a partial credit. */
+
+            //TODO: make operations logic calculated in memory when received. Process this before block is received.
+            //Block is the commitment of the data into the database.
+            //TODO: need a rule to check that there are no conflicting states between new transactions
             if(LLD::legDB->HasProof(hashProof, hashTx))
                 return debug::error(FUNCTION "credit proof has already been spent", __PRETTY_FUNCTION__);
 
