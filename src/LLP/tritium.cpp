@@ -289,6 +289,8 @@ namespace LLP
                     /* Grab the connections. */
                     std::vector<Address> vAddr = TRITIUM_SERVER->GetAddresses();
 
+                    /* Debug output. */
+
                     /* Push the response addresses. */
                     PushMessage(DAT_ADDRESSES, vAddr);
 

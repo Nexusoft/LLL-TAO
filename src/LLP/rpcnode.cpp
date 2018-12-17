@@ -56,7 +56,7 @@ namespace LLP
 
         if (!HTTPAuthorized(INCOMING.mapHeaders))
         {
-            debug::log(0, "RPC incorrect password attempt from %s", this->SOCKET.addr.ToString().c_str()); //PS TODO this address of the peer is incorrect
+            debug::log(0, "RPC incorrect password attempt from %s\n", this->SOCKET.addr.ToString().c_str()); //PS TODO this address of the peer is incorrect
 
             /* Deter brute-forcing short passwords.
              * If this results in a DOS the user really
@@ -101,7 +101,7 @@ namespace LLP
 
             json::json jsonReply = JSONRPCReply(jsonResult, nullptr, jsonID);
 
-            printf("%s", jsonReply.dump().c_str());
+            printf("RPC API Sending Reply: %s\n", jsonReply.dump().c_str());
 
             /* Push the response data with json payload. */
             PushResponse(200, jsonReply.dump());

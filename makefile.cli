@@ -156,8 +156,9 @@ OBJS= \
 	build/Operation_credit.o \
 	build/Operation_authorize.o \
 	build/API_cmd.o \
-	build/API_rpc.o \
-	build/API_info.o \
+	build/API_RPC_rpc.o \
+	build/API_RPC_info.o \
+	build/API_RPC_daemon.o \
 	build/Legacy_evaluate.o \
 	build/Legacy_address.o \
 	build/Legacy_addressbook.o \
@@ -170,6 +171,7 @@ OBJS= \
 	build/Legacy_evaluate.o \
 	build/Legacy_keypool.o \
 	build/Legacy_keystore.o \
+	build/Legacy_mempool.o \
 	build/Legacy_merkle.o \
 	build/Legacy_outpoint.o \
 	build/Legacy_reservekey.o \
@@ -259,7 +261,7 @@ build/LLP_%.o: ./src/LLP/%.cpp $(HEADERS)
 build/API_%.o: ./src/TAO/API/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_%.o: ./src/TAO/API/RPC/%.cpp $(HEADERS)
+build/API_RPC_%.o: ./src/TAO/API/RPC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Legacy_%.o: ./src/TAO/Legacy/%.cpp $(HEADERS)
@@ -379,7 +381,7 @@ build/API_%.o: src/TAO/API/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_%.o: src/TAO/API/RPC/%.cpp $(HEADERS)
+build/API_RPC_%.o: src/TAO/API/RPC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -531,7 +533,7 @@ build/API_%.o: src/TAO/API/%.cpp
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_%.o: src/TAO/API/RPC/%.cpp
+build/API_RPC_%.o: src/TAO/API/RPC/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
