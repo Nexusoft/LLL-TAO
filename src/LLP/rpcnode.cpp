@@ -101,7 +101,7 @@ namespace LLP
 
             json::json jsonReply = JSONRPCReply(jsonResult, nullptr, jsonID);
 
-            printf("%s", jsonReply.dump().c_str());
+            printf("RPC API Sending Reply: %s\n", jsonReply.dump().c_str());
 
             /* Push the response data with json payload. */
             PushResponse(200, jsonReply.dump());

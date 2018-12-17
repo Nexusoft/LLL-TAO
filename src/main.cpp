@@ -99,12 +99,12 @@ int main(int argc, char** argv)
         }
     }
 
-    LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(config::GetArg("-port", config::fTestNet ? 8323 : 9323), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
-    if(config::mapMultiArgs["-addnode"].size() > 0)
-    {
-        for(auto node : config::mapMultiArgs["-addnode"])
-            LLP::LEGACY_SERVER->AddConnection(node, config::GetArg("-port", config::fTestNet ? 8323 : 9323));
-    }
+    // LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(config::GetArg("-port", config::fTestNet ? 8323 : 9323), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
+    // if(config::mapMultiArgs["-addnode"].size() > 0)
+    // {
+    //     for(auto node : config::mapMultiArgs["-addnode"])
+    //         LLP::LEGACY_SERVER->AddConnection(node, config::GetArg("-port", config::fTestNet ? 8323 : 9323));
+    // }
 
 
     /* Create the Core API Server. */
