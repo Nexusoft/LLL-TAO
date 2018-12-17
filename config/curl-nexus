@@ -1,0 +1,17 @@
+#!/bin/bash
+#
+# curl-nexus
+#
+# Use tritium API to get some info.
+#
+    
+echo "Querying API command '$1' ..."
+
+curl --silent --data-binary 'content-type: application/json;' \
+    http://localhost:8080/api/test | jq .
+
+#
+# The RPC legacy equivalent for "getinfo".
+#    
+#curl --silent --data-binary '{"jsonrpc": "1.0", "id": "curltest", "method": "getinfo", "params": [] }' -H 'content-type: text/plain;' http://localhost:8080/api/$0 | jg .
+    

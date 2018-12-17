@@ -25,6 +25,7 @@ alias ninfo      'ncli getinfo'
 alias npeers     'ncli getpeerinfo'
 alias npeercount 'ncli getconnectioncount'
 alias tail-nexus 'tail -f /nexus/nexus.log'
+alias curl-nexus '/nexus/curl-nexus'
     
 #
 # Handy network aliases.
