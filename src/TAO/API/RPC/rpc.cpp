@@ -22,15 +22,15 @@ namespace TAO::API
 
     void RPC::Initialize()
     {
-        mapFunctions["echo"]     = Function(std::bind(&RPC::Echo,     this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["help"]     = Function(std::bind(&RPC::Help,     this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["getinfo"]  = Function(std::bind(&RPC::GetInfo,  this, std::placeholders::_1, std::placeholders::_2));
+
+        mapFunctions["echo"] = Function(std::bind(&RPC::Echo, this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["help"] = Function(std::bind(&RPC::Help, this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["getinfo"] = Function(std::bind(&RPC::GetInfo, this, std::placeholders::_1, std::placeholders::_2));
     }
 
-
-    /* Test method to echo back the parameters passed by the caller */
     json::json RPC::Echo(bool fHelp, const json::json& jsonParams)
     {
+        printf("Echo Function!\n");
 
         if (fHelp || jsonParams.size() == 0)
             return std::string(
@@ -46,8 +46,15 @@ namespace TAO::API
         return ret;
     }
 
-
-    /* Returns help list.  Iterates through all functions in mapFunctions and calls each one with fHelp=true */
+    /** Help
+    *
+    *  Returns help list.  Iterates through all functions in mapFunctions and calls each one with fHelp=true 
+    *
+    *  @param[in] jsonParams Parameters array passed by the caller
+    *
+    *  @return JSON containing the help list
+    *
+    **/
     json::json RPC::Help(bool fHelp, const json::json& jsonParams)
     {
         json::json ret;
@@ -73,7 +80,7 @@ namespace TAO::API
         }
         else
         {
-            // iterate through all registered commands and build help list to return
+            // iterate through all registered commands and build help list to return 
             std::string strHelp = "";
             for(auto& pairFunctionEntry : mapFunctions)
             {
