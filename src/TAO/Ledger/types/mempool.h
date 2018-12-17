@@ -72,10 +72,7 @@ namespace TAO::Ledger
             //TODO: execute the operations layer
         }
 
-        bool Add(Legacy::Transaction txIn)
-        {
-            
-        }
+        bool Add(Legacy::Transaction tx);
     };
 }
 

@@ -95,16 +95,18 @@ int main(int argc, char** argv)
         for(auto node : config::mapMultiArgs["-addnode"])
         {
             LLP::Address addr = LLP::Address(LLP::Service(debug::strprintf("%s:%i", node.c_str(), config::GetArg("-port", config::fTestNet ? 8888 : 9888)).c_str(), false));
-            LLP::LEGACY_SERVER->AddConnection(node, config::GetArg("-port", config::fTestNet ? 8888 : 9888));
+            LLP::TRITIUM_SERVER->AddConnection(node, config::GetArg("-port", config::fTestNet ? 8888 : 9888));
         }
     }
 
-    LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(config::GetArg("-port", config::fTestNet ? 8323 : 9323), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
+    /*
+    LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(config::GetArg("-legacyport", config::fTestNet ? 8323 : 9323), 10, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), true);
     if(config::mapMultiArgs["-addnode"].size() > 0)
     {
         for(auto node : config::mapMultiArgs["-addnode"])
-            LLP::LEGACY_SERVER->AddConnection(node, config::GetArg("-port", config::fTestNet ? 8323 : 9323));
+            LLP::LEGACY_SERVER->AddConnection(node, config::GetArg("-legacyport", config::fTestNet ? 8323 : 9323));
     }
+    */
 
 
     /* Create the Core API Server. */
