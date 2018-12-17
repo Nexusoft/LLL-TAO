@@ -4,11 +4,19 @@
 #
 # Use tritium API to get some info.
 #
+
+HOST=$1
+COMMAND=$2
+        
+if [ -z "$COMMAND" ] ; then
+    HOST="localhost"
+    COMMAND="$1"
+fi
     
-echo "Querying API command '$1' ..."
+echo "Querying $HOST for API command '$COMMAND' ..."
 
 curl --silent --data-binary 'content-type: application/json;' \
-    http://localhost:8080/api/$1 | jq .
+    http://$HOST:8080/api/$COMMAND | jq .
 
 #
 # The RPC legacy equivalent for "getinfo".
