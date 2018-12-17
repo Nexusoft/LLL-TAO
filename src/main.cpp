@@ -83,9 +83,9 @@ int main(int argc, char** argv)
 
 
     /* Create the database instances. */
-    //LLD::regDB = new LLD::RegisterDB("r+");
-    //LLD::legDB = new LLD::LedgerDB("r+");
-    //LLD::locDB = new LLD::LocalDB("r+");
+    LLD::regDB = new LLD::RegisterDB("r+");
+    LLD::legDB = new LLD::LedgerDB("r+");
+    LLD::locDB = new LLD::LocalDB("r+");
 
 
     /* Initialize the Legacy Server. */
@@ -95,7 +95,7 @@ int main(int argc, char** argv)
         for(auto node : config::mapMultiArgs["-addnode"])
         {
             LLP::Address addr = LLP::Address(LLP::Service(debug::strprintf("%s:%i", node.c_str(), config::GetArg("-port", config::fTestNet ? 8888 : 9888)).c_str(), false));
-            LLP::LEGACY_SERVER->AddConnection(node, config::GetArg("-port", config::fTestNet ? 8888 : 9888));
+            LLP::TRITIUM_SERVER->AddConnection(node, config::GetArg("-port", config::fTestNet ? 8888 : 9888));
         }
     }
 
