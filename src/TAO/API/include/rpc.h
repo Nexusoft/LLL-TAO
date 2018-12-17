@@ -47,7 +47,7 @@ namespace TAO::API
         *  @return JSON containing the user supplied parameters array
         *
         **/
-        json::json Echo( bool fHelp, const json::json& jsonParams);
+        json::json Echo( const json::json& jsonParams, bool fHelp);
 
 
         /** Help
@@ -59,9 +59,11 @@ namespace TAO::API
         *  @return JSON containing the help list
         *
         **/
-        json::json Help( bool fHelp, const json::json& jsonParams);
+        json::json Help( const json::json& jsonParams, bool fHelp);
 
-        json::json GetInfo(bool fHelp, const json::json& jsonParams);
+        json::json GetInfo(const json::json& jsonParams, bool fHelp);
+
+        json::json GetConnectionCount(const json::json& jsonParams, bool fHelp);
     };
 
     /** The instance of RPC commands. */
