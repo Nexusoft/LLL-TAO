@@ -32,7 +32,7 @@ fi
 #
 # Create container.
 #
-docker create -p $PORT:9090 --privileged --name $NAME -h $NAME \
+docker create -p 8080:8080 -p $PORT:9090 --privileged --name $NAME -h $NAME \
        -ti tritium > /dev/null
 
 #
