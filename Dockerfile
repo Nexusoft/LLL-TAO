@@ -72,6 +72,7 @@ RUN cd /nexus; make -j 8 -f makefile.cli;
 #
 COPY config/nexus.conf /root/.Nexus/nexus.conf
 COPY config/run-nexus /nexus/run-nexus
+COPY config/curl-nexus /nexus/curl-nexus
 
 #
 # Copy LISP startup config.
@@ -96,6 +97,7 @@ ENV RUN_GETINFO /nexus/nexus -test getinfo
 ENV RUN_PSLISP  /lispers.net/pslisp
 
 CMD echo "Starting LISP ..."; $RUN_LISP; \
+    echo "Network coming up ..."; sleep 2; \
     echo "Starting Nexus ..."; $RUN_NEXUS; \
 #   sleep 1; $RUN_PSLISP; $RUN_GETINFO; tcsh
     sleep 1; $RUN_PSLISP; tcsh

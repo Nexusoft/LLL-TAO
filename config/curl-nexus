@@ -1,0 +1,25 @@
+#!/bin/bash
+#
+# curl-nexus
+#
+# Use tritium API to get some info.
+#
+
+HOST=$1
+COMMAND=$2
+        
+if [ -z "$COMMAND" ] ; then
+    HOST="localhost"
+    COMMAND="$1"
+fi
+    
+echo "Querying $HOST for API command '$COMMAND' ..."
+
+curl --silent --data-binary 'content-type: application/json;' \
+    http://$HOST:8080/api/$COMMAND | jq .
+
+#
+# The RPC legacy equivalent for "getinfo".
+#    
+#curl --silent --data-binary '{"jsonrpc": "1.0", "id": "curltest", "method": "getinfo", "params": [] }' -H 'content-type: text/plain;' http://localhost:8080/api/$0 | jg .
+    
