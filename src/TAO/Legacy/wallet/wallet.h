@@ -33,12 +33,11 @@ ________________________________________________________________________________
 #include <Util/include/allocators.h> /* for SecureString */
 
 
-namespace TAO
+namespace TAO:: Ledger
 {
-    namespace Ledger
-    {
-        class Block;
-    }
+    /* forward declarations */    
+    class Block;
+    class BlockState;
 }
 
 namespace Legacy
@@ -569,20 +568,19 @@ namespace Legacy
 
         /** ScanForWalletTransactions
          *
-         *  Scan the block chain for transactions from or to keys in this wallet.
-         *  Add/update the current wallet transactions for any found.
+         *  Scan the block chain for transactions with UTXOs from or to keys in this wallet.
+         *  Add/update the current wallet transactions for anyhat found.
          * 
-         *  @param[in] pindexStart Location in block chain index to start the scan
+         *  @param[in] startBlock Block state for location in block chain to start the scan.
+         *                        If nullptr, will scan full chain
          *
-         *  @param[in] fUpdate If true, found transaction already in the wallet will be updated
+         *  @param[in] fUpdate If true, any transaction found by scan that is already in the 
+         *                     wallet will be updated
          *
          *  @return The number of transactions added/updated by the scan
          *
          **/
-//TODO replace CBlockIndex
-/*
-        int ScanForWalletTransactions(Legacy::CBlockIndex* pindexStart, const bool fUpdate = false);
-*/
+        int ScanForWalletTransactions(TAO::Ledger::BlockState* pstartBlock, const bool fUpdate = false);
 
 
         /** ResendWalletTransactions

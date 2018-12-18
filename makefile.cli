@@ -146,7 +146,9 @@ OBJS= \
 	build/LLP_rpcnode.o \
     build/LLP_manager.o \
 	build/Ledger_block.o \
+	build/Ledger_chain.o \
 	build/Ledger_prime.o \
+	build/Ledger_state.o \
 	build/Ledger_tritium.o \
 	build/Ledger_transaction.o \
 	build/Operation_write.o \

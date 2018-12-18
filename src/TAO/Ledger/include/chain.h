@@ -18,6 +18,7 @@ ________________________________________________________________________________
 
 namespace TAO::Ledger
 {
+    class BlockState;
 
     /** Get Chain Times
      *
@@ -43,7 +44,7 @@ namespace TAO::Ledger
      *  @return true if the block state was found.
      *
      **/
-    bool GetState(uint1024_t hashBlock, BlockState blockState);
+    bool GetState(uint1024_t hashBlock, BlockState& blockState);
 
 
      /** Prev State

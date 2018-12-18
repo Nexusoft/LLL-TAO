@@ -21,6 +21,13 @@ ________________________________________________________________________________
 namespace TAO::Ledger
 {
 
+    /** Defines the types of transaction hash stored in the TritiumBlock vtx **/
+    enum TxHashType
+    {
+        LEGACY_TX  = (1 << 0),
+        TRITIUM_TX = (1 << 1),
+    };
+
 	/** Tritium Block
 	 *
      *  A tritium block contains referecnes to the transactions in blocks.
@@ -33,7 +40,10 @@ namespace TAO::Ledger
 	{
 	public:
 
-		/** The transaction history. **/
+		/** The transaction history. 
+         *  uint8_t = TransactionType (per enum)
+         *  uint512_t = Tx hash
+         **/
         std::vector< std::pair<uint8_t, uint512_t> > vtx;
 
 

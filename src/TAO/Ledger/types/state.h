@@ -14,6 +14,9 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_STATE_H
 #define NEXUS_TAO_LEDGER_TYPES_STATE_H
 
+#include <TAO/Ledger/include/state.h>
+#include <TAO/Ledger/types/tritium.h>
+
 
 namespace TAO::Ledger
 {
@@ -47,7 +50,7 @@ namespace TAO::Ledger
 
 
 		/** The reserves that are released. */
-		uint32_t nReleasedReserve[2];
+		uint32_t nReleasedReserve[3];
 
 
 		/** Used to Iterate forward in the chain */
@@ -79,9 +82,8 @@ namespace TAO::Ledger
 		nChainTrust(0),
 		nMoneySupply(0),
 		nChannelHeight(0),
-		nReleasedReserve(0, 0, 0)
+		nReleasedReserve{0, 0, 0}
 		{
-			SetNull();
 		}
 
 
@@ -90,11 +92,12 @@ namespace TAO::Ledger
 		nChainTrust(0),
 		nMoneySupply(0),
 		nChannelHeight(0),
-		nReleasedReserve(0, 0, 0)
+		nReleasedReserve{0, 0, 0}
 		{
 		}
 
 
+/* LegacyBlock not defined
 		BlockState(LegacyBlock blockIn) :
 		blockThis(blockIn),
 		nChainTrust(0),
@@ -104,12 +107,13 @@ namespace TAO::Ledger
 		{
 
 		}
+*/
 
 
 		/* Function to determine if this block has been connected into the main chain. */
 		bool IsInMainChain() const
 		{
-			return (hashNextBlock != 0 || GetHash() == hashBestChain);
+			return (hashNextBlock != 0 || blockThis.GetHash() == hashBestChain);
 		}
 
 

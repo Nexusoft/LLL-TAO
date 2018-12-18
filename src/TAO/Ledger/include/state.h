@@ -14,19 +14,21 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_STATE_H
 #define NEXUS_TAO_LEDGER_INCLUDE_STATE_H
 
+#include <LLC/types/uint1024.h>
+
 namespace TAO::Ledger
 {
 
 	/** The best block height in the chain. **/
-	uint32_t nBestHeight;
+	extern uint32_t nBestHeight;
 
 
     /** The best hash in the chain. */
-    uint1024_t hashBestChain;
+    extern uint1024_t hashBestChain;
 
 
     /** The best trust in the chain. **/
-    uint64_t nBestChainTrust;
+    extern uint64_t nBestChainTrust;
 
 }
 
