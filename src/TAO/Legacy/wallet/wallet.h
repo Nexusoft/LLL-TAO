@@ -33,7 +33,7 @@ ________________________________________________________________________________
 #include <Util/include/allocators.h> /* for SecureString */
 
 
-namespace TAO:: Ledger
+namespace TAO::Ledger
 {
     /* forward declarations */    
     class Block;

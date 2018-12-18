@@ -28,7 +28,7 @@ ________________________________________________________________________________
 
 /* forward declaration */
 namespace LLD {
-    class LedgerDB;
+    class LegacyDB;
 }
 
 namespace Legacy
@@ -515,17 +515,17 @@ namespace Legacy
          *  @param[in] indexdb Local index database containing previous transaction data
          *
          **/
-        void AddSupportingTransactions(LLD::LedgerDB& ledgerdb);
+        void AddSupportingTransactions(LLD::LegacyDB& legacydb);
 
 
         /** RelayWalletTransaction
          *
          *  Send this transaction to the network if not in our database, yet.
          *
-         *  @param[in] indexdb Local index database to check
+         *  @param[in] legacydb Local transaction database to check
          *
          **/
-        void RelayWalletTransaction(LLD::LedgerDB& indexdb);
+        void RelayWalletTransaction(LLD::LegacyDB& legacydb);
 
 
         /** RelayWalletTransaction

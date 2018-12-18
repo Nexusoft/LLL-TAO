@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 #include <LLC/include/random.h>
 
-#include <LLD/include/ledger.h>
+#include <LLD/include/legacy.h>
 
 #include <LLP/include/version.h>
 
@@ -861,6 +861,9 @@ namespace Legacy
         { // Begin lock scope
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
 
+            LLD::LegacyDB legacydb("r");
+            Legacy::Transaction tx;
+
             while (true)
             {
                 /* Get next block in the chain */
@@ -875,8 +878,11 @@ namespace Legacy
                     if (txHashType == TAO::Ledger::LEGACY_TX)
                     {
                         /* Read transaction from database */
-//TODO - Database read from legacyDb  (to get legacy tx...next line is a placeholder) */
-                        Legacy::Transaction tx;
+                        if (!legacydb.ReadTx(txHash, tx))
+                        {
+                            debug::log(2, "ScanForWalletTransactions() Error reading tx from legacydb");
+                            continue;
+                        }
 
                         if (AddToWalletIfInvolvingMe(tx, &block, fUpdate))
                             nTransactionCount++;
@@ -934,7 +940,7 @@ namespace Legacy
 
         /* Rebroadcast any of our tx that aren't in a block yet */
         debug::log(0, "ResendWalletTransactions");
-        LLD::LedgerDB ledgerdb("r");
+        LLD::LegacyDB legacydb("r");
 
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
@@ -959,7 +965,7 @@ namespace Legacy
 
                 /* Validate the transaction, then process rebroadcast on it */
                 if (wtx.CheckTransaction())
-                    wtx.RelayWalletTransaction(ledgerdb);
+                    wtx.RelayWalletTransaction(legacydb);
                 else
                     debug::log(0, "ResendWalletTransactions : CheckTransaction failed for transaction %s",
                                wtx.GetHash().ToString().c_str());
@@ -1020,7 +1026,7 @@ namespace Legacy
             for (auto& item : mapWallet)
                 vCoins.push_back(item.second);
 
-            LLD::LedgerDB ledgerdb("r");
+            LLD::LegacyDB legacydb("r");
 
             for(CWalletTx& walletTx : vCoins)
             {
@@ -1352,7 +1358,7 @@ namespace Legacy
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
 
-            LLD::LedgerDB ledgerdb("r");
+            LLD::LegacyDB legacydb("r");
 
             nFeeRet = MIN_TX_FEE;
 
@@ -1441,7 +1447,7 @@ namespace Legacy
                 }
 
                 /* Fill vtxPrev by copying from previous transactions vtxPrev */
-                wtxNew.AddSupportingTransactions(ledgerdb);
+                wtxNew.AddSupportingTransactions(legacydb);
 
                 wtxNew.fTimeReceivedIsTxTime = true;
 
@@ -1574,8 +1580,8 @@ namespace Legacy
 
         /* Calculate the Interest for the Coinstake Transaction. */
         int64_t nInterest;
-        LLD::LedgerDB ledgerdb("cr");
-//        if(!block.vtx[0].GetCoinstakeInterest(block, ledgerdb, nInterest))
+        LLD::LegacyDB legacydb("cr");
+//        if(!block.vtx[0].GetCoinstakeInterest(block, legacydb, nInterest))
 //            return debug::error("AddCoinstakeInputs() : Failed to Get Interest");
 
 //        block.vtx[0].vout[0].nValue += nInterest;

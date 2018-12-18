@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/include/ledger.h>
+#include <LLD/include/legacy.h>
 
 #include <TAO/Ledger/types/block.h>
 #include <TAO/Ledger/types/transaction.h>
@@ -39,8 +39,8 @@ namespace Legacy
             if (pblock == nullptr)
             {
                 /* Read the transaction from disk -- Do we still need to do this? */
-                TAO::Ledger::Transaction ledgerTx;
-                if (!LLD::LedgerDB("r").ReadTx(GetHash(), ledgerTx))
+                Legacy::Transaction legacyTx;
+                if (!LLD::LegacyDB("r").ReadTx(GetHash(), legacyTx))
                     return 0;
 
 // TODO - this is old code, above update retrieves ledger transaction, need to get block for it for this process

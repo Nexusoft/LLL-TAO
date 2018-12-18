@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <LLD/include/ledger.h>
+#include <LLD/include/legacy.h>
 
 #include <TAO/Legacy/include/evaluate.h>
 #include <TAO/Legacy/include/money.h>
@@ -502,7 +502,7 @@ namespace Legacy
 
 
     /* Populates transaction data for previous transactions into vtxPrev */
-    void CWalletTx::AddSupportingTransactions(LLD::LedgerDB& ledgerdb)
+    void CWalletTx::AddSupportingTransactions(LLD::LegacyDB& legacydb)
     {
         vtxPrev.clear();
 
@@ -549,8 +549,8 @@ namespace Legacy
 
                     }
 //TODO ReadTx uses TAO::Ledger::Transaction, we have TAO::Legacy::Transaction, need to resolve
-/*                    
-                    else if (!config::fClient && ledgerdb.ReadTx(hash, tx))
+/* verify the hash and tx type are correct
+                    else if (!config::fClient && legacy.ReadTx(hash, tx))
                     {
 
                     }
@@ -578,7 +578,7 @@ namespace Legacy
 
 
     /* Send this transaction to the network if not in our database, yet. */
-    void CWalletTx::RelayWalletTransaction(LLD::LedgerDB& ledgerdb)
+    void CWalletTx::RelayWalletTransaction(LLD::LegacyDB& legacydb)
     {
         for(const CMerkleTx& tx : vtxPrev)
         {
@@ -588,7 +588,7 @@ namespace Legacy
                 uint512_t hash = tx.GetHash();
 
 // TODO: Need implementation to support RelayMessage()
-                if (!ledgerdb.HasTx(hash))
+                if (!legacydb.HasTx(hash))
                     ;//RelayMessage(LLP::CInv(LLP::MSG_TX, hash), (Transaction)tx);
             }
         }
@@ -598,7 +598,7 @@ namespace Legacy
             uint512_t hash = GetHash();
 
             /* Relay this tx if we don't have it in our database, yet */
-            if (!ledgerdb.HasTx(hash))
+            if (!legacydb.HasTx(hash))
             {
                 debug::log(0, "Relaying wtx %s", hash.ToString().substr(0,10).c_str());
 // TODO: Need implementation to support RelayMessage()
@@ -611,8 +611,8 @@ namespace Legacy
     /* Send this transaction to the network if not in our database, yet. */
     void CWalletTx::RelayWalletTransaction()
     {
-        LLD::LedgerDB ledgerdb("r");
-        RelayWalletTransaction(ledgerdb);
+        LLD::LegacyDB legacydb("r");
+        RelayWalletTransaction(legacydb);
     }
 
 }

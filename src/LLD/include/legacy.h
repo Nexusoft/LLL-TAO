@@ -37,7 +37,7 @@ namespace LLD
     {
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LedgerDB(const char* pszMode="r+")
+        LegacyDB(const char* pszMode="r+")
         : SectorDatabase("legacy", pszMode) {}
 
         bool WriteTx(uint512_t hashTransaction, Legacy::Transaction tx)
