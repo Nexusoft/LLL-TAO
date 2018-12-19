@@ -25,10 +25,10 @@ namespace TAO::API
     class APIException : public json::detail::exception
     {
     public:
-        APIException(int nCode, const char* strMessage)
+        APIException(int32_t nCode, const char* strMessage)
         : json::detail::exception(nCode, strMessage) {}
 
-        APIException(int nCode, const std::string& strMessage)
+        APIException(int32_t nCode, const std::string& strMessage)
         : json::detail::exception(nCode, strMessage.c_str()) {}
 
         /** ToJSON

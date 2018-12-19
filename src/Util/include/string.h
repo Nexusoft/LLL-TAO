@@ -46,6 +46,7 @@ inline void ParseString(const std::string& str, char c, std::vector<std::string>
 
     std::string::size_type i1 = 0;
     std::string::size_type i2;
+    while(true)
     {
         i2 = str.find(c, i1);
         if (i2 == str.npos)
@@ -56,7 +57,7 @@ inline void ParseString(const std::string& str, char c, std::vector<std::string>
         }
         v.push_back(str.substr(i1, i2-i1));
 
-        i1 = i2+1;
+        i1 = i2 + 1;
     }
 }
 
@@ -261,7 +262,7 @@ static inline std::string &trim(std::string &s)
 /** EqualsNoCase
 *
 *  Compares the two string parameters and returns true if they are the same, ignoring the case of each.
-*  Uses a lambda function for the character comparison function to pass to std::equal, just so that we can 
+*  Uses a lambda function for the character comparison function to pass to std::equal, just so that we can
 *  implement this in one function
 *
 *  @param[in] str1 First string to be compared.
@@ -279,7 +280,7 @@ static inline bool EqualsNoCase(const std::string& str1, const std::string& str2
 
 /** ToLower
 *
-*  Converts the string parameter to lowercase.  Does not modify the string parameter 
+*  Converts the string parameter to lowercase.  Does not modify the string parameter
 *
 *  @param[in] strIn The string to be converted
 *
