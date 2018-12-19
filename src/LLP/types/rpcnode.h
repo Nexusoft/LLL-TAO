@@ -54,9 +54,43 @@ namespace LLP
 
     protected:
 
-        json::json JSONRPCReply(const json::json& jsonResponse, const json::json& jsonError, const json::json& jsonID);
+        /** JSON Reply
+         *
+         *  Reply a standard response from RPC server.
+         *
+         *  @param[in] jsonResponse The JSON response data to send.
+         *  @param[in] jsonError The JSON error response object.
+         *  @param[in] jsonID The identifier of request.
+         *
+         *  @return The json object to respond with.
+         *
+         **/
+        json::json JSONReply(const json::json& jsonResponse, const json::json& jsonError, const json::json& jsonID);
+
+
+        /** Error Reply
+         *
+         *  Reply an error from the RPC server.
+         *
+         *  @param[in] jsonError The JSON error response object.
+         *  @param[in] jsonID The identifier of request.
+         *
+         *
+         **/
         void ErrorReply(const json::json& jsonError, const json::json& jsonID);
-        bool HTTPAuthorized(std::map<std::string, std::string>& mapHeaders);
+
+
+        /** Authorized
+         *
+         *  Check if an authorization base64 encoded string is correct.
+         *
+         *  @param[in] mapHeaders The list of headers to check.
+         *
+         *  @return True if this connection is authorized.
+         *
+         **/
+        bool Authorized(std::map<std::string, std::string>& mapHeaders);
+        
     };
 }
 

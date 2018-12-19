@@ -54,7 +54,7 @@ namespace LLP
             return true;
         }
 
-        if (!HTTPAuthorized(INCOMING.mapHeaders))
+        if (!Authorized(INCOMING.mapHeaders))
         {
             debug::log(0, "RPC incorrect password attempt from %s\n", this->SOCKET.addr.ToString().c_str()); //PS TODO this address of the peer is incorrect
 
@@ -99,13 +99,12 @@ namespace LLP
             /* Execute the RPC method. */
             json::json jsonResult = TAO::API::RPCCommands->Execute(strMethod, jsonParams, false);
 
-            json::json jsonReply = JSONRPCReply(jsonResult, nullptr, jsonID);
+            json::json jsonReply = JSONReply(jsonResult, nullptr, jsonID);
 
             printf("RPC API Sending Reply: %s\n", jsonReply.dump().c_str());
 
             /* Push the response data with json payload. */
             PushResponse(200, jsonReply.dump());
-
         }
 
         /* Handle for custom API exceptions. */
@@ -140,10 +139,10 @@ namespace LLP
     }
 
     /* JSON Spec 1.0 Reply including error messages. */
-    json::json RPCNode::JSONRPCReply(const json::json& jsonResponse, const json::json& jsonError, const json::json& jsonID)
+    json::json RPCNode::JSONReply(const json::json& jsonResponse, const json::json& jsonError, const json::json& jsonID)
     {
         json::json jsonReply;
-        if (!jsonError.is_null() )
+        if (!jsonError.is_null())
         {
             jsonReply["result"] = nullptr;
             jsonReply["error"] = jsonError;
@@ -183,15 +182,18 @@ namespace LLP
         }
 
         /* Send the response packet. */
-        PushResponse(nStatus, JSONRPCReply(json::json(nullptr), jsonError, jsonID).dump());
+        PushResponse(nStatus, JSONReply(json::json(nullptr), jsonError, jsonID).dump());
     }
 
-    bool RPCNode::HTTPAuthorized(std::map<std::string, std::string>& mapHeaders)
+    bool RPCNode::Authorized(std::map<std::string, std::string>& mapHeaders)
     {
         /* Check the headers. */
-        std::string strAuth = mapHeaders["Authorization"];
-        if (strAuth.substr(0,6) != "Basic ")
-            return false;
+        if(!mapHeaders.count("authorization"))
+            return debug::error(FUNCTION "no authorization in header", __PRETTY_FUNCTION__);
+
+        std::string strAuth = mapHeaders["authorization"];
+        if (strAuth.substr(0,6) != "basic ")
+            return debug::error(FUNCTION "not authorized", __PRETTY_FUNCTION__);
 
         /* Get the encoded content */
         std::string strUserPass64 = strAuth.substr(6);
