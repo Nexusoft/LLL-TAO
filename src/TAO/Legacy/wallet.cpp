@@ -28,7 +28,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/state.h>
 
-#include <TAO/Ledger/types/block.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/tritium.h>
 
@@ -750,7 +749,7 @@ namespace Legacy
     /*  Checks whether a transaction has inputs or outputs belonging to this wallet, and adds
      *  it to the wallet when it does.
      */
-    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::Block* pblock, bool fUpdate, bool fFindBlock)
+    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock* pblock, bool fUpdate, bool fFindBlock)
     {
         uint512_t hash = tx.GetHash();
 
@@ -864,7 +863,7 @@ namespace Legacy
             LLD::LegacyDB legacydb("r");
             Legacy::Transaction tx;
 
-            while (!fShutdown)
+            while (!config::fShutdown)
             {
                 /* Get next block in the chain */
                 TAO::Ledger::TritiumBlock& block = blockState.blockThis;
@@ -933,7 +932,7 @@ namespace Legacy
             return;
 
         /* Record that it is processing resend now */
-        snLastTime = TAO::Ledger::nBestHeight;
+        snLastHeight = TAO::Ledger::nBestHeight;
 
         /* Rebroadcast any of our tx that aren't in a block yet */
         debug::log(0, "ResendWalletTransactions");
@@ -1014,7 +1013,7 @@ namespace Legacy
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
 
-            std::vector<CWalletTx&> vCoins;
+            std::vector<CWalletTx> vCoins;
             vCoins.reserve(mapWallet.size());
 
             for (auto& item : mapWallet)
@@ -1037,8 +1036,9 @@ namespace Legacy
                 for (int n=0; n < walletTx.vout.size(); n++)
                 {
                     /* Handle the Index on Disk for Transaction being inconsistent from the Wallet's accounting to the UTXO. */
-                    if (IsMine(walletTx.vout[n]) && walletTx.IsSpent(n) && (txindex.vSpent.size() <= n || txindex.vSpent[n].IsNull()))
-                    {
+//TODO - Fix txindex reference
+//                    if (IsMine(walletTx.vout[n]) && walletTx.IsSpent(n) && (txindex.vSpent.size() <= n || txindex.vSpent[n].IsNull()))
+//                    {
                         debug::log(0, "FixSpentCoins found lost coin %s Nexus %s[%d], %s",
                                    FormatMoney(walletTx.vout[n].nValue).c_str(), walletTx.GetHash().ToString().c_str(),
                                    n, fCheckOnly? "repair not attempted" : "repairing");
@@ -1052,11 +1052,11 @@ namespace Legacy
                             walletTx.MarkUnspent(n);
                             walletTx.WriteToDisk();
                         }
-                    }
-
-                    /* Handle the wallet missing a spend that was updated in the indexes. The index is updated on connect inputs. */
-                    else if (IsMine(walletTx.vout[n]) && !walletTx.IsSpent(n) && (txindex.vSpent.size() > n && !txindex.vSpent[n].IsNull()))
-                    {
+//                    }
+//
+//                    /* Handle the wallet missing a spend that was updated in the indexes. The index is updated on connect inputs. */
+//                    else if (IsMine(walletTx.vout[n]) && !walletTx.IsSpent(n) && (txindex.vSpent.size() > n && !txindex.vSpent[n].IsNull()))
+//                    {
                         debug::log(0, "FixSpentCoins found spent coin %s Nexus %s[%d], %s",
                                    FormatMoney(walletTx.vout[n].nValue).c_str(), walletTx.GetHash().ToString().c_str(),
                                    n, fCheckOnly? "repair not attempted" : "repairing");
@@ -1070,7 +1070,7 @@ namespace Legacy
                             walletTx.MarkSpent(n);
                             walletTx.WriteToDisk();
                         }
-                    }
+//                    }
                 }
             }
         }
@@ -1516,7 +1516,7 @@ namespace Legacy
 
 /*TODO - Investigate moving this entire method OUT of CWallet and into Trust.cpp */
 /* It doesn't really belong in wallet */
-    bool CWallet::AddCoinstakeInputs(TAO::Ledger::Block& block)
+    bool CWallet::AddCoinstakeInputs(TAO::Ledger::TritiumBlock& block)
     {
         /* Add Each Input to Transaction. */
         std::vector<CWalletTx> vInputs;

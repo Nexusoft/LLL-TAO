@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_MERKLE_H
 #define NEXUS_TAO_LEGACY_TYPES_MERKLE_H
 
+#include <TAO/Ledger/types/tritium.h>
 #include <TAO/Legacy/types/transaction.h>
 
 #include <Util/templates/serialize.h>
@@ -97,7 +98,7 @@ namespace Legacy
 		 */
 		IMPLEMENT_SERIALIZE
 		(
-			nSerSize += SerReadWrite(s, *(Transaction*)this, nSerType, nVersion, ser_action);
+			nSerSize += SerReadWrite(s, *(Transaction*)this, nSerType, nSerVersion, ser_action);
 			nSerVersion = this->nVersion;
 			READWRITE(hashBlock);
 			READWRITE(vMerkleBranch);
@@ -114,7 +115,7 @@ namespace Legacy
          *  @return Depth in chain of block containing this transaction, 0 if not in main chain or merkle branch not set
          *
          **/
-		uint32_t SetMerkleBranch(const TAO::Ledger::Block* pblock = nullptr);
+		uint32_t SetMerkleBranch(const TAO::Ledger::TritiumBlock* pblock = nullptr);
 
 
         /** GetDepthInMainChain

@@ -551,7 +551,7 @@ namespace Legacy
                         tx = *mapWalletPrev[hash];
 
                     }
-                    else if (!config::fClient && legacy.ReadTx(hash, tx))
+                    else if (!config::fClient && legacydb.ReadTx(hash, tx))
                     {
                         /* Found transaction in database, but it isn't in wallet so don't save */
                     }

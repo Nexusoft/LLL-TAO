@@ -13,7 +13,10 @@ ________________________________________________________________________________
 
 #include <LLD/include/legacy.h>
 
-#include <TAO/Ledger/types/block.h>
+#include <TAO/Ledger/include/chain.h>
+#include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/state.h>
+#include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/transaction.h>
 
 #include <TAO/Legacy/types/merkle.h>
@@ -26,7 +29,7 @@ namespace Legacy
 {
 
     /* Populates the merkle branch for this transaction from its containing block. */
-    uint32_t CMerkleTx::SetMerkleBranch(const TAO::Ledger::Block* pblock)
+    uint32_t CMerkleTx::SetMerkleBranch(const TAO::Ledger::TritiumBlock* pblock)
     {
         if (config::fClient)
         {
@@ -35,7 +38,7 @@ namespace Legacy
         }
         else
         {
-            TAO::Ledger::Block containingBlock;
+            TAO::Ledger::TritiumBlock containingBlock;
 
             if (pblock == nullptr)
             {
@@ -54,7 +57,7 @@ namespace Legacy
                         return 0;
                     }
 
-                    containingBlock = blockState.containingBlockState;
+                    containingBlock = containingBlockState.blockThis;
                 }
                 else
                 {
@@ -80,8 +83,8 @@ namespace Legacy
             {
 //TODO - need to verify correct usage of legacy transaction here...what is in vtx?
 //Probably should not compare tx pointer, but rather tx hash unless it must be same exact instance
-                if (pblock->vtx[nIndex] == *(CTransaction*)this)
-                    break;
+//                if (pblock->vtx[nIndex] == *(Transaction*)this)
+//                    break;
             }
 
             if (nIndex >= (int)pblock->vtx.size())
@@ -93,7 +96,8 @@ namespace Legacy
             }
 
             // Fill in merkle branch
-            vMerkleBranch = pblock->GetMerkleBranch(nIndex);
+//TODO - This will be defined?             
+//            vMerkleBranch = pblock->GetMerkleBranch(nIndex);
         }
 
         // Is the tx in a block that's in the main chain
@@ -120,14 +124,14 @@ namespace Legacy
             return 0;
 
         // Find the block it claims to be in
-        BlockState blockState;
+        TAO::Ledger::BlockState blockState;
         if (!TAO::Ledger::GetState(hashBlock, blockState))
             return 0;
 
         if (!blockState.IsInMainChain())
             return 0;
 
-        return TAO::Ledger:nBestHeight - blockState.blockThis.nHeight + 1;
+        return TAO::Ledger::nBestHeight - blockState.blockThis.nHeight + 1;
 
     }
 
@@ -139,7 +143,7 @@ namespace Legacy
             return 0;
 
         uint32_t nMaturity = config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS;
-        return std::max(0, nMaturity - GetDepthInMainChain());
+        return std::max((uint32_t)0, nMaturity - GetDepthInMainChain());
     }
 
 

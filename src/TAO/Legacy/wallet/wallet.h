@@ -36,7 +36,7 @@ ________________________________________________________________________________
 namespace TAO::Ledger
 {
     /* forward declarations */    
-    class Block;
+    class TritiumBlock;
     class BlockState;
 }
 
@@ -540,7 +540,7 @@ namespace Legacy
          * @return true if the transactions was added/updated
          *
          */
-        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::Block* pblock, bool fUpdate = false, bool fFindBlock = false);
+        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock* pblock, bool fUpdate = false, bool fFindBlock = false);
 
 
         /** EraseFromWallet
@@ -836,7 +836,7 @@ namespace Legacy
          *  @return true if coinstake inputs successfully added
          *
          **/
-        bool AddCoinstakeInputs(TAO::Ledger::Block& block);
+        bool AddCoinstakeInputs(TAO::Ledger::TritiumBlock& block);
 
 
     private:
