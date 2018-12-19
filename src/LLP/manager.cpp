@@ -11,12 +11,12 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLP/include/manager.h>
-#include <LLD/include/address.h>
-#include <LLD/include/version.h>
 #include <LLC/hash/macro.h>
 #include <LLC/hash/SK.h>
 #include <LLC/include/random.h>
+#include <LLD/include/address.h>
+#include <LLD/include/version.h>
+#include <LLP/include/manager.h>
 #include <Util/include/debug.h>
 #include <Util/templates/serialize.h>
 #include <algorithm>
@@ -71,6 +71,11 @@ namespace LLP
         return get_info(flags);
     }
 
+    uint32_t AddressManager::GetInfoCount(const uint8_t flags)
+    {
+        return static_cast<uint32_t>(GetInfo(flags).size());
+    }
+
 
     /*  Adds the address to the manager and sets the connect state for that address */
     void AddressManager::AddAddress(const Address &addr, const uint8_t state)
@@ -82,6 +87,7 @@ namespace LLP
         if(mapAddrInfo.find(hash) == mapAddrInfo.end())
             mapAddrInfo[hash] = AddressInfo(addr);
 
+
         AddressInfo *pInfo = &mapAddrInfo[hash];
         int64_t ms = runtime::UnifiedTimestamp(true);
 
@@ -90,10 +96,14 @@ namespace LLP
         case ConnectState::NEW:
             break;
 
-        case ConnectState::FAILED:
-            ++(pInfo->nFailed);
-            ++(pInfo->nFails);
+        case ConnectState::CONNECTED:
+            if(pInfo->nState == ConnectState::CONNECTED)
+                break;
+
+            ++pInfo->nConnected;
             pInfo->nSession = 0;
+            pInfo->nFails = 0;
+            pInfo->nLastSeen = ms;
             pInfo->nState = state;
             break;
 
@@ -101,20 +111,16 @@ namespace LLP
             if(pInfo->nState == ConnectState::DROPPED)
                 break;
 
-            ++(pInfo->nDropped);
+            ++pInfo->nDropped;
             pInfo->nSession = ms - pInfo->nLastSeen;
             pInfo->nLastSeen = ms;
             pInfo->nState = state;
             break;
 
-        case ConnectState::CONNECTED:
-            if(pInfo->nState == ConnectState::CONNECTED)
-                break;
-
-            pInfo->nFails = 0;
-            ++(pInfo->nConnected);
+        case ConnectState::FAILED:
+            ++pInfo->nFailed;
+            ++pInfo->nFails;
             pInfo->nSession = 0;
-            pInfo->nLastSeen = ms;
             pInfo->nState = state;
             break;
 
@@ -124,8 +130,6 @@ namespace LLP
 
         debug::log(5, FUNCTION "%s:%u ", __PRETTY_FUNCTION__,
             addr.ToString().c_str(), addr.GetPort());
-
-        print();
 
         /* update the LLD Database with a new entry */
         pDatabase->WriteAddressInfo(hash, *pInfo);
@@ -170,7 +174,8 @@ namespace LLP
 
         std::reverse(vInfo.begin(), vInfo.end());
 
-        uint256_t nRand = LLC::GetRand256();
+        uint64_t nTimestamp = runtime::UnifiedTimestamp();
+        uint64_t nRand = LLC::GetRand(nTimestamp);
         uint32_t nHash = LLC::SK32(BEGIN(nRand), END(nRand));
 
         /*select an index with a good random weight bias toward the front of the list */
@@ -199,13 +204,9 @@ namespace LLP
             uint64_t nKey;
             AddressInfo addr_info;
 
-            //printf("%s", HexStr(keys[i].begin(), keys[i].end()).c_str());
-
             DataStream ssKey(keys[i], SER_LLD, LLD::DATABASE_VERSION);
             ssKey >> str;
             ssKey >> nKey;
-
-            //debug::log(5, "reading %s %" PRIu64 " ", str.c_str(), nKey);
 
             pDatabase->ReadAddressInfo(nKey, addr_info);
 
@@ -214,7 +215,21 @@ namespace LLP
             mapAddrInfo[nHash] = addr_info;
         }
 
-        print();
+        //debug::log(3, "keys.size() = %u", s);
+
+        PrintStats();
+    }
+
+    void AddressManager::PrintStats() const
+    {
+        debug::log(3, "C=%u D=%u F=%u | TC=%u TD=%u TF=%u | size=%lu",
+         get_current_count(ConnectState::CONNECTED),
+         get_current_count(ConnectState::DROPPED),
+         get_current_count(ConnectState::FAILED),
+         get_total_count(ConnectState::CONNECTED),
+         get_total_count(ConnectState::DROPPED),
+         get_total_count(ConnectState::FAILED),
+         mapAddrInfo.size());
     }
 
 
@@ -226,7 +241,7 @@ namespace LLP
         for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
             pDatabase->WriteAddressInfo(it->first, it->second);
 
-        print();
+        PrintStats();
     }
 
 
@@ -269,17 +284,4 @@ namespace LLP
         }
         return total;
     }
-
-    void AddressManager::print() const
-    {
-        debug::log(3, "C=%u D=%u F=%u | TC=%u TD=%u TF=%u | size=%lu",
-         get_current_count(ConnectState::CONNECTED),
-         get_current_count(ConnectState::DROPPED),
-         get_current_count(ConnectState::FAILED),
-         get_total_count(ConnectState::CONNECTED),
-         get_total_count(ConnectState::DROPPED),
-         get_total_count(ConnectState::FAILED),
-         mapAddrInfo.size());
-    }
-
 }

@@ -13,6 +13,21 @@ ________________________________________________________________________________
 
 #include <LLP/include/addressinfo.h>
 
+namespace
+{
+    /* constant variables to tweak score */
+    const uint32_t nConnectedWeight = 100;
+    const uint32_t nDroppedWeight = 2;
+    const uint32_t nFailedWeight = 5;
+    const uint32_t nFailsWeight = 10;
+    const uint32_t nLatencyWeight = 100;
+
+    const uint32_t nMaxConnected = 100;
+    const uint32_t nMaxDropped = 50;
+    const uint32_t nMaxFailed = 50;
+    const uint32_t nMaxFails = 10;
+}
+
 namespace LLP
 {
     bool operator<(const AddressInfo &info1, const AddressInfo &info2)
@@ -53,16 +68,19 @@ namespace LLP
     /*  Calculates a score based on stats. Higher is better */
     double AddressInfo::Score() const
     {
-        /* Add up the bad stats */
-        double bad = (nFailed * 8) + (nFails * 12 ) + (nLatency / 100);
 
-        /* Divide by zero check */
-        if(bad == 0)
-            bad = 1;
+        double nSessionHours = static_cast<double>(nSession) / 3600000;
+        double nLatencyScore = static_cast<double>(nLatency) / nLatencyWeight;
 
         /* Add up the good stats */
-        double good = (nDropped * 50) + (nConnected * 100) + (nSession / 3600000);
+        double good = std::min(nConnected, nMaxConnected) * nConnectedWeight +
+                      nSessionHours;
 
+        /* Add up the bad stats */
+        double bad = std::min(nDropped, nMaxDropped) * nDroppedWeight +
+                     std::min(nFailed,  nMaxFailed)  * nFailedWeight  +
+                     std::min(nFails,   nMaxFails)   * nFailsWeight   +
+                     nLatencyScore;
 
         /* Subtract good stats by bad stats */
         return good - bad;

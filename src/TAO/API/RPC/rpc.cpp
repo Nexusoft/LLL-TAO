@@ -27,6 +27,7 @@ namespace TAO::API
         mapFunctions["help"] = Function(std::bind(&RPC::Help, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["getinfo"] = Function(std::bind(&RPC::GetInfo, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["getconnectioncount"] = Function(std::bind(&RPC::GetConnectionCount, this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["getpeerinfo"] = Function(std::bind(&RPC::GetPeerInfo, this, std::placeholders::_1, std::placeholders::_2));
     }
 
     json::json RPC::Echo(const json::json& jsonParams, bool fHelp)
@@ -47,7 +48,7 @@ namespace TAO::API
 
     /** Help
     *
-    *  Returns help list.  Iterates through all functions in mapFunctions and calls each one with fHelp=true 
+    *  Returns help list.  Iterates through all functions in mapFunctions and calls each one with fHelp=true
     *
     *  @param[in] jsonParams Parameters array passed by the caller
     *
@@ -79,7 +80,7 @@ namespace TAO::API
         }
         else
         {
-            // iterate through all registered commands and build help list to return 
+            // iterate through all registered commands and build help list to return
             std::string strHelp = "";
             for(auto& pairFunctionEntry : mapFunctions)
             {

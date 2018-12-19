@@ -63,6 +63,8 @@ namespace TAO::API
 
         json::json GetInfo(const json::json& jsonParams, bool fHelp);
 
+        json::json GetPeerInfo(const json::json& jsonParams, bool fHelp);
+
         json::json GetConnectionCount(const json::json& jsonParams, bool fHelp);
     };
 

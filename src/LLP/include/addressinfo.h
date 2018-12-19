@@ -68,7 +68,6 @@ namespace LLP
             AddressInfo *pthis = const_cast<AddressInfo *>(this);
             Address *pAddr = (Address *)pthis;
 
-            READWRITE(nLastSeen);
             READWRITE(nSession);
             READWRITE(nConnected);
             READWRITE(nDropped);
@@ -95,8 +94,8 @@ namespace LLP
         double Score() const;
 
 
-        int64_t  nLastSeen;   //unified time last seen
-        int64_t  nSession;    //total time since connected
+        uint64_t nSession;    //total time since connected
+        uint64_t nLastSeen;   //unified time last seen
         uint32_t nConnected;  //total number of successful connections
         uint32_t nDropped;    //total number of dropped connections
         uint32_t nFailed;     //total number of failed connections

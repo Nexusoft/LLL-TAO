@@ -39,7 +39,6 @@ namespace LLP
         bool fLISTEN;
         bool fMETER;
 
-
     public:
         uint32_t PORT, MAX_THREADS, DDOS_TIMESPAN;
 
@@ -53,32 +52,38 @@ namespace LLP
         std::thread MANAGER_THREAD;
 
         /* Address manager */
-        AddressManager addressManager;
+        AddressManager *pAddressManager;
 
         Address addrThisNode;
 
         Server<ProtocolType>(int32_t nPort, int32_t nMaxThreads, int32_t nTimeout = 30, bool isDDOS = false,
                              int32_t cScore = 0, int32_t rScore = 0, int32_t nTimespan = 60, bool fListen = true,
                              bool fMeter = false, bool fManager = false)
-            : fDDOS(isDDOS)
-            , fLISTEN(fListen)
-            , fMETER(fMeter)
-            , PORT(nPort)
-            , MAX_THREADS(nMaxThreads)
-            , DDOS_TIMESPAN(nTimespan)
-            , DATA_THREADS(0)
-            , MANAGER_THREAD(std::bind(&Server::Manager, this))
-            , LISTEN_THREAD_V4(std::bind(&Server::ListeningThread, this, true))  //IPv4 Listener
-            , LISTEN_THREAD_V6(std::bind(&Server::ListeningThread, this, false)) //IPv6 Listener
-            , METER_THREAD(std::bind(&Server::Meter, this))
-            , addressManager(nPort)
-            , addrThisNode()
+        : fDDOS(isDDOS)
+        , fLISTEN(fListen)
+        , fMETER(fMeter)
+        , PORT(nPort)
+        , MAX_THREADS(nMaxThreads)
+        , DDOS_TIMESPAN(nTimespan)
+        , DATA_THREADS(0)
+        , pAddressManager(0)
+        , addrThisNode()
         {
-            for(int32_t index = 0; index < MAX_THREADS; index++)
+            for(int32_t index = 0; index < MAX_THREADS; ++index)
                 DATA_THREADS.push_back(new DataThread<ProtocolType>(
                     index, fDDOS, rScore, cScore, nTimeout, fMeter));
 
-            addressManager.ReadDatabase();
+            if(fManager)
+            {
+                pAddressManager = new AddressManager(nPort);
+                pAddressManager->ReadDatabase();
+
+                MANAGER_THREAD = std::thread((std::bind(&Server::Manager, this)));
+            }
+
+            LISTEN_THREAD_V4 = std::thread(std::bind(&Server::ListeningThread, this, true));  //IPv4 Listener
+            LISTEN_THREAD_V6 = std::thread(std::bind(&Server::ListeningThread, this, false)); //IPv6 Listener
+            METER_THREAD = std::thread(std::bind(&Server::Meter, this));
         }
 
 
@@ -88,10 +93,10 @@ namespace LLP
             fMETER  = false;
             fDDOS   = false;
 
-            MANAGER_THREAD.join();
-            METER_THREAD.join();
+            if(pAddressManager)
+                MANAGER_THREAD.join();
 
-            //addressManager.WriteDatabase();
+            METER_THREAD.join();
 
             for(int32_t index = 0; index < MAX_THREADS; ++index)
             {
@@ -109,13 +114,29 @@ namespace LLP
             }
             DDOS_MAP.clear();
 
-
+            if(pAddressManager)
+                delete pAddressManager;
         }
 
 
-        /** Public Wraper to Add a Connection Manually.
+        /** Shutdown
+         *
+         *  Cleanup and shutdown subsystems
+         *
+         **/
+        void Shutdown()
+        {
+            if(pAddressManager)
+                pAddressManager->WriteDatabase();
+        }
+
+
+        /** AddConnection
+         *
+         *  Public Wraper to Add a Connection Manually.
          *
          *  @param[in] strAddress	IPv4 Address of outgoing connection
+         *
          *  @param[in] strPort		Port of outgoing connection
          *
          *  @return	Returns true if the connection was established successfully
@@ -194,22 +215,9 @@ namespace LLP
         std::vector<Address> GetAddresses()
         {
             std::vector<Address> vAddr;
-            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
-            {
-                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
-                if(!dt)
-                    continue;
-
-                int32_t nSize = dt->CONNECTIONS.size();
-                for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
-                {
-                    if(!dt->CONNECTIONS[nIndex] || !dt->CONNECTIONS[nIndex]->Connected())
-                        continue;
-
-                    vAddr.push_back(dt->CONNECTIONS[nIndex]->GetAddress());
-                }
-            }
+            if(pAddressManager)
+                vAddr = pAddressManager->GetAddresses();
 
             return vAddr;
         }
@@ -234,7 +242,7 @@ namespace LLP
                 std::unique_lock<std::recursive_mutex> lk(MUTEX);
 
                 /*pick a weighted random priority from a sorted list of addresses */
-                if(addressManager.StochasticSelect(addr))
+                if(pAddressManager && pAddressManager->StochasticSelect(addr))
                 {
 
                     std::string ip = addr.ToStringIP();
@@ -242,11 +250,13 @@ namespace LLP
 
                     /* Attempt the connection. */
                     debug::log(0, FUNCTION "Attempting Connection %s:%u", __PRETTY_FUNCTION__, ip.c_str(), port);
+                    pAddressManager->PrintStats();
+
                     if(AddConnection(ip, port))
                         state = static_cast<uint8_t>(ConnectState::CONNECTED);
 
 
-                    addressManager.AddAddress(addr, state);
+                    pAddressManager->AddAddress(addr, state);
                 }
             }
         }

@@ -172,8 +172,8 @@ namespace LLP
                     break;
             }
 
-            if(LEGACY_SERVER)
-                LEGACY_SERVER->addressManager.AddAddress(GetAddress(), ConnectState::DROPPED);
+            if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
+                LEGACY_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
             debug::log(1, "xxxxx %s Node %s Disconnected (%s) at Timestamp %" PRIu64, fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), strReason.c_str(), runtime::UnifiedTimestamp());
 
@@ -329,8 +329,8 @@ namespace LLP
             mapLatencyTracker.erase(nonce);
 
             /* Set the latency used for address manager within server */
-            if(LEGACY_SERVER)
-                LEGACY_SERVER->addressManager.SetLatency(nLatency, GetAddress());
+            if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
+                LEGACY_SERVER->pAddressManager->SetLatency(nLatency, GetAddress());
 
             /* Debug Level 3: output Node Latencies. */
             debug::log(3, "***** Node %s Latency (Nonce %" PRIu64 " - %u ms)", addrThisNode.ToString().c_str(), nonce, nLatency);
@@ -406,8 +406,8 @@ namespace LLP
                 debug::log(5, "port=%u", it->GetPort());
             }
 
-            if(LEGACY_SERVER)
-                LEGACY_SERVER->addressManager.AddAddresses(vAddr);
+            if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
+                LEGACY_SERVER->pAddressManager->AddAddresses(vAddr);
 
         }
 
