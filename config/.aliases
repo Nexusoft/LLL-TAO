@@ -13,19 +13,20 @@ alias aptget     'sudo apt-get -o Acquire::ForceIPv4=true install'
 
 #
 # Nexus handy aliases.
-#        
-alias run-nexus  '/nexus/run-nexus'
-alias ps-nexus   'psg nexus'
-alias tcp-nexus  'netstat -an | egrep "9323|9324|9325"'
+#
+alias run-nexus         '/nexus/run-nexus'
+alias ps-nexus          'psg nexus'
+alias tcp-nexus         'netstat -an | egrep "9323|9324|9325"'
 alias tcp-nexus-testnet 'netstat -an | egrep "7323|7324|7325"'
-alias ns-prod    'tcp-nexus'
-alias ns-testnet 'tcp-nexus-testnet'
-alias ncli       '/nexus/nexus -testnet'
-alias ninfo      'ncli getinfo'
-alias npeers     'ncli getpeerinfo'
-alias npeercount 'ncli getconnectioncount'
-alias tail-nexus 'tail -f /nexus/nexus.log'
-alias curl-nexus '/nexus/curl-nexus'
+alias ns-prod           'tcp-nexus'
+alias ns-testnet        'tcp-nexus-testnet'
+alias ncli              '/nexus/nexus -testnet'
+alias ninfo             'ncli getinfo'
+alias npeers            'ncli getpeerinfo'
+alias npeercount        'ncli getconnectioncount'
+alias tail-nexus        'tail -f /nexus/nexus.log'
+alias curl-nexus        '/nexus/curl-nexus'
+alias nexus-api         '/nexus/nexus -api'
     
 #
 # Handy network aliases.
