@@ -42,7 +42,7 @@ namespace LLP
                 case EVENT_CONNECT:
                 {
                     /* Setup the variables for this node. */
-                    nLastPing = runtime::Timestamp();
+                    nLastPing    = runtime::Timestamp();
 
                     /* Debut output. */
                     debug::log(0, NODE "%s Connected at timestamp %" PRIu64 "", GetAddress().ToString().c_str(), runtime::UnifiedTimestamp());
@@ -106,7 +106,8 @@ namespace LLP
 
                 case EVENT_DISCONNECT:
                 {
-                    TRITIUM_SERVER->addressManager.AddAddress(GetAddress(), ConnectState::DROPPED);
+                    if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
+                        TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
                     break;
                 }
@@ -303,11 +304,8 @@ namespace LLP
                     ssPacket >> vAddr;
 
                     /* Add the connections to Tritium Server. */
-                    auto it = vAddr.begin();
-                    for(; it != vAddr.end(); ++it)
-                    {
-                        TRITIUM_SERVER->addressManager.AddAddress(*it);
-                    }
+                    if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
+                        TRITIUM_SERVER->pAddressManager->AddAddresses(vAddr);
 
 
                     break;
@@ -338,7 +336,8 @@ namespace LLP
                     uint32_t lat = runtime::Timestamp(true) - mapLatencyTracker[nNonce];
 
                     /* Set the latency used for address manager within server */
-                    TRITIUM_SERVER->addressManager.SetLatency(lat, GetAddress());
+                    if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
+                        TRITIUM_SERVER->pAddressManager->SetLatency(lat, GetAddress());
 
                     /* Debug output for latency. */
                     debug::log(3, NODE "latency %u ms", lat);

@@ -63,6 +63,8 @@ namespace LLP
          *
          *  Gets a list of addresses in the manager
          *
+         *  @param[in] flags the types of connect state
+         *
          *  @return A list of addresses in the manager
          *
          **/
@@ -73,10 +75,23 @@ namespace LLP
          *
          *  Gets a list of address info in the manager
          *
+         *  @param[in] flags the types of connect state
+         *
          *  @return A list of address info in the manager
          *
          **/
         std::vector<AddressInfo> GetInfo(const uint8_t flags = CONNECT_FLAGS_ALL);
+
+        /** GetInfoCount
+         *
+         *  Gets the count of addresses info in the manager
+         *
+         *  @param[in] flags the types of connect state
+         *
+         *  @return Count of addresss info with connect state flags
+         *
+         **/
+        uint32_t GetInfoCount(const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
         /** AddAddress
@@ -145,6 +160,13 @@ namespace LLP
          **/
         void WriteDatabase();
 
+        /** PrintStats
+         *
+         *  print the current state of the address manager
+         *
+         **/
+        void PrintStats() const;
+
     private:
 
 
@@ -178,13 +200,6 @@ namespace LLP
          *
          **/
         uint32_t get_total_count(const uint8_t flags) const;
-
-        /** print
-         *
-         *  print the current state of the address manager
-         *
-         **/
-        void print() const;
 
 
         LLD::AddressDB *pDatabase;

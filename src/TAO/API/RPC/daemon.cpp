@@ -37,8 +37,15 @@ namespace TAO::API
                 "getconnectioncount"
                 " - Returns the number of connections to other nodes.");
 
-        return LLP::TRITIUM_SERVER->addressManager.GetInfo(LLP::ConnectState::CONNECTED).size() 
-                + LLP::LEGACY_SERVER->addressManager.GetInfo(LLP::ConnectState::CONNECTED).size();
+        uint32_t nConnections = 0;
+
+        if(LLP::TRITIUM_SERVER  && LLP::TRITIUM_SERVER->pAddressManager)
+            nConnections += LLP::TRITIUM_SERVER->pAddressManager->GetInfoCount(LLP::ConnectState::CONNECTED);
+
+        if(LLP::LEGACY_SERVER && LLP::LEGACY_SERVER->pAddressManager)
+            nConnections += LLP::LEGACY_SERVER->pAddressManager->GetInfoCount(LLP::ConnectState::CONNECTED);
+
+        return nConnections;
     }
 
     // Value reset(const json::json& jsonParams, bool fHelp)

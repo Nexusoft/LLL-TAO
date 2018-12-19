@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #include <Util/include/json.h>
 #include <Util/include/runtime.h>
 #include <LLP/include/version.h>
+#include <LLP/include/global.h>
+#include <LLP/include/addressinfo.h>
 //#include <TAO/Ledger/include/global.h>
 
 namespace TAO::API
@@ -60,9 +62,70 @@ namespace TAO::API
     //    if (pwalletMain->IsCrypted())
     //        obj.push_back(std::make_pair("unlocked_until", (boost::int64_t)nWalletUnlockTime / 1000));
     //    obj.push_back(std::make_pair("errors",        Core::GetWarnings("statusbar")));
-        
-        
+
+
         return obj;
+    }
+
+    json::json RPC::GetPeerInfo(const json::json& jsonParams, bool fHelp)
+    {
+        json::json response;
+
+        if (fHelp || jsonParams.size() != 0)
+                 return std::string(
+                     "getpeerinfo"
+                     "Returns data about each connected network node.");
+
+        std::vector<LLP::AddressInfo> vLegacyInfo;
+        std::vector<LLP::AddressInfo> vTritiumInfo;
+
+        /* query address information from tritium server address manager */
+        if(LLP::LEGACY_SERVER && LLP::LEGACY_SERVER->pAddressManager)
+            vLegacyInfo = LLP::LEGACY_SERVER->pAddressManager->GetInfo(LLP::ConnectState::CONNECTED);
+
+        std::sort(vLegacyInfo.begin(), vLegacyInfo.end());
+
+        for(auto addr : vLegacyInfo)
+        {
+            json::json obj;
+
+            obj["addr"] = addr.ToStringIPPort();
+            obj["type"] = std::string("Legacy");
+            obj["latency"] = debug::strprintf("%u ms", addr.nLatency);
+            obj["lastseen"] = addr.nLastSeen;
+            obj["connects"] = addr.nConnected;
+            obj["drops"] = addr.nDropped;
+            obj["fails"] = addr.nFailed;
+            obj["score"] = addr.Score();
+            obj["version"] = addr.IsIPv4() ? std::string("IPv4") : std::string("IPv6");
+
+            response.push_back(obj);
+        }
+
+        /* query address information from legacy server address manager */
+        if(LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->pAddressManager)
+            vTritiumInfo = LLP::TRITIUM_SERVER->pAddressManager->GetInfo(LLP::ConnectState::CONNECTED);
+
+        std::sort(vTritiumInfo.begin(), vTritiumInfo.end());
+
+        for(auto addr : vTritiumInfo)
+        {
+            json::json obj;
+
+            obj["addr"] = addr.ToStringIPPort();
+            obj["type"] = std::string("Tritium");
+            obj["latency"] = debug::strprintf("%u ms", addr.nLatency);
+            obj["lastseen"] = addr.nLastSeen;
+            obj["connects"] = addr.nConnected;
+            obj["drops"] = addr.nDropped;
+            obj["fails"] = addr.nFailed;
+            obj["score"] = addr.Score();
+            obj["version"] = addr.IsIPv4() ? std::string("IPv4") : std::string("IPv6");
+
+            response.push_back(obj);
+        }
+
+        return response;
     }
 
 
