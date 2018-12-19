@@ -48,12 +48,6 @@ namespace LLP
     bool RPCNode::ProcessPacket()
     {
         /* Check HTTP authorization */
-        if (!INCOMING.mapHeaders.count("Authorization"))
-        {
-            PushResponse(401, "");
-            return true;
-        }
-
         if (!Authorized(INCOMING.mapHeaders))
         {
             debug::log(0, "RPC incorrect password attempt from %s\n", this->SOCKET.addr.ToString().c_str()); //PS TODO this address of the peer is incorrect
@@ -65,7 +59,8 @@ namespace LLP
                 runtime::Sleep(250);
 
             PushResponse(401, "");
-            return true;
+
+            return false;
         }
 
         json::json jsonID = nullptr;
@@ -99,12 +94,8 @@ namespace LLP
             /* Execute the RPC method. */
             json::json jsonResult = TAO::API::RPCCommands->Execute(strMethod, jsonParams, false);
 
-            json::json jsonReply = JSONReply(jsonResult, nullptr, jsonID);
-
-            printf("RPC API Sending Reply: %s\n", jsonReply.dump().c_str());
-
             /* Push the response data with json payload. */
-            PushResponse(200, jsonReply.dump());
+            PushResponse(200, JSONReply(jsonResult, nullptr, jsonID).dump());
         }
 
         /* Handle for custom API exceptions. */
@@ -192,8 +183,8 @@ namespace LLP
             return debug::error(FUNCTION "no authorization in header", __PRETTY_FUNCTION__);
 
         std::string strAuth = mapHeaders["authorization"];
-        if (strAuth.substr(0,6) != "basic ")
-            return debug::error(FUNCTION "not authorized", __PRETTY_FUNCTION__);
+        if (strAuth.substr(0,6) != "Basic ")
+            return debug::error(FUNCTION "incorrect authorization type", __PRETTY_FUNCTION__);
 
         /* Get the encoded content */
         std::string strUserPass64 = strAuth.substr(6);

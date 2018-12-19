@@ -107,9 +107,9 @@ namespace LLP
 
             /* Execute the api and methods. */
             if(strAPI == "supply")
-                ret = { {"result", TAO::API::supply.Execute(METHOD, params) }, {"error",""} };
+                ret = { {"result", TAO::API::supply.Execute(METHOD, params) }, {"error", nullptr} };
             else if(strAPI == "accounts")
-                ret = { {"result", TAO::API::accounts.Execute(METHOD, params) }, {"error",""} };
+                ret = { {"result", TAO::API::accounts.Execute(METHOD, params) }, {"error", nullptr} };
             else
                 throw TAO::API::APIException(-4, debug::strprintf("API not found: %s", strAPI.c_str()));
         }
@@ -162,7 +162,7 @@ namespace LLP
         }
 
         /* Send the response packet. */
-        json::json ret = { { "result", "" }, { "error", jsonError } };
+        json::json ret = { { "result", nullptr }, { "error", jsonError } };
         PushResponse(nStatus, ret.dump());
     }
 

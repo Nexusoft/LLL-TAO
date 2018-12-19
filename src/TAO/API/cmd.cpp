@@ -112,7 +112,7 @@ namespace TAO::API
 
         /* Check for errors. */
         std::string strPrint = "";
-        if(ret["error"] != "")
+        if(!ret["error"].is_null())
             strPrint = ret["error"]["message"];
         else
             strPrint = ret["result"].dump(4);
@@ -217,32 +217,24 @@ namespace TAO::API
         }
 
         /* Dump the response to the console. */
-        try
+        int nRet = 0;
+        std::string strPrint = "";
+        json::json ret = json::json::parse(rpcNode.INCOMING.strContent);
+
+        if(!ret["error"].is_null())
         {
-            int nRet = 0;
-            std::string strPrint = "";
-            json::json ret = json::json::parse(rpcNode.INCOMING.strContent);
-
-            printf("RESPONSE: %s\n", rpcNode.INCOMING.strContent.c_str());
-            if(ret["error"] != "")
-            {
-                strPrint = ret["error"]["message"];
-                nRet     = ret["error"]["code"];
-            }
-            else
-            {
-                strPrint = ret["result"].dump(4);
-            }
-
-            // output to console
-            printf("%s\n", strPrint.c_str());
-            return nRet;
-
+            strPrint = ret["error"]["message"];
+            nRet     = ret["error"]["code"];
         }
-        catch( std::exception& e)
+        else
         {
-
+            strPrint = ret["result"].dump(4);
         }
+
+        // output to console
+        printf("%s\n", strPrint.c_str());
+        return nRet;
+
         return 0;
     }
 }
