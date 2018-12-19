@@ -21,18 +21,20 @@ NAME="nexus-$HOSTNAME-$RAND"
 #
 # When one container is running, we use port 9090 for accessing the lispers.net
 # restful API. If a user wants to run multiple containers, then use a random
-# 
+#
 CONTAINER=`docker ps | egrep nexus-$HOSTNAME | egrep 9090`
 if [ -z "$CONTAINER" ] ; then
-    PORT="9090"
+    LPORT="9090"
+    NPORT="8080"
 else
-    PORT=""
+    LPORT=""
+    NPORT=""
 fi
 
 #
 # Create container.
 #
-docker create -p 8080:8080 -p $PORT:9090 --privileged --name $NAME -h $NAME \
+docker create -p $NPORT:8080 -p $LPORT:9090 --privileged --name $NAME -h $NAME \
        -ti tritium > /dev/null
 
 #
