@@ -26,7 +26,7 @@ namespace Legacy
 {
 
     /* Populates the merkle branch for this transaction from its containing block. */
-    int CMerkleTx::SetMerkleBranch(const TAO::Ledger::Block* pblock)
+    uint32_t CMerkleTx::SetMerkleBranch(const TAO::Ledger::Block* pblock)
     {
         if (config::fClient)
         {
@@ -35,7 +35,8 @@ namespace Legacy
         }
         else
         {
-            TAO::Ledger::Block blockTmp;
+            TAO::Ledger::Block containingBlock;
+
             if (pblock == nullptr)
             {
                 /* Read the transaction from disk -- Do we still need to do this? */
@@ -43,7 +44,22 @@ namespace Legacy
                 if (!LLD::LegacyDB("r").ReadTx(GetHash(), legacyTx))
                     return 0;
 
-// TODO - this is old code, above update retrieves ledger transaction, need to get block for it for this process
+                if (hashBlock > 0)
+                {
+                    /* Already know the block hash for the block containing this transaction */
+                    TAO::Ledger::BlockState containingBlockState;
+                    if (!TAO::Ledger::GetState(TAO::Ledger::hashBestChain, containingBlockState))
+                    {
+                        debug::log(0, "Error: CMerkleTx::SetMerkleBranch() containing block for transaction");
+                        return 0;
+                    }
+
+                    containingBlock = blockState.containingBlockState;
+                }
+                else
+                {
+                    /* Don't know containing block hash */
+//TODO - how to find containing block (if any) when only know transaction hash
 //                CTxIndex txindex;
 //
 //                if (!LLD::CIndexDB("r").ReadTxIndex(GetHash(), txindex))
@@ -51,29 +67,33 @@ namespace Legacy
 //
 //                if (!blockTmp.ReadFromDisk(txindex.pos.nFile, txindex.pos.nBlockPos))
 //                    return 0;
-//
-//                pblock = &blockTmp;
+                }
+
+                pblock = &containingBlock;
             }
 
-            // Update the tx's hashBlock
-//TODO - This sectino needs to find the transaction within the block to extract its merkle branch (no GetMerkleBranch method now, how is this done?)
-//            hashBlock = pblock->GetHash();
-//
-//            // Locate the transaction
-//            for (nIndex = 0; nIndex < (int)pblock->vtx.size(); nIndex++)
-//                if (pblock->vtx[nIndex] == *(CTransaction*)this)
-//                    break;
-//
-//            if (nIndex == (int)pblock->vtx.size())
-//            {
-//                vMerkleBranch.clear();
-//                nIndex = -1;
-//                debug::log(0, "ERROR: SetMerkleBranch() : couldn't find tx in block");
-//                return 0;
-//            }
-//
-//            // Fill in merkle branch
-//            vMerkleBranch = pblock->GetMerkleBranch(nIndex);
+            /* Update the tx's hashBlock */
+            hashBlock = pblock->GetHash();
+
+            /* Locate the transaction */
+            for (nIndex = 0; nIndex < (int)pblock->vtx.size(); nIndex++)
+            {
+//TODO - need to verify correct usage of legacy transaction here...what is in vtx?
+//Probably should not compare tx pointer, but rather tx hash unless it must be same exact instance
+                if (pblock->vtx[nIndex] == *(CTransaction*)this)
+                    break;
+            }
+
+            if (nIndex >= (int)pblock->vtx.size())
+            {
+                vMerkleBranch.clear();
+                nIndex = -1;
+                debug::log(0, "ERROR: SetMerkleBranch() : couldn't find tx in block");
+                return 0;
+            }
+
+            // Fill in merkle branch
+            vMerkleBranch = pblock->GetMerkleBranch(nIndex);
         }
 
         // Is the tx in a block that's in the main chain
@@ -94,73 +114,32 @@ namespace Legacy
     }
 
 
-//TODO - This entire method needs to be rewritten to replace block index, or removed if we are not going to support this method
-//    int CMerkleTx::GetDepthInMainChain(CBlockIndex* &pindexRet) const
-//    {
-//        if (hashBlock == 0 || nIndex == -1)
-//            return 0;
-//
-//        // Find the block it claims to be in
-//        map<uint1024, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashBlock);
-//
-//        if (mi == mapBlockIndex.end())
-//            return 0;
-//
-//        CBlockIndex* pindex = (*mi).second;
-//
-//        if (!pindex || !pindex->IsInMainChain())
-//            return 0;
-//
-//        // Make sure the merkle branch connects to this block
-//        if (!fMerkleVerified)
-//        {
-//            if (CBlock::CheckMerkleBranch(GetHash(), vMerkleBranch, nIndex) != pindex->hashMerkleRoot)
-//                return 0;
-//
-//            fMerkleVerified = true;
-//        }
-//
-//        pindexRet = pindex;
-//        return pindexBest->nHeight - pindex->nHeight + 1;
-//
-//    }
-
-
-    /* Retrieve the depth in chain of block containing this transaction */
-    int CMerkleTx::GetDepthInMainChain() const
+    uint32_t CMerkleTx::GetDepthInMainChain() const
     {
-//TODO - replace use of CBlockIndex and block.ReadFromDisk
-// This method was added to replace old version that took CBlockIndex, see commented code above
-//        // Read block header
-//        CBlock block;
-//        if (!block.ReadFromDisk(pos.nFile, pos.nBlockPos, false))
-//            return 0;
-//
-//        // Find the block in the index
-//        map<uint1024, CBlockIndex*>::iterator mi = mapBlockIndex.find(block.GetHash());
-//
-//        if (mi == mapBlockIndex.end())
-//            return 0;
-//
-//        CBlockIndex* pindex = (*mi).second;
-//
-//        if (!pindex || !pindex->IsInMainChain())
-//            return 0;
-//
-//        return 1 + nBestHeight - pindex->nHeight;
+        if (hashBlock == 0 || nIndex == -1)
+            return 0;
 
-        return 0; //placeholder
+        // Find the block it claims to be in
+        BlockState blockState;
+        if (!TAO::Ledger::GetState(hashBlock, blockState))
+            return 0;
+
+        if (!blockState.IsInMainChain())
+            return 0;
+
+        return TAO::Ledger:nBestHeight - blockState.blockThis.nHeight + 1;
+
     }
 
 
     /* Retrieve the number of blocks remaining until transaction outputs are spendable. */
-    int CMerkleTx::GetBlocksToMaturity() const
+    uint32_t CMerkleTx::GetBlocksToMaturity() const
     {
         if (!(IsCoinBase() || IsCoinStake()))
             return 0;
 
-//TODO Use a setting in place of hard-coded value
-        return std::max(0, (100 + (config::fTestNet ? 1 : 20)) - GetDepthInMainChain());
+        uint32_t nMaturity = config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS;
+        return std::max(0, nMaturity - GetDepthInMainChain());
     }
 
 
