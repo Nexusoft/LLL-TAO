@@ -465,6 +465,10 @@ namespace LLD
                     nBufferBytes = 0;
                 }
 
+                /* Check that there is data to write. */
+                if(vIndexes.size() == 0)
+                    continue;
+
                 /* Create a new file if the sector file size is over file size limits. */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                 {
