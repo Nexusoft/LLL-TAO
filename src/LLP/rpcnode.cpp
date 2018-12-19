@@ -151,13 +151,12 @@ namespace LLP
         else
         {
             //special case to handle help response so that we put the multiline help response striaght into
-            if( jsonResponse.is_string())
+            if(jsonResponse.is_string())
                 jsonReply["result"] = jsonResponse.get<std::string>();
             else
                 jsonReply["result"] = jsonResponse;
+
             jsonReply["error"] = nullptr;
-
-
         }
 
         return jsonReply;
@@ -165,37 +164,26 @@ namespace LLP
 
     void RPCNode::ErrorReply(const json::json& jsonError, const json::json& jsonID)
     {
-        try
+        /* Default error status code is 500. */
+        int32_t nStatus = 500;
+
+        /* Get the error code from json. */
+        int32_t nError = jsonError["code"].get<int32_t>();
+
+        /* Set status by error code. */
+        switch(nError)
         {
-            /* Default error status code is 500. */
-            int32_t nStatus = 500;
+            case -32600:
+                nStatus = 400;
+                break;
 
-            /* Get the error code from json. */
-            int32_t nError = jsonError["code"].get<int>();
-
-            /* Set status by error code. */
-            switch(nError)
-            {
-                case -32600:
-                    nStatus = 400;
-                    break;
-
-                case -32601:
-                    nStatus = 404;
-                    break;
-            }
-
-            /* Send the response packet. */
-            PushResponse(nStatus, JSONRPCReply(json::json(nullptr), jsonError, jsonID).dump());
+            case -32601:
+                nStatus = 404;
+                break;
         }
-        catch( APIException& e)
-        {
-            debug::error("RPC Exception: %s", e.what());
-        }
-        catch (std::exception& e)
-        {
-            debug::error("RPC Exception: %s", e.what());
-        }
+
+        /* Send the response packet. */
+        PushResponse(nStatus, JSONRPCReply(json::json(nullptr), jsonError, jsonID).dump());
     }
 
     bool RPCNode::HTTPAuthorized(std::map<std::string, std::string>& mapHeaders)

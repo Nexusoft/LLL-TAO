@@ -107,8 +107,18 @@ namespace TAO::API
             runtime::Sleep(10);
         }
 
-        /* Dump the response to the console. */
-        printf("%s\n", apiNode.INCOMING.strContent.c_str());
+        /* Parse response JSON. */
+        json::json ret = json::json::parse(apiNode.INCOMING.strContent);
+
+        /* Check for errors. */
+        std::string strPrint = "";
+        if(!ret["error"].is_null())
+            strPrint = ret["error"]["message"];
+        else
+            strPrint = ret["result"].dump(4);
+
+        /* Dump response to console. */
+        printf("%s\n", strPrint.c_str());
 
         return 0;
     }

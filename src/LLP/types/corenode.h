@@ -22,10 +22,6 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    /* The core function objects for API's. */
-    extern std::map<std::string, std::map<std::string, std::function<json::json(bool, json::json)> > > mapFunctions;
-
-
     /** Core API
      *
      *  A node that can speak over HTTP protocols.
@@ -58,6 +54,15 @@ namespace LLP
         /** Main message handler once a packet is recieved. **/
         bool ProcessPacket();
 
+
+        /** Error Reply
+         *
+         *  Handles a reply error code and response.
+         *
+         *  @param[in] jsonError The error object.
+         *
+         **/
+        void ErrorReply(const json::json& jsonError);
 
     };
 }

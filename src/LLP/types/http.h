@@ -164,7 +164,7 @@ namespace LLP
                     {
                         /* Find the end of request type. */
                         std::string::size_type npos = strLine.find(' ', 0);
-                        INCOMING.strType = ToLower( strLine.substr(0, npos));
+                        INCOMING.strType = ToLower(strLine.substr(0, npos));
 
                         /* Find the start of version. */
                         std::string::size_type npos2 = strLine.find(' ', npos + 1);
@@ -178,11 +178,15 @@ namespace LLP
                     /* Handle normal headers. */
                     else if(pos != std::string::npos)
                     {
+                        /* Set the field value to lowercase. */
+                        std::string field = ToLower(strLine.substr(0, pos));
+
                         /* Parse out the content length field. */
-                        if(EqualsNoCase(strLine.substr(0, pos), "content-length"))
+                        if(field == "content-length")
                             INCOMING.nContentLength = stoi(strLine.substr(pos + 2));
+
                         /* Add line to the headers map. */
-                        INCOMING.mapHeaders[strLine.substr(0, pos)] = strLine.substr(pos + 2);
+                        INCOMING.mapHeaders[field] = strLine.substr(pos + 2);
 
                     }
 

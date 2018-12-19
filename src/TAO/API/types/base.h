@@ -56,7 +56,7 @@ namespace TAO::API
          **/
         json::json Execute(const std::string& strMethod, const json::json& jsonParams, bool fHelp = false)
         {
-            if( mapFunctions.find(strMethod) != mapFunctions.end())
+            if(mapFunctions.find(strMethod) != mapFunctions.end())
                 return mapFunctions[strMethod].Execute(jsonParams, fHelp);
             else
                 throw APIException(-32601, debug::strprintf("Method not found: %s", strMethod.c_str()));

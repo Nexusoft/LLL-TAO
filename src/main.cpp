@@ -31,6 +31,9 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/mempool.h>
 
+#include <TAO/API/include/supply.h>
+#include <TAO/API/include/accounts.h>
+
 /* Declare the Global LLD Instances. */
 namespace LLD
 {
@@ -116,6 +119,9 @@ int main(int argc, char** argv)
     /* Set up RPC server */
     TAO::API::RPCCommands = new TAO::API::RPC();
     TAO::API::RPCCommands->Initialize();
+
+    TAO::API::accounts.Initialize();
+    TAO::API::supply.Initialize();
     LLP::Server<LLP::RPCNode>* RPC_SERVER = new LLP::Server<LLP::RPCNode>(config::GetArg("-rpcport", config::fTestNet? 8336 : 9336), 1, 30, false, 0, 0, 60, config::GetBoolArg("-listen", true), config::GetBoolArg("-meters", false));
 
 

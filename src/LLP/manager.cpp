@@ -214,8 +214,6 @@ namespace LLP
             mapAddrInfo[nHash] = addr_info;
         }
 
-        printf("keys.size() = %u", s);
-
         print();
     }
 
@@ -227,9 +225,6 @@ namespace LLP
 
         for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
             pDatabase->WriteAddressInfo(it->first, it->second);
-
-
-        printf("keys.size() = %u", (uint32_t)pDatabase->GetKeys().size());
 
         print();
     }

@@ -72,7 +72,7 @@ namespace LLP
 
             mapHeaders.clear();
             strContent = "";
-            nContentLength = -1; // Set this to -1 initially so that we can determine when it has been set to a valid value, even if that is 0
+            nContentLength = 0;
 
             fHeader = false;
         }

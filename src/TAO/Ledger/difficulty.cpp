@@ -31,7 +31,7 @@ namespace Core
 			return nBits / 10000000.0;
 
 		/* Check for divide by zero. */
-		if(nBits & 0xff000000)
+		if(nBits & 0x00ffffff)
 			return 0.0;
 
 		/* Get the Proportion of the Bits First. */
