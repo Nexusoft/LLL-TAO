@@ -68,7 +68,7 @@ public:
 };
 
 
-int main(int argc, char** argv)
+int test(int argc, char** argv)
 {
     /* Handle all the signals with signal handler method. */
     SetupSignals();
@@ -80,7 +80,7 @@ int main(int argc, char** argv)
     TestDB test("r+");
     for(uint32_t i = 0; i < 100000; i++)
     {
-        //test.WriteTest(i, i);
+        //test.WriteTest(i, i); //TODO: find why id 99999 is not writing to disk
 
         uint32_t value;
         test.ReadTest(i, value);
@@ -95,7 +95,7 @@ int main(int argc, char** argv)
     return 0;
 }
 
-int main2(int argc, char** argv)
+int main(int argc, char** argv)
 {
 
     /* Handle all the signals with signal handler method. */
