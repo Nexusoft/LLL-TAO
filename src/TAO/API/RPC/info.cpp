@@ -25,7 +25,8 @@ ________________________________________________________________________________
 namespace TAO::API
 {
 
-
+    /* getinfo
+       Returns an object containing various state info */ 
     json::json RPC::GetInfo(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() != 0)
@@ -70,6 +71,8 @@ namespace TAO::API
         return obj;
     }
 
+    /* getpeerinfo
+       Returns data about each connected network node */
     json::json RPC::GetPeerInfo(const json::json& jsonParams, bool fHelp)
     {
         json::json response;
@@ -77,7 +80,7 @@ namespace TAO::API
         if (fHelp || jsonParams.size() != 0)
                  return std::string(
                      "getpeerinfo"
-                     "Returns data about each connected network node.");
+                     " - Returns data about each connected network node.");
 
         std::vector<LLP::AddressInfo> vLegacyInfo;
         std::vector<LLP::AddressInfo> vTritiumInfo;
@@ -132,7 +135,8 @@ namespace TAO::API
     }
 
 
-    
+    /* getmininginfo
+       Returns an object containing mining-related information.*/
     json::json RPC::GetMiningInfo(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() != 0)

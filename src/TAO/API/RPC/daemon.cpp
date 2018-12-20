@@ -30,6 +30,8 @@ namespace TAO::API
     //     return "Nexus server stopping";
     // }
 
+    /* getconnectioncount
+       Returns the number of connections to other nodes */
     json::json RPC::GetConnectionCount(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() != 0)
@@ -40,6 +42,7 @@ namespace TAO::API
         return GetTotalConnectionCount();
     }
 
+    /* Restart all node connections */
     json::json RPC::Reset(const json::json& jsonParams, bool fHelp)
     {
         if(fHelp || jsonParams.size() != 0)

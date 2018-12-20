@@ -17,6 +17,8 @@ ________________________________________________________________________________
 namespace TAO::API
 {
 
+    /* backupwallet <destination>
+    *  Safely copies wallet.dat to destination, which can be a directory or a path with filename */
     json::json RPC::BackupWallet(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() != 1)
@@ -100,6 +102,9 @@ namespace TAO::API
     //     delete (int64*)parg;
     // }
 
+    /* walletpassphrase <passphrase> <timeout> [mintonly]
+    *  Stores the wallet decryption key in memory for <timeout> seconds.
+    *  mintonly is optional true/false allowing only block minting*/
     // json::json walletpassphrase(const json::json& jsonParams, bool fHelp)
     // {
     //     if (pwalletMain->IsCrypted() && (fHelp || jsonParams.size() < 2 || jsonParams.size() > 3))
@@ -145,7 +150,8 @@ namespace TAO::API
     //     return Value::null;
     // }
 
-
+    /* walletpassphrasechange <oldpassphrase> <newpassphrase>
+    *  Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>*/
     // json::json walletpassphrasechange(const json::json& jsonParams, bool fHelp)
     // {
     //     if (pwalletMain->IsCrypted() && (fHelp || jsonParams.size() != 2))
@@ -179,6 +185,10 @@ namespace TAO::API
     // }
 
 
+    /* walletlock"
+    *  Removes the wallet encryption key from memory, locking the wallet.
+    *  After calling this method, you will need to call walletpassphrase again
+    *  before being able to call any methods which require the wallet to be unlocked */
     // json::json walletlock(const json::json& jsonParams, bool fHelp)
     // {
     //     if (pwalletMain->IsCrypted() && (fHelp || jsonParams.size() != 0))
@@ -201,7 +211,8 @@ namespace TAO::API
     //     return Value::null;
     // }
 
-
+    /* encryptwallet <passphrase>
+    *  Encrypts the wallet with <passphrase>. */
     // json::json encryptwallet(const json::json& jsonParams, bool fHelp)
     // {
     //     if (!pwalletMain->IsCrypted() && (fHelp || jsonParams.size() != 1))
@@ -234,7 +245,8 @@ namespace TAO::API
     //     return "wallet encrypted; Nexus server stopping, restart to run with encrypted wallet";
     // }
 
-    // Nexus: check wallet integrity
+    /* checkwallet
+    *  Check wallet for integrity */
     json::json RPC::CheckWallet(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() > 0)
@@ -256,7 +268,8 @@ namespace TAO::API
     //     return result;
     }
 
-    /* List the trust keys this wallet.dat file contains. */
+    /* listtrustkeys
+    *  List all the Trust Keys this Node owns */
     json::json RPC::ListTrustKeys(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() > 0)
@@ -282,7 +295,8 @@ namespace TAO::API
     //     return result;
     }
 
-    // Nexus: repair wallet
+    /* repairwallet
+    *  Repair wallet if checkwallet reports any problem */
     json::json RPC::RepairWallet(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() > 0)
@@ -322,6 +336,8 @@ namespace TAO::API
     //     }
     // };
 
+    /* rescan
+    *  Rescans the database for relevant wallet transactions */
     json::json RPC::Rescan(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() != 0)
@@ -334,6 +350,8 @@ namespace TAO::API
     //     return "success";
     }
 
+    /* importprivkey <PrivateKey> [label]
+    *  Adds a private key (as returned by dumpprivkey) to your wallet */
     json::json RPC::ImportPrivKey(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() < 1 || jsonParams.size() > 2)
@@ -375,6 +393,8 @@ namespace TAO::API
     //     return Value::null;
     }
 
+    /* dumpprivkey <NexusAddress>
+    *  Reveals the private key corresponding to <NexusAddress> */
     json::json RPC::DumpPrivKey(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() != 1)
@@ -397,14 +417,17 @@ namespace TAO::API
     //     return Wallet::NexusSecret(vchSecret, fCompressed).ToString();
     }
 
-    /** Import List of Private Keys amd if they import properly or fail with their own code int he output sequenc **/
+    /* importkeys
+    *  Import List of Private Keys and return if they import properly or fail with their own code in the output sequence" 
+    *  You need to list the imported keys in a JSON array of {[account],[privatekey]} */
     json::json RPC::ImportKeys(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() < 1)
         {
             return std::string(
                 "importkeys"
-                " - You need to list the imported keys in a JSON array of {[account],[privatekey]}");
+                " - Import List of Private Keys and return if they import properly or fail with their own code in the output sequence" 
+                " You need to list the imported keys in a JSON array of {[account],[privatekey]}");
         }
             /** Make sure the Wallet is Unlocked fully before proceeding. **/
     //         if (pwalletMain->IsLocked())
@@ -456,15 +479,16 @@ namespace TAO::API
     //         return response;
     }
 
-    /** Export the private keys of the current UTXO values.
-        This will allow the importing and exporting of private keys much easier. **/
+    /* exportkeys
+    *  Export the private keys of the current UTXO values.
+    *  This will allow the importing and exporting of private keys much easier. */
     json::json RPC::ExportKeys(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() != 0)
             return std::string(
                 "exportkeys"
-                " - This command dumps the private keys and account names of all unspent outputs."
-                " This allows the easy dumping and importing of all private keys on the system");
+                " - Export the private keys of the current UTXO values. "
+                " This will allow the importing and exporting of private keys much easier");
 
     //     /** Disallow the exporting of private keys if the encryption key is not available in the memory. **/
     //     if (pwalletMain->IsLocked())

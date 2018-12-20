@@ -17,6 +17,10 @@ ________________________________________________________________________________
 namespace TAO::API
 {
 
+    /* getnewaddress [account]
+       Returns a new Nexus address for receiving payments.
+       If [account] is specified (recommended), it is added to the address book
+       so payments received with the address will be credited to [account] */
     json::json RPC::GetNewAddress(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() > 1)
@@ -84,12 +88,14 @@ namespace TAO::API
     //     return Wallet::NexusAddress(account.vchPubKey);
     // }
 
-    // json::json getaccountaddress(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || jsonParams.size() != 1)
-    //         return std::string(
-    //             "getaccountaddress <account>"
-    //             " - Returns the current Nexus address for receiving payments to this account.");
+    /* getaccountaddress <account>
+       Returns the current Nexus address for receiving payments to this account */
+    json::json RPC::GetAccountAddress(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 1)
+            return std::string(
+                "getaccountaddress <account>"
+                " - Returns the current Nexus address for receiving payments to this account.");
 
     //     // Parse the account first so we don't generate a key if there's an error
     //     string strAccount = AccountFromValue(params[0]);
@@ -98,10 +104,11 @@ namespace TAO::API
     //     ret = GetAccountAddress(strAccount).ToString();
 
     //     return ret;
-    // }
+    }
 
 
-
+    /* setaccount <Nexusaddress> <account>
+       Sets the account associated with the given address */
     json::json RPC::SetAccount(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() < 1 || jsonParams.size() > 2)
@@ -131,7 +138,8 @@ namespace TAO::API
     //     return Value::null;
      }
 
-
+    /* getaccount <Nexusaddress>
+       Returns the account associated with the given address */
     json::json RPC::GetAccount(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() != 1)
@@ -150,7 +158,8 @@ namespace TAO::API
     //     return strAccount;
     }
 
-
+    /* getaddressesbyaccount <account>
+       Returns the list of addresses for the given account */
     json::json RPC::GetAddressesByAccount(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() != 1)
@@ -185,6 +194,9 @@ namespace TAO::API
     //     return true;
     //}
 
+    /* sendtoaddress <Nexusaddress> <amount> [comment] [comment-to]
+    *  - <amount> is a real and is rounded to the nearest 0.000001
+    *  requires wallet passphrase to be set with walletpassphrase first */
     // json::json sendtoaddress(const json::json& jsonParams, bool fHelp)
     // {
     //     if (pwalletMain->IsCrypted() && (fHelp || jsonParams.size() < 2 || jsonParams.size() > 4))
@@ -223,6 +235,8 @@ namespace TAO::API
     //     return wtx.GetHash().GetHex();
     // }
 
+    /* signmessage <Nexusaddress> <message>
+       Sign a message with the private key of an address */
     json::json RPC::SignMessage(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() != 2)
@@ -255,6 +269,8 @@ namespace TAO::API
     //     return EncodeBase64(&vchSig[0], vchSig.size());
     }
 
+    /* verifymessage <Nexusaddress> <signature> <message>
+       Verify a signed message */
     json::json RPC::VerifyMessage(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() != 3)
@@ -287,7 +303,8 @@ namespace TAO::API
     //     return (Wallet::NexusAddress(key.GetPubKey()) == addr);
     }
 
-
+    /* getreceivedbyaddress <Nexusaddress> [minconf=1]
+       Returns the total amount received by <Nexusaddress> in transactions with at least [minconf] confirmations */
     json::json RPC::GetReceivedByAddress(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() < 1 || jsonParams.size() > 2)
@@ -338,7 +355,8 @@ namespace TAO::API
     //     }
     // }
 
-
+    /* getreceivedbyaccount <account> [minconf=1]
+       Returns the total amount received by addresses with <account> in transactions with at least [minconf] confirmations */
     json::json RPC::GetReceivedByAccount(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() < 1 || jsonParams.size() > 2)
@@ -408,7 +426,9 @@ namespace TAO::API
     //     return GetAccountBalance(walletdb, strAccount, nMinDepth);
     // }
 
-
+    /* getbalance [account] [minconf=1]
+    *  If [account] is not specified, returns the server's total available balance.
+    *  If [account] is specified, returns the balance in the account */
     json::json RPC::GetBalance(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() > 2)
@@ -461,7 +481,8 @@ namespace TAO::API
     //     return ValueFromAmount(nBalance);
     }
 
-
+    /* move <fromaccount> <toaccount> <amount> [minconf=1] [comment]
+       Move from one account in your wallet to another */
     json::json RPC::MoveCmd(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() < 3 || jsonParams.size() > 5)
@@ -630,6 +651,10 @@ namespace TAO::API
     //     return wtx.GetHash().GetHex();
     // }
 
+    /* addmultisigaddress <nrequired> <'[\"key\",\"key\"]'> [account]
+    *  Add a nrequired-to-sign multisignature address to the wallet
+    *  each key is a nexus address or hex-encoded public key.
+    *  If [account] is specified, assign address to [account]. */
     json::json RPC::AddMultisigAddress(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() < 2 || jsonParams.size() > 3)
@@ -805,6 +830,14 @@ namespace TAO::API
     //     return ret;
     // }
 
+    /* listreceivedbyaddress [minconf=1] [includeempty=false]
+    *  [minconf] is the minimum number of confirmations before payments are included.
+    *  [includeempty] whether to include addresses that haven't received any payments
+    *  Returns an array of objects containing:
+    *  \"address\" : receiving address
+    *  \"account\" : the account of the receiving address
+    *  \"amount\" : total amount received by the address
+    *  \"confirmations\" : number of confirmations of the most recent transaction included */
     json::json RPC::ListReceivedByAddress(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() > 2)
@@ -821,6 +854,14 @@ namespace TAO::API
     //     return ListReceived(params, false);
     }
 
+    /* listreceivedbyaccount [minconf=1] [includeempty=false]
+    *  [minconf] is the minimum number of confirmations before payments are included.
+    *  [includeempty] whether to include accounts that haven't received any payments
+    *  Returns an array of objects containing:
+    *  \"address\" : receiving address
+    *  \"account\" : the account of the receiving address
+    *  \"amount\" : total amount received by the address
+    *  \"confirmations\" : number of confirmations of the most recent transaction incl*/
     json::json RPC::ListReceivedByAccount(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() > 2)
@@ -929,6 +970,8 @@ namespace TAO::API
     //     }
     // }
 
+    /* listtransactions [account] [count=10] [from=0]
+       Returns up to [count] most recent transactions skipping the first [from] transactions for account [account]*/
     json::json RPC::ListTransactions(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() > 3)
@@ -1005,7 +1048,8 @@ namespace TAO::API
      }
 
 
-    /* */
+    /* listaddresses [max=100]
+       Returns list of addresses */
     json::json RPC::ListAddresses(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() != 0)
@@ -1031,7 +1075,8 @@ namespace TAO::API
     //     return list;
     }
 
-
+    /* listaccounts
+       Returns Object that has account names as keys, account balances as values */
     json::json RPC::ListAccounts(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() > 1)
@@ -1080,6 +1125,8 @@ namespace TAO::API
     //     return ret;
     }
 
+    /* listsinceblock [blockhash] [target-confirmations]
+       Get all transactions in blocks since block [blockhash], or all transactions if omitted **/
     json::json RPC::ListSinceBlock(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp)
@@ -1145,6 +1192,8 @@ namespace TAO::API
     //     return ret;
     }
 
+    /* gettransaction <txid>
+       Get detailed information about <txid> */
     json::json RPC::GetTransaction(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() != 1)
@@ -1179,9 +1228,8 @@ namespace TAO::API
     //     return entry;
     }
 
-    //
-    // Raw transactions
-    //
+    /* getrawtransaction <txid>
+       Returns a string that is serialized, hex-encoded data for <txid> */
     json::json RPC::GetRawTransaction(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() != 1)
@@ -1203,6 +1251,9 @@ namespace TAO::API
     //     return HexStr(ssTx.begin(), ssTx.end());
     }
 
+    /* sendrawtransaction <hex string> [checkinputs=0]
+       Submits raw transaction (serialized, hex-encoded) to local node and network.
+       If checkinputs is non-zero, checks the validity of the inputs of the transaction before sending it */
     json::json RPC::SendRawTransaction(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() < 1 || jsonParams.size() > 2)
@@ -1253,7 +1304,8 @@ namespace TAO::API
     //     return hashTx.GetHex();
     }
 
-
+    /* validateaddress <Nexusaddress>
+       Return information about <Nexusaddress> */
     json::json RPC::ValidateAddress(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() != 1)
@@ -1306,7 +1358,7 @@ namespace TAO::API
     //     return ret;
     }
 
-    // Nexus: make a public-private key pair
+    /* Make a public/private key pair. [prefix] is optional preferred prefix for the public key */
     json::json RPC::MakeKeyPair(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() > 1)
@@ -1337,7 +1389,9 @@ namespace TAO::API
     //     return result;
     }
 
-    /** TODO: Account balance based on unspent outputs in the core.
+    /* unspentbalance [\"address\",...]
+       Returns the total amount of unspent Nexus for given address. This is a more accurate command than Get Balance */
+    /* TODO: Account balance based on unspent outputs in the core.
         This will be good to determine the actual balance based on the registry of the current addresses
         Associated with the specific accounts. This needs to be fixed properly so thaat the wallet accounting
         is done properly.
@@ -1403,7 +1457,11 @@ namespace TAO::API
     }
 
 
-
+    /* listunspent [minconf=1] [maxconf=9999999]  [\"address\",...]
+       Returns array of unspent transaction outputs with between minconf and maxconf (inclusive) confirmations.
+       Optionally filtered to only include txouts paid to specified addresses.
+       Results are an array of Objects, each of which has:
+       {txid, vout, scriptPubKey, amount, confirmations} */
     json::json RPC::ListUnspent(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() > 3)
