@@ -961,13 +961,21 @@ public:
      **/
     DataStream& read(char* pch, int nSize)
     {
-       /* Copy the bytes into tmp object. */
-       std::copy((uint8_t*)&at(nReadPos), (uint8_t*)&at(nReadPos) + nSize, (uint8_t*)pch);
+        /* Check size constraints. */
+        if(nReadPos + nSize >= size())
+        {
+            debug::error(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos);
 
-       /* Iterate the read position. */
-       nReadPos += nSize;
+            return *this;
+        }
 
-       return *this;
+        /* Copy the bytes into tmp object. */
+        std::copy((uint8_t*)&at(nReadPos), (uint8_t*)&at(nReadPos) + nSize, (uint8_t*)pch);
+
+        /* Iterate the read position. */
+        nReadPos += nSize;
+
+        return *this;
     }
 
 

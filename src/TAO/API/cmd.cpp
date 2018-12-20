@@ -104,7 +104,7 @@ namespace TAO::API
 
             /* Read the response packet. */
             apiNode.ReadPacket();
-            runtime::Sleep(10);
+            runtime::sleep(10);
         }
 
         /* Parse response JSON. */
@@ -213,7 +213,7 @@ namespace TAO::API
 
             /* Read the response packet. */
             rpcNode.ReadPacket();
-            runtime::Sleep(10);
+            runtime::sleep(10);
         }
 
         /* Dump the response to the console. */

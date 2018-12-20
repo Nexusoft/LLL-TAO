@@ -51,7 +51,7 @@ namespace LLP
         uint32_t nLastSamples;
 
 
-        /** Timer object to keep track of ping latency. **/
+        /** timer object to keep track of ping latency. **/
         std::map<uint32_t, uint64_t> mapLatencyTracker;
 
 

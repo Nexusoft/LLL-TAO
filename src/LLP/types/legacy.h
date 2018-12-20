@@ -64,8 +64,8 @@ namespace LLP
         uint32_t nLastPing;
 
 
-        /** Timer object to keep track of ping latency. **/
-        std::map<uint64_t, runtime::Timer> mapLatencyTracker;
+        /** timer object to keep track of ping latency. **/
+        std::map<uint64_t, runtime::timer> mapLatencyTracker;
 
 
         /** Mao to keep track of sent request ID's while witing for them to return. **/

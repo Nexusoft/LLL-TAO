@@ -65,10 +65,39 @@ public:
     {
         return Read(std::make_pair(std::string("test"), nKey), nValue);
     }
+
+    bool GetAll(uint32_t nKey, std::vector<uint32_t>& vRecords)
+    {
+        std::vector<LLD::SectorKey> vKeys;
+
+        std::pair<std::string, uint32_t> pair = std::make_pair(std::string("test"), nKey);
+
+        DataStream ssKey(SER_LLD, LLD::DATABASE_VERSION);
+        ssKey << pair;
+
+        if(!pSectorKeys->Get(ssKey, vKeys))
+            return false;
+
+        for(auto & key : vKeys)
+        {
+            std::vector<uint8_t> vRecord;
+            if(Get(key.vKey, vRecord))
+            {
+                uint32_t nRecord = 0;
+                printf("%u\n", vRecord.size());
+                DataStream ssData(vRecord, SER_LLD, LLD::DATABASE_VERSION);
+                ssData >> nRecord;
+
+                vRecords.push_back(nRecord);
+            }
+        }
+
+        return true;
+    }
 };
 
 
-int test(int argc, char** argv)
+int main(int argc, char** argv)
 {
     /* Handle all the signals with signal handler method. */
     SetupSignals();
@@ -78,24 +107,35 @@ int test(int argc, char** argv)
     config::ParseParameters(argc, argv);
 
     TestDB test("r+");
-    for(uint32_t i = 0; i < 100000; i++)
+
+    std::vector<uint32_t> vRecords;
+    if(test.GetAll(0, vRecords))
+    {
+        for(auto value : vRecords)
+        {
+            printf("Value %u\n", value);
+        }
+    }
+
+
+    for(uint32_t i = 0; i < 10000; i++)
     {
         //test.WriteTest(i, i); //TODO: find why id 99999 is not writing to disk
 
         uint32_t value;
-        test.ReadTest(i, value);
+        //test.ReadTest(i, value);
 
-        if(value % 10000 == 0)
-            printf("Value %u\n", value);
+        //if(value % 10000 == 0)
+        //printf("Value %u\n", value);
     }
 
     while(!config::fShutdown)
-        runtime::Sleep(1000);
+        runtime::sleep(1000);
 
     return 0;
 }
 
-int main(int argc, char** argv)
+int test(int argc, char** argv)
 {
 
     /* Handle all the signals with signal handler method. */
@@ -219,7 +259,7 @@ int main(int argc, char** argv)
 
     /* Busy wait for Shutdown. */
     while(!config::fShutdown)
-        runtime::Sleep(1000);
+        runtime::sleep(1000);
 
 
     /* Shutdown the servers and their subsystems */

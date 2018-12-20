@@ -151,7 +151,7 @@ namespace LLP
                     try
                     {
                         //TODO: Cleanup threads and sleeps. Make more efficient to reduce total CPU cycles
-                        runtime::Sleep(10);
+                        runtime::sleep(10);
 
                         /* Skip over Inactive Connections. */
                         if(!CONNECTIONS[nIndex] || !CONNECTIONS[nIndex]->Connected())

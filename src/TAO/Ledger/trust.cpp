@@ -841,8 +841,8 @@ namespace Consensus
 
         while(!fShutdown)
         {
-            /* Sleep call to keep the thread from running. */
-            runtime::Sleep(10);
+            /* sleep call to keep the thread from running. */
+            runtime::sleep(10);
 
             /* Don't stake if the wallet is locked. */
             if (pwalletMain->IsLocked())
@@ -903,7 +903,7 @@ namespace Consensus
                     if(GetArg("-verbose", 0) >= 2)
                         debug::error("Stake Minter : Genesis - Failed to Add Coinstake Inputs");
 
-                    runtime::Sleep(1000);
+                    runtime::sleep(1000);
 
                     continue;
                 }
@@ -913,7 +913,7 @@ namespace Consensus
                     if(GetArg("-verbose", 0) >= 2)
                         debug::error("Stake Minter : Genesis - Failed to Get Coinstake Age.");
 
-                    runtime::Sleep(1000);
+                    runtime::sleep(1000);
 
                     continue;
                 }
@@ -973,7 +973,7 @@ namespace Consensus
             bool fFound = false;
             while(!fFound)
             {
-                runtime::Sleep(120);
+                runtime::sleep(120);
 
                 if(hashBestChain != hashBest)
                 {

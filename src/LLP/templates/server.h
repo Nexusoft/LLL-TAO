@@ -235,7 +235,7 @@ namespace LLP
             /* Loop connections. */
             while(!config::fShutdown)
             {
-                runtime::Sleep(1000);
+                runtime::sleep(1000);
                 uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
 
 
@@ -316,7 +316,7 @@ namespace LLP
 
             /* Don't listen until all data threads are created. */
             while(DATA_THREADS.size() < MAX_THREADS)
-                runtime::Sleep(1000);
+                runtime::sleep(1000);
 
             /* Main listener loop. */
             while(fLISTEN)
@@ -475,12 +475,12 @@ namespace LLP
             if(!config::GetBoolArg("-meters", false))
                 return;
 
-            runtime::Timer TIMER;
+            runtime::timer TIMER;
             TIMER.Start();
 
             while(fMETER)
             {
-                runtime::Sleep(10000);
+                runtime::sleep(10000);
 
                 uint32_t nGlobalConnections = 0;
                 for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
