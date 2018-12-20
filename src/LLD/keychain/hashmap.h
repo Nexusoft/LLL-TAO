@@ -192,7 +192,7 @@ namespace LLD
         void Initialize()
         {
             /* Create directories if they don't exist yet. */
-            if(filesystem::create_directories(strBaseLocation))
+            if(!filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
                 debug::log(0, FUNCTION "Generated Path %s", __PRETTY_FUNCTION__, strBaseLocation.c_str());
 
             /* Build the hashmap indexes. */

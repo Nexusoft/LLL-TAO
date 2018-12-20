@@ -46,7 +46,7 @@ namespace LLD
 namespace LLP
 {
     Server<TritiumNode>* TRITIUM_SERVER;
-    Server<LegacyNode> *LEGACY_SERVER;
+    Server<LegacyNode> * LEGACY_SERVER;
 }
 
 #include <LLC/include/random.h>
@@ -81,7 +81,7 @@ int main(int argc, char** argv)
 
 
     /* Create directories if they don't exist yet. */
-    if(filesystem::create_directory(config::GetDataDir(false)))
+    if(!filesystem::exists(config::GetDataDir(false)) && filesystem::create_directory(config::GetDataDir(false)))
         debug::log(0, FUNCTION "Generated Path %s", __PRETTY_FUNCTION__, config::GetDataDir(false).c_str());
 
 
