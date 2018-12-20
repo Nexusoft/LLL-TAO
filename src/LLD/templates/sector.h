@@ -158,9 +158,6 @@ namespace LLD
             /* Read only flag when instantiating new database. */
             fReadOnly = (!strchr(pszMode, '+') && !strchr(pszMode, 'w'));
 
-            /* Initialize the Keys Class. */
-            pSectorKeys = new KeychainType((config::GetDataDir() + strName + "/keychain/"));
-
             /* Initialize the Database. */
             Initialize();
 
@@ -218,6 +215,9 @@ namespace LLD
                 /* Increment the Current File */
                 ++nCurrentFile;
             }
+
+            /* Initialize the Keys Class. */
+            pSectorKeys = new KeychainType((config::GetDataDir() + strName + "/keychain/"));
 
             pTransaction = nullptr;
             fInitialized = true;
@@ -445,6 +445,10 @@ namespace LLD
             /* The mutex for the condition. */
             std::mutex CONDITION_MUTEX;
 
+            /* Wait for initialization. */
+            while(!fInitialized)
+                sleep(100);
+
             while(true)
             {
                 /* Wait for buffer to empty before shutting down. */
@@ -459,15 +463,12 @@ namespace LLD
                 /* Swap the buffer object to get ready for writes. */
                 std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vIndexes;
                 {
-                    LOCK(BUFFER_MUTEX);
+                    std::unique_lock<std::recursive_mutex> lk(BUFFER_MUTEX);
 
                     vIndexes.swap(vDiskBuffer);
                     nBufferBytes = 0;
                 }
-
-                /* Check that there is data to write. */
-                if(vIndexes.size() == 0)
-                    continue;
+                
 
                 /* Create a new file if the sector file size is over file size limits. */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
@@ -491,9 +492,8 @@ namespace LLD
 
                 /* Iterate through buffer to queue disk writes. */
                 std::vector<uint8_t> vWrite;
-                for(auto vObj : vIndexes)
+                for(auto & vObj : vIndexes)
                 {
-
                     /* Assign the Key to Keychain. */
                     pSectorKeys->Put(SectorKey(READY, vObj.first, nCurrentFile, nCurrentFileSize, vObj.second.size()));
 
