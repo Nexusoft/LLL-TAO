@@ -274,7 +274,7 @@ build/API_supply_%.o: ./src/TAO/API/supply/%.cpp $(HEADERS)
 build/API_RPC_%.o: ./src/TAO/API/RPC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/Legacy_%.o: ./src/TAO/Legacy/%.cpp $(HEADERS)
+build/Legacy_%.o: ./src/Legacy/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Ledger_%.o: ./src/TAO/Ledger/%.cpp $(HEADERS)
@@ -412,7 +412,7 @@ build/API_RPC_%.o: src/TAO/API/RPC/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Legacy_%.o: src/TAO/Legacy/%.cpp $(HEADERS)
+build/Legacy_%.o: src/Legacy/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -578,7 +578,7 @@ build/API_RPC_%.o: src/TAO/API/RPC/%.cpp
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Legacy_%.o: src/TAO/Legacy/%.cpp
+build/Legacy_%.o: src/Legacy/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
