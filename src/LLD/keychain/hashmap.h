@@ -110,7 +110,7 @@ namespace LLD
             Initialize();
         }
 
-        BinaryHashMap(std::string strBaseLocationIn, uint32_t nTotalBuckets, uint32_t nMaxCacheSize) : strBaseLocation(strBaseLocationIn), HASHMAP_TOTAL_BUCKETS(nTotalBuckets), HASHMAP_MAX_CACHE_SZIE(nMaxCacheSize), HASHMAP_MAX_KEY_SIZE(32), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11), fCacheActive(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>(32)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
+        BinaryHashMap(std::string strBaseLocationIn, uint32_t nTotalBuckets, uint32_t nMaxCacheSize) : strBaseLocation(strBaseLocationIn), HASHMAP_TOTAL_BUCKETS(nTotalBuckets), HASHMAP_MAX_CACHE_SZIE(nMaxCacheSize), HASHMAP_MAX_KEY_SIZE(32), HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11), fCacheActive(false), fileCache(new TemplateLRU<uint32_t, std::fstream*>(8)), CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
 
@@ -141,24 +141,6 @@ namespace LLD
         }
 
 
-        /** GetBucket
-         *
-         *  Calculates a bucket to be used for the hashmap allocation
-         *
-         *  @param[in] vKey The key object to calculate with.
-         *
-         *  @return The bucket assigned to key
-         *
-         **/
-        uint32_t GetBucket(const std::vector<uint8_t> vKey) const
-        {
-            uint64_t nBucket = 0;
-            for(int i = 0; i < vKey.size() && i < 8; i++)
-                nBucket += vKey[i] << (8 * i);
-
-            return nBucket % HASHMAP_TOTAL_BUCKETS;
-        }
-
         /** CompressKey
          *
          *  Compresses a given key until it matches size criteria.
@@ -181,6 +163,24 @@ namespace LLD
                 /* Resize the container to half its size. */
                 vData.resize(vData.size() / 2);
             }
+        }
+
+
+        /** GetBucket
+         *
+         *  Calculates a bucket to be used for the hashmap allocation
+         *
+         *  @param[in] vKey The key object to calculate with.
+         *
+         *  @return The bucket assigned to key
+         *
+         **/
+        uint32_t GetBucket(std::vector<uint8_t> vKey)
+        {
+            uint32_t nBucket = 0;
+            std::copy((uint8_t*)&vKey[0] + (vKey.size() - std::min((uint32_t)4, (uint32_t)vKey.size())), (uint8_t*)&vKey[0] + vKey.size(), (uint8_t*)&nBucket);
+
+            return nBucket % HASHMAP_TOTAL_BUCKETS;
         }
 
 
@@ -282,6 +282,9 @@ namespace LLD
             /* Get the file binary position. */
             uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
 
+            /* Set the cKey return value non compressed. */
+            cKey.vKey = vKey;
+
             /* Compress any keys larger than max size. */
             CompressKey(vKey, HASHMAP_MAX_KEY_SIZE);
 
@@ -312,6 +315,9 @@ namespace LLD
                     /* Deserialie key and return if found. */
                     DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
                     ssKey >> cKey;
+
+                    /* Debug Output of Sector Key Information. */
+                    debug::log(4, FUNCTION "State: %s | Length: %u | Bucket %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, nBucket, nFilePos, hashmap[nBucket] - 1, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str());
 
                     return true;
                 }
@@ -353,7 +359,7 @@ namespace LLD
                 /* Write the blank data to the new file handle. */
                 std::fstream stream(file, std::ios::out | std::ios::binary | std::ios::trunc);
                 if(!stream)
-                    return debug::error("%s", strerror(errno));
+                    return debug::error(FUNCTION "%s", __PRETTY_FUNCTION__, strerror(errno));
 
                 stream.write((char*)&vSpace[0], vSpace.size());
                 stream.close();
@@ -369,7 +375,7 @@ namespace LLD
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream)
-                    return false;
+                    return debug::error(FUNCTION "Failed to generate file object", __PRETTY_FUNCTION__);
 
                 /* If not in cache, add to the LRU. */
                 fileCache->Put(hashmap[nBucket], pstream);
@@ -392,6 +398,9 @@ namespace LLD
             pstream->write((char*)&ssKey[0], ssKey.size());
             //pstream->flush();
 
+            /* Debug Output of Sector Key Information. */
+            debug::log(4, FUNCTION "State: %s | Length: %u | Bucket %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, nBucket, nFilePos, hashmap[nBucket] - 1, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str());
+
             /* Signal the cache thread to wake up. */
             fCacheActive = true;
             CONDITION.notify_all();
@@ -408,7 +417,7 @@ namespace LLD
             {
                 /* Wait for Database to Initialize. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-                CONDITION.wait(CONDITION_LOCK, [this]{ return fCacheActive.load(); });
+                CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(1000), [this]{ return fCacheActive.load(); });
 
                 /* Flush the disk hashmap. */
                 std::vector<uint8_t> vDisk;
@@ -418,8 +427,6 @@ namespace LLD
                 std::fstream stream(debug::strprintf("%s_hashmap.index", strBaseLocation.c_str()), std::ios::out | std::ios::binary);
                 stream.write((char*)&vDisk[0], vDisk.size());
                 stream.close();
-
-                //debug::log(0, FUNCTION " Flushed %u Index Bytes to Disk", __PRETTY_FUNCTION__, vDisk.size());
 
                 fCacheActive = false;
             }

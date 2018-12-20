@@ -49,10 +49,53 @@ namespace LLP
     Server<LegacyNode> * LEGACY_SERVER;
 }
 
-#include <LLC/include/random.h>
-#include <cmath>
+class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU>
+{
+public:
+    /** The Database Constructor. To determine file location and the Bytes per Record. **/
+    TestDB(const char* pszMode="r+")
+    : SectorDatabase("test", pszMode) {}
+
+    bool WriteTest(uint32_t nKey, uint32_t nValue)
+    {
+        return Write(std::make_pair(std::string("test"), nKey), nValue);
+    }
+
+    bool ReadTest(uint32_t nKey, uint32_t &nValue)
+    {
+        return Read(std::make_pair(std::string("test"), nKey), nValue);
+    }
+};
+
 
 int main(int argc, char** argv)
+{
+    /* Handle all the signals with signal handler method. */
+    SetupSignals();
+
+
+    /* Parse out the parameters */
+    config::ParseParameters(argc, argv);
+
+    TestDB test("r+");
+    for(uint32_t i = 0; i < 100000; i++)
+    {
+        //test.WriteTest(i, i);
+
+        uint32_t value;
+        test.ReadTest(i, value);
+
+        if(value % 10000 == 0)
+            printf("Value %u\n", value);
+    }
+
+    while(!config::fShutdown)
+        runtime::Sleep(1000);
+
+    return 0;
+}
+
+int main2(int argc, char** argv)
 {
 
     /* Handle all the signals with signal handler method. */

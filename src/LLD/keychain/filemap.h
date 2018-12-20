@@ -187,8 +187,7 @@ namespace LLD
                     ssKey >> cKey;
 
 
-                    /* Skip Empty Sectors for Now.
-                        TODO: Handle any sector and keys gracfully here to ensure that the Sector is returned to a valid state from the transaction journal in case there was a failure reading and writing in the sector. This will most likely be held in the sector database code. */
+                    /* Skip Empty Sectors */
                     if(cKey.Ready())
                     {
 
@@ -215,7 +214,7 @@ namespace LLD
                 }
 
                 /* Iterate the current file. */
-                ++nCurrentFile;
+                ++ nCurrentFile;
 
                 /* Clear the keychain data. */
                 vKeychain.clear();

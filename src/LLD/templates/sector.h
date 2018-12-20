@@ -33,11 +33,11 @@ namespace LLD
 
 
     /* Maximum cache buckets for sectors. */
-    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 128; //512 MB Max Cache
+    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 64; //512 MB Max Cache
 
 
     /* The maximum amount of bytes allowed in the memory buffer for disk flushes. **/
-    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 128; //512 MB Max Disk Buffer
+    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 64; //512 MB Max Disk Buffer
 
 
     /** Base Template Class for a Sector Database.
@@ -264,7 +264,6 @@ namespace LLD
                 return true;
             }
 
-
             /* Return the Key existance in the Keychain Database. */
             bool fErased = pSectorKeys->Erase(vKey);
 
@@ -447,7 +446,7 @@ namespace LLD
 
             /* Wait for initialization. */
             while(!fInitialized)
-                sleep(100);
+                runtime::Sleep(100);
 
             while(true)
             {
@@ -458,7 +457,6 @@ namespace LLD
                 /* Check for data to be written. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
                 CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(1000), [this]{ return nBufferBytes > 0; });
-
 
                 /* Swap the buffer object to get ready for writes. */
                 std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vIndexes;
@@ -545,6 +543,10 @@ namespace LLD
 
             while(!config::fShutdown)
             {
+                nBytesWrote     = 0;
+                nBytesRead      = 0;
+                nRecordsFlushed = 0;
+
                 runtime::Sleep(10000);
 
                 double WPS = nBytesWrote / (TIMER.Elapsed() * 1024.0);
@@ -555,9 +557,6 @@ namespace LLD
                 debug::log(0, FUNCTION ">>>>> LLD Flushed %u Records", __PRETTY_FUNCTION__, nRecordsFlushed);
 
                 TIMER.Reset();
-                nBytesWrote     = 0;
-                nBytesRead      = 0;
-                nRecordsFlushed = 0;
             }
         }
 
