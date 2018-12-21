@@ -41,7 +41,7 @@ namespace TAO::API
          *  Create's a user account.
          *
          **/
-        json::json CreateAccount(const json::json& jsonParams, bool fHelp);
+        json::json CreateAccount(const json::json& params, bool fHelp);
 
 
         /** Get Account
@@ -49,7 +49,7 @@ namespace TAO::API
          *  Get a user's account.
          *
          **/
-        json::json GetAccount(const json::json& jsonParams, bool fHelp);
+        json::json GetAccount(const json::json& params, bool fHelp);
     };
 
     extern Accounts accounts;

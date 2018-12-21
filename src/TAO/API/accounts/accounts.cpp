@@ -13,6 +13,11 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/accounts.h>
 
+#include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/sigchain.h>
+
+#include <Util/include/hex.h>
+
 namespace TAO::API
 {
     /** List of accounts in API. **/
@@ -28,16 +33,43 @@ namespace TAO::API
 
 
     /* Create's a user account. */
-    json::json Accounts::CreateAccount(const json::json& jsonParams, bool fHelp)
+    json::json Accounts::CreateAccount(const json::json& params, bool fHelp)
     {
-        json::json ret = { { "genesis", "hash" } };
+        json::json ret;
+        if(params.find("username") == params.end())
+            throw APIException(-23, "Missing Username");
+
+        if(params.find("password") == params.end())
+            throw APIException(-24, "Missing Password");
+
+        if(params.find("pin") == params.end())
+            throw APIException(-25, "Missing PIN");
+
+        TAO::Ledger::SignatureChain user(params["username"], params["password"]);
+
+        TAO::Ledger::Transaction tx;
+        tx.NextHash(user.Generate(1, params["pin"]));
+        tx.hashGenesis = tx.Genesis();
+        tx.Sign(user.Generate(0, params["pin"]));
+
+        ret["version"]   = tx.nVersion;
+        ret["sequence"]  = tx.nSequence;
+        ret["timestamp"] = tx.nTimestamp;
+        ret["genesis"]   = tx.hashGenesis.ToString();
+        ret["nexthash"]  = tx.hashNext.ToString();
+        ret["prevhash"]  = tx.hashPrevTx.ToString();
+        ret["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
+        ret["hash"]      = tx.Genesis().ToString();
+
+        if(!tx.IsValid())
+            throw APIException(-26, "Invalid Transaction");
 
         return ret;
     }
 
 
     /* Get a user's account. */
-    json::json Accounts::GetAccount(const json::json& jsonParams, bool fHelp)
+    json::json Accounts::GetAccount(const json::json& params, bool fHelp)
     {
         json::json ret = {"test two"};
 

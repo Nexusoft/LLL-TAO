@@ -32,25 +32,28 @@ namespace TAO::Ledger
     bool Transaction::IsValid() const
     {
         /* Read the previous transaction from disk. */
-        TAO::Ledger::Transaction tx;
-        if(!LLD::legDB->ReadTx(hashPrevTx, tx))
-            return debug::error(FUNCTION "failed to read previous transaction", __PRETTY_FUNCTION__);
+        if(!IsGenesis())
+        {
+            TAO::Ledger::Transaction tx;
+            if(!LLD::legDB->ReadTx(hashPrevTx, tx))
+                return debug::error(FUNCTION "failed to read previous transaction", __PRETTY_FUNCTION__);
 
-        /* Check the previous next hash that is being claimed. */
-        if(tx.hashNext != PrevHash())
-            return debug::error(FUNCTION "next hash mismatch with previous transaction", __PRETTY_FUNCTION__);
+            /* Check the previous next hash that is being claimed. */
+            if(tx.hashNext != PrevHash())
+                return debug::error(FUNCTION "next hash mismatch with previous transaction", __PRETTY_FUNCTION__);
 
-        /* Check the previous sequence number. */
-        if(tx.nSequence + 1 != nSequence)
-            return debug::error(FUNCTION "previous sequence %u not sequential %u", __PRETTY_FUNCTION__, tx.nSequence, nSequence);
+            /* Check the previous sequence number. */
+            if(tx.nSequence + 1 != nSequence)
+                return debug::error(FUNCTION "previous sequence %u not sequential %u", __PRETTY_FUNCTION__, tx.nSequence, nSequence);
+
+            /* Check the previous genesis. */
+            if(tx.hashGenesis != hashGenesis)
+                return debug::error(FUNCTION "previous genesis %s mismatch %s", __PRETTY_FUNCTION__, tx.hashGenesis.ToString().substr(0, 20).c_str(), hashGenesis.ToString().substr(0, 20).c_str());
+        }
 
         /* Check the timestamp. */
-        if(tx.nTimestamp > runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT)
-            return debug::error(FUNCTION "transaction timestamp too far in the future %u", __PRETTY_FUNCTION__, tx.nTimestamp);
-
-        /* Check the previous genesis. */
-        if(tx.hashGenesis != hashGenesis)
-            return debug::error(FUNCTION "previous genesis %s mismatch %s", __PRETTY_FUNCTION__, tx.hashGenesis.ToString().substr(0, 20).c_str(), hashGenesis.ToString().substr(0, 20).c_str());
+        if(nTimestamp > runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT)
+            return debug::error(FUNCTION "transaction timestamp too far in the future %u", __PRETTY_FUNCTION__, nTimestamp);
 
         /* Check the size constraints of the ledger data. */
         if(vchLedgerData.size() > 1024) //TODO: implement a constant max size
@@ -61,13 +64,15 @@ namespace TAO::Ledger
         ecPub.SetPubKey(vchPubKey);
         if(!ecPub.Verify(GetHash().GetBytes(), vchSig))
             return debug::error(FUNCTION "invalid transaction signature", __PRETTY_FUNCTION__);
+
+        return true;
     }
 
 
     /* Determines if the transaction is a genesis transaction */
     bool Transaction::IsGenesis() const
     {
-        return (nSequence == 0 && hashGenesis == 0);
+        return (nSequence == 0);
     }
 
 
