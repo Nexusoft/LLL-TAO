@@ -962,7 +962,7 @@ public:
     DataStream& read(char* pch, int nSize)
     {
         /* Check size constraints. */
-        if(nReadPos + nSize >= size())
+        if(nReadPos + nSize > size())
         {
             debug::error(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos);
 

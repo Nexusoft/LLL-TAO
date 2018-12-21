@@ -84,7 +84,7 @@ public:
             if(Get(key.vKey, vRecord))
             {
                 uint32_t nRecord = 0;
-                printf("%u\n", vRecord.size());
+
                 DataStream ssData(vRecord, SER_LLD, LLD::DATABASE_VERSION);
                 ssData >> nRecord;
 
@@ -109,7 +109,7 @@ int main(int argc, char** argv)
     TestDB test("r+");
 
     std::vector<uint32_t> vRecords;
-    if(test.GetAll(0, vRecords))
+    if(test.GetAll(5, vRecords))
     {
         for(auto value : vRecords)
         {
@@ -118,14 +118,20 @@ int main(int argc, char** argv)
     }
 
 
-    for(uint32_t i = 0; i < 10000; i++)
+    runtime::timer timer;
+    timer.Start();
+    for(uint32_t i = 0; i < 10000000; i++)
     {
-        //test.WriteTest(i, i); //TODO: find why id 99999 is not writing to disk
-
         uint32_t value;
-        //test.ReadTest(i, value);
+        test.ReadTest(i, value);
 
-        //if(value % 10000 == 0)
+        if(i % 10000 == 0)
+        {
+            uint32_t nElapsed = timer.ElapsedMilliseconds();
+            printf("100k records in %u ms\n", nElapsed);
+
+            timer.Reset();
+        }
         //printf("Value %u\n", value);
     }
 

@@ -132,7 +132,6 @@ namespace LLD
         /* Cache Writer Thread. */
         std::thread CacheWriterThread;
 
-
         /* The meter thread. */
         std::thread MeterThread;
 
@@ -517,9 +516,8 @@ namespace LLD
             /* Write the data into the memory cache. */
             cachePool->Put(vKey, vData, true);
 
-            while(nBufferBytes > MAX_SECTOR_BUFFER_SIZE)
+            while(!config::fShutdown && nBufferBytes > MAX_SECTOR_BUFFER_SIZE)
                 runtime::sleep(100);
-
 
             /* Add to the write buffer thread. */
             { LOCK(BUFFER_MUTEX);
@@ -565,7 +563,6 @@ namespace LLD
                     vIndexes.swap(vDiskBuffer);
                     nBufferBytes = 0;
                 }
-
 
                 /* Create a new file if the sector file size is over file size limits. */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)

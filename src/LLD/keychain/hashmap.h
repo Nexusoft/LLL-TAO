@@ -188,7 +188,7 @@ namespace LLD
          **/
          std::vector< std::vector<uint8_t> > GetKeys()
          {
-             
+
          }
 
 
@@ -379,7 +379,7 @@ namespace LLD
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-            for(int i = hashmap[nBucket]; i >= 0; i--)
+            for(int i = hashmap[nBucket]; i >= 0; -- i)
             {
                 /* Handle the disk operations. */
                 { LOCK(KEY_MUTEX);
@@ -409,12 +409,13 @@ namespace LLD
                     DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
                     SectorKey cKey;
                     ssKey >> cKey;
+                    cKey.vKey = vKey;
 
                     /* Add key to return vector. */
                     vKeys.push_back(cKey);
 
                     /* Debug Output of Sector Key Information. */
-                    debug::log(4, FUNCTION "State: %s | Length: %u | Bucket %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, nBucket, nFilePos, hashmap[nBucket] - 1, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(vKey.begin(), vKey.end()).c_str());
+                    debug::log(4, FUNCTION "Found State: %s | Length: %u | Bucket %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, nBucket, nFilePos, hashmap[nBucket] - 1, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(vKey.begin(), vKey.end()).c_str());
                 }
             }
 
