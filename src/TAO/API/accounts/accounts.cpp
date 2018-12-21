@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLD/include/global.h>
+
 #include <TAO/API/include/accounts.h>
 
 #include <TAO/Ledger/types/transaction.h>
@@ -28,7 +30,7 @@ namespace TAO::API
     void Accounts::Initialize()
     {
         mapFunctions["create"]              = Function(std::bind(&Accounts::CreateAccount,   this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["submit"]              = Function(std::bind(&Accounts::Submit,          this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["transactions"]        = Function(std::bind(&Accounts::GetTransactions, this, std::placeholders::_1, std::placeholders::_2));
     }
 
 
@@ -53,17 +55,29 @@ namespace TAO::API
         /* Generate the signature chain. */
         TAO::Ledger::SignatureChain user(params["username"], params["password"]);
 
-        /* Create the transaction object. */
+        /* Get the Genesis ID. */
+        uint256_t hashGenesis = LLC::SK256(user.Generate(0, params["pin"]).GetBytes());
+
+        /* Check for duplicates in local db. */
         TAO::Ledger::Transaction tx;
-        tx.NextHash(user.Generate(1, params["pin"]));
-        tx.hashGenesis = LLC::SK256(user.Generate(0, params["pin"]).GetBytes());
+        if(LLD::locDB->ReadGenesis(hashGenesis, tx))
+            throw APIException(-26, "Account already created");
+
+        /* Create the transaction object. */
+        tx.NextHash(user.Generate(tx.nSequence + 1, params["pin"]));
+        tx.hashGenesis = hashGenesis;
 
         /* Sign the transaction. */
-        tx.Sign(user.Generate(0, params["pin"]));
+        tx.Sign(user.Generate(tx.nSequence, params["pin"]));
 
         /* Check that the transaction is valid. */
         if(!tx.IsValid())
             throw APIException(-26, "Invalid Transaction");
+
+        /* Write transaction to local database. */
+        LLD::locDB->WriteGenesis(hashGenesis, tx);
+        LLD::legDB->WriteTx(tx.GetHash(), tx);
+        LLD::locDB->WriteLast(hashGenesis, tx.GetHash());
 
         /* Build a JSON response object. */
         ret["version"]   = tx.nVersion;
@@ -81,10 +95,57 @@ namespace TAO::API
 
 
     /* Get a user's account. */
-    json::json Accounts::Submit(const json::json& params, bool fHelp)
+    json::json Accounts::GetTransactions(const json::json& params, bool fHelp)
     {
-        json::json ret = {"test two"};
+        /* JSON return value. */
+        json::json txList;
 
-        return ret;
+        /* Check for username parameter. */
+        if(params.find("username") == params.end())
+            throw APIException(-23, "Missing Username");
+
+        /* Check for password parameter. */
+        if(params.find("password") == params.end())
+            throw APIException(-24, "Missing Password");
+
+        /* Check for pin parameter. */
+        if(params.find("pin") == params.end())
+            throw APIException(-25, "Missing PIN");
+
+        /* Generate the signature chain. */
+        TAO::Ledger::SignatureChain user(params["username"], params["password"]);
+
+        /* Get the Genesis ID. */
+        uint256_t hashGenesis = LLC::SK256(user.Generate(0, params["pin"]).GetBytes());
+
+        /* Get the last transaction. */
+        uint512_t hashLast;
+        if(!LLD::locDB->ReadLast(hashGenesis, hashLast))
+            throw APIException(-28, "No transactions found");
+
+        /* Loop until genesis. */
+        while(hashLast != 0)
+        {
+            TAO::Ledger::Transaction tx;
+            if(!LLD::legDB->ReadTx(hashLast, tx))
+                throw APIException(-28, "Failed to read transaction");
+
+            json::json ret;
+            ret["version"]   = tx.nVersion;
+            ret["sequence"]  = tx.nSequence;
+            ret["timestamp"] = tx.nTimestamp;
+            ret["genesis"]   = tx.hashGenesis.ToString();
+            ret["nexthash"]  = tx.hashNext.ToString();
+            ret["prevhash"]  = tx.hashPrevTx.ToString();
+            ret["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
+            ret["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
+            ret["hash"]      = tx.GetHash().ToString();
+
+            txList.push_back(ret);
+
+            hashLast = tx.hashPrevTx;
+        }
+
+        return txList;
     }
 }

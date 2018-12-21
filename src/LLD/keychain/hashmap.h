@@ -434,7 +434,6 @@ namespace LLD
          **/
         bool Put(SectorKey cKey)
         {
-
             /* Get the assigned bucket for the hashmap. */
             uint32_t nBucket = GetBucket(cKey.vKey);
 
@@ -482,7 +481,7 @@ namespace LLD
                 /* If not in cache, add to the LRU. */
                 fileCache->Put(hashmap[nBucket], pstream);
             }
-            
+
             /* Handle the disk writing operations. */
             { LOCK(KEY_MUTEX);
 

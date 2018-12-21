@@ -23,18 +23,19 @@ namespace TAO::Operation
     bool Register(uint256_t hashAddress, uint8_t nType, std::vector<uint8_t> vchData, uint256_t hashCaller)
     {
         /* Check that the register doesn't exist yet. */
-        if(LLD::regDB->HasState(hashAddress))
-            return debug::error(FUNCTION "Cannot allocate register of same memory address %s", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+        //if(LLD::regDB->HasState(hashAddress))
+        //    return debug::error(FUNCTION "Cannot allocate register of same memory address %s", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
         /* Set the owner of this register. */
         TAO::Register::State state;
         state.nVersion  = 1;
         state.nType     = nType;
         state.hashOwner = hashCaller;
+        state << vchData;
 
         /* Write the register to database. */
-        if(!LLD::regDB->WriteState(hashAddress, state))
-            return debug::error(FUNCTION "Failed to write state register %s into register DB", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+        //if(!LLD::regDB->WriteState(hashAddress, state))
+        //    return debug::error(FUNCTION "Failed to write state register %s into register DB", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
         return true;
     }

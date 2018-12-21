@@ -36,7 +36,7 @@ namespace TAO::API
          *  Get's the description of an item.
          *
          **/
-        json::json GetItem(const json::json& jsonParams, bool fHelp);
+        json::json GetItem(const json::json& params, bool fHelp);
 
 
         /** Transfer
@@ -44,7 +44,7 @@ namespace TAO::API
          *  Transfers an item.
          *
          **/
-        json::json Transfer(const json::json& jsonParams, bool fHelp);
+        json::json Transfer(const json::json& params, bool fHelp);
 
 
         /** Submit
@@ -52,7 +52,7 @@ namespace TAO::API
          *  Submits an item.
          *
          **/
-        json::json Submit(const json::json& jsonParams, bool fHelp);
+        json::json Submit(const json::json& params, bool fHelp);
 
 
         /** History
@@ -60,7 +60,7 @@ namespace TAO::API
          *  Gets the history of an item.
          *
          **/
-        json::json History(const json::json& jsonParams, bool fHelp);
+        json::json History(const json::json& params, bool fHelp);
     };
 
     extern Supply supply;

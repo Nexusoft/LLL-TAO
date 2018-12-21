@@ -82,6 +82,7 @@ namespace TAO
             (
 
                 READWRITE(this->nVersion);
+                READWRITE(nSequence);
                 READWRITE(nTimestamp);
                 READWRITE(hashNext);
 

@@ -44,12 +44,12 @@ namespace TAO::API
         json::json CreateAccount(const json::json& params, bool fHelp);
 
 
-        /** Submit
+        /** Get Transactions
          *
-         *  Submit a transaction from account.
+         *  Get transactions for an account
          *
          **/
-        json::json Submit(const json::json& params, bool fHelp);
+        json::json GetTransactions(const json::json& params, bool fHelp);
     };
 
     extern Accounts accounts;
