@@ -37,9 +37,14 @@ namespace LLP
     {
     public:
 
+        static std::string Name() { return "Core"; }
+
         /* Constructors for Message LLP Class. */
-        CoreNode() : LLP::HTTPNode() {}
-        CoreNode( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false ) : LLP::HTTPNode( SOCKET_IN, DDOS_IN ) { }
+        CoreNode()
+        : LLP::HTTPNode() {}
+
+        CoreNode( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false )
+        : LLP::HTTPNode( SOCKET_IN, DDOS_IN ) { }
 
 
         /** Virtual Functions to Determine Behavior of Message LLP.
@@ -51,7 +56,13 @@ namespace LLP
         void Event(uint8_t EVENT, uint32_t LENGTH = 0);
 
 
-        /** Main message handler once a packet is recieved. **/
+        /** ProcessPacket
+         *
+         *  Main message handler once a packet is recieved.
+         *
+         *  @return True is no errors, false otherwise
+         *
+         **/
         bool ProcessPacket();
 
 

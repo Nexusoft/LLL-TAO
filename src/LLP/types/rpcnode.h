@@ -30,14 +30,20 @@ namespace LLP
      *  HTTP-JSON-RPC - Nexus Ledger Level API
      *  POST / HTTP/1.1
      *  {"method":"", "params":[]}
+     *
      **/
     class RPCNode : public LLP::HTTPNode
     {
     public:
 
+        static std::string Name() { return "RPC"; }
+
         /* Constructors for Message LLP Class. */
-        RPCNode() : HTTPNode() {}
-        RPCNode( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false ) : HTTPNode(SOCKET_IN, DDOS_IN, isDDOS) {}
+        RPCNode()
+        : HTTPNode() {}
+
+        RPCNode( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false )
+        : HTTPNode(SOCKET_IN, DDOS_IN, isDDOS) {}
 
 
         /** Virtual Functions to Determine Behavior of Message LLP.
@@ -49,7 +55,13 @@ namespace LLP
         void Event(uint8_t EVENT, uint32_t LENGTH = 0);
 
 
-        /** Main message handler once a packet is recieved. **/
+        /** ProcessPacket
+         *
+         *  Main message handler once a packet is recieved.
+         *
+         *  @return True is no errors, false otherwise
+         *
+         **/
         bool ProcessPacket();
 
     protected:
@@ -90,7 +102,7 @@ namespace LLP
          *
          **/
         bool Authorized(std::map<std::string, std::string>& mapHeaders);
-        
+
     };
 }
 

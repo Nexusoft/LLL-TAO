@@ -23,7 +23,8 @@ namespace LLP
 
     /** Base Template Thread Class for Server base. Used for Core LLP Packet Functionality.
         Not to be inherited, only for use by the LLP Server Base Class. **/
-    template <class ProtocolType> class DataThread
+    template <class ProtocolType>
+    class DataThread
     {
         //Need Pointer Reference to Object in Server Class to push data from Data Thread Messages into Server Class
 
@@ -58,7 +59,7 @@ namespace LLP
         int FindSlot()
         {
             int nSize = CONNECTIONS.size();
-            for(int index = 0; index < nSize; index++)
+            for(int index = 0; index < nSize; ++index)
                 if(!CONNECTIONS[index])
                     return index;
 
@@ -79,7 +80,7 @@ namespace LLP
             CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
             CONNECTIONS[nSlot]->fCONNECTED = true;
 
-            nConnections ++;
+            ++nConnections;
 
             CONDITION.notify_all();
         }
@@ -184,7 +185,8 @@ namespace LLP
                         if(fDDOS)
                         {
                             /* Ban a node if it has too many Requests per Second. **/
-                            if(CONNECTIONS[nIndex]->DDOS->rSCORE.Score() > DDOS_rSCORE || CONNECTIONS[nIndex]->DDOS->cSCORE.Score() > DDOS_cSCORE)
+                            if(CONNECTIONS[nIndex]->DDOS->rSCORE.Score() > DDOS_rSCORE ||
+                               CONNECTIONS[nIndex]->DDOS->cSCORE.Score() > DDOS_cSCORE)
                                 CONNECTIONS[nIndex]->DDOS->Ban();
 
                             /* Remove a connection if it was banned by DDOS Protection. */

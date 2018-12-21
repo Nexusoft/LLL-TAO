@@ -56,6 +56,9 @@ namespace LLP
 
         Address addrThisNode;
 
+        /* returns the name of the protocol type of this server */
+        std::string Name() { return ProtocolType::Name(); }
+
         Server<ProtocolType>(int32_t nPort, int32_t nMaxThreads, int32_t nTimeout = 30, bool isDDOS = false,
                              int32_t cScore = 0, int32_t rScore = 0, int32_t nTimespan = 60, bool fListen = true,
                              bool fMeter = false, bool fManager = false)
@@ -236,8 +239,9 @@ namespace LLP
             while(!config::fShutdown)
             {
                 runtime::Sleep(1000);
-                uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
 
+                /* assume the connect state is in a failed state */
+                uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
 
                 std::unique_lock<std::recursive_mutex> lk(MUTEX);
 
@@ -249,7 +253,7 @@ namespace LLP
                     uint16_t port = addr.GetPort();
 
                     /* Attempt the connection. */
-                    debug::log(0, FUNCTION "Attempting Connection %s:%u", __PRETTY_FUNCTION__, ip.c_str(), port);
+                    debug::log(0, NODE "%s Attempting Connection %s:%u", ProtocolType::Name().c_str(), ip.c_str(), port);
                     pAddressManager->PrintStats();
 
                     if(AddConnection(ip, port))

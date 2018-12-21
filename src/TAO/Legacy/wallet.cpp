@@ -28,7 +28,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/state.h>
 
-#include <TAO/Ledger/types/block.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/tritium.h>
 
@@ -750,7 +749,7 @@ namespace Legacy
     /*  Checks whether a transaction has inputs or outputs belonging to this wallet, and adds
      *  it to the wallet when it does.
      */
-    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::Block* pblock, bool fUpdate, bool fFindBlock)
+    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock* pblock, bool fUpdate, bool fFindBlock)
     {
         uint512_t hash = tx.GetHash();
 
@@ -864,7 +863,7 @@ namespace Legacy
             LLD::LegacyDB legacydb("r");
             Legacy::Transaction tx;
 
-            while (true)
+            while (!config::fShutdown)
             {
                 /* Get next block in the chain */
                 TAO::Ledger::TritiumBlock& block = blockState.blockThis;
@@ -911,7 +910,10 @@ namespace Legacy
          * has passed.
          */
         static int64_t snNextTime;
-        static int64_t snLastTime;
+
+        /* Also keep track of best height on last resend, because no need to process again if has not changed */
+        static int32_t snLastHeight;
+
         bool fFirst = (snNextTime == 0);
 
         /* Always false on first iteration */
@@ -925,18 +927,12 @@ namespace Legacy
         if (fFirst)
             return;
 
-        /* static snLastTime is just to check if there is new block since last time we processed resend.
-         * If no new block, nothing has changed, so just returns. Would only be true if random snNextTime
-         * interval were less than the block interval.
-         */
-//TODO replace Core::nTimeBestReceived
-/*
-        if (Core::nTimeBestReceived < snLastTime)
+        /* If no new block, nothing has changed, so just return. */
+        if (TAO::Ledger::nBestHeight <= snLastHeight)
             return;
-*/
 
         /* Record that it is processing resend now */
-        snLastTime = runtime::UnifiedTimestamp();
+        snLastHeight = TAO::Ledger::nBestHeight;
 
         /* Rebroadcast any of our tx that aren't in a block yet */
         debug::log(0, "ResendWalletTransactions");
@@ -952,11 +948,8 @@ namespace Legacy
                 CWalletTx& wtx = item.second;
 
                 /* Don't put in sorted map for rebroadcast until it's had enough time to be added to a block */
-//TODO replace Core::nTimeBestReceived
-/*
-                if (Core::nTimeBestReceived - wtx.nTimeReceived > 5 * 60)
+                if (runtime::Timestamp() - wtx.nTimeReceived > 5 * 60)
                     mapSorted.insert(std::make_pair(wtx.nTimeReceived, wtx));
-*/
             }
 
             for(auto item : mapSorted)
@@ -1030,52 +1023,55 @@ namespace Legacy
 
             for(CWalletTx& walletTx : vCoins)
             {
-                /* Find the corresponding transaction index */
-//TODO Replacement for CTxIndex? ledgerdb does not support ReadTxIndex
-//                Core::CTxIndex txindex;
-//
-//                if(!ledgerdb.ReadTxIndex(walletTx.GetHash(), txindex))
-//                    continue;
-//
-//                /* Check all the outputs to make sure the flags are all set properly. */
-//                for (int n=0; n < walletTx.vout.size(); n++)
-//                {
-//                    /* Handle the Index on Disk for Transaction being inconsistent from the Wallet's accounting to the UTXO. */
+                /* Verify transaction is in the tx db */
+//TODO this won't work. it needs txindex below....need to check that code in qt wallet to see
+//how it works. Why do we need that when wallettx is already a Transaction
+//Apparently because that is what we are attempting to fix? 
+                Legacy::Transaction txTemp;
+
+                if(!legacydb.ReadTx(walletTx.GetHash(), txTemp))
+                    continue;
+
+                /* Check all the outputs to make sure the flags are all set properly. */
+                for (int n=0; n < walletTx.vout.size(); n++)
+                {
+                    /* Handle the Index on Disk for Transaction being inconsistent from the Wallet's accounting to the UTXO. */
+//TODO - Fix txindex reference
 //                    if (IsMine(walletTx.vout[n]) && walletTx.IsSpent(n) && (txindex.vSpent.size() <= n || txindex.vSpent[n].IsNull()))
 //                    {
-//                        debug::log(0, "FixSpentCoins found lost coin %s Nexus %s[%d], %s",
-//                                   FormatMoney(walletTx.vout[n].nValue).c_str(), walletTx.GetHash().ToString().c_str(),
-//                                   n, fCheckOnly? "repair not attempted" : "repairing");
-//
-//                        nMismatchFound++;
-//
-//                        nBalanceInQuestion += walletTx.vout[n].nValue;
-//
-//                        if (!fCheckOnly)
-//                        {
-//                            walletTx.MarkUnspent(n);
-//                            walletTx.WriteToDisk();
-//                        }
+                        debug::log(0, "FixSpentCoins found lost coin %s Nexus %s[%d], %s",
+                                   FormatMoney(walletTx.vout[n].nValue).c_str(), walletTx.GetHash().ToString().c_str(),
+                                   n, fCheckOnly? "repair not attempted" : "repairing");
+
+                        nMismatchFound++;
+
+                        nBalanceInQuestion += walletTx.vout[n].nValue;
+
+                        if (!fCheckOnly)
+                        {
+                            walletTx.MarkUnspent(n);
+                            walletTx.WriteToDisk();
+                        }
 //                    }
 //
 //                    /* Handle the wallet missing a spend that was updated in the indexes. The index is updated on connect inputs. */
 //                    else if (IsMine(walletTx.vout[n]) && !walletTx.IsSpent(n) && (txindex.vSpent.size() > n && !txindex.vSpent[n].IsNull()))
 //                    {
-//                        debug::log(0, "FixSpentCoins found spent coin %s Nexus %s[%d], %s",
-//                                   FormatMoney(walletTx.vout[n].nValue).c_str(), walletTx.GetHash().ToString().c_str(),
-//                                   n, fCheckOnly? "repair not attempted" : "repairing");
-//
-//                        nMismatchFound++;
-//
-//                        nBalanceInQuestion += walletTx.vout[n].nValue;
-//
-//                        if (!fCheckOnly)
-//                        {
-//                            walletTx.MarkSpent(n);
-//                            walletTx.WriteToDisk();
-//                        }
+                        debug::log(0, "FixSpentCoins found spent coin %s Nexus %s[%d], %s",
+                                   FormatMoney(walletTx.vout[n].nValue).c_str(), walletTx.GetHash().ToString().c_str(),
+                                   n, fCheckOnly? "repair not attempted" : "repairing");
+
+                        nMismatchFound++;
+
+                        nBalanceInQuestion += walletTx.vout[n].nValue;
+
+                        if (!fCheckOnly)
+                        {
+                            walletTx.MarkSpent(n);
+                            walletTx.WriteToDisk();
+                        }
 //                    }
-//                }
+                }
             }
         }
     }
@@ -1518,13 +1514,16 @@ namespace Legacy
     }
 
 
-    bool CWallet::AddCoinstakeInputs(TAO::Ledger::Block& block)
+/*TODO - Investigate moving this entire method OUT of CWallet and into Trust.cpp */
+/* It doesn't really belong in wallet */
+    bool CWallet::AddCoinstakeInputs(TAO::Ledger::TritiumBlock& block)
     {
         /* Add Each Input to Transaction. */
         std::vector<CWalletTx> vInputs;
         std::vector<CWalletTx> vCoins;
 
 //TODO How to work with block?  no vtx in TAO::Ledger::Block (all references commented out below)
+//WIll this use TritiumBlock?
 //        block.vtx[0].vout[0].nValue = 0;
 
         {

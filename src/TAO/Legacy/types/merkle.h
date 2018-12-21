@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_MERKLE_H
 #define NEXUS_TAO_LEGACY_TYPES_MERKLE_H
 
+#include <TAO/Ledger/types/tritium.h>
 #include <TAO/Legacy/types/transaction.h>
 
 #include <Util/templates/serialize.h>
@@ -60,7 +61,7 @@ namespace Legacy
 		std::vector<uint512_t> vMerkleBranch;
 
 		/** Index of transaction within containing block **/
-		int nIndex;
+		int32_t nIndex;
 
 		/** Memory only, true if merkle branch confirmed as connecting to containing block **/
 		mutable bool fMerkleVerified;
@@ -97,7 +98,7 @@ namespace Legacy
 		 */
 		IMPLEMENT_SERIALIZE
 		(
-			nSerSize += SerReadWrite(s, *(Transaction*)this, nSerType, nVersion, ser_action);
+			nSerSize += SerReadWrite(s, *(Transaction*)this, nSerType, nSerVersion, ser_action);
 			nSerVersion = this->nVersion;
 			READWRITE(hashBlock);
 			READWRITE(vMerkleBranch);
@@ -114,7 +115,7 @@ namespace Legacy
          *  @return Depth in chain of block containing this transaction, 0 if not in main chain or merkle branch not set
          *
          **/
-		int SetMerkleBranch(const TAO::Ledger::Block* pblock=nullptr);
+		uint32_t SetMerkleBranch(const TAO::Ledger::TritiumBlock* pblock = nullptr);
 
 
         /** GetDepthInMainChain
@@ -124,7 +125,7 @@ namespace Legacy
          *  @return Depth in chain, 0 if not in main chain
          *
          **/
-		int GetDepthInMainChain() const;
+		uint32_t GetDepthInMainChain() const;
 
 
         /** IsInMainChain
@@ -145,12 +146,10 @@ namespace Legacy
          *          0 if not Coinbase or Coinstake transaction (spendable immediately upon confirm)
          *
          **/
-		int GetBlocksToMaturity() const;
+		uint32_t GetBlocksToMaturity() const;
 
 
 //TODO - Do these require implementation or can they be removed?
-		//int GetDepthInMainChain(CBlockIndex* &pindexRet) const;
-
 		//bool AcceptToMemoryPool(LLD::CIndexDB& indexdb, bool fCheckInputs=true);
 
 		//bool AcceptToMemoryPool();
