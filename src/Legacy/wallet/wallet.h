@@ -531,7 +531,7 @@ namespace Legacy
          *
          *  @param[in] tx The transaction to check
          *
-         *  @param[in] pblock The block containing the transaction
+         *  @param[in] containingBlock The block containing the transaction
          *
          *  @param[in] fUpdate Flag indicating whether or not to update transaction already in wallet
          *
@@ -543,7 +543,8 @@ namespace Legacy
          * @return true if the transactions was added/updated
          *
          */
-        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock* pblock, bool fUpdate = false, bool fFindBlock = false, bool fRescan = false, bool fRescan = false);
+        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock& containingBlock, 
+                                      bool fUpdate = false, bool fFindBlock = false, bool fRescan = false, bool fRescan = false);
 
 
         /** EraseFromWallet

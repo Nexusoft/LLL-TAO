@@ -694,6 +694,9 @@ namespace Legacy
                     fUpdated = true;
                 }
 
+                /* nIndex and vMerkleBranch are deprecated so nIndex will be -1 for all legacy transactions created in Tritium
+                 * Code here is only relevant for processing old transactions previously stored in wallet.dat
+                 */
                 if (wtxIn.nIndex != -1 && (wtxIn.vMerkleBranch != wtx.vMerkleBranch || wtxIn.nIndex != wtx.nIndex))
                 {
                     wtx.vMerkleBranch = wtxIn.vMerkleBranch;
@@ -749,7 +752,8 @@ namespace Legacy
     /*  Checks whether a transaction has inputs or outputs belonging to this wallet, and adds
      *  it to the wallet when it does.
      */
-    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock* pblock, bool fUpdate, bool fFindBlock, bool fRescan)
+    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock& containingBlock, 
+                                           bool fUpdate, bool fFindBlock, bool fRescan)
     {
         uint512_t hash = tx.GetHash();
 
@@ -773,9 +777,7 @@ namespace Legacy
                     wtx.nTimeReceived = tx.nTime;
                 }
 
-                /* Get merkle branch if transaction was found in a block */
-                if (pblock)
-                    wtx.SetMerkleBranch(pblock);
+                wtx.hashBlock = containingBlock.GetHash();
 
                 /* AddToWallet preforms merge (update) for transactions already in wallet */
                 return AddToWallet(wtx);
@@ -888,7 +890,7 @@ namespace Legacy
                             continue;
                         }
 
-                        if (AddToWalletIfInvolvingMe(tx, &block, fUpdate))
+                        if (AddToWalletIfInvolvingMe(tx, block, fUpdate, false, true))
                             nTransactionCount++;
                     }
                 }

@@ -14,8 +14,11 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEGACY_TYPES_MERKLE_H
 #define NEXUS_TAO_LEGACY_TYPES_MERKLE_H
 
-#include <TAO/Ledger/types/tritium.h>
 #include <Legacy/types/transaction.h>
+
+#include <LLC/types/uint1024.h>
+
+#include <TAO/Ledger/types/tritium.h>
 
 #include <Util/templates/serialize.h>
 
@@ -30,8 +33,6 @@ namespace TAO
 
 namespace Legacy
 {
-	class CBlockIndex;
-
     /** @class CMerkleTx
      *
      * A transaction with a merkle branch linking it to the block chain.
@@ -49,7 +50,6 @@ namespace Legacy
 		{
 			hashBlock = 0;
 			nIndex = -1;
-			fMerkleVerified = false;
 		}
 
 
@@ -57,14 +57,19 @@ namespace Legacy
 		/** The block hash of the block containing this transaction **/
 		uint1024_t hashBlock;
 
-		/** The merkle branch for this transaction **/
+		/** The merkle branch for this transaction 
+         *
+         *  @deprecated - no longer used, maintained to support deserializing from existing wallet.dat files
+         *
+         **/
 		std::vector<uint512_t> vMerkleBranch;
 
-		/** Index of transaction within containing block **/
+		/** Index of transaction within containing block 
+         *
+         *  @deprecated - no longer used, maintained to support deserializing from existing wallet.dat files
+         * 
+         **/
 		int32_t nIndex;
-
-		/** Memory only, true if merkle branch confirmed as connecting to containing block **/
-		mutable bool fMerkleVerified;
 
 
         /** Constructor
@@ -104,18 +109,6 @@ namespace Legacy
 			READWRITE(vMerkleBranch);
 			READWRITE(nIndex);
 		)
-
-
-        /** SetMerkleBranch
-         *
-         *  Populates the merkle branch for this transaction from its containing block. 
-         *
-         *  @param[in] pblock The containing block, if nullptr method will look it up
-         *
-         *  @return Depth in chain of block containing this transaction, 0 if not in main chain or merkle branch not set
-         *
-         **/
-		uint32_t SetMerkleBranch(const TAO::Ledger::TritiumBlock* pblock = nullptr);
 
 
         /** GetDepthInMainChain
