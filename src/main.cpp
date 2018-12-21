@@ -101,6 +101,7 @@ int main(int argc, char** argv)
         config::GetBoolArg("-meters", false),
         true);
 
+
     /* Add node to Tritium server */
     if(config::mapMultiArgs["-addnode"].size() > 0)
     {

@@ -26,14 +26,18 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /** Base Class to create a Custom LLP Server. Protocol Type class must inherit Connection,
-    * and provide a ProcessPacket method. Optional Events by providing GenericEvent method.  */
+    /** Base Class to create a Custom LLP Server.
+     *
+     *  Protocol Type class must inherit Connection,
+     *  and provide a ProcessPacket method.
+     *  Optional Events by providing GenericEvent method.
+     *
+     **/
     template <class ProtocolType>
     class Server
     {
     private:
-        /* The DDOS variables. Tracks the Requests and Connections per Second
-            from each connected address. */
+        /* The DDOS variables. */
         std::map<Service, DDOS_Filter *> DDOS_MAP;
         bool fDDOS;
         bool fLISTEN;
@@ -45,17 +49,24 @@ namespace LLP
         /* The data type to keep track of current running threads. */
         std::vector<DataThread<ProtocolType> *> DATA_THREADS;
 
+
         /* List of internal addresses. */
         std::recursive_mutex MUTEX;
+
 
         /* Connection Manager. */
         std::thread MANAGER_THREAD;
 
+
         /* Address manager */
         AddressManager *pAddressManager;
 
+
+        /* Local cache of external address. */
         Address addrThisNode;
 
+
+        /* Default Constructor. */
         Server<ProtocolType>(int32_t nPort, int32_t nMaxThreads, int32_t nTimeout = 30, bool isDDOS = false,
                              int32_t cScore = 0, int32_t rScore = 0, int32_t nTimespan = 60, bool fListen = true,
                              bool fMeter = false, bool fManager = false)
@@ -89,21 +100,26 @@ namespace LLP
 
         virtual ~Server<ProtocolType>()
         {
+            /* Set all flags back to false. */
             fLISTEN = false;
             fMETER  = false;
             fDDOS   = false;
 
+            /* Wait for address manager. */
             if(pAddressManager)
                 MANAGER_THREAD.join();
 
+            /* Wait for meter thread. */
             METER_THREAD.join();
 
+            /* Delete the data threads. */
             for(int32_t index = 0; index < MAX_THREADS; ++index)
             {
                 delete DATA_THREADS[index];
                 DATA_THREADS[index] = 0;
             }
 
+            /* Delete the DDOS entries. */
             auto it = DDOS_MAP.begin();
             for(; it != DDOS_MAP.end(); ++it)
             {
@@ -114,6 +130,7 @@ namespace LLP
             }
             DDOS_MAP.clear();
 
+            /* Clear the address manager. */
             if(pAddressManager)
                 delete pAddressManager;
         }
@@ -157,15 +174,15 @@ namespace LLP
 
             /* Find a balanced Data Thread to Add Connection to. */
             int32_t nThread = FindThread();
-
             if(nThread < 0)
                 return false;
 
+            /* Select the proper data thread. */
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-
             if(!dt)
                 return false;
 
+            /* Attempt the connection. */
             if(!dt->AddConnection(strAddress, nPort, DDOS_MAP[addrConnect]))
                 return false;
 
@@ -182,21 +199,25 @@ namespace LLP
          **/
         std::vector<ProtocolType*> GetConnections()
         {
+            /* List of connections to return. */
             std::vector<ProtocolType *> vConnections;
             for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
             {
+                /* Get the data threads. */
                 DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-
                 if(!dt)
                     continue;
 
+                /* Loop through connections in data thread. */
                 int32_t nSize = dt->CONNECTIONS.size();
                 for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
                 {
+                    /* Skip over inactive connections. */
                     if(!dt->CONNECTIONS[nIndex] ||
                        !dt->CONNECTIONS[nIndex]->Connected())
                         continue;
 
+                    /* Push the active connection. */
                     vConnections.push_back(dt->CONNECTIONS[nIndex]);
                 }
             }
@@ -230,6 +251,7 @@ namespace LLP
          **/
         void Manager()
         {
+            /* Address to select. */
             Address addr;
 
             /* Loop connections. */
@@ -238,13 +260,12 @@ namespace LLP
                 runtime::sleep(1000);
                 uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
 
+                LOCK(MUTEX);
 
-                std::unique_lock<std::recursive_mutex> lk(MUTEX);
-
-                /*pick a weighted random priority from a sorted list of addresses */
+                /* Pick a weighted random priority from a sorted list of addresses */
                 if(pAddressManager && pAddressManager->StochasticSelect(addr))
                 {
-
+                    /* Get the IP in proper type. */
                     std::string ip = addr.ToStringIP();
                     uint16_t port = addr.GetPort();
 
@@ -252,10 +273,11 @@ namespace LLP
                     debug::log(0, FUNCTION "Attempting Connection %s:%u", __PRETTY_FUNCTION__, ip.c_str(), port);
                     pAddressManager->PrintStats();
 
+                    /* Attempt the connection. */
                     if(AddConnection(ip, port))
                         state = static_cast<uint8_t>(ConnectState::CONNECTED);
 
-
+                    /* Update the address state. */
                     pAddressManager->AddAddress(addr, state);
                 }
             }
