@@ -90,10 +90,10 @@ namespace TAO
 
                 READWRITE(hashPrevTx);
                 READWRITE(vchLedgerData);
+                READWRITE(vchPubKey);
 
                 if(!(nSerType & SER_GETHASH))
                 {
-                    READWRITE(vchPubKey);
                     READWRITE(vchSig);
                 }
 
