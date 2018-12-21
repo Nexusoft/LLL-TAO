@@ -515,9 +515,10 @@ namespace Legacy
             for(const CTxIn& txin : vin)
                 vWorkQueue.push_back(txin.prevout.hash);
 
-            {
+            { // Begin lock scope
                 std::lock_guard<std::recursive_mutex> walletLock(ptransactionWallet->cs_wallet); 
 
+                /* Map keeps track of tx previously loaded, while set contains hash values already processed */
                 std::map<uint512_t, const CMerkleTx*> mapWalletPrev;
                 std::set<uint512_t> setAlreadyDone;
 
@@ -531,12 +532,13 @@ namespace Legacy
 
                     setAlreadyDone.insert(hash);
 
-                    CMerkleTx tx;
+                    CMerkleTx tx; 
 
                     auto mi = ptransactionWallet->mapWallet.find(hash);
 
                     if (mi != ptransactionWallet->mapWallet.end())
                     {
+                        /* Found previous transaction in wallet, save in mapWalletPrev */
                         tx = (*mi).second;
 
                         for(const CMerkleTx& txWalletPrev : (*mi).second.vtxPrev)
@@ -545,18 +547,17 @@ namespace Legacy
                     }
                     else if (mapWalletPrev.count(hash))
                     {
+                        /* Previous transaction not in wallet, but already in mapWalletPrev */
                         tx = *mapWalletPrev[hash];
 
                     }
-//TODO ReadTx uses TAO::Ledger::Transaction, we have TAO::Legacy::Transaction, need to resolve
-/* verify the hash and tx type are correct
-                    else if (!config::fClient && legacy.ReadTx(hash, tx))
+                    else if (!config::fClient && legacydb.ReadTx(hash, tx))
                     {
-
+                        /* Found transaction in database, but it isn't in wallet so don't save */
                     }
-*/
                     else
                     {
+                        /* Transaction not found */
                         debug::log(0, "CWalletTx::AddSupportingTransactions: Error: AddSupportingTransactions() : unsupported transaction");
                         continue;
                     }
@@ -566,11 +567,12 @@ namespace Legacy
 
                     if (nDepth < COPY_DEPTH)
                     {
+                        /* We will load all prev tx up to copy depth, so add each additional tx to work queue as process it */
                         for(const CTxIn& txin : tx.vin)
                             vWorkQueue.push_back(txin.prevout.hash);
                     }
                 }
-            }
+            } // End lock scope
         }
 
         reverse(vtxPrev.begin(), vtxPrev.end());

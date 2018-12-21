@@ -70,7 +70,8 @@ RUN cd /nexus; make -j 8 -f makefile.cli STATIC=1;
 #
 # Copy Nexus startup files.
 #
-COPY config/nexus.conf /root/.Nexus/nexus.conf
+#COPY config/nexus.conf /root/.Nexus/nexus.conf
+COPY config/nexus.conf /root/.TAO/nexus.conf
 COPY config/run-nexus /nexus/run-nexus
 COPY config/curl-nexus /nexus/curl-nexus
 

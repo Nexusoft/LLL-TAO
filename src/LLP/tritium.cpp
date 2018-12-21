@@ -307,7 +307,6 @@ namespace LLP
                     if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
                         TRITIUM_SERVER->pAddressManager->AddAddresses(vAddr);
 
-
                     break;
                 }
 
