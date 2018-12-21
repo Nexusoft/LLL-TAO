@@ -28,13 +28,14 @@ namespace TAO::API
     void Accounts::Initialize()
     {
         mapFunctions["create"]              = Function(std::bind(&Accounts::CreateAccount,   this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["getid"]               = Function(std::bind(&Accounts::GetAccount,      this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["submit"]              = Function(std::bind(&Accounts::Submit,          this, std::placeholders::_1, std::placeholders::_2));
     }
 
 
     /* Create's a user account. */
     json::json Accounts::CreateAccount(const json::json& params, bool fHelp)
     {
+        /* JSON return value. */
         json::json ret;
 
         /* Check for username parameter. */
@@ -55,7 +56,7 @@ namespace TAO::API
         /* Create the transaction object. */
         TAO::Ledger::Transaction tx;
         tx.NextHash(user.Generate(1, params["pin"]));
-        tx.hashGenesis = tx.Genesis();
+        tx.hashGenesis = LLC::SK256(user.Generate(0, params["pin"]).GetBytes());
 
         /* Sign the transaction. */
         tx.Sign(user.Generate(0, params["pin"]));
@@ -72,14 +73,15 @@ namespace TAO::API
         ret["nexthash"]  = tx.hashNext.ToString();
         ret["prevhash"]  = tx.hashPrevTx.ToString();
         ret["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
-        ret["hash"]      = tx.Genesis().ToString();
+        ret["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
+        ret["hash"]      = tx.GetHash().ToString();
 
         return ret;
     }
 
 
     /* Get a user's account. */
-    json::json Accounts::GetAccount(const json::json& params, bool fHelp)
+    json::json Accounts::Submit(const json::json& params, bool fHelp)
     {
         json::json ret = {"test two"};
 
