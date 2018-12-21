@@ -316,19 +316,19 @@ namespace LLD
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
             for(int i = hashmap[nBucket]; i >= 0; i--)
             {
+                /* Find the file stream for LRU cache. */
+                std::fstream* pstream;
+                if(!fileCache->Get(i, pstream))
+                {
+                    /* Set the new stream pointer. */
+                    pstream = new std::fstream(debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
+
+                    /* If file not found add to LRU cache. */
+                    fileCache->Put(i, pstream);
+                }
+
                 /* Handle the disk operations. */
                 { LOCK(KEY_MUTEX);
-
-                    /* Find the file stream for LRU cache. */
-                    std::fstream* pstream;
-                    if(!fileCache->Get(i, pstream))
-                    {
-                        /* Set the new stream pointer. */
-                        pstream = new std::fstream(debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
-
-                        /* If file not found add to LRU cache. */
-                        fileCache->Put(i, pstream);
-                    }
 
                     /* Seek to the hashmap index in file. */
                     pstream->seekg (nFilePos, std::ios::beg);
@@ -381,19 +381,19 @@ namespace LLD
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
             for(int i = hashmap[nBucket]; i >= 0; -- i)
             {
+                /* Find the file stream for LRU cache. */
+                std::fstream* pstream;
+                if(!fileCache->Get(i, pstream))
+                {
+                    /* Set the new stream pointer. */
+                    pstream = new std::fstream(debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
+
+                    /* If file not found add to LRU cache. */
+                    fileCache->Put(i, pstream);
+                }
+
                 /* Handle the disk operations. */
                 { LOCK(KEY_MUTEX);
-
-                    /* Find the file stream for LRU cache. */
-                    std::fstream* pstream;
-                    if(!fileCache->Get(i, pstream))
-                    {
-                        /* Set the new stream pointer. */
-                        pstream = new std::fstream(debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
-
-                        /* If file not found add to LRU cache. */
-                        fileCache->Put(i, pstream);
-                    }
 
                     /* Seek to the hashmap index in file. */
                     pstream->seekg (nFilePos, std::ios::beg);
@@ -470,21 +470,21 @@ namespace LLD
             /* Serialize the key into the end of the vector. */
             ssKey.write((char*)&cKey.vKey[0], cKey.vKey.size());
 
+            /* Find the file stream for LRU cache. */
+            std::fstream* pstream;
+            if(!fileCache->Get(hashmap[nBucket], pstream))
+            {
+                /* Set the new stream pointer. */
+                pstream = new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary);
+                if(!pstream)
+                    return debug::error(FUNCTION "Failed to generate file object", __PRETTY_FUNCTION__);
+
+                /* If not in cache, add to the LRU. */
+                fileCache->Put(hashmap[nBucket], pstream);
+            }
+            
             /* Handle the disk writing operations. */
             { LOCK(KEY_MUTEX);
-
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                if(!fileCache->Get(hashmap[nBucket], pstream))
-                {
-                    /* Set the new stream pointer. */
-                    pstream = new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream)
-                        return debug::error(FUNCTION "Failed to generate file object", __PRETTY_FUNCTION__);
-
-                    /* If not in cache, add to the LRU. */
-                    fileCache->Put(hashmap[nBucket], pstream);
-                }
 
                 /* Iterate the linked list value in the hashmap. */
                 hashmap[nBucket]++;

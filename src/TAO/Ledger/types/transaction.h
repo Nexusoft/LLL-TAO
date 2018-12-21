@@ -190,6 +190,16 @@ namespace TAO
             uint512_t GetHash() const;
 
 
+            /** Genesis
+             *
+             *  Gets the hash of the genesis transaction
+             *
+             *  @return 256-bit unsigned integer of hash.
+             *
+             **/
+            uint256_t Genesis() const;
+
+
             /** NextHash
              *
              *  Sets the Next Hash from the key

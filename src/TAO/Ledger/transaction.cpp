@@ -80,18 +80,32 @@ namespace TAO::Ledger
         return LLC::SK512(ss.begin(), ss.end());
     }
 
+    /* Gets the hash of the genesis transaction */
+    uint256_t Transaction::Genesis() const
+    {
+        if(!IsGenesis())
+            return hashGenesis;
+
+        DataStream ss(SER_GENESISHASH, nVersion);
+        ss << *this;
+
+        return LLC::SK256(ss.begin(), ss.end());
+    }
+
 
     /* Sets the Next Hash from the key */
     void Transaction::NextHash(uint512_t hashSecret)
     {
-        DataStream ssData(SER_NETWORK, nVersion);
-        ssData << hashSecret;
+        /* Get the secret from new key. */
+        std::vector<uint8_t> vBytes = hashSecret.GetBytes();
+        LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
-        LLC::CSecret vchSecret(ssData.begin(), ssData.end());
+        /* Generate the EC Key. */
         LLC::ECKey key(NID_brainpoolP512t1, 64);
         if(!key.SetSecret(vchSecret, true))
             return;
 
+        /* Calculate the next hash. */
         hashNext = LLC::SK256(key.GetPubKey());
     }
 
@@ -106,18 +120,23 @@ namespace TAO::Ledger
     /* Signs the transaction with the private key and sets the public key */
      bool Transaction::Sign(uint512_t hashSecret)
      {
-        DataStream ssData(SER_NETWORK, nVersion);
-        ssData << hashSecret;
+        /* Get the secret from new key. */
+        std::vector<uint8_t> vBytes = hashSecret.GetBytes();
+        LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
-        LLC::CSecret vchSecret(ssData.begin(), ssData.end());
-
+        /* Generate the EC Key. */
         LLC::ECKey key(NID_brainpoolP512t1, 64);
         if(!key.SetSecret(vchSecret, true))
             return false;
 
+        /* Set the public key. */
         vchPubKey = key.GetPubKey();
-        uint512_t hashTx = GetHash();
-        return key.Sign(hashTx.GetBytes(), vchSig);
+
+        /* Calculate the has of this transaction. */
+        uint512_t hashThis = GetHash();
+
+        /* Sign the hash. */
+        return key.Sign(hashThis.GetBytes(), vchSig);
      }
 
      /* Debug output - use ANSI colors. TODO: turn ansi colors on or off with a commandline flag */

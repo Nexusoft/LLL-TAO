@@ -226,7 +226,7 @@ namespace LLD
         /** Add / Update A Record in the Database **/
         bool Put(SectorKey cKey) const
         {
-            std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
+            LOCK(KEY_MUTEX);
 
             /* Write Header if First Update. */
             if(!mapKeys.count(cKey.vKey))

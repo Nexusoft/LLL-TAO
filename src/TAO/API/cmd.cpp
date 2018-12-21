@@ -31,9 +31,9 @@ namespace TAO::API
     int CommandLineAPI(int argc, char** argv, int argn)
     {
         /* Check the parameters. */
-        if(argc < argn + 3)
+        if(argc < argn + 2)
         {
-            debug::log(0, "Not Enough Parameters");
+            debug::error("Missing Parameters");
 
             return 0;
         }
@@ -41,7 +41,20 @@ namespace TAO::API
         /* Build the JSON request object. */
         json::json parameters;
         for(int i = argn + 2; i < argc; i++)
-            parameters.push_back(argv[i]);
+        {
+            std::string arg = std::string(argv[i]);
+            std::string::size_type pos = arg.find('=', 0);
+
+            /* Watch for missing delimiter. */
+            if(pos == arg.npos)
+            {
+                debug::error("Missing '=' in arg for key=value.");
+
+                return 0;
+            }
+
+            parameters[arg.substr(0, pos)] = arg.substr(pos + 1);
+        }
 
         /* Build the HTTP Header. */
         std::string strContent = parameters.dump();
