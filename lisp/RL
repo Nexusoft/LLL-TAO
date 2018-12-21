@@ -9,6 +9,14 @@
 #------------------------------------------------------------------------------
 
 #
+# Use eth0 by default unless an alternative has been passed to RL
+#
+set device = "eth0"
+if ($1 != "") then
+  set device = "$1"
+endif
+
+#
 # Comment this line out if you want to assign static EIDs. Otherwise random
 # values will be generated in instance-ID 0. Provisioning is only performed
 # when the lisp.config file does not exist in this directory.
@@ -38,7 +46,7 @@ if ($status != 1) then
     set v6_eid = fe::255:255
     set iid = 200
   endif
-  set v4_rloc = `ifconfig eth0 | egrep "inet "`
+  set v4_rloc = `ifconfig $device | egrep "inet "`
   set v4_rloc = `echo $v4_rloc | cut -d " " -f 2`
 
   echo "Provisioning lisp.config file with EIDs [$iid]$v4_eid & [$iid]$v6_eid"
@@ -65,32 +73,32 @@ if ($status != 1) then
   #
   # An IPv6 EID MUST not be assigned to interface lo or it will be unreachable.
   #
-  sudo ip addr add $v6_eid/128 dev eth0 >& /dev/null
-  sudo ip neighbor add fe80::1 lladdr 0:0:0:0:0:1 dev eth0
+  sudo ip addr add $v6_eid/128 dev $device >& /dev/null
+  sudo ip neighbor add fe80::1 lladdr 0:0:0:0:0:1 dev $device
   sleep 2
-  sudo ip route add fd00::/8 via fe80::1 dev eth0 src $v6_eid
-  sudo ip route add fe00::/8 via fe80::1 dev eth0 src $v6_eid
-  sudo ip route add ff00::/8 via fe80::1 dev eth0 src $v6_eid
+  sudo ip route add fd00::/8 via fe80::1 dev $device src $v6_eid
+  sudo ip route add fe00::/8 via fe80::1 dev $device src $v6_eid
+  sudo ip route add ff00::/8 via fe80::1 dev $device src $v6_eid
 
   #
-  # Set MTU for eth0 interface.
+  # Set MTU for $device interface.
   #
-  sudo ifconfig eth mtu 1400
+  sudo ifconfig $device mtu 1400
 
   #
   # Start LISP quietly.
   #
-  /lispers.net/RESTART-LISP -9090 eth0 > /dev/null
+  /lispers.net/RESTART-LISP -9090 $device > /dev/null
 else
   echo "Provisioning lisp.config file already performed"
 
   #
-  # Set MTU for eth0 interface.
+  # Set MTU for $device interface.
   #
-  sudo ifconfig eth0 mtu 1400
+  sudo ifconfig $device mtu 1400
 
   #
   # Start LISP.
   #
-  /lispers.net/RESTART-LISP -9090 eth0
+  /lispers.net/RESTART-LISP -9090 $device
 endif
