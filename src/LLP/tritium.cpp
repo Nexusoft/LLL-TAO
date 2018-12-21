@@ -303,10 +303,16 @@ namespace LLP
                     std::vector<Address> vAddr;
                     ssPacket >> vAddr;
 
-                    /* Add the connections to Tritium Server. */
-                    if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
-                        TRITIUM_SERVER->pAddressManager->AddAddresses(vAddr);
+                    if(TRITIUM_SERVER)
+                    {
+                        /* try to establish the connection on the port the server is listening to */
+                        for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
+                            it->SetPort(TRITIUM_SERVER->PORT);
 
+                        /* Add the connections to Tritium Server. */
+                        if(TRITIUM_SERVER->pAddressManager)
+                            TRITIUM_SERVER->pAddressManager->AddAddresses(vAddr);
+                    }
 
                     break;
                 }

@@ -161,7 +161,7 @@ namespace LLP
         /* Get Address. Returns the address of socket. */
         Address GetAddress()
         {
-            return SOCKET.addr;
+            return Address(Service(SOCKET.addr));
         }
 
 

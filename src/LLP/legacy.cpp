@@ -400,14 +400,16 @@ namespace LLP
                 return debug::error("***** Node message addr size() = %d... Dropping Connection", vAddr.size());
             }
 
-            for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
+            if(LEGACY_SERVER)
             {
-                it->SetPort(LEGACY_SERVER->PORT);
-                debug::log(5, "port=%u", it->GetPort());
-            }
+                /* try to establish the connection on the port the server is listening to */
+                for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
+                    it->SetPort(LEGACY_SERVER->PORT);
 
-            if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
-                LEGACY_SERVER->pAddressManager->AddAddresses(vAddr);
+                /* Add the connections to Legacy Server. */
+                if(LEGACY_SERVER->pAddressManager)
+                    LEGACY_SERVER->pAddressManager->AddAddresses(vAddr);
+            }
 
         }
 
