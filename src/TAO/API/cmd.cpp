@@ -42,6 +42,7 @@ namespace TAO::API
         json::json parameters;
         for(int i = argn + 2; i < argc; i++)
         {
+            /* Parse out the key / values. */
             std::string arg = std::string(argv[i]);
             std::string::size_type pos = arg.find('=', 0);
 
@@ -53,6 +54,7 @@ namespace TAO::API
                 return 0;
             }
 
+            /* Add to parameters object. */
             parameters[arg.substr(0, pos)] = arg.substr(pos + 1);
         }
 
