@@ -69,6 +69,10 @@ enum
     SER_LLD             = (1 << 3),
     SER_LLD_KEY_HEADER  = (1 << 4),
 
+    // layers
+    SER_REGISTER        = (1 << 5),
+    SER_OPERATIONS      = (1 << 6),
+
     // modifiers
     SER_SKIPSIG         = (1 << 16),
     SER_BLOCKHEADERONLY = (1 << 17),
@@ -946,7 +950,7 @@ public:
      **/
     bool End()
     {
-        return nReadPos == size();
+        return nReadPos >= size();
     }
 
 

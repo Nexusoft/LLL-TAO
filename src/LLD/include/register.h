@@ -48,6 +48,33 @@ namespace LLD
         {
             return Exists(std::make_pair(std::string("state"), hashRegister));
         }
+
+        bool GetStates(uint256_t hashRegister, std::vector<TAO::Register::State>& states)
+        {
+            /* Serialize the key to search for. */
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
+            ssKey << std::make_pair(std::string("state"), hashRegister);
+
+            /* Get the list of sector keys. */
+            std::vector<SectorKey> vKeys;
+            if(!pSectorKeys->Get(static_cast<std::vector<uint8_t>>(ssKey), vKeys))
+                return false;
+
+            /* Iterate the list of keys. */
+            for(auto & key : vKeys)
+            {
+                DataStream ssData(SER_LLD, DATABASE_VERSION);
+                if(!Get(key, ssData))
+                    continue;
+
+                TAO::Register::State state;
+                ssData >> state;
+
+                states.push_back(state);
+            }
+
+            return (states.size() > 0);
+        }
     };
 }
 

@@ -122,7 +122,7 @@ namespace TAO::Register
         /** Get the hash of the current state. **/
         uint64_t GetHash()
         {
-            CDataStream ss(SER_GETHASH, nVersion);
+            DataStream ss(SER_GETHASH, nVersion);
             ss << *this;
 
             return LLC::SK64(ss.begin(), ss.end());
@@ -159,6 +159,57 @@ namespace TAO::Register
         }
 
 
+        /** read
+         *
+         *  Reads raw data from the stream
+         *
+         *  @param[in] pch The pointer to beginning of memory to write
+         *
+         *  @param[in] nSize The total number of bytes to read
+         *
+         **/
+        State& read(char* pch, int nSize)
+        {
+            /* Check size constraints. */
+            if(nReadPos + nSize > vchState.size())
+            {
+                debug::error(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos);
+
+                return *this;
+            }
+
+            /* Copy the bytes into tmp object. */
+            std::copy((uint8_t*)&vchState[nReadPos], (uint8_t*)&vchState[nReadPos] + nSize, (uint8_t*)pch);
+
+            /* Iterate the read position. */
+            nReadPos += nSize;
+
+            return *this;
+        }
+
+
+        /** write
+         *
+         *  Writes data into the stream
+         *
+         *  @param[in] pch The pointer to beginning of memory to write
+         *
+         *  @param[in] nSize The total number of bytes to copy
+         *
+         **/
+        State& write(const char* pch, int nSize)
+        {
+            /* Push the obj bytes into the vector. */
+            vchState.insert(vchState.end(), (uint8_t*)pch, (uint8_t*)pch + nSize);
+
+            /* Set the length and checksum. */
+            nLength  = vchState.size();
+            SetChecksum();
+
+            return *this;
+        }
+
+
         /** Operator Overload <<
          *
          *  Serializes data into vchLedgerData
@@ -168,19 +219,10 @@ namespace TAO::Register
          **/
         template<typename Type> State& operator<<(const Type& obj)
         {
-            /* Push the size byte */
-            vchState.push_back((uint8_t)sizeof(obj));
+            /* Serialize to the stream. */
+            ::Serialize(*this, obj, SER_REGISTER, nVersion); //temp versinos for now
 
-            /* Push the data */
-            vchState.insert(vchState.end(), (uint8_t*)&obj, (uint8_t*)&obj + sizeof(obj));
-
-            /* Set the new length. */
-            nLength += sizeof(obj);
-
-            /* Set the checksum */
-            SetChecksum();
-
-            return *this;
+            return (*this);
         }
 
 
@@ -193,20 +235,9 @@ namespace TAO::Register
          **/
         template<typename Type> State& operator>>(Type& obj)
         {
-            /* Create temporary object to prevent double free in std::copy. */
-            Type tmp;
-
-            /* Get the size byte. */
-            uint8_t nSize = vchState[0];
-
-            /* Copy the data into tmp. */
-            std::copy((uint8_t*)&vchState[nReadPos + 1], (uint8_t*)&vchState[nReadPos + 1] + nSize, (uint8_t*)&tmp);
-            nReadPos += nSize + 1;
-
-            /* Set return value. */
-            obj = tmp;
-
-            return *this;
+            /* Unserialize from the stream. */
+            ::Unserialize(*this, obj, SER_REGISTER, nVersion);
+            return (*this);
         }
 
 

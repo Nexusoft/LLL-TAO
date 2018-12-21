@@ -60,8 +60,8 @@ namespace TAO::API
 
         /* Check for duplicates in local db. */
         TAO::Ledger::Transaction tx;
-        if(LLD::locDB->ReadGenesis(hashGenesis, tx))
-            throw APIException(-26, "Account already created");
+        if(LLD::legDB->HasGenesis(hashGenesis))
+            throw APIException(-26, "Account already exists");
 
         /* Create the transaction object. */
         tx.NextHash(user.Generate(tx.nSequence + 1, params["pin"]));
@@ -74,9 +74,11 @@ namespace TAO::API
         if(!tx.IsValid())
             throw APIException(-26, "Invalid Transaction");
 
-        /* Write transaction to local database. */
-        LLD::locDB->WriteGenesis(hashGenesis, tx);
+        /* Write transaction to ledger database. */
+        LLD::legDB->WriteGenesis(hashGenesis, tx);
         LLD::legDB->WriteTx(tx.GetHash(), tx);
+
+        /* Write last to local database. */
         LLD::locDB->WriteLast(hashGenesis, tx.GetHash());
 
         /* Build a JSON response object. */

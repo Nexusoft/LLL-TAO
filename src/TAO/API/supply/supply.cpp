@@ -55,10 +55,83 @@ namespace TAO::API
     /* Transfers an item. */
     json::json Supply::Transfer(const json::json& params, bool fHelp)
     {
-        json::json ret = {"transfer", params};
+        json::json ret;
 
-        //TAO::Ledger tx;
-        //tx << OP::TRANSFER << hashRegister << hashAddressTo;
+        /* Check for username parameter. */
+        if(params.find("username") == params.end())
+            throw APIException(-23, "Missing Username");
+
+        /* Check for password parameter. */
+        if(params.find("password") == params.end())
+            throw APIException(-24, "Missing Password");
+
+        /* Check for pin parameter. */
+        if(params.find("pin") == params.end())
+            throw APIException(-25, "Missing PIN");
+
+        /* Check for id parameter. */
+        if(params.find("address") == params.end())
+            throw APIException(-25, "Missing register ID");
+
+        /* Check for id parameter. */
+        if(params.find("to") == params.end())
+            throw APIException(-25, "Missing To");
+
+        /* Watch for destination genesis. */
+        uint256_t hashTo;
+        hashTo.SetHex(params["to"]);
+        if(!LLD::legDB->HasGenesis(hashTo))
+            throw APIException(-25, "Destination doesn't exist");
+
+        /* Generate the signature chain. */
+        TAO::Ledger::SignatureChain user(params["username"], params["password"]);
+
+        /* Get the Genesis ID. */
+        uint256_t hashGenesis = LLC::SK256(user.Generate(0, params["pin"]).GetBytes());
+
+        /* Get the last transaction. */
+        uint512_t hashLast;
+        if(!LLD::locDB->ReadLast(hashGenesis, hashLast))
+            throw APIException(-28, "No transactions found");
+
+        /* Get previous transaction */
+        TAO::Ledger::Transaction txPrev;
+        if(!LLD::legDB->ReadTx(hashLast, txPrev))
+            throw APIException(-29, "Failed to read previous transaction");
+
+        /* Build new transaction object. */
+        TAO::Ledger::Transaction tx;
+        tx.nSequence   = txPrev.nSequence + 1;
+        tx.hashGenesis = txPrev.hashGenesis;
+        tx.hashPrevTx  = hashLast;
+        tx.NextHash(user.Generate(tx.nSequence + 1, params["pin"]));
+
+        /* Submit the transaction payload. */
+        uint256_t hashRegister;
+        hashRegister.SetHex(params["address"]);
+
+        /* Submit the payload object. */
+        tx << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashTo;
+
+        /* Sign the transaction. */
+        if(!tx.Sign(user.Generate(tx.nSequence, params["pin"])))
+            throw APIException(-26, "Failed to sign transaction");
+
+        /* Check that the transaction is valid. */
+        if(!tx.IsValid())
+            throw APIException(-26, "Invalid Transaction");
+
+        /* Execute the operations layer. */
+        if(!TAO::Operation::Execute(tx.vchLedgerData, hashGenesis))
+            throw APIException(-26, "Operations failed to execute");
+
+        /* Write transaction to local database. */
+        LLD::legDB->WriteTx(tx.GetHash(), tx);
+        LLD::locDB->WriteLast(hashGenesis, tx.GetHash());
+
+        /* Build a JSON response object. */
+        ret["txid"]  = tx.GetHash().ToString();
+        ret["address"] = hashRegister.ToString();
 
         return ret;
     }
@@ -105,8 +178,13 @@ namespace TAO::API
         tx.NextHash(user.Generate(tx.nSequence + 1, params["pin"]));
 
         /* Submit the transaction payload. */
+        uint256_t hashRegister = LLC::GetRand256();
+
+        /* Test the payload feature. */
         std::vector<uint8_t> vchPayload(50, 0);
-        tx << TAO::Operation::OP::REGISTER << LLC::GetRand256() << TAO::Register::OBJECT::READONLY << vchPayload;
+
+        /* Submit the payload object. */
+        tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::READONLY << vchPayload;
 
         /* Sign the transaction. */
         if(!tx.Sign(user.Generate(tx.nSequence, params["pin"])))
@@ -117,24 +195,16 @@ namespace TAO::API
             throw APIException(-26, "Invalid Transaction");
 
         /* Execute the operations layer. */
-        //if(!TAO::Operation::Execute(tx.vchLedgerData, hashGenesis))
-        //    throw APIException(-26, "Operations failed to execute");
+        if(!TAO::Operation::Execute(tx.vchLedgerData, hashGenesis))
+            throw APIException(-26, "Operations failed to execute");
 
         /* Write transaction to local database. */
         LLD::legDB->WriteTx(tx.GetHash(), tx);
         LLD::locDB->WriteLast(hashGenesis, tx.GetHash());
 
         /* Build a JSON response object. */
-        ret["version"]   = tx.nVersion;
-        ret["sequence"]  = tx.nSequence;
-        ret["timestamp"] = tx.nTimestamp;
-        ret["genesis"]   = tx.hashGenesis.ToString();
-        ret["nexthash"]  = tx.hashNext.ToString();
-        ret["prevhash"]  = tx.hashPrevTx.ToString();
-        ret["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
-        ret["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
-        ret["payload"]   = HexStr(tx.vchLedgerData.begin(), tx.vchLedgerData.end());
-        ret["hash"]      = tx.GetHash().ToString();
+        ret["txid"]  = tx.GetHash().ToString();
+        ret["address"] = hashRegister.ToString();
 
         return ret;
     }
@@ -143,7 +213,33 @@ namespace TAO::API
     /* Gets the history of an item. */
     json::json Supply::History(const json::json& params, bool fHelp)
     {
-        json::json ret = {"history", params};
+        json::json ret;
+
+        /* Check for username parameter. */
+        if(params.find("address") == params.end())
+            throw APIException(-23, "Missing memory address");
+
+        /* Get the Register ID. */
+        uint256_t hashRegister;
+        hashRegister.SetHex(params["address"]);
+
+        /* Get the history. */
+        std::vector<TAO::Register::State> states;
+        if(!LLD::regDB->GetStates(hashRegister, states))
+            throw APIException(-24, "No states found");
+
+        /* Build the response JSON. */
+        for(auto & state : states)
+        {
+            json::json obj;
+            obj["version"]  = state.nVersion;
+            obj["type"]     = state.nType;
+            obj["owner"]    = state.hashOwner.ToString();
+            obj["checksum"] = state.hashChecksum;
+            obj["state"]    = HexStr(state.vchState.begin(), state.vchState.end());
+
+            ret.push_back(obj);
+        }
 
         return ret;
     }

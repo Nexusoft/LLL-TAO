@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/operations.h>
 
+#include <Util/include/hex.h>
+
 namespace TAO::Operation
 {
     //TODO: stress test and try to break operations transactions. Detect if parameters are sent in wrong order giving deliberate failures
@@ -62,6 +64,8 @@ namespace TAO::Operation
                     /* Execute the operation method. */
                     if(!Write(hashAddress, vchData, hashOwner))
                         return false;
+
+                    break;
                 }
 
 
@@ -83,6 +87,8 @@ namespace TAO::Operation
                     /* Execute the operation method. */
                     if(!Register(hashAddress, nType, vchData, hashOwner))
                         return false;
+
+                    break;
                 }
 
 
@@ -100,6 +106,8 @@ namespace TAO::Operation
                     /* Execute the operation method. */
                     if(!Transfer(hashAddress, hashTransfer, hashOwner))
                         return false;
+
+                    break;
                 }
 
                 /* Debit tokens from an account you own. */
@@ -117,6 +125,8 @@ namespace TAO::Operation
                     /* Execute the operation method. */
                     if(!Debit(hashFrom, hashTo, nAmount, hashOwner))
                         return false;
+
+                    break;
                 }
 
                 case OP::CREDIT:
@@ -140,6 +150,8 @@ namespace TAO::Operation
                     /* Execute the operation method. */
                     if(!Credit(hashTx, hashProof, hashAccount, nCredit, hashOwner))
                         return false;
+
+                    break;
                 }
 
                 case OP::AUTHORIZE:
@@ -155,6 +167,8 @@ namespace TAO::Operation
                     /* Execute the operation method. */
                     if(!Authorize(hashTx, hashProof, hashOwner))
                         return false;
+
+                    break;
                 }
 
                 case OP::VOTE:
@@ -162,6 +176,8 @@ namespace TAO::Operation
                     //voting mechanism. OP_VOTE can be to any random number. Something that can be regarded as a vote for thie hashOWner
                     //consider how to index this from API to OP_READ the votes without having to parse too deep into the register layer
                     //OP_VOTE doesn't need to change states. IT could be a vote read only object register
+
+                    break;
                 }
 
                 /*
@@ -178,6 +194,8 @@ namespace TAO::Operation
                 {
                     //a transaction proof that designates the hashOwner or genesisID has signed published data
                     //>> vchData. to prove this data was signed by being published. This can be a hash if needed.
+
+                    break;
                 }
             }
         }
