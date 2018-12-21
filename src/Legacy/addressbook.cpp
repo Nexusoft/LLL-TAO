@@ -73,7 +73,7 @@ namespace Legacy
 
     /* Get Nexus addresses that have a balance associated with the wallet for this address book */
     bool CAddressBook::AvailableAddresses(const uint32_t nSpendTime, std::map<NexusAddress, int64_t>& mapAddressBalances, 
-                                          const bool fOnlyConfirmed, , const int nMinDepth) const
+                                          const bool fOnlyConfirmed, const uint32_t nMinDepth) const
     {
         { //Begin lock scope
             std::lock_guard<std::recursive_mutex> walletLock(addressBookWallet.cs_wallet);
@@ -128,7 +128,7 @@ namespace Legacy
 
 
     /*  Get the current balance for a given account */
-    bool CWallet::BalanceByAccount(const std::string strAccount, int64_t& nBalance, const int nMinDepth) const
+    bool CAddressBook::BalanceByAccount(const std::string strAccount, int64_t& nBalance, const uint32_t nMinDepth) const
     {
         { //Begin lock scope
             std::lock_guard<std::recursive_mutex> walletLock(addressBookWallet.cs_wallet);

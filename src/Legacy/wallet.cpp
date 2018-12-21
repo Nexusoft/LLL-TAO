@@ -888,7 +888,7 @@ namespace Legacy
                             continue;
                         }
 
-                        if (AddToWalletIfInvolvingMe(tx, &block, fUpdate))
+                        if (AddToWalletIfInvolvingMe(tx, &block, fUpdate, false, true))
                             nTransactionCount++;
                     }
                 }
@@ -1392,7 +1392,7 @@ namespace Legacy
                     wtxNew.strFromAccount = "default";
 
                 /* Choose coins to use for transaction input */
-                if (!SelectCoins(nTotalValue, wtxNew.nTime, setCoins, nValueIn, wtxNew.strFromAccount, nMinDepth))
+                if (!SelectCoins(nTotalValue, wtxNew.nTime, setSelectedCoins, nValueIn, wtxNew.strFromAccount, nMinDepth))
                     return false;
 
                 /* Amount of change needed is total of inputs - (total sent + fee) */

@@ -143,7 +143,7 @@ namespace Legacy
          *
          **/
         bool AvailableAddresses(const uint32_t nSpendTime, std::map<NexusAddress, int64_t>& mapAddressBalances, 
-                                const bool fOnlyConfirmed = false, const int nMinDepth = 1) const;
+                                const bool fOnlyConfirmed = false, const uint32_t nMinDepth = 1) const;
 
 
         /** BalanceByAccount
@@ -159,7 +159,7 @@ namespace Legacy
          *  @return true if balance retrieved successfully
          *
          **/
-        bool BalanceByAccount(const std::string strAccount, int64_t& nBalance, const int nMinDepth = 3) const;
+        bool BalanceByAccount(const std::string strAccount, int64_t& nBalance, const uint32_t nMinDepth = 3) const;
 
     };
 

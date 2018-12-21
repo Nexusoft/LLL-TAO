@@ -543,7 +543,7 @@ namespace Legacy
          * @return true if the transactions was added/updated
          *
          */
-        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock* pblock, bool fUpdate = false, bool fFindBlock = false, bool fRescan = false, bool fRescan = false);
+        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock* pblock, bool fUpdate = false, bool fFindBlock = false, bool fRescan = false);
 
 
         /** EraseFromWallet
