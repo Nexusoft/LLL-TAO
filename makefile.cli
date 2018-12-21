@@ -133,6 +133,7 @@ OBJS= \
 	build/LLC_KeccakHash.o \
 	build/LLC_random.o \
 	build/LLC_key.o \
+    build/LLC_bignum.o \
 	build/LLP_netaddr.o \
 	build/LLP_service.o \
 	build/LLP_address.o \

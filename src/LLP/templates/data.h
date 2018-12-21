@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_DATA_H
 #define NEXUS_LLP_TEMPLATES_DATA_H
 
-#include <LLP/templates/types.h>
+#include <LLP/templates/events.h>
 #include <condition_variable>
 #include <functional>
 
@@ -31,9 +31,15 @@ namespace LLP
     public:
 
         /* Variables to track Connection / Request Count. */
-        bool fDDOS, fMETER;
+        bool fDDOS;
+        bool fMETER;
 
-        uint32_t nConnections, ID, REQUESTS, TIMEOUT, DDOS_rSCORE, DDOS_cSCORE;
+        uint32_t nConnections;
+        uint32_t ID;
+        uint32_t REQUESTS;
+        uint32_t TIMEOUT;
+        uint32_t DDOS_rSCORE;
+        uint32_t DDOS_cSCORE;
 
 
         /* Vector to store Connections. */
@@ -48,11 +54,25 @@ namespace LLP
         std::thread DATA_THREAD;
 
 
-        DataThread<ProtocolType>(uint32_t id, bool isDDOS, uint32_t rScore, uint32_t cScore, uint32_t nTimeout, bool fMeter = false) :
-            fDDOS(isDDOS), fMETER(fMeter), nConnections(0), ID(id), REQUESTS(0), TIMEOUT(nTimeout),  DDOS_rSCORE(rScore), DDOS_cSCORE(cScore), CONNECTIONS(0), DATA_THREAD(std::bind(&DataThread::Thread, this)) { }
+        DataThread<ProtocolType>(uint32_t id, bool isDDOS, uint32_t rScore, uint32_t cScore,
+                                 uint32_t nTimeout, bool fMeter = false)
+        : fDDOS(isDDOS)
+        , fMETER(fMeter)
+        , nConnections(0)
+        , ID(id)
+        , REQUESTS(0)
+        , TIMEOUT(nTimeout)
+        , DDOS_rSCORE(rScore)
+        , DDOS_cSCORE(cScore)
+        , CONNECTIONS(0)
+        , CONDITION()
+        , DATA_THREAD(std::bind(&DataThread::Thread, this)) { }
 
 
-        virtual ~DataThread<ProtocolType>() { fMETER  = false; }
+        virtual ~DataThread<ProtocolType>()
+        {
+            fMETER  = false;
+        }
 
 
         /* Returns the index of a component of the CONNECTIONS vector that has been flagged Disconnected */
@@ -65,6 +85,7 @@ namespace LLP
 
             return nSize;
         }
+
 
         /* Adds a new connection to current Data Thread */
         void AddConnection(Socket_t SOCKET, DDOS_Filter* DDOS)
@@ -84,6 +105,7 @@ namespace LLP
 
             CONDITION.notify_all();
         }
+
 
         /* Adds a new connection to current Data Thread */
         bool AddConnection(std::string strAddress, int nPort, DDOS_Filter* DDOS)
@@ -116,6 +138,7 @@ namespace LLP
             return true;
         }
 
+
         /* Removes given connection from current Data Thread.
             Happens with a timeout / error, graceful close, or disconnect command. */
         void Remove(int index)
@@ -130,6 +153,7 @@ namespace LLP
 
             CONDITION.notify_all();
         }
+
 
         /* Thread that handles all the Reading / Writing of Data from Sockets.
             Creates a Packet QUEUE on this connection to be processed by an LLP Messaging Thread. */
@@ -146,8 +170,8 @@ namespace LLP
                 CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(1000), [this]{ return CONNECTIONS.size() > 0; });
 
                 /* Check all connections for data and packets. */
-                int nSize = CONNECTIONS.size();
-                for(int nIndex = 0; nIndex < nSize; nIndex++)
+                uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
+                for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
                 {
                     try
                     {

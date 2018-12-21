@@ -56,8 +56,8 @@ namespace LLP
 
         /* Pure Virtual Process Function. To be overridden with your own custom packet processing. */
         virtual bool ProcessPacket() = 0;
-    public:
 
+    public:
 
         /* Incoming Packet Being Built. */
         PacketType        INCOMING;
@@ -80,37 +80,76 @@ namespace LLP
 
 
         /* Build Base Connection with no parameters */
-        BaseConnection() : SOCKET(), INCOMING(), DDOS(nullptr), fDDOS(false), fOUTGOING(false), fCONNECTED(false) { INCOMING.SetNull(); }
+        BaseConnection()
+        : SOCKET()
+        , INCOMING()
+        , DDOS(nullptr)
+        , fDDOS(false)
+        , fOUTGOING(false)
+        , fCONNECTED(false)
+        {
+            INCOMING.SetNull();
+        }
 
 
         /* Build Base Connection with all Parameters. */
-        BaseConnection( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false) : SOCKET(SOCKET_IN), INCOMING(), DDOS(DDOS_IN), fDDOS(isDDOS),  fOUTGOING(fOutgoing), fCONNECTED(false) { TIMER.Start(); }
+        BaseConnection( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false)
+        : SOCKET(SOCKET_IN)
+        , INCOMING()
+        , DDOS(DDOS_IN)
+        , fDDOS(isDDOS)
+        ,  fOUTGOING(fOutgoing)
+        , fCONNECTED(false)
+        {
+            TIMER.Start();
+        }
 
-        virtual ~BaseConnection() { Disconnect(); }
+        virtual ~BaseConnection()
+        {
+            Disconnect();
+        }
 
 
         /* Checks for any flags in the Error Handle. */
-        bool Errors(){ return SOCKET.Error() != 0; }
+        bool Errors()
+        {
+            return SOCKET.Error() != 0;
+        }
 
 
         /* Give the message (c-string) of the error in the socket. */
-        char* Error(){ return strerror(SOCKET.Error()); }
+        char* Error()
+        {
+            return strerror(SOCKET.Error());
+        }
 
 
         /* Connection flag to determine if socket should be handled if not connected. */
-        bool Connected() { return fCONNECTED; }
+        bool Connected()
+        {
+            return fCONNECTED;
+        }
 
 
         /* Determines if nTime seconds have elapsed since last Read / Write. */
-        bool Timeout(uint32_t nTime){ return (TIMER.Elapsed() >= nTime); }
+        bool Timeout(uint32_t nTime)
+        {
+            return (TIMER.Elapsed() >= nTime);
+        }
 
 
         /* Handles two types of packets, requests which are of header >= 128, and data which are of header < 128. */
-        bool PacketComplete(){ return INCOMING.Complete(); }
+        bool PacketComplete()
+        {
+            return INCOMING.Complete();
+        }
 
 
         /* Used to reset the packet to Null after it has been processed. This then flags the Connection to read another packet. */
-        void ResetPacket(){ INCOMING.SetNull(); }
+        void ResetPacket()
+        {
+            INCOMING.SetNull();
+        }
 
 
         /* Write a single packet to the TCP stream. */
@@ -174,9 +213,6 @@ namespace LLP
         }
 
 
-//    protected:
-
-
         /* Lower level network communications: Read. Interacts with OS sockets. */
         int Read(std::vector<uint8_t> &DATA, size_t nBytes)
         {
@@ -202,8 +238,11 @@ namespace LLP
     public:
 
         /* Connection Constructors */
-        Connection() : BaseConnection() { }
-        Connection( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false) : BaseConnection(SOCKET_IN, DDOS_IN, isDDOS, fOutgoing) { }
+        Connection()
+        : BaseConnection() { }
+
+        Connection( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false)
+        : BaseConnection(SOCKET_IN, DDOS_IN, isDDOS, fOutgoing) { }
 
 
         /* Regular Connection Read Packet Method. */

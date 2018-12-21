@@ -40,7 +40,9 @@ namespace LLP
         bool fMETER;
 
     public:
-        uint32_t PORT, MAX_THREADS, DDOS_TIMESPAN;
+        uint32_t PORT;
+        uint32_t MAX_THREADS;
+        uint32_t DDOS_TIMESPAN;
 
         /* The data type to keep track of current running threads. */
         std::vector<DataThread<ProtocolType> *> DATA_THREADS;
@@ -54,10 +56,14 @@ namespace LLP
         /* Address manager */
         AddressManager *pAddressManager;
 
+        /* Address of the server node */
         Address addrThisNode;
 
         /* returns the name of the protocol type of this server */
-        std::string Name() { return ProtocolType::Name(); }
+        std::string Name()
+        {
+            return ProtocolType::Name();
+        }
 
         Server<ProtocolType>(int32_t nPort, int32_t nMaxThreads, int32_t nTimeout = 30, bool isDDOS = false,
                              int32_t cScore = 0, int32_t rScore = 0, int32_t nTimespan = 60, bool fListen = true,
@@ -176,7 +182,7 @@ namespace LLP
         }
 
 
-        /** Get Connections
+        /** GetConnections
          *
          *  Get the active connection pointers from data threads.
          *
@@ -208,7 +214,7 @@ namespace LLP
         }
 
 
-        /** Get Addresses
+        /** GetAddresses
          *
          *  Get the active connection pointers from data threads.
          *

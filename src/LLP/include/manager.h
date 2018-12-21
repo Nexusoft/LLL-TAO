@@ -160,6 +160,7 @@ namespace LLP
          **/
         void WriteDatabase();
 
+
         /** PrintStats
          *
          *  print the current state of the address manager
