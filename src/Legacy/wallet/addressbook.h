@@ -137,10 +137,29 @@ namespace Legacy
          *
          *  @param[in] fOnlyConfirmed true only includes confirmed balance. Any unconfirmed transaction is filtered from balance calculation
          *
-         *  @return the address label
+         *  @param[in] nMinDepth Mimimum depth required for transaction balances to be included
+         *
+         *  @return true if addresses retrieved successfully
          *
          **/
-        bool AvailableAddresses(uint32_t nSpendTime, std::map<NexusAddress, int64_t>& mapAddressBalances, bool fOnlyConfirmed = false) const;
+        bool AvailableAddresses(const uint32_t nSpendTime, std::map<NexusAddress, int64_t>& mapAddressBalances, 
+                                const bool fOnlyConfirmed = false, const int nMinDepth = 1) const;
+
+
+        /** BalanceByAccount
+         *
+         *  Get the current balance for a given account 
+         *
+         *  @param[in] strAccount The account to retrieve balance for, * for all
+         *
+         *  @param[out] nBalance The retrieved balance for the requested account
+         *
+         *  @param[in] nMinDepth Mimimum depth required for transaction balances to be included
+         *
+         *  @return true if balance retrieved successfully
+         *
+         **/
+        bool BalanceByAccount(const std::string strAccount, int64_t& nBalance, const int nMinDepth = 3) const;
 
     };
 

@@ -537,10 +537,13 @@ namespace Legacy
          *
          *  @param[in] fFindBlock No longer used
          *
+         *  @param[in] fRescan Set true if processing as part of wallet rescan
+         *                     This will set CWalletTx time to tx time if it is added (otherwise uses current timestamp)
+         *
          * @return true if the transactions was added/updated
          *
          */
-        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock* pblock, bool fUpdate = false, bool fFindBlock = false);
+        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock* pblock, bool fUpdate = false, bool fFindBlock = false, bool fRescan = false, bool fRescan = false);
 
 
         /** EraseFromWallet
@@ -680,7 +683,7 @@ namespace Legacy
     /*----------------------------------------------------------------------------------------*/
         /** GetDebit
          *
-         *  Calculates the total value for all inputs sent from this wallet by a transaction. 
+         *  Calculates the total value for all inputs sent from this wallet in a transaction. 
          * 
          *  @param[in] tx The transaction to process
          *
@@ -784,14 +787,19 @@ namespace Legacy
          * 
          *  @param[in] address Nexus address where we are sending balance
          *
+         *  @param[in] nValue Amount to send
+         *
          *  @param[in,out] wtxNew Wallet transaction, send will populate with transaction data
          *
-         *  @param[in] fAskFee For old QT fee verification popup, no longer used (setting ignored)
+         *  @param[in] fAskFee For old QT to display fee verification popup, no longer used (setting ignored)
+         *
+         *  @param[in] nMinDepth Minimum depth required before prior transaction output selected as input to this transaction
          *
          *  @return empty string if successful, otherwise contains a displayable error message
          *
          **/
-        std::string SendToNexusAddress(const NexusAddress& address, int64_t nValue, CWalletTx& wtxNew, bool fAskFee=false);
+        std::string SendToNexusAddress(const NexusAddress& address, int64_t nValue, CWalletTx& wtxNew, 
+                                       const bool fAskFee = false, const uint32_t nMinDepth = 1);
 
 
         /** CreateTransaction
@@ -802,15 +810,19 @@ namespace Legacy
          *                     Each entry will generate a transaction output.
          *
          *  @param[in,out] wtxNew Wallet transaction, create will populate with transaction data
+         *                        Should have strFromAccount populated with account transaction is sent from. If not, uses "default"
          *
          *  @param[in,out] reservekey Key reserved for use by change output, key will be returned if no change output
          *
          *  @param[out] nFeeRet Fee paid to send the created transaction
          *
+         *  @param[in] nMinDepth Minimum depth required before prior transaction output selected as input to this transaction
+         *
          *  @return true if transaction successfully created
          *
          **/
-        bool CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, int64_t& nFeeRet);
+        bool CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, 
+                               int64_t& nFeeRet, const uint32_t nMinDepth = 1);
 
 
         /** CommitTransaction
@@ -963,7 +975,7 @@ namespace Legacy
          *
          **/
         bool SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::set<std::pair<const CWalletTx*, uint32_t> >& setCoinsRet, 
-                        int64_t& nValueRet, const std::string strAccount = "*", const int nMinDepth = 1);
+                        int64_t& nValueRet, const std::string strAccount = "*", const uint32_t nMinDepth = 1);
 
 
         /** SelectCoinsMinConf
@@ -989,7 +1001,7 @@ namespace Legacy
          *  @return true if script was successfully added
          *
          **/
-        bool SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const int nConfMine, const int nConfTheirs, 
+        bool SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const uint32_t nConfMine, const uint32_t nConfTheirs, 
                                 std::set<std::pair<const CWalletTx*, uint32_t> >& setCoinsRet, 
                                 int64_t& nValueRet, const std::string strAccount = "*");
 

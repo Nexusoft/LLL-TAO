@@ -72,9 +72,10 @@ namespace Legacy
 
 
     /* Get Nexus addresses that have a balance associated with the wallet for this address book */
-    bool CAddressBook::AvailableAddresses(uint32_t nSpendTime, std::map<NexusAddress, int64_t>& mapAddressBalances, bool fOnlyConfirmed) const
+    bool CAddressBook::AvailableAddresses(const uint32_t nSpendTime, std::map<NexusAddress, int64_t>& mapAddressBalances, 
+                                          const bool fOnlyConfirmed, , const int nMinDepth) const
     {
-        {
+        { //Begin lock scope
             std::lock_guard<std::recursive_mutex> walletLock(addressBookWallet.cs_wallet);
 
             for (auto& item : addressBookWallet.mapWallet)
@@ -89,12 +90,17 @@ namespace Legacy
                 if (!walletTx.IsFinal())
                     continue;
 
-                if (fOnlyConfirmed)
-                {
-                    /* Filter unconfirmed/immature transaction from results when only want confirmed */
-                    if (!walletTx.IsConfirmed() ||  walletTx.GetBlocksToMaturity() > 0)
-                        continue;
-                }
+                /* Filter unconfirmed/immature transaction from results when only want confirmed */
+                if (fOnlyConfirmed && !walletTx.IsConfirmed())
+                    continue;
+
+                /* Filter any transaction that does not meet minimum depth requirement */
+                if (walletTx.GetDepthInMainChain() < nMinDepth)
+                    continue;
+
+                /* Filter immature coinbase/coinstake transaction */
+                if ((walletTx.IsCoinBase() || walletTx.IsCoinStake()) && walletTx.GetBlocksToMaturity() > 0)
+                    continue;
 
                 for (int i = 0; i < walletTx.vout.size(); i++)
                 {
@@ -115,7 +121,66 @@ namespace Legacy
                     }
                 }
             }
-        }
+        } //End lock scope
+
+        return true;
+    }
+
+
+    /*  Get the current balance for a given account */
+    bool CWallet::BalanceByAccount(const std::string strAccount, int64_t& nBalance, const int nMinDepth) const
+    {
+        { //Begin lock scope
+            std::lock_guard<std::recursive_mutex> walletLock(addressBookWallet.cs_wallet);
+
+            nBalance = 0;
+
+            for (auto& item : addressBookWallet.mapWallet)
+            {
+                const CWalletTx& walletTx = item.second;
+
+                if (!walletTx.IsFinal())
+                    continue;
+
+                if (walletTx.GetDepthInMainChain() < nMinDepth)
+                    continue;
+
+                if ((walletTx.IsCoinBase() || walletTx.IsCoinStake()) && walletTx.GetBlocksToMaturity() > 0)
+                    continue;
+
+                for (int i = 0; i < walletTx.vout.size(); i++)
+                {
+
+                    if (!walletTx.IsSpent(i) && addressBookWallet.IsMine(walletTx.vout[i]) && walletTx.vout[i].nValue > 0)
+                    {
+                        if(strAccount == "*")
+                        {
+                            /* Wildcard request includes all accounts */
+                            nBalance += walletTx.vout[i].nValue;
+
+                            continue;
+                        }
+
+                        NexusAddress address;
+                        if(!ExtractAddress(walletTx.vout[i].scriptPubKey, address) || !address.IsValid())
+                            return false;
+
+                        if(mapAddressBook.count(address))
+                        {
+                            std::string strEntry = mapAddressBook.at(address);
+                            if(strEntry == "")
+                                strEntry = "default";
+
+                            if(strEntry == strAccount)
+                                nBalance += walletTx.vout[i].nValue;
+                        }
+                        else if(strAccount == "default")
+                            nBalance += walletTx.vout[i].nValue;
+
+                    }
+                }
+            }
+        } //End lock scope
 
         return true;
     }

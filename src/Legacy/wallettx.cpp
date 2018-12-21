@@ -396,6 +396,8 @@ namespace Legacy
         listReceived.clear();
         listSent.clear();
         strSentAccount = strFromAccount;
+        if(strSentAccount == "")
+            strSentAccount = "default";
 
         if (IsCoinBase() || IsCoinStake())
         {
@@ -432,10 +434,6 @@ namespace Legacy
                 address = " unknown ";
             }
 
-            /* Don't report 'change' txouts */
-            if (nDebit > 0 && ptransactionWallet->IsChange(txout))
-                continue;
-
             /* For tx from us, txouts represent the sent value, add to the sent list */
             if (nDebit > 0)
                 listSent.push_back(std::make_pair(address, txout.nValue));
@@ -444,7 +442,6 @@ namespace Legacy
             if (ptransactionWallet->IsMine(txout))
                 listReceived.push_back(std::make_pair(address, txout.nValue));
         }
-
     }
 
 
@@ -465,7 +462,7 @@ namespace Legacy
         GetAmounts(allGeneratedImmature, allGeneratedMature, listReceived, listSent, allFee, strSentAccount);
 
         /* If no requested account, set nGenerated to mature Coinbase/Coinstake amount */
-        if (strAccount == "")
+        if (strAccount == "" || strAccount == "*")
             nGenerated = allGeneratedMature;
 
         /* If requested account is the account for this transaction, calculate nSent and nFee for it */

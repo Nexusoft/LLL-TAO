@@ -749,7 +749,7 @@ namespace Legacy
     /*  Checks whether a transaction has inputs or outputs belonging to this wallet, and adds
      *  it to the wallet when it does.
      */
-    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock* pblock, bool fUpdate, bool fFindBlock)
+    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock* pblock, bool fUpdate, bool fFindBlock, bool fRescan)
     {
         uint512_t hash = tx.GetHash();
 
@@ -767,6 +767,11 @@ namespace Legacy
             if (IsMine(tx) || IsFromMe(tx))
             {
                 CWalletTx wtx(this,tx);
+
+                if (fRescan) {
+                    /* On rescan or initial download, set wtx time to transaction time instead of time tx received */
+                    wtx.nTimeReceived = tx.nTime;
+                }
 
                 /* Get merkle branch if transaction was found in a block */
                 if (pblock)
@@ -1249,7 +1254,7 @@ namespace Legacy
 
             if (ExtractAddress(txout.scriptPubKey, address) && HaveKey(address))
             {
-                if (!addressBook.HasAddress(address))
+                //if (!addressBook.HasAddress(address))
                     return true;
             }
         }
@@ -1259,7 +1264,8 @@ namespace Legacy
 
 
     /* Generate a transaction to send balance to a given Nexus address. */
-    std::string CWallet::SendToNexusAddress(const NexusAddress& address, int64_t nValue, CWalletTx& wtxNew, bool fAskFee)
+    std::string CWallet::SendToNexusAddress(const NexusAddress& address, int64_t nValue, CWalletTx& wtxNew, 
+                                            const bool fAskFee, const uint32_t nMinDepth)
     {
         /* Validate amount */
         if (nValue <= 0)
@@ -1286,7 +1292,7 @@ namespace Legacy
         {
             /* Cannot create transaction when wallet locked */
             std::string strError = std::string("Error: Wallet locked, unable to create transaction  ");
-            debug::log(0, "SendMoney() : %s", strError.c_str());
+            debug::log(0, "SendToNexusAddress() : %s", strError.c_str());
             return strError;
         }
 
@@ -1294,11 +1300,11 @@ namespace Legacy
         {
             /* Cannot create transaction if unlocked for mint only */
             std::string strError = std::string("Error: Wallet unlocked for block minting only, unable to create transaction.");
-            debug::log(0, "SendMoney() : %s", strError.c_str());
+            debug::log(0, "SendToNexusAddress() : %s", strError.c_str());
             return strError;
         }
 
-        if (!CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired))
+        if (!CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nMinDepth))
         {
             /* Transaction creation failed */
             std::string strError;
@@ -1306,7 +1312,7 @@ namespace Legacy
             {
                 /* Failure resulted because required fee caused transaction amount to exceed available balance.
                  * Really should not get this because of initial check at start of function. Could only happen
-                 * if nFeeRequired > MIN_TX_FEE
+                 * if calculates an additional fee such that nFeeRequired > MIN_TX_FEE
                  */
                 strError = debug::strprintf(std::string("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  "),
                                             FormatMoney(nFeeRequired).c_str());
@@ -1317,7 +1323,7 @@ namespace Legacy
                 strError = std::string("Error: Transaction creation failed  ");
             }
 
-            debug::log(0, "SendMoney() : %s", strError.c_str());
+            debug::log(0, "SendToNexusAddress() : %s", strError.c_str());
 
             return strError;
         }
@@ -1331,22 +1337,23 @@ namespace Legacy
 
 
     /* Create and populate a new transaction. */
-    bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, int64_t& nFeeRet)
+    bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, 
+                                    int64_t& nFeeRet, const uint32_t nMinDepth)
     {
         int64_t nValue = 0;
+
+        /* Cannot create transaction if nothing to send */
+        if (vecSend.empty())
+            return false;
 
         /* Calculate total send amount */
         for (const auto& s : vecSend)
         {
+            nValue += s.second;
+
             if (nValue < 0)
                 return false; // Negative value invalid
-
-            nValue += s.second;
         }
-
-        /* Cannot create transaction if nothing to send */
-        if (vecSend.empty() || nValue < 0)
-            return false;
 
         /* Link transaction to wallet, don't add it yet (will be done when transaction committed) */
         wtxNew.BindWallet(this);
@@ -1374,36 +1381,55 @@ namespace Legacy
                 for (auto& s : vecSend)
                     wtxNew.vout.push_back(CTxOut(s.second, s.first));
 
-                /* This set will hold txouts to use as input for this transaction as transaction/vout index pairs */
+                /* This set will hold txouts (UTXOs) to use as input for this transaction as transaction/vout index pairs */
                 std::set<std::pair<const CWalletTx*,uint32_t> > setSelectedCoins;
 
                 /* Initialize total value of all inputs */
                 int64_t nValueIn = 0;
 
+                /* Verify that from account has value, or use "default" */
+                if (wtxNew.strFromAccount == "")
+                    wtxNew.strFromAccount = "default";
+
                 /* Choose coins to use for transaction input */
-                if (!SelectCoins(nTotalValue, wtxNew.nTime, setSelectedCoins, nValueIn))
+                if (!SelectCoins(nTotalValue, wtxNew.nTime, setCoins, nValueIn, wtxNew.strFromAccount, nMinDepth))
                     return false;
-
-                /* Process selected coins to get scriptChange */
-                CScript scriptChange;
-                for(auto item : setSelectedCoins)
-                {
-                    const CWalletTx& selectedTransaction = *(item.first);
-
-                    /* When done, this will contain scriptPubKey of last transaction in the set */
-                    scriptChange = selectedTransaction.vout[item.second].scriptPubKey;
-                }
 
                 /* Amount of change needed is total of inputs - (total sent + fee) */
                 int64_t nChange = nValueIn - nTotalValue;
 
+                /* When change needed, create a txOut for it and insert into transaction outputs */
                 if (nChange > 0)
                 {
-                    /* Reserve a new key pair from key pool to use for change */
-                    std::vector<uint8_t> vchPubKeyChange = reservekey.GetReservedKey();
+                    CScript scriptChange;
 
-                    /* Fill a vout to return change */
-                    scriptChange.SetNexusAddress(vchPubKeyChange);
+                    if (!config::GetBoolArg("-avatar", true)) //Avatar enabled by default
+                    {
+                        /* When not avatar mode, use a new key pair from key pool for change */
+                        std::vector<uint8_t> vchPubKeyChange = reservekey.GetReservedKey();
+
+                        /* Fill a vout to return change */
+                        scriptChange.SetNexusAddress(vchPubKeyChange);
+
+                        /* Name the change address in the address book using from account  */
+                        NexusAddress address;
+                        if(!ExtractAddress(scriptChange, address) || !address.IsValid())
+                            return false;
+
+                        addressBook.SetAddressBookName(address, wtxNew.strFromAccount);
+
+                    }
+                    else
+                    {
+                        /* For avatar mode, return change to the last address in the input set */
+                        for(auto item : setSelectedCoins)
+                        {
+                            const CWalletTx& selectedTransaction = *(item.first);
+
+                            /* When done, this will contain scriptPubKey of last transaction in the set */
+                            scriptChange = selectedTransaction.vout[item.second].scriptPubKey;
+                        }
+                    }
 
                     /* Insert change output at random position: */
                     auto position = wtxNew.vout.begin() + LLC::GetRandInt(wtxNew.vout.size());
@@ -1673,7 +1699,7 @@ namespace Legacy
 
     /* Selects the unspent transaction outputs to use as inputs when creating a transaction that sends balance from this wallet. */
     bool CWallet::SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::set<std::pair<const CWalletTx*, uint32_t> >& setCoinsRet,
-                              int64_t& nValueRet, std::string strAccount, int nMinDepth)
+                              int64_t& nValueRet, std::string strAccount, uint32_t nMinDepth)
     {
         /* Call detailed select up to 3 times if it fails, using the returns from the first successful call.
          * This allows it to attempt multiple input sets if it doesn't find a workable one on the first try.
@@ -1688,7 +1714,7 @@ namespace Legacy
     /* Selects the unspent outputs to use as inputs when creating a transaction to send
      * balance from this wallet while requiring a minimum confirmation depth to be included in result.
      */
-    bool CWallet::SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const int nConfMine, const int nConfTheirs,
+    bool CWallet::SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const uint32_t nConfMine, const uint32_t nConfTheirs,
                                 std::set<std::pair<const CWalletTx*, uint32_t> >& setCoinsRet, int64_t& nValueRet, std::string strAccount)
     {
         /* Add Each Input to Transaction. */
@@ -1696,6 +1722,11 @@ namespace Legacy
         std::vector<CWalletTx> vallWalletTx;
 
         nValueRet = 0;
+
+        if (config::GetBoolArg("-printselectcoin", false))
+        {
+            debug::log(0, "SelectCoins() for Account %s\n", nConfMine, strAccount.c_str());
+        }
 
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
@@ -1711,21 +1742,20 @@ namespace Legacy
 
         for(const CWalletTx& walletTx : vallWalletTx)
         {
+            /* Can't spend transaction from after spend time */
+            if (walletTx.nTime > nSpendTime)
+                continue;
+
             /* Can't spend balance that is unconfirmed or not final */
             if (!walletTx.IsFinal() || !walletTx.IsConfirmed())
                 continue;
 
+            /* Can't spend transaction that has not reached minimum depth setting for mine/theirs */
+            if (walletTx.GetDepthInMainChain() < (walletTx.IsFromMe() ? nConfMine : nConfTheirs))
+                continue;
+
             /* Can't spend coinbase or coinstake transactions that are immature */
             if ((walletTx.IsCoinBase() || walletTx.IsCoinStake()) && walletTx.GetBlocksToMaturity() > 0)
-                continue;
-
-            /* Can't spend transaction that has not reached minimum depth setting for mine/theirs */
-            int nDepth = walletTx.GetDepthInMainChain();
-            if (nDepth < (walletTx.IsFromMe() ? nConfMine : nConfTheirs))
-                continue;
-
-            /* Can't spend transaction from after spend time */
-            if (walletTx.nTime > nSpendTime)
                 continue;
 
             for (uint32_t i = 0; i < walletTx.vout.size(); i++)
@@ -1772,10 +1802,12 @@ namespace Legacy
                     nValueRet += walletTx.vout[i].nValue;
                 }
 
-
+                /* If value available to spend in result set exceeds target value, we are done */
+                if(nValueRet >= nTargetValue)
+                    break;
             }
 
-            /* If value available to spend in result set exceeds target value, we are done */
+            /* This is tested twice to break out of both loops */
             if(nValueRet >= nTargetValue)
                 break;
 
