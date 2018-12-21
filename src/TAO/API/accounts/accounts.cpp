@@ -36,22 +36,35 @@ namespace TAO::API
     json::json Accounts::CreateAccount(const json::json& params, bool fHelp)
     {
         json::json ret;
+
+        /* Check for username parameter. */
         if(params.find("username") == params.end())
             throw APIException(-23, "Missing Username");
 
+        /* Check for password parameter. */
         if(params.find("password") == params.end())
             throw APIException(-24, "Missing Password");
 
+        /* Check for pin parameter. */
         if(params.find("pin") == params.end())
             throw APIException(-25, "Missing PIN");
 
+        /* Generate the signature chain. */
         TAO::Ledger::SignatureChain user(params["username"], params["password"]);
 
+        /* Create the transaction object. */
         TAO::Ledger::Transaction tx;
         tx.NextHash(user.Generate(1, params["pin"]));
         tx.hashGenesis = tx.Genesis();
+
+        /* Sign the transaction. */
         tx.Sign(user.Generate(0, params["pin"]));
 
+        /* Check that the transaction is valid. */
+        if(!tx.IsValid())
+            throw APIException(-26, "Invalid Transaction");
+
+        /* Build a JSON response object. */
         ret["version"]   = tx.nVersion;
         ret["sequence"]  = tx.nSequence;
         ret["timestamp"] = tx.nTimestamp;
@@ -60,9 +73,6 @@ namespace TAO::API
         ret["prevhash"]  = tx.hashPrevTx.ToString();
         ret["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
         ret["hash"]      = tx.Genesis().ToString();
-
-        if(!tx.IsValid())
-            throw APIException(-26, "Invalid Transaction");
 
         return ret;
     }
