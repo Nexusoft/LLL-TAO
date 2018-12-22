@@ -35,17 +35,17 @@ namespace LLP
 
 
     /** Class that tracks DDOS attempts on LLP Servers.
-        Uses a Timer to calculate Request Score [rScore] and Connection Score [cScore] as a unit of Score / Second.
+        Uses a timer to calculate Request Score [rScore] and Connection Score [cScore] as a unit of Score / Second.
         Pointer stored by Connection class and Server Listener DDOS_MAP. **/
     class DDOS_Score
     {
         std::vector< std::pair<bool, int> > SCORE;
-        runtime::Timer TIMER;
+        runtime::timer TIMER;
         int nIterator;
         std::recursive_mutex MUTEX;
 
 
-        /** Reset the Timer and the Score Flags to be Overwritten. **/
+        /** Reset the timer and the Score Flags to be Overwritten. **/
         void Reset()
         {
             for(int i = 0; i < SCORE.size(); i++)
@@ -134,7 +134,7 @@ namespace LLP
     /** Filter to Contain DDOS Scores and Handle DDOS Bans. **/
     class DDOS_Filter
     {
-        runtime::Timer TIMER;
+        runtime::timer TIMER;
         uint32_t BANTIME, TOTALBANS;
 
     public:

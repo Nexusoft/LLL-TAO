@@ -123,7 +123,7 @@ namespace LLP
 
                     nLastPing = runtime::UnifiedTimestamp();
 
-                    mapLatencyTracker.emplace(nSessionID, runtime::Timer());
+                    mapLatencyTracker.emplace(nSessionID, runtime::timer());
                     mapLatencyTracker[nSessionID].Start();
 
                     PushMessage("ping", nSessionID);

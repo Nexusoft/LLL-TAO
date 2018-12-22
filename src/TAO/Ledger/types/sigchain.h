@@ -11,78 +11,80 @@
 
 ____________________________________________________________________________________________*/
 
+#ifndef NEXUS_TAO_LEDGER_TYPES_SIGNATURE_CHAIN_H
+#define NEXUS_TAO_LEDGER_TYPES_SIGNATURE_CHAIN_H
+
 #include <string>
 
 #include <LLC/hash/SK.h>
 #include <LLC/hash/macro.h>
 
-namespace TAO
+#include <Util/include/allocators.h>
+
+namespace TAO::Ledger
 {
-
-    namespace Ledger
+    /** Base Class for a Signature SignatureChain
+     *
+     *  Similar to HD wallet systems, but integrated into the Layer 2 of the nexus software stack.
+     *  Seed phrase includes at least 128 bits of entropy (8 char username, 8 char password) and pin
+     *  to attack a signature chain by dictionary attack.
+     *
+     */
+    class SignatureChain
     {
-        /** Base Class for a Signature SignatureChain
-        *
-        *  Similar to HD wallet systems, but integrated into the Layer 2 of the nexus software stack.
-        *  Seed phrase includes at least 128 bits of entropy (8 char username, 8 char password) and pin
-        *  to attack a signature chain by dictionary attack.
-        *
-        */
-        class SignatureChain
+
+        /** Secure allocator to represent the username of this signature chain. **/
+        SecureString strUsername;
+
+
+        /** Secure allocater to represent the password of this signature chain. **/
+        SecureString strPassword;
+
+    public:
+        /** Constructor to generate Keychain
+         *
+         * @param[in] strUsernameIn The username to seed the signature chain
+         * @param[in] strPasswordIn The password to seed the signature chain
+         **/
+        SignatureChain(std::string strUsernameIn, std::string strPasswordIn) : strUsername(strUsernameIn), strPassword(strPasswordIn) {}
+
+
+        /** Generate Function
+         *
+         *  This function is responsible for genearting the private key in the keychain of a specific account.
+         *  The keychain is a series of keys seeded from a secret phrase and a PIN number.
+         *
+         *  @param[in] nKeyID The key number in the keychian
+         *  @param[in] strSecret The secret phrase to use (Never Cached)
+         *
+         *  @return The 512 bit hash of this key in the series.
+         **/
+        uint512_t Generate(uint32_t nKeyID, SecureString strSecret)
         {
+            /* Serialize the Key ID (Big Endian). */
+            std::vector<uint8_t> vKeyID((uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
 
-            /** String to represent the username of this signature chain. **/
-            std::string strUsername;
+            /* Generate the Secret Phrase */
+            std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
+            vSecret.insert(vSecret.end(), vKeyID.begin(), vKeyID.end());
+            vSecret.insert(vSecret.end(), strPassword.begin(), strPassword.end());
 
+            /* Generate the secret data. */
+            std::vector<uint8_t> vPin(strSecret.begin(), strSecret.end());
+            vPin.insert(vPin.end(), vKeyID.begin(), vKeyID.end());
 
-            /** String to represent the password of this signature chain. **/
-            std::string strPassword;
+            /* Generate the Hashes */
+            uint1024_t hashSecret = LLC::SK1024(vSecret);
+            uint1024_t hashPIN    = LLC::SK1024(vPin);
 
-        public:
-            /** Constructor to generate Keychain
-             *
-             * @param[in] strUsernameIn The username to seed the signature chain
-             * @param[in] strPasswordIn The password to seed the signature chain
-             **/
-            SignatureChain(std::string strUsernameIn, std::string strPasswordIn) : strUsername(strUsernameIn), strPassword(strPasswordIn) {}
+            std::vector<uint8_t> vFinal;
+            vFinal.insert(vFinal.end(), (uint8_t*)&hashSecret, (uint8_t*)&hashSecret + 128);
+            vFinal.insert(vFinal.end(), (uint8_t*)&hashPIN, (uint8_t*)&hashPIN + 128);
 
-
-            /** Generate Function
-             *
-             *  This function is responsible for genearting the private key in the keychain of a specific account.
-             *  The keychain is a series of keys seeded from a secret phrase and a PIN number.
-             *
-             *  @param[in] nKeyID The key number in the keychian
-             *  @param[in] strSecret The secret phrase to use (Never Cached)
-             *
-             *  @return The 512 bit hash of this key in the series.
-             **/
-            uint512_t Generate(uint32_t nKeyID, std::string strSecret)
-            {
-                /* Serialize the Key ID (Big Endian). */
-                std::vector<uint8_t> vKeyID((uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
-
-                /* Generate the Secret Phrase */
-                std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
-                vSecret.insert(vSecret.end(), vKeyID.begin(), vKeyID.end());
-                vSecret.insert(vSecret.end(), strPassword.begin(), strPassword.end());
-
-                /* Generate the Pin Data.
-                TODO: Look to see if this can be improved. */
-                std::vector<uint8_t> vPin(strSecret.begin(), strSecret.end());
-                vPin.insert(vPin.end(), vKeyID.begin(), vKeyID.end());
-
-                /* Generate the Hashes */
-                uint1024_t hashSecret = LLC::SK1024(vSecret);
-                uint1024_t hashPIN    = LLC::SK1024(vPin);
-
-                std::vector<uint8_t> vFinal;
-                vFinal.insert(vFinal.end(), (uint8_t*)&hashSecret, (uint8_t*)&hashSecret + 128);
-                vFinal.insert(vFinal.end(), (uint8_t*)&hashPIN, (uint8_t*)&hashPIN + 128);
-
-                /* Generate the Final Root Hash. */
-                return LLC::SK512(vFinal);
-            }
-        };
-    }
+            /* Generate the Final Root Hash. */
+            return LLC::SK512(vFinal);
+        }
+    };
 }
+
+#endif

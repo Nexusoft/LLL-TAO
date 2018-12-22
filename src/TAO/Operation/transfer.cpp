@@ -23,17 +23,28 @@ namespace TAO::Operation
     bool Transfer(uint256_t hashAddress, uint256_t hashTransfer, uint256_t hashCaller)
     {
         /* Read the register from the database. */
-        TAO::Register::State regState = TAO::Register::State();
-        if(!LLD::regDB->ReadState(hashAddress, regState))
+        TAO::Register::State state = TAO::Register::State();
+        if(!LLD::regDB->ReadState(hashAddress, state))
             return debug::error(FUNCTION "Register %s doesn't exist in register DB", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
         /* Make sure that you won the rights to register first. */
-        if(regState.hashOwner != hashCaller)
+        if(state.hashOwner != hashCaller)
             return debug::error(FUNCTION "%s not authorized to transfer register", __PRETTY_FUNCTION__, hashCaller.ToString().c_str());
 
+        /* Check that you aren't sending to yourself. */
+        if(state.hashOwner == hashTransfer)
+            return debug::error(FUNCTION "%s cannot transfer to self when already owned", __PRETTY_FUNCTION__, hashCaller.ToString().c_str());
+
         /* Set the new owner of the register. */
-        regState.hashOwner = hashTransfer;
-        if(!LLD::regDB->WriteState(hashAddress, regState))
+        state.hashOwner = hashTransfer;
+        state.SetChecksum();
+
+        /* Check register for validity. */
+        if(!state.IsValid())
+            return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+
+        /* Write the register to state database. */
+        if(!LLD::regDB->WriteState(hashAddress, state))
             return debug::error(FUNCTION "Failed to write new owner for register", __PRETTY_FUNCTION__);
 
         return true;

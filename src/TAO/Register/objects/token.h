@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <stdio.h>
 #include <cstdint>
 
+#include <Util/templates/serialize.h>
+
 namespace TAO
 {
 
@@ -46,6 +48,16 @@ namespace TAO
 
             /** The significant figures of said token. **/
             uint8_t  nCoinDigits;
+
+
+            //serialization functions
+            IMPLEMENT_SERIALIZE
+            (
+                READWRITE(nVersion);
+                READWRITE(nIdentifier);
+                READWRITE(nMaxSupply);
+                READWRITE(nCoinDigits);
+            )
 
 
             /** Default Constructor. **/

@@ -17,6 +17,10 @@ ________________________________________________________________________________
 #include <vector>
 #include <cstdint>
 
+#include <LLD/include/version.h>
+
+#include <Util/templates/serialize.h>
+
 namespace TAO
 {
 
@@ -94,7 +98,54 @@ namespace TAO
              **/
             bool End()
             {
-                return nReadPos == vchData.size();
+                return nReadPos >= vchData.size();
+            }
+
+
+            /** read
+             *
+             *  Reads raw data from the stream
+             *
+             *  @param[in] pch The pointer to beginning of memory to write
+             *
+             *  @param[in] nSize The total number of bytes to read
+             *
+             **/
+            Stream& read(char* pch, int nSize)
+            {
+                /* Check size constraints. */
+                if(nReadPos + nSize > vchData.size())
+                {
+                    debug::error(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos);
+
+                    return *this;
+                }
+
+                /* Copy the bytes into tmp object. */
+                std::copy((uint8_t*)&vchData[nReadPos], (uint8_t*)&vchData[nReadPos] + nSize, (uint8_t*)pch);
+
+                /* Iterate the read position. */
+                nReadPos += nSize;
+
+                return *this;
+            }
+
+
+            /** write
+             *
+             *  Writes data into the stream
+             *
+             *  @param[in] pch The pointer to beginning of memory to write
+             *
+             *  @param[in] nSize The total number of bytes to copy
+             *
+             **/
+            Stream& write(const char* pch, int nSize)
+            {
+                /* Push the obj bytes into the vector. */
+                vchData.insert(vchData.end(), (uint8_t*)pch, (uint8_t*)pch + nSize);
+
+                return *this;
             }
 
 
@@ -107,13 +158,10 @@ namespace TAO
              **/
             template<typename Type> Stream& operator<<(const Type& obj)
             {
-                /* Push the size byte into vector. */
-                vchData.push_back((uint8_t)sizeof(obj));
+                /* Serialize to the stream. */
+                ::Serialize(*this, obj, SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versinos for now
 
-                /* Push the obj bytes into the vector. */
-                vchData.insert(vchData.end(), (uint8_t*)&obj, (uint8_t*)&obj + sizeof(obj));
-
-                return *this;
+                return (*this);
             }
 
 
@@ -124,24 +172,11 @@ namespace TAO
              *  @param[out] obj The object to de-serialize from ledger data
              *
              **/
-            template<typename Type> Stream& operator>>(Type& obj) //TODO: catch the end of stream
+            template<typename Type> Stream& operator>>(Type& obj)
             {
-                /* Get the size from size byte. */
-                uint8_t nSize = vchData[nReadPos];
-
-                /* Create tmp object to prevent double free in std::copy. */
-                Type tmp;
-
-                /* Copy the bytes into tmp object. */
-                std::copy((uint8_t*)&vchData[nReadPos + 1], (uint8_t*)&vchData[nReadPos + 1] + nSize, (uint8_t*)&tmp);
-
-                /* Iterate the read position. */
-                nReadPos += nSize + 1;
-
-                /* Set the return value. */
-                obj = tmp;
-
-                return *this;
+                /* Unserialize from the stream. */
+                ::Unserialize(*this, obj, SER_OPERATIONS, LLD::DATABASE_VERSION); //TODO: version should be object version
+                return (*this);
             }
         };
     }

@@ -35,32 +35,52 @@ namespace TAO::API
          *
          *  Get's the description of an item.
          *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
          **/
-        json::json GetItem(const json::json& jsonParams, bool fHelp);
+        json::json GetItem(const json::json& params, bool fHelp);
 
 
         /** Transfer
          *
          *  Transfers an item.
          *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
          **/
-        json::json Transfer(const json::json& jsonParams, bool fHelp);
+        json::json Transfer(const json::json& params, bool fHelp);
 
 
         /** Submit
          *
          *  Submits an item.
          *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
          **/
-        json::json Submit(const json::json& jsonParams, bool fHelp);
+        json::json Submit(const json::json& params, bool fHelp);
 
 
         /** History
          *
          *  Gets the history of an item.
          *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
          **/
-        json::json History(const json::json& jsonParams, bool fHelp);
+        json::json History(const json::json& params, bool fHelp);
     };
 
     extern Supply supply;

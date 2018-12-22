@@ -173,7 +173,8 @@ public:
 typedef CMutexLock<std::recursive_mutex> CCriticalBlock;
 
 /* Macro preprocessor definitions for debug purposes. */
-#define LOCK(cs) std::unique_lock<std::recursive_mutex> lock(cs)
+#define LOCK(cs) std::lock_guard<std::recursive_mutex> lock(cs)
+
 //#define LOCK(cs) CCriticalBlock criticalblock(cs, #cs, __FILE__, __LINE__)
 #define LOCK2(cs1,cs2) CCriticalBlock criticalblock1(cs1, #cs1, __FILE__, __LINE__),criticalblock2(cs2, #cs2, __FILE__, __LINE__)
 #define TRY_LOCK(cs,name) CCriticalBlock name(cs, #cs, __FILE__, __LINE__, true)
