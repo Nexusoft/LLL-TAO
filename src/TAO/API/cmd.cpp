@@ -243,7 +243,11 @@ namespace TAO::API
         }
         else
         {
-            strPrint = ret["result"].dump(4);
+            
+            if( ret["result"].is_string())
+                strPrint = ret["result"].get<std::string>();
+            else
+                strPrint = ret["result"].dump(4);
         }
 
         // output to console

@@ -17,18 +17,22 @@ ________________________________________________________________________________
 namespace TAO::API
 {
 
-    // Value getnewaddress(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() > 1)
-    //         throw runtime_error(
-    //             "getnewaddress [account]\n"
-    //             "Returns a new Nexus address for receiving payments.  "
-    //             "If [account] is specified (recommended), it is added to the address book "
-    //             "so payments received with the address will be credited to [account].");
+    /* getnewaddress [account]
+       Returns a new Nexus address for receiving payments.
+       If [account] is specified (recommended), it is added to the address book
+       so payments received with the address will be credited to [account] */
+    json::json RPC::GetNewAddress(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() > 1)
+            return std::string(
+                "getnewaddress [account]"
+                " - Returns a new Nexus address for receiving payments.  "
+                "If [account] is specified (recommended), it is added to the address book "
+                "so payments received with the address will be credited to [account].");
 
     //     // Parse the account first so we don't generate a key if there's an error
     //     string strAccount = "default";
-    //     if (params.size() > 0)
+    //     if (jsonParams.size() > 0)
     //         strAccount = AccountFromValue(params[0]);
 
     //     if (!pwalletMain->IsLocked())
@@ -43,7 +47,7 @@ namespace TAO::API
     //     pwalletMain->SetAddressBookName(address, strAccount);
 
     //     return address.ToString();
-    // }
+     }
 
 
     // Wallet::NexusAddress GetAccountAddress(string strAccount, bool bForceNew=false)
@@ -84,30 +88,33 @@ namespace TAO::API
     //     return Wallet::NexusAddress(account.vchPubKey);
     // }
 
-    // Value getaccountaddress(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 1)
-    //         throw runtime_error(
-    //             "getaccountaddress <account>\n"
-    //             "Returns the current Nexus address for receiving payments to this account.");
+    /* getaccountaddress <account>
+       Returns the current Nexus address for receiving payments to this account */
+    json::json RPC::GetAccountAddress(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 1)
+            return std::string(
+                "getaccountaddress <account>"
+                " - Returns the current Nexus address for receiving payments to this account.");
 
     //     // Parse the account first so we don't generate a key if there's an error
     //     string strAccount = AccountFromValue(params[0]);
 
-    //     Value ret;
+    //     json::json ret;
     //     ret = GetAccountAddress(strAccount).ToString();
 
     //     return ret;
-    // }
+    }
 
 
-
-    // Value setaccount(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() < 1 || params.size() > 2)
-    //         throw runtime_error(
-    //             "setaccount <Nexusaddress> <account>\n"
-    //             "Sets the account associated with the given address.");
+    /* setaccount <Nexusaddress> <account>
+       Sets the account associated with the given address */
+    json::json RPC::SetAccount(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() < 1 || jsonParams.size() > 2)
+            return std::string(
+                "setaccount <Nexusaddress> <account>"
+                " - Sets the account associated with the given address.");
 
     //     Wallet::NexusAddress address(params[0].get_str());
     //     if (!address.IsValid())
@@ -115,7 +122,7 @@ namespace TAO::API
 
 
     //     string strAccount;
-    //     if (params.size() > 1)
+    //     if (jsonParams.size() > 1)
     //         strAccount = AccountFromValue(params[1]);
 
     //     // Detect when changing the account of an address that is the 'unused current key' of another account:
@@ -129,15 +136,16 @@ namespace TAO::API
     //     pwalletMain->SetAddressBookName(address, strAccount);
 
     //     return Value::null;
-    // }
+     }
 
-
-    // Value getaccount(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 1)
-    //         throw runtime_error(
-    //             "getaccount <Nexusaddress>\n"
-    //             "Returns the account associated with the given address.");
+    /* getaccount <Nexusaddress>
+       Returns the account associated with the given address */
+    json::json RPC::GetAccount(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 1)
+            return std::string(
+                "getaccount <Nexusaddress>"
+                " - Returns the account associated with the given address.");
 
     //     Wallet::NexusAddress address(params[0].get_str());
     //     if (!address.IsValid())
@@ -148,15 +156,16 @@ namespace TAO::API
     //     if (mi != pwalletMain->mapAddressBook.end() && !(*mi).second.empty())
     //         strAccount = (*mi).second;
     //     return strAccount;
-    // }
+    }
 
-
-    // Value getaddressesbyaccount(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 1)
-    //         throw runtime_error(
-    //             "getaddressesbyaccount <account>\n"
-    //             "Returns the list of addresses for the given account.");
+    /* getaddressesbyaccount <account>
+       Returns the list of addresses for the given account */
+    json::json RPC::GetAddressesByAccount(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 1)
+            return std::string(
+                "getaddressesbyaccount <account>"
+                " - Returns the list of addresses for the given account.");
 
     //     string strAccount = AccountFromValue(params[0]);
 
@@ -170,31 +179,34 @@ namespace TAO::API
     //             ret.push_back(address.ToString());
     //     }
     //     return ret;
-    // }
+    }
 
-    // Value settxfee(const Array& params, bool fHelp)
+    // json::json RPC::SetTxFee(const json::json& jsonParams, bool fHelp)
     // {
-    //     if (fHelp || params.size() < 1 || params.size() > 1 || AmountFromValue(params[0]) < Core::MIN_TX_FEE)
-    //         throw runtime_error(
-    //             "settxfee <amount>\n"
-    //             "<amount> is a real and is rounded to 0.01 (cent)\n"
-    //             "Minimum and default transaction fee per KB is 1 cent");
+    //     if (fHelp || jsonParams.size() < 1 || jsonParams.size() > 1 || AmountFromValue(params[0]) < Core::MIN_TX_FEE)
+    //         return std::string(
+    //             "settxfee <amount>"
+    //             " - <amount> is a real and is rounded to 0.01 (cent)"
+    //             " Minimum and default transaction fee per KB is 1 cent");
 
     //     Core::nTransactionFee = AmountFromValue(params[0]);
     //     Core::nTransactionFee = (Core::nTransactionFee / CENT) * CENT;  // round to cent
     //     return true;
-    // }
+    //}
 
-    // Value sendtoaddress(const Array& params, bool fHelp)
+    /* sendtoaddress <Nexusaddress> <amount> [comment] [comment-to]
+    *  - <amount> is a real and is rounded to the nearest 0.000001
+    *  requires wallet passphrase to be set with walletpassphrase first */
+    // json::json sendtoaddress(const json::json& jsonParams, bool fHelp)
     // {
-    //     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
-    //         throw runtime_error(
-    //             "sendtoaddress <Nexusaddress> <amount> [comment] [comment-to]\n"
-    //             "<amount> is a real and is rounded to the nearest 0.000001\n"
-    //             "requires wallet passphrase to be set with walletpassphrase first");
-    //     if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
-    //         throw runtime_error(
-    //             "sendtoaddress <Nexusaddress> <amount> [comment] [comment-to]\n"
+    //     if (pwalletMain->IsCrypted() && (fHelp || jsonParams.size() < 2 || jsonParams.size() > 4))
+    //         return std::string(
+    //             "sendtoaddress <Nexusaddress> <amount> [comment] [comment-to]"
+    //             " - <amount> is a real and is rounded to the nearest 0.000001"
+    //             " requires wallet passphrase to be set with walletpassphrase first");
+    //     if (!pwalletMain->IsCrypted() && (fHelp || jsonParams.size() < 2 || jsonParams.size() > 4))
+    //         return std::string(
+    //             "sendtoaddress <Nexusaddress> <amount> [comment] [comment-to]"
     //             "<amount> is a real and is rounded to the nearest 0.000001");
 
     //     Wallet::NexusAddress address(params[0].get_str());
@@ -208,9 +220,9 @@ namespace TAO::API
 
     //     // Wallet comments
     //     Wallet::CWalletTx wtx;
-    //     if (params.size() > 2 && params[2].type() != null_type && !params[2].get_str().empty())
+    //     if (jsonParams.size() > 2 && params[2].type() != null_type && !params[2].get_str().empty())
     //         wtx.mapValue["comment"] = params[2].get_str();
-    //     if (params.size() > 3 && params[3].type() != null_type && !params[3].get_str().empty())
+    //     if (jsonParams.size() > 3 && params[3].type() != null_type && !params[3].get_str().empty())
     //         wtx.mapValue["to"]      = params[3].get_str();
 
     //     if (pwalletMain->IsLocked())
@@ -223,12 +235,14 @@ namespace TAO::API
     //     return wtx.GetHash().GetHex();
     // }
 
-    // Value signmessage(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 2)
-    //         throw runtime_error(
-    //             "signmessage <Nexusaddress> <message>\n"
-    //             "Sign a message with the private key of an address");
+    /* signmessage <Nexusaddress> <message>
+       Sign a message with the private key of an address */
+    json::json RPC::SignMessage(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 2)
+            return std::string(
+                "signmessage <Nexusaddress> <message>"
+                " - Sign a message with the private key of an address");
 
     //     if (pwalletMain->IsLocked())
     //         throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
@@ -253,14 +267,16 @@ namespace TAO::API
     //         throw JSONRPCError(-5, "Sign failed");
 
     //     return EncodeBase64(&vchSig[0], vchSig.size());
-    // }
+    }
 
-    // Value verifymessage(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 3)
-    //         throw runtime_error(
-    //             "verifymessage <Nexusaddress> <signature> <message>\n"
-    //             "Verify a signed message");
+    /* verifymessage <Nexusaddress> <signature> <message>
+       Verify a signed message */
+    json::json RPC::VerifyMessage(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 3)
+            return std::string(
+                "verifymessage <Nexusaddress> <signature> <message>"
+                " - Verify a signed message");
 
     //     string strAddress  = params[0].get_str();
     //     string strSign     = params[1].get_str();
@@ -285,15 +301,16 @@ namespace TAO::API
     //         return false;
 
     //     return (Wallet::NexusAddress(key.GetPubKey()) == addr);
-    // }
+    }
 
-
-    // Value getreceivedbyaddress(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() < 1 || params.size() > 2)
-    //         throw runtime_error(
-    //             "getreceivedbyaddress <Nexusaddress> [minconf=1]\n"
-    //             "Returns the total amount received by <Nexusaddress> in transactions with at least [minconf] confirmations.");
+    /* getreceivedbyaddress <Nexusaddress> [minconf=1]
+       Returns the total amount received by <Nexusaddress> in transactions with at least [minconf] confirmations */
+    json::json RPC::GetReceivedByAddress(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() < 1 || jsonParams.size() > 2)
+            return std::string(
+                "getreceivedbyaddress <Nexusaddress> [minconf=1]"
+                " - Returns the total amount received by <Nexusaddress> in transactions with at least [minconf] confirmations.");
 
     //     // Nexus address
     //     Wallet::NexusAddress address = Wallet::NexusAddress(params[0].get_str());
@@ -306,7 +323,7 @@ namespace TAO::API
 
     //     // Minimum confirmations
     //     int nMinDepth = 1;
-    //     if (params.size() > 1)
+    //     if (jsonParams.size() > 1)
     //         nMinDepth = params[1].get_int();
 
     //     // Tally
@@ -321,10 +338,10 @@ namespace TAO::API
     //             if (txout.scriptPubKey == scriptPubKey)
     //                 if (wtx.GetDepthInMainChain() >= nMinDepth)
     //                     nAmount += txout.nValue;
-    //     }
+    //    }
 
     //     return  ValueFromAmount(nAmount);
-    // }
+    }
 
 
     // void GetAccountAddresses(string strAccount, set<Wallet::NexusAddress>& setAddress)
@@ -338,17 +355,18 @@ namespace TAO::API
     //     }
     // }
 
-
-    // Value getreceivedbyaccount(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() < 1 || params.size() > 2)
-    //         throw runtime_error(
-    //             "getreceivedbyaccount <account> [minconf=1]\n"
-    //             "Returns the total amount received by addresses with <account> in transactions with at least [minconf] confirmations.");
+    /* getreceivedbyaccount <account> [minconf=1]
+       Returns the total amount received by addresses with <account> in transactions with at least [minconf] confirmations */
+    json::json RPC::GetReceivedByAccount(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() < 1 || jsonParams.size() > 2)
+            return std::string(
+                "getreceivedbyaccount <account> [minconf=1]"
+                " - Returns the total amount received by addresses with <account> in transactions with at least [minconf] confirmations.");
 
     //     // Minimum confirmations
     //     int nMinDepth = 1;
-    //     if (params.size() > 1)
+    //     if (jsonParams.size() > 1)
     //         nMinDepth = params[1].get_int();
 
     //     // Get the set of pub keys assigned to account
@@ -371,7 +389,7 @@ namespace TAO::API
     //                 if (wtx.GetDepthInMainChain() >= nMinDepth)
     //                     nAmount += txout.nValue;
     //         }
-    //     }
+        }
 
     //     return (double)nAmount / (double)COIN;
     // }
@@ -408,20 +426,22 @@ namespace TAO::API
     //     return GetAccountBalance(walletdb, strAccount, nMinDepth);
     // }
 
+    /* getbalance [account] [minconf=1]
+    *  If [account] is not specified, returns the server's total available balance.
+    *  If [account] is specified, returns the balance in the account */
+    json::json RPC::GetBalance(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() > 2)
+            return std::string(
+                "getbalance [account] [minconf=1]"
+                " - If [account] is not specified, returns the server's total available balance."
+                " If [account] is specified, returns the balance in the account.");
 
-    // Value getbalance(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() > 2)
-    //         throw runtime_error(
-    //             "getbalance [account] [minconf=1]\n"
-    //             "If [account] is not specified, returns the server's total available balance.\n"
-    //             "If [account] is specified, returns the balance in the account.");
-
-    //     if (params.size() == 0)
+    //     if (jsonParams.size() == 0)
     //         return  ValueFromAmount(pwalletMain->GetBalance());
 
     //     int nMinDepth = 1;
-    //     if (params.size() > 1)
+    //     if (jsonParams.size() > 1)
     //         nMinDepth = params[1].get_int();
 
     //     if (params[0].get_str() == "*") {
@@ -459,24 +479,25 @@ namespace TAO::API
     //     int64 nBalance = GetAccountBalance(strAccount, nMinDepth);
 
     //     return ValueFromAmount(nBalance);
-    // }
+    }
 
-
-    // Value movecmd(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() < 3 || params.size() > 5)
-    //         throw runtime_error(
-    //             "move <fromaccount> <toaccount> <amount> [minconf=1] [comment]\n"
-    //             "Move from one account in your wallet to another.");
+    /* move <fromaccount> <toaccount> <amount> [minconf=1] [comment]
+       Move from one account in your wallet to another */
+    json::json RPC::MoveCmd(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() < 3 || jsonParams.size() > 5)
+            return std::string(
+                "move <fromaccount> <toaccount> <amount> [minconf=1] [comment]"
+                " - Move from one account in your wallet to another.");
 
     //     string strFrom = AccountFromValue(params[0]);
     //     string strTo = AccountFromValue(params[1]);
     //     int64 nAmount = AmountFromValue(params[2]);
-    //     if (params.size() > 3)
+    //     if (jsonParams.size() > 3)
     //         // unused parameter, used to be nMinDepth, keep type-checking it though
     //         (void)params[3].get_int();
     //     string strComment;
-    //     if (params.size() > 4)
+    //     if (jsonParams.size() > 4)
     //         strComment = params[4].get_str();
 
     //     Wallet::CWalletDB walletdb(pwalletMain->strWalletFile);
@@ -507,19 +528,19 @@ namespace TAO::API
     //         throw JSONRPCError(-20, "database error");
 
     //     return true;
-    // }
+    }
 
 
-    // Value sendfrom(const Array& params, bool fHelp)
+    // json::json sendfrom(const json::json& jsonParams, bool fHelp)
     // {
-    //     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
-    //         throw runtime_error(
-    //             "sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]\n"
-    //             "<amount> is a real and is rounded to the nearest 0.000001\n"
-    //             "requires wallet passphrase to be set with walletpassphrase first");
-    //     if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
-    //         throw runtime_error(
-    //             "sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]\n"
+    //     if (pwalletMain->IsCrypted() && (fHelp || jsonParams.size() < 3 || jsonParams.size() > 6))
+    //         return std::string(
+    //             "sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]"
+    //             " - <amount> is a real and is rounded to the nearest 0.000001"
+    //             " requires wallet passphrase to be set with walletpassphrase first");
+    //     if (!pwalletMain->IsCrypted() && (fHelp || jsonParams.size() < 3 || jsonParams.size() > 6))
+    //         return std::string(
+    //             "sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]"
     //             "<amount> is a real and is rounded to the nearest 0.000001");
 
     //     string strAccount = AccountFromValue(params[0]);
@@ -530,14 +551,14 @@ namespace TAO::API
     //     if (nAmount < Core::MIN_TXOUT_AMOUNT)
     //         throw JSONRPCError(-101, "Send amount too small");
     //     int nMinDepth = 1;
-    //     if (params.size() > 3)
+    //     if (jsonParams.size() > 3)
     //         nMinDepth = params[3].get_int();
 
     //     Wallet::CWalletTx wtx;
     //     wtx.strFromAccount = strAccount;
-    //     if (params.size() > 4 && params[4].type() != null_type && !params[4].get_str().empty())
+    //     if (jsonParams.size() > 4 && params[4].type() != null_type && !params[4].get_str().empty())
     //         wtx.mapValue["comment"] = params[4].get_str();
-    //     if (params.size() > 5 && params[5].type() != null_type && !params[5].get_str().empty())
+    //     if (jsonParams.size() > 5 && params[5].type() != null_type && !params[5].get_str().empty())
     //         wtx.mapValue["to"]      = params[5].get_str();
 
     //     if (pwalletMain->IsLocked())
@@ -557,27 +578,27 @@ namespace TAO::API
     // }
 
 
-    // Value sendmany(const Array& params, bool fHelp)
+    // json::json sendmany(const json::json& jsonParams, bool fHelp)
     // {
-    //     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
-    //         throw runtime_error(
-    //             "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]\n"
-    //             "amounts are double-precision floating point numbers\n"
-    //             "requires wallet passphrase to be set with walletpassphrase first");
-    //     if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
-    //         throw runtime_error(
-    //             "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]\n"
+    //     if (pwalletMain->IsCrypted() && (fHelp || jsonParams.size() < 2 || jsonParams.size() > 4))
+    //         return std::string(
+    //             "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]"
+    //             " - amounts are double-precision floating point numbers"
+    //             " requires wallet passphrase to be set with walletpassphrase first");
+    //     if (!pwalletMain->IsCrypted() && (fHelp || jsonParams.size() < 2 || jsonParams.size() > 4))
+    //         return std::string(
+    //             "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]"
     //             "amounts are double-precision floating point numbers");
 
     //     string strAccount = AccountFromValue(params[0]);
     //     Object sendTo = params[1].get_obj();
     //     int nMinDepth = 1;
-    //     if (params.size() > 2)
+    //     if (jsonParams.size() > 2)
     //         nMinDepth = params[2].get_int();
 
     //     Wallet::CWalletTx wtx;
     //     wtx.strFromAccount = strAccount;
-    //     if (params.size() > 3 && params[3].type() != null_type && !params[3].get_str().empty())
+    //     if (jsonParams.size() > 3 && params[3].type() != null_type && !params[3].get_str().empty())
     //         wtx.mapValue["comment"] = params[3].get_str();
 
     //     set<Wallet::NexusAddress> setAddress;
@@ -630,28 +651,32 @@ namespace TAO::API
     //     return wtx.GetHash().GetHex();
     // }
 
-    // Value addmultisigaddress(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() < 2 || params.size() > 3)
-    //     {
-    //         string msg = "addmultisigaddress <nrequired> <'[\"key\",\"key\"]'> [account]\n"
-    //             "Add a nrequired-to-sign multisignature address to the wallet\"\n"
-    //             "each key is a nexus address or hex-encoded public key\n"
-    //             "If [account] is specified, assign address to [account].";
-    //         throw runtime_error(msg);
-    //     }
+    /* addmultisigaddress <nrequired> <'[\"key\",\"key\"]'> [account]
+    *  Add a nrequired-to-sign multisignature address to the wallet
+    *  each key is a nexus address or hex-encoded public key.
+    *  If [account] is specified, assign address to [account]. */
+    json::json RPC::AddMultisigAddress(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() < 2 || jsonParams.size() > 3)
+        {
+            std::string msg = "addmultisigaddress <nrequired> <'[\"key\",\"key\"]'> [account]"
+                " - Add a nrequired-to-sign multisignature address to the wallet"
+                " each key is a nexus address or hex-encoded public key."
+                " If [account] is specified, assign address to [account].";
+            return std::string(msg);
+        }
 
     //     int nRequired = params[0].get_int();
     //     const Array& keys = params[1].get_array();
     //     string strAccount;
-    //     if (params.size() > 2)
+    //     if (jsonParams.size() > 2)
     //         strAccount = AccountFromValue(params[2]);
 
     //     // Gather public keys
     //     if (nRequired < 1)
-    //         throw runtime_error("a multisignature address must require at least one key to redeem");
+    //         return std::string("a multisignature address must require at least one key to redeem");
     //     if ((int)keys.size() < nRequired)
-    //         throw runtime_error(
+    //         return std::string(
     //             strprintf("not enough keys supplied "
     //                       "(got %d keys, but need at least %d to redeem)", keys.size(), nRequired));
     //     std::vector<Wallet::CKey> pubkeys;
@@ -665,14 +690,14 @@ namespace TAO::API
     //         if (address.IsValid())
     //         {
     //             if (address.IsScript())
-    //                 throw runtime_error(
+    //                 return std::string(
     //                     strprintf("%s is a pay-to-script address",ks.c_str()));
     //             std::vector<unsigned char> vchPubKey;
     //             if (!pwalletMain->GetPubKey(address, vchPubKey))
-    //                 throw runtime_error(
+    //                 return std::string(
     //                     strprintf("no full public key for address %s",ks.c_str()));
     //             if (vchPubKey.empty() || !pubkeys[i].SetPubKey(vchPubKey))
-    //                 throw runtime_error(" Invalid public key: "+ks);
+    //                 return std::string(" Invalid public key: "+ks);
     //         }
 
     //         // Case 2: hex public key
@@ -680,13 +705,13 @@ namespace TAO::API
     //         {
     //             vector<unsigned char> vchPubKey = ParseHex(ks);
     //             if (vchPubKey.empty() || !pubkeys[i].SetPubKey(vchPubKey))
-    //                 throw runtime_error(" Invalid public key: "+ks);
+    //                 return std::string(" Invalid public key: "+ks);
     //         }
     //         else
     //         {
-    //             throw runtime_error(" Invalid public key: "+ks);
+    //             return std::string(" Invalid public key: "+ks);
     //         }
-    //     }
+    //    }
 
     //     // Construct using pay-to-script-hash:
     //     Wallet::CScript inner;
@@ -701,7 +726,7 @@ namespace TAO::API
 
     //     pwalletMain->SetAddressBookName(address, strAccount);
     //     return address.ToString();
-    // }
+    }
 
 
     // struct tallyitem
@@ -715,16 +740,16 @@ namespace TAO::API
     //     }
     // };
 
-    // Value ListReceived(const Array& params, bool fByAccounts)
+    // json::json ListReceived(const json::json& jsonParams, bool fByAccounts)
     // {
     //     // Minimum confirmations
     //     int nMinDepth = 1;
-    //     if (params.size() > 0)
+    //     if (jsonParams.size() > 0)
     //         nMinDepth = params[0].get_int();
 
     //     // Whether to include empty accounts
     //     bool fIncludeEmpty = false;
-    //     if (params.size() > 1)
+    //     if (jsonParams.size() > 1)
     //         fIncludeEmpty = params[1].get_bool();
 
     //     // Tally
@@ -805,36 +830,52 @@ namespace TAO::API
     //     return ret;
     // }
 
-    // Value listreceivedbyaddress(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() > 2)
-    //         throw runtime_error(
-    //             "listreceivedbyaddress [minconf=1] [includeempty=false]\n"
-    //             "[minconf] is the minimum number of confirmations before payments are included.\n"
-    //             "[includeempty] whether to include addresses that haven't received any payments.\n"
-    //             "Returns an array of objects containing:\n"
-    //             "  \"address\" : receiving address\n"
-    //             "  \"account\" : the account of the receiving address\n"
-    //             "  \"amount\" : total amount received by the address\n"
-    //             "  \"confirmations\" : number of confirmations of the most recent transaction included");
+    /* listreceivedbyaddress [minconf=1] [includeempty=false]
+    *  [minconf] is the minimum number of confirmations before payments are included.
+    *  [includeempty] whether to include addresses that haven't received any payments
+    *  Returns an array of objects containing:
+    *  \"address\" : receiving address
+    *  \"account\" : the account of the receiving address
+    *  \"amount\" : total amount received by the address
+    *  \"confirmations\" : number of confirmations of the most recent transaction included */
+    json::json RPC::ListReceivedByAddress(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() > 2)
+            return std::string(
+                "listreceivedbyaddress [minconf=1] [includeempty=false]"
+                " - [minconf] is the minimum number of confirmations before payments are included."
+                " [includeempty] whether to include addresses that haven't received any payments.\n"
+                " - Returns an array of objects containing:\n"
+                "  \"address\" : receiving address\n"
+                "  \"account\" : the account of the receiving address\n"
+                "  \"amount\" : total amount received by the address\n"
+                "  \"confirmations\" : number of confirmations of the most recent transaction included");
 
     //     return ListReceived(params, false);
-    // }
+    }
 
-    // Value listreceivedbyaccount(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() > 2)
-    //         throw runtime_error(
-    //             "listreceivedbyaccount [minconf=1] [includeempty=false]\n"
-    //             "[minconf] is the minimum number of confirmations before payments are included.\n"
-    //             "[includeempty] whether to include accounts that haven't received any payments.\n"
-    //             "Returns an array of objects containing:\n"
-    //             "  \"account\" : the account of the receiving addresses\n"
-    //             "  \"amount\" : total amount received by addresses with this account\n"
-    //             "  \"confirmations\" : number of confirmations of the most recent transaction included");
+    /* listreceivedbyaccount [minconf=1] [includeempty=false]
+    *  [minconf] is the minimum number of confirmations before payments are included.
+    *  [includeempty] whether to include accounts that haven't received any payments
+    *  Returns an array of objects containing:
+    *  \"address\" : receiving address
+    *  \"account\" : the account of the receiving address
+    *  \"amount\" : total amount received by the address
+    *  \"confirmations\" : number of confirmations of the most recent transaction incl*/
+    json::json RPC::ListReceivedByAccount(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() > 2)
+            return std::string(
+                "listreceivedbyaccount [minconf=1] [includeempty=false]"
+                " - [minconf] is the minimum number of confirmations before payments are included."
+                " [includeempty] whether to include accounts that haven't received any payments.\n"
+                " - Returns an array of objects containing:\n"
+                "  \"account\" : the account of the receiving addresses\n"
+                "  \"amount\" : total amount received by addresses with this account\n"
+                "  \"confirmations\" : number of confirmations of the most recent transaction included");
 
     //     return ListReceived(params, true);
-    // }
+    }
 
     // void ListTransactions(const Wallet::CWalletTx& wtx, const string& strAccount, int nMinDepth, bool fLong, Array& ret)
     // {
@@ -929,21 +970,23 @@ namespace TAO::API
     //     }
     // }
 
-    // Value listtransactions(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() > 3)
-    //         throw runtime_error(
-    //             "listtransactions [account] [count=10] [from=0]\n"
-    //             "Returns up to [count] most recent transactions skipping the first [from] transactions for account [account].");
+    /* listtransactions [account] [count=10] [from=0]
+       Returns up to [count] most recent transactions skipping the first [from] transactions for account [account]*/
+    json::json RPC::ListTransactions(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() > 3)
+            return std::string(
+                "listtransactions [account] [count=10] [from=0]"
+                " - Returns up to [count] most recent transactions skipping the first [from] transactions for account [account].");
 
     //     string strAccount = "*";
-    //     if (params.size() > 0)
+    //     if (jsonParams.size() > 0)
     //         strAccount = params[0].get_str();
     //     int nCount = 10;
-    //     if (params.size() > 1)
+    //     if (jsonParams.size() > 1)
     //         nCount = params[1].get_int();
     //     int nFrom = 0;
-    //     if (params.size() > 2)
+    //     if (jsonParams.size() > 2)
     //         nFrom = params[2].get_int();
 
     //     if (nCount < 0)
@@ -1002,20 +1045,21 @@ namespace TAO::API
     //     std::reverse(ret.begin(), ret.end()); // Return oldest to newest
 
     //     return ret;
-    // }
+     }
 
 
-    // /* */
-    // Value listaddresses(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 0)
-    //         throw runtime_error(
-    //             "listaddresses [max=100]\n"
-    //             "Returns list of addresses\n");
+    /* listaddresses [max=100]
+       Returns list of addresses */
+    json::json RPC::ListAddresses(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 0)
+            return std::string(
+                "listaddresses [max=100]"
+                " - Returns list of addresses");
 
     //     /* Limit the size. */
     //     int nMax = 100;
-    //     if (params.size() > 0)
+    //     if (jsonParams.size() > 0)
     //         nMax = params[0].get_int();
 
     //     /* Get the available addresses from the wallet */
@@ -1029,18 +1073,19 @@ namespace TAO::API
     //         list.push_back(Pair(it->first.ToString(), ValueFromAmount(it->second)));
 
     //     return list;
-    // }
+    }
 
-
-    // Value listaccounts(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() > 1)
-    //         throw runtime_error(
-    //             "listaccounts\n"
-    //             "Returns Object that has account names as keys, account balances as values.");
+    /* listaccounts
+       Returns Object that has account names as keys, account balances as values */
+    json::json RPC::ListAccounts(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() > 1)
+            return std::string(
+                "listaccounts"
+                " - Returns Object that has account names as keys, account balances as values.");
 
     //     int nMinDepth = 1;
-    //     if (params.size() > 0)
+    //     if (jsonParams.size() > 0)
     //         nMinDepth = params[0].get_int();
 
     //     map<string, int64> mapAccountBalances;
@@ -1078,19 +1123,21 @@ namespace TAO::API
     //     }
 
     //     return ret;
-    // }
+    }
 
-    //  Value listsinceblock(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp)
-    //         throw runtime_error(
-    //             "listsinceblock [blockhash] [target-confirmations]\n"
-    //             "Get all transactions in blocks since block [blockhash], or all transactions if omitted");
+    /* listsinceblock [blockhash] [target-confirmations]
+       Get all transactions in blocks since block [blockhash], or all transactions if omitted **/
+    json::json RPC::ListSinceBlock(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp)
+            return std::string(
+                "listsinceblock [blockhash] [target-confirmations]"
+                " - Get all transactions in blocks since block [blockhash], or all transactions if omitted");
 
     //     Core::CBlockIndex *pindex = NULL;
     //     int target_confirms = 1;
 
-    //     if (params.size() > 0)
+    //     if (jsonParams.size() > 0)
     //     {
     //         uint1024 blockId = 0;
 
@@ -1098,7 +1145,7 @@ namespace TAO::API
     //         pindex = Core::CBlockLocator(blockId).GetBlockIndex();
     //     }
 
-    //     if (params.size() > 1)
+    //     if (jsonParams.size() > 1)
     //     {
     //         target_confirms = params[1].get_int();
 
@@ -1143,14 +1190,16 @@ namespace TAO::API
     //     ret.push_back(Pair("lastblock", lastblock.GetHex()));
 
     //     return ret;
-    // }
+    }
 
-    // Value gettransaction(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 1)
-    //         throw runtime_error(
-    //             "gettransaction <txid>\n"
-    //             "Get detailed information about <txid>");
+    /* gettransaction <txid>
+       Get detailed information about <txid> */
+    json::json RPC::GetTransaction(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 1)
+            return std::string(
+                "gettransaction <txid>"
+                " - Get detailed information about <txid>");
 
     //     uint512 hash;
     //     hash.SetHex(params[0].get_str());
@@ -1177,18 +1226,17 @@ namespace TAO::API
     //     entry.push_back(Pair("details", details));
 
     //     return entry;
-    // }
+    }
 
-    // //
-    // // Raw transactions
-    // //
-    // Value getrawtransaction(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 1)
-    //         throw runtime_error(
-    //             "getrawtransaction <txid>\n"
-    //             "Returns a string that is serialized,\n"
-    //             "hex-encoded data for <txid>.");
+    /* getrawtransaction <txid>
+       Returns a string that is serialized, hex-encoded data for <txid> */
+    json::json RPC::GetRawTransaction(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 1)
+            return std::string(
+                "getrawtransaction <txid>"
+                " - Returns a string that is serialized,"
+                " hex-encoded data for <txid>.");
 
     //     uint512 hash;
     //     hash.SetHex(params[0].get_str());
@@ -1201,21 +1249,24 @@ namespace TAO::API
     //     CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
     //     ssTx << tx;
     //     return HexStr(ssTx.begin(), ssTx.end());
-    // }
+    }
 
-    // Value sendrawtransaction(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() < 1 || params.size() > 2)
-    //         throw runtime_error(
-    //             "sendrawtransaction <hex string> [checkinputs=0]\n"
-    //             "Submits raw transaction (serialized, hex-encoded) to local node and network.\n"
-    //             "If checkinputs is non-zero, checks the validity of the inputs of the transaction before sending it.");
+    /* sendrawtransaction <hex string> [checkinputs=0]
+       Submits raw transaction (serialized, hex-encoded) to local node and network.
+       If checkinputs is non-zero, checks the validity of the inputs of the transaction before sending it */
+    json::json RPC::SendRawTransaction(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() < 1 || jsonParams.size() > 2)
+            return std::string(
+                "sendrawtransaction <hex string> [checkinputs=0]"
+                " - Submits raw transaction (serialized, hex-encoded) to local node and network."
+                " If checkinputs is non-zero, checks the validity of the inputs of the transaction before sending it.");
 
     //     // parse hex string from parameter
     //     vector<unsigned char> txData(ParseHex(params[0].get_str()));
     //     CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
     //     bool fCheckInputs = false;
-    //     if (params.size() > 1)
+    //     if (jsonParams.size() > 1)
     //         fCheckInputs = (params[1].get_int() != 0);
     //     Core::CTransaction tx;
 
@@ -1251,15 +1302,16 @@ namespace TAO::API
     //     RelayMessage(CInv(MSG_TX, hashTx), tx);
 
     //     return hashTx.GetHex();
-    // }
+    }
 
-
-    // Value validateaddress(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 1)
-    //         throw runtime_error(
-    //             "validateaddress <Nexusaddress>\n"
-    //             "Return information about <Nexusaddress>.");
+    /* validateaddress <Nexusaddress>
+       Return information about <Nexusaddress> */
+    json::json RPC::ValidateAddress(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 1)
+            return std::string(
+                "validateaddress <Nexusaddress>"
+                " - Return information about <Nexusaddress>.");
 
     //     Wallet::NexusAddress address(params[0].get_str());
     //     bool isValid = address.IsValid();
@@ -1304,19 +1356,19 @@ namespace TAO::API
     //             ret.push_back(Pair("account", pwalletMain->mapAddressBook[address]));
     //     }
     //     return ret;
-    // }
+    }
 
-    // // Nexus: make a public-private key pair
-    // Value makekeypair(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() > 1)
-    //         throw runtime_error(
-    //             "makekeypair [prefix]\n"
-    //             "Make a public/private key pair.\n"
-    //             "[prefix] is optional preferred prefix for the public key.\n");
+    /* Make a public/private key pair. [prefix] is optional preferred prefix for the public key */
+    json::json RPC::MakeKeyPair(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() > 1)
+            return std::string(
+                "makekeypair [prefix]"
+                " - Make a public/private key pair."
+                " [prefix] is optional preferred prefix for the public key.");
 
     //     string strPrefix = "";
-    //     if (params.size() > 0)
+    //     if (jsonParams.size() > 0)
     //         strPrefix = params[0].get_str();
 
     //     Wallet::CKey key;
@@ -1335,27 +1387,29 @@ namespace TAO::API
     //     result.push_back(Pair("PrivateKey", HexStr<Wallet::CPrivKey::iterator>(vchPrivKey.begin(), vchPrivKey.end())));
     //     result.push_back(Pair("PublicKey", HexStr(key.GetPubKey())));
     //     return result;
-    // }
+    }
 
-    // /** TODO: Account balance based on unspent outputs in the core.
-    //     This will be good to determine the actual balance based on the registry of the current addresses
-    //     Associated with the specific accounts. This needs to be fixed properly so thaat the wallet accounting
-    //     is done properly.
+    /* unspentbalance [\"address\",...]
+       Returns the total amount of unspent Nexus for given address. This is a more accurate command than Get Balance */
+    /* TODO: Account balance based on unspent outputs in the core.
+        This will be good to determine the actual balance based on the registry of the current addresses
+        Associated with the specific accounts. This needs to be fixed properly so thaat the wallet accounting
+        is done properly.
 
-    //     Second TODO: While at this the wallet core code needs to be reworked in orcder to mitigate the issue of
-    //     having a large number of transactions in the actual memory map which can slow the entire process down. */
-    // Value unspentbalance(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() > 1)
-    //         throw runtime_error(
-    //             "unspentbalance [\"address\",...]\n"
-    //             "Returns the total amount of unspent Nexus for given address\n"
-    //             "This is a more accurate command than Get Balance.\n");
+        Second TODO: While at this the wallet core code needs to be reworked in orcder to mitigate the issue of
+        having a large number of transactions in the actual memory map which can slow the entire process down. */
+    json::json RPC::UnspentBalance(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() > 1)
+            return std::string(
+                "unspentbalance [\"address\",...]"
+                " - Returns the total amount of unspent Nexus for given address."
+                " This is a more accurate command than Get Balance.");
 
     //     set<Wallet::NexusAddress> setAddresses;
-    //     if (params.size() > 0)
+    //     if (jsonParams.size() > 0)
     //     {
-    //         for(int i = 0; i < params.size(); i++)
+    //         for(int i = 0; i < jsonParams.size(); i++)
     //         {
     //             Wallet::NexusAddress address(params[i].get_str());
     //             if (!address.IsValid()) {
@@ -1400,31 +1454,35 @@ namespace TAO::API
     //     }
 
     //     return ValueFromAmount(nCredit);
-    // }
+    }
 
 
-
-    // Value listunspent(const Array& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() > 3)
-    //         throw runtime_error(
-    //             "listunspent [minconf=1] [maxconf=9999999]  [\"address\",...]\n"
-    //             "Returns array of unspent transaction outputs\n"
-    //             "with between minconf and maxconf (inclusive) confirmations.\n"
-    //             "Optionally filtered to only include txouts paid to specified addresses.\n"
-    //             "Results are an array of Objects, each of which has:\n"
-    //             "{txid, vout, scriptPubKey, amount, confirmations}");
+    /* listunspent [minconf=1] [maxconf=9999999]  [\"address\",...]
+       Returns array of unspent transaction outputs with between minconf and maxconf (inclusive) confirmations.
+       Optionally filtered to only include txouts paid to specified addresses.
+       Results are an array of Objects, each of which has:
+       {txid, vout, scriptPubKey, amount, confirmations} */
+    json::json RPC::ListUnspent(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() > 3)
+            return std::string(
+                "listunspent [minconf=1] [maxconf=9999999]  [\"address\",...]"
+                " - Returns array of unspent transaction outputs"
+                "with between minconf and maxconf (inclusive) confirmations."
+                " Optionally filtered to only include txouts paid to specified addresses.\n"
+                " - Results are an array of Objects, each of which has:"
+                "{txid, vout, scriptPubKey, amount, confirmations}");
 
     //     int nMinDepth = 1;
-    //     if (params.size() > 0)
+    //     if (jsonParams.size() > 0)
     //         nMinDepth = params[0].get_int();
 
     //     int nMaxDepth = 9999999;
-    //     if (params.size() > 1)
+    //     if (jsonParams.size() > 1)
     //         nMaxDepth = params[1].get_int();
 
     //     set<Wallet::NexusAddress> setAddress;
-    //     if (params.size() > 2)
+    //     if (jsonParams.size() > 2)
     //     {
     //         Array inputs = params[2].get_array();
     //         BOOST_FOREACH(Value& input, inputs)
@@ -1478,7 +1536,7 @@ namespace TAO::API
     //     }
 
     //     return results;
-    // }
+    }
 
 
 }

@@ -13,15 +13,17 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/rpc.h>
 #include <Util/include/json.h>
+#include <TAO/Ledger/include/state.h>
 
 namespace TAO::API
 {
-    // Value getnetworkhashps(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 0)
-    //         throw runtime_error(
-    //             "getnetworkhashps\n"
-    //             "Get network hashrate for the hashing channel.");
+    /* Get network hashrate for the hashing channel */
+    json::json RPC::GetNetworkHashps(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 0)
+            return std::string(
+                "getnetworkhashps"
+                " - Get network hashrate for the hashing channel.");
 
     //     /* This constant was determined by finding the time it takes to find hash of given difficulty at a given hash rate.
     //      * It is the total hashes per second required to find a hash of difficulty 1.0 every second.
@@ -42,7 +44,7 @@ namespace TAO::API
     //     }
 
     //     if(nTotal == 0)
-    //     throw runtime_error("getnetworkhashps\n"
+    //     return std::string("getnetworkhashps"
     //                         "No Blocks produced on Hashing Channel.");
 
     //     nAverageTime       /= nTotal;
@@ -59,15 +61,15 @@ namespace TAO::API
     //     obj.push_back(Pair("hashrate", (boost::uint64_t)nHashRate));
 
     //     return obj;
-    // }
+    }
 
-
-    // Value getnetworkpps(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 0)
-    //         throw runtime_error(
-    //             "getnetworkpps\n"
-    //             "Get network prime searched per second.");
+    /* Get network prime searched per second */
+    json::json RPC::GetNetworkPps(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 0)
+            return std::string(
+                "getnetworkpps"
+                " - Get network prime searched per second.");
 
     //     /* This constant was determined by finding the time it takes to find primes at given difficulty and Primes Per Second'
     //      * This constant was found that 2,450 Prime Per Second is required to find 1 3ch Cluster per Second.
@@ -101,14 +103,15 @@ namespace TAO::API
     //     obj.push_back(Pair("primespersecond", (boost::uint64_t)nHashRate));
 
     //     return obj;
-    // }
+    }
 
-    // Value getnetworktrustkeys(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 0)
-    //         throw runtime_error(
-    //             "getnetworktrustkeys\n"
-    //             "List all the Trust Keys on the Network");
+    /* List all the Trust Keys on the Network */
+    json::json RPC::GetNetworkTrustKeys(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 0)
+            return std::string(
+                "getnetworktrustkeys"
+                " - List all the Trust Keys on the Network");
 
 
     //     unsigned int nTotalActive = 0;
@@ -154,37 +157,38 @@ namespace TAO::API
     //     ret.push_back(Pair("total", (int)trustkeys.size()));
 
     //     return ret;
-    // }
+    }
+
+    /* Returns the number of blocks in the longest block chain */
+    json::json RPC::GetBlockCount(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 0)
+            return std::string(
+                "getblockcount"
+                " - Returns the number of blocks in the longest block chain.");
+
+        return (int)TAO::Ledger::nBestHeight;
+    }
 
 
-    // Value getblockcount(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 0)
-    //         throw runtime_error(
-    //             "getblockcount\n"
-    //             "Returns the number of blocks in the longest block chain.");
+    /* Deprecated.  Use getblockcount */
+    json::json RPC::GetBlockNumber(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 0)
+            return std::string(
+                "getblocknumber"
+                " - Deprecated.  Use getblockcount.");
 
-    //     return (int)Core::nBestHeight;
-    // }
+         return (int)TAO::Ledger::nBestHeight;
+    }
 
-
-    // // deprecated
-    // Value getblocknumber(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 0)
-    //         throw runtime_error(
-    //             "getblocknumber\n"
-    //             "Deprecated.  Use getblockcount.");
-
-    //     return (int)Core::nBestHeight;
-    // }
-
-    // Value getdifficulty(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 0)
-    //         throw runtime_error(
-    //             "getdifficulty\n"
-    //             "Returns difficulty as a multiple of the minimum difficulty.");
+    /* Returns difficulty as a multiple of the minimum difficulty */
+    json::json RPC::GetDifficulty(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 0)
+            return std::string(
+                "getdifficulty"
+                " - Returns difficulty as a multiple of the minimum difficulty.");
 
     //     const Core::CBlockIndex* pindexPOS = Core::GetLastChannelIndex(Core::pindexBest, 0);
     //     const Core::CBlockIndex* pindexCPU = Core::GetLastChannelIndex(Core::pindexBest, 1);
@@ -197,16 +201,20 @@ namespace TAO::API
 
     //     obj.push_back(Pair("stake",       Core::GetDifficulty(pindexPOS->nBits, 0)));
     //     return obj;
-    // }
+    }
 
-    // Value getsupplyrates(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 0)
-    //         throw runtime_error(
-    //             "getsupplyrates\n"
-    //             "Returns an object containing current Nexus production rates in set time intervals.\n"
-    //             "Time Frequency is in base 13 month, 28 day totalling 364 days.\n"
-    //             "This is to prevent error from Gregorian Figures.");
+    /* getsupplyrates
+       Returns an object containing current Nexus production rates in set time intervals.
+       Time Frequency is in base 13 month, 28 day totalling 364 days.
+       This is to prevent error from Gregorian Figures */
+    json::json RPC::GetSupplyRates(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 0)
+            return std::string(
+                "getsupplyrates"
+                " - Returns an object containing current Nexus production rates in set time intervals."
+                " Time Frequency is in base 13 month, 28 day totalling 364 days."
+                " This is to prevent error from Gregorian Figures.");
 
     //     Object obj;
     //     unsigned int nMinutes = Core::GetChainAge(Core::pindexBest->GetBlockTime());
@@ -228,15 +236,18 @@ namespace TAO::API
     //     obj.push_back(Pair("yearSupply",    ValueFromAmount(Core::SubsidyInterval(nMinutes, 524160)))); //524160
 
     //     return obj;
-    // }
+    }
 
-    // Value getmoneysupply(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if(fHelp || params.size() != 0)
-    //         throw runtime_error(
-    //             "getmoneysupply <timestamp>\n\n"
-    //             "Returns the total supply of Nexus produced by miners, holdings, developers, and ambassadors.\n"
-    //             "Default timestamp is the current Unified Timestamp. The timestamp is recorded as a UNIX timestamp");
+    /* getmoneysupply <timestamp>
+       Returns the total supply of Nexus produced by miners, holdings, developers, and ambassadors.
+       Default timestamp is the current Unified Timestamp. The timestamp is recorded as a UNIX timestamp */
+    json::json RPC::GetMoneySupply(const json::json& jsonParams, bool fHelp)
+    {
+        if(fHelp || jsonParams.size() != 0)
+            return std::string(
+                "getmoneysupply <timestamp>"
+                " - Returns the total supply of Nexus produced by miners, holdings, developers, and ambassadors."
+                " Default timestamp is the current Unified Timestamp. The timestamp is recorded as a UNIX timestamp");
 
     //     Object obj;
     //     unsigned int nMinutes = Core::GetChainAge(Core::pindexBest->GetBlockTime());
@@ -247,7 +258,7 @@ namespace TAO::API
     //     obj.push_back(Pair("developers", ValueFromAmount(Core::CompoundSubsidy(nMinutes, 2))));
 
     //     return obj;
-    // }
+    }
 
     
     
