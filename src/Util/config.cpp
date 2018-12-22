@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/mutex.h>
 #include <Util/include/filesystem.h>
+#include <Util/include/debug.h>
 #include <fstream>
 #include <cstring> /* strlen */
 
@@ -167,13 +168,20 @@ namespace config
 
         if (mapArgs.count("-datadir"))
         {
-            path = filesystem::system_complete(mapArgs["-datadir"]);
+            /* get the command line argument for the data directory */
+            path = mapArgs["-datadir"];
 
-            if(filesystem::is_directory(path) == false)
-            {
-                path = "";
-                return path;
-            }
+            uint32_t s = static_cast<uint32_t>(path.size());
+
+            if(s == 0)
+                debug::error("No data directory specified.");
+
+            if(path[s-1] != '/')
+                path += '/';
+
+            /* build the system complete path to the data directory */
+            if(path[0] != '/')
+                path = filesystem::system_complete(path);
         }
         else
             path = GetDefaultDataDir();

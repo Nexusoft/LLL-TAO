@@ -20,19 +20,31 @@ namespace
     const uint32_t nDroppedWeight = 2;
     const uint32_t nFailedWeight = 5;
     const uint32_t nFailsWeight = 10;
-    const uint32_t nLatencyWeight = 100;
+    const double nLatencyWeight = 10.0;
 
     const uint32_t nMaxConnected = 100;
-    const uint32_t nMaxDropped = 50;
-    const uint32_t nMaxFailed = 50;
-    const uint32_t nMaxFails = 10;
+    const uint32_t nMaxDropped = 5000;
+    const uint32_t nMaxFailed = 2000;
+    const uint32_t nMaxFails = 1000;
+    const double nLatencyMax = 1000.0;
+
 }
 
 namespace LLP
 {
     bool operator<(const AddressInfo &info1, const AddressInfo &info2)
     {
-        return info1.Score() < info2.Score();
+        double s1 = info1.Score();
+        double s2 = info2.Score();
+
+        if(s1 < s2)
+            return true;
+
+        /*use latency as a tiebreaker */
+        if((s1 == s2) && (info1.nLatency >= info2.nLatency))
+            return true;
+
+        return false;
     }
 
 
@@ -60,7 +72,7 @@ namespace LLP
         nDropped = 0;
         nFailed = 0;
         nFails = 0;
-        nLatency = 0;
+        nLatency = std::numeric_limits<uint32_t>::max();
         nState = static_cast<uint8_t>(ConnectState::NEW);
     }
 
@@ -70,17 +82,17 @@ namespace LLP
     {
 
         double nSessionHours = static_cast<double>(nSession) / 3600000;
-        double nLatencyScore = static_cast<double>(nLatency) / nLatencyWeight;
+        double nLatencyScore = nLatencyMax - std::min(nLatencyMax, static_cast<double>(nLatency));
 
         /* Add up the good stats */
         double good = std::min(nConnected, nMaxConnected) * nConnectedWeight +
-                      nSessionHours;
+                      //nSessionHours +
+                      nLatencyScore * nLatencyWeight;
 
         /* Add up the bad stats */
         double bad = std::min(nDropped, nMaxDropped) * nDroppedWeight +
                      std::min(nFailed,  nMaxFailed)  * nFailedWeight  +
-                     std::min(nFails,   nMaxFails)   * nFailsWeight   +
-                     nLatencyScore;
+                     std::min(nFails,   nMaxFails)   * nFailsWeight;
 
         /* Subtract good stats by bad stats */
         return good - bad;

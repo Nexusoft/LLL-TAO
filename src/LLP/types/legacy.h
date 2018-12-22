@@ -29,6 +29,8 @@ namespace LLP
 
     public:
 
+        static std::string Name() { return "Legacy"; }
+
         /* Constructors for Message LLP Class. */
         LegacyNode() : BaseConnection<LegacyPacket>() {}
 
@@ -81,7 +83,13 @@ namespace LLP
         void Event(uint8_t EVENT, uint32_t LENGTH = 0);
 
 
-        /** Main message handler once a packet is recieved. **/
+        /** ProcessPacket
+         *
+         *  Main message handler once a packet is recieved.
+         *
+         *  @return True is no errors, false otherwise
+         *
+         **/
         bool ProcessPacket();
 
 
@@ -116,9 +124,12 @@ namespace LLP
         //Address GetAddress();
 
 
-        /** Non-Blocking Packet reader to build a packet from TCP Connection.
-        * This keeps thread from spending too much time for each Connection.
-        */
+        /** ReadPacket
+         *
+         *  Non-Blocking Packet reader to build a packet from TCP Connection.
+         *  This keeps thread from spending too much time for each Connection.
+         *
+         **/
         void ReadPacket()
         {
             if(!INCOMING.Complete())

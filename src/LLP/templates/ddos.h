@@ -14,16 +14,19 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_DDOS_H
 #define NEXUS_LLP_TEMPLATES_DDOS_H
 
-#include <vector>
-
 #include <Util/include/mutex.h>
 #include <Util/include/runtime.h>
 #include <Util/include/debug.h>
+#include <vector>
 
 namespace LLP
 {
 
-    /* DoS Wrapper for Returning  */
+    /** DoS
+     *
+     *  Wrapper for Returning
+     *
+     **/
     template<typename NodeType>
     inline bool DoS(NodeType* pfrom, int nDoS, bool fReturn)
     {
@@ -34,9 +37,15 @@ namespace LLP
     }
 
 
-    /** Class that tracks DDOS attempts on LLP Servers.
-        Uses a timer to calculate Request Score [rScore] and Connection Score [cScore] as a unit of Score / Second.
-        Pointer stored by Connection class and Server Listener DDOS_MAP. **/
+    /** DDOS_Score
+     *
+     *  Class that tracks DDOS attempts on LLP Servers.
+     *
+     *  Uses a Timer to calculate Request Score [rScore] and Connection Score [cScore]
+     *  as a unit of Score / Second. Pointer stored by Connection class and
+     *  Server Listener DDOS_MAP.
+     *
+     **/
     class DDOS_Score
     {
         std::vector< std::pair<bool, int> > SCORE;
@@ -44,133 +53,101 @@ namespace LLP
         int nIterator;
         std::recursive_mutex MUTEX;
 
-
-        /** Reset the timer and the Score Flags to be Overwritten. **/
-        void Reset()
-        {
-            for(int i = 0; i < SCORE.size(); i++)
-                SCORE[i].first = false;
-
-            TIMER.Reset();
-            nIterator = 0;
-        }
-
     public:
 
-        /** Construct a DDOS Score of Moving Average Timespan. **/
-        DDOS_Score(int nTimespan)
-        {
-            LOCK(MUTEX);
-
-            for(int i = 0; i < nTimespan; i++)
-                SCORE.push_back(std::make_pair(true, 0));
-
-            TIMER.Start();
-            nIterator = 0;
-        }
+        /** DDOS_Score
+         *
+         *  Construct a DDOS Score of Moving Average Timespan.
+         *
+         *  @param[in] nTimespan number of scores to create to build a
+         *             moving average score
+         *
+         **/
+        DDOS_Score(int nTimespan);
 
 
-        /** Flush the DDOS Score to 0. **/
-        void Flush()
-        {
-            LOCK(MUTEX);
-
-            Reset();
-            for(int i = 0; i < SCORE.size(); i++)
-                SCORE[i].second = 0;
-        }
+        /** Reset
+         *
+         *  Reset the Timer and the Score Flags to be Overwritten.
+         *
+         **/
+        void Reset();
 
 
-        /** Access the DDOS Score from the Moving Average. **/
-        int Score()
-        {
-            LOCK(MUTEX);
-
-            int nMovingAverage = 0;
-            for(int i = 0; i < SCORE.size(); i++)
-                nMovingAverage += SCORE[i].second;
-
-            return nMovingAverage / SCORE.size();
-        }
+        /** Flush
+         *
+         * Flush the DDOS Score to 0.
+         *
+         **/
+        void Flush();
 
 
-        /** Increase the Score by nScore. Operates on the Moving Average to Increment Score per Second. **/
-        DDOS_Score & operator+=(const int& nScore)
-        {
-            LOCK(MUTEX);
-
-            int nTime = TIMER.Elapsed();
-
-
-            /** If the Time has been greater than Moving Average Timespan, Set to Add Score on Time Overlap. **/
-            if(nTime >= SCORE.size())
-            {
-                Reset();
-                nTime = nTime % SCORE.size();
-            }
+        /** Score
+         *
+         *  Access the DDOS Score from the Moving Average.
+         *
+         *  @return the DDOS score
+         *
+         **/
+        int32_t Score();
 
 
-            /** Iterate as many seconds as needed, flagging that each has been iterated. **/
-            for(int i = nIterator; i <= nTime; i++)
-            {
-                if(!SCORE[i].first)
-                {
-                    SCORE[i].first  = true;
-                    SCORE[i].second = 0;
-                }
-            }
+        /** operator+=
+         *
+         *  Increase the Score by nScore. Operates on the Moving Average to
+         *  Increment Score per Second.
+         *
+         *  @param[in] nScore rhs DDOS_Score to add
+         *
+         **/
+        DDOS_Score &operator+=(const int& nScore);
 
-
-            /** Update the Moving Average Iterator and Score for that Second Instance. **/
-            SCORE[nTime].second += nScore;
-            nIterator = nTime;
-
-
-            return *this;
-        }
     };
 
 
-    /** Filter to Contain DDOS Scores and Handle DDOS Bans. **/
+    /** DDOS_Filter
+     *
+     * Filter to Contain DDOS Scores and Handle DDOS Bans.
+     *
+     **/
     class DDOS_Filter
     {
         runtime::timer TIMER;
         uint32_t BANTIME, TOTALBANS;
 
     public:
+
         DDOS_Score rSCORE, cSCORE;
-        DDOS_Filter(uint32_t nTimespan) : BANTIME(0), TOTALBANS(0), rSCORE(nTimespan), cSCORE(nTimespan) { }
         std::recursive_mutex MUTEX;
 
-        /** Ban a Connection, and Flush its Scores. **/
-        void Ban(std::string strViolation = "SCORE THRESHOLD")
-        {
-            LOCK(MUTEX);
+        /** DDOS_Filter
+         *
+         *  Default Constructor
+         *
+         * @param[in] nTimespan The timespan to initialize scores with
+         *
+         **/
+        DDOS_Filter(uint32_t nTimespan);
 
-            if((TIMER.Elapsed() < BANTIME))
-                return;
 
-            TIMER.Start();
-            TOTALBANS++;
+        /** Ban
+         *
+         *  Ban a Connection, and Flush its Scores.
+         *
+         *  @param[in] strViolation identifiable tag for the violation
+         *
+         **/
+        void Ban(std::string strViolation = "SCORE THRESHOLD");
 
-            BANTIME = std::max(TOTALBANS * (rSCORE.Score() + 1) * (cSCORE.Score() + 1), TOTALBANS * 1200u);
 
-            debug::log(0, "XXXXX DDOS Filter cScore = %i rScore = %i Banned for %u Seconds. [VIOLATION: %s]", cSCORE.Score(), rSCORE.Score(), BANTIME, strViolation.c_str());
-
-            cSCORE.Flush();
-            rSCORE.Flush();
-        }
-
-        /** Check if Connection is Still Banned. **/
-        bool Banned()
-        {
-            LOCK(MUTEX);
-
-            uint32_t ELAPSED = TIMER.Elapsed();
-
-            return (ELAPSED < BANTIME);
-
-        }
+        /** Banned
+         *
+         *  Check if Connection is Still Banned.
+         *
+         *  @return True if elapsed time is less than bantime, false otherwise
+         *
+         **/
+        bool Banned();
     };
 }
 

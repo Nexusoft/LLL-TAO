@@ -44,7 +44,9 @@ namespace LLP
         bool fMETER;
 
     public:
-        uint32_t PORT, MAX_THREADS, DDOS_TIMESPAN;
+        uint32_t PORT;
+        uint32_t MAX_THREADS;
+        uint32_t DDOS_TIMESPAN;
 
         /* The data type to keep track of current running threads. */
         std::vector<DataThread<ProtocolType> *> DATA_THREADS;
@@ -62,11 +64,15 @@ namespace LLP
         AddressManager *pAddressManager;
 
 
-        /* Local cache of external address. */
+        /* Address of the server node */
         Address addrThisNode;
 
+        /* returns the name of the protocol type of this server */
+        std::string Name()
+        {
+            return ProtocolType::Name();
+        }
 
-        /* Default Constructor. */
         Server<ProtocolType>(int32_t nPort, int32_t nMaxThreads, int32_t nTimeout = 30, bool isDDOS = false,
                              int32_t cScore = 0, int32_t rScore = 0, int32_t nTimespan = 60, bool fListen = true,
                              bool fMeter = false, bool fManager = false)
@@ -190,7 +196,7 @@ namespace LLP
         }
 
 
-        /** Get Connections
+        /** GetConnections
          *
          *  Get the active connection pointers from data threads.
          *
@@ -226,7 +232,7 @@ namespace LLP
         }
 
 
-        /** Get Addresses
+        /** GetAddresses
          *
          *  Get the active connection pointers from data threads.
          *
@@ -258,9 +264,10 @@ namespace LLP
             while(!config::fShutdown)
             {
                 runtime::sleep(1000);
+
+                /* assume the connect state is in a failed state */
                 uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
 
-                LOCK(MUTEX);
 
                 /* Pick a weighted random priority from a sorted list of addresses */
                 if(pAddressManager && pAddressManager->StochasticSelect(addr))
@@ -270,7 +277,7 @@ namespace LLP
                     uint16_t port = addr.GetPort();
 
                     /* Attempt the connection. */
-                    debug::log(0, FUNCTION "Attempting Connection %s:%u", __PRETTY_FUNCTION__, ip.c_str(), port);
+                    debug::log(0, NODE "%s Attempting Connection %s:%u", ProtocolType::Name().c_str(), ip.c_str(), port);
                     pAddressManager->PrintStats();
 
                     /* Attempt the connection. */
