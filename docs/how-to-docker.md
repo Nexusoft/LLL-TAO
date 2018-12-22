@@ -8,6 +8,7 @@ Building:
     docker download website https://download.docker.com for your OS platform.
 
     Ubuntu 18.04
+
 ```
     sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
@@ -68,7 +69,9 @@ You should see a container named "nexus-&lt;fill-in&gt;"
 
 (4) You can monitor the LISP subsystem by pointing your browser to:
 
+```
     http://localhost:9090/lisp
+```
 
 By default, the username is "root" with no password on the lispers.net login
 webpage. Note if port number 9090 is used by another application on your
@@ -87,7 +90,7 @@ following:
 
 ```
 {
-  "ipv6": true, "fixed-cidr-v6": '2001:db8:1::/64"
+    "ipv6": true, "fixed-cidr-v6": '2001:db8:1::/64"
 }
 ```
 
