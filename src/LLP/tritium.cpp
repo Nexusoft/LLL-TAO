@@ -45,7 +45,7 @@ namespace LLP
                     nLastPing    = runtime::Timestamp();
 
                     /* Debut output. */
-                    debug::log(0, NODE "%s Connected at timestamp %" PRIu64 "", GetAddress().ToString().c_str(), runtime::UnifiedTimestamp());
+                    debug::log(0, "%s %s Connected at timestamp %" PRIu64 "", Name().c_str(), GetAddress().ToString().c_str(), runtime::UnifiedTimestamp());
 
                     /* Send version if making the connection. */
                     if(fOUTGOING)
@@ -288,10 +288,13 @@ namespace LLP
                 case GET_ADDRESSES:
                 {
                     /* Grab the connections. */
-                    std::vector<Address> vAddr = TRITIUM_SERVER->GetAddresses();
+                    if(TRITIUM_SERVER)
+                    {
+                        std::vector<Address> vAddr = TRITIUM_SERVER->GetAddresses();
 
-                    /* Push the response addresses. */
-                    PushMessage(DAT_ADDRESSES, vAddr);
+                        /* Push the response addresses. */
+                        PushMessage(DAT_ADDRESSES, vAddr);
+                    }
 
                     break;
                 }
@@ -303,10 +306,22 @@ namespace LLP
                     std::vector<Address> vAddr;
                     ssPacket >> vAddr;
 
-                    /* Add the connections to Tritium Server. */
-                    if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
-                        TRITIUM_SERVER->pAddressManager->AddAddresses(vAddr);
+                    if(TRITIUM_SERVER)
+                    {
+                        /* try to establish the connection on the port the server is listening to */
+                        for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
+                        {
+                            if(config::mapArgs.find("-port") != config::mapArgs.end())
+                                it->SetPort(atoi(config::mapArgs["-port"].c_str()));
+                            else
+                                it->SetPort(TRITIUM_SERVER->PORT);
+                        }
 
+
+                        /* Add the connections to Tritium Server. */
+                        if(TRITIUM_SERVER->pAddressManager)
+                            TRITIUM_SERVER->pAddressManager->AddAddresses(vAddr);
+                    }
 
                     break;
                 }

@@ -46,11 +46,8 @@ namespace LLD
 namespace LLP
 {
     Server<TritiumNode>* TRITIUM_SERVER;
-    Server<LegacyNode> *LEGACY_SERVER;
+    Server<LegacyNode> * LEGACY_SERVER;
 }
-
-#include <LLC/include/random.h>
-#include <cmath>
 
 int main(int argc, char** argv)
 {
@@ -81,7 +78,7 @@ int main(int argc, char** argv)
 
 
     /* Create directories if they don't exist yet. */
-    if(filesystem::create_directory(config::GetDataDir(false)))
+    if(!filesystem::exists(config::GetDataDir(false)) && filesystem::create_directory(config::GetDataDir(false)))
         debug::log(0, FUNCTION "Generated Path %s", __PRETTY_FUNCTION__, config::GetDataDir(false).c_str());
 
 
@@ -103,6 +100,7 @@ int main(int argc, char** argv)
         config::GetBoolArg("-listen", true),
         config::GetBoolArg("-meters", false),
         true);
+
 
     /* Add node to Tritium server */
     if(config::mapMultiArgs["-addnode"].size() > 0)
@@ -176,7 +174,7 @@ int main(int argc, char** argv)
 
     /* Busy wait for Shutdown. */
     while(!config::fShutdown)
-        runtime::Sleep(1000);
+        runtime::sleep(1000);
 
 
     /* Shutdown the servers and their subsystems */

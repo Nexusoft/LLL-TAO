@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <cstdio>
 #include <cstdint>
 
+#include <Util/templates/serialize.h>
+
 namespace TAO
 {
 
@@ -49,6 +51,14 @@ namespace TAO
             {
                 SetNull();
             }
+
+            //serialization functions
+            IMPLEMENT_SERIALIZE
+            (
+                READWRITE(nVersion);
+                READWRITE(nIdentifier);
+                READWRITE(nBalance);
+            )
 
 
             /** Consturctor

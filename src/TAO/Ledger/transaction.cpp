@@ -32,25 +32,28 @@ namespace TAO::Ledger
     bool Transaction::IsValid() const
     {
         /* Read the previous transaction from disk. */
-        TAO::Ledger::Transaction tx;
-        if(!LLD::legDB->ReadTx(hashPrevTx, tx))
-            return debug::error(FUNCTION "failed to read previous transaction", __PRETTY_FUNCTION__);
+        if(!IsGenesis())
+        {
+            TAO::Ledger::Transaction tx;
+            if(!LLD::legDB->ReadTx(hashPrevTx, tx))
+                return debug::error(FUNCTION "failed to read previous transaction", __PRETTY_FUNCTION__);
 
-        /* Check the previous next hash that is being claimed. */
-        if(tx.hashNext != PrevHash())
-            return debug::error(FUNCTION "next hash mismatch with previous transaction", __PRETTY_FUNCTION__);
+            /* Check the previous next hash that is being claimed. */
+            if(tx.hashNext != PrevHash())
+                return debug::error(FUNCTION "next hash mismatch with previous transaction", __PRETTY_FUNCTION__);
 
-        /* Check the previous sequence number. */
-        if(tx.nSequence + 1 != nSequence)
-            return debug::error(FUNCTION "previous sequence %u not sequential %u", __PRETTY_FUNCTION__, tx.nSequence, nSequence);
+            /* Check the previous sequence number. */
+            if(tx.nSequence + 1 != nSequence)
+                return debug::error(FUNCTION "previous sequence %u not sequential %u", __PRETTY_FUNCTION__, tx.nSequence, nSequence);
+
+            /* Check the previous genesis. */
+            if(tx.hashGenesis != hashGenesis)
+                return debug::error(FUNCTION "previous genesis %s mismatch %s", __PRETTY_FUNCTION__, tx.hashGenesis.ToString().substr(0, 20).c_str(), hashGenesis.ToString().substr(0, 20).c_str());
+        }
 
         /* Check the timestamp. */
-        if(tx.nTimestamp > runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT)
-            return debug::error(FUNCTION "transaction timestamp too far in the future %u", __PRETTY_FUNCTION__, tx.nTimestamp);
-
-        /* Check the previous genesis. */
-        if(tx.hashGenesis != hashGenesis)
-            return debug::error(FUNCTION "previous genesis %s mismatch %s", __PRETTY_FUNCTION__, tx.hashGenesis.ToString().substr(0, 20).c_str(), hashGenesis.ToString().substr(0, 20).c_str());
+        if(nTimestamp > runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT)
+            return debug::error(FUNCTION "transaction timestamp too far in the future %u", __PRETTY_FUNCTION__, nTimestamp);
 
         /* Check the size constraints of the ledger data. */
         if(vchLedgerData.size() > 1024) //TODO: implement a constant max size
@@ -61,13 +64,15 @@ namespace TAO::Ledger
         ecPub.SetPubKey(vchPubKey);
         if(!ecPub.Verify(GetHash().GetBytes(), vchSig))
             return debug::error(FUNCTION "invalid transaction signature", __PRETTY_FUNCTION__);
+
+        return true;
     }
 
 
     /* Determines if the transaction is a genesis transaction */
     bool Transaction::IsGenesis() const
     {
-        return (nSequence == 0 && hashGenesis == 0);
+        return (nSequence == 0);
     }
 
 
@@ -80,18 +85,32 @@ namespace TAO::Ledger
         return LLC::SK512(ss.begin(), ss.end());
     }
 
+    /* Gets the hash of the genesis transaction */
+    uint256_t Transaction::Genesis() const
+    {
+        if(!IsGenesis())
+            return hashGenesis;
+
+        DataStream ss(SER_GENESISHASH, nVersion);
+        ss << *this;
+
+        return LLC::SK256(ss.begin(), ss.end());
+    }
+
 
     /* Sets the Next Hash from the key */
     void Transaction::NextHash(uint512_t hashSecret)
     {
-        DataStream ssData(SER_NETWORK, nVersion);
-        ssData << hashSecret;
+        /* Get the secret from new key. */
+        std::vector<uint8_t> vBytes = hashSecret.GetBytes();
+        LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
-        LLC::CSecret vchSecret(ssData.begin(), ssData.end());
+        /* Generate the EC Key. */
         LLC::ECKey key(NID_brainpoolP512t1, 64);
         if(!key.SetSecret(vchSecret, true))
             return;
 
+        /* Calculate the next hash. */
         hashNext = LLC::SK256(key.GetPubKey());
     }
 
@@ -106,24 +125,29 @@ namespace TAO::Ledger
     /* Signs the transaction with the private key and sets the public key */
      bool Transaction::Sign(uint512_t hashSecret)
      {
-        DataStream ssData(SER_NETWORK, nVersion);
-        ssData << hashSecret;
+        /* Get the secret from new key. */
+        std::vector<uint8_t> vBytes = hashSecret.GetBytes();
+        LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
-        LLC::CSecret vchSecret(ssData.begin(), ssData.end());
-
+        /* Generate the EC Key. */
         LLC::ECKey key(NID_brainpoolP512t1, 64);
         if(!key.SetSecret(vchSecret, true))
             return false;
 
+        /* Set the public key. */
         vchPubKey = key.GetPubKey();
-        uint512_t hashTx = GetHash();
-        return key.Sign(hashTx.GetBytes(), vchSig);
+
+        /* Calculate the has of this transaction. */
+        uint512_t hashThis = GetHash();
+
+        /* Sign the hash. */
+        return key.Sign(hashThis.GetBytes(), vchSig);
      }
 
      /* Debug output - use ANSI colors. TODO: turn ansi colors on or off with a commandline flag */
      void Transaction::print() const
      {
-         debug::log(0, "%s(" ANSI_COLOR_BRIGHT_WHITE "nVersion" ANSI_COLOR_RESET " = %u, " ANSI_COLOR_BRIGHT_WHITE "nTimestamp" ANSI_COLOR_RESET " = %" PRIu64 ", " ANSI_COLOR_BRIGHT_WHITE "hashNext" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hashPrevTx" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hashGenesis" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "pub" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "sig" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hash" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "ledger" ANSI_COLOR_RESET " = %s)",
-         IsGenesis() ? "Genesis" : "Tritium", nVersion, nTimestamp, hashNext.ToString().c_str(), hashPrevTx.ToString().c_str(), hashGenesis.ToString().c_str(), HexStr(vchPubKey).c_str(), HexStr(vchSig).c_str(), GetHash().ToString().c_str(), HexStr(vchLedgerData.begin(), vchLedgerData.end()).c_str());
+         debug::log(0, "%s(" ANSI_COLOR_BRIGHT_WHITE "nVersion" ANSI_COLOR_RESET " = %u, " ANSI_COLOR_BRIGHT_WHITE "nSequence" ANSI_COLOR_RESET " = %u, " ANSI_COLOR_BRIGHT_WHITE "nTimestamp" ANSI_COLOR_RESET " = %" PRIu64 ", " ANSI_COLOR_BRIGHT_WHITE "hashNext" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hashPrevTx" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hashGenesis" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "pub" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "sig" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hash" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "ledger" ANSI_COLOR_RESET " = %s)",
+         IsGenesis() ? "Genesis" : "Tritium", nVersion, nSequence, nTimestamp, hashNext.ToString().c_str(), hashPrevTx.ToString().c_str(), hashGenesis.ToString().c_str(), HexStr(vchPubKey).c_str(), HexStr(vchSig).c_str(), GetHash().ToString().c_str(), HexStr(vchLedgerData.begin(), vchLedgerData.end()).c_str());
      }
 }

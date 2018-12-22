@@ -17,30 +17,32 @@ ________________________________________________________________________________
 namespace TAO::API
 {
 
-    // Value backupwallet(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 1)
-    //         throw runtime_error(
-    //             "backupwallet <destination>\n"
-    //             "Safely copies wallet.dat to destination, which can be a directory or a path with filename.");
+    /* backupwallet <destination>
+    *  Safely copies wallet.dat to destination, which can be a directory or a path with filename */
+    json::json RPC::BackupWallet(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 1)
+            return std::string(
+                "backupwallet <destination>"
+                " - Safely copies wallet.dat to destination, which can be a directory or a path with filename.");
 
     //     string strDest = params[0].get_str();
     //     BackupWallet(*pwalletMain, strDest);
 
     //     return Value::null;
-    // }
+    }
 
 
-    // Value keypoolrefill(const json::json& jsonParams, bool fHelp)
+    // json::json keypoolrefill(const json::json& jsonParams, bool fHelp)
     // {
-    //     if (pwalletMain->IsCrypted() && (fHelp || params.size() > 0))
-    //         throw runtime_error(
-    //             "keypoolrefill\n"
-    //             "Fills the keypool, requires wallet passphrase to be set.");
-    //     if (!pwalletMain->IsCrypted() && (fHelp || params.size() > 0))
-    //         throw runtime_error(
-    //             "keypoolrefill\n"
-    //             "Fills the keypool.");
+    //     if (pwalletMain->IsCrypted() && (fHelp || jsonParams.size() > 0))
+    //         return std::string(
+    //             "keypoolrefill"
+    //             " - Fills the keypool, requires wallet passphrase to be set.");
+    //     if (!pwalletMain->IsCrypted() && (fHelp || jsonParams.size() > 0))
+    //         return std::string(
+    //             "keypoolrefill"
+    //             " - Fills the keypool.");
 
     //     if (pwalletMain->IsLocked())
     //         throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
@@ -73,12 +75,12 @@ namespace TAO::API
     //         {
     //             if (nWalletUnlockTime==0)
     //                 break;
-    //             int64 nToSleep = nWalletUnlockTime - GetTimeMillis();
-    //             if (nToSleep <= 0)
+    //             int64 nTosleep = nWalletUnlockTime - GetTimeMillis();
+    //             if (nTosleep <= 0)
     //                 break;
 
     //             LEAVE_CRITICAL_SECTION(cs_nWalletUnlockTime);
-    //             Sleep(nToSleep);
+    //             sleep(nTosleep);
     //             ENTER_CRITICAL_SECTION(cs_nWalletUnlockTime);
 
     //         } while(1);
@@ -100,13 +102,16 @@ namespace TAO::API
     //     delete (int64*)parg;
     // }
 
-    // Value walletpassphrase(const json::json& jsonParams, bool fHelp)
+    /* walletpassphrase <passphrase> <timeout> [mintonly]
+    *  Stores the wallet decryption key in memory for <timeout> seconds.
+    *  mintonly is optional true/false allowing only block minting*/
+    // json::json walletpassphrase(const json::json& jsonParams, bool fHelp)
     // {
-    //     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 3))
-    //         throw runtime_error(
-    //             "walletpassphrase <passphrase> <timeout> [mintonly]\n"
-    //             "Stores the wallet decryption key in memory for <timeout> seconds.\n"
-    //             "mintonly is optional true/false allowing only block minting.");
+    //     if (pwalletMain->IsCrypted() && (fHelp || jsonParams.size() < 2 || jsonParams.size() > 3))
+    //         return std::string(
+    //             "walletpassphrase <passphrase> <timeout> [mintonly]"
+    //             " - Stores the wallet decryption key in memory for <timeout> seconds."
+    //             " mintonly is optional true/false allowing only block minting.");
     //     if (fHelp)
     //         return true;
     //     if (!pwalletMain->IsCrypted())
@@ -128,16 +133,16 @@ namespace TAO::API
     //             throw JSONRPCError(-14, "Error: The wallet passphrase entered was incorrect.");
     //     }
     //     else
-    //         throw runtime_error(
-    //             "walletpassphrase <passphrase> <timeout>\n"
-    //             "Stores the wallet decryption key in memory for <timeout> seconds.");
+    //         return std::string(
+    //             "walletpassphrase <passphrase> <timeout>"
+    //             " - Stores the wallet decryption key in memory for <timeout> seconds.");
 
     //     CreateThread(ThreadTopUpKeyPool, NULL);
-    //     int64* pnSleepTime = new int64(params[1].get_int64());
-    //     CreateThread(ThreadCleanWalletPassphrase, pnSleepTime);
+    //     int64* pnsleepTime = new int64(params[1].get_int64());
+    //     CreateThread(ThreadCleanWalletPassphrase, pnsleepTime);
 
     //     // Nexus: if user OS account compromised prevent trivial sendmoney commands
-    //     if (params.size() > 2)
+    //     if (jsonParams.size() > 2)
     //         Wallet::fWalletUnlockMintOnly = params[2].get_bool();
     //     else
     //         Wallet::fWalletUnlockMintOnly = false;
@@ -145,13 +150,14 @@ namespace TAO::API
     //     return Value::null;
     // }
 
-
-    // Value walletpassphrasechange(const json::json& jsonParams, bool fHelp)
+    /* walletpassphrasechange <oldpassphrase> <newpassphrase>
+    *  Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>*/
+    // json::json walletpassphrasechange(const json::json& jsonParams, bool fHelp)
     // {
-    //     if (pwalletMain->IsCrypted() && (fHelp || params.size() != 2))
-    //         throw runtime_error(
-    //             "walletpassphrasechange <oldpassphrase> <newpassphrase>\n"
-    //             "Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>.");
+    //     if (pwalletMain->IsCrypted() && (fHelp || jsonParams.size() != 2))
+    //         return std::string(
+    //             "walletpassphrasechange <oldpassphrase> <newpassphrase>"
+    //             " - Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>.");
     //     if (fHelp)
     //         return true;
     //     if (!pwalletMain->IsCrypted())
@@ -168,9 +174,9 @@ namespace TAO::API
     //     strNewWalletPass = params[1].get_str().c_str();
 
     //     if (strOldWalletPass.length() < 1 || strNewWalletPass.length() < 1)
-    //         throw runtime_error(
-    //             "walletpassphrasechange <oldpassphrase> <newpassphrase>\n"
-    //             "Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>.");
+    //         return std::string(
+    //             "walletpassphrasechange <oldpassphrase> <newpassphrase>"
+    //             " - Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>.");
 
     //     if (!pwalletMain->ChangeWalletPassphrase(strOldWalletPass, strNewWalletPass))
     //         throw JSONRPCError(-14, "Error: The wallet passphrase entered was incorrect.");
@@ -179,14 +185,18 @@ namespace TAO::API
     // }
 
 
-    // Value walletlock(const json::json& jsonParams, bool fHelp)
+    /* walletlock"
+    *  Removes the wallet encryption key from memory, locking the wallet.
+    *  After calling this method, you will need to call walletpassphrase again
+    *  before being able to call any methods which require the wallet to be unlocked */
+    // json::json walletlock(const json::json& jsonParams, bool fHelp)
     // {
-    //     if (pwalletMain->IsCrypted() && (fHelp || params.size() != 0))
-    //         throw runtime_error(
-    //             "walletlock\n"
-    //             "Removes the wallet encryption key from memory, locking the wallet.\n"
-    //             "After calling this method, you will need to call walletpassphrase again\n"
-    //             "before being able to call any methods which require the wallet to be unlocked.");
+    //     if (pwalletMain->IsCrypted() && (fHelp || jsonParams.size() != 0))
+    //         return std::string(
+    //             "walletlock"
+    //             " - Removes the wallet encryption key from memory, locking the wallet."
+    //             " After calling this method, you will need to call walletpassphrase again"
+    //             " before being able to call any methods which require the wallet to be unlocked.");
     //     if (fHelp)
     //         return true;
     //     if (!pwalletMain->IsCrypted())
@@ -201,13 +211,14 @@ namespace TAO::API
     //     return Value::null;
     // }
 
-
-    // Value encryptwallet(const json::json& jsonParams, bool fHelp)
+    /* encryptwallet <passphrase>
+    *  Encrypts the wallet with <passphrase>. */
+    // json::json encryptwallet(const json::json& jsonParams, bool fHelp)
     // {
-    //     if (!pwalletMain->IsCrypted() && (fHelp || params.size() != 1))
-    //         throw runtime_error(
-    //             "encryptwallet <passphrase>\n"
-    //             "Encrypts the wallet with <passphrase>.");
+    //     if (!pwalletMain->IsCrypted() && (fHelp || jsonParams.size() != 1))
+    //         return std::string(
+    //             "encryptwallet <passphrase>"
+    //             " - Encrypts the wallet with <passphrase>.");
     //     if (fHelp)
     //         return true;
     //     if (pwalletMain->IsCrypted())
@@ -220,9 +231,9 @@ namespace TAO::API
     //     strWalletPass = params[0].get_str().c_str();
 
     //     if (strWalletPass.length() < 1)
-    //         throw runtime_error(
-    //             "encryptwallet <passphrase>\n"
-    //             "Encrypts the wallet with <passphrase>.");
+    //         return std::string(
+    //             "encryptwallet <passphrase>"
+    //             " - Encrypts the wallet with <passphrase>.");
 
     //     if (!pwalletMain->EncryptWallet(strWalletPass))
     //         throw JSONRPCError(-16, "Error: Failed to encrypt the wallet.");
@@ -234,13 +245,14 @@ namespace TAO::API
     //     return "wallet encrypted; Nexus server stopping, restart to run with encrypted wallet";
     // }
 
-    // // Nexus: check wallet integrity
-    // Value checkwallet(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || params.size() > 0)
-    //         throw runtime_error(
-    //             "checkwallet\n"
-    //             "Check wallet for integrity.\n");
+    /* checkwallet
+    *  Check wallet for integrity */
+    json::json RPC::CheckWallet(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() > 0)
+            return std::string(
+                "checkwallet"
+                " - Check wallet for integrity.");
 
     //     int nMismatchSpent;
     //     int64 nBalanceInQuestion;
@@ -254,15 +266,16 @@ namespace TAO::API
     //         result.push_back(Pair("amount in question", ValueFromAmount(nBalanceInQuestion)));
     //     }
     //     return result;
-    // }
+    }
 
-    // /* List the trust keys this wallet.dat file contains. */
-    // Value listtrustkeys(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || params.size() > 0)
-    //         throw runtime_error(
-    //             "listtrustkeys\n"
-    //             "List all the Trust Keys this Node owns.\n");
+    /* listtrustkeys
+    *  List all the Trust Keys this Node owns */
+    json::json RPC::ListTrustKeys(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() > 0)
+            return std::string(
+                "listtrustkeys"
+                " - List all the Trust Keys this Node owns.");
 
     //     Object result;
     //     LLD::CTrustDB trustdb("cr");
@@ -276,19 +289,20 @@ namespace TAO::API
     //         Wallet::NexusAddress address;
     //         address.SetPubKey(trustKey.vchPubKey);
     //         result.push_back(Pair(address.ToString(), Core::dInterestRate));
-    //     }
+        // }
 
 
     //     return result;
-    // }
+    }
 
-    // // Nexus: repair wallet
-    // Value repairwallet(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || params.size() > 0)
-    //         throw runtime_error(
-    //             "repairwallet\n"
-    //             "Repair wallet if checkwallet reports any problem.\n");
+    /* repairwallet
+    *  Repair wallet if checkwallet reports any problem */
+    json::json RPC::RepairWallet(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() > 0)
+            return std::string(
+                "repairwallet"
+                " - Repair wallet if checkwallet reports any problem.");
 
     //     int nMismatchSpent;
     //     int64 nBalanceInQuestion;
@@ -302,7 +316,7 @@ namespace TAO::API
     //         result.push_back(Pair("amount affected by repair", ValueFromAmount(nBalanceInQuestion)));
     //     }
     //     return result;
-    // }
+    }
 
     // class CTxDump
     // {
@@ -322,28 +336,32 @@ namespace TAO::API
     //     }
     // };
 
-    // Value rescan(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 0)
-    //         throw runtime_error(
-    //             "rescan\n"
-    //             "Rescans the database for relevant wallet transactions.");
+    /* rescan
+    *  Rescans the database for relevant wallet transactions */
+    json::json RPC::Rescan(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 0)
+            return std::string(
+                "rescan"
+                " - Rescans the database for relevant wallet transactions.");
 
     //     pwalletMain->ScanForWalletTransactions(Core::pindexGenesisBlock, true);
 
     //     return "success";
-    // }
+    }
 
-    // Value importprivkey(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || params.size() < 1 || params.size() > 2)
-    //         throw runtime_error(
-    //             "importprivkey <PrivateKey> [label]\n"
-    //             "Adds a private key (as returned by dumpprivkey) to your wallet.");
+    /* importprivkey <PrivateKey> [label]
+    *  Adds a private key (as returned by dumpprivkey) to your wallet */
+    json::json RPC::ImportPrivKey(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() < 1 || jsonParams.size() > 2)
+            return std::string(
+                "importprivkey <PrivateKey> [label]"
+                " - Adds a private key (as returned by dumpprivkey) to your wallet.");
 
     //     string strSecret = params[0].get_str();
     //     string strLabel = "";
-    //     if (params.size() > 1)
+    //     if (jsonParams.size() > 1)
     //         strLabel = params[1].get_str();
     //     Wallet::NexusSecret vchSecret;
     //     bool fGood = vchSecret.SetString(strSecret);
@@ -373,14 +391,16 @@ namespace TAO::API
     //     MainFrameRepaint();
 
     //     return Value::null;
-    // }
+    }
 
-    // Value dumpprivkey(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 1)
-    //         throw runtime_error(
-    //             "dumpprivkey <NexusAddress>\n"
-    //             "Reveals the private key corresponding to <NexusAddress>.");
+    /* dumpprivkey <NexusAddress>
+    *  Reveals the private key corresponding to <NexusAddress> */
+    json::json RPC::DumpPrivKey(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 1)
+            return std::string(
+                "dumpprivkey <NexusAddress>"
+                " - Reveals the private key corresponding to <NexusAddress>.");
 
     //     string strAddress = params[0].get_str();
     //     Wallet::NexusAddress address;
@@ -395,19 +415,21 @@ namespace TAO::API
     //     if (!pwalletMain->GetSecret(address, vchSecret, fCompressed))
     //         throw JSONRPCError(-4,"Private key for address " + strAddress + " is not known");
     //     return Wallet::NexusSecret(vchSecret, fCompressed).ToString();
-    // }
+    }
 
-    // /** Import List of Private Keys amd if they import properly or fail with their own code int he output sequenc **/
-    // Value importkeys(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || params.size() < 1)
-    //     {
-    //         throw runtime_error(
-    //             "importkeys\n"
-    //             "The account and keypair need to \n"
-    //             "You need to list the imported keys in a JSON array of {[account],[privatekey]}\n");
-    //     }
-    //         /** Make sure the Wallet is Unlocked fully before proceeding. **/
+    /* importkeys
+    *  Import List of Private Keys and return if they import properly or fail with their own code in the output sequence" 
+    *  You need to list the imported keys in a JSON array of {[account],[privatekey]} */
+    json::json RPC::ImportKeys(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() < 1)
+        {
+            return std::string(
+                "importkeys"
+                " - Import List of Private Keys and return if they import properly or fail with their own code in the output sequence" 
+                " You need to list the imported keys in a JSON array of {[account],[privatekey]}");
+        }
+            /** Make sure the Wallet is Unlocked fully before proceeding. **/
     //         if (pwalletMain->IsLocked())
     //             throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
     //         if (Wallet::fWalletUnlockMintOnly)
@@ -455,17 +477,18 @@ namespace TAO::API
     //         MainFrameRepaint();
 
     //         return response;
-    // }
+    }
 
-    // /** Export the private keys of the current UTXO values.
-    //     This will allow the importing and exporting of private keys much easier. **/
-    // Value exportkeys(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 0)
-    //         throw runtime_error(
-    //             "exportkeys\n"
-    //             "This command dumps the private keys and account names of all unspent outputs.\n"
-    //             "This allows the easy dumping and importing of all private keys on the system\n");
+    /* exportkeys
+    *  Export the private keys of the current UTXO values.
+    *  This will allow the importing and exporting of private keys much easier. */
+    json::json RPC::ExportKeys(const json::json& jsonParams, bool fHelp)
+    {
+        if (fHelp || jsonParams.size() != 0)
+            return std::string(
+                "exportkeys"
+                " - Export the private keys of the current UTXO values. "
+                " This will allow the importing and exporting of private keys much easier");
 
     //     /** Disallow the exporting of private keys if the encryption key is not available in the memory. **/
     //     if (pwalletMain->IsLocked())
@@ -502,6 +525,6 @@ namespace TAO::API
     //     }
 
     //     return entry;
-    // }
+    }
 
 }

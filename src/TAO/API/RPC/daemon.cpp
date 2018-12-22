@@ -19,17 +19,19 @@ ________________________________________________________________________________
 
 namespace TAO::API
 {
-    // Value stop(const json::json& jsonParams, bool fHelp)
+    // json::json stop(const json::json& jsonParams, bool fHelp)
     // {
-    //     if (fHelp || params.size() != 0)
-    //         throw runtime_error(
-    //             "stop\n"
-    //             "Stop Nexus server.");
+    //     if (fHelp || jsonParams.size() != 0)
+    //         return std::string(
+    //             "stop"
+    //             " - Stop Nexus server.");
     //     // Shutdown will take long enough that the response should get back
     //     StartShutdown();
     //     return "Nexus server stopping";
     // }
 
+    /* getconnectioncount
+       Returns the number of connections to other nodes */
     json::json RPC::GetConnectionCount(const json::json& jsonParams, bool fHelp)
     {
         if (fHelp || jsonParams.size() != 0)
@@ -37,23 +39,16 @@ namespace TAO::API
                 "getconnectioncount"
                 " - Returns the number of connections to other nodes.");
 
-        uint32_t nConnections = 0;
-
-        if(LLP::TRITIUM_SERVER  && LLP::TRITIUM_SERVER->pAddressManager)
-            nConnections += LLP::TRITIUM_SERVER->pAddressManager->GetInfoCount(LLP::ConnectState::CONNECTED);
-
-        if(LLP::LEGACY_SERVER && LLP::LEGACY_SERVER->pAddressManager)
-            nConnections += LLP::LEGACY_SERVER->pAddressManager->GetInfoCount(LLP::ConnectState::CONNECTED);
-
-        return nConnections;
+        return GetTotalConnectionCount();
     }
 
-    // Value reset(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if(fHelp || params.size() != 0)
-    //         throw runtime_error(
-    //             "reset\n"
-    //             "Restart all node connections");
+    /* Restart all node connections */
+    json::json RPC::Reset(const json::json& jsonParams, bool fHelp)
+    {
+        if(fHelp || jsonParams.size() != 0)
+            return std::string(
+                "reset"
+                " - Restart all node connections");
 
     //     //disconnect all nodes currently active
     //     {
@@ -79,40 +74,6 @@ namespace TAO::API
     //     ReadConfigFile(mapArgs, mapMultiArgs);
 
     //     return "success";
-    // }
-
-    // Value getpeerinfo(const json::json& jsonParams, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 0)
-    //         throw runtime_error(
-    //             "getpeerinfo\n"
-    //             "Returns data about each connected network node.");
-
-    //     vector<CNodeStats> vstats;
-    //     CopyNodeStats(vstats);
-
-    //     Array ret;
-
-    //     BOOST_FOREACH(const CNodeStats& stats, vstats) {
-    //         Object obj;
-
-    //         obj.push_back(Pair("addr", stats.addrName));
-    //         obj.push_back(Pair("services", strprintf("%08" PRI64x, stats.nServices)));
-    //         obj.push_back(Pair("lastsend", (boost::int64_t)stats.nLastSend));
-    //         obj.push_back(Pair("lastrecv", (boost::int64_t)stats.nLastRecv));
-    //         obj.push_back(Pair("conntime", (boost::int64_t)stats.nTimeConnected));
-    //         obj.push_back(Pair("version", stats.nVersion));
-    //         obj.push_back(Pair("subver", stats.strSubVer));
-    //         obj.push_back(Pair("inbound", stats.fInbound));
-    //         obj.push_back(Pair("releasetime", (boost::int64_t)stats.nReleaseTime));
-    //         obj.push_back(Pair("height", stats.nStartingHeight));
-    //         obj.push_back(Pair("banscore", stats.nMisbehavior));
-
-    //         ret.push_back(obj);
-    //     }
-
-    //     return ret;
-    // }
-
+    }
 
 }

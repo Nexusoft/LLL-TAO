@@ -44,6 +44,7 @@ namespace LLP
      *  {"method":"", "params":[]}
      *
      *  This could also be used as the base for a HTTP-LLP server implementation.
+     *
      **/
     class HTTPNode : public BaseConnection<HTTPPacket>
     {
@@ -60,8 +61,11 @@ namespace LLP
     public:
 
         /* Constructors for Message LLP Class. */
-        HTTPNode() : BaseConnection<HTTPPacket>() {}
-        HTTPNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false ) : BaseConnection<HTTPPacket>( SOCKET_IN, DDOS_IN ) { }
+        HTTPNode()
+        : BaseConnection<HTTPPacket>() { }
+
+        HTTPNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
+        : BaseConnection<HTTPPacket>( SOCKET_IN, DDOS_IN ) { }
 
 
         /** Virtual Functions to Determine Behavior of Message LLP.
@@ -70,11 +74,17 @@ namespace LLP
          *  @param[in[ LENGTH The size of bytes read on packet read events
          *
          */
-        void Event(uint8_t EVENT, uint32_t LENGTH = 0) = 0;
+        void Event(uint8_t EVENT, uint32_t LENGTH = 0) override = 0;
 
 
-        /** Main message handler once a packet is recieved. **/
-        bool ProcessPacket() = 0;
+        /** ProcessPacket
+         *
+         *  Main message handler once a packet is recieved.
+         *
+         *  @return True is no errors, false otherwise
+         *
+         **/
+        bool ProcessPacket() override = 0;
 
 
         /** DoS
@@ -84,7 +94,7 @@ namespace LLP
          *  @param[in] nDoS The score to add for DoS banning
          *  @param[in] fReturn The value to return (False disconnects this node)
          *
-         */
+         **/
         inline bool DoS(int nDoS, bool fReturn)
         {
             if(fDDOS)
@@ -94,20 +104,26 @@ namespace LLP
         }
 
 
-        /** Get the current IP address of this node. **/
+        /** GetAddress
+         *
+         *  Get the current IP address of this node.
+         *
+         *  @return The address of this node
+         *
+         **/
         Address GetAddress() const
         {
             return addrThisNode;
         }
 
 
-        /** Read Packet
+        /** ReadPacket
          *
          *  Non-Blocking Packet reader to build a packet from TCP Connection.
          *  This keeps thread from spending too much time for each Connection.
          *
-         */
-        void ReadPacket()
+         **/
+        void ReadPacket() final
         {
             if(!INCOMING.Complete())
             {

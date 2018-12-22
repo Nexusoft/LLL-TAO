@@ -16,17 +16,25 @@ alias aptget     'sudo apt-get -o Acquire::ForceIPv4=true install'
 #
 alias run-nexus         '/nexus/run-nexus'
 alias ps-nexus          'psg nexus'
+alias kill-nexus        'pkill -9 nexus'    
 alias tcp-nexus         'netstat -an | egrep "9323|9324|9325"'
 alias tcp-nexus-testnet 'netstat -an | egrep "7323|7324|7325"'
 alias ns-prod           'tcp-nexus'
 alias ns-testnet        'tcp-nexus-testnet'
-alias ncli              '/nexus/nexus -testnet'
-alias ninfo             'ncli getinfo'
-alias npeers            'ncli getpeerinfo'
-alias npeercount        'ncli getconnectioncount'
 alias tail-nexus        'tail -f /nexus/nexus.log'
-alias curl-nexus        '/nexus/curl-nexus'
-alias nexus-api         '/nexus/nexus -api'
+
+#
+# There are 3 programaitc interfaces into the nexus Daemon. (1) the RPC
+# interface for legacy compatibility, (2) the command-line API, and (3)
+# a restful HTTP/JSON interface.    
+#
+alias nexus-api          '/nexus/nexus -api'
+alias nexus-rpc          '/nexus/nexus'
+alias curl-nexus         '/nexus/curl-nexus'
+alias getinfo            'nexus-rpc getinfo'
+alias getpeerinfo        'nexus-rpc getpeerinfo'
+alias getconnectioncount 'nexus-rpc getconnectioncount'
+alias getpeercount       'getconnectioncount'
     
 #
 # Handy network aliases.
@@ -39,10 +47,11 @@ alias td          'tcpdump -i any -n'
 #
 # LISP handy aliases.
 #            
-alias ps-lisp   'pushd /lispers.net > /dev/null; ./pslisp; popd > /dev/null'
-alias ver       'curl --silent --insecure -u root: http://localhost:9090/lisp/api/data/system | jq .'
-alias eids      'mc | egrep "eid-prefix|group-prefix"'
-alias myeids    'curl --silent --insecure -u root: http://localhost:9090/lisp/api/database-mapping | jq .| egrep "eid-prefix"'
-alias mc        'curl --silent --insecure -u root: http://localhost:9090/lisp/api/data/map-cache | jq .'
-alias rate      'mc | egrep "stats|address|state"'
-alias rate-loop 'echo "while 1 \n rate | sort -bu \n echo \n sleep 1 \n end \n" | tcsh'
+alias ps-lisp      'pushd /lispers.net > /dev/null; ./pslisp; popd > /dev/null'
+alias restart-lisp '/lispers.net/RL'    
+alias ver          'curl --silent --insecure -u root: http://localhost:9090/lisp/api/data/system | jq .'
+alias eids         'mc | egrep "eid-prefix|group-prefix"'
+alias myeids       'curl --silent --insecure -u root: http://localhost:9090/lisp/api/database-mapping | jq .| egrep "eid-prefix"'
+alias mc           'curl --silent --insecure -u root: http://localhost:9090/lisp/api/data/map-cache | jq .'
+alias rate         'mc | egrep "stats|address|state"'
+alias rate-loop    'echo "while 1 \n rate | sort -bu \n echo \n sleep 1 \n end \n" | tcsh'

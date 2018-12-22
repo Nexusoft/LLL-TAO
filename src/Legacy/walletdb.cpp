@@ -603,7 +603,7 @@ namespace Legacy
 
         while (!config::fShutdown)
         {
-            runtime::Sleep(1000);
+            runtime::sleep(1000);
 
             if (nLastSeen != CWalletDB::nWalletDBUpdated)
             {
@@ -705,7 +705,7 @@ namespace Legacy
             }
 
             /* Wait for usage to end when database is in use */
-            runtime::Sleep(100);
+            runtime::sleep(100);
         }
 
         return false;

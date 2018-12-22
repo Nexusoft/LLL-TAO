@@ -26,16 +26,23 @@ CONTAINER=`docker ps | egrep nexus-$HOSTNAME | egrep 9090`
 if [ -z "$CONTAINER" ] ; then
     LPORT="9090"
     NPORT="8080"
+    MPORT="9336"
+    TPORT="8336"
 else
     LPORT=""
     NPORT=""
+    MPORT=""
+    TPORT=""
 fi
 
 #
 # Create container.
 #
-docker create -p $NPORT:8080 -p $LPORT:9090 --privileged --name $NAME -h $NAME \
-       -ti tritium > /dev/null
+#docker create -p $NPORT:8080 -p $LPORT:9090 -p $MPORT:9336 -p $TPORT:8336 \
+#    --privileged --name $NAME -h $NAME -ti tritium > /dev/null
+
+docker create -p $NPORT:8080 -p $LPORT:9090 \
+     --privileged --name $NAME -h $NAME -ti tritium > /dev/null
 
 #
 # Startup container.

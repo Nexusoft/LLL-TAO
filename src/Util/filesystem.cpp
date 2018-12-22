@@ -151,18 +151,21 @@ namespace filesystem
     std::string system_complete(const std::string &path)
     {
         char buffer[MAX_PATH] = {0};
+
+        std::string rel_path = path;
         std::string abs_path;
 
         //get the path of the current directory and append path name to that
         abs_path = getcwd(buffer, MAX_PATH);
     #ifdef WIN32
-        abs_path += "\\";
+        rel_path += '\\';
+        abs_path += '\\';
     #else
-        abs_path += "/";
+        rel_path += '/';
+        abs_path += '/';
     #endif
-        abs_path += path;
 
-        return abs_path;
+        return abs_path + rel_path;
     }
 
 }

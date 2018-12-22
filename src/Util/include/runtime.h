@@ -61,16 +61,16 @@ namespace runtime
     }
 
 
-    /** Sleep
+    /** sleep
      *
-     *  Sleep for a duration in Milliseconds.
+     *  sleep for a duration in Milliseconds.
      *
      *  @param[in] nTime The amount time to sleep for.
      *
      *  @param[in] fMicroseconds Flag indicating if time is in microseconds.
      *
      **/
-    inline void Sleep(uint32_t nTime, bool fMicroseconds = false)
+    inline void sleep(uint32_t nTime, bool fMicroseconds = false)
     {
         fMicroseconds ? std::this_thread::sleep_for(std::chrono::microseconds(nTime)) :
                         std::this_thread::sleep_for(std::chrono::milliseconds(nTime));
@@ -91,13 +91,13 @@ namespace runtime
         return std::string(buffer);
     }
 
-    /** Timer
+    /** timer
      *
      *  Class the tracks the duration of time elapsed in seconds or milliseconds.
      *  Used for socket timers to determine time outs.
      *
      **/
-    class Timer
+    class timer
     {
     private:
         std::chrono::high_resolution_clock::time_point start_time;
@@ -106,12 +106,12 @@ namespace runtime
 
     public:
 
-        /** Timer
+        /** timer
          *
          *  Contructs timer class with stopped set to false.
          *
          **/
-        Timer() : fStopped(false) {}
+        timer() : fStopped(false) {}
 
 
         /** Start
@@ -153,9 +153,9 @@ namespace runtime
 
         /** Elapsed
          *
-         *  Return the Total Seconds Elapsed Since Timer Started.
+         *  Return the Total Seconds Elapsed Since timer Started.
          *
-         *  @return The Total Seconds Elapsed Since Timer Started.
+         *  @return The Total Seconds Elapsed Since timer Started.
          *
          **/
         uint32_t Elapsed()
@@ -169,9 +169,9 @@ namespace runtime
 
         /** ElapsedMilliseconds
          *
-         *  Return the Total Milliseconds Elapsed Since Timer Started.
+         *  Return the Total Milliseconds Elapsed Since timer Started.
          *
-         *  @return The Total Milliseconds Elapsed Since Timer Started.
+         *  @return The Total Milliseconds Elapsed Since timer Started.
          *
          **/
         uint32_t ElapsedMilliseconds()

@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <LLD/templates/key.h>
 #include <LLD/templates/transaction.h>
 
+#include <LLD/cache/template_lru.h>
+
 #include <Util/include/runtime.h>
 #include <Util/include/filesystem.h>
 
@@ -33,11 +35,11 @@ namespace LLD
 
 
     /* Maximum cache buckets for sectors. */
-    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 128; //512 MB Max Cache
+    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 64; //512 MB Max Cache
 
 
     /* The maximum amount of bytes allowed in the memory buffer for disk flushes. **/
-    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 128; //512 MB Max Disk Buffer
+    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 64; //512 MB Max Disk Buffer
 
 
     /** Base Template Class for a Sector Database.
@@ -96,8 +98,8 @@ namespace LLD
         bool fInitialized = false;
 
 
-        /* Timer for Runtime Calculations. */
-        runtime::Timer runtime;
+        /* timer for Runtime Calculations. */
+        runtime::timer runtime;
 
 
         /* Class to handle Transaction Data. */
@@ -118,6 +120,10 @@ namespace LLD
         CacheType* cachePool;
 
 
+        /* File stream object. */
+        mutable TemplateLRU<uint32_t, std::fstream*>* fileCache;
+
+
         /* The current File Position. */
         mutable uint32_t nCurrentFile;
         mutable uint32_t nCurrentFileSize;
@@ -125,7 +131,6 @@ namespace LLD
 
         /* Cache Writer Thread. */
         std::thread CacheWriterThread;
-
 
         /* The meter thread. */
         std::thread MeterThread;
@@ -144,6 +149,7 @@ namespace LLD
         : strName(strNameIn)
         , strBaseLocation(config::GetDataDir() + strNameIn + "/datachain/")
         , cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE))
+        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
         , nBytesRead(0)
         , nBytesWrote(0)
         , nCurrentFile(0)
@@ -157,9 +163,6 @@ namespace LLD
 
             /* Read only flag when instantiating new database. */
             fReadOnly = (!strchr(pszMode, '+') && !strchr(pszMode, 'w'));
-
-            /* Initialize the Keys Class. */
-            pSectorKeys = new KeychainType((config::GetDataDir() + strName + "/keychain/"));
 
             /* Initialize the Database. */
             Initialize();
@@ -184,7 +187,7 @@ namespace LLD
         void Initialize()
         {
             /* Create directories if they don't exist yet. */
-            if(filesystem::create_directories(strBaseLocation))
+            if(!filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
                 debug::log(0, FUNCTION "Generated Path %s", __PRETTY_FUNCTION__, strBaseLocation.c_str());
 
             /* Find the most recent append file. */
@@ -219,6 +222,9 @@ namespace LLD
                 ++nCurrentFile;
             }
 
+            /* Initialize the Keys Class. */
+            pSectorKeys = new KeychainType((config::GetDataDir() + strName + "/keychain/"));
+
             pTransaction = nullptr;
             fInitialized = true;
         }
@@ -235,14 +241,12 @@ namespace LLD
         bool Exists(const Key& key)
         {
             /** Serialize Key into Bytes. **/
-            CDataStream ssKey(SER_LLD, DATABASE_VERSION);
-            ssKey.reserve(GetSerializeSize(key, SER_LLD, DATABASE_VERSION));
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
-            std::vector<uint8_t> vKey(ssKey.begin(), ssKey.end());
 
             /* Return the Key existance in the Keychain Database. */
             SectorKey cKey;
-            return pSectorKeys->Get(vKey, cKey);
+            return pSectorKeys->Get(static_cast<std::vector<uint8_t>>(ssKey), cKey);
         }
 
         template<typename Key>
@@ -252,21 +256,18 @@ namespace LLD
                 runtime.Start();
 
             /* Serialize Key into Bytes. */
-            CDataStream ssKey(SER_LLD, DATABASE_VERSION);
-            ssKey.reserve(GetSerializeSize(key, SER_LLD, DATABASE_VERSION));
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
-            std::vector<uint8_t> vKey(ssKey.begin(), ssKey.end());
 
             if(pTransaction)
             {
-                pTransaction->EraseTransaction(vKey);
+                pTransaction->EraseTransaction(static_cast<std::vector<uint8_t>>(ssKey));
 
                 return true;
             }
 
-
             /* Return the Key existance in the Keychain Database. */
-            bool fErased = pSectorKeys->Erase(vKey);
+            bool fErased = pSectorKeys->Erase(static_cast<std::vector<uint8_t>>(ssKey));
 
             if(config::GetBoolArg("-runtime", false))
                 debug::log(0, ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
@@ -280,11 +281,10 @@ namespace LLD
             /** Serialize Key into Bytes. **/
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
-            std::vector<uint8_t> vKey(ssKey.begin(), ssKey.end());
 
             /** Get the Data from Sector Database. **/
             std::vector<uint8_t> vData;
-            if(!Get(vKey, vData))
+            if(!Get(static_cast<std::vector<uint8_t>>(ssKey), vData))
                 return false;
 
             /** Deserialize Value. **/
@@ -311,11 +311,23 @@ namespace LLD
             return Put(ssKey, ssData);
         }
 
-        /** Get a Record from the Database with Given Key. **/
+
+        /** Get
+         *
+         *  Get a record from cache or from disk
+         *
+         *  @param[in] vKey The binary data of the key to get.
+         *  @param[out] vData The binary data of the record to get.
+         *
+         *  @return True if the record was read successfully.
+         *
+         **/
         bool Get(std::vector<uint8_t> vKey, std::vector<uint8_t>& vData)
         {
+            /* Iterate if meters are enabled. */
             nBytesRead += (vKey.size() + vData.size());
 
+            /* Check the cache pool for key first. */
             if(cachePool->Get(vKey, vData))
                 return true;
 
@@ -333,26 +345,33 @@ namespace LLD
                 return true;
             }
 
+            /* Get the key from the keychain. */
             SectorKey cKey;
             if(pSectorKeys->Get(vKey, cKey))
             {
+                /* Find the file stream for LRU cache. */
+                std::fstream* pstream;
+                if(!fileCache->Get(cKey.nSectorFile, pstream))
+                {
+                    /* Set the new stream pointer. */
+                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                    if(!pstream)
+                        return false;
+
+                    /* If file not found add to LRU cache. */
+                    fileCache->Put(cKey.nSectorFile, pstream);
+                }
+
+                /* Read the record from disk. */
                 {
                     LOCK(SECTOR_MUTEX);
 
-                    /* Open the Stream to Read the data from Sector on File. */
-                    std::fstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::binary);
-
-                    /* Error checking if file doens't exist. */
-                    if(!stream)
-                        return debug::error(FUNCTION "Sector File Doesn't Exist", __PRETTY_FUNCTION__, debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile).c_str());
-
                     /* Seek to the Sector Position on Disk. */
-                    stream.seekg(cKey.nSectorStart, std::ios::beg);
+                    pstream->seekg(cKey.nSectorStart, std::ios::beg);
                     vData.resize(cKey.nSectorSize);
 
                     /* Read the State and Size of Sector Header. */
-                    stream.read((char*) &vData[0], vData.size());
-                    stream.close();
+                    pstream->read((char*) &vData[0], vData.size());
                 }
 
                 /* Add to cache */
@@ -370,8 +389,64 @@ namespace LLD
         }
 
 
-        /** Add / Update A Record in the Database **/
-        bool Put2(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
+        /** Get
+         *
+         *  Get a record from from disk if the sector key
+         *  is already read from the keychain.
+         *
+         *  @param[in] cKey The sector key from keychain.
+         *  @param[in] vData The binary data of the record to get.
+         *
+         *  @return True if the record was read successfully.
+         *
+         **/
+        bool Get(SectorKey cKey, std::vector<uint8_t>& vData)
+        {
+            nBytesRead += (cKey.vKey.size() + vData.size());
+
+            /* Find the file stream for LRU cache. */
+            std::fstream* pstream;
+            if(!fileCache->Get(cKey.nSectorFile, pstream))
+            {
+                /* Set the new stream pointer. */
+                pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                if(!pstream)
+                    return false;
+
+                /* If file not found add to LRU cache. */
+                fileCache->Put(cKey.nSectorFile, pstream);
+            }
+
+            /* Read the record from the disk. */
+            {
+                LOCK(SECTOR_MUTEX);
+
+                /* Seek to the Sector Position on Disk. */
+                pstream->seekg(cKey.nSectorStart, std::ios::beg);
+                vData.resize(cKey.nSectorSize);
+
+                /* Read the State and Size of Sector Header. */
+                pstream->read((char*) &vData[0], vData.size());
+            }
+
+            /* Verbose Debug Logging. */
+            debug::log(4, FUNCTION "%s", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
+
+            return true;
+        }
+
+
+        /** Flush
+         *
+         *  Flush a write to disk immediately bypassing write buffers.
+         *
+         *  @param[in] vKey The binary data of the key to flush
+         *  @param[in] vData The binary data of the record to flush
+         *
+         *  @return True if the flush was successful.
+         *
+         **/
+        bool Flush(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
         {
             if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
             {
@@ -380,23 +455,31 @@ namespace LLD
                 ++ nCurrentFile;
                 nCurrentFileSize = 0;
 
-                std::ofstream fStream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
-                fStream.close();
+                std::ofstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                stream.close();
             }
 
+            /* Find the file stream for LRU cache. */
+            std::fstream* pstream;
+            if(!fileCache->Get(nCurrentFile, pstream))
+            {
+                /* Set the new stream pointer. */
+                pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
+                if(!pstream)
+                    return false;
+
+                /* If file not found add to LRU cache. */
+                fileCache->Put(nCurrentFile, pstream);
+            }
+
+            /* Write the data to disk. */
             {
                 LOCK(SECTOR_MUTEX);
 
-                /* Open the Stream to Read the data from Sector on File. */
-                std::string strFilename = debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile);
-                std::fstream fStream(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
-
-                /* If it is a New Sector, Assign a Binary Position.
-                    TODO: Track Sector Database File Sizes. */
-                fStream.seekp(nCurrentFileSize, std::ios::beg);
-                fStream.write((char*) &vData[0], vData.size());
-                fStream.close();
-
+                /* If it is a New Sector, Assign a Binary Position. */
+                pstream->seekp(nCurrentFileSize, std::ios::beg);
+                pstream->write((char*) &vData[0], vData.size());
+                pstream->flush();
             }
 
             /* Create a new Sector Key. */
@@ -418,17 +501,26 @@ namespace LLD
         }
 
 
-        /** Add / Update A Record in the Database **/
+        /** Put
+         *
+         *  Write a record into the cache and disk buffer for flushing to disk.
+         *
+         *  @param[in] vKey The binary data of the key to put.
+         *  @param[in] vData The binary data of the record to put.
+         *
+         *  @return True if the record was written successfully.
+         *
+         **/
         bool Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
         {
             /* Write the data into the memory cache. */
             cachePool->Put(vKey, vData, true);
+
             while(!config::fShutdown && nBufferBytes > MAX_SECTOR_BUFFER_SIZE)
-                runtime::Sleep(1);
+                runtime::sleep(100);
 
             /* Add to the write buffer thread. */
-            {
-                std::unique_lock<std::recursive_mutex> lk(BUFFER_MUTEX);
+            { LOCK(BUFFER_MUTEX);
                 vDiskBuffer.push_back(std::make_pair(vKey, vData));
                 nBufferBytes += (vKey.size() + vData.size());
 
@@ -439,11 +531,19 @@ namespace LLD
         }
 
 
-        /* Helper Thread to Batch Write to Disk. */
+        /** Cache Writer
+         *
+         *  Flushes periodically data from the cache buffer to disk.
+         *
+         **/
         void CacheWriter()
         {
             /* The mutex for the condition. */
             std::mutex CONDITION_MUTEX;
+
+            /* Wait for initialization. */
+            while(!fInitialized)
+                runtime::sleep(100);
 
             while(true)
             {
@@ -453,8 +553,7 @@ namespace LLD
 
                 /* Check for data to be written. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-                CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(1000), [this]{ return nBufferBytes > 0; });
-
+                CONDITION.wait(CONDITION_LOCK, [this]{ return nBufferBytes > 0; });
 
                 /* Swap the buffer object to get ready for writes. */
                 std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vIndexes;
@@ -479,17 +578,29 @@ namespace LLD
                     stream.close();
                 }
 
-                /* Open the Stream to Read the data from Sector on File. */
-                std::fstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
+                /* Find the file stream for LRU cache. */
+                std::fstream* pstream;
+                { LOCK(SECTOR_MUTEX);
 
-                /* Seek to the end of the file */
-                stream.seekp(nCurrentFileSize, std::ios::beg);
+                    if(!fileCache->Get(nCurrentFile, pstream))
+                    {
+                        /* Set the new stream pointer. */
+                        pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
+                        if(!pstream)
+                            continue;
+
+                        /* If file not found add to LRU cache. */
+                        fileCache->Put(nCurrentFile, pstream);
+                    }
+
+                    /* Seek to the end of the file */
+                    pstream->seekp(nCurrentFileSize, std::ios::beg);
+                }
 
                 /* Iterate through buffer to queue disk writes. */
                 std::vector<uint8_t> vWrite;
-                for(auto vObj : vIndexes)
+                for(auto & vObj : vIndexes)
                 {
-
                     /* Assign the Key to Keychain. */
                     pSectorKeys->Put(SectorKey(READY, vObj.first, nCurrentFile, nCurrentFileSize, vObj.second.size()));
 
@@ -502,14 +613,16 @@ namespace LLD
                     /* Add the file size to the written bytes. */
                     nBytesWrote += vObj.first.size();
 
-                    /* Flush to disk on periodic intervals. */
-                    if(vWrite.size() > 20 * 1024 * 1024)
+                    /* Flush to disk on periodic intervals (1 MB). */
+                    if(vWrite.size() > 1024 * 1024)
                     {
                         LOCK(SECTOR_MUTEX);
 
                         nBytesWrote += (vWrite.size());
 
-                        stream.write((char*)&vObj.second[0], vObj.second.size());
+                        pstream->write((char*)&vWrite[0], vWrite.size());
+                        pstream->flush();
+
                         vWrite.clear();
                     }
 
@@ -524,8 +637,18 @@ namespace LLD
                 /* Flush remaining to disk. */
                 {
                     LOCK(SECTOR_MUTEX);
-                    stream.write((char*)&vWrite[0], vWrite.size());
-                    stream.close();
+                    pstream->write((char*)&vWrite[0], vWrite.size());
+                    pstream->flush();
+                }
+
+                /* Verbose logging. */
+                debug::log(4, FUNCTION "Flushed %u Records of %u Bytes", __PRETTY_FUNCTION__, nRecordsFlushed, nBytesWrote);
+
+                /* Reset counters if not in meter mode. */
+                if(!config::GetBoolArg("-meters"))
+                {
+                    nBytesWrote     = 0;
+                    nRecordsFlushed = 0;
                 }
             }
         }
@@ -536,12 +659,16 @@ namespace LLD
             if(!config::GetBoolArg("-meters", false))
                 return;
 
-            runtime::Timer TIMER;
+            runtime::timer TIMER;
             TIMER.Start();
 
             while(!config::fShutdown)
             {
-                runtime::Sleep(10000);
+                nBytesWrote     = 0;
+                nBytesRead      = 0;
+                nRecordsFlushed = 0;
+
+                runtime::sleep(10000);
 
                 double WPS = nBytesWrote / (TIMER.Elapsed() * 1024.0);
                 double RPS = nBytesRead / (TIMER.Elapsed() * 1024.0);
@@ -551,9 +678,6 @@ namespace LLD
                 debug::log(0, FUNCTION ">>>>> LLD Flushed %u Records", __PRETTY_FUNCTION__, nRecordsFlushed);
 
                 TIMER.Reset();
-                nBytesWrote     = 0;
-                nBytesRead      = 0;
-                nRecordsFlushed = 0;
             }
         }
 

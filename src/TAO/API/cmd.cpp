@@ -31,9 +31,9 @@ namespace TAO::API
     int CommandLineAPI(int argc, char** argv, int argn)
     {
         /* Check the parameters. */
-        if(argc < argn + 3)
+        if(argc < argn + 2)
         {
-            debug::log(0, "Not Enough Parameters");
+            debug::error("Missing Parameters");
 
             return 0;
         }
@@ -41,7 +41,22 @@ namespace TAO::API
         /* Build the JSON request object. */
         json::json parameters;
         for(int i = argn + 2; i < argc; i++)
-            parameters.push_back(argv[i]);
+        {
+            /* Parse out the key / values. */
+            std::string arg = std::string(argv[i]);
+            std::string::size_type pos = arg.find('=', 0);
+
+            /* Watch for missing delimiter. */
+            if(pos == arg.npos)
+            {
+                debug::error("Missing '=' in arg for key=value.");
+
+                return 0;
+            }
+
+            /* Add to parameters object. */
+            parameters[arg.substr(0, pos)] = arg.substr(pos + 1);
+        }
 
         /* Build the HTTP Header. */
         std::string strContent = parameters.dump();
@@ -104,7 +119,7 @@ namespace TAO::API
 
             /* Read the response packet. */
             apiNode.ReadPacket();
-            runtime::Sleep(10);
+            runtime::sleep(10);
         }
 
         /* Parse response JSON. */
@@ -213,7 +228,7 @@ namespace TAO::API
 
             /* Read the response packet. */
             rpcNode.ReadPacket();
-            runtime::Sleep(10);
+            runtime::sleep(10);
         }
 
         /* Dump the response to the console. */
@@ -228,7 +243,11 @@ namespace TAO::API
         }
         else
         {
-            strPrint = ret["result"].dump(4);
+            
+            if( ret["result"].is_string())
+                strPrint = ret["result"].get<std::string>();
+            else
+                strPrint = ret["result"].dump(4);
         }
 
         // output to console
