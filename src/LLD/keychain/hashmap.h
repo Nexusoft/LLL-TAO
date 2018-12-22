@@ -314,7 +314,7 @@ namespace LLD
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-            for(int i = hashmap[nBucket]; i >= 0; i--)
+            for(int i = hashmap[nBucket] - 1; i >= 0; i--)
             {
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
@@ -379,7 +379,7 @@ namespace LLD
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-            for(int i = hashmap[nBucket]; i >= 0; -- i)
+            for(int i = hashmap[nBucket] - 1; i >= 0; -- i)
             {
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
@@ -485,14 +485,13 @@ namespace LLD
             /* Handle the disk writing operations. */
             { LOCK(KEY_MUTEX);
 
-                /* Iterate the linked list value in the hashmap. */
-                hashmap[nBucket]++;
-
                 /* Flush the key file to disk. */
                 pstream->seekp (nFilePos, std::ios::beg);
                 pstream->write((char*)&ssKey[0], ssKey.size());
                 pstream->flush();
 
+                /* Iterate the linked list value in the hashmap. */
+                hashmap[nBucket]++;
             }
 
             /* Debug Output of Sector Key Information. */
@@ -514,7 +513,7 @@ namespace LLD
             {
                 /* Wait for Database to Initialize. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-                CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(1000), [this]{ return fCacheActive.load(); });
+                CONDITION.wait(CONDITION_LOCK, [this]{ return fCacheActive.load(); });
 
                 /* Flush the disk hashmap. */
                 std::vector<uint8_t> vDisk;
@@ -524,6 +523,9 @@ namespace LLD
                 std::fstream stream(debug::strprintf("%s_hashmap.index", strBaseLocation.c_str()), std::ios::out | std::ios::binary);
                 stream.write((char*)&vDisk[0], vDisk.size());
                 stream.close();
+
+                /* Verbose logging to show triggered write. */
+                debug::log(4, FUNCTION "Flushed Cache Disk Index", __PRETTY_FUNCTION__);
 
                 fCacheActive = false;
             }

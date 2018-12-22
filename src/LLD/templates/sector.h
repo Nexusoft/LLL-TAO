@@ -553,7 +553,7 @@ namespace LLD
 
                 /* Check for data to be written. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-                CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(1000), [this]{ return nBufferBytes > 0; });
+                CONDITION.wait(CONDITION_LOCK, [this]{ return nBufferBytes > 0; });
 
                 /* Swap the buffer object to get ready for writes. */
                 std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vIndexes;
@@ -621,6 +621,8 @@ namespace LLD
                         nBytesWrote += (vWrite.size());
 
                         pstream->write((char*)&vWrite[0], vWrite.size());
+                        pstream->flush();
+
                         vWrite.clear();
                     }
 
@@ -637,6 +639,16 @@ namespace LLD
                     LOCK(SECTOR_MUTEX);
                     pstream->write((char*)&vWrite[0], vWrite.size());
                     pstream->flush();
+                }
+
+                /* Verbose logging. */
+                debug::log(4, FUNCTION "Flushed %u Records of %u Bytes", __PRETTY_FUNCTION__, nRecordsFlushed, nBytesWrote);
+
+                /* Reset counters if not in meter mode. */
+                if(!config::GetBoolArg("-meters"))
+                {
+                    nBytesWrote     = 0;
+                    nRecordsFlushed = 0;
                 }
             }
         }
