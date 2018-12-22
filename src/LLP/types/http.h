@@ -74,7 +74,7 @@ namespace LLP
          *  @param[in[ LENGTH The size of bytes read on packet read events
          *
          */
-        void Event(uint8_t EVENT, uint32_t LENGTH = 0) = 0;
+        void Event(uint8_t EVENT, uint32_t LENGTH = 0) override = 0;
 
 
         /** ProcessPacket
@@ -84,7 +84,7 @@ namespace LLP
          *  @return True is no errors, false otherwise
          *
          **/
-        bool ProcessPacket() = 0;
+        bool ProcessPacket() override = 0;
 
 
         /** DoS
@@ -123,7 +123,7 @@ namespace LLP
          *  This keeps thread from spending too much time for each Connection.
          *
          **/
-        void ReadPacket() override
+        void ReadPacket() final
         {
             if(!INCOMING.Complete())
             {

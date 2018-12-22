@@ -252,7 +252,7 @@ namespace LLP
 
 
         /* Regular Connection Read Packet Method. */
-        void ReadPacket()
+        void ReadPacket() final
         {
 
             /* Handle Reading Packet Type Header. */

@@ -48,7 +48,7 @@ namespace TAO::API
          *  Sets the function pointers for this API.
          *
          **/
-        void Initialize();
+        void Initialize() final;
 
 
         /** Get Key
@@ -77,7 +77,7 @@ namespace TAO::API
          *  Returns the name of this API.
          *
          **/
-        std::string GetName() const
+        std::string GetName() const final
         {
             return "Accounts";
         }
