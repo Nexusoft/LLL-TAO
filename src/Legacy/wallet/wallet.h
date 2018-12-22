@@ -544,7 +544,7 @@ namespace Legacy
          *
          */
         bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock& containingBlock, 
-                                      bool fUpdate = false, bool fFindBlock = false, bool fRescan = false, bool fRescan = false);
+                                      bool fUpdate = false, bool fFindBlock = false, bool fRescan = false);
 
 
         /** EraseFromWallet
