@@ -11,6 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
+#ifndef NEXUS_TAO_LEDGER_TYPES_SIGNATURE_CHAIN_H
+#define NEXUS_TAO_LEDGER_TYPES_SIGNATURE_CHAIN_H
+
 #include <string>
 
 #include <LLC/hash/SK.h>
@@ -21,12 +24,12 @@ ________________________________________________________________________________
 namespace TAO::Ledger
 {
     /** Base Class for a Signature SignatureChain
-    *
-    *  Similar to HD wallet systems, but integrated into the Layer 2 of the nexus software stack.
-    *  Seed phrase includes at least 128 bits of entropy (8 char username, 8 char password) and pin
-    *  to attack a signature chain by dictionary attack.
-    *
-    */
+     *
+     *  Similar to HD wallet systems, but integrated into the Layer 2 of the nexus software stack.
+     *  Seed phrase includes at least 128 bits of entropy (8 char username, 8 char password) and pin
+     *  to attack a signature chain by dictionary attack.
+     *
+     */
     class SignatureChain
     {
 
@@ -56,7 +59,7 @@ namespace TAO::Ledger
          *
          *  @return The 512 bit hash of this key in the series.
          **/
-        uint512_t Generate(uint32_t nKeyID, std::string strSecret)
+        uint512_t Generate(uint32_t nKeyID, SecureString strSecret)
         {
             /* Serialize the Key ID (Big Endian). */
             std::vector<uint8_t> vKeyID((uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
@@ -66,8 +69,7 @@ namespace TAO::Ledger
             vSecret.insert(vSecret.end(), vKeyID.begin(), vKeyID.end());
             vSecret.insert(vSecret.end(), strPassword.begin(), strPassword.end());
 
-            /* Generate the Pin Data.
-            TODO: Look to see if this can be improved. */
+            /* Generate the secret data. */
             std::vector<uint8_t> vPin(strSecret.begin(), strSecret.end());
             vPin.insert(vPin.end(), vKeyID.begin(), vKeyID.end());
 
@@ -84,3 +86,5 @@ namespace TAO::Ledger
         }
     };
 }
+
+#endif

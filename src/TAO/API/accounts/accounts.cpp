@@ -29,125 +29,35 @@ namespace TAO::API
     /* Standard initialization function. */
     void Accounts::Initialize()
     {
+        mapFunctions["login"]               = Function(std::bind(&Accounts::Login,           this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["logout"]              = Function(std::bind(&Accounts::Logout,          this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["create"]              = Function(std::bind(&Accounts::CreateAccount,   this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["transactions"]        = Function(std::bind(&Accounts::GetTransactions, this, std::placeholders::_1, std::placeholders::_2));
     }
 
 
-    /* Create's a user account. */
-    json::json Accounts::CreateAccount(const json::json& params, bool fHelp)
+    /* Returns a key from the account logged in. */
+    uint512_t Accounts::GetKey(uint32_t nKey, SecureString strSecret) const
     {
-        /* JSON return value. */
-        json::json ret;
+        LOCK(MUTEX);
 
-        /* Check for username parameter. */
-        if(params.find("username") == params.end())
-            throw APIException(-23, "Missing Username");
+        /* Check if you are logged in. */
+        if(!user)
+            throw APIException(-1, "cannot get key if not logged in.");
 
-        /* Check for password parameter. */
-        if(params.find("password") == params.end())
-            throw APIException(-24, "Missing Password");
-
-        /* Check for pin parameter. */
-        if(params.find("pin") == params.end())
-            throw APIException(-25, "Missing PIN");
-
-        /* Generate the signature chain. */
-        TAO::Ledger::SignatureChain user(params["username"], params["password"]);
-
-        /* Get the Genesis ID. */
-        uint256_t hashGenesis = LLC::SK256(user.Generate(0, params["pin"]).GetBytes());
-
-        /* Check for duplicates in local db. */
-        TAO::Ledger::Transaction tx;
-        if(LLD::legDB->HasGenesis(hashGenesis))
-            throw APIException(-26, "Account already exists");
-
-        /* Create the transaction object. */
-        tx.NextHash(user.Generate(tx.nSequence + 1, params["pin"]));
-        tx.hashGenesis = hashGenesis;
-
-        /* Sign the transaction. */
-        tx.Sign(user.Generate(tx.nSequence, params["pin"]));
-
-        /* Check that the transaction is valid. */
-        if(!tx.IsValid())
-            throw APIException(-26, "Invalid Transaction");
-
-        /* Write transaction to ledger database. */
-        LLD::legDB->WriteGenesis(hashGenesis, tx);
-        LLD::legDB->WriteTx(tx.GetHash(), tx);
-
-        /* Write last to local database. */
-        LLD::locDB->WriteLast(hashGenesis, tx.GetHash());
-
-        /* Build a JSON response object. */
-        ret["version"]   = tx.nVersion;
-        ret["sequence"]  = tx.nSequence;
-        ret["timestamp"] = tx.nTimestamp;
-        ret["genesis"]   = tx.hashGenesis.ToString();
-        ret["nexthash"]  = tx.hashNext.ToString();
-        ret["prevhash"]  = tx.hashPrevTx.ToString();
-        ret["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
-        ret["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
-        ret["hash"]      = tx.GetHash().ToString();
-
-        return ret;
+        return user->Generate(nKey, strSecret);
     }
 
 
-    /* Get a user's account. */
-    json::json Accounts::GetTransactions(const json::json& params, bool fHelp)
+    /* Returns the genesis ID from the account logged in. */
+    uint256_t Accounts::GetGenesis() const
     {
-        /* JSON return value. */
-        json::json txList;
+        LOCK(MUTEX);
 
-        /* Check for username parameter. */
-        if(params.find("username") == params.end())
-            throw APIException(-23, "Missing Username");
+        /* Check if you are logged in. */
+        if(!user)
+            throw APIException(-1, "cannot get genesis if not logged in.");
 
-        /* Check for password parameter. */
-        if(params.find("password") == params.end())
-            throw APIException(-24, "Missing Password");
-
-        /* Check for pin parameter. */
-        if(params.find("pin") == params.end())
-            throw APIException(-25, "Missing PIN");
-
-        /* Generate the signature chain. */
-        TAO::Ledger::SignatureChain user(params["username"], params["password"]);
-
-        /* Get the Genesis ID. */
-        uint256_t hashGenesis = LLC::SK256(user.Generate(0, params["pin"]).GetBytes());
-
-        /* Get the last transaction. */
-        uint512_t hashLast;
-        if(!LLD::locDB->ReadLast(hashGenesis, hashLast))
-            throw APIException(-28, "No transactions found");
-
-        /* Loop until genesis. */
-        while(hashLast != 0)
-        {
-            TAO::Ledger::Transaction tx;
-            if(!LLD::legDB->ReadTx(hashLast, tx))
-                throw APIException(-28, "Failed to read transaction");
-
-            json::json ret;
-            ret["version"]   = tx.nVersion;
-            ret["sequence"]  = tx.nSequence;
-            ret["timestamp"] = tx.nTimestamp;
-            ret["genesis"]   = tx.hashGenesis.ToString();
-            ret["nexthash"]  = tx.hashNext.ToString();
-            ret["prevhash"]  = tx.hashPrevTx.ToString();
-            ret["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
-            ret["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
-            ret["hash"]      = tx.GetHash().ToString();
-
-            txList.push_back(ret);
-
-            hashLast = tx.hashPrevTx;
-        }
-
-        return txList;
+        return LLC::SK256(user->Generate(0, "genesis").GetBytes()); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
     }
 }

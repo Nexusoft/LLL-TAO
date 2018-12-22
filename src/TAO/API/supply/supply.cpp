@@ -23,6 +23,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/enum.h>
 
+#include <TAO/API/include/accounts.h>
+
 namespace TAO::API
 {
     /* Declaration of the api */
@@ -58,11 +60,16 @@ namespace TAO::API
             throw APIException(-24, "No state found");
 
         /* Build the response JSON. */
-        ret["version"]  = state.nVersion;
-        ret["type"]     = state.nType;
+        //ret["version"]  = state.nVersion;
+        //ret["type"]     = state.nType;
         ret["owner"]    = state.hashOwner.ToString();
-        ret["checksum"] = state.hashChecksum;
-        ret["state"]    = HexStr(state.vchState.begin(), state.vchState.end());
+
+        /* If the data type is string. */
+        std::string data;
+        state >> data;
+
+        //ret["checksum"] = state.hashChecksum;
+        ret["state"]    = data;
 
         return ret;
     }
@@ -72,14 +79,6 @@ namespace TAO::API
     json::json Supply::Transfer(const json::json& params, bool fHelp)
     {
         json::json ret;
-
-        /* Check for username parameter. */
-        if(params.find("username") == params.end())
-            throw APIException(-23, "Missing Username");
-
-        /* Check for password parameter. */
-        if(params.find("password") == params.end())
-            throw APIException(-24, "Missing Password");
 
         /* Check for pin parameter. */
         if(params.find("pin") == params.end())
@@ -99,11 +98,8 @@ namespace TAO::API
         if(!LLD::legDB->HasGenesis(hashTo))
             throw APIException(-25, "Destination doesn't exist");
 
-        /* Generate the signature chain. */
-        TAO::Ledger::SignatureChain user(params["username"], params["password"]);
-
         /* Get the Genesis ID. */
-        uint256_t hashGenesis = LLC::SK256(user.Generate(0, params["pin"]).GetBytes());
+        uint256_t hashGenesis = accounts.GetGenesis();
 
         /* Get the last transaction. */
         uint512_t hashLast;
@@ -120,7 +116,7 @@ namespace TAO::API
         tx.nSequence   = txPrev.nSequence + 1;
         tx.hashGenesis = txPrev.hashGenesis;
         tx.hashPrevTx  = hashLast;
-        tx.NextHash(user.Generate(tx.nSequence + 1, params["pin"]));
+        tx.NextHash(accounts.GetKey(tx.nSequence + 1, params["pin"]));
 
         /* Submit the transaction payload. */
         uint256_t hashRegister;
@@ -130,7 +126,7 @@ namespace TAO::API
         tx << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashTo;
 
         /* Sign the transaction. */
-        if(!tx.Sign(user.Generate(tx.nSequence, params["pin"])))
+        if(!tx.Sign(accounts.GetKey(tx.nSequence, params["pin"])))
             throw APIException(-26, "Failed to sign transaction");
 
         /* Check that the transaction is valid. */
@@ -158,23 +154,16 @@ namespace TAO::API
     {
         json::json ret;
 
-        /* Check for username parameter. */
-        if(params.find("username") == params.end())
-            throw APIException(-23, "Missing Username");
-
-        /* Check for password parameter. */
-        if(params.find("password") == params.end())
-            throw APIException(-24, "Missing Password");
-
         /* Check for pin parameter. */
         if(params.find("pin") == params.end())
             throw APIException(-25, "Missing PIN");
 
-        /* Generate the signature chain. */
-        TAO::Ledger::SignatureChain user(params["username"], params["password"]);
+        /* Check for data parameter. */
+        if(params.find("data") == params.end())
+            throw APIException(-25, "Missing data");
 
         /* Get the Genesis ID. */
-        uint256_t hashGenesis = LLC::SK256(user.Generate(0, params["pin"]).GetBytes());
+        uint256_t hashGenesis = accounts.GetGenesis();
 
         /* Get the last transaction. */
         uint512_t hashLast;
@@ -191,19 +180,19 @@ namespace TAO::API
         tx.nSequence   = txPrev.nSequence + 1;
         tx.hashGenesis = txPrev.hashGenesis;
         tx.hashPrevTx  = hashLast;
-        tx.NextHash(user.Generate(tx.nSequence + 1, params["pin"]));
+        tx.NextHash(accounts.GetKey(tx.nSequence + 1, params["pin"]));
 
         /* Submit the transaction payload. */
         uint256_t hashRegister = LLC::GetRand256();
 
         /* Test the payload feature. */
-        std::vector<uint8_t> vchPayload(50, 0);
+        std::string data = params["data"];
 
         /* Submit the payload object. */
-        tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::READONLY << vchPayload;
+        tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::READONLY << data;
 
         /* Sign the transaction. */
-        if(!tx.Sign(user.Generate(tx.nSequence, params["pin"])))
+        if(!tx.Sign(accounts.GetKey(tx.nSequence, params["pin"])))
             throw APIException(-26, "Failed to sign transaction");
 
         /* Check that the transaction is valid. */
