@@ -123,7 +123,7 @@ namespace LLP
          *  This keeps thread from spending too much time for each Connection.
          *
          **/
-        void ReadPacket()
+        void ReadPacket() override
         {
             if(!INCOMING.Complete())
             {
