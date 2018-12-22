@@ -42,11 +42,27 @@ namespace TAO::API
     /* Get's the description of an item. */
     json::json Supply::GetItem(const json::json& params, bool fHelp)
     {
-        json::json ret = {"getitem", params};
+        json::json ret;
 
-        //uint256_t hashAddress;
-        //TAO::Register::State state;
-        //LLD::regDB->ReadState(hashAddress, state);
+        /* Check for username parameter. */
+        if(params.find("address") == params.end())
+            throw APIException(-23, "Missing memory address");
+
+        /* Get the Register ID. */
+        uint256_t hashRegister;
+        hashRegister.SetHex(params["address"]);
+
+        /* Get the history. */
+        TAO::Register::State state;
+        if(!LLD::regDB->ReadState(hashRegister, state))
+            throw APIException(-24, "No state found");
+
+        /* Build the response JSON. */
+        ret["version"]  = state.nVersion;
+        ret["type"]     = state.nType;
+        ret["owner"]    = state.hashOwner.ToString();
+        ret["checksum"] = state.hashChecksum;
+        ret["state"]    = HexStr(state.vchState.begin(), state.vchState.end());
 
         return ret;
     }
