@@ -1,10 +1,10 @@
 
-#Quickstart Guide to Building Nexus/LISP Docker Images
+# Quickstart Guide to Building Nexus/LISP Docker Images
 -----------------------------------------------------
 
 The following document briefly describes the process to get tritium running on a docker image packaged with LISP.
 
-##Building:
+## Building:
 
 (1) Install docker on your host computer system. Download docker from the
     docker download website https://download.docker.com for your OS platform.
@@ -27,7 +27,7 @@ The following document briefly describes the process to get tritium running on a
 
 This will build a docker image called "tritium".
 
-##Running:    
+## Running:    
 
 (1) To create and start the container, type:
 
@@ -43,7 +43,7 @@ If you run the script config/docker-run-tritium on your host OS then the
 container name will be chosen for you and will be unique. And you then can
 run multiple containers if you wish to have multiple Nexus nodes running.    
 
-##Monitoring:
+## Monitoring:
 
 (1) To get into the container command-line shell, type:
 
@@ -84,7 +84,7 @@ When the container is started, the Nexus daemon and the LISP subsystem will
 be operational and the Nexus daemon can run on the LISP overlay and/or the
 Internet underlay concurrently.
 
-##Important!:
+## Important!:
 
 To get IPv6 to work in the container (which Nexus uses for crypto-EID support),
 you need to configure your docker daemon on your OS platform with the
