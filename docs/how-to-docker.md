@@ -7,9 +7,9 @@ Building:
 (1) Install docker on your host computer system. Download docker from the
     docker download website https://download.docker.com for your OS platform.
 
+```
     Ubuntu 18.04
 
-```
     sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
     sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
