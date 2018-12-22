@@ -24,9 +24,9 @@ namespace TAO::API
     public:
         Supply() {}
 
-        void Initialize();
+        void Initialize() final;
 
-        std::string GetName() const
+        std::string GetName() const final
         {
             return "Supply";
         }
