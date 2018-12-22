@@ -135,6 +135,25 @@ namespace TAO::Register
         }
 
 
+        /** Check if the register is valid. */
+        bool IsValid()
+        {
+            /* Check for null state. */
+            if(IsNull())
+                return debug::error(FUNCTION "register cannot be null");
+
+            /* Check the checksum. */
+            if(GetHash() != hashChecksum)
+                return debug::error(FUNCTION "register checksum (%" PRIu64 ") mismatch (%" PRIu64 ")", __PRETTY_FUNCTION__, GetHash(), hashChecksum);
+
+            /* Check the state length. */
+            if(vchState.size() != nLength)
+                return debug::error(FUNCTION "register size (%u) mismatch (%u)", __PRETTY_FUNCTION__, vchState.size(), nLength);
+
+            return true;
+        }
+
+
         /** Get the State from the Register. **/
         std::vector<uint8_t> GetState()
         {

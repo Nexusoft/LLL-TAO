@@ -24,7 +24,7 @@ namespace TAO::Operation
     {
         /* Check that the register doesn't exist yet. */
         if(LLD::regDB->HasState(hashAddress))
-            return debug::error(FUNCTION "Cannot allocate register of same memory address %s", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+            return debug::error(FUNCTION "cannot allocate register of same memory address %s", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
         /* Set the owner of this register. */
         TAO::Register::State state;
@@ -34,12 +34,12 @@ namespace TAO::Operation
         state << vchData;
 
         /* Check the state change is correct. */
-        if(state.GetHash() != state.hashChecksum)
-            return debug::error(FUNCTION "Memory address %s state checksum mismatch", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+        if(!state.IsValid())
+            return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
         /* Write the register to database. */
         if(!LLD::regDB->WriteState(hashAddress, state))
-            return debug::error(FUNCTION "Failed to write state register %s memory address", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+            return debug::error(FUNCTION "failed to write state register %s memory address", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
         return true;
     }
