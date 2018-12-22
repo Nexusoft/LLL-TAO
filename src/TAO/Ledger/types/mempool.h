@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <TAO/Ledger/types/transaction.h>
-#include <TAO/Legacy/types/transaction.h>
+#include <Legacy/types/transaction.h>
 
 namespace TAO::Ledger
 {
