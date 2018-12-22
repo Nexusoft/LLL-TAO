@@ -18,26 +18,29 @@ ________________________________________________________________________________
 namespace TAO::API
 {
 
-    /** APIException class
-    *
-    *  Encapsulates an exception that can be converted into a valid JSON error object
-    **/
+    /** API Exception
+     *
+     *  Encapsulates an exception that can be converted into a valid JSON error object
+     *
+     **/
     class APIException : public json::detail::exception
     {
     public:
         APIException(int32_t nCode, const char* strMessage)
         : json::detail::exception(nCode, strMessage) {}
 
+
         APIException(int32_t nCode, const std::string& strMessage)
         : json::detail::exception(nCode, strMessage.c_str()) {}
 
+
         /** ToJSON
-        *
-        *  Converts this exception into a json object conforming to the JSON-RPC specification.
-        *
-        *  @return the json object containing the exception code and message.
-        *
-        **/
+         *
+         *  Converts this exception into a json object conforming to the JSON-RPC specification.
+         *
+         *  @return the json object containing the exception code and message.
+         *
+         **/
         json::json ToJSON()
         {
             json::json jsonError;
