@@ -37,9 +37,15 @@ namespace LLP
     {
     protected:
 
-        /* Basic Connection Variables. */
+        /** Runtime timer for timeouts. **/
         runtime::timer       TIMER;
-        Socket_t             SOCKET;
+
+
+        /** Socker class to handle socket data. **/
+        Socket              SOCKET;
+
+
+        /** Recursive mutex for thread synchronization. **/
         std::recursive_mutex MUTEX;
 
 
@@ -59,27 +65,27 @@ namespace LLP
 
     public:
 
-        /* Incoming Packet Being Built. */
+        /** Incoming Packet Being Built. **/
         PacketType        INCOMING;
 
 
-        /* DDOS Score if a Incoming Server Connection. */
+        /** DDOS Score for Connection. **/
         DDOS_Filter*   DDOS;
 
 
-        /* Flag to Determine if DDOS is Enabled. */
+        /** Flag to Determine if DDOS is Enabled. **/
         bool fDDOS;
 
 
-        /* Flag to Determine if the connection was made by this Node. */
+        /** Flag to Determine if the connection was made by this Node. **/
         bool fOUTGOING;
 
 
-        /* Flag to determine if the connection is active. */
+        /** Flag to determine if the connection is active. **/
         bool fCONNECTED;
 
 
-        /* Build Base Connection with no parameters */
+        /** Build Base Connection with no parameters **/
         BaseConnection()
         : SOCKET()
         , INCOMING()
@@ -92,7 +98,7 @@ namespace LLP
         }
 
 
-        /* Build Base Connection with all Parameters. */
+        /** Build Base Connection with all Parameters. **/
         BaseConnection( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false)
         : SOCKET(SOCKET_IN)
         , INCOMING()

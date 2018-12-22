@@ -167,7 +167,8 @@ namespace LLP
             {
                 /* Keep data threads waiting for work. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-                CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(1000), [this]{ return CONNECTIONS.size() > 0; });
+                CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(1000),
+                    [this]{ return CONNECTIONS.size() > 0; });
 
                 /* Check all connections for data and packets. */
                 uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());

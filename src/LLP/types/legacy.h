@@ -80,7 +80,7 @@ namespace LLP
         * @param[in[ LENGTH The size of bytes read on packet read events
         *
         */
-        void Event(uint8_t EVENT, uint32_t LENGTH = 0);
+        void Event(uint8_t EVENT, uint32_t LENGTH = 0) override;
 
 
         /** ProcessPacket
@@ -90,7 +90,7 @@ namespace LLP
          *  @return True is no errors, false otherwise
          *
          **/
-        bool ProcessPacket();
+        bool ProcessPacket() override;
 
 
         /** Handle for version message **/
