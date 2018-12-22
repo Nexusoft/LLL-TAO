@@ -621,7 +621,7 @@ namespace Legacy
          *  @return true process executed successfully
          *
          **/
-        void FixSpentCoins(int& nMismatchFound, int64_t& nBalanceInQuestion, const bool fCheckOnly = false);
+        void FixSpentCoins(uint32_t& nMismatchFound, int64_t& nBalanceInQuestion, const bool fCheckOnly = false);
 
 
     /*----------------------------------------------------------------------------------------*/

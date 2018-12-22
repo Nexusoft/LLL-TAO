@@ -289,10 +289,7 @@ namespace Legacy
         if (nOut >= vfSpent.size())
             return false;
 
-        /* Yes, the !! is a bit crazy. vfSpent[nOut] is assigned true/false values but 
-         * declared as char. This just converts to boolean return value manually
-         */
-        return (!!vfSpent[nOut]);
+        return vfSpent[nOut];
     }
 
 

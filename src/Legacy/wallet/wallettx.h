@@ -86,7 +86,7 @@ namespace Legacy
         std::vector<CWalletTx> vtxPrev;
 
 
-        /** Used by serialization to store vfSpent settings.
+        /** Used by serialization to store/retrieve vfSpent and other settings.
          **/
         std::map<std::string, std::string> mapValue;
 
@@ -95,9 +95,7 @@ namespace Legacy
         std::vector<std::pair<std::string, std::string> > vOrderForm;
 
 
-        /** Used by RPC server to record and report "fromaccount" for send operations. 
-         *  @deprecated - no longer used except for deserialization of previously stored transactions
-         **/
+        /** The sending account label for this tranasction **/
         std::string strFromAccount;
 
 

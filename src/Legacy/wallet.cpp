@@ -991,19 +991,19 @@ namespace Legacy
 
                 if (mi != mapWallet.end())
                 {
-                    /* When there is a match to the prevout hash, get the wallet transaction */
-                    CWalletTx& wtx = (*mi).second;
+                    /* When there is a match to the prevout hash, get the previous wallet transaction */
+                    CWalletTx& prevTx = (*mi).second;
 
                     /* Outputs in wallet tx will have same index recorded in transaction txin
                      * Check for belonging to this wallet any that are not flagged spent and mark them as spent
                      */
-                    if (!wtx.IsSpent(txin.prevout.n) && IsMine(wtx.vout[txin.prevout.n]))
+                    if (!prevTx.IsSpent(txin.prevout.n) && IsMine(prevTx.vout[txin.prevout.n]))
                     {
                         debug::log(0, "WalletUpdateSpent found spent coin %s Nexus %s",
-                                   FormatMoney(wtx.GetCredit()).c_str(), wtx.GetHash().ToString().c_str());
+                                   FormatMoney(prevTx.GetCredit()).c_str(), prevTx.GetHash().ToString().c_str());
 
-                        wtx.MarkSpent(txin.prevout.n);
-                        wtx.WriteToDisk();
+                        prevTx.MarkSpent(txin.prevout.n);
+                        prevTx.WriteToDisk();
                     }
                 }
             }
@@ -1012,7 +1012,7 @@ namespace Legacy
 
 
     /*  Identifies and fixes mismatches of spent coins between the wallet and the index db.  */
-    void CWallet::FixSpentCoins(int& nMismatchFound, int64_t& nBalanceInQuestion, const bool fCheckOnly)
+    void CWallet::FixSpentCoins(uint32_t& nMismatchFound, int64_t& nBalanceInQuestion, const bool fCheckOnly)
     {
         nMismatchFound = 0;
         nBalanceInQuestion = 0;
@@ -1020,15 +1020,15 @@ namespace Legacy
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
 
-            std::vector<CWalletTx> vCoins;
-            vCoins.reserve(mapWallet.size());
+            std::vector<CWalletTx> transactionsInWallet;
+            transactionsInWallet.reserve(mapWallet.size());
 
             for (auto& item : mapWallet)
-                vCoins.push_back(item.second);
+                transactionsInWallet.push_back(item.second);
 
             LLD::LegacyDB legacydb("r");
 
-            for(CWalletTx& walletTx : vCoins)
+            for(CWalletTx& walletTx : transactionsInWallet)
             {
                 /* Verify transaction is in the tx db */
 //TODO this won't work. it needs txindex below....need to check that code in qt wallet to see
@@ -1243,20 +1243,11 @@ namespace Legacy
     {
         NexusAddress address;
 
-        /* TODO: fix handling of 'change' outputs. The assumption is that any
-         * payment to a TX_PUBKEYHASH that is mine but isn't in the address book
-         * is change. That assumption is likely to break when we implement multisignature
-         * wallets that return change back into a multi-signature-protected address;
-         * a better way of identifying which outputs are 'the send' and which are
-         * 'the change' will need to be implemented (maybe extend CWalletTx to remember
-         * which output, if any, was change).
-         */
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
 
             if (ExtractAddress(txout.scriptPubKey, address) && HaveKey(address))
             {
-                //if (!addressBook.HasAddress(address))
                     return true;
             }
         }
@@ -1527,7 +1518,7 @@ namespace Legacy
             mapRequestCount[wtxNew.GetHash()] = 0;
 
             /* Broadcast transaction to network */
-//TODO replacement for AcceptToMemoryPool()
+//TODO implementation for AcceptToMemoryPool()
 //            if (!wtxNew.AcceptToMemoryPool())
 //            {
 //                /* This must not fail. The transaction has already been signed and recorded. */
@@ -1550,8 +1541,7 @@ namespace Legacy
         std::vector<CWalletTx> vInputs;
         std::vector<CWalletTx> vCoins;
 
-//TODO How to work with block?  no vtx in TAO::Ledger::Block (all references commented out below)
-//WIll this use TritiumBlock?
+//TODO Tritium block vtx = vector of pairs so this requires update (vtx[0] is coinstake here, Tritium transaction?)
 //        block.vtx[0].vout[0].nValue = 0;
 
         {
