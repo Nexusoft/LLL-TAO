@@ -46,7 +46,7 @@ namespace TAO::Ledger
          * @param[in] strUsernameIn The username to seed the signature chain
          * @param[in] strPasswordIn The password to seed the signature chain
          **/
-        SignatureChain(std::string strUsernameIn, std::string strPasswordIn) : strUsername(strUsernameIn), strPassword(strPasswordIn) {}
+        SignatureChain(std::string strUsernameIn, std::string strPasswordIn) : strUsername(strUsernameIn.c_str()), strPassword(strPasswordIn.c_str()) {}
 
 
         /** Generate Function
