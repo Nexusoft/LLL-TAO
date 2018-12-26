@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLC/include/random.h>
+
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/accounts.h>
@@ -39,16 +41,13 @@ namespace TAO::API
         if(params.find("password") == params.end())
             throw APIException(-24, "Missing Password");
 
-        /* Generate the signature chain. */
-        if(user)
-            throw APIException(-1, "Already logged in");
-
         /* Create the sigchain. */
-        user = new TAO::Ledger::SignatureChain(params["username"], params["password"]);
+        TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain(params["username"], params["password"]);
+        uint256_t hashGenesis = LLC::SK256(user->Generate(0, "genesis").GetBytes());
 
         /* Check for duplicates in ledger db. */
         TAO::Ledger::Transaction tx;
-        if(!LLD::legDB->HasGenesis(GetGenesis()))
+        if(!LLD::legDB->HasGenesis(hashGenesis))
         {
             delete user;
             user = nullptr;
@@ -56,8 +55,25 @@ namespace TAO::API
             throw APIException(-26, "Account doesn't exists");
         }
 
+        /* Check the sessions. */
+        for(auto session = mapSessions.begin(); session != mapSessions.end(); ++ session)
+        {
+            if(hashGenesis == LLC::SK256(session->second->Generate(0, "genesis").GetBytes()))
+            {
+                delete user;
+                user = nullptr;
+
+                throw APIException(-22, "Already logged in.");
+            }
+        }
+
         /* Set the return value. */
-        ret["genesis"] = GetGenesis().ToString();
+        uint64_t nSession = LLC::GetRand();
+        ret["genesis"] = hashGenesis.ToString();
+        ret["session"] = nSession;
+
+        /* Setup the account. */
+        mapSessions[nSession] = user;
 
         return ret;
     }
@@ -69,16 +85,26 @@ namespace TAO::API
         /* JSON return value. */
         json::json ret;
 
+        /* Check for username parameter. */
+        if(params.find("session") == params.end())
+            throw APIException(-23, "Missing Session ID");
+
         /* Generate the signature chain. */
-        if(!user)
+        uint64_t nSession = std::stoull(params["session"].get<std::string>());
+        if(!mapSessions.count(nSession))
             throw APIException(-1, "Already logged out");
 
         /* Set the return value. */
-        ret["genesis"] = GetGenesis().ToString();
+        ret["genesis"] = GetGenesis(nSession).ToString();
 
         /* Delete the sigchan. */
+        TAO::Ledger::SignatureChain* user = mapSessions[nSession];
+
         delete user;
         user = nullptr;
+
+        /* Erase the session. */
+        mapSessions.erase(nSession);
 
         return ret;
     }

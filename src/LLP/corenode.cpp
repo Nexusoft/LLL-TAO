@@ -61,7 +61,7 @@ namespace LLP
                             if(pos2 == strParam.npos)
                                 break;
 
-                            std::string key = strParam.substr(0, pos2);
+                            std::string key   = strParam.substr(0, pos2);
                             std::string value = strParam.substr(pos2 + 1);
 
                             params[key] = value;
@@ -97,7 +97,7 @@ namespace LLP
                         if(pos2 == strParam.npos)
                             break;
 
-                        std::string key = strParam.substr(0, pos2);
+                        std::string key   = strParam.substr(0, pos2);
                         std::string value = strParam.substr(pos2 + 1);
 
                         params[key] = value;

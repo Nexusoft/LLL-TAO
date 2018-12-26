@@ -70,8 +70,6 @@ namespace LLD
                 TAO::Register::State state;
                 ssData >> state;
 
-                state.print();
-
                 states.push_back(state);
             }
 

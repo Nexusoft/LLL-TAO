@@ -37,27 +37,27 @@ namespace TAO::API
 
 
     /* Returns a key from the account logged in. */
-    uint512_t Accounts::GetKey(uint32_t nKey, SecureString strSecret) const
+    uint512_t Accounts::GetKey(uint32_t nKey, SecureString strSecret, uint64_t nSession) const
     {
         LOCK(MUTEX);
 
         /* Check if you are logged in. */
-        if(!user)
-            throw APIException(-1, "cannot get key if not logged in.");
+        if(!mapSessions.count(nSession))
+            throw APIException(-1, "cannot get genesis if not logged in.");
 
-        return user->Generate(nKey, strSecret);
+        return mapSessions[nSession]->Generate(nKey, strSecret);
     }
 
 
     /* Returns the genesis ID from the account logged in. */
-    uint256_t Accounts::GetGenesis() const
+    uint256_t Accounts::GetGenesis(uint64_t nSession) const
     {
         LOCK(MUTEX);
 
         /* Check if you are logged in. */
-        if(!user)
+        if(!mapSessions.count(nSession))
             throw APIException(-1, "cannot get genesis if not logged in.");
 
-        return LLC::SK256(user->Generate(0, "genesis").GetBytes()); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
+        return LLC::SK256(mapSessions[nSession]->Generate(0, "genesis").GetBytes()); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
     }
 }

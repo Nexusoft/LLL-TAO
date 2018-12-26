@@ -27,16 +27,28 @@ namespace TAO::API
     class RPC : public Base
     {
     public:
-        RPC() {}
+        
+        /** Default Constructor. **/
+        RPC() { Initialize(); }
 
+
+        /** Initialize.
+         *
+         *  Sets the function pointers for this API.
+         *
+         **/
         void Initialize() final;
 
+
+        /** Get Name
+         *
+         *  Returns the name of this API.
+         *
+         **/
         std::string GetName() const final
         {
             return "RPC";
         }
-
-        /** RPC API command implementations */
 
         /** Echo
          *

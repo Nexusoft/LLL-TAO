@@ -42,7 +42,7 @@ namespace TAO::API
             throw APIException(-25, "Missing PIN");
 
         /* Generate the signature chain. */
-        TAO::Ledger::SignatureChain user(params["username"], params["password"]);
+        TAO::Ledger::SignatureChain user(params["username"].get<std::string>(), params["password"].get<std::string>());
 
         /* Get the Genesis ID. */
         uint256_t hashGenesis = LLC::SK256(user.Generate(0, "genesis").GetBytes());
@@ -53,11 +53,11 @@ namespace TAO::API
             throw APIException(-26, "Account already exists");
 
         /* Create the transaction object. */
-        tx.NextHash(user.Generate(tx.nSequence + 1, params["pin"]));
+        tx.NextHash(user.Generate(tx.nSequence + 1, params["pin"].get<std::string>().c_str()));
         tx.hashGenesis = hashGenesis;
 
         /* Sign the transaction. */
-        tx.Sign(user.Generate(tx.nSequence, params["pin"]));
+        tx.Sign(user.Generate(tx.nSequence, params["pin"].get<std::string>().c_str()));
 
         /* Check that the transaction is valid. */
         if(!tx.IsValid())
@@ -91,8 +91,12 @@ namespace TAO::API
         /* JSON return value. */
         json::json ret;
 
+        /* Check for username parameter. */
+        if(params.find("genesis") == params.end())
+            throw APIException(-25, "Missing Genesis ID");
+
         /* Get the Genesis ID. */
-        uint256_t hashGenesis = GetGenesis();
+        uint256_t hashGenesis = uint256_t(params["genesis"].get<std::string>());
 
         /* Get the last transaction. */
         uint512_t hashLast;

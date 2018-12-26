@@ -110,7 +110,7 @@ namespace TAO::API
             }
 
             /* Catch if the connection timed out. */
-            if(apiNode.Timeout(30))
+            if(apiNode.Timeout(5))
             {
                 debug::log(0, "Socket Timeout");
 
@@ -243,7 +243,7 @@ namespace TAO::API
         }
         else
         {
-            
+
             if( ret["result"].is_string())
                 strPrint = ret["result"].get<std::string>();
             else

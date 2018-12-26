@@ -154,11 +154,6 @@ int main(int argc, char** argv)
 
     /* Set up RPC server */
     TAO::API::RPCCommands = new TAO::API::RPC();
-    TAO::API::RPCCommands->Initialize();
-
-    TAO::API::accounts.Initialize();
-    TAO::API::supply.Initialize();
-
     LLP::Server<LLP::RPCNode>* RPC_SERVER = new LLP::Server<LLP::RPCNode>(
         config::GetArg("-rpcport", config::fTestNet? 8336 : 9336),
         1,

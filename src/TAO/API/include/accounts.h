@@ -31,7 +31,7 @@ namespace TAO::API
     class Accounts : public Base
     {
         /** The signature chain for login and logout. */
-        TAO::Ledger::SignatureChain* user;
+        mutable std::map<uint64_t, TAO::Ledger::SignatureChain*> mapSessions;
 
 
         /** The mutex for locking. **/
@@ -40,7 +40,7 @@ namespace TAO::API
     public:
 
         /** Default Constructor. **/
-        Accounts() {}
+        Accounts() { Initialize(); }
 
 
         /** Initialize.
@@ -57,19 +57,22 @@ namespace TAO::API
          *
          *  @param[in] nKey The key nonce used.
          *  @param[in] strSecret The secret phrase to use.
+         *  @param[in] nSession The session identifier.
          *
          **/
-        uint512_t GetKey(uint32_t nKey, SecureString strSecret) const;
+        uint512_t GetKey(uint32_t nKey, SecureString strSecret, uint64_t nSession) const;
 
 
          /** Get Genesis
           *
           *  Returns the genesis ID from the account logged in.
           *
+          *  @param[in] nSession The session identifier.
+          *
           *  @return The genesis ID if logged in.
           *
           **/
-         uint256_t GetGenesis() const;
+         uint256_t GetGenesis(uint64_t nSession) const;
 
 
         /** Get Name
