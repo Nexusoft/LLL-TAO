@@ -27,7 +27,8 @@ This will transfer an item from current logged in account to a new user. The new
 
 pin=XXXX
 address=0xffffffffffff
-to=NEW_OWNER
+destination=NEW_OWNER
+session=23894738473847
 ```
 
 This will return a json object such as:
@@ -49,6 +50,7 @@ This will submit new data into the network, assigning ownership to the currently
 
 pin=XXXX
 data=XXXXX
+session=23894738473847
 ```
 
 This will return a json object such as:
