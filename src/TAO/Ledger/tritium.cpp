@@ -105,18 +105,18 @@ namespace TAO::Ledger
 
 		/* Check for duplicate txid's */
 		std::set<uint512_t> uniqueTx;
-		std::vector<uint512_t> txHash;
+		std::vector<uint512_t> vHashes;
 		for(auto & tx : vtx)
 		{
 			uniqueTx.insert(tx.second);
-			txHash.push_back(tx.second);
+			vHashes.push_back(tx.second);
 		}
 		if (uniqueTx.size() != vtx.size())
 			return debug::error(FUNCTION "duplicate transaction", __PRETTY_FUNCTION__);
 
 
 		/* Check the merkle root. */
-		if (hashMerkleRoot != BuildMerkleTree(txHash))
+		if (hashMerkleRoot != BuildMerkleTree(vHashes))
 			return debug::error(FUNCTION "hashMerkleRoot mismatch", __PRETTY_FUNCTION__);
 
 

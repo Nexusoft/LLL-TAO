@@ -217,7 +217,7 @@ namespace TAO::Ledger
 	/* Sign the block with the key that found the block. */
 	bool Block::GenerateSignature(LLC::ECKey key)
 	{
-		return false;
+		return key.Sign((nVersion == 4) ? SignatureHash() : GetHash(), vchBlockSig, 1024);
 	}
 
 
