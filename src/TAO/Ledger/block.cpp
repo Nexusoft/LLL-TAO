@@ -89,6 +89,13 @@ namespace TAO::Ledger
 	}
 
 
+	/* Get the Proof Hash of the block. Used to verify work claims. */
+	uint1024_t Block::SignatureHash() const
+	{
+		return LLC::SK1024(BEGIN(nVersion), END(nTime));
+	}
+
+
 	uint1024_t Block::StakeHash()
 	{
 
@@ -208,15 +215,18 @@ namespace TAO::Ledger
 
 
 	/* Sign the block with the key that found the block. */
-	bool Block::GenerateSignature(const LLC::ECKey key)
+	bool Block::GenerateSignature(LLC::ECKey key)
 	{
 		return false;
 	}
 
 
 	/* Check that the block signature is a valid signature. */
-	bool Block::VerifySignature(const LLC::ECKey key) const
+	bool Block::VerifySignature(LLC::ECKey key) const
 	{
-		return false;
+		if (vchBlockSig.empty())
+			return false;
+
+		return key.Verify((nVersion == 4) ? SignatureHash() : GetHash(), vchBlockSig, 1024);
 	}
 }

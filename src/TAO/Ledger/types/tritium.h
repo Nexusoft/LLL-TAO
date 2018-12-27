@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_TYPES_TRITIUM_H
 
 #include <TAO/Ledger/types/block.h>
+#include <TAO/Ledger/types/transaction.h>
 
 #include <Util/templates/serialize.h>
 
@@ -40,7 +41,15 @@ namespace TAO::Ledger
 	{
 	public:
 
-		/** The transaction history. 
+        /** Verifier Transaction.
+         *
+         *  Transaction responsible for the block producer.
+         *
+         **/
+        Transaction producer;
+
+
+		/** The transaction history.
          *  uint8_t = TransactionType (per enum)
          *  uint512_t = Tx hash
          **/
@@ -65,6 +74,10 @@ namespace TAO::Ledger
 
         /** The default constructor. **/
 		TritiumBlock()  { SetNull(); }
+
+
+        /** Check a tritium block for consistency. **/
+        bool Check() const;
 
 
 		/** ToString

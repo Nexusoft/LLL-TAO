@@ -24,6 +24,7 @@ namespace TAO::Ledger
 
     class Mempool
     {
+    public:
         std::map<uint512_t, TAO::Ledger::Transaction> mapLedger;
 
         std::map<uint512_t, Legacy::Transaction> mapLegacy;
@@ -74,6 +75,8 @@ namespace TAO::Ledger
 
         bool Add(Legacy::Transaction tx);
     };
+
+    Mempool mempool;
 }
 
 #endif

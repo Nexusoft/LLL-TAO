@@ -19,6 +19,14 @@ ________________________________________________________________________________
 namespace TAO::Ledger
 {
 
+	/** The network current block version. **/
+	const uint32_t NETWORK_BLOCK_CURRENT_VERSION = 6;
+
+
+	/** The testnet current block version. **/
+	const uint32_t TESTNET_BLOCK_CURRENT_VERSION = 6;
+
+
 	/** Very first block hash in the blockchain. **/
 	const uint1024_t hashGenesis("0x00000bb8601315185a0d001e19e63551c34f1b7abeb3445105077522a9cbabf3e1da963e3bfbb87d260218b7c6207cb9c6df90b86e6a3ce84366434763bc8bcbf6ccbd1a7d5958996aecbe8205c20b296818efb3a59c74acbc7a2d1a5a6b64aab63839b8b11a6b41c4992f835cbbc576d338404fb1217bdd7909ca7db63bbc02");
 

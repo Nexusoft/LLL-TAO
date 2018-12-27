@@ -153,6 +153,16 @@ namespace TAO::Ledger
 		uint1024_t ProofHash() const;
 
 
+		/** Signature Hash
+		 *
+		 *	Get the hash for signatures.
+		 *
+		 *	@return 1024-bit proof hash
+		 *
+		 **/
+		uint1024_t SignatureHash() const;
+
+
 		/** Stake Hash
 		 *
 		 *	Prove that you staked a number of seconds based on weight
@@ -245,7 +255,7 @@ namespace TAO::Ledger
 		 *	@return True if the signature was made successfully, false otherwise
 		 *
 		 **/
-		bool GenerateSignature(const LLC::ECKey key);
+		bool GenerateSignature(LLC::ECKey key);
 
 
 		/** VerifySignature
@@ -255,7 +265,7 @@ namespace TAO::Ledger
 		 *	@return True if signature is valid, false otherwise
 		 *
 		 **/
-		bool VerifySignature(const LLC::ECKey key) const;
+		bool VerifySignature(LLC::ECKey key) const;
 
 
 	};
