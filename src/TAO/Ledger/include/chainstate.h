@@ -31,6 +31,10 @@ namespace TAO::Ledger
 
 	    /** The best trust in the chain. **/
 	    static uint64_t nBestChainTrust;
+
+
+		/** Flag to tell if initial blocks are downloading. **/
+		static bool Synchronizing();
 	};
 }
 

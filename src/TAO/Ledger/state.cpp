@@ -19,7 +19,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/state.h>
 
 #include <TAO/Ledger/include/difficulty.h>
-
+#include <TAO/Ledger/include/checkpoints.h>
+#include <TAO/Ledger/include/supply.h>
 
 
 namespace TAO::Ledger
@@ -33,7 +34,7 @@ namespace TAO::Ledger
 
 
     /* Get the previous block state in chain. */
-    BlockState BlockState::Prev()
+    BlockState BlockState::Prev() const
     {
         BlockState state;
         if(!LLD::legDB->ReadBlock(hashPrevBlock, state))
@@ -44,7 +45,7 @@ namespace TAO::Ledger
 
 
     /* Get the next block state in chain. */
-    BlockState BlockState::Next()
+    BlockState BlockState::Next() const
     {
         BlockState state;
         if(hashNextBlock == 0)
@@ -56,7 +57,124 @@ namespace TAO::Ledger
         return state;
     }
 
-    /** Function to determine if this block has been connected into the main chain. **/
+    /* Accept a block state into chain. */
+    bool BlockState::Accept()
+    {
+        /* Read leger DB for duplicate block. */
+        BlockState state;
+        if(LLD::legDB->ReadBlock(GetHash(), state))
+            return debug::error(FUNCTION "block state already exists", __PRETTY_FUNCTION__);
+
+        /* Read leger DB for previous block. */
+        BlockState statePrev = Prev();
+        if(statePrev.IsNull())
+            return debug::error(FUNCTION "previous block state not found", __PRETTY_FUNCTION__);
+
+        /* Check the Height of Block to Previous Block. */
+        if(statePrev.nHeight + 1 != nHeight)
+            return debug::error(FUNCTION "incorrect block height.", __PRETTY_FUNCTION__);
+
+        /* Get the proof hash for this block. */
+        uint1024_t hash = (nVersion < 5 ? GetHash() : GetChannel() == 0 ? StakeHash() : ProofHash());
+
+        /* Get the target hash for this block. */
+        uint1024_t hashTarget = LLC::CBigNum().SetCompact(nBits).getuint1024();
+
+        /* Verbose logging of proof and target. */
+        debug::log(2, "  proof:  %s", hash.ToString().substr(0, 30).c_str());
+
+        /* Channel switched output. */
+        if(GetChannel() == 1)
+            debug::log(2, "  prime cluster verified of size %f", GetDifficulty(nBits, 1));
+        else
+            debug::log(2, "  target: %s", hashTarget.ToString().substr(0, 30).c_str());
+
+
+        /* Check that the nBits match the current Difficulty. **/
+        if (nBits != GetNextTargetRequired(statePrev, GetChannel()))
+            return debug::error(FUNCTION "incorrect proof-of-work/proof-of-stake", __PRETTY_FUNCTION__);
+
+
+        /* Check That Block Timestamp is not before previous block. */
+        if (GetBlockTime() <= statePrev.GetBlockTime())
+            return debug::error(FUNCTION "block's timestamp too early Block: %" PRId64 " Prev: %" PRId64 "", __PRETTY_FUNCTION__,
+            GetBlockTime(), statePrev.GetBlockTime());
+
+
+        /* Check that Block is Descendant of Hardened Checkpoints. */
+        //if(!ChainState::Synchronizing() && !IsDescendant(pindexPrev))
+        //    return error("AcceptBlock() : Not a descendant of Last Checkpoint");
+
+
+        /* Compute the Chain Trust */
+        nChainTrust = statePrev.nChainTrust + GetBlockTrust();
+
+
+        /* Compute the Channel Height. */
+        BlockState stateLast = statePrev;
+        if(!GetLastState(stateLast, GetChannel()))
+            nChannelHeight = 1;
+        else
+            nChannelHeight = stateLast.nChannelHeight + 1;
+
+
+        /* Compute the Released Reserves. */
+        for(int nType = 0; nType < 3; nType++)
+        {
+            if(IsProofOfWork())
+            {
+                /* Calculate the Reserves from the Previous Block in Channel's reserve and new Release. */
+                uint64_t nReserve  = stateLast.nReleasedReserve[nType] +
+                    GetReleasedReserve(*this, GetChannel(), nType);
+
+                /* Get the coinbase rewards. */
+                uint64_t nCoinbaseRewards = GetCoinbaseReward(*this, GetChannel(), nType);
+
+                /* Block Version 3 Check. Disable Reserves from going below 0. */
+                if(nVersion >= 3 && nCoinbaseRewards >= nReserve)
+                    return debug::error(FUNCTION "out of reserve limits", __PRETTY_FUNCTION__);
+
+                /* Check coinbase rewards. */
+                nReleasedReserve[nType] =  nReserve - nCoinbaseRewards;
+
+                debug::log(2, "Reserve Balance %i | %f Nexus | Released %f", nType, stateLast.nReleasedReserve[nType] / 1000000.0, (nReserve - stateLast.nReleasedReserve[nType]) / 1000000.0 );
+            }
+            else
+                nReleasedReserve[nType] = 0;
+
+        }
+
+        /* Add the Pending Checkpoint into the Blockchain. */
+        if(IsNewTimespan(Prev()))
+        {
+            hashCheckpoint = GetHash();
+
+            debug::log(0, "===== New Pending Checkpoint Hash = %s", hashCheckpoint.ToString().substr(0, 15).c_str());
+        }
+        else
+        {
+            hashCheckpoint = stateLast.hashCheckpoint;
+
+            debug::log(0, "===== Pending Checkpoint Hash = %s", hashCheckpoint.ToString().substr(0, 15).c_str());
+        }
+
+        return true;
+    }
+
+
+    /* USed to determine the trust of a block in the chain. */
+    uint64_t BlockState::GetBlockTrust() const
+    {
+        /** Give higher block trust if last block was of different channel **/
+        BlockState prev = Prev();
+        if(!prev.IsNull() && prev.GetChannel() != GetChannel())
+            return 3;
+
+        return 1;
+    }
+
+
+    /* Function to determine if this block has been connected into the main chain. */
     bool BlockState::IsInMainChain() const
     {
         return (hashNextBlock != 0 || GetHash() == ChainState::hashBestChain);

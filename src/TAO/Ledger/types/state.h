@@ -147,7 +147,7 @@ namespace TAO::Ledger
 		 *  Get the previous block state in chain.
 		 *
 		 **/
-		BlockState Prev();
+		BlockState Prev() const;
 
 
 		/** Next
@@ -155,7 +155,11 @@ namespace TAO::Ledger
 		 *  Get the next block state in chain.
 		 *
 		 **/
-		BlockState Next();
+		BlockState Next() const;
+
+
+		/** Accept a block state into chain. **/
+		bool Accept();
 
 
 		/** Not operator overloading. **/
@@ -163,6 +167,9 @@ namespace TAO::Ledger
 		{
 			return !IsNull();
 		}
+
+		/** Get the trust of given block. **/
+		uint64_t GetBlockTrust() const;
 
 
 

@@ -17,15 +17,22 @@ ________________________________________________________________________________
 namespace TAO::Ledger
 {
 
-    /** The best block height in the chain. **/
+    /* The best block height in the chain. */
 	uint32_t ChainState::nBestHeight = 0;
 
 
-    /** The best hash in the chain. */
+    /* The best hash in the chain. */
 	uint1024_t ChainState::hashBestChain = 0;
 
 
-     /** The best trust in the chain. **/
+    /* The best trust in the chain. */
 	uint64_t ChainState::nBestChainTrust = 0;
+
+
+	/* Flag to tell if initial blocks are downloading. */
+	bool ChainState::Synchronizing()
+	{
+		return false;
+	}
 
 }
