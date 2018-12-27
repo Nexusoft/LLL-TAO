@@ -112,7 +112,7 @@ namespace TAO::Ledger
 		 *  Get the previous block state in chain.
 		 *
 		 **/
-		BlockState Prev() const;
+		bool Prev() const;
 
 
 		/** Next
@@ -120,7 +120,7 @@ namespace TAO::Ledger
 		 *  Get the next block state in chain.
 		 *
 		 **/
-		BlockState Next() const;
+		bool Next() const;
 
 
 
@@ -135,6 +135,19 @@ namespace TAO::Ledger
 		/* For debugging purposes, printing the block to stdout */
 		void print() const;
 	};
+
+
+	/** Get Last State
+	 *
+	 *  Gets a block state by channel from hash.
+	 *
+	 *  @param[in] hashBlock The block to search from.
+	 *  @param[in] nChannel The channel to search for.
+	 *
+	 *  @return The block state found.
+	 *
+	 **/
+	BlockState GetLastState(uint1024_t hashBlock, uint32_t nChannel);
 
 }
 

@@ -21,10 +21,10 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 
 #include <LLD/include/legacy.h>
+#include <LLD/include/global.h>
 
 #include <LLP/include/version.h>
 
-#include <TAO/Ledger/include/chain.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
 
@@ -853,7 +853,7 @@ namespace Legacy
         if (pstartBlock == nullptr)
         {
             /* Use start of chain */
-            if (!TAO::Ledger::GetState(TAO::Ledger::ChainState::hashBestChain, blockState))
+            if (!LLD::legDB->ReadBlock(TAO::Ledger::ChainState::hashBestChain, blockState))
             {
                 debug::log(0, "Error: CWallet::ScanForWalletTransactions() could not get start of chain");
                 return 0;
@@ -894,7 +894,7 @@ namespace Legacy
                 }
 
                 /* Move to next block. Will return false when reach end of chain, ending the while loop */
-                if (!NextState(blockState))
+                if (!blockState.Next())
                     break;
             }
         } // End lock scope
@@ -1031,7 +1031,7 @@ namespace Legacy
                 /* Verify transaction is in the tx db */
 //TODO this won't work. it needs txindex below....need to check that code in qt wallet to see
 //how it works. Why do we need that when wallettx is already a Transaction
-//Apparently because that is what we are attempting to fix? 
+//Apparently because that is what we are attempting to fix?
                 Legacy::Transaction txTemp;
 
                 if(!legacydb.ReadTx(walletTx.GetHash(), txTemp))
@@ -1264,7 +1264,7 @@ namespace Legacy
 
 
     /* Generate a transaction to send balance to a given Nexus address. */
-    std::string CWallet::SendToNexusAddress(const NexusAddress& address, int64_t nValue, CWalletTx& wtxNew, 
+    std::string CWallet::SendToNexusAddress(const NexusAddress& address, int64_t nValue, CWalletTx& wtxNew,
                                             const bool fAskFee, const uint32_t nMinDepth)
     {
         /* Validate amount */
@@ -1337,7 +1337,7 @@ namespace Legacy
 
 
     /* Create and populate a new transaction. */
-    bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, 
+    bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey,
                                     int64_t& nFeeRet, const uint32_t nMinDepth)
     {
         int64_t nValue = 0;

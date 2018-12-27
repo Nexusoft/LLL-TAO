@@ -24,6 +24,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/state.h>
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/state.h>
 
 namespace LLD
 {
@@ -33,7 +34,7 @@ namespace LLD
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         LedgerDB(const char* pszMode="r+")
-        : SectorDatabase("ledger", pszMode) {}
+        : SectorDatabase("ledger", pszMode) { }
 
         bool WriteTx(uint512_t hashTransaction, TAO::Ledger::Transaction tx)
         {
@@ -57,6 +58,16 @@ namespace LLD
         {
             uint64_t nDummy = 0; //this is being used as a boolean express. TODO: make LLD handle bool key writes
             return Write(std::make_pair(hashProof, hashTransaction), nDummy);
+        }
+
+        bool WriteBlock(uint1024_t hashBlock, TAO::Ledger::BlockState state)
+        {
+            return Write(std::make_pair(std::string("block"), hashBlock), state);
+        }
+
+        bool ReadBlock(uint1024_t hashBlock, TAO::Ledger::BlockState& state)
+        {
+            return Read(std::make_pair(std::string("block"), hashBlock), state);
         }
 
 

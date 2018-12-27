@@ -20,6 +20,15 @@ using namespace std;
 
 namespace Core
 {
+	/* Break the Chain Age in Minutes into Days, Hours, and Minutes. */
+	void GetChainTimes(uint32_t nAge, uint32_t& nDays, uint32_t& nHours, uint32_t& nMinutes)
+	{
+		nDays = nAge / 1440;
+		nHours = (nAge - (nDays * 1440)) / 60;
+		nMinutes = nAge % 60;
+	}
+
+
 	/* Determines the Decimal of nBits per Channel for a decent "Frame of Reference".
 		Has no functionality in Network Operation. */
 	double GetDifficulty(uint32_t nBits, int32_t nChannel)

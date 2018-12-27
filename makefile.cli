@@ -148,7 +148,6 @@ OBJS= \
     build/LLP_manager.o \
     build/LLP_ddos.o \
 	build/Ledger_block.o \
-	build/Ledger_chain.o \
 	build/Ledger_prime.o \
 	build/Ledger_state.o \
 	build/Ledger_chainstate.o \

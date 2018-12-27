@@ -16,19 +16,27 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/state.h>
 
+
+
 namespace TAO::Ledger
 {
 
+    /* Get the block state object. */
+    BlockState GetLastState(uint1024_t hashBlock, uint32_t nChannel)
+    {
+
+    }
+
 
     /* Get the previous block state in chain. */
-    BlockState BlockState::Prev() const
+    bool BlockState::Prev() const
     {
 
     }
 
 
     /* Get the next block state in chain. */
-    BlockState BlockState::Next() const
+    bool BlockState::Next() const
     {
 
     }

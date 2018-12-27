@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #include <LLD/include/legacy.h>
+#include <LLD/include/global.h>
 
-#include <TAO/Ledger/include/chain.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/state.h>
@@ -51,7 +51,7 @@ namespace Legacy
                 {
                     /* Already know the block hash for the block containing this transaction */
                     TAO::Ledger::BlockState containingBlockState;
-                    if (!TAO::Ledger::GetState(TAO::Ledger::ChainState::hashBestChain, containingBlockState))
+                    if (!LLD::legDB->ReadBlock(TAO::Ledger::ChainState::hashBestChain, containingBlockState))
                     {
                         debug::log(0, "Error: CMerkleTx::SetMerkleBranch() containing block for transaction");
                         return 0;
@@ -96,7 +96,7 @@ namespace Legacy
             }
 
             // Fill in merkle branch
-//TODO - This will be defined?             
+//TODO - This will be defined?
 //            vMerkleBranch = pblock->GetMerkleBranch(nIndex);
         }
 
@@ -114,7 +114,7 @@ namespace Legacy
 //
 //        return pindexBest->nHeight - pindex->nHeight + 1;
 
-        return 0;  //temporary until update this method           
+        return 0;  //temporary until update this method
     }
 
 
@@ -125,7 +125,7 @@ namespace Legacy
 
         // Find the block it claims to be in
         TAO::Ledger::BlockState blockState;
-        if (!TAO::Ledger::GetState(hashBlock, blockState))
+        if (!LLD::legDB->ReadBlock(hashBlock, blockState))
             return 0;
 
         if (!blockState.IsInMainChain())
