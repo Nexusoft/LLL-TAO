@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/chain.h>
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/state.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/transaction.h>
 
@@ -51,7 +51,7 @@ namespace Legacy
                 {
                     /* Already know the block hash for the block containing this transaction */
                     TAO::Ledger::BlockState containingBlockState;
-                    if (!TAO::Ledger::GetState(TAO::Ledger::hashBestChain, containingBlockState))
+                    if (!TAO::Ledger::GetState(TAO::Ledger::ChainState::hashBestChain, containingBlockState))
                     {
                         debug::log(0, "Error: CMerkleTx::SetMerkleBranch() containing block for transaction");
                         return 0;
@@ -131,7 +131,7 @@ namespace Legacy
         if (!blockState.IsInMainChain())
             return 0;
 
-        return TAO::Ledger::nBestHeight - blockState.blockThis.nHeight + 1;
+        return TAO::Ledger::ChainState::nBestHeight - blockState.blockThis.nHeight + 1;
 
     }
 

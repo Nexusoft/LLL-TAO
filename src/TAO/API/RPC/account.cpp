@@ -1153,7 +1153,7 @@ namespace TAO::API
     //             throw JSONRPCError(-8, "Invalid parameter");
     //     }
 
-    //     int depth = pindex ? (1 + Core::nBestHeight - pindex->nHeight) : -1;
+    //     int depth = pindex ? (1 + Core::ChainState::nBestHeight - pindex->nHeight) : -1;
 
     //     Array transactions;
 
@@ -1171,7 +1171,7 @@ namespace TAO::API
 
     //     if (target_confirms == 1)
     //     {
-    //         lastblock = Core::hashBestChain;
+    //         lastblock = Core::ChainState::hashBestChain;
     //     }
     //     else
     //     {

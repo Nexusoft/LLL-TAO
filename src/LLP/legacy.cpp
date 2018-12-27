@@ -27,6 +27,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/transaction.h>
 
+#include <TAO/Ledger/include/chainstate.h>
+
 namespace LLP
 {
 
@@ -46,11 +48,9 @@ namespace LLP
         Address addrMe  = Address(Service("0.0.0.0",0));
         Address addrYou = Address(Service("0.0.0.0",0));
 
-        uint32_t nBestHeight = 0; //TODO: Chain State Parameters (Ledger Layer)
-
         /* Push the Message to receiving node. */
         PushMessage("version", LLP::PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,
-                    nSessionID, strProtocolName, nBestHeight); //Core::nBestHeight);
+                    nSessionID, strProtocolName, TAO::Ledger::ChainState::nBestHeight);
     }
 
 

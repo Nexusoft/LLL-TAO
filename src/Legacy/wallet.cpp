@@ -26,7 +26,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/chain.h>
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/state.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/tritium.h>
@@ -853,7 +853,7 @@ namespace Legacy
         if (pstartBlock == nullptr)
         {
             /* Use start of chain */
-            if (!TAO::Ledger::GetState(TAO::Ledger::hashBestChain, blockState))
+            if (!TAO::Ledger::GetState(TAO::Ledger::ChainState::hashBestChain, blockState))
             {
                 debug::log(0, "Error: CWallet::ScanForWalletTransactions() could not get start of chain");
                 return 0;
@@ -933,11 +933,11 @@ namespace Legacy
             return;
 
         /* If no new block, nothing has changed, so just return. */
-        if (TAO::Ledger::nBestHeight <= snLastHeight)
+        if (TAO::Ledger::ChainState::nBestHeight <= snLastHeight)
             return;
 
         /* Record that it is processing resend now */
-        snLastHeight = TAO::Ledger::nBestHeight;
+        snLastHeight = TAO::Ledger::ChainState::nBestHeight;
 
         /* Rebroadcast any of our tx that aren't in a block yet */
         debug::log(0, "ResendWalletTransactions");

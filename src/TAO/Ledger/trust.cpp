@@ -856,7 +856,7 @@ namespace Consensus
             LLD::CIndexDB indexdb("r");
 
             /* Take a snapshot of the best block. */
-            uint1024_t hashBest = hashBestChain;
+            uint1024_t hashBest = ChainState::hashBestChain;
 
             /* Create the block(s) to work on. */
             CBlock baseBlock = CreateNewBlock(reservekey, pwalletMain, 0);
@@ -975,7 +975,7 @@ namespace Consensus
             {
                 runtime::sleep(120);
 
-                if(hashBestChain != hashBest)
+                if(ChainState::hashBestChain != hashBest)
                 {
                     if(GetArg("-verbose", 0) >= 2)
                         debug::log(0, "Stake Minter : New Best Block");

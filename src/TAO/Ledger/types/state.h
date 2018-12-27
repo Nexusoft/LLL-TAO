@@ -14,9 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_STATE_H
 #define NEXUS_TAO_LEDGER_TYPES_STATE_H
 
-#include <TAO/Ledger/include/state.h>
 #include <TAO/Ledger/types/tritium.h>
-
 
 namespace TAO::Ledger
 {
@@ -109,12 +107,25 @@ namespace TAO::Ledger
 		}
 */
 
+		/** Prev
+		 *
+		 *  Get the previous block state in chain.
+		 *
+		 **/
+		BlockState Prev() const;
+
+
+		/** Next
+		 *
+		 *  Get the next block state in chain.
+		 *
+		 **/
+		BlockState Next() const;
+
+
 
 		/* Function to determine if this block has been connected into the main chain. */
-		bool IsInMainChain() const
-		{
-			return (hashNextBlock != 0 || blockThis.GetHash() == hashBestChain);
-		}
+		bool IsInMainChain() const;
 
 
 		/* For debugging Purposes seeing block state data dump */

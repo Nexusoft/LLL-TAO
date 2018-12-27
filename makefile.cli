@@ -151,6 +151,7 @@ OBJS= \
 	build/Ledger_chain.o \
 	build/Ledger_prime.o \
 	build/Ledger_state.o \
+	build/Ledger_chainstate.o \
 	build/Ledger_tritium.o \
 	build/Ledger_transaction.o \
 	build/Operation_write.o \

@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/rpc.h>
 #include <Util/include/json.h>
-#include <TAO/Ledger/include/state.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 namespace TAO::API
 {
@@ -167,7 +167,7 @@ namespace TAO::API
                 "getblockcount"
                 " - Returns the number of blocks in the longest block chain.");
 
-        return (int)TAO::Ledger::nBestHeight;
+        return (int)TAO::Ledger::ChainState::nBestHeight;
     }
 
 
@@ -179,7 +179,7 @@ namespace TAO::API
                 "getblocknumber"
                 " - Deprecated.  Use getblockcount.");
 
-         return (int)TAO::Ledger::nBestHeight;
+         return (int)TAO::Ledger::ChainState::nBestHeight;
     }
 
     /* Returns difficulty as a multiple of the minimum difficulty */

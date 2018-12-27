@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <Legacy/include/money.h>
 
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/state.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <Util/include/runtime.h>
 
@@ -70,7 +70,7 @@ namespace Legacy
 			return true;
 
 		if (nBlockHeight == 0)
-			nBlockHeight = TAO::Ledger::nBestHeight;
+			nBlockHeight = TAO::Ledger::ChainState::nBestHeight;
 
 		if (nBlockTime == 0)
 			nBlockTime = runtime::UnifiedTimestamp();

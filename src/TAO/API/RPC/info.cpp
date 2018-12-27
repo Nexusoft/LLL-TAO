@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #include <Util/include/json.h>
 #include <Util/include/runtime.h>
 #include <LLP/include/version.h>
-#include <TAO/Ledger/include/state.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <LLP/include/global.h>
 #include <LLP/include/addressinfo.h>
 
@@ -51,7 +51,7 @@ namespace TAO::API
     //   obj.push_back(std::make_pair("txtotal",        (int)pwalletMain->mapWallet.size()));
 
 
-       obj["blocks"] = (int)TAO::Ledger::nBestHeight;
+       obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
 
         obj["timestamp"] =  (int)runtime::UnifiedTimestamp();
 
@@ -184,7 +184,7 @@ namespace TAO::API
 
 
         // Object obj;
-        // obj["blocks"] = (int)TAO::Ledger::nBestHeight;
+        // obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
         // obj.push_back(Pair("timestamp", (int)GetUnifiedTimestamp()));
 
         // obj.push_back(Pair("currentblocksize",(uint64_t)Core::nLastBlockSize));

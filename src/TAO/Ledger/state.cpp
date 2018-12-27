@@ -13,23 +13,31 @@ ________________________________________________________________________________
 
 #include <string>
 
-#include <TAO/Ledger/include/state.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/state.h>
 
 namespace TAO::Ledger
 {
 
-    /*-----Definitions for variables declared in include/state.h -----*/
-    /* The best block height in the chain. */
-    uint32_t nBestHeight;
+
+    /* Get the previous block state in chain. */
+    BlockState BlockState::Prev() const
+    {
+
+    }
 
 
-    /* The best hash in the chain. */
-    uint1024_t hashBestChain;
+    /* Get the next block state in chain. */
+    BlockState BlockState::Next() const
+    {
 
+    }
 
-    /* The best trust in the chain. */
-    uint64_t nBestChainTrust;
+    /** Function to determine if this block has been connected into the main chain. **/
+    bool BlockState::IsInMainChain() const
+    {
+        return (hashNextBlock != 0 || blockThis.GetHash() == ChainState::hashBestChain);
+    }
 
 
     /* For debugging Purposes seeing block state data dump */
