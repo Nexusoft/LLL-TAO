@@ -102,8 +102,8 @@ namespace TAO::Ledger
 
 
         /* Check that Block is Descendant of Hardened Checkpoints. */
-        //if(!ChainState::Synchronizing() && !IsDescendant(pindexPrev))
-        //    return error("AcceptBlock() : Not a descendant of Last Checkpoint");
+        if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
+            return debug::error(FUNCTION "not descendant of last checkpoint", __PRETTY_FUNCTION__);
 
 
         /* Compute the Chain Trust */
