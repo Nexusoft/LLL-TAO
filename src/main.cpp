@@ -36,6 +36,9 @@ ________________________________________________________________________________
 #include <TAO/API/include/supply.h>
 #include <TAO/API/include/accounts.h>
 
+#include <Legacy/wallet/wallet.h>
+#include <Legacy/wallet/walletdb.h>
+
 
 /* Declare the Global LLD Instances. */
 namespace LLD
@@ -91,6 +94,23 @@ int main(int argc, char** argv)
     LLD::regDB = new LLD::RegisterDB("r+");
     LLD::legDB = new LLD::LedgerDB("r+");
     LLD::locDB = new LLD::LocalDB("r+");
+
+    /** Load the Wallet Database. **/
+    bool fFirstRun;
+    Legacy::CWallet* pwalletMain = new Legacy::CWallet(config::GetArg("-wallet", "wallet.dat"));
+    int nLoadWalletRet = pwalletMain->LoadWallet(fFirstRun);
+    if (nLoadWalletRet != Legacy::DB_LOAD_OK)
+    {
+        if (nLoadWalletRet == Legacy::DB_CORRUPT)
+            return debug::error("failed loading wallet.dat: Wallet corrupted");
+
+        else if (nLoadWalletRet == Legacy::DB_TOO_NEW)
+            return debug::error("failed loading wallet.dat: Wallet requires newer version of Nexus");
+        else if (nLoadWalletRet == Legacy::DB_NEED_REWRITE)
+            return debug::error("wallet needed to be rewritten: restart Nexus to complete");
+        else
+            return debug::error("failed loading wallet.dat");
+    }
 
 
     /* Initialize the Tritium Server. */
