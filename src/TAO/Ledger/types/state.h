@@ -62,9 +62,10 @@ namespace TAO::Ledger
 		/* Serialization Macros */
 		IMPLEMENT_SERIALIZE
 		(
-			TritiumBlock block = static_cast<TritiumBlock>(*this);
+			BlockState* pthis = const_cast<BlockState*>(this);
+			TritiumBlock* block = (TritiumBlock*)pthis;
 
-			READWRITE(block);
+			READWRITE(*block);
 			READWRITE(nChainTrust);
 			READWRITE(nMoneySupply);
 			READWRITE(nChannelHeight);

@@ -906,7 +906,66 @@ public:
     : nReadPos(0)
     , nSerType(nSerTypeIn)
     , nSerVersion(nSerVersion)
-    , std::vector<uint8_t>(vchDataIn) {  }
+    , std::vector<uint8_t>(vchDataIn)
+    {
+    }
+
+
+    /** DataStream
+     *
+     *  Default constructor for initialization with serialize data, type and version
+     *
+     **/
+    DataStream(std::vector<uint8_t>::const_iterator pbegin, std::vector<uint8_t>::const_iterator pend, int32_t nSerTypeIn, int32_t nSerVersionIn)
+    : nReadPos(0)
+    , nSerType(nSerTypeIn)
+    , nSerVersion(nSerVersion)
+    , std::vector<uint8_t>(pbegin, pend)
+    {
+    }
+
+
+#if !defined(_MSC_VER) || _MSC_VER >= 1300
+
+    /** DataStream
+     *
+     *  Default constructor for initialization with serialize data, type and version.
+     *  (Microsoft compiler compatible)
+     *
+     **/
+    DataStream(const char* pbegin, const char* pend, int32_t nSerTypeIn, int32_t nSerVersionIn)
+    : nReadPos(0)
+    , nSerType(nSerTypeIn)
+    , nSerVersion(nSerVersion)
+    , std::vector<uint8_t>((uint8_t*)pbegin, (uint8_t*)pend)
+    {
+    }
+#endif
+
+
+    /** DataStream
+     *
+     *  Default constructor for initialization with serialize data, type and version.
+     *
+     **/
+    DataStream(const std::vector<char>& vchDataIn, int32_t nSerTypeIn, int32_t nSerVersionIn)
+    : nReadPos(0)
+    , nSerType(nSerTypeIn)
+    , nSerVersion(nSerVersion)
+    , std::vector<uint8_t>((uint8_t*)&vchDataIn.begin()[0], (uint8_t*)&vchDataIn.end()[0])
+    {
+    }
+
+
+    /** Set Type
+     *
+     *  Sets the type of stream.
+     *
+     **/
+     void SetType(uint8_t nSerTypeIn)
+     {
+         nSerType = nSerTypeIn;
+     }
 
 
     /** SetNull
@@ -1032,524 +1091,6 @@ public:
     }
 };
 
-
-/** CDataStream
- *
- *  Double ended buffer combining vector and stream-like interfaces.
- *  >> and << read and write unformatted data using the above serialization templates.
- *  Fills with data in linear time; some stringstream implementations take N^2 time.
- *
- **/
-class CDataStream
-{
-protected:
-    typedef std::vector<char, zero_after_free_allocator<char> > vector_type;
-    vector_type vch;
-    uint32_t nReadPos;
-    short state;
-    short exceptmask;
-public:
-    int nSerType;
-    int nSerVersion;
-
-    typedef vector_type::allocator_type   allocator_type;
-    typedef vector_type::size_type        size_type;
-    typedef vector_type::difference_type  difference_type;
-    typedef vector_type::reference        reference;
-    typedef vector_type::const_reference  const_reference;
-    typedef vector_type::value_type       value_type;
-    typedef vector_type::iterator         iterator;
-    typedef vector_type::const_iterator   const_iterator;
-    typedef vector_type::reverse_iterator reverse_iterator;
-
-
-    /** CDataStream
-     *
-     *  Explicit constructor for default initialization with serialize type and version
-     *
-     **/
-    explicit CDataStream(int nTypeIn, int nVersionIn)
-    {
-        Init(nTypeIn, nVersionIn);
-    }
-
-
-    /** CDataStream
-     *
-     *  Default constructor for initialization with serialize data, type and version
-     *
-     **/
-    CDataStream(const_iterator pbegin, const_iterator pend, int nTypeIn, int nVersionIn) : vch(pbegin, pend)
-    {
-        Init(nTypeIn, nVersionIn);
-    }
-
-
-#if !defined(_MSC_VER) || _MSC_VER >= 1300
-
-    /** CDataStream
-     *
-     *  Default constructor for initialization with serialize data, type and version.
-     *  (Microsoft compiler compatible)
-     *
-     **/
-    CDataStream(const char* pbegin, const char* pend, int nTypeIn, int nVersionIn) : vch(pbegin, pend)
-    {
-        Init(nTypeIn, nVersionIn);
-    }
-#endif
-
-
-    /** CDataStream
-     *
-     *  Default constructor for initialization with serialize data, type and version.
-     *
-     **/
-    CDataStream(const vector_type& vchIn, int nTypeIn, int nVersionIn) : vch(vchIn.begin(), vchIn.end())
-    {
-        Init(nTypeIn, nVersionIn);
-    }
-
-
-    /** CDataStream
-     *
-     *  Default constructor for initialization with serialize data, type and version.
-     *
-     **/
-    CDataStream(const std::vector<char>& vchIn, int nTypeIn, int nVersionIn) : vch(vchIn.begin(), vchIn.end())
-    {
-        Init(nTypeIn, nVersionIn);
-    }
-
-
-    /** CDataStream
-     *
-     *  Default constructor for initialization with serialize data, type and version.
-     *
-     **/
-    CDataStream(const std::vector<uint8_t>& vchIn, int nTypeIn, int nVersionIn) : vch((char*)&vchIn.begin()[0], (char*)&vchIn.end()[0])
-    {
-        Init(nTypeIn, nVersionIn);
-    }
-
-
-    /** Init
-     *
-     *  Default initialization with serialize type and versions
-     *
-     *  @param[in] nTypeIn The serialize type
-     *
-     *  @param[in] nVersionIn The serialize version
-     *
-     **/
-    void Init(int nTypeIn, int nVersionIn)
-    {
-        nReadPos = 0;
-        nSerType = nTypeIn;
-        nSerVersion = nVersionIn;
-        state = 0;
-        exceptmask = std::ios::badbit | std::ios::failbit;
-    }
-
-
-    /** operator+=
-     *
-     *  Append one datastream to the other
-     *
-     **/
-    CDataStream& operator+=(const CDataStream& b)
-    {
-        vch.insert(vch.end(), b.begin(), b.end());
-        return *this;
-    }
-
-
-    /** operator+=
-     *
-     *  Append one datastream to the other
-     *
-     **/
-    friend CDataStream operator+(const CDataStream& a, const CDataStream& b)
-    {
-        CDataStream ret = a;
-        ret += b;
-        return (ret);
-    }
-
-
-    /** str
-     *
-     *  Returns a standard string of the stream data
-     *
-     **/
-    std::string str() const
-    {
-        return (std::string(begin(), end()));
-    }
-
-
-    /**
-     *  Vector subset
-     **/
-    const_iterator begin() const                     { return vch.begin() + nReadPos; }
-    iterator begin()                                 { return vch.begin() + nReadPos; }
-    const_iterator end() const                       { return vch.end(); }
-    iterator end()                                   { return vch.end(); }
-    size_type size() const                           { return vch.size() - nReadPos; }
-    bool empty() const                               { return vch.size() == nReadPos; }
-    void resize(size_type n, value_type c=0)         { vch.resize(n + nReadPos, c); }
-    void reserve(size_type n)                        { vch.reserve(n + nReadPos); }
-    const_reference operator[](size_type pos) const  { return vch[pos + nReadPos]; }
-    reference operator[](size_type pos)              { return vch[pos + nReadPos]; }
-    void clear()                                     { vch.clear(); nReadPos = 0; }
-    iterator insert(iterator it, const char& x=char()) { return vch.insert(it, x); }
-    void insert(iterator it, size_type n, const char& x) { vch.insert(it, n, x); }
-    vector_type data() { return vch; }
-
-
-    /** insert
-     *
-     *  Insert data from first to last at the iterator it
-     *
-     *  @param[in] it The iterator insert point
-     *
-     *  @param[in] first The start of the insertion data
-     *
-     *  @param[in] last The end of the insertion data
-     *
-     **/
-    void insert(iterator it, const_iterator first, const_iterator last)
-    {
-        if (it == vch.begin() + nReadPos && last - first <= nReadPos)
-        {
-            // special case for inserting at the front when there's room
-            nReadPos -= (last - first);
-            memcpy(&vch[nReadPos], &first[0], last - first);
-        }
-        else
-            vch.insert(it, first, last);
-    }
-
-
-#if !defined(MAC_OSX)
-
-    /** insert
-     *
-     *  Insert data from first to last at the iterator it.
-     *  Fix for MaxOSX Compatability for XCode and Deployment 10.10.
-     *
-     *  @param[in] it The iterator insert point
-     *
-     *  @param[in] first The start of the insertion data
-     *
-     *  @param[in] last The end of the insertion data
-     *
-     **/
-    void insert(iterator it, std::vector<char>::const_iterator first, std::vector<char>::const_iterator last)
-    {
-        if (it == vch.begin() + nReadPos && last - first <= nReadPos)
-        {
-            // special case for inserting at the front when there's room
-            nReadPos -= (last - first);
-            memcpy(&vch[nReadPos], &first[0], last - first);
-        }
-        else
-            vch.insert(it, first, last);
-    }
-#endif
-
-
-#if !defined(_MSC_VER) || _MSC_VER >= 1300
-
-    /** insert
-     *
-     *  Insert data from first to last at the iterator it.
-     *  Support for Microsoft compiler compatability.
-     *
-     *  @param[in] it The iterator insert point
-     *
-     *  @param[in] first The start of the insertion data
-     *
-     *  @param[in] last The end of the insertion data
-     *
-     **/
-    void insert(iterator it, const char* first, const char* last)
-    {
-        if (it == vch.begin() + nReadPos && last - first <= nReadPos)
-        {
-            // special case for inserting at the front when there's room
-            nReadPos -= (last - first);
-            memcpy(&vch[nReadPos], &first[0], last - first);
-        }
-        else
-            vch.insert(it, first, last);
-    }
-#endif
-
-
-    /** erase
-     *
-     *  Erase the data element if it exists and return the erased location
-     *
-     *  @param[in] it The iterator erase point
-     *
-     *  @return The location of the erased element or begin if buffer is cleared
-     *
-     **/
-    iterator erase(iterator it)
-    {
-        if (it == vch.begin() + nReadPos)
-        {
-            // special case for erasing from the front
-            if (++nReadPos >= vch.size())
-            {
-                // whenever we reach the end, we take the opportunity to clear the buffer
-                nReadPos = 0;
-                return vch.erase(vch.begin(), vch.end());
-            }
-            return vch.begin() + nReadPos;
-        }
-        else
-            return vch.erase(it);
-    }
-
-
-    /** erase
-     *
-     *  Erase the data element if it exists and return the erased location
-     *
-     *  @param[in] first The begin of iterator erase range
-     *
-     *  @param[in] last The end of erase range
-     *
-     *  @return The location of the erased elements or begin if buffer is cleared
-     *
-     **/
-    iterator erase(iterator first, iterator last)
-    {
-        if (first == vch.begin() + nReadPos)
-        {
-            // special case for erasing from the front
-            if (last == vch.end())
-            {
-                nReadPos = 0;
-                return vch.erase(vch.begin(), vch.end());
-            }
-            else
-            {
-                nReadPos = (last - vch.begin());
-                return last;
-            }
-        }
-        else
-            return vch.erase(first, last);
-    }
-
-
-    /** Compact
-     *
-     *  Erase the buffer data before the read position to compact the size
-     *
-     **/
-    inline void Compact()
-    {
-        vch.erase(vch.begin(), vch.begin() + nReadPos);
-        nReadPos = 0;
-    }
-
-
-    /** Rewind
-     *
-     *  Move the read position back to the given position n
-     *
-     *  @param[in] n The position to move the read position back to
-     *
-     *  return True if n less than or equal to read position, false otherwise
-     *
-     **/
-    bool Rewind(size_type n)
-    {
-        // Rewind by n characters if the buffer hasn't been compacted yet
-        if (n > nReadPos)
-            return false;
-        nReadPos -= n;
-        return true;
-    }
-
-
-    /**
-     *  Stream subset
-     **/
-    void setstate(short bits, const char* psz)
-    {
-        state |= bits;
-        if (state & exceptmask)
-            THROW_WITH_STACKTRACE(std::ios_base::failure(psz));
-    }
-
-    bool eof() const             { return size() == 0; }
-    bool fail() const            { return state & (std::ios::badbit | std::ios::failbit); }
-    bool good() const            { return !eof() && (state == 0); }
-    void clear(short n)          { state = n; }  // name conflict with vector clear()
-    short exceptions()           { return exceptmask; }
-    short exceptions(short mask) { short prev = exceptmask; exceptmask = mask; setstate(0, "CDataStream"); return prev; }
-    CDataStream* rdbuf()         { return this; }
-    int in_avail()               { return size(); }
-
-    void SetType(int n)          { nSerType = n; }
-    int GetType()                { return nSerType; }
-    void SetVersion(int n)       { nSerVersion = n; }
-    int GetVersion()             { return nSerVersion; }
-    void ReadVersion()           { *this >> nSerVersion; }
-    void WriteVersion()          { *this << nSerVersion; }
-
-
-    /** read
-     *
-     *  Read into a section of raw data out from the stream
-     *
-     *  @param[in] pch The pointer to the begin of the raw data
-     *
-     *  @param[in] nSize The size in bytes of the raw data to write
-     *
-     *  return Returns a reference to the CDataStream object
-     *
-     **/
-    CDataStream& read(char* pch, int nSize)
-    {
-        // Read from the beginning of the buffer
-        assert(nSize >= 0);
-        uint32_t nReadPosNext = nReadPos + nSize;
-        if (nReadPosNext >= vch.size())
-        {
-            if (nReadPosNext > vch.size())
-            {
-                setstate(std::ios::failbit, "CDataStream::read() : end of data");
-                memset(pch, 0, nSize);
-                nSize = vch.size() - nReadPos;
-            }
-            memcpy(pch, &vch[nReadPos], nSize);
-            nReadPos = 0;
-            vch.clear();
-            return (*this);
-        }
-        memcpy(pch, &vch[nReadPos], nSize);
-        nReadPos = nReadPosNext;
-        return (*this);
-    }
-
-
-    /** ignore
-     *
-     *  ignore a section of data inside the CDataStream
-     *
-     *  @param[in] nSize The size in bytes of the data to ignore
-     *
-     *  return Returns a reference to the CDataStream object
-     *
-     **/
-    CDataStream& ignore(int nSize)
-    {
-        // Ignore from the beginning of the buffer
-        assert(nSize >= 0);
-        uint32_t nReadPosNext = nReadPos + nSize;
-        if (nReadPosNext >= vch.size())
-        {
-            if (nReadPosNext > vch.size())
-            {
-                setstate(std::ios::failbit, "CDataStream::ignore() : end of data");
-                nSize = vch.size() - nReadPos;
-            }
-            nReadPos = 0;
-            vch.clear();
-            return (*this);
-        }
-        nReadPos = nReadPosNext;
-        return (*this);
-    }
-
-
-    /** write
-     *
-     *  Write a section of raw data to the end of the buffer
-     *
-     *  @param[in] pch The pointer to the begin of the raw data
-     *
-     *  @param[in] nSize The size in bytes of the raw data to read
-     *
-     *  return Returns a reference to the CDataStream object
-     *
-     **/
-    CDataStream& write(const char* pch, int nSize)
-    {
-        // Write to the end of the buffer
-        assert(nSize >= 0);
-        vch.insert(vch.end(), pch, pch + nSize);
-        return (*this);
-    }
-
-
-    /** Serialize
-     *
-     *  Serialize an object into this CDataStram
-     *
-     *  @param[in] s The stream to write with
-     *
-     *  @param[in] nSerType The serialize type
-     *
-     *  @param[in] nSerVersion The serialize version
-     *
-     **/
-    template<typename Stream>
-    void Serialize(Stream& s, int nSerType, int nSerVersion) const
-    {
-        // Special case: stream << stream concatenates like stream += stream
-        if (!vch.empty())
-            s.write((char*)&vch[0], vch.size() * sizeof(vch[0]));
-    }
-
-
-    /** GetSerializeSize
-     *
-     *  Get the size in bytes of the serialize object
-     *
-     *  @param[in] obj The object to get the size of
-     *
-     *  @return The size in bytes
-     *
-     **/
-    template<typename T>
-    uint32_t GetSerializeSize(const T& obj)
-    {
-        // Tells the size of the object if serialized to this stream
-        return ::GetSerializeSize(obj, nSerType, nSerVersion);
-    }
-
-
-    /** operator<<
-     *
-     *  Serialize to this stream
-     *
-     **/
-    template<typename T>
-    CDataStream& operator<<(const T& obj)
-    {
-        ::Serialize(*this, obj, nSerType, nSerVersion);
-        return (*this);
-    }
-
-    /** operator>>
-     *
-     *  Unserialize from this stream
-     *
-     **/
-    template<typename T>
-    CDataStream& operator>>(T& obj)
-    {
-        ::Unserialize(*this, obj, nSerType, nSerVersion);
-        return (*this);
-    }
-};
 
 
 /** CAutoFile

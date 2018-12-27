@@ -246,7 +246,7 @@ namespace Legacy
 
         while(true) {
             /* Read next record */
-            CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
+            DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             if (fFlags == DB_SET_RANGE)
             {
                 /* Set key input to acentry<account><0> when set range flag is set (first iteration)
@@ -256,7 +256,7 @@ namespace Legacy
                 ssKey << std::make_tuple(std::string("acentry"), (fAllAccounts? std::string("") : strAccount), uint64_t(0));
             }
 
-            CDataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
+            DataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
             int ret = ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
 
             /* After initial read, change flag setting to DB_NEXT so additional reads just get the next database entry */
@@ -331,8 +331,8 @@ namespace Legacy
             while(true)
             {
                 /* Read next record */
-                CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
-                CDataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
+                DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
+                DataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
 
                 int ret = ReadAtCursor(pcursor, ssKey, ssValue);
 

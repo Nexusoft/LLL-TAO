@@ -90,7 +90,7 @@ namespace TAO::Ledger
             ANSI_COLOR_BRIGHT_WHITE "blockSig" ANSI_COLOR_RESET " = %s",
             nVersion, hashPrevBlock.ToString().substr(0, 20).c_str(),
             hashMerkleRoot.ToString().substr(0, 20).c_str(), nChannel,
-            nHeight, GetDifficulty(nBits, nChannel), nNonce, nTime, HexStr(vchBlockSig.begin(), vchBlockSig.end()));
+            nHeight, GetDifficulty(nBits, nChannel), nNonce, nTime, HexStr(vchBlockSig.begin(), vchBlockSig.end()).c_str());
         }
 
         /* Handle the verbose output for chain state. */

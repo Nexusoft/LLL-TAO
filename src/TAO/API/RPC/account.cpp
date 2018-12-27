@@ -258,7 +258,7 @@ namespace TAO::API
     //     if (!pwalletMain->GetKey(addr, key))
     //         throw JSONRPCError(-4, "Private key not available");
 
-    //     CDataStream ss(SER_GETHASH, 0);
+    //     DataStream ss(SER_GETHASH, 0);
     //     ss << Core::strMessageMagic;
     //     ss << strMessage;
 
@@ -292,7 +292,7 @@ namespace TAO::API
     //     if (fInvalid)
     //         throw JSONRPCError(-5, "Malformed base64 encoding");
 
-    //     CDataStream ss(SER_GETHASH, 0);
+    //     DataStream ss(SER_GETHASH, 0);
     //     ss << Core::strMessageMagic;
     //     ss << strMessage;
 
@@ -1246,7 +1246,7 @@ namespace TAO::API
     //     if (!Core::GetTransaction(hash, tx, hashBlock))
     //         throw JSONRPCError(-5, "No information available about transaction");
 
-    //     CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
+    //     DataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
     //     ssTx << tx;
     //     return HexStr(ssTx.begin(), ssTx.end());
     }
@@ -1264,7 +1264,7 @@ namespace TAO::API
 
     //     // parse hex string from parameter
     //     vector<unsigned char> txData(ParseHex(params[0].get_str()));
-    //     CDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
+    //     DataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
     //     bool fCheckInputs = false;
     //     if (jsonParams.size() > 1)
     //         fCheckInputs = (params[1].get_int() != 0);

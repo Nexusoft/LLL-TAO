@@ -37,7 +37,7 @@ namespace TAO
 
             Object(TypeObject classObjectIn, std::vector<uint8_t> vchOperations)
             {
-                CDataStream ssObject(SER_NETWORK, LLP::PROTOCOL_VERSION);
+                DataStream ssObject(SER_NETWORK, LLP::PROTOCOL_VERSION);
                 ssObject << classObjectIn;
 
                 std::vector<uint8_t> vState(ssObject.begin(), ssObject.end());
@@ -48,7 +48,7 @@ namespace TAO
 
             Object(TypeObject classObjectIn)
             {
-                CDataStream ssObject(SER_NETWORK, LLP::PROTOCOL_VERSION);
+                DataStream ssObject(SER_NETWORK, LLP::PROTOCOL_VERSION);
                 ssObject << classObjectIn;
 
                 std::vector<uint8_t> vState(ssObject.begin(), ssObject.end());
@@ -69,7 +69,7 @@ namespace TAO
             {
                 TypeObject classObject;
 
-                CDataStream ssObject(vchState, SER_NETWORK, LLP::PROTOCOL_VERSION);
+                DataStream ssObject(vchState, SER_NETWORK, LLP::PROTOCOL_VERSION);
                 ssObject >> classObject;
 
                 return classObject;

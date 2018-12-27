@@ -119,7 +119,7 @@ namespace LLP
         bool TritiumNode::ProcessPacket()
         {
 
-            CDataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
+            DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
             switch(INCOMING.MESSAGE)
             {
 

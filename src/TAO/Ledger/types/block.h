@@ -16,6 +16,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <Util/include/runtime.h>
+
 //forward declerations for BigNum
 namespace LLC
 {
@@ -86,7 +88,14 @@ namespace TAO::Ledger
 		 *	@param[in] nHeightIn The height this block is being created at.
 		 *
 		**/
-		Block(uint32_t nVersionIn, uint1024_t hashPrevBlockIn, uint32_t nChannelIn, uint32_t nHeightIn) : nVersion(nVersionIn), hashPrevBlock(hashPrevBlockIn), nChannel(nChannelIn), nHeight(nHeightIn), nBits(0), nNonce(0), nTime(0) { }
+		Block(uint32_t nVersionIn, uint1024_t hashPrevBlockIn, uint32_t nChannelIn, uint32_t nHeightIn)
+		: nVersion(nVersionIn)
+		, hashPrevBlock(hashPrevBlockIn)
+		, nChannel(nChannelIn)
+		, nHeight(nHeightIn)
+		, nBits(0)
+		, nNonce(0)
+		, nTime(runtime::UnifiedTimestamp()) { }
 
 
 		/** Set the block to Null state. **/

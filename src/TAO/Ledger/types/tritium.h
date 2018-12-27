@@ -73,7 +73,11 @@ namespace TAO::Ledger
 
 
         /** The default constructor. **/
-		TritiumBlock()  { SetNull(); }
+		TritiumBlock()
+        : Block()
+        {
+            SetNull();
+        }
 
 
         /** Check a tritium block for consistency. **/

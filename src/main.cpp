@@ -36,6 +36,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/supply.h>
 #include <TAO/API/include/accounts.h>
 
+
 /* Declare the Global LLD Instances. */
 namespace LLD
 {
@@ -44,12 +45,14 @@ namespace LLD
     LocalDB*    locDB;
 }
 
+
 /* Declare the Global LLP Instances. */
 namespace LLP
 {
     Server<TritiumNode>* TRITIUM_SERVER;
     Server<LegacyNode> * LEGACY_SERVER;
 }
+
 
 int main(int argc, char** argv)
 {
@@ -88,14 +91,6 @@ int main(int argc, char** argv)
     LLD::regDB = new LLD::RegisterDB("r+");
     LLD::legDB = new LLD::LedgerDB("r+");
     LLD::locDB = new LLD::LocalDB("r+");
-
-    TAO::Ledger::BlockState block;
-    block.nVersion = 10;
-    block.hashMerkleRoot = LLC::GetRand512();
-
-    block.print();
-
-    return 0;
 
 
     /* Initialize the Tritium Server. */

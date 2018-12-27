@@ -75,8 +75,6 @@ namespace TAO::Ledger
 
         bool Add(Legacy::Transaction tx);
     };
-
-    Mempool mempool;
 }
 
 #endif

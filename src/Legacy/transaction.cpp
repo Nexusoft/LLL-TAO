@@ -52,10 +52,10 @@ namespace Legacy
 	/* Returns the hash of this object. */
 	uint512_t Transaction::GetHash() const
 	{
-        // Most of the time is spent allocating and deallocating CDataStream's
+        // Most of the time is spent allocating and deallocating DataStream's
 	    // buffer.  If this ever needs to be optimized further, make a CStaticStream
 	    // class with its buffer on the stack.
-	    CDataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+	    DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
 	    ss.reserve(10000);
 	    ss << *this;
 	    return LLC::SK512(ss.begin(), ss.end());

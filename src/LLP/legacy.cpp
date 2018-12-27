@@ -188,7 +188,7 @@ namespace LLP
     bool LegacyNode::ProcessPacket()
     {
 
-        CDataStream ssMessage(INCOMING.DATA, SER_NETWORK, MIN_PROTO_VERSION);
+        DataStream ssMessage(INCOMING.DATA, SER_NETWORK, MIN_PROTO_VERSION);
         if(INCOMING.GetMessage() == "getoffset")
         {
             /* Don't service unified seeds unless time is unified. */

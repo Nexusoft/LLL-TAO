@@ -183,7 +183,7 @@ namespace LLD
 
                     /* Read the State and Size of Sector Header. */
                     SectorKey cKey;
-                    CDataStream ssKey(vData, SER_LLD, DATABASE_VERSION);
+                    DataStream ssKey(vData, SER_LLD, DATABASE_VERSION);
                     ssKey >> cKey;
 
 
@@ -259,7 +259,7 @@ namespace LLD
 
 
             /* Handle the Sector Key Serialization. */
-            CDataStream ssKey(SER_LLD, DATABASE_VERSION);
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey.reserve(cKey.Size());
             ssKey << cKey;
 
@@ -332,7 +332,7 @@ namespace LLD
 
 
                 /* De-serialize the Header. */
-                CDataStream ssHeader(vData, SER_LLD, DATABASE_VERSION);
+                DataStream ssHeader(vData, SER_LLD, DATABASE_VERSION);
                 ssHeader >> cKey;
 
 

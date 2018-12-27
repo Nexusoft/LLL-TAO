@@ -24,7 +24,6 @@ ________________________________________________________________________________
 namespace TAO::Ledger
 {
 
-
 	/* For debugging Purposes seeing block state data dump */
 	std::string TritiumBlock::ToString() const
     {
@@ -42,6 +41,7 @@ namespace TAO::Ledger
 			ANSI_COLOR_BRIGHT_WHITE "vtx.size()" ANSI_COLOR_RESET " = %u)",
         nVersion, hashPrevBlock.ToString().substr(0, 20).c_str(), hashMerkleRoot.ToString().substr(0, 20).c_str(), nChannel, nBits, nNonce, nTime, HexStr(vchBlockSig.begin(), vchBlockSig.end()).c_str(), vtx.size());
     }
+
 
 	/* For debugging purposes, printing the block to stdout */
 	void TritiumBlock::print() const
@@ -114,13 +114,16 @@ namespace TAO::Ledger
 		if (uniqueTx.size() != vtx.size())
 			return debug::error(FUNCTION "duplicate transaction", __PRETTY_FUNCTION__);
 
+
 		/* Check the merkle root. */
 		if (hashMerkleRoot != BuildMerkleTree(txHash))
 			return debug::error(FUNCTION "hashMerkleRoot mismatch", __PRETTY_FUNCTION__);
 
+
 		/* Get the key from the producer. */
 		LLC::ECKey key;
 		key.SetPubKey(producer.vchPubKey);
+
 
 		/* Check the Block Signature. */
 		if (!VerifySignature(key))
