@@ -35,8 +35,8 @@ namespace TAO
 
 namespace Legacy
 {
-    
-    /* forward declarations */    
+
+    /* forward declarations */
     class CScript;
     class CAccount;
     class CAccountingEntry;
@@ -65,7 +65,7 @@ namespace Legacy
      *
      *  The wallet database, through its supported operations, stores values
      *  for multiple types of entries (keys) in the database, including:
-     *  
+     *
      *    - "mkey"<ID> = Master key for unlocking/descrypting encrypted database entries
      *    - "name"<account> = Logical name (label) for an account/Nexus address
      *    - "defaultkey" = Default public key value
@@ -91,7 +91,7 @@ namespace Legacy
          *  There may be multiple instances of CWalletDB accessing a database, so this
          *  is a static value stored across instances.
          *
-         *  Used by the flush wallet thread to track if there have been updates since 
+         *  Used by the flush wallet thread to track if there have been updates since
          *  its last iteration that need to be flushed to disk.
          *
          **/
@@ -99,12 +99,12 @@ namespace Legacy
 
 
         /**
-         *  An internal counter for accounting entries. 
+         *  An internal counter for accounting entries.
          *  At load time, this value is calculated and assigned when the wallet is loaded,
          *  then incremented each time a new accounting entry is written to the database.
          *  The resulting entry number is used as part of the database key.
          *
-         *  Supports multiple accounting entries for the same account with each having a 
+         *  Supports multiple accounting entries for the same account with each having a
          *  unique database key.
          **/
         static uint64_t nAccountingEntryNumber;
@@ -114,7 +114,7 @@ namespace Legacy
          *
          *  Initializes database access to wallet database using CWalletDB::DEFAULT_WALLET_DB
          *  for the file name.
-         *  
+         *
          *
          *  @param[in] pszMode A string containing one or more access mode characters
          *                     defaults to r+ (read and append). An empty or null string is
@@ -123,12 +123,12 @@ namespace Legacy
          *  @see CDB for modes
          *
          **/
-        CWalletDB(const char* pszMode="r+") : 
+        CWalletDB(const char* pszMode="r+") :
             CDB(CWalletDB::DEFAULT_WALLET_DB, pszMode)
         { }
 
 
-        /** Constructor 
+        /** Constructor
          *
          *  Initializes database access for a given file name and access mode.
          *
@@ -142,7 +142,7 @@ namespace Legacy
          *  @see CDB for modes
          *
          **/
-        CWalletDB(std::string strFileName, const char* pszMode="r+") : 
+        CWalletDB(std::string strFileName, const char* pszMode="r+") :
             CDB(strFileName, pszMode)
         { }
 
@@ -163,13 +163,13 @@ namespace Legacy
          *  CWalletDB supports multiple master key entries, identified by nID. This supports
          *  the potential for the wallet database to have multiple passphrases.
          *
-         *  After wallet database content is encrypted, this encryption cannot be reversed. Therefore, 
+         *  After wallet database content is encrypted, this encryption cannot be reversed. Therefore,
          *  the master key entry is *required* and cannot be removed, only overwritten with an
          *  updated value (after changing the passphrase, for example).
          *
          *  Master key settings should be populated with encryption settings and encrypted key value
          *  before calling this method. The general process looks like this:
-         * 
+         *
          *    - Create CCrypter
          *    - Create CMasterKey
          *    - Populate CMasterKey values for salt, derivation method, number of iterations
@@ -181,7 +181,7 @@ namespace Legacy
          *  @see CCrypter::Encrypt
          *  @see CMasterKey
          *
-         *  @param[in] nMasterKeyId The key Id to identify a particuler master key entry. 
+         *  @param[in] nMasterKeyId The key Id to identify a particuler master key entry.
          *
          *  @param[in] kMasterKey Encrypted key value along with the encryption settings used to encrypt it
          *
@@ -206,11 +206,11 @@ namespace Legacy
 
         /** ReadAccount
          *
-         *  Reads the wallet account data associated with an account (Nexus address). 
-         *  This data includes the public key. This key value can then be used to 
+         *  Reads the wallet account data associated with an account (Nexus address).
+         *  This data includes the public key. This key value can then be used to
          *  retrieve the corresponding private key as needed.
          *
-         *  @param[in] strAccount Nexus address in string form of account to read 
+         *  @param[in] strAccount Nexus address in string form of account to read
          *
          *  @param[out] account The wallet account data
          *
@@ -224,7 +224,7 @@ namespace Legacy
          *
          *  Stores the wallet account data for an address in the database.
          *
-         *  @param[in] strAccount Nexus address in string form of account to write 
+         *  @param[in] strAccount Nexus address in string form of account to write
          *
          *  @param[in] account The wallet account data
          *
@@ -238,7 +238,7 @@ namespace Legacy
          *
          *  Reads a logical name (label) for an address into the database.
          *
-         *  @param[in] strAddress Nexus address in string form of name to read 
+         *  @param[in] strAddress Nexus address in string form of name to read
          *
          *  @param[out] strName The value of the logical name, or an empty string if address not in database
          *
@@ -252,7 +252,7 @@ namespace Legacy
          *
          *  Stores a logical name (label) for an address in the database.
          *
-         *  @param[in] strAddress Nexus address in string form of name to write 
+         *  @param[in] strAddress Nexus address in string form of name to write
          *
          *  @param[in] strName Logical name to write
          *
@@ -266,9 +266,9 @@ namespace Legacy
          *
          *  Removes the name entry associated with an address.
          *
-         *  @param[in] strAddress Nexus address in string form of name to erase 
+         *  @param[in] strAddress Nexus address in string form of name to erase
          *
-         *  @return true if database entry successfully removed 
+         *  @return true if database entry successfully removed
          *
          **/
         bool EraseName(const std::string& strAddress);
@@ -341,7 +341,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret, 
+        bool WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret,
                              const bool fEraseUnencryptedKey = true);
 
 

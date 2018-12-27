@@ -40,6 +40,11 @@ ________________________________________________________________________________
 #include <Legacy/wallet/walletdb.h>
 
 
+namespace Legacy
+{
+    Legacy::CWallet* pwalletMain;
+}
+
 /* Declare the Global LLD Instances. */
 namespace LLD
 {
@@ -95,10 +100,11 @@ int main(int argc, char** argv)
     LLD::legDB = new LLD::LedgerDB("r+");
     LLD::locDB = new LLD::LocalDB("r+");
 
+
     /** Load the Wallet Database. **/
     bool fFirstRun;
-    Legacy::CWallet* pwalletMain = new Legacy::CWallet(config::GetArg("-wallet", "wallet.dat"));
-    int nLoadWalletRet = pwalletMain->LoadWallet(fFirstRun);
+    Legacy::pwalletMain = new Legacy::CWallet(config::GetArg("-wallet", "wallet.dat"));
+    int nLoadWalletRet = Legacy::pwalletMain->LoadWallet(fFirstRun);
     if (nLoadWalletRet != Legacy::DB_LOAD_OK)
     {
         if (nLoadWalletRet == Legacy::DB_CORRUPT)

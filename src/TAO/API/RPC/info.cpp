@@ -26,10 +26,10 @@ namespace TAO::API
 {
 
     /* getinfo
-       Returns an object containing various state info */ 
-    json::json RPC::GetInfo(const json::json& jsonParams, bool fHelp)
+       Returns an object containing various state info */
+    json::json RPC::GetInfo(const json::json& params, bool fHelp)
     {
-        if (fHelp || jsonParams.size() != 0)
+        if (fHelp || params.size() != 0)
             return std::string(
                 "getinfo"
                 " - Returns an object containing various state info.");
@@ -73,11 +73,11 @@ namespace TAO::API
 
     /* getpeerinfo
        Returns data about each connected network node */
-    json::json RPC::GetPeerInfo(const json::json& jsonParams, bool fHelp)
+    json::json RPC::GetPeerInfo(const json::json& params, bool fHelp)
     {
         json::json response;
 
-        if (fHelp || jsonParams.size() != 0)
+        if (fHelp || params.size() != 0)
                  return std::string(
                      "getpeerinfo"
                      " - Returns data about each connected network node.");
@@ -137,9 +137,9 @@ namespace TAO::API
 
     /* getmininginfo
        Returns an object containing mining-related information.*/
-    json::json RPC::GetMiningInfo(const json::json& jsonParams, bool fHelp)
+    json::json RPC::GetMiningInfo(const json::json& params, bool fHelp)
     {
-        if (fHelp || jsonParams.size() != 0)
+        if (fHelp || params.size() != 0)
             return std::string(
                 "getmininginfo"
                 " - Returns an object containing mining-related information.");

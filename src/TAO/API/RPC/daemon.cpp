@@ -19,9 +19,9 @@ ________________________________________________________________________________
 
 namespace TAO::API
 {
-    // json::json stop(const json::json& jsonParams, bool fHelp)
+    // json::json stop(const json::json& params, bool fHelp)
     // {
-    //     if (fHelp || jsonParams.size() != 0)
+    //     if (fHelp || params.size() != 0)
     //         return std::string(
     //             "stop"
     //             " - Stop Nexus server.");
@@ -32,9 +32,9 @@ namespace TAO::API
 
     /* getconnectioncount
        Returns the number of connections to other nodes */
-    json::json RPC::GetConnectionCount(const json::json& jsonParams, bool fHelp)
+    json::json RPC::GetConnectionCount(const json::json& params, bool fHelp)
     {
-        if (fHelp || jsonParams.size() != 0)
+        if (fHelp || params.size() != 0)
             return std::string(
                 "getconnectioncount"
                 " - Returns the number of connections to other nodes.");
@@ -43,9 +43,9 @@ namespace TAO::API
     }
 
     /* Restart all node connections */
-    json::json RPC::Reset(const json::json& jsonParams, bool fHelp)
+    json::json RPC::Reset(const json::json& params, bool fHelp)
     {
-        if(fHelp || jsonParams.size() != 0)
+        if(fHelp || params.size() != 0)
             return std::string(
                 "reset"
                 " - Restart all node connections");
