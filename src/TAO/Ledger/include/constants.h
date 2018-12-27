@@ -58,7 +58,7 @@ namespace TAO::Ledger
 
     /** Nexus Coinbase/Coinstake Maturity Settings **/
     const uint32_t TESTNET_MATURITY_BLOCKS = 100;
-    const uint32_t NEXUS_MATURITY_BLOCKS = 120;
+    const uint32_t NEXUS_MATURITY_BLOCKS   = 120;
 
 }
 

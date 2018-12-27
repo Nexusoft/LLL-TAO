@@ -57,7 +57,7 @@ namespace Legacy
                         return 0;
                     }
 
-                    containingBlock = containingBlockState.blockThis;
+                    containingBlock = static_cast<TAO::Ledger::TritiumBlock>(containingBlockState);
                 }
                 else
                 {
@@ -131,7 +131,7 @@ namespace Legacy
         if (!blockState.IsInMainChain())
             return 0;
 
-        return TAO::Ledger::ChainState::nBestHeight - blockState.blockThis.nHeight + 1;
+        return TAO::Ledger::ChainState::nBestHeight - blockState.nHeight + 1;
 
     }
 

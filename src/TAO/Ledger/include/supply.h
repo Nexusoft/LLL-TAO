@@ -1,76 +1,160 @@
 /*__________________________________________________________________________________________
- 
+
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
-			
+
 			(c) Copyright The Nexus Developers 2014 - 2018
-			
+
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
-			
+
 			"ad vocem populi" - To The Voice of The People
-  
+
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_CORE_INCLUDE_SUPPLY_H
-#define NEXUS_CORE_INCLUDE_SUPPLY_H
+#ifndef NEXUS_TAO_LEDGER_INCLUDE_SUPPLY_H
+#define NEXUS_TAO_LEDGER_INCLUDE_SUPPLY_H
 
-#include "../../LLC/types/uint1024.h"
+#include <LLC/types/uint1024.h>
 
-namespace Core
+namespace TAO::Ledger
 {
-	
-	class CBlockIndex;
-	
+	class BlockState;
+
 	/** These values reflect the Three Decay Equations.
-	 * 
+	 *
 	 * 	50 * e ^ (-0.0000011  * nMinutes) + 1.0
 	 * 	10 * e ^ (-0.00000055 * nMinutes) + 1.0
-	 * 	 1 * e ^ (-0.00000059 * nMinutes) + 0.032 
+	 * 	 1 * e ^ (-0.00000059 * nMinutes) + 0.032
+	 *
 	 */
-	extern double decay[3][3];
-	
-	
-	/* Get the Total Amount to be Released at a given Minute since the NETWORK_TIMELOCK. */
-	int64_t GetSubsidy(int nMinutes, int nSerType);
-	
-	
-	/* Calculate the Compounded amount of NXS to be released over the (nInterval) minutes. */
-	int64_t SubsidyInterval(int nMinutes, int nInterval);
-	
-	
-	/* Calculate the Compounded amount of NXS that should "ideally" have been created to this minute. */
-	int64_t CompoundSubsidy(int nMinutes, int nTypes = 3);
-	
-	
-	/* Get the total supply of NXS in the chain from the Index Objects that is calculated as chain is built. */
-	int64_t GetMoneySupply(CBlockIndex* pindex);
-	
-	
-	/* Get the age of the Nexus Blockchain in a figure of Seconds. */
-	int64_t GetChainAge(int64_t nTime);
-	
-	
-	/* Get the Fractional Reward basing the total amount on a number of minutes vs a total reward. */
-	int64_t GetFractionalSubsidy(int nMinutes, int nSerType, double nFraction);
-	
-	
-	/* Get the Coinbase Rewards based on the Reserve Balances to keep the Coinbase rewards under the Reserve Production Rates. */
-	int64_t GetCoinbaseReward(const CBlockIndex* pindex, int nChannel, int nSerType);
-	
-	
-	/* Release a certain amount of Nexus into the Reserve System at a given Minute of time. */
-	int64_t ReleaseRewards(int nTimespan, int nStart, int nSerType);
-	
-	
-	/* Get the total amount released into this given reserve by this point in time in the Block Index Object. */
-	int64_t GetReleasedReserve(const CBlockIndex* pindex, int nChannel, int nSerType);
-	
-	
-	/* Check if there is any Nexus that will be released on the Next block in case the reserve values have been severely depleted. */
-	bool  ReleaseAvailable(const CBlockIndex* pindex, int nChannel);
-	
+	const double decay[3][3] =
+		{
+			{50.0, -0.0000011, 1.0},
+			{10.0, -0.00000055, 1.0},
+			{1.0, -0.00000059, 0.032}
+		};
+
+
+	/** Get Subsidy
+	 *
+	 *  Get the Total Amount to be Released at a given Minute since the NETWORK_TIMELOCK.
+	 *
+	 *  @param[in] nMinutes The minutes to calculate for.
+	 *  @param[in] nType The subsidy to calculate for.
+	 *
+	 *  @return The total reward for interval.
+	 *
+	 **/
+	uint64_t GetSubsidy(uint32_t nMinutes, uint32_t nType);
+
+
+	/** Subsidy Interval
+	 *
+	 *  Calculate the Compounded amount of NXS to be released over the (nInterval) minutes.
+	 *
+	 *  @param[in] nMinutes The minutes to calculate for.
+	 *  @param[in] nInterval The interval to calculate in.
+	 *
+	 *  @return The subisdy for given interval.
+	 *
+	 **/
+	uint64_t SubsidyInterval(uint32_t nMinutes, uint32_t nInterval);
+
+
+	/** Compound Subsidy
+	 *
+	 *  Calculate the Compounded amount of NXS that should "ideally" have been created to this minute.
+	 *
+	 *  @param[in] nMinutes The minutes to calculate for.
+	 *  @param[in] nTypes The subsidy to calculate for.
+	 *
+	 *  @return The total reward compounded over minutes.
+	 *
+	 **/
+	uint64_t CompoundSubsidy(int32_t nMinutes, uint8_t nTypes = 3);
+
+
+	/** Get Money Supply
+	 *
+	 *  Get the total supply of NXS in the chain from the state.
+	 *
+	 *  @param[in] nMinutes The minutes to calculate for.
+	 *  @param[in] nType The subsidy to calculate for.
+	 *
+	 *  @return The total reward compounded over minutes.
+	 *
+	 **/
+	uint64_t GetMoneySupply(BlockState state);
+
+
+	/** Get Chain Age
+	 *
+	 *  Get the age of the Nexus blockchain in seconds.
+	 *
+	 *  @param[in] nTime The timestamp to check from
+	 *
+	 *  @return The seconds since network time-lock
+	 *
+	 **/
+	uint32_t GetChainAge(uint64_t nTime);
+
+
+	/** Get Fractional Subsidy
+	 *
+	 *  Get a fractional reward based on time.
+	 *
+	 *  @param[in] nMinutes The minutes to check from
+	 *  @param[in] nType The coinbase type to get.
+	 *  @param[in] nFraction The fraction to get subsidy for
+	 *
+	 *  @return The subsidy reward at a fractional amount.
+	 *
+	 **/
+	uint64_t GetFractionalSubsidy(uint32_t nMinutes, uint8_t nType, double nFraction);
+
+
+	/** Get Coinbase Reward
+	 *
+	 *  Get the Coinbase Rewards based on the Reserve Balances to keep the Coinbase
+	 *  rewards under the Reserve Production Rates.
+	 *
+	 *  @param[in] state The block state object to search from.
+	 *  @param[in] nChannel The channel to get reward for.
+	 *  @param[in] nType The coinbase output type.
+	 *
+	 *  @return The subsidy reward.
+	 *
+	 **/
+	uint64_t GetCoinbaseReward(const BlockState state, uint32_t nChannel, uint8_t nType);
+
+
+	/** Release Rewards
+	 *
+	 *  Release a certain amount of Nexus into the Reserve System at a given Minute of time.
+	 *
+	 *  @param[in] nTimespan The timespan to check release from.
+	 *  @param[in] nStart The starting minutes to start from.
+	 *  @param[in] nType The coinbase output type.
+	 *
+	 *  @return The total released to reserves.
+	 *
+	 **/
+	uint64_t ReleaseRewards(uint32_t nTimespan, uint32_t nStart, uint8_t nType);
+
+
+	/** Get Released Reserve
+	 *
+	 *  Get the total amount released into this given reserve by this point in time in the block state
+	 *
+	 *  @param[in] state The block state object to search from.
+	 *  @param[in] nChannel The channel to get reward for.
+	 *  @param[in] nType The coinbase output type.
+	 *
+	 *  @return The released reserves.
+	 *
+	 **/
+	uint64_t GetReleasedReserve(const BlockState state, uint32_t nChannel, uint8_t nType);
+
 }
 
 #endif
-
-

@@ -1,57 +1,121 @@
 /*__________________________________________________________________________________________
- 
+
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
-			
+
 			(c) Copyright The Nexus Developers 2014 - 2018
-			
+
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
-			
+
 			"ad vocem populi" - To The Voice of The People
-  
+
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_CORE_INCLUDE_DIFFICULTY_H
-#define NEXUS_CORE_INCLUDE_DIFFICULTY_H
+#ifndef NEXUS_TAO_LEDGER_INCLUDE_DIFFICULTY_H
+#define NEXUS_TAO_LEDGER_INCLUDE_DIFFICULTY_H
 
-namespace Core
+#include <LLC/types/uint1024.h>
+
+namespace TAO::Ledger
 {
-	class CBlockIndex;
-	
-	
+	class BlockState;
+
+
 	/* Target Timespan of 300 Seconds. */
 	const uint32_t nTargetTimespan = 300;
-	
-	
-	/* Determines the Decimal of nBits per Channel for a decent "Frame of Reference". Has no functionality in Network Operation. */
+
+
+	/* Target Timespan of 150 seconds. */
+	const uint32_t STAKE_TARGET_SPACING = 150;
+
+
+	/** Get Difficulty
+	 *
+	 *  Determines the Decimal of nBits per Channel for a decent "Frame of Reference".
+	 *  Has no functionality in Network Operation.
+	 *
+	 *  @param[in] nBits The bits to convert to double
+	 *  @param[in] nChannel The channel to get difficulty for.
+	 *
+	 *  @return the difficulty value.
+	 *
+	 **/
 	double GetDifficulty(uint32_t nBits, int nChannel);
-	
-	
-	/* Break the Chain Age in Minutes into Days, Hours, and Minutes. */
+
+
+	/** Get Chain Times
+	 *
+	 *  Break the Chain Age in Minutes into Days, Hours, and Minutes.
+	 *
+	 *  @param[in] nAge The age in seconds
+	 *  @param[out] nDays The days from age.
+	 *  @param[out] nHours The hours from age.
+	 *  @param[out] nMinutes The minutes from age.
+	 *
+	 **/
 	void GetChainTimes(uint32_t nAge, uint32_t& nDays, uint32_t& nHours, uint32_t& nMinutes);
-	
-	
-	/* Get Weighted Times functions to weight the average on an iterator */
-	int64_t GetWeightedTimes(const CBlockIndex* pindex, uint32_t nDepth);
 
-	
-	/* Switching function for each difficulty re-target [each channel uses their own version] */
-	uint32_t GetNextTargetRequired(const CBlockIndex* pindex, int nChannel);
-	
-	
-	/* Trust Channel Retargeting: Modulate Difficulty based on production rate. */
-	uint32_t RetargetTrust(const CBlockIndex* pindex);
-	
-	
-	/* Prime Channel Retargeting. Very different than GPU or POS retargeting. Scales the Maximum
-		Increase / Decrease by Network Difficulty. This helps to keep increases more time based than
-		mathematically based. This means that as the difficulty rises, the maximum up/down in difficulty
-		will decrease keeping the time difference in difficulty jumps the same from diff 1 - 100. */
-	uint32_t RetargetPrime(const CBlockIndex* pindex);
 
-	
-	/* Hash Channel Retargeting: Modulate Difficulty based on production rate. */
-	uint32_t RetargetHash(const CBlockIndex* pindex);
+	/** Get Weighted Times
+	 *
+	 *  Gets a block time from a weighted average at given depth.
+	 *
+	 *  @param[in] state The block state to search from.
+	 *  @param[in] nDepth The depth to search back.
+	 *
+	 *  @return the new weighted time.
+	 *
+	 **/
+	uint64_t GetWeightedTimes(const BlockState state, uint32_t nDepth);
+
+
+	/** Get Next Target Required
+	 *
+	 *  Switching function for each channel difficulty adjustments.
+	 *
+	 *  @param[in] state The block state to retarget from.
+	 *  @param[in] nChannel The channel to retarget for.
+	 *
+	 *  @return the new bits required.
+	 *
+	 **/
+	uint32_t GetNextTargetRequired(const BlockState state, int nChannel);
+
+
+	/** Retarget Trust
+	 *
+	 *  Retarget a trust block based on seperate specifications
+	 *
+	 *  @param[in] state The block state to retarget from.
+	 *
+	 *  @return the new bits required.
+	 *
+	 **/
+	uint32_t RetargetTrust(const BlockState state);
+
+
+	/** Retarget Trust
+	 *
+	 *  Scales the maximum increase or decrease by network difficulty.
+	 *
+	 *  @param[in] state The block state to retarget from.
+	 *
+	 *  @return the new bits required.
+	 *
+	 **/
+	uint32_t RetargetPrime(const BlockState state);
+
+
+	/** Retarget Trust
+	 *
+	 *  Retarget the hashing channel by seperate specifications.
+	 *
+	 *  @param[in] state The block state to retarget from.
+	 *
+	 *  @return the new bits required.
+	 *
+	 **/
+	uint32_t RetargetHash(const BlockState state);
 }
 
 #endif

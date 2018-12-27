@@ -150,6 +150,8 @@ OBJS= \
 	build/Ledger_block.o \
 	build/Ledger_prime.o \
 	build/Ledger_state.o \
+	build/Ledger_supply.o \
+	build/Ledger_difficulty.o \
 	build/Ledger_chainstate.o \
 	build/Ledger_tritium.o \
 	build/Ledger_transaction.o \

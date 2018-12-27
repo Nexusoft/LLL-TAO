@@ -848,19 +848,19 @@ namespace Legacy
     {
         /* Count the number of transactions process for this wallet to use as return value */
         int nTransactionCount = 0;
-        TAO::Ledger::BlockState blockState;
+        TAO::Ledger::BlockState block;
 
         if (pstartBlock == nullptr)
         {
             /* Use start of chain */
-            if (!LLD::legDB->ReadBlock(TAO::Ledger::ChainState::hashBestChain, blockState))
+            if (!LLD::legDB->ReadBlock(TAO::Ledger::ChainState::hashBestChain, block))
             {
                 debug::log(0, "Error: CWallet::ScanForWalletTransactions() could not get start of chain");
                 return 0;
             }
         }
         else
-            blockState = *pstartBlock;
+            block = *pstartBlock;
 
         { // Begin lock scope
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
@@ -870,8 +870,6 @@ namespace Legacy
 
             while (!config::fShutdown)
             {
-                /* Get next block in the chain */
-                TAO::Ledger::TritiumBlock& block = blockState.blockThis;
 
                 /* Scan each transaction in the block and process those related to this wallet */
                 for(auto item : block.vtx)
@@ -894,7 +892,7 @@ namespace Legacy
                 }
 
                 /* Move to next block. Will return false when reach end of chain, ending the while loop */
-                if (!blockState.Next())
+                if (!block.Next())
                     break;
             }
         } // End lock scope

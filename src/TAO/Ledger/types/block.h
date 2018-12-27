@@ -66,7 +66,7 @@ namespace TAO::Ledger
 
 
 		/** The Block's timestamp. This number is locked into the signature hash. **/
-		uint32_t nTime;
+		uint32_t nTime; //TODO: make this 64 bit
 
 
 		/** The bytes holding the blocks signature. Signed by the block creator before broadcast. **/

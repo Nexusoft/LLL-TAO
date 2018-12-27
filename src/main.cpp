@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLC/include/random.h>
+
 #include <LLD/include/global.h>
 
 #include <TAO/Ledger/types/sigchain.h>
@@ -86,6 +88,14 @@ int main(int argc, char** argv)
     LLD::regDB = new LLD::RegisterDB("r+");
     LLD::legDB = new LLD::LedgerDB("r+");
     LLD::locDB = new LLD::LocalDB("r+");
+
+    TAO::Ledger::BlockState block;
+    block.nVersion = 10;
+    block.hashMerkleRoot = LLC::GetRand512();
+
+    block.print();
+
+    return 0;
 
 
     /* Initialize the Tritium Server. */
