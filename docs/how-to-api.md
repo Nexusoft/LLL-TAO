@@ -12,11 +12,25 @@ http://localhost:8080/api/<method>?<key>=<value>&<key1>=<value1>
 * Use a web browser with a POST based request, where POST body contains
 parameters:
 
+```
 http://localhost:8080/api/<method>
+```
+
+An example form would look like this:
+```
+<form action='http://localhost:8080/api/<method>' method='post'>
+<input type = 'text' name = '<key>'  value = '<value>' >
+<input type = 'text' name = '<key1>' value = '<value2>'>
+
+<input type = 'submit'>
+</form>
+```
 
 * Use the the nexus command-line by specifying the -api flag:
 
+```
 ./nexus -api api <method> <key>=<value> <key1>=<value1>
+```
 
 The API DOES NOT yet support URL encoding, so don't use spaces in any of your
 values otherwise you will run into problems.
