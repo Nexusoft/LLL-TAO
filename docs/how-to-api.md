@@ -56,7 +56,7 @@ allocators, but the remote endpoint can still gather your credentials
 when you submit an API call. This API is meant for a service node you
 control only.
 
-The Accounts API can be found repo path:
+The Accounts API can be found in the following repo path:
 
 [LLL-TAO/docs/API/ACCOUNTS.MD](API/ACCOUNTS.MD)
 
@@ -68,7 +68,7 @@ logistics. It's main aim is designed for managing the routes and
 movements along a supply chain, along with reviewing the history of
 events associated with changes of custody.
 
-The Supply API can be found in repo path:
+The Supply API can be found in the following repo path:
 
 The list of commands can be found:
 [LLL-TAO/docs/API/SUPPLY.MD](API/SUPPLY.MD)
