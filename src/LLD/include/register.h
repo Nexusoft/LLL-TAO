@@ -34,21 +34,111 @@ namespace LLD
         RegisterDB(const char* pszMode="r+")
         : SectorDatabase("registers", pszMode) {}
 
+
+        /** Write state
+         *
+         *  Writes a state register to the register database.
+         *
+         *  @param[in] hashRegister The register address.
+         *  @param[in] state The state register to write.
+         *
+         *  @return true if write was successul.
+         *
+         **/
         bool WriteState(uint256_t hashRegister, TAO::Register::State state)
         {
             return Write(std::make_pair(std::string("state"), hashRegister), state);
         }
 
+
+        /** Read state
+         *
+         *  Read a state register from the register database.
+         *
+         *  @param[in] hashRegister The register address.
+         *  @param[out] state The state register to read.
+         *
+         *  @return true if read was successul.
+         *
+         **/
         bool ReadState(uint256_t hashRegister, TAO::Register::State& state)
         {
             return Read(std::make_pair(std::string("state"), hashRegister), state);
         }
 
+
+        /** Write Identifier
+         *
+         *  Writes a token identifier to the register database
+         *
+         *  @param[in] nIdentifier The token identifier.
+         *  @param[in] hashRegister The register address of token.
+         *
+         *  @return true if write was successul.
+         *
+         **/
+        bool WriteIdentifier(uint32_t nIdentifier, uint256_t hashRegister)
+        {
+            return Write(std::make_pair(std::string("token"), nIdentifier), hashRegister);
+        }
+
+
+        /** Read Identifier
+         *
+         *  Read a token identifier from the register database
+         *
+         *  @param[in] nIdentifier The token identifier.
+         *  @param[out] hashRegister The register address of token.
+         *
+         *  @return true if write was successul.
+         *
+         **/
+        bool ReadIdentifier(uint32_t nIdentifier, uint256_t& hashRegister)
+        {
+            return Read(std::make_pair(std::string("token"), nIdentifier), hashRegister);
+        }
+
+
+        /** Has Identifier
+         *
+         *  Determine if an identifier exists in the database
+         *
+         *  @param[in] nIdentifier The token identifier.
+         *
+         *  @return true if it exists
+         *
+         **/
+        bool HasIdentifier(uint32_t nIdentifier)
+        {
+            return Exists(std::make_pair(std::string("token"), nIdentifier));
+        }
+
+
+        /** Has state
+         *
+         *  Check if a state exists in the register database
+         *
+         *  @param[in] hashRegister The register address.
+         *
+         *  @return true if it exists.
+         *
+         **/
         bool HasState(uint256_t hashRegister)
         {
             return Exists(std::make_pair(std::string("state"), hashRegister));
         }
 
+
+        /** Get States
+         *
+         *  Get the previous states of a register
+         *
+         *  @param[in] hashRegister The register address.
+         *  @param[out] states The states vector to return.
+         *
+         *  @return true if any states were found.
+         *
+         **/
         bool GetStates(uint256_t hashRegister, std::vector<TAO::Register::State>& states)
         {
             /* Serialize the key to search for. */

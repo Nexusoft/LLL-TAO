@@ -15,24 +15,32 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_INCLUDE_CREATE_H
 
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/tritium.h>
 
-namespace TAO
+namespace TAO::Ledger
 {
-    namespace Ledger
-    {
 
-        /** Create Transaction
-         *
-         *  Create a new transaction object from signature chain.
-         *
-         *  @param[in] sigchain The signature chain to generate this tx
-         *  @param[in] hashPrevTx The previous transaction being linked.
-         *  @param[out] tx The traansaction object being created
-         *
-         **/
-         bool CreateTransaction(TAO::Ledger::SignatureChain sigchain, uint512_t hashPrevTx, TAO::Ledger::Transaction& tx);
+    /** Create Transaction
+     *
+     *  Create a new transaction object from signature chain.
+     *
+     *  @param[in] user The signature chain to generate this tx
+     *  @param[out] tx The traansaction object being created
+     *
+     **/
+    bool CreateTransaction(TAO::Ledger::SignatureChain* user, TAO::Ledger::Transaction& tx);
 
-    }
+
+    /** Create Block
+     *
+     *  Create a new block object from the chain.
+     *
+     *  @param[in] user The signature chain to generate this block
+     *  @param[out] block The block object being created.
+     *
+     **/
+    bool CreateBlock(TAO::Ledger::SignatureChain* user, TAO::Ledger::TritiumBlock& block);
+
 }
 
 #endif

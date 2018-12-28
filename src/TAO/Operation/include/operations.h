@@ -90,6 +90,20 @@ namespace TAO::Operation
     bool Credit(uint512_t hashTx, uint256_t hashProof, uint256_t hashTo, uint64_t nAmount, uint256_t hashCaller);
 
 
+    /** Coinbase
+     *
+     *  Commits funds from a coinbase transaction
+     *
+     *  @param[in] hashAccount The account being transferred to.
+     *  @param[in] nAmount The amount being transferred
+     *  @param[in] hashCaller The calling signature chain.
+     *
+     *  @return true if successful.
+     *
+     **/
+    bool Coinbase(uint256_t hashAccount, uint64_t nAmount, uint256_t hashCaller);
+
+
     /** Authorize
      *
      *  Authorizes an action if holder of a token.

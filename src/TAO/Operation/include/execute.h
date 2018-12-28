@@ -154,6 +154,23 @@ namespace TAO::Operation
                     break;
                 }
 
+                case OP::COINBASE:
+                {
+                    /* The account that is being credited. */
+                    uint256_t hashAccount;
+                    stream >> hashAccount;
+
+                    /* The total to be credited. */
+                    uint64_t  nCredit;
+                    stream >> nCredit;
+
+                    /* Execute the operation method. */
+                    if(!Coinbase(hashAccount, nCredit, hashOwner))
+                        return false;
+
+                    break;
+                }
+
                 case OP::AUTHORIZE:
                 {
                     /* The transaction that you are authorizing. */

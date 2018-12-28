@@ -36,6 +36,7 @@ namespace TAO
             //financial operations
             DEBIT      = 0x10,
             CREDIT     = 0x11,
+            COINBASE   = 0x12,
 
             //crypto operations
             SIGNATURE  = 0x20,

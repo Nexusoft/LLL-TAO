@@ -16,6 +16,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <TAO/Ledger/types/state.h>
+
 namespace TAO::Ledger
 {
 
@@ -35,6 +37,10 @@ namespace TAO::Ledger
 
 		/** Flag to tell if initial blocks are downloading. **/
 		static bool Synchronizing();
+
+
+		/** The best block in the chain. **/
+		static BlockState stateBest;
 	};
 }
 

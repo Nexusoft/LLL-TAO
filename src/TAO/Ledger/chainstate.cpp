@@ -35,4 +35,8 @@ namespace TAO::Ledger
 		return false;
 	}
 
+
+	/** The best block in the chain. **/
+	BlockState stateBest;
+
 }
