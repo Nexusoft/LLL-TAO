@@ -23,8 +23,6 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/base64.h>
 
-#include <Util/include/urlencode.h>
-
 
 namespace TAO::API
 {
@@ -65,9 +63,9 @@ namespace TAO::API
             if(pos == arg.npos)
             {
                 /* Append this data with URL encoding. */
-                std::string value = encoding::urldecode(parameters[prev]);
+                std::string value = parameters[prev];
                 value.append(" " + arg);
-                parameters[prev] = encoding::urlencode(value);
+                parameters[prev] = value;
 
                 continue;
             }
@@ -76,7 +74,7 @@ namespace TAO::API
             prev = arg.substr(0, pos);
 
             /* Add to parameters object. */
-            parameters[prev] = encoding::urlencode(arg.substr(pos + 1));
+            parameters[prev] = arg.substr(pos + 1);
         }
 
 
