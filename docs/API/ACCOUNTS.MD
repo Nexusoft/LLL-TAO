@@ -80,6 +80,7 @@ Session is required to identify what session you are logging out of.
 ### Transactions
 
 This will list off all of the transactions created by the logged in account.
+You DO NOT need to be logged in to use this command.s
 
 ```
 <method>:
