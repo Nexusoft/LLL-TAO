@@ -145,7 +145,7 @@ int main(int argc, char** argv)
     }
 
 
-    /* Initialize the Legacy Server. */
+    /* Initialize the Legacy Server.
     LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(
         config::GetArg("-port", config::fTestNet ? 8323 : 9323),
         10,
@@ -159,7 +159,7 @@ int main(int argc, char** argv)
         true);
 
 
-    /* Add node to Legacy server */
+    /* Add node to Legacy server
     if(config::mapMultiArgs["-addnode"].size() > 0)
     {
         for(auto node : config::mapMultiArgs["-addnode"])
@@ -169,6 +169,7 @@ int main(int argc, char** argv)
                 config::GetArg("-port", config::fTestNet ? 8323 : 9323));
         }
     }
+    */
 
     /* Create the Core API Server. */
     LLP::Server<LLP::CoreNode>* CORE_SERVER = new LLP::Server<LLP::CoreNode>(
