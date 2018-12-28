@@ -6,7 +6,7 @@ Accessing the Nexus API is a seamless and simple experience. You have three opti
 * Use a web browser with a URL based request:
 
 ```
-http://localhost:8080/api/&lt;method&gt;?&lt;key&gt;=&lt;value&gt;&&lt;key1&gt;=&lt;value1&gt;
+http://localhost:8080/api/<method>?<key>=<value>&<key1>=<value1>
 ```
 
 * Use a web browser with a POST based request, where POST body contains
