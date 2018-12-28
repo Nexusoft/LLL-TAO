@@ -26,6 +26,7 @@ This is a transaction object containing the information about the current owner 
 ### Transfer
 
 This will transfer an item from current logged in account to a new user. The new user must have an account for this to work.
+LOGIN is required to use this command.
 
 ```
 <method>:
@@ -51,6 +52,7 @@ This shows the address transferred, and the txid that was associated with the tr
 ### Submit
 
 This will submit new data into the network, assigning ownership to the currently logged in account.
+LOGIN is required to use this command.
 
 ```
 <method>:
