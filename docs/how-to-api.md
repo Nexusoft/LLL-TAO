@@ -1,14 +1,19 @@
 The Nexus API Interface
 -----------------------   
 
-Accessing the Nexus API is a seamless and simple experience. You have three options:
+Accessing the Nexus API is a seamless and simple experience. To access the API, you can use one of three options:
 
 
 ### Use a web browser with a URL based request:
 
+Make a GET request with the parameters in the URL as seen below.
+
 ```
 http://localhost:8080/api/<method>?<key>=<value>&<key1>=<value1>
 ```
+
+Note that the API DOES NOT yet support URL encoding, so don't use spaces in any of your
+values otherwise you will run into undefined behavior.
 
 
 ### Use a web browser with a POST based request
@@ -33,14 +38,13 @@ This allows you to harness the power of the Nexus Blockchain in all your existin
 
 ### Use the the nexus command-line by specifying the -api flag:
 
-The Nexus Daemon must already be running for this to work.
+The Nexus Daemon must already be running for this to work. Make sure you are in the same directory as the Nexus Daemon.
 
 ```
 ./nexus -api api <method> <key>=<value> <key1>=<value1>
 ```
 
-The API DOES NOT yet support URL encoding, so don't use spaces in any of your
-values otherwise you will run into problems.
+This will return all data in JSON format into your console.
 
 
 ## Accounts API
