@@ -64,7 +64,13 @@ namespace TAO::Register
          *  @param[in] nBalanceIn The balance in
          *
          **/
-        Account(uint32_t nIdentifierIn, uint64_t nBalanceIn) : nVersion(1), nIdentifier(nIdentifierIn), nBalance(nBalanceIn) {}
+        Account(uint32_t nIdentifierIn, uint64_t nBalanceIn)
+        : nVersion(1)
+        , nIdentifier(nIdentifierIn)
+        , nBalance(nBalanceIn)
+        {
+
+        }
 
 
         /** SetNull

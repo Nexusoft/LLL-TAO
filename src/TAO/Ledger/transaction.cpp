@@ -53,6 +53,14 @@ namespace TAO::Ledger
                 return debug::error(FUNCTION "previous genesis %s mismatch %s", __PRETTY_FUNCTION__, tx.hashGenesis.ToString().substr(0, 20).c_str(), hashGenesis.ToString().substr(0, 20).c_str());
         }
 
+        /* Checks for coinbase. */
+        if(IsCoinbase())
+        {
+            /* Check the coinbase size. */
+            if(vchLedgerData.size() != 41)
+                return debug::error(FUNCTION "ledger data too large for coinbase %u", vchLedgerData.size());
+        }
+
         /* Check the timestamp. */
         if(nTimestamp > runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT)
             return debug::error(FUNCTION "transaction timestamp too far in the future %u", __PRETTY_FUNCTION__, nTimestamp);
