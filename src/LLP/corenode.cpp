@@ -50,14 +50,18 @@ namespace LLP
             json::json params;
             if(INCOMING.strContent.size() > 0)
             {
-                INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
                 if(INCOMING.mapHeaders.count("content-type"))
                 {
                     if(INCOMING.mapHeaders["content-type"] == "application/x-www-form-urlencoded")
                     {
+                        /* Decode if url-form-encoded. */
+                        INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
+
+                        /* Split by delimiter. */
                         std::vector<std::string> vParams;
                         ParseString(INCOMING.strContent, '&', vParams);
 
+                        /* Get the parameters. */
                         for(std::string strParam : vParams)
                         {
                             std::string::size_type pos2 = strParam.find("=");
