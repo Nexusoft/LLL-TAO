@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/accounts.h>
 #include <TAO/API/include/supply.h>
 
+#include <Util/include/urlencode.h>
+
 namespace LLP
 {
 
@@ -48,6 +50,7 @@ namespace LLP
             json::json params;
             if(INCOMING.strContent.size() > 0)
             {
+                INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
                 if(INCOMING.mapHeaders.count("content-type"))
                 {
                     if(INCOMING.mapHeaders["content-type"] == "application/x-www-form-urlencoded")
@@ -85,7 +88,7 @@ namespace LLP
                 {
                     /* Parse out the form entries by char '&' */
                     std::vector<std::string> vParams;
-                    ParseString(METHOD.substr(pos + 1), '&', vParams);
+                    ParseString(encoding::urldecode(METHOD.substr(pos + 1)), '&', vParams);
 
                     /* Parse the form from the end of method. */
                     METHOD = METHOD.substr(0, pos);

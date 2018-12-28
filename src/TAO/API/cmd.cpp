@@ -23,6 +23,8 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/base64.h>
 
+#include <Util/include/urlencode.h>
+
 
 namespace TAO::API
 {
@@ -40,6 +42,9 @@ namespace TAO::API
 
         /* Build the JSON request object. */
         json::json parameters;
+
+        /* Keep track of previous parameter. */
+        std::string prev;
         for(int i = argn + 2; i < argc; i++)
         {
             /* Parse out the key / values. */
@@ -49,17 +54,24 @@ namespace TAO::API
             /* Watch for missing delimiter. */
             if(pos == arg.npos)
             {
-                debug::error("Missing '=' in arg for key=value.");
+                /* Append this data with URL encoding. */
+                std::string value = parameters[prev];
+                value.append(" " + arg);
+                parameters[prev] = value;
 
-                return 0;
+                continue;
             }
 
+            /* Set the previous argument. */
+            prev = arg.substr(0, pos);
+
             /* Add to parameters object. */
-            parameters[arg.substr(0, pos)] = arg.substr(pos + 1);
+            parameters[prev] = arg.substr(pos + 1);
         }
 
+
         /* Build the HTTP Header. */
-        std::string strContent = parameters.dump();
+        std::string strContent = encoding::urlencode(parameters.dump());
         std::string strReply = debug::strprintf(
                 "POST /%s/%s HTTP/1.1\r\n"
                 "Date: %s\r\n"

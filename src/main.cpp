@@ -34,6 +34,9 @@ ________________________________________________________________________________
 #include <TAO/API/include/supply.h>
 #include <TAO/API/include/accounts.h>
 
+#include <Util/include/urlencode.h>
+
+
 /* Declare the Global LLD Instances. */
 namespace LLD
 {
@@ -48,6 +51,7 @@ namespace LLP
     Server<TritiumNode>* TRITIUM_SERVER;
     Server<LegacyNode> * LEGACY_SERVER;
 }
+
 
 int main(int argc, char** argv)
 {
