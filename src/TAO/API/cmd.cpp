@@ -33,9 +33,19 @@ namespace TAO::API
     int CommandLineAPI(int argc, char** argv, int argn)
     {
         /* Check the parameters. */
-        if(argc < argn + 2)
+        if(argc < argn + 1)
         {
-            debug::error("Missing Parameters");
+            debug::error("missing endpoint parameter");
+
+            return 0;
+        }
+
+        /* Parse out the endpoints. */
+        std::string endpoint = std::string(argv[argn]);
+        std::string::size_type pos = endpoint.find('/');
+        if(pos == endpoint.npos)
+        {
+            debug::error("\nendpoint argument requires a forward slash [ex. ./nexus -api <API-NAME>/<METHOD> <KEY>=<VALUE>]");
 
             return 0;
         }
@@ -45,7 +55,7 @@ namespace TAO::API
 
         /* Keep track of previous parameter. */
         std::string prev;
-        for(int i = argn + 2; i < argc; i++)
+        for(int i = argn + 1; i < argc; i++)
         {
             /* Parse out the key / values. */
             std::string arg = std::string(argv[i]);
@@ -55,9 +65,9 @@ namespace TAO::API
             if(pos == arg.npos)
             {
                 /* Append this data with URL encoding. */
-                std::string value = parameters[prev];
+                std::string value = encoding::urldecode(parameters[prev]);
                 value.append(" " + arg);
-                parameters[prev] = value;
+                parameters[prev] = encoding::urlencode(value);
 
                 continue;
             }
@@ -66,12 +76,12 @@ namespace TAO::API
             prev = arg.substr(0, pos);
 
             /* Add to parameters object. */
-            parameters[prev] = arg.substr(pos + 1);
+            parameters[prev] = encoding::urlencode(arg.substr(pos + 1));
         }
 
 
         /* Build the HTTP Header. */
-        std::string strContent = encoding::urlencode(parameters.dump());
+        std::string strContent = parameters.dump();
         std::string strReply = debug::strprintf(
                 "POST /%s/%s HTTP/1.1\r\n"
                 "Date: %s\r\n"
@@ -81,7 +91,7 @@ namespace TAO::API
                 "Server: Nexus-JSON-API\r\n"
                 "\r\n"
                 "%s",
-            argv[argn], argv[argn + 1],
+            endpoint.substr(0, pos).c_str(), endpoint.substr(pos + 1).c_str(),
             runtime::rfc1123Time().c_str(),
             strContent.size(),
             strContent.c_str());
