@@ -107,21 +107,75 @@ namespace TAO::Ledger
 		if(GetChannel() > 0 && !producer.IsCoinbase())
 			return debug::error(FUNCTION "producer transaction has to be coinbase for proof of work", __PRETTY_FUNCTION__);
 
+
 		/* Check the producer transaction. */
 		if(GetChannel() == 0 && !producer.IsTrust())
 			return debug::error(FUNCTION "producer transaction has to be trust for proof of stake", __PRETTY_FUNCTION__);
 
 
+		/* Check coinbase/coinstake timestamp is at least 20 minutes before block time */
+		if (GetBlockTime() > (uint64_t)producer.nTimestamp + ((nVersion < 4) ? 1200 : 3600))
+			return debug::error(FUNCTION "producer transaction timestamp is too early", __PRETTY_FUNCTION__);
+
+
+		/* Proof of stake specific checks. */
+		if(IsProofOfStake())
+		{
+			/* Check the trust time is before Unified Timestamp. */
+			if(producer.nTimestamp > (runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT))
+				return debug::error(FUNCTION "trust timestamp too far in the future", __PRETTY_FUNCTION__);
+
+			/* Make Sure Trust Transaction Time is Before Block. */
+			if (producer.nTimestamp > GetBlockTime())
+				return debug::error(FUNCTION "trust timestamp is ahead of block timestamp", __PRETTY_FUNCTION__);
+		}
+
+
 		/* Check for duplicate txid's */
 		std::set<uint512_t> uniqueTx;
+
+		/* Get the hashes for the merkle root. */
 		std::vector<uint512_t> vHashes;
+
+		/* Get the signature operations for legacy tx's. */
+		uint32_t nSigOps = 0;
+
+		/* Check all the transactions. */
 		for(auto & tx : vtx)
 		{
 			uniqueTx.insert(tx.second);
 			vHashes.push_back(tx.second);
+
+			if(tx.first == LEGACY_TX)
+			{
+				//check the legacy memory pool.
+
+				//if (!tx.CheckTransaction())
+				//	return DoS(tx.nDoS, error("CheckBlock() : CheckTransaction failed"));
+
+				// Nexus: check transaction timestamp
+				//if (GetBlockTime() < (int64)tx.nTime)
+				//	return DoS(50, error("CheckBlock() : block timestamp earlier than transaction timestamp"));
+
+				//nSigOps += tx.GetLegacySigOpCount();
+			}
+			else if(tx.first == TRITIUM_TX)
+			{
+				//check the tritium memory pool.
+			}
+			else
+				return debug::error(FUNCTION "unknown transaction type", __PRETTY_FUNCTION__);
 		}
+
+
+		/* Check for duplicate txid's. */
 		if (uniqueTx.size() != vtx.size())
 			return debug::error(FUNCTION "duplicate transaction", __PRETTY_FUNCTION__);
+
+
+		/* Check the signature operations for legacy. */
+		if (nSigOps > MAX_BLOCK_SIGOPS)
+			return debug::error(FUNCTION "out-of-bounds SigOpCount", __PRETTY_FUNCTION__);
 
 
 		/* Check the merkle root. */
