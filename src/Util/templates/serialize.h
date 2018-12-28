@@ -1026,11 +1026,7 @@ public:
     {
         /* Check size constraints. */
         if(nReadPos + nSize > size())
-        {
-            debug::error(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos);
-
-            return *this;
-        }
+            throw std::runtime_error(debug::strprintf(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos));
 
         /* Copy the bytes into tmp object. */
         std::copy((uint8_t*)&at(nReadPos), (uint8_t*)&at(nReadPos) + nSize, (uint8_t*)pch);

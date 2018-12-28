@@ -37,8 +37,21 @@ namespace TAO::Operation
         uint8_t TX_OP;
         tx >> TX_OP;
 
+        /* Check that prev is coinbase. */
+        if(TX_OP == TAO::Operation::OP::COINBASE)
+        {
+            /* Get the debit from account. */
+            uint256_t hashTo;
+            tx >> hashTo;
+
+            /* Get the coinbase amount. */
+            uint64_t nCredit;
+            tx >> nCredit;
+
+        }
+
         /* Check that prev is debit. */
-        if(TX_OP != TAO::Operation::OP::DEBIT)
+        else if(TX_OP != TAO::Operation::OP::DEBIT)
             return debug::error(FUNCTION "%s tx claim is not a debit", __PRETTY_FUNCTION__, hashTx.ToString().c_str());
 
         /* Get the debit from account. */

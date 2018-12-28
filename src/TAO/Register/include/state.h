@@ -191,11 +191,7 @@ namespace TAO::Register
         {
             /* Check size constraints. */
             if(nReadPos + nSize > vchState.size())
-            {
-                debug::error(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos);
-
-                return *this;
-            }
+                throw std::runtime_error(debug::strprintf(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos));
 
             /* Copy the bytes into tmp object. */
             std::copy((uint8_t*)&vchState[nReadPos], (uint8_t*)&vchState[nReadPos] + nSize, (uint8_t*)pch);
