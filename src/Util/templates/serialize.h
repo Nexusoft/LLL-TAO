@@ -962,10 +962,26 @@ public:
      *  Sets the type of stream.
      *
      **/
-     void SetType(uint8_t nSerTypeIn)
-     {
-         nSerType = nSerTypeIn;
-     }
+    void SetType(uint8_t nSerTypeIn)
+    {
+        nSerType = nSerTypeIn;
+    }
+
+
+    /** Set Pos
+     *
+     *  Sets the position in the stream.
+     *
+     **/
+    void SetPos(uint32_t nNewPos)
+    {
+        /* Check size constraints. */
+        if(nNewPos > size())
+            throw std::runtime_error(debug::strprintf(FUNCTION "cannot set at end of stream %u", __PRETTY_FUNCTION__, nNewPos));
+
+        /* Set the new read pos. */
+        nReadPos = nNewPos;
+    }
 
 
     /** SetNull

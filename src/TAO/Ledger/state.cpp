@@ -106,6 +106,32 @@ namespace TAO::Ledger
             return debug::error(FUNCTION "not descendant of last checkpoint", __PRETTY_FUNCTION__);
 
 
+        /* Check the block proof of work rewards. */
+        if(IsProofOfWork() && nVersion >= 3)
+        {
+            /* Get the stream from coinbase. */
+            DataStream ssData(producer.vchLedgerData, SER_OPERATIONS, producer.nVersion);
+            ssData.SetPos(33); //set the read position to where reward will be.
+
+            /* Read the mining reward. */
+            uint64_t nMiningReward;
+            ssData >> nMiningReward;
+
+            /* Check that the Mining Reward Matches the Coinbase Calculations. */
+            if (nMiningReward != GetCoinbaseReward(statePrev, GetChannel(), 0))
+                return debug::error(FUNCTION "miner reward mismatch %" PRId64 " : %" PRId64 "",
+                    __PRETTY_FUNCTION__, nMiningReward, GetCoinbaseReward(statePrev, GetChannel(), 0));
+        }
+        else if (IsProofOfStake())
+        {
+            /* Check that the Coinbase / CoinstakeTimstamp is after Previous Block. */
+            if (producer.nTimestamp < statePrev.GetBlockTime())
+                return debug::error(FUNCTION "coinstake transaction too early", __PRETTY_FUNCTION__);
+        }
+
+
+        //TODO: check legacy transactions for finality
+
         /* Compute the Chain Trust */
         nChainTrust = statePrev.nChainTrust + GetBlockTrust();
 
@@ -128,7 +154,7 @@ namespace TAO::Ledger
                     GetReleasedReserve(*this, GetChannel(), nType);
 
                 /* Get the coinbase rewards. */
-                uint64_t nCoinbaseRewards = GetCoinbaseReward(*this, GetChannel(), nType);
+                uint64_t nCoinbaseRewards = GetCoinbaseReward(statePrev, GetChannel(), nType);
 
                 /* Block Version 3 Check. Disable Reserves from going below 0. */
                 if(nVersion >= 3 && nCoinbaseRewards >= nReserve)
