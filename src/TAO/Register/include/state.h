@@ -156,7 +156,7 @@ namespace TAO::Register
         {
             /* Check for null state. */
             if(IsNull())
-                return debug::error(FUNCTION "register cannot be null");
+                return debug::error(FUNCTION "register cannot be null", __PRETTY_FUNCTION__);
 
             /* Check the checksum. */
             if(GetHash() != hashChecksum)

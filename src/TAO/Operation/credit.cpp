@@ -76,11 +76,11 @@ namespace TAO::Operation
 
             /* Check the account identifier. */
             if(acctTo.nIdentifier != 0)
-                return debug::error(FUNCTION "can't credit a coinbase for identifier other than 0");
+                return debug::error(FUNCTION "can't credit a coinbase for identifier other than 0", __PRETTY_FUNCTION__);
 
             /* Check that the balances match. */
             if(nAmount != nCredit)
-                return debug::error(FUNCTION "credit %" PRIu64 "and coinbase %" PRIu64 " amounts mismatch", nCredit, nAmount);
+                return debug::error(FUNCTION "credit %" PRIu64 "and coinbase %" PRIu64 " amounts mismatch", __PRETTY_FUNCTION__, nCredit, nAmount);
 
             /* Credit account balance. */
             acctTo.nBalance += nAmount;

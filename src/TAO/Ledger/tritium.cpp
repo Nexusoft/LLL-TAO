@@ -103,6 +103,11 @@ namespace TAO::Ledger
 			return debug::error(FUNCTION "version %u blocks are not accepted for %" PRId64 " seconds", __PRETTY_FUNCTION__, nVersion, (runtime::UnifiedTimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2])));
 
 
+		/* Check the producer transaction. */
+		if(!producer.IsCoinBase())
+			return debug::error(FUNCTION "producer transaction has to be coinbase.", __PRETTY_FUNCTION__);
+
+
 		/* Check for duplicate txid's */
 		std::set<uint512_t> uniqueTx;
 		std::vector<uint512_t> vHashes;
