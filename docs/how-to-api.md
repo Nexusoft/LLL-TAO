@@ -12,8 +12,10 @@ Make a GET request with the parameters in the URL as seen below.
 http://localhost:8080/<api>/<method>?<key>=<value>&<key1>=<value1>
 ```
 
-Note that the API DOES NOT yet support URL encoding, so don't use spaces in any of your
-values otherwise you will run into undefined behavior.
+The API uses form encoding, so you are free to use any characters you wish. The only thing to be aware of is when using
+a '+' character in URLEncoding, which acts as an escape character for ' ' as well as '%20'. The API will detect this
+behavior as long as the form encodes the + sign in form encoding. At times making a GET request, the web browser will
+assume that + is a space and not encode it.
 
 
 ### Use a web browser with a POST based request
@@ -41,7 +43,7 @@ This allows you to harness the power of the Nexus Blockchain in all your existin
 The Nexus Daemon must already be running for this to work. Make sure you are in the same directory as the Nexus Daemon.
 
 ```
-./nexus -api <api> <method> <key>=<value> <key1>=<value1>
+./nexus -api <api>/<method> <key>=<value> <key1>=<value1>
 ```
 
 This will return all data in JSON format into your console.
