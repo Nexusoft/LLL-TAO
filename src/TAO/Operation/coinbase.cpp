@@ -19,7 +19,6 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/state.h>
 #include <TAO/Register/objects/account.h>
-#include <TAO/Register/objects/token.h>
 
 namespace TAO::Operation
 {
@@ -32,11 +31,11 @@ namespace TAO::Operation
 
         /* Read the to account state. */
         TAO::Register::State state;
-        if(!LLD::regDB->ReadState(hashAccount, state))
+        if(!LLD::regDB->ReadState(hashAddress, state))
         {
             /* Set the owner of this register. */
             state.nVersion  = 1;
-            state.nType     = TAO::Register::OBJECT::Account;
+            state.nType     = TAO::Register::OBJECT::ACCOUNT;
             state.hashOwner = hashCaller;
 
             /* Create the new account. */
@@ -54,7 +53,7 @@ namespace TAO::Operation
             if(!LLD::regDB->WriteState(hashAddress, state))
                 return debug::error(FUNCTION "failed to write state register %s memory address", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
-            debug::log(0, FUNCTION "created new account %s for coinbase transaction", __PRETTY_FUNCTION__, hashAccount.ToString().c_str());
+            debug::log(0, FUNCTION "created new account %s for coinbase transaction", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
         }
 
         return true;
