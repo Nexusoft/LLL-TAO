@@ -173,6 +173,10 @@ namespace TAO::Operation
                         if(!Coinbase(hashAccount, nCredit, hashOwner))
                             return false;
 
+                        /* Ensure that it as end of stream. TODO: coinbase should be followed by ambassador and developer scripts */
+                        if(!stream.End())
+                            return debug::error(FUNCTION "coinbase can't have extra data", __PRETTY_FUNCTION__);
+
                         break;
                     }
 

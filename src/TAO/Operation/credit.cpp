@@ -38,8 +38,12 @@ namespace TAO::Operation
         tx >> TX_OP;
 
         /* Check that prev is coinbase. */
-        if(TX_OP == TAO::Operation::OP::COINBASE)
+        if(TX_OP == TAO::Operation::OP::COINBASE) //NOTE: thie coinbase can't be spent unless flag is byte 0. Safe to use this for coinbase flag.
         {
+            /* Check if this is a whole credit that the transaction is not already connected. */
+            if(tx.fConnected)
+                return debug::error(FUNCTION "transaction is already spent", __PRETTY_FUNCTION__);
+
             /* Get the debit from account. */
             uint256_t hashTo;
             tx >> hashTo;
@@ -48,6 +52,57 @@ namespace TAO::Operation
             uint64_t nCredit;
             tx >> nCredit;
 
+            /* Read the state from. */
+            TAO::Register::State stateAccount;
+            if(!LLD::regDB->ReadState(hashAccount, stateAccount))
+                return debug::error(FUNCTION "can't read state from", __PRETTY_FUNCTION__);
+
+            /* Check that the creditor has permissions. */
+            if(stateAccount.hashOwner != hashCaller)
+                return debug::error(FUNCTION "not authorized to credit to this register", __PRETTY_FUNCTION__);
+
+            /* Make sure the claimed account is the debited account. */
+            if(hashAccount != hashTo)
+                return debug::error(FUNCTION "credit claim is not same account as debit", __PRETTY_FUNCTION__);
+
+            /* Read the state from. */
+            TAO::Register::State stateTo;
+            if(!LLD::regDB->ReadState(hashTo, stateTo))
+                 return debug::error(FUNCTION "can't read state from", __PRETTY_FUNCTION__);
+
+            /* Get the account being sent to. */
+            TAO::Register::Account acctTo;
+            stateTo >> acctTo;
+
+            /* Check the account identifier. */
+            if(acctTo.nIdentifier != 0)
+                return debug::error(FUNCTION "can't credit a coinbase for identifier other than 0");
+
+            /* Check that the balances match. */
+            if(nAmount != nCredit)
+                return debug::error(FUNCTION "credit %" PRIu64 "and coinbase %" PRIu64 " amounts mismatch", nCredit, nAmount);
+
+            /* Credit account balance. */
+            acctTo.nBalance += nAmount;
+
+            /* Write new state to the regdb. */
+            stateTo.ClearState();
+            stateTo << acctTo;
+
+            /* Connect the transaction and write its new state to disk. */
+            tx.fConnected = true;
+            if(!LLD::legDB->WriteTx(hashTx, tx))
+                return debug::error(FUNCTION "failed to change debit transaction state", __PRETTY_FUNCTION__);
+
+            /* Check that the register is in a valid state. */
+            if(!stateTo.IsValid())
+                return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashAccount.ToString().c_str());
+
+            /* Write the register to the database. */
+            if(!LLD::regDB->WriteState(hashAccount, stateTo))
+                return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
+
+            return true;
         }
 
         /* Check that prev is debit. */
@@ -73,11 +128,6 @@ namespace TAO::Operation
             /* Check if this is a whole credit that the transaction is not already connected. */
             if(tx.fConnected)
                 return debug::error(FUNCTION "transaction is already spent", __PRETTY_FUNCTION__);
-
-            /* Connect the transaction and write its new state to disk. */
-            tx.fConnected = true;
-            if(!LLD::legDB->WriteTx(hashTx, tx))
-                return debug::error(FUNCTION "failed to change debit transaction state", __PRETTY_FUNCTION__);
 
             //check the hash proof to the transaction database. Proofs claim a debit so it is no longer sendable
             //transaction state needs to be update in the transaction database as well. The state willb e flagged as true
@@ -129,13 +179,26 @@ namespace TAO::Operation
             stateTo.ClearState();
             stateTo << acctTo;
 
-            Write(hashTo, stateTo.GetState(), hashCaller);
-            //regDB->WriteState(hashTo, stateTo); //this needs to be executing write script to check for ownership
+            /* Connect the transaction and write its new state to disk. */
+            tx.fConnected = true;
+            if(!LLD::legDB->WriteTx(hashTx, tx))
+                return debug::error(FUNCTION "failed to change debit transaction state", __PRETTY_FUNCTION__);
+
+            /* Check that the register is in a valid state. */
+            if(!stateTo.IsValid())
+                return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashAccount.ToString().c_str());
+
+            /* Write the register to the database. */
+            if(!LLD::regDB->WriteState(hashAccount, stateTo))
+                return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
+
         }
         else if(stateTo.nType == TAO::Register::OBJECT::RAW || stateTo.nType == TAO::Register::OBJECT::READONLY)
         {
             /* Connect the transaction and write its new state to disk. */
             tx.fConnected = true;
+            //TODO: rethink this logic
+            //should a transaction be connected if all inputs haven't been spent? or should this just rely on the proofs?
             if(!LLD::legDB->WriteTx(hashTx, tx))
                 return debug::error(FUNCTION "failed to change debit transaction state", __PRETTY_FUNCTION__);
 
@@ -238,9 +301,13 @@ namespace TAO::Operation
             stateAccount.ClearState();
             stateAccount << acctTo;
 
-            /* Write to the register database. */
-            Write(hashAccount, stateAccount.GetState(), hashCaller);
-            //regDB->WriteState(hashAccount, stateAccount);
+            /* Check that the register is in a valid state. */
+            if(!stateAccount.IsValid())
+                return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashAccount.ToString().c_str());
+
+            /* Write the register to the database. */
+            if(!LLD::regDB->WriteState(hashAccount, stateTo))
+                return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
         }
 
         return true;

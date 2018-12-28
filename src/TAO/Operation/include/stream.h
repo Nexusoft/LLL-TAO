@@ -98,7 +98,7 @@ namespace TAO
              **/
             bool End()
             {
-                return nReadPos >= vchData.size();
+                return nReadPos == vchData.size();
             }
 
 

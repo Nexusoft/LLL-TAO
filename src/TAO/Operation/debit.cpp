@@ -53,9 +53,13 @@ namespace TAO::Operation
         regFrom.ClearState();
         regFrom << acctFrom;
 
-        /* Write this to operations stream. */
-        Write(hashFrom, regFrom.GetState(), hashCaller);
-        //LLD::regDB->WriteState(hashFrom, regFrom); //need to do this in operation script to check ownership of register
+        /* Check that the register is in a valid state. */
+        if(!regFrom.IsValid())
+            return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashFrom.ToString().c_str());
+
+        /* Write the register to the database. */
+        if(!LLD::regDB->WriteState(hashFrom, regFrom))
+            return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
 
         return true;
     }

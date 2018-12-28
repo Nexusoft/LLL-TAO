@@ -26,7 +26,7 @@ namespace TAO::Operation
         /* Read the binary data of the Register. */
         TAO::Register::State state;
         if(!LLD::regDB->ReadState(hashAddress, state))
-            return debug::error(FUNCTION "register Address doewn't exist %s", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+            return debug::error(FUNCTION "register address doewn't exist %s", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
         /* Check ReadOnly permissions. */
         if(state.nType == TAO::Register::OBJECT::READONLY)
@@ -41,8 +41,8 @@ namespace TAO::Operation
             return debug::error(FUNCTION "no write permissions for caller %s", __PRETTY_FUNCTION__, hashCaller.ToString().c_str());
 
         /* Check the new data size against register's allocated size. */
-        if(vchData.size() != state.nLength)
-            return debug::error(FUNCTION "new register state size %u mismatch %u", __PRETTY_FUNCTION__, vchData.size(), state.nLength);
+        if(vchData.size() != state.vchState.size())
+            return debug::error(FUNCTION "new register state size %u mismatch %u", __PRETTY_FUNCTION__, vchData.size(), state.vchState.size());
 
         /* Set the new state of the register. */
         state.SetState(vchData);

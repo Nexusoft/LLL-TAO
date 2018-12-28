@@ -198,6 +198,16 @@ namespace TAO
             bool IsValid() const;
 
 
+            /** Is Coinbase
+             *
+             *  Determines if the transaction is a coinbase transaction.
+             *
+             *  @return true if transaction is a coinbase.
+             *
+             **/
+            bool IsCoinbase() const;
+
+
             /** IsGenesis
              *
              *  Determines if the transaction is a genesis transaction

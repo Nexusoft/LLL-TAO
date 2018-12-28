@@ -69,6 +69,13 @@ namespace TAO::Ledger
     }
 
 
+    /* Determines if the transaction is a coinbase transaction. */
+    bool Transaction::IsCoinbase() const
+    {
+
+    }
+
+
     /* Determines if the transaction is a genesis transaction */
     bool Transaction::IsGenesis() const
     {

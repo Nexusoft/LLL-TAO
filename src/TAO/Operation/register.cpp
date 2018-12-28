@@ -61,7 +61,9 @@ namespace TAO::Operation
                 if(acct.nBalance != 0)
                     return debug::error(FUNCTION "account can't be created with non-zero balance", __PRETTY_FUNCTION__, acct.nBalance);
 
-                //allow creation of accounts for token identifiers without tokens being created for now. there is no harm in it.
+                /* Check that token identifier hasn't been claimed. */
+                if(acct.nIdentifier != 0 && !LLD::regDB->HasIdentifier(acct.nIdentifier))
+                    return debug::error(FUNCTION "account can't be created with no identifier %u", __PRETTY_FUNCTION__, acct.nIdentifier);
 
                 break;
             }
