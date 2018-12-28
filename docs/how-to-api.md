@@ -9,7 +9,7 @@ Accessing the Nexus API is a seamless and simple experience. To access the API, 
 Make a GET request with the parameters in the URL as seen below.
 
 ```
-http://localhost:8080/api/<method>?<key>=<value>&<key1>=<value1>
+http://localhost:8080/<api>/<method>?<key>=<value>&<key1>=<value1>
 ```
 
 Note that the API DOES NOT yet support URL encoding, so don't use spaces in any of your
@@ -20,12 +20,12 @@ values otherwise you will run into undefined behavior.
 
 The POST body contains parameters, and would go to an endpoint such as:
 ```
-http://localhost:8080/api/<method>
+http://localhost:8080/<api>/<method>
 ```
 
 An example web form would look like this:
 ```
-<form action='http://localhost:8080/api/<method>' method='post'>
+<form action='http://localhost:8080/<api>/<method>' method='post'>
 <input type = 'text' name = '<key>'  value = '<value>' >
 <input type = 'text' name = '<key1>' value = '<value2>'>
 <input type = 'submit'>
@@ -41,7 +41,7 @@ This allows you to harness the power of the Nexus Blockchain in all your existin
 The Nexus Daemon must already be running for this to work. Make sure you are in the same directory as the Nexus Daemon.
 
 ```
-./nexus -api api <method> <key>=<value> <key1>=<value1>
+./nexus -api <api> <method> <key>=<value> <key1>=<value1>
 ```
 
 This will return all data in JSON format into your console.
