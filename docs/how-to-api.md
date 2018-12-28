@@ -3,30 +3,37 @@ The Nexus API Interface
 
 Accessing the Nexus API is a seamless and simple experience. You have three options:
 
-* Use a web browser with a URL based request:
+
+### Use a web browser with a URL based request:
 
 ```
 http://localhost:8080/api/<method>?<key>=<value>&<key1>=<value1>
 ```
 
-* Use a web browser with a POST based request, where POST body contains
-parameters:
 
+### Use a web browser with a POST based request
+
+The POST body contains parameters, and would go to an endpoint such as:
 ```
 http://localhost:8080/api/<method>
 ```
 
-An example form would look like this:
+An example web form would look like this:
 ```
 <form action='http://localhost:8080/api/<method>' method='post'>
 <input type = 'text' name = '<key>'  value = '<value>' >
 <input type = 'text' name = '<key1>' value = '<value2>'>
-
 <input type = 'submit'>
 </form>
 ```
 
-* Use the the nexus command-line by specifying the -api flag:
+This will allow you to integrate the Nexus API into existing web forms.
+This allows you to harness the power of the Nexus Blockchain in all your existing web services.
+
+
+### Use the the nexus command-line by specifying the -api flag:
+
+The Nexus Daemon must already be running for this to work.
 
 ```
 ./nexus -api api <method> <key>=<value> <key1>=<value1>
