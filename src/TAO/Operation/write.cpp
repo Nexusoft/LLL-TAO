@@ -32,13 +32,17 @@ namespace TAO::Operation
         if(state.nType == TAO::Register::OBJECT::READONLY)
             return debug::error(FUNCTION "write operation called on read-only register", __PRETTY_FUNCTION__);
 
+        /* Check write permissions for raw state registers. */
+        if(state.nType != TAO::Register::OBJECT::RAW)
+            return debug::error(FUNCTION "write operation called on non-raw register", __PRETTY_FUNCTION__);
+
         /*state Check that the proper owner is commiting the write. */
         if(hashCaller != state.hashOwner)
             return debug::error(FUNCTION "no write permissions for caller %s", __PRETTY_FUNCTION__, hashCaller.ToString().c_str());
 
         /* Check the new data size against register's allocated size. */
         if(vchData.size() != state.nLength)
-            return debug::error(FUNCTION "new Register State size %u mismatch %u", __PRETTY_FUNCTION__, vchData.size(), state.nLength);
+            return debug::error(FUNCTION "new register state size %u mismatch %u", __PRETTY_FUNCTION__, vchData.size(), state.nLength);
 
         /* Set the new state of the register. */
         state.SetState(vchData);
