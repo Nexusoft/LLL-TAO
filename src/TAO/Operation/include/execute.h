@@ -222,7 +222,7 @@ namespace TAO::Operation
                 }
             }
         }
-        catch(std::exception& e)
+        catch(std::runtime_error& e)
         {
             return debug::error(FUNCTION "exception encountered %s", __PRETTY_FUNCTION__, e.what());
         }

@@ -200,10 +200,11 @@ namespace TAO::API
         uint256_t hashRegister = LLC::GetRand256();
 
         /* Test the payload feature. */
-        std::string data = params["data"].get<std::string>();
+        DataStream ssData(SER_REGISTER, 1);
+        ssData << params["data"].get<std::string>();
 
         /* Submit the payload object. */
-        tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::READONLY << data;
+        tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::READONLY << static_cast<std::vector<uint8_t>>(ssData);
 
         /* Sign the transaction. */
         if(!tx.Sign(accounts.GetKey(tx.nSequence, params["pin"].get<std::string>().c_str(), nSession)))
