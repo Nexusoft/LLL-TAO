@@ -13,9 +13,9 @@ http://localhost:8080/<api>/<method>?<key>=<value>&<key1>=<value1>
 ```
 
 The API uses form encoding, so you are free to use any characters you wish. The only thing to be aware of is when using
-a '+' character in URLEncoding, which acts as an escape character for ' ' as well as '%20'. The API will detect this
+a '+' character in the encoding, which acts as an escape character for a space as well as '%20'. The API will detect this
 behavior as long as the form encodes the + sign in form encoding. At times making a GET request, the web browser will
-assume that + is a space and not encode it.
+assume that + is a space and not encode it, the same is true for '%' when making a GET request. 
 
 
 ### Use a web browser with a POST based request
