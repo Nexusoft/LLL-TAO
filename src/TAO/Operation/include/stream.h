@@ -91,6 +91,17 @@ namespace TAO
             }
 
 
+            /** Begin
+             *
+             *  Returns if the opeartions stream is on first operation
+             *
+             **/
+            bool Begin()
+            {
+                return nReadPos == 1;
+            }
+
+
             /** End
              *
              *  Returns if end of stream is found

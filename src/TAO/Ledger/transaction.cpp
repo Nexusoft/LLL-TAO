@@ -26,6 +26,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/transaction.h>
 
+#include <TAO/Operation/include/enum.h>
+
 namespace TAO::Ledger
 {
     /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
@@ -72,14 +74,14 @@ namespace TAO::Ledger
     /* Determines if the transaction is a coinbase transaction. */
     bool Transaction::IsCoinbase() const
     {
-
+        return vchLedgerData[0] == TAO::Operation::OP::COINBASE;
     }
 
 
     /* Determines if the transaction is a genesis transaction */
     bool Transaction::IsGenesis() const
     {
-        return (nSequence == 0);
+        return (nSequence == 0 && hashPrevTx == 0);
     }
 
 

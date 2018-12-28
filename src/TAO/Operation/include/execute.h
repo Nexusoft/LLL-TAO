@@ -161,6 +161,10 @@ namespace TAO::Operation
 
                     case OP::COINBASE:
                     {
+                        /* Ensure that it as beginning of the stream. */
+                        if(!stream.Begin())
+                            return debug::error(FUNCTION "coinbase opeartion has to be first", __PRETTY_FUNCTION__);
+
                         /* The account that is being credited. */
                         uint256_t hashAccount;
                         stream >> hashAccount;

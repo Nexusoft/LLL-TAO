@@ -1009,7 +1009,7 @@ public:
      **/
     bool End()
     {
-        return nReadPos >= size();
+        return nReadPos == size();
     }
 
 
