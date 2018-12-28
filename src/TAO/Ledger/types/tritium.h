@@ -23,11 +23,13 @@ namespace TAO::Ledger
 {
 
     /** Defines the types of transaction hash stored in the TritiumBlock vtx **/
-    enum TxHashType
+    enum TYPE
     {
-        LEGACY_TX  = (1 << 0),
-        TRITIUM_TX = (1 << 1),
+        LEGACY_TX  = 0x00,
+        TRITIUM_TX = 0x01,
+        CHECKPOINT = 0x02, //for private chain checkpointing into mainnet blocks.
     };
+
 
 	/** Tritium Block
 	 *

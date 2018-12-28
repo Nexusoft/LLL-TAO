@@ -134,19 +134,26 @@ namespace TAO::Ledger
 		/* Check for duplicate txid's */
 		std::set<uint512_t> uniqueTx;
 
+
 		/* Get the hashes for the merkle root. */
 		std::vector<uint512_t> vHashes;
+
 
 		/* Get the signature operations for legacy tx's. */
 		uint32_t nSigOps = 0;
 
+
 		/* Check all the transactions. */
 		for(auto & tx : vtx)
 		{
+			/* Insert txid into set to check for duplicates. */
 			uniqueTx.insert(tx.second);
+
+			/* Push back this hash for merkle root. */
 			vHashes.push_back(tx.second);
 
-			if(tx.first == LEGACY_TX)
+			/* Basic checks for legacy transactions. */
+			if(tx.first == TYPE::LEGACY_TX)
 			{
 				//check the legacy memory pool.
 
@@ -159,11 +166,13 @@ namespace TAO::Ledger
 
 				//nSigOps += tx.GetLegacySigOpCount();
 			}
-			else if(tx.first == TRITIUM_TX)
+
+			/* Basic checks for tritium transactions. */
+			else if(tx.first == TYPE::TRITIUM_TX)
 			{
 				//check the tritium memory pool.
 			}
-			else
+			else if(tx.first != TYPE::CHECKPOINT)
 				return debug::error(FUNCTION "unknown transaction type", __PRETTY_FUNCTION__);
 		}
 
