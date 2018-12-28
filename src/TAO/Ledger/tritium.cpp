@@ -121,7 +121,7 @@ namespace TAO::Ledger
 		/* Proof of stake specific checks. */
 		if(IsProofOfStake())
 		{
-			/* Check the trust time is before Unified Timestamp. */
+			/* Check the trust time is before Unified timestamp. */
 			if(producer.nTimestamp > (runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT))
 				return debug::error(FUNCTION "trust timestamp too far in the future", __PRETTY_FUNCTION__);
 

@@ -38,7 +38,7 @@ namespace Legacy
         /** Unencrypted private key data **/
         LLC::CPrivKey vchPrivKey;
 
-        /** Timestamp when this wallet key was created. Only relevant if nTimeExpires has a value **/
+        /** timestamp when this wallet key was created. Only relevant if nTimeExpires has a value **/
         uint64_t nTimeCreated;
 
         /** Number of seconds after nTimeCreated that this wallet key expires **/

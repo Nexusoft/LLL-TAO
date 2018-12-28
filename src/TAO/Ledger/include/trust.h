@@ -78,7 +78,7 @@ namespace Core
 		uint512_t GetHash() const { return LLC::SK512(vchPubKey, BEGIN(hashGenesisBlock), END(nGenesisTime)); }
 
 
-		/* Determine how old the Trust Key is From Timestamp. */
+		/* Determine how old the Trust Key is From timestamp. */
 		uint64_t Age(uint32_t nTime) const;
 
 
@@ -104,7 +104,7 @@ namespace Core
 			uint576_t cKey;
 			cKey.SetBytes(vchPubKey);
 
-			return strprintf("CTrustKey(Hash = %s, Key = %s, Genesis = %s, Tx = %s, Time = %u, Age = %" PRIu64 ", BlockAge = %" PRIu64 ", Expired = %s)", GetHash().ToString().c_str(), cKey.ToString().c_str(), hashGenesisBlock.ToString().c_str(), hashGenesisTx.ToString().c_str(), nGenesisTime, Age(Timestamp()), BlockAge(runtime::Timestamp()), Expired(runtime::Timestamp()) ? "TRUE" : "FALSE");
+			return strprintf("CTrustKey(Hash = %s, Key = %s, Genesis = %s, Tx = %s, Time = %u, Age = %" PRIu64 ", BlockAge = %" PRIu64 ", Expired = %s)", GetHash().ToString().c_str(), cKey.ToString().c_str(), hashGenesisBlock.ToString().c_str(), hashGenesisTx.ToString().c_str(), nGenesisTime, Age(timestamp()), BlockAge(runtime::timestamp()), Expired(runtime::timestamp()) ? "TRUE" : "FALSE");
 		}
 
 		void Print(){ debug::log(0, "%s", ToString().c_str()); }

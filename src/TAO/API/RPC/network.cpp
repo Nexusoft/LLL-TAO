@@ -240,14 +240,14 @@ namespace TAO::API
 
     /* getmoneysupply <timestamp>
        Returns the total supply of Nexus produced by miners, holdings, developers, and ambassadors.
-       Default timestamp is the current Unified Timestamp. The timestamp is recorded as a UNIX timestamp */
+       Default timestamp is the current Unified timestamp. The timestamp is recorded as a UNIX timestamp */
     json::json RPC::GetMoneySupply(const json::json& params, bool fHelp)
     {
         if(fHelp || params.size() != 0)
             return std::string(
                 "getmoneysupply <timestamp>"
                 " - Returns the total supply of Nexus produced by miners, holdings, developers, and ambassadors."
-                " Default timestamp is the current Unified Timestamp. The timestamp is recorded as a UNIX timestamp");
+                " Default timestamp is the current Unified timestamp. The timestamp is recorded as a UNIX timestamp");
 
     //     Object obj;
     //     unsigned int nMinutes = Core::GetChainAge(Core::pindexBest->GetBlockTime());

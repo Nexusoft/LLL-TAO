@@ -36,7 +36,7 @@ namespace Legacy
     class CKeyPoolEntry
     {
     public:
-        /** Timestamp when key pool entry created **/
+        /** timestamp when key pool entry created **/
         uint64_t nTime;
 
         /** Public key for this key pool entry **/

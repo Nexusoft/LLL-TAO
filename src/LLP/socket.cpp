@@ -32,13 +32,19 @@ namespace LLP
 
     /* Constructor for Address */
     Socket::Socket(Service addrConnect)
+    : nError(0)
+    , nLastSend(runtime::timestamp())
+    , nLastRecv(runtime::timestamp())
     {
-        Connect(addrConnect);
+        fd = -1;
+        events = POLLIN | POLLOUT;
+
+        Attempt(addrConnect);
     }
 
 
     /* Returns the error of socket if any */
-    int Socket::Error()
+    int Socket::ErrorCode()
     {
         if (nError == WSAEWOULDBLOCK || nError == WSAEMSGSIZE || nError == WSAEINTR || nError == WSAEINPROGRESS)
             return 0;
@@ -48,20 +54,20 @@ namespace LLP
 
 
     /* Connects the socket to an external address */
-    bool Socket::Connect(Service addrDest, int nTimeout)
+    bool Socket::Attempt(Service addrDest, int nTimeout)
     {
         /* Create the Socket Object (Streaming TCP/IP). */
         if(addrDest.IsIPv4())
-            nSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+            fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         else
-            nSocket = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+            fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 
         /* Catch failure if socket couldn't be initialized. */
-        if (nSocket == INVALID_SOCKET)
+        if (fd == INVALID_SOCKET)
             return false;
 
         /* Set the socket to non blocking. */
-        fcntl(nSocket, F_SETFL, O_NONBLOCK);
+        fcntl(fd, F_SETFL, O_NONBLOCK);
 
         /* Open the socket connection for IPv4 / IPv6. */
         bool fConnected = false;
@@ -74,7 +80,7 @@ namespace LLP
             /* Copy in the new address. */
             addr = Address(sockaddr);
 
-            fConnected = (connect(nSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
+            fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
         else
         {
@@ -85,7 +91,7 @@ namespace LLP
             /* Copy in the new address. */
             addr = Address(sockaddr);
 
-            fConnected = (connect(nSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
+            fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
 
         /* Handle final socket checks if connection established with no errors. */
@@ -100,15 +106,15 @@ namespace LLP
 
                 fd_set fdset;
                 FD_ZERO(&fdset);
-                FD_SET(nSocket, &fdset);
-                int nRet = select(nSocket + 1, nullptr, &fdset, nullptr, &timeout);
+                FD_SET(fd, &fdset);
+                int nRet = select(fd + 1, nullptr, &fdset, nullptr, &timeout);
 
                 /* If the connection attempt timed out with select. */
                 if (nRet == 0)
                 {
                     debug::log(0, "***** Node Connection Timeout %s...", addrDest.ToString().c_str());
 
-                    close(nSocket);
+                    close(fd);
 
                     return false;
                 }
@@ -118,7 +124,7 @@ namespace LLP
                 {
                     debug::log(0, "***** Node Select Failed %s (%i)", addrDest.ToString().c_str(), GetLastError());
 
-                    close(nSocket);
+                    close(fd);
 
                     return false;
                 }
@@ -126,13 +132,13 @@ namespace LLP
                 /* Get socket options. TODO: Remove preprocessors for cross platform sockets. */
                 socklen_t nRetSize = sizeof(nRet);
     #ifdef WIN32
-                if (getsockopt(nSocket, SOL_SOCKET, SO_ERROR, (char*)(&nRet), &nRetSize) == SOCKET_ERROR)
+                if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char*)(&nRet), &nRetSize) == SOCKET_ERROR)
     #else
-                if (getsockopt(nSocket, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
+                if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
     #endif
                 {
                     debug::log(0, "***** Node Get Options Failed %s (%i)", addrDest.ToString().c_str(), GetLastError());
-                    close(nSocket);
+                    close(fd);
 
                     return false;
                 }
@@ -141,7 +147,7 @@ namespace LLP
                 if (nRet != 0)
                 {
                     debug::log(0, "***** Node Failed after Select %s (%i)", addrDest.ToString().c_str(), nRet);
-                    close(nSocket);
+                    close(fd);
 
                     return false;
                 }
@@ -153,7 +159,7 @@ namespace LLP
     #endif
             {
                 debug::log(0, "***** Node Connect Failed %s (%i)", addrDest.ToString().c_str(), GetLastError());
-                close(nSocket);
+                close(fd);
 
                 return false;
             }
@@ -168,9 +174,9 @@ namespace LLP
     {
         int nAvailable = 0;
         #ifdef WIN32
-            ioctlsocket(nSocket, FIONREAD, &nAvailable)
+            ioctlsocket(fd, FIONREAD, &nAvailable)
         #else
-            ioctl(nSocket, FIONREAD, &nAvailable);
+            ioctl(fd, FIONREAD, &nAvailable);
         #endif
 
         return nAvailable;
@@ -180,8 +186,8 @@ namespace LLP
     /* Clear resources associated with socket and return to invalid state. */
     void Socket::Close()
     {
-        close(nSocket);
-        nSocket = INVALID_SOCKET;
+        close(fd);
+        fd = INVALID_SOCKET;
     }
 
 
@@ -189,7 +195,7 @@ namespace LLP
     int Socket::Read(std::vector<uint8_t> &vData, size_t nBytes)
     {
         int8_t pchBuf[nBytes];
-        int nRead = recv(nSocket, pchBuf, nBytes, MSG_DONTWAIT);
+        int nRead = recv(fd, pchBuf, nBytes, MSG_DONTWAIT);
         if (nRead < 0)
         {
             nError = GetLastError();
@@ -208,7 +214,7 @@ namespace LLP
     int Socket::Read(std::vector<int8_t> &vchData, size_t nBytes)
     {
         int8_t pchBuf[nBytes];
-        int nRead = recv(nSocket, pchBuf, nBytes, MSG_DONTWAIT);
+        int nRead = recv(fd, pchBuf, nBytes, MSG_DONTWAIT);
         if (nRead < 0)
         {
             nError = GetLastError();
@@ -231,7 +237,7 @@ namespace LLP
         std::copy(&vData[0], &vData[0] + nBytes, &pchBuf[0]);
 
         /* If there were any errors, handle them gracefully. */
-        int nSent = send(nSocket, pchBuf, nBytes, MSG_NOSIGNAL | MSG_DONTWAIT );
+        int nSent = send(fd, pchBuf, nBytes, MSG_NOSIGNAL | MSG_DONTWAIT );
         if(nSent < 0)
         {
             nError = GetLastError();

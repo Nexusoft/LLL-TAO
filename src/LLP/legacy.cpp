@@ -38,7 +38,7 @@ namespace LLP
         /* Random Session ID */
         RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
 
-        /* Current Unified Timestamp. */
+        /* Current Unified timestamp. */
         int64_t nTime = runtime::UnifiedTimestamp();
 
         /* Dummy Variable NOTE: Remove in Tritium ++ */
@@ -137,10 +137,10 @@ namespace LLP
         /** On Connect Event, Assign the Proper Handle. **/
         if(EVENT == EVENT_CONNECT)
         {
-            addrThisNode = SOCKET.addr;
+            addrThisNode = addr;
             nLastPing    = runtime::UnifiedTimestamp();
 
-            debug::log(1, "***** %s Node %s Connected at Timestamp %" PRIu64 "", fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), runtime::UnifiedTimestamp());
+            debug::log(1, "***** %s Node %s Connected at timestamp %" PRIu64 "", fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), runtime::UnifiedTimestamp());
 
             if(fOUTGOING)
                 PushVersion();
@@ -175,7 +175,7 @@ namespace LLP
             if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
                 LEGACY_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
-            debug::log(1, "xxxxx %s Node %s Disconnected (%s) at Timestamp %" PRIu64, fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), strReason.c_str(), runtime::UnifiedTimestamp());
+            debug::log(1, "xxxxx %s Node %s Disconnected (%s) at timestamp %" PRIu64, fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), strReason.c_str(), runtime::UnifiedTimestamp());
 
             return;
         }
@@ -199,7 +199,7 @@ namespace LLP
             uint32_t nRequestID;
             ssMessage >> nRequestID;
 
-            /* De-Serialize the Timestamp Sent. */
+            /* De-Serialize the timestamp Sent. */
             uint64_t nTimestamp;
             ssMessage >> nTimestamp;
 
@@ -223,7 +223,7 @@ namespace LLP
             ssMessage >> nRequestID;
 
 
-            /* De-Serialize the Timestamp Sent. */
+            /* De-Serialize the timestamp Sent. */
             uint64_t nTimestamp;
             ssMessage >> nTimestamp;
 

@@ -63,7 +63,7 @@ namespace TAO::Ledger
 	}
 
 
-	/* Return the Block's current UNIX Timestamp. */
+	/* Return the Block's current UNIX timestamp. */
 	uint64_t Block::GetBlockTime() const
 	{
 		return (uint64_t)nTime;

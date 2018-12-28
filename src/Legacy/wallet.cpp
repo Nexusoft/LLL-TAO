@@ -296,13 +296,13 @@ namespace Legacy
         RAND_bytes(&kMasterKey.vchSalt[0], WALLET_CRYPTO_SALT_SIZE);
 
         /* Use time to process 2 calls to SetKeyFromPassphrase to create a nDeriveIterations value for master key */
-        int64_t nStartTime = runtime::Timestamp(true);
+        int64_t nStartTime = runtime::timestamp(true);
         crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, 25000, kMasterKey.nDerivationMethod);
-        kMasterKey.nDeriveIterations = 2500000 / ((double)(runtime::Timestamp(true) - nStartTime));
+        kMasterKey.nDeriveIterations = 2500000 / ((double)(runtime::timestamp(true) - nStartTime));
 
-        nStartTime = runtime::Timestamp(true);
+        nStartTime = runtime::timestamp(true);
         crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, kMasterKey.nDeriveIterations, kMasterKey.nDerivationMethod);
-        kMasterKey.nDeriveIterations = (kMasterKey.nDeriveIterations + kMasterKey.nDeriveIterations * 100 / ((double)(runtime::Timestamp(true) - nStartTime))) / 2;
+        kMasterKey.nDeriveIterations = (kMasterKey.nDeriveIterations + kMasterKey.nDeriveIterations * 100 / ((double)(runtime::timestamp(true) - nStartTime))) / 2;
 
         /* Assure a minimum value */
         if (kMasterKey.nDeriveIterations < 25000)
@@ -459,13 +459,13 @@ namespace Legacy
                      */
 
                     /* Use time to process 2 calls to SetKeyFromPassphrase to create a new nDeriveIterations value for master key */
-                    int64_t nStartTime = runtime::Timestamp(true);
+                    int64_t nStartTime = runtime::timestamp(true);
                     crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod);
-                    pMasterKey.second.nDeriveIterations = pMasterKey.second.nDeriveIterations * (100 / ((double)(runtime::Timestamp(true) - nStartTime)));
+                    pMasterKey.second.nDeriveIterations = pMasterKey.second.nDeriveIterations * (100 / ((double)(runtime::timestamp(true) - nStartTime)));
 
-                    nStartTime = runtime::Timestamp(true);
+                    nStartTime = runtime::timestamp(true);
                     crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod);
-                    pMasterKey.second.nDeriveIterations = (pMasterKey.second.nDeriveIterations + pMasterKey.second.nDeriveIterations * 100 / ((double)(runtime::Timestamp(true) - nStartTime))) / 2;
+                    pMasterKey.second.nDeriveIterations = (pMasterKey.second.nDeriveIterations + pMasterKey.second.nDeriveIterations * 100 / ((double)(runtime::timestamp(true) - nStartTime))) / 2;
 
                     /* Assure a minimum value */
                     if (pMasterKey.second.nDeriveIterations < 25000)
@@ -951,7 +951,7 @@ namespace Legacy
                 CWalletTx& wtx = item.second;
 
                 /* Don't put in sorted map for rebroadcast until it's had enough time to be added to a block */
-                if (runtime::Timestamp() - wtx.nTimeReceived > 5 * 60)
+                if (runtime::timestamp() - wtx.nTimeReceived > 5 * 60)
                     mapSorted.insert(std::make_pair(wtx.nTimeReceived, wtx));
             }
 

@@ -71,7 +71,7 @@ namespace TAO::Ledger
             txNew.vin[0].scriptSig[6] = 21;
             txNew.vin[0].scriptSig[7] = 34;
 
-            /** Update the Coinstake Timestamp. **/
+            /** Update the Coinstake timestamp. **/
             txNew.nTime = pindexPrev->GetBlockTime() + 1;
         }
 

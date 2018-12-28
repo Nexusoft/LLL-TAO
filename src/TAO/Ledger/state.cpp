@@ -95,7 +95,7 @@ namespace TAO::Ledger
             return debug::error(FUNCTION "incorrect proof-of-work/proof-of-stake", __PRETTY_FUNCTION__);
 
 
-        /* Check That Block Timestamp is not before previous block. */
+        /* Check That Block timestamp is not before previous block. */
         if (GetBlockTime() <= statePrev.GetBlockTime())
             return debug::error(FUNCTION "block's timestamp too early Block: %" PRId64 " Prev: %" PRId64 "", __PRETTY_FUNCTION__,
             GetBlockTime(), statePrev.GetBlockTime());

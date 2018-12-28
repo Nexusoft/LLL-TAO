@@ -441,7 +441,7 @@ namespace Consensus
         if(!cBlock.IsProofOfStake())
             return debug::error("CTrustPool::check() : Cannot Accept non Coinstake Transactions.");
 
-        /* Check the Coinstake Time is before Unified Timestamp. */
+        /* Check the Coinstake Time is before Unified timestamp. */
         if(cBlock.vtx[0].nTime > (runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT))
             return debug::error("CTrustPool::check() : Coinstake Transaction too far in Future.");
 
@@ -451,11 +451,11 @@ namespace Consensus
 
         /* Make Sure Coinstake Transaction Time is Before Block. */
         if (cBlock.vtx[0].nTime > cBlock.nTime)
-            return debug::error("CTrustPool::check()  : Coinstake Timestamp to far into Future.");
+            return debug::error("CTrustPool::check()  : Coinstake timestamp to far into Future.");
 
         /* Check that the Coinbase / CoinstakeTimstamp is after Previous Block. */
         if (mapBlockIndex[cBlock.hashPrevBlock]->GetBlockTime() > cBlock.vtx[0].nTime)
-            return debug::error("CTrustPool::check()  : Coinstake Timestamp too Early.");
+            return debug::error("CTrustPool::check()  : Coinstake timestamp too Early.");
 
         /** Extract the Key from the Script Signature. **/
         vector< std::vector<uint8_t> > vKeys;
@@ -539,7 +539,7 @@ namespace Consensus
             if(!mapBlockIndex.count(mapTrustKeys[cKey].hashGenesisBlock))
                 return debug::error("CTrustPool::Connect() : Block Not Found.");
 
-            /* Don't allow Expired Trust Keys. Check Expiration from Previous Block Timestamp. */
+            /* Don't allow Expired Trust Keys. Check Expiration from Previous Block timestamp. */
             if(mapTrustKeys[cKey].Expired(cBlock.GetHash(), cBlock.hashPrevBlock))
                 return debug::error("CTrustPool::Connect() : Cannot Create Block for Expired Trust Key.");
 
@@ -755,7 +755,7 @@ namespace Consensus
         if(!cBlock.IsProofOfStake())
             return debug::error("CTrustKey::CheckGenesis() : Genesis Key Invalid for non Proof of Stake blocks.");
 
-        /** Trust Key Timestamp must be the same as Genesis Key Block Timestamp. **/
+        /** Trust Key timestamp must be the same as Genesis Key Block timestamp. **/
         if(nGenesisTime != cBlock.nTime)
             return debug::error("CTrustKey::CheckGenesis() : Time Mismatch for Trust key to Genesis Trust Block");
 

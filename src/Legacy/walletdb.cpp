@@ -636,7 +636,7 @@ namespace Legacy
                             debug::log(0, "%s ", DateTimeStrFormat(runtime::UnifiedTimestamp()).c_str());
                             debug::log(0, "ThreadFlushWalletDB : Flushing wallet.dat");
                             nLastFlushed = CWalletDB::nWalletDBUpdated;
-                            int64_t nStart = runtime::Timestamp(true);
+                            int64_t nStart = runtime::timestamp(true);
 
                             /* Flush wallet file so it's self contained */
                             CDB::CloseDb(strWalletFile);
@@ -644,7 +644,7 @@ namespace Legacy
                             CDB::dbenv.lsn_reset(strWalletFile.c_str(), 0);
 
                             CDB::mapFileUseCount.erase(mi++);
-                            debug::log(0, "ThreadFlushWalletDB : Flushed %s %" PRI64d "ms", strWalletFile.c_str(), runtime::Timestamp(true) - nStart);
+                            debug::log(0, "ThreadFlushWalletDB : Flushed %s %" PRI64d "ms", strWalletFile.c_str(), runtime::timestamp(true) - nStart);
                         }
                     }
 

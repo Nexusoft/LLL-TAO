@@ -73,7 +73,7 @@ namespace TAO::Ledger
 	bool HardenCheckpoint(const BlockState state)
 	{
 
-		/* Only Harden New Checkpoint if it Fits new Timestamp. */
+		/* Only Harden New Checkpoint if it Fits new timestamp. */
 		if(!IsNewTimespan(state.Prev()))
 			return false;
 

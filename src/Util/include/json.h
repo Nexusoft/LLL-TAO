@@ -19317,7 +19317,7 @@ class basic_json
     Symbol          | 0x0E             | still unsupported
     JavaScript Code | 0x0F             | still unsupported
     int32           | 0x10             | number_integer
-    Timestamp       | 0x11             | still unsupported
+    timestamp       | 0x11             | still unsupported
     128-bit decimal float | 0x13       | still unsupported
     Max Key         | 0x7F             | still unsupported
     Min Key         | 0xFF             | still unsupported

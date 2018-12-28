@@ -122,7 +122,7 @@ namespace LLP
             if(!INCOMING.Complete())
             {
                 /** Handle Reading Packet Length Header. **/
-                if(INCOMING.IsNull() && SOCKET.Available() >= 10)
+                if(INCOMING.IsNull() && Available() >= 10)
                 {
                     std::vector<uint8_t> BYTES(10, 0);
                     if(Read(BYTES, 10) == 10)
@@ -135,7 +135,7 @@ namespace LLP
                 }
 
                 /** Handle Reading Packet Data. **/
-                uint32_t nAvailable = SOCKET.Available();
+                uint32_t nAvailable = Available();
                 if(nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
                 {
                     /* Create the packet data object. */

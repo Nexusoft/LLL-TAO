@@ -194,7 +194,7 @@ namespace TAO::Ledger
 
 		/** UpdateTime
 		 *
-		 *	Update the blocks Timestamp
+		 *	Update the blocks timestamp
 		 *
 		 **/
 		void UpdateTime();

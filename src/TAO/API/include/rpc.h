@@ -554,7 +554,7 @@ namespace TAO::API
         *
         *  getmoneysupply <timestamp>
         *  Returns the total supply of Nexus produced by miners, holdings, developers, and ambassadors.
-        *  Default timestamp is the current Unified Timestamp. The timestamp is recorded as a UNIX timestamp
+        *  Default timestamp is the current Unified timestamp. The timestamp is recorded as a UNIX timestamp
         *
         *  @param[in] params Parameters array passed by the caller.
         *
