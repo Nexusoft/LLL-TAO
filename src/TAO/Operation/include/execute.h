@@ -115,6 +115,7 @@ namespace TAO::Operation
                         break;
                     }
 
+
                     /* Debit tokens from an account you own. */
                     case OP::DEBIT:
                     {
@@ -134,6 +135,8 @@ namespace TAO::Operation
                         break;
                     }
 
+
+                    /* Credit tokens to an account you own. */
                     case OP::CREDIT:
                     {
                         /* The transaction that this credit is claiming. */
@@ -159,6 +162,8 @@ namespace TAO::Operation
                         break;
                     }
 
+
+                    /* Coinbase operation. Creates an account if none exists. */
                     case OP::COINBASE:
                     {
                         /* Ensure that it as beginning of the stream. */
@@ -184,6 +189,8 @@ namespace TAO::Operation
                         break;
                     }
 
+
+                    /* Authorize a transaction to happen with a temporal proof. */
                     case OP::AUTHORIZE:
                     {
                         /* The transaction that you are authorizing. */
@@ -200,6 +207,7 @@ namespace TAO::Operation
 
                         break;
                     }
+
 
                     case OP::VOTE:
                     {
