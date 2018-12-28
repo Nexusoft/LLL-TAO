@@ -141,73 +141,77 @@ namespace LLP
                 if(vchBuffer.size() == 0)
                     return;
 
-                /* Read content if there is some. */
-                if(INCOMING.fHeader)
+                /* Allow up to 10 iterations to parse the header. */
+                for(int i = 0; i < 10; i++)
                 {
-                    INCOMING.strContent += std::string(vchBuffer.begin(), vchBuffer.end());
-                    vchBuffer.clear();
-                    return;
-                }
-
-                /* Break out the lines by the input buffer. */
-                auto it = std::find(vchBuffer.begin(), vchBuffer.end(), '\n');
-
-                /* Return if a full line hasn't been read yet. */
-                if(it == vchBuffer.end())
-                    return;
-
-                /* Check for the end of header with double CLRF. */
-                if(vchBuffer.begin() == (it - 1))
-                {
-                    INCOMING.fHeader = true;
-
-                    vchBuffer.erase(vchBuffer.begin(), it + 1); //erase the CLRF
-                    //this->Event()
-                    //TODO: assess the events code and calling virutal method from lower class in the inheritance heirarchy
-                }
-
-                /* Read all the headers. */
-                else if(!INCOMING.fHeader)
-                {
-                    /* Extract the line from the buffer. */
-                    std::string strLine = std::string(vchBuffer.begin(), it - 1);
-
-                    /* Find the delimiter to split. */
-                    std::string::size_type pos = strLine.find(':', 0);
-
-                    /* Handle the request types. */
-                    if(INCOMING.strType == "")
+                    /* Read content if there is some. */
+                    if(INCOMING.fHeader)
                     {
-                        /* Find the end of request type. */
-                        std::string::size_type npos = strLine.find(' ', 0);
-                        INCOMING.strType = ToLower(strLine.substr(0, npos));
-
-                        /* Find the start of version. */
-                        std::string::size_type npos2 = strLine.find(' ', npos + 1);
-                        INCOMING.strVersion = ToLower(strLine.substr(npos2 + 1));
-
-                        /* Parse request from between the two. */
-                        INCOMING.strRequest = ToLower(strLine.substr(npos + 1, npos2 - INCOMING.strType.length() - 1));
-
+                        INCOMING.strContent += std::string(vchBuffer.begin(), vchBuffer.end());
+                        vchBuffer.clear();
+                        return;
                     }
 
-                    /* Handle normal headers. */
-                    else if(pos != std::string::npos)
+                    /* Break out the lines by the input buffer. */
+                    auto it = std::find(vchBuffer.begin(), vchBuffer.end(), '\n');
+
+                    /* Return if a full line hasn't been read yet. */
+                    if(it == vchBuffer.end())
+                        return;
+
+                    /* Check for the end of header with double CLRF. */
+                    if(vchBuffer.begin() == (it - 1))
                     {
-                        /* Set the field value to lowercase. */
-                        std::string field = ToLower(strLine.substr(0, pos));
+                        INCOMING.fHeader = true;
 
-                        /* Parse out the content length field. */
-                        if(field == "content-length")
-                            INCOMING.nContentLength = stoi(strLine.substr(pos + 2));
-
-                        /* Add line to the headers map. */
-                        INCOMING.mapHeaders[field] = strLine.substr(pos + 2);
-
+                        vchBuffer.erase(vchBuffer.begin(), it + 1); //erase the CLRF
+                        //this->Event()
+                        //TODO: assess the events code and calling virutal method from lower class in the inheritance heirarchy
                     }
 
-                    /* Erase line read from the read buffer. */
-                    vchBuffer.erase(vchBuffer.begin(), it + 1);
+                    /* Read all the headers. */
+                    else if(!INCOMING.fHeader)
+                    {
+                        /* Extract the line from the buffer. */
+                        std::string strLine = std::string(vchBuffer.begin(), it - 1);
+
+                        /* Find the delimiter to split. */
+                        std::string::size_type pos = strLine.find(':', 0);
+
+                        /* Handle the request types. */
+                        if(INCOMING.strType == "")
+                        {
+                            /* Find the end of request type. */
+                            std::string::size_type npos = strLine.find(' ', 0);
+                            INCOMING.strType = ToLower(strLine.substr(0, npos));
+
+                            /* Find the start of version. */
+                            std::string::size_type npos2 = strLine.find(' ', npos + 1);
+                            INCOMING.strVersion = ToLower(strLine.substr(npos2 + 1));
+
+                            /* Parse request from between the two. */
+                            INCOMING.strRequest = ToLower(strLine.substr(npos + 1, npos2 - INCOMING.strType.length() - 1));
+
+                        }
+
+                        /* Handle normal headers. */
+                        else if(pos != std::string::npos)
+                        {
+                            /* Set the field value to lowercase. */
+                            std::string field = ToLower(strLine.substr(0, pos));
+
+                            /* Parse out the content length field. */
+                            if(field == "content-length")
+                                INCOMING.nContentLength = stoi(strLine.substr(pos + 2));
+
+                            /* Add line to the headers map. */
+                            INCOMING.mapHeaders[field] = strLine.substr(pos + 2);
+
+                        }
+
+                        /* Erase line read from the read buffer. */
+                        vchBuffer.erase(vchBuffer.begin(), it + 1);
+                    }
                 }
             }
         }
