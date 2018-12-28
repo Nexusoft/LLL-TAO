@@ -82,6 +82,9 @@ namespace TAO::Ledger
     /* Determines if the transaction is a coinbase transaction. */
     bool Transaction::IsCoinbase() const
     {
+        if(vchLedgerData.empty())
+            return false;
+
         return vchLedgerData[0] == TAO::Operation::OP::COINBASE;
     }
 
@@ -89,6 +92,9 @@ namespace TAO::Ledger
     /* Determines if the transaction is a coinstake transaction. */
     bool Transaction::IsTrust() const
     {
+        if(vchLedgerData.empty())
+            return false;
+            
         return vchLedgerData[0] == TAO::Operation::OP::TRUST;
     }
 
