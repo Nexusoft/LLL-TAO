@@ -208,6 +208,16 @@ namespace TAO
             bool IsCoinbase() const;
 
 
+            /** Is Trust
+             *
+             *  Determines if the transaction is a trust transaction.
+             *
+             *  @return true if transaction is a coinbase.
+             *
+             **/
+            bool IsTrust() const;
+
+
             /** IsGenesis
              *
              *  Determines if the transaction is a genesis transaction

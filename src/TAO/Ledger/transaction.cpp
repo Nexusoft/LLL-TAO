@@ -86,6 +86,13 @@ namespace TAO::Ledger
     }
 
 
+    /* Determines if the transaction is a coinstake transaction. */
+    bool Transaction::IsTrust() const
+    {
+        return vchLedgerData[0] == TAO::Operation::OP::TRUST;
+    }
+
+
     /* Determines if the transaction is a genesis transaction */
     bool Transaction::IsGenesis() const
     {

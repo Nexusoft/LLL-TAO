@@ -58,54 +58,58 @@ namespace TAO::Ledger
 			return debug::error(FUNCTION "size limits failed", __PRETTY_FUNCTION__);
 
 
-		/** Make sure the Block was Created within Active Channel. **/
+		/* Make sure the Block was Created within Active Channel. */
 		if (GetChannel() > 2)
 			return debug::error(FUNCTION "channel out of Range.", __PRETTY_FUNCTION__);
 
 
-		/** Check that the time was within range. */
+		/* Check that the time was within range. */
 		if (GetBlockTime() > runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT)
 			return debug::error(FUNCTION "block timestamp too far in the future", __PRETTY_FUNCTION__);
 
 
-		/** Do not allow blocks to be accepted above the current block version. */
+		/* Do not allow blocks to be accepted above the current block version. */
 		if(nVersion > (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION))
 			return debug::error(FUNCTION "invalid block version", __PRETTY_FUNCTION__);
 
 
-		/** Only allow POS blocks in Version 4. **/
+		/* Only allow POS blocks in Version 4. */
 		if(IsProofOfStake() && nVersion < 4)
 			return debug::error(FUNCTION "proof-of-stake rejected until version 4", __PRETTY_FUNCTION__);
 
 
-		/** Check the Proof of Work Claims. **/
+		/* Check the Proof of Work Claims. */
 		if (IsProofOfWork() && !VerifyWork())
 			return debug::error(FUNCTION "invalid proof of work", __PRETTY_FUNCTION__);
 
 
-		/** Check the Network Launch Time-Lock. **/
+		/* Check the Network Launch Time-Lock. */
 		if (nHeight > 0 && GetBlockTime() <= (config::fTestNet ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK))
 			return debug::error(FUNCTION "block created before network time-lock", __PRETTY_FUNCTION__);
 
 
-		/** Check the Current Channel Time-Lock. **/
+		/* Check the Current Channel Time-Lock. */
 		if (nHeight > 0 && GetBlockTime() < (config::fTestNet ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]))
 			return debug::error(FUNCTION "block created before channel time-lock, please wait %" PRIu64 " seconds", __PRETTY_FUNCTION__, (config::fTestNet ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]) - runtime::UnifiedTimestamp());
 
 
-		/** Check the Current Version Block Time-Lock. Allow Version (Current -1) Blocks for 1 Hour after Time Lock. **/
+		/* Check the Current Version Block Time-Lock. Allow Version (Current -1) Blocks for 1 Hour after Time Lock. */
 		if (nVersion > 1 && nVersion == (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION - 1 : NETWORK_BLOCK_CURRENT_VERSION - 1) && (GetBlockTime() - 3600) > (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
 			return debug::error(FUNCTION "version %u blocks have been obsolete for %" PRId64 " seconds", __PRETTY_FUNCTION__, nVersion, (runtime::UnifiedTimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2])));
 
 
-		/** Check the Current Version Block Time-Lock. **/
+		/* Check the Current Version Block Time-Lock. */
 		if (nVersion >= (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION) && GetBlockTime() <= (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
 			return debug::error(FUNCTION "version %u blocks are not accepted for %" PRId64 " seconds", __PRETTY_FUNCTION__, nVersion, (runtime::UnifiedTimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2])));
 
 
 		/* Check the producer transaction. */
-		if(!producer.IsCoinBase())
-			return debug::error(FUNCTION "producer transaction has to be coinbase.", __PRETTY_FUNCTION__);
+		if(GetChannel() > 0 && !producer.IsCoinbase())
+			return debug::error(FUNCTION "producer transaction has to be coinbase for proof of work", __PRETTY_FUNCTION__);
+
+		/* Check the producer transaction. */
+		if(GetChannel() == 0 && !producer.IsTrust())
+			return debug::error(FUNCTION "producer transaction has to be trust for proof of stake", __PRETTY_FUNCTION__);
 
 
 		/* Check for duplicate txid's */

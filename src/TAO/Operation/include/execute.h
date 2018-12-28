@@ -190,6 +190,45 @@ namespace TAO::Operation
                     }
 
 
+                    /* Coinstake operation. Requires an account. */
+                    case OP::TRUST:
+                    {
+                        /* Ensure that it as beginning of the stream. */
+                        if(!stream.Begin())
+                            return debug::error(FUNCTION "trust opeartion has to be first", __PRETTY_FUNCTION__);
+
+                        /* The account that is being staked. */
+                        uint256_t hashAccount;
+                        stream >> hashAccount;
+
+                        /* The previous trust block. */
+                        uint1024_t hashLastTrust;
+                        stream >> hashLastTrust;
+
+                        /* Previous trust sequence number. */
+                        uint32_t nSequence;
+                        stream >> nSequence;
+
+                        /* The previous trust calculated. */
+                        uint64_t nLastTrust;
+                        stream >> nLastTrust;
+
+                        /* The total to be staked. */
+                        uint64_t  nStake;
+                        stream >> nStake;
+
+                        /* Execute the operation method. */
+                        if(!Trust(hashAccount, hashLastTrust, nSequence, nLastTrust, nStake, hashOwner))
+                            return false;
+
+                        /* Ensure that it as end of stream. TODO: coinbase should be followed by ambassador and developer scripts */
+                        if(!stream.End())
+                            return debug::error(FUNCTION "trust can't have extra data", __PRETTY_FUNCTION__);
+
+                        break;
+                    }
+
+
                     /* Authorize a transaction to happen with a temporal proof. */
                     case OP::AUTHORIZE:
                     {

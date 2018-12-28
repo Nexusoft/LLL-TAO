@@ -37,6 +37,7 @@ namespace TAO
             DEBIT      = 0x10,
             CREDIT     = 0x11,
             COINBASE   = 0x12,
+            TRUST      = 0x13, //for proof of stake
 
             //crypto operations
             SIGNATURE  = 0x20,

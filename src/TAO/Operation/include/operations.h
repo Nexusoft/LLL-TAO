@@ -104,6 +104,23 @@ namespace TAO::Operation
     bool Coinbase(uint256_t hashAccount, uint64_t nAmount, uint256_t hashCaller);
 
 
+    /** Trust
+     *
+     *  Handles the locking of stake in a stake register.
+     *
+     *  @param[in] hashAccount The account being staked to
+     *  @param[in] hashLastTrust The last trust block.
+     *  @param[in] nSequence The last sequence number.
+     *  @param[in] nLastTrust The last trust score.
+     *  @param[in] nAmount The amount being transferred
+     *  @param[in] hashCaller The calling signature chain.
+     *
+     *  @return true if successful.
+     *
+     **/
+    bool Trust(uint256_t hashAddress, uint1024_t hashLastTrust, uint32_t nSequence, uint32_t nLastTrust, uint64_t nAmount, uint256_t hashCaller);
+
+
     /** Authorize
      *
      *  Authorizes an action if holder of a token.
