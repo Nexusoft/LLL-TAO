@@ -67,9 +67,9 @@ if [ "$COMMAND" = "supply/transfer" ] ; then
     echo "suppply/transfer?pin=<pin>&session=<session-id>&address=0x<register-address>&destination=<new-owner>"
     exit
 fi
-if [ "$COMMAND" = "supply/submit" ] ; then
+if [ "$COMMAND" = "supply/createitem" ] ; then
     echo "Supply parameters:"
-    echo "suppply/submit?pin=<pin>&session=<session-id>&data=<data>"
+    echo "suppply/createitem?pin=<pin>&session=<session-id>&data=<data>"
     exit
 fi
 if [ "$COMMAND" = "supply/history" ] ; then
