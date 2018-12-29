@@ -265,6 +265,11 @@ namespace LLP
     /* Flushes data out of the overflow buffer */
     int Socket::Flush()
     {
+        /* Don't flush if buffer doesn't have any data. */
+        if(vBuffer.size() == 0)
+            return 0;
+
+        /* Set the maximum bytes to flush to 2^16 or maximum socket buffers. */
         uint32_t nBytes = std::min((uint32_t)vBuffer.size(), 65535u);
 
         /* If there were any errors, handle them gracefully. */
