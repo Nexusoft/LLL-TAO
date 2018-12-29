@@ -83,9 +83,6 @@ namespace LLP
 
                         /* Update the last ping. */
                         nLastPing = runtime::timestamp();
-
-                        std::vector<uint8_t> vBigOne(1024 * 1024 * 2, 0);
-                        PushMessage(0xff, vBigOne);
                     }
 
                     /* Generic events - unified time. */
