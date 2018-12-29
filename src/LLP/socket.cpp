@@ -112,7 +112,7 @@ namespace LLP
                 /* If the connection attempt timed out with select. */
                 if (nRet == 0)
                 {
-                    debug::log(0, "***** Node Connection Timeout %s...", addrDest.ToString().c_str());
+                    debug::log(0, NODE "connection timeout %s...", addrDest.ToString().c_str());
 
                     close(fd);
 
@@ -122,7 +122,7 @@ namespace LLP
                 /* If the select failed. */
                 if (nRet == SOCKET_ERROR)
                 {
-                    debug::log(0, "***** Node Select Failed %s (%i)", addrDest.ToString().c_str(), GetLastError());
+                    debug::log(0, NODE "select failed %s (%i)", addrDest.ToString().c_str(), GetLastError());
 
                     close(fd);
 
@@ -137,7 +137,7 @@ namespace LLP
                 if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
     #endif
                 {
-                    debug::log(0, "***** Node Get Options Failed %s (%i)", addrDest.ToString().c_str(), GetLastError());
+                    debug::log(0, NODE "get options failed %s (%i)", addrDest.ToString().c_str(), GetLastError());
                     close(fd);
 
                     return false;
@@ -146,7 +146,7 @@ namespace LLP
                 /* If there are no socket options set. TODO: Remove preprocessors for cross platform sockets. */
                 if (nRet != 0)
                 {
-                    debug::log(0, "***** Node Failed after Select %s (%i)", addrDest.ToString().c_str(), nRet);
+                    debug::log(0, NODE "failed after select %s (%i)", addrDest.ToString().c_str(), nRet);
                     close(fd);
 
                     return false;
@@ -158,7 +158,7 @@ namespace LLP
             else
     #endif
             {
-                debug::log(0, "***** Node Connect Failed %s (%i)", addrDest.ToString().c_str(), GetLastError());
+                debug::log(0, NODE "connect failed %s (%i)", addrDest.ToString().c_str(), GetLastError());
                 close(fd);
 
                 return false;
