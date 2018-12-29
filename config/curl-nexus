@@ -13,12 +13,15 @@ COMMAND=$2
 # Generate help strings if no parameters on curl-nexus command line.
 #
 if [ -z "$HOST" ] && [ -z "$COMMAND" ] ; then
-    echo "Nexus Tritium Supported APIs:"
+    echo "Nexus Tritium Supported APIs (<api>/<method>):"
     echo "  Accounts API:          Supply API:"
     echo "  accounts/create        supply/getitme"
     echo "  accounts/login         supply/transfer"
     echo "  accounts/logout        supply/submit"
     echo "  accounts/transactions  supply/history"
+    echo ""
+    echo "Use double quotes for command-line argument:"
+    echo 'Usage: curl-nexus [<host>] "<api>/<method>?<key>=<value>&<key1>=<value1>"'
     exit
 fi
 
@@ -78,9 +81,10 @@ fi
 #
 # curl the URL with API method and parameters.
 #
-echo "Querying $HOST for API command '$COMMAND' ..."
+COMMAND="http://$HOST:8080/$COMMAND"
+echo "Curling $COMMAND ..."
 
-curl --silent http://$HOST:8080/$COMMAND | jq .
+curl --silent $COMMAND | jq .
 exit
 
 #
