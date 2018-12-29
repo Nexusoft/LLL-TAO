@@ -21,7 +21,7 @@ if [ -z "$HOST" ] && [ -z "$COMMAND" ] ; then
     echo "  accounts/transactions  supply/history"
     echo ""
     echo "Use double quotes for command-line argument:"
-    echo 'Usage: curl-nexus [<host>] "<api>/<method>?<key>=<value>?<key1>=<value1>"'
+    echo 'Usage: curl-nexus [<host>] "<api>/<method>?<key>=<value>&<key1>=<value1>&<key2>=<value2>"'
     exit
 fi
 
@@ -38,12 +38,12 @@ fi
 #
 if [ "$COMMAND" = "accounts/create" ] ; then
     echo "Supply parameters:"
-    echo "accounts/create?username=<user>?password=<password>?pin=<pin>"
+    echo "accounts/create?username=<user>&password=<password>&pin=<pin>"
     exit
 fi
 if [ "$COMMAND" = "accounts/login" ] ; then
     echo "Supply parameters:"
-    echo "accounts/login?username=<user>?password=<password>"
+    echo "accounts/login?username=<user>&password=<password>"
     exit
 fi
 if [ "$COMMAND" = "accounts/logout" ] ; then
@@ -64,12 +64,12 @@ if [ "$COMMAND" = "supply/getitem" ] ; then
 fi
 if [ "$COMMAND" = "supply/transfer" ] ; then
     echo "Supply parameters:"
-    echo "suppply/transfer?pin=<pin>?session=<session-id>?address=0x<register-address>?destination=<new-owner>"
+    echo "suppply/transfer?pin=<pin>&session=<session-id>&address=0x<register-address>&destination=<new-owner>"
     exit
 fi
 if [ "$COMMAND" = "supply/submit" ] ; then
     echo "Supply parameters:"
-    echo "suppply/submit?pin=<pin>?session=<session-id>?data=<data>"
+    echo "suppply/submit?pin=<pin>&session=<session-id>&data=<data>"
     exit
 fi
 if [ "$COMMAND" = "supply/history" ] ; then
