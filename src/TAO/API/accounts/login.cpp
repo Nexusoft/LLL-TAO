@@ -63,7 +63,10 @@ namespace TAO::API
                 delete user;
                 user = nullptr;
 
-                throw APIException(-22, "Already logged in.");
+                ret["genesis"] = hashGenesis.ToString();
+                ret["session"] = session->first;
+
+                return ret;
             }
         }
 
