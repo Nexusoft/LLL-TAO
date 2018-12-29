@@ -17,7 +17,7 @@ if [ -z "$HOST" ] && [ -z "$COMMAND" ] ; then
     echo "  Accounts API:          Supply API:"
     echo "  accounts/create        supply/getitem"
     echo "  accounts/login         supply/transfer"
-    echo "  accounts/logout        supply/submit"
+    echo "  accounts/logout        supply/createitem"
     echo "  accounts/transactions  supply/history"
     echo ""
     echo "Use double quotes for command-line argument:"
