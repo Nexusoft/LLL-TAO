@@ -63,6 +63,7 @@ namespace TAO::Register
         : nVersion(1)
         , nType(0)
         , hashOwner(0)
+        , vchState()
         , hashChecksum(0)
         , nReadPos(0)
         {
@@ -73,6 +74,7 @@ namespace TAO::Register
         State(std::vector<uint8_t> vchData)
         : nVersion(1)
         , nType(0)
+        , hashOwner(0)
         , vchState(vchData)
         , nReadPos(0)
         {
@@ -83,6 +85,8 @@ namespace TAO::Register
         : nVersion(1)
         , nType(nTypeIn)
         , hashOwner(hashOwnerIn)
+        , vchState()
+        , hashChecksum(0)
         , nReadPos(0)
         {
 
@@ -91,8 +95,8 @@ namespace TAO::Register
         State(std::vector<uint8_t> vchData, uint8_t nTypeIn, uint256_t hashAddressIn, uint256_t hashOwnerIn)
         : nVersion(1)
         , nType(nTypeIn)
-        , vchState(vchData)
         , hashOwner(hashOwnerIn)
+        , vchState(vchData)
         , nReadPos(0)
         {
             SetChecksum();
@@ -102,6 +106,8 @@ namespace TAO::Register
         State(uint64_t hashChecksumIn)
         : nVersion(1)
         , nType(0)
+        , hashOwner(0)
+        , vchState()
         , hashChecksum(hashChecksumIn)
         , nReadPos(0)
         {
@@ -118,6 +124,7 @@ namespace TAO::Register
             hashChecksum = 0;
 
             vchState.clear();
+            nReadPos     = 0;
         }
 
 
