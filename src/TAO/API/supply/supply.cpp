@@ -34,10 +34,10 @@ namespace TAO::API
     /* Standard initialization function. */
     void Supply::Initialize()
     {
-        mapFunctions["getitem"]             = Function(std::bind(&Supply::GetItem,   this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["transfer"]            = Function(std::bind(&Supply::Transfer,  this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["submit"]              = Function(std::bind(&Supply::Submit,    this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["history"]             = Function(std::bind(&Supply::History,   this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["getitem"]             = Function(std::bind(&Supply::GetItem,    this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["transfer"]            = Function(std::bind(&Supply::Transfer,   this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["createitem"]          = Function(std::bind(&Supply::CreateItem, this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["history"]             = Function(std::bind(&Supply::History,    this, std::placeholders::_1, std::placeholders::_2));
     }
 
 
@@ -157,7 +157,7 @@ namespace TAO::API
 
 
     /* Submits an item. */
-    json::json Supply::Submit(const json::json& params, bool fHelp)
+    json::json Supply::CreateItem(const json::json& params, bool fHelp)
     {
         json::json ret;
 

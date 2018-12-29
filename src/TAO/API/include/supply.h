@@ -77,9 +77,9 @@ namespace TAO::API
         json::json Transfer(const json::json& params, bool fHelp);
 
 
-        /** Submit
+        /** Create Item
          *
-         *  Submits an item.
+         *  Creates an item.
          *
          *  @param[in] params The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
@@ -87,7 +87,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Submit(const json::json& params, bool fHelp);
+        json::json CreateItem(const json::json& params, bool fHelp);
 
 
         /** History
