@@ -282,9 +282,8 @@ namespace LLP
             uint32_t nAvailable = Available();
             if(nAvailable > 0 && INCOMING.LENGTH > 0 && INCOMING.DATA.size() < INCOMING.LENGTH)
             {
-
                 /* Read the data in the packet */
-                std::vector<uint8_t> DATA( std::min( nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
+                std::vector<uint8_t> DATA( std::min(nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
 
                 /* On successful read, fire event and add data to packet. */
                 if(Read(DATA, DATA.size()) == DATA.size())
