@@ -194,8 +194,7 @@ namespace LLP
     /* Read data from the socket buffer non-blocking */
     int Socket::Read(std::vector<uint8_t> &vData, size_t nBytes)
     {
-        int8_t pchBuf[nBytes];
-        int nRead = recv(fd, pchBuf, nBytes, MSG_DONTWAIT);
+        int nRead = recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT);
         if (nRead < 0)
         {
             nError = GetLastError();
@@ -203,9 +202,8 @@ namespace LLP
 
             return nError;
         }
-
         if(nRead > 0)
-            std::copy(&pchBuf[0], &pchBuf[0] + nRead, vData.begin());
+            nLastRecv = runtime::timestamp();
 
         return nRead;
     }
@@ -213,8 +211,7 @@ namespace LLP
     /* Read data from the socket buffer non-blocking */
     int Socket::Read(std::vector<int8_t> &vchData, size_t nBytes)
     {
-        int8_t pchBuf[nBytes];
-        int nRead = recv(fd, pchBuf, nBytes, MSG_DONTWAIT);
+        int nRead = recv(fd, (int8_t*)&vchData[0], nBytes, MSG_DONTWAIT);
         if (nRead < 0)
         {
             nError = GetLastError();
@@ -222,9 +219,8 @@ namespace LLP
 
             return nError;
         }
-
         if(nRead > 0)
-            std::copy(&pchBuf[0], &pchBuf[0] + nRead, vchData.begin());
+            nLastRecv = runtime::timestamp();
 
         return nRead;
     }
@@ -233,11 +229,20 @@ namespace LLP
     /* Write data into the socket buffer non-blocking */
     int Socket::Write(std::vector<uint8_t> vData, size_t nBytes)
     {
-        char pchBuf[nBytes];
-        std::copy(&vData[0], &vData[0] + nBytes, &pchBuf[0]);
+        /* Check overflow buffer. */
+        if(vBuffer.size() > 0)
+        {
+            nLastSend = runtime::timestamp();
+            vBuffer.insert(vBuffer.end(), vData.begin(), vData.end());
+
+            /* Flush the remaining bytes from the buffer. */
+            Flush();
+
+            return nBytes;
+        }
 
         /* If there were any errors, handle them gracefully. */
-        int nSent = send(fd, pchBuf, nBytes, MSG_NOSIGNAL | MSG_DONTWAIT );
+        int nSent = send(fd, (int8_t*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT );
         if(nSent < 0)
         {
             nError = GetLastError();
@@ -249,9 +254,34 @@ namespace LLP
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent != vData.size())
         {
-            vData.erase(vData.begin(), vData.begin() + nSent);
+            nLastSend = runtime::timestamp();
+            vBuffer.insert(vBuffer.end(), vData.begin() + nSent, vData.end());
+        }
 
-            return Write(vData, vData.size());
+        return nSent;
+    }
+
+
+    /* Flushes data out of the overflow buffer */
+    int Socket::Flush()
+    {
+        uint32_t nBytes = std::min((uint32_t)vBuffer.size(), 65535u);
+
+        /* If there were any errors, handle them gracefully. */
+        int nSent = send(fd, (int8_t*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT );
+        if(nSent < 0)
+        {
+            nError = GetLastError();
+            debug::log(2, "xxxxx Node Write Failed %s (%i %s)", addr.ToString().c_str(), nError, strerror(nError));
+
+            return nError;
+        }
+
+        /* If not all data was sent non-blocking, recurse until it is complete. */
+        else if(nSent > 0)
+        {
+            nLastSend = runtime::timestamp();
+            vBuffer.erase(vBuffer.begin(), vBuffer.begin() + nSent);
         }
 
         return nSent;

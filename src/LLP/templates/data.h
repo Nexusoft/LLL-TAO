@@ -230,6 +230,10 @@ namespace LLP
                         CONNECTIONS[nIndex]->Event(EVENT_GENERIC);
 
 
+                        /* Flush the write buffer. */
+                        CONNECTIONS[nIndex]->Flush();
+
+
                         /* Work on Reading a Packet. **/
                         CONNECTIONS[nIndex]->ReadPacket();
 

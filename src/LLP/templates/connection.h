@@ -283,8 +283,8 @@ namespace LLP
             if(nAvailable > 0 && INCOMING.LENGTH > 0 && INCOMING.DATA.size() < INCOMING.LENGTH)
             {
 
-                /* Read the data in the packet with a maximum of 512 bytes at a time. */
-                std::vector<uint8_t> DATA( std::min( std::min(nAvailable, 512u), (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
+                /* Read the data in the packet */
+                std::vector<uint8_t> DATA( std::min( nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
 
                 /* On successful read, fire event and add data to packet. */
                 if(Read(DATA, DATA.size()) == DATA.size())

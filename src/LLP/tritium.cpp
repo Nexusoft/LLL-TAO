@@ -83,6 +83,9 @@ namespace LLP
 
                         /* Update the last ping. */
                         nLastPing = runtime::timestamp();
+
+                        std::vector<uint8_t> vBigOne(1024 * 1024 * 2, 0);
+                        PushMessage(0xff, vBigOne);
                     }
 
                     /* Generic events - unified time. */
@@ -136,7 +139,8 @@ namespace LLP
                     if(!TRITIUM_SERVER->addrThisNode.IsValid())
                     {
                         addr.SetPort(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
-                        debug::log(1, NODE "recieved external address %s", addr.ToString().c_str());
+                        debug::log(0, NODE "recieved external address %s", addr.ToString().c_str());
+
                         TRITIUM_SERVER->addrThisNode = addr;
                     }
 

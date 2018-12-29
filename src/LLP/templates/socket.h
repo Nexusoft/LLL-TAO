@@ -41,6 +41,10 @@ namespace LLP
         /** Keep track of last time data was received. **/
         uint32_t nLastRecv;
 
+
+        /** Oversize buffer for large packets. **/
+        std::vector<uint8_t> vBuffer;
+
     public:
 
         /** The address of this connection. */
@@ -157,6 +161,16 @@ namespace LLP
          *
          **/
         int32_t Write(std::vector<uint8_t> vData, size_t nBytes);
+
+
+        /** Flush
+         *
+         *  Flushes data out of the overflow buffer
+         *
+         *  @return the total bytes that were written
+         *
+         **/
+        int32_t Flush();
 
     };
 
