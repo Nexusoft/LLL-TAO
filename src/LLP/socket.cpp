@@ -198,7 +198,7 @@ namespace LLP
         if (nRead < 0)
         {
             nError = GetLastError();
-            debug::log(2, "xxxxx Node Read Failed %s (%i %s)", addr.ToString().c_str(), nError, strerror(nError));
+            debug::log(2, NODE "read failed %s (%i %s)", addr.ToString().c_str(), nError, strerror(nError));
 
             return nError;
         }
@@ -215,7 +215,7 @@ namespace LLP
         if (nRead < 0)
         {
             nError = GetLastError();
-            debug::log(2, "xxxxx Node Read Failed %s (%i %s)", addr.ToString().c_str(), nError, strerror(nError));
+            debug::log(2, NODE "read failed %s (%i %s)", addr.ToString().c_str(), nError, strerror(nError));
 
             return nError;
         }
@@ -246,7 +246,7 @@ namespace LLP
         if(nSent < 0)
         {
             nError = GetLastError();
-            debug::log(2, "xxxxx Node Write Failed %s (%i %s)", addr.ToString().c_str(), nError, strerror(nError));
+            debug::log(2, NODE "write failed %s (%i %s)", addr.ToString().c_str(), nError, strerror(nError));
 
             return nError;
         }
@@ -277,7 +277,7 @@ namespace LLP
         if(nSent < 0)
         {
             nError = GetLastError();
-            debug::log(2, "xxxxx Node Write Failed %s (%i %s)", addr.ToString().c_str(), nError, strerror(nError));
+            debug::log(2, NODE "flush failed %s (%i %s)", addr.ToString().c_str(), nError, strerror(nError));
 
             return nError;
         }
