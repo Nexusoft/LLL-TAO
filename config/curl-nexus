@@ -15,13 +15,13 @@ COMMAND=$2
 if [ -z "$HOST" ] && [ -z "$COMMAND" ] ; then
     echo "Nexus Tritium Supported APIs (<api>/<method>):"
     echo "  Accounts API:          Supply API:"
-    echo "  accounts/create        supply/getitme"
+    echo "  accounts/create        supply/getitem"
     echo "  accounts/login         supply/transfer"
     echo "  accounts/logout        supply/submit"
     echo "  accounts/transactions  supply/history"
     echo ""
     echo "Use double quotes for command-line argument:"
-    echo 'Usage: curl-nexus [<host>] "<api>/<method>?<key>=<value>&<key1>=<value1>"'
+    echo 'Usage: curl-nexus [<host>] "<api>/<method>?<key>=<value>?<key1>=<value1>"'
     exit
 fi
 
