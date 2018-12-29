@@ -21,7 +21,7 @@ if [ -z "$HOST" ] && [ -z "$COMMAND" ] ; then
     echo "  accounts/transactions  supply/history"
     echo ""
     echo "Use double quotes for command-line argument:"
-    echo 'Usage: curl-nexus [<host>] "<api>/<method>?<key>=<value>&<key1>=<value1>"'
+    echo 'Usage: curl-nexus [<host>] "<api>/<method>?<key>=<value>&<key1>=<value1>&<key2>=<value2>"'
     exit
 fi
 
