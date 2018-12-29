@@ -58,6 +58,6 @@ namespace TAO::API
         if(!mapSessions.count(nSession))
             throw APIException(-1, "cannot get genesis if not logged in.");
 
-        return LLC::SK256(mapSessions[nSession]->Generate(0, "genesis").GetBytes()); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
+        return mapSessions[nSession]->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
     }
 }

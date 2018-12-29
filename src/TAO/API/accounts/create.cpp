@@ -42,10 +42,10 @@ namespace TAO::API
             throw APIException(-25, "Missing PIN");
 
         /* Generate the signature chain. */
-        TAO::Ledger::SignatureChain user(params["username"].get<std::string>(), params["password"].get<std::string>());
+        TAO::Ledger::SignatureChain user(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
 
         /* Get the Genesis ID. */
-        uint256_t hashGenesis = LLC::SK256(user.Generate(0, "genesis").GetBytes());
+        uint256_t hashGenesis = user.Genesis();
 
         /* Check for duplicates in local db. */
         TAO::Ledger::Transaction tx;
