@@ -2,21 +2,86 @@
 #
 # curl-nexus
 #
-# Use tritium API to get some info.
+# Use tritium API to get some info. If the URL has parameters encoded with
+# "?", then double quotes need to be used to call this bash script.
 #
 
 HOST=$1
 COMMAND=$2
-        
+
+#
+# Generate help strings if no parameters on curl-nexus command line.
+#
+if [ -z "$HOST" ] && [ -z "$COMMAND" ] ; then
+    echo "Nexus Tritium Supported APIs:"
+    echo "  Accounts API:          Supply API:"
+    echo "  accounts/create        supply/getitme"
+    echo "  accounts/login         supply/transfer"
+    echo "  accounts/logout        supply/submit"
+    echo "  accounts/transactions  supply/history"
+    exit
+fi
+
+#
+# Default to localhost.
+#        
 if [ -z "$COMMAND" ] ; then
     HOST="localhost"
     COMMAND="$1"
 fi
-    
+
+#
+# Check if parameters supplied.
+#
+if [ "$COMMAND" = "accounts/create" ] ; then
+    echo "Supply parameters:"
+    echo "accounts/create?username=<user>?password=<password>?pin=<pin>"
+    exit
+fi
+if [ "$COMMAND" = "accounts/login" ] ; then
+    echo "Supply parameters:"
+    echo "accounts/login?username=<user>?password=<password>"
+    exit
+fi
+if [ "$COMMAND" = "accounts/logout" ] ; then
+    echo "Supply parameters:"
+    echo "accounts/login?session=<session-id>"
+    exit
+fi
+if [ "$COMMAND" = "accounts/transactions" ] ; then
+    echo "Supply parameters:"
+    echo "accounts/transactions?genesis=<genesis-id>"
+    exit
+fi
+
+if [ "$COMMAND" = "supply/getitem" ] ; then
+    echo "Supply parameters:"
+    echo "suppply/getitem?address=0x<register-address>"
+    exit
+fi
+if [ "$COMMAND" = "supply/transfer" ] ; then
+    echo "Supply parameters:"
+    echo "suppply/transfer?pin=<pin>?session=<session-id>?address=0x<register-address>?destination=<new-owner>"
+    exit
+fi
+if [ "$COMMAND" = "supply/submit" ] ; then
+    echo "Supply parameters:"
+    echo "suppply/submit?pin=<pin>?session=<session-id>?data=<data>"
+    exit
+fi
+if [ "$COMMAND" = "supply/history" ] ; then
+    echo "Supply parameters:"
+    echo "suppply/history?address=0x<register-address>"
+    exit
+fi
+
+#
+# curl the URL with API method and parameters.
+#
 echo "Querying $HOST for API command '$COMMAND' ..."
 
-curl --silent --data-binary 'content-type: application/json;' \
-    http://$HOST:8080/api/$COMMAND | jq .
+curl --silent http://$HOST:8080/$COMMAND | jq .
+exit
 
 #
 # The RPC legacy equivalent for "getinfo".
