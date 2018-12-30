@@ -192,6 +192,6 @@ namespace TAO::Ledger
         if (!GetLastState(last, nChannel))
             return true;
 
-		return !(GetChainAge(runtime::UnifiedTimestamp()) == GetChainAge(last.GetBlockTime()));
+		return !(GetChainAge(runtime::unifiedtimestamp()) == GetChainAge(last.GetBlockTime()));
 	}
 }

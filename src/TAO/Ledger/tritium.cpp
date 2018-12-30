@@ -64,7 +64,7 @@ namespace TAO::Ledger
 
 
 		/* Check that the time was within range. */
-		if (GetBlockTime() > runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT)
+		if (GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
 			return debug::error(FUNCTION "block timestamp too far in the future", __PRETTY_FUNCTION__);
 
 
@@ -90,17 +90,17 @@ namespace TAO::Ledger
 
 		/* Check the Current Channel Time-Lock. */
 		if (nHeight > 0 && GetBlockTime() < (config::fTestNet ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]))
-			return debug::error(FUNCTION "block created before channel time-lock, please wait %" PRIu64 " seconds", __PRETTY_FUNCTION__, (config::fTestNet ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]) - runtime::UnifiedTimestamp());
+			return debug::error(FUNCTION "block created before channel time-lock, please wait %" PRIu64 " seconds", __PRETTY_FUNCTION__, (config::fTestNet ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]) - runtime::unifiedtimestamp());
 
 
 		/* Check the Current Version Block Time-Lock. Allow Version (Current -1) Blocks for 1 Hour after Time Lock. */
 		if (nVersion > 1 && nVersion == (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION - 1 : NETWORK_BLOCK_CURRENT_VERSION - 1) && (GetBlockTime() - 3600) > (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-			return debug::error(FUNCTION "version %u blocks have been obsolete for %" PRId64 " seconds", __PRETTY_FUNCTION__, nVersion, (runtime::UnifiedTimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2])));
+			return debug::error(FUNCTION "version %u blocks have been obsolete for %" PRId64 " seconds", __PRETTY_FUNCTION__, nVersion, (runtime::unifiedtimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2])));
 
 
 		/* Check the Current Version Block Time-Lock. */
 		if (nVersion >= (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION) && GetBlockTime() <= (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-			return debug::error(FUNCTION "version %u blocks are not accepted for %" PRId64 " seconds", __PRETTY_FUNCTION__, nVersion, (runtime::UnifiedTimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2])));
+			return debug::error(FUNCTION "version %u blocks are not accepted for %" PRId64 " seconds", __PRETTY_FUNCTION__, nVersion, (runtime::unifiedtimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2])));
 
 
 		/* Check the producer transaction. */
@@ -122,7 +122,7 @@ namespace TAO::Ledger
 		if(IsProofOfStake())
 		{
 			/* Check the trust time is before Unified timestamp. */
-			if(producer.nTimestamp > (runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT))
+			if(producer.nTimestamp > (runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT))
 				return debug::error(FUNCTION "trust timestamp too far in the future", __PRETTY_FUNCTION__);
 
 			/* Make Sure Trust Transaction Time is Before Block. */

@@ -62,7 +62,7 @@ namespace TAO::Ledger
         }
 
         /* Check the timestamp. */
-        if(nTimestamp > runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT)
+        if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
             return debug::error(FUNCTION "transaction timestamp too far in the future %u", __PRETTY_FUNCTION__, nTimestamp);
 
         /* Check the size constraints of the ledger data. */

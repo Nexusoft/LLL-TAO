@@ -514,7 +514,7 @@ namespace Legacy
                 const CWalletTx& walletTx = item.second;
 
                 /* Skip any transaction that isn't final, isn't completely confirmed, or has a future timestamp */
-                if (!walletTx.IsFinal() || !walletTx.IsConfirmed() || walletTx.nTime > runtime::UnifiedTimestamp())
+                if (!walletTx.IsFinal() || !walletTx.IsConfirmed() || walletTx.nTime > runtime::unifiedtimestamp())
                     continue;
 
                 nTotalBalance += walletTx.GetAvailableCredit();
@@ -682,7 +682,7 @@ namespace Legacy
 
             bool fInsertedNew = ret.second;
             if (fInsertedNew)
-                wtx.nTimeReceived = runtime::UnifiedTimestamp();
+                wtx.nTimeReceived = runtime::unifiedtimestamp();
 
             bool fUpdated = false;
             if (!fInsertedNew)
@@ -920,11 +920,11 @@ namespace Legacy
         bool fFirst = (snNextTime == 0);
 
         /* Always false on first iteration */
-        if (runtime::UnifiedTimestamp() < snNextTime)
+        if (runtime::unifiedtimestamp() < snNextTime)
             return;
 
         /* Set a random time until resend is processed */
-        snNextTime = runtime::UnifiedTimestamp() + LLC::GetRand(30 * 60);
+        snNextTime = runtime::unifiedtimestamp() + LLC::GetRand(30 * 60);
 
         /* On first iteration, just return. All it does is set snNextTime */
         if (fFirst)

@@ -46,7 +46,7 @@ namespace runtime
     }
 
 
-    /** UnifiedTimestamp
+    /** unifiedtimestamp
      *
      *  Return the Current UNIX timestamp with average unified offset
      *
@@ -55,7 +55,7 @@ namespace runtime
      *  @return The Current UNIX timestamp with average unified offset
      *
      **/
-    inline uint64_t UnifiedTimestamp(bool fMilliseconds = false)
+    inline uint64_t unifiedtimestamp(bool fMilliseconds = false)
     {
         return fMilliseconds ? timestamp(true) + (UNIFIED_AVERAGE_OFFSET * 1000) : timestamp() + UNIFIED_AVERAGE_OFFSET;
     }

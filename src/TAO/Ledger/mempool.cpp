@@ -64,7 +64,7 @@ namespace TAO::Ledger
             return debug::error(FUNCTION "trust %s not accepted in pool", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
 
         /* Check for duplicate coinbase or coinstake. */
-        if(tx.nTimestamp > runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT)
+        if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
             return debug::error(FUNCTION "tx %s too far in the future", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
 
         /* Check that the transaction is in a valid state. */
@@ -99,10 +99,13 @@ namespace TAO::Ledger
     {
         LOCK(MUTEX);
 
+        /* Find the transaction in pool. */
         TAO::Ledger::Transaction tx;
         if(mapLedger.count(hashTx))
         {
             tx = mapLedger[hashTx];
+
+            /* Erase from the memory map. */
             mapPrevHashes.erase(tx.PrevHash());
             mapLedger.erase(hashTx);
 
@@ -118,10 +121,13 @@ namespace TAO::Ledger
     {
         LOCK(MUTEX);
 
+        /* Fail if not found. */
         if(!mapLedger.count(hashTx))
             return false;
 
+        /* Find the object. */
         tx = mapLedger[hashTx];
+        
         return true;
     }
 }

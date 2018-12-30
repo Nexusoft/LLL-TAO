@@ -116,7 +116,7 @@ namespace TAO::Ledger
 	/* Update the nTime of the current block. */
 	void Block::UpdateTime()
 	{
-		nTime = runtime::UnifiedTimestamp();
+		nTime = runtime::unifiedtimestamp();
 	}
 
 

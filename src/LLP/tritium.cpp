@@ -45,7 +45,7 @@ namespace LLP
                     nLastPing    = runtime::timestamp();
 
                     /* Debut output. */
-                    debug::log(0, "%s %s Connected at timestamp %" PRIu64 "", Name().c_str(), GetAddress().ToString().c_str(), runtime::UnifiedTimestamp());
+                    debug::log(0, "%s %s Connected at timestamp %" PRIu64 "", Name().c_str(), GetAddress().ToString().c_str(), runtime::unifiedtimestamp());
 
                     /* Send version if making the connection. */
                     if(fOUTGOING)

@@ -404,7 +404,7 @@ namespace Consensus
             }
 
             /* Get the time since last block. */
-            uint64_t nTrustAge = mapTrustKeys[cKey].Age(runtime::UnifiedTimestamp());
+            uint64_t nTrustAge = mapTrustKeys[cKey].Age(runtime::unifiedtimestamp());
             uint64_t nBlockAge = mapTrustKeys[cKey].BlockAge(cBlock.GetHash(), cBlock.hashPrevBlock);
 
             /* Genesis Rules: Less than 1000 NXS in block. */
@@ -442,7 +442,7 @@ namespace Consensus
             return debug::error("CTrustPool::check() : Cannot Accept non Coinstake Transactions.");
 
         /* Check the Coinstake Time is before Unified timestamp. */
-        if(cBlock.vtx[0].nTime > (runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT))
+        if(cBlock.vtx[0].nTime > (runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT))
             return debug::error("CTrustPool::check() : Coinstake Transaction too far in Future.");
 
         /* Make Sure Coinstake Transaction is First. */

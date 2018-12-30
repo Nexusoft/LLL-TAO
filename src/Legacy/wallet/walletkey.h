@@ -55,7 +55,7 @@ namespace Legacy
          **/
         CWalletKey(uint64_t nExpires=0)
         {
-            nTimeCreated = (nExpires ? runtime::UnifiedTimestamp() : 0);
+            nTimeCreated = (nExpires ? runtime::unifiedtimestamp() : 0);
             nTimeExpires = nExpires;
         }
 

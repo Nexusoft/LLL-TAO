@@ -50,7 +50,7 @@ namespace Legacy
          **/
         CKeyPoolEntry()
         {
-            nTime = runtime::UnifiedTimestamp();
+            nTime = runtime::unifiedtimestamp();
         }
 
 
@@ -63,7 +63,7 @@ namespace Legacy
          **/
         CKeyPoolEntry(const std::vector<uint8_t>& vchPubKeyIn)
         {
-            nTime = runtime::UnifiedTimestamp();
+            nTime = runtime::unifiedtimestamp();
             vchPubKey = vchPubKeyIn;
         }
 

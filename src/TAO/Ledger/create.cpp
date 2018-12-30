@@ -65,7 +65,7 @@ namespace TAO::Ledger
 
 
         /* Modulate the Block Versions if they correspond to their proper time stamp */
-        if(runtime::UnifiedTimestamp() >= (config::fTestNet ?
+        if(runtime::unifiedtimestamp() >= (config::fTestNet ?
             TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] :
             NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
             block.nVersion = config::fTestNet ?
@@ -163,7 +163,7 @@ namespace TAO::Ledger
         block.nHeight        = ChainState::stateBest.nHeight + 1;
         block.nBits          = GetNextTargetRequired(ChainState::stateBest, nChannel);
         block.nNonce         = 1;
-        block.nTime          = runtime::UnifiedTimestamp();
+        block.nTime          = runtime::unifiedtimestamp();
 
         return true;
     }

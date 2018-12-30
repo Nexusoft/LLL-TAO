@@ -53,7 +53,7 @@ namespace TAO::API
 
        obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
 
-        obj["timestamp"] =  (int)runtime::UnifiedTimestamp();
+        obj["timestamp"] =  (int)runtime::unifiedtimestamp();
 
       obj["connections"] = GetTotalConnectionCount();
     //    obj.push_back(std::make_pair("proxy",         (fUseProxy ? addrProxy.ToStringIPPort() : string())));

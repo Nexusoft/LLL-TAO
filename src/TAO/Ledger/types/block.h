@@ -95,7 +95,7 @@ namespace TAO::Ledger
 		, nHeight(nHeightIn)
 		, nBits(0)
 		, nNonce(0)
-		, nTime(runtime::UnifiedTimestamp()) { }
+		, nTime(runtime::unifiedtimestamp()) { }
 
 
 		/** Set the block to Null state. **/
