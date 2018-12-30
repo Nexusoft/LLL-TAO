@@ -59,6 +59,23 @@ namespace TAO::Ledger
     }
 
 
+    /* Remove a transaction from pool. */
+    bool Mempool::Remove(uint512_t hashTx)
+    {
+        TAO::Ledger::Transaction tx;
+        if(mapLedger.count(hashTx))
+        {
+            tx = mapLedger[hashTx];
+            mapPrevHashes.erase(tx.PrevHash());
+            mapLedger.erase(hashTx);
+
+            return true;
+        }
+
+        return false;
+    }
+
+
     /* Gets a transaction from mempool */
     bool Mempool::Get(uint512_t hashTx, TAO::Ledger::Transaction& tx)
     {
