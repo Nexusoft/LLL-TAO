@@ -26,7 +26,7 @@ namespace TAO::Ledger
 
         /* Check the mempool. */
         if(mapLedger.count(hash))
-            return debug::error(FUNCTION "%s already exists", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "%s already exists", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
 
         /* Add to the map. */
         mapLedger[hash] = tx;
@@ -40,7 +40,7 @@ namespace TAO::Ledger
     {
         /* Check that the transaction is in a valid state. */
         if(!tx.IsValid())
-            return false;
+            return debug::error(FUNCTION "%s is invalid", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
 
         /* Calculate the future potential states. */
         //TODO: execute the operations layer
