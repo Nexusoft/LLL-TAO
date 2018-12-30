@@ -50,7 +50,7 @@ ________________________________________________________________________________
 #define ANSI_COLOR_BRIGHT_CYAN    "\u001b[36;1m"
 #define ANSI_COLOR_BRIGHT_WHITE   "\u001b[37;1m"
 
-#define ANSI_COLOR_FUNCTION ANSI_COLOR_BRIGHT_WHITE
+#define ANSI_COLOR_FUNCTION ANSI_COLOR_BRIGHT_BLUE
 
 #define FUNCTION ANSI_COLOR_FUNCTION "%s" ANSI_COLOR_RESET " : "
 
@@ -71,7 +71,7 @@ namespace debug
         tx            = (1 << 1),
         chain         = (1 << 2)
     };
-    
+
 
     /** log
      *

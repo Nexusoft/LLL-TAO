@@ -73,7 +73,7 @@ namespace TAO::Ledger
 
         /* Calculate the future potential states. */
         if(!TAO::Operation::Execute(tx.vchLedgerData, tx.hashGenesis, false))
-            return debug::error(FUNCTION "%s operations failed", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
+            return debug::error(FUNCTION "%s register / operations failed", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
 
         /* Add to the map. */
         mapLedger[hash] = tx;
@@ -127,7 +127,7 @@ namespace TAO::Ledger
 
         /* Find the object. */
         tx = mapLedger[hashTx];
-        
+
         return true;
     }
 }
