@@ -32,7 +32,7 @@ namespace TAO::Ledger
      *  Class to Store a legacy Trust Key and its Interest Rate. 
      *
      **/
-	class CTrustKey
+	class TrustKey
 	{
 	public:
        /** The Public Key associated with this Trust Key. **/
@@ -59,7 +59,7 @@ namespace TAO::Ledger
          *  Initializes a null Trust Key.
          *
          **/
-        CTrustKey();
+        TrustKey();
 
 
         /** Constructor
@@ -75,7 +75,7 @@ namespace TAO::Ledger
          *  @param[in] nTimeIn The nGenesisTime value for this Trust Key
          *
          **/
-        CTrustKey(const std::vector<uint8_t> vchPubKeyIn, const uint1024_t hashBlockIn, const uint512_t hashTxIn, const int32_t nTimeIn);
+        TrustKey(const std::vector<uint8_t> vchPubKeyIn, const uint1024_t hashBlockIn, const uint512_t hashTxIn, const int32_t nTimeIn);
 
 
         /* Define Serialization/Deserialization for Trust Key */
