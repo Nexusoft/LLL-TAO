@@ -172,11 +172,6 @@ namespace LLP
             Creates a Packet QUEUE on this connection to be processed by an LLP Messaging Thread. */
         void Thread()
         {
-            runtime::timer time;
-            time.Start();
-
-            uint32_t nIt = 0;
-
             /* The mutex for the condition. */
             std::mutex CONDITION_MUTEX;
 
