@@ -272,6 +272,14 @@ namespace LLP
                 /* Pick a weighted random priority from a sorted list of addresses */
                 if(pAddressManager && pAddressManager->StochasticSelect(addr))
                 {
+                    /* Check for connect to self. */
+                    if(addr.ToStringIP() == addrThisNode.ToStringIP())
+                    {
+                        runtime::sleep(1000);
+
+                        continue;
+                    }
+
                     /* Get the IP in proper type. */
                     std::string ip = addr.ToStringIP();
                     uint16_t port = addr.GetPort();

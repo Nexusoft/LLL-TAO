@@ -16,20 +16,32 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <TAO/Ledger/types/state.h>
+
 namespace TAO::Ledger
 {
 
-	/** The best block height in the chain. **/
-	extern uint32_t nBestHeight;
+	struct ChainState
+	{
+		/** The best block height in the chain. **/
+		static uint32_t nBestHeight;
 
 
-    /** The best hash in the chain. */
-    extern uint1024_t hashBestChain;
+    	/** The best hash in the chain. */
+    	static uint1024_t hashBestChain;
 
 
-    /** The best trust in the chain. **/
-    extern uint64_t nBestChainTrust;
+	    /** The best trust in the chain. **/
+	    static uint64_t nBestChainTrust;
 
+
+		/** Flag to tell if initial blocks are downloading. **/
+		static bool Synchronizing();
+
+
+		/** The best block in the chain. **/
+		static BlockState stateBest;
+	};
 }
 
 

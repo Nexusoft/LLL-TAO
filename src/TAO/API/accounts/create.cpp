@@ -15,8 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/accounts.h>
 
-#include <TAO/Ledger/types/transaction.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/include/create.h>
 
 #include <Util/include/hex.h>
 
@@ -42,22 +41,22 @@ namespace TAO::API
             throw APIException(-25, "Missing PIN");
 
         /* Generate the signature chain. */
-        TAO::Ledger::SignatureChain user(params["username"], params["password"]);
+        TAO::Ledger::SignatureChain user(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
 
         /* Get the Genesis ID. */
-        uint256_t hashGenesis = LLC::SK256(user.Generate(0, "genesis").GetBytes());
+        uint256_t hashGenesis = user.Genesis();
 
         /* Check for duplicates in local db. */
         TAO::Ledger::Transaction tx;
         if(LLD::legDB->HasGenesis(hashGenesis))
             throw APIException(-26, "Account already exists");
 
-        /* Create the transaction object. */
-        tx.NextHash(user.Generate(tx.nSequence + 1, params["pin"]));
-        tx.hashGenesis = hashGenesis;
+        /* Create the transaction. */
+        if(!TAO::Ledger::CreateTransaction(&user, params["pin"].get<std::string>().c_str(), tx))
+            throw APIException(-25, "Failed to create transaction");
 
         /* Sign the transaction. */
-        tx.Sign(user.Generate(tx.nSequence, params["pin"]));
+        tx.Sign(user.Generate(tx.nSequence, params["pin"].get<std::string>().c_str()));
 
         /* Check that the transaction is valid. */
         if(!tx.IsValid())
@@ -91,8 +90,12 @@ namespace TAO::API
         /* JSON return value. */
         json::json ret;
 
+        /* Check for username parameter. */
+        if(params.find("genesis") == params.end())
+            throw APIException(-25, "Missing Genesis ID");
+
         /* Get the Genesis ID. */
-        uint256_t hashGenesis = GetGenesis();
+        uint256_t hashGenesis = uint256_t(params["genesis"].get<std::string>());
 
         /* Get the last transaction. */
         uint512_t hashLast;

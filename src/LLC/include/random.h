@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_LLC_INCLUDE_RANDOM_H
 
 #include <openssl/rand.h>
+#include <limits>
 
 #include <LLC/types/uint1024.h>
 
@@ -50,7 +51,7 @@ namespace LLC
     int GetRandInt(int nMax);
 
     /* Get random 64 bit number. */
-    uint64_t GetRand(uint64_t nMax);
+    uint64_t GetRand(uint64_t nMax = std::numeric_limits<uint64_t>::max());
 
     /* Get random 256 bit number. */
     uint256_t GetRand256();

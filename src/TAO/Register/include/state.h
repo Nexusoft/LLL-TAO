@@ -31,10 +31,6 @@ namespace TAO::Register
         uint8_t  nType;
 
 
-        /** The length of the state register. **/
-        uint16_t nLength;
-
-
         /** The owner of the register. **/
         uint256_t hashOwner;
 
@@ -54,7 +50,6 @@ namespace TAO::Register
         (
             READWRITE(nVersion);
             READWRITE(nType);
-            READWRITE(nLength);
             READWRITE(vchState);
             READWRITE(hashOwner);
 
@@ -64,29 +59,57 @@ namespace TAO::Register
         )
 
 
-        State() : nVersion(1), nType(0), nLength(0), hashOwner(0), hashChecksum(0), nReadPos(0)
+        State()
+        : nVersion(1)
+        , nType(0)
+        , hashOwner(0)
+        , vchState()
+        , hashChecksum(0)
+        , nReadPos(0)
         {
             vchState.clear();
         }
 
 
-        State(std::vector<uint8_t> vchData) : nVersion(1), nType(0), nLength(vchData.size()), vchState(vchData), nReadPos(0)
+        State(std::vector<uint8_t> vchData)
+        : nVersion(1)
+        , nType(0)
+        , hashOwner(0)
+        , vchState(vchData)
+        , nReadPos(0)
         {
             SetChecksum();
         }
 
-        State(uint8_t nTypeIn, uint256_t hashAddressIn, uint256_t hashOwnerIn) : nVersion(1), nType(nTypeIn), nLength(0), hashOwner(hashOwnerIn), nReadPos(0)
+        State(uint8_t nTypeIn, uint256_t hashAddressIn, uint256_t hashOwnerIn)
+        : nVersion(1)
+        , nType(nTypeIn)
+        , hashOwner(hashOwnerIn)
+        , vchState()
+        , hashChecksum(0)
+        , nReadPos(0)
         {
 
         }
 
-        State(std::vector<uint8_t> vchData, uint8_t nTypeIn, uint256_t hashAddressIn, uint256_t hashOwnerIn) : nVersion(1), nType(nTypeIn), nLength(vchData.size()), vchState(vchData), hashOwner(hashOwnerIn), nReadPos(0)
+        State(std::vector<uint8_t> vchData, uint8_t nTypeIn, uint256_t hashAddressIn, uint256_t hashOwnerIn)
+        : nVersion(1)
+        , nType(nTypeIn)
+        , hashOwner(hashOwnerIn)
+        , vchState(vchData)
+        , nReadPos(0)
         {
             SetChecksum();
         }
 
 
-        State(uint64_t hashChecksumIn) : nVersion(1), nLength(0), hashChecksum(hashChecksumIn), nReadPos(0)
+        State(uint64_t hashChecksumIn)
+        : nVersion(1)
+        , nType(0)
+        , hashOwner(0)
+        , vchState()
+        , hashChecksum(hashChecksumIn)
+        , nReadPos(0)
         {
 
         }
@@ -97,25 +120,25 @@ namespace TAO::Register
         {
             nVersion     = 0;
             nType        = 0;
-            nLength      = 0;
             hashOwner    = 0;
             hashChecksum = 0;
 
             vchState.clear();
+            nReadPos     = 0;
         }
 
 
         /** nullptr Checking flag for a State Register. **/
         bool IsNull()
         {
-            return (nVersion == 0 && nLength == 0 && vchState.size() == 0 && hashChecksum == 0);
+            return (nVersion == 0 && vchState.size() == 0 && hashChecksum == 0);
         }
 
 
         /** Flag to determine if the state register has been pruned. **/
         bool IsPruned()
         {
-            return (nVersion == 0 && nLength == 0 && vchState.size() == 0 && hashChecksum != 0);
+            return (nVersion == 0 && vchState.size() == 0 && hashChecksum != 0);
         }
 
 
@@ -140,15 +163,11 @@ namespace TAO::Register
         {
             /* Check for null state. */
             if(IsNull())
-                return debug::error(FUNCTION "register cannot be null");
+                return debug::error(FUNCTION "register cannot be null", __PRETTY_FUNCTION__);
 
             /* Check the checksum. */
             if(GetHash() != hashChecksum)
                 return debug::error(FUNCTION "register checksum (%" PRIu64 ") mismatch (%" PRIu64 ")", __PRETTY_FUNCTION__, GetHash(), hashChecksum);
-
-            /* Check the state length. */
-            if(vchState.size() != nLength)
-                return debug::error(FUNCTION "register size (%u) mismatch (%u)", __PRETTY_FUNCTION__, vchState.size(), nLength);
 
             return true;
         }
@@ -165,7 +184,6 @@ namespace TAO::Register
         void SetState(std::vector<uint8_t> vchStateIn)
         {
             vchState = vchStateIn;
-            nLength  = vchStateIn.size();
 
             SetChecksum();
         }
@@ -173,7 +191,6 @@ namespace TAO::Register
         void ClearState()
         {
             vchState.clear();
-            nLength  = 0;
             nReadPos = 0;
         }
 
@@ -191,11 +208,7 @@ namespace TAO::Register
         {
             /* Check size constraints. */
             if(nReadPos + nSize > vchState.size())
-            {
-                debug::error(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos);
-
-                return *this;
-            }
+                throw std::runtime_error(debug::strprintf(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos));
 
             /* Copy the bytes into tmp object. */
             std::copy((uint8_t*)&vchState[nReadPos], (uint8_t*)&vchState[nReadPos] + nSize, (uint8_t*)pch);
@@ -222,7 +235,6 @@ namespace TAO::Register
             vchState.insert(vchState.end(), (uint8_t*)pch, (uint8_t*)pch + nSize);
 
             /* Set the length and checksum. */
-            nLength  = vchState.size();
             SetChecksum();
 
             return *this;
@@ -262,7 +274,7 @@ namespace TAO::Register
 
         void print()
         {
-            debug::log(0, "State(version=%u, type=%u, length=%u, owner=%s, checksum=%" PRIu64 ", state=%s)", nVersion, nType, nLength, hashOwner.ToString().substr(0, 20).c_str(), hashChecksum, HexStr(vchState.begin(), vchState.end()).c_str());
+            debug::log(0, "State(version=%u, type=%u, length=%u, owner=%s, checksum=%" PRIu64 ", state=%s)", nVersion, nType, vchState.size(), hashOwner.ToString().substr(0, 20).c_str(), hashChecksum, HexStr(vchState.begin(), vchState.end()).c_str());
         }
 
     };

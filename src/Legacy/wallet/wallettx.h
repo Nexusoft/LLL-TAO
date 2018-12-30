@@ -115,7 +115,7 @@ namespace Legacy
         uint64_t fTimeReceivedIsTxTime;
 
 
-        /** Timestamp when this transaction was received by this node. **/
+        /** timestamp when this transaction was received by this node. **/
         uint64_t nTimeReceived; 
 
 

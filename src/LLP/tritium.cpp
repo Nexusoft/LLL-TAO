@@ -42,10 +42,10 @@ namespace LLP
                 case EVENT_CONNECT:
                 {
                     /* Setup the variables for this node. */
-                    nLastPing    = runtime::Timestamp();
+                    nLastPing    = runtime::timestamp();
 
                     /* Debut output. */
-                    debug::log(0, "%s %s Connected at timestamp %" PRIu64 "", Name().c_str(), GetAddress().ToString().c_str(), runtime::UnifiedTimestamp());
+                    debug::log(0, "%s %s Connected at timestamp %" PRIu64 "", Name().c_str(), GetAddress().ToString().c_str(), runtime::unifiedtimestamp());
 
                     /* Send version if making the connection. */
                     if(fOUTGOING)
@@ -70,35 +70,35 @@ namespace LLP
                 case EVENT_GENERIC:
                 {
                     /* Generic event - pings. */
-                    if(runtime::Timestamp() - nLastPing > 5)
+                    if(runtime::timestamp() - nLastPing > 5)
                     {
                         /* Generate the nNonce. */
                         uint64_t nNonce = LLC::GetRand(std::numeric_limits<uint64_t>::max());
 
                         /* Add to latency tracker. */
-                        mapLatencyTracker[nNonce] = runtime::Timestamp(true);
+                        mapLatencyTracker[nNonce] = runtime::timestamp(true);
 
                         /* Push a ping request. */
                         PushMessage(DAT_PING, nNonce);
 
                         /* Update the last ping. */
-                        nLastPing = runtime::Timestamp();
+                        nLastPing = runtime::timestamp();
                     }
 
                     /* Generic events - unified time. */
-                    if(runtime::Timestamp() - nLastSamples > 30)
+                    if(runtime::timestamp() - nLastSamples > 30)
                     {
                         /* Generate the request identification. */
                         uint32_t nRequestID = LLC::GetRand(std::numeric_limits<int32_t>::max());
 
                         /* Add sent requests. */
-                        mapSentRequests[nRequestID] = runtime::Timestamp();
+                        mapSentRequests[nRequestID] = runtime::timestamp();
 
                         /* Request time samples. */
-                        PushMessage(GET_OFFSET, nRequestID, runtime::Timestamp(true));
+                        PushMessage(GET_OFFSET, nRequestID, runtime::timestamp(true));
 
                         /* Update the samples timer. */
-                        nLastSamples = runtime::Timestamp();
+                        nLastSamples = runtime::timestamp();
                     }
 
                     break;
@@ -119,7 +119,7 @@ namespace LLP
         bool TritiumNode::ProcessPacket()
         {
 
-            CDataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
+            DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
             switch(INCOMING.MESSAGE)
             {
 
@@ -136,7 +136,8 @@ namespace LLP
                     if(!TRITIUM_SERVER->addrThisNode.IsValid())
                     {
                         addr.SetPort(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
-                        debug::log(1, NODE "recieved external address %s", addr.ToString().c_str());
+                        debug::log(0, NODE "recieved external address %s", addr.ToString().c_str());
+
                         TRITIUM_SERVER->addrThisNode = addr;
                     }
 
@@ -167,7 +168,7 @@ namespace LLP
                     ssPacket >> nTimestamp;
 
                     /* Find the sample offset. */
-                    int32_t nOffset = (runtime::Timestamp(true) - nTimestamp);
+                    int32_t nOffset = (runtime::timestamp(true) - nTimestamp);
 
                     /* Debug output for offsets. */
                     debug::log(3, NODE "received timestamp of (%" PRIu64 ") - sending offset %i", nTimestamp, nOffset);
@@ -190,7 +191,7 @@ namespace LLP
                         return debug::error(NODE "offset not requested");
 
                     /* Check the time since request was sent. */
-                    if(runtime::Timestamp() - mapSentRequests[nRequestID] > 10)
+                    if(runtime::timestamp() - mapSentRequests[nRequestID] > 10)
                     {
                         debug::log(0, NODE "offset is stale.");
                         mapSentRequests.erase(nRequestID);
@@ -348,7 +349,7 @@ namespace LLP
                     if(!mapLatencyTracker.count(nNonce))
                         return debug::error(NODE "unsolicited pong");
 
-                    uint32_t lat = runtime::Timestamp(true) - mapLatencyTracker[nNonce];
+                    uint32_t lat = runtime::timestamp(true) - mapLatencyTracker[nNonce];
 
                     /* Set the latency used for address manager within server */
                     if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)

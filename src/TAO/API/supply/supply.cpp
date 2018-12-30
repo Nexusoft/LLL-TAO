@@ -34,10 +34,10 @@ namespace TAO::API
     /* Standard initialization function. */
     void Supply::Initialize()
     {
-        mapFunctions["getitem"]             = Function(std::bind(&Supply::GetItem,   this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["transfer"]            = Function(std::bind(&Supply::Transfer,  this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["submit"]              = Function(std::bind(&Supply::Submit,    this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["history"]             = Function(std::bind(&Supply::History,   this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["getitem"]             = Function(std::bind(&Supply::GetItem,    this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["transfer"]            = Function(std::bind(&Supply::Transfer,   this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["createitem"]          = Function(std::bind(&Supply::CreateItem, this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["history"]             = Function(std::bind(&Supply::History,    this, std::placeholders::_1, std::placeholders::_2));
     }
 
 
@@ -84,22 +84,29 @@ namespace TAO::API
         if(params.find("pin") == params.end())
             throw APIException(-25, "Missing PIN");
 
+        /* Check for username parameter. */
+        if(params.find("session") == params.end())
+            throw APIException(-25, "Missing Session ID");
+
         /* Check for id parameter. */
         if(params.find("address") == params.end())
             throw APIException(-25, "Missing register ID");
 
         /* Check for id parameter. */
-        if(params.find("to") == params.end())
-            throw APIException(-25, "Missing To");
+        if(params.find("destination") == params.end())
+            throw APIException(-25, "Missing Destination");
 
         /* Watch for destination genesis. */
         uint256_t hashTo;
-        hashTo.SetHex(params["to"]);
+        hashTo.SetHex(params["destination"].get<std::string>());
         if(!LLD::legDB->HasGenesis(hashTo))
             throw APIException(-25, "Destination doesn't exist");
 
+        /* Get the session. */
+        uint64_t nSession = std::stoull(params["session"].get<std::string>());
+
         /* Get the Genesis ID. */
-        uint256_t hashGenesis = accounts.GetGenesis();
+        uint256_t hashGenesis = accounts.GetGenesis(nSession);
 
         /* Get the last transaction. */
         uint512_t hashLast;
@@ -116,17 +123,17 @@ namespace TAO::API
         tx.nSequence   = txPrev.nSequence + 1;
         tx.hashGenesis = txPrev.hashGenesis;
         tx.hashPrevTx  = hashLast;
-        tx.NextHash(accounts.GetKey(tx.nSequence + 1, params["pin"]));
+        tx.NextHash(accounts.GetKey(tx.nSequence + 1, params["pin"].get<std::string>().c_str(), nSession));
 
         /* Submit the transaction payload. */
         uint256_t hashRegister;
-        hashRegister.SetHex(params["address"]);
+        hashRegister.SetHex(params["address"].get<std::string>());
 
         /* Submit the payload object. */
         tx << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashTo;
 
         /* Sign the transaction. */
-        if(!tx.Sign(accounts.GetKey(tx.nSequence, params["pin"])))
+        if(!tx.Sign(accounts.GetKey(tx.nSequence, params["pin"].get<std::string>().c_str(), nSession)))
             throw APIException(-26, "Failed to sign transaction");
 
         /* Check that the transaction is valid. */
@@ -150,7 +157,7 @@ namespace TAO::API
 
 
     /* Submits an item. */
-    json::json Supply::Submit(const json::json& params, bool fHelp)
+    json::json Supply::CreateItem(const json::json& params, bool fHelp)
     {
         json::json ret;
 
@@ -158,12 +165,19 @@ namespace TAO::API
         if(params.find("pin") == params.end())
             throw APIException(-25, "Missing PIN");
 
+        /* Check for username parameter. */
+        if(params.find("session") == params.end())
+            throw APIException(-25, "Missing Session ID");
+
         /* Check for data parameter. */
         if(params.find("data") == params.end())
             throw APIException(-25, "Missing data");
 
+        /* Get the session. */
+        uint64_t nSession = std::stoull(params["session"].get<std::string>());
+
         /* Get the Genesis ID. */
-        uint256_t hashGenesis = accounts.GetGenesis();
+        uint256_t hashGenesis = accounts.GetGenesis(nSession);
 
         /* Get the last transaction. */
         uint512_t hashLast;
@@ -180,19 +194,20 @@ namespace TAO::API
         tx.nSequence   = txPrev.nSequence + 1;
         tx.hashGenesis = txPrev.hashGenesis;
         tx.hashPrevTx  = hashLast;
-        tx.NextHash(accounts.GetKey(tx.nSequence + 1, params["pin"]));
+        tx.NextHash(accounts.GetKey(tx.nSequence + 1, params["pin"].get<std::string>().c_str(), nSession));
 
         /* Submit the transaction payload. */
         uint256_t hashRegister = LLC::GetRand256();
 
         /* Test the payload feature. */
-        std::string data = params["data"];
+        DataStream ssData(SER_REGISTER, 1);
+        ssData << params["data"].get<std::string>();
 
         /* Submit the payload object. */
-        tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::READONLY << data;
+        tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::READONLY << static_cast<std::vector<uint8_t>>(ssData);
 
         /* Sign the transaction. */
-        if(!tx.Sign(accounts.GetKey(tx.nSequence, params["pin"])))
+        if(!tx.Sign(accounts.GetKey(tx.nSequence, params["pin"].get<std::string>().c_str(), nSession)))
             throw APIException(-26, "Failed to sign transaction");
 
         /* Check that the transaction is valid. */
@@ -226,7 +241,7 @@ namespace TAO::API
 
         /* Get the Register ID. */
         uint256_t hashRegister;
-        hashRegister.SetHex(params["address"]);
+        hashRegister.SetHex(params["address"].get<std::string>());
 
         /* Get the history. */
         std::vector<TAO::Register::State> states;

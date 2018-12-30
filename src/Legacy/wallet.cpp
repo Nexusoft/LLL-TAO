@@ -21,12 +21,12 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 
 #include <LLD/include/legacy.h>
+#include <LLD/include/global.h>
 
 #include <LLP/include/version.h>
 
-#include <TAO/Ledger/include/chain.h>
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/state.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/tritium.h>
@@ -296,13 +296,13 @@ namespace Legacy
         RAND_bytes(&kMasterKey.vchSalt[0], WALLET_CRYPTO_SALT_SIZE);
 
         /* Use time to process 2 calls to SetKeyFromPassphrase to create a nDeriveIterations value for master key */
-        int64_t nStartTime = runtime::Timestamp(true);
+        int64_t nStartTime = runtime::timestamp(true);
         crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, 25000, kMasterKey.nDerivationMethod);
-        kMasterKey.nDeriveIterations = 2500000 / ((double)(runtime::Timestamp(true) - nStartTime));
+        kMasterKey.nDeriveIterations = 2500000 / ((double)(runtime::timestamp(true) - nStartTime));
 
-        nStartTime = runtime::Timestamp(true);
+        nStartTime = runtime::timestamp(true);
         crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, kMasterKey.nDeriveIterations, kMasterKey.nDerivationMethod);
-        kMasterKey.nDeriveIterations = (kMasterKey.nDeriveIterations + kMasterKey.nDeriveIterations * 100 / ((double)(runtime::Timestamp(true) - nStartTime))) / 2;
+        kMasterKey.nDeriveIterations = (kMasterKey.nDeriveIterations + kMasterKey.nDeriveIterations * 100 / ((double)(runtime::timestamp(true) - nStartTime))) / 2;
 
         /* Assure a minimum value */
         if (kMasterKey.nDeriveIterations < 25000)
@@ -459,13 +459,13 @@ namespace Legacy
                      */
 
                     /* Use time to process 2 calls to SetKeyFromPassphrase to create a new nDeriveIterations value for master key */
-                    int64_t nStartTime = runtime::Timestamp(true);
+                    int64_t nStartTime = runtime::timestamp(true);
                     crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod);
-                    pMasterKey.second.nDeriveIterations = pMasterKey.second.nDeriveIterations * (100 / ((double)(runtime::Timestamp(true) - nStartTime)));
+                    pMasterKey.second.nDeriveIterations = pMasterKey.second.nDeriveIterations * (100 / ((double)(runtime::timestamp(true) - nStartTime)));
 
-                    nStartTime = runtime::Timestamp(true);
+                    nStartTime = runtime::timestamp(true);
                     crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod);
-                    pMasterKey.second.nDeriveIterations = (pMasterKey.second.nDeriveIterations + pMasterKey.second.nDeriveIterations * 100 / ((double)(runtime::Timestamp(true) - nStartTime))) / 2;
+                    pMasterKey.second.nDeriveIterations = (pMasterKey.second.nDeriveIterations + pMasterKey.second.nDeriveIterations * 100 / ((double)(runtime::timestamp(true) - nStartTime))) / 2;
 
                     /* Assure a minimum value */
                     if (pMasterKey.second.nDeriveIterations < 25000)
@@ -514,7 +514,7 @@ namespace Legacy
                 const CWalletTx& walletTx = item.second;
 
                 /* Skip any transaction that isn't final, isn't completely confirmed, or has a future timestamp */
-                if (!walletTx.IsFinal() || !walletTx.IsConfirmed() || walletTx.nTime > runtime::UnifiedTimestamp())
+                if (!walletTx.IsFinal() || !walletTx.IsConfirmed() || walletTx.nTime > runtime::unifiedtimestamp())
                     continue;
 
                 nTotalBalance += walletTx.GetAvailableCredit();
@@ -682,7 +682,7 @@ namespace Legacy
 
             bool fInsertedNew = ret.second;
             if (fInsertedNew)
-                wtx.nTimeReceived = runtime::UnifiedTimestamp();
+                wtx.nTimeReceived = runtime::unifiedtimestamp();
 
             bool fUpdated = false;
             if (!fInsertedNew)
@@ -850,30 +850,28 @@ namespace Legacy
     {
         /* Count the number of transactions process for this wallet to use as return value */
         int nTransactionCount = 0;
-        TAO::Ledger::BlockState blockState;
+        TAO::Ledger::BlockState block;
 
         if (pstartBlock == nullptr)
         {
             /* Use start of chain */
-            if (!TAO::Ledger::GetState(TAO::Ledger::hashBestChain, blockState))
+            if (!LLD::legDB->ReadBlock(TAO::Ledger::ChainState::hashBestChain, block))
             {
                 debug::log(0, "Error: CWallet::ScanForWalletTransactions() could not get start of chain");
                 return 0;
             }
         }
         else
-            blockState = *pstartBlock;
+            block = *pstartBlock;
 
         { // Begin lock scope
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
 
-            LLD::LegacyDB legacydb("r");
+            LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
             Legacy::Transaction tx;
 
             while (!config::fShutdown)
             {
-                /* Get next block in the chain */
-                TAO::Ledger::TritiumBlock& block = blockState.blockThis;
 
                 /* Scan each transaction in the block and process those related to this wallet */
                 for(auto item : block.vtx)
@@ -896,7 +894,7 @@ namespace Legacy
                 }
 
                 /* Move to next block. Will return false when reach end of chain, ending the while loop */
-                if (!NextState(blockState))
+                if (!block.Next())
                     break;
             }
         } // End lock scope
@@ -924,26 +922,26 @@ namespace Legacy
         bool fFirst = (snNextTime == 0);
 
         /* Always false on first iteration */
-        if (runtime::UnifiedTimestamp() < snNextTime)
+        if (runtime::unifiedtimestamp() < snNextTime)
             return;
 
         /* Set a random time until resend is processed */
-        snNextTime = runtime::UnifiedTimestamp() + LLC::GetRand(30 * 60);
+        snNextTime = runtime::unifiedtimestamp() + LLC::GetRand(30 * 60);
 
         /* On first iteration, just return. All it does is set snNextTime */
         if (fFirst)
             return;
 
         /* If no new block, nothing has changed, so just return. */
-        if (TAO::Ledger::nBestHeight <= snLastHeight)
+        if (TAO::Ledger::ChainState::nBestHeight <= snLastHeight)
             return;
 
         /* Record that it is processing resend now */
-        snLastHeight = TAO::Ledger::nBestHeight;
+        snLastHeight = TAO::Ledger::ChainState::nBestHeight;
 
         /* Rebroadcast any of our tx that aren't in a block yet */
         debug::log(0, "ResendWalletTransactions");
-        LLD::LegacyDB legacydb("r");
+        LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
 
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
@@ -955,7 +953,7 @@ namespace Legacy
                 CWalletTx& wtx = item.second;
 
                 /* Don't put in sorted map for rebroadcast until it's had enough time to be added to a block */
-                if (runtime::Timestamp() - wtx.nTimeReceived > 5 * 60)
+                if (runtime::timestamp() - wtx.nTimeReceived > 5 * 60)
                     mapSorted.insert(std::make_pair(wtx.nTimeReceived, wtx));
             }
 
@@ -1026,14 +1024,14 @@ namespace Legacy
             for (auto& item : mapWallet)
                 transactionsInWallet.push_back(item.second);
 
-            LLD::LegacyDB legacydb("r");
+            LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
 
             for(CWalletTx& walletTx : transactionsInWallet)
             {
                 /* Verify transaction is in the tx db */
 //TODO this won't work. it needs txindex below....need to check that code in qt wallet to see
 //how it works. Why do we need that when wallettx is already a Transaction
-//Apparently because that is what we are attempting to fix? 
+//Apparently because that is what we are attempting to fix?
                 Legacy::Transaction txTemp;
 
                 if(!legacydb.ReadTx(walletTx.GetHash(), txTemp))
@@ -1257,7 +1255,7 @@ namespace Legacy
 
 
     /* Generate a transaction to send balance to a given Nexus address. */
-    std::string CWallet::SendToNexusAddress(const NexusAddress& address, int64_t nValue, CWalletTx& wtxNew, 
+    std::string CWallet::SendToNexusAddress(const NexusAddress& address, int64_t nValue, CWalletTx& wtxNew,
                                             const bool fAskFee, const uint32_t nMinDepth)
     {
         /* Validate amount */
@@ -1330,7 +1328,7 @@ namespace Legacy
 
 
     /* Create and populate a new transaction. */
-    bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, 
+    bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey,
                                     int64_t& nFeeRet, const uint32_t nMinDepth)
     {
         int64_t nValue = 0;
@@ -1354,7 +1352,7 @@ namespace Legacy
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
 
-            LLD::LegacyDB legacydb("r");
+            LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
 
             nFeeRet = MIN_TX_FEE;
 
@@ -1597,7 +1595,7 @@ namespace Legacy
 
         /* Calculate the Interest for the Coinstake Transaction. */
         int64_t nInterest;
-        LLD::LegacyDB legacydb("cr");
+        LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
 //        if(!block.vtx[0].GetCoinstakeInterest(block, legacydb, nInterest))
 //            return debug::error("AddCoinstakeInputs() : Failed to Get Interest");
 

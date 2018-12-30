@@ -106,7 +106,7 @@ namespace TAO
             Transaction()
             : nVersion(1)
             , nSequence(0)
-            , nTimestamp(runtime::UnifiedTimestamp())
+            , nTimestamp(runtime::unifiedtimestamp())
             , hashNext(0)
             , hashGenesis(0)
             , hashPrevTx(0)
@@ -127,11 +127,7 @@ namespace TAO
             {
                 /* Check size constraints. */
                 if(nReadPos + nSize > vchLedgerData.size())
-                {
-                    debug::error(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos);
-
-                    return *this;
-                }
+                    throw std::runtime_error(debug::strprintf(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos));
 
                 /* Copy the bytes into tmp object. */
                 std::copy((uint8_t*)&vchLedgerData[nReadPos], (uint8_t*)&vchLedgerData[nReadPos] + nSize, (uint8_t*)pch);
@@ -200,6 +196,26 @@ namespace TAO
              *
              **/
             bool IsValid() const;
+
+
+            /** Is Coinbase
+             *
+             *  Determines if the transaction is a coinbase transaction.
+             *
+             *  @return true if transaction is a coinbase.
+             *
+             **/
+            bool IsCoinbase() const;
+
+
+            /** Is Trust
+             *
+             *  Determines if the transaction is a trust transaction.
+             *
+             *  @return true if transaction is a coinbase.
+             *
+             **/
+            bool IsTrust() const;
 
 
             /** IsGenesis

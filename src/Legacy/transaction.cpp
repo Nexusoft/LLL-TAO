@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <Legacy/include/money.h>
 
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/state.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <Util/include/runtime.h>
 
@@ -35,7 +35,7 @@ namespace Legacy
 	void Transaction::SetNull()
 	{
 		nVersion = 1;
-		nTime = runtime::UnifiedTimestamp();
+		nTime = runtime::unifiedtimestamp();
 		vin.clear();
 		vout.clear();
 		nLockTime = 0;
@@ -52,10 +52,10 @@ namespace Legacy
 	/* Returns the hash of this object. */
 	uint512_t Transaction::GetHash() const
 	{
-        // Most of the time is spent allocating and deallocating CDataStream's
+        // Most of the time is spent allocating and deallocating DataStream's
 	    // buffer.  If this ever needs to be optimized further, make a CStaticStream
 	    // class with its buffer on the stack.
-	    CDataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+	    DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
 	    ss.reserve(10000);
 	    ss << *this;
 	    return LLC::SK512(ss.begin(), ss.end());
@@ -70,10 +70,10 @@ namespace Legacy
 			return true;
 
 		if (nBlockHeight == 0)
-			nBlockHeight = TAO::Ledger::nBestHeight;
+			nBlockHeight = TAO::Ledger::ChainState::nBestHeight;
 
 		if (nBlockTime == 0)
-			nBlockTime = runtime::UnifiedTimestamp();
+			nBlockTime = runtime::unifiedtimestamp();
 
 		if ((int64_t)nLockTime < ((int64_t)nLockTime < LOCKTIME_THRESHOLD ? (int64_t)nBlockHeight : nBlockTime))
 			return true;

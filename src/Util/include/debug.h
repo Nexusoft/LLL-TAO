@@ -63,6 +63,16 @@ ________________________________________________________________________________
 
 namespace debug
 {
+
+    /** Block debug output flags. **/
+    enum flags
+    {
+        header        = (1 << 0),
+        tx            = (1 << 1),
+        chain         = (1 << 2)
+    };
+    
+
     /** log
      *
      *  Prints output to the console. It may also write output to a debug.log

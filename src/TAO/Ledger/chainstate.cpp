@@ -11,24 +11,32 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEDGER_INCLUDE_VALIDATE_H
-#define NEXUS_TAO_LEDGER_INCLUDE_VALIDATE_H
+
+#include <TAO/Ledger/include/chainstate.h>
 
 namespace TAO::Ledger
 {
 
-    /** Check Block
-     *
-     *  Checks if a block is valid if not connected to chain.
-     *
-     *  @param[in] block The block to check.
-     *
-     *  @return true if the block is valid.
-     *
-     **/
-    template<typename BlockType> bool CheckBlock(BlockType block);
+    /* The best block height in the chain. */
+	uint32_t ChainState::nBestHeight = 0;
+
+
+    /* The best hash in the chain. */
+	uint1024_t ChainState::hashBestChain = 0;
+
+
+    /* The best trust in the chain. */
+	uint64_t ChainState::nBestChainTrust = 0;
+
+
+	/* Flag to tell if initial blocks are downloading. */
+	bool ChainState::Synchronizing()
+	{
+		return false;
+	}
+
+
+	/** The best block in the chain. **/
+	BlockState ChainState::stateBest;
 
 }
-
-
-#endif

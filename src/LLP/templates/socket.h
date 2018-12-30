@@ -16,21 +16,34 @@ ________________________________________________________________________________
 
 #include <vector>
 
+#include <poll.h>
+
+#include <Util/include/runtime.h>
+
 namespace LLP
 {
     class Service;
     class Address;
 
     /* Base Template class to handle outgoing / incoming LLP data for both Client and Server. */
-    class Socket
+    class Socket : public pollfd
     {
     protected:
 
-        /** The socket file identifier. **/
-        int nSocket;
-
         /** The error codes for socket. **/
-        int nError;
+        int32_t nError;
+
+
+        /** Keep track of last time data was sent. **/
+        uint32_t nLastSend;
+
+
+        /** Keep track of last time data was received. **/
+        uint32_t nLastRecv;
+
+
+        /** Oversize buffer for large packets. **/
+        std::vector<uint8_t> vBuffer;
 
     public:
 
@@ -39,11 +52,27 @@ namespace LLP
 
 
         /** The default constructor. **/
-        Socket() : nSocket(0), nError(0) {}
+        Socket()
+        : nError(0)
+        , nLastSend(runtime::timestamp())
+        , nLastRecv(runtime::timestamp())
+        , addr()
+        {
+            fd = -1;
+            events = POLLIN;// | POLLOUT;
+        }
 
 
         /** The socket constructor. **/
-        Socket(int nSocketIn, Address addrIn) : nSocket(nSocketIn), nError(0), addr(addrIn) {}
+        Socket(int32_t nSocketIn, Address addrIn)
+        : nError(0)
+        , nLastSend(runtime::timestamp())
+        , nLastRecv(runtime::timestamp())
+        , addr(addrIn)
+        {
+            fd = nSocketIn;
+            events = POLLIN;// | POLLOUT;
+        }
 
 
         /** Constructor for Address
@@ -62,19 +91,19 @@ namespace LLP
          *  @return error code of the socket
          *
          **/
-        int Error();
+        int32_t ErrorCode();
 
 
-        /** Connect
+        /** Attempts
          *
-         *  Connects the socket to an external address
+         *  Attempts to connect the socket to an external address
          *
          *  @param[in] addrConnect The address to connect to
          *
          *  @return true if the socket is in a valid state.
          *
          **/
-        bool Connect(Service addrDest, int nTimeout = 5000);
+        bool Attempt(Service addrDest, int32_t nTimeout = 5000);
 
 
         /** Available
@@ -84,7 +113,7 @@ namespace LLP
          *  @return the total bytes available for read
          *
          **/
-        int Available();
+        int32_t Available();
 
 
         /** Close
@@ -105,7 +134,7 @@ namespace LLP
          *  @return the total bytes that were read
          *
          **/
-        int Read(std::vector<uint8_t>& vData, size_t nBytes);
+        int32_t Read(std::vector<uint8_t>& vData, size_t nBytes);
 
 
         /** Read
@@ -118,7 +147,7 @@ namespace LLP
          *  @return the total bytes that were read
          *
          **/
-        int Read(std::vector<int8_t>& vchData, size_t nBytes);
+        int32_t Read(std::vector<int8_t>& vchData, size_t nBytes);
 
 
         /** Write
@@ -131,7 +160,17 @@ namespace LLP
          *  @return the total bytes that were written
          *
          **/
-        int Write(std::vector<uint8_t> vData, size_t nBytes);
+        int32_t Write(std::vector<uint8_t> vData, size_t nBytes);
+
+
+        /** Flush
+         *
+         *  Flushes data out of the overflow buffer
+         *
+         *  @return the total bytes that were written
+         *
+         **/
+        int32_t Flush();
 
     };
 

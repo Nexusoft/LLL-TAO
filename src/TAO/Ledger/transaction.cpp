@@ -26,6 +26,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/transaction.h>
 
+#include <TAO/Operation/include/enum.h>
+
 namespace TAO::Ledger
 {
     /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
@@ -51,8 +53,16 @@ namespace TAO::Ledger
                 return debug::error(FUNCTION "previous genesis %s mismatch %s", __PRETTY_FUNCTION__, tx.hashGenesis.ToString().substr(0, 20).c_str(), hashGenesis.ToString().substr(0, 20).c_str());
         }
 
+        /* Checks for coinbase. */
+        if(IsCoinbase())
+        {
+            /* Check the coinbase size. */
+            if(vchLedgerData.size() != 41)
+                return debug::error(FUNCTION "ledger data too large for coinbase %u", vchLedgerData.size());
+        }
+
         /* Check the timestamp. */
-        if(nTimestamp > runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT)
+        if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
             return debug::error(FUNCTION "transaction timestamp too far in the future %u", __PRETTY_FUNCTION__, nTimestamp);
 
         /* Check the size constraints of the ledger data. */
@@ -69,10 +79,30 @@ namespace TAO::Ledger
     }
 
 
+    /* Determines if the transaction is a coinbase transaction. */
+    bool Transaction::IsCoinbase() const
+    {
+        if(vchLedgerData.empty())
+            return false;
+
+        return vchLedgerData[0] == TAO::Operation::OP::COINBASE;
+    }
+
+
+    /* Determines if the transaction is a coinstake transaction. */
+    bool Transaction::IsTrust() const
+    {
+        if(vchLedgerData.empty())
+            return false;
+            
+        return vchLedgerData[0] == TAO::Operation::OP::TRUST;
+    }
+
+
     /* Determines if the transaction is a genesis transaction */
     bool Transaction::IsGenesis() const
     {
-        return (nSequence == 0);
+        return (nSequence == 0 && hashPrevTx == 0);
     }
 
 

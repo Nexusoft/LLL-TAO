@@ -13,14 +13,14 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/rpc.h>
 #include <Util/include/json.h>
-#include <TAO/Ledger/include/state.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 namespace TAO::API
 {
     /* Get network hashrate for the hashing channel */
-    json::json RPC::GetNetworkHashps(const json::json& jsonParams, bool fHelp)
+    json::json RPC::GetNetworkHashps(const json::json& params, bool fHelp)
     {
-        if (fHelp || jsonParams.size() != 0)
+        if (fHelp || params.size() != 0)
             return std::string(
                 "getnetworkhashps"
                 " - Get network hashrate for the hashing channel.");
@@ -64,9 +64,9 @@ namespace TAO::API
     }
 
     /* Get network prime searched per second */
-    json::json RPC::GetNetworkPps(const json::json& jsonParams, bool fHelp)
+    json::json RPC::GetNetworkPps(const json::json& params, bool fHelp)
     {
-        if (fHelp || jsonParams.size() != 0)
+        if (fHelp || params.size() != 0)
             return std::string(
                 "getnetworkpps"
                 " - Get network prime searched per second.");
@@ -106,9 +106,9 @@ namespace TAO::API
     }
 
     /* List all the Trust Keys on the Network */
-    json::json RPC::GetNetworkTrustKeys(const json::json& jsonParams, bool fHelp)
+    json::json RPC::GetNetworkTrustKeys(const json::json& params, bool fHelp)
     {
-        if (fHelp || jsonParams.size() != 0)
+        if (fHelp || params.size() != 0)
             return std::string(
                 "getnetworktrustkeys"
                 " - List all the Trust Keys on the Network");
@@ -160,32 +160,32 @@ namespace TAO::API
     }
 
     /* Returns the number of blocks in the longest block chain */
-    json::json RPC::GetBlockCount(const json::json& jsonParams, bool fHelp)
+    json::json RPC::GetBlockCount(const json::json& params, bool fHelp)
     {
-        if (fHelp || jsonParams.size() != 0)
+        if (fHelp || params.size() != 0)
             return std::string(
                 "getblockcount"
                 " - Returns the number of blocks in the longest block chain.");
 
-        return (int)TAO::Ledger::nBestHeight;
+        return (int)TAO::Ledger::ChainState::nBestHeight;
     }
 
 
     /* Deprecated.  Use getblockcount */
-    json::json RPC::GetBlockNumber(const json::json& jsonParams, bool fHelp)
+    json::json RPC::GetBlockNumber(const json::json& params, bool fHelp)
     {
-        if (fHelp || jsonParams.size() != 0)
+        if (fHelp || params.size() != 0)
             return std::string(
                 "getblocknumber"
                 " - Deprecated.  Use getblockcount.");
 
-         return (int)TAO::Ledger::nBestHeight;
+         return (int)TAO::Ledger::ChainState::nBestHeight;
     }
 
     /* Returns difficulty as a multiple of the minimum difficulty */
-    json::json RPC::GetDifficulty(const json::json& jsonParams, bool fHelp)
+    json::json RPC::GetDifficulty(const json::json& params, bool fHelp)
     {
-        if (fHelp || jsonParams.size() != 0)
+        if (fHelp || params.size() != 0)
             return std::string(
                 "getdifficulty"
                 " - Returns difficulty as a multiple of the minimum difficulty.");
@@ -207,9 +207,9 @@ namespace TAO::API
        Returns an object containing current Nexus production rates in set time intervals.
        Time Frequency is in base 13 month, 28 day totalling 364 days.
        This is to prevent error from Gregorian Figures */
-    json::json RPC::GetSupplyRates(const json::json& jsonParams, bool fHelp)
+    json::json RPC::GetSupplyRates(const json::json& params, bool fHelp)
     {
-        if (fHelp || jsonParams.size() != 0)
+        if (fHelp || params.size() != 0)
             return std::string(
                 "getsupplyrates"
                 " - Returns an object containing current Nexus production rates in set time intervals."
@@ -240,14 +240,14 @@ namespace TAO::API
 
     /* getmoneysupply <timestamp>
        Returns the total supply of Nexus produced by miners, holdings, developers, and ambassadors.
-       Default timestamp is the current Unified Timestamp. The timestamp is recorded as a UNIX timestamp */
-    json::json RPC::GetMoneySupply(const json::json& jsonParams, bool fHelp)
+       Default timestamp is the current Unified timestamp. The timestamp is recorded as a UNIX timestamp */
+    json::json RPC::GetMoneySupply(const json::json& params, bool fHelp)
     {
-        if(fHelp || jsonParams.size() != 0)
+        if(fHelp || params.size() != 0)
             return std::string(
                 "getmoneysupply <timestamp>"
                 " - Returns the total supply of Nexus produced by miners, holdings, developers, and ambassadors."
-                " Default timestamp is the current Unified Timestamp. The timestamp is recorded as a UNIX timestamp");
+                " Default timestamp is the current Unified timestamp. The timestamp is recorded as a UNIX timestamp");
 
     //     Object obj;
     //     unsigned int nMinutes = Core::GetChainAge(Core::pindexBest->GetBlockTime());
@@ -260,6 +260,6 @@ namespace TAO::API
     //     return obj;
     }
 
-    
-    
+
+
 }

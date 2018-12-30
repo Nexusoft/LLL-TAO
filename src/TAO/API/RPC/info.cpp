@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #include <Util/include/json.h>
 #include <Util/include/runtime.h>
 #include <LLP/include/version.h>
-#include <TAO/Ledger/include/state.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <LLP/include/global.h>
 #include <LLP/include/addressinfo.h>
 
@@ -26,10 +26,10 @@ namespace TAO::API
 {
 
     /* getinfo
-       Returns an object containing various state info */ 
-    json::json RPC::GetInfo(const json::json& jsonParams, bool fHelp)
+       Returns an object containing various state info */
+    json::json RPC::GetInfo(const json::json& params, bool fHelp)
     {
-        if (fHelp || jsonParams.size() != 0)
+        if (fHelp || params.size() != 0)
             return std::string(
                 "getinfo"
                 " - Returns an object containing various state info.");
@@ -51,9 +51,9 @@ namespace TAO::API
     //   obj.push_back(std::make_pair("txtotal",        (int)pwalletMain->mapWallet.size()));
 
 
-       obj["blocks"] = (int)TAO::Ledger::nBestHeight;
+       obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
 
-        obj["timestamp"] =  (int)runtime::UnifiedTimestamp();
+        obj["timestamp"] =  (int)runtime::unifiedtimestamp();
 
       obj["connections"] = GetTotalConnectionCount();
     //    obj.push_back(std::make_pair("proxy",         (fUseProxy ? addrProxy.ToStringIPPort() : string())));
@@ -73,11 +73,11 @@ namespace TAO::API
 
     /* getpeerinfo
        Returns data about each connected network node */
-    json::json RPC::GetPeerInfo(const json::json& jsonParams, bool fHelp)
+    json::json RPC::GetPeerInfo(const json::json& params, bool fHelp)
     {
         json::json response;
 
-        if (fHelp || jsonParams.size() != 0)
+        if (fHelp || params.size() != 0)
                  return std::string(
                      "getpeerinfo"
                      " - Returns data about each connected network node.");
@@ -137,9 +137,9 @@ namespace TAO::API
 
     /* getmininginfo
        Returns an object containing mining-related information.*/
-    json::json RPC::GetMiningInfo(const json::json& jsonParams, bool fHelp)
+    json::json RPC::GetMiningInfo(const json::json& params, bool fHelp)
     {
-        if (fHelp || jsonParams.size() != 0)
+        if (fHelp || params.size() != 0)
             return std::string(
                 "getmininginfo"
                 " - Returns an object containing mining-related information.");
@@ -184,7 +184,7 @@ namespace TAO::API
 
 
         // Object obj;
-        // obj["blocks"] = (int)TAO::Ledger::nBestHeight;
+        // obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
         // obj.push_back(Pair("timestamp", (int)GetUnifiedTimestamp()));
 
         // obj.push_back(Pair("currentblocksize",(uint64_t)Core::nLastBlockSize));

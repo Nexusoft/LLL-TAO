@@ -32,14 +32,25 @@ namespace LLP
 
     /* Constructor for Address */
     Socket::Socket(Service addrConnect)
+    : nError(0)
+    , nLastSend(runtime::timestamp())
+    , nLastRecv(runtime::timestamp())
     {
-        Connect(addrConnect);
+        fd = -1;
+        events = POLLIN; //consider using POLLOUT
+
+        Attempt(addrConnect);
     }
 
 
     /* Returns the error of socket if any */
-    int Socket::Error()
+    int Socket::ErrorCode()
     {
+        /* Check for errors with poll. */
+        if(revents & POLLERR || revents & POLLHUP || revents & POLLNVAL)
+            return -1;
+
+        /* Check for errors from reads or writes. */
         if (nError == WSAEWOULDBLOCK || nError == WSAEMSGSIZE || nError == WSAEINTR || nError == WSAEINPROGRESS)
             return 0;
 
@@ -48,20 +59,20 @@ namespace LLP
 
 
     /* Connects the socket to an external address */
-    bool Socket::Connect(Service addrDest, int nTimeout)
+    bool Socket::Attempt(Service addrDest, int nTimeout)
     {
         /* Create the Socket Object (Streaming TCP/IP). */
         if(addrDest.IsIPv4())
-            nSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+            fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         else
-            nSocket = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+            fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 
         /* Catch failure if socket couldn't be initialized. */
-        if (nSocket == INVALID_SOCKET)
+        if (fd == INVALID_SOCKET)
             return false;
 
         /* Set the socket to non blocking. */
-        fcntl(nSocket, F_SETFL, O_NONBLOCK);
+        fcntl(fd, F_SETFL, O_NONBLOCK);
 
         /* Open the socket connection for IPv4 / IPv6. */
         bool fConnected = false;
@@ -74,7 +85,7 @@ namespace LLP
             /* Copy in the new address. */
             addr = Address(sockaddr);
 
-            fConnected = (connect(nSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
+            fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
         else
         {
@@ -85,7 +96,7 @@ namespace LLP
             /* Copy in the new address. */
             addr = Address(sockaddr);
 
-            fConnected = (connect(nSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
+            fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
 
         /* Handle final socket checks if connection established with no errors. */
@@ -100,15 +111,15 @@ namespace LLP
 
                 fd_set fdset;
                 FD_ZERO(&fdset);
-                FD_SET(nSocket, &fdset);
-                int nRet = select(nSocket + 1, nullptr, &fdset, nullptr, &timeout);
+                FD_SET(fd, &fdset);
+                int nRet = select(fd + 1, nullptr, &fdset, nullptr, &timeout);
 
                 /* If the connection attempt timed out with select. */
                 if (nRet == 0)
                 {
-                    debug::log(0, "***** Node Connection Timeout %s...", addrDest.ToString().c_str());
+                    debug::log(0, NODE "connection timeout %s...", addrDest.ToString().c_str());
 
-                    close(nSocket);
+                    close(fd);
 
                     return false;
                 }
@@ -116,9 +127,9 @@ namespace LLP
                 /* If the select failed. */
                 if (nRet == SOCKET_ERROR)
                 {
-                    debug::log(0, "***** Node Select Failed %s (%i)", addrDest.ToString().c_str(), GetLastError());
+                    debug::log(0, NODE "select failed %s (%i)", addrDest.ToString().c_str(), GetLastError());
 
-                    close(nSocket);
+                    close(fd);
 
                     return false;
                 }
@@ -126,13 +137,13 @@ namespace LLP
                 /* Get socket options. TODO: Remove preprocessors for cross platform sockets. */
                 socklen_t nRetSize = sizeof(nRet);
     #ifdef WIN32
-                if (getsockopt(nSocket, SOL_SOCKET, SO_ERROR, (char*)(&nRet), &nRetSize) == SOCKET_ERROR)
+                if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char*)(&nRet), &nRetSize) == SOCKET_ERROR)
     #else
-                if (getsockopt(nSocket, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
+                if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
     #endif
                 {
-                    debug::log(0, "***** Node Get Options Failed %s (%i)", addrDest.ToString().c_str(), GetLastError());
-                    close(nSocket);
+                    debug::log(0, NODE "get options failed %s (%i)", addrDest.ToString().c_str(), GetLastError());
+                    close(fd);
 
                     return false;
                 }
@@ -140,8 +151,8 @@ namespace LLP
                 /* If there are no socket options set. TODO: Remove preprocessors for cross platform sockets. */
                 if (nRet != 0)
                 {
-                    debug::log(0, "***** Node Failed after Select %s (%i)", addrDest.ToString().c_str(), nRet);
-                    close(nSocket);
+                    debug::log(0, NODE "failed after select %s (%i)", addrDest.ToString().c_str(), nRet);
+                    close(fd);
 
                     return false;
                 }
@@ -152,8 +163,8 @@ namespace LLP
             else
     #endif
             {
-                debug::log(0, "***** Node Connect Failed %s (%i)", addrDest.ToString().c_str(), GetLastError());
-                close(nSocket);
+                debug::log(0, NODE "connect failed %s (%i)", addrDest.ToString().c_str(), GetLastError());
+                close(fd);
 
                 return false;
             }
@@ -168,9 +179,9 @@ namespace LLP
     {
         int nAvailable = 0;
         #ifdef WIN32
-            ioctlsocket(nSocket, FIONREAD, &nAvailable)
+            ioctlsocket(fd, FIONREAD, &nAvailable)
         #else
-            ioctl(nSocket, FIONREAD, &nAvailable);
+            ioctl(fd, FIONREAD, &nAvailable);
         #endif
 
         return nAvailable;
@@ -180,26 +191,24 @@ namespace LLP
     /* Clear resources associated with socket and return to invalid state. */
     void Socket::Close()
     {
-        close(nSocket);
-        nSocket = INVALID_SOCKET;
+        close(fd);
+        fd = INVALID_SOCKET;
     }
 
 
     /* Read data from the socket buffer non-blocking */
     int Socket::Read(std::vector<uint8_t> &vData, size_t nBytes)
     {
-        int8_t pchBuf[nBytes];
-        int nRead = recv(nSocket, pchBuf, nBytes, MSG_DONTWAIT);
+        int nRead = recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT);
         if (nRead < 0)
         {
             nError = GetLastError();
-            debug::log(2, "xxxxx Node Read Failed %s (%i %s)", addr.ToString().c_str(), nError, strerror(nError));
+            debug::log(2, NODE "read failed %s (%i %s)", addr.ToString().c_str(), nError, strerror(nError));
 
             return nError;
         }
-
         if(nRead > 0)
-            std::copy(&pchBuf[0], &pchBuf[0] + nRead, vData.begin());
+            nLastRecv = runtime::timestamp();
 
         return nRead;
     }
@@ -207,18 +216,16 @@ namespace LLP
     /* Read data from the socket buffer non-blocking */
     int Socket::Read(std::vector<int8_t> &vchData, size_t nBytes)
     {
-        int8_t pchBuf[nBytes];
-        int nRead = recv(nSocket, pchBuf, nBytes, MSG_DONTWAIT);
+        int nRead = recv(fd, (int8_t*)&vchData[0], nBytes, MSG_DONTWAIT);
         if (nRead < 0)
         {
             nError = GetLastError();
-            debug::log(2, "xxxxx Node Read Failed %s (%i %s)", addr.ToString().c_str(), nError, strerror(nError));
+            debug::log(2, NODE "read failed %s (%i %s)", addr.ToString().c_str(), nError, strerror(nError));
 
             return nError;
         }
-
         if(nRead > 0)
-            std::copy(&pchBuf[0], &pchBuf[0] + nRead, vchData.begin());
+            nLastRecv = runtime::timestamp();
 
         return nRead;
     }
@@ -227,15 +234,24 @@ namespace LLP
     /* Write data into the socket buffer non-blocking */
     int Socket::Write(std::vector<uint8_t> vData, size_t nBytes)
     {
-        char pchBuf[nBytes];
-        std::copy(&vData[0], &vData[0] + nBytes, &pchBuf[0]);
+        /* Check overflow buffer. */
+        if(vBuffer.size() > 0)
+        {
+            nLastSend = runtime::timestamp();
+            vBuffer.insert(vBuffer.end(), vData.begin(), vData.end());
+
+            /* Flush the remaining bytes from the buffer. */
+            Flush();
+
+            return nBytes;
+        }
 
         /* If there were any errors, handle them gracefully. */
-        int nSent = send(nSocket, pchBuf, nBytes, MSG_NOSIGNAL | MSG_DONTWAIT );
+        int nSent = send(fd, (int8_t*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT );
         if(nSent < 0)
         {
             nError = GetLastError();
-            debug::log(2, "xxxxx Node Write Failed %s (%i %s)", addr.ToString().c_str(), nError, strerror(nError));
+            debug::log(2, NODE "write failed %s (%i %s)", addr.ToString().c_str(), nError, strerror(nError));
 
             return nError;
         }
@@ -243,9 +259,39 @@ namespace LLP
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent != vData.size())
         {
-            vData.erase(vData.begin(), vData.begin() + nSent);
+            nLastSend = runtime::timestamp();
+            vBuffer.insert(vBuffer.end(), vData.begin() + nSent, vData.end());
+        }
 
-            return Write(vData, vData.size());
+        return nSent;
+    }
+
+
+    /* Flushes data out of the overflow buffer */
+    int Socket::Flush()
+    {
+        /* Don't flush if buffer doesn't have any data. */
+        if(vBuffer.size() == 0)
+            return 0;
+
+        /* Set the maximum bytes to flush to 2^16 or maximum socket buffers. */
+        uint32_t nBytes = std::min((uint32_t)vBuffer.size(), 65535u);
+
+        /* If there were any errors, handle them gracefully. */
+        int nSent = send(fd, (int8_t*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT );
+        if(nSent < 0)
+        {
+            nError = GetLastError();
+            debug::log(2, NODE "flush failed %s (%i %s)", addr.ToString().c_str(), nError, strerror(nError));
+
+            return nError;
+        }
+
+        /* If not all data was sent non-blocking, recurse until it is complete. */
+        else if(nSent > 0)
+        {
+            nLastSend = runtime::timestamp();
+            vBuffer.erase(vBuffer.begin(), vBuffer.begin() + nSent);
         }
 
         return nSent;

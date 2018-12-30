@@ -20,26 +20,40 @@ ________________________________________________________________________________
 namespace TAO::Ledger
 {
 
-    bool Mempool::Add(Legacy::Transaction tx)
+    bool Mempool::Accept(Legacy::Transaction tx)
     {
+        LOCK(MUTEX);
+
+        /* Check transaction for errors. */
         if (!tx.CheckTransaction())
             return debug::error(FUNCTION "CheckTransaction failed", __PRETTY_FUNCTION__);
 
-        // Coinbase is only valid in a block, not as a loose transaction
+        /* Coinbase is only valid in a block, not as a loose transaction */
         if (tx.IsCoinBase())
             return debug::error(FUNCTION "coinbase as individual tx", __PRETTY_FUNCTION__);
 
-        // Nexus: coinstake is also only valid in a block, not as a loose transaction
+        /* Nexus: coinstake is also only valid in a block, not as a loose transaction */
         if (tx.IsCoinStake())
             return debug::error(FUNCTION "coinstake as individual tx", __PRETTY_FUNCTION__);
 
-        // To help v0.1.5 clients who would see it as a negative number
+        /* To help v0.1.5 clients who would see it as a negative number */
         if ((uint64_t) tx.nLockTime > std::numeric_limits<int32_t>::max())
             return debug::error(FUNCTION "not accepting nLockTime beyond 2038 yet", __PRETTY_FUNCTION__);
 
-        // Rather not work on nonstandard transactions (unless -testnet)
+        /* Rather not work on nonstandard transactions (unless -testnet) */
         if (!config::fTestNet && !tx.IsStandard())
             return debug::error(FUNCTION "nonstandard transaction type", __PRETTY_FUNCTION__);
+
+        /* Check previous inputs. */
+        for (auto vin : tx.vin)
+        {
+            if (mapInputs.count(vin.prevout))
+                return debug::error(FUNCTION "double spend attempt on inputs", __PRETTY_FUNCTION__);
+        }
+
+        /* Set the inputs to be claimed. */
+        for (uint32_t i = 0; i < tx.vin.size(); i++)
+            mapInputs[tx.vin[i].prevout] = Legacy::CInPoint(&tx, i);
 
         return true;
     }

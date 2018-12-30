@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLC/include/random.h>
+
 #include <LLD/include/global.h>
 
 #include <TAO/Ledger/types/sigchain.h>
@@ -34,6 +36,15 @@ ________________________________________________________________________________
 #include <TAO/API/include/supply.h>
 #include <TAO/API/include/accounts.h>
 
+#include <Legacy/wallet/wallet.h>
+#include <Legacy/wallet/walletdb.h>
+
+
+namespace Legacy
+{
+    Legacy::CWallet* pwalletMain;
+}
+
 /* Declare the Global LLD Instances. */
 namespace LLD
 {
@@ -42,12 +53,14 @@ namespace LLD
     LocalDB*    locDB;
 }
 
+
 /* Declare the Global LLP Instances. */
 namespace LLP
 {
     Server<TritiumNode>* TRITIUM_SERVER;
     Server<LegacyNode> * LEGACY_SERVER;
 }
+
 
 int main(int argc, char** argv)
 {
@@ -83,9 +96,27 @@ int main(int argc, char** argv)
 
 
     /* Create the database instances. */
-    LLD::regDB = new LLD::RegisterDB("r+");
-    LLD::legDB = new LLD::LedgerDB("r+");
-    LLD::locDB = new LLD::LocalDB("r+");
+    LLD::regDB = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::APPEND);
+    LLD::legDB = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+    LLD::locDB = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+
+
+    /** Load the Wallet Database. **/
+    bool fFirstRun;
+    Legacy::pwalletMain = new Legacy::CWallet(config::GetArg("-wallet", "wallet.dat"));
+    int nLoadWalletRet = Legacy::pwalletMain->LoadWallet(fFirstRun);
+    if (nLoadWalletRet != Legacy::DB_LOAD_OK)
+    {
+        if (nLoadWalletRet == Legacy::DB_CORRUPT)
+            return debug::error("failed loading wallet.dat: Wallet corrupted");
+
+        else if (nLoadWalletRet == Legacy::DB_TOO_NEW)
+            return debug::error("failed loading wallet.dat: Wallet requires newer version of Nexus");
+        else if (nLoadWalletRet == Legacy::DB_NEED_REWRITE)
+            return debug::error("wallet needed to be rewritten: restart Nexus to complete");
+        else
+            return debug::error("failed loading wallet.dat");
+    }
 
 
     /* Initialize the Tritium Server. */
@@ -114,7 +145,7 @@ int main(int argc, char** argv)
     }
 
 
-    /* Initialize the Legacy Server. */
+    /* Initialize the Legacy Server.
     LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(
         config::GetArg("-port", config::fTestNet ? 8323 : 9323),
         10,
@@ -128,7 +159,7 @@ int main(int argc, char** argv)
         true);
 
 
-    /* Add node to Legacy server */
+    /* Add node to Legacy server
     if(config::mapMultiArgs["-addnode"].size() > 0)
     {
         for(auto node : config::mapMultiArgs["-addnode"])
@@ -138,6 +169,7 @@ int main(int argc, char** argv)
                 config::GetArg("-port", config::fTestNet ? 8323 : 9323));
         }
     }
+    */
 
     /* Create the Core API Server. */
     LLP::Server<LLP::CoreNode>* CORE_SERVER = new LLP::Server<LLP::CoreNode>(
@@ -149,16 +181,11 @@ int main(int argc, char** argv)
         0,
         60,
         config::GetBoolArg("-listen", true),
-        config::GetBoolArg("-meters", false),
+        false,
         false);
 
     /* Set up RPC server */
     TAO::API::RPCCommands = new TAO::API::RPC();
-    TAO::API::RPCCommands->Initialize();
-
-    TAO::API::accounts.Initialize();
-    TAO::API::supply.Initialize();
-
     LLP::Server<LLP::RPCNode>* RPC_SERVER = new LLP::Server<LLP::RPCNode>(
         config::GetArg("-rpcport", config::fTestNet? 8336 : 9336),
         1,
@@ -168,7 +195,7 @@ int main(int argc, char** argv)
         0,
         60,
         config::GetBoolArg("-listen", true),
-        config::GetBoolArg("-meters", false),
+        false,
         false);
 
 

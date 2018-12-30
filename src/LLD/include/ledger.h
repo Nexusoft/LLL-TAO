@@ -24,16 +24,21 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/state.h>
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/state.h>
 
 namespace LLD
 {
 
     class LedgerDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
+        std::recursive_mutex MEMORY_MUTEX;
+
+        std::map< std::pair<uint256_t, uint512_t>, uint32_t > mapProofs;
+
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LedgerDB(const char* pszMode="r+")
-        : SectorDatabase("ledger", pszMode) {}
+        LedgerDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
+        : SectorDatabase("ledger", nFlags) { }
 
         bool WriteTx(uint512_t hashTransaction, TAO::Ledger::Transaction tx)
         {
@@ -53,15 +58,55 @@ namespace LLD
         }
 
 
-        bool WriteProof(uint256_t hashProof, uint512_t hashTransaction)
+        bool WriteProof(uint256_t hashProof, uint512_t hashTransaction, bool fWrite = true)
         {
+            /* Memory mode for pre-database commits. */
+            if(!fWrite)
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* Write the new proof state. */
+                mapProofs[std::make_pair(hashProof, hashTransaction)] = 0;
+                return true;
+            }
+            else
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* Erase memory proof if they exist. */
+                if(mapProofs.count(std::make_pair(hashProof, hashTransaction)))
+                    mapProofs.erase(std::make_pair(hashProof, hashTransaction));
+            }
+
             uint64_t nDummy = 0; //this is being used as a boolean express. TODO: make LLD handle bool key writes
             return Write(std::make_pair(hashProof, hashTransaction), nDummy);
         }
 
 
-        bool HasProof(uint256_t hashProof, uint512_t hashTransaction)
+        bool WriteBlock(uint1024_t hashBlock, TAO::Ledger::BlockState state)
         {
+            return Write(std::make_pair(std::string("block"), hashBlock), state);
+        }
+
+
+        bool ReadBlock(uint1024_t hashBlock, TAO::Ledger::BlockState& state)
+        {
+            return Read(std::make_pair(std::string("block"), hashBlock), state);
+        }
+
+
+        bool HasProof(uint256_t hashProof, uint512_t hashTransaction, bool fWrite = true)
+        {
+            /* Memory mode for pre-database commits. */
+            if(!fWrite)
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* If exists in memory, return true. */
+                if(mapProofs.count(std::make_pair(hashProof, hashTransaction)))
+                    return true;
+            }
+
             return Exists(std::make_pair(hashProof, hashTransaction));
         }
 

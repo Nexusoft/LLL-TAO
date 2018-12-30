@@ -122,12 +122,12 @@ namespace LLP
             if(!INCOMING.Complete())
             {
                 /** Handle Reading Packet Length Header. **/
-                if(INCOMING.IsNull() && SOCKET.Available() >= 10)
+                if(INCOMING.IsNull() && Available() >= 10)
                 {
                     std::vector<uint8_t> BYTES(10, 0);
                     if(Read(BYTES, 10) == 10)
                     {
-                        CDataStream ssHeader(BYTES, SER_NETWORK, MIN_PROTO_VERSION);
+                        DataStream ssHeader(BYTES, SER_NETWORK, MIN_PROTO_VERSION);
                         ssHeader >> INCOMING;
 
                         Event(EVENT_HEADER);
@@ -135,11 +135,11 @@ namespace LLP
                 }
 
                 /** Handle Reading Packet Data. **/
-                uint32_t nAvailable = SOCKET.Available();
+                uint32_t nAvailable = Available();
                 if(nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
                 {
                     /* Create the packet data object. */
-                    std::vector<uint8_t> DATA( std::min( std::min(512u, nAvailable), (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
+                    std::vector<uint8_t> DATA( std::min( nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
 
                     /* Read up to 512 bytes of data. */
                     if(Read(DATA, DATA.size()) == DATA.size())
@@ -152,7 +152,7 @@ namespace LLP
         }
 
 
-        TritiumPacket NewMessage(const uint16_t nMsg, CDataStream ssData)
+        TritiumPacket NewMessage(const uint16_t nMsg, DataStream ssData)
         {
             TritiumPacket RESPONSE(nMsg);
             RESPONSE.SetData(ssData);
@@ -181,7 +181,7 @@ namespace LLP
         {
             try
             {
-                CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1;
 
                 this->WritePacket(NewMessage(nMsg, ssData));
@@ -197,7 +197,7 @@ namespace LLP
         {
             try
             {
-                CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1 << t2;
 
                 this->WritePacket(NewMessage(nMsg, ssData));
@@ -213,7 +213,7 @@ namespace LLP
         {
             try
             {
-                CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1 << t2 << t3;
 
                 this->WritePacket(NewMessage(nMsg, ssData));
@@ -229,7 +229,7 @@ namespace LLP
         {
             try
             {
-                CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1 << t2 << t3 << t4;
 
                 this->WritePacket(NewMessage(nMsg, ssData));
@@ -245,7 +245,7 @@ namespace LLP
         {
             try
             {
-                CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1 << t2 << t3 << t4 << t5;
 
                 this->WritePacket(NewMessage(nMsg, ssData));
@@ -261,7 +261,7 @@ namespace LLP
         {
             try
             {
-                CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1 << t2 << t3 << t4 << t5 << t6;
 
                 this->WritePacket(NewMessage(nMsg, ssData));
@@ -277,7 +277,7 @@ namespace LLP
         {
             try
             {
-                CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7;
 
                 this->WritePacket(NewMessage(nMsg, ssData));
@@ -293,7 +293,7 @@ namespace LLP
         {
             try
             {
-                CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7 << t8;
 
                 this->WritePacket(NewMessage(nMsg, ssData));
@@ -309,7 +309,7 @@ namespace LLP
         {
             try
             {
-                CDataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
                 ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7 << t8 << t9;
 
                 this->WritePacket(NewMessage(nMsg, ssData));

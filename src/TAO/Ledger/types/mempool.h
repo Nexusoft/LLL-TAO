@@ -19,61 +19,115 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 #include <Legacy/types/transaction.h>
 
+#include <Legacy/types/inpoint.h>
+#include <Legacy/types/outpoint.h>
+
+#include <Util/include/mutex.h>
+
 namespace TAO::Ledger
 {
 
     class Mempool
     {
-        std::map<uint512_t, TAO::Ledger::Transaction> mapLedger;
+        std::recursive_mutex MUTEX;
 
+        /** The transactions in the ledger memory pool. **/
         std::map<uint512_t, Legacy::Transaction> mapLegacy;
 
-        //TODO: for tritium transaction add the state change in memory
 
-        bool AddUnchecked(TAO::Ledger::Transaction txIn)
+        /** The transactions in the ledger memory pool. **/
+        std::map<uint512_t, TAO::Ledger::Transaction> mapLedger;
+
+
+        /** Record of next hashes in the mempool. **/
+        std::map<uint256_t, uint512_t> mapPrevHashes;
+
+
+        /** Record of legacy inputs in the mempool. **/
+        std::map<Legacy::COutPoint, Legacy::CInPoint> mapInputs;
+
+    public:
+
+        /** Default Constructor. **/
+        Mempool()
+        : mapLedger()
         {
-            /* Get the transaction hash. */
-            uint512_t hash = txIn.GetHash();
 
-            /* Check the mempool. */
-            if(mapLedger.count(hash))
-                return debug::error(FUNCTION "%s already exists", __PRETTY_FUNCTION__);
-
-            /* Add to the map. */
-            mapLedger[hash] = txIn;
-
-            return true;
         }
 
-
-        bool AddUnchecked(Legacy::Transaction txIn)
-        {
-            /* Get the transaction hash. */
-            uint512_t hash = txIn.GetHash();
-
-            /* Check the mempool. */
-            if(mapLegacy.count(hash))
-                return debug::error(FUNCTION "%s already exists", __PRETTY_FUNCTION__);
-
-            /* Add to the map. */
-            mapLegacy[hash] = txIn;
-
-            return true;
-        }
+        /** Accept.
+         *
+         *  Accepts a legacy transaction with validation rules.
+         *
+         *  @param[in] tx The transaction to add.
+         *
+         *  @return true if added.
+         *
+         **/
+        bool Accept(Legacy::Transaction tx);
 
 
-        bool Add(TAO::Ledger::Transaction txIn)
-        {
-            /* Check that the transaction is in a valid state. */
-            if(!txIn.IsValid())
-                return false;
+        /** Add Unchecked.
+         *
+         *  Add a transaction to the memory pool without validation checks.
+         *
+         *  @param[in] tx The transaction to add.
+         *
+         *  @return true if added.
+         *
+         **/
+        bool AddUnchecked(TAO::Ledger::Transaction tx);
 
-            /* Calculate the future potential states. */
-            //TODO: execute the operations layer
-        }
 
-        bool Add(Legacy::Transaction tx);
+        /** Accept.
+         *
+         *  Accepts a transaction with validation rules.
+         *
+         *  @param[in] tx The transaction to add.
+         *
+         *  @return true if added.
+         *
+         **/
+        bool Accept(TAO::Ledger::Transaction tx);
+
+
+        /** Has.
+         *
+         *  Checks if a transaction exists.
+         *
+         *  @param[in] hashTx The transaction to add.
+         *
+         *  @return true if added.
+         *
+         **/
+        bool Has(uint512_t hashTx);
+
+
+        /** Remove.
+         *
+         *  Remove a transaction from pool.
+         *
+         *  @param[in] hashTx The transaction to remove
+         *
+         *  @return true if added.
+         *
+         **/
+        bool Remove(uint512_t hashTx);
+
+
+        /** Get.
+         *
+         *  Gets a transaction from mempool
+         *
+         *  @param[in] tx The transaction to add.
+         *
+         *  @return true if added.
+         *
+         **/
+        bool Get(uint512_t hashTx, TAO::Ledger::Transaction& tx);
     };
+
+    extern Mempool mempool;
 }
 
 #endif

@@ -148,16 +148,24 @@ OBJS= \
     build/LLP_manager.o \
     build/LLP_ddos.o \
 	build/Ledger_block.o \
-	build/Ledger_chain.o \
 	build/Ledger_prime.o \
 	build/Ledger_state.o \
+	build/Ledger_supply.o \
+	build/Ledger_create.o \
+	build/Ledger_mempool.o \
+	build/Ledger_difficulty.o \
+	build/Ledger_checkpoints.o \
+	build/Ledger_chainstate.o \
 	build/Ledger_tritium.o \
 	build/Ledger_transaction.o \
 	build/Operation_write.o \
+	build/Operation_append.o \
 	build/Operation_register.o \
 	build/Operation_transfer.o \
 	build/Operation_debit.o \
 	build/Operation_credit.o \
+	build/Operation_coinbase.o \
+	build/Operation_trust.o \
 	build/Operation_authorize.o \
 	build/API_cmd.o \
 	build/API_RPC_account.o \

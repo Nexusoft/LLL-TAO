@@ -11,94 +11,83 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/Ledger/types/block.h>
+#include <LLD/include/global.h>
 
-namespace TAO
+#include <TAO/Ledger/types/state.h>
+
+#include <TAO/Ledger/include/checkpoints.h>
+
+#include <cmath>
+
+namespace TAO::Ledger
 {
 
-	namespace Ledger
+	/* Memory Map to hold all the hashes of the checkpoints decided on by the network. */
+	std::map<uint1024_t, uint32_t> mapCheckpoints;
+
+
+	/* Checkpoint Timespan, or the time that triggers a new checkpoint (in Minutes). */
+	const uint32_t CHECKPOINT_TIMESPAN = 15;
+
+
+	/*Check if the new block triggers a new Checkpoint timespan.*/
+	bool IsNewTimespan(const BlockState state)
 	{
-		/* Memory Map to hold all the hashes of the checkpoints decided on by the network. */
-		std::map<uint32_t, uint1024_t> mapCheckpoints;
-
-
-		/* Checkpoint Timespan, or the time that triggers a new checkpoint (in Minutes). */
-		uint32_t CHECKPOINT_TIMESPAN = 60;
-
-
-		/* Checkpoint Search. The Maximum amount of checkpoints that can be serached back to find a Descendant. */
-		uint32_t MAX_CHECKPOINTS_SEARCH = 2;
-
-
-		/** Check Checkpoint Timespan. **/
-		bool IsNewTimespan(CBlockIndex* pindex)
-		{
-			if(mapCheckpoints.empty() || !pindex->pprev)
-				return true;
-
-			int nFirstMinutes = floor((pindex->GetBlockTime() - mapBlockIndex[pindex->PendingCheckpoint.second]->GetBlockTime()) / 60.0);
-			int nLastMinutes =  floor((pindex->pprev->GetBlockTime() - mapBlockIndex[pindex->PendingCheckpoint.second]->GetBlockTime()) / 60.0);
-
-			return (nFirstMinutes != nLastMinutes && nFirstMinutes >= CHECKPOINT_TIMESPAN);
-		}
-
-
-		/** Checks whether given block index is a descendant of last hardened checkpoint. **/
-		bool IsDescendant(CBlockIndex* pindex)
-		{
-			if(mapCheckpoints.empty() || pindex->nHeight <= 1)
-				return true;
-
-			/** Ensure that the block is made after last hardened Checkpoint. **/
-			uint32_t nTotalCheckpoints = 0;
-
-			/** Check The Block Hash **/
-			while(pindex && pindex->pprev)
-			{
-				if(mapCheckpoints.count(pindex->pprev->nHeight))
-				{
-					if(pindex->pprev->GetBlockHash() == mapCheckpoints[pindex->pprev->nHeight])
-						return true;
-
-					if(nTotalCheckpoints >= MAX_CHECKPOINTS_SEARCH)
-						return false;
-
-					nTotalCheckpoints ++;
-				}
-
-				pindex = pindex->pprev;
-			}
-
-			return false;
-		}
-
-
-		/** Hardens the Pending Checkpoint on the Blockchain, determined by a new block creating a new Timespan.
-			The blockchain from genesis to new hardened checkpoint will then be fixed into place. **/
-		bool HardenCheckpoint(CBlockIndex* pcheckpoint, bool fInit)
-		{
-
-			/** Only Harden New Checkpoint if it Fits new Timestamp. **/
-			if(!IsNewTimespan(pcheckpoint->pprev))
-				return false;
-
-
-			/** Only Harden a New Checkpoint if it isn't already hardened. **/
-			if(mapCheckpoints.count(pcheckpoint->pprev->PendingCheckpoint.first))
-				return true;
-
-
-			/** Update the Checkpoints into Memory. **/
-			mapCheckpoints[pcheckpoint->pprev->PendingCheckpoint.first] = pcheckpoint->pprev->PendingCheckpoint.second;
-
-
-			/** Dump the Checkpoint if not Initializing. **/
-			if(!fInit)
-				debug::log(0, "===== Hardened Checkpoint %s Height = %u",
-				pcheckpoint->pprev->PendingCheckpoint.second.ToString().substr(0, 20).c_str(),
-				pcheckpoint->pprev->PendingCheckpoint.first);
-
+		/* Always return true if no checkpoints. */
+		if(mapCheckpoints.empty())
 			return true;
-		}
+
+		/* Get previous block state. */
+		BlockState statePrev;
+		if(!LLD::legDB->ReadBlock(state.hashPrevBlock, statePrev))
+			return true;
+
+		/* Get checkpoint state. */
+		BlockState stateCheck;
+		if(!LLD::legDB->ReadBlock(state.hashCheckpoint, stateCheck))
+			return debug::error(FUNCTION "failed to read checkpoint", __PRETTY_FUNCTION__);
+
+		/* Calculate the time differences. */
+		uint32_t nFirstMinutes = floor((state.GetBlockTime() - stateCheck.GetBlockTime()) / 60.0);
+		uint32_t nLastMinutes =  floor((statePrev.GetBlockTime() - stateCheck.GetBlockTime()) / 60.0);
+
+		return (nFirstMinutes != nLastMinutes && nFirstMinutes >= CHECKPOINT_TIMESPAN);
+	}
+
+
+	/* Check that the checkpoint is a Descendant of previous Checkpoint.*/
+	bool IsDescendant(const BlockState state)
+	{
+		if(mapCheckpoints.empty() || state.nHeight <= 1)
+			return true;
+
+		/* Check that checkpoint exists in the map. */
+		if(mapCheckpoints.count(state.hashCheckpoint))
+			return true;
+
+		return false;
+	}
+
+
+	/*Harden a checkpoint into the checkpoint chain.*/
+	bool HardenCheckpoint(const BlockState state)
+	{
+
+		/* Only Harden New Checkpoint if it Fits new timestamp. */
+		if(!IsNewTimespan(state.Prev()))
+			return false;
+
+		/* Only Harden a New Checkpoint if it isn't already hardened. */
+		if(mapCheckpoints.count(state.hashCheckpoint))
+			return true;
+
+		/* Update the Checkpoints into Memory. */
+		mapCheckpoints[state.hashCheckpoint] = 0;
+
+
+		/* Dump the Checkpoint if not Initializing. */
+		debug::log(0, "===== Hardened Checkpoint %s", state.hashCheckpoint.ToString().substr(0, 20).c_str());
+
+		return true;
 	}
 }

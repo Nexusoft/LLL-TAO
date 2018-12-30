@@ -1,16 +1,21 @@
+The Accounts API Interface Definition
+-------------------------------------
+
 ### CreateAccount
 
 This will create a new account for use on the network.
 
 ```
-/accounts/create
+<method>:
+  /accounts/create
 
-username=XXXX
-password=XXXX
-pin=XXXX
+<key>=<value> parameter pairs:
+  username=<user>
+  password=<password>
+  pin=<pin-number>
 ```
 
-This will return a json object such as:
+Return value JSON object:
 ```
 {
     "genesis": "c8749c4e748f3a9a3ca2b3199ed34d9501ef8a5df07d9dadcbacbef74202deb9",
@@ -32,45 +37,60 @@ This is a transaction object containing the information of your genesis transact
 This will log you into this specific API instance for the building of new transactions.
 
 ```
-/accounts/login
+<method>:
+  /accounts/login
 
-username=XXXX
-password=XXXX
+<key>=<value> parameter pairs:
+  username=XXXX
+  password=XXXX
 ```
 
-This will return a json object such as:
+Return value JSON object:    
 ```
 {
-    "genesis": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+    "genesis": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1",
+    "session": 16953804956473956578
 }
+
 ```
 
-This is your genesis ID, or the identification number of your specific account.
+This is your genesis ID, or the identification number of your specific account. The session is what is required to submit for every command thereafter, to allow the managing of multiple login sessions.
 
 ### Logout
 
 This will log you out of this specific API, and delete your credentials stored in a Secure Allocator.
 
 ```
-/accounts/logout
+<method>:
+  /accounts/logout
+
+<key>=<value> parameter pairs:
+  session=23894738473847
 ```
 
-This will return a json object of your genesis:
+Return value JSON object:
 ```
 {
     "genesis": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
 }
 ```
 
+Session is required to identify what session you are logging out of.
+
 ### Transactions
 
 This will list off all of the transactions created by the logged in account.
+You DO NOT need to be logged in to use this command.s
 
 ```
-/accounts/transactions
+<method>:
+  /accounts/transactions
+
+<key>=<value> parameter pairs:
+  genesis=27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1
 ```
 
-This will return a json object of your transactions.
+Return value JSON object:
 ```
 {
     "genesis": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
@@ -84,3 +104,5 @@ This will return a json object of your transactions.
     "version": 1
 },
 ```
+
+ Note that genesis ID is required to identify transactions.

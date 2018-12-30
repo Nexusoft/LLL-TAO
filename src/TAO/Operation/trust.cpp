@@ -11,17 +11,15 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/Register/objects/account.h>
+#include <LLD/include/global.h>
 
-namespace TAO
+namespace TAO::Operation
 {
 
-    namespace Register
+    /* Commits funds from a coinbase transaction. */
+    bool Trust(uint256_t hashAddress, uint1024_t hashLastTrust, uint32_t nSequence, uint32_t nLastTrust, uint64_t nStake, uint256_t hashCaller, bool fWrite)
     {
 
-        Account::print() const;
-        {
-            debug::log(0, "Account(id=%s, balance=%u)", hashIdentifier.ToString().substr(0, 20).c_str(), nBalance)
-        }
+        return true;
     }
 }

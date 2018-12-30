@@ -16,6 +16,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <Util/include/runtime.h>
+
 //forward declerations for BigNum
 namespace LLC
 {
@@ -66,7 +68,7 @@ namespace TAO::Ledger
 
 
 		/** The Block's timestamp. This number is locked into the signature hash. **/
-		uint32_t nTime;
+		uint32_t nTime; //TODO: make this 64 bit
 
 
 		/** The bytes holding the blocks signature. Signed by the block creator before broadcast. **/
@@ -86,7 +88,14 @@ namespace TAO::Ledger
 		 *	@param[in] nHeightIn The height this block is being created at.
 		 *
 		**/
-		Block(uint32_t nVersionIn, uint1024_t hashPrevBlockIn, uint32_t nChannelIn, uint32_t nHeightIn) : nVersion(nVersionIn), hashPrevBlock(hashPrevBlockIn), nChannel(nChannelIn), nHeight(nHeightIn), nBits(0), nNonce(0), nTime(0) { }
+		Block(uint32_t nVersionIn, uint1024_t hashPrevBlockIn, uint32_t nChannelIn, uint32_t nHeightIn)
+		: nVersion(nVersionIn)
+		, hashPrevBlock(hashPrevBlockIn)
+		, nChannel(nChannelIn)
+		, nHeight(nHeightIn)
+		, nBits(0)
+		, nNonce(0)
+		, nTime(runtime::unifiedtimestamp()) { }
 
 
 		/** Set the block to Null state. **/
@@ -153,6 +162,16 @@ namespace TAO::Ledger
 		uint1024_t ProofHash() const;
 
 
+		/** Signature Hash
+		 *
+		 *	Get the hash for signatures.
+		 *
+		 *	@return 1024-bit proof hash
+		 *
+		 **/
+		uint1024_t SignatureHash() const;
+
+
 		/** Stake Hash
 		 *
 		 *	Prove that you staked a number of seconds based on weight
@@ -175,7 +194,7 @@ namespace TAO::Ledger
 
 		/** UpdateTime
 		 *
-		 *	Update the blocks Timestamp
+		 *	Update the blocks timestamp
 		 *
 		 **/
 		void UpdateTime();
@@ -245,7 +264,7 @@ namespace TAO::Ledger
 		 *	@return True if the signature was made successfully, false otherwise
 		 *
 		 **/
-		bool GenerateSignature(const LLC::ECKey key);
+		bool GenerateSignature(LLC::ECKey key);
 
 
 		/** VerifySignature
@@ -255,7 +274,7 @@ namespace TAO::Ledger
 		 *	@return True if signature is valid, false otherwise
 		 *
 		 **/
-		bool VerifySignature(const LLC::ECKey key) const;
+		bool VerifySignature(LLC::ECKey key) const;
 
 
 	};

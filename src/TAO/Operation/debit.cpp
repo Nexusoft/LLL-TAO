@@ -23,11 +23,11 @@ namespace TAO::Operation
 {
 
     /* Authorizes funds from an account to an account */
-    bool Debit(uint256_t hashFrom, uint256_t hashTo, uint64_t nAmount, uint256_t hashCaller)
+    bool Debit(uint256_t hashFrom, uint256_t hashTo, uint64_t nAmount, uint256_t hashCaller, bool fWrite)
     {
         /* Read the register from the database. */
         TAO::Register::State regFrom = TAO::Register::State();
-        if(!LLD::regDB->ReadState(hashFrom, regFrom))
+        if(!LLD::regDB->ReadState(hashFrom, regFrom, fWrite))
             return debug::error(FUNCTION "register %s doesn't exist in register DB", __PRETTY_FUNCTION__, hashFrom.ToString().c_str());
 
         /* Check ownership of register. */
@@ -53,9 +53,13 @@ namespace TAO::Operation
         regFrom.ClearState();
         regFrom << acctFrom;
 
-        /* Write this to operations stream. */
-        Write(hashFrom, regFrom.GetState(), hashCaller);
-        //LLD::regDB->WriteState(hashFrom, regFrom); //need to do this in operation script to check ownership of register
+        /* Check that the register is in a valid state. */
+        if(!regFrom.IsValid())
+            return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashFrom.ToString().c_str());
+
+        /* Write the register to the database. */
+        if(!LLD::regDB->WriteState(hashFrom, regFrom, fWrite))
+            return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
 
         return true;
     }

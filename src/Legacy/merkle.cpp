@@ -12,12 +12,11 @@
 ____________________________________________________________________________________________*/
 
 #include <Legacy/types/merkle.h>
-
 #include <LLD/include/legacy.h>
+#include <LLD/include/global.h>
 
-#include <TAO/Ledger/include/chain.h>
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/state.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/transaction.h>
 
@@ -35,13 +34,13 @@ namespace Legacy
 
         // Find the block it claims to be in
         TAO::Ledger::BlockState blockState;
-        if (!TAO::Ledger::GetState(hashBlock, blockState))
+        if (!LLD::legDB->ReadBlock(hashBlock, blockState))
             return 0;
 
         if (!blockState.IsInMainChain())
             return 0;
 
-        return TAO::Ledger::nBestHeight - blockState.blockThis.nHeight + 1;
+        return TAO::Ledger::ChainState::nBestHeight - blockState.nHeight + 1;
 
     }
 

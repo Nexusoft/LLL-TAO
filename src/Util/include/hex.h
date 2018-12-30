@@ -59,6 +59,31 @@ inline bool IsHex(const std::string& str)
     return (str.size() > 0) && (str.size()%2 == 0);
 }
 
+
+/** HexChar
+ *
+ *  Gets a char from a hex string.
+ *
+ *  @param[in] psz The input string pointer
+ *
+ *  @return The char to return.
+ *
+ **/
+inline char HexChar(const char* psz)
+{
+    signed char c = phexdigit[(uint8_t)*psz++];
+    if (c == (signed char)-1)
+        return 0;
+    uint8_t n = (c << 4);
+    c = phexdigit[(uint8_t)*psz++];
+    if (c == (signed char)-1)
+        return 0;
+    n |= c;
+
+    return n;
+}
+
+
 /** ParseHex
  *
  *  Parses a string into multiple hex strings.

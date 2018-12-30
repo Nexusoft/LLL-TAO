@@ -63,7 +63,7 @@ namespace TAO::Ledger
 	}
 
 
-	/* Return the Block's current UNIX Timestamp. */
+	/* Return the Block's current UNIX timestamp. */
 	uint64_t Block::GetBlockTime() const
 	{
 		return (uint64_t)nTime;
@@ -89,6 +89,13 @@ namespace TAO::Ledger
 	}
 
 
+	/* Get the Proof Hash of the block. Used to verify work claims. */
+	uint1024_t Block::SignatureHash() const
+	{
+		return LLC::SK1024(BEGIN(nVersion), END(nTime));
+	}
+
+
 	uint1024_t Block::StakeHash()
 	{
 
@@ -109,7 +116,7 @@ namespace TAO::Ledger
 	/* Update the nTime of the current block. */
 	void Block::UpdateTime()
 	{
-		nTime = runtime::UnifiedTimestamp();
+		nTime = runtime::unifiedtimestamp();
 	}
 
 
@@ -208,15 +215,18 @@ namespace TAO::Ledger
 
 
 	/* Sign the block with the key that found the block. */
-	bool Block::GenerateSignature(const LLC::ECKey key)
+	bool Block::GenerateSignature(LLC::ECKey key)
 	{
-		return false;
+		return key.Sign((nVersion == 4) ? SignatureHash() : GetHash(), vchBlockSig, 1024);
 	}
 
 
 	/* Check that the block signature is a valid signature. */
-	bool Block::VerifySignature(const LLC::ECKey key) const
+	bool Block::VerifySignature(LLC::ECKey key) const
 	{
-		return false;
+		if (vchBlockSig.empty())
+			return false;
+
+		return key.Verify((nVersion == 4) ? SignatureHash() : GetHash(), vchBlockSig, 1024);
 	}
 }

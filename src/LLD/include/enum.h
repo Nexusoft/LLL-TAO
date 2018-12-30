@@ -11,39 +11,31 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_REGISTER_INCLUDE_TOKEN_H
-#define NEXUS_TAO_REGISTER_INCLUDE_TOKEN_H
+#ifndef NEXUS_LLD_INCLUDE_ENUM_H
+#define NEXUS_LLD_INCLUDE_ENUM_H
 
-namespace TAO
+namespace LLD
 {
 
-    namespace Register
+    /** Database flags for keychains and sector. **/
+    enum FLAGS
     {
-
-        class Order
-        {
-        public:
-
-            /** The identifier of the order (product). **/
-            uint256 hashIdentifier;
-
-
-            /** The quantity ordered **/
-            uint32_t  nQuantity;
+        APPEND   = (1 << 1),
+        READONLY = (1 << 2),
+        CREATE   = (1 << 3),
+        WRITE    = (1 << 4),
+        FORCE    = (1 << 5)
+    };
 
 
-            /** Serialization methods. **/
-            SERIALIZE_HEADER
+    /** Database states in the keychains. **/
+    enum STATE
+    {
+        EMPTY 			= 0,
+        READY 			= 1,
+        TRANSACTION     = 2
+    };
 
-
-            Order() : hashIdentifier(0), nBalance(0)
-            {
-
-            }
-
-            void print() const;
-        };
-    }
 }
 
 #endif

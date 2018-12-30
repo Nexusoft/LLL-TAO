@@ -66,7 +66,7 @@ namespace Legacy
         int64_t nCreditDebit;
 
 
-        /** Timestamp for creation of accounting entry **/
+        /** timestamp for creation of accounting entry **/
         int64_t nTime;
 
 
