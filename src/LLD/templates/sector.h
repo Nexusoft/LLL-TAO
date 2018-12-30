@@ -265,7 +265,7 @@ namespace LLD
             ssKey << key;
 
             /* Return the Key existance in the Keychain Database. */
-            SectorKey cKey(STATE::READY, static_cast<std::vector<uint8_t>>(ssKey), ssKey.size(), 0, 0, 0);
+            SectorKey cKey(STATE::READY, static_cast<std::vector<uint8_t>>(ssKey), 0, 0, 0);
             return pSectorKeys->Put(static_cast<std::vector<uint8_t>>(ssKey), cKey);
         }
 
