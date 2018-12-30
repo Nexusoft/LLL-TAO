@@ -14,6 +14,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/mempool.h>
 
+#include <TAO/Operation/include/execute.h>
+
 namespace TAO::Ledger
 {
     Mempool mempool;
@@ -42,6 +44,11 @@ namespace TAO::Ledger
     {
         LOCK(MUTEX);
 
+        /* Check the mempool. */
+        uint512_t hash = tx.GetHash();
+        if(mapLedger.count(hash))
+            return debug::error(FUNCTION "%s already exists", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
+
         /* The next hash that is being claimed. */
         uint256_t hashClaim = tx.PrevHash();
         if(mapPrevHashes.count(hashClaim))
@@ -52,7 +59,16 @@ namespace TAO::Ledger
             return debug::error(FUNCTION "%s is invalid", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
 
         /* Calculate the future potential states. */
-        //TODO: execute the operations layer
+        if(!TAO::Operation::Execute(tx.vchLedgerData, tx.hashGenesis, false))
+            return debug::error(FUNCTION "%s operations failed", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
+
+        /* Add to the map. */
+        mapLedger[hash] = tx;
+
+        /* Debug output. */
+        debug::log(2, FUNCTION "%s ACCEPTED", hash.ToString().substr(0, 20).c_str());
+
+        return true;
     }
 
 
@@ -88,7 +104,7 @@ namespace TAO::Ledger
     bool Mempool::Get(uint512_t hashTx, TAO::Ledger::Transaction& tx)
     {
         LOCK(MUTEX);
-        
+
         if(!mapLedger.count(hashTx))
             return false;
 
