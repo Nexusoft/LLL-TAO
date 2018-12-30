@@ -28,6 +28,7 @@ namespace LLP
     template <class ProtocolType>
     class DataThread
     {
+        std::recursive_mutex MUTEX;
         //Need Pointer Reference to Object in Server Class to push data from Data Thread Messages into Server Class
 
     public:
@@ -92,6 +93,8 @@ namespace LLP
         /* Adds a new connection to current Data Thread */
         void AddConnection(Socket_t SOCKET, DDOS_Filter* DDOS)
         {
+            LOCK(MUTEX);
+
             int nSlot = FindSlot();
             if(nSlot == CONNECTIONS.size())
             {
@@ -121,6 +124,8 @@ namespace LLP
         /* Adds a new connection to current Data Thread */
         bool AddConnection(std::string strAddress, int nPort, DDOS_Filter* DDOS)
         {
+            LOCK(MUTEX);
+
             int nSlot = FindSlot();
             if(nSlot == CONNECTIONS.size())
             {
@@ -185,10 +190,13 @@ namespace LLP
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
                 CONDITION.wait(CONDITION_LOCK, [this]{ return nConnections.load() > 0; });
 
-                /* Poll the sockets. */
-                int nPoll = poll((pollfd*)CONNECTIONS[0], CONNECTIONS.size(), 100);
-                if(nPoll < 0)
-                    continue;
+                { LOCK(MUTEX);
+                    
+                    /* Poll the sockets. */
+                    int nPoll = poll((pollfd*)CONNECTIONS[0], CONNECTIONS.size(), 100);
+                    if(nPoll < 0)
+                        continue;
+                }
 
                 /* Check all connections for data and packets. */
                 uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
