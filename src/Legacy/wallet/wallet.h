@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_WALLET_WALLET_H
-#define NEXUS_TAO_LEGACY_WALLET_WALLET_H
+#ifndef NEXUS_LEGACY_WALLET_WALLET_H
+#define NEXUS_LEGACY_WALLET_WALLET_H
 
 #include <map>
 #include <mutex>

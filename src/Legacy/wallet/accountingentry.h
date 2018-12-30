@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_WALLET_ACCOUNTINGENTRY_H
-#define NEXUS_TAO_LEGACY_WALLET_ACCOUNTINGENTRY_H
+#ifndef NEXUS_LEGACY_WALLET_ACCOUNTINGENTRY_H
+#define NEXUS_LEGACY_WALLET_ACCOUNTINGENTRY_H
 
 #include <string>
 

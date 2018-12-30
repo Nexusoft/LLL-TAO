@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_TYPES_MERKLE_H
-#define NEXUS_TAO_LEGACY_TYPES_MERKLE_H
+#ifndef NEXUS_LEGACY_TYPES_MERKLE_H
+#define NEXUS_LEGACY_TYPES_MERKLE_H
 
 #include <Legacy/types/transaction.h>
 
