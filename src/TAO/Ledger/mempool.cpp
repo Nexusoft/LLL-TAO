@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 
+#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Operation/include/execute.h>
@@ -53,6 +54,18 @@ namespace TAO::Ledger
         uint256_t hashClaim = tx.PrevHash();
         if(mapPrevHashes.count(hashClaim))
             return debug::error(FUNCTION "trying to claim spent next hash", __PRETTY_FUNCTION__, hashClaim.ToString().substr(0, 20).c_str());
+
+        /* Check for duplicate coinbase or coinstake. */
+        if(tx.IsCoinbase())
+            return debug::error(FUNCTION "coinbase %s not accepted in pool", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
+
+        /* Check for duplicate coinbase or coinstake. */
+        if(tx.IsTrust())
+            return debug::error(FUNCTION "trust %s not accepted in pool", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
+
+        /* Check for duplicate coinbase or coinstake. */
+        if(tx.nTimestamp > runtime::UnifiedTimestamp() + MAX_UNIFIED_DRIFT)
+            return debug::error(FUNCTION "tx %s too far in the future", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
 
         /* Check that the transaction is in a valid state. */
         if(!tx.IsValid())
