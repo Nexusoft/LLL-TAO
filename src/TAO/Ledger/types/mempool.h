@@ -68,12 +68,24 @@ namespace TAO::Ledger
          *
          *  Checks if a transaction exists.
          *
-         *  @param[in] tx The transaction to add.
+         *  @param[in] hashTx The transaction to add.
          *
          *  @return true if added.
          *
          **/
         bool Has(uint512_t hashTx);
+
+
+        /** Remove.
+         *
+         *  Remove a transaction from pool.
+         *
+         *  @param[in] hashTx The transaction to remove
+         *
+         *  @return true if added.
+         *
+         **/
+        bool Remove(uint512_t hashTx);
 
 
         /** Get.
