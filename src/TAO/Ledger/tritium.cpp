@@ -131,12 +131,18 @@ namespace TAO::Ledger
 		}
 
 
+		/* Check that the producer is a valid transactions. */
+		if(!producer.IsValid())
+			return debug::error(FUNCTION "producer transaction is invalid", __PRETTY_FUNCTION__);
+
+
 		/* Check for duplicate txid's */
 		std::set<uint512_t> uniqueTx;
 
 
 		/* Get the hashes for the merkle root. */
 		std::vector<uint512_t> vHashes;
+		vHashes.push_back(producer.GetHash());
 
 
 		/* Get the signature operations for legacy tx's. */

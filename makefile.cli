@@ -151,6 +151,7 @@ OBJS= \
 	build/Ledger_prime.o \
 	build/Ledger_state.o \
 	build/Ledger_supply.o \
+	build/Ledger_create.o \
 	build/Ledger_difficulty.o \
 	build/Ledger_checkpoints.o \
 	build/Ledger_chainstate.o \

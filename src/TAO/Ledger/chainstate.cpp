@@ -37,6 +37,6 @@ namespace TAO::Ledger
 
 
 	/** The best block in the chain. **/
-	BlockState stateBest;
+	BlockState ChainState::stateBest;
 
 }
