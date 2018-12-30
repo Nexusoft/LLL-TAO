@@ -59,7 +59,7 @@ namespace LLP
         , addr()
         {
             fd = -1;
-            events = POLLIN | POLLOUT;
+            events = POLLIN;// | POLLOUT;
         }
 
 
@@ -71,7 +71,7 @@ namespace LLP
         , addr(addrIn)
         {
             fd = nSocketIn;
-            events = POLLIN | POLLOUT;
+            events = POLLIN;// | POLLOUT;
         }
 
 

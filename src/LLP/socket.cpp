@@ -37,7 +37,7 @@ namespace LLP
     , nLastRecv(runtime::timestamp())
     {
         fd = -1;
-        events = POLLIN | POLLOUT;
+        events = POLLIN; //consider using POLLOUT
 
         Attempt(addrConnect);
     }
@@ -46,6 +46,11 @@ namespace LLP
     /* Returns the error of socket if any */
     int Socket::ErrorCode()
     {
+        /* Check for errors with poll. */
+        if(revents & POLLERR || revents & POLLHUP || revents & POLLNVAL)
+            return -1;
+
+        /* Check for errors from reads or writes. */
         if (nError == WSAEWOULDBLOCK || nError == WSAEMSGSIZE || nError == WSAEINTR || nError == WSAEINPROGRESS)
             return 0;
 

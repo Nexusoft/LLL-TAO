@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <condition_variable>
 #include <functional>
 
+#include <atomic>
+
 namespace LLP
 {
 
@@ -34,7 +36,7 @@ namespace LLP
         bool fDDOS;
         bool fMETER;
 
-        uint32_t nConnections;
+        std::atomic<uint32_t> nConnections;
         uint32_t ID;
         uint32_t REQUESTS;
         uint32_t TIMEOUT;
@@ -80,7 +82,7 @@ namespace LLP
         {
             int nSize = CONNECTIONS.size();
             for(int index = 0; index < nSize; ++index)
-                if(!CONNECTIONS[index])
+                if(CONNECTIONS[index]->IsNull())
                     return index;
 
             return nSize;
@@ -92,14 +94,23 @@ namespace LLP
         {
             int nSlot = FindSlot();
             if(nSlot == CONNECTIONS.size())
+            {
                 CONNECTIONS.push_back(nullptr);
+                CONNECTIONS[nSlot] = new ProtocolType(SOCKET, DDOS, fDDOS);
+            }
+            else
+            {
+                CONNECTIONS[nSlot]->fd = SOCKET.fd;
+                CONNECTIONS[nSlot]->fDDOS = fDDOS;
+                CONNECTIONS[nSlot]->DDOS  = DDOS;
+            }
 
             if(fDDOS)
                 DDOS -> cSCORE += 1;
 
-            CONNECTIONS[nSlot] = new ProtocolType(SOCKET, DDOS, fDDOS);
             CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
             CONNECTIONS[nSlot]->fCONNECTED = true;
+            CONNECTIONS[nSlot]->Reset();
 
             ++nConnections;
 
@@ -112,17 +123,22 @@ namespace LLP
         {
             int nSlot = FindSlot();
             if(nSlot == CONNECTIONS.size())
+            {
+                Socket SOCKET;
                 CONNECTIONS.push_back(nullptr);
+                CONNECTIONS[nSlot] = new ProtocolType(SOCKET, DDOS, fDDOS);
+            }
+            else
+            {
+                CONNECTIONS[nSlot]->fDDOS = fDDOS;
+                CONNECTIONS[nSlot]->DDOS  = DDOS;
+            }
 
-
-            Socket_t SOCKET;
-            CONNECTIONS[nSlot] = new ProtocolType(SOCKET, DDOS, fDDOS);
+            /* Set the outgoing flag. */
             CONNECTIONS[nSlot]->fOUTGOING = true;
-
             if(!CONNECTIONS[nSlot]->Connect(strAddress, nPort))
             {
-                delete CONNECTIONS[nSlot];
-                CONNECTIONS[nSlot] = nullptr;
+                CONNECTIONS[nSlot]->SetNull();
 
                 return false;
             }
@@ -144,10 +160,7 @@ namespace LLP
         void Remove(int index)
         {
             CONNECTIONS[index]->Disconnect();
-
-            delete CONNECTIONS[index];
-
-            CONNECTIONS[index] = nullptr;
+            CONNECTIONS[index]->SetNull();
 
             --nConnections;
 
@@ -159,16 +172,28 @@ namespace LLP
             Creates a Packet QUEUE on this connection to be processed by an LLP Messaging Thread. */
         void Thread()
         {
+            runtime::timer time;
+            time.Start();
+
+            uint32_t nIt = 0;
+
             /* The mutex for the condition. */
             std::mutex CONDITION_MUTEX;
 
             /* The main connection handler loop. */
             while(!config::fShutdown)
             {
+                /* Keep thread from consuming too many resources. */
+                runtime::sleep(1);
+
                 /* Keep data threads waiting for work. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-                CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(1000),
-                    [this]{ return CONNECTIONS.size() > 0; });
+                CONDITION.wait(CONDITION_LOCK, [this]{ return nConnections.load() > 0; });
+
+                /* Poll the sockets. */
+                int nPoll = poll((pollfd*)CONNECTIONS[0], CONNECTIONS.size(), 100);
+                if(nPoll < 0)
+                    continue;
 
                 /* Check all connections for data and packets. */
                 uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
@@ -176,11 +201,9 @@ namespace LLP
                 {
                     try
                     {
-                        //TODO: Cleanup threads and sleeps. Make more efficient to reduce total CPU cycles
-                        runtime::sleep(10);
 
                         /* Skip over Inactive Connections. */
-                        if(!CONNECTIONS[nIndex] || !CONNECTIONS[nIndex]->Connected())
+                        if(CONNECTIONS[nIndex]->IsNull() || !CONNECTIONS[nIndex]->Connected())
                             continue;
 
 

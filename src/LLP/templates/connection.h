@@ -107,6 +107,18 @@ namespace LLP
         }
 
 
+        /** Reset
+         *
+         *  Resets the internal timers.
+         *
+         **/
+        void Reset()
+        {
+            nLastRecv = runtime::timestamp();
+            nLastSend = runtime::timestamp();
+        }
+
+
         /** Set Null
          *
          *  Sets the object to an invalid state.
@@ -115,6 +127,7 @@ namespace LLP
         void SetNull()
         {
             fd = -1;
+            nError = 0;
 
             INCOMING.SetNull();
             DDOS  = nullptr;
