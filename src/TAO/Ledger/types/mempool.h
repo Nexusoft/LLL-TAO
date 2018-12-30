@@ -29,11 +29,19 @@ namespace TAO::Ledger
         std::recursive_mutex MUTEX;
 
         /** The transactions in the ledger memory pool. **/
+        std::map<uint512_t, Legacy::Transaction> mapLegacy;
+
+
+        /** The transactions in the ledger memory pool. **/
         std::map<uint512_t, TAO::Ledger::Transaction> mapLedger;
 
 
         /** Record of next hashes in the mempool. **/
         std::map<uint256_t, uint512_t> mapPrevHashes;
+
+
+        /** Record of legacy inputs in the mempool. **/
+        std::map<uint512_t, uint512_t> mapInputs;
 
     public:
 
@@ -43,6 +51,18 @@ namespace TAO::Ledger
         {
 
         }
+
+        /** Accept.
+         *
+         *  Accepts a legacy transaction with validation rules.
+         *
+         *  @param[in] tx The transaction to add.
+         *
+         *  @return true if added.
+         *
+         **/
+        bool Accept(Legacy::Transaction tx);
+
 
         /** Add Unchecked.
          *

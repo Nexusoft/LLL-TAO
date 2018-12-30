@@ -20,8 +20,10 @@ ________________________________________________________________________________
 namespace TAO::Ledger
 {
 
-    bool Mempool::Add(Legacy::Transaction tx)
+    bool Mempool::Accept(Legacy::Transaction tx)
     {
+        LOCK(MUTEX);
+        
         if (!tx.CheckTransaction())
             return debug::error(FUNCTION "CheckTransaction failed", __PRETTY_FUNCTION__);
 
