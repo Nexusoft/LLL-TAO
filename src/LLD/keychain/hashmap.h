@@ -532,16 +532,77 @@ namespace LLD
         }
 
 
-        /** Simple Erase for now, not efficient in Data Usage of HD but quick to get erase function working. **/
-        bool Erase(const std::vector<uint8_t> vKey)
+        /** Erase
+         *
+         *  Erase a key from the disk hashmaps
+         *  This should be optimized further.
+         *
+         *  @param[in] vKey the key to erase.
+         *
+         *  @return true if the key was found
+         *
+         **/
+        bool Erase(std::vector<uint8_t> vKey)
         {
-            std::unique_lock<std::recursive_mutex>(KEY_MUTEX);
-
-            /* Check for the Key. */
+            /* Get the assigned bucket for the hashmap. */
             uint32_t nBucket = GetBucket(vKey);
 
+            /* Get the file binary position. */
+            uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
 
-            //TODO: append an index to the end of keychain saying record was erased.
+            /* Compress any keys larger than max size. */
+            CompressKey(vKey, HASHMAP_MAX_KEY_SIZE);
+
+            /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
+            std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
+            for(int i = hashmap[nBucket] - 1; i >= 0; -- i)
+            {
+                /* Find the file stream for LRU cache. */
+                std::fstream* pstream;
+                if(!fileCache->Get(i, pstream))
+                {
+                    /* Set the new stream pointer. */
+                    pstream = new std::fstream(debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
+
+                    /* If file not found add to LRU cache. */
+                    fileCache->Put(i, pstream);
+                }
+
+                /* Handle the disk operations. */
+                { LOCK(KEY_MUTEX);
+
+                    /* Seek to the hashmap index in file. */
+                    pstream->seekg (nFilePos, std::ios::beg);
+
+                    /* Read the bucket binary data from file stream */
+                    pstream->read((char*) &vBucket[0], vBucket.size());
+                }
+
+                /* Check if this bucket has the key */
+                if(std::equal(vBucket.begin() + 11, vBucket.begin() + 11 + vKey.size(), vKey.begin()))
+                {
+                    /* Deserialize key and return if found. */
+                    DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
+                    SectorKey cKey;
+                    ssKey >> cKey;
+
+                    /* Handle the disk operations. */
+                    { LOCK(KEY_MUTEX);
+
+                        /* Seek to the hashmap index in file. */
+                        pstream->seekp (nFilePos, std::ios::beg);
+
+                        /* Read the bucket binary data from file stream */
+                        std::vector<uint8_t> vBlank(HASHMAP_KEY_ALLOCATION, 0);
+                        pstream->write((char*) &vBlank[0], vBlank.size());
+                        pstream->flush();
+                    }
+
+
+                    /* Debug Output of Sector Key Information. */
+                    debug::log(4, FUNCTION "Erased State: %s | Length: %u | Bucket %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, nBucket, nFilePos, hashmap[nBucket] - 1, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(vKey.begin(), vKey.end()).c_str());
+                }
+            }
 
             return true;
         }

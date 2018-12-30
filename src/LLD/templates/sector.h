@@ -436,6 +436,60 @@ namespace LLD
         }
 
 
+        /** Update
+         *
+         *  Update a record on disk.
+         *
+         *  @param[in] vKey The binary data of the key to flush
+         *  @param[in] vData The binary data of the record to flush
+         *
+         *  @return True if the flush was successful.
+         *
+         **/
+        bool Update(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
+        {
+            /* Check the keychain for key. */
+            SectorKey key;
+            if(!pSectorKeys->Get(vKey, key))
+                return debug::error(FUNCTION "doesn't contain key in keychain", __PRETTY_FUNCTION__);
+
+            /* Check data size constraints. */
+            if(vData.size() != key.nSectorSize)
+                return debug::error(FUNCTION "sector size mismatch", __PRETTY_FUNCTION__);
+
+            /* Write the data into the memory cache. */
+            cachePool->Put(vKey, vData, false);
+
+            /* Find the file stream for LRU cache. */
+            std::fstream* pstream;
+            if(!fileCache->Get(key.nSectorFile, pstream))
+            {
+                /* Set the new stream pointer. */
+                pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                if(!pstream)
+                    return false;
+
+                /* If file not found add to LRU cache. */
+                fileCache->Put(key.nSectorFile, pstream);
+            }
+
+            /* Write the data to disk. */
+            {
+                LOCK(SECTOR_MUTEX);
+
+                /* If it is a New Sector, Assign a Binary Position. */
+                pstream->seekp(key.nSectorStart, std::ios::beg);
+                pstream->write((char*) &vData[0], vData.size());
+                pstream->flush();
+            }
+
+            /* Verboe output. */
+            debug::log(4, FUNCTION "%s | Current File: %u | Current File Size: %u", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
+
+            return true;
+        }
+
+
         /** Flush
          *
          *  Flush a write to disk immediately bypassing write buffers.
@@ -448,6 +502,8 @@ namespace LLD
          **/
         bool Flush(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
         {
+
+            /* Create new file if above current file size. */
             if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
             {
                 debug::log(4, FUNCTION "Current File too Large, allocating new File %u", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
@@ -491,11 +547,11 @@ namespace LLD
             /* Assign the Key to Keychain. */
             pSectorKeys->Put(cKey);
 
+            /* Write the data into the memory cache. */
+            cachePool->Put(vKey, vData, false);
+
             /* Verboe output. */
             debug::log(4, FUNCTION "%s | Current File: %u | Current File Size: %u", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
-
-            if(config::GetBoolArg("-runtime", false))
-                debug::log(0, ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
 
             return true;
         }
