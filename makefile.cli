@@ -156,8 +156,9 @@ OBJS= \
 	build/Ledger_difficulty.o \
 	build/Ledger_checkpoints.o \
 	build/Ledger_chainstate.o \
-	build/Ledger_tritium.o \
 	build/Ledger_transaction.o \
+	build/Ledger_tritium.o \
+	build/Ledger_trustkey.o \
 	build/Operation_write.o \
 	build/Operation_append.o \
 	build/Operation_register.o \
