@@ -240,7 +240,7 @@ namespace LLD
         template<typename Key>
         bool Exists(const Key& key)
         {
-            /** Serialize Key into Bytes. **/
+            /* Serialize Key into Bytes. */
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
 
@@ -248,6 +248,20 @@ namespace LLD
             SectorKey cKey;
             return pSectorKeys->Get(static_cast<std::vector<uint8_t>>(ssKey), cKey);
         }
+
+
+        template<typename Key>
+        bool Write(const Key& key)
+        {
+            /* Serialize Key into Bytes. */
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
+            ssKey << key;
+
+            /* Return the Key existance in the Keychain Database. */
+            SectorKey cKey(READY, static_cast<std::vector<uint8_t>>(ssKey), ssKey.size(), 0, 0, 0);
+            return pSectorKeys->Put(static_cast<std::vector<uint8_t>>(ssKey), cKey);
+        }
+
 
         template<typename Key>
         bool Erase(const Key& key)
@@ -278,16 +292,16 @@ namespace LLD
         template<typename Key, typename Type>
         bool Read(const Key& key, Type& value)
         {
-            /** Serialize Key into Bytes. **/
+            /* Serialize Key into Bytes. */
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
 
-            /** Get the Data from Sector Database. **/
+            /* Get the Data from Sector Database. */
             std::vector<uint8_t> vData;
             if(!Get(static_cast<std::vector<uint8_t>>(ssKey), vData))
                 return false;
 
-            /** Deserialize Value. **/
+            /* Deserialize Value. */
             DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
             ssValue >> value;
 
@@ -309,6 +323,24 @@ namespace LLD
             ssData << value;
 
             return Put(ssKey, ssData);
+        }
+
+
+        template<typename Key, typename Type>
+        bool Update(const Key& key, const Type& value)
+        {
+            if (fReadOnly)
+                assert(!"Write called on database in read-only mode");
+
+            /* Serialize the Key. */
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
+            ssKey << key;
+
+            /* Serialize the Value */
+            DataStream ssData(SER_LLD, DATABASE_VERSION);
+            ssData << value;
+
+            return Update(ssKey, ssData);
         }
 
 
