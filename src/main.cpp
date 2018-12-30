@@ -96,9 +96,9 @@ int main(int argc, char** argv)
 
 
     /* Create the database instances. */
-    LLD::regDB = new LLD::RegisterDB("r+");
-    LLD::legDB = new LLD::LedgerDB("r+");
-    LLD::locDB = new LLD::LocalDB("r+");
+    LLD::regDB = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+    LLD::legDB = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+    LLD::locDB = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
 
 
     /** Load the Wallet Database. **/

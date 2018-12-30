@@ -36,13 +36,11 @@ namespace LLD
         Allow Reads on READY and READ.
 
         Only Flush to Database if not Cached. (TODO) **/
-    enum
+    enum STATE
     {
         EMPTY 			= 0,
-        READ  			= 1,
-        WRITE 			= 2,
-        READY 			= 3,
-        TRANSACTION     = 4
+        READY 			= 1,
+        TRANSACTION     = 2
     };
 
 

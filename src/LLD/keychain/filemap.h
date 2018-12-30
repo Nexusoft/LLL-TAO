@@ -271,7 +271,7 @@ namespace LLD
 
 
             /* Debug Output of Sector Key Information. */
-            debug::log(4, FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s | Current File: %u | Current File Size: %u", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[cKey.vKey].second, mapKeys[cKey.vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str(), nCurrentFile, nCurrentFileSize);
+            debug::log(4, FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s | Current File: %u | Current File Size: %u", __PRETTY_FUNCTION__, cKey.nState == STATE::READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[cKey.vKey].second, mapKeys[cKey.vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str(), nCurrentFile, nCurrentFileSize);
 
 
             return true;
@@ -280,7 +280,7 @@ namespace LLD
         /** Simple Erase for now, not efficient in Data Usage of HD but quick to get erase function working. **/
         bool Erase(const std::vector<uint8_t> vKey)
         {
-            std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
+            LOCK(KEY_MUTEX);
 
             /* Check for the Key. */
             if(!mapKeys.count(vKey))
@@ -297,7 +297,7 @@ namespace LLD
 
 
             /* Establish the Sector State as Empty. */
-            std::vector<uint8_t> vData(1, EMPTY);
+            std::vector<uint8_t> vData(1, STATE::EMPTY);
             ssFile.write((char*) &vData[0], vData.size());
 
 
@@ -311,8 +311,7 @@ namespace LLD
         /** Get a Record from the Database with Given Key. **/
         bool Get(const std::vector<uint8_t> vKey, SectorKey& cKey)
         {
-            std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
-
+            LOCK(KEY_MUTEX);
 
             /* Read a Record from Binary Data. */
             if(mapKeys.count(vKey))
@@ -337,7 +336,7 @@ namespace LLD
 
 
                 /* Debug Output of Sector Key Information. */
-                debug::log(4, FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s", __PRETTY_FUNCTION__, cKey.nState == READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[vKey].second, mapKeys[vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(vKey.begin(), vKey.end()).c_str());
+                debug::log(4, FUNCTION "State: %s | Length: %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s", __PRETTY_FUNCTION__, cKey.nState == STATE::READY ? "Valid" : "Invalid", cKey.nLength, mapKeys[vKey].second, mapKeys[vKey].first, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(vKey.begin(), vKey.end()).c_str());
 
 
                 /* Skip Empty Sectors for Now. (TODO: Expand to Reads / Writes) */

@@ -28,7 +28,7 @@ namespace LLP
 
     /* Default constructor */
     AddressManager::AddressManager(uint16_t nPort)
-    : pDatabase(new LLD::AddressDB(nPort, "r+"))
+    : pDatabase(new LLD::AddressDB(nPort, LLD::FLAGS::CREATE | LLD::FLAGS::WRITE))
     , mapAddrInfo()
     {
         if(!pDatabase)

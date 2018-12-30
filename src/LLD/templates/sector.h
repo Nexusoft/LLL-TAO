@@ -30,6 +30,15 @@ ________________________________________________________________________________
 namespace LLD
 {
 
+    enum FLAGS
+    {
+        APPEND   = (1 << 1),
+        READONLY = (1 << 2),
+        CREATE   = (1 << 3),
+        WRITE    = (1 << 4)
+    };
+
+
     /* Maximum size a file can be in the keychain. */
     const uint32_t MAX_SECTOR_FILE_SIZE = 1024 * 1024 * 128; //128 MB per File
 
@@ -116,6 +125,10 @@ namespace LLD
         uint32_t nRecordsFlushed;
 
 
+        /** Database Flags. **/
+        uint8_t nFlags;
+
+
         /* Cache Pool */
         CacheType* cachePool;
 
@@ -145,9 +158,10 @@ namespace LLD
 
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(std::string strNameIn, const char* pszMode="r+")
+        SectorDatabase(std::string strNameIn, uint8_t nFlagsIn)
         : strName(strNameIn)
         , strBaseLocation(config::GetDataDir() + strNameIn + "/datachain/")
+        , nFlags(nFlagsIn)
         , cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE))
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
         , nBytesRead(0)
@@ -160,9 +174,6 @@ namespace LLD
         {
             if(config::GetBoolArg("-runtime", false))
                 runtime.Start();
-
-            /* Read only flag when instantiating new database. */
-            fReadOnly = (!strchr(pszMode, '+') && !strchr(pszMode, 'w'));
 
             /* Initialize the Database. */
             Initialize();
@@ -253,6 +264,9 @@ namespace LLD
         template<typename Key>
         bool Write(const Key& key)
         {
+            if(nFlags & FLAGS::READONLY)
+                assert(!"Write called on database in read-only mode");
+
             /* Serialize Key into Bytes. */
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
@@ -266,8 +280,8 @@ namespace LLD
         template<typename Key>
         bool Erase(const Key& key)
         {
-            if(config::GetBoolArg("-runtime", false))
-                runtime.Start();
+            if(nFlags & FLAGS::READONLY)
+                assert(!"Erase called on database in read-only mode");
 
             /* Serialize Key into Bytes. */
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
@@ -289,6 +303,7 @@ namespace LLD
             return fErased;
         }
 
+
         template<typename Key, typename Type>
         bool Read(const Key& key, Type& value)
         {
@@ -308,10 +323,11 @@ namespace LLD
             return true;
         }
 
+
         template<typename Key, typename Type>
         bool Write(const Key& key, const Type& value)
         {
-            if (fReadOnly)
+            if(nFlags & FLAGS::READONLY)
                 assert(!"Write called on database in read-only mode");
 
             /* Serialize the Key. */
@@ -329,8 +345,8 @@ namespace LLD
         template<typename Key, typename Type>
         bool Update(const Key& key, const Type& value)
         {
-            if (fReadOnly)
-                assert(!"Write called on database in read-only mode");
+            if(nFlags & FLAGS::READONLY)
+                assert(!"Update called on database in read-only mode");
 
             /* Serialize the Key. */
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
@@ -831,7 +847,7 @@ namespace LLD
             **/
         bool TxnCommit()
         {
-            std::unique_lock<std::recursive_mutex> lk(SECTOR_MUTEX);
+            LOCK(SECTOR_MUTEX);
 
             if(config::GetBoolArg("-runtime", false))
                 runtime.Start();
@@ -854,7 +870,7 @@ namespace LLD
                     if(!pSectorKeys->Get(nIterator->first, cKey))
                         return error(FUNCTION "Couldn't get the Active Sector Key.", __PRETTY_FUNCTION__);
 
-                    cKey.nState = TRANSACTION;
+                    cKey.nState = STATE::TRANSACTION;
                     pSectorKeys->Put(cKey);
                 }
             }
@@ -904,7 +920,7 @@ namespace LLD
                     fStream.close();
 
                     /* Create a new Sector Key. */
-                    SectorKey cKey(READY, vKey, nCurrentFile, nCurrentFileSize, vData.size());
+                    SectorKey cKey(STATE::READY, vKey, nCurrentFile, nCurrentFileSize, vData.size());
 
                     /* Increment the current filesize */
                     nCurrentFileSize += vData.size();
@@ -944,7 +960,7 @@ namespace LLD
                     fStream.write((char*) &vData[0], vData.size());
                     fStream.close();
 
-                    cKey.nState    = READY;
+                    cKey.nState    = STATE::READY;
 
                     pSectorKeys->Put(cKey);
                 }
@@ -961,7 +977,7 @@ namespace LLD
                     return error(FUNCTION "Failed to Get Key from Keychain.", __PRETTY_FUNCTION__);
 
                 /** Set the Sector states back to Active. **/
-                cKey.nState    = READY;
+                cKey.nState    = STATE::READY;
 
                 /** Commit the Keys to Keychain Database. **/
                 if(!pSectorKeys->Put(cKey))

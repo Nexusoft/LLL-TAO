@@ -44,7 +44,7 @@ namespace Legacy
             {
                 /* Read the transaction from disk -- Do we still need to do this? */
                 Legacy::Transaction legacyTx;
-                if (!LLD::LegacyDB("r").ReadTx(GetHash(), legacyTx))
+                if (!LLD::LegacyDB(LLD::FLAGS::READONLY).ReadTx(GetHash(), legacyTx))
                     return 0;
 
                 if (hashBlock > 0)

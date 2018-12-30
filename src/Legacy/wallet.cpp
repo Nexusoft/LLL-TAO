@@ -865,7 +865,7 @@ namespace Legacy
         { // Begin lock scope
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
 
-            LLD::LegacyDB legacydb("r");
+            LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
             Legacy::Transaction tx;
 
             while (!config::fShutdown)
@@ -939,7 +939,7 @@ namespace Legacy
 
         /* Rebroadcast any of our tx that aren't in a block yet */
         debug::log(0, "ResendWalletTransactions");
-        LLD::LegacyDB legacydb("r");
+        LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
 
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
@@ -1022,7 +1022,7 @@ namespace Legacy
             for (auto& item : mapWallet)
                 vCoins.push_back(item.second);
 
-            LLD::LegacyDB legacydb("r");
+            LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
 
             for(CWalletTx& walletTx : vCoins)
             {
@@ -1359,7 +1359,7 @@ namespace Legacy
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
 
-            LLD::LegacyDB legacydb("r");
+            LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
 
             nFeeRet = MIN_TX_FEE;
 
@@ -1603,7 +1603,7 @@ namespace Legacy
 
         /* Calculate the Interest for the Coinstake Transaction. */
         int64_t nInterest;
-        LLD::LegacyDB legacydb("cr");
+        LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
 //        if(!block.vtx[0].GetCoinstakeInterest(block, legacydb, nInterest))
 //            return debug::error("AddCoinstakeInputs() : Failed to Get Interest");
 
