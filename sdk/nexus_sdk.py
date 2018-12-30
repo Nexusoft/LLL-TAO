@@ -1,15 +1,15 @@
 #
-# nexus_sdk,py
+# nexus_sdk.py
 #
 # This is the Nexus python SDK to interface with the Nexus Tritium APIs.
 #
 # Currently, the following <api>/<method> APIs are supported:
 #
-# Accounts API:          Supply API:
-# accounts/create        supply/getitem
-# accounts/login         supply/transfer
-# accounts/logout        supply/createitem
-# accounts/transactions  supply/history
+#   Accounts API:          Supply API:
+#   accounts/create        supply/getitem
+#   accounts/login         supply/transfer
+#   accounts/logout        supply/createitem
+#   accounts/transactions  supply/history
 #
 # Here is a program calling sequence to list transactions for 2 users:
 #
@@ -29,7 +29,7 @@
 #
 #------------------------------------------------------------------------------
 
-import requests
+import urllib2
 import json
 
 accounts_url = "http://localhost:8080/accounts/{}"
@@ -38,7 +38,7 @@ supply_url = "http://localhost:8080/supply/{}"
 #------------------------------------------------------------------------------
 
 class sdk_init():
-    def __init__(self, user, pw, pin, create_account=True):
+    def __init__(self, user, pw, pin):
         self.username = user
         self.password = pw
         self.pin = pin
@@ -46,10 +46,22 @@ class sdk_init():
         self.genesis_id = None
     #enddef
 
+    def nexus_accounts_create(self):
+        parms = "?username={}&password={}&pin={}".format(self.username,
+            self.password, self.pin)
+        url = accounts_url.format("create") + parms
+        json_data = self.__get(url)
+        return(json_data)
+    #enddef
+
     def nexus_accounts_login(self):
+        if (self.session_id != None): return(self.__error("Already logged in"))
+
         parms = "?username={}&password={}".format(self.username, self.password)
         url = accounts_url.format("login") + parms
         json_data = self.__get(url)
+        if (json_data.has_key("error")): return(json_data)
+
         if (json_data.has_key("result")):
             if json_data["result"].has_key("genesis"):
                 self.genesis_id = json_data["result"]["genesis"]
@@ -62,14 +74,20 @@ class sdk_init():
     #enddef
 
     def nexus_accounts_logout(self):
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
         parms = "?session={}".format(self.session_id)
         url = accounts_url.format("logout") + parms
         json_data = self.__get(url)
+        if (json_data.has_key("error")): return(json_data)
+
         if (json_data != {}): self.session_id = None
         return(json_data)
     #enddef
 
     def nexus_accounts_transactions(self):
+        if (self.genesis_id == None): return(self.__error("Not logged in"))
+
         parms = "?genesis={}".format(self.genesis_id)
         url = accounts_url.format("transactions") + parms
         json_data = self.__get(url)
@@ -77,6 +95,8 @@ class sdk_init():
     #enddef
        
     def nexus_supply_createitem(self):
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
         parms = "?pin={}&session={}".format(self.pin, self.session_id)
         url = supply_url.format("createitem") + parms
         json_data = self.__get(url)
@@ -91,6 +111,8 @@ class sdk_init():
     #enddef
 
     def nexus_supply_transfer(self, address, new_owner):
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
         parms = "?pin={}&session={}&address=0x{}&destinatio={}".format( \
             self.pin, self.session_id, address, new_owner)
         url = supply_url.format("transfer") + parms
@@ -106,23 +128,47 @@ class sdk_init():
     #enddef
 
     def __get(self, url):
-        r = requests.get(url)
-        if (r == None or r.text == None): return(None)
-        if (r.text == None):
+        try:
+            connect = urllib2.urlopen(url)
+            text = connect.read()
+        except:
+            return(self.__error("Connection refused"))
+        #endtry
+        if (text == None):
             api = url.split("?")[0]
             api = api.split("/")
             api = api[-2] + "/" + api[-1]
             return(self.__error("{} returned no JSON".format(api)))
-        return(json.loads(r.text))
+        #endif
+        return(json.loads(text))
     #enddef
 
-    def __error(message):
+    def __error(self, message):
         json_data = { "error" : {}, "result" : None }
         json_data["error"]["code"] = -1
+        json_data["error"]["sdk-error"] = True
         json_data["error"]["message"] = message
         return(json_data)
     #enddef
                 
+    def __login(self, user, pw, pin, create_account):
+        json_data = self.nexus_accounts_login()
+
+        #
+        # Already logged in?
+        #
+        if (json_data.has_key("error") and json_data["error"].has_key("code")):
+            if (json_data["error"]["code"] == -22): return
+            if (create_account == False): return
+
+            #
+            # Account does not exist. Creatr it and then log in.
+            #
+            if (json_data["error"]["code"] == -26):
+                json_data = self.nexus_accounts_create()
+            #endif
+        #endry
+        return(json_data)
 #endclass
 
 #------------------------------------------------------------------------------

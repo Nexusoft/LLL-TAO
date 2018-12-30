@@ -5,6 +5,8 @@
 # API. If you want more details and want to see more interactions and
 # return response detail, use LLL-TAO/sdk/nexus-sdk-test.py.
 #
+# If you want a bit more detail just uncomment "#print json" lines.
+#
 # Usage: python nexus-sdk-primer.py
 #
 #------------------------------------------------------------------------------
@@ -21,7 +23,7 @@ good = "failed" if json.has_key("error") else "succeeded"
 print good
 #print json
 
-print "Login user with username 'primer' ...".ljust(40),
+print "Login user 'primer' ...".ljust(40),
 json = primer.nexus_accounts_login()
 good = "failed" if json.has_key("error") else "succeeded"
 print good
