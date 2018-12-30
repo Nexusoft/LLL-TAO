@@ -31,6 +31,20 @@ namespace TAO::Operation
     bool Write(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller, bool fWrite);
 
 
+    /** Append
+     *
+     *  Appends data to a register.
+     *
+     *  @param[in] hashAddress The register address to write to.
+     *  @param[in] hashCaller The calling signature chain.
+     *  @param[in] fWrite The flag to determine if database state should be written.
+     *
+     *  @return true if successful.
+     *
+     **/
+    bool Append(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller, bool fWrite);
+
+
     /** Register
      *
      *  Creates a new register if it doesn't exist.

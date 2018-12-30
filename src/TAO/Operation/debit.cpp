@@ -27,7 +27,7 @@ namespace TAO::Operation
     {
         /* Read the register from the database. */
         TAO::Register::State regFrom = TAO::Register::State();
-        if(!LLD::regDB->ReadState(hashFrom, regFrom))
+        if(!LLD::regDB->ReadState(hashFrom, regFrom, fWrite))
             return debug::error(FUNCTION "register %s doesn't exist in register DB", __PRETTY_FUNCTION__, hashFrom.ToString().c_str());
 
         /* Check ownership of register. */
@@ -58,7 +58,7 @@ namespace TAO::Operation
             return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashFrom.ToString().c_str());
 
         /* Write the register to the database. */
-        if(fWrite && !LLD::regDB->WriteState(hashFrom, regFrom))
+        if(!LLD::regDB->WriteState(hashFrom, regFrom, fWrite))
             return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
 
         return true;

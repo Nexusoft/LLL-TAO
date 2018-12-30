@@ -21,7 +21,7 @@ namespace TAO::Operation
 {
 
     /* Writes data to a register. */
-    bool Write(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller, bool fWrite)
+    bool Append(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller, bool fWrite)
     {
         /* Read the binary data of the Register. */
         TAO::Register::State state;
@@ -30,22 +30,20 @@ namespace TAO::Operation
 
         /* Check ReadOnly permissions. */
         if(state.nType == TAO::Register::OBJECT::READONLY)
-            return debug::error(FUNCTION "write operation called on read-only register", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "append operation called on read-only register", __PRETTY_FUNCTION__);
 
         /* Check write permissions for raw state registers. */
         if(state.nType != TAO::Register::OBJECT::RAW)
-            return debug::error(FUNCTION "write operation called on non-raw register", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "append operation called on non-raw register", __PRETTY_FUNCTION__);
 
         /*state Check that the proper owner is commiting the write. */
         if(hashCaller != state.hashOwner)
-            return debug::error(FUNCTION "no write permissions for caller %s", __PRETTY_FUNCTION__, hashCaller.ToString().c_str());
-
-        /* Check the new data size against register's allocated size. */
-        if(vchData.size() != state.vchState.size())
-            return debug::error(FUNCTION "new register state size %u mismatch %u", __PRETTY_FUNCTION__, vchData.size(), state.vchState.size());
+            return debug::error(FUNCTION "no append permissions for caller %s", __PRETTY_FUNCTION__, hashCaller.ToString().c_str());
 
         /* Set the new state of the register. */
-        state.SetState(vchData);
+        std::vector<uint8_t> vchState = state.GetState();
+        vchState.insert(vchState.end(), vchData.begin(), vchData.end());
+        state.SetState(vchState);
 
         /* Check that the register is in a valid state. */
         if(!state.IsValid())
@@ -53,7 +51,7 @@ namespace TAO::Operation
 
         /* Write the register to the database. */
         if(!LLD::regDB->WriteState(hashAddress, state, fWrite))
-            return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "failed to append new state", __PRETTY_FUNCTION__);
 
         return true;
     }

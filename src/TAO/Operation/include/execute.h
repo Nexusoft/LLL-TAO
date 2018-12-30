@@ -74,6 +74,25 @@ namespace TAO::Operation
                     }
 
 
+                    /* Append a new state to the register. */
+                    case OP::APPEND:
+                    {
+                        /* Get the Address of the Register. */
+                        uint256_t hashAddress;
+                        stream >> hashAddress;
+
+                        /* Deserialize the register from stream. */
+                        std::vector<uint8_t> vchData;
+                        stream >> vchData;
+
+                        /* Execute the operation method. */
+                        if(!Append(hashAddress, vchData, hashOwner, fWrite))
+                            return false;
+
+                        break;
+                    }
+
+
                     /* Create a new register. */
                     case OP::REGISTER:
                     {

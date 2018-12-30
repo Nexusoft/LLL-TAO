@@ -29,6 +29,11 @@ namespace LLD
 
     class RegisterDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
+        std::recursive_mutex MEMORY_MUTEX;
+
+        std::map<uint256_t, TAO::Register::State> mapStates;
+        std::map<uint32_t, uint256_t> mapIdentifiers;
+
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         RegisterDB(const char* pszMode="r+")
@@ -45,8 +50,27 @@ namespace LLD
          *  @return true if write was successul.
          *
          **/
-        bool WriteState(uint256_t hashRegister, TAO::Register::State state)
+        bool WriteState(uint256_t hashRegister, TAO::Register::State state, bool fWrite = true)
         {
+            /* Memory mode for pre-database commits. */
+            if(!fWrite)
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* Return the memory state if not in write mode. */
+                mapStates[hashRegister] = state;
+
+                return true;
+            }
+            else
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* Remove the memory state if writing the disk state. */
+                if(mapStates.count(hashRegister))
+                    mapStates.erase(hashRegister);
+            }
+
             return Write(std::make_pair(std::string("state"), hashRegister), state);
         }
 
@@ -61,8 +85,22 @@ namespace LLD
          *  @return true if read was successul.
          *
          **/
-        bool ReadState(uint256_t hashRegister, TAO::Register::State& state)
+        bool ReadState(uint256_t hashRegister, TAO::Register::State& state, bool fWrite = true)
         {
+            /* Memory mode for pre-database commits. */
+            if(!fWrite)
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* Return the state if it is found. */
+                if(mapStates.count(hashRegister))
+                {
+                    state = mapStates[hashRegister];
+
+                    return true;
+                }
+            }
+
             return Read(std::make_pair(std::string("state"), hashRegister), state);
         }
 
@@ -77,8 +115,26 @@ namespace LLD
          *  @return true if write was successul.
          *
          **/
-        bool WriteIdentifier(uint32_t nIdentifier, uint256_t hashRegister)
+        bool WriteIdentifier(uint32_t nIdentifier, uint256_t hashRegister, bool fWrite = true)
         {
+            /* Memory mode for pre-database commits. */
+            if(!fWrite)
+            {
+                LOCK(MEMORY_MUTEX);
+
+                mapIdentifiers[nIdentifier] = hashRegister;
+
+                return true;
+            }
+            else
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* Remove the me mory state if writing the disk state. */
+                if(mapIdentifiers.count(nIdentifier))
+                    mapIdentifiers.erase(nIdentifier);
+            }
+
             return Write(std::make_pair(std::string("token"), nIdentifier), hashRegister);
         }
 
@@ -93,8 +149,22 @@ namespace LLD
          *  @return true if write was successul.
          *
          **/
-        bool ReadIdentifier(uint32_t nIdentifier, uint256_t& hashRegister)
+        bool ReadIdentifier(uint32_t nIdentifier, uint256_t& hashRegister, bool fWrite = true)
         {
+            /* Memory mode for pre-database commits. */
+            if(!fWrite)
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* Return the state if it is found. */
+                if(mapIdentifiers.count(nIdentifier))
+                {
+                    hashRegister = mapIdentifiers[nIdentifier];
+
+                    return true;
+                }
+            }
+
             return Read(std::make_pair(std::string("token"), nIdentifier), hashRegister);
         }
 
@@ -108,8 +178,18 @@ namespace LLD
          *  @return true if it exists
          *
          **/
-        bool HasIdentifier(uint32_t nIdentifier)
+        bool HasIdentifier(uint32_t nIdentifier, bool fWrite = true)
         {
+            /* Memory mode for pre-database commits. */
+            if(!fWrite)
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* Return the state if it is found. */
+                if(mapIdentifiers.count(nIdentifier))
+                    return true;
+            }
+
             return Exists(std::make_pair(std::string("token"), nIdentifier));
         }
 
@@ -123,8 +203,18 @@ namespace LLD
          *  @return true if it exists.
          *
          **/
-        bool HasState(uint256_t hashRegister)
+        bool HasState(uint256_t hashRegister, bool fWrite = true)
         {
+            /* Memory mode for pre-database commits. */
+            if(!fWrite)
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* Return the state if it is found. */
+                if(mapStates.count(hashRegister))
+                    return true;
+            }
+
             return Exists(std::make_pair(std::string("state"), hashRegister));
         }
 

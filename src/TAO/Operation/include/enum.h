@@ -32,6 +32,7 @@ namespace TAO
             AUTHORIZE  = 0x03, //OP_AUTHORIZE OP_GETHASH <vchPubKey> return fSuccess
             TRANSFER   = 0x04, //OP_TRANSFER <vchRegAddress> <vchGenesisID> return fSuccess
             REQUIRE    = 0x05, //OP_REQUIRE <boolean=expression> must validate to true.
+            APPEND     = 0x06,
 
             //financial operations
             DEBIT      = 0x10,

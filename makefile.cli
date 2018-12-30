@@ -158,6 +158,7 @@ OBJS= \
 	build/Ledger_tritium.o \
 	build/Ledger_transaction.o \
 	build/Operation_write.o \
+	build/Operation_append.o \
 	build/Operation_register.o \
 	build/Operation_transfer.o \
 	build/Operation_debit.o \
