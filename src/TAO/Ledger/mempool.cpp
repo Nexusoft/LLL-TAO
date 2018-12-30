@@ -21,6 +21,8 @@ namespace TAO::Ledger
     /* Add a transaction to the memory pool without validation checks. */
     bool Mempool::AddUnchecked(TAO::Ledger::Transaction tx)
     {
+        LOCK(MUTEX);
+
         /* Get the transaction hash. */
         uint512_t hash = tx.GetHash();
 
@@ -38,6 +40,8 @@ namespace TAO::Ledger
     /* Accepts a transaction with validation rules. */
     bool Mempool::Accept(TAO::Ledger::Transaction tx)
     {
+        LOCK(MUTEX);
+
         /* The next hash that is being claimed. */
         uint256_t hashClaim = tx.PrevHash();
         if(mapPrevHashes.count(hashClaim))
@@ -55,6 +59,8 @@ namespace TAO::Ledger
     /* Checks if a transaction exists. */
     bool Mempool::Has(uint512_t hashTx)
     {
+        LOCK(MUTEX);
+
         return mapLedger.count(hashTx);
     }
 
@@ -62,6 +68,8 @@ namespace TAO::Ledger
     /* Remove a transaction from pool. */
     bool Mempool::Remove(uint512_t hashTx)
     {
+        LOCK(MUTEX);
+
         TAO::Ledger::Transaction tx;
         if(mapLedger.count(hashTx))
         {
@@ -79,6 +87,8 @@ namespace TAO::Ledger
     /* Gets a transaction from mempool */
     bool Mempool::Get(uint512_t hashTx, TAO::Ledger::Transaction& tx)
     {
+        LOCK(MUTEX);
+        
         if(!mapLedger.count(hashTx))
             return false;
 

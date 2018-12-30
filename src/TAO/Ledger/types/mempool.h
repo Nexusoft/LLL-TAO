@@ -19,11 +19,15 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 #include <Legacy/types/transaction.h>
 
+#include <Util/include/mutex.h>
+
 namespace TAO::Ledger
 {
 
     class Mempool
     {
+        std::recursive_mutex MUTEX;
+
         /** The transactions in the ledger memory pool. **/
         std::map<uint512_t, TAO::Ledger::Transaction> mapLedger;
 
