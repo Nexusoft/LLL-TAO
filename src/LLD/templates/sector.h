@@ -17,10 +17,10 @@ ________________________________________________________________________________
 #include <functional>
 #include <atomic>
 
+#include <LLD/cache/template_lru.h>
+#include <LLD/include/enum.h>
 #include <LLD/templates/key.h>
 #include <LLD/templates/transaction.h>
-
-#include <LLD/cache/template_lru.h>
 
 #include <Util/include/runtime.h>
 #include <Util/include/filesystem.h>
@@ -30,25 +30,17 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    enum FLAGS
-    {
-        APPEND   = (1 << 1),
-        READONLY = (1 << 2),
-        CREATE   = (1 << 3),
-        WRITE    = (1 << 4)
-    };
-
 
     /* Maximum size a file can be in the keychain. */
     const uint32_t MAX_SECTOR_FILE_SIZE = 1024 * 1024 * 128; //128 MB per File
 
 
     /* Maximum cache buckets for sectors. */
-    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 64; //512 MB Max Cache
+    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 64; //64 MB Max Cache
 
 
     /* The maximum amount of bytes allowed in the memory buffer for disk flushes. **/
-    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 64; //512 MB Max Disk Buffer
+    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 64; //64 MB Max Disk Buffer
 
 
     /** Base Template Class for a Sector Database.

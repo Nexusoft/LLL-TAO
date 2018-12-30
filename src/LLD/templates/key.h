@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <fstream>
 
 #include <LLD/include/version.h>
+#include <LLD/include/enum.h>
 
 #include <LLC/hash/SK.h>
 #include <LLC/hash/macro.h>
@@ -31,18 +32,6 @@ ________________________________________________________________________________
 
 namespace LLD
 {
-    /** Enumeration for each State.
-        Allows better thread concurrency
-        Allow Reads on READY and READ.
-
-        Only Flush to Database if not Cached. (TODO) **/
-    enum STATE
-    {
-        EMPTY 			= 0,
-        READY 			= 1,
-        TRANSACTION     = 2
-    };
-
 
     /** Key Class to Hold the Location of Sectors it is referencing.
         This Indexes the Sector Database. **/
