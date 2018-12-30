@@ -25,6 +25,8 @@ ________________________________________________________________________________
 
 #include <atomic>
 
+#include <openssl/md5.h>
+
 
 //TODO: Abstract base class for all keychains
 namespace LLD
@@ -210,8 +212,13 @@ namespace LLD
          **/
         uint32_t GetBucket(std::vector<uint8_t> vKey)
         {
-            uint32_t nBucket = 0;
-            std::copy((uint8_t*)&vKey[0] + (vKey.size() - std::min((uint32_t)4, (uint32_t)vKey.size())), (uint8_t*)&vKey[0] + vKey.size(), (uint8_t*)&nBucket);
+            /* Get an MD5 digest. */
+            uint8_t digest[MD5_DIGEST_LENGTH];
+            MD5((unsigned char*)&vKey[0], vKey.size(), (unsigned char*)&digest);
+
+            /* Copy bytes into the bucket. */
+            uint64_t nBucket;
+            std::copy((uint8_t*)&digest[0], (uint8_t*)&digest[0] + 8, (uint8_t*)&nBucket);
 
             return nBucket % HASHMAP_TOTAL_BUCKETS;
         }
