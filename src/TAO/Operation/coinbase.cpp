@@ -24,7 +24,7 @@ namespace TAO::Operation
 {
 
     /* Commits funds from a coinbase transaction. */
-    bool Coinbase(uint256_t hashAddress, uint64_t nAmount, uint256_t hashCaller)
+    bool Coinbase(uint256_t hashAddress, uint64_t nAmount, uint256_t hashCaller, bool fWrite)
     {
         //make the coinbase able to be credited as a debit check in credit
         //this will allow the number of confirmations to be defined.
@@ -50,7 +50,7 @@ namespace TAO::Operation
                 return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
             /* Write the register to database. */
-            if(!LLD::regDB->WriteState(hashAddress, state))
+            if(fWrite && !LLD::regDB->WriteState(hashAddress, state))
                 return debug::error(FUNCTION "failed to write state register %s memory address", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
             debug::log(0, FUNCTION "created new account %s for coinbase transaction", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());

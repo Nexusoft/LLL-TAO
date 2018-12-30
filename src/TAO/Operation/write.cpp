@@ -21,7 +21,7 @@ namespace TAO::Operation
 {
 
     /* Writes data to a register. */
-    bool Write(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller)
+    bool Write(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller, bool fWrite)
     {
         /* Read the binary data of the Register. */
         TAO::Register::State state;
@@ -52,7 +52,7 @@ namespace TAO::Operation
             return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
         /* Write the register to the database. */
-        if(!LLD::regDB->WriteState(hashAddress, state))
+        if(fWrite && !LLD::regDB->WriteState(hashAddress, state))
             return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
 
         return true;

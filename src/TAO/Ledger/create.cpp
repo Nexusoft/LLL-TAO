@@ -137,15 +137,11 @@ namespace TAO::Ledger
             }
         }
 
-        /** Create the Coinbase Transaction if the Channel specifies. **/
+        /* Create the Coinbase Transaction if the Channel specifies. */
         else
         {
             /* Create coinbase transaction. */
             block.producer << (uint8_t) TAO::Operation::OP::COINBASE;
-
-            /* The account that is being credited. */
-            uint256_t hashAccount = LLC::GetRand256();
-            block.producer << hashAccount;
 
             /* The total to be credited. */
             uint64_t  nCredit = GetCoinbaseReward(ChainState::stateBest, nChannel, 0);

@@ -36,7 +36,7 @@ namespace TAO::Operation
      *  @return True if operations executed successfully.
      *
      **/
-    inline bool Execute(std::vector<uint8_t> vchData, uint256_t hashOwner)
+    inline bool Execute(std::vector<uint8_t> vchData, uint256_t hashOwner, bool fWrite = true)
     {
         /* Create the operations stream to execute. */
         Stream stream = Stream(vchData);
@@ -67,7 +67,7 @@ namespace TAO::Operation
                         stream >> vchData;
 
                         /* Execute the operation method. */
-                        if(!Write(hashAddress, vchData, hashOwner))
+                        if(!Write(hashAddress, vchData, hashOwner, fWrite))
                             return false;
 
                         break;
@@ -90,7 +90,7 @@ namespace TAO::Operation
                         stream >> vchData;
 
                         /* Execute the operation method. */
-                        if(!Register(hashAddress, nType, vchData, hashOwner))
+                        if(!Register(hashAddress, nType, vchData, hashOwner, fWrite))
                             return false;
 
                         break;
@@ -109,7 +109,7 @@ namespace TAO::Operation
                         stream >> hashTransfer;
 
                         /* Execute the operation method. */
-                        if(!Transfer(hashAddress, hashTransfer, hashOwner))
+                        if(!Transfer(hashAddress, hashTransfer, hashOwner, fWrite))
                             return false;
 
                         break;
@@ -129,7 +129,7 @@ namespace TAO::Operation
                         stream >> nAmount;
 
                         /* Execute the operation method. */
-                        if(!Debit(hashFrom, hashTo, nAmount, hashOwner))
+                        if(!Debit(hashFrom, hashTo, nAmount, hashOwner, fWrite))
                             return false;
 
                         break;
@@ -156,7 +156,7 @@ namespace TAO::Operation
                         stream >> nCredit;
 
                         /* Execute the operation method. */
-                        if(!Credit(hashTx, hashProof, hashAccount, nCredit, hashOwner))
+                        if(!Credit(hashTx, hashProof, hashAccount, nCredit, hashOwner, fWrite))
                             return false;
 
                         break;
@@ -171,16 +171,12 @@ namespace TAO::Operation
                             return debug::error(FUNCTION "coinbase opeartion has to be first", __PRETTY_FUNCTION__);
 
                         /* The account that is being credited. */
-                        uint256_t hashAccount;
-                        stream >> hashAccount;
+                        uint256_t hashGenesis;
+                        stream >> hashGenesis;
 
                         /* The total to be credited. */
                         uint64_t  nCredit;
                         stream >> nCredit;
-
-                        /* Execute the operation method. */
-                        if(!Coinbase(hashAccount, nCredit, hashOwner))
-                            return false;
 
                         /* Ensure that it as end of stream. TODO: coinbase should be followed by ambassador and developer scripts */
                         if(!stream.End())
@@ -218,7 +214,7 @@ namespace TAO::Operation
                         stream >> nStake;
 
                         /* Execute the operation method. */
-                        if(!Trust(hashAccount, hashLastTrust, nSequence, nLastTrust, nStake, hashOwner))
+                        if(!Trust(hashAccount, hashLastTrust, nSequence, nLastTrust, nStake, hashOwner, fWrite))
                             return false;
 
                         /* Ensure that it as end of stream. TODO: coinbase should be followed by ambassador and developer scripts */
@@ -241,7 +237,7 @@ namespace TAO::Operation
                         stream >> hashProof;
 
                         /* Execute the operation method. */
-                        if(!Authorize(hashTx, hashProof, hashOwner))
+                        if(!Authorize(hashTx, hashProof, hashOwner, fWrite))
                             return false;
 
                         break;

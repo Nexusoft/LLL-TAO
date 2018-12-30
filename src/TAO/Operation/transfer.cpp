@@ -20,7 +20,7 @@ namespace TAO::Operation
 {
 
     /* Transfers a register between sigchains. */
-    bool Transfer(uint256_t hashAddress, uint256_t hashTransfer, uint256_t hashCaller)
+    bool Transfer(uint256_t hashAddress, uint256_t hashTransfer, uint256_t hashCaller, bool fWrite)
     {
         /* Read the register from the database. */
         TAO::Register::State state = TAO::Register::State();
@@ -44,7 +44,7 @@ namespace TAO::Operation
             return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
         /* Write the register to state database. */
-        if(!LLD::regDB->WriteState(hashAddress, state))
+        if(fWrite && !LLD::regDB->WriteState(hashAddress, state))
             return debug::error(FUNCTION "Failed to write new owner for register", __PRETTY_FUNCTION__);
 
         return true;

@@ -39,8 +39,13 @@ namespace TAO
             COINBASE   = 0x12,
             TRUST      = 0x13, //for proof of stake
 
+
+            //internal funding
+            AMBASSADOR = 0x20,
+            DEVELOPER  = 0x21,
+
             //crypto operations
-            SIGNATURE  = 0x20,
+            SIGNATURE  = 0x30,
 
             //consensus operations
             VOTE       = 0x50, //OP_VOTE <vchData> <bool> return fSuccess - vote for or against a memory location (piece of data)
