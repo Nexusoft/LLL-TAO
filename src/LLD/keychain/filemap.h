@@ -52,6 +52,9 @@ namespace LLD
         mutable uint16_t nCurrentFile;
         mutable uint32_t nCurrentFileSize;
 
+        /* The flags */
+        uint8_t nFlags;
+
         /* Hashmap Custom Hash Using SK. */
         struct SK_Hashmap
         {
@@ -69,7 +72,11 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryFileMap(std::string strBaseLocationIn) : strBaseLocation(strBaseLocationIn), nCurrentFile(0), nCurrentFileSize(0)
+        BinaryFileMap(std::string strBaseLocationIn, uint8_t nFlagsIn)
+        : strBaseLocation(strBaseLocationIn)
+        , nCurrentFile(0)
+        , nCurrentFileSize(0)
+        , nFlags(nFlagsIn)
         {
             Initialize();
         }

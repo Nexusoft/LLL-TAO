@@ -23,7 +23,8 @@ namespace LLD
         APPEND   = (1 << 1),
         READONLY = (1 << 2),
         CREATE   = (1 << 3),
-        WRITE    = (1 << 4)
+        WRITE    = (1 << 4),
+        FORCE    = (1 << 5)
     };
 
 

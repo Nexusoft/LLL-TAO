@@ -227,7 +227,7 @@ namespace LLD
             }
 
             /* Initialize the Keys Class. */
-            pSectorKeys = new KeychainType((config::GetDataDir() + strName + "/keychain/"));
+            pSectorKeys = new KeychainType((config::GetDataDir() + strName + "/keychain/"), nFlags);
 
             pTransaction = nullptr;
             fInitialized = true;
@@ -265,7 +265,7 @@ namespace LLD
             ssKey << key;
 
             /* Return the Key existance in the Keychain Database. */
-            SectorKey cKey(READY, static_cast<std::vector<uint8_t>>(ssKey), ssKey.size(), 0, 0, 0);
+            SectorKey cKey(STATE::READY, static_cast<std::vector<uint8_t>>(ssKey), ssKey.size(), 0, 0, 0);
             return pSectorKeys->Put(static_cast<std::vector<uint8_t>>(ssKey), cKey);
         }
 
@@ -531,9 +531,9 @@ namespace LLD
         }
 
 
-        /** Flush
+        /** Force
          *
-         *  Flush a write to disk immediately bypassing write buffers.
+         *  Force a write to disk immediately bypassing write buffers.
          *
          *  @param[in] vKey The binary data of the key to flush
          *  @param[in] vData The binary data of the record to flush
@@ -541,58 +541,60 @@ namespace LLD
          *  @return True if the flush was successful.
          *
          **/
-        bool Flush(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
+        bool Force(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
         {
-
-            /* Create new file if above current file size. */
-            if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
+            if(nFlags & FLAGS::APPEND || !Update(vKey, vData))
             {
-                debug::log(4, FUNCTION "Current File too Large, allocating new File %u", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
+                /* Create new file if above current file size. */
+                if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
+                {
+                    debug::log(4, FUNCTION "allocating new sector file %u", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
 
-                ++ nCurrentFile;
-                nCurrentFileSize = 0;
+                    ++ nCurrentFile;
+                    nCurrentFileSize = 0;
 
-                std::ofstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
-                stream.close();
+                    std::ofstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                    stream.close();
+                }
+
+                /* Find the file stream for LRU cache. */
+                std::fstream* pstream;
+                if(!fileCache->Get(nCurrentFile, pstream))
+                {
+                    /* Set the new stream pointer. */
+                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
+                    if(!pstream)
+                        return false;
+
+                    /* If file not found add to LRU cache. */
+                    fileCache->Put(nCurrentFile, pstream);
+                }
+
+                /* Write the data to disk. */
+                {
+                    LOCK(SECTOR_MUTEX);
+
+                    /* If it is a New Sector, Assign a Binary Position. */
+                    pstream->seekp(nCurrentFileSize, std::ios::beg);
+                    pstream->write((char*) &vData[0], vData.size());
+                    pstream->flush();
+                }
+
+                /* Create a new Sector Key. */
+                SectorKey cKey = SectorKey(STATE::READY, vKey, nCurrentFile, nCurrentFileSize, vData.size());
+
+                /* Increment the current filesize */
+                nCurrentFileSize += vData.size();
+
+                /* Assign the Key to Keychain. */
+                pSectorKeys->Put(cKey);
+
+                /* Verboe output. */
+                debug::log(4, FUNCTION "%s | Current File: %u | Current File Size: %u", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
             }
-
-            /* Find the file stream for LRU cache. */
-            std::fstream* pstream;
-            if(!fileCache->Get(nCurrentFile, pstream))
-            {
-                /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
-                if(!pstream)
-                    return false;
-
-                /* If file not found add to LRU cache. */
-                fileCache->Put(nCurrentFile, pstream);
-            }
-
-            /* Write the data to disk. */
-            {
-                LOCK(SECTOR_MUTEX);
-
-                /* If it is a New Sector, Assign a Binary Position. */
-                pstream->seekp(nCurrentFileSize, std::ios::beg);
-                pstream->write((char*) &vData[0], vData.size());
-                pstream->flush();
-            }
-
-            /* Create a new Sector Key. */
-            SectorKey cKey = SectorKey(READY, vKey, nCurrentFile, nCurrentFileSize, vData.size());
-
-            /* Increment the current filesize */
-            nCurrentFileSize += vData.size();
-
-            /* Assign the Key to Keychain. */
-            pSectorKeys->Put(cKey);
 
             /* Write the data into the memory cache. */
-            cachePool->Put(vKey, vData, false);
-
-            /* Verboe output. */
-            debug::log(4, FUNCTION "%s | Current File: %u | Current File Size: %u", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
+            cachePool->Reserve(vKey, false);
 
             return true;
         }
@@ -612,6 +614,10 @@ namespace LLD
         {
             /* Write the data into the memory cache. */
             cachePool->Put(vKey, vData, true);
+
+            /* Handle force write mode. */
+            if(nFlags & FLAGS::FORCE)
+                return Force(vKey, vData);
 
             while(!config::fShutdown && nBufferBytes > MAX_SECTOR_BUFFER_SIZE)
                 runtime::sleep(100);
@@ -668,7 +674,7 @@ namespace LLD
                 /* Create a new file if the sector file size is over file size limits. */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                 {
-                    debug::log(0, FUNCTION "Generated Sector File %u", __PRETTY_FUNCTION__, nCurrentFile + 1);
+                    debug::log(0, FUNCTION "allocating new sector file %u", __PRETTY_FUNCTION__, nCurrentFile + 1);
 
                     /* Iterate the current file and reset current file sie. */
                     ++nCurrentFile;
@@ -705,7 +711,7 @@ namespace LLD
                     if(nFlags & FLAGS::APPEND || !Update(vObj.first, vObj.second))
                     {
                         /* Assign the Key to Keychain. */
-                        pSectorKeys->Put(SectorKey(READY, vObj.first, nCurrentFile, nCurrentFileSize, vObj.second.size()));
+                        pSectorKeys->Put(SectorKey(STATE::READY, vObj.first, nCurrentFile, nCurrentFileSize, vObj.second.size()));
 
                         /* Increment the current filesize */
                         nCurrentFileSize += vObj.second.size();
@@ -875,7 +881,7 @@ namespace LLD
                 }
             }
 
-            /** Update the Keychain with Checksums and READY Flag letting sectors know they were written successfully. **/
+            /** Update the Keychain with Checksums and STATE::READY Flag letting sectors know they were written successfully. **/
             debug::log(4, FUNCTION "Erasing Sector Keys Flagged for Deletion.", __PRETTY_FUNCTION__);
 
             /** Erase all the Transactions that are set to be erased. That way if they are assigned a TRANSACTION flag we know to roll back their key to orginal data. **/
@@ -966,7 +972,7 @@ namespace LLD
                 }
             }
 
-            /** Update the Keychain with Checksums and READY Flag letting sectors know they were written successfully. **/
+            /** Update the Keychain with Checksums and STATE::READY Flag letting sectors know they were written successfully. **/
             debug::log(4, FUNCTION "Commiting Key Valid States to Keychain.", __PRETTY_FUNCTION__);
 
             for(typename std::map< std::vector<uint8_t>, std::vector<uint8_t> >::iterator nIterator = pTransaction->mapTransactions.begin(); nIterator != pTransaction->mapTransactions.end(); nIterator++ )
