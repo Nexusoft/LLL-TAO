@@ -38,6 +38,11 @@ namespace TAO::Ledger
     /* Accepts a transaction with validation rules. */
     bool Mempool::Accept(TAO::Ledger::Transaction tx)
     {
+        /* The next hash that is being claimed. */
+        uint256_t hashClaim = tx.PrevHash();
+        if(mapPrevHashes.count(hashClaim))
+            return debug::error(FUNCTION "trying to claim spent next hash", __PRETTY_FUNCTION__, hashClaim.ToString().substr(0, 20).c_str());
+
         /* Check that the transaction is in a valid state. */
         if(!tx.IsValid())
             return debug::error(FUNCTION "%s is invalid", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());

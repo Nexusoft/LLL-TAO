@@ -29,7 +29,7 @@ namespace TAO::Ledger
 
 
         /** Record of next hashes in the mempool. **/
-        std::map<uint256_t, uint512_t> mapNextHashes;
+        std::map<uint256_t, uint512_t> mapPrevHashes;
 
     public:
 
