@@ -19,6 +19,9 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 #include <Legacy/types/transaction.h>
 
+#include <Legacy/types/inpoint.h>
+#include <Legacy/types/outpoint.h>
+
 #include <Util/include/mutex.h>
 
 namespace TAO::Ledger
@@ -41,7 +44,7 @@ namespace TAO::Ledger
 
 
         /** Record of legacy inputs in the mempool. **/
-        std::map<uint512_t, uint512_t> mapInputs;
+        std::map<Legacy::COutPoint, Legacy::CInPoint> mapInputs;
 
     public:
 
