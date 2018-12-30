@@ -114,9 +114,9 @@ namespace LLP
 
             /* Execute the api and methods. */
             if(strAPI == "supply")
-                ret = { {"result", TAO::API::supply.Execute(METHOD, params) }, {"error", nullptr} };
+                ret = { {"result", TAO::API::supply.Execute(METHOD, params) }, {"error", {} } };
             else if(strAPI == "accounts")
-                ret = { {"result", TAO::API::accounts.Execute(METHOD, params) }, {"error", nullptr} };
+                ret = { {"result", TAO::API::accounts.Execute(METHOD, params) }, {"error", {} } };
             else
                 throw TAO::API::APIException(-4, debug::strprintf("API not found: %s", strAPI.c_str()));
         }
