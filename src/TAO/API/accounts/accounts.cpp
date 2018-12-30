@@ -60,4 +60,19 @@ namespace TAO::API
 
         return mapSessions[nSession]->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
     }
+
+
+    /* Returns the sigchain the account logged in. */
+    bool Accounts::GetAccount(uint64_t nSession, TAO::Ledger::SignatureChain* &user) const
+    {
+        LOCK(MUTEX);
+
+        /* Check if you are logged in. */
+        if(!mapSessions.count(nSession))
+            return false;
+
+        user = mapSessions[nSession];
+
+        return true;
+    }
 }

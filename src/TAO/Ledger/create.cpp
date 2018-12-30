@@ -44,13 +44,13 @@ namespace TAO::Ledger
             tx.nSequence   = txPrev.nSequence + 1;
             tx.hashGenesis = txPrev.hashGenesis;
             tx.hashPrevTx  = hashLast;
-            tx.NextHash(user->Generate(tx.nSequence + 1, pin.c_str()));
+            tx.NextHash(user->Generate(tx.nSequence + 1, pin));
 
             return true;
         }
 
         /* Genesis Transaction. */
-        tx.NextHash(user->Generate(tx.nSequence + 1, pin.c_str()));
+        tx.NextHash(user->Generate(tx.nSequence + 1, pin));
         tx.hashGenesis = user->Genesis();
 
         return true;
@@ -152,6 +152,9 @@ namespace TAO::Ledger
             block.producer << nCredit;
 
         }
+
+        /* Sign the producer transaction. */
+        block.producer.Sign(user->Generate(block.producer.nSequence, pin));
 
         /* Add the transactions. */
         std::vector<uint512_t> vHashes;

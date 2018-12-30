@@ -75,6 +75,19 @@ namespace TAO::API
          uint256_t GetGenesis(uint64_t nSession) const;
 
 
+         /** Get Sigchain
+          *
+          *  Returns the sigchain the account logged in.
+          *
+          *  @param[in] nSession The session identifier.
+          *  @param[out] user The user's account.
+          *
+          *  @return The genesis ID if logged in.
+          *
+          **/
+         bool GetAccount(uint64_t nSession, TAO::Ledger::SignatureChain* &user) const;
+
+
         /** Get Name
          *
          *  Returns the name of this API.
