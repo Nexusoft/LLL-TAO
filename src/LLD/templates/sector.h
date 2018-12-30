@@ -36,7 +36,7 @@ namespace LLD
 
 
     /* Maximum cache buckets for sectors. */
-    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 64; //64 MB Max Cache
+    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 512; //64 MB Max Cache
 
 
     /* The maximum amount of bytes allowed in the memory buffer for disk flushes. **/
@@ -178,8 +178,10 @@ namespace LLD
         ~SectorDatabase()
         {
             fDestruct = true;
+            CONDITION.notify_all();
 
             CacheWriterThread.join();
+            MeterThread.join();
 
             delete pTransaction;
             delete cachePool;
@@ -657,12 +659,12 @@ namespace LLD
             while(true)
             {
                 /* Wait for buffer to empty before shutting down. */
-                if(config::fShutdown && nBufferBytes.load() == 0)
+                if((config::fShutdown || fDestruct.load()) && nBufferBytes.load() == 0)
                     return;
 
                 /* Check for data to be written. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-                CONDITION.wait(CONDITION_LOCK, [this]{ return config::fShutdown || nBufferBytes.load() > 0; });
+                CONDITION.wait(CONDITION_LOCK, [this]{ return config::fShutdown || fDestruct.load() || nBufferBytes.load() > 0; });
 
                 /* Swap the buffer object to get ready for writes. */
                 std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vIndexes;
@@ -777,7 +779,7 @@ namespace LLD
             runtime::timer TIMER;
             TIMER.Start();
 
-            while(!config::fShutdown)
+            while(!config::fShutdown || fDestruct.load())
             {
                 nBytesWrote     = 0;
                 nBytesRead      = 0;

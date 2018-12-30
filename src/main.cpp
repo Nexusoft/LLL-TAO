@@ -96,9 +96,10 @@ int main(int argc, char** argv)
 
 
     /* Create the database instances. */
+    runtime::timer time;
     LLD::regDB = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::APPEND);
-    LLD::legDB = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
     LLD::locDB = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+    LLD::legDB = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
 
 
     /** Load the Wallet Database. **/
@@ -202,6 +203,12 @@ int main(int argc, char** argv)
     /* Busy wait for Shutdown. */
     while(!config::fShutdown)
         runtime::sleep(1000);
+
+
+    /* Cleanup the databases. */
+    delete LLD::legDB;
+    delete LLD::regDB;
+    delete LLD::locDB;
 
 
     /* Shutdown the servers and their subsystems */

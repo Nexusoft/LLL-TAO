@@ -82,6 +82,10 @@ namespace LLD
         std::atomic<bool> fCacheActive;
 
 
+        /** Destructor flag. **/
+        std::atomic<bool> fDestruct;
+
+
         /** Keychain stream object. **/
         mutable TemplateLRU<uint32_t, std::fstream*>* fileCache;
 
@@ -103,6 +107,7 @@ namespace LLD
         , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 13)
         , nFlags(FLAGS::APPEND)
         , fCacheActive(false)
+        , fDestruct(false)
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
         , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
@@ -118,6 +123,7 @@ namespace LLD
         , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 13)
         , nFlags(nFlagsIn)
         , fCacheActive(false)
+        , fDestruct(false)
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
         , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
@@ -162,6 +168,10 @@ namespace LLD
         /** Clean up Memory Usage. **/
         ~BinaryHashMap()
         {
+            fDestruct = true;
+            CONDITION.notify_all();
+
+            CacheThread.join();
             delete fileCache;
         }
 
@@ -213,12 +223,14 @@ namespace LLD
         uint32_t GetBucket(std::vector<uint8_t> vKey)
         {
             /* Get an MD5 digest. */
-            uint8_t digest[MD5_DIGEST_LENGTH];
-            MD5((unsigned char*)&vKey[0], vKey.size(), (unsigned char*)&digest);
+            //uint8_t digest[MD5_DIGEST_LENGTH];
+            //MD5((unsigned char*)&vKey[0], vKey.size(), (unsigned char*)&digest);
 
             /* Copy bytes into the bucket. */
-            uint64_t nBucket;
-            std::copy((uint8_t*)&digest[0], (uint8_t*)&digest[0] + 8, (uint8_t*)&nBucket);
+            //uint64_t nBucket;
+            //std::copy((uint8_t*)&digest[0], (uint8_t*)&digest[0] + 8, (uint8_t*)&nBucket);
+            uint32_t nBucket = 0;
+            std::copy((uint8_t*)&vKey[0], (uint8_t*)&vKey[0] + 4, (uint8_t*)&nBucket);
 
             return nBucket % HASHMAP_TOTAL_BUCKETS;
         }
@@ -575,11 +587,15 @@ namespace LLD
         void CacheWriter()
         {
             std::mutex CONDITION_MUTEX;
-            while(!config::fShutdown)
+            while(!config::fShutdown && !fDestruct.load())
             {
                 /* Wait for Database to Initialize. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-                CONDITION.wait(CONDITION_LOCK, [this]{ return fCacheActive.load(); });
+                CONDITION.wait(CONDITION_LOCK, [this]{ return fCacheActive.load() || fDestruct.load(); });
+
+                /* Check for destructor. */
+                if(!fCacheActive.load() && fDestruct.load())
+                    return;
 
                 /* Flush the disk hashmap. */
                 std::vector<uint8_t> vDisk;
