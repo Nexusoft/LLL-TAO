@@ -185,7 +185,7 @@ namespace LLD
                 {
 
                     /* Get Binary Data */
-                    std::vector<uint8_t> vData(vKeychain.begin() + nIterator, vKeychain.begin() + nIterator + 11);
+                    std::vector<uint8_t> vData(vKeychain.begin() + nIterator, vKeychain.begin() + nIterator + 13);
 
 
                     /* Read the State and Size of Sector Header. */
@@ -199,7 +199,7 @@ namespace LLD
                     {
 
                         /* Read the Key Data. */
-                        std::vector<uint8_t> vKey(vKeychain.begin() + nIterator + 11, vKeychain.begin() + nIterator + 11 + cKey.nLength);
+                        std::vector<uint8_t> vKey(vKeychain.begin() + nIterator + 13, vKeychain.begin() + nIterator + 13 + cKey.nLength);
 
                         /* Set the Key Data. */
                         mapKeys[vKey] = std::make_pair(nCurrentFile, nIterator);
@@ -333,8 +333,8 @@ namespace LLD
 
 
                 /* Read the State and Size of Sector Header. */
-                std::vector<uint8_t> vData(11, 0);
-                ssFile.read((char*) &vData[0], 11);
+                std::vector<uint8_t> vData(13, 0);
+                ssFile.read((char*) &vData[0], 13);
 
 
                 /* De-serialize the Header. */

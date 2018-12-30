@@ -32,7 +32,7 @@ namespace LLD
 
 
     /* Maximum size a file can be in the keychain. */
-    const uint32_t MAX_SECTOR_FILE_SIZE = 1024 * 1024 * 128; //128 MB per File
+    const uint32_t MAX_SECTOR_FILE_SIZE = 1024 * 1024 * 512; //512 MB per File
 
 
     /* Maximum cache buckets for sectors. */
@@ -71,6 +71,12 @@ namespace LLD
     template<typename KeychainType, typename CacheType>
     class SectorDatabase
     {
+        /* The mutex for the condition. */
+        std::mutex CONDITION_MUTEX;
+
+        /* The condition for thread sleeping. */
+        std::condition_variable CONDITION;
+
     protected:
         /* Mutex for Thread Synchronization.
             TODO: Lock Mutex based on Read / Writes on a per Sector Basis.
@@ -79,24 +85,16 @@ namespace LLD
         std::recursive_mutex BUFFER_MUTEX;
 
 
-        /* The condition for thread sleeping. */
-        std::condition_variable CONDITION;
-
-
         /* The String to hold the Disk Location of Database File. */
         std::string strBaseLocation, strName;
 
 
-        /* Read only Flag for Sectors. */
-        bool fReadOnly = false;
-
-
         /* Destructor Flag. */
-        bool fDestruct = false;
+        std::atomic<bool> fDestruct;
 
 
         /* Initialize Flag. */
-        bool fInitialized = false;
+        std::atomic<bool> fInitialized;
 
 
         /* timer for Runtime Calculations. */
@@ -112,9 +110,9 @@ namespace LLD
 
 
         /* For the Meter. */
-        uint32_t nBytesRead;
-        uint32_t nBytesWrote;
-        uint32_t nRecordsFlushed;
+        std::atomic<uint32_t> nBytesRead;
+        std::atomic<uint32_t> nBytesWrote;
+        std::atomic<uint32_t> nRecordsFlushed;
 
 
         /** Database Flags. **/
@@ -153,6 +151,8 @@ namespace LLD
         SectorDatabase(std::string strNameIn, uint8_t nFlagsIn)
         : strName(strNameIn)
         , strBaseLocation(config::GetDataDir() + strNameIn + "/datachain/")
+        , fDestruct(false)
+        , fInitialized(false)
         , nFlags(nFlagsIn)
         , cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE))
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
@@ -471,7 +471,7 @@ namespace LLD
             }
 
             /* Verbose Debug Logging. */
-            debug::log(4, FUNCTION "%s", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
+            debug::log(5, FUNCTION "%s", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
 
             return true;
         }
@@ -496,7 +496,7 @@ namespace LLD
 
             /* Check data size constraints. */
             if(vData.size() != key.nSectorSize)
-                return debug::error(FUNCTION "sector size mismatch", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "sector size %u mismatch %u", __PRETTY_FUNCTION__, key.nSectorSize, vData.size());
 
             /* Write the data into the memory cache. */
             cachePool->Put(vKey, vData, false);
@@ -515,8 +515,7 @@ namespace LLD
             }
 
             /* Write the data to disk. */
-            {
-                LOCK(SECTOR_MUTEX);
+            { LOCK(SECTOR_MUTEX);
 
                 /* If it is a New Sector, Assign a Binary Position. */
                 pstream->seekp(key.nSectorStart, std::ios::beg);
@@ -524,8 +523,12 @@ namespace LLD
                 pstream->flush();
             }
 
+            /* Records flushed indicator. */
+            ++nRecordsFlushed;
+            nBytesWrote += vData.size();
+
             /* Verboe output. */
-            debug::log(4, FUNCTION "%s | Current File: %u | Current File Size: %u", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
+            debug::log(5, FUNCTION "%s | Current File: %u | Current File Size: %u", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
 
             return true;
         }
@@ -590,7 +593,7 @@ namespace LLD
                 pSectorKeys->Put(cKey);
 
                 /* Verboe output. */
-                debug::log(4, FUNCTION "%s | Current File: %u | Current File Size: %u", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
+                debug::log(5, FUNCTION "%s | Current File: %u | Current File Size: %u", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
             }
 
             /* Write the data into the memory cache. */
@@ -619,16 +622,18 @@ namespace LLD
             if(nFlags & FLAGS::FORCE)
                 return Force(vKey, vData);
 
-            while(!config::fShutdown && nBufferBytes > MAX_SECTOR_BUFFER_SIZE)
-                runtime::sleep(100);
+            /* Wait if the buffer is full. */
+            std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+            CONDITION.wait(CONDITION_LOCK, [this]{ return config::fShutdown || nBufferBytes.load() < MAX_SECTOR_BUFFER_SIZE; });
 
             /* Add to the write buffer thread. */
             { LOCK(BUFFER_MUTEX);
                 vDiskBuffer.push_back(std::make_pair(vKey, vData));
                 nBufferBytes += (vKey.size() + vData.size());
-
-                CONDITION.notify_all();
             }
+
+            /* Notify if buffer was added to. */
+            CONDITION.notify_all();
 
             return true;
         }
@@ -641,9 +646,6 @@ namespace LLD
          **/
         void CacheWriter()
         {
-            /* The mutex for the condition. */
-            std::mutex CONDITION_MUTEX;
-
             /* Wait for initialization. */
             while(!fInitialized)
                 runtime::sleep(100);
@@ -655,12 +657,12 @@ namespace LLD
             while(true)
             {
                 /* Wait for buffer to empty before shutting down. */
-                if(config::fShutdown && nBufferBytes == 0)
+                if(config::fShutdown && nBufferBytes.load() == 0)
                     return;
 
                 /* Check for data to be written. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-                CONDITION.wait(CONDITION_LOCK, [this]{ return nBufferBytes > 0; });
+                CONDITION.wait(CONDITION_LOCK, [this]{ return config::fShutdown || nBufferBytes.load() > 0; });
 
                 /* Swap the buffer object to get ready for writes. */
                 std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vIndexes;
@@ -751,8 +753,11 @@ namespace LLD
                     pstream->flush();
                 }
 
+                /* Notify the condition. */
+                CONDITION.notify_all();
+
                 /* Verbose logging. */
-                debug::log(4, FUNCTION "Flushed %u Records of %u Bytes", __PRETTY_FUNCTION__, nRecordsFlushed, nBytesWrote);
+                debug::log(3, FUNCTION "Flushed %u Records of %u Bytes", __PRETTY_FUNCTION__, nRecordsFlushed.load(), nBytesWrote.load());
 
                 /* Reset counters if not in meter mode. */
                 if(!config::GetBoolArg("-meters"))
@@ -780,12 +785,12 @@ namespace LLD
 
                 runtime::sleep(10000);
 
-                double WPS = nBytesWrote / (TIMER.Elapsed() * 1024.0);
-                double RPS = nBytesRead / (TIMER.Elapsed() * 1024.0);
+                double WPS = nBytesWrote.load() / (TIMER.Elapsed() * 1024.0);
+                double RPS = nBytesRead.load() / (TIMER.Elapsed() * 1024.0);
 
                 debug::log(0, FUNCTION ">>>>> LLD Writing at %f Kb/s", __PRETTY_FUNCTION__, WPS);
                 debug::log(0, FUNCTION ">>>>> LLD Reading at %f Kb/s", __PRETTY_FUNCTION__, RPS);
-                debug::log(0, FUNCTION ">>>>> LLD Flushed %u Records", __PRETTY_FUNCTION__, nRecordsFlushed);
+                debug::log(0, FUNCTION ">>>>> LLD Flushed %u Records", __PRETTY_FUNCTION__, nRecordsFlushed.load());
 
                 TIMER.Reset();
             }

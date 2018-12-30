@@ -98,7 +98,7 @@ namespace LLD
         : HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
         , HASHMAP_MAX_CACHE_SZIE(10 * 1024)
         , HASHMAP_MAX_KEY_SIZE(32)
-        , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11)
+        , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 13)
         , nFlags(FLAGS::APPEND)
         , fCacheActive(false)
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
@@ -113,7 +113,7 @@ namespace LLD
         , HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
         , HASHMAP_MAX_CACHE_SZIE(10 * 1024)
         , HASHMAP_MAX_KEY_SIZE(32)
-        , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11)
+        , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 13)
         , nFlags(nFlagsIn)
         , fCacheActive(false)
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
@@ -129,7 +129,7 @@ namespace LLD
         , HASHMAP_TOTAL_BUCKETS(nTotalBuckets)
         , HASHMAP_MAX_CACHE_SZIE(nMaxCacheSize)
         , HASHMAP_MAX_KEY_SIZE(32)
-        , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11)
+        , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 13)
         , nFlags(nFlagsIn)
         , fCacheActive(false)
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
@@ -345,7 +345,7 @@ namespace LLD
                 }
 
                 /* Check if this bucket has the key */
-                if(std::equal(vBucket.begin() + 11, vBucket.begin() + 11 + vKey.size(), vKey.begin()))
+                if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKey.size(), vKey.begin()))
                 {
                     /* Deserialie key and return if found. */
                     DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
@@ -410,7 +410,7 @@ namespace LLD
                 }
 
                 /* Check if this bucket has the key */
-                if(std::equal(vBucket.begin() + 11, vBucket.begin() + 11 + vKey.size(), vKey.begin()))
+                if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKey.size(), vKey.begin()))
                 {
                     /* Deserialize key and return if found. */
                     DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
@@ -479,7 +479,7 @@ namespace LLD
                     }
 
                     /* Check if this bucket has the key */
-                    if(std::equal(vBucket.begin() + 11, vBucket.begin() + 11 + cKey.vKey.size(), cKey.vKey.begin()))
+                    if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + cKey.vKey.size(), cKey.vKey.begin()))
                     {
                         /* Deserialie key and return if found. */
                         DataStream ssKey(SER_LLD, DATABASE_VERSION);
@@ -638,7 +638,7 @@ namespace LLD
                 }
 
                 /* Check if this bucket has the key */
-                if(std::equal(vBucket.begin() + 11, vBucket.begin() + 11 + vKey.size(), vKey.begin()))
+                if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKey.size(), vKey.begin()))
                 {
                     /* Deserialize key and return if found. */
                     DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);

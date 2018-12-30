@@ -100,18 +100,6 @@ int main(int argc, char** argv)
     LLD::legDB = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
     LLD::locDB = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
 
-    uint256_t nTest = LLC::GetRand256();
-    uint512_t nTest2 = LLC::GetRand512();
-
-    while(!config::fShutdown)
-    {
-        runtime::sleep(1000);
-
-        LLD::legDB->WriteProof(nTest, nTest2);
-    }
-
-
-
 
     /** Load the Wallet Database. **/
     bool fFirstRun;
