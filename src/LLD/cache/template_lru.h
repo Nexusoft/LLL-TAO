@@ -375,9 +375,10 @@ namespace LLD
          *  Delete a stream object. Closes the file.
          *
          **/
-        void Delete(std::fstream* data)
+        template<typename Type>
+        void Delete(Type* data)
         {
-            data->close();
+            //data->close();
             delete data;
         }
 
