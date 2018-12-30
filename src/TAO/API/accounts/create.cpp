@@ -92,14 +92,11 @@ namespace TAO::API
         json::json ret;
 
         /* Check for username parameter. */
-        if(params.find("session") == params.end())
-            throw APIException(-25, "Missing Session ID");
-
-        /* Get the session. */
-        uint64_t nSession = std::stoull(params["session"].get<std::string>());
+        if(params.find("genesis") == params.end())
+            throw APIException(-25, "Missing Genesis ID");
 
         /* Get the Genesis ID. */
-        uint256_t hashGenesis = GetGenesis(nSession);
+        uint256_t hashGenesis = uint256_t(params["genesis"].get<std::string>());
 
         /* Get the last transaction. */
         uint512_t hashLast;

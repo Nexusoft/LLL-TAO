@@ -147,7 +147,7 @@ namespace TAO::API
 
         /* Check for errors. */
         std::string strPrint = "";
-        if(!ret["error"].is_null())
+        if(ret.find("error") != ret.end())
             strPrint = ret["error"]["message"];
         else
             strPrint = ret["result"].dump(4);
