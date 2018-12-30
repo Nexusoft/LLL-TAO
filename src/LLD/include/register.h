@@ -36,7 +36,7 @@ namespace LLD
 
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        RegisterDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
+        RegisterDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::APPEND)
         : SectorDatabase("registers", nFlags) {}
 
 

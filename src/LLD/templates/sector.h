@@ -172,8 +172,9 @@ namespace LLD
         , MeterThread(std::bind(&SectorDatabase::Meter, this))
         , nBufferBytes(0)
         {
-            if(config::GetBoolArg("-runtime", false))
-                runtime.Start();
+            /* Set readonly flag if write or append are not specified. */
+            if(!(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND))
+                nFlags | FLAGS::READONLY;
 
             /* Initialize the Database. */
             Initialize();
@@ -198,7 +199,7 @@ namespace LLD
         void Initialize()
         {
             /* Create directories if they don't exist yet. */
-            if(!filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
+            if(nFlags & FLAGS::CREATE && !filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
                 debug::log(0, FUNCTION "Generated Path %s", __PRETTY_FUNCTION__, strBaseLocation.c_str());
 
             /* Find the most recent append file. */
@@ -499,7 +500,7 @@ namespace LLD
             /* Check the keychain for key. */
             SectorKey key;
             if(!pSectorKeys->Get(vKey, key))
-                return debug::error(FUNCTION "doesn't contain key in keychain", __PRETTY_FUNCTION__);
+                return false;
 
             /* Check data size constraints. */
             if(vData.size() != key.nSectorSize)
@@ -649,6 +650,10 @@ namespace LLD
             while(!fInitialized)
                 runtime::sleep(100);
 
+            /* Check if writing is enabled. */
+            if(!(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND))
+                return;
+
             while(true)
             {
                 /* Wait for buffer to empty before shutting down. */
@@ -705,35 +710,38 @@ namespace LLD
                 std::vector<uint8_t> vWrite;
                 for(auto & vObj : vIndexes)
                 {
-                    /* Assign the Key to Keychain. */
-                    pSectorKeys->Put(SectorKey(READY, vObj.first, nCurrentFile, nCurrentFileSize, vObj.second.size()));
-
-                    /* Increment the current filesize */
-                    nCurrentFileSize += vObj.second.size();
-
-                    /* Add data to the write buffer */
-                    vWrite.insert(vWrite.end(), vObj.second.begin(), vObj.second.end());
-
-                    /* Add the file size to the written bytes. */
-                    nBytesWrote += vObj.first.size();
-
-                    /* Flush to disk on periodic intervals (1 MB). */
-                    if(vWrite.size() > 1024 * 1024)
+                    if(nFlags & FLAGS::APPEND || !Update(vObj.first, vObj.second))
                     {
-                        LOCK(SECTOR_MUTEX);
+                        /* Assign the Key to Keychain. */
+                        pSectorKeys->Put(SectorKey(READY, vObj.first, nCurrentFile, nCurrentFileSize, vObj.second.size()));
 
-                        nBytesWrote += (vWrite.size());
+                        /* Increment the current filesize */
+                        nCurrentFileSize += vObj.second.size();
 
-                        pstream->write((char*)&vWrite[0], vWrite.size());
-                        pstream->flush();
+                        /* Add data to the write buffer */
+                        vWrite.insert(vWrite.end(), vObj.second.begin(), vObj.second.end());
 
-                        vWrite.clear();
+                        /* Add the file size to the written bytes. */
+                        nBytesWrote += vObj.first.size();
+
+                        /* Flush to disk on periodic intervals (1 MB). */
+                        if(vWrite.size() > 1024 * 1024)
+                        {
+                            LOCK(SECTOR_MUTEX);
+
+                            nBytesWrote += (vWrite.size());
+
+                            pstream->write((char*)&vWrite[0], vWrite.size());
+                            pstream->flush();
+
+                            vWrite.clear();
+                        }
+
+                        /* Set cache back to not reserved. */
+                        cachePool->Reserve(vObj.first, false);
+
+                        ++nRecordsFlushed;
                     }
-
-                    /* Set cache back to not reserved. */
-                    cachePool->Reserve(vObj.first, false);
-
-                    ++nRecordsFlushed;
                 }
 
                 nBytesWrote += (vWrite.size());
