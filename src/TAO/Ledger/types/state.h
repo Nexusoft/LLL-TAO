@@ -18,10 +18,6 @@ ________________________________________________________________________________
 
 namespace TAO::Ledger
 {
-
-
-
-
 	/** Block State Class
 	 *
 	 *  This class is responsible for storing state variables
