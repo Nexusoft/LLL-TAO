@@ -152,6 +152,8 @@ namespace TAO::Ledger
 		 *
 		 *  Get the previous block state in chain.
 		 *
+		 *  @return The previous block state.
+		 *
 		 **/
 		BlockState Prev() const;
 
@@ -160,27 +162,81 @@ namespace TAO::Ledger
 		 *
 		 *  Get the next block state in chain.
 		 *
+		 *  @return The next block state.
+		 *
 		 **/
 		BlockState Next() const;
 
 
-		/** Accept a block state into chain. **/
+		/** Accept
+		 *
+		 *  Accept a block state into chain.
+		 *
+		 *  @return true if accepted.
+		 *
+		 **/
 		bool Accept();
 
 
-		/** Get the trust of given block. **/
+		/** Connect
+		 *
+		 *  Connect a block state into chain.
+		 *
+		 *  @return true if connected.
+		 *
+		 **/
+		bool Connect();
+
+
+		/** Disconnect
+		 *
+		 *  Remove a block state from the chain.
+		 *
+		 *  @return true if disconnected.
+		 *
+		 **/
+		bool Disconnect();
+
+
+		/** Get Block Trust
+		 *
+		 *  Get the trust of this block.
+		 *
+		 *  @return the current trust in the chain.
+		 *
+		 **/
 		uint64_t GetBlockTrust() const;
 
 
-		/* Function to determine if this block has been connected into the main chain. */
+		/** Is In Main Chain
+		 *
+		 *  Function to determine if this block has been connected into the main chain.
+		 *
+		 *  @return true if in the main chain.
+		 *
+		 **/
 		bool IsInMainChain() const;
 
 
-		/* For debugging Purposes seeing block state data dump */
+		/** To String
+		 *
+		 *  For debugging Purposes seeing block state data dump
+		 *
+		 *  @param[in] nState The states to output.
+		 *
+		 *  @return the string with output data.
+		 *
+		 **/
 		std::string ToString(uint8_t nState = debug::flags::header) const;
 
 
-		/* For debugging purposes, printing the block to stdout */
+		/** print
+		 *
+		 *  For debugging to dump state to console.
+		 *
+		 *  @param[in] nState The states to output.
+		 *
+		 **/
 		void print(uint8_t nState = debug::flags::header) const;
 	};
 

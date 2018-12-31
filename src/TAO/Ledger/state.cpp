@@ -188,6 +188,14 @@ namespace TAO::Ledger
     }
 
 
+    /** Connect a block state into chain. **/
+    bool BlockState::Connect();
+
+
+    /** Disconnect a block state from the chain. **/
+    bool BlockState::Disconnect();
+
+
     /* USed to determine the trust of a block in the chain. */
     uint64_t BlockState::GetBlockTrust() const
     {
