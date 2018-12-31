@@ -39,6 +39,8 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
 
+#include <LLP/types/miner.h>
+
 
 namespace Legacy
 {

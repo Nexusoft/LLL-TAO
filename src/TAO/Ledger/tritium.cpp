@@ -27,19 +27,18 @@ namespace TAO::Ledger
 	/* For debugging Purposes seeing block state data dump */
 	std::string TritiumBlock::ToString() const
     {
-        return debug::strprintf(
-			ANSI_COLOR_BRIGHT_WHITE "Block" ANSI_COLOR_RESET "("
-			ANSI_COLOR_BRIGHT_WHITE "nVersion" ANSI_COLOR_RESET " = %u, "
-			ANSI_COLOR_BRIGHT_WHITE "hashPrevBlock" ANSI_COLOR_RESET " = %s, "
-			ANSI_COLOR_BRIGHT_WHITE "hashMerkleRoot" ANSI_COLOR_RESET " = %s, "
-			ANSI_COLOR_BRIGHT_WHITE "nChannel" ANSI_COLOR_RESET " = %u, "
-			ANSI_COLOR_BRIGHT_WHITE "nHeight" ANSI_COLOR_RESET " = %u, "
-			ANSI_COLOR_BRIGHT_WHITE "nBits" ANSI_COLOR_RESET " = %u, "
-			ANSI_COLOR_BRIGHT_WHITE "nNonce" ANSI_COLOR_RESET " = %" PRIu64 ", "
-			ANSI_COLOR_BRIGHT_WHITE "nTime" ANSI_COLOR_RESET " = %u, "
-			ANSI_COLOR_BRIGHT_WHITE "vchBlockSig" ANSI_COLOR_RESET " = %s, "
-			ANSI_COLOR_BRIGHT_WHITE "vtx.size()" ANSI_COLOR_RESET " = %u)",
-        nVersion, hashPrevBlock.ToString().substr(0, 20).c_str(), hashMerkleRoot.ToString().substr(0, 20).c_str(), nChannel, nBits, nNonce, nTime, HexStr(vchBlockSig.begin(), vchBlockSig.end()).c_str(), vtx.size());
+        return debug::strprintf("Block("
+			VALUE("nVersion") " = %u, "
+			VALUE("hashPrevBlock") " = %s, "
+			VALUE("hashMerkleRoot") " = %s, "
+			VALUE("nChannel") " = %u, "
+			VALUE("nHeight") " = %u, "
+			VALUE("nBits") " = %u, "
+			VALUE("nNonce") " = %" PRIu64 ", "
+			VALUE("nTime") " = %u, "
+			VALUE("vchBlockSig") " = %s, "
+			VALUE("vtx.size()") " = %u)",
+        nVersion, hashPrevBlock.ToString().substr(0, 20).c_str(), hashMerkleRoot.ToString().substr(0, 20).c_str(), nChannel, nHeight, nBits, nNonce, nTime, HexStr(vchBlockSig.begin(), vchBlockSig.end()).c_str(), vtx.size());
     }
 
 

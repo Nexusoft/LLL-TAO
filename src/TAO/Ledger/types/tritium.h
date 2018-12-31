@@ -67,16 +67,21 @@ namespace TAO::Ledger
             READWRITE(nHeight);
             READWRITE(nBits);
             READWRITE(nNonce);
-            READWRITE(nTime);
-            READWRITE(vchBlockSig);
 
-			READWRITE(vtx);
+            if(!(nSerType & SER_MINER))
+            {
+                READWRITE(nTime);
+                READWRITE(vchBlockSig);
+    			READWRITE(vtx);
+            }
 		)
 
 
         /** The default constructor. **/
 		TritiumBlock()
         : Block()
+        , producer()
+        , vtx()
         {
             SetNull();
         }

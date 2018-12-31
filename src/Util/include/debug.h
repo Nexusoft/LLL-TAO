@@ -52,6 +52,7 @@ ________________________________________________________________________________
 
 #define ANSI_COLOR_FUNCTION ANSI_COLOR_BRIGHT_BLUE
 
+#define VALUE(data) data
 #define FUNCTION ANSI_COLOR_FUNCTION "%s" ANSI_COLOR_RESET " : "
 
 #define NODE ANSI_COLOR_FUNCTION "Node" ANSI_COLOR_RESET " : "

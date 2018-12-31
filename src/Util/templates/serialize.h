@@ -73,6 +73,10 @@ enum
     SER_REGISTER        = (1 << 5),
     SER_OPERATIONS      = (1 << 6),
 
+
+    // mining
+    SER_MINER           = (1 << 10),
+
     // modifiers
     SER_SKIPSIG         = (1 << 16),
     SER_BLOCKHEADERONLY = (1 << 17),

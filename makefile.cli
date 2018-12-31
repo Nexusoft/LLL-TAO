@@ -142,6 +142,7 @@ OBJS= \
 	build/LLP_socket.o \
 	build/LLP_inv.o\
 	build/LLP_legacy.o \
+	build/LLP_miner.o \
 	build/LLP_tritium.o \
 	build/LLP_corenode.o \
 	build/LLP_rpcnode.o \
