@@ -31,17 +31,17 @@ namespace TAO::Ledger
     };
 
 
-	/** Tritium Block
-	 *
-     *  A tritium block contains referecnes to the transactions in blocks.
-     *  These are used to build the merkle tree for checking.
-     *  Transactions are processed before block is recieved, and commit
-     *  When a block is recieved to break up processing requirements.
-     *
-     **/
-	class TritiumBlock : public Block
-	{
-	public:
+    /** Tritium Block
+    *
+    *  A tritium block contains referecnes to the transactions in blocks.
+    *  These are used to build the merkle tree for checking.
+    *  Transactions are processed before block is recieved, and commit
+    *  When a block is recieved to break up processing requirements.
+    *
+    **/
+    class TritiumBlock : public Block
+    {
+    public:
 
         /** Verifier Transaction.
          *
@@ -51,15 +51,15 @@ namespace TAO::Ledger
         Transaction producer;
 
 
-		/** The transaction history.
+        /** The transaction history.
          *  uint8_t = TransactionType (per enum)
          *  uint512_t = Tx hash
          **/
         std::vector< std::pair<uint8_t, uint512_t> > vtx;
 
 
-		IMPLEMENT_SERIALIZE
-		(
+        IMPLEMENT_SERIALIZE
+        (
             READWRITE(nVersion);
             READWRITE(hashPrevBlock);
             READWRITE(hashMerkleRoot);
@@ -72,13 +72,13 @@ namespace TAO::Ledger
             {
                 READWRITE(nTime);
                 READWRITE(vchBlockSig);
-    			READWRITE(vtx);
+                READWRITE(vtx);
             }
-		)
+        )
 
 
         /** The default constructor. **/
-		TritiumBlock()
+        TritiumBlock()
         : Block()
         , producer()
         , vtx()
@@ -91,21 +91,21 @@ namespace TAO::Ledger
         bool Check() const;
 
 
-		/** ToString
+        /** ToString
          *
          *  For debugging Purposes seeing block state data dump
          *
          **/
-		std::string ToString() const;
+        std::string ToString() const;
 
 
-		/** print
+        /** print
          *
          *  For debugging purposes, printing the block to stdout
          *
          **/
-		void print() const;
-	};
+        void print() const;
+    };
 
 }
 
