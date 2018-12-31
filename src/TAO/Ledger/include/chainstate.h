@@ -20,19 +20,18 @@ ________________________________________________________________________________
 
 namespace TAO::Ledger
 {
-
 	struct ChainState
 	{
 		/** The best block height in the chain. **/
 		static uint32_t nBestHeight;
 
 
-    	/** The best hash in the chain. */
-    	static uint1024_t hashBestChain;
+		/** The best hash in the chain. */
+		static uint1024_t hashBestChain;
 
 
-	    /** The best trust in the chain. **/
-	    static uint64_t nBestChainTrust;
+		/** The best trust in the chain. **/
+		static uint64_t nBestChainTrust;
 
 
 		/** Flag to tell if initial blocks are downloading. **/
