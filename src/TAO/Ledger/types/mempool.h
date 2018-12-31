@@ -50,7 +50,10 @@ namespace TAO::Ledger
 
         /** Default Constructor. **/
         Mempool()
-        : mapLedger()
+        : mapLegacy()
+        , mapLedger()
+        , mapPrevHashes()
+        , mapInputs()
         {
 
         }
