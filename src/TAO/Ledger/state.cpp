@@ -208,14 +208,7 @@ namespace TAO::Ledger
 
 
     /* For debugging Purposes seeing block state data dump */
-    std::string BlockState::ToString() const
-    {
-        return std::string(""); //TODO - replace placeholder
-    }
-
-
-    /* For debugging purposes, printing the block to stdout */
-    void BlockState::print(uint8_t nState) const
+    std::string BlockState::ToString(uint8_t nState) const
     {
         std::string strDebug = "";
 
@@ -223,15 +216,15 @@ namespace TAO::Ledger
         if(nState & debug::flags::header)
         {
             strDebug += debug::strprintf("Block("
-            ANSI_COLOR_BRIGHT_WHITE "nVersion" ANSI_COLOR_RESET " = %u, "
-            ANSI_COLOR_BRIGHT_WHITE "hashPrevBlock" ANSI_COLOR_RESET " = %s, "
-            ANSI_COLOR_BRIGHT_WHITE "hashMerkleRoot" ANSI_COLOR_RESET " = %s, "
-            ANSI_COLOR_BRIGHT_WHITE "nChannel" ANSI_COLOR_RESET " = %u, "
-            ANSI_COLOR_BRIGHT_WHITE "nHeight" ANSI_COLOR_RESET " = %u, "
-            ANSI_COLOR_BRIGHT_WHITE "nDiff" ANSI_COLOR_RESET " = %f, "
-            ANSI_COLOR_BRIGHT_WHITE "nNonce" ANSI_COLOR_RESET " = %" PRIu64 ", "
-            ANSI_COLOR_BRIGHT_WHITE "nTime" ANSI_COLOR_RESET " = %u, "
-            ANSI_COLOR_BRIGHT_WHITE "blockSig" ANSI_COLOR_RESET " = %s",
+            VALUE("nVersion") " = %u, "
+            VALUE("hashPrevBlock") " = %s, "
+            VALUE("hashMerkleRoot") " = %s, "
+            VALUE("nChannel") " = %u, "
+            VALUE("nHeight") " = %u, "
+            VALUE("nDiff") " = %f, "
+            VALUE("nNonce") " = %" PRIu64 ", "
+            VALUE("nTime") " = %u, "
+            VALUE("blockSig") " = %s",
             nVersion, hashPrevBlock.ToString().substr(0, 20).c_str(),
             hashMerkleRoot.ToString().substr(0, 20).c_str(), nChannel,
             nHeight, GetDifficulty(nBits, nChannel), nNonce, nTime, HexStr(vchBlockSig.begin(), vchBlockSig.end()).c_str());
@@ -241,14 +234,14 @@ namespace TAO::Ledger
         if(nState & debug::flags::chain)
         {
             strDebug += debug::strprintf(", "
-            ANSI_COLOR_BRIGHT_WHITE "nChainTrust" ANSI_COLOR_RESET " = %" PRIu64 ", "
-            ANSI_COLOR_BRIGHT_WHITE "nMoneySupply" ANSI_COLOR_RESET " = %" PRIu64 ", "
-            ANSI_COLOR_BRIGHT_WHITE "nChannelHeight" ANSI_COLOR_RESET " = %" PRIu32 ", "
-            ANSI_COLOR_BRIGHT_WHITE "nMinerReserve" ANSI_COLOR_RESET " = %" PRIu32 ", "
-            ANSI_COLOR_BRIGHT_WHITE "nAmbassadorReserve" ANSI_COLOR_RESET " = %" PRIu32 ", "
-            ANSI_COLOR_BRIGHT_WHITE "nDeveloperReserve" ANSI_COLOR_RESET " = %" PRIu32 ", "
-            ANSI_COLOR_BRIGHT_WHITE "hashNextBlock" ANSI_COLOR_RESET " = %s, "
-            ANSI_COLOR_BRIGHT_WHITE "hashCheckpoint" ANSI_COLOR_RESET " = %s",
+            VALUE("nChainTrust") " = %" PRIu64 ", "
+            VALUE("nMoneySupply") " = %" PRIu64 ", "
+            VALUE("nChannelHeight") " = %" PRIu32 ", "
+            VALUE("nMinerReserve") " = %" PRIu32 ", "
+            VALUE("nAmbassadorReserve") " = %" PRIu32 ", "
+            VALUE("nDeveloperReserve") " = %" PRIu32 ", "
+            VALUE("hashNextBlock") " = %s, "
+            VALUE("hashCheckpoint") " = %s",
             nChainTrust, nMoneySupply, nChannelHeight, nReleasedReserve[0], nReleasedReserve[1],
             nReleasedReserve[2], hashNextBlock.ToString().substr(0, 20).c_str(),
             hashCheckpoint.ToString().substr(0, 20).c_str());
@@ -262,7 +255,14 @@ namespace TAO::Ledger
                 strDebug += debug::strprintf("Proof(nType = %u, hash = %s)\n", tx.first, tx.second);
         }
 
-        debug::log(0, strDebug.c_str());
+        return strDebug;
+    }
+
+
+    /* For debugging purposes, printing the block to stdout */
+    void BlockState::print(uint8_t nState) const
+    {
+        debug::log(0, ToString(nState).c_str());
     }
 
 }

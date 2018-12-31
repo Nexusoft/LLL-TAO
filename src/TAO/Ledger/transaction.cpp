@@ -94,7 +94,7 @@ namespace TAO::Ledger
     {
         if(vchLedgerData.empty())
             return false;
-            
+
         return vchLedgerData[0] == TAO::Operation::OP::TRUST;
     }
 
@@ -177,7 +177,28 @@ namespace TAO::Ledger
      /* Debug output - use ANSI colors. TODO: turn ansi colors on or off with a commandline flag */
      void Transaction::print() const
      {
-         debug::log(0, "%s(" ANSI_COLOR_BRIGHT_WHITE "nVersion" ANSI_COLOR_RESET " = %u, " ANSI_COLOR_BRIGHT_WHITE "nSequence" ANSI_COLOR_RESET " = %u, " ANSI_COLOR_BRIGHT_WHITE "nTimestamp" ANSI_COLOR_RESET " = %" PRIu64 ", " ANSI_COLOR_BRIGHT_WHITE "hashNext" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hashPrevTx" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hashGenesis" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "pub" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "sig" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "hash" ANSI_COLOR_RESET " = %s, " ANSI_COLOR_BRIGHT_WHITE "ledger" ANSI_COLOR_RESET " = %s)",
-         IsGenesis() ? "Genesis" : "Tritium", nVersion, nSequence, nTimestamp, hashNext.ToString().c_str(), hashPrevTx.ToString().c_str(), hashGenesis.ToString().c_str(), HexStr(vchPubKey).c_str(), HexStr(vchSig).c_str(), GetHash().ToString().c_str(), HexStr(vchLedgerData.begin(), vchLedgerData.end()).c_str());
+         debug::log(0, "%s("
+         VALUE("nVersion") " = %u, "
+         VALUE("nSequence") " = %u, "
+         VALUE("nTimestamp") " = %" PRIu64 ", "
+         VALUE("hashNext") " = %s, "
+         VALUE("hashPrevTx") " = %s, "
+         VALUE("hashGenesis") " = %s, "
+         VALUE("pub") " = %s, "
+         VALUE("sig") " = %s, "
+         VALUE("hash") " = %s, "
+         VALUE("ledger") " = %s)",
+
+         IsGenesis() ? "Genesis" : "Tritium",
+         nVersion,
+         nSequence,
+         nTimestamp,
+         hashNext.ToString().c_str(),
+         hashPrevTx.ToString().c_str(),
+         hashGenesis.ToString().c_str(),
+         HexStr(vchPubKey).c_str(),
+         HexStr(vchSig).c_str(),
+         GetHash().ToString().c_str(),
+         HexStr(vchLedgerData.begin(), vchLedgerData.end()).c_str());
      }
 }

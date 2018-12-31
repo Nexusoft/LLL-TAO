@@ -129,6 +129,12 @@ namespace TAO::Ledger
 			hashCheckpoint      = state.hashCheckpoint;
 		}
 
+		/** Not operator overloading. **/
+		bool const operator ! (void)
+		{
+			return !IsNull();
+		}
+
 
 /* LegacyBlock not defined
 		BlockState(LegacyBlock blockIn) :
@@ -162,15 +168,8 @@ namespace TAO::Ledger
 		bool Accept();
 
 
-		/** Not operator overloading. **/
-		bool const operator ! (void)
-		{
-			return !IsNull();
-		}
-
 		/** Get the trust of given block. **/
 		uint64_t GetBlockTrust() const;
-
 
 
 		/* Function to determine if this block has been connected into the main chain. */
@@ -178,7 +177,7 @@ namespace TAO::Ledger
 
 
 		/* For debugging Purposes seeing block state data dump */
-		std::string ToString() const;
+		std::string ToString(uint8_t nState = debug::flags::header) const;
 
 
 		/* For debugging purposes, printing the block to stdout */
