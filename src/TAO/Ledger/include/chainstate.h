@@ -1,13 +1,13 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2018
 
-			Distributed under the MIT software license, see the accompanying
-			file COPYING or http://www.opensource.org/licenses/mit-license.php.
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-			"ad vocem populi" - To The Voice of The People
+            "ad vocem populi" - To The Voice of The People
 
 ____________________________________________________________________________________________*/
 
@@ -20,32 +20,32 @@ ________________________________________________________________________________
 
 namespace TAO::Ledger
 {
-	struct ChainState
-	{
-		/** The best block height in the chain. **/
-		static uint32_t nBestHeight;
+    struct ChainState
+    {
+        /** The best block height in the chain. **/
+        static uint32_t nBestHeight;
 
 
-		/** The best hash in the chain. */
-		static uint1024_t hashBestChain;
+        /** The best hash in the chain. */
+        static uint1024_t hashBestChain;
 
 
-		/** The best trust in the chain. **/
-		static uint64_t nBestChainTrust;
+        /** The best trust in the chain. **/
+        static uint64_t nBestChainTrust;
 
 
-		/** Flag to tell if initial blocks are downloading. **/
-		static bool Synchronizing();
+        /** Flag to tell if initial blocks are downloading. **/
+        static bool Synchronizing();
 
 
-		/** The best block in the chain. **/
-		static BlockState stateBest;
+        /** The best block in the chain. **/
+        static BlockState stateBest;
 
 
-		/** The best block in the chain. **/
-		static BlockState stateGenesis;
+        /** The best block in the chain. **/
+        static BlockState stateGenesis;
 
-	};
+    };
 }
 
 
