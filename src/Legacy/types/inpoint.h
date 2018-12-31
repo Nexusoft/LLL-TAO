@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_TYPES_INPOINT_H
-#define NEXUS_TAO_LEGACY_TYPES_INPOINT_H
+#ifndef NEXUS_LEGACY_TYPES_INPOINT_H
+#define NEXUS_LEGACY_TYPES_INPOINT_H
 
 #include <Legacy/types/transaction.h>
 

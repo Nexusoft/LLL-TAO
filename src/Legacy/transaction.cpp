@@ -462,6 +462,17 @@ namespace Legacy
     /* Get the corresponding output from input. */
     const CTxOut& Transaction::GetOutputFor(const CTxIn& input, const std::map<uint512_t, Transaction>& inputs) const
     {
+        auto mi = inputs.find(input.prevout.hash);
+
+        if (mi == inputs.end())
+            throw std::runtime_error("Legacy::Transaction::GetOutputFor() : prevout.hash not found");
+
+        const Transaction& txPrev = (*mi).second;
+
+        if (input.prevout.n >= txPrev.vout.size())
+            throw std::runtime_error("Legacy::Transaction::GetOutputFor() : prevout.n out of range");
+
+        return txPrev.vout[input.prevout.n];
 
     }
 }

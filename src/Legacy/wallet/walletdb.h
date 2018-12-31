@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_WALLET_WALLETDB_H
-#define NEXUS_TAO_LEGACY_WALLET_WALLETDB_H
+#ifndef NEXUS_LEGACY_WALLET_WALLETDB_H
+#define NEXUS_LEGACY_WALLET_WALLETDB_H
 
 #include <list>
 #include <memory>
@@ -487,6 +487,8 @@ namespace Legacy
          *
          *  @return true if database entry successfully written
          *
+         *  @deprecated - accounting entries will no longer be used
+         *
          **/
         bool WriteAccountingEntry(const CAccountingEntry& acentry);
 
@@ -504,6 +506,8 @@ namespace Legacy
          *
          *  @return net credit or debit of all accounting entries for the provided account
          *
+         *  @deprecated - accounting entries will no longer be used
+         *
          **/
         int64_t GetAccountCreditDebit(const std::string& strAccount);
 
@@ -515,6 +519,8 @@ namespace Legacy
          *  @param[in] strAccount Nexus address in string form of accounting entries to read, * lists entries for all accounts
          *
          *  @param[out] acentries Accounting entries for the given account will be appended to this list
+         *
+         *  @deprecated - accounting entries will no longer be used
          *
          **/
         void ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& acentries);

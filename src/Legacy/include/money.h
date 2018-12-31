@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_INCLUDE_MONEY_H
-#define NEXUS_TAO_LEGACY_INCLUDE_MONEY_H
+#ifndef NEXUS_LEGACY_INCLUDE_MONEY_H
+#define NEXUS_LEGACY_INCLUDE_MONEY_H
 
 #include <TAO/Ledger/include/timelocks.h>
 

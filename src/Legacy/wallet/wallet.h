@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_WALLET_WALLET_H
-#define NEXUS_TAO_LEGACY_WALLET_WALLET_H
+#ifndef NEXUS_LEGACY_WALLET_WALLET_H
+#define NEXUS_LEGACY_WALLET_WALLET_H
 
 #include <map>
 #include <mutex>
@@ -531,7 +531,7 @@ namespace Legacy
          *
          *  @param[in] tx The transaction to check
          *
-         *  @param[in] pblock The block containing the transaction
+         *  @param[in] containingBlock The block containing the transaction
          *
          *  @param[in] fUpdate Flag indicating whether or not to update transaction already in wallet
          *
@@ -543,7 +543,8 @@ namespace Legacy
          * @return true if the transactions was added/updated
          *
          */
-        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock* pblock, bool fUpdate = false, bool fFindBlock = false, bool fRescan = false);
+        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock& containingBlock, 
+                                      bool fUpdate = false, bool fFindBlock = false, bool fRescan = false);
 
 
         /** EraseFromWallet
@@ -620,7 +621,7 @@ namespace Legacy
          *  @return true process executed successfully
          *
          **/
-        void FixSpentCoins(int& nMismatchFound, int64_t& nBalanceInQuestion, const bool fCheckOnly = false);
+        void FixSpentCoins(uint32_t& nMismatchFound, int64_t& nBalanceInQuestion, const bool fCheckOnly = false);
 
 
     /*----------------------------------------------------------------------------------------*/

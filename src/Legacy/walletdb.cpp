@@ -540,15 +540,22 @@ namespace Legacy
                 else if (strType == "acentry")
                 {
                     /* Accounting entry */
-                    std::string strAccount;
-                    ssKey >> strAccount;
-                    uint64_t nNumber;
-                    ssKey >> nNumber;
+                    /* Ignore these and do not load. Accounting entry support to be removed */
+                    //std::string strAccount;
+                    //ssKey >> strAccount;
+                    //uint64_t nNumber;
+                    //ssKey >> nNumber;
 
                     /* After load, nAccountingEntryNumber will contain the maximum accounting entry number currently stored in the database */
-                    if (nNumber > CWalletDB::nAccountingEntryNumber)
-                        CWalletDB::nAccountingEntryNumber = nNumber;
+                    //if (nNumber > CWalletDB::nAccountingEntryNumber)
+                    //    CWalletDB::nAccountingEntryNumber = nNumber;
 
+                }
+
+                else
+                {
+                    /* All other keys are no longer supported and can be ignored/not loaded */
+                    ;
                 }
             }
 
