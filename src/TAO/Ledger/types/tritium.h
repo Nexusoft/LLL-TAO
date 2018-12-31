@@ -32,13 +32,13 @@ namespace TAO::Ledger
 
 
     /** Tritium Block
-    *
-    *  A tritium block contains referecnes to the transactions in blocks.
-    *  These are used to build the merkle tree for checking.
-    *  Transactions are processed before block is recieved, and commit
-    *  When a block is recieved to break up processing requirements.
-    *
-    **/
+     *
+     *  A tritium block contains referecnes to the transactions in blocks.
+     *  These are used to build the merkle tree for checking.
+     *  Transactions are processed before block is recieved, and commit
+     *  When a block is recieved to break up processing requirements.
+     *
+     **/
     class TritiumBlock : public Block
     {
     public:
