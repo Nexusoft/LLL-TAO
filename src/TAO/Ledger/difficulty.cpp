@@ -1,13 +1,13 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+(c) Copyright The Nexus Developers 2014 - 2018
 
-			Distributed under the MIT software license, see the accompanying
-			file COPYING or http://www.opensource.org/licenses/mit-license.php.
+Distributed under the MIT software license, see the accompanying
+file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-			"ad vocem populi" - To The Voice of The People
+"ad vocem populi" - To The Voice of The People
 
 ____________________________________________________________________________________________*/
 
@@ -37,7 +37,7 @@ namespace TAO::Ledger
 	{
 
 		/* Prime Channel is just Decimal Held in Integer
-			Multiplied and Divided by Significant Digits. */
+		Multiplied and Divided by Significant Digits. */
 		if(nChannel == 1)
 			return nBits / 10000000.0;
 
@@ -72,29 +72,29 @@ namespace TAO::Ledger
 
 
 	/* Gets a block time from a weighted average at given depth. */
-    uint64_t GetWeightedTimes(const BlockState state, uint32_t nDepth)
+	uint64_t GetWeightedTimes(const BlockState state, uint32_t nDepth)
 	{
 		uint32_t nIterator = 0, nWeightedAverage = 0;
 
-        /* Find the introductory block. */
-        BlockState first = state;
+		/* Find the introductory block. */
+		BlockState first = state;
 		for(int nIndex = nDepth; nIndex > 0; nIndex--)
 		{
-            /* Find the previous block. */
-            BlockState last = first.Prev();
+			/* Find the previous block. */
+			BlockState last = first.Prev();
 			if(!GetLastState(last, state.GetChannel()))
 				break;
 
-            /* Calculate the time. */
+			/* Calculate the time. */
 			uint32_t nTime = (uint32_t)std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t)1) * nIndex * 3;
-            first = last;
+			first = last;
 
-            /* Weight the iterator based on the weight constant. */
+			/* Weight the iterator based on the weight constant. */
 			nIterator += (nIndex * 3);
 			nWeightedAverage += nTime;
 		}
 
-        /* Calculate the weighted average. */
+		/* Calculate the weighted average. */
 		nWeightedAverage /= nIterator;
 
 		return nWeightedAverage;
@@ -102,7 +102,7 @@ namespace TAO::Ledger
 
 
 	/* Switching function for each difficulty re-target [each channel uses their own version] */
-    uint32_t GetNextTargetRequired(const BlockState state, int nChannel)
+	uint32_t GetNextTargetRequired(const BlockState state, int nChannel)
 	{
 		if(nChannel == 0)
 			return RetargetTrust(state);
@@ -118,7 +118,7 @@ namespace TAO::Ledger
 
 
 	/* Trust Retargeting: Modulate Difficulty based on production rate. */
-    uint32_t RetargetTrust(const BlockState state)
+	uint32_t RetargetTrust(const BlockState state)
 	{
 
 		/* Get Last Block Index [1st block back in Channel]. **/
@@ -128,7 +128,7 @@ namespace TAO::Ledger
 
 
 		/* Get Last Block Index [2nd block back in Channel]. */
-        BlockState last = first.Prev();
+		BlockState last = first.Prev();
 		if (!GetLastState(last, 0))
 			return bnProofOfWorkStart[0].GetCompact();
 
@@ -144,34 +144,34 @@ namespace TAO::Ledger
 
 
 		/** If the time is above target, reduce difficulty by modular
-            of one interval past timespan multiplied by maximum decrease. **/
-        if(nBlockTime >= nBlockTarget)
-        {
-            /** Take the Minimum overlap of Target Timespan to make that maximum interval. **/
-            uint64_t nOverlap = (uint64_t)std::min((nBlockTime - nBlockTarget), (nBlockTarget * 2));
+		of one interval past timespan multiplied by maximum decrease. **/
+		if(nBlockTime >= nBlockTarget)
+		{
+			/** Take the Minimum overlap of Target Timespan to make that maximum interval. **/
+			uint64_t nOverlap = (uint64_t)std::min((nBlockTime - nBlockTarget), (nBlockTarget * 2));
 
-            /** Get the Mod from the Proportion of Overlap in one Interval. **/
-            double nProportions = (double)nOverlap / (nBlockTarget * 2);
+			/** Get the Mod from the Proportion of Overlap in one Interval. **/
+			double nProportions = (double)nOverlap / (nBlockTarget * 2);
 
-            /** Get Mod from Maximum Decrease Equation with Decimal portions multiplied by Propotions. **/
-            double nMod = 1.0 - (0.15 * nProportions);
-            nLowerBound = nBlockTarget * nMod;
-        }
+			/** Get Mod from Maximum Decrease Equation with Decimal portions multiplied by Propotions. **/
+			double nMod = 1.0 - (0.15 * nProportions);
+			nLowerBound = nBlockTarget * nMod;
+		}
 
-        /** If the time is below target, increase difficulty by modular
-            of interval of 1 - Block Target with time of 1 being maximum increase **/
-        else
-        {
-            /** Get the overlap in reference from Target Timespan. **/
-            uint64_t nOverlap = nBlockTarget - nBlockTime;
+		/** If the time is below target, increase difficulty by modular
+		of interval of 1 - Block Target with time of 1 being maximum increase **/
+		else
+		{
+			/** Get the overlap in reference from Target Timespan. **/
+			uint64_t nOverlap = nBlockTarget - nBlockTime;
 
-            /** Get the mod from overlap proportion. Time of 1 will be closest to mod of 1. **/
-            double nProportions = (double) nOverlap / nBlockTarget;
+			/** Get the mod from overlap proportion. Time of 1 will be closest to mod of 1. **/
+			double nProportions = (double) nOverlap / nBlockTarget;
 
-            /** Get the Mod from the Maximum Increase Equation with Decimal portion multiplied by Proportions. **/
-            double nMod = 1.0 + (nProportions * 0.075);
-            nLowerBound = nBlockTarget * nMod;
-        }
+			/** Get the Mod from the Maximum Increase Equation with Decimal portion multiplied by Proportions. **/
+			double nMod = 1.0 + (nProportions * 0.075);
+			nLowerBound = nBlockTarget * nMod;
+		}
 
 
 		/* Get the Difficulty Stored in Bignum Compact. */
@@ -220,20 +220,20 @@ namespace TAO::Ledger
 
 
 		/* Get Last Block Index [2nd block back in Channel]. */
-        BlockState last = first.Prev();
+		BlockState last = first.Prev();
 		if (!GetLastState(last, 0))
 			return bnProofOfWorkStart[0].GetCompact();
 
 
 		/* Standard Time Proportions */
 		uint64_t nBlockTime = ((state.nVersion >= 4) ?
-			GetWeightedTimes(first, 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t)1));
+		GetWeightedTimes(first, 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t)1));
 		uint64_t nBlockTarget = nTargetTimespan;
 
 
 		/* Chain Mod: Is a proportion to reflect outstanding released funds. Version 1 Deflates difficulty slightly
-			to allow more blocks through when blockchain has been slow, Version 2 Deflates Target Timespan to lower the minimum difficulty.
-			This helps stimulate transaction processing while helping get the Nexus production back on track */
+		to allow more blocks through when blockchain has been slow, Version 2 Deflates Target Timespan to lower the minimum difficulty.
+		This helps stimulate transaction processing while helping get the Nexus production back on track */
 		double nChainMod = GetFractionalSubsidy(GetChainAge(first.GetBlockTime()), 0,
 			((state.nVersion >= 3) ? 40.0 : 20.0)) / (first.nReleasedReserve[0] + 1);
 
@@ -247,7 +247,7 @@ namespace TAO::Ledger
 
 
 		/* These figures reduce the increase and decrease max and mins as difficulty rises
-			this is due to the time difference between each cluster size [ex. 1, 2, 3] being 50x */
+		this is due to the time difference between each cluster size [ex. 1, 2, 3] being 50x */
 		double nDifficulty = GetDifficulty(first.nBits, 1);
 
 
@@ -355,7 +355,7 @@ namespace TAO::Ledger
 
 
 		/* Get Last Block Index [2nd block back in Channel]. */
-        BlockState last = first.Prev();
+		BlockState last = first.Prev();
 		if (!GetLastState(last, 0))
 			return bnProofOfWorkStart[0].GetCompact();
 
@@ -377,7 +377,7 @@ namespace TAO::Ledger
 
 		/* Enforce Block Version 2 Rule. Chain mod changes block time requirements, not actual mod after block times. */
 		if(state.nVersion >= 2)
-			nBlockTarget *= nChainMod;
+		nBlockTarget *= nChainMod;
 
 
 		/* The Upper and Lower Bound Adjusters. */
@@ -453,7 +453,7 @@ namespace TAO::Ledger
 
 		/* Don't allow Difficulty to decrease below minimum. */
 		if (bnNew > bnProofOfWorkLimit[2])
-            bnNew = bnProofOfWorkLimit[2];
+			bnNew = bnProofOfWorkLimit[2];
 
 
 		/* Console Output if Flagged. */
