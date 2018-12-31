@@ -36,14 +36,18 @@ namespace TAO::Ledger
 
 
 	/** Minimum channels difficulty. **/
-	const LLC::CBigNum bnProofOfWorkLimit[] = { LLC::CBigNum(~uint1024_t(0) >> 5),
-												LLC::CBigNum(20000000),
-												LLC::CBigNum(~uint1024_t(0) >> 17) };
+	const LLC::CBigNum bnProofOfWorkLimit[] =	{
+													LLC::CBigNum(~uint1024_t(0) >> 5),
+													LLC::CBigNum(20000000),
+													LLC::CBigNum(~uint1024_t(0) >> 17)
+												};
 
 	/** Starting channels difficulty. **/
-	const LLC::CBigNum bnProofOfWorkStart[] = { LLC::CBigNum(~uint1024_t(0) >> 7),
-												LLC::CBigNum(25000000),
-												LLC::CBigNum(~uint1024_t(0) >> 22) };
+	const LLC::CBigNum bnProofOfWorkStart[] = 	{
+													LLC::CBigNum(~uint1024_t(0) >> 7),
+													LLC::CBigNum(25000000),
+													LLC::CBigNum(~uint1024_t(0) >> 22)
+												};
 
 	/** Minimum prime zero bits (1016-bits). **/
 	const LLC::CBigNum bnPrimeMinOrigins    =   LLC::CBigNum(~uint1024_t(0) >> 8); //minimum prime origins of 1016 bits

@@ -28,10 +28,10 @@ namespace TAO::Ledger
 
 
 	/** @class TrustKey
-	*
-	*  Class to Store a legacy Trust Key and its Interest Rate.
-	*
-	**/
+	 *
+	 *  Class to Store a legacy Trust Key and its Interest Rate.
+	 *
+	 **/
 	class TrustKey
 	{
 	public:
@@ -44,11 +44,11 @@ namespace TAO::Ledger
 
 
 		/** Hash of legacy block containing the Genesis transaction for this Trust Key **/
-		uint1024_t  hashGenesisBlock;
+		uint1024_t hashGenesisBlock;
 
 
 		/** Hash of the Genesis transaction for this Trust Key **/
-		uint512_t   hashGenesisTx;
+		uint512_t hashGenesisTx;
 
 
 		/** Timestamp of the Genesis transaction for this Trust Key **/
