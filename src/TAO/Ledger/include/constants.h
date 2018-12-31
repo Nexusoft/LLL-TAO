@@ -64,16 +64,25 @@ namespace TAO::Ledger
 	/** The maximum time in the future clock can be. **/
 	const uint32_t MAX_UNIFIED_DRIFT = 1;
 
-    /** Nexus Coinbase/Coinstake Maturity Settings **/
-    const uint32_t TESTNET_MATURITY_BLOCKS = 100;
-    const uint32_t NEXUS_MATURITY_BLOCKS   = 120;
 
-    /** nVersion 4 and earlier trust keys expire after 24 hours. **/
-    const uint32_t TRUST_KEY_EXPIRE   = 60 * 60 * 24;
+	/** Nexus Coinbase/Coinstake Maturity Settings **/
+	const uint32_t TESTNET_MATURITY_BLOCKS = 100;
 
-    /* nVersion > 4 - timespan is 3 days, 30 minutes for testnet **/
-    const uint32_t TRUST_KEY_TIMESPAN = 60 * 60 * 24 * 3;
-    const uint32_t TRUST_KEY_TIMESPAN_TESTNET = 60 * 30;
+
+	/** Mainnet maturity for blocks. */
+	const uint32_t NEXUS_MATURITY_BLOCKS   = 120;
+
+
+	/** nVersion 4 and earlier trust keys expire after 24 hours. **/
+	const uint32_t TRUST_KEY_EXPIRE   = 60 * 60 * 24;
+
+
+	/** nVersion > 4 - timespan is 3 days, 30 minutes for testnet **/
+	const uint32_t TRUST_KEY_TIMESPAN = 60 * 60 * 24 * 3;
+
+
+	/** Timestamp of trust key for testnet. **/
+	const uint32_t TRUST_KEY_TIMESPAN_TESTNET = 60 * 30;
 
 }
 
