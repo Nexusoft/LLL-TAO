@@ -40,6 +40,18 @@ namespace LLD
         LedgerDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
         : SectorDatabase("ledger", nFlags) { }
 
+
+        bool WriteBestChain(uint1024_t hashBest)
+        {
+            return Write(std::string("best"), hashBest);
+        }
+
+
+        bool ReadBestChain(uint1024_t& hashBest)
+        {
+            return Read(std::string("best"), hashBest);
+        }
+
         bool WriteTx(uint512_t hashTransaction, TAO::Ledger::Transaction tx)
         {
             return Write(std::make_pair(std::string("tx"), hashTransaction), tx);

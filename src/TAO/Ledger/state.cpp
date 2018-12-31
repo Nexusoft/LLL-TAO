@@ -17,10 +17,13 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/supply.h>
+
+#include <TAO/Operation/include/execute.h>
 
 
 namespace TAO::Ledger
@@ -65,23 +68,29 @@ namespace TAO::Ledger
         if(LLD::legDB->ReadBlock(GetHash(), state))
             return debug::error(FUNCTION "block state already exists", __PRETTY_FUNCTION__);
 
+
         /* Read leger DB for previous block. */
         BlockState statePrev = Prev();
         if(statePrev.IsNull())
             return debug::error(FUNCTION "previous block state not found", __PRETTY_FUNCTION__);
 
+
         /* Check the Height of Block to Previous Block. */
         if(statePrev.nHeight + 1 != nHeight)
             return debug::error(FUNCTION "incorrect block height.", __PRETTY_FUNCTION__);
 
+
         /* Get the proof hash for this block. */
         uint1024_t hash = (nVersion < 5 ? GetHash() : GetChannel() == 0 ? StakeHash() : ProofHash());
+
 
         /* Get the target hash for this block. */
         uint1024_t hashTarget = LLC::CBigNum().SetCompact(nBits).getuint1024();
 
+
         /* Verbose logging of proof and target. */
         debug::log(2, "  proof:  %s", hash.ToString().substr(0, 30).c_str());
+
 
         /* Channel switched output. */
         if(GetChannel() == 1)
@@ -184,16 +193,165 @@ namespace TAO::Ledger
             debug::log(0, "===== Pending Checkpoint Hash = %s", hashCheckpoint.ToString().substr(0, 15).c_str());
         }
 
+
+        /* Signal to set the best chain. */
+        if(nChainTrust > ChainState::nBestChainTrust)
+        {
+            /* Start the database transaction. */
+            LLD::legDB->TxnBegin();
+            LLD::regDB->TxnBegin();
+
+            /* Watch for genesis. */
+            if (ChainState::stateGenesis.IsNull())
+            {
+                /* Write the best chain pointer. */
+                if(!LLD::legDB->WriteBestChain(hash))
+                    return debug::error(FUNCTION "failed to write best chain", __PRETTY_FUNCTION__);
+
+                /* Set the genesis block. */
+                ChainState::stateGenesis = *this;
+            }
+            else
+            {
+                /* Get initial block states. */
+                BlockState fork   = ChainState::stateBest;
+                BlockState longer = *this;
+
+                /* Get the blocks to connect and disconnect. */
+                std::vector<BlockState> vDisconnect;
+                std::vector<BlockState> vConnect;
+                while (fork != longer)
+                {
+                    /* Find the root block in common. */
+                    while (longer.nHeight > fork.nHeight)
+                    {
+                        /* Add to connect queue. */
+                        vConnect.push_back(longer);
+
+                        /* Iterate backwards in chain. */
+                        longer = longer.Prev();
+                        if(longer.IsNull())
+                            return debug::error(FUNCTION "failed to find longer ancestor block", __PRETTY_FUNCTION__);
+                    }
+
+                    /* Break if found. */
+                    if (fork == longer)
+                        break;
+
+                    /* Iterate backwards to find fork. */
+                    vDisconnect.push_back(fork);
+                    fork = fork.Prev();
+                    if(fork.IsNull())
+                        return debug::error(FUNCTION "failed to find ancestor fork block", __PRETTY_FUNCTION__);
+                }
+
+                /* Log if there are blocks to disconnect. */
+                if(vDisconnect.size() > 0)
+                {
+                    debug::log(0, FUNCTION "REORGANIZE: Disconnect %i blocks; %s..%s\n", __PRETTY_FUNCTION__,
+                        vDisconnect.size(), fork.GetHash().ToString().substr(0,20).c_str(), ChainState::stateBest.GetHash().ToString().substr(0,20).c_str());
+
+                    debug::log(0, FUNCTION "REORGANIZE: Connect %i blocks; %s..%s\n", __PRETTY_FUNCTION__,
+                        vConnect.size(), fork.GetHash().ToString().substr(0,20).c_str(),
+                        this->GetHash().ToString().substr(0,20).c_str());
+                }
+
+                /* List of transactions to resurrect. */
+                std::vector<uint512_t> vResurrect;
+
+                /* Disconnect given blocks. */
+                for(auto state : vDisconnect)
+                {
+                    /* Connect the block. */
+                    if(!state.Disconnect())
+                        return debug::error(FUNCTION "failed to disconnect %s", __PRETTY_FUNCTION__,
+                            state.GetHash().ToString().substr(0, 20).c_str());
+
+                    /* Add transactions into memory pool. */
+                    for(auto tx : state.vtx)
+                        vResurrect.push_back(tx.second);
+                }
+
+                /* List of transactions to remove from pool. */
+                std::vector<uint512_t> vDelete;
+
+                /* Set the next hash from fork. */
+                fork.hashNextBlock = vConnect[0].GetHash();
+
+                /* Reverse the blocks to connect to connect in ascending height. */
+                std::reverse(vConnect.begin(), vConnect.end());
+                for(auto state : vConnect)
+                {
+                    /* Connect the block. */
+                    if(!state.Connect())
+                        return debug::error(FUNCTION "failed to connect %s", __PRETTY_FUNCTION__,
+                            state.GetHash().ToString().substr(0, 20).c_str());
+
+                    /* Remove transactions from memory pool. */
+                    for(auto tx : state.vtx)
+                        vDelete.push_back(tx.second);
+                }
+
+                /* Harden a checkpoint if there is any. */
+                HardenCheckpoint(*this);
+
+                /* Write the best chain pointer. */
+                if(!LLD::legDB->WriteBestChain(hash))
+                    return debug::error(FUNCTION "failed to write best chain", __PRETTY_FUNCTION__);
+
+
+                /* Add transactions back to memory pool. */
+                //TODO: finish this
+            }
+
+            /* Commit the transaction to database. */
+            LLD::legDB->TxnCommit();
+            LLD::regDB->TxnCommit();
+        }
+
         return true;
     }
 
 
     /** Connect a block state into chain. **/
-    bool BlockState::Connect();
+    bool BlockState::Connect()
+    {
+
+        /* Check through all the transactions. */
+        for(auto tx : vtx)
+        {
+            /* Only work on tritium transactions for now. */
+            if(tx.first == TYPE::TRITIUM_TX)
+            {
+                /* Get the transaction hash. */
+                uint512_t hash = tx.second;
+
+                /* Check if in memory pool. */
+                TAO::Ledger::Transaction tx;
+                if(!mempool.Get(hash, tx))
+                    return debug::error(FUNCTION "transaction is not in memory pool", __PRETTY_FUNCTION__);
+
+                /* Execute the register and operations layers. */
+                if(!TAO::Operation::Execute(tx.vchLedgerData, tx.hashGenesis, true))
+                    return debug::error(FUNCTION "transaction failed to execute", __PRETTY_FUNCTION__);
+            }
+        }
+
+        /* Update the previous state's next pointer. */
+        BlockState prev = Prev();
+        if(!prev.IsNull())
+        {
+            prev.hashNextBlock = GetHash();
+            LLD::legDB->WriteBlock(prev.GetHash(), prev);
+        }
+    }
 
 
     /** Disconnect a block state from the chain. **/
-    bool BlockState::Disconnect();
+    bool BlockState::Disconnect()
+    {
+        //revert the transaction operations from previous state.
+    }
 
 
     /* USed to determine the trust of a block in the chain. */

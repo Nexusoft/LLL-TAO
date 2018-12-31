@@ -129,24 +129,26 @@ namespace TAO::Ledger
 			hashCheckpoint      = state.hashCheckpoint;
 		}
 
+
+		/** Equivilence checking **/
+		bool operator==(const BlockState state)
+		{
+			return 	state.GetHash() == GetHash();
+		}
+
+		/** Equivilence checking **/
+		bool operator!=(const BlockState state)
+		{
+			return 	state.GetHash() != GetHash();
+		}
+
+
 		/** Not operator overloading. **/
 		bool const operator ! (void)
 		{
 			return !IsNull();
 		}
 
-
-/* LegacyBlock not defined
-		BlockState(LegacyBlock blockIn) :
-		blockThis(blockIn),
-		nChainTrust(0),
-		nMoneySupply(0),
-		nChannelHeight(0),
-		nReleasedReserve(0, 0, 0)
-		{
-
-		}
-*/
 
 		/** Prev
 		 *
