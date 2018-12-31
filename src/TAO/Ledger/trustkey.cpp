@@ -59,11 +59,11 @@ namespace TAO::Ledger
     {
         if (nTime < nGenesisTime)
         {
-        	return 0;
+            return 0;
         }
         else
         {
-        	return (uint64_t)(nTime - nGenesisTime);
+            return (uint64_t)(nTime - nGenesisTime);
         }
     }
 
@@ -80,7 +80,7 @@ namespace TAO::Ledger
     bool TrustKey::IsExpired(uint32_t nTime) const
     {
         if (GetBlockAge(nTime) > TRUST_KEY_EXPIRE)
-        	return true;
+            return true;
 
         return false;
     }
