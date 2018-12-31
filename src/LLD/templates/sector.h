@@ -625,8 +625,11 @@ namespace LLD
                 return Force(vKey, vData);
 
             /* Wait if the buffer is full. */
-            std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-            CONDITION.wait(CONDITION_LOCK, [this]{ return config::fShutdown || nBufferBytes.load() < MAX_SECTOR_BUFFER_SIZE; });
+            if(nBufferBytes.load() >= MAX_SECTOR_BUFFER_SIZE)
+            {
+                std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+                CONDITION.wait(CONDITION_LOCK, [this]{ return config::fShutdown || nBufferBytes.load() < MAX_SECTOR_BUFFER_SIZE; });
+            }
 
             /* Add to the write buffer thread. */
             { LOCK(BUFFER_MUTEX);
