@@ -18,11 +18,13 @@ ________________________________________________________________________________
 
 #include <Util/templates/serialize.h>
 #include <Util/include/hex.h>
+#include <Util/include/args.h>
 #include <Util/include/runtime.h>
 
 #include <TAO/Ledger/types/block.h>
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/timelocks.h>
 
 namespace TAO::Ledger
 {
@@ -30,7 +32,7 @@ namespace TAO::Ledger
 	/* Set the block state to null. */
 	void Block::SetNull()
 	{
-		nVersion = 3; //TODO: Use current block version
+		nVersion = config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION;
 		hashPrevBlock = 0;
 		hashMerkleRoot = 0;
 		nChannel = 0;
@@ -167,7 +169,7 @@ namespace TAO::Ledger
 
 	/* Verify the Proof of Work satisfies network requirements. */
 	bool Block::VerifyWork() const
-    {
+	{
 		/* Check the Prime Number Proof of Work for the Prime Channel. */
 		if(GetChannel() == 1)
 		{
@@ -201,17 +203,17 @@ namespace TAO::Ledger
 			return debug::error(FUNCTION "proof-of-work hash below target", __PRETTY_FUNCTION__);
 
 		return true;
-    }
+	}
 
 
 	/* Verify the Proof of Stake satisfies network requirements. */
 	bool Block::VerifyStake() const
-    {
+	{
 
 		//TODO: Fill in when trust source file complete
 
-        return true;
-    }
+		return true;
+	}
 
 
 	/* Sign the block with the key that found the block. */
