@@ -46,6 +46,7 @@ namespace TAO::Register
         //memory only read position
         uint32_t nReadPos;
 
+
         IMPLEMENT_SERIALIZE
         (
             READWRITE(nVersion);
@@ -151,6 +152,7 @@ namespace TAO::Register
             return LLC::SK64(ss.begin(), ss.end());
         }
 
+
         /** Set the Checksum of this Register. **/
         void SetChecksum()
         {
@@ -188,6 +190,8 @@ namespace TAO::Register
             SetChecksum();
         }
 
+
+        /** Clear a register's state. */
         void ClearState()
         {
             vchState.clear();
@@ -243,7 +247,7 @@ namespace TAO::Register
 
         /** Operator Overload <<
          *
-         *  Serializes data into vchLedgerData
+         *  Serializes data into vchOperations
          *
          *  @param[in] obj The object to serialize into ledger data
          *
@@ -259,7 +263,7 @@ namespace TAO::Register
 
         /** Operator Overload >>
          *
-         *  Serializes data into vchLedgerData
+         *  Serializes data into vchOperations
          *
          *  @param[out] obj The object to de-serialize from ledger data
          *

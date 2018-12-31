@@ -154,7 +154,7 @@ namespace TAO::Register
 
         /** Operator Overload <<
          *
-         *  Serializes data into vchLedgerData
+         *  Serializes data into vchOperations
          *
          *  @param[in] obj The object to serialize into ledger data
          *
@@ -170,7 +170,7 @@ namespace TAO::Register
 
         /** Operator Overload >>
          *
-         *  Serializes data into vchLedgerData
+         *  Serializes data into vchOperations
          *
          *  @param[out] obj The object to de-serialize from ledger data
          *

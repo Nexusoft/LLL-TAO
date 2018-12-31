@@ -57,8 +57,8 @@ namespace TAO::Ledger
         if(IsCoinbase())
         {
             /* Check the coinbase size. */
-            if(vchLedgerData.size() != 41)
-                return debug::error(FUNCTION "ledger data too large for coinbase %u", vchLedgerData.size());
+            if(vchOperations.size() != 41)
+                return debug::error(FUNCTION "ledger data too large for coinbase %u", vchOperations.size());
         }
 
         /* Check the timestamp. */
@@ -66,7 +66,7 @@ namespace TAO::Ledger
             return debug::error(FUNCTION "transaction timestamp too far in the future %u", __PRETTY_FUNCTION__, nTimestamp);
 
         /* Check the size constraints of the ledger data. */
-        if(vchLedgerData.size() > 1024) //TODO: implement a constant max size
+        if(vchOperations.size() > 1024) //TODO: implement a constant max size
             return debug::error(FUNCTION "ledger data outside of maximum size constraints", __PRETTY_FUNCTION__);
 
         /* Check the more expensive ECDSA verification. */
@@ -82,20 +82,20 @@ namespace TAO::Ledger
     /* Determines if the transaction is a coinbase transaction. */
     bool Transaction::IsCoinbase() const
     {
-        if(vchLedgerData.empty())
+        if(vchOperations.empty())
             return false;
 
-        return vchLedgerData[0] == TAO::Operation::OP::COINBASE;
+        return vchOperations[0] == TAO::Operation::OP::COINBASE;
     }
 
 
     /* Determines if the transaction is a coinstake transaction. */
     bool Transaction::IsTrust() const
     {
-        if(vchLedgerData.empty())
+        if(vchOperations.empty())
             return false;
 
-        return vchLedgerData[0] == TAO::Operation::OP::TRUST;
+        return vchOperations[0] == TAO::Operation::OP::TRUST;
     }
 
 
@@ -199,6 +199,6 @@ namespace TAO::Ledger
          HexStr(vchPubKey).c_str(),
          HexStr(vchSig).c_str(),
          GetHash().ToString().c_str(),
-         HexStr(vchLedgerData.begin(), vchLedgerData.end()).c_str());
+         HexStr(vchOperations.begin(), vchOperations.end()).c_str());
      }
 }

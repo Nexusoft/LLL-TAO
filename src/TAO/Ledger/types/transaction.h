@@ -57,7 +57,7 @@ namespace TAO::Ledger
 
 
         /** The data to be recorded in the ledger. **/
-        std::vector<uint8_t> vchLedgerData;
+        std::vector<uint8_t> vchOperations;
 
 
         //memory only, to be disposed once fully locked into the chain behind a checkpoint
@@ -87,7 +87,7 @@ namespace TAO::Ledger
                 READWRITE(hashGenesis);
 
             READWRITE(hashPrevTx);
-            READWRITE(vchLedgerData);
+            READWRITE(vchOperations);
             READWRITE(vchPubKey);
 
             if(!(nSerType & SER_GETHASH))
@@ -123,11 +123,11 @@ namespace TAO::Ledger
         Transaction& read(char* pch, int nSize)
         {
             /* Check size constraints. */
-            if(nReadPos + nSize > vchLedgerData.size())
+            if(nReadPos + nSize > vchOperations.size())
                 throw std::runtime_error(debug::strprintf(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos));
 
             /* Copy the bytes into tmp object. */
-            std::copy((uint8_t*)&vchLedgerData[nReadPos], (uint8_t*)&vchLedgerData[nReadPos] + nSize, (uint8_t*)pch);
+            std::copy((uint8_t*)&vchOperations[nReadPos], (uint8_t*)&vchOperations[nReadPos] + nSize, (uint8_t*)pch);
 
             /* Iterate the read position. */
             nReadPos += nSize;
@@ -148,7 +148,7 @@ namespace TAO::Ledger
         Transaction& write(const char* pch, int nSize)
         {
             /* Push the obj bytes into the vector. */
-            vchLedgerData.insert(vchLedgerData.end(), (uint8_t*)pch, (uint8_t*)pch + nSize);
+            vchOperations.insert(vchOperations.end(), (uint8_t*)pch, (uint8_t*)pch + nSize);
 
             return *this;
         }
@@ -156,7 +156,7 @@ namespace TAO::Ledger
 
         /** Operator Overload <<
          *
-         *  Serializes data into vchLedgerData
+         *  Serializes data into vchOperations
          *
          *  @param[in] obj The object to serialize into ledger data
          *
@@ -172,7 +172,7 @@ namespace TAO::Ledger
 
         /** Operator Overload >>
          *
-         *  Serializes data into vchLedgerData
+         *  Serializes data into vchOperations
          *
          *  @param[out] obj The object to de-serialize from ledger data
          *

@@ -119,7 +119,7 @@ namespace TAO::Ledger
         if(IsProofOfWork() && nVersion >= 3)
         {
             /* Get the stream from coinbase. */
-            DataStream ssData(producer.vchLedgerData, SER_OPERATIONS, producer.nVersion);
+            DataStream ssData(producer.vchOperations, SER_OPERATIONS, producer.nVersion);
             ssData.SetPos(33); //set the read position to where reward will be.
 
             /* Read the mining reward. */
@@ -332,7 +332,7 @@ namespace TAO::Ledger
                     return debug::error(FUNCTION "transaction is not in memory pool", __PRETTY_FUNCTION__);
 
                 /* Execute the register and operations layers. */
-                if(!TAO::Operation::Execute(tx.vchLedgerData, tx.hashGenesis, true))
+                if(!TAO::Operation::Execute(tx.vchOperations, tx.hashGenesis, true))
                     return debug::error(FUNCTION "transaction failed to execute", __PRETTY_FUNCTION__);
             }
         }

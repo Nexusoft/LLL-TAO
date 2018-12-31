@@ -141,7 +141,7 @@ namespace TAO::API
             throw APIException(-26, "Invalid Transaction");
 
         /* Execute the operations layer. */
-        if(!TAO::Operation::Execute(tx.vchLedgerData, hashGenesis))
+        if(!TAO::Operation::Execute(tx.vchOperations, hashGenesis))
             throw APIException(-26, "Operations failed to execute");
 
         /* Write transaction to local database. */
@@ -215,7 +215,7 @@ namespace TAO::API
             throw APIException(-26, "Invalid Transaction");
 
         /* Execute the operations layer. */
-        if(!TAO::Operation::Execute(tx.vchLedgerData, hashGenesis))
+        if(!TAO::Operation::Execute(tx.vchOperations, hashGenesis))
             throw APIException(-26, "Operations failed to execute");
 
         /* Write transaction to local database. */
