@@ -5,6 +5,17 @@
 # Use tritium API to get some info. If the URL has parameters encoded with
 # "?", then double quotes need to be used to call this bash script.
 #
+# Here is a sequence of curl commands to create an account, login, create
+# a supply-chain item, transfer ownership, and get the item:
+# 
+# ./curl-nexus "accounts/create?username=dino&password=dino&pin=1234"
+# ./curl-nexus "accounts/login?username=dino&password=dino"
+#
+# ./curl-nexus "supply/createitem?pin=1234&data=0xdfdf&session=<ses-id>"
+# ./curl-nexus "supply/getitem?address=<addr>"
+# ./curl-nexus "supply/transfer?pin=1234&session=<ses-id>&address=<addr>&destination=colin
+# ./curl-nexus "supply/history?address=<addr>"
+#
 
 HOST=$1
 COMMAND=$2
