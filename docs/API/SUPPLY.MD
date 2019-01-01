@@ -49,14 +49,14 @@ Return value JSON object:
 
 This shows the address transferred, and the txid that was associated with the transfer taking place.
 
-### Submit
+### CreateItem
 
-This will submit new data into the network, assigning ownership to the currently logged in account.
+This will create a new item, assigning ownership to the currently logged in account.
 LOGIN is required to use this command.
 
 ```
 <method>:
-/supply/submit
+/supply/createitem
 
 <key>=<value> parameter pairs:
 pin=XXXX
