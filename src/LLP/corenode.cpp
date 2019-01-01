@@ -83,32 +83,29 @@ namespace LLP
                     throw TAO::API::APIException(-6, "content-type not provided when content included");
 
             }
-            else //if get form encoding
+
+            /* Detect if it is url form encoding. */
+            std::string::size_type pos = METHOD.find("?");
+            if(pos != METHOD.npos)
             {
+                /* Parse out the form entries by char '&' */
+                std::vector<std::string> vParams;
+                ParseString(encoding::urldecode(METHOD.substr(pos + 1)), '&', vParams);
 
-                /* Detect if it is url form encoding. */
-                std::string::size_type pos = METHOD.find("?");
-                if(pos != METHOD.npos)
+                /* Parse the form from the end of method. */
+                METHOD = METHOD.substr(0, pos);
+
+                /* Check each form entry. */
+                for(std::string strParam : vParams)
                 {
-                    /* Parse out the form entries by char '&' */
-                    std::vector<std::string> vParams;
-                    ParseString(encoding::urldecode(METHOD.substr(pos + 1)), '&', vParams);
+                    std::string::size_type pos2 = strParam.find("=");
+                    if(pos2 == strParam.npos)
+                        break;
 
-                    /* Parse the form from the end of method. */
-                    METHOD = METHOD.substr(0, pos);
+                    std::string key   = strParam.substr(0, pos2);
+                    std::string value = strParam.substr(pos2 + 1);
 
-                    /* Check each form entry. */
-                    for(std::string strParam : vParams)
-                    {
-                        std::string::size_type pos2 = strParam.find("=");
-                        if(pos2 == strParam.npos)
-                            break;
-
-                        std::string key   = strParam.substr(0, pos2);
-                        std::string value = strParam.substr(pos2 + 1);
-
-                        params[key] = value;
-                    }
+                    params[key] = value;
                 }
             }
 
