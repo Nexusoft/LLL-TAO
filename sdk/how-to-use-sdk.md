@@ -16,7 +16,7 @@ To initialize with the python SDK, your python program should:
 ```
 
 The nexus_sdk SDK library is in LLL-TAO/sdk/nexus_sdk.py. Then you can call
-sdk_init() to initialize with a credentials:
+sdk_init() to initialize with credentials:
 
 ```
     myuser = nexus_sdk.sdk_init("<username>", "<password>", "<pin>")
@@ -95,7 +95,7 @@ Lookup a Supply-Chain Item in the Blockchain
 --------------------------------------------
 
 You must supply a register address to lookup an item on the Blockchain. The
-value of &lt;address&gt; below is retunrned from nexus_supply_createitem():
+value of &lt;address&gt; below is returned from nexus_supply_createitem():
 
 ```
     status = myuser.nexus_supply_getitem("<address>")
@@ -114,7 +114,7 @@ ID of the current owner of the item. You can change the owner by calling:
     status = myuser.nexus_supply_transfer("<address>", "<new-owner-genesis>")
 ```
 
-Where myuser is the return value from sdk_init(). Where the ownership
+Where myuser is the return value from sdk_init() and the ownership
 of register address &lt;address&gt; is change to user with genesis
 ID of &lt;new-owner-genesis&gt;. Obtaining the &lt;new-owner-genesis&gt;
 genesis ID of another user happens out of band.
@@ -130,7 +130,8 @@ you can call:
 ```
 
 Where myuser is the return value from sdk_init(). The variable status returns
-information for each owner that had owned register address &lt;address&gt;.
+information for each owner that had owned register address &lt;address&gt;
+which is an array of dictionary arrays in status["result"].
 
 Return Status Information
 -------------------------
