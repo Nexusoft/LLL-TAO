@@ -137,7 +137,7 @@ Return Status Information
 -------------------------
 
 The Nexus python SDK will always return a dictionary array that maps exactly
-from the JSON returned by the Nexus daemon support4ed APIs. In some cases,
+from the JSON returned by the Nexus daemon supported APIs. In some cases,
 the API will return error codes and in other cases the SDK will return error
 codes.
     
