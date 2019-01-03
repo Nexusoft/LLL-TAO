@@ -16,6 +16,13 @@ ________________________________________________________________________________
 
 #include <string>
 #include <cinttypes>
+#include <iostream>
+#include <sstream>
+#include <fstream>
+
+#include <Util/include/args.h>
+#include <Util/include/config.h>
+#include <Util/include/mutex.h>
 
 #ifdef snprintf
 #undef snprintf
@@ -62,8 +69,12 @@ ________________________________________________________________________________
 #define __PRETTY_FUNCTION__ __FUNCTION__
 #endif
 
+#define TESTING ANSI_COLOR_FUNCTION, __PRETTY_FUNCTION__, ANSI_COLOR_RESET, ": "
+
 namespace debug
 {
+
+    static std::recursive_mutex DEBUG_MUTEX;
 
     /** Block debug output flags. **/
     enum flags
@@ -72,6 +83,86 @@ namespace debug
         tx            = (1 << 1),
         chain         = (1 << 2)
     };
+
+
+    /** print args
+     *
+     *  Overload for varadaic templates.
+     *
+     *  @param[out] s The stream being written to.
+     *  @param[in] head The object being written to stream.
+     *
+     **/
+    template<class Head>
+    void print_args(std::ostream& s, Head&& head)
+    {
+        s << std::forward<Head>(head);
+    }
+
+
+    /** print args
+     *
+     *  Handle for variadic template pack
+     *
+     *  @param[out] s The stream being written to.
+     *  @param[in] head The object being written to stream.
+     *  @param[in] tail The variadic parameters.
+     *
+     **/
+    template<class Head, class... Tail>
+    void print_args(std::ostream& s, Head&& head, Tail&&... tail)
+    {
+        s << std::forward<Head>(head);
+        print_args(s, std::forward<Tail>(tail)...);
+    }
+
+
+    /** safe printstr
+     *
+     *  Safe handle for writing objects into a string.
+     *
+     *  @param[out] s The stream being written to.
+     *  @param[in] head The object being written to stream.
+     *  @param[in] tail The variadic parameters.
+     *
+     **/
+    template<class... Args>
+    std::string safe_printstr(Args&&... args) {
+        std::ostringstream ss;
+        print_args(ss, std::forward<Args>(args)...);
+
+        return ss.str();
+    }
+
+    /** log
+     *
+     *  Safe constant format debugging logs.
+     *  Dumps to console or to log file.
+     *
+     *  @param[in] nLevel The log level being written.
+     *  @param[in] args The variadic template arguments in.
+     *
+     **/
+    template<class... Args>
+    void log2(uint32_t nLevel, Args&&... args)
+    {
+        /* Don't write if log level is below set level. */
+        if(config::GetArg("-verbose", 0) < nLevel)
+            return;
+
+        LOCK(DEBUG_MUTEX);
+
+        /* Get the debug string. */
+        std::string debug = safe_printstr(args...);
+
+        /* Dump it to the console. */
+        std::cout << debug << std::endl;
+
+        /* Write it to the debug file. */
+        std::string pathDebug = config::GetDataDir() + "debug.log";
+        std::ofstream ssFile(pathDebug, std::ios::app);
+        ssFile << debug << std::endl;
+    }
 
 
     /** log
@@ -91,9 +182,6 @@ namespace debug
      *
      **/
     int log(uint32_t nLevel, const char* pszFormat, ...);
-
-    template<typename Type, typename... Args>
-    int log2(uint32_t nLevel, Args ...all);
 
 
     /** real_strprintf

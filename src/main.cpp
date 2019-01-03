@@ -41,6 +41,10 @@ ________________________________________________________________________________
 
 #include <LLP/types/miner.h>
 
+#include <iostream>
+#include <sstream>
+
+
 
 namespace Legacy
 {
@@ -64,6 +68,7 @@ namespace LLP
 }
 
 
+
 int main(int argc, char** argv)
 {
 
@@ -77,6 +82,11 @@ int main(int argc, char** argv)
 
     /* Read the configuration file. */
     config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
+
+    debug::log2(0, TESTING, "test", "this", argc, "is", ANSI_COLOR_BLUE"final"ANSI_COLOR_RESET);
+
+    std::string data = debug::safe_printstr("test", "this", argc, "is", ANSI_COLOR_BLUE"final"ANSI_COLOR_RESET);
+    debug::log2(0, TESTING, data);
 
 
     /* Handle Commandline switch */

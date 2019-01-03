@@ -34,16 +34,6 @@ ________________________________________________________________________________
 namespace debug
 {
     static FILE* fileout = nullptr;
-    static std::recursive_mutex DEBUG_MUTEX;
-
-
-    template<typename Type, typename... Args>
-    int log2(uint32_t nLevel, Args ...all)
-    {
-        /* Don't write if log level is below set level. */
-        if(config::GetArg("-verbose", 0) < nLevel)
-            return 0;
-    }
 
     /* Prints output to the console. It may also write output to a debug.log
      * if the global fileout file is assigned. */
