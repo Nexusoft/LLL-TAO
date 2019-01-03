@@ -22,9 +22,8 @@ sdk_init() to initialize with a credentials:
     myuser = nexus_sdk.sdk_init("<username>", "<password>", "<pin>")
 ```
 
-You choose values for &lt;<username&gt;>, &lt;<password&gt;>, and
-&lt;<pin&gt;>. Keep them private since they give you access to your Nexus
-Tritium account.    
+You choose values for &lt;username&gt;, &lt;password&gt;, and &lt;pin&gt;.
+Keep them private since they give you access to your Nexus Tritium account.    
             
 Creating a User
 ---------------
@@ -89,14 +88,14 @@ Creating a Supply-Chain Item
 ```
 
 Where myuser is the return value from sdk_init(). Stores the value
-&lt;<data&gt;> in a address register. The address is returned in
+&lt;data&gt; in a address register. The address is returned in
 status["result"]["address"].
 
 Lookup a Supply-Chain Item in the Blockchain
 --------------------------------------------
 
 You must supply a register address to lookup an item on the Blockchain. The
-value of &lt;<address&gt;> below is retunrned from nexus_supply_createitem():
+value of &lt;address&gt; below is retunrned from nexus_supply_createitem():
 
 ```
     status = myuser.nexus_supply_getitem("<address>")
@@ -116,8 +115,8 @@ ID of the current owner of the item. You can change the owner by calling:
 ```
 
 Where myuser is the return value from sdk_init(). Where the ownership
-of register address &lt;<address&gt;> is change to user with genesis
-ID of &lt;<new-owner-genesis&gt;>. Obtaining the &lt;<new-owner-genesis&gt;>
+of register address &lt;address&gt; is change to user with genesis
+ID of &lt;new-owner-genesis&gt;. Obtaining the &lt;new-owner-genesis&gt;
 genesis ID of another user happens out of band.
 
 Obtaining a History of changes to a Register Address
@@ -131,7 +130,7 @@ you can call:
 ```
 
 Where myuser is the return value from sdk_init(). The variable status returns
-information for each owner that had owned register address &lt;<address&gt;>.
+information for each owner that had owned register address &lt;address&gt;.
 
 Return Status Information
 -------------------------
