@@ -161,8 +161,6 @@ int main(int argc, char** argv)
         config::GetBoolArg("-meters", false),
         true);
 
-
-    /* Add node to Legacy server
     if(config::mapMultiArgs["-addnode"].size() > 0)
     {
         for(auto node : config::mapMultiArgs["-addnode"])

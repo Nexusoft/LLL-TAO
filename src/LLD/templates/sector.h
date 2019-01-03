@@ -149,24 +149,29 @@ namespace LLD
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         SectorDatabase(std::string strNameIn, uint8_t nFlagsIn)
-        : strName(strNameIn)
-        , strBaseLocation(config::GetDataDir() + strNameIn + "/datachain/")
+        : strBaseLocation(config::GetDataDir() + strNameIn + "/datachain/")
+        , strName(strNameIn)
         , fDestruct(false)
         , fInitialized(false)
+        , runtime()
+        , pTransaction(nullptr)
+        , pSectorKeys(nullptr)
+        , nBytesRead(0)
+        , nBytesWrote(0)
+        , nRecordsFlushed(0)
         , nFlags(nFlagsIn)
         , cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE))
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
-        , nBytesRead(0)
-        , nBytesWrote(0)
         , nCurrentFile(0)
         , nCurrentFileSize(0)
         , CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this))
         , MeterThread(std::bind(&SectorDatabase::Meter, this))
+        , vDiskBuffer()
         , nBufferBytes(0)
         {
             /* Set readonly flag if write or append are not specified. */
             if(!(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND))
-                nFlags | FLAGS::READONLY;
+                nFlags |= FLAGS::READONLY;
 
             /* Initialize the Database. */
             Initialize();
