@@ -87,7 +87,7 @@ namespace LLC
 
         explicit CBigNum(const std::vector<uint8_t>& vch);
 
-        BIGNUM* const getBN() const;
+        BIGNUM* getBN() const;
 
         void setulong(unsigned long n);
 

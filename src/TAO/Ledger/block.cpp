@@ -100,7 +100,9 @@ namespace TAO::Ledger
 
     uint1024_t Block::StakeHash()
     {
-
+        uint1024_t hash;
+        //TODO: finish this method
+        return hash;
     }
 
 

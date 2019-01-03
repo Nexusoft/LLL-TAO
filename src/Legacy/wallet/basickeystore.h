@@ -25,9 +25,9 @@ ________________________________________________________________________________
 #include <Legacy/types/script.h>
 #include <Legacy/wallet/keystore.h>
 
-namespace Legacy 
+namespace Legacy
 {
-    
+
     /* Map to store private keys, keyed by Base 58-encoded address. bool=true indicates compressed key */
     typedef std::map<NexusAddress, std::pair<LLC::CSecret, bool> > KeyMap;
 
@@ -48,7 +48,7 @@ namespace Legacy
     public:
         /** AddKey
          *
-         *  Add a key to the key store. 
+         *  Add a key to the key store.
          *
          *  @param[in] key The key to add
          *
@@ -60,7 +60,7 @@ namespace Legacy
 
         /** GetKey
          *
-         *  Retrieve a key from the key store. 
+         *  Retrieve a key from the key store.
          *
          *  @param[in] address The Base 58-encoded address of the key to retrieve
          *
@@ -74,7 +74,7 @@ namespace Legacy
 
         /** GetKeys
          *
-         *  Retrieve the set of public addresses for all keys currently present in the key store. 
+         *  Retrieve the set of public addresses for all keys currently present in the key store.
          *
          *  @param[out] setAddress A Set containing the Base 58-encoded addresses of the all keys currently in the key store
          *
@@ -84,7 +84,7 @@ namespace Legacy
 
         /** HaveKey
          *
-         *  Check whether a key corresponding to a given address is present in the store. 
+         *  Check whether a key corresponding to a given address is present in the store.
          *
          *  @param[in] address The Base 58-encoded address of the key to check
          *
@@ -96,7 +96,7 @@ namespace Legacy
 
         /** AddCScript
          *
-         *  Add a script to the key store. 
+         *  Add a script to the key store.
          *
          *  @param[in] redeemScript The script to add
          *
@@ -108,7 +108,7 @@ namespace Legacy
 
         /** GetCScript
          *
-         *  Retrieve a script from the key store. 
+         *  Retrieve a script from the key store.
          *
          *  @param[in] hash The 256 bit hash of the script to retrieve
          *
@@ -122,7 +122,7 @@ namespace Legacy
 
         /** HaveCScript
          *
-         *  Check whether a script is present in the store. 
+         *  Check whether a script is present in the store.
          *
          *  @param[in] hash The 256 bit hash of the script to check
          *

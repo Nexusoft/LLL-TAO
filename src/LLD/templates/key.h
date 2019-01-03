@@ -100,6 +100,8 @@ namespace LLD
             nSectorSize     = key.nSectorSize;
             nSectorStart    = key.nSectorStart;
             vKey            = key.vKey;
+
+            return *this;
         }
 
         SectorKey(const SectorKey& key)

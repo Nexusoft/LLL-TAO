@@ -149,16 +149,22 @@ namespace Legacy
          *  Initializes a wallet instance for FEATURE_BASE that is not file backed.
          *
          **/
-        CWallet() :
-            nWalletVersion(FEATURE_BASE),
-            nWalletMaxVersion(FEATURE_BASE),
-            strWalletFile(""),
-            fFileBacked(false),
-            fLoaded(false),
-            addressBook(CAddressBook(*this)),
-            keyPool(CKeyPool(*this)),
-            nMasterKeyMaxID(0)
-        {}
+        CWallet()
+        : nWalletVersion(FEATURE_BASE)
+        , nWalletMaxVersion(FEATURE_BASE)
+        , fFileBacked(false)
+        , fLoaded(false)
+        , strWalletFile("")
+        , mapMasterKeys()
+        , nMasterKeyMaxID(0)
+        , addressBook(CAddressBook(*this))
+        , keyPool(CKeyPool(*this))
+        , vchDefaultKey()
+        , mapWallet()
+        , mapRequestCount()
+        {
+            
+        }
 
 
         /** Constructor
@@ -173,16 +179,22 @@ namespace Legacy
          *  @see LoadWallet()
          *
          **/
-        CWallet(std::string strWalletFileIn) :
-            nWalletVersion(FEATURE_BASE),
-            nWalletMaxVersion(FEATURE_BASE),
-            strWalletFile(strWalletFileIn),
-            fFileBacked(true),
-            fLoaded(false),
-            addressBook(CAddressBook(*this)),
-            keyPool(CKeyPool(*this)),
-            nMasterKeyMaxID(0)
-        {}
+        CWallet(std::string strWalletFileIn)
+        : nWalletVersion(FEATURE_BASE)
+        , nWalletMaxVersion(FEATURE_BASE)
+        , fFileBacked(false)
+        , fLoaded(false)
+        , strWalletFile(strWalletFileIn)
+        , mapMasterKeys()
+        , nMasterKeyMaxID(0)
+        , addressBook(CAddressBook(*this))
+        , keyPool(CKeyPool(*this))
+        , vchDefaultKey()
+        , mapWallet()
+        , mapRequestCount()
+        {
+
+        }
 
 
     /*----------------------------------------------------------------------------------------*/
@@ -543,7 +555,7 @@ namespace Legacy
          * @return true if the transactions was added/updated
          *
          */
-        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock& containingBlock, 
+        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock& containingBlock,
                                       bool fUpdate = false, bool fFindBlock = false, bool fRescan = false);
 
 

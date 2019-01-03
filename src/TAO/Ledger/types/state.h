@@ -140,7 +140,7 @@ namespace TAO::Ledger
 
 
         /** Not operator overloading. **/
-        bool const operator ! (void)
+        bool operator ! (void)
         {
             return !IsNull();
         }

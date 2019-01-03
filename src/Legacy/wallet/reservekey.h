@@ -6,7 +6,7 @@
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
-        
+
 			"ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
@@ -23,12 +23,12 @@ ________________________________________________________________________________
 
 namespace Legacy
 {
-    
+
     /** @class CReserveKey
      *
      *  Holds the public key value of a key reserved in the key pool but not
-     *  yet used.  Supports either returning the key to the pool or keeping it 
-     *  for use. 
+     *  yet used.  Supports either returning the key to the pool or keeping it
+     *  for use.
      *
      **/
     class CReserveKey
@@ -47,29 +47,32 @@ namespace Legacy
     public:
         /** Constructor
          *
-         *  Initializes reserve key from wallet pointer. 
-         *  
+         *  Initializes reserve key from wallet pointer.
+         *
          *  @param[in] pWalletIn The wallet where keys will be reserved, cannot be nullptr
          *
          *  @deprecated supported for backward compatability
          *
          **/
-        CReserveKey(CWallet* pWalletIn) :
-            nPoolIndex(-1),
-            wallet(*pWalletIn)
+        CReserveKey(CWallet* pWalletIn)
+        : wallet(*pWalletIn)
+        , nPoolIndex(-1)
+        , vchPubKey()
+
         { }
 
 
         /** Constructor
          *
          *  Initializes reserve key from wallet reference.
-         * 
+         *
          *  @param[in] walletIn The wallet where keys will be reserved
          *
          **/
-        CReserveKey(CWallet& walletIn) :
-            nPoolIndex(-1),
-            wallet(walletIn)
+        CReserveKey(CWallet& walletIn)
+        : wallet(walletIn)
+        , nPoolIndex(-1)
+        , vchPubKey()
         { }
 
 
@@ -85,10 +88,10 @@ namespace Legacy
         }
 
 
-        /* If you copy a CReserveKey that has a key reserved, then keep/return it in one copy, the other  
-         * copy becomes invalid but could still be used. For example, it would be a problem if KeepKey() 
-         * were called on one copy, then ReturnKey() called on the other. The key would be put back into 
-         * the key pool even though it had been used. All of this is why copy disallowed.                
+        /* If you copy a CReserveKey that has a key reserved, then keep/return it in one copy, the other
+         * copy becomes invalid but could still be used. For example, it would be a problem if KeepKey()
+         * were called on one copy, then ReturnKey() called on the other. The key would be put back into
+         * the key pool even though it had been used. All of this is why copy disallowed.
          */
 
         /** Copy constructor deleted. No copy allowed **/
@@ -101,7 +104,7 @@ namespace Legacy
 
         /** GetReservedKey
          *
-         *  Retrieves the public key value for the currently reserved key. 
+         *  Retrieves the public key value for the currently reserved key.
          *  If none yet reserved, will first reserve a new key from the key pool of the associated wallet.
          *
          *  @return the public key value of the reserved key

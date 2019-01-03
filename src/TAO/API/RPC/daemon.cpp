@@ -74,6 +74,7 @@ namespace TAO::API
     //     ReadConfigFile(mapArgs, mapMultiArgs);
 
     //     return "success";
+        json::json ret;
+        return ret;
     }
-
 }

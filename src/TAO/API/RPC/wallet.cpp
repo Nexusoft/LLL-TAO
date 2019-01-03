@@ -271,6 +271,8 @@ namespace TAO::API
     //         result.push_back(Pair("amount in question", ValueFromAmount(nBalanceInQuestion)));
     //     }
     //     return result;
+        json::json ret;
+        return ret;
     }
 
     /* listtrustkeys
@@ -298,6 +300,8 @@ namespace TAO::API
 
 
     //     return result;
+        json::json ret;
+        return ret;
     }
 
     /* repairwallet
@@ -321,6 +325,8 @@ namespace TAO::API
     //         result.push_back(Pair("amount affected by repair", ValueFromAmount(nBalanceInQuestion)));
     //     }
     //     return result;
+        json::json ret;
+        return ret;
     }
 
     // class CTxDump
@@ -353,6 +359,8 @@ namespace TAO::API
     //     pwalletMain->ScanForWalletTransactions(Core::pindexGenesisBlock, true);
 
     //     return "success";
+        json::json ret;
+        return ret;
     }
 
     /* importprivkey <PrivateKey> [label]
@@ -396,6 +404,8 @@ namespace TAO::API
     //     MainFrameRepaint();
 
     //     return Value::null;
+        json::json ret;
+        return ret;
     }
 
     /* dumpprivkey <NexusAddress>
@@ -420,6 +430,8 @@ namespace TAO::API
     //     if (!pwalletMain->GetSecret(address, vchSecret, fCompressed))
     //         throw JSONRPCError(-4,"Private key for address " + strAddress + " is not known");
     //     return Wallet::NexusSecret(vchSecret, fCompressed).ToString();
+        json::json ret;
+        return ret;
     }
 
     /* importkeys
@@ -482,6 +494,8 @@ namespace TAO::API
     //         MainFrameRepaint();
 
     //         return response;
+        json::json ret;
+        return ret;
     }
 
     /* exportkeys
@@ -530,6 +544,7 @@ namespace TAO::API
     //     }
 
     //     return entry;
+        json::json ret;
+        return ret;
     }
-
 }

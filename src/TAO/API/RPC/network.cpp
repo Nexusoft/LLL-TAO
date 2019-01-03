@@ -61,6 +61,8 @@ namespace TAO::API
     //     obj.push_back(Pair("hashrate", (boost::uint64_t)nHashRate));
 
     //     return obj;
+        json::json ret;
+        return ret;
     }
 
     /* Get network prime searched per second */
@@ -103,6 +105,8 @@ namespace TAO::API
     //     obj.push_back(Pair("primespersecond", (boost::uint64_t)nHashRate));
 
     //     return obj;
+        json::json ret;
+        return ret;
     }
 
     /* List all the Trust Keys on the Network */
@@ -157,6 +161,8 @@ namespace TAO::API
     //     ret.push_back(Pair("total", (int)trustkeys.size()));
 
     //     return ret;
+        json::json ret;
+        return ret;
     }
 
     /* Returns the number of blocks in the longest block chain */
@@ -201,6 +207,8 @@ namespace TAO::API
 
     //     obj.push_back(Pair("stake",       Core::GetDifficulty(pindexPOS->nBits, 0)));
     //     return obj;
+        json::json ret;
+        return ret;
     }
 
     /* getsupplyrates
@@ -236,6 +244,8 @@ namespace TAO::API
     //     obj.push_back(Pair("yearSupply",    ValueFromAmount(Core::SubsidyInterval(nMinutes, 524160)))); //524160
 
     //     return obj;
+        json::json ret;
+        return ret;
     }
 
     /* getmoneysupply <timestamp>
@@ -258,8 +268,7 @@ namespace TAO::API
     //     obj.push_back(Pair("developers", ValueFromAmount(Core::CompoundSubsidy(nMinutes, 2))));
 
     //     return obj;
+        json::json ret;
+        return ret;
     }
-
-
-
 }

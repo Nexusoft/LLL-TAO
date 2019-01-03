@@ -165,7 +165,7 @@ public:
         /* Seek from end of stream. */
         if(nFlags == STREAM::END)
         {
-            if(vchData.size() - nSeek < 0)
+            if(nSeek > vchData.size())
                 throw std::runtime_error(debug::strprintf(FUNCTION "seek out of bounds %u", __PRETTY_FUNCTION__, nSeek));
 
             nReadPos = vchData.size() - nSeek;

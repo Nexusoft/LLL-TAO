@@ -107,7 +107,7 @@ namespace TAO::Register
         , nIdentifier(nIdentifierIn)
         , nMaxSupply(nMaxSupplyIn)
         , nCurrentSupply(nMaxSupplyIn)
-        , nCoinDigits(nCoinDigits)
+        , nCoinDigits(nCoinDigitsIn)
         {
 
         }

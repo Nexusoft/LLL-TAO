@@ -326,8 +326,7 @@ namespace Legacy
             /* Declaration needs to be in this scope, but cannot instantiate until afer check fFileBacked.
              * Use pointer to do this.
              */
-            CWalletDB* pwalletdb;
-
+            CWalletDB* pwalletdb = nullptr;
             if (fFileBacked)
             {
                 pwalletdb = new CWalletDB(strWalletFile);
@@ -752,7 +751,7 @@ namespace Legacy
     /*  Checks whether a transaction has inputs or outputs belonging to this wallet, and adds
      *  it to the wallet when it does.
      */
-    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock& containingBlock, 
+    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock& containingBlock,
                                            bool fUpdate, bool fFindBlock, bool fRescan)
     {
         uint512_t hash = tx.GetHash();
@@ -1483,7 +1482,7 @@ namespace Legacy
              * duration of this scope.  This is the only place where this optimization
              * maybe makes sense; please don't do it anywhere else.
              */
-            CWalletDB* pwalletdb;
+            CWalletDB* pwalletdb = nullptr;
             if (fFileBacked)
                 pwalletdb = new CWalletDB(strWalletFile,"r");
 
@@ -1594,7 +1593,7 @@ namespace Legacy
 //            return false; // No transactions added
 
         /* Calculate the Interest for the Coinstake Transaction. */
-        int64_t nInterest;
+        //int64_t nInterest;
         LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
 //        if(!block.vtx[0].GetCoinstakeInterest(block, legacydb, nInterest))
 //            return debug::error("AddCoinstakeInputs() : Failed to Get Interest");

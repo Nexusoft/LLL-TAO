@@ -876,20 +876,21 @@ class DataStream : public std::vector<uint8_t>
 
 
     /** The serialization type. **/
-    int32_t nSerType;
+    uint32_t nSerType;
 
 
     /** The serializtion version **/
-    int32_t nSerVersion;
+    uint32_t nSerVersion;
 
 
 public:
 
     /** Default Constructor. **/
-    DataStream(int32_t nSerTypeIn, int32_t nSerVersionIn)
-    : nReadPos(0)
+    DataStream(uint32_t nSerTypeIn, uint32_t nSerVersionIn)
+    : std::vector<uint8_t>()
+    , nReadPos(0)
     , nSerType(nSerTypeIn)
-    , nSerVersion(nSerVersion)
+    , nSerVersion(nSerVersionIn)
     {
         clear();
     }
@@ -906,11 +907,11 @@ public:
      *  @param[in] nSerVersionIn The serialize version
      *
      **/
-    DataStream(std::vector<uint8_t> vchDataIn, int32_t nSerTypeIn, int32_t nSerVersionIn)
-    : nReadPos(0)
+    DataStream(std::vector<uint8_t> vchDataIn, uint32_t nSerTypeIn, uint32_t nSerVersionIn)
+    : std::vector<uint8_t>(vchDataIn)
+    , nReadPos(0)
     , nSerType(nSerTypeIn)
-    , nSerVersion(nSerVersion)
-    , std::vector<uint8_t>(vchDataIn)
+    , nSerVersion(nSerVersionIn)
     {
     }
 
@@ -920,11 +921,11 @@ public:
      *  Default constructor for initialization with serialize data, type and version
      *
      **/
-    DataStream(std::vector<uint8_t>::const_iterator pbegin, std::vector<uint8_t>::const_iterator pend, int32_t nSerTypeIn, int32_t nSerVersionIn)
-    : nReadPos(0)
+    DataStream(std::vector<uint8_t>::const_iterator pbegin, std::vector<uint8_t>::const_iterator pend, uint32_t nSerTypeIn, uint32_t nSerVersionIn)
+    : std::vector<uint8_t>(pbegin, pend)
+    , nReadPos(0)
     , nSerType(nSerTypeIn)
-    , nSerVersion(nSerVersion)
-    , std::vector<uint8_t>(pbegin, pend)
+    , nSerVersion(nSerVersionIn)
     {
     }
 
@@ -937,11 +938,11 @@ public:
      *  (Microsoft compiler compatible)
      *
      **/
-    DataStream(const char* pbegin, const char* pend, int32_t nSerTypeIn, int32_t nSerVersionIn)
-    : nReadPos(0)
+    DataStream(const char* pbegin, const char* pend, uint32_t nSerTypeIn, uint32_t nSerVersionIn)
+    : std::vector<uint8_t>((uint8_t*)pbegin, (uint8_t*)pend)
+    , nReadPos(0)
     , nSerType(nSerTypeIn)
-    , nSerVersion(nSerVersion)
-    , std::vector<uint8_t>((uint8_t*)pbegin, (uint8_t*)pend)
+    , nSerVersion(nSerVersionIn)
     {
     }
 #endif
@@ -952,11 +953,11 @@ public:
      *  Default constructor for initialization with serialize data, type and version.
      *
      **/
-    DataStream(const std::vector<char>& vchDataIn, int32_t nSerTypeIn, int32_t nSerVersionIn)
-    : nReadPos(0)
+    DataStream(const std::vector<char>& vchDataIn, uint32_t nSerTypeIn, uint32_t nSerVersionIn)
+    : std::vector<uint8_t>((uint8_t*)&vchDataIn.begin()[0], (uint8_t*)&vchDataIn.end()[0])
+    , nReadPos(0)
     , nSerType(nSerTypeIn)
-    , nSerVersion(nSerVersion)
-    , std::vector<uint8_t>((uint8_t*)&vchDataIn.begin()[0], (uint8_t*)&vchDataIn.end()[0])
+    , nSerVersion(nSerVersionIn)
     {
     }
 

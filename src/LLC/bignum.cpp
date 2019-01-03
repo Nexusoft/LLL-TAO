@@ -197,7 +197,7 @@ namespace LLC
         setvch(vch);
     }
 
-    BIGNUM* const CBigNum::getBN() const
+    BIGNUM* CBigNum::getBN() const
     {
         return m_BN;
     }

@@ -36,7 +36,14 @@ namespace TAO::Ledger
     /* Get the block state object. */
     bool GetLastState(BlockState& state, uint32_t nChannel)
     {
+        for(uint32_t index = 0; index < 10000; index++) //set limit on searchable blocks
+        {
+            state = state.Prev();
+            if(state.GetChannel() == nChannel)
+                return true;
+        }
 
+        return false;
     }
 
 
@@ -347,12 +354,16 @@ namespace TAO::Ledger
             prev.hashNextBlock = GetHash();
             LLD::legDB->WriteBlock(prev.GetHash(), prev);
         }
+
+        return true;
     }
 
 
     /** Disconnect a block state from the chain. **/
     bool BlockState::Disconnect()
     {
+
+        return true;
         //revert the transaction operations from previous state.
     }
 

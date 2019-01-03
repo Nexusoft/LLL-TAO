@@ -91,7 +91,7 @@ namespace LLP
             if(strType == "GET" && fHeader)
                 return true;
 
-            return fHeader && (nContentLength == 0 || nContentLength > 0 && nContentLength == strContent.size());
+            return fHeader && (nContentLength == 0 || (nContentLength > 0 && nContentLength == strContent.size()));
         }
 
 

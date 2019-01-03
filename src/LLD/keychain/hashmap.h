@@ -207,7 +207,9 @@ namespace LLD
          **/
          std::vector< std::vector<uint8_t> > GetKeys()
          {
+             std::vector< std::vector<uint8_t> > vKeys;
 
+             return vKeys;
          }
 
 

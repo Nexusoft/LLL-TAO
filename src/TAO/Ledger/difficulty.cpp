@@ -319,7 +319,7 @@ namespace TAO::Ledger
         /* Keep the target difficulty at minimum (allow -regtest difficulty) */
         uint32_t nBits = SetBits(nDifficulty);
         if (nBits < bnProofOfWorkLimit[0].getuint())
-            nBits < bnProofOfWorkLimit[0].getuint();
+            nBits = bnProofOfWorkLimit[0].getuint();
 
         /* Console Output */
         uint32_t nDays, nHours, nMinutes;

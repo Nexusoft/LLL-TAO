@@ -1,4 +1,4 @@
-/*__________________________________________________________________________________________
+    /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
@@ -9,13 +9,13 @@
 
             "ad vocem populi" - To the Voice of the People
 
-____________________________________________________________________________________________*/
+    ____________________________________________________________________________________________*/
 
-#include <TAO/API/include/rpc.h>
-#include <Util/include/json.h>
+    #include <TAO/API/include/rpc.h>
+    #include <Util/include/json.h>
 
-namespace TAO::API
-{
+    namespace TAO::API
+    {
 
     /* getnewaddress [account]
        Returns a new Nexus address for receiving payments.
@@ -47,7 +47,9 @@ namespace TAO::API
     //     pwalletMain->SetAddressBookName(address, strAccount);
 
     //     return address.ToString();
-     }
+        json::json ret;
+        return ret;
+    }
 
 
     // Wallet::NexusAddress GetAccountAddress(string strAccount, bool bForceNew=false)
@@ -104,6 +106,8 @@ namespace TAO::API
     //     ret = GetAccountAddress(strAccount).ToString();
 
     //     return ret;
+        json::json ret;
+        return ret;
     }
 
 
@@ -136,7 +140,9 @@ namespace TAO::API
     //     pwalletMain->SetAddressBookName(address, strAccount);
 
     //     return Value::null;
-     }
+        json::json ret;
+        return ret;
+    }
 
     /* getaccount <Nexusaddress>
        Returns the account associated with the given address */
@@ -156,6 +162,8 @@ namespace TAO::API
     //     if (mi != pwalletMain->mapAddressBook.end() && !(*mi).second.empty())
     //         strAccount = (*mi).second;
     //     return strAccount;
+        json::json ret;
+        return ret;
     }
 
     /* getaddressesbyaccount <account>
@@ -179,6 +187,8 @@ namespace TAO::API
     //             ret.push_back(address.ToString());
     //     }
     //     return ret;
+        json::json ret;
+        return ret;
     }
 
     // json::json RPC::SetTxFee(const json::json& params, bool fHelp)
@@ -267,6 +277,8 @@ namespace TAO::API
     //         throw JSONRPCError(-5, "Sign failed");
 
     //     return EncodeBase64(&vchSig[0], vchSig.size());
+        json::json ret;
+        return ret;
     }
 
     /* verifymessage <Nexusaddress> <signature> <message>
@@ -301,6 +313,8 @@ namespace TAO::API
     //         return false;
 
     //     return (Wallet::NexusAddress(key.GetPubKey()) == addr);
+        json::json ret;
+        return ret;
     }
 
     /* getreceivedbyaddress <Nexusaddress> [minconf=1]
@@ -341,6 +355,8 @@ namespace TAO::API
     //    }
 
     //     return  ValueFromAmount(nAmount);
+        json::json ret;
+        return ret;
     }
 
 
@@ -389,7 +405,9 @@ namespace TAO::API
     //                 if (wtx.GetDepthInMainChain() >= nMinDepth)
     //                     nAmount += txout.nValue;
     //         }
-        }
+        json::json ret;
+        return ret;
+    }
 
     //     return (double)nAmount / (double)COIN;
     // }
@@ -479,6 +497,8 @@ namespace TAO::API
     //     int64 nBalance = GetAccountBalance(strAccount, nMinDepth);
 
     //     return ValueFromAmount(nBalance);
+        json::json ret;
+        return ret;
     }
 
     /* move <fromaccount> <toaccount> <amount> [minconf=1] [comment]
@@ -528,6 +548,8 @@ namespace TAO::API
     //         throw JSONRPCError(-20, "database error");
 
     //     return true;
+        json::json ret;
+        return ret;
     }
 
 
@@ -726,6 +748,8 @@ namespace TAO::API
 
     //     pwalletMain->SetAddressBookName(address, strAccount);
     //     return address.ToString();
+        json::json ret;
+        return ret;
     }
 
 
@@ -852,6 +876,8 @@ namespace TAO::API
                 "  \"confirmations\" : number of confirmations of the most recent transaction included");
 
     //     return ListReceived(params, false);
+        json::json ret;
+        return ret;
     }
 
     /* listreceivedbyaccount [minconf=1] [includeempty=false]
@@ -875,6 +901,8 @@ namespace TAO::API
                 "  \"confirmations\" : number of confirmations of the most recent transaction included");
 
     //     return ListReceived(params, true);
+        json::json ret;
+        return ret;
     }
 
     // void ListTransactions(const Wallet::CWalletTx& wtx, const string& strAccount, int nMinDepth, bool fLong, Array& ret)
@@ -1045,7 +1073,9 @@ namespace TAO::API
     //     std::reverse(ret.begin(), ret.end()); // Return oldest to newest
 
     //     return ret;
-     }
+        json::json ret;
+        return ret;
+    }
 
 
     /* listaddresses [max=100]
@@ -1073,6 +1103,8 @@ namespace TAO::API
     //         list.push_back(Pair(it->first.ToString(), ValueFromAmount(it->second)));
 
     //     return list;
+        json::json ret;
+        return ret;
     }
 
     /* listaccounts
@@ -1123,6 +1155,8 @@ namespace TAO::API
     //     }
 
     //     return ret;
+        json::json ret;
+        return ret;
     }
 
     /* listsinceblock [blockhash] [target-confirmations]
@@ -1190,6 +1224,8 @@ namespace TAO::API
     //     ret.push_back(Pair("lastblock", lastblock.GetHex()));
 
     //     return ret;
+        json::json ret;
+        return ret;
     }
 
     /* gettransaction <txid>
@@ -1225,7 +1261,8 @@ namespace TAO::API
     //     ListTransactions(pwalletMain->mapWallet[hash], "*", 0, false, details);
     //     entry.push_back(Pair("details", details));
 
-    //     return entry;
+        json::json ret;
+        return ret;
     }
 
     /* getrawtransaction <txid>
@@ -1249,6 +1286,8 @@ namespace TAO::API
     //     DataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
     //     ssTx << tx;
     //     return HexStr(ssTx.begin(), ssTx.end());
+        json::json ret;
+        return ret;
     }
 
     /* sendrawtransaction <hex string> [checkinputs=0]
@@ -1302,6 +1341,8 @@ namespace TAO::API
     //     RelayMessage(CInv(MSG_TX, hashTx), tx);
 
     //     return hashTx.GetHex();
+        json::json ret;
+        return ret;
     }
 
     /* validateaddress <Nexusaddress>
@@ -1356,6 +1397,8 @@ namespace TAO::API
     //             ret.push_back(Pair("account", pwalletMain->mapAddressBook[address]));
     //     }
     //     return ret;
+        json::json ret;
+        return ret;
     }
 
     /* Make a public/private key pair. [prefix] is optional preferred prefix for the public key */
@@ -1387,6 +1430,8 @@ namespace TAO::API
     //     result.push_back(Pair("PrivateKey", HexStr<Wallet::CPrivKey::iterator>(vchPrivKey.begin(), vchPrivKey.end())));
     //     result.push_back(Pair("PublicKey", HexStr(key.GetPubKey())));
     //     return result;
+        json::json ret;
+        return ret;
     }
 
     /* unspentbalance [\"address\",...]
@@ -1454,6 +1499,8 @@ namespace TAO::API
     //     }
 
     //     return ValueFromAmount(nCredit);
+        json::json ret;
+        return ret;
     }
 
 
@@ -1536,7 +1583,8 @@ namespace TAO::API
     //     }
 
     //     return results;
+        json::json ret;
+        return ret;
     }
-
 
 }

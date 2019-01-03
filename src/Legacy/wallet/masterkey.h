@@ -20,10 +20,10 @@ ________________________________________________________________________________
 
 namespace Legacy
 {
-    
+
     /** @class CMasterKey
      *
-     *  Master key for wallet encryption 
+     *  Master key for wallet encryption
      *
      *  Private key encryption is done based on a CMasterKey,
      *  which holds a salt and random encryption key.
@@ -65,7 +65,7 @@ namespace Legacy
         uint32_t nDeriveIterations;
 
 
-        /** Use this for more parameters to key derivation, such as the various parameters to scrypt 
+        /** Use this for more parameters to key derivation, such as the various parameters to scrypt
          *
          *  @deprecated This value not used by Nexus but still defined to support wallets
          *  that have it in stored, serialized keys.
@@ -84,15 +84,17 @@ namespace Legacy
         )
 
 
-        /** Default constructor 
+        /** Default constructor
          *
-         *  Defaults iterations to 25000 and derivation method to 0 
+         *  Defaults iterations to 25000 and derivation method to 0
          *
          **/
-        CMasterKey() :
-            nDeriveIterations(25000),
-            nDerivationMethod(0),
-            vchOtherDerivationParameters(std::vector<uint8_t>(0))
+        CMasterKey()
+        : vchCryptedKey()
+        , vchSalt()
+        , nDerivationMethod(0)
+        , nDeriveIterations(25000)
+        , vchOtherDerivationParameters(std::vector<uint8_t>(0))
         {
         }
 

@@ -303,7 +303,6 @@ namespace Legacy
         time.Start();
 
         bool fIsEncrypted = false;
-
         { /* Begin lock scope */
             std::lock_guard<std::recursive_mutex> walletLock(wallet.cs_wallet);
             std::vector<uint8_t> vchLoadedDefaultKey;
@@ -555,7 +554,6 @@ namespace Legacy
                 else
                 {
                     /* All other keys are no longer supported and can be ignored/not loaded */
-                    ;
                 }
             }
 
@@ -579,7 +577,7 @@ namespace Legacy
         if (nFileVersion < LLD::DATABASE_VERSION)
             WriteVersion(LLD::DATABASE_VERSION);
 
-        debug::log(0, FUNCTION "Loaded in %u ms FileVersion = %d", __PRETTY_FUNCTION__, time.ElapsedMilliseconds(), nFileVersion);
+        debug::log(0, FUNCTION "%s Loaded in %u ms FileVersion = %d", __PRETTY_FUNCTION__, fIsEncrypted ? "Encrypted Wallet" : "Wallet", time.ElapsedMilliseconds(), nFileVersion);
 
         return DB_LOAD_OK;
     }
