@@ -14,7 +14,37 @@
 
 import nexus_sdk
 
+#
+# Column width for continuation output line.
+#
 width = 48
+
+#------------------------------------------------------------------------------
+
+#
+# api_print
+#
+# Print if API succeeded or failed on a continuation output line. When
+# program returns, caller should continue. Otherwise this funciton exits
+# program.
+#
+def api_print(json, succeed_msg=None):
+    if (json.has_key("error") == False):
+        msg = "succeeded"
+        if (succeed_msg != None): msg += ", {}".format(succeed_msg)
+        print msg
+        return
+    #endif
+        
+    msg = json["error"]["message"]
+    print "failed, {}".format(msg)
+    if (msg == "Connection refused"):
+        print "Abnormal exit"
+        exit(1)
+    #endif
+#enddef    
+
+#------------------------------------------------------------------------------
 
 #
 # Initialize with SDK.
@@ -29,50 +59,44 @@ print "succeeded"
 #
 print "Create username 'primer' ...".ljust(width),
 json = primer.nexus_accounts_create()
-good = "failed" if json.has_key("error") else "succeeded"
-print good
+api_print(json)
+#print json
 print "Create username 'new-owner' ...".ljust(width),
 json = new_owner.nexus_accounts_create()
-good = "failed" if json.has_key("error") else "succeeded"
-print good
+api_print(json)
+#print json
 
 #
 # Call API accounts/login
 #
 print "Login user 'primer' ...".ljust(width),
 json = primer.nexus_accounts_login()
-good = "failed" if json.has_key("error") else "succeeded"
-if (good == "succeeded"):
-    print "succeeded, genesis {}".format(primer.genesis_id)
-else:
-    print "failed"
-#endif    
+api_print(json, "genesis {}".format(primer.genesis_id))
+#print json
 print "Login user 'new-owner' ...".ljust(width),
 json = new_owner.nexus_accounts_login()
-good = "failed" if json.has_key("error") else "succeeded"
-if (good == "succeeded"):
-    print "succeeded, genesis {}".format(new_owner.genesis_id)
-else:
-    print "failed"
-#endif    
+api_print(json, "genesis {}".format(primer.genesis_id))
+#print json
 
 #
 # Call API accounts/logout
 #
 print "Logout user 'new-owner' ...".ljust(width),
 json = new_owner.nexus_accounts_logout()
-good = "failed" if json.has_key("error") else "succeeded"
-print good
+api_print(json)
+#print json
 
 #
 # Call API accounts/transactions
 #
 print "Show transactions for user 'primer' ...".ljust(width),
 json = primer.nexus_accounts_transactions()
-good = "failed" if json.has_key("error") else "succeeded"
-print good
+api_print(json)
 #print json
 
+#
+# Put in break line between accounts and supply API.
+#
 print ""
 
 #
@@ -81,30 +105,20 @@ print ""
 data = "0xdeadbeef"
 print "Supply-Chain create item, data '{}' ...".format(data).ljust(width),
 json = primer.nexus_supply_createitem(data)
-good = "failed" if json.has_key("error") else "succeeded"
+address = json["result"]["address"] if json.has_key("result") else "?"
+api_print(json, "address {}".format(address))
 #print json
-if (good == "succeeded"):
-    address = json["result"]["address"]
-    print "succeeded, address {}".format(address)
-else:
-    print "Abnormal exit"
-    exit(1)
-#endif    
 
 #
 # Call API supply/getitem
 #
 print "Supply-Chain get item ...".ljust(width),
 json = primer.nexus_supply_getitem(address)
-good = "failed" if json.has_key("error") else "succeeded"
-if (good == "succeeded"):
-    print "succeeded, stored data '{}'".format(json["result"]["state"])
-else:
-    print "Abnormal exit"
-    exit(1)
-#endif
-
-print ""
+owner = json["result"]["owner"] if json.has_key("result") else "?"
+state = json["result"]["state"] if json.has_key("result") else "?"
+msg = "stored data '{}', owner {}".format(state, owner)
+api_print(json, msg)
+#print json
 
 #
 # Call API supply/transfer
@@ -113,25 +127,26 @@ print "Transfer genesis {} to genesis {}".format(primer.genesis_id,
     new_owner.genesis_id)
 print "Transfer ownership ...".ljust(width),
 json = primer.nexus_supply_transfer(address, new_owner.genesis_id)
-good = "failed" if json.has_key("error") else "succeeded"
-print good
+api_print(json)
 #print json
 
 #
 # Call API supply/history
 #
-print "History of item ownership...".ljust(width),
+print "Get ownership history of item ...".ljust(width),
 json = primer.nexus_supply_history(address)
-good = "failed" if json.has_key("error") else "succeeded"
-print good
+api_print(json)
+#print json
 
+print ""
 print "Ownership History:"
 for owner in json["result"]:
-    print "owner {}\n  checksum {}, state {}, version {}, type {}".format( \
-        owner["owner"], owner["checksum"], owner["state"], owner["version"],
+    print "Owner {}\n  checksum {}, state {}, version {}, type {}".format \
+        (owner["owner"], owner["checksum"], owner["state"], owner["version"],
         owner["type"])
 #endfor                                                                        
 
+print ""
 print "All Done!"
 exit(0)
 
