@@ -32,7 +32,7 @@ Returns:
 >>> dir(myuser)
 ['__doc__', '__init__', '__module__', '_sdk_init__error', '_sdk_init__get', '_sdk_init__login', 'genesis_id', 'nexus_accounts_create', 'nexus_accounts_login', 'nexus_accounts_logout', 'nexus_accounts_transactions', 'nexus_supply_createitem', 'nexus_supply_getitem', 'nexus_supply_history', 'nexus_supply_transfer', 'password', 'pin', 'session_id', 'username']
 ```    
-            
+
 Creating a User
 ---------------
 
@@ -48,7 +48,7 @@ returned. There are no errors in any SDK call when:
 ```
     if (status.has_key("error") == False):
         print "accounts/create successful"
-    #endif               
+    endif               
 ```
 
 Returns:
@@ -81,7 +81,7 @@ Logging out a User
 ------------------
 
 If you have logged in from a python program and and want to logout, call:
-    
+
 ```
     status = myuser.nexus_accounts_logout()
 ```
@@ -101,7 +101,7 @@ Listing Tranasctions for a User
 -------------------------------                    
 
 If you want to list transactions for a particular user, call:
-    
+
 ```
     tx = myuser.nexus_accounts_transactions()
 ```
@@ -210,5 +210,5 @@ The Nexus python SDK will always return a dictionary array that maps exactly
 from the JSON returned by the Nexus daemon supported APIs. In some cases,
 the API will return error codes and in other cases the SDK will return error
 codes.
-    
+
 -------------------------------------------------------------------------------
