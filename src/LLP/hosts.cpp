@@ -55,7 +55,7 @@ namespace LLP
 
         aiHint.ai_socktype = SOCK_STREAM;
         aiHint.ai_protocol = IPPROTO_TCP;
-    #ifdef WIN32ßßßß
+    #ifdef WIN32
         aiHint.ai_family = AF_UNSPEC;
         aiHint.ai_flags = fAllowLookup ? 0 : AI_NUMERICHOST;
     #else

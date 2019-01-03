@@ -208,23 +208,41 @@ int main(int argc, char** argv)
 
 
     /* Cleanup the databases. */
-    delete LLD::legDB;
-    delete LLD::regDB;
-    delete LLD::locDB;
+    if(LLD::legDB)
+        delete LLD::legDB;
+
+    if(LLD::regDB)
+        delete LLD::regDB;
+
+    if(LLD::locDB)
+        delete LLD::locDB;
 
 
     /* Shutdown the servers and their subsystems */
     if(LLP::TRITIUM_SERVER)
+    {
         LLP::TRITIUM_SERVER->Shutdown();
+        delete LLP::TRITIUM_SERVER;
+    }
 
     if(LLP::LEGACY_SERVER)
+    {
         LLP::LEGACY_SERVER->Shutdown();
+        delete LLP::LEGACY_SERVER;
+    }
 
     if(CORE_SERVER)
+    {
         CORE_SERVER->Shutdown();
+        delete CORE_SERVER;
+    }
 
     if(RPC_SERVER)
+    {
         RPC_SERVER->Shutdown();
+        delete RPC_SERVER;
+    }
+
 
     return 0;
 }

@@ -92,25 +92,8 @@ namespace debug
      **/
     int log(uint32_t nLevel, const char* pszFormat, ...);
 
-
-    /** my_snprintf
-     *
-     *  Safer snprintf output string is always null terminated even if the limit
-     *  is reach. Returns the number of characters printed.
-     *
-     *  @param[out] buffer The character buffer where the message is stored
-     *
-     *  @param[in] limit The size of the buffer
-     *
-     *  @param[in] format The format string specifier.
-     *
-     *  @param[in] ... The variable argument list to supply to each format
-     *                 specifier in the format string.
-     *
-     *  @return the total number of characters printed.
-     *
-     **/
-    int my_snprintf(char* buffer, size_t limit, const char* format, ...);
+    template<typename Type, typename... Args>
+    int log2(uint32_t nLevel, Args ...all);
 
 
     /** real_strprintf
@@ -144,20 +127,6 @@ namespace debug
      **/
     bool error(const char *format, ...);
 
-
-    /** print_base
-     *
-     *  Prints output with base class and function information.
-     *
-     *  @param[in] base The base class string to print
-     *
-     *  @param[in] format The format string specifier.
-     *
-     *  @param[in] ... The variable argument list to supply to each format
-     *                 specifier in the format string.
-     *
-     **/
-    void print_base(const char * base, const char *format, ...);
 
 
     /** LogStackTrace
