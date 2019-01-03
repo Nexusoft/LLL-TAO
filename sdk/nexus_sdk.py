@@ -29,7 +29,8 @@
 #
 #------------------------------------------------------------------------------
 
-import urllib2
+#import urllib as geturl
+import urllib2 as geturl
 import json
 
 accounts_url = "http://localhost:8080/accounts/{}"
@@ -94,17 +95,18 @@ class sdk_init():
         return(json_data)
     #enddef
        
-    def nexus_supply_createitem(self):
+    def nexus_supply_createitem(self, data):
         if (self.session_id == None): return(self.__error("Not logged in"))
 
-        parms = "?pin={}&session={}".format(self.pin, self.session_id)
+        parms = "?pin={}&session={}&data={}".format(self.pin, self.session_id,
+            data)
         url = supply_url.format("createitem") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
 
     def nexus_supply_getitem(self, address):
-        parms = "?address=0x{}".format(self.pin, address)
+        parms = "?address={}".format(address)
         url = supply_url.format("getitem") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -113,7 +115,7 @@ class sdk_init():
     def nexus_supply_transfer(self, address, new_owner):
         if (self.session_id == None): return(self.__error("Not logged in"))
 
-        parms = "?pin={}&session={}&address=0x{}&destinatio={}".format( \
+        parms = "?pin={}&session={}&address={}&destination={}".format( \
             self.pin, self.session_id, address, new_owner)
         url = supply_url.format("transfer") + parms
         json_data = self.__get(url)
@@ -121,7 +123,7 @@ class sdk_init():
     #enddef
 
     def nexus_supply_history(self, address):
-        parms = "?address=0x{}".format(address)
+        parms = "?address={}".format(address)
         url = supply_url.format("history") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -129,11 +131,12 @@ class sdk_init():
 
     def __get(self, url):
         try:
-            connect = urllib2.urlopen(url)
+            connect = geturl.urlopen(url)
             text = connect.read()
         except:
             return(self.__error("Connection refused"))
         #endtry
+
         if (text == None):
             api = url.split("?")[0]
             api = api.split("/")

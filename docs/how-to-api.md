@@ -15,7 +15,7 @@ http://localhost:8080/<api>/<method>?<key>=<value>&<key1>=<value1>
 The API uses form encoding, so you are free to use any characters you wish. The only thing to be aware of is when using
 a '+' character in the encoding, which acts as an escape character for a space as well as '%20'. The API will detect this
 behavior as long as the form encodes the + sign in form encoding. At times making a GET request, the web browser will
-assume that + is a space and not encode it, the same is true for '%' when making a GET request. 
+assume that + is a space and not encode it, the same is true for '%' when making a GET request.
 
 
 ### Use a web browser with a POST based request
@@ -62,6 +62,10 @@ The Accounts API can be found in the following repo path:
 
 [LLL-TAO/docs/API/ACCOUNTS.MD](API/ACCOUNTS.MD)
 
+NOTE: Login sessions do not persist if you restart your node.
+They are stored in secure allocator in memory only, do not cache
+them on disk otherwise you could open potential security issues.
+
 
 ## Supply API
 
@@ -72,5 +76,7 @@ events associated with changes of custody.
 
 The Supply API can be found in the following repo path:
 
-The list of commands can be found:
 [LLL-TAO/docs/API/SUPPLY.MD](API/SUPPLY.MD)
+
+NOTE: some of the commands in this API require LOGIN. Make sure to use the
+accounts API to login before using LOGIN required commands.
