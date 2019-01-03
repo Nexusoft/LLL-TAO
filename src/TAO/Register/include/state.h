@@ -116,6 +116,20 @@ namespace TAO::Register
         }
 
 
+        /** Operator overload to check for equivilence. **/
+        bool operator==(const State& state)
+        {
+            return GetHash() == state.GetHash();
+        }
+
+
+        /** Operator overload to check for non-equivilence. **/
+        bool operator!=(const State& state)
+        {
+            return GetHash() != state.GetHash();
+        }
+
+
         /** Set the State Register into a nullptr state. **/
         void SetNull()
         {
@@ -130,7 +144,7 @@ namespace TAO::Register
 
 
         /** nullptr Checking flag for a State Register. **/
-        bool IsNull()
+        bool IsNull() const
         {
             return (nVersion == 0 && vchState.size() == 0 && hashChecksum == 0);
         }
@@ -144,7 +158,7 @@ namespace TAO::Register
 
 
         /** Get the hash of the current state. **/
-        uint64_t GetHash()
+        uint64_t GetHash() const
         {
             DataStream ss(SER_GETHASH, nVersion);
             ss << *this;
@@ -161,7 +175,7 @@ namespace TAO::Register
 
 
         /** Check if the register is valid. */
-        bool IsValid()
+        bool IsValid() const
         {
             /* Check for null state. */
             if(IsNull())

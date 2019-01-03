@@ -23,12 +23,12 @@ namespace TAO::Operation
      *
      *  @param[in] hashAddress The register address to write to.
      *  @param[in] hashCaller The calling signature chain.
-     *  @param[in] fWrite The flag to determine if database state should be written.
+     *  @param[in] nFlags The flag to determine if database state should be written.
      *
      *  @return true if successful.
      *
      **/
-    bool Write(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller, bool fWrite);
+    bool Write(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller, uint8_t nFlags);
 
 
     /** Append
@@ -37,12 +37,12 @@ namespace TAO::Operation
      *
      *  @param[in] hashAddress The register address to write to.
      *  @param[in] hashCaller The calling signature chain.
-     *  @param[in] fWrite The flag to determine if database state should be written.
+     *  @param[in] nFlags The flag to determine if database state should be written.
      *
      *  @return true if successful.
      *
      **/
-    bool Append(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller, bool fWrite);
+    bool Append(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller, uint8_t nFlags);
 
 
     /** Register
@@ -53,12 +53,12 @@ namespace TAO::Operation
      *  @param[in] nType The type of register being written.
      *  @param[in] vchData The binary data to record in register.
      *  @param[in] hashCaller The calling signature chain.
-     *  @param[in] fWrite The flag to determine if database state should be written.
+     *  @param[in] nFlags The flag to determine if database state should be written.
      *
      *  @return true if successful.
      *
      **/
-    bool Register(uint256_t hashAddress, uint8_t nType, std::vector<uint8_t> vchData, uint256_t hashCaller, bool fWrite);
+    bool Register(uint256_t hashAddress, uint8_t nType, std::vector<uint8_t> vchData, uint256_t hashCaller, uint8_t nFlags);
 
 
     /** Transfer
@@ -68,12 +68,12 @@ namespace TAO::Operation
      *  @param[in] hashAddress The register address to transfer.
      *  @param[in] hashTransfer The register to transfer to.
      *  @param[in] hashCaller The calling signature chain.
-     *  @param[in] fWrite The flag to determine if database state should be written.
+     *  @param[in] nFlags The flag to determine if database state should be written.
      *
      *  @return true if successful.
      *
      **/
-    bool Transfer(uint256_t hashAddress, uint256_t hashTransfer, uint256_t hashCaller, bool fWrite);
+    bool Transfer(uint256_t hashAddress, uint256_t hashTransfer, uint256_t hashCaller, uint8_t nFlags);
 
 
     /** Debit
@@ -84,12 +84,12 @@ namespace TAO::Operation
      *  @param[in] hashTo The account being transferred to.
      *  @param[in] nAmount The amount being transferred
      *  @param[in] hashCaller The calling signature chain.
-     *  @param[in] fWrite The flag to determine if database state should be written.
+     *  @param[in] nFlags The flag to determine if database state should be written.
      *
      *  @return true if successful.
      *
      **/
-    bool Debit(uint256_t hashFrom, uint256_t hashTo, uint64_t nAmount, uint256_t hashCaller, bool fWrite);
+    bool Debit(uint256_t hashFrom, uint256_t hashTo, uint64_t nAmount, uint256_t hashCaller, uint8_t nFlags);
 
 
     /** Credit
@@ -101,12 +101,12 @@ namespace TAO::Operation
      *  @param[in] hashTo The account being transferred to.
      *  @param[in] nAmount The amount being transferred
      *  @param[in] hashCaller The calling signature chain.
-     *  @param[in] fWrite The flag to determine if database state should be written.
+     *  @param[in] nFlags The flag to determine if database state should be written.
      *
      *  @return true if successful.
      *
      **/
-    bool Credit(uint512_t hashTx, uint256_t hashProof, uint256_t hashTo, uint64_t nAmount, uint256_t hashCaller, bool fWrite);
+    bool Credit(uint512_t hashTx, uint256_t hashProof, uint256_t hashTo, uint64_t nAmount, uint256_t hashCaller, uint8_t nFlags);
 
 
     /** Coinbase
@@ -116,12 +116,12 @@ namespace TAO::Operation
      *  @param[in] hashAccount The account being transferred to.
      *  @param[in] nAmount The amount being transferred
      *  @param[in] hashCaller The calling signature chain.
-     *  @param[in] fWrite The flag to determine if database state should be written.
+     *  @param[in] nFlags The flag to determine if database state should be written.
      *
      *  @return true if successful.
      *
      **/
-    bool Coinbase(uint256_t hashAccount, uint64_t nAmount, uint256_t hashCaller, bool fWrite);
+    bool Coinbase(uint256_t hashAccount, uint64_t nAmount, uint256_t hashCaller, uint8_t nFlags);
 
 
     /** Trust
@@ -134,12 +134,12 @@ namespace TAO::Operation
      *  @param[in] nLastTrust The last trust score.
      *  @param[in] nAmount The amount being transferred
      *  @param[in] hashCaller The calling signature chain.
-     *  @param[in] fWrite The flag to determine if database state should be written.
+     *  @param[in] nFlags The flag to determine if database state should be written.
      *
      *  @return true if successful.
      *
      **/
-    bool Trust(uint256_t hashAddress, uint1024_t hashLastTrust, uint32_t nSequence, uint32_t nLastTrust, uint64_t nAmount, uint256_t hashCaller, bool fWrite);
+    bool Trust(uint256_t hashAddress, uint1024_t hashLastTrust, uint32_t nSequence, uint32_t nLastTrust, uint64_t nAmount, uint256_t hashCaller, uint8_t nFlags);
 
 
     /** Authorize
@@ -149,12 +149,12 @@ namespace TAO::Operation
      *  @param[in] hashTx The transaction being authorized for.
      *  @param[in] hashProof The register temporal proof to use.
      *  @param[in] hashCaller The calling signature chain.
-     *  @param[in] fWrite The flag to determine if database state should be written.
+     *  @param[in] nFlags The flag to determine if database state should be written.
      *
      *  @return true if successful.
      *
      **/
-    bool Authorize(uint512_t hashTx, uint256_t hashProof, uint256_t hashCaller, bool fWrite);
+    bool Authorize(uint512_t hashTx, uint256_t hashProof, uint256_t hashCaller, uint8_t nFlags);
 
 }
 

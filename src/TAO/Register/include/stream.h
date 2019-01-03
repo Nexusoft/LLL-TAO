@@ -28,21 +28,16 @@ namespace TAO::Register
      *  Class to handle the serializaing and deserializing of operations and their types
      *
      **/
-    class Stream
+    class Stream : public BaseStream
     {
-
-        /** The current reading position. **/
-        uint32_t nReadPos;
-
-
-        /** The operation data vector. **/
-        std::vector<uint8_t> vchData;
-
-
     public:
 
         /** Default Constructor. **/
-        Stream() : nReadPos(0) { vchData.clear(); }
+        Stream()
+        : BaseStream()
+        {
+
+        }
 
 
         /** Data Constructor.
@@ -50,106 +45,16 @@ namespace TAO::Register
          *  @param[in] vchDataIn The byte vector to insert.
          *
          **/
-        Stream(std::vector<uint8_t> vchDataIn) : nReadPos(0), vchData(vchDataIn) {  }
-
-
-        /** Set null method.
-         *
-         *  Sets the object into null state.
-         *
-         **/
-        void SetNull()
+        Stream(std::vector<uint8_t> vchDataIn)
+        : BaseStream(vchDataIn)
         {
-            nReadPos = 0;
-            vchData.clear();
         }
 
 
-        /** Is null method
-         *
-         *  Returns if object is in null state.
-         *
-         **/
-        bool IsNull()
-        {
-            return nReadPos == 0 && vchData.size() == 0;
-        }
-
-
-        /** Reset
-         *
-         *  Resets the internal read pointer
-         *
-         **/
-        void Reset()
-        {
-            nReadPos = 0;
-        }
-
-
-        /** Begin
-         *
-         *  Returns if the opeartions stream is on first operation
-         *
-         **/
-        bool Begin()
-        {
-            return nReadPos == 1;
-        }
-
-
-        /** End
-         *
-         *  Returns if end of stream is found
-         *
-         **/
-        bool End()
-        {
-            return nReadPos == vchData.size();
-        }
-
-
-        /** read
-         *
-         *  Reads raw data from the stream
-         *
-         *  @param[in] pch The pointer to beginning of memory to write
-         *
-         *  @param[in] nSize The total number of bytes to read
-         *
-         **/
-        Stream& read(char* pch, int nSize)
-        {
-            /* Check size constraints. */
-            if(nReadPos + nSize > vchData.size())
-                throw std::runtime_error(debug::strprintf(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos));
-
-            /* Copy the bytes into tmp object. */
-            std::copy((uint8_t*)&vchData[nReadPos], (uint8_t*)&vchData[nReadPos] + nSize, (uint8_t*)pch);
-
-            /* Iterate the read position. */
-            nReadPos += nSize;
-
-            return *this;
-        }
-
-
-        /** write
-         *
-         *  Writes data into the stream
-         *
-         *  @param[in] pch The pointer to beginning of memory to write
-         *
-         *  @param[in] nSize The total number of bytes to copy
-         *
-         **/
-        Stream& write(const char* pch, int nSize)
-        {
-            /* Push the obj bytes into the vector. */
-            vchData.insert(vchData.end(), (uint8_t*)pch, (uint8_t*)pch + nSize);
-
-            return *this;
-        }
+        IMPLEMENT_SERIALIZE
+        (
+            READWRITE(vchData);
+        )
 
 
         /** Operator Overload <<
@@ -162,7 +67,7 @@ namespace TAO::Register
         template<typename Type> Stream& operator<<(const Type& obj)
         {
             /* Serialize to the stream. */
-            ::Serialize(*this, obj, SER_REGISTER, LLD::DATABASE_VERSION); //temp versinos for now
+            ::Serialize(*this, obj, SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versinos for now
 
             return (*this);
         }
@@ -178,7 +83,7 @@ namespace TAO::Register
         template<typename Type> Stream& operator>>(Type& obj)
         {
             /* Unserialize from the stream. */
-            ::Unserialize(*this, obj, SER_REGISTER, LLD::DATABASE_VERSION); //TODO: version should be object version
+            ::Unserialize(*this, obj, SER_OPERATIONS, LLD::DATABASE_VERSION); //TODO: version should be object version
             return (*this);
         }
     };

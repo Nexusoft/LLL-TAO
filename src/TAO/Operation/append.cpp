@@ -21,11 +21,11 @@ namespace TAO::Operation
 {
 
     /* Writes data to a register. */
-    bool Append(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller, bool fWrite)
+    bool Append(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller, uint8_t nFlags)
     {
         /* Read the binary data of the Register. */
         TAO::Register::State state;
-        if(!LLD::regDB->ReadState(hashAddress, state, fWrite))
+        if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
             return debug::error(FUNCTION "register address doewn't exist %s", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
         /* Check ReadOnly permissions. */
@@ -50,7 +50,7 @@ namespace TAO::Operation
             return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
         /* Write the register to the database. */
-        if(!LLD::regDB->WriteState(hashAddress, state, fWrite))
+        if(!LLD::regDB->WriteState(hashAddress, state, nFlags))
             return debug::error(FUNCTION "failed to append new state", __PRETTY_FUNCTION__);
 
         return true;

@@ -57,8 +57,8 @@ namespace TAO::Ledger
         if(IsCoinbase())
         {
             /* Check the coinbase size. */
-            if(vchOperations.size() != 41)
-                return debug::error(FUNCTION "ledger data too large for coinbase %u", vchOperations.size());
+            if(ssOperation.size() != 41)
+                return debug::error(FUNCTION "operation data too large for coinbase %u", ssOperation.size());
         }
 
         /* Check the timestamp. */
@@ -66,7 +66,7 @@ namespace TAO::Ledger
             return debug::error(FUNCTION "transaction timestamp too far in the future %u", __PRETTY_FUNCTION__, nTimestamp);
 
         /* Check the size constraints of the ledger data. */
-        if(vchOperations.size() > 1024) //TODO: implement a constant max size
+        if(ssOperation.size() > 1024) //TODO: implement a constant max size
             return debug::error(FUNCTION "ledger data outside of maximum size constraints", __PRETTY_FUNCTION__);
 
         /* Check the more expensive ECDSA verification. */
@@ -82,20 +82,20 @@ namespace TAO::Ledger
     /* Determines if the transaction is a coinbase transaction. */
     bool Transaction::IsCoinbase() const
     {
-        if(vchOperations.empty())
+        if(ssOperation.size() == 0)
             return false;
 
-        return vchOperations[0] == TAO::Operation::OP::COINBASE;
+        return ssOperation.get(0) == TAO::Operation::OP::COINBASE;
     }
 
 
     /* Determines if the transaction is a coinstake transaction. */
     bool Transaction::IsTrust() const
     {
-        if(vchOperations.empty())
+        if(ssOperation.size() == 0)
             return false;
 
-        return vchOperations[0] == TAO::Operation::OP::TRUST;
+        return ssOperation.get(0) == TAO::Operation::OP::TRUST;
     }
 
 
@@ -113,18 +113,6 @@ namespace TAO::Ledger
         ss << *this;
 
         return LLC::SK512(ss.begin(), ss.end());
-    }
-
-    /* Gets the hash of the genesis transaction */
-    uint256_t Transaction::Genesis() const
-    {
-        if(!IsGenesis())
-            return hashGenesis;
-
-        DataStream ss(SER_GENESISHASH, nVersion);
-        ss << *this;
-
-        return LLC::SK256(ss.begin(), ss.end());
     }
 
 
@@ -187,7 +175,8 @@ namespace TAO::Ledger
          VALUE("pub") " = %s, "
          VALUE("sig") " = %s, "
          VALUE("hash") " = %s, "
-         VALUE("ledger") " = %s)",
+         VALUE("register.size()") " = %u,"
+         VALUE("operation.size()") " = %u)",
 
          IsGenesis() ? "Genesis" : "Tritium",
          nVersion,
@@ -199,6 +188,7 @@ namespace TAO::Ledger
          HexStr(vchPubKey).c_str(),
          HexStr(vchSig).c_str(),
          GetHash().ToString().c_str(),
-         HexStr(vchOperations.begin(), vchOperations.end()).c_str());
+         ssRegister.size(),
+         ssOperation.size() );
      }
 }

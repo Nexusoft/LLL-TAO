@@ -16,6 +16,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <TAO/Register/include/enum.h>
+
 #include <TAO/Ledger/types/transaction.h>
 #include <Legacy/types/transaction.h>
 

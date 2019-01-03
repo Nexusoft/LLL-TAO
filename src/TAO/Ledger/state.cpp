@@ -15,6 +15,10 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/Operation/include/execute.h>
+
+#include <TAO/Register/include/enum.h>
+
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -23,7 +27,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/supply.h>
 
-#include <TAO/Operation/include/execute.h>
+
 
 
 namespace TAO::Ledger
@@ -119,12 +123,11 @@ namespace TAO::Ledger
         if(IsProofOfWork() && nVersion >= 3)
         {
             /* Get the stream from coinbase. */
-            DataStream ssData(producer.vchOperations, SER_OPERATIONS, producer.nVersion);
-            ssData.SetPos(33); //set the read position to where reward will be.
+            producer.ssOperation.seek(33, STREAM::BEGIN); //set the read position to where reward will be.
 
             /* Read the mining reward. */
             uint64_t nMiningReward;
-            ssData >> nMiningReward;
+            producer.ssOperation >> nMiningReward;
 
             /* Check that the Mining Reward Matches the Coinbase Calculations. */
             if (nMiningReward != GetCoinbaseReward(statePrev, GetChannel(), 0))
@@ -331,8 +334,8 @@ namespace TAO::Ledger
                 if(!mempool.Get(hash, tx))
                     return debug::error(FUNCTION "transaction is not in memory pool", __PRETTY_FUNCTION__);
 
-                /* Execute the register and operations layers. */
-                if(!TAO::Operation::Execute(tx.vchOperations, tx.hashGenesis, true))
+                /* Execute the operations layers. */
+                if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::WRITE))
                     return debug::error(FUNCTION "transaction failed to execute", __PRETTY_FUNCTION__);
             }
         }

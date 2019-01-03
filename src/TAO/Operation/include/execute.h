@@ -20,6 +20,10 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/operations.h>
 
+#include <TAO/Register/include/enum.h>
+
+#include <TAO/Ledger/types/transaction.h>
+
 #include <Util/include/hex.h>
 
 namespace TAO::Operation
@@ -36,20 +40,27 @@ namespace TAO::Operation
      *  @return True if operations executed successfully.
      *
      **/
-    inline bool Execute(std::vector<uint8_t> vchData, uint256_t hashOwner, bool fWrite = true)
+    inline bool Execute(TAO::Ledger::Transaction& tx, uint8_t nFlags)
     {
-        /* Create the operations stream to execute. */
-        Stream stream = Stream(vchData);
+        /* Get the caller. */
+        uint256_t hashOwner = tx.hashGenesis;
+
+        /* Start the stream at the beginning. */
+        tx.ssOperation.seek(0, STREAM::BEGIN);
+
+        /* Start the register stream at the beginning. */
+        tx.ssRegister.seek(0, STREAM::BEGIN);
+
 
         /* Make sure no exceptions are thrown. */
         try
         {
 
-            /* Loop through the operations stream. */
-            while(!stream.End())
+            /* Loop through the operations tx.ssOperation. */
+            while(!tx.ssOperation.end())
             {
                 uint8_t OPERATION;
-                stream >> OPERATION;
+                tx.ssOperation >> OPERATION;
 
                 /* Check the current opcode. */
                 switch(OPERATION)
@@ -60,14 +71,14 @@ namespace TAO::Operation
                     {
                         /* Get the Address of the Register. */
                         uint256_t hashAddress;
-                        stream >> hashAddress;
+                        tx.ssOperation >> hashAddress;
 
-                        /* Deserialize the register from stream. */
+                        /* Deserialize the register from tx.ssOperation. */
                         std::vector<uint8_t> vchData;
-                        stream >> vchData;
+                        tx.ssOperation >> vchData;
 
                         /* Execute the operation method. */
-                        if(!Write(hashAddress, vchData, hashOwner, fWrite))
+                        if(!Write(hashAddress, vchData, hashOwner, nFlags))
                             return false;
 
                         break;
@@ -79,14 +90,14 @@ namespace TAO::Operation
                     {
                         /* Get the Address of the Register. */
                         uint256_t hashAddress;
-                        stream >> hashAddress;
+                        tx.ssOperation >> hashAddress;
 
-                        /* Deserialize the register from stream. */
+                        /* Deserialize the register from tx.ssOperation. */
                         std::vector<uint8_t> vchData;
-                        stream >> vchData;
+                        tx.ssOperation >> vchData;
 
                         /* Execute the operation method. */
-                        if(!Append(hashAddress, vchData, hashOwner, fWrite))
+                        if(!Append(hashAddress, vchData, hashOwner, nFlags))
                             return false;
 
                         break;
@@ -96,20 +107,20 @@ namespace TAO::Operation
                     /* Create a new register. */
                     case OP::REGISTER:
                     {
-                        /* Extract the address from the stream. */
+                        /* Extract the address from the tx.ssOperation. */
                         uint256_t hashAddress;
-                        stream >> hashAddress;
+                        tx.ssOperation >> hashAddress;
 
-                        /* Extract the register type from stream. */
+                        /* Extract the register type from tx.ssOperation. */
                         uint8_t nType;
-                        stream >> nType;
+                        tx.ssOperation >> nType;
 
-                        /* Extract the register data from the stream. */
+                        /* Extract the register data from the tx.ssOperation. */
                         std::vector<uint8_t> vchData;
-                        stream >> vchData;
+                        tx.ssOperation >> vchData;
 
                         /* Execute the operation method. */
-                        if(!Register(hashAddress, nType, vchData, hashOwner, fWrite))
+                        if(!Register(hashAddress, nType, vchData, hashOwner, nFlags))
                             return false;
 
                         break;
@@ -119,16 +130,16 @@ namespace TAO::Operation
                     /* Transfer ownership of a register to another signature chain. */
                     case OP::TRANSFER:
                     {
-                        /* Extract the address from the stream. */
+                        /* Extract the address from the tx.ssOperation. */
                         uint256_t hashAddress;
-                        stream >> hashAddress;
+                        tx.ssOperation >> hashAddress;
 
                         /* Read the register transfer recipient. */
                         uint256_t hashTransfer;
-                        stream >> hashTransfer;
+                        tx.ssOperation >> hashTransfer;
 
                         /* Execute the operation method. */
-                        if(!Transfer(hashAddress, hashTransfer, hashOwner, fWrite))
+                        if(!Transfer(hashAddress, hashTransfer, hashOwner, nFlags))
                             return false;
 
                         break;
@@ -138,17 +149,17 @@ namespace TAO::Operation
                     /* Debit tokens from an account you own. */
                     case OP::DEBIT:
                     {
-                        uint256_t hashFrom; //the register address debit is being sent from. Hard reject if this register isn't account id
-                        stream >> hashFrom;
+                        uint256_t hashAddress; //the register address debit is being sent from. Hard reject if this register isn't account id
+                        tx.ssOperation >> hashAddress;
 
-                        uint256_t hashTo;   //the register address debit is being sent to. Hard reject if this register isn't an account id
-                        stream >> hashTo;
+                        uint256_t hashTransfer;   //the register address debit is being sent to. Hard reject if this register isn't an account id
+                        tx.ssOperation >> hashTransfer;
 
                         uint64_t  nAmount;  //the amount to be transfered
-                        stream >> nAmount;
+                        tx.ssOperation >> nAmount;
 
                         /* Execute the operation method. */
-                        if(!Debit(hashFrom, hashTo, nAmount, hashOwner, fWrite))
+                        if(!Debit(hashAddress, hashTransfer, nAmount, hashOwner, nFlags))
                             return false;
 
                         break;
@@ -160,22 +171,22 @@ namespace TAO::Operation
                     {
                         /* The transaction that this credit is claiming. */
                         uint512_t hashTx;
-                        stream >> hashTx;
+                        tx.ssOperation >> hashTx;
 
                         /* The proof this credit is using to make claims. */
                         uint256_t hashProof;
-                        stream >> hashProof;
+                        tx.ssOperation >> hashProof;
 
                         /* The account that is being credited. */
                         uint256_t hashAccount;
-                        stream >> hashAccount;
+                        tx.ssOperation >> hashAccount;
 
                         /* The total to be credited. */
                         uint64_t  nCredit;
-                        stream >> nCredit;
+                        tx.ssOperation >> nCredit;
 
                         /* Execute the operation method. */
-                        if(!Credit(hashTx, hashProof, hashAccount, nCredit, hashOwner, fWrite))
+                        if(!Credit(hashTx, hashProof, hashAccount, nCredit, hashOwner, nFlags))
                             return false;
 
                         break;
@@ -185,20 +196,20 @@ namespace TAO::Operation
                     /* Coinbase operation. Creates an account if none exists. */
                     case OP::COINBASE:
                     {
-                        /* Ensure that it as beginning of the stream. */
-                        if(!stream.Begin())
+                        /* Ensure that it as beginning of the tx.ssOperation. */
+                        if(!tx.ssOperation.begin())
                             return debug::error(FUNCTION "coinbase opeartion has to be first", __PRETTY_FUNCTION__);
 
                         /* The account that is being credited. */
                         uint256_t hashGenesis;
-                        stream >> hashGenesis;
+                        tx.ssOperation >> hashGenesis;
 
                         /* The total to be credited. */
                         uint64_t  nCredit;
-                        stream >> nCredit;
+                        tx.ssOperation >> nCredit;
 
-                        /* Ensure that it as end of stream. TODO: coinbase should be followed by ambassador and developer scripts */
-                        if(!stream.End())
+                        /* Ensure that it as end of tx.ssOperation. TODO: coinbase should be followed by ambassador and developer scripts */
+                        if(!tx.ssOperation.end())
                             return debug::error(FUNCTION "coinbase can't have extra data", __PRETTY_FUNCTION__);
 
                         break;
@@ -208,36 +219,36 @@ namespace TAO::Operation
                     /* Coinstake operation. Requires an account. */
                     case OP::TRUST:
                     {
-                        /* Ensure that it as beginning of the stream. */
-                        if(!stream.Begin())
+                        /* Ensure that it as beginning of the tx.ssOperation. */
+                        if(!tx.ssOperation.begin())
                             return debug::error(FUNCTION "trust opeartion has to be first", __PRETTY_FUNCTION__);
 
                         /* The account that is being staked. */
                         uint256_t hashAccount;
-                        stream >> hashAccount;
+                        tx.ssOperation >> hashAccount;
 
                         /* The previous trust block. */
                         uint1024_t hashLastTrust;
-                        stream >> hashLastTrust;
+                        tx.ssOperation >> hashLastTrust;
 
                         /* Previous trust sequence number. */
                         uint32_t nSequence;
-                        stream >> nSequence;
+                        tx.ssOperation >> nSequence;
 
                         /* The previous trust calculated. */
                         uint64_t nLastTrust;
-                        stream >> nLastTrust;
+                        tx.ssOperation >> nLastTrust;
 
                         /* The total to be staked. */
                         uint64_t  nStake;
-                        stream >> nStake;
+                        tx.ssOperation >> nStake;
 
                         /* Execute the operation method. */
-                        if(!Trust(hashAccount, hashLastTrust, nSequence, nLastTrust, nStake, hashOwner, fWrite))
+                        if(!Trust(hashAccount, hashLastTrust, nSequence, nLastTrust, nStake, hashOwner, nFlags))
                             return false;
 
-                        /* Ensure that it as end of stream. TODO: coinbase should be followed by ambassador and developer scripts */
-                        if(!stream.End())
+                        /* Ensure that it as end of tx.ssOperation. TODO: coinbase should be followed by ambassador and developer scripts */
+                        if(!tx.ssOperation.end())
                             return debug::error(FUNCTION "trust can't have extra data", __PRETTY_FUNCTION__);
 
                         break;
@@ -249,14 +260,14 @@ namespace TAO::Operation
                     {
                         /* The transaction that you are authorizing. */
                         uint512_t hashTx;
-                        stream >> hashTx;
+                        tx.ssOperation >> hashTx;
 
                         /* The proof you are using that you have rights. */
                         uint256_t hashProof;
-                        stream >> hashProof;
+                        tx.ssOperation >> hashProof;
 
                         /* Execute the operation method. */
-                        if(!Authorize(hashTx, hashProof, hashOwner, fWrite))
+                        if(!Authorize(hashTx, hashProof, hashOwner, nFlags))
                             return false;
 
                         break;

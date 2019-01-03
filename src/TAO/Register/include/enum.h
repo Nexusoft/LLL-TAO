@@ -16,13 +16,66 @@ ________________________________________________________________________________
 
 namespace TAO::Register
 {
-    /** Operation Layer Byte Code. **/
-    enum OBJECT
+    /** Object registers that are available for use. **/
+    struct OBJECT
     {
-        READONLY = 0x00, //this type of register cannot have the data changed
-        RAW      = 0x01, //this type of register is just raw data that can be changed
-        ACCOUNT  = 0x02, //this type of register handles general accounts and DEBITS / CREDITS
-        TOKEN    = 0x03, //this type of register to hold token parameters
+        enum
+        {
+            /* This type of register cannot have the data changed */
+            READONLY = 0x00,
+
+            /* This type of register can only be appended to. */
+            APPEND   = 0x01,
+
+            /* This type of register is just raw data that can be changed. */
+            RAW      = 0x02,
+
+            /* This type of register handles general accounts and DEBITS / CREDITS */
+            ACCOUNT  = 0x03,
+
+            /* This type of register to hold token parameters. */
+            TOKEN    = 0x04
+        };
+    };
+
+
+    /** The states for the register script in transaction. **/
+    struct STATES
+    {
+        enum
+        {
+            /* RESERVED can't be used as a state. */
+            RESERVED   = 0x00,
+
+            /* Pre-State - for marking register as a pre-state in register scripts. */
+            PRESTATE   = 0x01,
+
+            /* Post-State - for recording the checksum of register post-state. */
+            POSTSTATE  = 0x02,
+
+            /* Validation - for recording events in validation registers. */
+            VALIDATION = 0x03
+        };
+    };
+
+
+    /** The flags on what to do to registers when executing operations. **/
+    struct FLAGS
+    {
+        enum
+        {
+            /* Calculate the register's pre-states. */
+            PRESTATE  = (1 << 1),
+
+            /* Calculate the register post-state checksum. */
+            POSTSTATE = (1 << 2),
+
+            /* Write the registers post-state to database. */
+            WRITE     = (1 << 3),
+
+            /* Write the states into a mempool for checking pre-block. */
+            MEMPOOL   = (1 << 4)
+        };
     };
 }
 

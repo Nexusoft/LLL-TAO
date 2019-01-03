@@ -16,13 +16,14 @@ ________________________________________________________________________________
 
 #include <vector>
 
-#include <LLC/types/uint1024.h>
+#include <TAO/Operation/include/stream.h>
+#include <TAO/Register/include/stream.h>
 
 #include <Util/include/runtime.h>
-#include <Util/templates/serialize.h>
 
 namespace TAO::Ledger
 {
+
     /** Tritium Transaction.
      *
      *  State of a tritium specific transaction.
@@ -31,6 +32,14 @@ namespace TAO::Ledger
     class Transaction //transaction header size is 144 bytes
     {
     public:
+
+        /** The operations that create post-states. **/
+        TAO::Operation::Stream ssOperation;
+
+
+        /** The register pre-states. **/
+        TAO::Register::Stream  ssRegister;
+
 
         /** The transaction version. **/
         uint32_t nVersion;
@@ -56,18 +65,10 @@ namespace TAO::Ledger
         uint512_t hashPrevTx;
 
 
-        /** The data to be recorded in the ledger. **/
-        std::vector<uint8_t> vchOperations;
-
-
         //memory only, to be disposed once fully locked into the chain behind a checkpoint
         //this is for the segregated keys from transaction data.
         std::vector<uint8_t> vchPubKey;
         std::vector<uint8_t> vchSig;
-
-
-        //flag to determine if tx has been connected
-        bool fConnected;
 
 
         //memory only read position
@@ -77,25 +78,22 @@ namespace TAO::Ledger
         //serialization methods
         IMPLEMENT_SERIALIZE
         (
+            /* Operations layer. */
+            READWRITE(ssOperation);
 
+            /* Register layer. */
+            READWRITE(ssRegister);
+
+            /* Ledger layer */
             READWRITE(this->nVersion);
             READWRITE(nSequence);
             READWRITE(nTimestamp);
             READWRITE(hashNext);
-
-            if(!(nSerType & SER_GENESISHASH)) //genesis hash is not serialized
-                READWRITE(hashGenesis);
-
+            READWRITE(hashGenesis);
             READWRITE(hashPrevTx);
-            READWRITE(vchOperations);
             READWRITE(vchPubKey);
-
             if(!(nSerType & SER_GETHASH))
-            {
                 READWRITE(vchSig);
-            }
-
-            READWRITE(fConnected);
         )
 
 
@@ -107,51 +105,7 @@ namespace TAO::Ledger
         , hashNext(0)
         , hashGenesis(0)
         , hashPrevTx(0)
-        , fConnected(false)
         , nReadPos(0) {}
-
-
-        /** read
-         *
-         *  Reads raw data from the stream
-         *
-         *  @param[in] pch The pointer to beginning of memory to write
-         *
-         *  @param[in] nSize The total number of bytes to read
-         *
-         **/
-        Transaction& read(char* pch, int nSize)
-        {
-            /* Check size constraints. */
-            if(nReadPos + nSize > vchOperations.size())
-                throw std::runtime_error(debug::strprintf(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos));
-
-            /* Copy the bytes into tmp object. */
-            std::copy((uint8_t*)&vchOperations[nReadPos], (uint8_t*)&vchOperations[nReadPos] + nSize, (uint8_t*)pch);
-
-            /* Iterate the read position. */
-            nReadPos += nSize;
-
-            return *this;
-        }
-
-
-        /** write
-         *
-         *  Writes data into the stream
-         *
-         *  @param[in] pch The pointer to beginning of memory to write
-         *
-         *  @param[in] nSize The total number of bytes to copy
-         *
-         **/
-        Transaction& write(const char* pch, int nSize)
-        {
-            /* Push the obj bytes into the vector. */
-            vchOperations.insert(vchOperations.end(), (uint8_t*)pch, (uint8_t*)pch + nSize);
-
-            return *this;
-        }
 
 
         /** Operator Overload <<
@@ -164,23 +118,8 @@ namespace TAO::Ledger
         template<typename Type> Transaction& operator<<(const Type& obj)
         {
             /* Serialize to the stream. */
-            ::Serialize(*this, obj, SER_OPERATIONS, nVersion); //temp versinos for now
+            ssOperation << obj;
 
-            return (*this);
-        }
-
-
-        /** Operator Overload >>
-         *
-         *  Serializes data into vchOperations
-         *
-         *  @param[out] obj The object to de-serialize from ledger data
-         *
-         **/
-        template<typename Type> Transaction& operator>>(Type& obj)
-        {
-            /* Unserialize from the stream. */
-            ::Unserialize(*this, obj, SER_OPERATIONS, nVersion);
             return (*this);
         }
 
@@ -233,16 +172,6 @@ namespace TAO::Ledger
          *
          **/
         uint512_t GetHash() const;
-
-
-        /** Genesis
-         *
-         *  Gets the hash of the genesis transaction
-         *
-         *  @return 256-bit unsigned integer of hash.
-         *
-         **/
-        uint256_t Genesis() const;
 
 
         /** NextHash

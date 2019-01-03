@@ -72,7 +72,7 @@ namespace TAO::Ledger
             return debug::error(FUNCTION "%s is invalid", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
 
         /* Calculate the future potential states. */
-        if(!TAO::Operation::Execute(tx.vchOperations, tx.hashGenesis, false))
+        if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::MEMPOOL))
             return debug::error(FUNCTION "%s register / operations failed", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
 
         /* Add to the map. */

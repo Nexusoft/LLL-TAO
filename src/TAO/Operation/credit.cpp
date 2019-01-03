@@ -27,7 +27,7 @@ namespace TAO::Operation
     //TODO: transaction spend flags should be based on debit hashTo and txid. USe this to write "proofs" with this logic.
 
     /* Commits funds from an account to an account */
-    bool Credit(uint512_t hashTx, uint256_t hashProof, uint256_t hashAccount, uint64_t nAmount, uint256_t hashCaller, bool fWrite)
+    bool Credit(uint512_t hashTx, uint256_t hashProof, uint256_t hashAccount, uint64_t nAmount, uint256_t hashCaller, uint8_t nFlags)
     {
 
         /* Read the claimed transaction. */
@@ -37,22 +37,22 @@ namespace TAO::Operation
 
         /* Extract the state from tx. */
         uint8_t TX_OP;
-        tx >> TX_OP;
+        tx.ssOperation >> TX_OP;
 
         /* Check that prev is coinbase. */
         if(TX_OP == TAO::Operation::OP::COINBASE) //NOTE: thie coinbase can't be spent unless flag is byte 0. Safe to use this for coinbase flag.
         {
             /* Check if this is a whole credit that the transaction is not already connected. */
-            if(LLD::legDB->HasProof(hashCaller, hashTx, fWrite))
+            if(LLD::legDB->HasProof(hashCaller, hashTx, nFlags))
                 return debug::error(FUNCTION "transaction is already spent", __PRETTY_FUNCTION__);
 
             /* Get the coinbase amount. */
             uint64_t nCredit;
-            tx >> nCredit;
+            tx.ssOperation >> nCredit;
 
             /* Read the state from. */
             TAO::Register::State stateAccount;
-            if(!LLD::regDB->ReadState(hashAccount, stateAccount, fWrite))
+            if(!LLD::regDB->ReadState(hashAccount, stateAccount, nFlags))
                 return debug::error(FUNCTION "can't read state from", __PRETTY_FUNCTION__);
 
             /* Check that the creditor has permissions. */
@@ -87,11 +87,11 @@ namespace TAO::Operation
                 return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashAccount.ToString().c_str());
 
             /* Write the proof spend. */
-            if(!LLD::legDB->WriteProof(hashCaller, hashTx, fWrite))
+            if(!LLD::legDB->WriteProof(hashCaller, hashTx, nFlags))
                 return debug::error(FUNCTION "failed to write proof", __PRETTY_FUNCTION__);
 
             /* Write the register to the database. */
-            if(!LLD::regDB->WriteState(hashAccount, stateAccount, fWrite))
+            if(!LLD::regDB->WriteState(hashAccount, stateAccount, nFlags))
                 return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
 
             return true;
@@ -103,22 +103,22 @@ namespace TAO::Operation
 
         /* Get the debit from account. */
         uint256_t hashFrom;
-        tx >> hashFrom;
+        tx.ssOperation >> hashFrom;
 
         /* Get the debit to account. */
         uint256_t hashTo;
-        tx >> hashTo;
+        tx.ssOperation >> hashTo;
 
         /* Read the to account state. */
         TAO::Register::State stateTo;
-        if(!LLD::regDB->ReadState(hashTo, stateTo, fWrite))
+        if(!LLD::regDB->ReadState(hashTo, stateTo, nFlags))
             return debug::error(FUNCTION "%s state to claim not in database", __PRETTY_FUNCTION__, hashTo.ToString().c_str());
 
         /* Credits specific to account objects. */
         if(stateTo.nType == TAO::Register::OBJECT::ACCOUNT)
         {
             /* Check if this is a whole credit that the transaction is not already spent. */
-            if(LLD::legDB->HasProof(hashAccount, hashTx, fWrite))
+            if(LLD::legDB->HasProof(hashAccount, hashTx, nFlags))
                 return debug::error(FUNCTION "transaction is already spent", __PRETTY_FUNCTION__);
 
             //check the hash proof to the transaction database. Proofs claim a debit so it is no longer sendable
@@ -130,7 +130,7 @@ namespace TAO::Operation
 
             /* Read the state from. */
             TAO::Register::State stateAccount;
-            if(!LLD::regDB->ReadState(hashAccount, stateAccount, fWrite))
+            if(!LLD::regDB->ReadState(hashAccount, stateAccount, nFlags))
                 return debug::error(FUNCTION "can't read state from", __PRETTY_FUNCTION__);
 
             /* Check that the creditor has permissions. */
@@ -143,7 +143,7 @@ namespace TAO::Operation
 
             /* Read the state from. */
             TAO::Register::State stateFrom;
-            if(!LLD::regDB->ReadState(hashFrom, stateFrom, fWrite))
+            if(!LLD::regDB->ReadState(hashFrom, stateFrom, nFlags))
                  return debug::error(FUNCTION "can't read state from", __PRETTY_FUNCTION__);
 
             /* Check the token identifiers. */
@@ -158,7 +158,7 @@ namespace TAO::Operation
 
             /* Get the debit amount. */
             uint64_t nTotal;
-            tx >> nTotal;
+            tx.ssOperation >> nTotal;
 
             /* Check the proper balance requirements. */
             if(nAmount != nTotal)
@@ -176,11 +176,11 @@ namespace TAO::Operation
                 return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashAccount.ToString().c_str());
 
             /* Write the proof spend. */
-            if(!LLD::legDB->WriteProof(hashAccount, hashTx, fWrite))
+            if(!LLD::legDB->WriteProof(hashAccount, hashTx, nFlags))
                 return debug::error(FUNCTION "failed to write proof", __PRETTY_FUNCTION__);
 
             /* Write the register to the database. */
-            if(!LLD::regDB->WriteState(hashAccount, stateTo, fWrite))
+            if(!LLD::regDB->WriteState(hashAccount, stateTo, nFlags))
                 return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
 
         }
@@ -189,7 +189,7 @@ namespace TAO::Operation
 
             /* Get the state register of this register's owner. */
             TAO::Register::State stateOwner;
-            if(!LLD::regDB->ReadState(stateTo.hashOwner, stateOwner, fWrite))
+            if(!LLD::regDB->ReadState(stateTo.hashOwner, stateOwner, nFlags))
                 return debug::error(FUNCTION "credit from raw object can't be without owner", __PRETTY_FUNCTION__);
 
             /* Disable any account that's not owned by a token (for now). */
@@ -205,7 +205,7 @@ namespace TAO::Operation
             //TODO: make operations logic calculated in memory when received. Process this before block is received.
             //Block is the commitment of the data into the database.
             //TODO: need a rule to check that there are no conflicting states between new transactions
-            if(LLD::legDB->HasProof(hashProof, hashTx, fWrite))
+            if(LLD::legDB->HasProof(hashProof, hashTx, nFlags))
                 return debug::error(FUNCTION "credit proof has already been spent", __PRETTY_FUNCTION__);
 
 
@@ -216,7 +216,7 @@ namespace TAO::Operation
 
             /* Check the state register that is being used as proof from creditor. */
             TAO::Register::State stateProof;
-            if(!LLD::regDB->ReadState(hashProof, stateProof, fWrite))
+            if(!LLD::regDB->ReadState(hashProof, stateProof, nFlags))
                 return debug::error(FUNCTION "credit proof register is not found", __PRETTY_FUNCTION__);
 
             /* Check that the proof is an account being used. */
@@ -237,7 +237,7 @@ namespace TAO::Operation
 
             /* Get the state of debit to account. */
             TAO::Register::State stateAccount;
-            if(!LLD::regDB->ReadState(hashAccount, stateAccount, fWrite))
+            if(!LLD::regDB->ReadState(hashAccount, stateAccount, nFlags))
                 return debug::error(FUNCTION "cannot read credit to account register", __PRETTY_FUNCTION__);
 
             /* Make sure the account to is an object account (for now - otherwise you can have chans of chains of chains). */
@@ -250,7 +250,7 @@ namespace TAO::Operation
 
             /* Get the total amount of the debit. */
             uint64_t nDebit;
-            tx >> nDebit;
+            tx.ssOperation >> nDebit;
 
             /* Get the total tokens to be distributed. */
             uint64_t nTotal = acctProof.nBalance * nDebit / token.nMaxSupply;
@@ -265,7 +265,7 @@ namespace TAO::Operation
 
             /* Read the state from. */
             TAO::Register::State stateFrom;
-            if(!LLD::regDB->ReadState(hashFrom, stateFrom, fWrite))
+            if(!LLD::regDB->ReadState(hashFrom, stateFrom, nFlags))
                 return debug::error(FUNCTION "can't read state from", __PRETTY_FUNCTION__);
 
             /* Get the debiter's register. */
@@ -288,11 +288,11 @@ namespace TAO::Operation
                 return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashAccount.ToString().c_str());
 
             /* Write the hash proof to disk. */
-            if(!LLD::legDB->WriteProof(hashProof, hashTx, fWrite))
+            if(!LLD::legDB->WriteProof(hashProof, hashTx, nFlags))
                 return debug::error(FUNCTION "failed to write the credit proof", __PRETTY_FUNCTION__);
 
             /* Write the register to the database. */
-            if(!LLD::regDB->WriteState(hashAccount, stateTo, fWrite))
+            if(!LLD::regDB->WriteState(hashAccount, stateTo, nFlags))
                 return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
         }
 

@@ -160,6 +160,8 @@ OBJS= \
 	build/Ledger_transaction.o \
 	build/Ledger_tritium.o \
 	build/Ledger_trustkey.o \
+	build/Register_verify.o \
+	build/Register_rollback.o \
 	build/Operation_write.o \
 	build/Operation_append.o \
 	build/Operation_register.o \

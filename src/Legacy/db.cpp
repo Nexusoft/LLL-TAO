@@ -183,16 +183,16 @@ namespace Legacy
                 pdb = new Db(&CDB::dbenv, 0);
 
                 /* Opened database will support multi-threaded access */
-                uint32_t nFlags = DB_THREAD;
+                uint32_t fWrite = DB_THREAD;
 
                 if (fCreate)
-                    nFlags |= DB_CREATE; // Add flag to create database file if does not exist
+                    fWrite |= DB_CREATE; // Add flag to create database file if does not exist
 
                 ret = pdb->open(nullptr,         // Txn pointer
                                 strFile.c_str(), // Filename
                                 "main",          // Logical db name
                                 DB_BTREE,        // Database type
-                                nFlags,          // Flags
+                                fWrite,          // Flags
                                 0);
 
                 if (ret == 0)

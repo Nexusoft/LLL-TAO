@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/state.h>
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/state.h>
+#include <TAO/Register/include/enum.h>
 
 namespace LLD
 {
@@ -70,10 +71,10 @@ namespace LLD
         }
 
 
-        bool WriteProof(uint256_t hashProof, uint512_t hashTransaction, bool fWrite = true)
+        bool WriteProof(uint256_t hashProof, uint512_t hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             /* Memory mode for pre-database commits. */
-            if(!fWrite)
+            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 LOCK(MEMORY_MUTEX);
 
@@ -107,10 +108,10 @@ namespace LLD
         }
 
 
-        bool HasProof(uint256_t hashProof, uint512_t hashTransaction, bool fWrite = true)
+        bool HasProof(uint256_t hashProof, uint512_t hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             /* Memory mode for pre-database commits. */
-            if(!fWrite)
+            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 LOCK(MEMORY_MUTEX);
 

@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLD/keychain/hashmap.h>
 
 #include <TAO/Register/include/state.h>
+#include <TAO/Register/include/enum.h>
 
 namespace LLD
 {
@@ -50,10 +51,10 @@ namespace LLD
          *  @return true if write was successul.
          *
          **/
-        bool WriteState(uint256_t hashRegister, TAO::Register::State state, bool fWrite = true)
+        bool WriteState(uint256_t hashRegister, TAO::Register::State state, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             /* Memory mode for pre-database commits. */
-            if(!fWrite)
+            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 LOCK(MEMORY_MUTEX);
 
@@ -85,10 +86,10 @@ namespace LLD
          *  @return true if read was successul.
          *
          **/
-        bool ReadState(uint256_t hashRegister, TAO::Register::State& state, bool fWrite = true)
+        bool ReadState(uint256_t hashRegister, TAO::Register::State& state, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             /* Memory mode for pre-database commits. */
-            if(!fWrite)
+            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 LOCK(MEMORY_MUTEX);
 
@@ -105,6 +106,22 @@ namespace LLD
         }
 
 
+        /** Erase state
+         *
+         *  Erase a state register from the register database.
+         *
+         *  @param[in] hashRegister The register address.
+         *  @param[out] state The state register to read.
+         *
+         *  @return true if read was successul.
+         *
+         **/
+        bool EraseState(uint256_t hashRegister)
+        {
+            return Erase(std::make_pair(std::string("state"), hashRegister));
+        }
+
+
         /** Write Identifier
          *
          *  Writes a token identifier to the register database
@@ -115,10 +132,10 @@ namespace LLD
          *  @return true if write was successul.
          *
          **/
-        bool WriteIdentifier(uint32_t nIdentifier, uint256_t hashRegister, bool fWrite = true)
+        bool WriteIdentifier(uint32_t nIdentifier, uint256_t hashRegister, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             /* Memory mode for pre-database commits. */
-            if(!fWrite)
+            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 LOCK(MEMORY_MUTEX);
 
@@ -149,10 +166,10 @@ namespace LLD
          *  @return true if write was successul.
          *
          **/
-        bool ReadIdentifier(uint32_t nIdentifier, uint256_t& hashRegister, bool fWrite = true)
+        bool ReadIdentifier(uint32_t nIdentifier, uint256_t& hashRegister, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             /* Memory mode for pre-database commits. */
-            if(!fWrite)
+            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 LOCK(MEMORY_MUTEX);
 
@@ -178,10 +195,10 @@ namespace LLD
          *  @return true if it exists
          *
          **/
-        bool HasIdentifier(uint32_t nIdentifier, bool fWrite = true)
+        bool HasIdentifier(uint32_t nIdentifier, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             /* Memory mode for pre-database commits. */
-            if(!fWrite)
+            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 LOCK(MEMORY_MUTEX);
 
@@ -203,10 +220,10 @@ namespace LLD
          *  @return true if it exists.
          *
          **/
-        bool HasState(uint256_t hashRegister, bool fWrite = true)
+        bool HasState(uint256_t hashRegister, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             /* Memory mode for pre-database commits. */
-            if(!fWrite)
+            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 LOCK(MEMORY_MUTEX);
 

@@ -262,21 +262,7 @@ namespace LLP
                             break;
                         }
 
-                        /* Write the transaction to ledger database. */
-                        if(!LLD::legDB->WriteTx(tx.GetHash(), tx))
-                        {
-                            debug::error(NODE "tx failed to write to disk");
-
-                            break;
-                        }
-
-                        /* Process the transaction operations. */
-                        if(!TAO::Operation::Execute(tx.vchOperations, tx.hashGenesis))
-                        {
-                            debug::error(NODE "tx failed to process register/operations");
-
-                            break;
-                        }
+                        /* Add the transaction to the memory pool. */
                     }
 
                     /* Debug output for offsets. */

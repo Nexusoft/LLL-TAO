@@ -11,15 +11,26 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/include/global.h>
+#ifndef NEXUS_TAO_REGISTER_INCLUDE_VERIFY_H
+#define NEXUS_TAO_REGISTER_INCLUDE_VERIFY_H
 
-namespace TAO::Operation
+#include <TAO/Ledger/types/transactions.h>
+
+namespace TAO::Register
 {
 
-    /* Commits funds from a coinbase transaction. */
-    bool Trust(uint256_t hashAddress, uint1024_t hashLastTrust, uint32_t nSequence, uint32_t nLastTrust, uint64_t nStake, uint256_t hashCaller, uint8_t nFlags)
-    {
+    /** Verify
+     *
+     *  Verify the pre-states of a register to current network state.
+     *
+     *  @param[in] tx The transaction to verify pre-states with.
+     *  @param[in] nFlags The flags to verify for.
+     *
+     *  @return true if verified correctly.
+     *
+     **/
+    bool Verify(TAO::Ledger::Transaction tx, uint8_t nFlags);
 
-        return true;
-    }
 }
+
+#endif
