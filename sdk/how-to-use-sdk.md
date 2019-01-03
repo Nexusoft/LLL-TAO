@@ -23,7 +23,15 @@ sdk_init() to initialize with credentials:
 ```
 
 You choose values for &lt;username&gt;, &lt;password&gt;, and &lt;pin&gt;.
-Keep them private since they give you access to your Nexus Tritium account.    
+Keep them private since they give you access to your Nexus Tritium account.
+
+Returns:
+```    
+>>> myuser
+<nexus_sdk.sdk_init instance at 0x102350bd8>
+>>> dir(myuser)
+['__doc__', '__init__', '__module__', '_sdk_init__error', '_sdk_init__get', '_sdk_init__login', 'genesis_id', 'nexus_accounts_create', 'nexus_accounts_login', 'nexus_accounts_logout', 'nexus_accounts_transactions', 'nexus_supply_createitem', 'nexus_supply_getitem', 'nexus_supply_history', 'nexus_supply_transfer', 'password', 'pin', 'session_id', 'username']
+```    
             
 Creating a User
 ---------------
