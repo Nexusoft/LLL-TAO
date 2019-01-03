@@ -112,7 +112,7 @@ endif
 
 #Fail on warnings
 ifdef WARNINGS_FAIL
-	CSSFLAGS+= -Werror
+	CXXFLAGS+= -Werror
 endif
 
 #Enable / Disable debug symbols and set appropriate optimization level

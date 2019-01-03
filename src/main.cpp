@@ -72,6 +72,10 @@ namespace LLP
 int main(int argc, char** argv)
 {
 
+    /* Setup the startup timer. */
+    runtime::timer startup;
+    startup.Start();
+
     /* Handle all the signals with signal handler method. */
     SetupSignals();
 
@@ -103,7 +107,6 @@ int main(int argc, char** argv)
 
 
     /* Create the database instances. */
-    runtime::timer time;
     LLD::regDB = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::APPEND);
     LLD::locDB = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
     LLD::legDB = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
@@ -190,6 +193,7 @@ int main(int argc, char** argv)
         false,
         false);
 
+
     /* Set up RPC server */
     TAO::API::RPCCommands = new TAO::API::RPC();
     LLP::Server<LLP::RPCNode>* RPC_SERVER = new LLP::Server<LLP::RPCNode>(
@@ -203,6 +207,11 @@ int main(int argc, char** argv)
         config::GetBoolArg("-listen", true),
         false,
         false);
+
+
+    /* Elapsed Milliseconds from startup. */
+    uint32_t nElapsed = startup.ElapsedMilliseconds();
+    debug::log2(0, TESTING, "Started up in ", nElapsed, "ms");
 
 
     /* Busy wait for Shutdown. */
