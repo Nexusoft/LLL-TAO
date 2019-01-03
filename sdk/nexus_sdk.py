@@ -29,8 +29,8 @@
 #
 #------------------------------------------------------------------------------
 
-#import urllib as geturl
-import urllib2 as geturl
+import urllib
+import urllib2
 import json
 
 accounts_url = "http://localhost:8080/accounts/{}"
@@ -131,10 +131,15 @@ class sdk_init():
 
     def __get(self, url):
         try:
-            connect = geturl.urlopen(url)
+            connect = urllib2.urlopen(url)
             text = connect.read()
         except:
-            return(self.__error("Connection refused"))
+            try:
+                connect = urllib.urlopen(url)
+                text = connect.read()
+            except:
+                return(self.__error("Connection refused"))
+            #endtry
         #endtry
 
         if (text == None):

@@ -48,7 +48,6 @@ returned. There are no errors in any SDK call when:
 ```
     if (status.has_key("error") == False):
         print "accounts/create successful"
-    endif               
 ```
 
 Returns:
