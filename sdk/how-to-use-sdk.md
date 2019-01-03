@@ -1,6 +1,10 @@
 
-                   How to use the Nexus Python SDK
-                   -------------------------------
+How to use the Nexus Python SDK
+-------------------------------
+
+This is a document brief on how the Nexus SDK calling sequence flow can work
+for your Blockchain application. See LLL-TAO/sdk/nexus-sdk-primer.py for a
+real code sequence you change and experiment with.    
 
 Initializing with the SDK
 -------------------------
