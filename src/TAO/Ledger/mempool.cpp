@@ -76,11 +76,11 @@ namespace TAO::Ledger
 
         /* Verify the Ledger Pre-States. */
         if(!TAO::Register::Verify(tx))
-            return debug::error(FUNCTION "%s register / operations failed", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
+            return debug::error(FUNCTION "%s register verification failed", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
 
         /* Calculate the future potential states. */
         if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::MEMPOOL))
-            return debug::error(FUNCTION "%s register / operations failed", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
+            return debug::error(FUNCTION "%s operations execution failed", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
 
         /* Add to the map. */
         mapLedger[hash] = tx;

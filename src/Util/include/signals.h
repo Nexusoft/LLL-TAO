@@ -17,6 +17,11 @@ ________________________________________________________________________________
 #include <signal.h>
 #include <Util/include/args.h>
 
+#include <condition_variable>
+
+
+static std::condition_variable SHUTDOWN;
+
 
 /** HandleSIGTERM
  *
@@ -29,8 +34,8 @@ void HandleSIGTERM(int signum)
 {
     if(signum != SIGPIPE)
     {
-        debug::log(0, "Shutting Down %d", signum);
         config::fShutdown = true;
+        SHUTDOWN.notify_all();
     }
 }
 

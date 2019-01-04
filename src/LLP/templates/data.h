@@ -37,6 +37,9 @@ namespace LLP
         bool fDDOS;
         bool fMETER;
 
+        /* Destructor flag. */
+        std::atomic<bool> fDestruct;
+
         std::atomic<uint32_t> nConnections;
         uint32_t ID;
         uint32_t REQUESTS;
@@ -61,6 +64,7 @@ namespace LLP
                                  uint32_t nTimeout, bool fMeter = false)
         : fDDOS(isDDOS)
         , fMETER(fMeter)
+        , fDestruct(false)
         , nConnections(0)
         , ID(id)
         , REQUESTS(0)
@@ -74,7 +78,14 @@ namespace LLP
 
         virtual ~DataThread<ProtocolType>()
         {
-            fMETER  = false;
+            fDestruct = true;
+
+            CONDITION.notify_all();
+            DATA_THREAD.join();
+
+            for(auto & CONNECTION : CONNECTIONS)
+                if(CONNECTION)
+                    delete CONNECTION;
         }
 
 
@@ -181,17 +192,21 @@ namespace LLP
             std::mutex CONDITION_MUTEX;
 
             /* The main connection handler loop. */
-            while(!config::fShutdown)
+            while(!fDestruct.load())
             {
                 /* Keep thread from consuming too many resources. */
                 runtime::sleep(1);
 
                 /* Keep data threads waiting for work. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-                CONDITION.wait(CONDITION_LOCK, [this]{ return nConnections.load() > 0; });
+                CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || nConnections.load() > 0; });
+
+                /* Check for close. */
+                if(fDestruct.load())
+                    return;
 
                 { LOCK(MUTEX);
-                    
+
                     /* Poll the sockets. */
                     int nPoll = poll((pollfd*)CONNECTIONS[0], CONNECTIONS.size(), 100);
                     if(nPoll < 0)

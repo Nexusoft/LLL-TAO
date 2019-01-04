@@ -72,9 +72,9 @@ namespace LLP
 int main(int argc, char** argv)
 {
 
-    /* Setup the startup timer. */
-    runtime::timer startup;
-    startup.Start();
+    /* Setup the timer timer. */
+    runtime::timer timer;
+    timer.Start();
 
     /* Handle all the signals with signal handler method. */
     SetupSignals();
@@ -208,51 +208,89 @@ int main(int argc, char** argv)
         false);
 
 
-    /* Elapsed Milliseconds from startup. */
-    uint32_t nElapsed = startup.ElapsedMilliseconds();
+    /* Elapsed Milliseconds from timer. */
+    uint32_t nElapsed = timer.ElapsedMilliseconds();
+    timer.Stop();
+
+
+    /* Sleep before output. */
+    runtime::sleep(100);
+
+
+    /* Startup performance metric. */
     debug::log2(0, TESTING, "Started up in ", nElapsed, "ms");
 
+    /* Wait for shutdown. */
+    std::mutex SHUTDOWN_MUTEX;
+    std::unique_lock<std::mutex> SHUTDOWN_LOCK(SHUTDOWN_MUTEX);
+    SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown; });
 
-    /* Busy wait for Shutdown. */
-    while(!config::fShutdown)
-        runtime::sleep(1000);
-
+    /* Shutdown metrics. */
+    timer.Reset();
 
     /* Cleanup the databases. */
     if(LLD::legDB)
+    {
+        debug::log2(0, TESTING, "Shutting down ledgerDB");
+
         delete LLD::legDB;
+    }
 
     if(LLD::regDB)
+    {
+        debug::log2(0, TESTING, "Shutting down registerDB");
+
         delete LLD::regDB;
+    }
 
     if(LLD::locDB)
+    {
+        debug::log2(0, TESTING, "Shutting down localDB");
+
         delete LLD::locDB;
+    }
 
 
     /* Shutdown the servers and their subsystems */
     if(LLP::TRITIUM_SERVER)
     {
+        debug::log2(0, TESTING, "Shutting down Tritium Server");
+
         LLP::TRITIUM_SERVER->Shutdown();
         delete LLP::TRITIUM_SERVER;
     }
 
     if(LLP::LEGACY_SERVER)
     {
+        debug::log2(0, TESTING, "Shutting down Legacy Server");
+
         LLP::LEGACY_SERVER->Shutdown();
         delete LLP::LEGACY_SERVER;
     }
 
     if(CORE_SERVER)
     {
+        debug::log2(0, TESTING, "Shutting down API Server");
+
         CORE_SERVER->Shutdown();
         delete CORE_SERVER;
     }
 
     if(RPC_SERVER)
     {
+        debug::log2(0, TESTING, "Shutting down RPC Server");
+
         RPC_SERVER->Shutdown();
         delete RPC_SERVER;
     }
+
+
+    /* Elapsed Milliseconds from timer. */
+    nElapsed = timer.ElapsedMilliseconds();
+
+
+    /* Startup performance metric. */
+    debug::log2(0, TESTING, "Closed in ", nElapsed, "ms");
 
 
     return 0;

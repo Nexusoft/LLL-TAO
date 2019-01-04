@@ -123,8 +123,8 @@ namespace Legacy
          *  @see CDB for modes
          *
          **/
-        CWalletDB(const char* pszMode="r+") :
-            CDB(CWalletDB::DEFAULT_WALLET_DB, pszMode)
+        CWalletDB(const char* pszMode="r+")
+        : CDB(CWalletDB::DEFAULT_WALLET_DB, pszMode)
         { }
 
 
@@ -142,8 +142,8 @@ namespace Legacy
          *  @see CDB for modes
          *
          **/
-        CWalletDB(std::string strFileName, const char* pszMode="r+") :
-            CDB(strFileName, pszMode)
+        CWalletDB(std::string strFileName, const char* pszMode="r+")
+        : CDB(strFileName, pszMode)
         { }
 
 

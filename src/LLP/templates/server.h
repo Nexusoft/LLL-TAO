@@ -43,6 +43,8 @@ namespace LLP
         bool fLISTEN;
         bool fMETER;
 
+        std::atomic<bool> fDestruct;
+
     public:
         uint32_t PORT;
         uint32_t MAX_THREADS;
@@ -79,6 +81,7 @@ namespace LLP
         : fDDOS(isDDOS)
         , fLISTEN(fListen)
         , fMETER(fMeter)
+        , fDestruct(false)
         , PORT(nPort)
         , MAX_THREADS(nMaxThreads)
         , DDOS_TIMESPAN(nTimespan)
@@ -111,12 +114,19 @@ namespace LLP
             fMETER  = false;
             fDDOS   = false;
 
+            /* Start the destructor. */
+            fDestruct = true;
+
             /* Wait for address manager. */
             if(pAddressManager)
                 MANAGER_THREAD.join();
 
             /* Wait for meter thread. */
             METER_THREAD.join();
+
+            /* Wait for listeners. */
+            LISTEN_THREAD_V4.join();
+            LISTEN_THREAD_V6.join();
 
             /* Delete the data threads. */
             for(int32_t index = 0; index < MAX_THREADS; ++index)
@@ -261,7 +271,7 @@ namespace LLP
             Address addr;
 
             /* Loop connections. */
-            while(!config::fShutdown)
+            while(!fDestruct.load())
             {
                 runtime::sleep(1000);
 
@@ -355,11 +365,24 @@ namespace LLP
             while(DATA_THREADS.size() < MAX_THREADS)
                 runtime::sleep(1000);
 
+            /* Setup poll objects. */
+            pollfd fds[1];
+            fds[0].events = POLLIN;
+            fds[0].fd     = hListenSocket;
+
             /* Main listener loop. */
-            while(fLISTEN)
+            while(!fDestruct.load())
             {
                 if (hListenSocket != INVALID_SOCKET)
                 {
+                    /* Poll the sockets. */
+                    int nPoll = poll(&fds[0], 1, 100);
+                    if(nPoll < 0)
+                        continue;
+
+                    if(!(fds[0].revents & POLLIN))
+                        continue;
+
                     if(fIPv4)
                     {
                         struct sockaddr_in sockaddr;
@@ -512,12 +535,17 @@ namespace LLP
             if(!config::GetBoolArg("-meters", false))
                 return;
 
+            if(!fMETER)
+                return;
+
             runtime::timer TIMER;
             TIMER.Start();
 
-            while(fMETER)
+            while(!fDestruct.load())
             {
-                runtime::sleep(10000);
+                runtime::sleep(100);
+                if(TIMER.Elapsed() < 10)
+                    continue;
 
                 uint32_t nGlobalConnections = 0;
                 for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
@@ -537,6 +565,8 @@ namespace LLP
                 TIMER.Reset();
                 ClearRequests();
             }
+
+            printf("Meter closed..\n");
         }
 
 

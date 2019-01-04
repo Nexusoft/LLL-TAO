@@ -587,7 +587,7 @@ namespace LLD
         void CacheWriter()
         {
             std::mutex CONDITION_MUTEX;
-            while(!config::fShutdown && !fDestruct.load())
+            while(!fDestruct.load())
             {
                 /* Wait for Database to Initialize. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);

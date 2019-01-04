@@ -163,7 +163,7 @@ namespace Legacy
         , mapWallet()
         , mapRequestCount()
         {
-            
+
         }
 
 
@@ -182,7 +182,7 @@ namespace Legacy
         CWallet(std::string strWalletFileIn)
         : nWalletVersion(FEATURE_BASE)
         , nWalletMaxVersion(FEATURE_BASE)
-        , fFileBacked(false)
+        , fFileBacked(true)
         , fLoaded(false)
         , strWalletFile(strWalletFileIn)
         , mapMasterKeys()

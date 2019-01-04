@@ -631,7 +631,7 @@ namespace LLD
             if(nBufferBytes.load() >= MAX_SECTOR_BUFFER_SIZE)
             {
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-                CONDITION.wait(CONDITION_LOCK, [this]{ return config::fShutdown || nBufferBytes.load() < MAX_SECTOR_BUFFER_SIZE; });
+                CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || nBufferBytes.load() < MAX_SECTOR_BUFFER_SIZE; });
             }
 
             /* Add to the write buffer thread. */
@@ -665,12 +665,12 @@ namespace LLD
             while(true)
             {
                 /* Wait for buffer to empty before shutting down. */
-                if((config::fShutdown || fDestruct.load()) && nBufferBytes.load() == 0)
+                if((fDestruct.load()) && nBufferBytes.load() == 0)
                     return;
 
                 /* Check for data to be written. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-                CONDITION.wait(CONDITION_LOCK, [this]{ return config::fShutdown || fDestruct.load() || nBufferBytes.load() > 0; });
+                CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || nBufferBytes.load() > 0; });
 
                 /* Swap the buffer object to get ready for writes. */
                 std::vector< std::pair<std::vector<uint8_t>, std::vector<uint8_t>> > vIndexes;
@@ -785,7 +785,7 @@ namespace LLD
             runtime::timer TIMER;
             TIMER.Start();
 
-            while(!config::fShutdown || fDestruct.load())
+            while(!fDestruct.load())
             {
                 nBytesWrote     = 0;
                 nBytesRead      = 0;
