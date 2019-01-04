@@ -77,15 +77,13 @@ namespace TAO::Ledger
                 READWRITE(nReleasedReserve[1]);
                 READWRITE(nReleasedReserve[2]);
                 READWRITE(hashCheckpoint);
-            }
 
-            if(!(nSerType & SER_STATEHEADERONLY))
-            {
-                READWRITE(vchBlockSig);
-                READWRITE(vtx);
+                if(!(nSerType & SER_STATEHEADERONLY))
+                {
+                    READWRITE(vchBlockSig);
+                    READWRITE(vtx);
+                }
             }
-            //for disk operations only
-
         )
 
 
