@@ -30,7 +30,7 @@ namespace TAO::Operation
         if((nFlags & TAO::Register::FLAGS::PRESTATE))
         {
             if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
-                return debug::error(FUNCTION "register address doewn't exist %s", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+                return debug::error(FUNCTION "register address doesn't exist %s", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
             ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
         }
@@ -95,11 +95,11 @@ namespace TAO::Operation
             /* Check for matching post states. */
             if(nChecksum != state.GetHash())
                 return debug::error(FUNCTION "register script has invalid post-state", __PRETTY_FUNCTION__);
-        }
 
-        /* Write the register to the database. */
-        if(!LLD::regDB->WriteState(hashAddress, state, nFlags))
-            return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
+            /* Write the register to the database. */
+            if(!LLD::regDB->WriteState(hashAddress, state, nFlags))
+                return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
+        }
 
         return true;
     }
