@@ -23,7 +23,7 @@ namespace TAO::Operation
 {
 
     /* Authorizes funds from an account to an account */
-    bool Debit(uint256_t hashFrom, uint256_t hashTo, uint64_t nAmount, uint256_t hashCaller, uint8_t nFlags)
+    bool Debit(uint256_t hashFrom, uint256_t hashTo, uint64_t nAmount, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
     {
         /* Read the register from the database. */
         TAO::Register::State regFrom = TAO::Register::State();

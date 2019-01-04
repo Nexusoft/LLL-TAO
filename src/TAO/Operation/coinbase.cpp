@@ -24,7 +24,7 @@ namespace TAO::Operation
 {
 
     /* Commits funds from a coinbase transaction. */
-    bool Coinbase(uint256_t hashAddress, uint64_t nAmount, uint256_t hashCaller, uint8_t nFlags)
+    bool Coinbase(uint256_t hashAddress, uint64_t nAmount, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
     {
         //make the coinbase able to be credited as a debit check in credit
         //this will allow the number of confirmations to be defined.

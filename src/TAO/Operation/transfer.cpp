@@ -20,7 +20,7 @@ namespace TAO::Operation
 {
 
     /* Transfers a register between sigchains. */
-    bool Transfer(uint256_t hashAddress, uint256_t hashTransfer, uint256_t hashCaller, uint8_t nFlags)
+    bool Transfer(uint256_t hashAddress, uint256_t hashTransfer, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
     {
         /* Read the register from the database. */
         TAO::Register::State state = TAO::Register::State();

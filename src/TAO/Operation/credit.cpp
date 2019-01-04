@@ -27,7 +27,7 @@ namespace TAO::Operation
     //TODO: transaction spend flags should be based on debit hashTo and txid. USe this to write "proofs" with this logic.
 
     /* Commits funds from an account to an account */
-    bool Credit(uint512_t hashTx, uint256_t hashProof, uint256_t hashAccount, uint64_t nAmount, uint256_t hashCaller, uint8_t nFlags)
+    bool Credit(uint512_t hashTx, uint256_t hashProof, uint256_t hashAccount, uint64_t nAmount, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
     {
 
         /* Read the claimed transaction. */

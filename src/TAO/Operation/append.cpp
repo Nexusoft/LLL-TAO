@@ -21,7 +21,7 @@ namespace TAO::Operation
 {
 
     /* Writes data to a register. */
-    bool Append(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller, uint8_t nFlags)
+    bool Append(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
     {
         /* Read the binary data of the Register. */
         TAO::Register::State state;

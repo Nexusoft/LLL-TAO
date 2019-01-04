@@ -11,20 +11,17 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_REGISTER_INCLUDE_VERIFY_H
-#define NEXUS_TAO_REGISTER_INCLUDE_VERIFY_H
-
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/include/enum.h>
-
 #include <TAO/Register/include/stream.h>
+#include <TAO/Operation/include/enum.h>
+#include <TAO/Register/include/verify.h>
 
 namespace TAO::Register
 {
 
     /* Verify the pre-states of a register to current network state. */
-    bool Verify(TAO::Ledger::Transaction tx, uint8_t nFlags)
+    bool Verify(TAO::Ledger::Transaction tx)
     {
         /* Make sure no exceptions are thrown. */
         try
@@ -225,5 +222,3 @@ namespace TAO::Register
         return true;
     }
 }
-
-#endif

@@ -24,7 +24,7 @@ namespace TAO::Operation
 {
 
     /* Creates a new register if it doesn't exist. */
-    bool Register(uint256_t hashAddress, uint8_t nType, std::vector<uint8_t> vchData, uint256_t hashCaller, uint8_t nFlags)
+    bool Register(uint256_t hashAddress, uint8_t nType, std::vector<uint8_t> vchData, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
     {
         /* Check that the register doesn't exist yet. */
         if(LLD::regDB->HasState(hashAddress, nFlags))

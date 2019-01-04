@@ -21,7 +21,7 @@ namespace TAO::Operation
 {
 
     /* Writes data to a register. */
-    bool Authorize(uint512_t hashTx, uint256_t hashProof, uint256_t hashCaller, uint8_t nFlags)
+    bool Authorize(uint512_t hashTx, uint256_t hashProof, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
     {
 
         //read the proof

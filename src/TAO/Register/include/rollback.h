@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_ROLLBACK_H
 #define NEXUS_TAO_REGISTER_INCLUDE_ROLLBACK_H
 
-#include <TAO/Ledger/types/transactions.h>
+#include <TAO/Ledger/types/transaction.h>
 
 namespace TAO::Register
 {
@@ -24,12 +24,11 @@ namespace TAO::Register
      *  Rollback the current network state to register pre-states
      *
      *  @param[in] tx The transaction to verify pre-states with.
-     *  @param[in] nFlags The flags to verify for.
      *
      *  @return true if verified correctly.
      *
      **/
-    bool Rollback(TAO::Ledger::Transaction tx, uint8_t nFlags);
+    bool Rollback(TAO::Ledger::Transaction tx);
 
 }
 

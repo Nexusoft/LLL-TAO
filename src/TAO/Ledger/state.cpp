@@ -18,11 +18,12 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/include/rollback.h>
+#include <TAO/Register/include/verify.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/mempool.h>
-
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/supply.h>
@@ -300,17 +301,32 @@ namespace TAO::Ledger
                     /* Remove transactions from memory pool. */
                     for(auto tx : state.vtx)
                         vDelete.push_back(tx.second);
-                }
 
-                /* Harden a checkpoint if there is any. */
-                HardenCheckpoint(*this);
+                    /* Harden a checkpoint if there is any. */
+                    HardenCheckpoint(state);
+                }
 
                 /* Write the best chain pointer. */
                 if(!LLD::legDB->WriteBestChain(hash))
                     return debug::error(FUNCTION "failed to write best chain", __PRETTY_FUNCTION__);
 
 
-                /* Add transactions back to memory pool. */
+                /* Remove transactions from memory pool. */
+                for(auto & hashTx : vDelete)
+                    mempool.Remove(hashTx);
+
+                /* Add transaction back to memory pool. */
+                for(auto hashTx : vResurrect)
+                {
+                    /* Check if in memory pool. */
+                    TAO::Ledger::Transaction tx;
+                    if(!LLD::legDB->ReadTx(hashTx, tx))
+                        return debug::error(FUNCTION "transaction is not on disk", __PRETTY_FUNCTION__);
+
+                    /* Add to the mempool. */
+                    mempool.Accept(tx);
+                }
+
                 //TODO: finish this
             }
 
@@ -326,7 +342,6 @@ namespace TAO::Ledger
     /** Connect a block state into chain. **/
     bool BlockState::Connect()
     {
-
         /* Check through all the transactions. */
         for(auto tx : vtx)
         {
@@ -342,8 +357,16 @@ namespace TAO::Ledger
                     return debug::error(FUNCTION "transaction is not in memory pool", __PRETTY_FUNCTION__);
 
                 /* Execute the operations layers. */
+                if(!TAO::Register::Verify(tx))
+                    return debug::error(FUNCTION "transaction register layer failed to verify", __PRETTY_FUNCTION__);
+
+                /* Execute the operations layers. */
                 if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::WRITE))
-                    return debug::error(FUNCTION "transaction failed to execute", __PRETTY_FUNCTION__);
+                    return debug::error(FUNCTION "transaction operation layer failed to execute", __PRETTY_FUNCTION__);
+
+                /* Write to disk. */
+                if(!LLD::legDB->ReadTx(hash, tx))
+                    return debug::error(FUNCTION "transaction is not on disk", __PRETTY_FUNCTION__);
             }
         }
 
@@ -362,9 +385,35 @@ namespace TAO::Ledger
     /** Disconnect a block state from the chain. **/
     bool BlockState::Disconnect()
     {
+        /* Check through all the transactions. */
+        for(auto tx : vtx)
+        {
+            /* Only work on tritium transactions for now. */
+            if(tx.first == TYPE::TRITIUM_TX)
+            {
+                /* Get the transaction hash. */
+                uint512_t hash = tx.second;
+
+                /* Check if in memory pool. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::legDB->ReadTx(hash, tx))
+                    return debug::error(FUNCTION "transaction is not on disk", __PRETTY_FUNCTION__);
+
+                /* Execute the operations layers. */
+                if(!TAO::Register::Rollback(tx))
+                    return debug::error(FUNCTION "transaction register layer failed to rollback", __PRETTY_FUNCTION__);
+            }
+        }
+
+        /* Update the previous state's next pointer. */
+        BlockState prev = Prev();
+        if(!prev.IsNull())
+        {
+            prev.hashNextBlock = 0;
+            LLD::legDB->WriteBlock(prev.GetHash(), prev);
+        }
 
         return true;
-        //revert the transaction operations from previous state.
     }
 
 
