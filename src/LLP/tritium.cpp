@@ -45,7 +45,7 @@ namespace LLP
                     nLastPing    = runtime::timestamp();
 
                     /* Debut output. */
-                    debug::log(0, "%s %s Connected at timestamp %" PRIu64 "", Name().c_str(), GetAddress().ToString().c_str(), runtime::unifiedtimestamp());
+                    debug::log(0, NODE "%s Connected at timestamp %" PRIu64 "", GetAddress().ToString().c_str(), runtime::unifiedtimestamp());
 
                     /* Send version if making the connection. */
                     if(fOUTGOING)
@@ -144,6 +144,13 @@ namespace LLP
                     /* Send version message if connection is inbound. */
                     if(!fOUTGOING)
                     {
+                        if(addr.ToStringIP() == TRITIUM_SERVER->addrThisNode.ToStringIP())
+                        {
+                            debug::log(0, NODE "connected to self %s", addr.ToString().c_str());
+
+                            return false;
+                        }
+
                         uint64_t nSession = LLC::GetRand(std::numeric_limits<uint64_t>::max());
                         PushMessage(DAT_VERSION, nSession, GetAddress());
                     }
