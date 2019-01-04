@@ -240,6 +240,7 @@ namespace TAO::Operation
         }
         else if(state.nType == TAO::Register::OBJECT::RAW || state.nType == TAO::Register::OBJECT::READONLY)
         {
+
             /* Get the state register of this register's owner. */
             TAO::Register::State stateOwner;
             if(!LLD::regDB->ReadState(state.hashOwner, stateOwner))
@@ -255,20 +256,24 @@ namespace TAO::Operation
 
             /* Check that this proof has not been used in a partial credit. */
             if(LLD::legDB->HasProof(hashProof, hashTx, nFlags))
-                return debug::error(FUNCTION "credit proof has already been spent", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "temporal proof has already been spent", __PRETTY_FUNCTION__);
 
             /* Check the state register that is being used as proof from creditor. */
             TAO::Register::State stateProof;
             if(!LLD::regDB->ReadState(hashProof, stateProof))
-                return debug::error(FUNCTION "credit proof register is not found", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "temporal proof register is not found", __PRETTY_FUNCTION__);
+
+            /* Compare the last timestamp update to transaction timestamp. */
+            if(stateProof.nTimestamp > tx.nTimestamp)
+                return debug::error(FUNCTION "temporal proof is stale", __PRETTY_FUNCTION__);
 
             /* Check that the proof is an account being used. */
             if(stateProof.nType != TAO::Register::OBJECT::ACCOUNT)
-                return debug::error(FUNCTION "credit proof register must be account", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "temporal proof register must be account", __PRETTY_FUNCTION__);
 
             /* Check the ownership of proof register. */
             if(stateProof.hashOwner != hashCaller)
-                return debug::error(FUNCTION "not authorized to use this proof register", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "not authorized to use this temporal proof", __PRETTY_FUNCTION__);
 
             /* Get the proof account object. */
             TAO::Register::Account acctProof;
@@ -288,11 +293,12 @@ namespace TAO::Operation
 
             /* Get the total tokens to be distributed. */
             uint64_t nTotal = (acctProof.nBalance * nDebit) / token.nMaxSupply;
-            //NOTE: ISSUE here, need to formalize the "state" the proof can be used in.
-            //Otherwise someone could buy coins and have a larger chunk of the "stake" of the royalties transaction
-            //If someone else had already claimed some of the coins as a part of this stake.
-            //Which would throw off these calculations here if those were spent.
-            //Need to timestamped temporal proofs somehow...
+            //NOTE: ISSUE here, temporal proofs can't be used if post timestamped. This prevents double spending,
+            //but it doesn't prevent coins from getting locked if a temporal proof has been changed. Possible to
+            //check tokens to ensure tokens aren't moved if a proof is able to be claimed.
+            //find a way to unlock the unspent tokens possibly with validation regitser.
+            //We might need to check back the history to find timestamp before proof to use previous state.
+            //This will work for now, but is not production ready.
 
             /* Check that the required credit claim is accurate. */
             if(nTotal != nAmount)
