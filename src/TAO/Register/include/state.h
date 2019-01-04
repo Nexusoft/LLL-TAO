@@ -230,6 +230,13 @@ namespace TAO::Register
         }
 
 
+        /** Detect end of register stream. */
+        bool end()
+        {
+            return nReadPos >= vchState.size();
+        }
+
+
         /** read
          *
          *  Reads raw data from the stream

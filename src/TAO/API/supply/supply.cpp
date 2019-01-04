@@ -36,6 +36,7 @@ namespace TAO::API
         mapFunctions["getitem"]             = Function(std::bind(&Supply::GetItem,    this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["transfer"]            = Function(std::bind(&Supply::Transfer,   this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["createitem"]          = Function(std::bind(&Supply::CreateItem, this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["appenditem"]          = Function(std::bind(&Supply::AppendItem, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["history"]             = Function(std::bind(&Supply::History,    this, std::placeholders::_1, std::placeholders::_2));
     }
 
@@ -64,12 +65,15 @@ namespace TAO::API
         ret["updated"]  = state.nTimestamp;
         ret["owner"]    = state.hashOwner.ToString();
 
-        /* If the data type is string. */
-        std::string data;
-        state >> data;
+        while(!state.end())
+        {
+            /* If the data type is string. */
+            std::string data;
+            state >> data;
 
-        //ret["checksum"] = state.hashChecksum;
-        ret["state"]    = data;
+            //ret["checksum"] = state.hashChecksum;
+            ret["states"].push_back(data);
+        }
 
         return ret;
     }
@@ -212,7 +216,94 @@ namespace TAO::API
         ssData << params["data"].get<std::string>();
 
         /* Submit the payload object. */
-        tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::READONLY << static_cast<std::vector<uint8_t>>(ssData);
+        tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::APPEND << static_cast<std::vector<uint8_t>>(ssData);
+
+        /* Execute the operations layer. */
+        if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
+            throw APIException(-26, "Operations failed to execute");
+
+        /* Verify the register layer. */
+        if(!TAO::Register::Verify(tx))
+            throw APIException(-26, "Registers failed to verify");
+
+        /* Sign the transaction. */
+        if(!tx.Sign(accounts.GetKey(tx.nSequence, params["pin"].get<std::string>().c_str(), nSession)))
+            throw APIException(-26, "Ledger failed to sign transaction");
+
+        /* Check that the transaction is valid. */
+        if(!tx.IsValid())
+            throw APIException(-26, "Ledger Transaction Invalid");
+
+        /* Write transaction to local database. */
+        LLD::legDB->WriteTx(tx.GetHash(), tx);
+        LLD::locDB->WriteLast(hashGenesis, tx.GetHash());
+
+        /* Execute the operations layer. */
+        if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::WRITE))
+            throw APIException(-26, "Operations failed to execute");
+
+        /* Build a JSON response object. */
+        ret["txid"]  = tx.GetHash().ToString();
+        ret["address"] = hashRegister.ToString();
+
+        return ret;
+    }
+
+
+    /* Submits an item. */
+    json::json Supply::AppendItem(const json::json& params, bool fHelp)
+    {
+        json::json ret;
+
+        /* Check for pin parameter. */
+        if(params.find("pin") == params.end())
+            throw APIException(-25, "Missing PIN");
+
+        /* Check for username parameter. */
+        if(params.find("session") == params.end())
+            throw APIException(-25, "Missing Session ID");
+
+        /* Check for address parameter. */
+        if(params.find("address") == params.end())
+            throw APIException(-25, "Missing Address");
+
+        /* Check for data parameter. */
+        if(params.find("data") == params.end())
+            throw APIException(-25, "Missing data");
+
+        /* Get the session. */
+        uint64_t nSession = std::stoull(params["session"].get<std::string>());
+
+        /* Get the Genesis ID. */
+        uint256_t hashGenesis = accounts.GetGenesis(nSession);
+
+        /* Get the last transaction. */
+        uint512_t hashLast;
+        if(!LLD::locDB->ReadLast(hashGenesis, hashLast))
+            throw APIException(-28, "No transactions found");
+
+        /* Get previous transaction */
+        TAO::Ledger::Transaction txPrev;
+        if(!LLD::legDB->ReadTx(hashLast, txPrev))
+            throw APIException(-29, "Failed to read previous transaction");
+
+        /* Build new transaction object. */
+        TAO::Ledger::Transaction tx;
+        tx.nSequence   = txPrev.nSequence + 1;
+        tx.hashGenesis = txPrev.hashGenesis;
+        tx.hashPrevTx  = hashLast;
+        tx.NextHash(accounts.GetKey(tx.nSequence + 1, params["pin"].get<std::string>().c_str(), nSession));
+
+        /* Submit the transaction payload. */
+        uint256_t hashRegister;
+        hashRegister.SetHex(params["address"].get<std::string>());
+
+        /* Test the payload feature. */
+        DataStream ssData(SER_REGISTER, 1);
+        ssData << params["data"].get<std::string>();
+
+        /* Submit the payload object. */
+        tx << (uint8_t)TAO::Operation::OP::APPEND << hashRegister << static_cast<std::vector<uint8_t>>(ssData);
 
         /* Execute the operations layer. */
         if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
@@ -272,12 +363,15 @@ namespace TAO::API
             obj["owner"]    = state.hashOwner.ToString();
             obj["updated"]  = state.nTimestamp;
 
-            /* If the data type is string. */
-            std::string data;
-            state >> data;
+            while(!state.end())
+            {
+                /* If the data type is string. */
+                std::string data;
+                state >> data;
 
-            //ret["checksum"] = state.hashChecksum;
-            obj["state"]    = data;
+                //ret["checksum"] = state.hashChecksum;
+                obj["states"].push_back(data);
+            }
 
             ret.push_back(obj);
         }

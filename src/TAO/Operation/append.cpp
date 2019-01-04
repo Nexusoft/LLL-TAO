@@ -55,8 +55,8 @@ namespace TAO::Operation
             return debug::error(FUNCTION "append operation called on read-only register", __PRETTY_FUNCTION__);
 
         /* Check write permissions for raw state registers. */
-        if(state.nType != TAO::Register::OBJECT::RAW)
-            return debug::error(FUNCTION "append operation called on non-raw register", __PRETTY_FUNCTION__);
+        if(state.nType != TAO::Register::OBJECT::APPEND)
+            return debug::error(FUNCTION "append operation called on raw register", __PRETTY_FUNCTION__);
 
         /*state Check that the proper owner is commiting the write. */
         if(hashCaller != state.hashOwner)
