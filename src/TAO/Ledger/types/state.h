@@ -68,7 +68,7 @@ namespace TAO::Ledger
             READWRITE(nNonce);
             READWRITE(nTime);
 
-            if(!(nSerType & SER_BLOCKHEADERONLY)
+            if(!(nSerType & SER_BLOCKHEADERONLY))
             {
                 READWRITE(nChainTrust);
                 READWRITE(nMoneySupply);
@@ -79,7 +79,7 @@ namespace TAO::Ledger
                 READWRITE(hashCheckpoint);
             }
 
-            if(!(nSerType & SER_STATEHEADERONLY)
+            if(!(nSerType & SER_STATEHEADERONLY))
             {
                 READWRITE(vchBlockSig);
                 READWRITE(vtx);
