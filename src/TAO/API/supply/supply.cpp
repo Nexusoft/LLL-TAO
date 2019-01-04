@@ -61,6 +61,7 @@ namespace TAO::API
         /* Build the response JSON. */
         //ret["version"]  = state.nVersion;
         //ret["type"]     = state.nType;
+        ret["updated"]  = state.nTimestamp;
         ret["owner"]    = state.hashOwner.ToString();
 
         /* If the data type is string. */
@@ -270,8 +271,14 @@ namespace TAO::API
             obj["version"]  = state.nVersion;
             obj["type"]     = state.nType;
             obj["owner"]    = state.hashOwner.ToString();
-            obj["checksum"] = state.hashChecksum;
-            obj["state"]    = HexStr(state.vchState.begin(), state.vchState.end());
+            obj["updated"]  = state.nTimestamp;
+
+            /* If the data type is string. */
+            std::string data;
+            state >> data;
+
+            //ret["checksum"] = state.hashChecksum;
+            obj["state"]    = data;
 
             ret.push_back(obj);
         }
