@@ -120,7 +120,6 @@ int main(int argc, char** argv)
     {
         if (nLoadWalletRet == Legacy::DB_CORRUPT)
             return debug::error("failed loading wallet.dat: Wallet corrupted");
-
         else if (nLoadWalletRet == Legacy::DB_TOO_NEW)
             return debug::error("failed loading wallet.dat: Wallet requires newer version of Nexus");
         else if (nLoadWalletRet == Legacy::DB_NEED_REWRITE)

@@ -78,8 +78,8 @@ namespace TAO::Ledger
 
 
         /* Check the Proof of Work Claims. */
-        if (IsProofOfWork() && !VerifyWork())
-            return debug::error(FUNCTION "invalid proof of work", __PRETTY_FUNCTION__);
+        //if (IsProofOfWork() && !VerifyWork())
+        //    return debug::error(FUNCTION "invalid proof of work", __PRETTY_FUNCTION__);
 
 
         /* Check the Network Launch Time-Lock. */

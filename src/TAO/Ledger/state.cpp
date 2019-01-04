@@ -219,6 +219,10 @@ namespace TAO::Ledger
                 if(!LLD::legDB->WriteBestChain(hash))
                     return debug::error(FUNCTION "failed to write best chain", __PRETTY_FUNCTION__);
 
+                /* Write the block to disk. */
+                if(LLD::legDB->WriteBlock(GetHash(), *this))
+                    return debug::error(FUNCTION "block state already exists", __PRETTY_FUNCTION__);
+
                 /* Set the genesis block. */
                 ChainState::stateGenesis = *this;
             }
@@ -271,7 +275,7 @@ namespace TAO::Ledger
                 std::vector<uint512_t> vResurrect;
 
                 /* Disconnect given blocks. */
-                for(auto state : vDisconnect)
+                for(auto & state : vDisconnect)
                 {
                     /* Connect the block. */
                     if(!state.Disconnect())
@@ -291,7 +295,7 @@ namespace TAO::Ledger
 
                 /* Reverse the blocks to connect to connect in ascending height. */
                 std::reverse(vConnect.begin(), vConnect.end());
-                for(auto state : vConnect)
+                for(auto & state : vConnect)
                 {
                     /* Connect the block. */
                     if(!state.Connect())
@@ -316,7 +320,7 @@ namespace TAO::Ledger
                     mempool.Remove(hashTx);
 
                 /* Add transaction back to memory pool. */
-                for(auto hashTx : vResurrect)
+                for(auto & hashTx : vResurrect)
                 {
                     /* Check if in memory pool. */
                     TAO::Ledger::Transaction tx;
@@ -327,7 +331,24 @@ namespace TAO::Ledger
                     mempool.Accept(tx);
                 }
 
-                //TODO: finish this
+                /* Write the block to disk. */
+                if(LLD::legDB->WriteBlock(GetHash(), *this))
+                    return debug::error(FUNCTION "block state already exists", __PRETTY_FUNCTION__);
+
+
+                /* Set the best chain variables. */
+                ChainState::stateBest          = *this;
+                ChainState::hashBestChain      = hash;
+                ChainState::nBestChainTrust    = nChainTrust;
+                ChainState::nBestHeight        = nHeight;
+
+
+                /* Debug output about the best chain. */
+                debug::log(0, FUNCTION "new best block = %s height = %u trust=%" PRIu64, hash.ToString().substr(0, 20).c_str(), nHeight, nChainTrust);
+
+
+                //TODO: blocknotify
+                //TODO: broadcast to nodes
             }
 
             /* Commit the transaction to database. */
