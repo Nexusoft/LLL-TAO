@@ -80,6 +80,7 @@ enum
     // modifiers
     SER_SKIPSIG         = (1 << 16),
     SER_BLOCKHEADERONLY = (1 << 17),
+    SER_STATEHEADERONLY = (1 << 18)
 
     // LLP actions
     SER_LLP_HEADER_ONLY = (1 << 20),

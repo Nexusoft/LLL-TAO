@@ -67,13 +67,10 @@ namespace TAO::Ledger
             READWRITE(nHeight);
             READWRITE(nBits);
             READWRITE(nNonce);
-
-            if(!(nSerType & SER_MINER))
-            {
-                READWRITE(nTime);
-                READWRITE(vchBlockSig);
-                READWRITE(vtx);
-            }
+        
+            READWRITE(nTime);
+            READWRITE(vchBlockSig);
+            READWRITE(vtx);
         )
 
 

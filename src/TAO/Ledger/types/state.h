@@ -58,20 +58,34 @@ namespace TAO::Ledger
         /* Serialization Macros */
         IMPLEMENT_SERIALIZE
         (
-            BlockState* pthis = const_cast<BlockState*>(this);
-            TritiumBlock* block = (TritiumBlock*)pthis;
-
-            READWRITE(*block);
-            READWRITE(nChainTrust);
-            READWRITE(nMoneySupply);
-            READWRITE(nChannelHeight);
-            READWRITE(nReleasedReserve[0]);
-            READWRITE(nReleasedReserve[1]);
-            READWRITE(nReleasedReserve[2]);
-
-            //for disk operations only
+            READWRITE(nVersion);
+            READWRITE(hashPrevBlock);
             READWRITE(hashNextBlock);
-            READWRITE(hashCheckpoint);
+            READWRITE(hashMerkleRoot);
+            READWRITE(nChannel);
+            READWRITE(nHeight);
+            READWRITE(nBits);
+            READWRITE(nNonce);
+            READWRITE(nTime);
+
+            if(!(nSerType & SER_BLOCKHEADERONLY)
+            {
+                READWRITE(nChainTrust);
+                READWRITE(nMoneySupply);
+                READWRITE(nChannelHeight);
+                READWRITE(nReleasedReserve[0]);
+                READWRITE(nReleasedReserve[1]);
+                READWRITE(nReleasedReserve[2]);
+                READWRITE(hashCheckpoint);
+            }
+
+            if(!(nSerType & SER_STATEHEADERONLY)
+            {
+                READWRITE(vchBlockSig);
+                READWRITE(vtx);
+            }
+            //for disk operations only
+
         )
 
 

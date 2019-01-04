@@ -30,7 +30,6 @@ ________________________________________________________________________________
 
 
 
-
 namespace TAO::Ledger
 {
 
@@ -187,7 +186,6 @@ namespace TAO::Ledger
             }
             else
                 nReleasedReserve[nType] = 0;
-
         }
 
         /* Add the Pending Checkpoint into the Blockchain. */
