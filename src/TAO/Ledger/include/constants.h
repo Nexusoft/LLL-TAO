@@ -61,10 +61,6 @@ namespace TAO::Ledger
     const uint32_t MAX_BLOCK_SIGOPS = 40000;
 
 
-    /** The maximum time in the future clock can be. **/
-    const uint32_t MAX_UNIFIED_DRIFT = 1;
-
-
     /** Nexus Coinbase/Coinstake Maturity Settings **/
     const uint32_t TESTNET_MATURITY_BLOCKS = 100;
 

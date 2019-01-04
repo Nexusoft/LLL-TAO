@@ -11,11 +11,14 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/Operation/include/execute.h>
+
+#include <TAO/Register/include/verify.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/mempool.h>
 
-#include <TAO/Operation/include/execute.h>
+
 
 namespace TAO::Ledger
 {
@@ -70,6 +73,10 @@ namespace TAO::Ledger
         /* Check that the transaction is in a valid state. */
         if(!tx.IsValid())
             return debug::error(FUNCTION "%s is invalid", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
+
+        /* Verify the Ledger Pre-States. */
+        if(!TAO::Register::Verify(tx))
+            return debug::error(FUNCTION "%s register / operations failed", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
 
         /* Calculate the future potential states. */
         if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::MEMPOOL))

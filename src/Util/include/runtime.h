@@ -24,8 +24,11 @@ ________________________________________________________________________________
 
 #define ARRAYLEN(array)     (sizeof(array)/sizeof((array)[0]))
 
-/* The location of the unified time seed. To enable a Unified Time System push data to this variable. */
+/** The location of the unified time seed. To enable a Unified Time System push data to this variable. **/
 static int UNIFIED_AVERAGE_OFFSET = 0;
+
+/** The maximum time in the future clock can be. **/
+const uint32_t MAX_UNIFIED_DRIFT = 1;
 
 
 namespace runtime
