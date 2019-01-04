@@ -225,14 +225,12 @@ namespace LLD
         uint32_t GetBucket(std::vector<uint8_t> vKey)
         {
             /* Get an MD5 digest. */
-            //uint8_t digest[MD5_DIGEST_LENGTH];
-            //MD5((unsigned char*)&vKey[0], vKey.size(), (unsigned char*)&digest);
+            uint8_t digest[MD5_DIGEST_LENGTH];
+            MD5((unsigned char*)&vKey[0], vKey.size(), (unsigned char*)&digest);
 
             /* Copy bytes into the bucket. */
-            //uint64_t nBucket;
-            //std::copy((uint8_t*)&digest[0], (uint8_t*)&digest[0] + 8, (uint8_t*)&nBucket);
-            uint32_t nBucket = 0;
-            std::copy((uint8_t*)&vKey[0], (uint8_t*)&vKey[0] + 4, (uint8_t*)&nBucket);
+            uint64_t nBucket;
+            std::copy((uint8_t*)&digest[0], (uint8_t*)&digest[0] + 8, (uint8_t*)&nBucket);
 
             return nBucket % HASHMAP_TOTAL_BUCKETS;
         }
