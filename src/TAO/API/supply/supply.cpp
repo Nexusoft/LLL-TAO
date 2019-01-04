@@ -11,19 +11,18 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
-
-#include <LLD/include/global.h>
-
+#include <TAO/API/include/accounts.h>
 #include <TAO/API/include/supply.h>
-
-#include <TAO/Ledger/types/sigchain.h>
 
 #include <TAO/Operation/include/execute.h>
 
+#include <TAO/Register/include/verify.h>
 #include <TAO/Register/include/enum.h>
 
-#include <TAO/API/include/accounts.h>
+#include <TAO/Ledger/types/sigchain.h>
+
+#include <LLC/include/random.h>
+#include <LLD/include/global.h>
 
 namespace TAO::API
 {
@@ -132,21 +131,29 @@ namespace TAO::API
         /* Submit the payload object. */
         tx << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashTo;
 
-        /* Sign the transaction. */
-        if(!tx.Sign(accounts.GetKey(tx.nSequence, params["pin"].get<std::string>().c_str(), nSession)))
-            throw APIException(-26, "Failed to sign transaction");
-
-        /* Check that the transaction is valid. */
-        if(!tx.IsValid())
-            throw APIException(-26, "Invalid Transaction");
-
         /* Execute the operations layer. */
         if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
             throw APIException(-26, "Operations failed to execute");
 
+        /* Verify the register layer. */
+        if(!TAO::Register::Verify(tx))
+            throw APIException(-26, "Registers failed to verify");
+
+        /* Sign the transaction. */
+        if(!tx.Sign(accounts.GetKey(tx.nSequence, params["pin"].get<std::string>().c_str(), nSession)))
+            throw APIException(-26, "Ledger failed to sign transaction");
+
+        /* Check that the transaction is valid. */
+        if(!tx.IsValid())
+            throw APIException(-26, "Ledger Transaction Invalid");
+
         /* Write transaction to local database. */
         LLD::legDB->WriteTx(tx.GetHash(), tx);
         LLD::locDB->WriteLast(hashGenesis, tx.GetHash());
+
+        /* Execute the operations layer. */
+        if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::WRITE))
+            throw APIException(-26, "Operations failed to execute");
 
         /* Build a JSON response object. */
         ret["txid"]  = tx.GetHash().ToString();
@@ -206,21 +213,29 @@ namespace TAO::API
         /* Submit the payload object. */
         tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::READONLY << static_cast<std::vector<uint8_t>>(ssData);
 
-        /* Sign the transaction. */
-        if(!tx.Sign(accounts.GetKey(tx.nSequence, params["pin"].get<std::string>().c_str(), nSession)))
-            throw APIException(-26, "Failed to sign transaction");
-
-        /* Check that the transaction is valid. */
-        if(!tx.IsValid())
-            throw APIException(-26, "Invalid Transaction");
-
         /* Execute the operations layer. */
         if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
             throw APIException(-26, "Operations failed to execute");
 
+        /* Verify the register layer. */
+        if(!TAO::Register::Verify(tx))
+            throw APIException(-26, "Registers failed to verify");
+
+        /* Sign the transaction. */
+        if(!tx.Sign(accounts.GetKey(tx.nSequence, params["pin"].get<std::string>().c_str(), nSession)))
+            throw APIException(-26, "Ledger failed to sign transaction");
+
+        /* Check that the transaction is valid. */
+        if(!tx.IsValid())
+            throw APIException(-26, "Ledger Transaction Invalid");
+
         /* Write transaction to local database. */
         LLD::legDB->WriteTx(tx.GetHash(), tx);
         LLD::locDB->WriteLast(hashGenesis, tx.GetHash());
+
+        /* Execute the operations layer. */
+        if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::WRITE))
+            throw APIException(-26, "Operations failed to execute");
 
         /* Build a JSON response object. */
         ret["txid"]  = tx.GetHash().ToString();

@@ -290,8 +290,9 @@ namespace TAO::Operation
             uint64_t nTotal = (acctProof.nBalance * nDebit) / token.nMaxSupply;
             //NOTE: ISSUE here, need to formalize the "state" the proof can be used in.
             //Otherwise someone could buy coins and have a larger chunk of the "stake" of the royalties transaction
+            //If someone else had already claimed some of the coins as a part of this stake.
             //Which would throw off these calculations here if those were spent.
-            //Need to timestamp temporal proofs somehow...
+            //Need to timestamped temporal proofs somehow...
 
             /* Check that the required credit claim is accurate. */
             if(nTotal != nAmount)
