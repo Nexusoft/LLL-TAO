@@ -68,7 +68,7 @@ namespace TAO::Ledger
 
 
         /* Do not allow blocks to be accepted above the current block version. */
-        if(nVersion > (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION))
+        if(nVersion == 0 || nVersion > (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION))
             return debug::error(FUNCTION "invalid block version", __PRETTY_FUNCTION__);
 
 
@@ -120,6 +120,10 @@ namespace TAO::Ledger
         /* Proof of stake specific checks. */
         if(IsProofOfStake())
         {
+            /* Check for nonce of zero values. */
+            if(nNonce == 0)
+                return debug::error(FUNCTION "proof of stake can't have Nonce value of zero", __PRETTY_FUNCTION__);
+
             /* Check the trust time is before Unified timestamp. */
             if(producer.nTimestamp > (runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT))
                 return debug::error(FUNCTION "trust timestamp too far in the future", __PRETTY_FUNCTION__);

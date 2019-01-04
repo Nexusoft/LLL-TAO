@@ -375,7 +375,7 @@ namespace TAO::Ledger
                 /* Check if in memory pool. */
                 TAO::Ledger::Transaction tx;
                 if(!mempool.Get(hash, tx))
-                    return debug::error(FUNCTION "transaction is not in memory pool", __PRETTY_FUNCTION__);
+                    return debug::error(FUNCTION "transaction is not in memory pool", __PRETTY_FUNCTION__); //TODO: recover from this and ask sending node.
 
                 /* Execute the operations layers. */
                 if(!TAO::Register::Verify(tx))
