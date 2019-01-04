@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/hex.h>
 
+#include <openssl/md5.h>
+
 
 //TODO: Abstract base class for all cache systems
 namespace LLD
@@ -140,9 +142,13 @@ namespace LLD
          **/
         uint32_t Bucket(const std::vector<uint8_t>& vKey) const
         {
-            uint64_t nBucket = 0;
-            for(int i = 0; i < vKey.size() && i < 8; i++)
-                nBucket += vKey[i] << (8 * i);
+            /* Get an MD5 digest. */
+            uint8_t digest[MD5_DIGEST_LENGTH];
+            MD5((unsigned char*)&vKey[0], vKey.size(), (unsigned char*)&digest);
+
+            /* Copy bytes into the bucket. */
+            uint64_t nBucket;
+            std::copy((uint8_t*)&digest[0], (uint8_t*)&digest[0] + 8, (uint8_t*)&nBucket);
 
             return nBucket % MAX_CACHE_BUCKETS;
         }
