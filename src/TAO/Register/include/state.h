@@ -56,9 +56,9 @@ namespace TAO::Register
         (
             READWRITE(nVersion);
             READWRITE(nType);
-            READWRITE(vchState);
             READWRITE(hashOwner);
             READWRITE(nTimestamp);
+            READWRITE(vchState);
 
             //checksum hash not serialized on gethash
             if(!(nSerType & SER_GETHASH))
@@ -182,6 +182,7 @@ namespace TAO::Register
         /** Set the Checksum of this Register. **/
         void SetChecksum()
         {
+            nTimestamp   = runtime::unifiedtimestamp();
             hashChecksum = GetHash();
         }
 
@@ -198,7 +199,7 @@ namespace TAO::Register
                 return debug::error(FUNCTION "register checksum (%" PRIu64 ") mismatch (%" PRIu64 ")", __PRETTY_FUNCTION__, GetHash(), hashChecksum);
 
             /* Check the timestamp. */
-            if(nTimestamp < runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+            if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                 return debug::error(FUNCTION "register timestamp too far in the future", __PRETTY_FUNCTION__);
 
             return true;
@@ -215,7 +216,6 @@ namespace TAO::Register
         /** Set the State from Byte Vector. **/
         void SetState(std::vector<uint8_t> vchStateIn)
         {
-            nTimestamp = runtime::unifiedtimestamp();
             vchState = vchStateIn;
 
             SetChecksum();
@@ -268,9 +268,6 @@ namespace TAO::Register
         {
             /* Push the obj bytes into the vector. */
             vchState.insert(vchState.end(), (uint8_t*)pch, (uint8_t*)pch + nSize);
-
-            /* Timestamp the register state change. */
-            nTimestamp = runtime::unifiedtimestamp();
 
             /* Set the length and checksum. */
             SetChecksum();

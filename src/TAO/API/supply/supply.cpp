@@ -269,7 +269,6 @@ namespace TAO::API
         {
             json::json obj;
             obj["version"]  = state.nVersion;
-            obj["type"]     = state.nType;
             obj["owner"]    = state.hashOwner.ToString();
             obj["updated"]  = state.nTimestamp;
 

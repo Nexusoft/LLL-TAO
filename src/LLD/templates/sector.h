@@ -430,8 +430,6 @@ namespace LLD
 
                 return true;
             }
-            else
-                return debug::error(FUNCTION "KEY NOT FOUND", __PRETTY_FUNCTION__);
 
             return false;
         }
