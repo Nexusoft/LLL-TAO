@@ -220,15 +220,18 @@ int main(int argc, char** argv)
     /* Startup performance metric. */
     debug::log2(0, TESTING, "Started up in ", nElapsed, "ms");
 
+
     /* Wait for shutdown. */
     std::mutex SHUTDOWN_MUTEX;
     std::unique_lock<std::mutex> SHUTDOWN_LOCK(SHUTDOWN_MUTEX);
     SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown; });
 
+
     /* Shutdown metrics. */
     timer.Reset();
 
-    /* Cleanup the databases. */
+
+    /* Cleanup the ledger database. */
     if(LLD::legDB)
     {
         debug::log2(0, TESTING, "Shutting down ledgerDB");
@@ -236,6 +239,8 @@ int main(int argc, char** argv)
         delete LLD::legDB;
     }
 
+
+    /* Cleanup the register database. */
     if(LLD::regDB)
     {
         debug::log2(0, TESTING, "Shutting down registerDB");
@@ -243,6 +248,8 @@ int main(int argc, char** argv)
         delete LLD::regDB;
     }
 
+
+    /* Cleanup the local database. */
     if(LLD::locDB)
     {
         debug::log2(0, TESTING, "Shutting down localDB");
@@ -251,7 +258,7 @@ int main(int argc, char** argv)
     }
 
 
-    /* Shutdown the servers and their subsystems */
+    /* Shutdown the tritium server and its subsystems */
     if(LLP::TRITIUM_SERVER)
     {
         debug::log2(0, TESTING, "Shutting down Tritium Server");
@@ -260,6 +267,8 @@ int main(int argc, char** argv)
         delete LLP::TRITIUM_SERVER;
     }
 
+
+    /* Shutdown the legacy server and its subsystems */
     if(LLP::LEGACY_SERVER)
     {
         debug::log2(0, TESTING, "Shutting down Legacy Server");
@@ -268,6 +277,8 @@ int main(int argc, char** argv)
         delete LLP::LEGACY_SERVER;
     }
 
+
+    /* Shutdown the core API server and its subsystems */
     if(CORE_SERVER)
     {
         debug::log2(0, TESTING, "Shutting down API Server");
@@ -276,12 +287,23 @@ int main(int argc, char** argv)
         delete CORE_SERVER;
     }
 
+
+    /* Shutdown the RPC server and its subsystems */
     if(RPC_SERVER)
     {
         debug::log2(0, TESTING, "Shutting down RPC Server");
 
         RPC_SERVER->Shutdown();
         delete RPC_SERVER;
+    }
+
+
+    /* Cleanup the wallet. */
+    if(Legacy::pwalletMain)
+    {
+        debug::log2(0, TESTING, "Closing the wallet");
+
+        delete Legacy::pwalletMain;
     }
 
 
