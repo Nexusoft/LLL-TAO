@@ -200,10 +200,6 @@ namespace TAO::Operation
                         if(!tx.ssOperation.begin())
                             return debug::error(FUNCTION "coinbase opeartion has to be first", __PRETTY_FUNCTION__);
 
-                        /* The account that is being credited. */
-                        uint256_t hashGenesis;
-                        tx.ssOperation >> hashGenesis;
-
                         /* The total to be credited. */
                         uint64_t  nCredit;
                         tx.ssOperation >> nCredit;

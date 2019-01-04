@@ -27,7 +27,7 @@ namespace TAO::Operation
     bool Register(uint256_t hashAddress, uint8_t nType, std::vector<uint8_t> vchData, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
     {
         /* Check that the register doesn't exist yet. */
-        if(LLD::regDB->HasState(hashAddress, nFlags))
+        if(LLD::regDB->HasState(hashAddress))
             return debug::error(FUNCTION "cannot allocate register of same memory address %s", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
         /* Set the owner of this register. */
@@ -62,7 +62,7 @@ namespace TAO::Operation
                     return debug::error(FUNCTION "account can't be created with non-zero balance", __PRETTY_FUNCTION__, acct.nBalance);
 
                 /* Check that token identifier hasn't been claimed. */
-                if(acct.nIdentifier != 0 && !LLD::regDB->HasIdentifier(acct.nIdentifier))
+                if(acct.nIdentifier != 0 && !LLD::regDB->HasIdentifier(acct.nIdentifier, nFlags))
                     return debug::error(FUNCTION "account can't be created with no identifier %u", __PRETTY_FUNCTION__, acct.nIdentifier);
 
                 break;
@@ -86,7 +86,7 @@ namespace TAO::Operation
                     return debug::error(FUNCTION "unexpected token version %u", __PRETTY_FUNCTION__, token.nVersion);
 
                 /* Check that token identifier hasn't been claimed. */
-                if(token.nIdentifier == 0 || LLD::regDB->HasIdentifier(token.nIdentifier))
+                if(token.nIdentifier == 0 || LLD::regDB->HasIdentifier(token.nIdentifier, nFlags))
                     return debug::error(FUNCTION "token can't be created with reserved identifier %u", __PRETTY_FUNCTION__, token.nIdentifier);
 
                 /* Check that the current supply and max supply are the same. */
@@ -94,7 +94,7 @@ namespace TAO::Operation
                     return debug::error(FUNCTION "token current supply and max supply can't mismatch", __PRETTY_FUNCTION__);
 
                 /* Write the new identifier to database. */
-                if(!LLD::regDB->WriteIdentifier(token.nIdentifier, hashAddress))
+                if(!LLD::regDB->WriteIdentifier(token.nIdentifier, hashAddress, nFlags))
                     return debug::error(FUNCTION "failed to commit token register identifier to disk", __PRETTY_FUNCTION__);
 
                 break;
@@ -108,9 +108,33 @@ namespace TAO::Operation
         if(!state.IsValid())
             return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
-        /* Write the register to database. */
-        if(!LLD::regDB->WriteState(hashAddress, state, nFlags))
-            return debug::error(FUNCTION "failed to write state register %s memory address", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+        /* Write post-state checksum. */
+        if((nFlags & TAO::Register::FLAGS::POSTSTATE))
+            ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
+
+        /* Verify the post-state checksum. */
+        if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
+        {
+            /* Get the state byte. */
+            uint8_t nState = 0; //RESERVED
+            ssRegister >> nState;
+
+            /* Check for the pre-state. */
+            if(nState != TAO::Register::STATES::POSTSTATE)
+                return debug::error(FUNCTION "register script not in post-state", __PRETTY_FUNCTION__);
+
+            /* Get the post state checksum. */
+            uint64_t nChecksum;
+            ssRegister >> nChecksum;
+
+            /* Check for matching post states. */
+            if(nChecksum != state.GetHash())
+                return debug::error(FUNCTION "register script has invalid post-state", __PRETTY_FUNCTION__);
+
+            /* Write the register to the database. */
+            if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, state))
+                return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
+        }
 
         return true;
     }

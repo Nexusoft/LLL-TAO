@@ -31,7 +31,7 @@ namespace TAO::Operation
         /* Write pre-states. */
         if((nFlags & TAO::Register::FLAGS::PRESTATE))
         {
-            if(!LLD::regDB->ReadState(hashFrom, state, nFlags))
+            if(!LLD::regDB->ReadState(hashFrom, state))
                 return debug::error(FUNCTION "register address doesn't exist %s", __PRETTY_FUNCTION__, hashFrom.ToString().c_str());
 
             ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
@@ -51,6 +51,7 @@ namespace TAO::Operation
             /* Get the pre-state. */
             ssRegister >> state;
         }
+
         /* Check ownership of register. */
         if(state.hashOwner != hashCaller)
             return debug::error(FUNCTION "%s caller not authorized to debit from register", __PRETTY_FUNCTION__, hashCaller.ToString().c_str());
@@ -102,7 +103,7 @@ namespace TAO::Operation
                 return debug::error(FUNCTION "register script has invalid post-state", __PRETTY_FUNCTION__);
 
             /* Write the register to the database. */
-            if(!LLD::regDB->WriteState(hashFrom, state, nFlags))
+            if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashFrom, state))
                 return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
         }
 

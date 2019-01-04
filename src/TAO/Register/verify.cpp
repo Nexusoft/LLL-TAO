@@ -128,6 +128,23 @@ namespace TAO::Register
                         break;
                     }
 
+                    /* Coinbase operation. Creates an account if none exists. */
+                    case TAO::Operation::OP::COINBASE:
+                    {
+                        tx.ssOperation.seek(8);
+
+                        break;
+                    }
+
+
+                    /* Coinstake operation. Requires an account. */
+                    case TAO::Operation::OP::TRUST:
+                    {
+                        tx.ssOperation.seek(180);
+
+                        break;
+                    }
+
 
                     /* Debit tokens from an account you own. */
                     case TAO::Operation::OP::DEBIT:
@@ -210,6 +227,9 @@ namespace TAO::Register
 
                         break;
                     }
+
+                    default:
+                        return debug::error(FUNCTION "invalid code for register verification", __PRETTY_FUNCTION__);
                 }
             }
         }

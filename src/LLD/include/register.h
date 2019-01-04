@@ -51,27 +51,8 @@ namespace LLD
          *  @return true if write was successul.
          *
          **/
-        bool WriteState(uint256_t hashRegister, TAO::Register::State state, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
+        bool WriteState(uint256_t hashRegister, TAO::Register::State state)
         {
-            /* Memory mode for pre-database commits. */
-            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                LOCK(MEMORY_MUTEX);
-
-                /* Return the memory state if not in write mode. */
-                mapStates[hashRegister] = state;
-
-                return true;
-            }
-            else
-            {
-                LOCK(MEMORY_MUTEX);
-
-                /* Remove the memory state if writing the disk state. */
-                if(mapStates.count(hashRegister))
-                    mapStates.erase(hashRegister);
-            }
-
             return Write(std::make_pair(std::string("state"), hashRegister), state);
         }
 
@@ -86,22 +67,8 @@ namespace LLD
          *  @return true if read was successul.
          *
          **/
-        bool ReadState(uint256_t hashRegister, TAO::Register::State& state, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
+        bool ReadState(uint256_t hashRegister, TAO::Register::State& state)
         {
-            /* Memory mode for pre-database commits. */
-            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                LOCK(MEMORY_MUTEX);
-
-                /* Return the state if it is found. */
-                if(mapStates.count(hashRegister))
-                {
-                    state = mapStates[hashRegister];
-
-                    return true;
-                }
-            }
-
             return Read(std::make_pair(std::string("state"), hashRegister), state);
         }
 
@@ -222,16 +189,6 @@ namespace LLD
          **/
         bool HasState(uint256_t hashRegister, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
-            /* Memory mode for pre-database commits. */
-            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                LOCK(MEMORY_MUTEX);
-
-                /* Return the state if it is found. */
-                if(mapStates.count(hashRegister))
-                    return true;
-            }
-
             return Exists(std::make_pair(std::string("state"), hashRegister));
         }
 

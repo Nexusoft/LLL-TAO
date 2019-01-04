@@ -132,6 +132,41 @@ namespace TAO::Register
                         break;
                     }
 
+                    /* Coinbase operation. Creates an account if none exists. */
+                    case TAO::Operation::OP::COINBASE:
+                    {
+                        tx.ssOperation.seek(8);
+
+                        break;
+                    }
+
+
+                    /* Coinstake operation. Requires an account. */
+                    case TAO::Operation::OP::TRUST:
+                    {
+                        /* The account that is being staked. */
+                        uint256_t hashAccount;
+                        tx.ssOperation >> hashAccount;
+
+                        /* The previous trust block. */
+                        uint1024_t hashLastTrust;
+                        tx.ssOperation >> hashLastTrust;
+
+                        /* Previous trust sequence number. */
+                        uint32_t nSequence;
+                        tx.ssOperation >> nSequence;
+
+                        /* The previous trust calculated. */
+                        uint64_t nLastTrust;
+                        tx.ssOperation >> nLastTrust;
+
+                        /* The total to be staked. */
+                        uint64_t  nStake;
+                        tx.ssOperation >> nStake;
+
+                        break;
+                    }
+
 
                     /* Debit tokens from an account you own. */
                     case TAO::Operation::OP::DEBIT:
