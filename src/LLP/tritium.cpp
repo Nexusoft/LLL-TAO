@@ -136,7 +136,7 @@ namespace LLP
                     if(!TRITIUM_SERVER->addrThisNode.IsValid())
                     {
                         addr.SetPort(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
-                        debug::log(0, NODE "recieved external address %s", addr.ToString().c_str());
+                        debug::log2(0, NODE, "recieved external address ", addr.ToString());
 
                         TRITIUM_SERVER->addrThisNode = addr;
                     }
@@ -146,7 +146,7 @@ namespace LLP
                     {
                         if(addr.ToStringIP() == TRITIUM_SERVER->addrThisNode.ToStringIP())
                         {
-                            debug::log(0, NODE "connected to self %s", addr.ToString().c_str());
+                            debug::log2(0, NODE, "connected to self ", addr.ToString());
 
                             return false;
                         }
@@ -158,7 +158,7 @@ namespace LLP
                         PushMessage(GET_ADDRESSES);
 
                     /* Debug output for offsets. */
-                    debug::log(3, NODE "received session identifier (%" PRIx64 ")", nSessionID);
+                    debug::log2(3, NODE, "received session identifier ",nSessionID);
 
                     break;
                 }
@@ -178,7 +178,7 @@ namespace LLP
                     int32_t nOffset = (runtime::timestamp(true) - nTimestamp);
 
                     /* Debug output for offsets. */
-                    debug::log(3, NODE "received timestamp of (%" PRIu64 ") - sending offset %i", nTimestamp, nOffset);
+                    debug::log2(3, NODE, "received timestamp of ", nTimestamp, " sending offset ", nOffset);
 
                     /* Push a timestamp in response. */
                     PushMessage(DAT_OFFSET, nRequestID, nOffset);
@@ -200,7 +200,7 @@ namespace LLP
                     /* Check the time since request was sent. */
                     if(runtime::timestamp() - mapSentRequests[nRequestID] > 10)
                     {
-                        debug::log(0, NODE "offset is stale.");
+                        debug::log2(0, NODE, "offset is stale.");
                         mapSentRequests.erase(nRequestID);
 
                         break;
@@ -211,7 +211,7 @@ namespace LLP
                     ssPacket >> nOffset;
 
                     /* Debug output for offsets. */
-                    debug::log(3, NODE "received offset %i", nOffset);
+                    debug::log2(3, NODE, "received offset ", nOffset);
 
                     /* Remove sent requests from mpa. */
                     mapSentRequests.erase(nRequestID);
