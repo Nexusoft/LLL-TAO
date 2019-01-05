@@ -212,17 +212,18 @@ namespace TAO::Ledger
             debug::log(0, "===== Pending Checkpoint Hash = %s", hashCheckpoint.ToString().substr(0, 15).c_str());
         }
 
+        /* Start the database transaction. */
+        LLD::legDB->TxnBegin();
+        LLD::regDB->TxnBegin();
+
         /* Write the block to disk. */
         if(!LLD::legDB->WriteBlock(GetHash(), *this))
-            return debug::error(FUNCTION "block state already exists", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "block state failed to write", __PRETTY_FUNCTION__);
 
 
         /* Signal to set the best chain. */
         if(nChainTrust > ChainState::nBestChainTrust)
         {
-            /* Start the database transaction. */
-            //LLD::legDB->TxnBegin();
-            //LLD::regDB->TxnBegin();
 
             /* Watch for genesis. */
             if (ChainState::stateGenesis.IsNull())
@@ -277,11 +278,11 @@ namespace TAO::Ledger
                 {
                     debug::log(0, FUNCTION "REORGANIZE: Disconnect %i blocks; %s..%s\n", __PRETTY_FUNCTION__,
                         vDisconnect.size(), fork.GetHash().ToString().substr(0,20).c_str(), ChainState::stateBest.GetHash().ToString().substr(0,20).c_str());
+                }
 
                     debug::log(0, FUNCTION "REORGANIZE: Connect %i blocks; %s..%s\n", __PRETTY_FUNCTION__,
                         vConnect.size(), fork.GetHash().ToString().substr(0,20).c_str(),
                         this->GetHash().ToString().substr(0,20).c_str());
-                }
 
                 /* List of transactions to resurrect. */
                 std::vector<uint512_t> vResurrect;
@@ -309,6 +310,7 @@ namespace TAO::Ledger
                 std::reverse(vConnect.begin(), vConnect.end());
                 for(auto & state : vConnect)
                 {
+
                     /* Connect the block. */
                     if(!state.Connect())
                         return debug::error(FUNCTION "failed to connect %s", __PRETTY_FUNCTION__,
@@ -360,11 +362,11 @@ namespace TAO::Ledger
                 //TODO: blocknotify
                 //TODO: broadcast to nodes
             }
-
-            /* Commit the transaction to database. */
-            //LLD::legDB->TxnCommit();
-            //LLD::regDB->TxnCommit();
         }
+
+        /* Commit the transaction to database. */
+        LLD::legDB->TxnCommit();
+        LLD::regDB->TxnCommit();
 
         return true;
     }
@@ -373,6 +375,10 @@ namespace TAO::Ledger
     /** Connect a block state into chain. **/
     bool BlockState::Connect()
     {
+        printf("Writing producer %s\n", producer.GetHash().ToString().c_str());
+        producer.print();
+        if(!LLD::legDB->WriteTx(producer.GetHash(), producer))
+            return debug::error(FUNCTION "failed to write producer", __PRETTY_FUNCTION__);
 
         /* Check through all the transactions. */
         for(auto tx : vtx)
@@ -407,7 +413,8 @@ namespace TAO::Ledger
         if(!prev.IsNull())
         {
             prev.hashNextBlock = GetHash();
-            LLD::legDB->WriteBlock(prev.GetHash(), prev);
+            //if(!LLD::legDB->WriteBlock(prev.GetHash(), prev))
+            //    return debug::error(FUNCTION "failed to write producer", __PRETTY_FUNCTION__);
         }
 
         return true;

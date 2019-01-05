@@ -40,7 +40,9 @@ namespace TAO::Ledger
             /* Get previous transaction */
             TAO::Ledger::Transaction txPrev;
             if(!LLD::legDB->ReadTx(hashLast, txPrev))
-                return debug::error(FUNCTION "no prev tx in ledger db", __PRETTY_FUNCTION__);
+            {
+                return debug::error(FUNCTION "no prev tx %s in ledger db", __PRETTY_FUNCTION__, hashLast.ToString().c_str());
+            }
 
             /* Build new transaction object. */
             tx.nSequence   = txPrev.nSequence + 1;

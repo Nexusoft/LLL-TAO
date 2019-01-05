@@ -45,6 +45,8 @@ ________________________________________________________________________________
 #include <iostream>
 #include <sstream>
 
+#include <TAO/Ledger/include/create.h>
+
 
 
 namespace Legacy
@@ -132,6 +134,49 @@ int main(int argc, char** argv)
 
     /** Initialize ChainState. */
     TAO::Ledger::ChainState::Initialize();
+
+
+    if(config::GetArg("-test", 0) > 0)
+    {
+        /* Get the account. */
+        TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("user", "pass");
+
+        for(int i = 0; i < config::GetArg("-test", 0); i++)
+        {
+
+            /* Create the block object. */
+            TAO::Ledger::TritiumBlock block;
+            if(!TAO::Ledger::CreateBlock(user, std::string("1234").c_str(), 2, block))
+                return debug::error("cant create block");
+
+            /* Get the secret from new key. */
+            std::vector<uint8_t> vBytes = user->Generate(block.producer.nSequence, "1234").GetBytes();
+            LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
+
+            /* Generate the EC Key. */
+            LLC::ECKey key(NID_brainpoolP512t1, 64);
+            if(!key.SetSecret(vchSecret, true))
+                return debug::error("cant set securet");
+
+            /* Generate new block signature. */
+            block.GenerateSignature(key);
+
+            /* Verify the block object. */
+            if(!block.Check())
+                return debug::error("check failed");
+
+            /* Create the state object. */
+            TAO::Ledger::BlockState state = TAO::Ledger::BlockState(block);
+            if(!state.Accept())
+                return debug::error("invalid state");
+
+            /* Write transaction to local database. */
+            //LLD::legDB->WriteTx(state.producer.GetHash(), state.producer);
+            printf("Writing last %s\n", state.producer.GetHash().ToString().c_str());
+            if(!LLD::locDB->WriteLast(user->Genesis(), state.producer.GetHash()))
+                return debug::error("failed to write last");
+        }
+    }
 
 
     /* Initialize the Tritium Server. */

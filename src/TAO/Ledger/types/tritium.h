@@ -67,9 +67,11 @@ namespace TAO::Ledger
             READWRITE(nHeight);
             READWRITE(nBits);
             READWRITE(nNonce);
-        
+
             READWRITE(nTime);
             READWRITE(vchBlockSig);
+
+            READWRITE(producer);
             READWRITE(vtx);
         )
 
@@ -81,6 +83,16 @@ namespace TAO::Ledger
         , vtx()
         {
             SetNull();
+        }
+
+
+        /** Copy Constructor. **/
+        TritiumBlock(const TritiumBlock& state)
+        : Block(state)
+        , producer(state.producer)
+        , vtx(state.vtx)
+        {
+            
         }
 
 

@@ -363,11 +363,12 @@ namespace LLD
 
                 /* Get original data. */
                 std::vector<uint8_t> vData;
-                if(!Get(static_cast<std::vector<uint8_t>>(ssKey), vData))
-                    return false;
+                Get(static_cast<std::vector<uint8_t>>(ssKey), vData);
 
                 /* Add original data to the transaction. */
                 pTransaction->mapOriginalData[static_cast<std::vector<uint8_t>>(ssKey)] = vData;
+
+                return true;
             }
 
             return Put(static_cast<std::vector<uint8_t>>(ssKey), static_cast<std::vector<uint8_t>>(ssData));
@@ -497,7 +498,7 @@ namespace LLD
             /* Check the keychain for key. */
             SectorKey key;
             if(!pSectorKeys->Get(vKey, key))
-                return debug::error(FUNCTION "key not found", __PRETTY_FUNCTION__);
+                return false;
 
             /* Check data size constraints. */
             if(vData.size() != key.nSectorSize)

@@ -68,6 +68,7 @@ namespace TAO::Ledger
             READWRITE(nNonce);
             READWRITE(nTime);
 
+            READWRITE(producer);
             READWRITE(nChainTrust);
             READWRITE(nMoneySupply);
             READWRITE(nChannelHeight);
@@ -94,8 +95,8 @@ namespace TAO::Ledger
         }
 
 
-        BlockState(TritiumBlock blockIn)
-        : TritiumBlock(blockIn)
+        BlockState(TritiumBlock block)
+        : TritiumBlock(block)
         , nChainTrust(0)
         , nMoneySupply(0)
         , nChannelHeight(0)
@@ -108,18 +109,8 @@ namespace TAO::Ledger
 
         /** Copy Constructor. **/
         BlockState(const BlockState& state)
+        : TritiumBlock(state)
         {
-            nVersion            = state.nVersion;
-            hashPrevBlock       = state.hashPrevBlock;
-            hashMerkleRoot      = state.hashMerkleRoot;
-            nChannel            = state.nChannel;
-            nHeight             = state.nHeight;
-            nBits               = state.nBits;
-            nNonce              = state.nNonce;
-            nTime               = state.nTime;
-            vchBlockSig         = state.vchBlockSig;
-            vtx                 = state.vtx;
-
             nChainTrust         = state.nChainTrust;
             nMoneySupply        = state.nMoneySupply;
             nChannelHeight      = state.nChannelHeight;
@@ -157,6 +148,8 @@ namespace TAO::Ledger
 
             hashNextBlock       = state.hashNextBlock;
             hashCheckpoint      = state.hashCheckpoint;
+
+            producer            = state.producer;
 
             return *this;
         }
