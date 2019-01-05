@@ -293,7 +293,7 @@ namespace TAO::Register
         template<typename Type> State& operator<<(const Type& obj)
         {
             /* Serialize to the stream. */
-            ::Serialize(*this, obj, SER_REGISTER, nVersion); //temp versinos for now
+            ::Serialize(*this, obj, (uint32_t)SER_REGISTER, nVersion); //temp versinos for now
 
             return (*this);
         }
@@ -309,7 +309,7 @@ namespace TAO::Register
         template<typename Type> State& operator>>(Type& obj)
         {
             /* Unserialize from the stream. */
-            ::Unserialize(*this, obj, SER_REGISTER, nVersion);
+            ::Unserialize(*this, obj, (uint32_t)SER_REGISTER, nVersion);
             return (*this);
         }
 

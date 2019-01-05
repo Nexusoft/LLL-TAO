@@ -66,7 +66,7 @@ namespace TAO::Operation
         template<typename Type> Stream& operator<<(const Type& obj)
         {
             /* Serialize to the stream. */
-            ::Serialize(*this, obj, SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versinos for now
+            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versinos for now
 
             return (*this);
         }
@@ -82,7 +82,7 @@ namespace TAO::Operation
         template<typename Type> Stream& operator>>(Type& obj)
         {
             /* Unserialize from the stream. */
-            ::Unserialize(*this, obj, SER_OPERATIONS, LLD::DATABASE_VERSION); //TODO: version should be object version
+            ::Unserialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //TODO: version should be object version
             return (*this);
         }
     };
