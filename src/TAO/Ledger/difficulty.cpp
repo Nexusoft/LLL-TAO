@@ -194,10 +194,10 @@ namespace TAO::Ledger
         GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
         debug::log(3,
-            "RETARGET weighted time=%" PRId64 " actual time =%" PRId64 "[%f %%]"
-            "\tchain time: [%" PRId64 " / %" PRId64 "]"
-            "\tdifficulty: [%f to %f]"
-            "\ttrust height: %" PRId64 " [AGE %u days, %u hours, %u minutes]",
+            "RETARGET weighted time=%" PRId64 " actual time =%" PRId64 "[%f %%]\n"
+            "\tchain time: [%" PRId64 " / %" PRId64 "]\n"
+            "\tdifficulty: [%f to %f]\n"
+            "\ttrust height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n",
 
             nBlockTime, std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1), ((100.0 * nLowerBound) / nUpperBound),
             nBlockTarget, nBlockTime,
@@ -326,11 +326,11 @@ namespace TAO::Ledger
         GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
         debug::log(3,
-            "RETARGET weighted time=%" PRId64 " actual time %" PRId64 ", [%f %%]"
-            "\tchain time: [%" PRId64 " / %" PRId64 "]"
-            "\treleased reward: %" PRId64 " [%f %%]"
-            "\tdifficulty: [%f to %f]"
-            "\tprime height: %" PRId64 " [AGE %u days, %u hours, %u minutes]",
+            "RETARGET weighted time=%" PRId64 " actual time %" PRId64 ", [%f %%]\n"
+            "\tchain time: [%" PRId64 " / %" PRId64 "]\n"
+            "\treleased reward: %" PRId64 " [%f %%]\n"
+            "\tdifficulty: [%f to %f]\n"
+            "\tprime height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n",
 
             nBlockTime, std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1), nMod * 100.0,
             nBlockTarget, nBlockTime,
@@ -461,11 +461,11 @@ namespace TAO::Ledger
         GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
         debug::log(3,
-            "RETARGET weighted time=%" PRId64 " actual time %" PRId64 " [%f %%]"
-            "\tchain time: [%" PRId64 " / %" PRId64 "]"
-            "\treleased reward: %" PRId64 " [%f %%]"
-            "\tdifficulty: [%f to %f]"
-            "\thash height: %" PRId64 " [AGE %u days, %u hours, %u minutes]",
+            "RETARGET weighted time=%" PRId64 " actual time %" PRId64 " [%f %%]\n"
+            "\tchain time: [%" PRId64 " / %" PRId64 "]\n"
+            "\treleased reward: %" PRId64 " [%f %%]\n"
+            "\tdifficulty: [%f to %f]\n"
+            "\thash height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n",
 
             nBlockTime, std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1), (100.0 * nLowerBound) / nUpperBound,
             nBlockTarget, nBlockTime,

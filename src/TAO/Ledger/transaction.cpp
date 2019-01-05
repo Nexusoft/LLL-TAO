@@ -182,12 +182,12 @@ namespace TAO::Ledger
          nVersion,
          nSequence,
          nTimestamp,
-         hashNext.ToString().c_str(),
-         hashPrevTx.ToString().c_str(),
-         hashGenesis.ToString().c_str(),
-         HexStr(vchPubKey).c_str(),
-         HexStr(vchSig).c_str(),
-         GetHash().ToString().c_str(),
+         hashNext.ToString().substr(0, 20).c_str(),
+         hashPrevTx.ToString().substr(0, 20).c_str(),
+         hashGenesis.ToString().substr(0, 20).c_str(),
+         HexStr(vchPubKey).substr(0, 20).c_str(),
+         HexStr(vchSig).substr(0, 20).c_str(),
+         GetHash().ToString().substr(0, 20).c_str(),
          ssRegister.size(),
          ssOperation.size() );
      }

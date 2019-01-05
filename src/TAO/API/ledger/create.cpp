@@ -72,8 +72,6 @@ namespace TAO::API
         /* Generate new block signature. */
         block.GenerateSignature(key);
 
-        block.producer.print();
-
         /* Verify the block object. */
         if(!block.Check())
             throw APIException(-26, "Block is invalid");

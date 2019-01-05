@@ -74,7 +74,7 @@ namespace TAO::Ledger
     /* Get the age of the Nexus blockchain in seconds. */
     uint32_t GetChainAge(uint64_t nTime)
     {
-        return floor((nTime - (uint32_t)(config::fTestNet ?
+        return floor((nTime - (uint64_t)(config::fTestNet ?
             NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK)) / 60.0);
     }
 
