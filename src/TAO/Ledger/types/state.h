@@ -68,22 +68,16 @@ namespace TAO::Ledger
             READWRITE(nNonce);
             READWRITE(nTime);
 
-            if(!(nSerType & SER_BLOCKHEADERONLY))
-            {
-                READWRITE(nChainTrust);
-                READWRITE(nMoneySupply);
-                READWRITE(nChannelHeight);
-                READWRITE(nReleasedReserve[0]);
-                READWRITE(nReleasedReserve[1]);
-                READWRITE(nReleasedReserve[2]);
-                READWRITE(hashCheckpoint);
+            READWRITE(nChainTrust);
+            READWRITE(nMoneySupply);
+            READWRITE(nChannelHeight);
+            READWRITE(nReleasedReserve[0]);
+            READWRITE(nReleasedReserve[1]);
+            READWRITE(nReleasedReserve[2]);
+            READWRITE(hashCheckpoint);
 
-                if(!(nSerType & SER_STATEHEADERONLY))
-                {
-                    READWRITE(vchBlockSig);
-                    READWRITE(vtx);
-                }
-            }
+            READWRITE(vchBlockSig);
+            READWRITE(vtx);
         )
 
 
@@ -96,6 +90,7 @@ namespace TAO::Ledger
         , hashNextBlock(0)
         , hashCheckpoint(0)
         {
+            SetNull();
         }
 
 
@@ -135,6 +130,35 @@ namespace TAO::Ledger
 
             hashNextBlock       = state.hashNextBlock;
             hashCheckpoint      = state.hashCheckpoint;
+        }
+
+
+        /** Equals Constructor. **/
+        BlockState operator=(const BlockState& state)
+        {
+            nVersion            = state.nVersion;
+            hashPrevBlock       = state.hashPrevBlock;
+            hashMerkleRoot      = state.hashMerkleRoot;
+            nChannel            = state.nChannel;
+            nHeight             = state.nHeight;
+            nBits               = state.nBits;
+            nNonce              = state.nNonce;
+            nTime               = state.nTime;
+            vchBlockSig         = state.vchBlockSig;
+            vtx                 = state.vtx;
+
+            nChainTrust         = state.nChainTrust;
+            nMoneySupply        = state.nMoneySupply;
+            nChannelHeight      = state.nChannelHeight;
+
+            nReleasedReserve[0] = state.nReleasedReserve[0];
+            nReleasedReserve[1] = state.nReleasedReserve[1];
+            nReleasedReserve[2] = state.nReleasedReserve[2];
+
+            hashNextBlock       = state.hashNextBlock;
+            hashCheckpoint      = state.hashCheckpoint;
+
+            return *this;
         }
 
 
@@ -247,7 +271,7 @@ namespace TAO::Ledger
          *  @param[in] nState The states to output.
          *
          **/
-        void print(uint8_t nState = debug::flags::header) const;
+        void print() const;
     };
 
 

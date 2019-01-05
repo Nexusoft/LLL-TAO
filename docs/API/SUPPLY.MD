@@ -39,6 +39,8 @@ destination=NEW_OWNER
 session=23894738473847
 ```
 
+The NEW_OWNER in this case, is another user's genesis transaction.
+
 Return value JSON object:
 ```
 {

@@ -426,7 +426,7 @@ namespace LLD
                 cachePool->Put(vKey, vData);
 
                 /* Verbose Debug Logging. */
-                debug::log(4, FUNCTION "%s", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
+                debug::log(5, FUNCTION "Current File: %u | Current File Size: %u\n%s", __PRETTY_FUNCTION__, cKey.nSectorFile, cKey.nSectorStart, HexStr(vData.begin(), vData.end(), true).c_str());
 
                 return true;
             }
@@ -475,8 +475,8 @@ namespace LLD
                 pstream->read((char*) &vData[0], vData.size());
             }
 
-            /* Verbose Debug Logging. */
-            debug::log(5, FUNCTION "%s", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str());
+            /* Verboe output. */
+            debug::log(5, FUNCTION "Current File: %u | Current File Size: %u\n%s", __PRETTY_FUNCTION__, cKey.nSectorFile, cKey.nSectorStart, HexStr(vData.begin(), vData.end(), true).c_str());
 
             return true;
         }
@@ -497,7 +497,7 @@ namespace LLD
             /* Check the keychain for key. */
             SectorKey key;
             if(!pSectorKeys->Get(vKey, key))
-                return false;
+                return debug::error(FUNCTION "key not found", __PRETTY_FUNCTION__);
 
             /* Check data size constraints. */
             if(vData.size() != key.nSectorSize)
@@ -533,7 +533,7 @@ namespace LLD
             nBytesWrote += vData.size();
 
             /* Verboe output. */
-            debug::log(5, FUNCTION "%s | Current File: %u | Current File Size: %u", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
+            debug::log(5, FUNCTION "Current File: %u | Current File Size: %u\n%s", __PRETTY_FUNCTION__, key.nSectorFile, key.nSectorStart, HexStr(vData.begin(), vData.end(), true).c_str());
 
             return true;
         }
@@ -589,16 +589,16 @@ namespace LLD
                 }
 
                 /* Create a new Sector Key. */
-                SectorKey cKey = SectorKey(STATE::READY, vKey, nCurrentFile, nCurrentFileSize, vData.size());
+                SectorKey key = SectorKey(STATE::READY, vKey, nCurrentFile, nCurrentFileSize, vData.size());
 
                 /* Increment the current filesize */
                 nCurrentFileSize += vData.size();
 
                 /* Assign the Key to Keychain. */
-                pSectorKeys->Put(cKey);
+                pSectorKeys->Put(key);
 
                 /* Verboe output. */
-                debug::log(5, FUNCTION "%s | Current File: %u | Current File Size: %u", __PRETTY_FUNCTION__, HexStr(vData.begin(), vData.end()).c_str(), nCurrentFile, nCurrentFileSize);
+                debug::log(5, FUNCTION "Current File: %u | Current File Size: %u\n%s", __PRETTY_FUNCTION__, key.nSectorFile, key.nSectorStart, HexStr(vData.begin(), vData.end(), true).c_str());
             }
 
             /* Write the data into the memory cache. */
@@ -722,6 +722,9 @@ namespace LLD
                     {
                         /* Assign the Key to Keychain. */
                         pSectorKeys->Put(SectorKey(STATE::READY, vObj.first, nCurrentFile, nCurrentFileSize, vObj.second.size()));
+
+                        /* Verboe output. */
+                        debug::log(5, FUNCTION "Current File: %u | Current File Size: %u\n%s", __PRETTY_FUNCTION__, nCurrentFile, nCurrentFileSize, HexStr(vObj.second.begin(), vObj.second.end(), true).c_str());
 
                         /* Increment the current filesize */
                         nCurrentFileSize += vObj.second.size();

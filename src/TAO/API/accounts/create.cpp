@@ -62,6 +62,8 @@ namespace TAO::API
         if(!tx.IsValid())
             throw APIException(-26, "Invalid Transaction");
 
+        tx.print();
+
         /* Write transaction to ledger database. */
         LLD::legDB->WriteGenesis(hashGenesis, tx);
         LLD::legDB->WriteTx(tx.GetHash(), tx);

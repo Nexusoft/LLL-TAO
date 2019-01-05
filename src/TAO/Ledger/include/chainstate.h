@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEDGER_INCLUDE_STATE_H
-#define NEXUS_TAO_LEDGER_INCLUDE_STATE_H
+#ifndef NEXUS_TAO_LEDGER_INCLUDE_CHAINSTATE_H
+#define NEXUS_TAO_LEDGER_INCLUDE_CHAINSTATE_H
 
 #include <LLC/types/uint1024.h>
 
@@ -36,6 +36,10 @@ namespace TAO::Ledger
 
         /** Flag to tell if initial blocks are downloading. **/
         static bool Synchronizing();
+
+
+        /** Initialize the Chain State. */
+        static bool Initialize();
 
 
         /** The best block in the chain. **/

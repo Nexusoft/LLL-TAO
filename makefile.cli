@@ -187,6 +187,7 @@ OBJS= \
 	build/API_accounts_create.o \
 	build/API_accounts_login.o \
 	build/API_supply_supply.o \
+	build/API_ledger_create.o \
 	build/Legacy_evaluate.o \
 	build/Legacy_address.o \
 	build/Legacy_addressbook.o \
@@ -293,6 +294,9 @@ build/API_accounts_%.o: ./src/TAO/API/accounts/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_supply_%.o: ./src/TAO/API/supply/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_ledger_%.o: ./src/TAO/API/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_RPC_%.o: ./src/TAO/API/RPC/%.cpp $(HEADERS)
@@ -423,6 +427,13 @@ build/API_accounts_%.o: src/TAO/API/accounts/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_supply_%.o: src/TAO/API/supply/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_ledger_%.o: src/TAO/API/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -589,6 +600,13 @@ build/API_accounts_%.o: src/TAO/API/accounts/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/API_supply_%.o: src/TAO/API/supply/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_ledger_%.o: src/TAO/API/ledger/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

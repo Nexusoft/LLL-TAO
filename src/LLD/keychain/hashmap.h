@@ -371,7 +371,7 @@ namespace LLD
                     ssKey >> cKey;
 
                     /* Debug Output of Sector Key Information. */
-                    debug::log(4, FUNCTION "State: %s | Length: %u | Bucket %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s", __PRETTY_FUNCTION__, cKey.nState == STATE::READY ? "Valid" : "Invalid", cKey.nLength, nBucket, nFilePos, hashmap[nBucket] - 1, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str());
+                    debug::log(4, FUNCTION "State: %s | Length: %u | Bucket %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u\n%s", __PRETTY_FUNCTION__, cKey.nState == STATE::READY ? "Valid" : "Invalid", cKey.nLength, nBucket, nFilePos, hashmap[nBucket] - 1, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end(), true).c_str());
 
                     return true;
                 }
@@ -441,7 +441,7 @@ namespace LLD
                     vKeys.push_back(cKey);
 
                     /* Debug Output of Sector Key Information. */
-                    debug::log(4, FUNCTION "Found State: %s | Length: %u | Bucket %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s", __PRETTY_FUNCTION__, cKey.nState == STATE::READY ? "Valid" : "Invalid", cKey.nLength, nBucket, nFilePos, hashmap[nBucket] - 1, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(vKey.begin(), vKey.end()).c_str());
+                    debug::log(4, FUNCTION "Found State: %s | Length: %u | Bucket %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u\n%s", __PRETTY_FUNCTION__, cKey.nState == STATE::READY ? "Valid" : "Invalid", cKey.nLength, nBucket, nFilePos, hashmap[nBucket] - 1, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(vKey.begin(), vKey.end(), true).c_str());
                 }
             }
 
@@ -500,9 +500,12 @@ namespace LLD
                     /* Check if this bucket has the key */
                     if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + cKey.vKey.size(), cKey.vKey.begin()))
                     {
-                        /* Deserialie key and return if found. */
+                        /* Serialize the key and return if found. */
                         DataStream ssKey(SER_LLD, DATABASE_VERSION);
                         ssKey << cKey;
+
+                        /* Serialize the key into the end of the vector. */
+                        ssKey.write((char*)&cKey.vKey[0], cKey.vKey.size());
 
                         /* Handle the disk writing operations. */
                         { LOCK(KEY_MUTEX);
@@ -514,7 +517,11 @@ namespace LLD
                         }
 
                         /* Debug Output of Sector Key Information. */
-                        debug::log(4, FUNCTION "State: %s | Length: %u | Bucket %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s", __PRETTY_FUNCTION__, cKey.nState == STATE::READY ? "Valid" : "Invalid", cKey.nLength, nBucket, nFilePos, hashmap[nBucket] - 1, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str());
+                        debug::log(4, FUNCTION "State: %s | Length: %u | Bucket %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u\n%s", __PRETTY_FUNCTION__, cKey.nState == STATE::READY ? "Valid" : "Invalid", cKey.nLength, nBucket, nFilePos, hashmap[nBucket] - 1, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end(), true).c_str());
+
+                        /* Signal the cache thread to wake up. */
+                        fCacheActive = true;
+                        CONDITION.notify_all();
 
                         return true;
                     }
@@ -587,7 +594,7 @@ namespace LLD
         void CacheWriter()
         {
             std::mutex CONDITION_MUTEX;
-            while(!fDestruct.load())
+            while(true)
             {
                 /* Wait for Database to Initialize. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);

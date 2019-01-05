@@ -215,14 +215,14 @@ namespace TAO::Ledger
 
         /* Get Last Block Index [1st block back in Channel]. **/
         BlockState first = state;
-        if (!GetLastState(first, 0))
-            return bnProofOfWorkStart[0].GetCompact();
+        if (!GetLastState(first, 1))
+            return bnProofOfWorkStart[1].GetCompact();
 
 
         /* Get Last Block Index [2nd block back in Channel]. */
         BlockState last = first.Prev();
-        if (!GetLastState(last, 0))
-            return bnProofOfWorkStart[0].GetCompact();
+        if (!GetLastState(last, 1))
+            return bnProofOfWorkStart[1].GetCompact();
 
 
         /* Standard Time Proportions */
@@ -350,14 +350,14 @@ namespace TAO::Ledger
 
         /* Get Last Block Index [1st block back in Channel]. **/
         BlockState first = state;
-        if (!GetLastState(first, 0))
-            return bnProofOfWorkStart[0].GetCompact();
+        if (!GetLastState(first, 2))
+            return bnProofOfWorkStart[2].GetCompact();
 
 
         /* Get Last Block Index [2nd block back in Channel]. */
         BlockState last = first.Prev();
-        if (!GetLastState(last, 0))
-            return bnProofOfWorkStart[0].GetCompact();
+        if (!GetLastState(last, 2))
+            return bnProofOfWorkStart[2].GetCompact();
 
 
         /* Get the Block Times with Minimum of 1 to Prevent Time Warps. */

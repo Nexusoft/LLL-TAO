@@ -32,6 +32,7 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <TAO/API/include/supply.h>
 #include <TAO/API/include/accounts.h>
@@ -127,6 +128,10 @@ int main(int argc, char** argv)
         else
             return debug::error("failed loading wallet.dat");
     }
+
+
+    /** Initialize ChainState. */
+    TAO::Ledger::ChainState::Initialize();
 
 
     /* Initialize the Tritium Server. */

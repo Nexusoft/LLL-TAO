@@ -28,6 +28,7 @@ namespace TAO::Ledger
     std::string TritiumBlock::ToString() const
     {
         return debug::strprintf("Block("
+            VALUE("hash")     " = %s "
             VALUE("nVersion") " = %u, "
             VALUE("hashPrevBlock") " = %s, "
             VALUE("hashMerkleRoot") " = %s, "
@@ -38,7 +39,7 @@ namespace TAO::Ledger
             VALUE("nTime") " = %u, "
             VALUE("vchBlockSig") " = %s, "
             VALUE("vtx.size()") " = %u)",
-        nVersion, hashPrevBlock.ToString().substr(0, 20).c_str(), hashMerkleRoot.ToString().substr(0, 20).c_str(), nChannel, nHeight, nBits, nNonce, nTime, HexStr(vchBlockSig.begin(), vchBlockSig.end()).c_str(), vtx.size());
+        GetHash().ToString().substr(0, 20).c_str(), nVersion, hashPrevBlock.ToString().substr(0, 20).c_str(), hashMerkleRoot.ToString().substr(0, 20).c_str(), nChannel, nHeight, nBits, nNonce, nTime, HexStr(vchBlockSig.begin(), vchBlockSig.end()).c_str(), vtx.size());
     }
 
 
@@ -53,7 +54,7 @@ namespace TAO::Ledger
     bool TritiumBlock::Check() const
     {
         /* Check the Size limits of the Current Block. */
-        if (vtx.empty() || ::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
+        if (::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
             return debug::error(FUNCTION "size limits failed", __PRETTY_FUNCTION__);
 
 
@@ -103,8 +104,16 @@ namespace TAO::Ledger
 
 
         /* Check the producer transaction. */
-        if(GetChannel() > 0 && !producer.IsCoinbase())
-            return debug::error(FUNCTION "producer transaction has to be coinbase for proof of work", __PRETTY_FUNCTION__);
+        if(nHeight > 0)
+        {
+            /* Check the coinbase if not genesis. */
+            if(GetChannel() > 0 && !producer.IsCoinbase())
+                return debug::error(FUNCTION "producer transaction has to be coinbase for proof of work", __PRETTY_FUNCTION__);
+
+            /* Check that the producer is a valid transactions. */
+            if(!producer.IsValid())
+                return debug::error(FUNCTION "producer transaction is invalid", __PRETTY_FUNCTION__);
+        }
 
 
         /* Check the producer transaction. */
@@ -134,18 +143,17 @@ namespace TAO::Ledger
         }
 
 
-        /* Check that the producer is a valid transactions. */
-        if(!producer.IsValid())
-            return debug::error(FUNCTION "producer transaction is invalid", __PRETTY_FUNCTION__);
-
-
         /* Check for duplicate txid's */
         std::set<uint512_t> uniqueTx;
 
 
         /* Get the hashes for the merkle root. */
         std::vector<uint512_t> vHashes;
-        vHashes.push_back(producer.GetHash());
+
+
+        /* Only do producer transaction on non genesis. */
+        if(nHeight > 0)
+            vHashes.push_back(producer.GetHash());
 
 
         /* Get the signature operations for legacy tx's. */
@@ -200,15 +208,17 @@ namespace TAO::Ledger
         if (hashMerkleRoot != BuildMerkleTree(vHashes))
             return debug::error(FUNCTION "hashMerkleRoot mismatch", __PRETTY_FUNCTION__);
 
-
         /* Get the key from the producer. */
-        LLC::ECKey key;
-        key.SetPubKey(producer.vchPubKey);
+        if(nHeight > 0)
+        {
+            /* Create the key to check. */
+            LLC::ECKey key(NID_brainpoolP512t1, 64);
+            key.SetPubKey(producer.vchPubKey);
 
-
-        /* Check the Block Signature. */
-        if (!VerifySignature(key))
-            return debug::error(FUNCTION "bad block signature", __PRETTY_FUNCTION__);
+            /* Check the Block Signature. */
+            if (!VerifySignature(key))
+                return debug::error(FUNCTION "bad block signature", __PRETTY_FUNCTION__);
+        }
 
         return true;
     }

@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/verify.h>
 
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/difficulty.h>
@@ -38,9 +39,15 @@ namespace TAO::Ledger
     {
         for(uint32_t index = 0; index < 10000; index++) //set limit on searchable blocks
         {
-            state = state.Prev();
+            if(state.GetHash() == hashGenesis)
+                return false;
+
             if(state.GetChannel() == nChannel)
                 return true;
+
+            state = state.Prev();
+            if(state.IsNull())
+                return false;
         }
 
         return false;
@@ -51,7 +58,10 @@ namespace TAO::Ledger
     BlockState BlockState::Prev() const
     {
         BlockState state;
-        if(!LLD::legDB->ReadBlock(hashPrevBlock, state))
+        if(hashPrevBlock == 0)
+            return state;
+
+        if(LLD::legDB->ReadBlock(hashPrevBlock, state))
             return state;
 
         return state;
@@ -65,7 +75,7 @@ namespace TAO::Ledger
         if(hashNextBlock == 0)
             return state;
 
-        if(!LLD::legDB->ReadBlock(hashNextBlock, state))
+        if(LLD::legDB->ReadBlock(hashNextBlock, state))
             return state;
 
         return state;
@@ -116,9 +126,9 @@ namespace TAO::Ledger
 
 
         /* Check That Block timestamp is not before previous block. */
-        if (GetBlockTime() <= statePrev.GetBlockTime())
-            return debug::error(FUNCTION "block's timestamp too early Block: %" PRId64 " Prev: %" PRId64 "", __PRETTY_FUNCTION__,
-            GetBlockTime(), statePrev.GetBlockTime());
+        //if (GetBlockTime() <= statePrev.GetBlockTime())
+        //    return debug::error(FUNCTION "block's timestamp too early Block: %" PRId64 " Prev: %" PRId64 "", __PRETTY_FUNCTION__,
+        //    GetBlockTime(), statePrev.GetBlockTime());
 
 
         /* Check that Block is Descendant of Hardened Checkpoints. */
@@ -130,7 +140,7 @@ namespace TAO::Ledger
         if(IsProofOfWork() && nVersion >= 3)
         {
             /* Get the stream from coinbase. */
-            producer.ssOperation.seek(33, STREAM::BEGIN); //set the read position to where reward will be.
+            producer.ssOperation.seek(1, STREAM::BEGIN); //set the read position to where reward will be.
 
             /* Read the mining reward. */
             uint64_t nMiningReward;
@@ -176,7 +186,7 @@ namespace TAO::Ledger
                 uint64_t nCoinbaseRewards = GetCoinbaseReward(statePrev, GetChannel(), nType);
 
                 /* Block Version 3 Check. Disable Reserves from going below 0. */
-                if(nVersion >= 3 && nCoinbaseRewards >= nReserve)
+                if(nVersion >= 3 && nCoinbaseRewards > nReserve)
                     return debug::error(FUNCTION "out of reserve limits", __PRETTY_FUNCTION__);
 
                 /* Check coinbase rewards. */
@@ -202,19 +212,23 @@ namespace TAO::Ledger
             debug::log(0, "===== Pending Checkpoint Hash = %s", hashCheckpoint.ToString().substr(0, 15).c_str());
         }
 
+        /* Write the block to disk. */
+        if(!LLD::legDB->WriteBlock(GetHash(), *this))
+            return debug::error(FUNCTION "block state already exists", __PRETTY_FUNCTION__);
+
 
         /* Signal to set the best chain. */
         if(nChainTrust > ChainState::nBestChainTrust)
         {
             /* Start the database transaction. */
-            LLD::legDB->TxnBegin();
-            LLD::regDB->TxnBegin();
+            //LLD::legDB->TxnBegin();
+            //LLD::regDB->TxnBegin();
 
             /* Watch for genesis. */
             if (ChainState::stateGenesis.IsNull())
             {
                 /* Write the best chain pointer. */
-                if(!LLD::legDB->WriteBestChain(hash))
+                if(!LLD::legDB->WriteBestChain(GetHash()))
                     return debug::error(FUNCTION "failed to write best chain", __PRETTY_FUNCTION__);
 
                 /* Write the block to disk. */
@@ -308,10 +322,6 @@ namespace TAO::Ledger
                     HardenCheckpoint(state);
                 }
 
-                /* Write the best chain pointer. */
-                if(!LLD::legDB->WriteBestChain(hash))
-                    return debug::error(FUNCTION "failed to write best chain", __PRETTY_FUNCTION__);
-
 
                 /* Remove transactions from memory pool. */
                 for(auto & hashTx : vDelete)
@@ -329,20 +339,22 @@ namespace TAO::Ledger
                     mempool.Accept(tx);
                 }
 
-                /* Write the block to disk. */
-                if(LLD::legDB->WriteBlock(GetHash(), *this))
-                    return debug::error(FUNCTION "block state already exists", __PRETTY_FUNCTION__);
-
 
                 /* Set the best chain variables. */
                 ChainState::stateBest          = *this;
-                ChainState::hashBestChain      = hash;
+                ChainState::hashBestChain      = GetHash();
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
+                ChainState::stateBest.print();
+
+
+                /* Write the best chain pointer. */
+                if(!LLD::legDB->WriteBestChain(ChainState::hashBestChain))
+                    return debug::error(FUNCTION "failed to write best chain", __PRETTY_FUNCTION__);
 
 
                 /* Debug output about the best chain. */
-                debug::log(0, FUNCTION "new best block = %s height = %u trust=%" PRIu64, hash.ToString().substr(0, 20).c_str(), nHeight, nChainTrust);
+                debug::log2(0, TESTING "New Best Block hash=", GetHash().ToString().substr(0, 20), " height=", ChainState::nBestHeight, " trust=", ChainState::nBestChainTrust);
 
 
                 //TODO: blocknotify
@@ -350,8 +362,8 @@ namespace TAO::Ledger
             }
 
             /* Commit the transaction to database. */
-            LLD::legDB->TxnCommit();
-            LLD::regDB->TxnCommit();
+            //LLD::legDB->TxnCommit();
+            //LLD::regDB->TxnCommit();
         }
 
         return true;
@@ -361,6 +373,7 @@ namespace TAO::Ledger
     /** Connect a block state into chain. **/
     bool BlockState::Connect()
     {
+
         /* Check through all the transactions. */
         for(auto tx : vtx)
         {
@@ -508,9 +521,9 @@ namespace TAO::Ledger
 
 
     /* For debugging purposes, printing the block to stdout */
-    void BlockState::print(uint8_t nState) const
+    void BlockState::print() const
     {
-        debug::log(0, ToString(nState).c_str());
+        debug::log(0, "%s", ToString(debug::flags::header | debug::flags::chain).c_str());
     }
 
 }

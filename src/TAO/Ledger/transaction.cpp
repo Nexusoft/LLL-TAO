@@ -57,8 +57,8 @@ namespace TAO::Ledger
         if(IsCoinbase())
         {
             /* Check the coinbase size. */
-            if(ssOperation.size() != 41)
-                return debug::error(FUNCTION "operation data too large for coinbase %u", ssOperation.size());
+            //if(ssOperation.size() != 41)
+            //    return debug::error(FUNCTION "operation data too large for coinbase %u", ssOperation.size());
         }
 
         /* Check the timestamp. */

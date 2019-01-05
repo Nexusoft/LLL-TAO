@@ -47,6 +47,15 @@ namespace TAO::Ledger
      **/
     bool CreateBlock(TAO::Ledger::SignatureChain* user, SecureString pin, uint32_t nChannel, TAO::Ledger::TritiumBlock& block);
 
+
+    /** Create Genesis
+     *
+     *  Creates the genesis block
+     *
+     *
+     **/
+    bool CreateGenesis();
+
 }
 
 #endif

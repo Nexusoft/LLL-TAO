@@ -25,6 +25,8 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/enum.h>
 
+#include <Legacy/types/transaction.h>
+
 namespace TAO::Ledger
 {
 
@@ -164,6 +166,64 @@ namespace TAO::Ledger
         block.nBits          = GetNextTargetRequired(ChainState::stateBest, nChannel);
         block.nNonce         = 1;
         block.nTime          = runtime::unifiedtimestamp();
+
+        return true;
+    }
+
+
+    /** Create Genesis
+     *
+     *  Creates the genesis block
+     *
+     *
+     **/
+    bool CreateGenesis()
+    {
+        if(!LLD::legDB->ReadBlock(hashGenesis, ChainState::stateGenesis))
+        {
+            const char* pszTimestamp = "Silver Doctors [2-19-2014] BANKER CLEAN-UP: WE ARE AT THE PRECIPICE OF SOMETHING BIG";
+            Legacy::Transaction genesis;
+            genesis.nTime = 1409456199;
+            genesis.vin.resize(1);
+            genesis.vout.resize(1);
+            genesis.vin[0].scriptSig = Legacy::CScript() << std::vector<uint8_t>((const uint8_t*)pszTimestamp,
+                (const uint8_t*)pszTimestamp + strlen(pszTimestamp));
+            genesis.vout[0].SetEmpty();
+
+            std::vector<uint512_t> vHashes;
+            vHashes.push_back(genesis.GetHash());
+
+            TritiumBlock block;
+            block.vtx.push_back(std::make_pair(LEGACY_TX, genesis.GetHash()));
+            block.hashPrevBlock = 0;
+            block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
+            block.nVersion = 1;
+            block.nHeight  = 0;
+            block.nChannel = 2;
+            block.nTime    = 1409456199;
+            block.nBits    = bnProofOfWorkLimit[2].GetCompact();
+            block.nNonce   = config::fTestNet ? 122999499 : 2196828850;
+
+            assert(block.hashMerkleRoot == uint512_t("0x8a971e1cec5455809241a3f345618a32dc8cb3583e03de27e6fe1bb4dfa210c413b7e6e15f233e938674a309df5a49db362feedbf96f93fb1c6bfeaa93bd1986"));
+
+            assert(genesis.nTime == block.nTime);
+
+            LLC::CBigNum target;
+            target.SetCompact(block.nBits);
+            if(block.GetHash() != hashGenesis)
+                return debug::error(FUNCTION "genesis hash does not match", __PRETTY_FUNCTION__);
+
+            if(!block.Check())
+                return debug::error(FUNCTION "genesis block check failed", __PRETTY_FUNCTION__);
+
+            ChainState::stateGenesis = BlockState(block);
+            if(!LLD::legDB->WriteBlock(hashGenesis, ChainState::stateGenesis))
+                return debug::error(FUNCTION "genesis didn't commit to disk", __PRETTY_FUNCTION__);
+
+            ChainState::hashBestChain = hashGenesis;
+            if(!LLD::legDB->WriteBestChain(hashGenesis))
+                return debug::error(FUNCTION "couldn't write best chain.", __PRETTY_FUNCTION__);
+        }
 
         return true;
     }
