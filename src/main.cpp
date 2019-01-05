@@ -46,6 +46,7 @@ ________________________________________________________________________________
 #include <sstream>
 
 #include <TAO/Ledger/include/create.h>
+#include <TAO/Ledger/include/constants.h>
 
 
 
@@ -133,7 +134,14 @@ int main(int argc, char** argv)
 
 
     /** Initialize ChainState. */
-    TAO::Ledger::ChainState::Initialize();
+    //TAO::Ledger::ChainState::Initialize();
+
+    if(config::GetBoolArg("-verify"))
+    {
+        TAO::Ledger::BlockState state;
+        if(!LLD::legDB->ReadBlock(TAO::Ledger::hashGenesis, state))
+            return debug::error("can't read genesis");
+    }
 
 
     if(config::GetArg("-test", 0) > 0)
@@ -167,12 +175,19 @@ int main(int argc, char** argv)
 
             /* Create the state object. */
             TAO::Ledger::BlockState state = TAO::Ledger::BlockState(block);
-            if(!state.Accept())
-                return debug::error("invalid state");
+
+            if(!LLD::legDB->WriteBlock(state.GetHash(), state))
+                return debug::error("failed to write state");
+            //if(!state.Accept())
+            //    return debug::error("invalid state");
+
+            state.Connect();
+
+            TAO::Ledger::ChainState::stateBest = state;
+
+
 
             /* Write transaction to local database. */
-            //LLD::legDB->WriteTx(state.producer.GetHash(), state.producer);
-            printf("Writing last %s\n", state.producer.GetHash().ToString().c_str());
             if(!LLD::locDB->WriteLast(user->Genesis(), state.producer.GetHash()))
                 return debug::error("failed to write last");
         }

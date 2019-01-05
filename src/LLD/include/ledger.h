@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <LLD/templates/sector.h>
 
 #include <LLD/cache/binary_lru.h>
-#include <LLD/keychain/filemap.h>
+#include <LLD/keychain/hashmap.h>
 
 #include <TAO/Register/include/state.h>
 #include <TAO/Ledger/types/transaction.h>
@@ -30,7 +30,7 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    class LedgerDB : public SectorDatabase<BinaryFileMap, BinaryLRU>
+    class LedgerDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
         std::recursive_mutex MEMORY_MUTEX;
 
@@ -55,19 +55,19 @@ namespace LLD
 
         bool WriteTx(uint512_t hashTransaction, TAO::Ledger::Transaction tx)
         {
-            return Write(std::make_pair(std::string("tx"), hashTransaction), tx);
+            return Write(hashTransaction, tx);
         }
 
 
         bool ReadTx(uint512_t hashTransaction, TAO::Ledger::Transaction& tx)
         {
-            return Read(std::make_pair(std::string("tx"), hashTransaction), tx);
+            return Read(hashTransaction, tx);
         }
 
 
         bool HasTx(uint512_t hashTransaction)
         {
-            return Exists(std::make_pair(std::string("tx"), hashTransaction));
+            return Exists(hashTransaction);
         }
 
 
@@ -98,13 +98,13 @@ namespace LLD
 
         bool WriteBlock(uint1024_t hashBlock, TAO::Ledger::BlockState state)
         {
-            return Write(std::make_pair(std::string("block"), hashBlock), state);
+            return Write(hashBlock, state);
         }
 
 
         bool ReadBlock(uint1024_t hashBlock, TAO::Ledger::BlockState& state)
         {
-            return Read(std::make_pair(std::string("block"), hashBlock), state);
+            return Read(hashBlock, state);
         }
 
 

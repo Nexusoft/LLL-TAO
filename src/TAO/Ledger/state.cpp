@@ -63,6 +63,8 @@ namespace TAO::Ledger
 
         if(LLD::legDB->ReadBlock(hashPrevBlock, state))
             return state;
+        else
+            debug::error("failed to read previous block state");
 
         return state;
     }
@@ -233,7 +235,7 @@ namespace TAO::Ledger
                     return debug::error(FUNCTION "failed to write best chain", __PRETTY_FUNCTION__);
 
                 /* Write the block to disk. */
-                if(LLD::legDB->WriteBlock(GetHash(), *this))
+                if(!LLD::legDB->WriteBlock(GetHash(), *this))
                     return debug::error(FUNCTION "block state already exists", __PRETTY_FUNCTION__);
 
                 /* Set the genesis block. */
@@ -375,8 +377,6 @@ namespace TAO::Ledger
     /** Connect a block state into chain. **/
     bool BlockState::Connect()
     {
-        printf("Writing producer %s\n", producer.GetHash().ToString().c_str());
-        producer.print();
         if(!LLD::legDB->WriteTx(producer.GetHash(), producer))
             return debug::error(FUNCTION "failed to write producer", __PRETTY_FUNCTION__);
 
@@ -413,8 +413,10 @@ namespace TAO::Ledger
         if(!prev.IsNull())
         {
             prev.hashNextBlock = GetHash();
-            //if(!LLD::legDB->WriteBlock(prev.GetHash(), prev))
-            //    return debug::error(FUNCTION "failed to write producer", __PRETTY_FUNCTION__);
+            prev.print();
+
+            if(!LLD::legDB->WriteBlock(prev.GetHash(), prev))
+                return debug::error(FUNCTION "failed to write producer", __PRETTY_FUNCTION__);
         }
 
         return true;
