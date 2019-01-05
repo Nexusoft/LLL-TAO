@@ -98,6 +98,12 @@ class sdk_init():
     def nexus_supply_createitem(self, data):
         if (self.session_id == None): return(self.__error("Not logged in"))
 
+        #
+        # Varkable data can be a string whitespace in it. Make it URL friendly.
+        #
+        if (type(data) != str): data = str(data)
+        data = data.replace(" ", "%20")
+
         parms = "?pin={}&session={}&data={}".format(self.pin, self.session_id,
             data)
         url = supply_url.format("createitem") + parms
