@@ -348,6 +348,8 @@ namespace LLD
                 {
                     /* Set the new stream pointer. */
                     pstream = new std::fstream(debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
+                    if(!pstream)
+                        return debug::error(FUNCTION "couldn't create hashmap object", __PRETTY_FUNCTION__);
 
                     /* If file not found add to LRU cache. */
                     fileCache->Put(i, pstream);
@@ -375,9 +377,17 @@ namespace LLD
 
                     return true;
                 }
+                else
+                {
+                    debug::log(0, "File %u Pos %u\n", i, nFilePos);
+                    PrintHex(vBucket.begin(), vBucket.end());
+
+                    debug::log(0, "KEY");
+                    PrintHex(vKey.begin(), vKey.end());
+                }
             }
 
-            return false;
+            return debug::error("Hashmap Index not searched %u", hashmap[nBucket]);
         }
 
 

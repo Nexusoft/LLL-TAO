@@ -134,7 +134,7 @@ int main(int argc, char** argv)
 
 
     /** Initialize ChainState. */
-    //TAO::Ledger::ChainState::Initialize();
+    TAO::Ledger::ChainState::Initialize();
 
     if(config::GetBoolArg("-verify"))
     {
@@ -175,17 +175,8 @@ int main(int argc, char** argv)
 
             /* Create the state object. */
             TAO::Ledger::BlockState state = TAO::Ledger::BlockState(block);
-
-            if(!LLD::legDB->WriteBlock(state.GetHash(), state))
-                return debug::error("failed to write state");
-            //if(!state.Accept())
-            //    return debug::error("invalid state");
-
-            state.Connect();
-
-            TAO::Ledger::ChainState::stateBest = state;
-
-
+            if(!state.Accept())
+                return debug::error("invalid state");
 
             /* Write transaction to local database. */
             if(!LLD::locDB->WriteLast(user->Genesis(), state.producer.GetHash()))

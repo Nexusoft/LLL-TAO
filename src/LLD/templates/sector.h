@@ -361,13 +361,6 @@ namespace LLD
                 /* Set the transaction data. */
                 pTransaction->mapTransactions[static_cast<std::vector<uint8_t>>(ssKey)] = static_cast<std::vector<uint8_t>>(ssData);
 
-                /* Get original data. */
-                std::vector<uint8_t> vData;
-                Get(static_cast<std::vector<uint8_t>>(ssKey), vData);
-
-                /* Add original data to the transaction. */
-                pTransaction->mapOriginalData[static_cast<std::vector<uint8_t>>(ssKey)] = vData;
-
                 return true;
             }
 
@@ -405,7 +398,7 @@ namespace LLD
                     /* Set the new stream pointer. */
                     pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                     if(!pstream)
-                        return false;
+                        return debug::error(FUNCTION "couldn't create stream file", __PRETTY_FUNCTION__);
 
                     /* If file not found add to LRU cache. */
                     fileCache->Put(cKey.nSectorFile, pstream);
@@ -432,7 +425,7 @@ namespace LLD
                 return true;
             }
 
-            return false;
+            return debug::error(FUNCTION "couldn't find key", __PRETTY_FUNCTION__);
         }
 
 

@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <LLD/templates/sector.h>
 
 #include <LLD/cache/binary_lru.h>
-#include <LLD/keychain/hashmap.h>
+#include <LLD/keychain/filemap.h>
 
 #include <TAO/Register/include/state.h>
 #include <TAO/Ledger/types/transaction.h>
@@ -30,7 +30,7 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    class LedgerDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
+    class LedgerDB : public SectorDatabase<BinaryFileMap, BinaryLRU>
     {
         std::recursive_mutex MEMORY_MUTEX;
 
@@ -38,7 +38,7 @@ namespace LLD
 
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LedgerDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
+        LedgerDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::APPEND)
         : SectorDatabase("ledger", nFlags) { }
 
 

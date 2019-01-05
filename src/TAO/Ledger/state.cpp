@@ -413,7 +413,7 @@ namespace TAO::Ledger
         if(!prev.IsNull())
         {
             prev.hashNextBlock = GetHash();
-            prev.print();
+            //prev.print();
 
             if(!LLD::legDB->WriteBlock(prev.GetHash(), prev))
                 return debug::error(FUNCTION "failed to write producer", __PRETTY_FUNCTION__);
@@ -486,6 +486,7 @@ namespace TAO::Ledger
         if(nState & debug::flags::header)
         {
             strDebug += debug::strprintf("Block("
+            VALUE("hash") " = %s, "
             VALUE("nVersion") " = %u, "
             VALUE("hashPrevBlock") " = %s, "
             VALUE("hashMerkleRoot") " = %s, "
@@ -495,7 +496,7 @@ namespace TAO::Ledger
             VALUE("nNonce") " = %" PRIu64 ", "
             VALUE("nTime") " = %u, "
             VALUE("blockSig") " = %s",
-            nVersion, hashPrevBlock.ToString().substr(0, 20).c_str(),
+            GetHash().ToString().substr(0, 20).c_str(), nVersion, hashPrevBlock.ToString().substr(0, 20).c_str(),
             hashMerkleRoot.ToString().substr(0, 20).c_str(), nChannel,
             nHeight, GetDifficulty(nBits, nChannel), nNonce, nTime, HexStr(vchBlockSig.begin(), vchBlockSig.end()).c_str());
         }
