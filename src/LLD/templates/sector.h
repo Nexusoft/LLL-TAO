@@ -36,7 +36,7 @@ namespace LLD
 
 
     /* Maximum cache buckets for sectors. */
-    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 32; //32 MB Max Cache
+    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 64; //32 MB Max Cache
 
 
     /* The maximum amount of bytes allowed in the memory buffer for disk flushes. **/
@@ -597,9 +597,6 @@ namespace LLD
                 debug::log(5, FUNCTION "Current File: %u | Current File Size: %u\n%s", __PRETTY_FUNCTION__, key.nSectorFile, key.nSectorStart, HexStr(vData.begin(), vData.end(), true).c_str());
             }
 
-            /* Write the data into the memory cache. */
-            cachePool->Reserve(vKey, false);
-
             return true;
         }
 
@@ -617,7 +614,7 @@ namespace LLD
         bool Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
         {
             /* Write the data into the memory cache. */
-            cachePool->Put(vKey, vData, true);
+            cachePool->Put(vKey, vData, !(nFlags & FLAGS::FORCE));
 
             /* Handle force write mode. */
             if(nFlags & FLAGS::FORCE)
@@ -719,7 +716,13 @@ namespace LLD
                 /* Iterate through buffer to queue disk writes. */
                 std::vector<uint8_t> vWrite;
                 for(auto & vObj : vIndexes)
+                {
+                    /* Force write data. */
                     Force(vObj.first, vObj.second);
+
+                    /* Set no longer reserved in cache pool. */
+                    cachePool->Reserve(vObj.first, false);
+                }
 
                 nBytesWrote += (vWrite.size());
 

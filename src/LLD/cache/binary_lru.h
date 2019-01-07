@@ -362,6 +362,9 @@ namespace LLD
             /* Get the data. */
             BinaryNode* pthis = hashmap[Bucket(vKey)];
 
+            //TODO: have a seperate memory structure for reserved entries.
+            //Then do a PUT if reserve is set to false
+
             /* Check if the Record Exists. */
             if (pthis == nullptr || pthis->vKey != vKey)
                 return;
