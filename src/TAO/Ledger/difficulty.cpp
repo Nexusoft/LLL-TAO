@@ -334,8 +334,8 @@ namespace TAO::Ledger
 
 
         /* Check for minimum value. */
-        if (nBits < bnProofOfWorkLimit[0].getuint())
-            nBits = bnProofOfWorkLimit[0].getuint();
+        if (nBits < bnProofOfWorkLimit[0].getuint32())
+            nBits = bnProofOfWorkLimit[0].getuint32();
 
 
         /* Debug output. */
