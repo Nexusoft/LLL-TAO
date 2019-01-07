@@ -24,28 +24,32 @@ namespace TAO::Operation
     bool Write(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller)
     {
         /* Read the binary data of the Register. */
-        TAO::Register::State regState;
-        if(!LLD::regDB->ReadState(hashAddress, regState))
-            return debug::error(FUNCTION "Register Address doewn't exist %s", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+        TAO::Register::State state;
+        if(!LLD::regDB->ReadState(hashAddress, state))
+            return debug::error(FUNCTION "register Address doewn't exist %s", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
         /* Check ReadOnly permissions. */
-        if(regState.nType == TAO::Register::OBJECT::READONLY)
-            return debug::error(FUNCTION "Write operation called on read-only register", __PRETTY_FUNCTION__);
+        if(state.nType == TAO::Register::OBJECT::READONLY)
+            return debug::error(FUNCTION "write operation called on read-only register", __PRETTY_FUNCTION__);
 
         /*state Check that the proper owner is commiting the write. */
-        if(hashCaller != regState.hashOwner)
-            return debug::error(FUNCTION "No write permissions for caller %s", __PRETTY_FUNCTION__, hashCaller.ToString().c_str());
+        if(hashCaller != state.hashOwner)
+            return debug::error(FUNCTION "no write permissions for caller %s", __PRETTY_FUNCTION__, hashCaller.ToString().c_str());
 
         /* Check the new data size against register's allocated size. */
-        if(vchData.size() != regState.nLength)
-            return debug::error(FUNCTION "New Register State size %u mismatch %u", __PRETTY_FUNCTION__, vchData.size(), regState.nLength);
+        if(vchData.size() != state.nLength)
+            return debug::error(FUNCTION "new Register State size %u mismatch %u", __PRETTY_FUNCTION__, vchData.size(), state.nLength);
 
         /* Set the new state of the register. */
-        regState.SetState(vchData);
+        state.SetState(vchData);
+
+        /* Check that the register is in a valid state. */
+        if(!state.IsValid())
+            return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
 
         /* Write the register to the database. */
-        if(!LLD::regDB->WriteState(hashAddress, regState))
-            return debug::error(FUNCTION "Failed to write new state", __PRETTY_FUNCTION__);
+        if(!LLD::regDB->WriteState(hashAddress, state))
+            return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
 
         return true;
     }

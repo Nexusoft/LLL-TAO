@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/Ledger/include/prime.h>
+#include <openssl/bn.h>
 
 namespace TAO::Ledger
 {

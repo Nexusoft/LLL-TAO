@@ -29,7 +29,6 @@ namespace TAO::API
         mapFunctions["getinfo"] = Function(std::bind(&RPC::GetInfo, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["getmininginfo"] = Function(std::bind(&RPC::GetMiningInfo, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["getconnectioncount"] = Function(std::bind(&RPC::GetConnectionCount, this, std::placeholders::_1, std::placeholders::_2));
-
         mapFunctions["getnewaddress"] = Function(std::bind(&RPC::GetNewAddress, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["getaccountaddress"] = Function(std::bind(&RPC::GetAccountAddress, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["setaccount"] = Function(std::bind(&RPC::SetAccount, this, std::placeholders::_1, std::placeholders::_2));

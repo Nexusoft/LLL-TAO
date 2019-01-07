@@ -69,6 +69,10 @@ enum
     SER_LLD             = (1 << 3),
     SER_LLD_KEY_HEADER  = (1 << 4),
 
+    // layers
+    SER_REGISTER        = (1 << 5),
+    SER_OPERATIONS      = (1 << 6),
+
     // modifiers
     SER_SKIPSIG         = (1 << 16),
     SER_BLOCKHEADERONLY = (1 << 17),
@@ -946,7 +950,7 @@ public:
      **/
     bool End()
     {
-        return nReadPos == size();
+        return nReadPos >= size();
     }
 
 
@@ -961,13 +965,21 @@ public:
      **/
     DataStream& read(char* pch, int nSize)
     {
-       /* Copy the bytes into tmp object. */
-       std::copy((uint8_t*)&at(nReadPos), (uint8_t*)&at(nReadPos) + nSize, (uint8_t*)pch);
+        /* Check size constraints. */
+        if(nReadPos + nSize > size())
+        {
+            debug::error(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos);
 
-       /* Iterate the read position. */
-       nReadPos += nSize;
+            return *this;
+        }
 
-       return *this;
+        /* Copy the bytes into tmp object. */
+        std::copy((uint8_t*)&at(nReadPos), (uint8_t*)&at(nReadPos) + nSize, (uint8_t*)pch);
+
+        /* Iterate the read position. */
+        nReadPos += nSize;
+
+        return *this;
     }
 
 

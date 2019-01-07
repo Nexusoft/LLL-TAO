@@ -75,12 +75,12 @@ namespace TAO::API
     //         {
     //             if (nWalletUnlockTime==0)
     //                 break;
-    //             int64 nToSleep = nWalletUnlockTime - GetTimeMillis();
-    //             if (nToSleep <= 0)
+    //             int64 nTosleep = nWalletUnlockTime - GetTimeMillis();
+    //             if (nTosleep <= 0)
     //                 break;
 
     //             LEAVE_CRITICAL_SECTION(cs_nWalletUnlockTime);
-    //             Sleep(nToSleep);
+    //             sleep(nTosleep);
     //             ENTER_CRITICAL_SECTION(cs_nWalletUnlockTime);
 
     //         } while(1);
@@ -138,8 +138,8 @@ namespace TAO::API
     //             " - Stores the wallet decryption key in memory for <timeout> seconds.");
 
     //     CreateThread(ThreadTopUpKeyPool, NULL);
-    //     int64* pnSleepTime = new int64(params[1].get_int64());
-    //     CreateThread(ThreadCleanWalletPassphrase, pnSleepTime);
+    //     int64* pnsleepTime = new int64(params[1].get_int64());
+    //     CreateThread(ThreadCleanWalletPassphrase, pnsleepTime);
 
     //     // Nexus: if user OS account compromised prevent trivial sendmoney commands
     //     if (jsonParams.size() > 2)

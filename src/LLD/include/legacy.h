@@ -23,7 +23,7 @@ ________________________________________________________________________________
 #include <LLD/keychain/hashmap.h>
 
 #include <TAO/Register/include/state.h>
-#include <TAO/Legacy/types/transaction.h>
+#include <Legacy/types/transaction.h>
 
 namespace LLD
 {

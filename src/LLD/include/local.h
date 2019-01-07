@@ -35,34 +35,24 @@ namespace LLD
         LocalDB(const char* pszMode="r+")
         : SectorDatabase("local", pszMode) {}
 
-        bool WriteGenesis(TAO::Ledger::Transaction tx)
+        bool WriteGenesis(uint256_t hashGenesis, TAO::Ledger::Transaction tx)
         {
-            return Write(std::string("genesis"), tx);
+            return Write(std::make_pair(std::string("genesis"), hashGenesis), tx);
         }
 
-        bool ReadGenesis(TAO::Ledger::Transaction& tx)
+        bool ReadGenesis(uint256_t hashGenesis, TAO::Ledger::Transaction& tx)
         {
-            return Read(std::string("genesis"), tx);
+            return Read(std::make_pair(std::string("genesis"), hashGenesis), tx);
         }
 
-        bool WriteTx(TAO::Ledger::Transaction tx)
+        bool WriteLast(uint256_t hashGenesis, uint512_t hashLast)
         {
-            return Write(std::make_pair(std::string("tx"), tx.GetHash()), tx);
+            return Write(std::make_pair(std::string("last"), hashGenesis), hashLast);
         }
 
-        bool ReadTx(uint512_t hash, TAO::Ledger::Transaction& tx)
+        bool ReadLast(uint256_t hashGenesis, uint512_t& hashLast)
         {
-            return Read(std::make_pair(std::string("tx"), hash), tx);
-        }
-
-        bool WriteLast(uint512_t hashLast)
-        {
-            return Write(std::string("last"), hashLast);
-        }
-
-        bool ReadLast(uint512_t& hashLast)
-        {
-            return Read(std::string("last"), hashLast);
+            return Read(std::make_pair(std::string("last"), hashGenesis), hashLast);
         }
     };
 }

@@ -64,6 +64,24 @@ namespace LLD
         {
             return Exists(std::make_pair(hashProof, hashTransaction));
         }
+
+
+        bool HasGenesis(uint256_t hashGenesis)
+        {
+            return Exists(std::make_pair(std::string("genesis"), hashGenesis));
+        }
+
+
+        bool WriteGenesis(uint256_t hashGenesis, TAO::Ledger::Transaction tx)
+        {
+            return Write(std::make_pair(std::string("genesis"), hashGenesis), tx);
+        }
+
+
+        bool ReadGenesis(uint256_t hashGenesis, TAO::Ledger::Transaction& tx)
+        {
+            return Read(std::make_pair(std::string("genesis"), hashGenesis), tx);
+        }
     };
 }
 

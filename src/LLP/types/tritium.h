@@ -26,9 +26,23 @@ namespace LLP
     {
     public:
 
+        static std::string Name() { return "Tritium"; }
+
         /* Constructors for Message LLP Class. */
-        TritiumNode() : BaseConnection<TritiumPacket>(), nSessionID(0), fInbound(false), nNodeLatency(0), nLastPing(0), nLastSamples(0) {}
-        TritiumNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false ) : BaseConnection<TritiumPacket>( SOCKET_IN, DDOS_IN ), nSessionID(0), fInbound(false), nNodeLatency(0), nLastPing(0), nLastSamples(0) { }
+        TritiumNode()
+        : BaseConnection<TritiumPacket>()
+        , nSessionID(0), fInbound(false)
+        , nNodeLatency(0)
+        , nLastPing(0)
+        , nLastSamples(0) {}
+
+        TritiumNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
+        : BaseConnection<TritiumPacket>( SOCKET_IN, DDOS_IN )
+        , nSessionID(0)
+        , fInbound(false)
+        , nNodeLatency(0)
+        , nLastPing(0)
+        , nLastSamples(0) { }
 
 
         /** Randomly genearted session ID. **/
@@ -51,11 +65,11 @@ namespace LLP
         uint32_t nLastSamples;
 
 
-        /** Timer object to keep track of ping latency. **/
+        /** timer object to keep track of ping latency. **/
         std::map<uint32_t, uint64_t> mapLatencyTracker;
 
 
-        /** Mao to keep track of sent request ID's while witing for them to return. **/
+        /** Map to keep track of sent request ID's while witing for them to return. **/
         std::map<uint32_t, uint64_t> mapSentRequests;
 
 
@@ -65,17 +79,27 @@ namespace LLP
          *  @param[in[ LENGTH The size of bytes read on packet read events
          *
          */
-        void Event(uint8_t EVENT, uint32_t LENGTH = 0);
+        void Event(uint8_t EVENT, uint32_t LENGTH = 0) final;
 
 
-        /** Main message handler once a packet is recieved. **/
-        bool ProcessPacket();
+        /** ProcessPacket
+         *
+         *  Main message handler once a packet is recieved.
+         *
+         *  @return True is no errors, false otherwise
+         *
+         **/
+        bool ProcessPacket() final;
 
 
-        /** Send the DoS Score to DDOS Filte
+        /** DoS
+         *
+         *  Send the DoS Score to DDOS Filte
          *
          *  @param[in] nDoS The score to add for DoS banning
          *  @param[in] fReturn The value to return (False disconnects this node)
+         *
+         *  @return fReturn
          *
          */
         inline bool DoS(int nDoS, bool fReturn)
@@ -87,11 +111,13 @@ namespace LLP
         }
 
 
-        /** Non-Blocking Packet reader to build a packet from TCP Connection.
+        /** ReadPacket
          *
+         *  Non-Blocking Packet reader to build a packet from TCP Connection.
          *  This keeps thread from spending too much time for each Connection.
-         */
-        void ReadPacket()
+         *
+         **/
+        void ReadPacket() final
         {
             if(!INCOMING.Complete())
             {

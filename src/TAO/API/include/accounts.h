@@ -16,6 +16,10 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/base.h>
 
+#include <TAO/Ledger/types/sigchain.h>
+
+#include <Util/include/mutex.h>
+
 namespace TAO::API
 {
 
@@ -26,30 +30,112 @@ namespace TAO::API
      **/
     class Accounts : public Base
     {
+        /** The signature chain for login and logout. */
+        mutable std::map<uint64_t, TAO::Ledger::SignatureChain*> mapSessions;
+
+
+        /** The mutex for locking. **/
+        mutable std::recursive_mutex MUTEX;
+
     public:
-        Accounts() {}
 
-        void Initialize();
+        /** Default Constructor. **/
+        Accounts() { Initialize(); }
 
-        std::string GetName() const
+
+        /** Initialize.
+         *
+         *  Sets the function pointers for this API.
+         *
+         **/
+        void Initialize() final;
+
+
+        /** Get Key
+         *
+         *  Returns a key from the account logged in.
+         *
+         *  @param[in] nKey The key nonce used.
+         *  @param[in] strSecret The secret phrase to use.
+         *  @param[in] nSession The session identifier.
+         *
+         **/
+        uint512_t GetKey(uint32_t nKey, SecureString strSecret, uint64_t nSession) const;
+
+
+         /** Get Genesis
+          *
+          *  Returns the genesis ID from the account logged in.
+          *
+          *  @param[in] nSession The session identifier.
+          *
+          *  @return The genesis ID if logged in.
+          *
+          **/
+         uint256_t GetGenesis(uint64_t nSession) const;
+
+
+        /** Get Name
+         *
+         *  Returns the name of this API.
+         *
+         **/
+        std::string GetName() const final
         {
             return "Accounts";
         }
+
+
+        /** Login
+         *
+         *  Login to a user account.
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json Login(const json::json& params, bool fHelp);
+
+
+        /** Logout
+         *
+         *  Logout of a user account
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json Logout(const json::json& params, bool fHelp);
+
 
         /** Create Account
          *
          *  Create's a user account.
          *
-         **/
-        json::json CreateAccount(const json::json& jsonParams, bool fHelp);
-
-
-        /** Get Account
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
          *
-         *  Get a user's account.
+         *  @return The return object in JSON.
          *
          **/
-        json::json GetAccount(const json::json& jsonParams, bool fHelp);
+        json::json CreateAccount(const json::json& params, bool fHelp);
+
+
+        /** Get Transactions
+         *
+         *  Get transactions for an account
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json GetTransactions(const json::json& params, bool fHelp);
     };
 
     extern Accounts accounts;

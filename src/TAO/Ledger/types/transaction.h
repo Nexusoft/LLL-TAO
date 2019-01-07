@@ -82,6 +82,7 @@ namespace TAO
             (
 
                 READWRITE(this->nVersion);
+                READWRITE(nSequence);
                 READWRITE(nTimestamp);
                 READWRITE(hashNext);
 
@@ -90,10 +91,10 @@ namespace TAO
 
                 READWRITE(hashPrevTx);
                 READWRITE(vchLedgerData);
+                READWRITE(vchPubKey);
 
                 if(!(nSerType & SER_GETHASH))
                 {
-                    READWRITE(vchPubKey);
                     READWRITE(vchSig);
                 }
 
@@ -113,6 +114,53 @@ namespace TAO
             , nReadPos(0) {}
 
 
+            /** read
+             *
+             *  Reads raw data from the stream
+             *
+             *  @param[in] pch The pointer to beginning of memory to write
+             *
+             *  @param[in] nSize The total number of bytes to read
+             *
+             **/
+            Transaction& read(char* pch, int nSize)
+            {
+                /* Check size constraints. */
+                if(nReadPos + nSize > vchLedgerData.size())
+                {
+                    debug::error(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos);
+
+                    return *this;
+                }
+
+                /* Copy the bytes into tmp object. */
+                std::copy((uint8_t*)&vchLedgerData[nReadPos], (uint8_t*)&vchLedgerData[nReadPos] + nSize, (uint8_t*)pch);
+
+                /* Iterate the read position. */
+                nReadPos += nSize;
+
+                return *this;
+            }
+
+
+            /** write
+             *
+             *  Writes data into the stream
+             *
+             *  @param[in] pch The pointer to beginning of memory to write
+             *
+             *  @param[in] nSize The total number of bytes to copy
+             *
+             **/
+            Transaction& write(const char* pch, int nSize)
+            {
+                /* Push the obj bytes into the vector. */
+                vchLedgerData.insert(vchLedgerData.end(), (uint8_t*)pch, (uint8_t*)pch + nSize);
+
+                return *this;
+            }
+
+
             /** Operator Overload <<
              *
              *  Serializes data into vchLedgerData
@@ -122,13 +170,10 @@ namespace TAO
              **/
             template<typename Type> Transaction& operator<<(const Type& obj)
             {
-                /* Push the size byte into vector. */
-                vchLedgerData.push_back((uint8_t)sizeof(obj));
+                /* Serialize to the stream. */
+                ::Serialize(*this, obj, SER_OPERATIONS, nVersion); //temp versinos for now
 
-                /* Push the obj bytes into the vector. */
-                vchLedgerData.insert(vchLedgerData.end(), (uint8_t*)&obj, (uint8_t*)&obj + sizeof(obj));
-
-                return *this;
+                return (*this);
             }
 
 
@@ -141,22 +186,9 @@ namespace TAO
              **/
             template<typename Type> Transaction& operator>>(Type& obj)
             {
-                /* Get the size from size byte. */
-                uint8_t nSize = vchLedgerData[nReadPos];
-
-                /* Create tmp object to prevent double free in std::copy. */
-                Type tmp;
-
-                /* Copy the bytes into tmp object. */
-                std::copy((uint8_t*)&vchLedgerData[nReadPos + 1], (uint8_t*)&vchLedgerData[nReadPos + 1] + nSize, (uint8_t*)&tmp);
-
-                /* Iterate the read position. */
-                nReadPos += nSize + 1;
-
-                /* Set the return value. */
-                obj = tmp;
-
-                return *this;
+                /* Unserialize from the stream. */
+                ::Unserialize(*this, obj, SER_OPERATIONS, nVersion);
+                return (*this);
             }
 
 
@@ -188,6 +220,16 @@ namespace TAO
              *
              **/
             uint512_t GetHash() const;
+
+
+            /** Genesis
+             *
+             *  Gets the hash of the genesis transaction
+             *
+             *  @return 256-bit unsigned integer of hash.
+             *
+             **/
+            uint256_t Genesis() const;
 
 
             /** NextHash

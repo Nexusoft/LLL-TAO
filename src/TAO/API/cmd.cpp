@@ -31,17 +31,52 @@ namespace TAO::API
     int CommandLineAPI(int argc, char** argv, int argn)
     {
         /* Check the parameters. */
-        if(argc < argn + 3)
+        if(argc < argn + 1)
         {
-            debug::log(0, "Not Enough Parameters");
+            debug::error("missing endpoint parameter");
+
+            return 0;
+        }
+
+        /* Parse out the endpoints. */
+        std::string endpoint = std::string(argv[argn]);
+        std::string::size_type pos = endpoint.find('/');
+        if(pos == endpoint.npos)
+        {
+            debug::error("\nendpoint argument requires a forward slash [ex. ./nexus -api <API-NAME>/<METHOD> <KEY>=<VALUE>]");
 
             return 0;
         }
 
         /* Build the JSON request object. */
         json::json parameters;
-        for(int i = argn + 2; i < argc; i++)
-            parameters.push_back(argv[i]);
+
+        /* Keep track of previous parameter. */
+        std::string prev;
+        for(int i = argn + 1; i < argc; i++)
+        {
+            /* Parse out the key / values. */
+            std::string arg = std::string(argv[i]);
+            std::string::size_type pos = arg.find('=', 0);
+
+            /* Watch for missing delimiter. */
+            if(pos == arg.npos)
+            {
+                /* Append this data with URL encoding. */
+                std::string value = parameters[prev];
+                value.append(" " + arg);
+                parameters[prev] = value;
+
+                continue;
+            }
+
+            /* Set the previous argument. */
+            prev = arg.substr(0, pos);
+
+            /* Add to parameters object. */
+            parameters[prev] = arg.substr(pos + 1);
+        }
+
 
         /* Build the HTTP Header. */
         std::string strContent = parameters.dump();
@@ -54,7 +89,7 @@ namespace TAO::API
                 "Server: Nexus-JSON-API\r\n"
                 "\r\n"
                 "%s",
-            argv[argn], argv[argn + 1],
+            endpoint.substr(0, pos).c_str(), endpoint.substr(pos + 1).c_str(),
             runtime::rfc1123Time().c_str(),
             strContent.size(),
             strContent.c_str());
@@ -95,7 +130,7 @@ namespace TAO::API
             }
 
             /* Catch if the connection timed out. */
-            if(apiNode.Timeout(30))
+            if(apiNode.Timeout(5))
             {
                 debug::log(0, "Socket Timeout");
 
@@ -104,7 +139,7 @@ namespace TAO::API
 
             /* Read the response packet. */
             apiNode.ReadPacket();
-            runtime::Sleep(10);
+            runtime::sleep(10);
         }
 
         /* Parse response JSON. */
@@ -112,7 +147,7 @@ namespace TAO::API
 
         /* Check for errors. */
         std::string strPrint = "";
-        if(!ret["error"].is_null())
+        if(ret.find("error") != ret.end())
             strPrint = ret["error"]["message"];
         else
             strPrint = ret["result"].dump(4);
@@ -213,7 +248,7 @@ namespace TAO::API
 
             /* Read the response packet. */
             rpcNode.ReadPacket();
-            runtime::Sleep(10);
+            runtime::sleep(10);
         }
 
         /* Dump the response to the console. */
@@ -228,7 +263,7 @@ namespace TAO::API
         }
         else
         {
-            
+
             if( ret["result"].is_string())
                 strPrint = ret["result"].get<std::string>();
             else

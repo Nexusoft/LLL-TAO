@@ -2,24 +2,103 @@
 #
 # curl-nexus
 #
-# Use tritium API to get some info.
+# Use tritium API to get some info. If the URL has parameters encoded with
+# "?", then double quotes need to be used to call this bash script.
+#
+# Here is a sequence of curl commands to create an account, login, create
+# a supply-chain item, transfer ownership, and get the item:
+# 
+# ./curl-nexus "accounts/create?username=foo&password=foo&pin=1234"
+# ./curl-nexus "accounts/login?username=foo&password=foo"
+#
+# ./curl-nexus "supply/createitem?pin=1234&data=0xdfdf&session=<ses-id>"
+# ./curl-nexus "supply/getitem?address=<addr>"
+# ./curl-nexus "supply/transfer?pin=1234&session=<ses-id>&address=<addr>&destincation=bar
+# ./curl-nexus "supply/history?address=<addr>"
 #
 
 HOST=$1
 COMMAND=$2
-        
+
+#
+# Generate help strings if no parameters on curl-nexus command line.
+#
+if [ -z "$HOST" ] && [ -z "$COMMAND" ] ; then
+    echo "Nexus Tritium Supported APIs (<api>/<method>):"
+    echo "  Accounts API:          Supply API:"
+    echo "  accounts/create        supply/createitem"
+    echo "  accounts/login         supply/getitem"
+    echo "  accounts/logout        supply/transfer"
+    echo "  accounts/transactions  supply/history"
+    echo ""
+    echo "Use double quotes for command-line argument:"
+    echo 'Usage: curl-nexus [<host>] "<api>/<method>?<key>=<value>&<key1>=<value1>&<key2>=<value2>"'
+    exit
+fi
+
+#
+# Default to localhost.
+#
 if [ -z "$COMMAND" ] ; then
     HOST="localhost"
     COMMAND="$1"
 fi
-    
-echo "Querying $HOST for API command '$COMMAND' ..."
 
-curl --silent --data-binary 'content-type: application/json;' \
-    http://$HOST:8080/api/$COMMAND | jq .
+#
+# Check if parameters supplied.
+#
+if [ "$COMMAND" = "accounts/create" ] ; then
+    echo "Supply parameters:"
+    echo "accounts/create?username=<user>&password=<password>&pin=<pin>"
+    exit
+fi
+if [ "$COMMAND" = "accounts/login" ] ; then
+    echo "Supply parameters:"
+    echo "accounts/login?username=<user>&password=<password>"
+    exit
+fi
+if [ "$COMMAND" = "accounts/logout" ] ; then
+    echo "Supply parameters:"
+    echo "accounts/login?session=<session-id>"
+    exit
+fi
+if [ "$COMMAND" = "accounts/transactions" ] ; then
+    echo "Supply parameters:"
+    echo "accounts/transactions?genesis=<genesis-id>"
+    exit
+fi
+
+if [ "$COMMAND" = "supply/getitem" ] ; then
+    echo "Supply parameters:"
+    echo "suppply/getitem?address=0x<register-address>"
+    exit
+fi
+if [ "$COMMAND" = "supply/transfer" ] ; then
+    echo "Supply parameters:"
+    echo "suppply/transfer?pin=<pin>&session=<session-id>&address=0x<register-address>&destination=<new-owner>"
+    exit
+fi
+if [ "$COMMAND" = "supply/createitem" ] ; then
+    echo "Supply parameters:"
+    echo "suppply/createitem?pin=<pin>&session=<session-id>&data=<data>"
+    exit
+fi
+if [ "$COMMAND" = "supply/history" ] ; then
+    echo "Supply parameters:"
+    echo "suppply/history?address=0x<register-address>"
+    exit
+fi
+
+#
+# curl the URL with API method and parameters.
+#
+COMMAND="http://$HOST:8080/$COMMAND"
+echo "Curling $COMMAND ..."
+
+curl --silent $COMMAND | jq .
+exit
 
 #
 # The RPC legacy equivalent for "getinfo".
-#    
+#
 #curl --silent --data-binary '{"jsonrpc": "1.0", "id": "curltest", "method": "getinfo", "params": [] }' -H 'content-type: text/plain;' http://localhost:8080/api/$0 | jg .
-    

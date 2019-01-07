@@ -133,7 +133,7 @@ namespace LLD
             std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
 
             /* Create directories if they don't exist yet. */
-            if(filesystem::create_directories(strBaseLocation))
+            if(!filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
                 debug::log(0, FUNCTION "Generated Path %s", __PRETTY_FUNCTION__, strBaseLocation.c_str());
 
             /* Stats variable for collective keychain size. */
@@ -144,7 +144,6 @@ namespace LLD
             while(true)
             {
                 std::string strFilename = debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), nCurrentFile);
-                debug::log(0, FUNCTION "Checking File %s", __PRETTY_FUNCTION__, strFilename.c_str());
 
                 /* Get the Filename at given File Position. */
                 std::fstream fIncoming(strFilename.c_str(), std::ios::in | std::ios::binary);
@@ -166,9 +165,7 @@ namespace LLD
                 nCurrentFileSize = fIncoming.gcount();
                 nKeychainSize += nCurrentFileSize;
 
-                debug::log(0, FUNCTION "Keychain File %u Loading [%u bytes]...", __PRETTY_FUNCTION__, nCurrentFile, nCurrentFileSize);
-
-
+                /* Read the keychain file. */
                 fIncoming.seekg (0, std::ios::beg);
                 std::vector<uint8_t> vKeychain(nCurrentFileSize, 0);
                 fIncoming.read((char*) &vKeychain[0], vKeychain.size());
@@ -190,8 +187,7 @@ namespace LLD
                     ssKey >> cKey;
 
 
-                    /* Skip Empty Sectors for Now.
-                        TODO: Handle any sector and keys gracfully here to ensure that the Sector is returned to a valid state from the transaction journal in case there was a failure reading and writing in the sector. This will most likely be held in the sector database code. */
+                    /* Skip Empty Sectors */
                     if(cKey.Ready())
                     {
 
@@ -218,7 +214,7 @@ namespace LLD
                 }
 
                 /* Iterate the current file. */
-                ++nCurrentFile;
+                ++ nCurrentFile;
 
                 /* Clear the keychain data. */
                 vKeychain.clear();
@@ -230,7 +226,7 @@ namespace LLD
         /** Add / Update A Record in the Database **/
         bool Put(SectorKey cKey) const
         {
-            std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
+            LOCK(KEY_MUTEX);
 
             /* Write Header if First Update. */
             if(!mapKeys.count(cKey.vKey))

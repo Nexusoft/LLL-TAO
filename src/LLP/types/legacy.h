@@ -29,6 +29,8 @@ namespace LLP
 
     public:
 
+        static std::string Name() { return "Legacy"; }
+
         /* Constructors for Message LLP Class. */
         LegacyNode() : BaseConnection<LegacyPacket>() {}
 
@@ -64,8 +66,8 @@ namespace LLP
         uint32_t nLastPing;
 
 
-        /** Timer object to keep track of ping latency. **/
-        std::map<uint64_t, runtime::Timer> mapLatencyTracker;
+        /** timer object to keep track of ping latency. **/
+        std::map<uint64_t, runtime::timer> mapLatencyTracker;
 
 
         /** Mao to keep track of sent request ID's while witing for them to return. **/
@@ -73,16 +75,22 @@ namespace LLP
 
 
         /** Virtual Functions to Determine Behavior of Message LLP.
-        *
-        * @param[in] EVENT The byte header of the event type
-        * @param[in[ LENGTH The size of bytes read on packet read events
-        *
-        */
-        void Event(uint8_t EVENT, uint32_t LENGTH = 0);
+         *
+         * @param[in] EVENT The byte header of the event type
+         * @param[in[ LENGTH The size of bytes read on packet read events
+         *
+         **/
+        void Event(uint8_t EVENT, uint32_t LENGTH = 0) final;
 
 
-        /** Main message handler once a packet is recieved. **/
-        bool ProcessPacket();
+        /** ProcessPacket
+         *
+         *  Main message handler once a packet is recieved.
+         *
+         *  @return True is no errors, false otherwise
+         *
+         **/
+        bool ProcessPacket() final;
 
 
         /** Handle for version message **/
@@ -90,19 +98,19 @@ namespace LLP
 
 
         /** Send an Address to Node.
-        *
-        * @param[in] addr The address to send to nodes
-        *
-        */
+         *
+         * @param[in] addr The address to send to nodes
+         *
+         **/
         void PushAddress(const Address& addr);
 
 
         /** Send the DoS Score to DDOS Filte
-        *
-        * @param[in] nDoS The score to add for DoS banning
-        * @param[in] fReturn The value to return (False disconnects this node)
-        *
-        */
+         *
+         * @param[in] nDoS The score to add for DoS banning
+         * @param[in] fReturn The value to return (False disconnects this node)
+         *
+         **/
         inline bool DoS(int nDoS, bool fReturn)
         {
             if(fDDOS)
@@ -116,10 +124,13 @@ namespace LLP
         //Address GetAddress();
 
 
-        /** Non-Blocking Packet reader to build a packet from TCP Connection.
-        * This keeps thread from spending too much time for each Connection.
-        */
-        void ReadPacket()
+        /** ReadPacket
+         *
+         *  Non-Blocking Packet reader to build a packet from TCP Connection.
+         *  This keeps thread from spending too much time for each Connection.
+         *
+         **/
+        void ReadPacket() final
         {
             if(!INCOMING.Complete())
             {
