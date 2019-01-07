@@ -305,13 +305,15 @@ namespace Core
 
 		/* Keep the target difficulty at minimum (allow -regtest difficulty) */
 		uint32_t nBits = SetBits(nDifficulty);
-		if (GetBoolArg("-regtest",false)) {
-			if (nBits < bnProofOfWorkLimitRegtest[1].getuint())
-				nBits = bnProofOfWorkLimitRegtest[1].getuint();
+		if (GetBoolArg("-regtest",false))
+        {
+			if (nBits < bnProofOfWorkLimitRegtest[1].getuint32())
+				nBits = bnProofOfWorkLimitRegtest[1].getuint32();
 		}
-		else {
-			if (nBits < bnProofOfWorkLimit[0].getuint())
-				nBits < bnProofOfWorkLimit[0].getuint();
+		else
+        {
+			if (nBits < bnProofOfWorkLimit[0].getuint32())
+				nBits < bnProofOfWorkLimit[0].getuint32();
 		}
 
 		/* Console Output */

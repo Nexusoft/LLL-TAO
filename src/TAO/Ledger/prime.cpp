@@ -72,7 +72,7 @@ namespace TAO::Ledger
     /* Breaks the remainder of last composite in Prime Cluster into an integer. */
     uint32_t GetFractionalDifficulty(const LLC::CBigNum& bnComposite)
 	{
-		return ((bnComposite - FermatTest(bnComposite, 2) << 24) / bnComposite).getuint();
+		return ((bnComposite - FermatTest(bnComposite, 2) << 24) / bnComposite).getuint32();
 	}
 
 

@@ -90,12 +90,12 @@ namespace LLC
         BN_clear_free(m_BN);
     }
 
-    //CBigNum(char n) is not portable.  Use 'signed char' or 'uint8_t'.
+
     CBigNum::CBigNum(int8_t n)
     {
         allocate();
         if (n >= 0)
-            setulong(n);
+            setuint32(n);
         else
             setint64(n);
     }
@@ -105,29 +105,25 @@ namespace LLC
     {
         allocate();
         if (n >= 0)
-            setulong(n);
+            setuint32(n);
         else
             setint64(n);
+    }
+
+    void CBigNum::setuint32(uint32_t n)
+    {
+        if (!BN_set_word(m_BN, n))
+            throw bignum_error("CBigNum conversion from uint32_t : BN_set_word failed");
     }
 
     CBigNum::CBigNum(int32_t n)
     {
         allocate();
         if (n >= 0)
-            setulong(n);
+            setuint32(n);
         else
             setint64(n);
     }
-
-
-    /* CBigNum::CBigNum(long n)
-    {
-        allocate();
-        if (n >= 0)
-            setulong(n);
-        else
-            setint64(n);
-    } */
 
 
     CBigNum::CBigNum(int64_t n)
@@ -139,27 +135,21 @@ namespace LLC
     CBigNum::CBigNum(uint8_t n)
     {
         allocate();
-        setulong(n);
+        setuint32(n);
     }
 
     CBigNum::CBigNum(uint16_t n)
     {
         allocate();
-        setulong(n);
+        setuint32(n);
     }
 
     CBigNum::CBigNum(uint32_t n)
     {
         allocate();
-        setulong(n);
+        setuint32(n);
     }
 
-
-    /* CBigNum::CBigNum(unsigned long n)
-    {
-        allocate();
-        setulong(n);
-    } */
 
     CBigNum::CBigNum(uint64_t n)
     {
@@ -202,29 +192,19 @@ namespace LLC
         return m_BN;
     }
 
-    void CBigNum::setulong(unsigned long n)
-    {
-        if (!BN_set_word(m_BN, n))
-            throw bignum_error("CBigNum conversion from unsigned long : BN_set_word failed");
-    }
 
-    unsigned long CBigNum::getulong() const
+    uint32_t CBigNum::getuint32() const
     {
         return BN_get_word(m_BN);
     }
 
-    uint32_t CBigNum::getuint() const
-    {
-        return BN_get_word(m_BN);
-    }
-
-    int CBigNum::getint() const
+    int32_t CBigNum::getint32() const
     {
         unsigned long n = BN_get_word(m_BN);
         if (!BN_is_negative(m_BN))
-            return (n > (unsigned long)std::numeric_limits<int>::max() ? std::numeric_limits<int>::max() : n);
+            return (n > (unsigned long)std::numeric_limits<int32_t>::max() ? std::numeric_limits<int32_t>::max() : n);
         else
-            return (n > (unsigned long)std::numeric_limits<int>::max() ? std::numeric_limits<int>::min() : -(int)n);
+            return (n > (unsigned long)std::numeric_limits<int32_t>::max() ? std::numeric_limits<int32_t>::min() : -(int32_t)n);
     }
 
     void CBigNum::setint64(int64_t n)
@@ -588,7 +568,7 @@ namespace LLC
             if (!BN_div(dv.getBN(), rem.getBN(), bn.getBN(), bnBase.getBN(), pctx))
                 throw bignum_error("CBigNum::ToString() : BN_div failed");
             bn = dv;
-            uint32_t c = rem.getulong();
+            uint32_t c = rem.getuint32();
             str += "0123456789abcdef"[c];
         }
         if (BN_is_negative(m_BN))
@@ -622,7 +602,6 @@ namespace LLC
         ::Unserialize(s, vch, nSerType, nVersion);
         setvch(vch);
     }
-
 
     bool CBigNum::operator!() const
     {
@@ -787,7 +766,7 @@ namespace LLC
         CAutoBN_CTX pctx;
         CBigNum r;
         if (!BN_mod(r.getBN(), a.getBN(), b.getBN(), pctx))
-            throw bignum_error("CBigNum::operator% : BN_div failed");
+            throw bignum_error("CBigNum::operator% : BN_mod failed");
         return r;
     }
 
