@@ -39,11 +39,11 @@ namespace Legacy
 
 
         /** Index for this output in the transaction vout **/
-        int i;
+        uint32_t i;
 
 
         /** Depth of transaction in chain at the time this COutput created **/
-        int nDepth;
+        uint32_t nDepth;
 
 
         /** Constructor
@@ -57,7 +57,7 @@ namespace Legacy
          *  @param[in] nDepthIn The depth of the transaction at time of COutput creation
          *
          **/
-        COutput(const CWalletTx& walletTxIn, int iIn, int nDepthIn) :
+        COutput(const CWalletTx& walletTxIn, uint32_t iIn, uint32_t nDepthIn) :
             walletTx(walletTxIn), 
             i(iIn),
             nDepth(nDepthIn)

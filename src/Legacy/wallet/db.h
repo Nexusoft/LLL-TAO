@@ -60,11 +60,11 @@ namespace Legacy
         /** Tracks databases usage
          *
          *  string = file name
-         *  int = usage count, value > 0 indicates database in use
+         *  uint32_t = usage count, value > 0 indicates database in use
          *
          * A usage count >1 indicates that there are multiple CDB instances using the same pdb pointer from mapDb
          */
-        static std::map<std::string, int> mapFileUseCount;
+        static std::map<std::string, uint32_t> mapFileUseCount;
 
 
         /** Stores pdb copy for each open database handle, keyed by file name.  **/
@@ -173,7 +173,7 @@ namespace Legacy
             datValue.set_flags(DB_DBT_MALLOC); // Berkeley will allocate memory for returned value, will need to free before return
 
             /* Read */
-            int ret = pdb->get(GetTxn(), &datKey, &datValue, 0);
+            int32_t ret = pdb->get(GetTxn(), &datKey, &datValue, 0);
 
             /*  Clear the key memory */
             memset(datKey.get_data(), 0, datKey.get_size());
@@ -241,7 +241,7 @@ namespace Legacy
             Dbt datValue(&ssValue[0], ssValue.size());
 
             /* Write */
-            int ret = pdb->put(GetTxn(), &datKey, &datValue, (fOverwrite ? 0 : DB_NOOVERWRITE));
+            int32_t ret = pdb->put(GetTxn(), &datKey, &datValue, (fOverwrite ? 0 : DB_NOOVERWRITE));
 
             /* Clear memory in case it was a private key */
             memset(datKey.get_data(), 0, datKey.get_size());
@@ -278,7 +278,7 @@ namespace Legacy
             Dbt datKey(&ssKey[0], ssKey.size());
 
             /* Erase */
-            int ret = pdb->del(GetTxn(), &datKey, 0);
+            int32_t ret = pdb->del(GetTxn(), &datKey, 0);
 
             /* Clear memory */
             memset(datKey.get_data(), 0, datKey.get_size());
@@ -309,7 +309,7 @@ namespace Legacy
             Dbt datKey(&ssKey[0], ssKey.size());
 
             /* Exists */
-            int ret = pdb->exists(GetTxn(), &datKey, 0);
+            int32_t ret = pdb->exists(GetTxn(), &datKey, 0);
 
             /* Clear memory */
             memset(datKey.get_data(), 0, datKey.get_size());
@@ -358,7 +358,7 @@ namespace Legacy
          *  @return true if value was successfully read
          *
          **/
-        int ReadAtCursor(Dbc* pcursor, DataStream& ssKey, DataStream& ssValue, uint32_t fFlags=DB_NEXT);
+        int32_t ReadAtCursor(Dbc* pcursor, DataStream& ssKey, DataStream& ssValue, uint32_t fFlags=DB_NEXT);
 
 
         /** CloseCursor
@@ -430,7 +430,7 @@ namespace Legacy
          *  @return true if a version entry exists in the database and its value was successfully read
          *
          **/
-        bool ReadVersion(int& nVersion);
+        bool ReadVersion(uint32_t& nVersion);
 
 
         /** WriteVersion
@@ -443,7 +443,7 @@ namespace Legacy
          *  @return true if the value was successfully written
          *
          **/
-        bool WriteVersion(int nVersion);
+        bool WriteVersion(uint32_t nVersion);
 
 
         /** Close

@@ -86,11 +86,11 @@ namespace Legacy
 
     private:
         /** The current wallet version: clients below this version are not able to load the wallet **/
-        int nWalletVersion;
+        uint32_t nWalletVersion;
 
 
         /** The maximum wallet version: memory-only variable that specifies to what version this wallet may be upgraded **/
-        int nWalletMaxVersion;
+        uint32_t nWalletMaxVersion;
 
 
         /** Flag indicating whether or not wallet is backed by a wallet database. When true, strWalletFile contains database file name. **/
@@ -140,7 +140,7 @@ namespace Legacy
         TransactionMap mapWallet;
 
 
-        std::map<uint1024_t, int> mapRequestCount;
+        std::map<uint1024_t, uint32_t> mapRequestCount;
 
 
 
@@ -242,7 +242,7 @@ namespace Legacy
          *  @return true if version assigned successfully
          *
          */
-        bool SetMaxVersion(const int nVersion);
+        bool SetMaxVersion(const uint32_t nVersion);
 
 
         /** GetVersion
@@ -252,7 +252,7 @@ namespace Legacy
          *  @return current wallet version
          *
          */
-        inline int GetVersion() const { return nWalletVersion; }
+        inline uint32_t GetVersion() const { return nWalletVersion; }
 
 
         /** IsFileBacked
@@ -298,7 +298,7 @@ namespace Legacy
          *  @return Value from Legacy::DBErrors, DB_LOAD_OK on success
          *
          */
-        int LoadWallet(bool& fFirstRunRet);
+        uint32_t LoadWallet(bool& fFirstRunRet);
 
 
         /** Inventory
@@ -596,7 +596,7 @@ namespace Legacy
          *  @return The number of transactions added/updated by the scan
          *
          **/
-        int ScanForWalletTransactions(TAO::Ledger::BlockState* pstartBlock, const bool fUpdate = false);
+        uint32_t ScanForWalletTransactions(TAO::Ledger::BlockState* pstartBlock, const bool fUpdate = false);
 
 
         /** ResendWalletTransactions
@@ -895,7 +895,7 @@ namespace Legacy
          *  @see CWalletDB::LoadWallet
          *
          **/
-        bool LoadMinVersion(const int nVersion);
+        bool LoadMinVersion(const uint32_t nVersion);
 
 
         /** LoadMasterKey

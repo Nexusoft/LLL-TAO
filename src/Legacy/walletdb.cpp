@@ -56,7 +56,7 @@ namespace Legacy
 
 
     /* Stores the minimum database version supported by this wallet database. */
-    bool CWalletDB::WriteMinVersion(const int nVersion)
+    bool CWalletDB::WriteMinVersion(const uint32_t nVersion)
     {
         return Write(std::string("minversion"), nVersion, true);
     }
@@ -189,14 +189,14 @@ namespace Legacy
 
 
     /* Reads a key pool entry from the database. */
-    bool CWalletDB::ReadPool(const int64_t nPool, CKeyPoolEntry& keypoolEntry)
+    bool CWalletDB::ReadPool(const uint64_t nPool, CKeyPoolEntry& keypoolEntry)
     {
         return Read(std::make_pair(std::string("pool"), nPool), keypoolEntry);
     }
 
 
     /* Stores a key pool entry using its pool entry number (ID value). */
-    bool CWalletDB::WritePool(const int64_t nPool, const CKeyPoolEntry& keypoolEntry)
+    bool CWalletDB::WritePool(const uint64_t nPool, const CKeyPoolEntry& keypoolEntry)
     {
         CWalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("pool"), nPool), keypoolEntry);
@@ -204,7 +204,7 @@ namespace Legacy
 
 
     /* Removes a key pool entry associated with a pool entry number. */
-    bool CWalletDB::ErasePool(const int64_t nPool)
+    bool CWalletDB::ErasePool(const uint64_t nPool)
     {
         CWalletDB::nWalletDBUpdated++;
         return Erase(std::make_pair(std::string("pool"), nPool));
@@ -257,7 +257,7 @@ namespace Legacy
             }
 
             DataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
-            int ret = ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
+            int32_t ret = ReadAtCursor(pcursor, ssKey, ssValue, fFlags);
 
             /* After initial read, change flag setting to DB_NEXT so additional reads just get the next database entry */
             fFlags = DB_NEXT;
@@ -294,9 +294,9 @@ namespace Legacy
 
 
     /* Initializes a wallet instance from the data in this wallet database. */
-    int CWalletDB::LoadWallet(CWallet& wallet)
+    uint32_t CWalletDB::LoadWallet(CWallet& wallet)
     {
-        int nFileVersion = 0;
+        uint32_t nFileVersion = 0;
         std::vector<uint512_t> vWalletRemove;
 
         runtime::timer time;
@@ -311,7 +311,7 @@ namespace Legacy
             wallet.SetDefaultKey(vchLoadedDefaultKey);
 
             /* Read and validate minversion required by database file */
-            int nMinVersion = 0;
+            uint32_t nMinVersion = 0;
             if (Read(std::string("minversion"), nMinVersion))
             {
                 if (nMinVersion > LLD::DATABASE_VERSION)
@@ -335,7 +335,7 @@ namespace Legacy
                 DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
                 DataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
 
-                int ret = ReadAtCursor(pcursor, ssKey, ssValue);
+                int32_t ret = ReadAtCursor(pcursor, ssKey, ssValue);
 
                 if (ret == DB_NOTFOUND)
                 {
@@ -504,7 +504,7 @@ namespace Legacy
                 else if (strType == "pool")
                 {
                     /* Key pool entry */
-                    int64_t nPoolIndex;
+                    uint64_t nPoolIndex;
                     ssKey >> nPoolIndex;
 
                     /* Only the pool index is stored in the key pool */
@@ -599,7 +599,7 @@ namespace Legacy
         const int64_t minTimeSinceLastUpdate = 2;
         uint32_t nLastSeen = CWalletDB::nWalletDBUpdated;
         uint32_t nLastFlushed = CWalletDB::nWalletDBUpdated;
-        int64_t nLastWalletUpdate = runtime::unifiedtimestamp();
+        uint64_t nLastWalletUpdate = runtime::unifiedtimestamp();
 
         while (!config::fShutdown)
         {
@@ -619,7 +619,7 @@ namespace Legacy
                 if (CDB::cs_db.try_lock())
                 {
                     /* Check ref count and skip flush attempt if any databases are in use (have an open file handle indicated by usage map count > 0) */
-                    int nRefCount = 0;
+                    uint32_t nRefCount = 0;
                     auto mi = CDB::mapFileUseCount.cbegin();
 
                     while (mi != CDB::mapFileUseCount.cend())

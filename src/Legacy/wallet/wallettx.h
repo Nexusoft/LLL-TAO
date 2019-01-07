@@ -356,7 +356,7 @@ namespace Legacy
          *  @return The transaction timestamp
          *
          **/
-        inline int64_t GetTxTime() const { return nTimeReceived; }
+        inline uint64_t GetTxTime() const { return nTimeReceived; }
 
 
 
@@ -370,7 +370,7 @@ namespace Legacy
          *  @return The request count as recorded by request tracking, -1 if not tracked, 0 if no wallet bound
          *
          **/
-        int GetRequestCount() const;
+        int32_t GetRequestCount() const;
 
 
         /** IsFromMe

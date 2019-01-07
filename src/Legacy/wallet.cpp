@@ -51,7 +51,7 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    /* Nexus: Setting to unlock wallet for block minting only */
+    /* Nexus: Setting indicating wallet unlocked for block minting only */
     bool fWalletUnlockMintOnly = false;
 
 
@@ -92,7 +92,7 @@ namespace Legacy
 
 
     /* Assign the maximum version we're allowed to upgrade to.  */
-    bool CWallet::SetMaxVersion(const int nVersion)
+    bool CWallet::SetMaxVersion(const uint32_t nVersion)
     {
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
@@ -109,7 +109,7 @@ namespace Legacy
 
 
     /* Loads all data for a file backed wallet from the database. */
-    int CWallet::LoadWallet(bool& fFirstRunRet)
+    uint32_t CWallet::LoadWallet(bool& fFirstRunRet)
     {
         if (!fFileBacked)
             return false;
@@ -124,7 +124,7 @@ namespace Legacy
             fFirstRunRet = false;
 
             CWalletDB walletdb(strWalletFile,"cr+");
-            int nLoadWalletRet = walletdb.LoadWallet(*this);
+            uint32_t nLoadWalletRet = walletdb.LoadWallet(*this);
             walletdb.Close();
 
             if (nLoadWalletRet == DB_NEED_REWRITE)
@@ -613,7 +613,7 @@ namespace Legacy
                 if ((walletTx.IsCoinBase() || walletTx.IsCoinStake()) && walletTx.GetBlocksToMaturity() > 0)
                     continue;
 
-                for (int i = 0; i < walletTx.vout.size(); i++)
+                for (uint32_t i = 0; i < walletTx.vout.size(); i++)
                 {
                     /* Filter transactions after requested spend time */
                     if (walletTx.nTime > nSpendTime)
@@ -845,10 +845,10 @@ namespace Legacy
     /* Scan the block chain for transactions from or to keys in this wallet.
      * Add/update the current wallet transactions for any found.
      */
-    int CWallet::ScanForWalletTransactions(TAO::Ledger::BlockState* pstartBlock, const bool fUpdate)
+    uint32_t CWallet::ScanForWalletTransactions(TAO::Ledger::BlockState* pstartBlock, const bool fUpdate)
     {
         /* Count the number of transactions process for this wallet to use as return value */
-        int nTransactionCount = 0;
+        uint32_t nTransactionCount = 0;
         TAO::Ledger::BlockState block;
 
         if (pstartBlock == nullptr)
@@ -1037,7 +1037,7 @@ namespace Legacy
                     continue;
 
                 /* Check all the outputs to make sure the flags are all set properly. */
-                for (int n=0; n < walletTx.vout.size(); n++)
+                for (uint32_t n=0; n < walletTx.vout.size(); n++)
                 {
                     /* Handle the Index on Disk for Transaction being inconsistent from the Wallet's accounting to the UTXO. */
 //TODO - Fix txindex reference
@@ -1434,7 +1434,7 @@ namespace Legacy
                     wtxNew.vin.push_back(CTxIn(coin.first->GetHash(),coin.second));
 
                 /* Sign inputs to unlock previously unspent outputs */
-                int nIn = 0;
+                uint32_t nIn = 0;
                 for(const auto coin : setSelectedCoins)
                     if (!SignSignature(*this, *(coin.first), wtxNew, nIn++))
                         return false;
@@ -1601,7 +1601,7 @@ namespace Legacy
 //        block.vtx[0].vout[0].nValue += nInterest;
 
         /* Sign Each Input to Transaction. */
-        for(int nIndex = 0; nIndex < vInputs.size(); nIndex++)
+        for(uint32_t nIndex = 0; nIndex < vInputs.size(); nIndex++)
         {
 //            if (!SignSignature(*this, vInputs[nIndex], block.vtx[0], nIndex + 1))
 //                return debug::error("AddCoinstakeInputs() : Unable to sign Coinstake Transaction Input.");
@@ -1641,7 +1641,7 @@ namespace Legacy
 
 
     /* Load the minimum supported version without updating the database */
-    bool CWallet::LoadMinVersion(const int nVersion)
+    bool CWallet::LoadMinVersion(const uint32_t nVersion)
     {
         nWalletVersion = nVersion;
         nWalletMaxVersion = std::max(nWalletMaxVersion, nVersion);

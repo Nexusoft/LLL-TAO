@@ -67,7 +67,7 @@ namespace Legacy
 
 
         /** timestamp for creation of accounting entry **/
-        int64_t nTime;
+        uint64_t nTime;
 
 
         /** General comment related to this accounting entry **/
