@@ -74,6 +74,30 @@ Return value JSON object:
 }
 ```
 
+### UpdateItem
+
+This will update the data for an item, assigning ownership to the currently logged in account.
+LOGIN is required to use this command.
+
+```
+<method>:
+/supply/createitem
+
+<key>=<value> parameter pairs:
+pin=XXXX
+data=XXXXX
+session=23894738473847
+address=XXXXX
+```
+
+Return value JSON object:
+```
+{
+    "address": "e6d9529c4cb27857d6f86159f53f5fa5a06dd1de4a52c8a4260a6f287f41b77c",
+    "txid": "70e5d8b6227d209fafe4c90ed0ed7e63b23b72dc1349c60b37a00ed06e18215d5fa384da1b6522e24cb1467b11b0b0e8ac4e9db8374f09718ab1218e8da33a11"
+}
+```
+
 This shows the new memory address created, and the txid that was associated with the transfer taking place.
 
 ### History
