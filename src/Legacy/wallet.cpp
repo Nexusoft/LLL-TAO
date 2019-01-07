@@ -53,15 +53,14 @@ namespace Legacy
 
     /* Nexus: Setting to unlock wallet for block minting only */
     bool fWalletUnlockMintOnly = false;
-    CWallet* CWallet::pwalletMain = nullptr;
 
     /* Singleton accessor */
     CWallet& CWallet::Instance()
     {
-        if(!pwalletMain)
-            pwalletMain = new Legacy::CWallet(config::GetArg("-wallet", CWalletDB::DEFAULT_WALLET_DB));
-
-        return *pwalletMain;
+        /** Singleton wallet instance **/
+        static CWallet walletMain(config::GetArg("-wallet", CWalletDB::DEFAULT_WALLET_DB));
+        
+        return walletMain;
     }
 
 

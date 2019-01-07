@@ -50,11 +50,6 @@ ________________________________________________________________________________
 
 
 
-namespace Legacy
-{
-    Legacy::CWallet* pwalletMain;
-}
-
 /* Declare the Global LLD Instances. */
 namespace LLD
 {
@@ -343,14 +338,6 @@ int main(int argc, char** argv)
         delete RPC_SERVER;
     }
 
-
-    /* Cleanup the wallet. */
-    if(Legacy::pwalletMain)
-    {
-        debug::log2(0, TESTING, "Closing the wallet");
-
-        delete Legacy::pwalletMain;
-    }
 
 
     /* Elapsed Milliseconds from timer. */

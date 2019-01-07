@@ -183,8 +183,6 @@ namespace Legacy
          **/
         std::vector<uint8_t> vchDefaultKey;
 
-        /** Singleton wallet instance **/
-        static CWallet* pwalletMain;
 
 
     public:
@@ -1033,10 +1031,6 @@ namespace Legacy
                                 int64_t& nValueRet, const std::string strAccount = "*");
 
     };
-
-
-    /** Main wallet pointer. **/
-    extern Legacy::CWallet* pwalletMain;
 
 }
 
