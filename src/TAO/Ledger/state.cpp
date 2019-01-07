@@ -86,6 +86,10 @@ namespace TAO::Ledger
     /* Accept a block state into chain. */
     bool BlockState::Accept()
     {
+        /* Debug output. */
+        print();
+
+
         /* Read leger DB for duplicate block. */
         BlockState state;
         if(LLD::legDB->ReadBlock(GetHash(), state))
@@ -188,20 +192,20 @@ namespace TAO::Ledger
                 uint64_t nCoinbaseRewards = GetCoinbaseReward(statePrev, GetChannel(), nType);
 
                 /* Block Version 3 Check. Disable Reserves from going below 0. */
-                if(nVersion >= 3 && nCoinbaseRewards > nReserve)
+                if(nVersion >= 3 && nCoinbaseRewards >= nReserve)
                     return debug::error(FUNCTION "out of reserve limits", __PRETTY_FUNCTION__);
 
                 /* Check coinbase rewards. */
-                nReleasedReserve[nType] =  nReserve - nCoinbaseRewards;
+                nReleasedReserve[nType] =  (nReserve - nCoinbaseRewards);
 
-                debug::log(2, "Reserve Balance %i | %f Nexus | Released %f", nType, stateLast.nReleasedReserve[nType] / 1000000.0, (nReserve - stateLast.nReleasedReserve[nType]) / 1000000.0 );
+                debug::log(2, "Reserve Balance %i | %f Nexus | Released %f", nType, nReleasedReserve[nType] / 1000000.0, (nReserve - stateLast.nReleasedReserve[nType]) / 1000000.0 );
             }
             else
                 nReleasedReserve[nType] = 0;
         }
 
         /* Add the Pending Checkpoint into the Blockchain. */
-        if(IsNewTimespan(Prev()))
+        if(IsNewTimespan(statePrev))
         {
             hashCheckpoint = GetHash();
 
@@ -209,7 +213,7 @@ namespace TAO::Ledger
         }
         else
         {
-            hashCheckpoint = stateLast.hashCheckpoint;
+            hashCheckpoint = statePrev.hashCheckpoint;
 
             debug::log(0, "===== Pending Checkpoint Hash = %s", hashCheckpoint.ToString().substr(0, 15).c_str());
         }
@@ -217,6 +221,7 @@ namespace TAO::Ledger
         /* Start the database transaction. */
         LLD::legDB->TxnBegin();
         LLD::regDB->TxnBegin();
+
 
         /* Write the block to disk. */
         if(!LLD::legDB->WriteBlock(GetHash(), *this))
@@ -280,11 +285,11 @@ namespace TAO::Ledger
                 {
                     debug::log(0, FUNCTION "REORGANIZE: Disconnect %i blocks; %s..%s\n", __PRETTY_FUNCTION__,
                         vDisconnect.size(), fork.GetHash().ToString().substr(0,20).c_str(), ChainState::stateBest.GetHash().ToString().substr(0,20).c_str());
-                }
 
                     debug::log(0, FUNCTION "REORGANIZE: Connect %i blocks; %s..%s\n", __PRETTY_FUNCTION__,
                         vConnect.size(), fork.GetHash().ToString().substr(0,20).c_str(),
                         this->GetHash().ToString().substr(0,20).c_str());
+                }
 
                 /* List of transactions to resurrect. */
                 std::vector<uint512_t> vResurrect;
@@ -323,7 +328,7 @@ namespace TAO::Ledger
                         vDelete.push_back(tx.second);
 
                     /* Harden a checkpoint if there is any. */
-                    HardenCheckpoint(state);
+                    HardenCheckpoint(statePrev);
                 }
 
 
@@ -349,7 +354,6 @@ namespace TAO::Ledger
                 ChainState::hashBestChain      = GetHash();
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
-                ChainState::stateBest.print();
 
 
                 /* Write the best chain pointer. */
@@ -366,9 +370,14 @@ namespace TAO::Ledger
             }
         }
 
+
         /* Commit the transaction to database. */
         LLD::legDB->TxnCommit();
         LLD::regDB->TxnCommit();
+
+
+        /* Debug output. */
+        debug::log2(0, TESTING, "ACCEPTED");
 
         return true;
     }
@@ -515,7 +524,7 @@ namespace TAO::Ledger
             nReleasedReserve[2], hashNextBlock.ToString().substr(0, 20).c_str(),
             hashCheckpoint.ToString().substr(0, 20).c_str());
         }
-        strDebug += ")\n";
+        strDebug += ")";
 
         /* Handle the verbose output for transactions. */
         if(nState & debug::flags::tx)

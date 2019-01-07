@@ -165,7 +165,7 @@ namespace TAO::Ledger
         block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
         block.nChannel       = nChannel;
         block.nHeight        = ChainState::stateBest.nHeight + 1;
-        block.nBits          = GetNextTargetRequired(ChainState::stateBest, nChannel);
+        block.nBits          = GetNextTargetRequired(ChainState::stateBest, nChannel, false);
         block.nNonce         = 1;
         block.nTime          = runtime::unifiedtimestamp();
 
@@ -219,6 +219,9 @@ namespace TAO::Ledger
                 return debug::error(FUNCTION "genesis block check failed", __PRETTY_FUNCTION__);
 
             ChainState::stateGenesis = BlockState(block);
+            ChainState::stateGenesis.hashCheckpoint = hashGenesis;
+            ChainState::stateBest = ChainState::stateGenesis;
+
             if(!LLD::legDB->WriteBlock(hashGenesis, ChainState::stateGenesis))
                 return debug::error(FUNCTION "genesis didn't commit to disk", __PRETTY_FUNCTION__);
 

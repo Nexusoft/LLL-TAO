@@ -34,6 +34,10 @@ namespace TAO::Ledger
         static uint64_t nBestChainTrust;
 
 
+        /** Hardened Checkpoint. **/
+        static uint1024_t hashCheckpoint;
+
+
         /** Flag to tell if initial blocks are downloading. **/
         static bool Synchronizing();
 

@@ -102,23 +102,23 @@ namespace TAO::Ledger
 
 
     /* Switching function for each difficulty re-target [each channel uses their own version] */
-    uint32_t GetNextTargetRequired(const BlockState state, int nChannel)
+    uint32_t GetNextTargetRequired(const BlockState state, int nChannel, bool fDebug)
     {
         if(nChannel == 0)
-            return RetargetTrust(state);
+            return RetargetTrust(state, fDebug);
 
         else if(nChannel == 1)
-            return RetargetPrime(state);
+            return RetargetPrime(state, fDebug);
 
         else if(nChannel == 2)
-            return RetargetHash(state);
+            return RetargetHash(state, fDebug);
 
         return 0;
     }
 
 
     /* Trust Retargeting: Modulate Difficulty based on production rate. */
-    uint32_t RetargetTrust(const BlockState state)
+    uint32_t RetargetTrust(const BlockState state, bool fDebug)
     {
 
         /* Get Last Block Index [1st block back in Channel]. **/
@@ -194,11 +194,13 @@ namespace TAO::Ledger
             bnNew = bnProofOfWorkLimit[0];
 
 
-        /* Verbose Debug Output. */
-        uint32_t nDays, nHours, nMinutes;
-        GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
+        /* Debug output. */
+        if(fDebug)
+        {
+            uint32_t nDays, nHours, nMinutes;
+            GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
-        debug::log(3,
+            debug::log(2,
             "RETARGET weighted time=%" PRId64 " actual time =%" PRId64 "[%f %%]\n"
             "\tchain time: [%" PRId64 " / %" PRId64 "]\n"
             "\tdifficulty: [%f to %f]\n"
@@ -208,6 +210,7 @@ namespace TAO::Ledger
             nBlockTarget, nBlockTime,
             GetDifficulty(first.nBits, 0), GetDifficulty(bnNew.GetCompact(), 0),
             first.nChannelHeight, nDays, nHours, nMinutes);
+        }
 
         return bnNew.GetCompact();
     }
@@ -215,7 +218,7 @@ namespace TAO::Ledger
 
 
     /* Prime Retargeting: Modulate Difficulty based on production rate. */
-    uint32_t RetargetPrime(const BlockState state)
+    uint32_t RetargetPrime(const BlockState state, bool fDebug)
     {
 
         /* Get Last Block Index [1st block back in Channel]. **/
@@ -324,21 +327,24 @@ namespace TAO::Ledger
         /* Keep the target difficulty at minimum (allow -regtest difficulty) */
         uint32_t nBits = SetBits(nDifficulty);
 
+
         /* Check for maximum value. */
         if (nBits == 0)
             nBits = first.nBits;
+
 
         /* Check for minimum value. */
         if (nBits < bnProofOfWorkLimit[0].getuint())
             nBits = bnProofOfWorkLimit[0].getuint();
 
 
+        /* Debug output. */
+        if(fDebug)
+        {
+            uint32_t nDays, nHours, nMinutes;
+            GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
-        /* Console Output */
-        uint32_t nDays, nHours, nMinutes;
-        GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
-
-        debug::log(3,
+            debug::log(2,
             "RETARGET weighted time=%" PRId64 " actual time %" PRId64 ", [%f %%]\n"
             "\tchain time: [%" PRId64 " / %" PRId64 "]\n"
             "\treleased reward: %" PRId64 " [%f %%]\n"
@@ -350,6 +356,7 @@ namespace TAO::Ledger
             first.nReleasedReserve[0] / Legacy::COIN, 100.0 * nChainMod,
             GetDifficulty(first.nBits, 1), GetDifficulty(nBits, 1),
             first.nChannelHeight, nDays, nHours, nMinutes);
+        }
 
 
         return nBits;
@@ -358,7 +365,7 @@ namespace TAO::Ledger
 
 
     /* Trust Retargeting: Modulate Difficulty based on production rate. */
-    uint32_t RetargetHash(const BlockState state)
+    uint32_t RetargetHash(const BlockState state, bool fDebug)
     {
 
         /* Get Last Block Index [1st block back in Channel]. **/
@@ -474,11 +481,13 @@ namespace TAO::Ledger
             bnNew = bnProofOfWorkLimit[2];
 
 
-        /* Console Output if Flagged. */
-        uint32_t nDays, nHours, nMinutes;
-        GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
+        /* Debug output. */
+        if(fDebug)
+        {
+            uint32_t nDays, nHours, nMinutes;
+            GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
-        debug::log(3,
+            debug::log(2,
             "RETARGET weighted time=%" PRId64 " actual time %" PRId64 " [%f %%]\n"
             "\tchain time: [%" PRId64 " / %" PRId64 "]\n"
             "\treleased reward: %" PRId64 " [%f %%]\n"
@@ -490,6 +499,7 @@ namespace TAO::Ledger
             first.nReleasedReserve[0] / Legacy::COIN, 100.0 * nChainMod,
             GetDifficulty(first.nBits, 2), GetDifficulty(bnNew.GetCompact(), 2),
             first.nChannelHeight, nDays, nHours, nMinutes);
+        }
 
         return bnNew.GetCompact();
     }

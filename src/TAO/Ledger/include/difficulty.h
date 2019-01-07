@@ -79,7 +79,7 @@ namespace TAO::Ledger
      *  @return the new bits required.
      *
      **/
-    uint32_t GetNextTargetRequired(const BlockState state, int nChannel);
+    uint32_t GetNextTargetRequired(const BlockState state, int nChannel, bool fDebug = true);
 
 
     /** Retarget Trust
@@ -91,7 +91,7 @@ namespace TAO::Ledger
      *  @return the new bits required.
      *
      **/
-    uint32_t RetargetTrust(const BlockState state);
+    uint32_t RetargetTrust(const BlockState state, bool fDebug = true);
 
 
     /** Retarget Trust
@@ -103,7 +103,7 @@ namespace TAO::Ledger
      *  @return the new bits required.
      *
      **/
-    uint32_t RetargetPrime(const BlockState state);
+    uint32_t RetargetPrime(const BlockState state, bool fDebug = true);
 
 
     /** Retarget Trust
@@ -115,7 +115,7 @@ namespace TAO::Ledger
      *  @return the new bits required.
      *
      **/
-    uint32_t RetargetHash(const BlockState state);
+    uint32_t RetargetHash(const BlockState state, bool fDebug = true);
 }
 
 #endif

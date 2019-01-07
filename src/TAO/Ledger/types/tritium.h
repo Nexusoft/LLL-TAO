@@ -92,7 +92,7 @@ namespace TAO::Ledger
         , producer(state.producer)
         , vtx(state.vtx)
         {
-            
+
         }
 
 
@@ -113,7 +113,7 @@ namespace TAO::Ledger
          *  For debugging purposes, printing the block to stdout
          *
          **/
-        void print() const;
+        virtual void print() const;
     };
 
 }

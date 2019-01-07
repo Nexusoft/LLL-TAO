@@ -427,7 +427,7 @@ namespace LLD
                 return true;
             }
 
-            return debug::error(FUNCTION "couldn't find key", __PRETTY_FUNCTION__);
+            return false;
         }
 
 

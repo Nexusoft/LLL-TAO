@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/state.h>
 
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/checkpoints.h>
 
 #include <cmath>
@@ -22,19 +23,16 @@ ________________________________________________________________________________
 namespace TAO::Ledger
 {
 
-    /* Memory Map to hold all the hashes of the checkpoints decided on by the network. */
-    std::map<uint1024_t, uint32_t> mapCheckpoints;
+
+    /** Checkpoint timespan. **/
+    uint32_t CHECKPOINT_TIMESPAN = 1;
 
 
-    /* Checkpoint Timespan, or the time that triggers a new checkpoint (in Minutes). */
-    const uint32_t CHECKPOINT_TIMESPAN = 15;
-
-
-    /*Check if the new block triggers a new Checkpoint timespan.*/
+    /* Check if the new block triggers a new Checkpoint timespan.*/
     bool IsNewTimespan(const BlockState state)
     {
-        /* Always return true if no checkpoints. */
-        if(mapCheckpoints.empty())
+        /* Catch if checkpoint is not established. */
+        if(ChainState::hashCheckpoint == 0)
             return true;
 
         /* Get previous block state. */
@@ -58,12 +56,33 @@ namespace TAO::Ledger
     /* Check that the checkpoint is a Descendant of previous Checkpoint.*/
     bool IsDescendant(const BlockState state)
     {
-        if(mapCheckpoints.empty() || state.nHeight <= 1)
+        if(ChainState::hashCheckpoint == 0)
             return true;
 
-        /* Check that checkpoint exists in the map. */
-        if(mapCheckpoints.count(state.hashCheckpoint))
-            return true;
+        /* Get checkpoint state. */
+        BlockState stateCheckpoint;
+        if(!LLD::legDB->ReadBlock(state.hashCheckpoint, stateCheckpoint))
+            return debug::error(FUNCTION "failed to read checkpoint", __PRETTY_FUNCTION__);
+
+        /* Check The Block Hash */
+        BlockState check = state;
+        while(!check.IsNull())
+        {
+            /* Check that checkpoint exists in the map. */
+            if(ChainState::hashCheckpoint == check.hashCheckpoint)
+                return true;
+
+            /* Break when new height is found. */
+            if(state.nHeight < stateCheckpoint.nHeight)
+                return false;
+
+            /* Iterate backwards. */
+            check = check.Prev();
+        }
+
+
+
+        printf("%s - %s\n", ChainState::hashCheckpoint.ToString().substr(0, 20).c_str(), state.hashCheckpoint.ToString().substr(0, 20).c_str());
 
         return false;
     }
@@ -72,21 +91,15 @@ namespace TAO::Ledger
     /*Harden a checkpoint into the checkpoint chain.*/
     bool HardenCheckpoint(const BlockState state)
     {
-
         /* Only Harden New Checkpoint if it Fits new timestamp. */
-        if(!IsNewTimespan(state.Prev()))
+        if(!IsNewTimespan(state))
             return false;
 
-        /* Only Harden a New Checkpoint if it isn't already hardened. */
-        if(mapCheckpoints.count(state.hashCheckpoint))
-            return true;
-
         /* Update the Checkpoints into Memory. */
-        mapCheckpoints[state.hashCheckpoint] = 0;
-
+        ChainState::hashCheckpoint    = state.hashCheckpoint;
 
         /* Dump the Checkpoint if not Initializing. */
-        debug::log(0, "===== Hardened Checkpoint %s", state.hashCheckpoint.ToString().substr(0, 20).c_str());
+        debug::log(0, "===== Hardened Checkpoint %s", ChainState::hashCheckpoint.ToString().substr(0, 20).c_str());
 
         return true;
     }

@@ -44,7 +44,7 @@ namespace TAO::Ledger
 
 
         /** The reserves that are released. */
-        uint32_t nReleasedReserve[3];
+        uint64_t nReleasedReserve[3];
 
 
         /** Used to Iterate forward in the chain */
@@ -155,13 +155,13 @@ namespace TAO::Ledger
 
 
         /** Equivilence checking **/
-        bool operator==(const BlockState state)
+        bool operator==(const BlockState state) const
         {
             return     state.GetHash() == GetHash();
         }
 
         /** Equivilence checking **/
-        bool operator!=(const BlockState state)
+        bool operator!=(const BlockState state) const
         {
             return     state.GetHash() != GetHash();
         }
@@ -263,7 +263,7 @@ namespace TAO::Ledger
          *  @param[in] nState The states to output.
          *
          **/
-        void print() const;
+        virtual void print() const;
     };
 
 

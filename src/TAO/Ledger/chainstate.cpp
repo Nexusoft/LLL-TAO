@@ -32,6 +32,10 @@ namespace TAO::Ledger
     uint64_t ChainState::nBestChainTrust = 0;
 
 
+    /** Hardened Checkpoint. **/
+    uint1024_t ChainState::hashCheckpoint   = 0;
+
+
     /* Flag to tell if initial blocks are downloading. */
     bool ChainState::Synchronizing()
     {
@@ -58,12 +62,36 @@ namespace TAO::Ledger
         /* Fill out the best chain stats. */
         nBestHeight     = stateBest.nHeight;
         nBestChainTrust = stateBest.nChainTrust;
-        stateBest.print();
+
+        /* Set the checkpoint. */
+        hashCheckpoint = stateBest.hashCheckpoint;
+
+        /* Find the last checkpoint. */
+        if(stateBest != stateGenesis)
+        {
+
+            /* Search back until fail or different checkpoint. */
+            BlockState state;
+            if(!LLD::legDB->ReadBlock(hashCheckpoint, state))
+                return debug::error(FUNCTION "failed to read pending checkpoint", __PRETTY_FUNCTION__);
+
+            /* Get the previous state. */
+            state = state.Prev();
+            if(state.IsNull())
+                return debug::error(FUNCTION "failed to find the checkpoint", __PRETTY_FUNCTION__);
+
+            /* Check the checkpoints. */
+            //if(state.hashCheckpoint == hashCheckpoint)
+            //    return debug::error(FUNCTION "previous checkpoint is duplicate", __PRETTY_FUNCTION__);
+
+            /* Set the checkpoint. */
+            hashCheckpoint = state.hashCheckpoint;
+        }
 
         /* Debug logging. */
         debug::log2(0, TESTING, config::fTestNet? "Test" : "Nexus", " Network: genesis=", hashGenesis.ToString().substr(0, 20),
         " nBitsStart=0x", std::hex, bnProofOfWorkStart[0].GetCompact(), " best=", stateBest.GetHash().ToString().substr(0, 20),
-        " height=", std::dec, stateBest.nHeight);
+        " checkpoint=", hashCheckpoint.ToString().substr(0, 20).c_str()," height=", std::dec, stateBest.nHeight);
 
         return true;
     }

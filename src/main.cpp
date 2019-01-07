@@ -145,7 +145,7 @@ int main(int argc, char** argv)
         {
             /* Create the block object. */
             TAO::Ledger::TritiumBlock block;
-            if(!TAO::Ledger::CreateBlock(user, std::string("1234").c_str(), 0, block))
+            if(!TAO::Ledger::CreateBlock(user, std::string("1234").c_str(), 2, block))
                 return debug::error("cant create block");
 
             /* Get the secret from new key. */
