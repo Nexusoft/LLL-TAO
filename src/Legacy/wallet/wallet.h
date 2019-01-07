@@ -85,6 +85,47 @@ namespace Legacy
         friend class CWalletDB;
 
     private:
+
+    /** Constructor
+         *
+         *  Initializes a wallet instance for FEATURE_BASE that is not file backed.
+         *
+         **/
+        CWallet() :
+            nWalletVersion(FEATURE_BASE),
+            nWalletMaxVersion(FEATURE_BASE),
+            strWalletFile(""),
+            fFileBacked(false),
+            fLoaded(false),
+            addressBook(CAddressBook(*this)),
+            keyPool(CKeyPool(*this)),
+            nMasterKeyMaxID(0)
+        {}
+
+
+        /** Constructor
+         *
+         *  Initializes a wallet instance for FEATURE_BASE that is file backed. 
+         *
+         *  This constructor only initializes the wallet and does not load it from the 
+         *  data store.
+         *
+         *  @param[in] strWalletFileIn The wallet database file name that backs this wallet.
+         *
+         *  @see LoadWallet()
+         *
+         **/
+        CWallet(std::string strWalletFileIn) :
+            nWalletVersion(FEATURE_BASE),
+            nWalletMaxVersion(FEATURE_BASE),
+            strWalletFile(strWalletFileIn),
+            fFileBacked(true),
+            fLoaded(false),
+            addressBook(CAddressBook(*this)),
+            keyPool(CKeyPool(*this)),
+            nMasterKeyMaxID(0)
+        {}
+
         /** The current wallet version: clients below this version are not able to load the wallet **/
         int nWalletVersion;
 
@@ -130,8 +171,21 @@ namespace Legacy
          **/
         std::vector<uint8_t> vchDefaultKey;
 
+        /** Singleton wallet instance **/
+        static CWallet* pwalletMain;
+
 
     public:
+
+        /** Instance
+        *
+        *  Singleton accessor
+        *  
+        *  @return A const reference to the wallet instance
+        *
+        **/
+        static CWallet& Instance();
+
         /** Mutex for thread concurrency across wallet operations **/
         mutable std::recursive_mutex cs_wallet;
 
@@ -143,46 +197,6 @@ namespace Legacy
         std::map<uint1024_t, int> mapRequestCount;
 
 
-
-        /** Constructor
-         *
-         *  Initializes a wallet instance for FEATURE_BASE that is not file backed.
-         *
-         **/
-        CWallet() :
-            nWalletVersion(FEATURE_BASE),
-            nWalletMaxVersion(FEATURE_BASE),
-            strWalletFile(""),
-            fFileBacked(false),
-            fLoaded(false),
-            addressBook(CAddressBook(*this)),
-            keyPool(CKeyPool(*this)),
-            nMasterKeyMaxID(0)
-        {}
-
-
-        /** Constructor
-         *
-         *  Initializes a wallet instance for FEATURE_BASE that is file backed. 
-         *
-         *  This constructor only initializes the wallet and does not load it from the 
-         *  data store.
-         *
-         *  @param[in] strWalletFileIn The wallet database file name that backs this wallet.
-         *
-         *  @see LoadWallet()
-         *
-         **/
-        CWallet(std::string strWalletFileIn) :
-            nWalletVersion(FEATURE_BASE),
-            nWalletMaxVersion(FEATURE_BASE),
-            strWalletFile(strWalletFileIn),
-            fFileBacked(true),
-            fLoaded(false),
-            addressBook(CAddressBook(*this)),
-            keyPool(CKeyPool(*this)),
-            nMasterKeyMaxID(0)
-        {}
 
 
     /*----------------------------------------------------------------------------------------*/
