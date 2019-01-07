@@ -90,9 +90,9 @@ namespace TAO::API
         json::json CreateItem(const json::json& params, bool fHelp);
 
 
-        /** Append Item
+        /** Update Item
          *
-         *  Appends data to an item.
+         *  Updates data to an item.
          *
          *  @param[in] params The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
@@ -100,7 +100,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json AppendItem(const json::json& params, bool fHelp);
+        json::json UpdateItem(const json::json& params, bool fHelp);
 
 
         /** History

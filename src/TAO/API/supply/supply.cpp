@@ -36,7 +36,7 @@ namespace TAO::API
         mapFunctions["getitem"]             = Function(std::bind(&Supply::GetItem,    this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["transfer"]            = Function(std::bind(&Supply::Transfer,   this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["createitem"]          = Function(std::bind(&Supply::CreateItem, this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["appenditem"]          = Function(std::bind(&Supply::AppendItem, this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["updateitem"]          = Function(std::bind(&Supply::UpdateItem, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["history"]             = Function(std::bind(&Supply::History,    this, std::placeholders::_1, std::placeholders::_2));
     }
 
@@ -72,7 +72,7 @@ namespace TAO::API
             state >> data;
 
             //ret["checksum"] = state.hashChecksum;
-            ret["states"].push_back(data);
+            ret["state"] = data;
         }
 
         return ret;
@@ -237,7 +237,7 @@ namespace TAO::API
 
 
     /* Submits an item. */
-    json::json Supply::AppendItem(const json::json& params, bool fHelp)
+    json::json Supply::UpdateItem(const json::json& params, bool fHelp)
     {
         json::json ret;
 
@@ -356,7 +356,7 @@ namespace TAO::API
                 state >> data;
 
                 //ret["checksum"] = state.hashChecksum;
-                obj["states"].push_back(data);
+                obj["state"] = data;
             }
 
             ret.push_back(obj);
