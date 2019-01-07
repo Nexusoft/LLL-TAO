@@ -9,7 +9,8 @@
 #   accounts/create        supply/getitem
 #   accounts/login         supply/transfer
 #   accounts/logout        supply/createitem
-#   accounts/transactions  supply/history
+#   accounts/transactions  supply/appenditem
+#                          supply/history
 #
 # Here is a program calling sequence to list transactions for 2 users:
 #
@@ -107,6 +108,22 @@ class sdk_init():
         parms = "?pin={}&session={}&data={}".format(self.pin, self.session_id,
             data)
         url = supply_url.format("createitem") + parms
+        json_data = self.__get(url)
+        return(json_data)
+    #enddef
+
+    def nexus_supply_appenditem(self, address, data):
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
+        #
+        # Varkable data can be a string whitespace in it. Make it URL friendly.
+        #
+        if (type(data) != str): data = str(data)
+        data = data.replace(" ", "%20")
+
+        parms = "?pin={}&session={}&address={}&data={}".format(self.pin,
+            self.session_id, address, data)
+        url = supply_url.format("appenditem") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
