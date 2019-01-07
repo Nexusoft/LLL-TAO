@@ -10,8 +10,11 @@
 # 
 # ./curl-nexus "accounts/create?username=foo&password=foo&pin=1234"
 # ./curl-nexus "accounts/login?username=foo&password=foo"
+# ./curl-nexus "accounts/transactions?genesis=<genesis-id>"
 #
-# ./curl-nexus "supply/createitem?pin=1234&data=0xdfdf&session=<ses-id>"
+# ./curl-nexus "supply/createitem?pin=1234&data=<data>&session=<ses-id>"
+# ./curl-nexus "supply/appenditem?pin=1234&data=<data>&session=<ses-id> \
+#                                &address=<addr>"    
 # ./curl-nexus "supply/getitem?address=<addr>"
 # ./curl-nexus "supply/transfer?pin=1234&session=<ses-id>&address=<addr>&destincation=bar
 # ./curl-nexus "supply/history?address=<addr>"
