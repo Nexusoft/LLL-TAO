@@ -27,7 +27,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Register/include/enum.h>
 
-#include <leveldb/db.h>
 
 namespace LLD
 {
