@@ -508,8 +508,6 @@ endif
 #Configure OS Specific Build Environment
 LIBS+= -Wl,-Bdynamic \
 	-ldl \
-	-l snappy \
-	-l leveldb \
 	-lpthread
 
 #Arch Linux Fix
