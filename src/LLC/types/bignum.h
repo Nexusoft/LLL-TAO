@@ -557,18 +557,18 @@ namespace LLC
 
 
         /* templated serialization function prototypes */
-        uint32_t GetSerializeSize(int nSerType=0,
-                                  int nVersion=LLP::PROTOCOL_VERSION) const;
+        uint32_t GetSerializeSize(uint32_t nSerType=0,
+                                  uint32_t nVersion=LLP::PROTOCOL_VERSION) const;
 
         template<typename Stream>
         void Serialize(Stream& s,
-                       int nSerType=0,
-                       int nVersion=LLP::PROTOCOL_VERSION) const;
+                       uint32_t nSerType=0,
+                       uint32_t nVersion=LLP::PROTOCOL_VERSION) const;
 
         template<typename Stream>
         void Unserialize(Stream& s,
-                         int nSerType=0,
-                         int nVersion=LLP::PROTOCOL_VERSION);
+                         uint32_t nSerType=0,
+                         uint32_t nVersion=LLP::PROTOCOL_VERSION);
 
     private:
 
