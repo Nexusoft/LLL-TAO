@@ -183,14 +183,14 @@ namespace LLP
                         {
                             /* Find the end of request type. */
                             std::string::size_type npos = strLine.find(' ', 0);
-                            INCOMING.strType = ToLower(strLine.substr(0, npos));
+                            INCOMING.strType = strLine.substr(0, npos);
 
                             /* Find the start of version. */
                             std::string::size_type npos2 = strLine.find(' ', npos + 1);
-                            INCOMING.strVersion = ToLower(strLine.substr(npos2 + 1));
+                            INCOMING.strVersion = strLine.substr(npos2 + 1);
 
                             /* Parse request from between the two. */
-                            INCOMING.strRequest = ToLower(strLine.substr(npos + 1, npos2 - INCOMING.strType.length() - 1));
+                            INCOMING.strRequest = strLine.substr(npos + 1, npos2 - INCOMING.strType.length() - 1);
 
                         }
 
