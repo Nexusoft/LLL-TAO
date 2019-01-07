@@ -119,7 +119,7 @@ Return value JSON object:
         "checksum": 9070277379865698600,
         "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
         "state": "0b6e657764617461696e746f",
-        "type": 0,
+        "updated": 1546888868
         "version": 1
     }
 ]
