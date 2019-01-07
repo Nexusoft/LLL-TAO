@@ -32,13 +32,21 @@ namespace TAO
             AUTHORIZE  = 0x03, //OP_AUTHORIZE OP_GETHASH <vchPubKey> return fSuccess
             TRANSFER   = 0x04, //OP_TRANSFER <vchRegAddress> <vchGenesisID> return fSuccess
             REQUIRE    = 0x05, //OP_REQUIRE <boolean=expression> must validate to true.
+            APPEND     = 0x06,
 
             //financial operations
             DEBIT      = 0x10,
             CREDIT     = 0x11,
+            COINBASE   = 0x12,
+            TRUST      = 0x13, //for proof of stake
+
+
+            //internal funding
+            AMBASSADOR = 0x20,
+            DEVELOPER  = 0x21,
 
             //crypto operations
-            SIGNATURE  = 0x20,
+            SIGNATURE  = 0x30,
 
             //consensus operations
             VOTE       = 0x50, //OP_VOTE <vchData> <bool> return fSuccess - vote for or against a memory location (piece of data)

@@ -34,7 +34,6 @@ ________________________________________________________________________________
 namespace debug
 {
     static FILE* fileout = nullptr;
-    static std::recursive_mutex DEBUG_MUTEX;
 
     /* Prints output to the console. It may also write output to a debug.log
      * if the global fileout file is assigned. */

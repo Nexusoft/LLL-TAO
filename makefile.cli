@@ -110,6 +110,11 @@ else
 	CXXFLAGS+= -w
 endif
 
+#Fail on warnings
+ifdef WARNINGS_FAIL
+	CXXFLAGS+= -Werror
+endif
+
 #Enable / Disable debug symbols and set appropriate optimization level
 ifdef ENABLE_DEBUG
 	DEBUG+=-g
@@ -142,22 +147,34 @@ OBJS= \
 	build/LLP_socket.o \
 	build/LLP_inv.o\
 	build/LLP_legacy.o \
+	build/LLP_miner.o \
 	build/LLP_tritium.o \
 	build/LLP_corenode.o \
 	build/LLP_rpcnode.o \
     build/LLP_manager.o \
     build/LLP_ddos.o \
 	build/Ledger_block.o \
-	build/Ledger_chain.o \
 	build/Ledger_prime.o \
 	build/Ledger_state.o \
-	build/Ledger_tritium.o \
+	build/Ledger_supply.o \
+	build/Ledger_create.o \
+	build/Ledger_mempool.o \
+	build/Ledger_difficulty.o \
+	build/Ledger_checkpoints.o \
+	build/Ledger_chainstate.o \
 	build/Ledger_transaction.o \
+	build/Ledger_tritium.o \
+	build/Ledger_trustkey.o \
+	build/Register_verify.o \
+	build/Register_rollback.o \
 	build/Operation_write.o \
+	build/Operation_append.o \
 	build/Operation_register.o \
 	build/Operation_transfer.o \
 	build/Operation_debit.o \
 	build/Operation_credit.o \
+	build/Operation_coinbase.o \
+	build/Operation_trust.o \
 	build/Operation_authorize.o \
 	build/API_cmd.o \
 	build/API_RPC_account.o \
@@ -170,6 +187,7 @@ OBJS= \
 	build/API_accounts_create.o \
 	build/API_accounts_login.o \
 	build/API_supply_supply.o \
+	build/API_ledger_create.o \
 	build/Legacy_evaluate.o \
 	build/Legacy_address.o \
 	build/Legacy_addressbook.o \
@@ -276,6 +294,9 @@ build/API_accounts_%.o: ./src/TAO/API/accounts/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_supply_%.o: ./src/TAO/API/supply/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_ledger_%.o: ./src/TAO/API/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_RPC_%.o: ./src/TAO/API/RPC/%.cpp $(HEADERS)
@@ -406,6 +427,13 @@ build/API_accounts_%.o: src/TAO/API/accounts/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_supply_%.o: src/TAO/API/supply/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_ledger_%.o: src/TAO/API/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -572,6 +600,13 @@ build/API_accounts_%.o: src/TAO/API/accounts/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/API_supply_%.o: src/TAO/API/supply/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_ledger_%.o: src/TAO/API/ledger/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

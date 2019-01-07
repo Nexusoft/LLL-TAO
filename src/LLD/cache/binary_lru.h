@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/hex.h>
 
+#include <openssl/md5.h>
+
 
 //TODO: Abstract base class for all cache systems
 namespace LLD
@@ -88,7 +90,7 @@ namespace LLD
          * MAX_CACHE_BUCKETS default value is 65,539 (2 bytes)
          *
          */
-        BinaryLRU() : MAX_CACHE_SIZE(1024 * 1024), MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 64), nCurrentSize(MAX_CACHE_BUCKETS * 24), pfirst(0), plast(0)
+        BinaryLRU() : MAX_CACHE_SIZE(1024 * 1024), MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 32), nCurrentSize(MAX_CACHE_BUCKETS * 8), pfirst(0), plast(0)
         {
             /* Resize the hashmap vector. */
             hashmap.resize(MAX_CACHE_BUCKETS);
@@ -104,7 +106,7 @@ namespace LLD
          * @param[in] nCacheSizeIn The maximum size of this Cache Pool
          *
          */
-        BinaryLRU(uint32_t nCacheSizeIn) : MAX_CACHE_SIZE(nCacheSizeIn), MAX_CACHE_BUCKETS(nCacheSizeIn / 64), nCurrentSize(MAX_CACHE_BUCKETS * 24)
+        BinaryLRU(uint32_t nCacheSizeIn) : MAX_CACHE_SIZE(nCacheSizeIn), MAX_CACHE_BUCKETS(nCacheSizeIn / 32), nCurrentSize(MAX_CACHE_BUCKETS * 8)
         {
             /* Resize the hashmap vector. */
             hashmap.resize(MAX_CACHE_BUCKETS);
@@ -119,15 +121,9 @@ namespace LLD
         ~BinaryLRU()
         {
             /* Loop through the linked list. */
-            while(pfirst)
-            {
-                /* Free memory of previous entry. */
-                if(pfirst->pprev)
-                    delete pfirst->pprev;
-
-                /* Iterate forward */
-                pfirst = pfirst->pnext;
-            }
+            for(auto & item : hashmap)
+                if(item)
+                    delete item;
         }
 
 
@@ -140,9 +136,13 @@ namespace LLD
          **/
         uint32_t Bucket(const std::vector<uint8_t>& vKey) const
         {
-            uint64_t nBucket = 0;
-            for(int i = 0; i < vKey.size() && i < 8; i++)
-                nBucket += vKey[i] << (8 * i);
+            /* Get an MD5 digest. */
+            uint8_t digest[MD5_DIGEST_LENGTH];
+            MD5((unsigned char*)&vKey[0], vKey.size(), (unsigned char*)&digest);
+
+            /* Copy bytes into the bucket. */
+            uint64_t nBucket;
+            std::copy((uint8_t*)&digest[0], (uint8_t*)&digest[0] + 8, (uint8_t*)&nBucket);
 
             return nBucket % MAX_CACHE_BUCKETS;
         }
@@ -173,6 +173,8 @@ namespace LLD
          */
         void RemoveNode(BinaryNode* pthis)
         {
+            LOCK(MUTEX);
+
             /* Link the next pointer if not null */
             if(pthis->pnext)
                 pthis->pnext->pprev = pthis->pprev;
@@ -192,6 +194,8 @@ namespace LLD
          **/
         void MoveToFront(BinaryNode* pthis)
         {
+            LOCK(MUTEX);
+
             /* Don't move to front if already in the front. */
             if(pthis == pfirst)
                 return;
@@ -311,20 +315,28 @@ namespace LLD
 
                     /* Relink in memory. */
                     plast = plast->pprev;
-                    plast->pnext = nullptr;
+
+                    if(plast && plast->pnext)
+                        plast->pnext = nullptr;
+                    else
+                        printf("plast is nulll\n");
 
                     /* Reduce the current cache size. */
-                    nCurrentSize -= (pnode->vData.size() - pnode->vKey.size());
+                    if(pnode)
+                    {
+                        nCurrentSize -= (pnode->vData.size() - pnode->vKey.size());
 
-                    /* Clear the pointers. */
-                    hashmap[Bucket(pnode->vKey)] = nullptr; //TODO: hashmap linked list for collisions
+                        /* Clear the pointers. */
+                        hashmap[Bucket(pnode->vKey)] = nullptr; //TODO: hashmap linked list for collisions
 
-                    /* Reset the memory linking. */
-                    pnode->pprev = nullptr;
-                    pnode->pnext = nullptr;
+                        /* Reset the memory linking. */
+                        pnode->pprev = nullptr;
+                        pnode->pnext = nullptr;
 
-                    /* Free the memory */
-                    delete pnode;
+                        /* Free the memory */
+                        delete pnode;
+                    }
+
                     pnode = nullptr;
 
                     continue;
@@ -349,6 +361,9 @@ namespace LLD
 
             /* Get the data. */
             BinaryNode* pthis = hashmap[Bucket(vKey)];
+
+            //TODO: have a seperate memory structure for reserved entries.
+            //Then do a PUT if reserve is set to false
 
             /* Check if the Record Exists. */
             if (pthis == nullptr || pthis->vKey != vKey)

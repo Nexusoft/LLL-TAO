@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_WALLET_DB_H
-#define NEXUS_TAO_LEGACY_WALLET_DB_H
+#ifndef NEXUS_LEGACY_WALLET_DB_H
+#define NEXUS_LEGACY_WALLET_DB_H
 
 #include <map>
 #include <mutex>
@@ -163,7 +163,7 @@ namespace Legacy
                 return false;
 
             /* Key */
-            CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
+            DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             ssKey.reserve(1000);
             ssKey << key;
             Dbt datKey(&ssKey[0], ssKey.size());
@@ -183,8 +183,8 @@ namespace Legacy
 
             /* Unserialize value */
             try {
-                /* get_data returns a void* and currently uses a C-style cast to load into CDataStream */
-                CDataStream ssValue((char*)datValue.get_data(), (char*)datValue.get_data() + datValue.get_size(), SER_DISK, LLD::DATABASE_VERSION);
+                /* get_data returns a void* and currently uses a C-style cast to load into DataStream */
+                DataStream ssValue((char*)datValue.get_data(), (char*)datValue.get_data() + datValue.get_size(), SER_DISK, LLD::DATABASE_VERSION);
                 ssValue >> value;
             }
             catch (std::exception &e) {
@@ -229,13 +229,13 @@ namespace Legacy
                 assert(!"Write called on database in read-only mode");
 
             /* Key */
-            CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
+            DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             ssKey.reserve(1000);
             ssKey << key;
             Dbt datKey(&ssKey[0], ssKey.size());
 
             /* Value */
-            CDataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
+            DataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
             ssValue.reserve(10000);
             ssValue << value;
             Dbt datValue(&ssValue[0], ssValue.size());
@@ -272,7 +272,7 @@ namespace Legacy
                 assert(!"Erase called on database in read-only mode");
 
             /* Key */
-            CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
+            DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             ssKey.reserve(1000);
             ssKey << key;
             Dbt datKey(&ssKey[0], ssKey.size());
@@ -303,7 +303,7 @@ namespace Legacy
                 return false;
 
             /* Key */
-            CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
+            DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             ssKey.reserve(1000);
             ssKey << key;
             Dbt datKey(&ssKey[0], ssKey.size());
@@ -358,7 +358,7 @@ namespace Legacy
          *  @return true if value was successfully read
          *
          **/
-        int ReadAtCursor(Dbc* pcursor, CDataStream& ssKey, CDataStream& ssValue, uint32_t fFlags=DB_NEXT);
+        int ReadAtCursor(Dbc* pcursor, DataStream& ssKey, DataStream& ssValue, uint32_t fFlags=DB_NEXT);
 
 
         /** CloseCursor

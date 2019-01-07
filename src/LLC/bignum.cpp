@@ -197,7 +197,7 @@ namespace LLC
         setvch(vch);
     }
 
-    BIGNUM* const CBigNum::getBN() const
+    BIGNUM* CBigNum::getBN() const
     {
         return m_BN;
     }
@@ -218,13 +218,13 @@ namespace LLC
         return BN_get_word(m_BN);
     }
 
-    int CBigNum::getint() const
+    int32_t CBigNum::getint() const
     {
         unsigned long n = BN_get_word(m_BN);
         if (!BN_is_negative(m_BN))
-            return (n > (unsigned long)std::numeric_limits<int>::max() ? std::numeric_limits<int>::max() : n);
+            return (n > (unsigned long)std::numeric_limits<int32_t>::max() ? std::numeric_limits<int32_t>::max() : n);
         else
-            return (n > (unsigned long)std::numeric_limits<int>::max() ? std::numeric_limits<int>::min() : -(int)n);
+            return (n > (unsigned long)std::numeric_limits<int32_t>::max() ? std::numeric_limits<int32_t>::min() : -(int32_t)n);
     }
 
     void CBigNum::setint64(int64_t n)
@@ -238,7 +238,7 @@ namespace LLC
             fNegative = true;
         }
         bool fLeadingZeroes = true;
-        for (int i = 0; i < 8; i++)
+        for (uint32_t i = 0; i < 8; i++)
         {
             uint8_t c = (n >> 56) & 0xff;
             n <<= 8;
@@ -267,7 +267,7 @@ namespace LLC
         uint8_t pch[sizeof(n) + 6];
         uint8_t* p = pch + 4;
         bool fLeadingZeroes = true;
-        for (int i = 0; i < 8; i++)
+        for (uint32_t i = 0; i < 8; i++)
         {
             uint8_t c = (n >> 56) & 0xff;
             n <<= 8;
@@ -299,7 +299,7 @@ namespace LLC
         if (vch.size() > 4)
             vch[4] &= 0x7f;
         uint64_t n = 0;
-        for (int i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
+        for (uint32_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
             ((uint8_t*)&n)[i] = vch[j];
         return n;
     }
@@ -563,7 +563,7 @@ namespace LLC
         while (isxdigit(*psz))
         {
             *this <<= 4;
-            int n = phexdigit[(uint8_t)*psz++];
+            uint32_t n = phexdigit[(uint8_t)*psz++];
             *this += n;
         }
         if (fNegative)
@@ -571,7 +571,7 @@ namespace LLC
     }
 
 
-    std::string CBigNum::ToString(int nBase) const
+    std::string CBigNum::ToString(uint32_t nBase) const
     {
         CAutoBN_CTX pctx;
         CBigNum bnBase = nBase;
@@ -604,19 +604,19 @@ namespace LLC
     }
 
 
-    uint32_t CBigNum::GetSerializeSize(int nSerType, int nVersion) const
+    uint32_t CBigNum::GetSerializeSize(uint32_t nSerType, uint32_t nVersion) const
     {
         return ::GetSerializeSize(getvch(), nSerType, nVersion);
     }
 
     template<typename Stream>
-    void CBigNum::Serialize(Stream& s, int nSerType, int nVersion) const
+    void CBigNum::Serialize(Stream& s, uint32_t nSerType, uint32_t nVersion) const
     {
         ::Serialize(s, getvch(), nSerType, nVersion);
     }
 
     template<typename Stream>
-    void CBigNum::Unserialize(Stream& s, int nSerType, int nVersion)
+    void CBigNum::Unserialize(Stream& s, uint32_t nSerType, uint32_t nVersion)
     {
         std::vector<uint8_t> vch;
         ::Unserialize(s, vch, nSerType, nVersion);

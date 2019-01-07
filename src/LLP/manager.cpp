@@ -28,7 +28,7 @@ namespace LLP
 
     /* Default constructor */
     AddressManager::AddressManager(uint16_t nPort)
-    : pDatabase(new LLD::AddressDB(nPort, "r+"))
+    : pDatabase(new LLD::AddressDB(nPort, LLD::FLAGS::CREATE | LLD::FLAGS::WRITE))
     , mapAddrInfo()
     {
         if(!pDatabase)
@@ -89,7 +89,7 @@ namespace LLP
 
 
         AddressInfo *pInfo = &mapAddrInfo[hash];
-        int64_t ms = runtime::UnifiedTimestamp(true);
+        int64_t ms = runtime::unifiedtimestamp(true);
 
         switch(state)
         {
@@ -174,7 +174,7 @@ namespace LLP
 
         std::reverse(vInfo.begin(), vInfo.end());
 
-        uint64_t nTimestamp = runtime::UnifiedTimestamp();
+        uint64_t nTimestamp = runtime::unifiedtimestamp();
         uint64_t nRand = LLC::GetRand(nTimestamp);
         uint32_t nHash = LLC::SK32(BEGIN(nRand), END(nRand));
 

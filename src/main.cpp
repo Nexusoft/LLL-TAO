@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLC/include/random.h>
+
 #include <LLD/include/global.h>
 
 #include <TAO/Ledger/types/sigchain.h>
@@ -30,12 +32,28 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <TAO/API/include/supply.h>
 #include <TAO/API/include/accounts.h>
 
-#include <Util/include/urlencode.h>
+#include <Legacy/wallet/wallet.h>
+#include <Legacy/wallet/walletdb.h>
 
+#include <LLP/types/miner.h>
+
+#include <iostream>
+#include <sstream>
+
+#include <TAO/Ledger/include/create.h>
+#include <TAO/Ledger/include/constants.h>
+
+
+
+namespace Legacy
+{
+    Legacy::CWallet* pwalletMain;
+}
 
 /* Declare the Global LLD Instances. */
 namespace LLD
@@ -44,6 +62,7 @@ namespace LLD
     LedgerDB*   legDB;
     LocalDB*    locDB;
 }
+
 
 /* Declare the Global LLP Instances. */
 namespace LLP
@@ -55,6 +74,10 @@ namespace LLP
 
 int main(int argc, char** argv)
 {
+
+    /* Setup the timer timer. */
+    runtime::timer timer;
+    timer.Start();
 
     /* Handle all the signals with signal handler method. */
     SetupSignals();
@@ -83,13 +106,73 @@ int main(int argc, char** argv)
 
     /* Create directories if they don't exist yet. */
     if(!filesystem::exists(config::GetDataDir(false)) && filesystem::create_directory(config::GetDataDir(false)))
-        debug::log(0, FUNCTION "Generated Path %s", __PRETTY_FUNCTION__, config::GetDataDir(false).c_str());
+        debug::log2(0, TESTING "Generated Path ", config::GetDataDir(false).c_str());
 
 
     /* Create the database instances. */
-    LLD::regDB = new LLD::RegisterDB("r+");
-    LLD::legDB = new LLD::LedgerDB("r+");
-    LLD::locDB = new LLD::LocalDB("r+");
+    LLD::regDB = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::APPEND);
+    LLD::locDB = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+    LLD::legDB = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+
+
+    /** Load the Wallet Database. **/
+    bool fFirstRun;
+    int nLoadWalletRet = Legacy::CWallet::Instance().LoadWallet(fFirstRun);
+    if (nLoadWalletRet != Legacy::DB_LOAD_OK)
+    {
+        if (nLoadWalletRet == Legacy::DB_CORRUPT)
+            return debug::error("failed loading wallet.dat: Wallet corrupted");
+        else if (nLoadWalletRet == Legacy::DB_TOO_NEW)
+            return debug::error("failed loading wallet.dat: Wallet requires newer version of Nexus");
+        else if (nLoadWalletRet == Legacy::DB_NEED_REWRITE)
+            return debug::error("wallet needed to be rewritten: restart Nexus to complete");
+        else
+            return debug::error("failed loading wallet.dat");
+    }
+
+
+    /** Initialize ChainState. */
+    TAO::Ledger::ChainState::Initialize();
+
+
+    if(config::GetArg("-test", 0) > 0)
+    {
+        /* Get the account. */
+        TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("user", "pass");
+
+        for(int i = 0; i < config::GetArg("-test", 0); i++)
+        {
+            /* Create the block object. */
+            TAO::Ledger::TritiumBlock block;
+            if(!TAO::Ledger::CreateBlock(user, std::string("1234").c_str(), 2, block))
+                return debug::error("cant create block");
+
+            /* Get the secret from new key. */
+            std::vector<uint8_t> vBytes = user->Generate(block.producer.nSequence, "1234").GetBytes();
+            LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
+
+            /* Generate the EC Key. */
+            LLC::ECKey key(NID_brainpoolP512t1, 64);
+            if(!key.SetSecret(vchSecret, true))
+                return debug::error("cant set securet");
+
+            /* Generate new block signature. */
+            block.GenerateSignature(key);
+
+            /* Verify the block object. */
+            if(!block.Check())
+                return debug::error("check failed");
+
+            /* Create the state object. */
+            TAO::Ledger::BlockState state = TAO::Ledger::BlockState(block);
+            if(!state.Accept())
+                return debug::error("invalid state");
+
+            /* Write transaction to local database. */
+            if(!LLD::locDB->WriteLast(user->Genesis(), state.producer.GetHash()))
+                return debug::error("failed to write last");
+        }
+    }
 
 
     /* Initialize the Tritium Server. */
@@ -118,7 +201,7 @@ int main(int argc, char** argv)
     }
 
 
-    /* Initialize the Legacy Server. */
+    /* Initialize the Legacy Server.
     LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(
         config::GetArg("-port", config::fTestNet ? 8323 : 9323),
         10,
@@ -131,8 +214,6 @@ int main(int argc, char** argv)
         config::GetBoolArg("-meters", false),
         true);
 
-
-    /* Add node to Legacy server */
     if(config::mapMultiArgs["-addnode"].size() > 0)
     {
         for(auto node : config::mapMultiArgs["-addnode"])
@@ -142,6 +223,7 @@ int main(int argc, char** argv)
                 config::GetArg("-port", config::fTestNet ? 8323 : 9323));
         }
     }
+    */
 
     /* Create the Core API Server. */
     LLP::Server<LLP::CoreNode>* CORE_SERVER = new LLP::Server<LLP::CoreNode>(
@@ -153,8 +235,9 @@ int main(int argc, char** argv)
         0,
         60,
         config::GetBoolArg("-listen", true),
-        config::GetBoolArg("-meters", false),
+        false,
         false);
+
 
     /* Set up RPC server */
     TAO::API::RPCCommands = new TAO::API::RPC();
@@ -167,27 +250,116 @@ int main(int argc, char** argv)
         0,
         60,
         config::GetBoolArg("-listen", true),
-        config::GetBoolArg("-meters", false),
+        false,
         false);
 
 
-    /* Busy wait for Shutdown. */
-    while(!config::fShutdown)
-        runtime::sleep(1000);
+    /* Elapsed Milliseconds from timer. */
+    uint32_t nElapsed = timer.ElapsedMilliseconds();
+    timer.Stop();
 
 
-    /* Shutdown the servers and their subsystems */
+    /* Sleep before output. */
+    runtime::sleep(100);
+
+
+    /* Startup performance metric. */
+    debug::log2(0, TESTING, "Started up in ", nElapsed, "ms");
+
+
+    /* Wait for shutdown. */
+    std::mutex SHUTDOWN_MUTEX;
+    std::unique_lock<std::mutex> SHUTDOWN_LOCK(SHUTDOWN_MUTEX);
+    SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown; });
+
+
+    /* Shutdown metrics. */
+    timer.Reset();
+
+
+    /* Cleanup the ledger database. */
+    if(LLD::legDB)
+    {
+        debug::log2(0, TESTING, "Shutting down ledgerDB");
+
+        delete LLD::legDB;
+    }
+
+
+    /* Cleanup the register database. */
+    if(LLD::regDB)
+    {
+        debug::log2(0, TESTING, "Shutting down registerDB");
+
+        delete LLD::regDB;
+    }
+
+
+    /* Cleanup the local database. */
+    if(LLD::locDB)
+    {
+        debug::log2(0, TESTING, "Shutting down localDB");
+
+        delete LLD::locDB;
+    }
+
+
+    /* Shutdown the tritium server and its subsystems */
     if(LLP::TRITIUM_SERVER)
+    {
+        debug::log2(0, TESTING, "Shutting down Tritium Server");
+
         LLP::TRITIUM_SERVER->Shutdown();
+        delete LLP::TRITIUM_SERVER;
+    }
 
+
+    /* Shutdown the legacy server and its subsystems */
     if(LLP::LEGACY_SERVER)
+    {
+        debug::log2(0, TESTING, "Shutting down Legacy Server");
+
         LLP::LEGACY_SERVER->Shutdown();
+        delete LLP::LEGACY_SERVER;
+    }
 
+
+    /* Shutdown the core API server and its subsystems */
     if(CORE_SERVER)
-        CORE_SERVER->Shutdown();
+    {
+        debug::log2(0, TESTING, "Shutting down API Server");
 
+        CORE_SERVER->Shutdown();
+        delete CORE_SERVER;
+    }
+
+
+    /* Shutdown the RPC server and its subsystems */
     if(RPC_SERVER)
+    {
+        debug::log2(0, TESTING, "Shutting down RPC Server");
+
         RPC_SERVER->Shutdown();
+        delete RPC_SERVER;
+    }
+
+
+    /* Cleanup the wallet. */
+    if(Legacy::pwalletMain)
+    {
+        debug::log2(0, TESTING, "Closing the wallet");
+
+        delete Legacy::pwalletMain;
+    }
+
+
+    /* Elapsed Milliseconds from timer. */
+    nElapsed = timer.ElapsedMilliseconds();
+
+
+    /* Startup performance metric. */
+    debug::log2(0, TESTING, "Closed in ", nElapsed, "ms");
+
 
     return 0;
 }

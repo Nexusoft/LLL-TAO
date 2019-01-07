@@ -100,7 +100,7 @@ namespace Legacy
                 filesystem::create_directory(pathLogDir);
 
                 std::string pathErrorFile(pathDataDir + "/db.log");
-                debug::log(0, "dbenv.open LogDir=%s ErrorFile=%s", pathLogDir.c_str(), pathErrorFile.c_str());
+                //debug::log(0, FUNCTION "dbenv.open LogDir=%s ErrorFile=%s", __PRETTY_FUNCTION__, pathLogDir.c_str(), pathErrorFile.c_str());
 
                 int nDbCache = config::GetArg("-dbcache", 25);
 
@@ -183,16 +183,16 @@ namespace Legacy
                 pdb = new Db(&CDB::dbenv, 0);
 
                 /* Opened database will support multi-threaded access */
-                uint32_t nFlags = DB_THREAD;
+                uint32_t fWrite = DB_THREAD;
 
                 if (fCreate)
-                    nFlags |= DB_CREATE; // Add flag to create database file if does not exist
+                    fWrite |= DB_CREATE; // Add flag to create database file if does not exist
 
                 ret = pdb->open(nullptr,         // Txn pointer
                                 strFile.c_str(), // Filename
                                 "main",          // Logical db name
                                 DB_BTREE,        // Database type
-                                nFlags,          // Flags
+                                fWrite,          // Flags
                                 0);
 
                 if (ret == 0)
@@ -247,13 +247,13 @@ namespace Legacy
 
 
     /* Read a database key-value pair from the current cursor location. */
-    int CDB::ReadAtCursor(Dbc* pcursor, CDataStream& ssKey, CDataStream& ssValue, uint32_t fFlags)
+    int CDB::ReadAtCursor(Dbc* pcursor, DataStream& ssKey, DataStream& ssValue, uint32_t fFlags)
     {
         /* Key - Initialize with argument data for flag settings that need it */
         Dbt datKey;
         if (fFlags == DB_SET || fFlags == DB_SET_RANGE || fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE)
         {
-            datKey.set_data(&ssKey[0]);
+            datKey.set_data((char*)&ssKey[0]);
             datKey.set_size(ssKey.size());
         }
 
@@ -261,7 +261,7 @@ namespace Legacy
         Dbt datValue;
         if (fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE)
         {
-            datValue.set_data(&ssValue[0]);
+            datValue.set_data((char*)&ssValue[0]);
             datValue.set_size(ssValue.size());
         }
 
@@ -304,7 +304,7 @@ namespace Legacy
         if (pdb == nullptr)
             return;
 
-        int ret = pcursor->close();
+        pcursor->close();
 
         return;
     }
@@ -548,8 +548,8 @@ namespace Legacy
                         if (pcursor != nullptr)
                             while (fProcessSuccess)
                             {
-                                CDataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
-                                CDataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
+                                DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
+                                DataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
 
                                 /* Read next key-value pair to copy */
                                 int ret = dbToRewrite.ReadAtCursor(pcursor, ssKey, ssValue, DB_NEXT);
@@ -569,19 +569,19 @@ namespace Legacy
                                 }
 
                                 /* Skip any key value defined by pszSkip argument */
-                                if (pszSkip != nullptr && strncmp(&ssKey[0], pszSkip, std::min(ssKey.size(), strlen(pszSkip))) == 0)
+                                if (pszSkip != nullptr && strncmp((char*)&ssKey[0], pszSkip, std::min(ssKey.size(), strlen(pszSkip))) == 0)
                                     continue;
 
                                 /* Don't copy the version, instead use latest version */
-                                if (strncmp(&ssKey[0], "version", 7) == 0)
+                                if (strncmp((char*)&ssKey[0], "version", 7) == 0)
                                 {
                                     /* Update version */
                                     ssValue.clear();
                                     ssValue << LLD::DATABASE_VERSION;
                                 }
 
-                                Dbt datKey(&ssKey[0], ssKey.size());
-                                Dbt datValue(&ssValue[0], ssValue.size());
+                                Dbt datKey((char*)&ssKey[0], ssKey.size());
+                                Dbt datValue((char*)&ssValue[0], ssValue.size());
 
                                 /* Write the data to temp file */
                                 int ret2 = pdbCopy->put(nullptr, &datKey, &datValue, DB_NOOVERWRITE);

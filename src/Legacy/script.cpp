@@ -135,7 +135,7 @@ namespace Legacy
         // Immediate operand
         if (opcode <= OP_PUSHDATA4)
         {
-            unsigned int nSize;
+            uint32_t nSize = 0;
             if (opcode < OP_PUSHDATA1)
             {
                 nSize = opcode;

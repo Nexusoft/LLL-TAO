@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_TYPES_TXIN_H
-#define NEXUS_TAO_LEGACY_TYPES_TXIN_H
+#ifndef NEXUS_LEGACY_TYPES_TXIN_H
+#define NEXUS_LEGACY_TYPES_TXIN_H
 
 #include <climits>
 #include <cstdint>

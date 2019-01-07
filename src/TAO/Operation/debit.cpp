@@ -23,39 +23,89 @@ namespace TAO::Operation
 {
 
     /* Authorizes funds from an account to an account */
-    bool Debit(uint256_t hashFrom, uint256_t hashTo, uint64_t nAmount, uint256_t hashCaller)
+    bool Debit(uint256_t hashFrom, uint256_t hashTo, uint64_t nAmount, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
     {
         /* Read the register from the database. */
-        TAO::Register::State regFrom = TAO::Register::State();
-        if(!LLD::regDB->ReadState(hashFrom, regFrom))
-            return debug::error(FUNCTION "register %s doesn't exist in register DB", __PRETTY_FUNCTION__, hashFrom.ToString().c_str());
+        TAO::Register::State state;
+
+        /* Write pre-states. */
+        if((nFlags & TAO::Register::FLAGS::PRESTATE))
+        {
+            if(!LLD::regDB->ReadState(hashFrom, state))
+                return debug::error(FUNCTION "register address doesn't exist %s", __PRETTY_FUNCTION__, hashFrom.ToString().c_str());
+
+            ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
+        }
+
+        /* Get pre-states on write. */
+        if(nFlags & TAO::Register::FLAGS::WRITE  || nFlags & TAO::Register::FLAGS::MEMPOOL)
+        {
+            /* Get the state byte. */
+            uint8_t nState = 0; //RESERVED
+            ssRegister >> nState;
+
+            /* Check for the pre-state. */
+            if(nState != TAO::Register::STATES::PRESTATE)
+                return debug::error(FUNCTION "register script not in pre-state", __PRETTY_FUNCTION__);
+
+            /* Get the pre-state. */
+            ssRegister >> state;
+        }
 
         /* Check ownership of register. */
-        if(regFrom.hashOwner != hashCaller)
+        if(state.hashOwner != hashCaller)
             return debug::error(FUNCTION "%s caller not authorized to debit from register", __PRETTY_FUNCTION__, hashCaller.ToString().c_str());
 
         /* Skip all non account registers for now. */
-        if(regFrom.nType != TAO::Register::OBJECT::ACCOUNT)
+        if(state.nType != TAO::Register::OBJECT::ACCOUNT)
             return debug::error(FUNCTION "%s is not an account object", __PRETTY_FUNCTION__, hashFrom.ToString().c_str());
 
         /* Get the account object from register. */
-        TAO::Register::Account acctFrom;
-        regFrom >> acctFrom;
+        TAO::Register::Account account;
+        state >> account;
 
         /* Check the balance of the from account. */
-        if(acctFrom.nBalance < nAmount)
+        if(nAmount > account.nBalance)
             return debug::error(FUNCTION "%s doesn't have sufficient balance", __PRETTY_FUNCTION__, hashFrom.ToString().c_str());
 
         /* Change the state of account register. */
-        acctFrom.nBalance -= nAmount;
+        account.nBalance -= nAmount;
 
         /* Clear the state of register. */
-        regFrom.ClearState();
-        regFrom << acctFrom;
+        state.ClearState();
+        state << account;
 
-        /* Write this to operations stream. */
-        Write(hashFrom, regFrom.GetState(), hashCaller);
-        //LLD::regDB->WriteState(hashFrom, regFrom); //need to do this in operation script to check ownership of register
+        /* Check that the register is in a valid state. */
+        if(!state.IsValid())
+            return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashFrom.ToString().c_str());
+
+        /* Write post-state checksum. */
+        if((nFlags & TAO::Register::FLAGS::POSTSTATE))
+            ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
+
+        /* Verify the post-state checksum. */
+        if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
+        {
+            /* Get the state byte. */
+            uint8_t nState = 0; //RESERVED
+            ssRegister >> nState;
+
+            /* Check for the pre-state. */
+            if(nState != TAO::Register::STATES::POSTSTATE)
+                return debug::error(FUNCTION "register script not in post-state", __PRETTY_FUNCTION__);
+
+            /* Get the post state checksum. */
+            uint64_t nChecksum;
+            ssRegister >> nChecksum;
+
+            /* Check for matching post states. */
+            if(nChecksum != state.GetHash())
+                return debug::error(FUNCTION "register script has invalid post-state", __PRETTY_FUNCTION__);
+
+            /* Write the register to the database. */
+            if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashFrom, state))
+                return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
+        }
 
         return true;
     }

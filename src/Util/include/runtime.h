@@ -24,40 +24,43 @@ ________________________________________________________________________________
 
 #define ARRAYLEN(array)     (sizeof(array)/sizeof((array)[0]))
 
-/* The location of the unified time seed. To enable a Unified Time System push data to this variable. */
+/** The location of the unified time seed. To enable a Unified Time System push data to this variable. **/
 static int UNIFIED_AVERAGE_OFFSET = 0;
+
+/** The maximum time in the future clock can be. **/
+const uint32_t MAX_UNIFIED_DRIFT = 1;
 
 
 namespace runtime
 {
-    /** Timestamp
+    /** timestamp
      *
-     *  Return the Current UNIX Timestamp.
+     *  Return the Current UNIX timestamp.
      *
      *  @param[in] fMilliseconds Flag indicating if timestamp should be in milliseconds.
      *
-     *  @return The Current UNIX Timestamp.
+     *  @return The Current UNIX timestamp.
      *
      **/
-    inline uint64_t Timestamp(bool fMilliseconds = false)
+    inline uint64_t timestamp(bool fMilliseconds = false)
     {
         return fMilliseconds ?  std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() :
                                 std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     }
 
 
-    /** UnifiedTimestamp
+    /** unifiedtimestamp
      *
-     *  Return the Current UNIX Timestamp with average unified offset
+     *  Return the Current UNIX timestamp with average unified offset
      *
      *  @param[in] fMilliseconds Flag indicating if timestamp should be in milliseconds.
      *
-     *  @return The Current UNIX Timestamp with average unified offset
+     *  @return The Current UNIX timestamp with average unified offset
      *
      **/
-    inline uint64_t UnifiedTimestamp(bool fMilliseconds = false)
+    inline uint64_t unifiedtimestamp(bool fMilliseconds = false)
     {
-        return fMilliseconds ? Timestamp(true) + (UNIFIED_AVERAGE_OFFSET * 1000) : Timestamp() + UNIFIED_AVERAGE_OFFSET;
+        return fMilliseconds ? timestamp(true) + (UNIFIED_AVERAGE_OFFSET * 1000) : timestamp() + UNIFIED_AVERAGE_OFFSET;
     }
 
 

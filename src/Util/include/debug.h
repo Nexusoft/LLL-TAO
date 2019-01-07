@@ -16,6 +16,13 @@ ________________________________________________________________________________
 
 #include <string>
 #include <cinttypes>
+#include <iostream>
+#include <sstream>
+#include <fstream>
+
+#include <Util/include/args.h>
+#include <Util/include/config.h>
+#include <Util/include/mutex.h>
 
 #ifdef snprintf
 #undef snprintf
@@ -50,8 +57,9 @@ ________________________________________________________________________________
 #define ANSI_COLOR_BRIGHT_CYAN    "\u001b[36;1m"
 #define ANSI_COLOR_BRIGHT_WHITE   "\u001b[37;1m"
 
-#define ANSI_COLOR_FUNCTION ANSI_COLOR_BRIGHT_WHITE
+#define ANSI_COLOR_FUNCTION ANSI_COLOR_BRIGHT_BLUE
 
+#define VALUE(data) data
 #define FUNCTION ANSI_COLOR_FUNCTION "%s" ANSI_COLOR_RESET " : "
 
 #define NODE ANSI_COLOR_FUNCTION "Node" ANSI_COLOR_RESET " : "
@@ -61,8 +69,102 @@ ________________________________________________________________________________
 #define __PRETTY_FUNCTION__ __FUNCTION__
 #endif
 
+#define TESTING ANSI_COLOR_FUNCTION, __PRETTY_FUNCTION__, ANSI_COLOR_RESET, " : "
+
 namespace debug
 {
+
+    static std::recursive_mutex DEBUG_MUTEX;
+
+    /** Block debug output flags. **/
+    enum flags
+    {
+        header        = (1 << 0),
+        tx            = (1 << 1),
+        chain         = (1 << 2)
+    };
+
+
+    /** print args
+     *
+     *  Overload for varadaic templates.
+     *
+     *  @param[out] s The stream being written to.
+     *  @param[in] head The object being written to stream.
+     *
+     **/
+    template<class Head>
+    void print_args(std::ostream& s, Head&& head)
+    {
+        s << std::forward<Head>(head);
+    }
+
+
+    /** print args
+     *
+     *  Handle for variadic template pack
+     *
+     *  @param[out] s The stream being written to.
+     *  @param[in] head The object being written to stream.
+     *  @param[in] tail The variadic parameters.
+     *
+     **/
+    template<class Head, class... Tail>
+    void print_args(std::ostream& s, Head&& head, Tail&&... tail)
+    {
+        s << std::forward<Head>(head);
+        print_args(s, std::forward<Tail>(tail)...);
+    }
+
+
+    /** safe printstr
+     *
+     *  Safe handle for writing objects into a string.
+     *
+     *  @param[out] s The stream being written to.
+     *  @param[in] head The object being written to stream.
+     *  @param[in] tail The variadic parameters.
+     *
+     **/
+    template<class... Args>
+    std::string safe_printstr(Args&&... args) {
+        std::ostringstream ss;
+        print_args(ss, std::forward<Args>(args)...);
+
+        return ss.str();
+    }
+
+    /** log
+     *
+     *  Safe constant format debugging logs.
+     *  Dumps to console or to log file.
+     *
+     *  @param[in] nLevel The log level being written.
+     *  @param[in] args The variadic template arguments in.
+     *
+     **/
+    template<class... Args>
+    void log2(uint32_t nLevel, Args&&... args)
+    {
+        /* Don't write if log level is below set level. */
+        if(config::GetArg("-verbose", 0) < nLevel)
+            return;
+
+        LOCK(DEBUG_MUTEX);
+
+        /* Get the debug string. */
+        std::string debug = safe_printstr(args...);
+
+        /* Dump it to the console. */
+        std::cout << debug << std::endl;
+
+        /* Write it to the debug file. */
+        std::string pathDebug = config::GetDataDir() + "debug.log";
+        std::ofstream ssFile(pathDebug, std::ios::app);
+        ssFile << debug << std::endl;
+    }
+
+
     /** log
      *
      *  Prints output to the console. It may also write output to a debug.log
@@ -80,26 +182,6 @@ namespace debug
      *
      **/
     int log(uint32_t nLevel, const char* pszFormat, ...);
-
-
-    /** my_snprintf
-     *
-     *  Safer snprintf output string is always null terminated even if the limit
-     *  is reach. Returns the number of characters printed.
-     *
-     *  @param[out] buffer The character buffer where the message is stored
-     *
-     *  @param[in] limit The size of the buffer
-     *
-     *  @param[in] format The format string specifier.
-     *
-     *  @param[in] ... The variable argument list to supply to each format
-     *                 specifier in the format string.
-     *
-     *  @return the total number of characters printed.
-     *
-     **/
-    int my_snprintf(char* buffer, size_t limit, const char* format, ...);
 
 
     /** real_strprintf
@@ -133,20 +215,6 @@ namespace debug
      **/
     bool error(const char *format, ...);
 
-
-    /** print_base
-     *
-     *  Prints output with base class and function information.
-     *
-     *  @param[in] base The base class string to print
-     *
-     *  @param[in] format The format string specifier.
-     *
-     *  @param[in] ... The variable argument list to supply to each format
-     *                 specifier in the format string.
-     *
-     **/
-    void print_base(const char * base, const char *format, ...);
 
 
     /** LogStackTrace

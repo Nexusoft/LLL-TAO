@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/exception.h>
 #include <TAO/API/include/accounts.h>
 #include <TAO/API/include/supply.h>
+#include <TAO/API/include/ledger.h>
 
 #include <Util/include/urlencode.h>
 
@@ -114,6 +115,8 @@ namespace LLP
                 ret = { {"result", TAO::API::supply.Execute(METHOD, params) } };
             else if(strAPI == "accounts")
                 ret = { {"result", TAO::API::accounts.Execute(METHOD, params) } };
+            else if(strAPI == "ledger")
+                ret = { {"result", TAO::API::ledger.Execute(METHOD, params) } };
             else
                 throw TAO::API::APIException(-4, debug::strprintf("API not found: %s", strAPI.c_str()));
         }

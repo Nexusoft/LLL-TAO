@@ -28,7 +28,7 @@ namespace LLP
      *
      **/
     template<typename NodeType>
-    inline bool DoS(NodeType* pfrom, int nDoS, bool fReturn)
+    inline bool DoS(NodeType* pfrom, uint32_t nDoS, bool fReturn)
     {
         if(pfrom)
             pfrom->DDOS->rSCORE += nDoS;
@@ -48,9 +48,9 @@ namespace LLP
      **/
     class DDOS_Score
     {
-        std::vector< std::pair<bool, int> > SCORE;
+        std::vector< std::pair<bool, uint32_t> > SCORE;
         runtime::timer TIMER;
-        int nIterator;
+        uint32_t nIterator;
         std::recursive_mutex MUTEX;
 
     public:

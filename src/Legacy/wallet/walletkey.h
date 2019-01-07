@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_WALLET_WALLETKEY_H
-#define NEXUS_TAO_LEGACY_WALLET_WALLETKEY_H
+#ifndef NEXUS_LEGACY_WALLET_WALLETKEY_H
+#define NEXUS_LEGACY_WALLET_WALLETKEY_H
 
 #include <LLC/include/key.h>
 
@@ -38,7 +38,7 @@ namespace Legacy
         /** Unencrypted private key data **/
         LLC::CPrivKey vchPrivKey;
 
-        /** Timestamp when this wallet key was created. Only relevant if nTimeExpires has a value **/
+        /** timestamp when this wallet key was created. Only relevant if nTimeExpires has a value **/
         uint64_t nTimeCreated;
 
         /** Number of seconds after nTimeCreated that this wallet key expires **/
@@ -55,7 +55,7 @@ namespace Legacy
          **/
         CWalletKey(uint64_t nExpires=0)
         {
-            nTimeCreated = (nExpires ? runtime::UnifiedTimestamp() : 0);
+            nTimeCreated = (nExpires ? runtime::unifiedtimestamp() : 0);
             nTimeExpires = nExpires;
         }
 
