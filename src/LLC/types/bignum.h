@@ -87,7 +87,7 @@ namespace LLC
 
         explicit CBigNum(const std::vector<uint8_t>& vch);
 
-        BIGNUM* const getBN() const;
+        BIGNUM* getBN() const;
 
         void setulong(unsigned long n);
 
@@ -95,7 +95,7 @@ namespace LLC
 
         uint32_t getuint() const;
 
-        int getint() const;
+        int32_t getint() const;
 
         void setint64(int64_t n);
 
@@ -129,17 +129,17 @@ namespace LLC
 
         void SetHex(const std::string& str);
 
-        std::string ToString(int nBase=10) const;
+        std::string ToString(uint32_t nBase=10) const;
 
         std::string GetHex() const;
 
-        uint32_t GetSerializeSize(int nSerType=0, int nVersion=LLP::PROTOCOL_VERSION) const;
+        uint32_t GetSerializeSize(uint32_t nSerType=0, uint32_t nVersion = LLP::PROTOCOL_VERSION) const;
 
         template<typename Stream>
-        void Serialize(Stream& s, int nSerType=0, int nVersion=LLP::PROTOCOL_VERSION) const;
+        void Serialize(Stream& s, uint32_t nSerType=0, uint32_t nVersion = LLP::PROTOCOL_VERSION) const;
 
         template<typename Stream>
-        void Unserialize(Stream& s, int nSerType=0, int nVersion=LLP::PROTOCOL_VERSION);
+        void Unserialize(Stream& s, uint32_t nSerType=0, uint32_t nVersion = LLP::PROTOCOL_VERSION);
 
 
         bool operator!() const;

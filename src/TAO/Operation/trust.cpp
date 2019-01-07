@@ -11,39 +11,15 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_REGISTER_INCLUDE_TOKEN_H
-#define NEXUS_TAO_REGISTER_INCLUDE_TOKEN_H
+#include <LLD/include/global.h>
 
-namespace TAO
+namespace TAO::Operation
 {
 
-    namespace Register
+    /* Commits funds from a coinbase transaction. */
+    bool Trust(uint256_t hashAddress, uint1024_t hashLastTrust, uint32_t nSequence, uint32_t nLastTrust, uint64_t nStake, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
     {
 
-        class Order
-        {
-        public:
-
-            /** The identifier of the order (product). **/
-            uint256 hashIdentifier;
-
-
-            /** The quantity ordered **/
-            uint32_t  nQuantity;
-
-
-            /** Serialization methods. **/
-            SERIALIZE_HEADER
-
-
-            Order() : hashIdentifier(0), nBalance(0)
-            {
-
-            }
-
-            void print() const;
-        };
+        return true;
     }
 }
-
-#endif

@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_TYPES_SCRIPT_H
-#define NEXUS_TAO_LEGACY_TYPES_SCRIPT_H
+#ifndef NEXUS_LEGACY_TYPES_SCRIPT_H
+#define NEXUS_LEGACY_TYPES_SCRIPT_H
 
 #include <Legacy/types/enum.h>
 #include <Legacy/types/address.h>

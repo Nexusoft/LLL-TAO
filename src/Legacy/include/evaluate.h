@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_INCLUDE_EVALUATE_H
-#define NEXUS_TAO_LEGACY_INCLUDE_EVALUATE_H
+#ifndef NEXUS_LEGACY_INCLUDE_EVALUATE_H
+#define NEXUS_LEGACY_INCLUDE_EVALUATE_H
 
 #include <LLC/types/bignum.h>
 #include <Util/include/base58.h>

@@ -33,9 +33,9 @@ namespace LLC
 
         // This can take up to 2 seconds, so only do it every 10 minutes
         static int64_t nLastPerfmon;
-        if (runtime::Timestamp() < nLastPerfmon + 10 * 60)
+        if (runtime::timestamp() < nLastPerfmon + 10 * 60)
             return;
-        nLastPerfmon = runtime::Timestamp();
+        nLastPerfmon = runtime::timestamp();
 
     #ifdef WIN32
         // Don't need this on Linux, OpenSSL automatically uses /dev/urandom
@@ -49,7 +49,7 @@ namespace LLC
         {
             RAND_add(pdata, nSize, nSize/100.0);
             memset(pdata, 0, nSize);
-            debug::log(0, "%s RandAddSeed() %d bytes", DateTimeStrFormat(runtime::Timestamp()).c_str(), nSize);
+            debug::log(0, "%s RandAddSeed() %d bytes", DateTimeStrFormat(runtime::timestamp()).c_str(), nSize);
         }
     #endif
     }

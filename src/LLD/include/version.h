@@ -26,7 +26,7 @@ namespace LLD
 {
 
     /* Used for features in the database. */
-    const int DATABASE_VERSION =
+    const uint32_t DATABASE_VERSION =
                         1000000 * DATABASE_MAJOR
                       +   10000 * DATABASE_MINOR
                       +     100 * DATABASE_PATCH

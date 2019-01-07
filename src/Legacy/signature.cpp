@@ -127,7 +127,7 @@ namespace Legacy
         }
 
         // Serialize and hash
-        CDataStream ss(SER_GETHASH, 0);
+        DataStream ss(SER_GETHASH, 0);
         ss.reserve(10000);
         ss << txTmp << nHashType;
 

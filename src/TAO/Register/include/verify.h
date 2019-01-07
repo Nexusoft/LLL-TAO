@@ -11,17 +11,25 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/Register/objects/account.h>
+#ifndef NEXUS_TAO_REGISTER_INCLUDE_VERIFY_H
+#define NEXUS_TAO_REGISTER_INCLUDE_VERIFY_H
 
-namespace TAO
+#include <TAO/Ledger/types/transaction.h>
+
+namespace TAO::Register
 {
 
-    namespace Register
-    {
+    /** Verify
+     *
+     *  Verify the pre-states of a register to current network state.
+     *
+     *  @param[in] tx The transaction to verify pre-states with.
+     *  @param[in] nFlags The flags to verify for     *
+     *  @return true if verified correctly.
+     *
+     **/
+    bool Verify(TAO::Ledger::Transaction tx);
 
-        Account::print() const;
-        {
-            debug::log(0, "Account(id=%s, balance=%u)", hashIdentifier.ToString().substr(0, 20).c_str(), nBalance)
-        }
-    }
 }
+
+#endif

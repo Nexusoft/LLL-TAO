@@ -16,40 +16,51 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-namespace TAO
+namespace TAO::Register
 {
 
-    namespace Register
+    //TODO: this needs some work 
+    class Escrow
     {
+    public:
 
-        class Escrow
+        /** The total signers. **/
+        uint32_t nSignatories;
+
+
+        /** The required signers. **/
+        uint32_t nRequired;
+
+
+        /** The authorised signatories (genesis id's) **/
+        std::vector<uint512_t> hashSignatories;
+
+
+        /** The validation script to satisfy. **/
+        std::vector<uint8_t> vValidationScript;
+
+
+        /** Serialization methods. **/
+        IMPLEMENT_SERIALIZE
+        (
+            READWRITE(nSignatories);
+            READWRITE(nRequired);
+            READWRITE(hashSignatories);
+            READWRITE(vValidationScript);
+        )
+
+
+        Escrow()
+        : nSignatories(0)
+        , nRequired(0)
+        , hashSignatories()
+        , vValidationScript()
         {
-        public:
 
-            /** The total signers. **/
-            uint32_t nSignatories;
+        }
 
-
-            /** The required signers. **/
-            uint32_t nRequired;
-
-
-            /** The authorised signatories (genesis id's) **/
-            std::vector<uint512_t> hashSignatories;
-
-
-            /** Serialization methods. **/
-            SERIALIZE_HEADER
-
-
-            Escrow() : hashIdentifier(0), nBalance(0)
-            {
-
-            }
-
-            void print() const;
-        };
-    }
+        void print() const;
+    };
 }
 
 #endif

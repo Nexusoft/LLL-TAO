@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEGACY_WALLET_KEYPOOLENTRY_H
-#define NEXUS_TAO_LEGACY_WALLET_KEYPOOLENTRY_H
+#ifndef NEXUS_LEGACY_WALLET_KEYPOOLENTRY_H
+#define NEXUS_LEGACY_WALLET_KEYPOOLENTRY_H
 
 #include <vector>
 
@@ -36,7 +36,7 @@ namespace Legacy
     class CKeyPoolEntry
     {
     public:
-        /** Timestamp when key pool entry created **/
+        /** timestamp when key pool entry created **/
         uint64_t nTime;
 
         /** Public key for this key pool entry **/
@@ -50,7 +50,7 @@ namespace Legacy
          **/
         CKeyPoolEntry()
         {
-            nTime = runtime::UnifiedTimestamp();
+            nTime = runtime::unifiedtimestamp();
         }
 
 
@@ -63,7 +63,7 @@ namespace Legacy
          **/
         CKeyPoolEntry(const std::vector<uint8_t>& vchPubKeyIn)
         {
-            nTime = runtime::UnifiedTimestamp();
+            nTime = runtime::unifiedtimestamp();
             vchPubKey = vchPubKeyIn;
         }
 

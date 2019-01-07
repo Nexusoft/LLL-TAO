@@ -38,7 +38,7 @@ namespace TAO
             /* Create the operations stream to execute. */
             Stream stream = Stream(vchData);
 
-            while(!stream.End())
+            while(!stream.end())
             {
                 uint8_t OP;
                 stream >> OP;

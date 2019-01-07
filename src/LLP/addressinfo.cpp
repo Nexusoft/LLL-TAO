@@ -80,8 +80,6 @@ namespace LLP
     /*  Calculates a score based on stats. Higher is better */
     double AddressInfo::Score() const
     {
-
-        double nSessionHours = static_cast<double>(nSession) / 3600000;
         double nLatencyScore = nLatencyMax - std::min(nLatencyMax, static_cast<double>(nLatency));
 
         /* Add up the good stats */

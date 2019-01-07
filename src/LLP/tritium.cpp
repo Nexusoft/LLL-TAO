@@ -42,10 +42,10 @@ namespace LLP
                 case EVENT_CONNECT:
                 {
                     /* Setup the variables for this node. */
-                    nLastPing    = runtime::Timestamp();
+                    nLastPing    = runtime::timestamp();
 
                     /* Debut output. */
-                    debug::log(0, "%s %s Connected at timestamp %" PRIu64 "", Name().c_str(), GetAddress().ToString().c_str(), runtime::UnifiedTimestamp());
+                    debug::log(0, NODE "%s Connected at timestamp %" PRIu64 "", GetAddress().ToString().c_str(), runtime::unifiedtimestamp());
 
                     /* Send version if making the connection. */
                     if(fOUTGOING)
@@ -70,35 +70,35 @@ namespace LLP
                 case EVENT_GENERIC:
                 {
                     /* Generic event - pings. */
-                    if(runtime::Timestamp() - nLastPing > 5)
+                    if(runtime::timestamp() - nLastPing > 5)
                     {
                         /* Generate the nNonce. */
                         uint64_t nNonce = LLC::GetRand(std::numeric_limits<uint64_t>::max());
 
                         /* Add to latency tracker. */
-                        mapLatencyTracker[nNonce] = runtime::Timestamp(true);
+                        mapLatencyTracker[nNonce] = runtime::timestamp(true);
 
                         /* Push a ping request. */
                         PushMessage(DAT_PING, nNonce);
 
                         /* Update the last ping. */
-                        nLastPing = runtime::Timestamp();
+                        nLastPing = runtime::timestamp();
                     }
 
                     /* Generic events - unified time. */
-                    if(runtime::Timestamp() - nLastSamples > 30)
+                    if(runtime::timestamp() - nLastSamples > 30)
                     {
                         /* Generate the request identification. */
                         uint32_t nRequestID = LLC::GetRand(std::numeric_limits<int32_t>::max());
 
                         /* Add sent requests. */
-                        mapSentRequests[nRequestID] = runtime::Timestamp();
+                        mapSentRequests[nRequestID] = runtime::timestamp();
 
                         /* Request time samples. */
-                        PushMessage(GET_OFFSET, nRequestID, runtime::Timestamp(true));
+                        PushMessage(GET_OFFSET, nRequestID, runtime::timestamp(true));
 
                         /* Update the samples timer. */
-                        nLastSamples = runtime::Timestamp();
+                        nLastSamples = runtime::timestamp();
                     }
 
                     break;
@@ -119,7 +119,7 @@ namespace LLP
         bool TritiumNode::ProcessPacket()
         {
 
-            CDataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
+            DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
             switch(INCOMING.MESSAGE)
             {
 
@@ -136,13 +136,21 @@ namespace LLP
                     if(!TRITIUM_SERVER->addrThisNode.IsValid())
                     {
                         addr.SetPort(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
-                        debug::log(1, NODE "recieved external address %s", addr.ToString().c_str());
+                        debug::log2(0, NODE, "recieved external address ", addr.ToString());
+
                         TRITIUM_SERVER->addrThisNode = addr;
                     }
 
                     /* Send version message if connection is inbound. */
                     if(!fOUTGOING)
                     {
+                        if(addr.ToStringIP() == TRITIUM_SERVER->addrThisNode.ToStringIP())
+                        {
+                            debug::log2(0, NODE, "connected to self ", addr.ToString());
+
+                            return false;
+                        }
+
                         uint64_t nSession = LLC::GetRand(std::numeric_limits<uint64_t>::max());
                         PushMessage(DAT_VERSION, nSession, GetAddress());
                     }
@@ -150,7 +158,7 @@ namespace LLP
                         PushMessage(GET_ADDRESSES);
 
                     /* Debug output for offsets. */
-                    debug::log(3, NODE "received session identifier (%" PRIx64 ")", nSessionID);
+                    debug::log2(3, NODE, "received session identifier ",nSessionID);
 
                     break;
                 }
@@ -167,10 +175,10 @@ namespace LLP
                     ssPacket >> nTimestamp;
 
                     /* Find the sample offset. */
-                    int32_t nOffset = (runtime::Timestamp(true) - nTimestamp);
+                    int32_t nOffset = (runtime::timestamp(true) - nTimestamp);
 
                     /* Debug output for offsets. */
-                    debug::log(3, NODE "received timestamp of (%" PRIu64 ") - sending offset %i", nTimestamp, nOffset);
+                    debug::log2(3, NODE, "received timestamp of ", nTimestamp, " sending offset ", nOffset);
 
                     /* Push a timestamp in response. */
                     PushMessage(DAT_OFFSET, nRequestID, nOffset);
@@ -190,9 +198,9 @@ namespace LLP
                         return debug::error(NODE "offset not requested");
 
                     /* Check the time since request was sent. */
-                    if(runtime::Timestamp() - mapSentRequests[nRequestID] > 10)
+                    if(runtime::timestamp() - mapSentRequests[nRequestID] > 10)
                     {
-                        debug::log(0, NODE "offset is stale.");
+                        debug::log2(0, NODE, "offset is stale.");
                         mapSentRequests.erase(nRequestID);
 
                         break;
@@ -203,7 +211,7 @@ namespace LLP
                     ssPacket >> nOffset;
 
                     /* Debug output for offsets. */
-                    debug::log(3, NODE "received offset %i", nOffset);
+                    debug::log2(3, NODE, "received offset ", nOffset);
 
                     /* Remove sent requests from mpa. */
                     mapSentRequests.erase(nRequestID);
@@ -261,21 +269,7 @@ namespace LLP
                             break;
                         }
 
-                        /* Write the transaction to ledger database. */
-                        if(!LLD::legDB->WriteTx(tx.GetHash(), tx))
-                        {
-                            debug::error(NODE "tx failed to write to disk");
-
-                            break;
-                        }
-
-                        /* Process the transaction operations. */
-                        if(!TAO::Operation::Execute(tx.vchLedgerData, tx.hashGenesis))
-                        {
-                            debug::error(NODE "tx failed to process register/operations");
-
-                            break;
-                        }
+                        /* Add the transaction to the memory pool. */
                     }
 
                     /* Debug output for offsets. */
@@ -348,7 +342,7 @@ namespace LLP
                     if(!mapLatencyTracker.count(nNonce))
                         return debug::error(NODE "unsolicited pong");
 
-                    uint32_t lat = runtime::Timestamp(true) - mapLatencyTracker[nNonce];
+                    uint32_t lat = runtime::timestamp(true) - mapLatencyTracker[nNonce];
 
                     /* Set the latency used for address manager within server */
                     if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)

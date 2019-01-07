@@ -46,7 +46,32 @@ namespace TAO::Ledger
          * @param[in] strUsernameIn The username to seed the signature chain
          * @param[in] strPasswordIn The password to seed the signature chain
          **/
-        SignatureChain(std::string strUsernameIn, std::string strPasswordIn) : strUsername(strUsernameIn.c_str()), strPassword(strPasswordIn.c_str()) {}
+        SignatureChain(SecureString strUsernameIn, SecureString strPasswordIn)
+        : strUsername(strUsernameIn.c_str())
+        , strPassword(strPasswordIn.c_str())
+        {
+
+        }
+
+
+        /** Genesis Function
+         *
+         *  This function is responsible for generating the genesis ID.
+         *
+         *  @return The 512 bit hash of this key in the series.
+         **/
+        uint256_t Genesis()
+        {
+            /* Generate the Secret Phrase */
+            std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
+            vSecret.insert(vSecret.end(), strPassword.begin(), strPassword.end());
+
+            /* Generate the Hashes */
+            uint1024_t hashSecret = LLC::SK1024(vSecret);
+
+            /* Generate the Final Root Hash. */
+            return LLC::SK256(hashSecret.GetBytes());
+        }
 
 
         /** Generate Function

@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <fstream>
 
 #include <LLD/include/version.h>
+#include <LLD/include/enum.h>
 
 #include <LLC/hash/SK.h>
 #include <LLC/hash/macro.h>
@@ -31,20 +32,6 @@ ________________________________________________________________________________
 
 namespace LLD
 {
-    /** Enumeration for each State.
-        Allows better thread concurrency
-        Allow Reads on READY and READ.
-
-        Only Flush to Database if not Cached. (TODO) **/
-    enum
-    {
-        EMPTY 			= 0,
-        READ  			= 1,
-        WRITE 			= 2,
-        READY 			= 3,
-        TRANSACTION     = 4
-    };
-
 
     /** Key Class to Hold the Location of Sectors it is referencing.
         This Indexes the Sector Database. **/
@@ -64,7 +51,7 @@ namespace LLD
             Sector in the Sector Database of
             Given Sector Key. **/
         uint16_t 			   nSectorFile;
-        uint16_t   		       nSectorSize;
+        uint32_t   		       nSectorSize;
         uint32_t   			   nSectorStart;
 
         /* The binary data of the Sector key. */
@@ -89,14 +76,15 @@ namespace LLD
         , nSectorStart(0) { }
 
         SectorKey(uint8_t nStateIn, std::vector<uint8_t> vKeyIn,
-                  uint16_t nSectorFileIn, uint32_t nSectorStartIn, uint16_t nSectorSizeIn)
+                  uint16_t nSectorFileIn, uint32_t nSectorStartIn, uint32_t nSectorSizeIn)
         : nState(nStateIn)
+        , nLength(vKeyIn.size())
         , nSectorFile(nSectorFileIn)
         , nSectorSize(nSectorSizeIn)
         , nSectorStart(nSectorStartIn)
+        , vKey(vKeyIn)
         {
-            nLength = vKeyIn.size();
-            vKey    = vKeyIn;
+
         }
 
         ~SectorKey()
@@ -104,7 +92,7 @@ namespace LLD
 
         }
 
-        SectorKey& operator=(SectorKey key)
+        SectorKey& operator=(const SectorKey& key)
         {
             nState          = key.nState;
             nLength         = key.nLength;
@@ -112,6 +100,8 @@ namespace LLD
             nSectorSize     = key.nSectorSize;
             nSectorStart    = key.nSectorStart;
             vKey            = key.vKey;
+
+            return *this;
         }
 
         SectorKey(const SectorKey& key)
@@ -125,11 +115,11 @@ namespace LLD
         }
 
         /* Iterator to the beginning of the raw key. */
-        uint32_t Begin() { return 11; }
+        uint32_t Begin() { return 13; }
 
 
         /* Return the Size of the Key Sector on Disk. */
-        uint32_t Size() { return (11 + nLength); }
+        uint32_t Size() { return (13 + nLength); }
 
 
         /* Dump Key to Debug Console. */
@@ -141,9 +131,9 @@ namespace LLD
 
 
         /* Check for Key Activity on Sector. */
-        bool Empty() { return (nState == EMPTY); }
-        bool Ready() { return (nState == READY); }
-        bool IsTxn() { return (nState == TRANSACTION); }
+        bool Empty() { return (nState == STATE::EMPTY); }
+        bool Ready() { return (nState == STATE::READY); }
+        bool IsTxn() { return (nState == STATE::TRANSACTION); }
 
     };
 }
