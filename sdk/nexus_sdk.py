@@ -9,7 +9,7 @@
 #   accounts/create        supply/getitem
 #   accounts/login         supply/transfer
 #   accounts/logout        supply/createitem
-#   accounts/transactions  supply/appenditem
+#   accounts/transactions  supply/updateitem
 #                          supply/history
 #
 # Here is a program calling sequence to list transactions for 2 users:
@@ -112,7 +112,7 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_supply_appenditem(self, address, data):
+    def nexus_supply_updateitem(self, address, data):
         if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
@@ -123,7 +123,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&address={}&data={}".format(self.pin,
             self.session_id, address, data)
-        url = supply_url.format("appenditem") + parms
+        url = supply_url.format("updateitem") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
