@@ -20,17 +20,20 @@ ________________________________________________________________________________
 #include <LLD/templates/sector.h>
 
 #include <LLD/cache/binary_lru.h>
-#include <LLD/keychain/filemap.h>
+#include <LLD/keychain/hashmap.h>
 
 #include <TAO/Register/include/state.h>
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Register/include/enum.h>
 
+#include <leveldb/db.h>
+
 namespace LLD
 {
 
-    class LedgerDB : public SectorDatabase<BinaryFileMap, BinaryLRU>
+
+    class LedgerDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
         std::recursive_mutex MEMORY_MUTEX;
 
@@ -38,19 +41,19 @@ namespace LLD
 
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LedgerDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::APPEND)
-        : SectorDatabase("ledger", nFlags) { }
+        LedgerDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE)
+        : SectorDatabase("ledger", nFlagsIn) { }
 
 
         bool WriteBestChain(uint1024_t hashBest)
         {
-            return Write(std::string("best"), hashBest);
+            return Write(std::string("hashbestchain"), hashBest);
         }
 
 
         bool ReadBestChain(uint1024_t& hashBest)
         {
-            return Read(std::string("best"), hashBest);
+            return Read(std::string("hashbestchain"), hashBest);
         }
 
         bool WriteTx(uint512_t hashTransaction, TAO::Ledger::Transaction tx)

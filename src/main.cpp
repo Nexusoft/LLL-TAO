@@ -72,7 +72,6 @@ namespace LLP
 }
 
 
-
 int main(int argc, char** argv)
 {
 
@@ -136,13 +135,6 @@ int main(int argc, char** argv)
     /** Initialize ChainState. */
     TAO::Ledger::ChainState::Initialize();
 
-    if(config::GetBoolArg("-verify"))
-    {
-        TAO::Ledger::BlockState state;
-        if(!LLD::legDB->ReadBlock(TAO::Ledger::hashGenesis, state))
-            return debug::error("can't read genesis");
-    }
-
 
     if(config::GetArg("-test", 0) > 0)
     {
@@ -151,10 +143,9 @@ int main(int argc, char** argv)
 
         for(int i = 0; i < config::GetArg("-test", 0); i++)
         {
-
             /* Create the block object. */
             TAO::Ledger::TritiumBlock block;
-            if(!TAO::Ledger::CreateBlock(user, std::string("1234").c_str(), 2, block))
+            if(!TAO::Ledger::CreateBlock(user, std::string("1234").c_str(), 0, block))
                 return debug::error("cant create block");
 
             /* Get the secret from new key. */

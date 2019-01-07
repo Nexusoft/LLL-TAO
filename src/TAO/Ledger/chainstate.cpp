@@ -47,23 +47,13 @@ namespace TAO::Ledger
             return debug::error(FUNCTION "failed to create genesis", __PRETTY_FUNCTION__);
 
         /* Read the best chain. */
+        uint1024_t hashBestChain;
         if(!LLD::legDB->ReadBestChain(hashBestChain))
             return debug::error(FUNCTION "failed to read best chain", __PRETTY_FUNCTION__);
 
         /* Get the best chain stats. */
         if(!LLD::legDB->ReadBlock(hashBestChain, stateBest))
             return debug::error(FUNCTION "failed to read best block", __PRETTY_FUNCTION__);
-
-        if(stateBest.IsNull())
-        {
-            debug::error(FUNCTION "null best state...", __PRETTY_FUNCTION__);
-
-            /* Get the best chain stats. */
-            if(!LLD::legDB->ReadBlock(hashGenesis, stateBest))
-                return debug::error(FUNCTION "failed to read best block", __PRETTY_FUNCTION__);
-
-            hashBestChain = hashGenesis;
-        }
 
         /* Fill out the best chain stats. */
         nBestHeight     = stateBest.nHeight;
@@ -73,7 +63,7 @@ namespace TAO::Ledger
         /* Debug logging. */
         debug::log2(0, TESTING, config::fTestNet? "Test" : "Nexus", " Network: genesis=", hashGenesis.ToString().substr(0, 20),
         " nBitsStart=0x", std::hex, bnProofOfWorkStart[0].GetCompact(), " best=", stateBest.GetHash().ToString().substr(0, 20),
-        " height=", stateBest.nHeight);
+        " height=", std::dec, stateBest.nHeight);
 
         return true;
     }

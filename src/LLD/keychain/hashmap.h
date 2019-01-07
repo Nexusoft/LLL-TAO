@@ -377,17 +377,9 @@ namespace LLD
 
                     return true;
                 }
-                else
-                {
-                    debug::log(0, "File %u Pos %u\n", i, nFilePos);
-                    PrintHex(vBucket.begin(), vBucket.end());
-
-                    debug::log(0, "KEY");
-                    PrintHex(vKey.begin(), vKey.end());
-                }
             }
 
-            return debug::error("Hashmap Index not searched %u", hashmap[nBucket]);
+            return false;
         }
 
 
@@ -604,22 +596,19 @@ namespace LLD
         void CacheWriter()
         {
             std::mutex CONDITION_MUTEX;
-            while(true)
+            while(!fDestruct.load())
             {
                 /* Wait for Database to Initialize. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
                 CONDITION.wait(CONDITION_LOCK, [this]{ return fCacheActive.load() || fDestruct.load(); });
-
-                /* Check for destructor. */
-                if(!fCacheActive.load() && fDestruct.load())
-                    return;
 
                 /* Flush the disk hashmap. */
                 std::vector<uint8_t> vDisk;
                 vDisk.insert(vDisk.end(), (uint8_t*)&hashmap[0], (uint8_t*)&hashmap[0] + (4 * hashmap.size()));
 
                 /* Create the file handler. */
-                std::fstream stream(debug::strprintf("%s_hashmap.index", strBaseLocation.c_str()), std::ios::out | std::ios::binary);
+                std::fstream stream(debug::strprintf("%s_hashmap.index", strBaseLocation.c_str()), std::ios::in | std::ios::out | std::ios::binary);
+                stream.seekp(0, std::ios::beg);
                 stream.write((char*)&vDisk[0], vDisk.size());
                 stream.close();
 

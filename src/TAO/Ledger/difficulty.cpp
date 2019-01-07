@@ -184,6 +184,11 @@ namespace TAO::Ledger
         bnNew /= nLowerBound;
 
 
+        /* Check for maximum overflows. */
+        if (bnNew.GetCompact() == 0)
+            bnNew.SetCompact(first.nBits);
+
+
         /* Don't allow Difficulty to decrease below minimum. */
         if (bnNew > bnProofOfWorkLimit[0])
             bnNew = bnProofOfWorkLimit[0];
@@ -318,8 +323,16 @@ namespace TAO::Ledger
 
         /* Keep the target difficulty at minimum (allow -regtest difficulty) */
         uint32_t nBits = SetBits(nDifficulty);
+
+        /* Check for maximum value. */
+        if (nBits == 0)
+            nBits = first.nBits;
+
+        /* Check for minimum value. */
         if (nBits < bnProofOfWorkLimit[0].getuint())
             nBits = bnProofOfWorkLimit[0].getuint();
+
+
 
         /* Console Output */
         uint32_t nDays, nHours, nMinutes;
@@ -364,6 +377,8 @@ namespace TAO::Ledger
         uint64_t nBlockTime = ((state.nVersion >= 4) ?
             GetWeightedTimes(first, 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1));
 
+
+        /* Set the block target timespan. */
         uint64_t nBlockTarget = nTargetTimespan;
 
 
@@ -450,6 +465,9 @@ namespace TAO::Ledger
         bnNew *= nUpperBound;
         bnNew /= nLowerBound;
 
+        /* Check for maximum overflows. */
+        if (bnNew.GetCompact() == 0)
+            bnNew.SetCompact(first.nBits);
 
         /* Don't allow Difficulty to decrease below minimum. */
         if (bnNew > bnProofOfWorkLimit[2])

@@ -36,11 +36,11 @@ namespace LLD
 
 
     /* Maximum cache buckets for sectors. */
-    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 64; //64 MB Max Cache
+    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 32; //32 MB Max Cache
 
 
     /* The maximum amount of bytes allowed in the memory buffer for disk flushes. **/
-    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 64; //64 MB Max Disk Buffer
+    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 32; //32 MB Max Disk Buffer
 
 
     /** Base Template Class for a Sector Database.
@@ -170,7 +170,7 @@ namespace LLD
         , nBufferBytes(0)
         {
             /* Set readonly flag if write or append are not specified. */
-            if(!(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND))
+            if(!(nFlags & FLAGS::FORCE) && !(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND))
                 nFlags |= FLAGS::READONLY;
 
             /* Initialize the Database. */
@@ -334,6 +334,8 @@ namespace LLD
             /* Serialize Key into Bytes. */
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
+
+            //TODO: add transaction writes
 
             /* Return the Key existance in the Keychain Database. */
             SectorKey cKey(STATE::READY, static_cast<std::vector<uint8_t>>(ssKey), 0, 0, 0);
@@ -648,6 +650,10 @@ namespace LLD
          **/
         void CacheWriter()
         {
+            /* No cache write on force mode. */
+            if(nFlags & FLAGS::FORCE)
+                return;
+
             /* Wait for initialization. */
             while(!fInitialized)
                 runtime::sleep(100);
@@ -655,6 +661,8 @@ namespace LLD
             /* Check if writing is enabled. */
             if(!(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND))
                 return;
+
+
 
             while(true)
             {
@@ -711,52 +719,9 @@ namespace LLD
                 /* Iterate through buffer to queue disk writes. */
                 std::vector<uint8_t> vWrite;
                 for(auto & vObj : vIndexes)
-                {
-                    if(nFlags & FLAGS::APPEND || !Update(vObj.first, vObj.second))
-                    {
-                        /* Assign the Key to Keychain. */
-                        pSectorKeys->Put(SectorKey(STATE::READY, vObj.first, nCurrentFile, nCurrentFileSize, vObj.second.size()));
-
-                        /* Verboe output. */
-                        debug::log(5, FUNCTION "Current File: %u | Current File Size: %u\n%s", __PRETTY_FUNCTION__, nCurrentFile, nCurrentFileSize, HexStr(vObj.second.begin(), vObj.second.end(), true).c_str());
-
-                        /* Increment the current filesize */
-                        nCurrentFileSize += vObj.second.size();
-
-                        /* Add data to the write buffer */
-                        vWrite.insert(vWrite.end(), vObj.second.begin(), vObj.second.end());
-
-                        /* Add the file size to the written bytes. */
-                        nBytesWrote += vObj.first.size();
-
-                        /* Flush to disk on periodic intervals (1 MB). */
-                        if(vWrite.size() > 1024 * 1024)
-                        {
-                            LOCK(SECTOR_MUTEX);
-
-                            nBytesWrote += (vWrite.size());
-
-                            pstream->write((char*)&vWrite[0], vWrite.size());
-                            pstream->flush();
-
-                            vWrite.clear();
-                        }
-
-                        /* Set cache back to not reserved. */
-                        cachePool->Reserve(vObj.first, false);
-
-                        ++nRecordsFlushed;
-                    }
-                }
+                    Force(vObj.first, vObj.second);
 
                 nBytesWrote += (vWrite.size());
-
-                /* Flush remaining to disk. */
-                {
-                    LOCK(SECTOR_MUTEX);
-                    pstream->write((char*)&vWrite[0], vWrite.size());
-                    pstream->flush();
-                }
 
                 /* Notify the condition. */
                 CONDITION.notify_all();

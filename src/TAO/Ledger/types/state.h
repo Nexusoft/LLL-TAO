@@ -68,7 +68,6 @@ namespace TAO::Ledger
             READWRITE(nNonce);
             READWRITE(nTime);
 
-            READWRITE(producer);
             READWRITE(nChainTrust);
             READWRITE(nMoneySupply);
             READWRITE(nChannelHeight);

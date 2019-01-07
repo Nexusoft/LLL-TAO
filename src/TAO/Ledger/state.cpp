@@ -403,7 +403,7 @@ namespace TAO::Ledger
                     return debug::error(FUNCTION "transaction operation layer failed to execute", __PRETTY_FUNCTION__);
 
                 /* Write to disk. */
-                if(!LLD::legDB->ReadTx(hash, tx))
+                if(!LLD::legDB->WriteTx(hash, tx))
                     return debug::error(FUNCTION "transaction is not on disk", __PRETTY_FUNCTION__);
             }
         }
@@ -413,8 +413,6 @@ namespace TAO::Ledger
         if(!prev.IsNull())
         {
             prev.hashNextBlock = GetHash();
-            //prev.print();
-
             if(!LLD::legDB->WriteBlock(prev.GetHash(), prev))
                 return debug::error(FUNCTION "failed to write producer", __PRETTY_FUNCTION__);
         }
