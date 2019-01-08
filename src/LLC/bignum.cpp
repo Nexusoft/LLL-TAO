@@ -198,6 +198,7 @@ namespace LLC
         return BN_get_word(m_BN);
     }
 
+
     int32_t CBigNum::getint32() const
     {
         unsigned long n = BN_get_word(m_BN);

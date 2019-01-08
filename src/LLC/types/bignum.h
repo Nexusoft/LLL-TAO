@@ -430,7 +430,7 @@ namespace LLC
          *
          *
          **/
-        std::string ToString(uint32_t nBase=10) const;
+        std::string ToString(int nBase=10) const;
 
 
         /** GetHex
