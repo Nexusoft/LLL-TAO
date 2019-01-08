@@ -564,7 +564,7 @@ namespace LLD
                 /* Write the blank data to the new file handle. */
                 std::fstream stream(file, std::ios::out | std::ios::binary | std::ios::trunc);
                 if(!stream)
-                    return debug::error(FUNCTION, "%s", strerror(errno));
+                    return debug::error(FUNCTION, strerror(errno));
 
                 stream.write((char*)&vSpace[0], vSpace.size());
                 stream.close();

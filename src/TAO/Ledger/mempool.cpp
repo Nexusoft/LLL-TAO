@@ -51,36 +51,36 @@ namespace TAO::Ledger
         /* Check the mempool. */
         uint512_t hash = tx.GetHash();
         if(mapLedger.count(hash))
-            return debug::error(FUNCTION, "%s already exists", tx.GetHash().ToString().substr(0, 20).c_str());
+            return debug::error(FUNCTION, tx.GetHash().ToString().substr(0, 20), " already exists");
 
         /* The next hash that is being claimed. */
         uint256_t hashClaim = tx.PrevHash();
         if(mapPrevHashes.count(hashClaim))
-            return debug::error(FUNCTION, "trying to claim spent next hash", hashClaim.ToString().substr(0, 20).c_str());
+            return debug::error(FUNCTION, "trying to claim spent next hash ", hashClaim.ToString().substr(0, 20));
 
         /* Check for duplicate coinbase or coinstake. */
         if(tx.IsCoinbase())
-            return debug::error(FUNCTION, "coinbase %s not accepted in pool", tx.GetHash().ToString().substr(0, 20).c_str());
+            return debug::error(FUNCTION, "coinbase ", tx.GetHash().ToString().substr(0, 20), " not accepted in pool");
 
         /* Check for duplicate coinbase or coinstake. */
         if(tx.IsTrust())
-            return debug::error(FUNCTION, "trust %s not accepted in pool", tx.GetHash().ToString().substr(0, 20).c_str());
+            return debug::error(FUNCTION, "trust ", tx.GetHash().ToString().substr(0, 20), " not accepted in pool");
 
         /* Check for duplicate coinbase or coinstake. */
         if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
-            return debug::error(FUNCTION, "tx %s too far in the future", tx.GetHash().ToString().substr(0, 20).c_str());
+            return debug::error(FUNCTION, "tx ", tx.GetHash().ToString().substr(0, 20), " too far in the future");
 
         /* Check that the transaction is in a valid state. */
         if(!tx.IsValid())
-            return debug::error(FUNCTION, "%s is invalid", tx.GetHash().ToString().substr(0, 20).c_str());
+            return debug::error(FUNCTION, tx.GetHash().ToString().substr(0, 20), " is invalid");
 
         /* Verify the Ledger Pre-States. */
         if(!TAO::Register::Verify(tx))
-            return debug::error(FUNCTION, "%s register verification failed", tx.GetHash().ToString().substr(0, 20).c_str());
+            return debug::error(FUNCTION, tx.GetHash().ToString().substr(0, 20), " register verification failed");
 
         /* Calculate the future potential states. */
         if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::MEMPOOL))
-            return debug::error(FUNCTION, "%s operations execution failed", tx.GetHash().ToString().substr(0, 20).c_str());
+            return debug::error(FUNCTION, tx.GetHash().ToString().substr(0, 20), " operations execution failed");
 
         /* Add to the map. */
         mapLedger[hash] = tx;

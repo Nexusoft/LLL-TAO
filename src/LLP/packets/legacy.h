@@ -165,7 +165,7 @@ namespace LLP
 
             /* Make sure Packet length is within bounds. (Max 512 MB Packet Size) */
             if (LENGTH > (1024 * 1024 * 512))
-                return debug::error("Message Packet (%s, %u bytes) : Message too Large", MESSAGE, LENGTH);
+                return debug::error("Message Packet (", MESSAGE, ", ", LENGTH, " bytes) : Message too Large");
 
             /* Double check the Message Checksum. */
             uint512_t hash = LLC::SK512(DATA.begin(), DATA.end());

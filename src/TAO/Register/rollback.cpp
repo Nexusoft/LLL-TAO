@@ -236,7 +236,7 @@ namespace TAO::Register
         }
         catch(std::runtime_error& e)
         {
-            return debug::error(FUNCTION, "exception encountered %s", e.what());
+            return debug::error(FUNCTION, "exception encountered ", e.what());
         }
 
         /* If nothing failed, return true for evaluation. */

@@ -31,7 +31,7 @@ namespace TAO::Operation
         /* Read the claimed transaction. */
         TAO::Ledger::Transaction tx;
         if(!LLD::legDB->ReadTx(hashTx, tx))
-            return debug::error(FUNCTION, "%s tx doesn't exist", hashTx.ToString().c_str());
+            return debug::error(FUNCTION, hashTx.ToString(), " tx doesn't exist");
 
         /* Extract the state from tx. */
         uint8_t TX_OP;
@@ -44,7 +44,7 @@ namespace TAO::Operation
         if((nFlags & TAO::Register::FLAGS::PRESTATE))
         {
             if(!LLD::regDB->ReadState(hashAccount, state))
-                return debug::error(FUNCTION, "register address doesn't exist %s", hashAccount.ToString().c_str());
+                return debug::error(FUNCTION, "register address doesn't exist ", hashAccount.ToString());
 
             ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
         }
@@ -93,7 +93,7 @@ namespace TAO::Operation
 
             /* Check that the balances match. */
             if(nAmount != nCredit)
-                return debug::error(FUNCTION, "credit %" PRIu64 "and coinbase %" PRIu64 " amounts mismatch", nCredit, nAmount);
+                return debug::error(FUNCTION, "credit ", nCredit, "and coinbase ", nAmount, " amounts mismatch");
 
             /* Credit account balance. */
             acctTo.nBalance += nAmount;
@@ -104,7 +104,7 @@ namespace TAO::Operation
 
             /* Check that the register is in a valid state. */
             if(!state.IsValid())
-                return debug::error(FUNCTION, "memory address %s is in invalid state", hashAccount.ToString().c_str());
+                return debug::error(FUNCTION, "memory address ", hashAccount.ToString(), " is in invalid state");
 
             /* Write post-state checksum. */
             if((nFlags & TAO::Register::FLAGS::POSTSTATE))
@@ -143,7 +143,7 @@ namespace TAO::Operation
 
         /* Check that prev is debit. */
         else if(TX_OP != TAO::Operation::OP::DEBIT)
-            return debug::error(FUNCTION, "%s tx claim is not a debit", hashTx.ToString().c_str());
+            return debug::error(FUNCTION,  hashTx.ToString(), " tx claim is not a debit");
 
         /* Get the debit from account. */
         uint256_t hashFrom;
@@ -202,7 +202,7 @@ namespace TAO::Operation
 
             /* Check that the register is in a valid state. */
             if(!state.IsValid())
-                return debug::error(FUNCTION, "memory address %s is in invalid state", hashAccount.ToString().c_str());
+                return debug::error(FUNCTION, "memory address ", hashAccount.ToString(), " is in invalid state");
 
             /* Write post-state checksum. */
             if((nFlags & TAO::Register::FLAGS::POSTSTATE))
@@ -300,7 +300,7 @@ namespace TAO::Operation
 
             /* Check that the required credit claim is accurate. */
             if(nTotal != nAmount)
-                return debug::error(FUNCTION, "claimed credit " PRIu64 " mismatch with token holdings" PRIu64, nAmount, nTotal);
+                return debug::error(FUNCTION, "claimed credit ", nAmount, " mismatch with token holdings ", nTotal);
 
             /* Get the account being credited. */
             TAO::Register::Account acctTo;
@@ -328,7 +328,7 @@ namespace TAO::Operation
 
             /* Check that the register is in a valid state. */
             if(!state.IsValid())
-                return debug::error(FUNCTION, "memory address %s is in invalid state", hashAccount.ToString().c_str());
+                return debug::error(FUNCTION, "memory address ", hashAccount.ToString(), " is in invalid state");
 
             /* Write post-state checksum. */
             if((nFlags & TAO::Register::FLAGS::POSTSTATE))

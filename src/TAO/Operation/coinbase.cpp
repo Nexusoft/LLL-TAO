@@ -47,11 +47,11 @@ namespace TAO::Operation
 
             /* Check the state change is correct. */
             if(!state.IsValid())
-                return debug::error(FUNCTION, "memory address %s is in invalid state", hashAddress.ToString().c_str());
+                return debug::error(FUNCTION, "memory address ", hashAddress.ToString().c_str(), " is in invalid state");
 
             /* Write the register to database. */
             if(!LLD::regDB->WriteState(hashAddress, state))
-                return debug::error(FUNCTION, "failed to write state register %s memory address", hashAddress.ToString().c_str());
+                return debug::error(FUNCTION, "failed to write state register ", hashAddress.ToString(), " memory address");
 
             debug::log(0, FUNCTION, "created new account ", hashAddress.ToString(), " for coinbase transaction");
         }

@@ -196,7 +196,7 @@ namespace TAO::Register
 
             /* Check the checksum. */
             if(GetHash() != hashChecksum)
-                return debug::error(FUNCTION, "register checksum (%" PRIu64 ") mismatch (%" PRIu64 ")", GetHash(), hashChecksum);
+                return debug::error(FUNCTION, "register checksum (", GetHash(), ") mismatch (", hashChecksum, ")");
 
             /* Check the timestamp. */
             if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)

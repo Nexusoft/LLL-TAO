@@ -133,8 +133,8 @@ namespace TAO::Ledger
 
         /* Check That Block timestamp is not before previous block. */
         //if (GetBlockTime() <= statePrev.GetBlockTime())
-        //    return debug::error(FUNCTION, "block's timestamp too early Block: %" PRId64 " Prev: %" PRId64 "",
-        //    GetBlockTime(), statePrev.GetBlockTime());
+        //    return debug::error(FUNCTION, "block's timestamp too early Block: ", GetBlockTime(), " Prev: ",
+        //     statePrev.GetBlockTime());
 
 
         /* Check that Block is Descendant of Hardened Checkpoints. */
@@ -154,8 +154,8 @@ namespace TAO::Ledger
 
             /* Check that the Mining Reward Matches the Coinbase Calculations. */
             if (nMiningReward != GetCoinbaseReward(statePrev, GetChannel(), 0))
-                return debug::error(FUNCTION, "miner reward mismatch %" PRId64 " : %" PRId64 "",
-                    nMiningReward, GetCoinbaseReward(statePrev, GetChannel(), 0));
+                return debug::error(FUNCTION, "miner reward mismatch ", nMiningReward, " : ",
+                     GetCoinbaseReward(statePrev, GetChannel(), 0));
         }
         else if (IsProofOfStake())
         {
@@ -300,8 +300,8 @@ namespace TAO::Ledger
                 {
                     /* Connect the block. */
                     if(!state.Disconnect())
-                        return debug::error(FUNCTION, "failed to disconnect %s",
-                            state.GetHash().ToString().substr(0, 20).c_str());
+                        return debug::error(FUNCTION, "failed to disconnect ",
+                            state.GetHash().ToString().substr(0, 20));
 
                     /* Add transactions into memory pool. */
                     for(auto tx : state.vtx)
@@ -321,8 +321,8 @@ namespace TAO::Ledger
 
                     /* Connect the block. */
                     if(!state.Connect())
-                        return debug::error(FUNCTION, "failed to connect %s",
-                            state.GetHash().ToString().substr(0, 20).c_str());
+                        return debug::error(FUNCTION, "failed to connect ",
+                            state.GetHash().ToString().substr(0, 20));
 
                     /* Remove transactions from memory pool. */
                     for(auto tx : state.vtx)

@@ -506,7 +506,7 @@ namespace LLD
 
             /* Check data size constraints. */
             if(vData.size() != key.nSectorSize)
-                return debug::error(FUNCTION, "sector size %u mismatch %u", key.nSectorSize, vData.size());
+                return debug::error(FUNCTION, "sector size ", key.nSectorSize, " mismatch ", vData.size());
 
             /* Write the data into the memory cache. */
             cachePool->Put(vKey, vData, false);

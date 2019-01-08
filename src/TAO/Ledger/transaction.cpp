@@ -46,11 +46,11 @@ namespace TAO::Ledger
 
             /* Check the previous sequence number. */
             if(tx.nSequence + 1 != nSequence)
-                return debug::error(FUNCTION, "previous sequence %u not sequential %u", tx.nSequence, nSequence);
+                return debug::error(FUNCTION, "previous sequence ", tx.nSequence, " not sequential ", nSequence);
 
             /* Check the previous genesis. */
             if(tx.hashGenesis != hashGenesis)
-                return debug::error(FUNCTION, "previous genesis %s mismatch %s", tx.hashGenesis.ToString().substr(0, 20).c_str(), hashGenesis.ToString().substr(0, 20).c_str());
+                return debug::error(FUNCTION, "previous genesis ", tx.hashGenesis.ToString().substr(0, 20), " mismatch ",  hashGenesis.ToString().substr(0, 20));
         }
 
         /* Checks for coinbase. */
@@ -58,12 +58,12 @@ namespace TAO::Ledger
         {
             /* Check the coinbase size. */
             //if(ssOperation.size() != 41)
-            //    return debug::error(FUNCTION, "operation data too large for coinbase %u", ssOperation.size());
+            //    return debug::error(FUNCTION, "operation data too large for coinbase ", ssOperation.size());
         }
 
         /* Check the timestamp. */
         if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
-            return debug::error(FUNCTION, "transaction timestamp too far in the future %u", nTimestamp);
+            return debug::error(FUNCTION, "transaction timestamp too far in the future ", nTimestamp);
 
         /* Check the size constraints of the ledger data. */
         if(ssOperation.size() > 1024) //TODO: implement a constant max size

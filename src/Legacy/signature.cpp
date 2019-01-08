@@ -106,7 +106,7 @@ namespace Legacy
             uint32_t nOut = nIn;
             if (nOut >= txTmp.vout.size())
             {
-                debug::error("SignatureHash() : nOut=%d out of range", nOut);
+                debug::error("SignatureHash() : nOut=", nOut, " out of range");
                 return 1;
             }
             txTmp.vout.resize(nOut+1);

@@ -32,7 +32,7 @@ namespace TAO::Operation
         if((nFlags & TAO::Register::FLAGS::PRESTATE))
         {
             if(!LLD::regDB->ReadState(hashFrom, state))
-                return debug::error(FUNCTION, "register address doesn't exist %s", hashFrom.ToString().c_str());
+                return debug::error(FUNCTION, "register address doesn't exist ", hashFrom.ToString());
 
             ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
         }
@@ -54,11 +54,11 @@ namespace TAO::Operation
 
         /* Check ownership of register. */
         if(state.hashOwner != hashCaller)
-            return debug::error(FUNCTION, "%s caller not authorized to debit from register", hashCaller.ToString().c_str());
+            return debug::error(FUNCTION, hashCaller.ToString()," caller not authorized to debit from register");
 
         /* Skip all non account registers for now. */
         if(state.nType != TAO::Register::OBJECT::ACCOUNT)
-            return debug::error(FUNCTION, "%s is not an account object", hashFrom.ToString().c_str());
+            return debug::error(FUNCTION, hashFrom.ToString(), " is not an account object");
 
         /* Get the account object from register. */
         TAO::Register::Account account;
@@ -66,7 +66,7 @@ namespace TAO::Operation
 
         /* Check the balance of the from account. */
         if(nAmount > account.nBalance)
-            return debug::error(FUNCTION, "%s doesn't have sufficient balance", hashFrom.ToString().c_str());
+            return debug::error(FUNCTION, hashFrom.ToString(), " doesn't have sufficient balance");
 
         /* Change the state of account register. */
         account.nBalance -= nAmount;
@@ -77,7 +77,7 @@ namespace TAO::Operation
 
         /* Check that the register is in a valid state. */
         if(!state.IsValid())
-            return debug::error(FUNCTION, "memory address %s is in invalid state", hashFrom.ToString().c_str());
+            return debug::error(FUNCTION, "memory address ", hashFrom.ToString(), " is in invalid state");
 
         /* Write post-state checksum. */
         if((nFlags & TAO::Register::FLAGS::POSTSTATE))

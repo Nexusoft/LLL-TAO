@@ -30,7 +30,7 @@ namespace TAO::Operation
         if((nFlags & TAO::Register::FLAGS::PRESTATE))
         {
             if(!LLD::regDB->ReadState(hashAddress, state))
-                return debug::error(FUNCTION, "register address doesn't exist %s", hashAddress.ToString().c_str());
+                return debug::error(FUNCTION, "register address doesn't exist ", hashAddress.ToString());
 
             ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
         }
@@ -60,18 +60,18 @@ namespace TAO::Operation
 
         /*state Check that the proper owner is commiting the write. */
         if(hashCaller != state.hashOwner)
-            return debug::error(FUNCTION, "no write permissions for caller %s", hashCaller.ToString().c_str());
+            return debug::error(FUNCTION, "no write permissions for caller ", hashCaller.ToString());
 
         /* Check the new data size against register's allocated size. */
         if(vchData.size() != state.vchState.size())
-            return debug::error(FUNCTION, "new register state size %u mismatch %u", vchData.size(), state.vchState.size());
+            return debug::error(FUNCTION, "new register state size ", vchData.size(), " mismatch ",  state.vchState.size());
 
         /* Set the new state of the register. */
         state.SetState(vchData);
 
         /* Check that the register is in a valid state. */
         if(!state.IsValid())
-            return debug::error(FUNCTION, "memory address %s is in invalid state", hashAddress.ToString().c_str());
+            return debug::error(FUNCTION, "memory address ", hashAddress.ToString(), " is in invalid state");
 
         /* Write post-state checksum. */
         if((nFlags & TAO::Register::FLAGS::POSTSTATE))

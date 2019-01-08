@@ -414,7 +414,7 @@ namespace Legacy
                     /* Load the master key into the wallet */
                     if (!wallet.LoadMasterKey(nMasterKeyId, kMasterKey))
                     {
-                        debug::error(FUNCTION, "error reading wallet database: duplicate CMasterKey id %u", nMasterKeyId);
+                        debug::error(FUNCTION, "error reading wallet database: duplicate CMasterKey id ", nMasterKeyId);
                         return DB_CORRUPT;
                     }
 

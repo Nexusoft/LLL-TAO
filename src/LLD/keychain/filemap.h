@@ -365,7 +365,7 @@ namespace LLD
 
                     /* Check the Keys Match Properly. */
                     if(vKeyIn != vKey)
-                        return debug::error(FUNCTION, "Key Mistmatch: DB:: %s MEM %s", HexStr(vKeyIn.begin(), vKeyIn.end()).c_str(), HexStr(vKey.begin(), vKey.end()).c_str());
+                        return debug::error(FUNCTION, "Key Mistmatch: DB:: ", HexStr(vKeyIn.begin(), vKeyIn.end()), " MEM ", HexStr(vKey.begin(), vKey.end()));
 
                     /* Assign Key to Sector. */
                     cKey.vKey = vKeyIn;

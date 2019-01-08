@@ -403,7 +403,7 @@ namespace LLP
                     if (hSocket == INVALID_SOCKET)
                     {
                         if (GetLastError() != WSAEWOULDBLOCK)
-                            debug::error("socket error accept failed: %d", GetLastError());
+                            debug::error("socket error accept failed: ", GetLastError());
                     }
                     else
                     {
@@ -450,7 +450,7 @@ namespace LLP
                 int32_t ret = WSAStartup(MAKEWORD(2, 2), &wsadata);
                 if (ret != NO_ERROR)
                 {
-                    debug::error("TCP/IP socket library failed to start (WSAStartup returned error %d)", ret);
+                    debug::error("TCP/IP socket library failed to start (WSAStartup returned error )", ret);
                     return false;
                 }
             #endif
@@ -459,7 +459,7 @@ namespace LLP
             hListenSocket = socket(fIPv4 ? AF_INET : AF_INET6, SOCK_STREAM, IPPROTO_TCP);
             if (hListenSocket == INVALID_SOCKET)
             {
-                debug::error("Couldn't open socket for incoming connections (socket returned error %d)", GetLastError());
+                debug::error("Couldn't open socket for incoming connections (socket returned error )", GetLastError());
                 return false;
             }
 
@@ -488,9 +488,9 @@ namespace LLP
                 {
                     int32_t nErr = GetLastError();
                     if (nErr == WSAEADDRINUSE)
-                        debug::error("Unable to bind to port %d on this computer. Address already in use.", ntohs(sockaddr.sin_port));
+                        debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer. Address already in use.");
                     else
-                        debug::error("Unable to bind to port %d on this computer (bind returned error %d)", ntohs(sockaddr.sin_port), nErr);
+                        debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer (bind returned error )",  nErr);
 
                     return false;
                 }
@@ -508,9 +508,9 @@ namespace LLP
                 {
                     int32_t nErr = GetLastError();
                     if (nErr == WSAEADDRINUSE)
-                        debug::error("Unable to bind to port %d on this computer. Address already in use.", ntohs(sockaddr.sin6_port));
+                        debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer. Address already in use.");
                     else
-                        debug::error("Unable to bind to port %d on this computer (bind returned error %d)", ntohs(sockaddr.sin6_port), nErr);
+                        debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer (bind returned error )",  nErr);
 
                     return false;
                 }
@@ -521,7 +521,7 @@ namespace LLP
             /* Listen for incoming connections */
             if (listen(hListenSocket, SOMAXCONN) == SOCKET_ERROR)
             {
-                debug::error("Listening for incoming connections failed (listen returned error %d)", GetLastError());
+                debug::error("Listening for incoming connections failed (listen returned error )", GetLastError());
                 return false;
             }
 

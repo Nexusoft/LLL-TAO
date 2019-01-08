@@ -93,7 +93,7 @@ namespace filesystem
         }
         catch(const std::ios_base::failure &e)
         {
-            return debug::error(FUNCTION, " failed to write %s", e.what());
+            return debug::error(FUNCTION, " failed to write ", e.what());
         }
 
         return true;
@@ -140,8 +140,7 @@ namespace filesystem
         /* Handle failures. */
         if(status < 0)
         {
-            return debug::error(FUNCTION, "Failed to create directory: %s\nReason: %s",
-                path.c_str(), strerror(errno));
+            return debug::error(FUNCTION, "Failed to create directory: ", path, "\nReason: ", strerror(errno));
         }
 
         return true;

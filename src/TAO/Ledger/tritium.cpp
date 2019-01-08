@@ -90,17 +90,17 @@ namespace TAO::Ledger
 
         /* Check the Current Channel Time-Lock. */
         if (nHeight > 0 && GetBlockTime() < (config::fTestNet ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]))
-            return debug::error(FUNCTION, "block created before channel time-lock, please wait %" PRIu64 " seconds", (config::fTestNet ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]) - runtime::unifiedtimestamp());
+            return debug::error(FUNCTION, "block created before channel time-lock, please wait ", (config::fTestNet ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]) - runtime::unifiedtimestamp(), " seconds");
 
 
         /* Check the Current Version Block Time-Lock. Allow Version (Current -1) Blocks for 1 Hour after Time Lock. */
         if (nVersion > 1 && nVersion == (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION - 1 : NETWORK_BLOCK_CURRENT_VERSION - 1) && (GetBlockTime() - 3600) > (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-            return debug::error(FUNCTION, "version %u blocks have been obsolete for %" PRId64 " seconds", nVersion, (runtime::unifiedtimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2])));
+            return debug::error(FUNCTION, "version ", nVersion, " blocks have been obsolete for ", (runtime::unifiedtimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2])), " seconds");
 
 
         /* Check the Current Version Block Time-Lock. */
         if (nVersion >= (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION) && GetBlockTime() <= (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-            return debug::error(FUNCTION, "version %u blocks are not accepted for %" PRId64 " seconds", nVersion, (runtime::unifiedtimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2])));
+            return debug::error(FUNCTION, "version ", nVersion, " blocks are not accepted for ", (runtime::unifiedtimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2])), " seconds");
 
 
         /* Check the producer transaction. */

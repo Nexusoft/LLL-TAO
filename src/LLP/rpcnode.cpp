@@ -102,7 +102,7 @@ namespace LLP
         {
             ErrorReply(e.ToJSON(), jsonID);
 
-            return debug::error("RPC Exception: %s", e.what());
+            return debug::error("RPC Exception: ", e.what());
         }
 
         /* Handle for JSON exceptions. */
@@ -110,7 +110,7 @@ namespace LLP
         {
             ErrorReply(APIException(e.id, e.what()).ToJSON(), jsonID);
 
-            return debug::error("RPC Exception: %s", e.what());
+            return debug::error("RPC Exception: ", e.what());
         }
 
         /* Handle for STD exceptions. */
@@ -118,7 +118,7 @@ namespace LLP
         {
             ErrorReply(APIException(-32700, e.what()).ToJSON(), jsonID);
 
-            return debug::error("RPC Exception: %s", e.what());
+            return debug::error("RPC Exception: ", e.what());
         }
 
         /* Handle a connection close header. */

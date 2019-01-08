@@ -1812,11 +1812,11 @@ namespace Legacy
 
         /* Ensure input total value does not exceed maximum allowed */
         if(!MoneyRange(nValueRet))
-            return debug::error("CWallet::SelectCoins() : Input total over TX limit Total: %" PRI64d " Limit %" PRI64d, nValueRet, MaxTxOut());
+            return debug::error("CWallet::SelectCoins() : Input total over TX limit Total: ", nValueRet, " Limit ",  MaxTxOut());
 
         /* Ensure balance is sufficient to cover transaction */
         if(nValueRet < nTargetValue)
-            return debug::error("CWallet::SelectCoins() : Insufficient Balance Target: %" PRI64d " Actual %" PRI64d, nTargetValue, nValueRet);
+            return debug::error("CWallet::SelectCoins() : Insufficient Balance Target: ", nTargetValue, " Actual ",  nValueRet);
 
         return true;
     }

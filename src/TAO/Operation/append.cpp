@@ -30,7 +30,7 @@ namespace TAO::Operation
         if((nFlags & TAO::Register::FLAGS::PRESTATE))
         {
             if(!LLD::regDB->ReadState(hashAddress, state))
-                return debug::error(FUNCTION, "register address doesn't exist %s", hashAddress.ToString().c_str());
+                return debug::error(FUNCTION, "register address doesn't exist ", hashAddress.ToString());
 
             ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
         }
@@ -60,7 +60,7 @@ namespace TAO::Operation
 
         /*state Check that the proper owner is commiting the write. */
         if(hashCaller != state.hashOwner)
-            return debug::error(FUNCTION, "no append permissions for caller %s", hashCaller.ToString().c_str());
+            return debug::error(FUNCTION, "no append permissions for caller ", hashCaller.ToString());
 
         /* Set the new state of the register. */
         std::vector<uint8_t> vchState = state.GetState();
@@ -69,7 +69,7 @@ namespace TAO::Operation
 
         /* Check that the register is in a valid state. */
         if(!state.IsValid())
-            return debug::error(FUNCTION, "memory address %s is in invalid state", hashAddress.ToString().c_str());
+            return debug::error(FUNCTION, "memory address ", hashAddress.ToString(), " is in invalid state");
 
         /* Write post-state checksum. */
         if((nFlags & TAO::Register::FLAGS::POSTSTATE))
