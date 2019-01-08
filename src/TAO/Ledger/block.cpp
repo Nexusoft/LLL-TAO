@@ -177,16 +177,16 @@ namespace TAO::Ledger
         {
             /* Check prime minimum origins. */
             if(nVersion < 5 && ProofHash() < bnPrimeMinOrigins.getuint1024())
-                return debug::error(FUNCTION "prime origins below 1016-bits", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "prime origins below 1016-bits");
 
             /* Check proof of work limits. */
             uint32_t nPrimeBits = GetPrimeBits(GetPrime());
             if (nPrimeBits < bnProofOfWorkLimit[1])
-                return debug::error(FUNCTION "prime-cluster below minimum work", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "prime-cluster below minimum work");
 
             /* Check the prime difficulty target. */
             if(nBits > nPrimeBits)
-                return debug::error(FUNCTION "prime-cluster below target", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "prime-cluster below target");
 
             return true;
         }
@@ -197,12 +197,12 @@ namespace TAO::Ledger
 
         /* Check that the hash is within range. */
         if (bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[2])
-            return debug::error(FUNCTION "proof-of-work hash not in range", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "proof-of-work hash not in range");
 
 
         /* Check that the that enough work was done on this block. */
         if (ProofHash() > bnTarget.getuint1024())
-            return debug::error(FUNCTION "proof-of-work hash below target", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "proof-of-work hash below target");
 
         return true;
     }

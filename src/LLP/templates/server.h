@@ -560,7 +560,7 @@ namespace LLP
 
 
                 uint32_t RPS = TotalRequests() / TIMER.Elapsed();
-                debug::log(0, FUNCTION "LLP Running at %u requests/s with %u connections.", __PRETTY_FUNCTION__, RPS, nGlobalConnections);
+                debug::log(0, FUNCTION "LLP Running at %u requests/s with %u connections.", RPS, nGlobalConnections);
 
                 TIMER.Reset();
                 ClearRequests();

@@ -198,7 +198,7 @@ namespace TAO::Operation
                     {
                         /* Ensure that it as beginning of the tx.ssOperation. */
                         if(!tx.ssOperation.begin())
-                            return debug::error(FUNCTION "coinbase opeartion has to be first", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "coinbase opeartion has to be first");
 
                         /* The total to be credited. */
                         uint64_t  nCredit;
@@ -206,7 +206,7 @@ namespace TAO::Operation
 
                         /* Ensure that it as end of tx.ssOperation. TODO: coinbase should be followed by ambassador and developer scripts */
                         if(!tx.ssOperation.end())
-                            return debug::error(FUNCTION "coinbase can't have extra data", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "coinbase can't have extra data");
 
                         break;
                     }
@@ -217,7 +217,7 @@ namespace TAO::Operation
                     {
                         /* Ensure that it as beginning of the tx.ssOperation. */
                         if(!tx.ssOperation.begin())
-                            return debug::error(FUNCTION "trust opeartion has to be first", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "trust opeartion has to be first");
 
                         /* The account that is being staked. */
                         uint256_t hashAccount;
@@ -245,7 +245,7 @@ namespace TAO::Operation
 
                         /* Ensure that it as end of tx.ssOperation. TODO: coinbase should be followed by ambassador and developer scripts */
                         if(!tx.ssOperation.end())
-                            return debug::error(FUNCTION "trust can't have extra data", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "trust can't have extra data");
 
                         break;
                     }
@@ -301,7 +301,7 @@ namespace TAO::Operation
         }
         catch(std::runtime_error& e)
         {
-            return debug::error(FUNCTION "exception encountered %s", __PRETTY_FUNCTION__, e.what());
+            return debug::error(FUNCTION "exception encountered %s", e.what());
         }
 
         /* If nothing failed, return true for evaluation. */

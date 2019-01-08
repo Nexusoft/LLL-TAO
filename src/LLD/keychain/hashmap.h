@@ -245,7 +245,7 @@ namespace LLD
         {
             /* Create directories if they don't exist yet. */
             if(!filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
-                debug::log(0, FUNCTION "Generated Path %s", __PRETTY_FUNCTION__, strBaseLocation.c_str());
+                debug::log(0, FUNCTION "Generated Path ", strBaseLocation);
 
             /* Build the hashmap indexes. */
             std::string index = debug::strprintf("%s_hashmap.index", strBaseLocation.c_str());
@@ -260,7 +260,7 @@ namespace LLD
                 stream.close();
 
                 /* Debug output showing generation of disk index. */
-                debug::log(0, FUNCTION "Generated Disk Index of %u bytes", __PRETTY_FUNCTION__, vSpace.size());
+                debug::log(0, FUNCTION "Generated Disk Index of ", vSpace.size(), " bytes");
             }
 
             /* Read the hashmap indexes. */
@@ -276,7 +276,7 @@ namespace LLD
 
                 /* Deserialize the values into memory index. */
                 uint32_t nTotalKeys = 0;
-                for(int nBucket = 0; nBucket < HASHMAP_TOTAL_BUCKETS; nBucket++)
+                for(int nBucket = 0; nBucket < HASHMAP_TOTAL_BUCKETS; ++nBucket)
                 {
                     std::copy((uint8_t*)&vIndex[nBucket * 4], (uint8_t*)&vIndex[nBucket * 4] + 4, (uint8_t*)&hashmap[nBucket]);
 
@@ -284,7 +284,7 @@ namespace LLD
                 }
 
                 /* Debug output showing loading of disk index. */
-                debug::log(0, FUNCTION "Loaded Disk Index of %u bytes and %u keys", __PRETTY_FUNCTION__, vIndex.size(), nTotalKeys);
+                debug::log(0, FUNCTION "Loaded Disk Index of ", vIndex.size(), " bytes and ", nTotalKeys, " keys");
             }
 
             /* Build the first hashmap index file if it doesn't exist. */
@@ -300,7 +300,7 @@ namespace LLD
                 stream.close();
 
                 /* Debug output showing generating of the hashmap file. */
-                debug::log(0, FUNCTION "Generated Disk Hash Map %u of %u bytes", __PRETTY_FUNCTION__, 0u, vSpace.size());
+                debug::log(0, FUNCTION "Generated Disk Hash Map 0 of ", vSpace.size(), " bytes");
             }
 
             /* Load the stream object into the stream LRU cache. */
@@ -340,7 +340,7 @@ namespace LLD
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-            for(int i = hashmap[nBucket] - 1; i >= 0; i--)
+            for(int i = hashmap[nBucket] - 1; i >= 0; --i)
             {
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
@@ -349,7 +349,7 @@ namespace LLD
                     /* Set the new stream pointer. */
                     pstream = new std::fstream(debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
                     if(!pstream)
-                        return debug::error(FUNCTION "couldn't create hashmap object", __PRETTY_FUNCTION__);
+                        return debug::error(FUNCTION "couldn't create hashmap object");
 
                     /* If file not found add to LRU cache. */
                     fileCache->Put(i, pstream);
@@ -373,7 +373,15 @@ namespace LLD
                     ssKey >> cKey;
 
                     /* Debug Output of Sector Key Information. */
-                    debug::log(4, FUNCTION "State: %s | Length: %u | Bucket %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u\n%s", __PRETTY_FUNCTION__, cKey.nState == STATE::READY ? "Valid" : "Invalid", cKey.nLength, nBucket, nFilePos, hashmap[nBucket] - 1, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end(), true).c_str());
+                    debug::log(4, FUNCTION "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                        " | Length: ", cKey.nLength,
+                        " | Bucket ", nBucket,
+                        " | Location: ", nFilePos,
+                        " | File: ", hashmap[nBucket] - 1,
+                        " | Sector File: ", cKey.nSectorFile,
+                        " | Sector Size: ", cKey.nSectorSize,
+                        " | Sector Start: ", cKey.nSectorStart, "\n",
+                        HexStr(cKey.vKey.begin(), cKey.vKey.end(), true));
 
                     return true;
                 }
@@ -443,7 +451,15 @@ namespace LLD
                     vKeys.push_back(cKey);
 
                     /* Debug Output of Sector Key Information. */
-                    debug::log(4, FUNCTION "Found State: %s | Length: %u | Bucket %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u\n%s", __PRETTY_FUNCTION__, cKey.nState == STATE::READY ? "Valid" : "Invalid", cKey.nLength, nBucket, nFilePos, hashmap[nBucket] - 1, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(vKey.begin(), vKey.end(), true).c_str());
+                    debug::log(4, FUNCTION "Found State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                        " | Length: ", cKey.nLength,
+                        " | Bucket ", nBucket,
+                        " | Location: ", nFilePos,
+                        " | File: ", hashmap[nBucket] - 1,
+                        " | Sector File: ", cKey.nSectorFile,
+                        " | Sector Size: ", cKey.nSectorSize,
+                        " | Sector Start: ", cKey.nSectorStart, "\n",
+                        HexStr(vKey.begin(), vKey.end(), true));
                 }
             }
 
@@ -519,7 +535,15 @@ namespace LLD
                         }
 
                         /* Debug Output of Sector Key Information. */
-                        debug::log(4, FUNCTION "State: %s | Length: %u | Bucket %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u\n%s", __PRETTY_FUNCTION__, cKey.nState == STATE::READY ? "Valid" : "Invalid", cKey.nLength, nBucket, nFilePos, hashmap[nBucket] - 1, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end(), true).c_str());
+                        debug::log(4, FUNCTION "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                            " | Length: ", cKey.nLength,
+                            " | Bucket ", nBucket,
+                            " | Location: ", nFilePos,
+                            " | File: ", hashmap[nBucket] - 1,
+                            " | Sector File: ", cKey.nSectorFile,
+                            " | Sector Size: ", cKey.nSectorSize,
+                            " | Sector Start: ", cKey.nSectorStart, "\n",
+                            HexStr(cKey.vKey.begin(), cKey.vKey.end(), true));
 
                         /* Signal the cache thread to wake up. */
                         fCacheActive = true;
@@ -540,13 +564,13 @@ namespace LLD
                 /* Write the blank data to the new file handle. */
                 std::fstream stream(file, std::ios::out | std::ios::binary | std::ios::trunc);
                 if(!stream)
-                    return debug::error(FUNCTION "%s", __PRETTY_FUNCTION__, strerror(errno));
+                    return debug::error(FUNCTION "%s", strerror(errno));
 
                 stream.write((char*)&vSpace[0], vSpace.size());
                 stream.close();
 
                 /* Debug output for monitoring new disk maps. */
-                debug::log(0, FUNCTION "Generated Disk Hash Map %u of %u bytes", __PRETTY_FUNCTION__, hashmap[nBucket], vSpace.size());
+                debug::log(0, FUNCTION "Generated Disk Hash Map ", hashmap[nBucket], " of ", vSpace.size(), " bytes");
             }
 
             /* Read the State and Size of Sector Header. */
@@ -563,7 +587,7 @@ namespace LLD
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream)
-                    return debug::error(FUNCTION "Failed to generate file object", __PRETTY_FUNCTION__);
+                    return debug::error(FUNCTION "Failed to generate file object");
 
                 /* If not in cache, add to the LRU. */
                 fileCache->Put(hashmap[nBucket], pstream);
@@ -582,7 +606,15 @@ namespace LLD
             }
 
             /* Debug Output of Sector Key Information. */
-            debug::log(4, FUNCTION "State: %s | Length: %u | Bucket %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s", __PRETTY_FUNCTION__, cKey.nState == STATE::READY ? "Valid" : "Invalid", cKey.nLength, nBucket, nFilePos, hashmap[nBucket] - 1, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(cKey.vKey.begin(), cKey.vKey.end()).c_str());
+            debug::log(4, FUNCTION "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                " | Length: ", cKey.nLength,
+                " | Bucket ", nBucket,
+                " | Location: ", nFilePos,
+                " | File: ", hashmap[nBucket] - 1,
+                " | Sector File: ", cKey.nSectorFile,
+                " | Sector Size: ", cKey.nSectorSize,
+                " | Sector Start: ", cKey.nSectorStart,
+                " | Key: ",  HexStr(cKey.vKey.begin(), cKey.vKey.end()));
 
             /* Signal the cache thread to wake up. */
             fCacheActive = true;
@@ -613,7 +645,7 @@ namespace LLD
                 stream.close();
 
                 /* Verbose logging to show triggered write. */
-                debug::log(4, FUNCTION "Flushed Cache Disk Index", __PRETTY_FUNCTION__);
+                debug::log(4, FUNCTION "Flushed Cache Disk Index");
 
                 fCacheActive = false;
             }
@@ -688,7 +720,15 @@ namespace LLD
 
 
                     /* Debug Output of Sector Key Information. */
-                    debug::log(4, FUNCTION "Erased State: %s | Length: %u | Bucket %u | Location: %u | File: %u | Sector File: %u | Sector Size: %u | Sector Start: %u | Key: %s", __PRETTY_FUNCTION__, cKey.nState == STATE::READY ? "Valid" : "Invalid", cKey.nLength, nBucket, nFilePos, hashmap[nBucket] - 1, cKey.nSectorFile, cKey.nSectorSize, cKey.nSectorStart, HexStr(vKey.begin(), vKey.end()).c_str());
+                    debug::log(4, FUNCTION "Erased State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                        " | Length: ", cKey.nLength,
+                        " | Bucket ", nBucket,
+                        " | Location: ", nFilePos,
+                        " | File: ", hashmap[nBucket] - 1,
+                        " | Sector File: ", cKey.nSectorFile,
+                        " | Sector Size: ", cKey.nSectorSize,
+                        " | Sector Start: ", cKey.nSectorStart,
+                        " | Key: ", HexStr(vKey.begin(), vKey.end()));
                 }
             }
 

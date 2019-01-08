@@ -106,7 +106,7 @@ int main(int argc, char** argv)
 
     /* Create directories if they don't exist yet. */
     if(!filesystem::exists(config::GetDataDir(false)) && filesystem::create_directory(config::GetDataDir(false)))
-        debug::log2(0, TESTING "Generated Path ", config::GetDataDir(false).c_str());
+        debug::log(0, FUNCTION "Generated Path ", config::GetDataDir(false).c_str());
 
 
     /* Create the database instances. */
@@ -265,7 +265,7 @@ int main(int argc, char** argv)
 
 
     /* Startup performance metric. */
-    debug::log2(0, TESTING, "Started up in ", nElapsed, "ms");
+    debug::log(0, FUNCTION, "Started up in ", nElapsed, "ms");
 
 
     /* Wait for shutdown. */
@@ -281,7 +281,7 @@ int main(int argc, char** argv)
     /* Cleanup the ledger database. */
     if(LLD::legDB)
     {
-        debug::log2(0, TESTING, "Shutting down ledgerDB");
+        debug::log(0, FUNCTION, "Shutting down ledgerDB");
 
         delete LLD::legDB;
     }
@@ -290,7 +290,7 @@ int main(int argc, char** argv)
     /* Cleanup the register database. */
     if(LLD::regDB)
     {
-        debug::log2(0, TESTING, "Shutting down registerDB");
+        debug::log(0, FUNCTION, "Shutting down registerDB");
 
         delete LLD::regDB;
     }
@@ -299,7 +299,7 @@ int main(int argc, char** argv)
     /* Cleanup the local database. */
     if(LLD::locDB)
     {
-        debug::log2(0, TESTING, "Shutting down localDB");
+        debug::log(0, FUNCTION, "Shutting down localDB");
 
         delete LLD::locDB;
     }
@@ -308,7 +308,7 @@ int main(int argc, char** argv)
     /* Shutdown the tritium server and its subsystems */
     if(LLP::TRITIUM_SERVER)
     {
-        debug::log2(0, TESTING, "Shutting down Tritium Server");
+        debug::log(0, FUNCTION, "Shutting down Tritium Server");
 
         LLP::TRITIUM_SERVER->Shutdown();
         delete LLP::TRITIUM_SERVER;
@@ -318,7 +318,7 @@ int main(int argc, char** argv)
     /* Shutdown the legacy server and its subsystems */
     if(LLP::LEGACY_SERVER)
     {
-        debug::log2(0, TESTING, "Shutting down Legacy Server");
+        debug::log(0, FUNCTION, "Shutting down Legacy Server");
 
         LLP::LEGACY_SERVER->Shutdown();
         delete LLP::LEGACY_SERVER;
@@ -328,7 +328,7 @@ int main(int argc, char** argv)
     /* Shutdown the core API server and its subsystems */
     if(CORE_SERVER)
     {
-        debug::log2(0, TESTING, "Shutting down API Server");
+        debug::log(0, FUNCTION, "Shutting down API Server");
 
         CORE_SERVER->Shutdown();
         delete CORE_SERVER;
@@ -338,7 +338,7 @@ int main(int argc, char** argv)
     /* Shutdown the RPC server and its subsystems */
     if(RPC_SERVER)
     {
-        debug::log2(0, TESTING, "Shutting down RPC Server");
+        debug::log(0, FUNCTION, "Shutting down RPC Server");
 
         RPC_SERVER->Shutdown();
         delete RPC_SERVER;
@@ -348,7 +348,7 @@ int main(int argc, char** argv)
     /* Cleanup the wallet. */
     if(Legacy::pwalletMain)
     {
-        debug::log2(0, TESTING, "Closing the wallet");
+        debug::log(0, FUNCTION, "Closing the wallet");
 
         delete Legacy::pwalletMain;
     }
@@ -359,7 +359,7 @@ int main(int argc, char** argv)
 
 
     /* Startup performance metric. */
-    debug::log2(0, TESTING, "Closed in ", nElapsed, "ms");
+    debug::log(0, FUNCTION, "Closed in ", nElapsed, "ms");
 
 
     return 0;

@@ -52,7 +52,7 @@ namespace TAO::Register
 
                         /* Check the state is prestate. */
                         if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION "register state not in pre-state", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "register state not in pre-state");
 
                         /* Verify the register's prestate. */
                         State prestate;
@@ -60,7 +60,7 @@ namespace TAO::Register
 
                         /* Write the register from database. */
                         if(!LLD::regDB->WriteState(hashAddress, prestate))
-                            return debug::error(FUNCTION "failed to rollback to pre-state", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "failed to rollback to pre-state");
 
                         /* Skip over the post-state data. */
                         uint64_t nSize = ReadCompactSize(tx.ssOperation);
@@ -98,7 +98,7 @@ namespace TAO::Register
 
                         /* Erase the register from database. */
                         if(!LLD::regDB->EraseState(hashAddress))
-                            return debug::error(FUNCTION "failed to erase post-state", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "failed to erase post-state");
 
                         break;
                     }
@@ -114,14 +114,14 @@ namespace TAO::Register
                         /* Read the register from database. */
                         State dbstate;
                         if(!LLD::regDB->ReadState(hashAddress, dbstate))
-                            return debug::error(FUNCTION "register pre-state doesn't exist", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "register pre-state doesn't exist");
 
                         /* Set the previous owner to this sigchain. */
                         dbstate.hashOwner = tx.hashGenesis;
 
                         /* Write the register to database. */
                         if(!LLD::regDB->WriteState(hashAddress, dbstate))
-                            return debug::error(FUNCTION "failed to rollback to pre-state", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "failed to rollback to pre-state");
 
                         /* Seek to next operation. */
                         tx.ssOperation.seek(32);
@@ -180,7 +180,7 @@ namespace TAO::Register
 
                         /* Check the state is prestate. */
                         if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION "register state not in pre-state", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "register state not in pre-state");
 
                         /* Verify the register's prestate. */
                         State prestate;
@@ -188,7 +188,7 @@ namespace TAO::Register
 
                         /* Read the register from database. */
                         if(!LLD::regDB->WriteState(hashAddress, prestate))
-                            return debug::error(FUNCTION "failed to rollback to pre-state", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "failed to rollback to pre-state");
 
                         /* Seek to the next operation. */
                         tx.ssOperation.seek(40);
@@ -216,7 +216,7 @@ namespace TAO::Register
 
                         /* Check the state is prestate. */
                         if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION "register state not in pre-state", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "register state not in pre-state");
 
                         /* Verify the register's prestate. */
                         State prestate;
@@ -224,7 +224,7 @@ namespace TAO::Register
 
                         /* Read the register from database. */
                         if(!LLD::regDB->ReadState(hashAddress, prestate))
-                            return debug::error(FUNCTION "failed to rollback to pre-state", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "failed to rollback to pre-state");
 
                         /* Seek to the next operation. */
                         tx.ssOperation.seek(8);
@@ -236,7 +236,7 @@ namespace TAO::Register
         }
         catch(std::runtime_error& e)
         {
-            return debug::error(FUNCTION "exception encountered %s", __PRETTY_FUNCTION__, e.what());
+            return debug::error(FUNCTION "exception encountered %s", e.what());
         }
 
         /* If nothing failed, return true for evaluation. */

@@ -43,7 +43,7 @@ namespace TAO::Ledger
         /* Get checkpoint state. */
         BlockState stateCheck;
         if(!LLD::legDB->ReadBlock(state.hashCheckpoint, stateCheck))
-            return debug::error(FUNCTION "failed to read checkpoint", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "failed to read checkpoint");
 
         /* Calculate the time differences. */
         uint32_t nFirstMinutes = floor((state.GetBlockTime() - stateCheck.GetBlockTime()) / 60.0);
@@ -62,7 +62,7 @@ namespace TAO::Ledger
         /* Get checkpoint state. */
         BlockState stateCheckpoint;
         if(!LLD::legDB->ReadBlock(state.hashCheckpoint, stateCheckpoint))
-            return debug::error(FUNCTION "failed to read checkpoint", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "failed to read checkpoint");
 
         /* Check The Block Hash */
         BlockState check = state;

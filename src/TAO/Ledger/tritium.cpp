@@ -55,52 +55,52 @@ namespace TAO::Ledger
     {
         /* Check the Size limits of the Current Block. */
         if (::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
-            return debug::error(FUNCTION "size limits failed", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "size limits failed");
 
 
         /* Make sure the Block was Created within Active Channel. */
         if (GetChannel() > 2)
-            return debug::error(FUNCTION "channel out of Range.", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "channel out of Range.");
 
 
         /* Check that the time was within range. */
         if (GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
-            return debug::error(FUNCTION "block timestamp too far in the future", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "block timestamp too far in the future");
 
 
         /* Do not allow blocks to be accepted above the current block version. */
         if(nVersion == 0 || nVersion > (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION))
-            return debug::error(FUNCTION "invalid block version", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "invalid block version");
 
 
         /* Only allow POS blocks in Version 4. */
         if(IsProofOfStake() && nVersion < 4)
-            return debug::error(FUNCTION "proof-of-stake rejected until version 4", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "proof-of-stake rejected until version 4");
 
 
         /* Check the Proof of Work Claims. */
         //if (IsProofOfWork() && !VerifyWork())
-        //    return debug::error(FUNCTION "invalid proof of work", __PRETTY_FUNCTION__);
+        //    return debug::error(FUNCTION "invalid proof of work");
 
 
         /* Check the Network Launch Time-Lock. */
         if (nHeight > 0 && GetBlockTime() <= (config::fTestNet ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK))
-            return debug::error(FUNCTION "block created before network time-lock", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "block created before network time-lock");
 
 
         /* Check the Current Channel Time-Lock. */
         if (nHeight > 0 && GetBlockTime() < (config::fTestNet ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]))
-            return debug::error(FUNCTION "block created before channel time-lock, please wait %" PRIu64 " seconds", __PRETTY_FUNCTION__, (config::fTestNet ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]) - runtime::unifiedtimestamp());
+            return debug::error(FUNCTION "block created before channel time-lock, please wait %" PRIu64 " seconds", (config::fTestNet ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]) - runtime::unifiedtimestamp());
 
 
         /* Check the Current Version Block Time-Lock. Allow Version (Current -1) Blocks for 1 Hour after Time Lock. */
         if (nVersion > 1 && nVersion == (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION - 1 : NETWORK_BLOCK_CURRENT_VERSION - 1) && (GetBlockTime() - 3600) > (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-            return debug::error(FUNCTION "version %u blocks have been obsolete for %" PRId64 " seconds", __PRETTY_FUNCTION__, nVersion, (runtime::unifiedtimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2])));
+            return debug::error(FUNCTION "version %u blocks have been obsolete for %" PRId64 " seconds", nVersion, (runtime::unifiedtimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2])));
 
 
         /* Check the Current Version Block Time-Lock. */
         if (nVersion >= (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION) && GetBlockTime() <= (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-            return debug::error(FUNCTION "version %u blocks are not accepted for %" PRId64 " seconds", __PRETTY_FUNCTION__, nVersion, (runtime::unifiedtimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2])));
+            return debug::error(FUNCTION "version %u blocks are not accepted for %" PRId64 " seconds", nVersion, (runtime::unifiedtimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2])));
 
 
         /* Check the producer transaction. */
@@ -108,22 +108,22 @@ namespace TAO::Ledger
         {
             /* Check the coinbase if not genesis. */
             if(GetChannel() > 0 && !producer.IsCoinbase())
-                return debug::error(FUNCTION "producer transaction has to be coinbase for proof of work", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "producer transaction has to be coinbase for proof of work");
 
             /* Check that the producer is a valid transactions. */
             if(!producer.IsValid())
-                return debug::error(FUNCTION "producer transaction is invalid", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "producer transaction is invalid");
         }
 
 
         /* Check the producer transaction. */
         if(GetChannel() == 0 && !producer.IsTrust())
-            return debug::error(FUNCTION "producer transaction has to be trust for proof of stake", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "producer transaction has to be trust for proof of stake");
 
 
         /* Check coinbase/coinstake timestamp is at least 20 minutes before block time */
         if (GetBlockTime() > (uint64_t)producer.nTimestamp + ((nVersion < 4) ? 1200 : 3600))
-            return debug::error(FUNCTION "producer transaction timestamp is too early", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "producer transaction timestamp is too early");
 
 
         /* Proof of stake specific checks. */
@@ -131,15 +131,15 @@ namespace TAO::Ledger
         {
             /* Check for nonce of zero values. */
             if(nNonce == 0)
-                return debug::error(FUNCTION "proof of stake can't have Nonce value of zero", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "proof of stake can't have Nonce value of zero");
 
             /* Check the trust time is before Unified timestamp. */
             if(producer.nTimestamp > (runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT))
-                return debug::error(FUNCTION "trust timestamp too far in the future", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "trust timestamp too far in the future");
 
             /* Make Sure Trust Transaction Time is Before Block. */
             if (producer.nTimestamp > GetBlockTime())
-                return debug::error(FUNCTION "trust timestamp is ahead of block timestamp", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "trust timestamp is ahead of block timestamp");
         }
 
 
@@ -190,23 +190,23 @@ namespace TAO::Ledger
                 //check the tritium memory pool.
             }
             else if(tx.first != TYPE::CHECKPOINT)
-                return debug::error(FUNCTION "unknown transaction type", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "unknown transaction type");
         }
 
 
         /* Check for duplicate txid's. */
         if (uniqueTx.size() != vtx.size())
-            return debug::error(FUNCTION "duplicate transaction", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "duplicate transaction");
 
 
         /* Check the signature operations for legacy. */
         if (nSigOps > MAX_BLOCK_SIGOPS)
-            return debug::error(FUNCTION "out-of-bounds SigOpCount", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "out-of-bounds SigOpCount");
 
 
         /* Check the merkle root. */
         if (hashMerkleRoot != BuildMerkleTree(vHashes))
-            return debug::error(FUNCTION "hashMerkleRoot mismatch", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "hashMerkleRoot mismatch");
 
         /* Get the key from the producer. */
         if(nHeight > 0)
@@ -217,7 +217,7 @@ namespace TAO::Ledger
 
             /* Check the Block Signature. */
             if (!VerifySignature(key))
-                return debug::error(FUNCTION "bad block signature", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "bad block signature");
         }
 
         return true;

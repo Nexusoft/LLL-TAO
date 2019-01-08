@@ -48,16 +48,16 @@ namespace TAO::Ledger
 
         /* Initialize the Genesis. */
         if(!CreateGenesis())
-            return debug::error(FUNCTION "failed to create genesis", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "failed to create genesis");
 
         /* Read the best chain. */
         uint1024_t hashBestChain;
         if(!LLD::legDB->ReadBestChain(hashBestChain))
-            return debug::error(FUNCTION "failed to read best chain", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "failed to read best chain");
 
         /* Get the best chain stats. */
         if(!LLD::legDB->ReadBlock(hashBestChain, stateBest))
-            return debug::error(FUNCTION "failed to read best block", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "failed to read best block");
 
         /* Fill out the best chain stats. */
         nBestHeight     = stateBest.nHeight;
@@ -73,23 +73,23 @@ namespace TAO::Ledger
             /* Search back until fail or different checkpoint. */
             BlockState state;
             if(!LLD::legDB->ReadBlock(hashCheckpoint, state))
-                return debug::error(FUNCTION "failed to read pending checkpoint", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "failed to read pending checkpoint");
 
             /* Get the previous state. */
             state = state.Prev();
             if(state.IsNull())
-                return debug::error(FUNCTION "failed to find the checkpoint", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "failed to find the checkpoint");
 
             /* Check the checkpoints. */
             //if(state.hashCheckpoint == hashCheckpoint)
-            //    return debug::error(FUNCTION "previous checkpoint is duplicate", __PRETTY_FUNCTION__);
+            //    return debug::error(FUNCTION "previous checkpoint is duplicate");
 
             /* Set the checkpoint. */
             hashCheckpoint = state.hashCheckpoint;
         }
 
         /* Debug logging. */
-        debug::log2(0, TESTING, config::fTestNet? "Test" : "Nexus", " Network: genesis=", hashGenesis.ToString().substr(0, 20),
+        debug::log(0, FUNCTION, config::fTestNet? "Test" : "Nexus", " Network: genesis=", hashGenesis.ToString().substr(0, 20),
         " nBitsStart=0x", std::hex, bnProofOfWorkStart[0].GetCompact(), " best=", stateBest.GetHash().ToString().substr(0, 20),
         " checkpoint=", hashCheckpoint.ToString().substr(0, 20).c_str()," height=", std::dec, stateBest.nHeight);
 

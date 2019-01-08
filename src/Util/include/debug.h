@@ -144,7 +144,7 @@ namespace debug
      *
      **/
     template<class... Args>
-    void log2(uint32_t nLevel, Args&&... args)
+    void log(uint32_t nLevel, Args&&... args)
     {
         /* Don't write if log level is below set level. */
         if(config::GetArg("-verbose", 0) < nLevel)
@@ -163,25 +163,6 @@ namespace debug
         std::ofstream ssFile(pathDebug, std::ios::app);
         ssFile << debug << std::endl;
     }
-
-
-    /** log
-     *
-     *  Prints output to the console. It may also write output to a debug.log
-     *  if the global fileout file is assigned.
-     *
-     *  @param[in] nLevel The logging level to Output
-     *
-     *  @param[in] pszFormat The format string specifier.
-     *
-     *  @param[in] ... The variable argument list to supply to each format
-     *                 specifier in the format string.
-     *
-     *  @return the total number of characters written. If a writing error occurs,
-     *          the error indicator (ferror) is set and a negative number is returned.
-     *
-     **/
-    int log(uint32_t nLevel, const char* pszFormat, ...);
 
 
     /** real_strprintf

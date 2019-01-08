@@ -25,15 +25,15 @@ namespace TAO::Operation
         /* Read the register from the database. */
         TAO::Register::State state = TAO::Register::State();
         if(!LLD::regDB->ReadState(hashAddress, state))
-            return debug::error(FUNCTION "Register %s doesn't exist in register DB", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+            return debug::error(FUNCTION "Register %s doesn't exist in register DB", hashAddress.ToString().c_str());
 
         /* Make sure that you won the rights to register first. */
         if(state.hashOwner != hashCaller)
-            return debug::error(FUNCTION "%s not authorized to transfer register", __PRETTY_FUNCTION__, hashCaller.ToString().c_str());
+            return debug::error(FUNCTION "%s not authorized to transfer register", hashCaller.ToString().c_str());
 
         /* Check that you aren't sending to yourself. */
         if(state.hashOwner == hashTransfer)
-            return debug::error(FUNCTION "%s cannot transfer to self when already owned", __PRETTY_FUNCTION__, hashCaller.ToString().c_str());
+            return debug::error(FUNCTION "%s cannot transfer to self when already owned", hashCaller.ToString().c_str());
 
         /* Set the new owner of the register. */
         state.hashOwner = hashTransfer;
@@ -41,7 +41,7 @@ namespace TAO::Operation
 
         /* Check register for validity. */
         if(!state.IsValid())
-            return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+            return debug::error(FUNCTION "memory address %s is in invalid state", hashAddress.ToString().c_str());
 
         /* Write post-state checksum. */
         if((nFlags & TAO::Register::FLAGS::POSTSTATE))
@@ -56,7 +56,7 @@ namespace TAO::Operation
 
             /* Check for the pre-state. */
             if(nState != TAO::Register::STATES::POSTSTATE)
-                return debug::error(FUNCTION "register script not in post-state", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "register script not in post-state");
 
             /* Get the post state checksum. */
             uint64_t nChecksum;
@@ -64,11 +64,11 @@ namespace TAO::Operation
 
             /* Check for matching post states. */
             if(nChecksum != state.GetHash())
-                return debug::error(FUNCTION "register script has invalid post-state", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "register script has invalid post-state");
 
             /* Write the register to the database. */
             if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, state))
-                return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "failed to write new state");
         }
 
         return true;

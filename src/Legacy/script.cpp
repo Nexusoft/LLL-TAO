@@ -349,7 +349,7 @@ namespace Legacy
     /* Print the Hex output of the script */
     void CScript::PrintHex() const
     {
-        debug::log(0, "CScript(%s)", HexStr(begin(), end(), true).c_str());
+        debug::log(0, "CScript(", HexStr(begin(), end(), true), ")");
     }
 
 

@@ -100,7 +100,7 @@ namespace Legacy
                 filesystem::create_directory(pathLogDir);
 
                 std::string pathErrorFile(pathDataDir + "/db.log");
-                //debug::log(0, FUNCTION "dbenv.open LogDir=%s ErrorFile=%s", __PRETTY_FUNCTION__, pathLogDir.c_str(), pathErrorFile.c_str());
+                //debug::log(0, FUNCTION "dbenv.open LogDir=", pathLogDir, " ErrorFile=",  pathErrorFile);
 
                 int nDbCache = config::GetArg("-dbcache", 25);
 
@@ -453,7 +453,7 @@ namespace Legacy
     void CDB::DBFlush(bool fShutdown)
     {
         /* Flush log data to the actual data file on all files that are not in use */
-        debug::log(0, "DBFlush(%s)%s", fShutdown ? "true" : "false", CDB::fDbEnvInit ? "" : " db not started");
+        debug::log(0, "DBFlush(", fShutdown ? "true" : "false", ")",  CDB::fDbEnvInit ? "" : " db not started");
 
         if (!CDB::fDbEnvInit)
             return;
@@ -466,23 +466,23 @@ namespace Legacy
                 const std::string strFile = (*mi).first;
                 const int nRefCount = (*mi).second;
 
-                debug::log(0, "%s refcount=%d", strFile.c_str(), nRefCount);
+                debug::log(0, strFile, " refcount=", nRefCount);
 
                 if (nRefCount == 0)
                 {
                     /* Move log data to the dat file */
                     CloseDb(strFile);
 
-                    debug::log(0, "%s checkpoint", strFile.c_str());
+                    debug::log(0, strFile, " checkpoint");
                     CDB::dbenv.txn_checkpoint(0, 0, 0);
 
                     if (strFile != "addr.dat" || fDetachDB)
                     {
-                        debug::log(0, "%s detach", strFile.c_str());
+                        debug::log(0, strFile, " detach");
                         CDB::dbenv.lsn_reset(strFile.c_str(), 0);
                     }
 
-                    debug::log(0, "%s closed", strFile.c_str());
+                    debug::log(0, strFile, " closed");
                     CDB::mapFileUseCount.erase(mi++);
                 }
                 else
@@ -520,7 +520,7 @@ namespace Legacy
 
                     bool fOpenSuccess = true;
                     bool fProcessSuccess = true;
-                    debug::log(0, "Rewriting %s...", strFile.c_str());
+                    debug::log(0, "Rewriting ", strFile.c_str(), "...");
 
                     /* Define temporary file name where copy will be written */
                     std::string strFileRes = strFile + ".rewrite";
@@ -539,7 +539,7 @@ namespace Legacy
                                                 0);
                         if (ret > 0)
                         {
-                            debug::log(0, "Cannot create database file %s", strFileRes.c_str());
+                            debug::log(0, "Cannot create database file ", strFileRes.c_str());
                             fOpenSuccess = false;
                         }
 
@@ -619,7 +619,7 @@ namespace Legacy
                     }
 
                     if (!fProcessSuccess)
-                        debug::log(0, "Rewriting of %s FAILED!", strFile.c_str());
+                        debug::log(0, "Rewriting of ", strFile.c_str(), " FAILED!");
 
                     return fProcessSuccess;
                 }
@@ -644,7 +644,7 @@ namespace Legacy
         }
         catch (const DbException& e)
         {
-            debug::log(0, "EnvShutdown exception: %s (%d)", e.what(), e.get_errno());
+            debug::log(0, "EnvShutdown exception: ", e.what(), "(", e.get_errno(), ")");
         }
 
         /* Use of DB_FORCE should not be necessary after calling dbenv.close() but included in case there is an exception */

@@ -41,7 +41,7 @@ namespace TAO::Ledger
             TAO::Ledger::Transaction txPrev;
             if(!LLD::legDB->ReadTx(hashLast, txPrev))
             {
-                return debug::error(FUNCTION "no prev tx %s in ledger db", __PRETTY_FUNCTION__, hashLast.ToString().c_str());
+                return debug::error(FUNCTION "no prev tx %s in ledger db", hashLast.ToString().c_str());
             }
 
             /* Build new transaction object. */
@@ -83,7 +83,7 @@ namespace TAO::Ledger
 
         /* Setup the producer transaction. */
         if(!CreateTransaction(user, pin, block.producer))
-            return debug::error(FUNCTION "failed to create producer transactions", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "failed to create producer transactions");
 
 
         /* Handle the coinstake */
@@ -213,21 +213,21 @@ namespace TAO::Ledger
             LLC::CBigNum target;
             target.SetCompact(block.nBits);
             if(block.GetHash() != hashGenesis)
-                return debug::error(FUNCTION "genesis hash does not match", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "genesis hash does not match");
 
             if(!block.Check())
-                return debug::error(FUNCTION "genesis block check failed", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "genesis block check failed");
 
             ChainState::stateGenesis = BlockState(block);
             ChainState::stateGenesis.hashCheckpoint = hashGenesis;
             ChainState::stateBest = ChainState::stateGenesis;
 
             if(!LLD::legDB->WriteBlock(hashGenesis, ChainState::stateGenesis))
-                return debug::error(FUNCTION "genesis didn't commit to disk", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "genesis didn't commit to disk");
 
             ChainState::hashBestChain = hashGenesis;
             if(!LLD::legDB->WriteBestChain(hashGenesis))
-                return debug::error(FUNCTION "couldn't write best chain.", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "couldn't write best chain.");
         }
 
         return true;

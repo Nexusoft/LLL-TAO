@@ -50,7 +50,7 @@ namespace TAO::Register
 
                         /* Check the state is prestate. */
                         if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION "register state not in pre-state", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "register state not in pre-state");
 
                         /* Verify the register's prestate. */
                         State prestate;
@@ -59,15 +59,15 @@ namespace TAO::Register
                         /* Read the register from database. */
                         State dbstate;
                         if(!LLD::regDB->ReadState(hashAddress, dbstate))
-                            return debug::error(FUNCTION "register pre-state doesn't exist", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "register pre-state doesn't exist");
 
                         /* Check the ownership. */
                         if(dbstate.hashOwner != tx.hashGenesis)
-                            return debug::error(FUNCTION "cannot generate pre-state if not owner", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "cannot generate pre-state if not owner");
 
                         /* Check the prestate to the dbstate. */
                         if(prestate != dbstate)
-                            return debug::error(FUNCTION "prestate and dbstate mismatch", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "prestate and dbstate mismatch");
 
                         /* Skip over the post-state data. */
                         uint64_t nSize = ReadCompactSize(tx.ssOperation);
@@ -113,11 +113,11 @@ namespace TAO::Register
                         /* Read the register from database. */
                         State dbstate;
                         if(!LLD::regDB->ReadState(hashAddress, dbstate))
-                            return debug::error(FUNCTION "register pre-state doesn't exist", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "register pre-state doesn't exist");
 
                         /* Check the ownership. */
                         if(dbstate.hashOwner != tx.hashGenesis)
-                            return debug::error(FUNCTION "cannot generate pre-state if not owner", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "cannot generate pre-state if not owner");
 
                         /* Seek to next operation. */
                         tx.ssOperation.seek(32);
@@ -158,7 +158,7 @@ namespace TAO::Register
 
                         /* Check the state is prestate. */
                         if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION "register state not in pre-state", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "register state not in pre-state");
 
                         /* Verify the register's prestate. */
                         State prestate;
@@ -167,15 +167,15 @@ namespace TAO::Register
                         /* Read the register from database. */
                         State dbstate;
                         if(!LLD::regDB->ReadState(hashAddress, dbstate))
-                            return debug::error(FUNCTION "register pre-state doesn't exist", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "register pre-state doesn't exist");
 
                         /* Check the ownership. */
                         if(dbstate.hashOwner != tx.hashGenesis)
-                            return debug::error(FUNCTION "cannot generate pre-state if not owner", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "cannot generate pre-state if not owner");
 
                         /* Check the prestate to the dbstate. */
                         if(prestate != dbstate)
-                            return debug::error(FUNCTION "prestate and dbstate mismatch", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "prestate and dbstate mismatch");
 
                         /* Seek to the next operation. */
                         tx.ssOperation.seek(40);
@@ -203,7 +203,7 @@ namespace TAO::Register
 
                         /* Check the state is prestate. */
                         if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION "register state not in pre-state", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "register state not in pre-state");
 
                         /* Verify the register's prestate. */
                         State prestate;
@@ -212,15 +212,15 @@ namespace TAO::Register
                         /* Read the register from database. */
                         State dbstate;
                         if(!LLD::regDB->ReadState(hashAddress, dbstate))
-                            return debug::error(FUNCTION "register pre-state doesn't exist", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "register pre-state doesn't exist");
 
                         /* Check the ownership. */
                         if(dbstate.hashOwner != tx.hashGenesis)
-                            return debug::error(FUNCTION "cannot generate pre-state if not owner", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "cannot generate pre-state if not owner");
 
                         /* Check the prestate to the dbstate. */
                         if(prestate != dbstate)
-                            return debug::error(FUNCTION "prestate and dbstate mismatch", __PRETTY_FUNCTION__);
+                            return debug::error(FUNCTION "prestate and dbstate mismatch");
 
                         /* Seek to the next operation. */
                         tx.ssOperation.seek(8);
@@ -229,13 +229,13 @@ namespace TAO::Register
                     }
 
                     default:
-                        return debug::error(FUNCTION "invalid code for register verification", __PRETTY_FUNCTION__);
+                        return debug::error(FUNCTION "invalid code for register verification");
                 }
             }
         }
         catch(std::runtime_error& e)
         {
-            return debug::error(FUNCTION "exception encountered %s", __PRETTY_FUNCTION__, e.what());
+            return debug::error(FUNCTION "exception encountered %s", e.what());
         }
 
         /* If nothing failed, return true for evaluation. */

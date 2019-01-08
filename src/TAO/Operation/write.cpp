@@ -30,7 +30,7 @@ namespace TAO::Operation
         if((nFlags & TAO::Register::FLAGS::PRESTATE))
         {
             if(!LLD::regDB->ReadState(hashAddress, state))
-                return debug::error(FUNCTION "register address doesn't exist %s", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+                return debug::error(FUNCTION "register address doesn't exist %s", hashAddress.ToString().c_str());
 
             ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
         }
@@ -44,7 +44,7 @@ namespace TAO::Operation
 
             /* Check for the pre-state. */
             if(nState != TAO::Register::STATES::PRESTATE)
-                return debug::error(FUNCTION "register script not in pre-state", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "register script not in pre-state");
 
             /* Get the pre-state. */
             ssRegister >> state;
@@ -52,26 +52,26 @@ namespace TAO::Operation
 
         /* Check ReadOnly permissions. */
         if(state.nType == TAO::Register::OBJECT::READONLY)
-            return debug::error(FUNCTION "write operation called on read-only register", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "write operation called on read-only register");
 
         /* Check write permissions for raw state registers. */
         if(state.nType != TAO::Register::OBJECT::RAW)
-            return debug::error(FUNCTION "write operation called on non-raw register", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION "write operation called on non-raw register");
 
         /*state Check that the proper owner is commiting the write. */
         if(hashCaller != state.hashOwner)
-            return debug::error(FUNCTION "no write permissions for caller %s", __PRETTY_FUNCTION__, hashCaller.ToString().c_str());
+            return debug::error(FUNCTION "no write permissions for caller %s", hashCaller.ToString().c_str());
 
         /* Check the new data size against register's allocated size. */
         if(vchData.size() != state.vchState.size())
-            return debug::error(FUNCTION "new register state size %u mismatch %u", __PRETTY_FUNCTION__, vchData.size(), state.vchState.size());
+            return debug::error(FUNCTION "new register state size %u mismatch %u", vchData.size(), state.vchState.size());
 
         /* Set the new state of the register. */
         state.SetState(vchData);
 
         /* Check that the register is in a valid state. */
         if(!state.IsValid())
-            return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+            return debug::error(FUNCTION "memory address %s is in invalid state", hashAddress.ToString().c_str());
 
         /* Write post-state checksum. */
         if((nFlags & TAO::Register::FLAGS::POSTSTATE))
@@ -86,7 +86,7 @@ namespace TAO::Operation
 
             /* Check for the pre-state. */
             if(nState != TAO::Register::STATES::POSTSTATE)
-                return debug::error(FUNCTION "register script not in post-state", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "register script not in post-state");
 
             /* Get the post state checksum. */
             uint64_t nChecksum;
@@ -94,11 +94,11 @@ namespace TAO::Operation
 
             /* Check for matching post states. */
             if(nChecksum != state.GetHash())
-                return debug::error(FUNCTION "register script has invalid post-state", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "register script has invalid post-state");
 
             /* Write the register to the database. */
             if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, state))
-                return debug::error(FUNCTION "failed to write new state", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION "failed to write new state");
         }
 
         return true;
