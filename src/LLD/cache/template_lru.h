@@ -119,15 +119,10 @@ namespace LLD
         ~TemplateLRU()
         {
             /* Loop through the linked list. */
-            while(pfirst)
-            {
-                /* Free memory of previous entry. */
-                if(pfirst->pprev)
-                    delete pfirst->pprev;
-
-                /* Iterate forward */
-                pfirst = pfirst->pnext;
-            }
+            for(auto & item : hashmap)
+                if(item)
+                    delete item;
+                    
         }
 
         TemplateLRU& operator=(TemplateLRU map)
@@ -375,9 +370,10 @@ namespace LLD
          *  Delete a stream object. Closes the file.
          *
          **/
-        void Delete(std::fstream* data)
+        template<typename Type>
+        void Delete(Type* data)
         {
-            data->close();
+            //data->close();
             delete data;
         }
 

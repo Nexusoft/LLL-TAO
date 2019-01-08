@@ -33,17 +33,9 @@ namespace LLP
 
     /* Base Template class to handle outgoing / incoming LLP data for both Client and Server. */
     template<typename PacketType = Packet>
-    class BaseConnection
+    class BaseConnection : public Socket
     {
     protected:
-
-        /** Runtime timer for timeouts. **/
-        runtime::timer       TIMER;
-
-
-        /** Socker class to handle socket data. **/
-        Socket              SOCKET;
-
 
         /** Recursive mutex for thread synchronization. **/
         std::recursive_mutex MUTEX;
@@ -87,7 +79,7 @@ namespace LLP
 
         /** Build Base Connection with no parameters **/
         BaseConnection()
-        : SOCKET()
+        : Socket()
         , INCOMING()
         , DDOS(nullptr)
         , fDDOS(false)
@@ -99,15 +91,14 @@ namespace LLP
 
 
         /** Build Base Connection with all Parameters. **/
-        BaseConnection( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false)
-        : SOCKET(SOCKET_IN)
+        BaseConnection(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false)
+        : Socket(SOCKET_IN)
         , INCOMING()
         , DDOS(DDOS_IN)
         , fDDOS(isDDOS)
-        ,  fOUTGOING(fOutgoing)
+        , fOUTGOING(fOutgoing)
         , fCONNECTED(false)
         {
-            TIMER.Start();
         }
 
         virtual ~BaseConnection()
@@ -116,17 +107,58 @@ namespace LLP
         }
 
 
+        /** Reset
+         *
+         *  Resets the internal timers.
+         *
+         **/
+        void Reset()
+        {
+            nLastRecv = runtime::timestamp();
+            nLastSend = runtime::timestamp();
+        }
+
+
+        /** Set Null
+         *
+         *  Sets the object to an invalid state.
+         *
+         **/
+        void SetNull()
+        {
+            fd = -1;
+            nError = 0;
+
+            INCOMING.SetNull();
+            DDOS  = nullptr;
+            fDDOS = false;
+            fOUTGOING = false;
+            fCONNECTED = false;
+        }
+
+
+        /** Is Null
+         *
+         *  Checks if is in null state.
+         *
+         **/
+        bool IsNull()
+        {
+            return fd == -1;
+        }
+
+
         /* Checks for any flags in the Error Handle. */
         bool Errors()
         {
-            return SOCKET.Error() != 0;
+            return ErrorCode() != 0;
         }
 
 
         /* Give the message (c-string) of the error in the socket. */
         char* Error()
         {
-            return strerror(SOCKET.Error());
+            return strerror(ErrorCode());
         }
 
 
@@ -140,7 +172,8 @@ namespace LLP
         /* Determines if nTime seconds have elapsed since last Read / Write. */
         bool Timeout(uint32_t nTime)
         {
-            return (TIMER.Elapsed() >= nTime);
+            return (runtime::timestamp() > nLastSend + nTime &&
+                    runtime::timestamp() > nLastRecv + nTime);
         }
 
 
@@ -171,7 +204,8 @@ namespace LLP
                 PrintHex(PACKET.GetBytes());
 
             /* Write the packet to socket buffer. */
-            Write(PACKET.GetBytes());
+            std::vector<uint8_t> vBytes = PACKET.GetBytes();
+            Write(vBytes, vBytes.size());
         }
 
 
@@ -189,7 +223,7 @@ namespace LLP
             debug::log(1, NODE "Connecting to %s", addrConnect.ToString().c_str());
 
             // Connect
-            if (SOCKET.Connect(addrConnect))
+            if (Attempt(addrConnect))
             {
                 /// debug print
                 debug::log(1, NODE "Connected to %s", addrConnect.ToString().c_str());
@@ -206,34 +240,16 @@ namespace LLP
         /* Get Address. Returns the address of socket. */
         Address GetAddress()
         {
-            return Address(Service(SOCKET.addr));
+            return Address(Service(addr));
         }
 
 
         /* Disconnect Socket. Cleans up memory usage to prevent "memory runs" from poor memory management. */
         void Disconnect()
         {
-            SOCKET.Close();
+            Close();
 
             fCONNECTED = false;
-        }
-
-
-        /* Lower level network communications: Read. Interacts with OS sockets. */
-        int Read(std::vector<uint8_t> &DATA, size_t nBytes)
-        {
-            TIMER.Reset();
-
-            return SOCKET.Read(DATA, nBytes);
-        }
-
-
-        /* Lower level network communications: Write. Interacts with OS sockets. */
-        void Write(std::vector<uint8_t> DATA)
-        {
-            TIMER.Reset();
-
-            SOCKET.Write(DATA, DATA.size());
         }
 
     };
@@ -256,7 +272,7 @@ namespace LLP
         {
 
             /* Handle Reading Packet Type Header. */
-            if(SOCKET.Available() >= 1 && INCOMING.IsNull())
+            if(Available() >= 1 && INCOMING.IsNull())
             {
                 std::vector<uint8_t> HEADER(1, 255);
                 if(Read(HEADER, 1) == 1)
@@ -264,7 +280,7 @@ namespace LLP
             }
 
             /* Read the packet length. */
-            if(SOCKET.Available() >= 4 && INCOMING.LENGTH == 0)
+            if(Available() >= 4 && INCOMING.LENGTH == 0)
             {
                 /* Handle Reading Packet Length Header. */
                 std::vector<uint8_t> BYTES(4, 0);
@@ -276,12 +292,11 @@ namespace LLP
             }
 
             /* Handle Reading Packet Data. */
-            uint32_t nAvailable = SOCKET.Available();
+            uint32_t nAvailable = Available();
             if(nAvailable > 0 && INCOMING.LENGTH > 0 && INCOMING.DATA.size() < INCOMING.LENGTH)
             {
-
-                /* Read the data in the packet with a maximum of 512 bytes at a time. */
-                std::vector<uint8_t> DATA( std::min( std::min(nAvailable, 512u), (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
+                /* Read the data in the packet */
+                std::vector<uint8_t> DATA( std::min(nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
 
                 /* On successful read, fire event and add data to packet. */
                 if(Read(DATA, DATA.size()) == DATA.size())

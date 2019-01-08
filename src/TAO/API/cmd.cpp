@@ -107,7 +107,7 @@ namespace TAO::API
         }
 
         /* Write the buffer to the socket. */
-        apiNode.Write(vBuffer);
+        apiNode.Write(vBuffer, vBuffer.size());
 
         /* Read the response packet. */
         while(!apiNode.INCOMING.Complete())
@@ -216,7 +216,7 @@ namespace TAO::API
         }
 
         /* Write the buffer to the socket. */
-        rpcNode.Write(vBuffer);
+        rpcNode.Write(vBuffer, vBuffer.size());
 
         /* Read the response packet. */
         while(!rpcNode.INCOMING.Complete())

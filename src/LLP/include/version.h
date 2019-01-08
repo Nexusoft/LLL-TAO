@@ -27,7 +27,7 @@ namespace LLP
 
 
     /* Used to determine the features available in the Nexus Network */
-    const int PROTOCOL_VERSION =
+    const uint32_t PROTOCOL_VERSION =
                        1000000 * PROTOCOL_MAJOR
                      +   10000 * PROTOCOL_MINOR
                      +     100 * PROTOCOL_REVISION
@@ -36,11 +36,11 @@ namespace LLP
 
     /* Used to Lock-Out Nodes that are running a protocol version that is too old,
      * Or to allow certain new protocol changes without confusing Old Nodes. */
-    const int MIN_PROTO_VERSION = 10000;
+    const uint32_t MIN_PROTO_VERSION = 10000;
 
 
     /* Used to define the baseline of Tritium Versioning. */
-    const int MIN_TRITIUM_VERSION = 20000;
+    const uint32_t MIN_TRITIUM_VERSION = 20000;
 
 
     /* The name that will be shared with other nodes. */

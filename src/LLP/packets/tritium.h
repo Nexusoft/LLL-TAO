@@ -112,7 +112,7 @@ namespace LLP
         /* Sets the size of the packet from Byte Vector. */
         void SetLength(std::vector<uint8_t> vBytes)
         {
-            CDataStream ssLength(vBytes, SER_NETWORK, MIN_PROTO_VERSION);
+            DataStream ssLength(vBytes, SER_NETWORK, MIN_PROTO_VERSION);
             ssLength >> LENGTH;
         }
 
@@ -125,7 +125,7 @@ namespace LLP
 
 
         /* Set the Packet Data. */
-        void SetData(CDataStream ssData)
+        void SetData(DataStream ssData)
         {
             std::vector<uint8_t> vData(ssData.begin(), ssData.end());
 
@@ -159,7 +159,7 @@ namespace LLP
         /* Serializes class into a Byte Vector. Used to write Packet to Sockets. */
         std::vector<uint8_t> GetBytes()
         {
-            CDataStream ssHeader(SER_NETWORK, MIN_PROTO_VERSION);
+            DataStream ssHeader(SER_NETWORK, MIN_PROTO_VERSION);
             ssHeader << *this;
 
             std::vector<uint8_t> vBytes(ssHeader.begin(), ssHeader.end());

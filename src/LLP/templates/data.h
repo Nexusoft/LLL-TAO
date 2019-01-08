@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <condition_variable>
 #include <functional>
 
+#include <atomic>
+
 namespace LLP
 {
 
@@ -26,6 +28,7 @@ namespace LLP
     template <class ProtocolType>
     class DataThread
     {
+        std::recursive_mutex MUTEX;
         //Need Pointer Reference to Object in Server Class to push data from Data Thread Messages into Server Class
 
     public:
@@ -34,7 +37,10 @@ namespace LLP
         bool fDDOS;
         bool fMETER;
 
-        uint32_t nConnections;
+        /* Destructor flag. */
+        std::atomic<bool> fDestruct;
+
+        std::atomic<uint32_t> nConnections;
         uint32_t ID;
         uint32_t REQUESTS;
         uint32_t TIMEOUT;
@@ -58,6 +64,7 @@ namespace LLP
                                  uint32_t nTimeout, bool fMeter = false)
         : fDDOS(isDDOS)
         , fMETER(fMeter)
+        , fDestruct(false)
         , nConnections(0)
         , ID(id)
         , REQUESTS(0)
@@ -71,7 +78,14 @@ namespace LLP
 
         virtual ~DataThread<ProtocolType>()
         {
-            fMETER  = false;
+            fDestruct = true;
+
+            CONDITION.notify_all();
+            DATA_THREAD.join();
+
+            for(auto & CONNECTION : CONNECTIONS)
+                if(CONNECTION)
+                    delete CONNECTION;
         }
 
 
@@ -80,7 +94,7 @@ namespace LLP
         {
             int nSize = CONNECTIONS.size();
             for(int index = 0; index < nSize; ++index)
-                if(!CONNECTIONS[index])
+                if(CONNECTIONS[index]->IsNull())
                     return index;
 
             return nSize;
@@ -90,16 +104,27 @@ namespace LLP
         /* Adds a new connection to current Data Thread */
         void AddConnection(Socket_t SOCKET, DDOS_Filter* DDOS)
         {
+            LOCK(MUTEX);
+
             int nSlot = FindSlot();
             if(nSlot == CONNECTIONS.size())
+            {
                 CONNECTIONS.push_back(nullptr);
+                CONNECTIONS[nSlot] = new ProtocolType(SOCKET, DDOS, fDDOS);
+            }
+            else
+            {
+                CONNECTIONS[nSlot]->fd = SOCKET.fd;
+                CONNECTIONS[nSlot]->fDDOS = fDDOS;
+                CONNECTIONS[nSlot]->DDOS  = DDOS;
+            }
 
             if(fDDOS)
                 DDOS -> cSCORE += 1;
 
-            CONNECTIONS[nSlot] = new ProtocolType(SOCKET, DDOS, fDDOS);
             CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
             CONNECTIONS[nSlot]->fCONNECTED = true;
+            CONNECTIONS[nSlot]->Reset();
 
             ++nConnections;
 
@@ -110,19 +135,26 @@ namespace LLP
         /* Adds a new connection to current Data Thread */
         bool AddConnection(std::string strAddress, int nPort, DDOS_Filter* DDOS)
         {
+            LOCK(MUTEX);
+
             int nSlot = FindSlot();
             if(nSlot == CONNECTIONS.size())
+            {
+                Socket SOCKET;
                 CONNECTIONS.push_back(nullptr);
+                CONNECTIONS[nSlot] = new ProtocolType(SOCKET, DDOS, fDDOS);
+            }
+            else
+            {
+                CONNECTIONS[nSlot]->fDDOS = fDDOS;
+                CONNECTIONS[nSlot]->DDOS  = DDOS;
+            }
 
-
-            Socket_t SOCKET;
-            CONNECTIONS[nSlot] = new ProtocolType(SOCKET, DDOS, fDDOS);
+            /* Set the outgoing flag. */
             CONNECTIONS[nSlot]->fOUTGOING = true;
-
             if(!CONNECTIONS[nSlot]->Connect(strAddress, nPort))
             {
-                delete CONNECTIONS[nSlot];
-                CONNECTIONS[nSlot] = nullptr;
+                CONNECTIONS[nSlot]->SetNull();
 
                 return false;
             }
@@ -144,10 +176,7 @@ namespace LLP
         void Remove(int index)
         {
             CONNECTIONS[index]->Disconnect();
-
-            delete CONNECTIONS[index];
-
-            CONNECTIONS[index] = nullptr;
+            CONNECTIONS[index]->SetNull();
 
             --nConnections;
 
@@ -163,12 +192,26 @@ namespace LLP
             std::mutex CONDITION_MUTEX;
 
             /* The main connection handler loop. */
-            while(!config::fShutdown)
+            while(!fDestruct.load())
             {
+                /* Keep thread from consuming too many resources. */
+                runtime::sleep(1);
+
                 /* Keep data threads waiting for work. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-                CONDITION.wait_for(CONDITION_LOCK, std::chrono::milliseconds(1000),
-                    [this]{ return CONNECTIONS.size() > 0; });
+                CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || nConnections.load() > 0; });
+
+                /* Check for close. */
+                if(fDestruct.load())
+                    return;
+
+                { LOCK(MUTEX);
+
+                    /* Poll the sockets. */
+                    int nPoll = poll((pollfd*)CONNECTIONS[0], CONNECTIONS.size(), 100);
+                    if(nPoll < 0)
+                        continue;
+                }
 
                 /* Check all connections for data and packets. */
                 uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
@@ -176,11 +219,9 @@ namespace LLP
                 {
                     try
                     {
-                        //TODO: Cleanup threads and sleeps. Make more efficient to reduce total CPU cycles
-                        runtime::sleep(10);
 
                         /* Skip over Inactive Connections. */
-                        if(!CONNECTIONS[nIndex] || !CONNECTIONS[nIndex]->Connected())
+                        if(CONNECTIONS[nIndex]->IsNull() || !CONNECTIONS[nIndex]->Connected())
                             continue;
 
 
@@ -228,6 +269,10 @@ namespace LLP
 
                         /* Generic event for Connection. */
                         CONNECTIONS[nIndex]->Event(EVENT_GENERIC);
+
+
+                        /* Flush the write buffer. */
+                        CONNECTIONS[nIndex]->Flush();
 
 
                         /* Work on Reading a Packet. **/

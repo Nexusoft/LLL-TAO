@@ -160,7 +160,7 @@ namespace Legacy
         int nRequests = -1;
 
         {
-            std::lock_guard<std::recursive_mutex> walletLock(ptransactionWallet->cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(ptransactionWallet->cs_wallet);
 
             if (IsCoinBase() || IsCoinStake())
             {
@@ -211,7 +211,7 @@ namespace Legacy
             return true;
 
         /* If transaction not from bound wallet (not ours), treat as unconfirmed */
-        if (!IsFromMe()) 
+        if (!IsFromMe())
             return false;
 
         /* If no confirmations but it's from us, we can still consider it confirmed if all dependencies are confirmed */
@@ -226,12 +226,12 @@ namespace Legacy
 
         /* We only get here if this transaction has depth 0 and it is from us.
          *
-         * This is a rather convoluted way to figure this out, but 
+         * This is a rather convoluted way to figure this out, but
          * rather than attempt to simplify it am leaving the legacy code as-is
          * in case there is some nuance I'm missing.
          *
          * It is basically saying (like the comment above) that, if this transaction's
-         * prevouts are all final and have depth > 0, then this transaction is 
+         * prevouts are all final and have depth > 0, then this transaction is
          * treated as confirmed even though it has depth 0 itself.
          *
          * When every prevout for this transaction is final and has depth > 0
@@ -257,14 +257,14 @@ namespace Legacy
                     mapPrev[prevTx.GetHash()] = &prevTx;
             }
 
-            /* This is repeated each time through the loop for the current transaction 
-             * It adds all the prevouts to the work queue as long as they are in the mapPrev 
-             * for this transaction. In reality, it will return false after the initial iteration 
+            /* This is repeated each time through the loop for the current transaction
+             * It adds all the prevouts to the work queue as long as they are in the mapPrev
+             * for this transaction. In reality, it will return false after the initial iteration
              * because previous of previous will not be in the map for this transaction.
              *
-             * The only way for the outer for loop to keep going without returning false 
-             * after initial iteration is for everything loaded in vWorkQueue here to have 
-             * depth > 0 
+             * The only way for the outer for loop to keep going without returning false
+             * after initial iteration is for everything loaded in vWorkQueue here to have
+             * depth > 0
              */
             for(const auto& txin : ptx->vin)
             {
@@ -289,10 +289,7 @@ namespace Legacy
         if (nOut >= vfSpent.size())
             return false;
 
-        /* Yes, the !! is a bit crazy. vfSpent[nOut] is assigned true/false values but 
-         * declared as char. This just converts to boolean return value manually
-         */
-        return (!!vfSpent[nOut]);
+        return vfSpent[nOut];
     }
 
 
@@ -411,7 +408,7 @@ namespace Legacy
 
         /* Compute fee only if transaction is from us */
         int64_t nDebit = GetDebit();
-        if (nDebit > 0) 
+        if (nDebit > 0)
         {
             int64_t nValueOut = GetValueOut();
 
@@ -476,13 +473,13 @@ namespace Legacy
 
         if (fHaveWallet)
         {
-            std::lock_guard<std::recursive_mutex> walletLock(ptransactionWallet->cs_wallet); 
+            std::lock_guard<std::recursive_mutex> walletLock(ptransactionWallet->cs_wallet);
 
             for(const auto& r : listReceived)
             {
                 if (ptransactionWallet->GetAddressBook().HasAddress(r.first))
                 {
-                    /* When received Nexus Address (r.first) is in wallet address book, 
+                    /* When received Nexus Address (r.first) is in wallet address book,
                      * include it in nReceived amount if its label matches requested account label
                      */
                     if (ptransactionWallet->GetAddressBook().GetAddressBookName(r.first) == strAccount)
@@ -505,7 +502,8 @@ namespace Legacy
 
         const int COPY_DEPTH = 3;
 
-        if (fHaveWallet && SetMerkleBranch() < COPY_DEPTH)
+        /* Calling this for new transaction will return main chain depth of 0 */
+        if (fHaveWallet && GetDepthInMainChain() < COPY_DEPTH)
         {
             /* Create list of tx hashes for previous transactions referenced by this transaction's inputs */
             std::vector<uint512_t> vWorkQueue;
@@ -513,42 +511,48 @@ namespace Legacy
                 vWorkQueue.push_back(txin.prevout.hash);
 
             { // Begin lock scope
-                std::lock_guard<std::recursive_mutex> walletLock(ptransactionWallet->cs_wallet); 
+                std::lock_guard<std::recursive_mutex> walletLock(ptransactionWallet->cs_wallet);
 
                 /* Map keeps track of tx previously loaded, while set contains hash values already processed */
-                std::map<uint512_t, const CMerkleTx*> mapWalletPrev;
+                std::map<uint512_t, const CWalletTx*> mapWalletPrev;
                 std::set<uint512_t> setAlreadyDone;
 
                 for (uint32_t i = 0; i < vWorkQueue.size(); i++)
                 {
-                    uint512_t hash = vWorkQueue[i];
+                    uint512_t prevoutTxHash = vWorkQueue[i];
 
-                    /* Only need to process each hash once even if referenced in multiple inputs */
-                    if (setAlreadyDone.count(hash))
+                    /* Only need to process each hash once even if referenced multiple times */
+                    if (setAlreadyDone.count(prevoutTxHash))
                         continue;
 
-                    setAlreadyDone.insert(hash);
+                    setAlreadyDone.insert(prevoutTxHash);
 
-                    CMerkleTx tx; 
+                    CWalletTx tx;
+                    Legacy::Transaction parentTransaction;
 
-                    auto mi = ptransactionWallet->mapWallet.find(hash);
+                    /* Find returns iterator to equivalent of pair<uint512_t, CWalletTx> */
+                    auto mi = ptransactionWallet->mapWallet.find(prevoutTxHash);
 
                     if (mi != ptransactionWallet->mapWallet.end())
                     {
-                        /* Found previous transaction in wallet, save in mapWalletPrev */
+                        /* Found previous transaction (input to this one) in wallet */
                         tx = (*mi).second;
 
-                        for(const CMerkleTx& txWalletPrev : (*mi).second.vtxPrev)
+                        /* Copy vtxPrev (inputs) from previous transaction into mapWalletPrev.
+                         * This saves them so we don't process them twice if we end up processing
+                         * deeper because tx depth is less than copy depth (unlikely, see below)
+                         */
+                        for(const CWalletTx& txWalletPrev : tx.vtxPrev)
                             mapWalletPrev[txWalletPrev.GetHash()] = &txWalletPrev;
 
                     }
-                    else if (mapWalletPrev.count(hash))
+                    else if (mapWalletPrev.count(prevoutTxHash))
                     {
                         /* Previous transaction not in wallet, but already in mapWalletPrev */
-                        tx = *mapWalletPrev[hash];
+                        tx = *mapWalletPrev[prevoutTxHash];
 
                     }
-                    else if (!config::fClient && legacydb.ReadTx(hash, tx))
+                    else if (!config::fClient && legacydb.ReadTx(prevoutTxHash, parentTransaction))
                     {
                         /* Found transaction in database, but it isn't in wallet so don't save */
                     }
@@ -559,12 +563,18 @@ namespace Legacy
                         continue;
                     }
 
-                    int nDepth = tx.SetMerkleBranch();
+                    int nDepth = tx.GetDepthInMainChain();
                     vtxPrev.push_back(tx);
 
                     if (nDepth < COPY_DEPTH)
                     {
-                        /* We will load all prev tx up to copy depth, so add each additional tx to work queue as process it */
+                        /* vtxPrev gets loaded with inputs to this transaction, but when one of these inputs
+                         * is recent (depth < copy depth) we go one deeper and also load its inputs (inputs of inputs).
+                         * This helps assure, when transactions are relayed, that we transmit anything not yet added
+                         * to a block and included in legacydb. Obviously, it is unikely that inputs of inputs are
+                         * within the copy depth because we'd be spending balance that probably is not completely confirmed,
+                         * so this really should never be processed. Code is from legacy and left here intact just in case.
+                         */
                         for(const CTxIn& txin : tx.vin)
                             vWorkQueue.push_back(txin.prevout.hash);
                     }
@@ -588,7 +598,9 @@ namespace Legacy
 
 // TODO: Need implementation to support RelayMessage()
                 if (!legacydb.HasTx(hash))
-                    ;//RelayMessage(LLP::CInv(LLP::MSG_TX, hash), (Transaction)tx);
+                {
+                    //RelayMessage(LLP::CInv(LLP::MSG_TX, hash), (Transaction)tx);
+                }
             }
         }
 
@@ -610,7 +622,7 @@ namespace Legacy
     /* Send this transaction to the network if not in our database, yet. */
     void CWalletTx::RelayWalletTransaction()
     {
-        LLD::LegacyDB legacydb("r");
+        LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
         RelayWalletTransaction(legacydb);
     }
 

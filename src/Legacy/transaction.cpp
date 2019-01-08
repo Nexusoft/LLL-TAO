@@ -17,9 +17,11 @@ ________________________________________________________________________________
 
 #include <Legacy/types/transaction.h>
 #include <Legacy/include/money.h>
+#include <Legacy/types/script.h>
+#include <Legacy/include/evaluate.h>
 
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/state.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <Util/include/runtime.h>
 
@@ -35,7 +37,7 @@ namespace Legacy
 	void Transaction::SetNull()
 	{
 		nVersion = 1;
-		nTime = runtime::UnifiedTimestamp();
+		nTime = runtime::unifiedtimestamp();
 		vin.clear();
 		vout.clear();
 		nLockTime = 0;
@@ -52,10 +54,10 @@ namespace Legacy
 	/* Returns the hash of this object. */
 	uint512_t Transaction::GetHash() const
 	{
-        // Most of the time is spent allocating and deallocating CDataStream's
+        // Most of the time is spent allocating and deallocating DataStream's
 	    // buffer.  If this ever needs to be optimized further, make a CStaticStream
 	    // class with its buffer on the stack.
-	    CDataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+	    DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
 	    ss.reserve(10000);
 	    ss << *this;
 	    return LLC::SK512(ss.begin(), ss.end());
@@ -70,10 +72,10 @@ namespace Legacy
 			return true;
 
 		if (nBlockHeight == 0)
-			nBlockHeight = TAO::Ledger::nBestHeight;
+			nBlockHeight = TAO::Ledger::ChainState::nBestHeight;
 
 		if (nBlockTime == 0)
-			nBlockTime = runtime::UnifiedTimestamp();
+			nBlockTime = runtime::unifiedtimestamp();
 
 		if ((int64_t)nLockTime < ((int64_t)nLockTime < LOCKTIME_THRESHOLD ? (int64_t)nBlockHeight : nBlockTime))
 			return true;
@@ -219,8 +221,8 @@ namespace Legacy
         }
 
         for(auto txout : vout)
-            //if (!IsStandard(txout.scriptPubKey)) TODO: link in script
-            //    return false;
+            if (!Legacy::IsStandard(txout.scriptPubKey))
+                return false;
 
         return true;
     }
@@ -229,7 +231,58 @@ namespace Legacy
 	/* Check for standard transaction types */
 	bool Transaction::AreInputsStandard(const std::map<uint512_t, Transaction>& mapInputs) const
     {
-        //TODO: finish validation scripts
+        if (IsCoinBase())
+            return true; // Coinbases don't use vin normally
+
+        for (uint32_t i = (int) IsCoinStake(); i < vin.size(); i++)
+        {
+            const CTxOut& prev = GetOutputFor(vin[i], mapInputs);
+
+            std::vector< std::vector<uint8_t> > vSolutions;
+            TransactionType whichType;
+            // get the scriptPubKey corresponding to this input:
+            const CScript& prevScript = prev.scriptPubKey;
+            if (!Solver(prevScript, whichType, vSolutions))
+                return false;
+
+            int nArgsExpected = ScriptSigArgsExpected(whichType, vSolutions);
+            if (nArgsExpected < 0)
+                return false;
+
+            // Transactions with extra stuff in their scriptSigs are
+            // non-standard. Note that this EvalScript() call will
+            // be quick, because if there are any operations
+            // beside "push data" in the scriptSig the
+            // IsStandard() call returns false
+            std::vector< std::vector<uint8_t> > stack;
+            if (!EvalScript(stack, vin[i].scriptSig, *this, i, 0))
+                return false;
+
+            if (whichType == TX_SCRIPTHASH)
+            {
+                if (stack.empty())
+                    return false;
+
+                CScript subscript(stack.back().begin(), stack.back().end());
+                std::vector< std::vector<uint8_t> > vSolutions2;
+                TransactionType whichType2;
+                if (!Solver(subscript, whichType2, vSolutions2))
+                    return false;
+                if (whichType2 == TX_SCRIPTHASH)
+                    return false;
+
+                int tmpExpected;
+                tmpExpected = ScriptSigArgsExpected(whichType2, vSolutions2);
+                if (tmpExpected < 0)
+                    return false;
+                nArgsExpected += tmpExpected;
+            }
+
+            if (stack.size() != (uint32_t)nArgsExpected)
+                return false;
+        }
+
+        return true;
     }
 
 
@@ -462,6 +515,17 @@ namespace Legacy
     /* Get the corresponding output from input. */
     const CTxOut& Transaction::GetOutputFor(const CTxIn& input, const std::map<uint512_t, Transaction>& inputs) const
     {
+        auto mi = inputs.find(input.prevout.hash);
+
+        if (mi == inputs.end())
+            throw std::runtime_error("Legacy::Transaction::GetOutputFor() : prevout.hash not found");
+
+        const Transaction& txPrev = (*mi).second;
+
+        if (input.prevout.n >= txPrev.vout.size())
+            throw std::runtime_error("Legacy::Transaction::GetOutputFor() : prevout.n out of range");
+
+        return txPrev.vout[input.prevout.n];
 
     }
 }

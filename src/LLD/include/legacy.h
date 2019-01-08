@@ -29,7 +29,7 @@ namespace LLD
 {
 
     /** @class LegacyDB
-     * 
+     *
      *  Database class for storing legacy transactions.
      *
      **/
@@ -37,8 +37,8 @@ namespace LLD
     {
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LegacyDB(const char* pszMode="r+")
-        : SectorDatabase("legacy", pszMode) {}
+        LegacyDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
+        : SectorDatabase("legacy", nFlags) {}
 
         bool WriteTx(uint512_t hashTransaction, Legacy::Transaction tx)
         {

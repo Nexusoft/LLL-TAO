@@ -42,8 +42,10 @@ namespace TAO::API
             throw APIException(-24, "Missing Password");
 
         /* Create the sigchain. */
-        TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain(params["username"], params["password"]);
-        uint256_t hashGenesis = LLC::SK256(user->Generate(0, "genesis").GetBytes());
+        TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
+
+        /* Get the genesis ID. */
+        uint256_t hashGenesis = user->Genesis();
 
         /* Check for duplicates in ledger db. */
         TAO::Ledger::Transaction tx;
@@ -58,7 +60,7 @@ namespace TAO::API
         /* Check the sessions. */
         for(auto session = mapSessions.begin(); session != mapSessions.end(); ++ session)
         {
-            if(hashGenesis == LLC::SK256(session->second->Generate(0, "genesis").GetBytes()))
+            if(hashGenesis == session->second->Genesis())
             {
                 delete user;
                 user = nullptr;
