@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/cryptokeystore.h>
 #include <Legacy/wallet/keypool.h>
 #include <Legacy/wallet/masterkey.h>
+#include <Legacy/wallet/walletdb.h>
 #include <Legacy/wallet/wallettx.h>
 
 #include <Util/include/allocators.h> /* for SecureString */
@@ -52,7 +53,6 @@ namespace Legacy
 
     class COutput;
     class CReserveKey;
-    class CWalletDB;
     class CWalletTx;
 
 
@@ -79,64 +79,66 @@ namespace Legacy
      *
      *  A CWallet is an extension of a keystore, which also maintains a set of transactions and balances,
      *  and provides the ability to create new transactions.
+     *
+     *  Implemented as a Singleton where GetInstance is used wherever the wallet instance is needed.
+     *
+     *  To use the wallet, first call InitializeWallet followed by LoadWallet. The following
+     *  example will use the default wallet database file name:
+     * 
+     *  if (!CWallet::InitializeWallet())
+     *      //initialization not successful
+     *
+     *  if (CWallet::GetInstance().LoadWallet() != Legacy::DB_LOAD_OK)
+     *      //load not successful
+     *
+     *  CWallet& wallet = CWallet::GetInstance();
+     *  //use wallet
+     *
      **/
     class CWallet : public CCryptoKeyStore
     {
         friend class CWalletDB;
 
+    public:
+        /** InitializeWallet
+         *
+         *  Initializes the wallet instance backed by a wallet database file with the provided 
+         *  file name. Only call this method once (returns false on subsequent calls).
+         *  
+         *  This method only constructs the wallet. It does not call LoadWallet to populate 
+         *  data from the backing file. 
+         *
+         *  @param[in] strWalletFileIn The wallet database file name that backs the wallet.
+         *
+         *  @return true if wallet intance initialized, false otherwise
+         *
+         *  @see CWallet::GetInstance
+         *  @see LoadWallet
+         *
+         **/
+        static bool InitializeWallet(std::string strWalletFileIn = Legacy::CWalletDB::DEFAULT_WALLET_DB);
+
+
+        /** GetInstance
+         *
+         *  Retrieves the wallet. 
+         *
+         *  If the wallet is not yet initialized, this will call InitializeWallet using the
+         *  default setting. 
+         *
+         *  @return reference to the CWallet instance
+         *
+         *  @see InitializeWallet
+         *  @see LoadWallet
+         *
+         **/
+        static CWallet& GetInstance();
+
+
     private:
+        /** Flag indicating whether or not the wallet instance has been initialized **/
+        static bool fWalletInitialized;
 
-        /** Constructor
-         *
-         *  Initializes a wallet instance for FEATURE_BASE that is not file backed.
-         *
-         **/
-        CWallet()
-        : nWalletVersion(FEATURE_BASE)
-        , nWalletMaxVersion(FEATURE_BASE)
-        , fFileBacked(false)
-        , fLoaded(false)
-        , strWalletFile("")
-        , mapMasterKeys()
-        , nMasterKeyMaxID(0)
-        , addressBook(CAddressBook(*this))
-        , keyPool(CKeyPool(*this))
-        , vchDefaultKey()
-        , mapWallet()
-        , mapRequestCount()
-        {
-
-        }
-
-
-        /** Constructor
-         *
-         *  Initializes a wallet instance for FEATURE_BASE that is file backed.
-         *
-         *  This constructor only initializes the wallet and does not load it from the
-         *  data store.
-         *
-         *  @param[in] strWalletFileIn The wallet database file name that backs this wallet.
-         *
-         *  @see LoadWallet()
-         *
-         **/
-        CWallet(std::string strWalletFileIn)
-        : nWalletVersion(FEATURE_BASE)
-        , nWalletMaxVersion(FEATURE_BASE)
-        , fFileBacked(true)
-        , fLoaded(false)
-        , strWalletFile(strWalletFileIn)
-        , mapMasterKeys()
-        , nMasterKeyMaxID(0)
-        , addressBook(CAddressBook(*this))
-        , keyPool(CKeyPool(*this))
-        , vchDefaultKey()
-        , mapWallet()
-        , mapRequestCount()
-        {
-
-        }
 
         /** The current wallet version: clients below this version are not able to load the wallet **/
         uint32_t nWalletVersion;
@@ -184,18 +186,62 @@ namespace Legacy
         std::vector<uint8_t> vchDefaultKey;
 
 
+        /** Constructor
+         *
+         *  Initializes a wallet instance for FEATURE_BASE that is not file backed.
+         *
+         **/
+        CWallet()
+        : nWalletVersion(FEATURE_BASE)
+        , nWalletMaxVersion(FEATURE_BASE)
+        , fFileBacked(false)
+        , fLoaded(false)
+        , strWalletFile("")
+        , mapMasterKeys()
+        , nMasterKeyMaxID(0)
+        , addressBook(CAddressBook(*this))
+        , keyPool(CKeyPool(*this))
+        , vchDefaultKey()
+        , mapWallet()
+        , mapRequestCount()
+        {
+
+        }
+
+
+        /** Constructor
+         *
+         *  Initializes a wallet instance for FEATURE_BASE that is file backed.
+         *
+         *  This constructor only initializes the wallet and does not load it from the
+         *  data store.
+         *
+         *  @param[in] strWalletFileIn The wallet database file name that backs this wallet.
+         *
+         *  @see LoadWallet()
+         *
+         **/
+/*TODO - test singleton design and on test success remove this constructor (not used with that design)
+        CWallet(std::string strWalletFileIn) 
+        : nWalletVersion(FEATURE_BASE)
+        , nWalletMaxVersion(FEATURE_BASE)
+        , fFileBacked(true)
+        , fLoaded(false)
+        , strWalletFile(strWalletFileIn)
+        , mapMasterKeys()
+        , nMasterKeyMaxID(0)
+        , addressBook(CAddressBook(*this))
+        , keyPool(CKeyPool(*this))
+        , vchDefaultKey()
+        , mapWallet()
+        , mapRequestCount()
+        {
+
+        }
+*/
+
 
     public:
-
-        /** Instance
-        *
-        *  Singleton accessor
-        *  
-        *  @return A const reference to the wallet instance
-        *
-        **/
-        static CWallet& Instance();
-
         /** Mutex for thread concurrency across wallet operations **/
         mutable std::recursive_mutex cs_wallet;
 
@@ -205,8 +251,6 @@ namespace Legacy
 
 
         std::map<uint1024_t, uint32_t> mapRequestCount;
-
-
 
 
     /*----------------------------------------------------------------------------------------*/

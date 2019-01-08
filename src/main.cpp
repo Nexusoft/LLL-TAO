@@ -112,7 +112,10 @@ int main(int argc, char** argv)
 
     /** Load the Wallet Database. **/
     bool fFirstRun;
-    int nLoadWalletRet = Legacy::CWallet::Instance().LoadWallet(fFirstRun);
+    if (!Legacy::CWallet::InitializeWallet(config::GetArg("-wallet", Legacy::CWalletDB::DEFAULT_WALLET_DB)))
+        return debug::error("failed initializing wallet");
+
+    uint32_t nLoadWalletRet = Legacy::CWallet::GetInstance().LoadWallet(fFirstRun);
     if (nLoadWalletRet != Legacy::DB_LOAD_OK)
     {
         if (nLoadWalletRet == Legacy::DB_CORRUPT)

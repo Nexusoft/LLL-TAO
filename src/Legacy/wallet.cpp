@@ -54,13 +54,40 @@ namespace Legacy
     /* Nexus: Setting indicating wallet unlocked for block minting only */
     bool fWalletUnlockMintOnly = false;
 
-    /* Singleton accessor */
-    CWallet& CWallet::Instance()
+
+    /* Initialize static variables */
+    bool CWallet::fWalletInitialized = false;
+
+
+    /* Implement static methods */
+
+    /* Initializes the wallet instance. */
+    bool CWallet::InitializeWallet(std::string strWalletFileIn)
     {
-        /** Singleton wallet instance **/
-        static CWallet walletMain(config::GetArg("-wallet", CWalletDB::DEFAULT_WALLET_DB));
-        
-        return walletMain;
+        if (CWallet::fWalletInitialized)
+            return false;
+        else
+        {
+            CWallet& wallet = CWallet::GetInstance();
+            wallet.strWalletFile = strWalletFileIn;
+            wallet.fFileBacked = true;
+        }
+
+        return true;
+    }
+
+
+    CWallet& CWallet::GetInstance()
+    {
+        /* This will create a default initialized, memory only wallet file on first call (lazy instantiation) */
+        static CWallet wallet;
+
+        if (!CWallet::fWalletInitialized)
+        {
+            CWallet::fWalletInitialized = true;
+        }
+
+        return wallet;
     }
 
 
