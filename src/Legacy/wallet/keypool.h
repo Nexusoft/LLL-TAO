@@ -53,10 +53,10 @@ namespace Legacy
         
     public:
         /** Defines the default number of keys contained by a key pool **/
-        static const int64_t DEFAULT_KEY_POOL_SIZE = 100;
+        static const uint64_t DEFAULT_KEY_POOL_SIZE = 100;
 
         /** Defines the minimum key pool size **/
-        static const int64_t MINIMUM_KEY_POOL_SIZE = 0;
+        static const uint64_t MINIMUM_KEY_POOL_SIZE = 0;
 
     private:
         /** 
@@ -64,7 +64,7 @@ namespace Legacy
          *  The actual keys pool entries are stored in the wallet database and
          *  retrieved using these index values.
          **/ 
-        std::set<int64_t> setKeyPool;
+        std::set<uint64_t> setKeyPool;
 
 
         /** The wallet containing this key pool **/
@@ -79,7 +79,11 @@ namespace Legacy
          *  @param[in] walletIn The wallet containing this key pool
          *
          **/
-        CKeyPool(CWallet& walletIn) : poolWallet(walletIn) {}
+        CKeyPool(CWallet& walletIn)
+        : poolWallet(walletIn)
+        , setKeyPool()
+        {
+        }
 
 
         /** NewKeyPool
@@ -130,10 +134,10 @@ namespace Legacy
          *
          *  @param[in] keypoolEntry The key pool entry to add
          *
-         *  @return pool index of the added entry, or -1 if not successful
+         *  @return pool index of the added entry (1 or more), or 0 if not added
          *
          **/
-        int64_t AddKey(const CKeyPoolEntry& keypoolEntry);
+        uint64_t AddKey(const CKeyPoolEntry& keypoolEntry);
 
 
         /** GetKeyPoolSize
@@ -143,7 +147,7 @@ namespace Legacy
          *  @return key pool size
          *
          **/
-        inline int GetKeyPoolSize() const
+        inline uint32_t GetKeyPoolSize() const
         {
             return setKeyPool.size();
         }
@@ -181,7 +185,7 @@ namespace Legacy
          *  @see KeepKey() ReturnKey()
          *
          **/
-        void ReserveKeyFromPool(int64_t& nPoolIndex, CKeyPoolEntry& keypoolEntry);
+        void ReserveKeyFromPool(uint64_t& nPoolIndex, CKeyPoolEntry& keypoolEntry);
 
 
         /** KeepKey
@@ -191,7 +195,7 @@ namespace Legacy
          *  @param[in] nPoolIndex The pool index of the reserved key
          *
          **/
-        void KeepKey(const int64_t nPoolIndex);
+        void KeepKey(const uint64_t nPoolIndex);
 
 
         /** ReturnKey
@@ -202,7 +206,7 @@ namespace Legacy
          *  @param[in] nPoolIndex The pool index of the reserved key
          *
          **/
-        void ReturnKey(const int64_t nPoolIndex);
+        void ReturnKey(const uint64_t nPoolIndex);
 
 
         /** GetOldestKeyPoolTime
@@ -212,7 +216,7 @@ namespace Legacy
          *  @return timestamp of oldest key pool entry in the pool
          *
          **/
-        int64_t GetOldestKeyPoolTime();
+        uint64_t GetOldestKeyPoolTime();
 
     };
 

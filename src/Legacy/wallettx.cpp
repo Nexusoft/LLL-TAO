@@ -150,14 +150,14 @@ namespace Legacy
     }
 
 
-    int CWalletTx::GetRequestCount() const
+    int32_t CWalletTx::GetRequestCount() const
     {
         /* Return 0 if no wallet bound */
         if (!fHaveWallet)
             return 0;
 
         /* Returns -1 if it wasn't being tracked */
-        int nRequests = -1;
+        int32_t nRequests = -1;
 
         {
             std::lock_guard<std::recursive_mutex> walletLock(ptransactionWallet->cs_wallet);
@@ -500,7 +500,7 @@ namespace Legacy
     {
         vtxPrev.clear();
 
-        const int COPY_DEPTH = 3;
+        const uint32_t COPY_DEPTH = 3;
 
         /* Calling this for new transaction will return main chain depth of 0 */
         if (fHaveWallet && GetDepthInMainChain() < COPY_DEPTH)
@@ -563,7 +563,7 @@ namespace Legacy
                         continue;
                     }
 
-                    int nDepth = tx.GetDepthInMainChain();
+                    uint32_t nDepth = tx.GetDepthInMainChain();
                     vtxPrev.push_back(tx);
 
                     if (nDepth < COPY_DEPTH)

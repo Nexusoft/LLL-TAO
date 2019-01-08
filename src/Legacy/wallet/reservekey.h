@@ -38,7 +38,7 @@ namespace Legacy
         CWallet& wallet;
 
         /** The key pool index of a reserved key in the key pool, or -1 if no key reserved **/
-        int64_t nPoolIndex;
+        uint64_t nPoolIndex;
 
         /** The public key value of the reserved key. Empty if no key reserved. **/
         std::vector<uint8_t> vchPubKey;
