@@ -60,7 +60,7 @@ ________________________________________________________________________________
 #define ANSI_COLOR_FUNCTION ANSI_COLOR_BRIGHT_BLUE
 
 #define VALUE(data) data
-#define FUNCTION ANSI_COLOR_FUNCTION "%s" ANSI_COLOR_RESET " : "
+//#define FUNCTION ANSI_COLOR_FUNCTION "%s" ANSI_COLOR_RESET " : "
 
 #define NODE ANSI_COLOR_FUNCTION "Node" ANSI_COLOR_RESET " : "
 
@@ -69,7 +69,7 @@ ________________________________________________________________________________
 #define __PRETTY_FUNCTION__ __FUNCTION__
 #endif
 
-#define TESTING ANSI_COLOR_FUNCTION, __PRETTY_FUNCTION__, ANSI_COLOR_RESET, " : "
+#define FUNCTION ANSI_COLOR_FUNCTION, __PRETTY_FUNCTION__, ANSI_COLOR_RESET, " : "
 
 namespace debug
 {

@@ -346,6 +346,6 @@ namespace LLP
 
     void NetAddr::print() const
     {
-        debug::log(0, "NetAddr(%s)", ToString().c_str());
+        debug::log(0, "NetAddr(", ToString(), ")");
     }
 }

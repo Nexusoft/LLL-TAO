@@ -239,7 +239,7 @@ namespace LLP
                 this->WritePacket(RESPONSE);
 
                 /* Logging on verbose 2 */
-                debug::log(2, FUNCTION "block not found %s\n", hashMerkleRoot.ToString().substr(0, 20).c_str());
+                debug::log(2, FUNCTION "block not found ", hashMerkleRoot.ToString().substr(0, 20));
 
                 return true;
             }

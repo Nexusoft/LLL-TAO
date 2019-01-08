@@ -60,7 +60,7 @@ namespace LLP
         /** Handle any DDOS Packet Filters. **/
         if(EVENT == EVENT_HEADER)
         {
-            debug::log(3, "***** Node recieved Message (%s, %u)", INCOMING.GetMessage().c_str(), INCOMING.LENGTH);
+            debug::log(3, "***** Node recieved Message (", INCOMING.GetMessage(), ", ", INCOMING.LENGTH, ")");
 
             if(fDDOS)
             {
@@ -91,7 +91,8 @@ namespace LLP
                 if(INCOMING.Complete() && !INCOMING.IsValid())
                 {
 
-                    debug::log(3, "***** Dropped Packet (Complete: %s - Valid: %s)", INCOMING.Complete() ? "Y" : "N" , INCOMING.IsValid() ? "Y" : "N" );
+                    debug::log(3, "***** Dropped Packet (Complete: ", INCOMING.Complete() ? "Y" : "N",
+                        " - Valid: )",  INCOMING.IsValid() ? "Y" : "N");
 
                     DDOS->rSCORE += 15;
                 }
@@ -100,7 +101,7 @@ namespace LLP
 
             if(INCOMING.Complete())
             {
-                debug::log(4, "***** Node Received Packet (%u, %u)", INCOMING.LENGTH, INCOMING.GetBytes().size());
+                debug::log(4, "***** Node Received Packet (", INCOMING.LENGTH, ", ", INCOMING.GetBytes().size(), ")");
 
                 if(config::GetArg("-verbose", 0) >= 5)
                     PrintHex(INCOMING.GetBytes());
@@ -140,7 +141,8 @@ namespace LLP
             addrThisNode = addr;
             nLastPing    = runtime::unifiedtimestamp();
 
-            debug::log(1, "***** %s Node %s Connected at timestamp %" PRIu64 "", fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), runtime::unifiedtimestamp());
+            debug::log(1, "***** ", fOUTGOING ? "Outgoing" : "Incoming", " Node ", addrThisNode.ToString(),
+                " Connected at timestamp ",   runtime::unifiedtimestamp());
 
             if(fOUTGOING)
                 PushVersion();
@@ -175,7 +177,9 @@ namespace LLP
             if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
                 LEGACY_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
-            debug::log(1, "xxxxx %s Node %s Disconnected (%s) at timestamp %" PRIu64, fOUTGOING ? "Outgoing" : "Incoming", addrThisNode.ToString().c_str(), strReason.c_str(), runtime::unifiedtimestamp());
+            debug::log(1, "xxxxx ", fOUTGOING ? "Outgoing" : "Incoming",
+                " Node ", addrThisNode.ToString(),
+                " Disconnected (", strReason, ") at timestamp ", runtime::unifiedtimestamp());
 
             return;
         }
@@ -211,7 +215,8 @@ namespace LLP
             PushMessage("offset", nRequestID, runtime::unifiedtimestamp(true), nOffset);
 
             /* Verbose logging. */
-            debug::log(3, "***** Node: Sent Offset %i | %s | Unified %" PRIu64 "", nOffset, addrThisNode.ToString().c_str(), runtime::unifiedtimestamp());
+            debug::log(3, "***** Node: Sent Offset ", nOffset,
+                " | ", addrThisNode.ToString(), " | Unified ", runtime::unifiedtimestamp());
         }
 
         /* Recieve a Time Offset from this Node. */
@@ -236,7 +241,8 @@ namespace LLP
             {
                 DDOS->rSCORE += 5;
 
-                debug::log(3, "***** Node (%s): Invalid Request : Message Not Requested [%x][%u ms]", addrThisNode.ToString().c_str(), nRequestID, nNodeLatency);
+                debug::log(3, "***** Node (", addrThisNode.ToString(),
+                    "): Invalid Request : Message Not Requested [", nRequestID, "][", nNodeLatency, " ms]");
 
                 return true;
             }
@@ -247,7 +253,8 @@ namespace LLP
             {
                 mapSentRequests.erase(nRequestID);
 
-                debug::log(3, "***** Node (%s): Invalid Request : Message Stale [%x][%u ms]", addrThisNode.ToString().c_str(), nRequestID, nNodeLatency);
+                debug::log(3, "***** Node (", addrThisNode.ToString(),
+                    "): Invalid Request : Message Stale [", nRequestID, "][", nNodeLatency, " ms]");
 
                 DDOS->rSCORE += 15;
 
@@ -269,7 +276,8 @@ namespace LLP
             mapSentRequests.erase(nRequestID);
 
             /* Verbose Logging. */
-            debug::log(3, "***** Node (%s): Received Unified Offset %i [%x][%u ms]", addrThisNode.ToString().c_str(), nOffset, nRequestID, nNodeLatency);
+            debug::log(3, "***** Node (", addrThisNode.ToString(),
+                "): Received Unified Offset ", nOffset, " [", nRequestID, "][", nNodeLatency, " ms]");
         }
 
 
@@ -333,7 +341,7 @@ namespace LLP
                 LEGACY_SERVER->pAddressManager->SetLatency(nLatency, GetAddress());
 
             /* Debug Level 3: output Node Latencies. */
-            debug::log(3, "***** Node %s Latency (Nonce %" PRIu64 " - %u ms)", addrThisNode.ToString().c_str(), nonce, nLatency);
+            debug::log(3, "***** Node ", addrThisNode.ToString(), " Latency (Nonce ", nonce, " - ", nLatency, " ms)");
         }
 
 
@@ -365,7 +373,7 @@ namespace LLP
 
             /* Deserialize the rest of the data. */
             ssMessage >> nServices >> nTime >> addrMe >> addrFrom >> nSessionID >> strNodeVersion >> nStartingHeight;
-            debug::log(1, "***** Node version message: version %d, blocks=%d", nCurrentVersion, nStartingHeight);
+            debug::log(1, "***** Node version message: version ", nCurrentVersion, ", blocks=",  nStartingHeight);
 
 
             /* Send the Version Response to ensure communication channel is open. */
@@ -422,7 +430,7 @@ namespace LLP
             std::vector<CInv> vInv;
             ssMessage >> vInv;
 
-            debug::log(1, "***** Inventory Message of %u elements", vInv.size());
+            debug::log(1, "***** Inventory Message of ", vInv.size(), " elements");
 
             /* Make sure the inventory size is not too large. */
             if (vInv.size() > 10000)

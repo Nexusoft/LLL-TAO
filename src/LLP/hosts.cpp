@@ -27,9 +27,9 @@ namespace LLP
     std::vector<Address> DNS_Lookup(std::vector<std::string> DNS_Seed)
     {
         std::vector<Address> vNodes;
-        for (int nSeed = 0; nSeed < DNS_Seed.size(); nSeed ++ )
+        for (int nSeed = 0; nSeed < DNS_Seed.size(); ++nSeed)
         {
-            debug::log(0, "%u Host: %s", nSeed, DNS_Seed[nSeed].c_str());
+            debug::log(0, nSeed, " Host: ",  DNS_Seed[nSeed]);
             std::vector<LLP::NetAddr> vaddr;
             if (LookupHost(DNS_Seed[nSeed].c_str(), vaddr))
             {
@@ -38,7 +38,7 @@ namespace LLP
                     Address addr = Address(Service(ip, GetDefaultPort()));
                     vNodes.push_back(addr);
 
-                    debug::log(0, "DNS Seed: %s", addr.ToStringIP().c_str());
+                    debug::log(0, "DNS Seed: ", addr.ToStringIP());
                 }
             }
         }

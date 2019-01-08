@@ -45,7 +45,7 @@ namespace LLP
                     nLastPing    = runtime::timestamp();
 
                     /* Debut output. */
-                    debug::log(0, NODE "%s Connected at timestamp %" PRIu64 "", GetAddress().ToString().c_str(), runtime::unifiedtimestamp());
+                    debug::log(0, NODE, GetAddress().ToString(), " Connected at timestamp ", runtime::unifiedtimestamp());
 
                     /* Send version if making the connection. */
                     if(fOUTGOING)
@@ -259,12 +259,12 @@ namespace LLP
                     if(!LLD::legDB->HasTx(tx.GetHash()))
                     {
                         /* Debug output for tx. */
-                        debug::log(3, NODE "recieved tx %s", tx.GetHash().ToString().substr(0, 20).c_str());
+                        debug::log(3, NODE "recieved tx ", tx.GetHash().ToString().substr(0, 20));
 
                         /* Check if tx is valid. */
                         if(!tx.IsValid())
                         {
-                            debug::error(NODE "tx %s REJECTED", tx.GetHash().ToString().substr(0, 20).c_str());
+                            debug::error(NODE "tx ", tx.GetHash().ToString().substr(0, 20), " REJECTED");
 
                             break;
                         }
@@ -273,7 +273,7 @@ namespace LLP
                     }
 
                     /* Debug output for offsets. */
-                    debug::log(3, NODE "already have tx %s", tx.GetHash().ToString().substr(0, 20).c_str());
+                    debug::log(3, NODE "already have tx ", tx.GetHash().ToString().substr(0, 20));
 
                     break;
                 }
@@ -349,7 +349,7 @@ namespace LLP
                         TRITIUM_SERVER->pAddressManager->SetLatency(lat, GetAddress());
 
                     /* Debug output for latency. */
-                    debug::log(3, NODE "latency %u ms", lat);
+                    debug::log(3, NODE "latency ", lat, " ms");
 
                     /* Clear the latency tracker record. */
                     mapLatencyTracker.erase(nNonce);

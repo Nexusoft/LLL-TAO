@@ -172,7 +172,7 @@ namespace LLP
 
     void Service::print() const
     {
-        debug::log(0, "Service(%s)", ToString().c_str());
+        debug::log(0, "Service(", ToString(), ")");
     }
 
 

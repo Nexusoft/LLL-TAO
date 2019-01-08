@@ -295,7 +295,7 @@ namespace LLP
                     uint16_t port = addr.GetPort();
 
                     /* Attempt the connection. */
-                    debug::log(0, NODE "%s Attempting Connection %s:%u", ProtocolType::Name().c_str(), ip.c_str(), port);
+                    debug::log(0, NODE, ProtocolType::Name(), " Attempting Connection ", ip, ":", port);
                     pAddressManager->PrintStats();
 
                     /* Attempt the connection. */
@@ -414,7 +414,7 @@ namespace LLP
                         /* DDOS Operations: Only executed when DDOS is enabled. */
                         if((fDDOS && DDOS_MAP[(Service)addr]->Banned()))
                         {
-                            debug::log(0, NODE "Connection Request %s refused... Banned.", addr.ToString().c_str());
+                            debug::log(0, NODE "Connection Request ",  addr.ToString(), " refused... Banned.");
                             close(hSocket);
 
                             continue;
@@ -433,7 +433,7 @@ namespace LLP
                             continue;
 
                         dt->AddConnection(sockNew, DDOS_MAP[(Service)addr]);
-                        debug::log(3, NODE "Accepted Connection %s on port %u", addr.ToString().c_str(), PORT);
+                        debug::log(3, NODE "Accepted Connection ", addr.ToString(), " on port ",  PORT);
                     }
                 }
             }
@@ -495,7 +495,7 @@ namespace LLP
                     return false;
                 }
 
-                debug::log(0, NODE "(v4) Bound to port %d", ntohs(sockaddr.sin_port));
+                debug::log(0, NODE "(v4) Bound to port ", ntohs(sockaddr.sin_port));
             }
             else
             {
@@ -515,7 +515,7 @@ namespace LLP
                     return false;
                 }
 
-                debug::log(0, NODE "(v6) Bound to port %d", ntohs(sockaddr.sin6_port));
+                debug::log(0, NODE "(v6) Bound to port ", ntohs(sockaddr.sin6_port));
             }
 
             /* Listen for incoming connections */
@@ -560,7 +560,7 @@ namespace LLP
 
 
                 uint32_t RPS = TotalRequests() / TIMER.Elapsed();
-                debug::log(0, FUNCTION "LLP Running at %u requests/s with %u connections.", RPS, nGlobalConnections);
+                debug::log(0, FUNCTION "LLP Running at ", RPS, " requests/s with ", nGlobalConnections, " connections.");
 
                 TIMER.Reset();
                 ClearRequests();

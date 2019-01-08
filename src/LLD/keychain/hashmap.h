@@ -284,7 +284,7 @@ namespace LLD
                 }
 
                 /* Debug output showing loading of disk index. */
-                debug::log(0, FUNCTION "Loaded Disk Index of ", vIndex.size(), " bytes and ", nTotalKeys, " keys");
+                debug::log(0, FUNCTION, "Loaded Disk Index of ", vIndex.size(), " bytes and ", nTotalKeys, " keys");
             }
 
             /* Build the first hashmap index file if it doesn't exist. */

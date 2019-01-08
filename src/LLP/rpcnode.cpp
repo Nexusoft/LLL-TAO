@@ -49,7 +49,7 @@ namespace LLP
         /* Check HTTP authorization */
         if (!Authorized(INCOMING.mapHeaders))
         {
-            debug::log(0, "RPC incorrect password attempt from %s\n", this->addr.ToString().c_str()); //PS TODO this address of the peer is incorrect
+            debug::log(0, "RPC incorrect password attempt from ", this->addr.ToString()); //PS TODO this address of the peer is incorrect
 
             /* Deter brute-forcing short passwords.
              * If this results in a DOS the user really

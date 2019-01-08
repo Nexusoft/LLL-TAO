@@ -128,8 +128,7 @@ namespace LLP
             break;
         }
 
-        debug::log(5, FUNCTION "%s:%u ",
-            addr.ToString().c_str(), addr.GetPort());
+        debug::log(5, FUNCTION, addr.ToString(), ":", addr.GetPort());
 
         /* update the LLD Database with a new entry */
         pDatabase->WriteAddressInfo(hash, *pInfo);
@@ -215,21 +214,21 @@ namespace LLP
             mapAddrInfo[nHash] = addr_info;
         }
 
-        //debug::log(3, "keys.size() = %u", s);
+        //debug::log(3, "keys.size() = ", s);
 
         PrintStats();
     }
 
     void AddressManager::PrintStats() const
     {
-        debug::log(3, "C=%u D=%u F=%u | TC=%u TD=%u TF=%u | size=%lu",
-         get_current_count(ConnectState::CONNECTED),
-         get_current_count(ConnectState::DROPPED),
-         get_current_count(ConnectState::FAILED),
-         get_total_count(ConnectState::CONNECTED),
-         get_total_count(ConnectState::DROPPED),
-         get_total_count(ConnectState::FAILED),
-         mapAddrInfo.size());
+        debug::log(3,
+            " C=", get_current_count(ConnectState::CONNECTED),
+            " D=", get_current_count(ConnectState::DROPPED),
+            " F=", get_current_count(ConnectState::FAILED), " |",
+            " TC=", get_total_count(ConnectState::CONNECTED),
+            " TD=", get_total_count(ConnectState::DROPPED),
+            " TF=", get_total_count(ConnectState::FAILED), " |",
+            " size=", mapAddrInfo.size());
     }
 
 

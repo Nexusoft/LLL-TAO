@@ -120,7 +120,7 @@ namespace LLP
         {
             mapBlocks.clear();
 
-            debug::log(2, FUNCTION "new block, clearing maps.");
+            debug::log(2, FUNCTION, "new block, clearing maps.");
         }
 
 
