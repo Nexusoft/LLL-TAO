@@ -201,15 +201,13 @@ namespace TAO::Ledger
             GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
             debug::log(2,
-            "RETARGET weighted time=%" PRId64 " actual time =%" PRId64 "[%f %%]\n"
-            "\tchain time: [%" PRId64 " / %" PRId64 "]\n"
-            "\tdifficulty: [%f to %f]\n"
-            "\ttrust height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n",
-
-            nBlockTime, std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1), ((100.0 * nLowerBound) / nUpperBound),
-            nBlockTarget, nBlockTime,
-            GetDifficulty(first.nBits, 0), GetDifficulty(bnNew.GetCompact(), 0),
-            first.nChannelHeight, nDays, nHours, nMinutes);
+            "RETARGET weighted time=", nBlockTime,
+            " actual time =", std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1),
+            "[", ((100.0 * nLowerBound) / nUpperBound), "%]\n",
+            "\tchain time: [", nBlockTarget, " / ", nBlockTime, "]\n",
+            "\tdifficulty: [", GetDifficulty(first.nBits, 0), " to ", GetDifficulty(bnNew.GetCompact(), 0), "]\n",
+            "\ttrust height: ", first.nChannelHeight,
+            " [AGE ", nDays, " days, ", nHours, " hours, ", nMinutes, " minutes]\n");
         }
 
         return bnNew.GetCompact();
@@ -345,17 +343,15 @@ namespace TAO::Ledger
             GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
             debug::log(2,
-            "RETARGET weighted time=%" PRId64 " actual time %" PRId64 ", [%f %%]\n"
-            "\tchain time: [%" PRId64 " / %" PRId64 "]\n"
-            "\treleased reward: %" PRId64 " [%f %%]\n"
-            "\tdifficulty: [%f to %f]\n"
-            "\tprime height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n",
-
-            nBlockTime, std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1), nMod * 100.0,
-            nBlockTarget, nBlockTime,
-            first.nReleasedReserve[0] / Legacy::COIN, 100.0 * nChainMod,
-            GetDifficulty(first.nBits, 1), GetDifficulty(nBits, 1),
-            first.nChannelHeight, nDays, nHours, nMinutes);
+            "RETARGET weighted time=", nBlockTime,
+            " actual time ", std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1),
+            ", [", nMod * 100.0, " %]\n",
+            "\tchain time: [", nBlockTarget, " / ", nBlockTime, "]\n",
+            "\treleased reward: ", first.nReleasedReserve[0] / Legacy::COIN,
+            " [", 100.0 * nChainMod, " %]\n",
+            "\tdifficulty: [", GetDifficulty(first.nBits, 1), " to ", GetDifficulty(nBits, 1), "]\n"
+            "\tprime height: ", first.nChannelHeight,
+            " [AGE ", nDays, " days, ", nHours, " hours, ", nMinutes, " minutes]\n");
         }
 
 
@@ -488,17 +484,14 @@ namespace TAO::Ledger
             GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
             debug::log(2,
-            "RETARGET weighted time=%" PRId64 " actual time %" PRId64 " [%f %%]\n"
-            "\tchain time: [%" PRId64 " / %" PRId64 "]\n"
-            "\treleased reward: %" PRId64 " [%f %%]\n"
-            "\tdifficulty: [%f to %f]\n"
-            "\thash height: %" PRId64 " [AGE %u days, %u hours, %u minutes]\n",
-
-            nBlockTime, std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1), (100.0 * nLowerBound) / nUpperBound,
-            nBlockTarget, nBlockTime,
-            first.nReleasedReserve[0] / Legacy::COIN, 100.0 * nChainMod,
-            GetDifficulty(first.nBits, 2), GetDifficulty(bnNew.GetCompact(), 2),
-            first.nChannelHeight, nDays, nHours, nMinutes);
+            "RETARGET weighted time=", nBlockTime, " actual time ", std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1),
+            " [", (100.0 * nLowerBound) / nUpperBound, " %]\n",
+            "\tchain time: [", nBlockTarget, " / ", nBlockTime, "]\n",
+            "\treleased reward: ", first.nReleasedReserve[0] / Legacy::COIN,
+            " [", 100.0 * nChainMod, " %]\n",
+            "\tdifficulty: [", GetDifficulty(first.nBits, 2), " to ", GetDifficulty(bnNew.GetCompact(), 2), "]\n",
+            "\thash height: ", first.nChannelHeight,
+            " [AGE ", nDays, " days, ", nHours, " hours, ", nMinutes, " minutes]\n");
         }
 
         return bnNew.GetCompact();

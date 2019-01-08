@@ -145,7 +145,10 @@ namespace TAO::Register
          **/
         void print() const
         {
-            debug::log(0, "Token(version=%u, id=%u, maxsupply=%" PRIu64 ", digits=%u)", nVersion, nIdentifier, nMaxSupply, nCoinDigits);
+            debug::log(0, "Token(version=", nVersion,
+                ", id=", nIdentifier,
+                ", maxsupply=", nMaxSupply,
+                ", digits=)", nCoinDigits);
         }
     };
 }

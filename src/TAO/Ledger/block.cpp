@@ -26,6 +26,9 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
 
+#include <ios>
+#include <iomanip>
+
 namespace TAO::Ledger
 {
 
@@ -155,17 +158,20 @@ namespace TAO::Ledger
         return (vMerkleTree.empty() ? 0 : vMerkleTree.back());
     }
 
-
     /* Dump the Block data to Console / Debug.log. */
     void Block::print() const
     {
-        debug::log(0, "Block(hash=%s, ver=%d, hashPrevBlock=%s, hashMerkleRoot=%s, nTime=%u, nBits=%08x, nChannel = %u, nHeight = %u, nNonce=%" PRIu64 ", vchBlockSig=%s)",
-                GetHash().ToString().substr(0,20).c_str(),
-                nVersion,
-                hashPrevBlock.ToString().substr(0,20).c_str(),
-                hashMerkleRoot.ToString().substr(0,10).c_str(),
-                nTime, nBits, nChannel, nHeight, nNonce,
-                HexStr(vchBlockSig.begin(), vchBlockSig.end()).c_str());
+        debug::log(0,
+            "Block(hash=", GetHash().ToString().substr(0,20),
+            ", ver=", nVersion,
+            ", hashPrevBlock=", hashPrevBlock.ToString().substr(0,20),
+            ", hashMerkleRoot=", hashMerkleRoot.ToString().substr(0,10),
+            ", nTime=", nTime,
+            std::hex, std::setfill('0'), std::setw(8), ", nBits=", nBits,
+            std::dec, std::setfill(' '), std::setw(0), ", nChannel = ", nChannel,
+            ", nHeight= ", nHeight,
+            ", nNonce=",  nNonce,
+            ", vchBlockSig=", HexStr(vchBlockSig.begin(), vchBlockSig.end()), ")");
     }
 
 
@@ -177,16 +183,16 @@ namespace TAO::Ledger
         {
             /* Check prime minimum origins. */
             if(nVersion < 5 && ProofHash() < bnPrimeMinOrigins.getuint1024())
-                return debug::error(FUNCTION "prime origins below 1016-bits");
+                return debug::error(FUNCTION, "prime origins below 1016-bits");
 
             /* Check proof of work limits. */
             uint32_t nPrimeBits = GetPrimeBits(GetPrime());
             if (nPrimeBits < bnProofOfWorkLimit[1])
-                return debug::error(FUNCTION "prime-cluster below minimum work");
+                return debug::error(FUNCTION, "prime-cluster below minimum work");
 
             /* Check the prime difficulty target. */
             if(nBits > nPrimeBits)
-                return debug::error(FUNCTION "prime-cluster below target");
+                return debug::error(FUNCTION, "prime-cluster below target");
 
             return true;
         }
@@ -197,12 +203,12 @@ namespace TAO::Ledger
 
         /* Check that the hash is within range. */
         if (bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[2])
-            return debug::error(FUNCTION "proof-of-work hash not in range");
+            return debug::error(FUNCTION, "proof-of-work hash not in range");
 
 
         /* Check that the that enough work was done on this block. */
         if (ProofHash() > bnTarget.getuint1024())
-            return debug::error(FUNCTION "proof-of-work hash below target");
+            return debug::error(FUNCTION, "proof-of-work hash below target");
 
         return true;
     }

@@ -179,11 +179,11 @@ namespace LLP
     {
         /* Check the headers. */
         if(!mapHeaders.count("authorization"))
-            return debug::error(FUNCTION "no authorization in header");
+            return debug::error(FUNCTION, "no authorization in header");
 
         std::string strAuth = mapHeaders["authorization"];
         if (strAuth.substr(0,6) != "Basic ")
-            return debug::error(FUNCTION "incorrect authorization type");
+            return debug::error(FUNCTION, "incorrect authorization type");
 
         /* Get the encoded content */
         std::string strUserPass64 = strAuth.substr(6);

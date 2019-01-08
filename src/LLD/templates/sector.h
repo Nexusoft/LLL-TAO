@@ -178,7 +178,7 @@ namespace LLD
 
             if(config::GetBoolArg("-runtime", false))
             {
-                debug::log(0, ANSI_COLOR_GREEN FUNCTION "executed in ",
+                debug::log(0, ANSI_COLOR_GREEN FUNCTION, "executed in ",
                     runtime.ElapsedMicroseconds(), " micro-seconds" ANSI_COLOR_RESET);
             }
 
@@ -203,7 +203,7 @@ namespace LLD
         {
             /* Create directories if they don't exist yet. */
             if(nFlags & FLAGS::CREATE && !filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
-                debug::log(0, FUNCTION "Generated Path ", strBaseLocation);
+                debug::log(0, FUNCTION, "Generated Path ", strBaseLocation);
 
             /* Find the most recent append file. */
             while(true)
@@ -296,7 +296,7 @@ namespace LLD
 
             if(config::GetBoolArg("-runtime", false))
             {
-                debug::log(0, ANSI_COLOR_GREEN FUNCTION "executed in ",
+                debug::log(0, ANSI_COLOR_GREEN FUNCTION, "executed in ",
                     runtime.ElapsedMicroseconds(), " micro-seconds" ANSI_COLOR_RESET);
             }
 
@@ -407,7 +407,7 @@ namespace LLD
                     /* Set the new stream pointer. */
                     pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                     if(!pstream)
-                        return debug::error(FUNCTION "couldn't create stream file");
+                        return debug::error(FUNCTION, "couldn't create stream file");
 
                     /* If file not found add to LRU cache. */
                     fileCache->Put(cKey.nSectorFile, pstream);
@@ -429,7 +429,7 @@ namespace LLD
                 cachePool->Put(vKey, vData);
 
                 /* Verbose Debug Logging. */
-                debug::log(5, FUNCTION "Current File: ", cKey.nSectorFile,
+                debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
                     " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
 
                 return true;
@@ -480,7 +480,7 @@ namespace LLD
             }
 
             /* Verboe output. */
-            debug::log(5, FUNCTION "Current File: ", cKey.nSectorFile,
+            debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
                 " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
 
             return true;
@@ -506,7 +506,7 @@ namespace LLD
 
             /* Check data size constraints. */
             if(vData.size() != key.nSectorSize)
-                return debug::error(FUNCTION "sector size %u mismatch %u", key.nSectorSize, vData.size());
+                return debug::error(FUNCTION, "sector size %u mismatch %u", key.nSectorSize, vData.size());
 
             /* Write the data into the memory cache. */
             cachePool->Put(vKey, vData, false);
@@ -538,7 +538,7 @@ namespace LLD
             nBytesWrote += vData.size();
 
             /* Verboe output. */
-            debug::log(5, FUNCTION "Current File: ", key.nSectorFile,
+            debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
                 " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
 
             return true;
@@ -562,7 +562,7 @@ namespace LLD
                 /* Create new file if above current file size. */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                 {
-                    debug::log(4, FUNCTION "allocating new sector file ", nCurrentFile + 1);
+                    debug::log(4, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
 
                     ++ nCurrentFile;
                     nCurrentFileSize = 0;
@@ -604,7 +604,7 @@ namespace LLD
                 pSectorKeys->Put(key);
 
                 /* Verboe output. */
-                debug::log(5, FUNCTION "Current File: ", key.nSectorFile,
+                debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
                     " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
             }
 
@@ -694,7 +694,7 @@ namespace LLD
                 /* Create a new file if the sector file size is over file size limits. */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                 {
-                    debug::log(0, FUNCTION "allocating new sector file ", nCurrentFile + 1);
+                    debug::log(0, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
 
                     /* Iterate the current file and reset current file sie. */
                     ++nCurrentFile;
@@ -741,7 +741,7 @@ namespace LLD
                 CONDITION.notify_all();
 
                 /* Verbose logging. */
-                debug::log(3, FUNCTION "Flushed ", nRecordsFlushed.load(),
+                debug::log(3, FUNCTION, "Flushed ", nRecordsFlushed.load(),
                     " Records of ", nBytesWrote.load(), " Bytes");
 
                 /* Reset counters if not in meter mode. */
@@ -773,9 +773,9 @@ namespace LLD
                 double WPS = nBytesWrote.load() / (TIMER.Elapsed() * 1024.0);
                 double RPS = nBytesRead.load() / (TIMER.Elapsed() * 1024.0);
 
-                debug::log(0, FUNCTION ">>>>> LLD Writing at ", WPS, " Kb/s");
-                debug::log(0, FUNCTION ">>>>> LLD Reading at ", RPS, " Kb/s");
-                debug::log(0, FUNCTION ">>>>> LLD Flushed ", nRecordsFlushed.load(), " Records");
+                debug::log(0, FUNCTION, ">>>>> LLD Writing at ", WPS, " Kb/s");
+                debug::log(0, FUNCTION, ">>>>> LLD Reading at ", RPS, " Kb/s");
+                debug::log(0, FUNCTION, ">>>>> LLD Flushed ", nRecordsFlushed.load(), " Records");
 
                 TIMER.Reset();
             }
@@ -824,7 +824,7 @@ namespace LLD
             /* Commit the sector data. */
             for(auto it = pTransaction->mapOriginalData.begin(); it != pTransaction->mapOriginalData.end(); ++it )
                 if(!Force(it->first, it->second))
-                    return debug::error(FUNCTION "failed to rollback transaction");
+                    return debug::error(FUNCTION, "failed to rollback transaction");
 
             return true;
         }
@@ -839,7 +839,7 @@ namespace LLD
         {
             /* Check that there is a valid transaction to apply to the database. */
             if(!pTransaction)
-                return debug::error(FUNCTION "nothing to commit.");
+                return debug::error(FUNCTION, "nothing to commit.");
 
             /* Erase data set to be removed. */
             for(auto it = pTransaction->mapEraseData.begin(); it != pTransaction->mapEraseData.end(); ++it )
@@ -850,7 +850,7 @@ namespace LLD
                     RollbackTransactions();
                     TxnAbort();
 
-                    return debug::error(FUNCTION "failed to erase from keychain");
+                    return debug::error(FUNCTION, "failed to erase from keychain");
                 }
             }
 
@@ -862,7 +862,7 @@ namespace LLD
                     RollbackTransactions();
                     TxnAbort();
 
-                    return debug::error(FUNCTION "failed to commit sector data");
+                    return debug::error(FUNCTION, "failed to commit sector data");
                 }
             }
 

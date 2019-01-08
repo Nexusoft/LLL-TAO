@@ -32,7 +32,7 @@ namespace LLP
     , mapAddrInfo()
     {
         if(!pDatabase)
-            debug::error(FUNCTION "Failed to allocate memory for AddressManager");
+            debug::error(FUNCTION, "Failed to allocate memory for AddressManager");
     }
 
 
@@ -128,7 +128,7 @@ namespace LLP
             break;
         }
 
-        debug::log(5, FUNCTION, addr.ToString(), ":", addr.GetPort());
+        debug::log(5, FUNCTION, addr.ToString());
 
         /* update the LLD Database with a new entry */
         pDatabase->WriteAddressInfo(hash, *pInfo);

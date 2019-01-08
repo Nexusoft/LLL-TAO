@@ -114,7 +114,9 @@ namespace TAO::Register
          **/
         void print() const
         {
-            debug::log(0, "Trust(version=%u, id=%u, balance=%" PRIu64 ")", nVersion, nIdentifier, nBalance);
+            debug::log(0, "Trust(version=", nVersion,
+                ", id=", nIdentifier,
+                ", balance=", nBalance, ")");
         }
     };
 }

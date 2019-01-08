@@ -32,7 +32,7 @@ namespace TAO::Operation
         if((nFlags & TAO::Register::FLAGS::PRESTATE))
         {
             if(!LLD::regDB->ReadState(hashFrom, state))
-                return debug::error(FUNCTION "register address doesn't exist %s", hashFrom.ToString().c_str());
+                return debug::error(FUNCTION, "register address doesn't exist %s", hashFrom.ToString().c_str());
 
             ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
         }
@@ -46,7 +46,7 @@ namespace TAO::Operation
 
             /* Check for the pre-state. */
             if(nState != TAO::Register::STATES::PRESTATE)
-                return debug::error(FUNCTION "register script not in pre-state");
+                return debug::error(FUNCTION, "register script not in pre-state");
 
             /* Get the pre-state. */
             ssRegister >> state;
@@ -54,11 +54,11 @@ namespace TAO::Operation
 
         /* Check ownership of register. */
         if(state.hashOwner != hashCaller)
-            return debug::error(FUNCTION "%s caller not authorized to debit from register", hashCaller.ToString().c_str());
+            return debug::error(FUNCTION, "%s caller not authorized to debit from register", hashCaller.ToString().c_str());
 
         /* Skip all non account registers for now. */
         if(state.nType != TAO::Register::OBJECT::ACCOUNT)
-            return debug::error(FUNCTION "%s is not an account object", hashFrom.ToString().c_str());
+            return debug::error(FUNCTION, "%s is not an account object", hashFrom.ToString().c_str());
 
         /* Get the account object from register. */
         TAO::Register::Account account;
@@ -66,7 +66,7 @@ namespace TAO::Operation
 
         /* Check the balance of the from account. */
         if(nAmount > account.nBalance)
-            return debug::error(FUNCTION "%s doesn't have sufficient balance", hashFrom.ToString().c_str());
+            return debug::error(FUNCTION, "%s doesn't have sufficient balance", hashFrom.ToString().c_str());
 
         /* Change the state of account register. */
         account.nBalance -= nAmount;
@@ -77,7 +77,7 @@ namespace TAO::Operation
 
         /* Check that the register is in a valid state. */
         if(!state.IsValid())
-            return debug::error(FUNCTION "memory address %s is in invalid state", hashFrom.ToString().c_str());
+            return debug::error(FUNCTION, "memory address %s is in invalid state", hashFrom.ToString().c_str());
 
         /* Write post-state checksum. */
         if((nFlags & TAO::Register::FLAGS::POSTSTATE))
@@ -92,7 +92,7 @@ namespace TAO::Operation
 
             /* Check for the pre-state. */
             if(nState != TAO::Register::STATES::POSTSTATE)
-                return debug::error(FUNCTION "register script not in post-state");
+                return debug::error(FUNCTION, "register script not in post-state");
 
             /* Get the post state checksum. */
             uint64_t nChecksum;
@@ -100,11 +100,11 @@ namespace TAO::Operation
 
             /* Check for matching post states. */
             if(nChecksum != state.GetHash())
-                return debug::error(FUNCTION "register script has invalid post-state");
+                return debug::error(FUNCTION, "register script has invalid post-state");
 
             /* Write the register to the database. */
             if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashFrom, state))
-                return debug::error(FUNCTION "failed to write new state");
+                return debug::error(FUNCTION, "failed to write new state");
         }
 
         return true;

@@ -458,15 +458,15 @@ namespace Legacy
     {
         /* Check for empty inputs. */
         if (vin.empty())
-            return debug::error(FUNCTION "vin empty");
+            return debug::error(FUNCTION, "vin empty");
 
         /* Check for empty outputs. */
         if (vout.empty())
-            return debug::error(FUNCTION "vout empty");
+            return debug::error(FUNCTION, "vout empty");
 
         /* Check for size limits. */
         if (::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > TAO::Ledger::MAX_BLOCK_SIZE)
-            return debug::error(FUNCTION "size limits failed");
+            return debug::error(FUNCTION, "size limits failed");
 
         /* Check for negative or overflow output values */
         int64_t nValueOut = 0;
@@ -474,20 +474,20 @@ namespace Legacy
         {
             /* Checkout for empty outputs. */
             if (txout.IsEmpty() && (!IsCoinBase()) && (!IsCoinStake()))
-                return debug::error(FUNCTION "txout empty for user transaction");
+                return debug::error(FUNCTION, "txout empty for user transaction");
 
             /* Enforce minimum output amount. */
             if ((!txout.IsEmpty()) && txout.nValue < MIN_TXOUT_AMOUNT)
-                return debug::error(FUNCTION "txout.nValue below minimum");
+                return debug::error(FUNCTION, "txout.nValue below minimum");
 
             /* Enforce maximum output amount. */
             if (txout.nValue > MaxTxOut())
-                return debug::error(FUNCTION "txout.nValue too high");
+                return debug::error(FUNCTION, "txout.nValue too high");
 
             /* Enforce maximum total output value. */
             nValueOut += txout.nValue;
             if (!MoneyRange(nValueOut))
-                return debug::error(FUNCTION "txout total out of range");
+                return debug::error(FUNCTION, "txout total out of range");
         }
 
         /* Check for duplicate inputs */
@@ -505,7 +505,7 @@ namespace Legacy
         {
             for(auto txin : vin)
                 if (txin.prevout.IsNull())
-                    return debug::error(FUNCTION "prevout is null");
+                    return debug::error(FUNCTION, "prevout is null");
         }
 
         return true;

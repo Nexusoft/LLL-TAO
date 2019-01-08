@@ -26,29 +26,29 @@ namespace TAO::Ledger
 
         /* Check transaction for errors. */
         if (!tx.CheckTransaction())
-            return debug::error(FUNCTION "CheckTransaction failed");
+            return debug::error(FUNCTION, "CheckTransaction failed");
 
         /* Coinbase is only valid in a block, not as a loose transaction */
         if (tx.IsCoinBase())
-            return debug::error(FUNCTION "coinbase as individual tx");
+            return debug::error(FUNCTION, "coinbase as individual tx");
 
         /* Nexus: coinstake is also only valid in a block, not as a loose transaction */
         if (tx.IsCoinStake())
-            return debug::error(FUNCTION "coinstake as individual tx");
+            return debug::error(FUNCTION, "coinstake as individual tx");
 
         /* To help v0.1.5 clients who would see it as a negative number */
         if ((uint64_t) tx.nLockTime > std::numeric_limits<int32_t>::max())
-            return debug::error(FUNCTION "not accepting nLockTime beyond 2038 yet");
+            return debug::error(FUNCTION, "not accepting nLockTime beyond 2038 yet");
 
         /* Rather not work on nonstandard transactions (unless -testnet) */
         if (!config::fTestNet && !tx.IsStandard())
-            return debug::error(FUNCTION "nonstandard transaction type");
+            return debug::error(FUNCTION, "nonstandard transaction type");
 
         /* Check previous inputs. */
         for (auto vin : tx.vin)
         {
             if (mapInputs.count(vin.prevout))
-                return debug::error(FUNCTION "double spend attempt on inputs");
+                return debug::error(FUNCTION, "double spend attempt on inputs");
         }
 
         /* Set the inputs to be claimed. */

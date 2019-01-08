@@ -183,7 +183,7 @@ namespace TAO::Ledger
 
         /** Print
          *
-         *  Print a string representation of this Trust Key to the debug::log.
+         *  Print a string representation of this Trust Key to the debug log.
          *
          */
         void Print();

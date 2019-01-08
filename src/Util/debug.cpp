@@ -98,7 +98,7 @@ namespace debug
             buffer[limit-1] = 0;
         }
 
-        debug::log(0, ANSI_COLOR_RED "ERROR: %s" ANSI_COLOR_RESET, buffer);
+        debug::log(0, ANSI_COLOR_RED, "ERROR: ", buffer, ANSI_COLOR_RESET);
         return false;
     }
 
@@ -116,7 +116,7 @@ namespace debug
             buffer[limit-1] = 0;
         }
 
-        debug::log(0, ANSI_COLOR_FUNCTION "%s::%s()" ANSI_COLOR_RESET " : %s", base, __func__, buffer);
+        debug::log(0, ANSI_COLOR_FUNCTION, base, "::", __func__, "()", ANSI_COLOR_RESET, " : ", buffer);
     }
 
     /*  Prints and logs the stack trace of the code execution call stack up to
@@ -158,7 +158,7 @@ namespace debug
     {
         char pszMessage[10000];
         FormatException(pszMessage, pex, pszThread);
-        debug::log(0, "%s", pszMessage);
+        debug::log(0, pszMessage);
     }
 
     /*  Prints the exception with the named calling thread and throws it */
@@ -166,7 +166,7 @@ namespace debug
     {
         char pszMessage[10000];
         FormatException(pszMessage, pex, pszThread);
-        debug::log(0, "\n\n************************\n%s", pszMessage);
+        debug::log(0, "\n\n************************\n", pszMessage);
         fprintf(stderr, "\n\n************************\n%s\n", pszMessage);
 
         throw;
@@ -177,7 +177,7 @@ namespace debug
     {
         char pszMessage[10000];
         FormatException(pszMessage, pex, pszThread);
-        debug::log(0, "************************%s", pszMessage);
+        debug::log(0, "************************", pszMessage);
         fprintf(stderr, "************************%s", pszMessage);
 
     }

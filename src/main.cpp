@@ -106,7 +106,7 @@ int main(int argc, char** argv)
 
     /* Create directories if they don't exist yet. */
     if(!filesystem::exists(config::GetDataDir(false)) && filesystem::create_directory(config::GetDataDir(false)))
-        debug::log(0, FUNCTION "Generated Path ", config::GetDataDir(false).c_str());
+        debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir(false));
 
 
     /* Create the database instances. */
@@ -190,6 +190,8 @@ int main(int argc, char** argv)
         true);
 
 
+    //-addnode means add to address manager for this specific Server
+    //-connect means follow the logic below this and try to establish a connection
     /* Add node to Tritium server */
     if(config::mapMultiArgs["-addnode"].size() > 0)
     {
@@ -202,7 +204,9 @@ int main(int argc, char** argv)
     }
 
 
-    /* Initialize the Legacy Server.
+    //try to addnode 127.0.0.1 or some unreachable address
+    //get both of these to try and race on connection so they break getaddrinfo
+    /* Initialize the Legacy Server. */
     LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(
         config::GetArg("-port", config::fTestNet ? 8323 : 9323),
         10,
@@ -224,7 +228,6 @@ int main(int argc, char** argv)
                 config::GetArg("-port", config::fTestNet ? 8323 : 9323));
         }
     }
-    */
 
     /* Create the Core API Server. */
     LLP::Server<LLP::CoreNode>* CORE_SERVER = new LLP::Server<LLP::CoreNode>(
@@ -325,6 +328,7 @@ int main(int argc, char** argv)
     }
 
 
+    //checkout these guys for memory leaks
     /* Shutdown the core API server and its subsystems */
     if(CORE_SERVER)
     {

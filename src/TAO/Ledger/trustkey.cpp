@@ -134,9 +134,9 @@ namespace TAO::Ledger
     }
 
 
-    /* Print a string representation of this Trust Key to the debug::log. */
+    /* Print a string representation of this Trust Key to the debug log. */
     void TrustKey::Print()
     {
-        debug::log(0, "TrustKey(%s)", ToString().c_str());
+        debug::log(0, "TrustKey(", ToString(), ")");
     }
 }

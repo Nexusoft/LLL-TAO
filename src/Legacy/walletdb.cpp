@@ -324,7 +324,7 @@ namespace Legacy
             auto pcursor = GetCursor();
             if (pcursor == nullptr)
             {
-                debug::error(FUNCTION "error getting wallet database cursor");
+                debug::error(FUNCTION, "error getting wallet database cursor");
                 return DB_CORRUPT;
             }
 
@@ -344,7 +344,7 @@ namespace Legacy
                 }
                 else if (ret != 0)
                 {
-                    debug::error(FUNCTION "error reading next record from wallet database");
+                    debug::error(FUNCTION, "error reading next record from wallet database");
                     return DB_CORRUPT;
                 }
 
@@ -386,7 +386,7 @@ namespace Legacy
 
                     }
                     else if (wtx.GetHash() != hash) {
-                        debug::error(FUNCTION "error in wallet.dat, hash mismatch. Removing Transaction from wallet map. Run the rescan command to restore.");
+                        debug::error(FUNCTION, "error in wallet.dat, hash mismatch. Removing Transaction from wallet map. Run the rescan command to restore.");
 
                         /* Add mismatched transaction to list of transactions to remove from database */
                         vWalletRemove.push_back(hash);
@@ -414,7 +414,7 @@ namespace Legacy
                     /* Load the master key into the wallet */
                     if (!wallet.LoadMasterKey(nMasterKeyId, kMasterKey))
                     {
-                        debug::error(FUNCTION "error reading wallet database: duplicate CMasterKey id %u", nMasterKeyId);
+                        debug::error(FUNCTION, "error reading wallet database: duplicate CMasterKey id %u", nMasterKeyId);
                         return DB_CORRUPT;
                     }
 
@@ -438,13 +438,13 @@ namespace Legacy
                         /* Validate the key data */
                         if (key.GetPubKey() != vchPubKey)
                         {
-                            debug::error(FUNCTION "error reading wallet database: CPrivKey pubkey inconsistency");
+                            debug::error(FUNCTION, "error reading wallet database: CPrivKey pubkey inconsistency");
                             return DB_CORRUPT;
                         }
 
                         if (!key.IsValid())
                         {
-                            debug::error(FUNCTION "error reading wallet database: invalid CPrivKey");
+                            debug::error(FUNCTION, "error reading wallet database: invalid CPrivKey");
                             return DB_CORRUPT;
                         }
                     }
@@ -462,13 +462,13 @@ namespace Legacy
                         /* Validate the key data  */
                         if (key.GetPubKey() != vchPubKey)
                         {
-                            debug::error(FUNCTION "error reading wallet database: CWalletKey pubkey inconsistency");
+                            debug::error(FUNCTION, "error reading wallet database: CWalletKey pubkey inconsistency");
                             return DB_CORRUPT;
                         }
 
                         if (!key.IsValid())
                         {
-                            debug::error(FUNCTION "error reading wallet database: invalid CWalletKey");
+                            debug::error(FUNCTION, "error reading wallet database: invalid CWalletKey");
                             return DB_CORRUPT;
                         }
                     }
@@ -476,7 +476,7 @@ namespace Legacy
                     /* Load the key into the wallet */
                     if (!wallet.LoadKey(key))
                     {
-                        debug::error(FUNCTION "error reading wallet database: LoadKey failed");
+                        debug::error(FUNCTION, "error reading wallet database: LoadKey failed");
                         return DB_CORRUPT;
                     }
 
@@ -492,7 +492,7 @@ namespace Legacy
 
                     if (!wallet.LoadCryptedKey(vchPubKey, vchPrivKey))
                     {
-                        debug::error(FUNCTION "error reading wallet database: LoadCryptedKey failed");
+                        debug::error(FUNCTION, "error reading wallet database: LoadCryptedKey failed");
                         return DB_CORRUPT;
                     }
 
@@ -530,7 +530,7 @@ namespace Legacy
 
                     if (!wallet.LoadCScript(script))
                     {
-                        debug::error(FUNCTION "error reading wallet database: LoadCScript failed");
+                        debug::error(FUNCTION, "error reading wallet database: LoadCScript failed");
                         return DB_CORRUPT;
                     }
 
@@ -569,7 +569,7 @@ namespace Legacy
                 EraseTx(hash);
                 wallet.mapWallet.erase(hash);
 
-                debug::log(0, FUNCTION "erasing Transaction at hash ", hash.ToString());
+                debug::log(0, FUNCTION, "erasing Transaction at hash ", hash.ToString());
             }
         }
 
@@ -577,7 +577,7 @@ namespace Legacy
         if (nFileVersion < LLD::DATABASE_VERSION)
             WriteVersion(LLD::DATABASE_VERSION);
 
-        debug::log(0, FUNCTION "", fIsEncrypted ? "Encrypted Wallet" : "Wallet", " Loaded in ", time.ElapsedMilliseconds(), " ms FileVersion = ", nFileVersion);
+        debug::log(0, FUNCTION, "", fIsEncrypted ? "Encrypted Wallet" : "Wallet", " Loaded in ", time.ElapsedMilliseconds(), " ms FileVersion = ", nFileVersion);
 
         return DB_LOAD_OK;
     }

@@ -38,19 +38,19 @@ namespace TAO::Ledger
         {
             TAO::Ledger::Transaction tx;
             if(!LLD::legDB->ReadTx(hashPrevTx, tx))
-                return debug::error(FUNCTION "failed to read previous transaction");
+                return debug::error(FUNCTION, "failed to read previous transaction");
 
             /* Check the previous next hash that is being claimed. */
             if(tx.hashNext != PrevHash())
-                return debug::error(FUNCTION "next hash mismatch with previous transaction");
+                return debug::error(FUNCTION, "next hash mismatch with previous transaction");
 
             /* Check the previous sequence number. */
             if(tx.nSequence + 1 != nSequence)
-                return debug::error(FUNCTION "previous sequence %u not sequential %u", tx.nSequence, nSequence);
+                return debug::error(FUNCTION, "previous sequence %u not sequential %u", tx.nSequence, nSequence);
 
             /* Check the previous genesis. */
             if(tx.hashGenesis != hashGenesis)
-                return debug::error(FUNCTION "previous genesis %s mismatch %s", tx.hashGenesis.ToString().substr(0, 20).c_str(), hashGenesis.ToString().substr(0, 20).c_str());
+                return debug::error(FUNCTION, "previous genesis %s mismatch %s", tx.hashGenesis.ToString().substr(0, 20).c_str(), hashGenesis.ToString().substr(0, 20).c_str());
         }
 
         /* Checks for coinbase. */
@@ -58,22 +58,22 @@ namespace TAO::Ledger
         {
             /* Check the coinbase size. */
             //if(ssOperation.size() != 41)
-            //    return debug::error(FUNCTION "operation data too large for coinbase %u", ssOperation.size());
+            //    return debug::error(FUNCTION, "operation data too large for coinbase %u", ssOperation.size());
         }
 
         /* Check the timestamp. */
         if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
-            return debug::error(FUNCTION "transaction timestamp too far in the future %u", nTimestamp);
+            return debug::error(FUNCTION, "transaction timestamp too far in the future %u", nTimestamp);
 
         /* Check the size constraints of the ledger data. */
         if(ssOperation.size() > 1024) //TODO: implement a constant max size
-            return debug::error(FUNCTION "ledger data outside of maximum size constraints");
+            return debug::error(FUNCTION, "ledger data outside of maximum size constraints");
 
         /* Check the more expensive ECDSA verification. */
         LLC::ECKey ecPub(NID_brainpoolP512t1, 64);
         ecPub.SetPubKey(vchPubKey);
         if(!ecPub.Verify(GetHash().GetBytes(), vchSig))
-            return debug::error(FUNCTION "invalid transaction signature");
+            return debug::error(FUNCTION, "invalid transaction signature");
 
         return true;
     }
@@ -165,30 +165,17 @@ namespace TAO::Ledger
      /* Debug output - use ANSI colors. TODO: turn ansi colors on or off with a commandline flag */
      void Transaction::print() const
      {
-         debug::log(0, "%s("
-         VALUE("nVersion") " = %u, "
-         VALUE("nSequence") " = %u, "
-         VALUE("nTimestamp") " = %" PRIu64 ", "
-         VALUE("hashNext") " = %s, "
-         VALUE("hashPrevTx") " = %s, "
-         VALUE("hashGenesis") " = %s, "
-         VALUE("pub") " = %s, "
-         VALUE("sig") " = %s, "
-         VALUE("hash") " = %s, "
-         VALUE("register.size()") " = %u,"
-         VALUE("operation.size()") " = %u)",
-
-         IsGenesis() ? "Genesis" : "Tritium",
-         nVersion,
-         nSequence,
-         nTimestamp,
-         hashNext.ToString().substr(0, 20).c_str(),
-         hashPrevTx.ToString().substr(0, 20).c_str(),
-         hashGenesis.ToString().substr(0, 20).c_str(),
-         HexStr(vchPubKey).substr(0, 20).c_str(),
-         HexStr(vchSig).substr(0, 20).c_str(),
-         GetHash().ToString().substr(0, 20).c_str(),
-         ssRegister.size(),
-         ssOperation.size() );
+         debug::log(0, IsGenesis() ? "Genesis" : "Tritium", "(",
+            "nVersion = ", nVersion, ", ",
+            "nSequence = ", nSequence, ", ",
+            "nTimestamp = ", nTimestamp, ", ",
+            "hashNext  = ",  hashNext.ToString().substr(0, 20), ", ",
+            "hashPrevTx = ", hashPrevTx.ToString().substr(0, 20), ", ",
+            "hashGenesis = ", hashGenesis.ToString().substr(0, 20), ", ",
+            "pub = ", HexStr(vchPubKey).substr(0, 20), ", ",
+            "sig = ", HexStr(vchSig).substr(0, 20), ", ",
+            "hash = ", GetHash().ToString().substr(0, 20), ", ",
+            "register.size() = ", ssRegister.size(), ",",
+            "operation.size() = ", ssOperation.size(), ")");
      }
 }

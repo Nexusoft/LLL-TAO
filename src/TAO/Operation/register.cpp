@@ -28,7 +28,7 @@ namespace TAO::Operation
     {
         /* Check that the register doesn't exist yet. */
         if(LLD::regDB->HasState(hashAddress))
-            return debug::error(FUNCTION "cannot allocate register of same memory address %s", hashAddress.ToString().c_str());
+            return debug::error(FUNCTION, "cannot allocate register of same memory address %s", hashAddress.ToString().c_str());
 
         /* Set the owner of this register. */
         TAO::Register::State state;
@@ -51,19 +51,19 @@ namespace TAO::Operation
 
                 /* Check that the size is correct. */
                 if(vchData.size() != acct.GetSerializeSize(SER_REGISTER, state.nVersion))
-                    return debug::error(FUNCTION "unexpected account register size %u", vchData.size());
+                    return debug::error(FUNCTION, "unexpected account register size %u", vchData.size());
 
                 /* Check the account version. */
                 if(acct.nVersion != 1)
-                    return debug::error(FUNCTION "unexpected account version %u", acct.nVersion);
+                    return debug::error(FUNCTION, "unexpected account version %u", acct.nVersion);
 
                 /* Check the account balance. */
                 if(acct.nBalance != 0)
-                    return debug::error(FUNCTION "account can't be created with non-zero balance", acct.nBalance);
+                    return debug::error(FUNCTION, "account can't be created with non-zero balance", acct.nBalance);
 
                 /* Check that token identifier hasn't been claimed. */
                 if(acct.nIdentifier != 0 && !LLD::regDB->HasIdentifier(acct.nIdentifier, nFlags))
-                    return debug::error(FUNCTION "account can't be created with no identifier %u", acct.nIdentifier);
+                    return debug::error(FUNCTION, "account can't be created with no identifier %u", acct.nIdentifier);
 
                 break;
             }
@@ -79,23 +79,23 @@ namespace TAO::Operation
 
                 /* Check that the size is correct. */
                 if(vchData.size() != token.GetSerializeSize(SER_REGISTER, state.nVersion))
-                    return debug::error(FUNCTION "unexpected token register size %u", vchData.size());
+                    return debug::error(FUNCTION, "unexpected token register size %u", vchData.size());
 
                 /* Check the account version. */
                 if(token.nVersion != 1)
-                    return debug::error(FUNCTION "unexpected token version %u", token.nVersion);
+                    return debug::error(FUNCTION, "unexpected token version %u", token.nVersion);
 
                 /* Check that token identifier hasn't been claimed. */
                 if(token.nIdentifier == 0 || LLD::regDB->HasIdentifier(token.nIdentifier, nFlags))
-                    return debug::error(FUNCTION "token can't be created with reserved identifier %u", token.nIdentifier);
+                    return debug::error(FUNCTION, "token can't be created with reserved identifier %u", token.nIdentifier);
 
                 /* Check that the current supply and max supply are the same. */
                 if(token.nMaxSupply != token.nCurrentSupply)
-                    return debug::error(FUNCTION "token current supply and max supply can't mismatch");
+                    return debug::error(FUNCTION, "token current supply and max supply can't mismatch");
 
                 /* Write the new identifier to database. */
                 if(!LLD::regDB->WriteIdentifier(token.nIdentifier, hashAddress, nFlags))
-                    return debug::error(FUNCTION "failed to commit token register identifier to disk");
+                    return debug::error(FUNCTION, "failed to commit token register identifier to disk");
 
                 break;
             }
@@ -106,7 +106,7 @@ namespace TAO::Operation
 
         /* Check the state change is correct. */
         if(!state.IsValid())
-            return debug::error(FUNCTION "memory address %s is in invalid state", hashAddress.ToString().c_str());
+            return debug::error(FUNCTION, "memory address %s is in invalid state", hashAddress.ToString().c_str());
 
         /* Write post-state checksum. */
         if((nFlags & TAO::Register::FLAGS::POSTSTATE))
@@ -121,7 +121,7 @@ namespace TAO::Operation
 
             /* Check for the pre-state. */
             if(nState != TAO::Register::STATES::POSTSTATE)
-                return debug::error(FUNCTION "register script not in post-state");
+                return debug::error(FUNCTION, "register script not in post-state");
 
             /* Get the post state checksum. */
             uint64_t nChecksum;
@@ -129,11 +129,11 @@ namespace TAO::Operation
 
             /* Check for matching post states. */
             if(nChecksum != state.GetHash())
-                return debug::error(FUNCTION "register script has invalid post-state");
+                return debug::error(FUNCTION, "register script has invalid post-state");
 
             /* Write the register to the database. */
             if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, state))
-                return debug::error(FUNCTION "failed to write new state");
+                return debug::error(FUNCTION, "failed to write new state");
         }
 
         return true;

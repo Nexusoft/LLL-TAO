@@ -245,7 +245,7 @@ namespace LLD
         {
             /* Create directories if they don't exist yet. */
             if(!filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
-                debug::log(0, FUNCTION "Generated Path ", strBaseLocation);
+                debug::log(0, FUNCTION, "Generated Path ", strBaseLocation);
 
             /* Build the hashmap indexes. */
             std::string index = debug::strprintf("%s_hashmap.index", strBaseLocation.c_str());
@@ -260,7 +260,7 @@ namespace LLD
                 stream.close();
 
                 /* Debug output showing generation of disk index. */
-                debug::log(0, FUNCTION "Generated Disk Index of ", vSpace.size(), " bytes");
+                debug::log(0, FUNCTION, "Generated Disk Index of ", vSpace.size(), " bytes");
             }
 
             /* Read the hashmap indexes. */
@@ -300,7 +300,7 @@ namespace LLD
                 stream.close();
 
                 /* Debug output showing generating of the hashmap file. */
-                debug::log(0, FUNCTION "Generated Disk Hash Map 0 of ", vSpace.size(), " bytes");
+                debug::log(0, FUNCTION, "Generated Disk Hash Map 0 of ", vSpace.size(), " bytes");
             }
 
             /* Load the stream object into the stream LRU cache. */
@@ -349,7 +349,7 @@ namespace LLD
                     /* Set the new stream pointer. */
                     pstream = new std::fstream(debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
                     if(!pstream)
-                        return debug::error(FUNCTION "couldn't create hashmap object");
+                        return debug::error(FUNCTION, "couldn't create hashmap object");
 
                     /* If file not found add to LRU cache. */
                     fileCache->Put(i, pstream);
@@ -373,7 +373,7 @@ namespace LLD
                     ssKey >> cKey;
 
                     /* Debug Output of Sector Key Information. */
-                    debug::log(4, FUNCTION "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                    debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                         " | Length: ", cKey.nLength,
                         " | Bucket ", nBucket,
                         " | Location: ", nFilePos,
@@ -451,7 +451,7 @@ namespace LLD
                     vKeys.push_back(cKey);
 
                     /* Debug Output of Sector Key Information. */
-                    debug::log(4, FUNCTION "Found State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                    debug::log(4, FUNCTION, "Found State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                         " | Length: ", cKey.nLength,
                         " | Bucket ", nBucket,
                         " | Location: ", nFilePos,
@@ -535,7 +535,7 @@ namespace LLD
                         }
 
                         /* Debug Output of Sector Key Information. */
-                        debug::log(4, FUNCTION "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                        debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                             " | Length: ", cKey.nLength,
                             " | Bucket ", nBucket,
                             " | Location: ", nFilePos,
@@ -564,13 +564,13 @@ namespace LLD
                 /* Write the blank data to the new file handle. */
                 std::fstream stream(file, std::ios::out | std::ios::binary | std::ios::trunc);
                 if(!stream)
-                    return debug::error(FUNCTION "%s", strerror(errno));
+                    return debug::error(FUNCTION, "%s", strerror(errno));
 
                 stream.write((char*)&vSpace[0], vSpace.size());
                 stream.close();
 
                 /* Debug output for monitoring new disk maps. */
-                debug::log(0, FUNCTION "Generated Disk Hash Map ", hashmap[nBucket], " of ", vSpace.size(), " bytes");
+                debug::log(0, FUNCTION, "Generated Disk Hash Map ", hashmap[nBucket], " of ", vSpace.size(), " bytes");
             }
 
             /* Read the State and Size of Sector Header. */
@@ -587,7 +587,7 @@ namespace LLD
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream)
-                    return debug::error(FUNCTION "Failed to generate file object");
+                    return debug::error(FUNCTION, "Failed to generate file object");
 
                 /* If not in cache, add to the LRU. */
                 fileCache->Put(hashmap[nBucket], pstream);
@@ -606,7 +606,7 @@ namespace LLD
             }
 
             /* Debug Output of Sector Key Information. */
-            debug::log(4, FUNCTION "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+            debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                 " | Length: ", cKey.nLength,
                 " | Bucket ", nBucket,
                 " | Location: ", nFilePos,
@@ -645,7 +645,7 @@ namespace LLD
                 stream.close();
 
                 /* Verbose logging to show triggered write. */
-                debug::log(4, FUNCTION "Flushed Cache Disk Index");
+                debug::log(4, FUNCTION, "Flushed Cache Disk Index");
 
                 fCacheActive = false;
             }
@@ -720,7 +720,7 @@ namespace LLD
 
 
                     /* Debug Output of Sector Key Information. */
-                    debug::log(4, FUNCTION "Erased State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                    debug::log(4, FUNCTION, "Erased State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                         " | Length: ", cKey.nLength,
                         " | Bucket ", nBucket,
                         " | Location: ", nFilePos,

@@ -132,7 +132,7 @@ namespace LLD
         {
             /* Create directories if they don't exist yet. */
             if(filesystem::create_directories(strBaseLocation))
-                debug::log(0, FUNCTION "Generated Path ", strBaseLocation);
+                debug::log(0, FUNCTION, "Generated Path ", strBaseLocation);
 
             /* Build the hashmap indexes. */
             std::string index = strprintf("%s_hashmap.index", strBaseLocation.c_str());
@@ -147,7 +147,7 @@ namespace LLD
                 stream.close();
 
                 /* Debug output showing generation of disk index. */
-                debug::log(0, FUNCTION "Generated Disk Index of ", vSpace.size(), " bytes");
+                debug::log(0, FUNCTION, "Generated Disk Index of ", vSpace.size(), " bytes");
             }
 
             /* Read the hashmap indexes. */
@@ -171,7 +171,7 @@ namespace LLD
                 }
 
                 /* Debug output showing loading of disk index. */
-                debug::log(0, FUNCTION "Loaded Disk Index of ", vIndex.size(), " bytes and ", nTotalKeys, " keys");
+                debug::log(0, FUNCTION, "Loaded Disk Index of ", vIndex.size(), " bytes and ", nTotalKeys, " keys");
             }
 
             /* Build the first hashmap index file if it doesn't exist. */
@@ -187,7 +187,7 @@ namespace LLD
                 stream.close();
 
                 /* Debug output showing generating of the hashmap file. */
-                debug::log(0, FUNCTION "Generated Disk Hash Map 0 of ", vSpace.size(), " bytes");
+                debug::log(0, FUNCTION, "Generated Disk Hash Map 0 of ", vSpace.size(), " bytes");
             }
 
             /* Load the stream object into the stream LRU cache. */
@@ -269,7 +269,7 @@ namespace LLD
                 stream.close();
 
                 /* Debug output for monitoring new disk maps. */
-                debug::log(0, FUNCTION "Generated Disk Hash Map ", hashmap[nBucket], " of ", vSpace.size(), " bytes");
+                debug::log(0, FUNCTION, "Generated Disk Hash Map ", hashmap[nBucket], " of ", vSpace.size(), " bytes");
             }
 
             /* Find the file stream for LRU cache. */
@@ -325,7 +325,7 @@ namespace LLD
                 stream.write((char*)&vDisk[0], vDisk.size());
                 stream.close();
 
-                //debug::log(0, FUNCTION "Flushed ", vDisk.size(), " Index Bytes to Disk");
+                //debug::log(0, FUNCTION, "Flushed ", vDisk.size(), " Index Bytes to Disk");
 
                 runtime::sleep(1000);
             }

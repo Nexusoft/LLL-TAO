@@ -983,7 +983,7 @@ public:
     {
         /* Check size constraints. */
         if(nNewPos > size())
-            throw std::runtime_error(debug::strprintf(FUNCTION "cannot set at end of stream %u", nNewPos));
+            throw std::runtime_error(debug::strprintf(FUNCTION, "cannot set at end of stream %u", nNewPos));
 
         /* Set the new read pos. */
         nReadPos = nNewPos;
@@ -1048,7 +1048,7 @@ public:
     {
         /* Check size constraints. */
         if(nReadPos + nSize > size())
-            throw std::runtime_error(debug::strprintf(FUNCTION "reached end of stream %u", nReadPos));
+            throw std::runtime_error(debug::strprintf(FUNCTION, "reached end of stream %u", nReadPos));
 
         /* Copy the bytes into tmp object. */
         std::copy((uint8_t*)&at(nReadPos), (uint8_t*)&at(nReadPos) + nSize, (uint8_t*)pch);

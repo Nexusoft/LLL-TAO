@@ -93,18 +93,18 @@ namespace TAO::Ledger
         /* Read leger DB for duplicate block. */
         BlockState state;
         if(LLD::legDB->ReadBlock(GetHash(), state))
-            return debug::error(FUNCTION "block state already exists");
+            return debug::error(FUNCTION, "block state already exists");
 
 
         /* Read leger DB for previous block. */
         BlockState statePrev = Prev();
         if(statePrev.IsNull())
-            return debug::error(FUNCTION "previous block state not found");
+            return debug::error(FUNCTION, "previous block state not found");
 
 
         /* Check the Height of Block to Previous Block. */
         if(statePrev.nHeight + 1 != nHeight)
-            return debug::error(FUNCTION "incorrect block height.");
+            return debug::error(FUNCTION, "incorrect block height.");
 
 
         /* Get the proof hash for this block. */
@@ -116,30 +116,30 @@ namespace TAO::Ledger
 
 
         /* Verbose logging of proof and target. */
-        debug::log(2, "  proof:  %s", hash.ToString().substr(0, 30).c_str());
+        debug::log(2, "  proof:  ", hash.ToString().substr(0, 30));
 
 
         /* Channel switched output. */
         if(GetChannel() == 1)
-            debug::log(2, "  prime cluster verified of size %f", GetDifficulty(nBits, 1));
+            debug::log(2, "  prime cluster verified of size ", GetDifficulty(nBits, 1));
         else
-            debug::log(2, "  target: %s", hashTarget.ToString().substr(0, 30).c_str());
+            debug::log(2, "  target: ", hashTarget.ToString().substr(0, 30));
 
 
         /* Check that the nBits match the current Difficulty. **/
         if (nBits != GetNextTargetRequired(statePrev, GetChannel()))
-            return debug::error(FUNCTION "incorrect proof-of-work/proof-of-stake");
+            return debug::error(FUNCTION, "incorrect proof-of-work/proof-of-stake");
 
 
         /* Check That Block timestamp is not before previous block. */
         //if (GetBlockTime() <= statePrev.GetBlockTime())
-        //    return debug::error(FUNCTION "block's timestamp too early Block: %" PRId64 " Prev: %" PRId64 "",
+        //    return debug::error(FUNCTION, "block's timestamp too early Block: %" PRId64 " Prev: %" PRId64 "",
         //    GetBlockTime(), statePrev.GetBlockTime());
 
 
         /* Check that Block is Descendant of Hardened Checkpoints. */
         if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
-            return debug::error(FUNCTION "not descendant of last checkpoint");
+            return debug::error(FUNCTION, "not descendant of last checkpoint");
 
 
         /* Check the block proof of work rewards. */
@@ -154,14 +154,14 @@ namespace TAO::Ledger
 
             /* Check that the Mining Reward Matches the Coinbase Calculations. */
             if (nMiningReward != GetCoinbaseReward(statePrev, GetChannel(), 0))
-                return debug::error(FUNCTION "miner reward mismatch %" PRId64 " : %" PRId64 "",
+                return debug::error(FUNCTION, "miner reward mismatch %" PRId64 " : %" PRId64 "",
                     nMiningReward, GetCoinbaseReward(statePrev, GetChannel(), 0));
         }
         else if (IsProofOfStake())
         {
             /* Check that the Coinbase / CoinstakeTimstamp is after Previous Block. */
             if (producer.nTimestamp < statePrev.GetBlockTime())
-                return debug::error(FUNCTION "coinstake transaction too early");
+                return debug::error(FUNCTION, "coinstake transaction too early");
         }
 
 
@@ -193,12 +193,13 @@ namespace TAO::Ledger
 
                 /* Block Version 3 Check. Disable Reserves from going below 0. */
                 if(nVersion >= 3 && nCoinbaseRewards >= nReserve)
-                    return debug::error(FUNCTION "out of reserve limits");
+                    return debug::error(FUNCTION, "out of reserve limits");
 
                 /* Check coinbase rewards. */
                 nReleasedReserve[nType] =  (nReserve - nCoinbaseRewards);
 
-                debug::log(2, "Reserve Balance %i | %f Nexus | Released %f", nType, nReleasedReserve[nType] / 1000000.0, (nReserve - stateLast.nReleasedReserve[nType]) / 1000000.0 );
+                debug::log(2, "Reserve Balance ", nType, " | ", nReleasedReserve[nType] / 1000000.0,
+                    " Nexus | Released ", (nReserve - stateLast.nReleasedReserve[nType]) / 1000000.0);
             }
             else
                 nReleasedReserve[nType] = 0;
@@ -209,13 +210,13 @@ namespace TAO::Ledger
         {
             hashCheckpoint = GetHash();
 
-            debug::log(0, "===== New Pending Checkpoint Hash = %s", hashCheckpoint.ToString().substr(0, 15).c_str());
+            debug::log(0, "===== New Pending Checkpoint Hash = ", hashCheckpoint.ToString().substr(0, 15));
         }
         else
         {
             hashCheckpoint = statePrev.hashCheckpoint;
 
-            debug::log(0, "===== Pending Checkpoint Hash = %s", hashCheckpoint.ToString().substr(0, 15).c_str());
+            debug::log(0, "===== Pending Checkpoint Hash = ", hashCheckpoint.ToString().substr(0, 15));
         }
 
         /* Start the database transaction. */
@@ -225,7 +226,7 @@ namespace TAO::Ledger
 
         /* Write the block to disk. */
         if(!LLD::legDB->WriteBlock(GetHash(), *this))
-            return debug::error(FUNCTION "block state failed to write");
+            return debug::error(FUNCTION, "block state failed to write");
 
 
         /* Signal to set the best chain. */
@@ -237,11 +238,11 @@ namespace TAO::Ledger
             {
                 /* Write the best chain pointer. */
                 if(!LLD::legDB->WriteBestChain(GetHash()))
-                    return debug::error(FUNCTION "failed to write best chain");
+                    return debug::error(FUNCTION, "failed to write best chain");
 
                 /* Write the block to disk. */
                 if(!LLD::legDB->WriteBlock(GetHash(), *this))
-                    return debug::error(FUNCTION "block state already exists");
+                    return debug::error(FUNCTION, "block state already exists");
 
                 /* Set the genesis block. */
                 ChainState::stateGenesis = *this;
@@ -266,7 +267,7 @@ namespace TAO::Ledger
                         /* Iterate backwards in chain. */
                         longer = longer.Prev();
                         if(longer.IsNull())
-                            return debug::error(FUNCTION "failed to find longer ancestor block");
+                            return debug::error(FUNCTION, "failed to find longer ancestor block");
                     }
 
                     /* Break if found. */
@@ -277,18 +278,18 @@ namespace TAO::Ledger
                     vDisconnect.push_back(fork);
                     fork = fork.Prev();
                     if(fork.IsNull())
-                        return debug::error(FUNCTION "failed to find ancestor fork block");
+                        return debug::error(FUNCTION, "failed to find ancestor fork block");
                 }
 
                 /* Log if there are blocks to disconnect. */
                 if(vDisconnect.size() > 0)
                 {
-                    debug::log(0, FUNCTION "REORGANIZE: Disconnect %i blocks; %s..%s\n",
-                        vDisconnect.size(), fork.GetHash().ToString().substr(0,20).c_str(), ChainState::stateBest.GetHash().ToString().substr(0,20).c_str());
+                    debug::log(0, FUNCTION, "REORGANIZE: Disconnect ", vDisconnect.size(),
+                        " blocks; ", fork.GetHash().ToString().substr(0,20),
+                        "..",  ChainState::stateBest.GetHash().ToString().substr(0,20), "\n");
 
-                    debug::log(0, FUNCTION "REORGANIZE: Connect %i blocks; %s..%s\n",
-                        vConnect.size(), fork.GetHash().ToString().substr(0,20).c_str(),
-                        this->GetHash().ToString().substr(0,20).c_str());
+                    debug::log(0, FUNCTION, "REORGANIZE: Connect ", vConnect.size(), " blocks; ", fork.GetHash().ToString().substr(0,20),
+                        "..", this->GetHash().ToString().substr(0,20), "\n");
                 }
 
                 /* List of transactions to resurrect. */
@@ -299,7 +300,7 @@ namespace TAO::Ledger
                 {
                     /* Connect the block. */
                     if(!state.Disconnect())
-                        return debug::error(FUNCTION "failed to disconnect %s",
+                        return debug::error(FUNCTION, "failed to disconnect %s",
                             state.GetHash().ToString().substr(0, 20).c_str());
 
                     /* Add transactions into memory pool. */
@@ -320,7 +321,7 @@ namespace TAO::Ledger
 
                     /* Connect the block. */
                     if(!state.Connect())
-                        return debug::error(FUNCTION "failed to connect %s",
+                        return debug::error(FUNCTION, "failed to connect %s",
                             state.GetHash().ToString().substr(0, 20).c_str());
 
                     /* Remove transactions from memory pool. */
@@ -342,7 +343,7 @@ namespace TAO::Ledger
                     /* Check if in memory pool. */
                     TAO::Ledger::Transaction tx;
                     if(!LLD::legDB->ReadTx(hashTx, tx))
-                        return debug::error(FUNCTION "transaction is not on disk");
+                        return debug::error(FUNCTION, "transaction is not on disk");
 
                     /* Add to the mempool. */
                     mempool.Accept(tx);
@@ -358,11 +359,14 @@ namespace TAO::Ledger
 
                 /* Write the best chain pointer. */
                 if(!LLD::legDB->WriteBestChain(ChainState::hashBestChain))
-                    return debug::error(FUNCTION "failed to write best chain");
+                    return debug::error(FUNCTION, "failed to write best chain");
 
 
                 /* Debug output about the best chain. */
-                debug::log(0, FUNCTION "New Best Block hash=", GetHash().ToString().substr(0, 20), " height=", ChainState::nBestHeight, " trust=", ChainState::nBestChainTrust);
+                debug::log(0, FUNCTION,
+                    "New Best Block hash=", GetHash().ToString().substr(0, 20),
+                    " height=", ChainState::nBestHeight,
+                    " trust=", ChainState::nBestChainTrust);
 
 
                 //TODO: blocknotify
@@ -387,7 +391,7 @@ namespace TAO::Ledger
     bool BlockState::Connect()
     {
         if(!LLD::legDB->WriteTx(producer.GetHash(), producer))
-            return debug::error(FUNCTION "failed to write producer");
+            return debug::error(FUNCTION, "failed to write producer");
 
         /* Check through all the transactions. */
         for(auto tx : vtx)
@@ -401,19 +405,19 @@ namespace TAO::Ledger
                 /* Check if in memory pool. */
                 TAO::Ledger::Transaction tx;
                 if(!mempool.Get(hash, tx))
-                    return debug::error(FUNCTION "transaction is not in memory pool"); //TODO: recover from this and ask sending node.
+                    return debug::error(FUNCTION, "transaction is not in memory pool"); //TODO: recover from this and ask sending node.
 
                 /* Execute the operations layers. */
                 if(!TAO::Register::Verify(tx))
-                    return debug::error(FUNCTION "transaction register layer failed to verify");
+                    return debug::error(FUNCTION, "transaction register layer failed to verify");
 
                 /* Execute the operations layers. */
                 if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::WRITE))
-                    return debug::error(FUNCTION "transaction operation layer failed to execute");
+                    return debug::error(FUNCTION, "transaction operation layer failed to execute");
 
                 /* Write to disk. */
                 if(!LLD::legDB->WriteTx(hash, tx))
-                    return debug::error(FUNCTION "transaction is not on disk");
+                    return debug::error(FUNCTION, "transaction is not on disk");
             }
         }
 
@@ -423,7 +427,7 @@ namespace TAO::Ledger
         {
             prev.hashNextBlock = GetHash();
             if(!LLD::legDB->WriteBlock(prev.GetHash(), prev))
-                return debug::error(FUNCTION "failed to write producer");
+                return debug::error(FUNCTION, "failed to write producer");
         }
 
         return true;
@@ -445,11 +449,11 @@ namespace TAO::Ledger
                 /* Check if in memory pool. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::legDB->ReadTx(hash, tx))
-                    return debug::error(FUNCTION "transaction is not on disk");
+                    return debug::error(FUNCTION, "transaction is not on disk");
 
                 /* Execute the operations layers. */
                 if(!TAO::Register::Rollback(tx))
-                    return debug::error(FUNCTION "transaction register layer failed to rollback");
+                    return debug::error(FUNCTION, "transaction register layer failed to rollback");
             }
         }
 
@@ -540,7 +544,7 @@ namespace TAO::Ledger
     /* For debugging purposes, printing the block to stdout */
     void BlockState::print() const
     {
-        debug::log(0, "%s", ToString(debug::flags::header | debug::flags::chain).c_str());
+        debug::log(0, ToString(debug::flags::header | debug::flags::chain));
     }
 
 }

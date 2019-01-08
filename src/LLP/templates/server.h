@@ -319,7 +319,7 @@ namespace LLP
         std::recursive_mutex DDOS_MUTEX;
 
 
-        /* Determine the thread with the least amount of active connections.
+        /* Determine thfalsee thread with the least amount of active connections.
             This keeps the load balanced across all server threads. */
         int32_t FindThread()
         {
@@ -560,7 +560,7 @@ namespace LLP
 
 
                 uint32_t RPS = TotalRequests() / TIMER.Elapsed();
-                debug::log(0, FUNCTION "LLP Running at ", RPS, " requests/s with ", nGlobalConnections, " connections.");
+                debug::log(0, FUNCTION, "LLP Running at ", RPS, " requests/s with ", nGlobalConnections, " connections.");
 
                 TIMER.Reset();
                 ClearRequests();

@@ -141,7 +141,7 @@ namespace LLD
 
             /* Create directories if they don't exist yet. */
             if(!filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
-                debug::log(0, FUNCTION "Generated Path ", strBaseLocation);
+                debug::log(0, FUNCTION, "Generated Path ", strBaseLocation);
 
             /* Stats variable for collective keychain size. */
             uint32_t nKeychainSize = 0, nTotalKeys = 0;
@@ -205,7 +205,7 @@ namespace LLD
                         mapKeys[vKey] = std::make_pair(nCurrentFile, nIterator);
 
                         /* Debug Output of Sector Key Information. */
-                        debug::log(5, FUNCTION "State: ", cKey.nState, " Length: ", cKey.nLength, " File: ", mapKeys[vKey].first, " Location: ", mapKeys[vKey].second, " Key: ", HexStr(vKey.begin(), vKey.end()));
+                        debug::log(5, FUNCTION, "State: ", cKey.nState, " Length: ", cKey.nLength, " File: ", mapKeys[vKey].first, " Location: ", mapKeys[vKey].second, " Key: ", HexStr(vKey.begin(), vKey.end()));
 
                         ++nTotalKeys;
                     }
@@ -213,7 +213,7 @@ namespace LLD
                     {
 
                         /* Debug Output of Sector Key Information. */
-                        debug::log(5, FUNCTION "Skipping Sector State: ", cKey.nState, " Length: ", cKey.nLength);
+                        debug::log(5, FUNCTION, "Skipping Sector State: ", cKey.nState, " Length: ", cKey.nLength);
                     }
 
                     /* Increment the Iterator. */
@@ -227,7 +227,7 @@ namespace LLD
                 vKeychain.clear();
             }
 
-            debug::log(0, FUNCTION "Initialized with ", nTotalKeys, " Keys | Total Size ", nKeychainSize, " | Total Files ", nCurrentFile + 1, " | Current Size ", nCurrentFileSize);
+            debug::log(0, FUNCTION, "Initialized with ", nTotalKeys, " Keys | Total Size ", nKeychainSize, " | Total Files ", nCurrentFile + 1, " | Current Size ", nCurrentFileSize);
         }
 
         /** Add / Update A Record in the Database **/
@@ -241,7 +241,7 @@ namespace LLD
                 /* Check the Binary File Size. */
                 if(nCurrentFileSize > FILEMAP_MAX_FILE_SIZE)
                 {
-                    debug::log(4, FUNCTION "Current File too Large, allocating new File ", nCurrentFile + 1);
+                    debug::log(4, FUNCTION, "Current File too Large, allocating new File ", nCurrentFile + 1);
 
                     ++nCurrentFile;
                     nCurrentFileSize = 0;
@@ -278,7 +278,7 @@ namespace LLD
 
 
             /* Debug Output of Sector Key Information. */
-            debug::log(4, FUNCTION "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+            debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                 " | Length: ", cKey.nLength, " | Location: ", mapKeys[cKey.vKey].second,
                 " | File: ", mapKeys[cKey.vKey].first, " | Sector File: ", cKey.nSectorFile,
                 " | Sector Size: ", cKey.nSectorSize, " | Sector Start: ", cKey.nSectorStart,
@@ -296,7 +296,7 @@ namespace LLD
 
             /* Check for the Key. */
             if(!mapKeys.count(vKey))
-                return debug::error(FUNCTION "Key doesn't Exist");
+                return debug::error(FUNCTION, "Key doesn't Exist");
 
 
             /* Establish the Outgoing Stream. */
@@ -348,7 +348,7 @@ namespace LLD
 
 
                 /* Debug Output of Sector Key Information. */
-                debug::log(4, FUNCTION "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                     " | Length: ", cKey.nLength, " | Location: ", mapKeys[vKey].second,
                     " | File: ",  mapKeys[vKey].first, " | Sector File: ", cKey.nSectorFile,
                     " | Sector Size: ", cKey.nSectorSize, " | Sector Start: ", cKey.nSectorStart,
@@ -365,7 +365,7 @@ namespace LLD
 
                     /* Check the Keys Match Properly. */
                     if(vKeyIn != vKey)
-                        return debug::error(FUNCTION "Key Mistmatch: DB:: %s MEM %s", HexStr(vKeyIn.begin(), vKeyIn.end()).c_str(), HexStr(vKey.begin(), vKey.end()).c_str());
+                        return debug::error(FUNCTION, "Key Mistmatch: DB:: %s MEM %s", HexStr(vKeyIn.begin(), vKeyIn.end()).c_str(), HexStr(vKey.begin(), vKey.end()).c_str());
 
                     /* Assign Key to Sector. */
                     cKey.vKey = vKeyIn;

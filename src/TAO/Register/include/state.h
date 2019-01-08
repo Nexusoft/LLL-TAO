@@ -192,15 +192,15 @@ namespace TAO::Register
         {
             /* Check for null state. */
             if(IsNull())
-                return debug::error(FUNCTION "register cannot be null");
+                return debug::error(FUNCTION, "register cannot be null");
 
             /* Check the checksum. */
             if(GetHash() != hashChecksum)
-                return debug::error(FUNCTION "register checksum (%" PRIu64 ") mismatch (%" PRIu64 ")", GetHash(), hashChecksum);
+                return debug::error(FUNCTION, "register checksum (%" PRIu64 ") mismatch (%" PRIu64 ")", GetHash(), hashChecksum);
 
             /* Check the timestamp. */
             if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
-                return debug::error(FUNCTION "register timestamp too far in the future");
+                return debug::error(FUNCTION, "register timestamp too far in the future");
 
             return true;
         }
@@ -250,7 +250,7 @@ namespace TAO::Register
         {
             /* Check size constraints. */
             if(nReadPos + nSize > vchState.size())
-                throw std::runtime_error(debug::strprintf(FUNCTION "reached end of stream %u", nReadPos));
+                throw std::runtime_error(debug::strprintf(FUNCTION, "reached end of stream %u", nReadPos));
 
             /* Copy the bytes into tmp object. */
             std::copy((uint8_t*)&vchState[nReadPos], (uint8_t*)&vchState[nReadPos] + nSize, (uint8_t*)pch);
@@ -316,7 +316,13 @@ namespace TAO::Register
 
         void print()
         {
-            debug::log(0, "State(version=%u, type=%u, length=%u, owner=%s, checksum=%" PRIu64 ", state=%s)", nVersion, nType, vchState.size(), hashOwner.ToString().substr(0, 20).c_str(), hashChecksum, HexStr(vchState.begin(), vchState.end()).c_str());
+            debug::log(0,
+                "State(version=", nVersion,
+                ", type=", nType,
+                ", length=", vchState.size(),
+                ", owner=", hashOwner.ToString().substr(0, 20),
+                ", checksum=", hashChecksum,
+                ", state=)", HexStr(vchState.begin(), vchState.end()));
         }
 
     };

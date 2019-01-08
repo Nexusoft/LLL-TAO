@@ -73,7 +73,7 @@ namespace Legacy
     {
         if (nIn >= txTo.vin.size())
         {
-            debug::error("SignatureHash() : nIn=%d out of range", nIn);
+            debug::error("SignatureHash() : nIn=", nIn, " out of range");
             return 1;
         }
 

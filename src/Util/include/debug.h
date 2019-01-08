@@ -134,6 +134,7 @@ namespace debug
         return ss.str();
     }
 
+
     /** log
      *
      *  Safe constant format debugging logs.
@@ -162,6 +163,14 @@ namespace debug
         std::string pathDebug = config::GetDataDir() + "debug.log";
         std::ofstream ssFile(pathDebug, std::ios::app);
         ssFile << debug << std::endl;
+    }
+
+    template<class... Args>
+    bool error(Args&&... args)
+    {
+        log(0, args...);
+
+        return false;
     }
 
 

@@ -100,7 +100,7 @@ namespace Legacy
                 filesystem::create_directory(pathLogDir);
 
                 std::string pathErrorFile(pathDataDir + "/db.log");
-                //debug::log(0, FUNCTION "dbenv.open LogDir=", pathLogDir, " ErrorFile=",  pathErrorFile);
+                //debug::log(0, FUNCTION, "dbenv.open LogDir=", pathLogDir, " ErrorFile=",  pathErrorFile);
 
                 int nDbCache = config::GetArg("-dbcache", 25);
 

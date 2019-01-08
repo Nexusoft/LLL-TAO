@@ -152,7 +152,10 @@ namespace TAO::Ledger
             nSubsidy += GetSubsidy(nMinutes, nType);
         }
 
-        //debug::log(0, "Reserve %i: %f Nexus | Timespan: %i - %i Minutes", nType, (double)nSubsidy / COIN, nStart, (nStart + nTimespan));
+        //debug::log(0, "Reserve ", nType,
+        //    ": ", (double)nSubsidy / COIN,
+        //    " Nexus | Timespan: ", nStart, " - ", (nStart + nTimespan), " Minutes");
+
         return nSubsidy;
     }
 

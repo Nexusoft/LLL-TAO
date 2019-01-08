@@ -188,15 +188,13 @@ inline std::string HexStr(const std::vector<uint8_t>& vch, bool fSpaces=false)
  *
  *  @param[in] itend The iterator container end
  *
- *  @param[in] pszFormat The format specifier string for formatted output
- *
  *  @param[in] fSpaces The flag for if there should be spaces
  *
  **/
 template<typename T>
-inline void PrintHex(const T pbegin, const T pend, const char* pszFormat="%s", bool fSpaces=true)
+inline void PrintHex(const T pbegin, const T pend, bool fSpaces=true)
 {
-    debug::log(0, pszFormat, HexStr(pbegin, pend, fSpaces).c_str());
+    debug::log(0, HexStr(pbegin, pend, fSpaces));
 }
 
 /** PrintHex
@@ -210,9 +208,9 @@ inline void PrintHex(const T pbegin, const T pend, const char* pszFormat="%s", b
  *  @param[in] fSpaces The flag for if there should be spaces
  *
  **/
-inline void PrintHex(const std::vector<uint8_t>& vch, const char* pszFormat="%s", bool fSpaces=true)
+inline void PrintHex(const std::vector<uint8_t>& vch, bool fSpaces=true)
 {
-    debug::log(0, pszFormat, HexStr(vch, fSpaces).c_str());
+    debug::log(0, HexStr(vch, fSpaces));
 }
 
 #endif
