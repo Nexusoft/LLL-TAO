@@ -13,7 +13,7 @@
 # ./curl-nexus "accounts/transactions?genesis=<genesis-id>"
 #
 # ./curl-nexus "supply/createitem?pin=1234&data=<data>&session=<ses-id>"
-# ./curl-nexus "supply/appenditem?pin=1234&data=<data>&session=<ses-id> \
+# ./curl-nexus "supply/updateitem?pin=1234&data=<data>&session=<ses-id> \
 #                                &address=<addr>"    
 # ./curl-nexus "supply/getitem?address=<addr>"
 # ./curl-nexus "supply/transfer?pin=1234&session=<ses-id>&address=<addr>&destincation=bar
@@ -73,12 +73,12 @@ fi
 
 if [ "$COMMAND" = "supply/getitem" ] ; then
     echo "Supply parameters:"
-    echo "suppply/getitem?address=0x<register-address>"
+    echo "suppply/getitem?address=<register-address>"
     exit
 fi
 if [ "$COMMAND" = "supply/transfer" ] ; then
     echo "Supply parameters:"
-    echo "suppply/transfer?pin=<pin>&session=<session-id>&address=0x<register-address>&destination=<new-owner>"
+    echo "suppply/transfer?pin=<pin>&session=<session-id>&address=<register-address>&destination=<new-owner>"
     exit
 fi
 if [ "$COMMAND" = "supply/createitem" ] ; then
@@ -88,7 +88,12 @@ if [ "$COMMAND" = "supply/createitem" ] ; then
 fi
 if [ "$COMMAND" = "supply/history" ] ; then
     echo "Supply parameters:"
-    echo "suppply/history?address=0x<register-address>"
+    echo "suppply/history?address=<register-address>"
+    exit
+fi
+if [ "$COMMAND" = "supply/updateitem" ] ; then
+    echo "Supply parameters:"
+    echo "suppply/updateitem?pin=<pin>&session=<session-id>&data=<data>&address=<register-address>"
     exit
 fi
 
