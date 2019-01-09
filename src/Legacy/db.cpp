@@ -304,7 +304,7 @@ namespace Legacy
         if (pdb == nullptr)
             return;
 
-        int32_t ret = pcursor->close();
+        pcursor->close();
 
         return;
     }

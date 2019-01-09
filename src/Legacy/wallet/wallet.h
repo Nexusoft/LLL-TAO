@@ -204,9 +204,9 @@ namespace Legacy
         , addressBook(CAddressBook(*this))
         , keyPool(CKeyPool(*this))
         , vchDefaultKey()
+        , nWalletUnlockTime(0)
         , mapWallet()
         , mapRequestCount()
-        , nWalletUnlockTime(0)
         {
 
         }

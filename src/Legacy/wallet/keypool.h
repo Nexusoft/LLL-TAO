@@ -80,8 +80,8 @@ namespace Legacy
          *
          **/
         CKeyPool(CWallet& walletIn)
-        : poolWallet(walletIn)
-        , setKeyPool()
+        : setKeyPool()
+        , poolWallet(walletIn)
         {
         }
 
