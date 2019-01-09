@@ -40,22 +40,22 @@ namespace TAO::API
 
     // json::json keypoolrefill(const json::json& params, bool fHelp)
     // {
-    //     if (pwalletMain->IsCrypted() && (fHelp || params.size() > 0))
+    //     if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() > 0))
     //         return std::string(
     //             "keypoolrefill"
     //             " - Fills the keypool, requires wallet passphrase to be set.");
-    //     if (!pwalletMain->IsCrypted() && (fHelp || params.size() > 0))
+    //     if (!Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() > 0))
     //         return std::string(
     //             "keypoolrefill"
     //             " - Fills the keypool.");
 
-    //     if (pwalletMain->IsLocked())
-    //         throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+    //     if (Legacy::CWallet::GetInstance().IsLocked())
+    //         throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
-    //     pwalletMain->TopUpKeyPool();
+    //     Legacy::CWallet::GetInstance().TopUpKeyPool();
 
-    //     if (pwalletMain->GetKeyPoolSize() < GetArg("-keypool", 100))
-    //         throw JSONRPCError(-4, "Error refreshing keypool.");
+    //     if (Legacy::CWallet::GetInstance().GetKeyPoolSize() < GetArg("-keypool", 100))
+    //         throw APIException(-4, "Error refreshing keypool.");
 
     //     return Value::null;
     // }
@@ -63,110 +63,76 @@ namespace TAO::API
 
     // void ThreadTopUpKeyPool(void* parg)
     // {
-    //     pwalletMain->TopUpKeyPool();
+    //     Legacy::CWallet::GetInstance().TopUpKeyPool();
     // }
 
-    // void ThreadCleanWalletPassphrase(void* parg)
-    // {
-    //     int64 nMyWakeTime = GetTimeMillis() + *((int64*)parg) * 1000;
+    
 
-    //     ENTER_CRITICAL_SECTION(cs_nWalletUnlockTime);
+    /* walletpassphrase <passphrase> [timeout] [mintonly]
+    *  Stores the wallet decryption key in memory for [timeout] seconds.
+    *  mintonly is optional true/false allowing only block minting. timeout is ignored if mintonly is true / 1*/
+    json::json RPC::WalletPassphrase(const json::json& params, bool fHelp)
+    {
+        if (fHelp || (Legacy::CWallet::GetInstance().IsCrypted() && ( params.size() < 1 || params.size() > 3)))
+            return std::string(
+                "walletpassphrase <passphrase> [timeout] [mintonly]"
+                " - Stores the wallet decryption key in memory for [timeout] seconds."
+                " mintonly is optional true/false allowing only block minting. timeout is ignored if mintonly is true / 1");
+        
+        if (!Legacy::CWallet::GetInstance().IsCrypted())
+            throw APIException(-15, "Error: running with an unencrypted wallet, but walletpassphrase was called.");
 
-    //     if (nWalletUnlockTime == 0)
-    //     {
-    //         nWalletUnlockTime = nMyWakeTime;
+        if (!Legacy::CWallet::GetInstance().IsLocked())
+            throw APIException(-17, "Error: Wallet is already unlocked, use walletlock first if need to change unlock settings.");
 
-    //         do
-    //         {
-    //             if (nWalletUnlockTime==0)
-    //                 break;
-    //             int64 nTosleep = nWalletUnlockTime - GetTimeMillis();
-    //             if (nTosleep <= 0)
-    //                 break;
+        // Note that the walletpassphrase is stored in params[0] which is not mlock()ed
+        SecureString strWalletPass;
+        strWalletPass.reserve(100);
+        
+        strWalletPass = params[0];
 
-    //             LEAVE_CRITICAL_SECTION(cs_nWalletUnlockTime);
-    //             sleep(nTosleep);
-    //             ENTER_CRITICAL_SECTION(cs_nWalletUnlockTime);
+        if (strWalletPass.length() > 0)
+        {
+            uint32_t nLockSeconds = 0;
+            if (params.size() > 1)
+                nLockSeconds = (uint32_t)params[1];
 
-    //         } while(1);
+            if (!Legacy::CWallet::GetInstance().Unlock(strWalletPass, nLockSeconds))
+                throw APIException(-14, "Error: The wallet passphrase entered was incorrect.");
+        }
+        else
+            return std::string(
+                "walletpassphrase <passphrase> [timeout]"
+                " - Stores the wallet decryption key in memory for [timeout] seconds.");
 
-    //         if (nWalletUnlockTime)
-    //         {
-    //             nWalletUnlockTime = 0;
-    //             pwalletMain->Lock();
-    //         }
-    //     }
-    //     else
-    //     {
-    //         if (nWalletUnlockTime < nMyWakeTime)
-    //             nWalletUnlockTime = nMyWakeTime;
-    //     }
+        // asynchronously top up the keypool while we have the wallet unlocked.
+        std::thread([]()
+        {
+            Legacy::CWallet::GetInstance().GetKeyPool().TopUpKeyPool();
 
-    //     LEAVE_CRITICAL_SECTION(cs_nWalletUnlockTime);
+        }).detach();
+        
+        // Nexus: if user OS account compromised prevent trivial sendmoney commands
+        if (params.size() > 2)
+            Legacy::fWalletUnlockMintOnly = (bool)params[2];
+        else
+            Legacy::fWalletUnlockMintOnly = false;
 
-    //     delete (int64*)parg;
-    // }
-
-    /* walletpassphrase <passphrase> <timeout> [mintonly]
-    *  Stores the wallet decryption key in memory for <timeout> seconds.
-    *  mintonly is optional true/false allowing only block minting*/
-    // json::json walletpassphrase(const json::json& params, bool fHelp)
-    // {
-    //     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 3))
-    //         return std::string(
-    //             "walletpassphrase <passphrase> <timeout> [mintonly]"
-    //             " - Stores the wallet decryption key in memory for <timeout> seconds."
-    //             " mintonly is optional true/false allowing only block minting.");
-    //     if (fHelp)
-    //         return true;
-    //     if (!pwalletMain->IsCrypted())
-    //         throw JSONRPCError(-15, "Error: running with an unencrypted wallet, but walletpassphrase was called.");
-
-    //     if (!pwalletMain->IsLocked())
-    //         throw JSONRPCError(-17, "Error: Wallet is already unlocked, use walletlock first if need to change unlock settings.");
-
-    //     // Note that the walletpassphrase is stored in params[0] which is not mlock()ed
-    //     SecureString strWalletPass;
-    //     strWalletPass.reserve(100);
-    //     // TODO: get rid of this .c_str() by implementing SecureString::operator=(std::string)
-    //     // Alternately, find a way to make params[0] mlock()'d to begin with.
-    //     strWalletPass = params[0].get_str().c_str();
-
-    //     if (strWalletPass.length() > 0)
-    //     {
-    //         if (!pwalletMain->Unlock(strWalletPass))
-    //             throw JSONRPCError(-14, "Error: The wallet passphrase entered was incorrect.");
-    //     }
-    //     else
-    //         return std::string(
-    //             "walletpassphrase <passphrase> <timeout>"
-    //             " - Stores the wallet decryption key in memory for <timeout> seconds.");
-
-    //     CreateThread(ThreadTopUpKeyPool, NULL);
-    //     int64* pnsleepTime = new int64(params[1].get_int64());
-    //     CreateThread(ThreadCleanWalletPassphrase, pnsleepTime);
-
-    //     // Nexus: if user OS account compromised prevent trivial sendmoney commands
-    //     if (params.size() > 2)
-    //         Wallet::fWalletUnlockMintOnly = params[2].get_bool();
-    //     else
-    //         Wallet::fWalletUnlockMintOnly = false;
-
-    //     return Value::null;
-    // }
+        return "";
+    }
 
     /* walletpassphrasechange <oldpassphrase> <newpassphrase>
     *  Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>*/
     // json::json walletpassphrasechange(const json::json& params, bool fHelp)
     // {
-    //     if (pwalletMain->IsCrypted() && (fHelp || params.size() != 2))
+    //     if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() != 2))
     //         return std::string(
     //             "walletpassphrasechange <oldpassphrase> <newpassphrase>"
     //             " - Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>.");
     //     if (fHelp)
     //         return true;
-    //     if (!pwalletMain->IsCrypted())
-    //         throw JSONRPCError(-15, "Error: running with an unencrypted wallet, but walletpassphrasechange was called.");
+    //     if (!Legacy::CWallet::GetInstance().IsCrypted())
+    //         throw APIException(-15, "Error: running with an unencrypted wallet, but walletpassphrasechange was called.");
 
     //     // TODO: get rid of these .c_str() calls by implementing SecureString::operator=(std::string)
     //     // Alternately, find a way to make params[0] mlock()'d to begin with.
@@ -183,8 +149,8 @@ namespace TAO::API
     //             "walletpassphrasechange <oldpassphrase> <newpassphrase>"
     //             " - Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>.");
 
-    //     if (!pwalletMain->ChangeWalletPassphrase(strOldWalletPass, strNewWalletPass))
-    //         throw JSONRPCError(-14, "Error: The wallet passphrase entered was incorrect.");
+    //     if (!Legacy::CWallet::GetInstance().ChangeWalletPassphrase(strOldWalletPass, strNewWalletPass))
+    //         throw APIException(-14, "Error: The wallet passphrase entered was incorrect.");
 
     //     return Value::null;
     // }
@@ -196,7 +162,7 @@ namespace TAO::API
     *  before being able to call any methods which require the wallet to be unlocked */
     // json::json walletlock(const json::json& params, bool fHelp)
     // {
-    //     if (pwalletMain->IsCrypted() && (fHelp || params.size() != 0))
+    //     if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() != 0))
     //         return std::string(
     //             "walletlock"
     //             " - Removes the wallet encryption key from memory, locking the wallet."
@@ -204,12 +170,12 @@ namespace TAO::API
     //             " before being able to call any methods which require the wallet to be unlocked.");
     //     if (fHelp)
     //         return true;
-    //     if (!pwalletMain->IsCrypted())
-    //         throw JSONRPCError(-15, "Error: running with an unencrypted wallet, but walletlock was called.");
+    //     if (!Legacy::CWallet::GetInstance().IsCrypted())
+    //         throw APIException(-15, "Error: running with an unencrypted wallet, but walletlock was called.");
 
     //     {
     //         LOCK(cs_nWalletUnlockTime);
-    //         pwalletMain->Lock();
+    //         Legacy::CWallet::GetInstance().Lock();
     //         nWalletUnlockTime = 0;
     //     }
 
@@ -218,37 +184,35 @@ namespace TAO::API
 
     /* encryptwallet <passphrase>
     *  Encrypts the wallet with <passphrase>. */
-    // json::json encryptwallet(const json::json& params, bool fHelp)
-    // {
-    //     if (!pwalletMain->IsCrypted() && (fHelp || params.size() != 1))
-    //         return std::string(
-    //             "encryptwallet <passphrase>"
-    //             " - Encrypts the wallet with <passphrase>.");
-    //     if (fHelp)
-    //         return true;
-    //     if (pwalletMain->IsCrypted())
-    //         throw JSONRPCError(-15, "Error: running with an encrypted wallet, but encryptwallet was called.");
+    json::json RPC::EncryptWallet(const json::json& params, bool fHelp)
+    {
+        if (fHelp || (!Legacy::CWallet::GetInstance().IsCrypted() && params.size() != 1))
+            return std::string(
+                "encryptwallet <passphrase>"
+                " - Encrypts the wallet with <passphrase>.");
 
-    //     // TODO: get rid of this .c_str() by implementing SecureString::operator=(std::string)
-    //     // Alternately, find a way to make params[0] mlock()'d to begin with.
-    //     SecureString strWalletPass;
-    //     strWalletPass.reserve(100);
-    //     strWalletPass = params[0].get_str().c_str();
+        if (Legacy::CWallet::GetInstance().IsCrypted())
+            throw APIException(-15, "Error: running with an encrypted wallet, but encryptwallet was called.");
 
-    //     if (strWalletPass.length() < 1)
-    //         return std::string(
-    //             "encryptwallet <passphrase>"
-    //             " - Encrypts the wallet with <passphrase>.");
+        SecureString strWalletPass;
+        strWalletPass.reserve(100);
+        strWalletPass = std::string(params.at(0)).c_str();
 
-    //     if (!pwalletMain->EncryptWallet(strWalletPass))
-    //         throw JSONRPCError(-16, "Error: Failed to encrypt the wallet.");
+        if (strWalletPass.length() < 1)
+            return std::string(
+                "encryptwallet <passphrase>"
+                " - Encrypts the wallet with <passphrase>.");
 
-    //     // BDB seems to have a bad habit of writing old data into
-    //     // slack space in .dat files; that is bad if the old data is
-    //     // unencrypted private keys.  So:
-    //     StartShutdown();
-    //     return "wallet encrypted; Nexus server stopping, restart to run with encrypted wallet";
-    // }
+        if (!Legacy::CWallet::GetInstance().EncryptWallet(strWalletPass))
+            throw APIException(-16, "Error: Failed to encrypt the wallet.");
+
+        // BDB seems to have a bad habit of writing old data into
+        // slack space in .dat files; that is bad if the old data is
+        // unencrypted private keys.  So:
+        //StartShutdown();
+        //return "wallet encrypted; Nexus server stopping, restart to run with encrypted wallet";
+        return "wallet encrypted";
+    }
 
     /* checkwallet
     *  Check wallet for integrity */
@@ -261,7 +225,7 @@ namespace TAO::API
 
     //     int nMismatchSpent;
     //     int64 nBalanceInQuestion;
-    //     pwalletMain->FixSpentCoins(nMismatchSpent, nBalanceInQuestion, true);
+    //     Legacy::CWallet::GetInstance().FixSpentCoins(nMismatchSpent, nBalanceInQuestion, true);
     //     Object result;
     //     if (nMismatchSpent == 0)
     //         result.push_back(Pair("wallet check passed", true));
@@ -315,7 +279,7 @@ namespace TAO::API
 
     //     int nMismatchSpent;
     //     int64 nBalanceInQuestion;
-    //     pwalletMain->FixSpentCoins(nMismatchSpent, nBalanceInQuestion);
+    //     Legacy::CWallet::GetInstance().FixSpentCoins(nMismatchSpent, nBalanceInQuestion);
     //     Object result;
     //     if (nMismatchSpent == 0)
     //         result.push_back(Pair("wallet check passed", true));
@@ -356,7 +320,7 @@ namespace TAO::API
                 "rescan"
                 " - Rescans the database for relevant wallet transactions.");
 
-    //     pwalletMain->ScanForWalletTransactions(Core::pindexGenesisBlock, true);
+    //     Legacy::CWallet::GetInstance().ScanForWalletTransactions(Core::pindexGenesisBlock, true);
 
     //     return "success";
         json::json ret;
@@ -379,11 +343,11 @@ namespace TAO::API
     //     Wallet::NexusSecret vchSecret;
     //     bool fGood = vchSecret.SetString(strSecret);
 
-    //     if (!fGood) throw JSONRPCError(-5,"Invalid private key");
-    //     if (pwalletMain->IsLocked())
-    //         throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+    //     if (!fGood) throw APIException(-5,"Invalid private key");
+    //     if (Legacy::CWallet::GetInstance().IsLocked())
+    //         throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
     //     if (Wallet::fWalletUnlockMintOnly)
-    //         throw JSONRPCError(-102, "Wallet is unlocked for minting only.");
+    //         throw APIException(-102, "Wallet is unlocked for minting only.");
 
     //     Wallet::CKey key;
     //     bool fCompressed;
@@ -392,13 +356,13 @@ namespace TAO::API
     //     Wallet::NexusAddress vchAddress = Wallet::NexusAddress(key.GetPubKey());
 
     //     {
-    //         LOCK2(Core::cs_main, pwalletMain->cs_wallet);
+    //         LOCK2(Core::cs_main, Legacy::CWallet::GetInstance().cs_wallet);
 
-    //         pwalletMain->MarkDirty();
-    //         pwalletMain->SetAddressBookName(vchAddress, strLabel);
+    //         Legacy::CWallet::GetInstance().MarkDirty();
+    //         Legacy::CWallet::GetInstance().SetAddressBookName(vchAddress, strLabel);
 
-    //         if (!pwalletMain->AddKey(key))
-    //             throw JSONRPCError(-4,"Error adding key to wallet");
+    //         if (!Legacy::CWallet::GetInstance().AddKey(key))
+    //             throw APIException(-4,"Error adding key to wallet");
     //     }
 
     //     MainFrameRepaint();
@@ -420,15 +384,15 @@ namespace TAO::API
     //     string strAddress = params[0].get_str();
     //     Wallet::NexusAddress address;
     //     if (!address.SetString(strAddress))
-    //         throw JSONRPCError(-5, "Invalid Nexus address");
-    //     if (pwalletMain->IsLocked())
-    //         throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+    //         throw APIException(-5, "Invalid Nexus address");
+    //     if (Legacy::CWallet::GetInstance().IsLocked())
+    //         throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
     //     if (Wallet::fWalletUnlockMintOnly) // Nexus: no dumpprivkey in mint-only mode
-    //         throw JSONRPCError(-102, "Wallet is unlocked for minting only.");
+    //         throw APIException(-102, "Wallet is unlocked for minting only.");
     //     Wallet::CSecret vchSecret;
     //     bool fCompressed;
-    //     if (!pwalletMain->GetSecret(address, vchSecret, fCompressed))
-    //         throw JSONRPCError(-4,"Private key for address " + strAddress + " is not known");
+    //     if (!Legacy::CWallet::GetInstance().GetSecret(address, vchSecret, fCompressed))
+    //         throw APIException(-4,"Private key for address " + strAddress + " is not known");
     //     return Wallet::NexusSecret(vchSecret, fCompressed).ToString();
         json::json ret;
         return ret;
@@ -447,10 +411,10 @@ namespace TAO::API
                 " You need to list the imported keys in a JSON array of {[account],[privatekey]}");
         }
             /** Make sure the Wallet is Unlocked fully before proceeding. **/
-    //         if (pwalletMain->IsLocked())
-    //             throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+    //         if (Legacy::CWallet::GetInstance().IsLocked())
+    //             throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
     //         if (Wallet::fWalletUnlockMintOnly)
-    //             throw JSONRPCError(-102, "Wallet is unlocked for minting only.");
+    //             throw APIException(-102, "Wallet is unlocked for minting only.");
 
     //         /** Establish the JSON Object from the Parameters. **/
     //         Object entry = params[0].get_obj();
@@ -475,12 +439,12 @@ namespace TAO::API
     //             Wallet::NexusAddress vchAddress = Wallet::NexusAddress(key.GetPubKey());
 
     //             {
-    //                 LOCK2(Core::cs_main, pwalletMain->cs_wallet);
+    //                 LOCK2(Core::cs_main, Legacy::CWallet::GetInstance().cs_wallet);
 
-    //                 pwalletMain->MarkDirty();
-    //                 pwalletMain->SetAddressBookName(vchAddress, entry[nIndex].name_);
+    //                 Legacy::CWallet::GetInstance().MarkDirty();
+    //                 Legacy::CWallet::GetInstance().SetAddressBookName(vchAddress, entry[nIndex].name_);
 
-    //                 if (!pwalletMain->AddKey(key))
+    //                 if (!Legacy::CWallet::GetInstance().AddKey(key))
     //                 {
     //                     response.push_back(Pair(entry[nIndex].name_, "Code -4 Error Adding to Wallet"));
 
@@ -510,15 +474,15 @@ namespace TAO::API
                 " This will allow the importing and exporting of private keys much easier");
 
     //     /** Disallow the exporting of private keys if the encryption key is not available in the memory. **/
-    //     if (pwalletMain->IsLocked())
-    //         throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+    //     if (Legacy::CWallet::GetInstance().IsLocked())
+    //         throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
     //     if (Wallet::fWalletUnlockMintOnly) // Nexus: no dumpprivkey in mint-only mode
-    //         throw JSONRPCError(-102, "Wallet is unlocked for minting only.");
+    //         throw APIException(-102, "Wallet is unlocked for minting only.");
 
     //     /** Compile the list of available Nexus Addresses and their according Balances. **/
     //     map<Wallet::NexusAddress, int64> mapAddresses;
-    //     if(!pwalletMain->AvailableAddresses((unsigned int)GetUnifiedTimestamp(), mapAddresses))
-    //         throw JSONRPCError(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
+    //     if(!Legacy::CWallet::GetInstance().AvailableAddresses((unsigned int)GetUnifiedTimestamp(), mapAddresses))
+    //         throw APIException(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
     //     /** Loop all entries of the memory map to compile the list of account names and their addresses.
     //         JSON object format is a reflection of the import and export options. **/
@@ -528,15 +492,15 @@ namespace TAO::API
     //         /** Extract the Secret key from the Wallet. **/
     //         Wallet::CSecret vchSecret;
     //         bool fCompressed;
-    //         if (!pwalletMain->GetSecret(it->first, vchSecret, fCompressed))
-    //             throw JSONRPCError(-4,"Private key for address " + it->first.ToString() + " is not known");
+    //         if (!Legacy::CWallet::GetInstance().GetSecret(it->first, vchSecret, fCompressed))
+    //             throw APIException(-4,"Private key for address " + it->first.ToString() + " is not known");
 
     //         /** Extract the account name from the address book. **/
     //         string strAccount;
-    //         if(!pwalletMain->mapAddressBook.count(it->first))
+    //         if(!Legacy::CWallet::GetInstance().mapAddressBook.count(it->first))
     //             strAccount = "Default";
     //         else
-    //             strAccount = pwalletMain->mapAddressBook[it->first];
+    //             strAccount = Legacy::CWallet::GetInstance().mapAddressBook[it->first];
 
     //         /** Compile the Secret Key and account information into a listed pair. **/
     //         string strSecret = Wallet::NexusSecret(vchSecret, fCompressed).ToString();

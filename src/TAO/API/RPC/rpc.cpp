@@ -65,6 +65,8 @@ namespace TAO::API
         mapFunctions["getsupplyrates"] = Function(std::bind(&RPC::GetSupplyRates, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["getmoneysupply"] = Function(std::bind(&RPC::GetMoneySupply, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["backupwallet"] = Function(std::bind(&RPC::BackupWallet, this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["walletpassphrase"] = Function(std::bind(&RPC::WalletPassphrase, this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["encryptwallet"] = Function(std::bind(&RPC::EncryptWallet, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["checkwallet"] = Function(std::bind(&RPC::CheckWallet, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["listtrustkeys"] = Function(std::bind(&RPC::ListTrustKeys, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["repairwallet"] = Function(std::bind(&RPC::RepairWallet, this, std::placeholders::_1, std::placeholders::_2));

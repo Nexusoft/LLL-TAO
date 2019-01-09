@@ -575,6 +575,32 @@ namespace TAO::API
         **/
         json::json BackupWallet(const json::json& params, bool fHelp);
 
+        /** WalletPassphrase
+        *
+        *  walletpassphrase <passphrase> [timeout] [mintonly]
+        *  Stores the wallet decryption key in memory for <timeout> seconds.
+        *  mintonly is optional true/false allowing only block minting
+        *  timeout is ignored if mintonly is true
+        *
+        *  @param[in] params Parameters array passed by the caller.
+        *
+        *  @return JSON containing the information.
+        *
+        **/
+        json::json WalletPassphrase(const json::json& params, bool fHelp);
+
+        /** EncryptWallet
+        *
+        *  encryptwallet <passphrase>
+        *  Encrypts the wallet with <passphrase>
+        *
+        *  @param[in] params Parameters array passed by the caller.
+        *
+        *  @return JSON containing the information.
+        *
+        **/
+        json::json EncryptWallet(const json::json& params, bool fHelp);
+
         /** CheckWallet
         *
         *  checkwallet

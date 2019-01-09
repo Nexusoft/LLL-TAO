@@ -14,6 +14,9 @@
     #include <TAO/API/include/rpc.h>
     #include <Util/include/json.h>
 
+    #include <Legacy/wallet/wallet.h>
+    #include <Legacy/wallet/walletdb.h>
+
     namespace TAO::API
     {
 
@@ -30,23 +33,23 @@
                 "If [account] is specified (recommended), it is added to the address book "
                 "so payments received with the address will be credited to [account].");
 
-    //     // Parse the account first so we don't generate a key if there's an error
-    //     string strAccount = "default";
-    //     if (params.size() > 0)
-    //         strAccount = AccountFromValue(params[0]);
+        // Parse the account first so we don't generate a key if there's an error
+        std::string strAccount = "default";
+        if (params.size() > 0)
+            strAccount = params[0];
 
-    //     if (!pwalletMain->IsLocked())
-    //         pwalletMain->TopUpKeyPool();
+        if (!Legacy::CWallet::GetInstance().IsLocked())
+            Legacy::CWallet::GetInstance().GetKeyPool().TopUpKeyPool();
 
-    //     // Generate a new key that is added to wallet
-    //     std::vector<unsigned char> newKey;
-    //     if (!pwalletMain->GetKeyFromPool(newKey, false))
-    //         throw JSONRPCError(-12, "Error: Keypool ran out, please call keypoolrefill first");
-    //     Wallet::NexusAddress address(newKey);
+        // Generate a new key that is added to wallet
+        std::vector<unsigned char> newKey;
+        if (!Legacy::CWallet::GetInstance().GetKeyPool().GetKeyFromPool(newKey, false))
+            throw APIException(-12, "Error: Keypool ran out, please call keypoolrefill first");
+        Legacy::NexusAddress address(newKey);
 
-    //     pwalletMain->SetAddressBookName(address, strAccount);
+        Legacy::CWallet::GetInstance().GetAddressBook().SetAddressBookName(address, strAccount);
 
-    //     return address.ToString();
+        return address.ToString();
         json::json ret;
         return ret;
     }
@@ -54,7 +57,7 @@
 
     // Wallet::NexusAddress GetAccountAddress(string strAccount, bool bForceNew=false)
     // {
-    //     Wallet::CWalletDB walletdb(pwalletMain->strWalletFile);
+    //     Wallet::CWalletDB walletdb(Legacy::CWallet::GetInstance().strWalletFile);
 
     //     Wallet::CAccount account;
     //     walletdb.ReadAccount(strAccount, account);
@@ -66,8 +69,8 @@
     //     {
     //         Wallet::CScript scriptPubKey;
     //         scriptPubKey.SetNexusAddress(account.vchPubKey);
-    //         for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin();
-    //              it != pwalletMain->mapWallet.end() && !account.vchPubKey.empty();
+    //         for (map<uint512, Wallet::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin();
+    //              it != Legacy::CWallet::GetInstance().mapWallet.end() && !account.vchPubKey.empty();
     //              ++it)
     //         {
     //             const Wallet::CWalletTx& wtx = (*it).second;
@@ -80,10 +83,10 @@
     //     // Generate a new key
     //     if (account.vchPubKey.empty() || bForceNew || bKeyUsed)
     //     {
-    //         if (!pwalletMain->GetKeyFromPool(account.vchPubKey, false))
+    //         if (!Legacy::CWallet::GetInstance().GetKeyFromPool(account.vchPubKey, false))
     //             throw JSONRPCError(-12, "Error: Keypool ran out, please call keypoolrefill first");
 
-    //         pwalletMain->SetAddressBookName(Wallet::NexusAddress(account.vchPubKey), strAccount);
+    //         Legacy::CWallet::GetInstance().SetAddressBookName(Wallet::NexusAddress(account.vchPubKey), strAccount);
     //         walletdb.WriteAccount(strAccount, account);
     //     }
 
@@ -130,14 +133,14 @@
     //         strAccount = AccountFromValue(params[1]);
 
     //     // Detect when changing the account of an address that is the 'unused current key' of another account:
-    //     if (pwalletMain->mapAddressBook.count(address))
+    //     if (Legacy::CWallet::GetInstance().mapAddressBook.count(address))
     //     {
-    //         string strOldAccount = pwalletMain->mapAddressBook[address];
+    //         string strOldAccount = Legacy::CWallet::GetInstance().mapAddressBook[address];
     //         if (address == GetAccountAddress(strOldAccount))
     //             GetAccountAddress(strOldAccount, true);
     //     }
 
-    //     pwalletMain->SetAddressBookName(address, strAccount);
+    //     Legacy::CWallet::GetInstance().SetAddressBookName(address, strAccount);
 
     //     return Value::null;
         json::json ret;
@@ -158,8 +161,8 @@
     //         throw JSONRPCError(-5, "Invalid Nexus address");
 
     //     string strAccount;
-    //     map<Wallet::NexusAddress, string>::iterator mi = pwalletMain->mapAddressBook.find(address);
-    //     if (mi != pwalletMain->mapAddressBook.end() && !(*mi).second.empty())
+    //     map<Wallet::NexusAddress, string>::iterator mi = Legacy::CWallet::GetInstance().mapAddressBook.find(address);
+    //     if (mi != Legacy::CWallet::GetInstance().mapAddressBook.end() && !(*mi).second.empty())
     //         strAccount = (*mi).second;
     //     return strAccount;
         json::json ret;
@@ -179,7 +182,7 @@
 
     //     // Find all addresses that have the given account
     //     Array ret;
-    //     BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, string)& item, pwalletMain->mapAddressBook)
+    //     BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, string)& item, Legacy::CWallet::GetInstance().mapAddressBook)
     //     {
     //         const Wallet::NexusAddress& address = item.first;
     //         const string& strName = item.second;
@@ -209,12 +212,12 @@
     *  requires wallet passphrase to be set with walletpassphrase first */
     // json::json sendtoaddress(const json::json& params, bool fHelp)
     // {
-    //     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
+    //     if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
     //         return std::string(
     //             "sendtoaddress <Nexusaddress> <amount> [comment] [comment-to]"
     //             " - <amount> is a real and is rounded to the nearest 0.000001"
     //             " requires wallet passphrase to be set with walletpassphrase first");
-    //     if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
+    //     if (!Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
     //         return std::string(
     //             "sendtoaddress <Nexusaddress> <amount> [comment] [comment-to]"
     //             "<amount> is a real and is rounded to the nearest 0.000001");
@@ -235,10 +238,10 @@
     //     if (params.size() > 3 && params[3].type() != null_type && !params[3].get_str().empty())
     //         wtx.mapValue["to"]      = params[3].get_str();
 
-    //     if (pwalletMain->IsLocked())
+    //     if (Legacy::CWallet::GetInstance().IsLocked())
     //         throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
-    //     string strError = pwalletMain->SendToNexusAddress(address, nAmount, wtx);
+    //     string strError = Legacy::CWallet::GetInstance().SendToNexusAddress(address, nAmount, wtx);
     //     if (strError != "")
     //         throw JSONRPCError(-4, strError);
 
@@ -254,7 +257,7 @@
                 "signmessage <Nexusaddress> <message>"
                 " - Sign a message with the private key of an address");
 
-    //     if (pwalletMain->IsLocked())
+    //     if (Legacy::CWallet::GetInstance().IsLocked())
     //         throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
     //     string strAddress = params[0].get_str();
@@ -265,7 +268,7 @@
     //         throw JSONRPCError(-3, "Invalid address");
 
     //     Wallet::CKey key;
-    //     if (!pwalletMain->GetKey(addr, key))
+    //     if (!Legacy::CWallet::GetInstance().GetKey(addr, key))
     //         throw JSONRPCError(-4, "Private key not available");
 
     //     DataStream ss(SER_GETHASH, 0);
@@ -342,7 +345,7 @@
 
     //     // Tally
     //     int64 nAmount = 0;
-    //     for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
+    //     for (map<uint512, Wallet::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); ++it)
     //     {
     //         const Wallet::CWalletTx& wtx = (*it).second;
     //         if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
@@ -362,7 +365,7 @@
 
     // void GetAccountAddresses(string strAccount, set<Wallet::NexusAddress>& setAddress)
     // {
-    //     BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, string)& item, pwalletMain->mapAddressBook)
+    //     BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, string)& item, Legacy::CWallet::GetInstance().mapAddressBook)
     //     {
     //         const Wallet::NexusAddress& address = item.first;
     //         const string& strName = item.second;
@@ -392,7 +395,7 @@
 
     //     // Tally
     //     int64 nAmount = 0;
-    //     for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
+    //     for (map<uint512, Wallet::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); ++it)
     //     {
     //         const Wallet::CWalletTx& wtx = (*it).second;
     //         if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
@@ -401,7 +404,7 @@
     //         BOOST_FOREACH(const Core::CTxOut& txout, wtx.vout)
     //         {
     //             Wallet::NexusAddress address;
-    //             if (ExtractAddress(txout.scriptPubKey, address) && pwalletMain->HaveKey(address) && setAddress.count(address))
+    //             if (ExtractAddress(txout.scriptPubKey, address) && Legacy::CWallet::GetInstance().HaveKey(address) && setAddress.count(address))
     //                 if (wtx.GetDepthInMainChain() >= nMinDepth)
     //                     nAmount += txout.nValue;
     //         }
@@ -417,7 +420,7 @@
     //     int64 nBalance = 0;
 
     //     // Tally wallet transactions
-    //     for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
+    //     for (map<uint512, Wallet::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); ++it)
     //     {
     //         const Wallet::CWalletTx& wtx = (*it).second;
     //         if (!wtx.IsFinal())
@@ -440,7 +443,7 @@
 
     // int64 GetAccountBalance(const string& strAccount, int nMinDepth)
     // {
-    //     Wallet::CWalletDB walletdb(pwalletMain->strWalletFile);
+    //     Wallet::CWalletDB walletdb(Legacy::CWallet::GetInstance().strWalletFile);
     //     return GetAccountBalance(walletdb, strAccount, nMinDepth);
     // }
 
@@ -456,7 +459,7 @@
                 " If [account] is specified, returns the balance in the account.");
 
     //     if (params.size() == 0)
-    //         return  ValueFromAmount(pwalletMain->GetBalance());
+    //         return  ValueFromAmount(Legacy::CWallet::GetInstance().GetBalance());
 
     //     int nMinDepth = 1;
     //     if (params.size() > 1)
@@ -467,7 +470,7 @@
     //         // (GetBalance() sums up all unspent TxOuts)
     //         // getbalance and getbalance '*' should always return the same number.
     //         int64 nBalance = 0;
-    //         for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
+    //         for (map<uint512, Wallet::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); ++it)
     //         {
     //             const Wallet::CWalletTx& wtx = (*it).second;
     //             if (!wtx.IsFinal())
@@ -520,7 +523,7 @@
     //     if (params.size() > 4)
     //         strComment = params[4].get_str();
 
-    //     Wallet::CWalletDB walletdb(pwalletMain->strWalletFile);
+    //     Wallet::CWalletDB walletdb(Legacy::CWallet::GetInstance().strWalletFile);
     //     if (!walletdb.TxnBegin())
     //         throw JSONRPCError(-20, "database error");
 
@@ -555,12 +558,12 @@
 
     // json::json sendfrom(const json::json& params, bool fHelp)
     // {
-    //     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
+    //     if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
     //         return std::string(
     //             "sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]"
     //             " - <amount> is a real and is rounded to the nearest 0.000001"
     //             " requires wallet passphrase to be set with walletpassphrase first");
-    //     if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
+    //     if (!Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
     //         return std::string(
     //             "sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]"
     //             "<amount> is a real and is rounded to the nearest 0.000001");
@@ -583,7 +586,7 @@
     //     if (params.size() > 5 && params[5].type() != null_type && !params[5].get_str().empty())
     //         wtx.mapValue["to"]      = params[5].get_str();
 
-    //     if (pwalletMain->IsLocked())
+    //     if (Legacy::CWallet::GetInstance().IsLocked())
     //         throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
     //     // Check funds
@@ -592,7 +595,7 @@
     //         throw JSONRPCError(-6, "Account has insufficient funds");
 
     //     // Send
-    //     string strError = pwalletMain->SendToNexusAddress(address, nAmount, wtx);
+    //     string strError = Legacy::CWallet::GetInstance().SendToNexusAddress(address, nAmount, wtx);
     //     if (strError != "")
     //         throw JSONRPCError(-4, strError);
 
@@ -602,12 +605,12 @@
 
     // json::json sendmany(const json::json& params, bool fHelp)
     // {
-    //     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
+    //     if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
     //         return std::string(
     //             "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]"
     //             " - amounts are double-precision floating point numbers"
     //             " requires wallet passphrase to be set with walletpassphrase first");
-    //     if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
+    //     if (!Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
     //         return std::string(
     //             "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]"
     //             "amounts are double-precision floating point numbers");
@@ -647,7 +650,7 @@
     //         vecSend.push_back(make_pair(scriptPubKey, nAmount));
     //     }
 
-    //     if (pwalletMain->IsLocked())
+    //     if (Legacy::CWallet::GetInstance().IsLocked())
     //         throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
     //     if (Wallet::fWalletUnlockMintOnly)
     //         throw JSONRPCError(-13, "Error: Wallet unlocked for block minting only.");
@@ -660,14 +663,14 @@
     //     // Send
     //     Wallet::CReserveKey keyChange(pwalletMain);
     //     int64 nFeeRequired = 0;
-    //     bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired);
+    //     bool fCreated = Legacy::CWallet::GetInstance().CreateTransaction(vecSend, wtx, keyChange, nFeeRequired);
     //     if (!fCreated)
     //     {
-    //         if (totalAmount + nFeeRequired > pwalletMain->GetBalance())
+    //         if (totalAmount + nFeeRequired > Legacy::CWallet::GetInstance().GetBalance())
     //             throw JSONRPCError(-6, "Insufficient funds");
     //         throw JSONRPCError(-4, "Transaction creation failed");
     //     }
-    //     if (!pwalletMain->CommitTransaction(wtx, keyChange))
+    //     if (!Legacy::CWallet::GetInstance().CommitTransaction(wtx, keyChange))
     //         throw JSONRPCError(-4, "Transaction commit failed");
 
     //     return wtx.GetHash().GetHex();
@@ -715,7 +718,7 @@
     //                 return std::string(
     //                     strprintf("%s is a pay-to-script address",ks.c_str()));
     //             std::vector<unsigned char> vchPubKey;
-    //             if (!pwalletMain->GetPubKey(address, vchPubKey))
+    //             if (!Legacy::CWallet::GetInstance().GetPubKey(address, vchPubKey))
     //                 return std::string(
     //                     strprintf("no full public key for address %s",ks.c_str()));
     //             if (vchPubKey.empty() || !pubkeys[i].SetPubKey(vchPubKey))
@@ -742,11 +745,11 @@
     //     uint256 scriptHash = SK256(inner);
     //     Wallet::CScript scriptPubKey;
     //     scriptPubKey.SetPayToScriptHash(inner);
-    //     pwalletMain->AddCScript(inner);
+    //     Legacy::CWallet::GetInstance().AddCScript(inner);
     //     Wallet::NexusAddress address;
     //     address.SetScriptHash256(scriptHash);
 
-    //     pwalletMain->SetAddressBookName(address, strAccount);
+    //     Legacy::CWallet::GetInstance().SetAddressBookName(address, strAccount);
     //     return address.ToString();
         json::json ret;
         return ret;
@@ -778,7 +781,7 @@
 
     //     // Tally
     //     map<Wallet::NexusAddress, tallyitem> mapTally;
-    //     for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
+    //     for (map<uint512, Wallet::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); ++it)
     //     {
     //         const Wallet::CWalletTx& wtx = (*it).second;
 
@@ -792,7 +795,7 @@
     //         BOOST_FOREACH(const Core::CTxOut& txout, wtx.vout)
     //         {
     //             Wallet::NexusAddress address;
-    //             if (!ExtractAddress(txout.scriptPubKey, address) || !pwalletMain->HaveKey(address) || !address.IsValid())
+    //             if (!ExtractAddress(txout.scriptPubKey, address) || !Legacy::CWallet::GetInstance().HaveKey(address) || !address.IsValid())
     //                 continue;
 
     //             tallyitem& item = mapTally[address];
@@ -804,7 +807,7 @@
     //     // Reply
     //     Array ret;
     //     map<string, tallyitem> mapAccountTally;
-    //     BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, string)& item, pwalletMain->mapAddressBook)
+    //     BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, string)& item, Legacy::CWallet::GetInstance().mapAddressBook)
     //     {
     //         const Wallet::NexusAddress& address = item.first;
     //         const string& strAccount = item.second;
@@ -964,8 +967,8 @@
     //         BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, int64)& r, listReceived)
     //         {
     //             string account;
-    //             if (pwalletMain->mapAddressBook.count(r.first))
-    //                 account = pwalletMain->mapAddressBook[r.first];
+    //             if (Legacy::CWallet::GetInstance().mapAddressBook.count(r.first))
+    //                 account = Legacy::CWallet::GetInstance().mapAddressBook[r.first];
     //             if (fAllAccounts || (account == strAccount))
     //             {
     //                 Object entry;
@@ -1023,7 +1026,7 @@
     //         throw JSONRPCError(-8, "Negative from");
 
     //     Array ret;
-    //     Wallet::CWalletDB walletdb(pwalletMain->strWalletFile);
+    //     Wallet::CWalletDB walletdb(Legacy::CWallet::GetInstance().strWalletFile);
 
     //     // First: get all Wallet::CWalletTx and Wallet::CAccountingEntry into a sorted-by-time multimap.
     //     typedef pair<Wallet::CWalletTx*, Wallet::CAccountingEntry*> TxPair;
@@ -1032,7 +1035,7 @@
 
     //     // Note: maintaining indices in the database of (account,time) --> txid and (account, time) --> acentry
     //     // would make this much faster for applications that do this a lot.
-    //     for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
+    //     for (map<uint512, Wallet::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); ++it)
     //     {
     //         Wallet::CWalletTx* wtx = &((*it).second);
     //         txByTime.insert(make_pair(wtx->GetTxTime(), TxPair(wtx, (Wallet::CAccountingEntry*)0)));
@@ -1094,7 +1097,7 @@
 
     //     /* Get the available addresses from the wallet */
     //     map<Wallet::NexusAddress, int64> mapAddresses;
-    //     if(!pwalletMain->AvailableAddresses((unsigned int)GetUnifiedTimestamp(), mapAddresses))
+    //     if(!Legacy::CWallet::GetInstance().AvailableAddresses((unsigned int)GetUnifiedTimestamp(), mapAddresses))
     //         throw JSONRPCError(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
     //     /* Find all the addresses in the list */
@@ -1121,8 +1124,8 @@
     //         nMinDepth = params[0].get_int();
 
     //     map<string, int64> mapAccountBalances;
-    //     BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, string)& entry, pwalletMain->mapAddressBook) {
-    //         if (pwalletMain->HaveKey(entry.first)) // This address belongs to me
+    //     BOOST_FOREACH(const PAIRTYPE(Wallet::NexusAddress, string)& entry, Legacy::CWallet::GetInstance().mapAddressBook) {
+    //         if (Legacy::CWallet::GetInstance().HaveKey(entry.first)) // This address belongs to me
     //         {
     //             if(entry.second == "" || entry.second == "default")
     //                 mapAccountBalances["default"] = 0;
@@ -1133,14 +1136,14 @@
 
     //     /* Get the available addresses from the wallet */
     //     map<Wallet::NexusAddress, int64> mapAddresses;
-    //     if(!pwalletMain->AvailableAddresses((unsigned int)GetUnifiedTimestamp(), mapAddresses))
+    //     if(!Legacy::CWallet::GetInstance().AvailableAddresses((unsigned int)GetUnifiedTimestamp(), mapAddresses))
     //         throw JSONRPCError(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
     //     /* Find all the addresses in the list */
     //     for (map<Wallet::NexusAddress, int64>::iterator it = mapAddresses.begin(); it != mapAddresses.end(); ++it)
-    //         if(pwalletMain->mapAddressBook.count(it->first))
+    //         if(Legacy::CWallet::GetInstance().mapAddressBook.count(it->first))
     //         {
-    //             string strAccount = pwalletMain->mapAddressBook[it->first];
+    //             string strAccount = Legacy::CWallet::GetInstance().mapAddressBook[it->first];
     //             if(strAccount == "")
     //                 strAccount = "default";
 
@@ -1191,7 +1194,7 @@
 
     //     Array transactions;
 
-    //     for (map<uint512, Wallet::CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); it++)
+    //     for (map<uint512, Wallet::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); it++)
     //     {
     //         Wallet::CWalletTx tx = (*it).second;
 
@@ -1242,9 +1245,9 @@
 
     //     Object entry;
 
-    //     if (!pwalletMain->mapWallet.count(hash))
+    //     if (!Legacy::CWallet::GetInstance().mapWallet.count(hash))
     //         throw JSONRPCError(-5, "Invalid or non-wallet transaction id");
-    //     const Wallet::CWalletTx& wtx = pwalletMain->mapWallet[hash];
+    //     const Wallet::CWalletTx& wtx = Legacy::CWallet::GetInstance().mapWallet[hash];
 
     //     int64 nCredit = wtx.GetCredit();
     //     int64 nDebit = wtx.GetDebit();
@@ -1255,10 +1258,10 @@
     //     if (wtx.IsFromMe())
     //         entry.push_back(Pair("fee", ValueFromAmount(nFee)));
 
-    //     WalletTxToJSON(pwalletMain->mapWallet[hash], entry);
+    //     WalletTxToJSON(Legacy::CWallet::GetInstance().mapWallet[hash], entry);
 
     //     Array details;
-    //     ListTransactions(pwalletMain->mapWallet[hash], "*", 0, false, details);
+    //     ListTransactions(Legacy::CWallet::GetInstance().mapWallet[hash], "*", 0, false, details);
     //     entry.push_back(Pair("details", details));
 
         json::json ret;
@@ -1363,21 +1366,21 @@
     //     {
     //         string currentAddress = address.ToString();
     //         ret.push_back(Pair("address", currentAddress));
-    //         if (pwalletMain->HaveKey(address))
+    //         if (Legacy::CWallet::GetInstance().HaveKey(address))
     //         {
     //             ret.push_back(Pair("ismine", true));
     //             std::vector<unsigned char> vchPubKey;
-    //             pwalletMain->GetPubKey(address, vchPubKey);
+    //             Legacy::CWallet::GetInstance().GetPubKey(address, vchPubKey);
     //             ret.push_back(Pair("pubkey", HexStr(vchPubKey)));
     //             Wallet::CKey key;
     //             key.SetPubKey(vchPubKey);
     //             ret.push_back(Pair("iscompressed", key.IsCompressed()));
     //         }
-    //         else if (pwalletMain->HaveCScript(address.GetHash256()))
+    //         else if (Legacy::CWallet::GetInstance().HaveCScript(address.GetHash256()))
     //         {
     //             ret.push_back(Pair("isscript", true));
     //             Wallet::CScript subscript;
-    //             pwalletMain->GetCScript(address.GetHash256(), subscript);
+    //             Legacy::CWallet::GetInstance().GetCScript(address.GetHash256(), subscript);
     //             ret.push_back(Pair("ismine", Wallet::IsMine(*pwalletMain, subscript)));
     //             std::vector<Wallet::NexusAddress> addresses;
     //             Wallet::TransactionType whichType;
@@ -1393,8 +1396,8 @@
     //         }
     //         else
     //             ret.push_back(Pair("ismine", false));
-    //         if (pwalletMain->mapAddressBook.count(address))
-    //             ret.push_back(Pair("account", pwalletMain->mapAddressBook[address]));
+    //         if (Legacy::CWallet::GetInstance().mapAddressBook.count(address))
+    //             ret.push_back(Pair("account", Legacy::CWallet::GetInstance().mapAddressBook[address]));
     //     }
     //     return ret;
         json::json ret;
@@ -1468,7 +1471,7 @@
     //     }
 
     //     vector<Wallet::COutput> vecOutputs;
-    //     pwalletMain->AvailableCoins((unsigned int)GetUnifiedTimestamp(), vecOutputs, false);
+    //     Legacy::CWallet::GetInstance().AvailableCoins((unsigned int)GetUnifiedTimestamp(), vecOutputs, false);
 
     //     int64 nCredit = 0;
     //     BOOST_FOREACH(const Wallet::COutput& out, vecOutputs)
@@ -1547,7 +1550,7 @@
 
     //     Array results;
     //     vector<Wallet::COutput> vecOutputs;
-    //     pwalletMain->AvailableCoins((unsigned int)GetUnifiedTimestamp(), vecOutputs, false);
+    //     Legacy::CWallet::GetInstance().AvailableCoins((unsigned int)GetUnifiedTimestamp(), vecOutputs, false);
     //     BOOST_FOREACH(const Wallet::COutput& out, vecOutputs)
     //     {
     //         if (out.nDepth < nMinDepth || out.nDepth > nMaxDepth)
@@ -1572,8 +1575,8 @@
     //         if (Wallet::ExtractAddress(pk, address))
     //         {
     //             entry.push_back(Pair("address", address.ToString()));
-    //             if (pwalletMain->mapAddressBook.count(address))
-    //                 entry.push_back(Pair("account", pwalletMain->mapAddressBook[address]));
+    //             if (Legacy::CWallet::GetInstance().mapAddressBook.count(address))
+    //                 entry.push_back(Pair("account", Legacy::CWallet::GetInstance().mapAddressBook[address]));
     //         }
     //         entry.push_back(Pair("scriptPubKey", HexStr(pk.begin(), pk.end())));
     //         entry.push_back(Pair("amount",ValueFromAmount(nValue)));

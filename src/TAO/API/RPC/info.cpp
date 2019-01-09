@@ -17,13 +17,23 @@ ________________________________________________________________________________
 #include <LLP/include/version.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <LLP/include/global.h>
+#include <LLP/include/service.h>
 #include <LLP/include/addressinfo.h>
+
+#include <Legacy/wallet/wallet.h>
+#include <Legacy/wallet/walletdb.h>
+#include <Legacy/include/money.h>
 
 #include <vector>
 //#include <TAO/Ledger/include/global.h>
 
 namespace TAO::API
 {
+    // TODO MOVE TO UTILS
+    double ValueFromAmount(int64_t amount)
+    {
+        return (double)amount / (double)Legacy::COIN;
+    }
 
     /* getinfo
        Returns an object containing various state info */
@@ -37,34 +47,34 @@ namespace TAO::API
         json::json obj;
         obj["version"] = LLP::strProtocolName; //PS TODO
         obj["protocolversion"] = LLP::PROTOCOL_VERSION;
-        /*obj.push_back(std::make_pair("walletversion", pwalletMain->GetVersion()));
-        obj.push_back(std::make_pair("balance",       ValueFromAmount(pwalletMain->GetBalance())));
-        obj.push_back(std::make_pair("newmint",       ValueFromAmount(pwalletMain->GetNewMint())));
-        obj.push_back(std::make_pair("stake",         ValueFromAmount(pwalletMain->GetStake())));
-    */
+        obj["walletversion"] = Legacy::CWallet::GetInstance().GetVersion();
+        obj["balance"] = ValueFromAmount(Legacy::CWallet::GetInstance().GetBalance());
+        obj["newmint"] = ValueFromAmount(Legacy::CWallet::GetInstance().GetNewMint());
+        obj["stake"] = ValueFromAmount(Legacy::CWallet::GetInstance().GetStake());
+    
 
     //   double dPercent = ((double)Core::dTrustWeight + (double)Core::dBlockWeight) / 37.5;
     //   obj.push_back(std::make_pair("interestweight", (double)Core::dInterestRate * 100.0));
     //   obj.push_back(std::make_pair("stakeweight",    dPercent * 100.0));
     //   obj.push_back(std::make_pair("trustweight",    (double)Core::dTrustWeight * 100.0 / 17.5));
     //   obj.push_back(std::make_pair("blockweight",    (double)Core::dBlockWeight * 100.0  / 20.0));
-    //   obj.push_back(std::make_pair("txtotal",        (int)pwalletMain->mapWallet.size()));
+        obj["txtotal"] =(int)Legacy::CWallet::GetInstance().mapWallet.size();
 
 
-       obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
+        obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
 
         obj["timestamp"] =  (int)runtime::unifiedtimestamp();
 
-      obj["connections"] = GetTotalConnectionCount();
-    //    obj.push_back(std::make_pair("proxy",         (fUseProxy ? addrProxy.ToStringIPPort() : string())));
-    //    obj.push_back(std::make_pair("ip",            addrSeenByPeer.ToStringIP()));
+        obj["connections"] = GetTotalConnectionCount();
+        obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToStringIPPort() : std::string());
+        obj["ip"] = LLP::TRITIUM_SERVER->addrThisNode.ToStringIP();
 
-    //    obj.push_back(std::make_pair("testnet",       fTestNet));
-    //    obj.push_back(std::make_pair("keypoololdest", (boost::int64_t)pwalletMain->GetOldestKeyPoolTime()));
-    //    obj.push_back(std::make_pair("keypoolsize",   pwalletMain->GetKeyPoolSize()));
+        obj["testnet"] = config::fTestNet;
+        obj["keypoololdest"] = (int64_t)Legacy::CWallet::GetInstance().GetKeyPool().GetOldestKeyPoolTime();
+        obj["keypoolsize"] = Legacy::CWallet::GetInstance().GetKeyPool().GetKeyPoolSize();
     //   obj.push_back(std::make_pair("paytxfee", Core::nTransactionFee / Core::COIN));
-    //    if (pwalletMain->IsCrypted())
-    //        obj.push_back(std::make_pair("unlocked_until", (boost::int64_t)nWalletUnlockTime / 1000));
+        if (Legacy::CWallet::GetInstance().IsCrypted())
+            obj["unlocked_until"] = (uint64_t) Legacy::CWallet::GetInstance().GetWalletUnlockTime() ;
     //    obj.push_back(std::make_pair("errors",        Core::GetWarnings("statusbar")));
 
 

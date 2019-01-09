@@ -185,6 +185,8 @@ namespace Legacy
          **/
         std::vector<uint8_t> vchDefaultKey;
 
+        /** The timestamp that this wallet will remain unlocked until **/
+        uint64_t nWalletUnlockTime;
 
         /** Constructor
          *
@@ -204,6 +206,7 @@ namespace Legacy
         , vchDefaultKey()
         , mapWallet()
         , mapRequestCount()
+        , nWalletUnlockTime(0)
         {
 
         }
@@ -369,6 +372,15 @@ namespace Legacy
          */
         void Inventory(const uint1024_t &hash);  //Not really a very intuitive method name
 
+        /** GetWalletUnlockTime
+         *
+         *  Get the time until which this wallet will remain unlocked
+         *
+         *  @return the time until which this wallet will remain unlocked
+         *
+         */
+        inline uint64_t GetWalletUnlockTime() const { return nWalletUnlockTime; }
+
 
     /*----------------------------------------------------------------------------------------*/
     /*  Keystore Implementation                                                               */
@@ -469,15 +481,18 @@ namespace Legacy
 
         /** Unlock
          *
-         *  Attempt to unlock an encrypted wallet using the passphrase provided.
+         *  Attempt to unlock an encrypted wallet using the passphrase provided.  If the UnlockSeconds parameter
+         *  is provided then the wallet will automatically relock when this time has expired
          *  Encrypted wallet cannot be used until unlocked by providing the passphrase used to encrypt it.
          *
          *  @param[in] strWalletPassphrase The wallet's passphrase
+         * 
+         *  @param[in] nUnlockSeconds The number of seconds to remain unlocked for
          *
          *  @return true if wallet was locked, passphrase matches the one used to encrypt it, and unlock is successful
          *
          */
-        bool Unlock(const SecureString& strWalletPassphrase);
+        bool Unlock(const SecureString& strWalletPassphrase, const uint32_t nUnlockSeconds = 0);
 
 
         /** ChangeWalletPassphrase

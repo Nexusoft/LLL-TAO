@@ -420,7 +420,7 @@ namespace Legacy
 
 
     /* Attempt to unlock an encrypted wallet using the passphrase provided. */
-    bool CWallet::Unlock(const SecureString& strWalletPassphrase)
+    bool CWallet::Unlock(const SecureString& strWalletPassphrase, const uint32_t nUnlockSeconds)
     {
         if (!IsLocked())
             return false;
@@ -447,7 +447,27 @@ namespace Legacy
 
                 /* Attempt to unlock the wallet using the decrypted value for the master key */
                 if (CCryptoKeyStore::Unlock(vMasterKey))
+                {
+                    /* If the caller has provided an nUnlockSeconds value then initiate a thread to lock  
+                     * the wallet once this time has expired */
+                    if(nUnlockSeconds > 0)
+                    {
+                        nWalletUnlockTime = runtime::timestamp() + (nUnlockSeconds *1000);
+
+                        // use C++ lambda to creating a threaded callback to lock the wallet
+                        std::thread([=]()
+                        {
+                            // check the time every second until the unlock time is surpassed or the wallet is manually locked
+                            while( runtime::timestamp() < nWalletUnlockTime && !this->IsLocked())
+                                std::this_thread::sleep_for(std::chrono::seconds(1));
+
+                            Lock();
+                            nWalletUnlockTime = 0;
+                        }).detach();
+
+                    } 
                     return true;
+                }
             }
         }
 
