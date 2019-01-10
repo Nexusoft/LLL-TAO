@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/include/service.h>
 #include <LLP/include/addressinfo.h>
+#include <Util/include/version.h>
 
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
@@ -40,7 +41,7 @@ namespace TAO::API
                 " - Returns an object containing various state info.");
 
         json::json obj;
-        obj["version"] = LLP::strProtocolName; //PS TODO
+        obj["version"] = version::CLIENT_VERSION_BUILD_STRING; //PS TODO
         obj["protocolversion"] = LLP::PROTOCOL_VERSION;
         obj["walletversion"] = Legacy::CWallet::GetInstance().GetVersion();
         obj["balance"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetBalance());
