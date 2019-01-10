@@ -128,7 +128,7 @@ namespace Legacy
 
 
     /* Assign the maximum version we're allowed to upgrade to.  */
-    bool CWallet::SetMaxVersion(const uint32_t nVersion)
+    bool CWallet::SetMaxVersion(const enum Legacy::WalletFeature nVersion)
     {
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);

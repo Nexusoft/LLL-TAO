@@ -317,7 +317,7 @@ namespace Legacy
          *  @return true if version assigned successfully
          *
          */
-        bool SetMaxVersion(const uint32_t nVersion);
+        bool SetMaxVersion(const enum Legacy::WalletFeature nVersion);
 
 
         /** GetVersion
@@ -387,6 +387,7 @@ namespace Legacy
          *
          */
         void Inventory(const uint1024_t &hash);  //Not really a very intuitive method name
+
 
         /** GetWalletUnlockTime
          *
@@ -503,7 +504,8 @@ namespace Legacy
          *
          *  @param[in] strWalletPassphrase The wallet's passphrase
          * 
-         *  @param[in] nUnlockSeconds The number of seconds to remain unlocked for
+         *  @param[in] nUnlockSeconds The number of seconds to remain unlocked, 0 to unlock indefinitely
+         *                            This setting is ignored if fWalletUnlockMintOnly=true (always unlocks indefinitely)
          *
          *  @return true if wallet was locked, passphrase matches the one used to encrypt it, and unlock is successful
          *
