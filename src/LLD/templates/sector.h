@@ -406,6 +406,7 @@ namespace LLD
                 {
                     /* Set the new stream pointer. */
                     pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+
                     if(!pstream)
                         return debug::error(FUNCTION, "couldn't create stream file");
 
@@ -422,7 +423,8 @@ namespace LLD
                     vData.resize(cKey.nSectorSize);
 
                     /* Read the State and Size of Sector Header. */
-                    pstream->read((char*) &vData[0], vData.size());
+                    if(!pstream->read((char*) &vData[0], vData.size()))
+                        debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
                 }
 
                 /* Add to cache */
@@ -455,7 +457,7 @@ namespace LLD
             nBytesRead += (cKey.vKey.size() + vData.size());
 
             /* Find the file stream for LRU cache. */
-            std::fstream* pstream;
+            std::fstream *pstream;
             if(!fileCache->Get(cKey.nSectorFile, pstream))
             {
                 /* Set the new stream pointer. */
@@ -476,7 +478,8 @@ namespace LLD
                 vData.resize(cKey.nSectorSize);
 
                 /* Read the State and Size of Sector Header. */
-                pstream->read((char*) &vData[0], vData.size());
+                if(!pstream->read((char*) &vData[0], vData.size()))
+                    debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
             }
 
             /* Verboe output. */

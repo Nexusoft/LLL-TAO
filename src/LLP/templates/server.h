@@ -164,6 +164,25 @@ namespace LLP
         }
 
 
+        /** AddNode
+         *
+         *  Add a node address to the internal address manager
+         *
+         *  @param[in] strAddress	IPv4 Address of outgoing connection
+         *
+         *  @param[in] strPort		Port of outgoing connection
+         *
+         **/
+        void AddNode(std::string strAddress, uint16_t nPort)
+        {
+            Service service(debug::strprintf("%s:%u", strAddress.c_str(), nPort).c_str(), false);
+            Address addr = Address(service);
+
+            if(pAddressManager)
+                pAddressManager->AddAddress(addr, ConnectState::NEW);
+        }
+
+
         /** AddConnection
          *
          *  Public Wraper to Add a Connection Manually.
@@ -278,10 +297,10 @@ namespace LLP
                 /* assume the connect state is in a failed state */
                 uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
 
-
                 /* Pick a weighted random priority from a sorted list of addresses */
                 if(pAddressManager && pAddressManager->StochasticSelect(addr))
                 {
+
                     /* Check for connect to self. */
                     if(addr.ToStringIP() == addrThisNode.ToStringIP())
                     {
@@ -298,7 +317,6 @@ namespace LLP
                     debug::log(0, NODE, ProtocolType::Name(), " Attempting Connection ", ip, ":", port);
                     pAddressManager->PrintStats();
 
-                    /* Attempt the connection. */
                     if(AddConnection(ip, port))
                         state = static_cast<uint8_t>(ConnectState::CONNECTED);
 

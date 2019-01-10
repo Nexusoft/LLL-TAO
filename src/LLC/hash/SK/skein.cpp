@@ -571,7 +571,7 @@ int Skein1024_InitExt(Skein1024_Ctxt_t *ctx,size_t hashBitLen,u64b_t treeInfo, c
 #if SKEIN_NEED_SWAP
         {
             uint_t i;
-            for (i=0;i<SKEIN1024_STATE_WORDS; ++i)   /* convert key bytes to context words */
+            for (i=0; i<SKEIN1024_STATE_WORDS; ++i)   /* convert key bytes to context words */
                 ctx->X[i] = Skein_Swap64(ctx->X[i]);
         }
 #endif
@@ -765,11 +765,9 @@ int Skein_256_Output(Skein_256_Ctxt_t *ctx, u08b_t *hashVal)
 
     /* run Threefish in "counter mode" to generate output */
     memset(ctx->b,0,sizeof(ctx->b));  /* zero out b[], so it can hold the counter */
-
+    //memcpy(X,ctx->X,sizeof(X));       /* keep a local copy of counter mode "key" */
     uint8_t *dst = (uint8_t *)X;
     uint8_t *src = (uint8_t *)ctx->X;
-
-    //memcpy(X,ctx->X,sizeof(X));       /* keep a local copy of counter mode "key" */
     std::copy(src, src + sizeof(X), dst);
 
     for (i=0;i*SKEIN_256_BLOCK_BYTES < byteCnt; ++i)
@@ -804,11 +802,9 @@ int Skein_512_Output(Skein_512_Ctxt_t *ctx, u08b_t *hashVal)
 
     /* run Threefish in "counter mode" to generate output */
     memset(ctx->b,0,sizeof(ctx->b));  /* zero out b[], so it can hold the counter */
-
+    //memcpy(X,ctx->X,sizeof(X));       /* keep a local copy of counter mode "key" */
     uint8_t *dst = (uint8_t *)X;
     uint8_t *src = (uint8_t *)ctx->X;
-
-    //memcpy(X,ctx->X,sizeof(X));       /* keep a local copy of counter mode "key" */
     std::copy(src, src + sizeof(X), dst);
 
     for (i=0; i*SKEIN_512_BLOCK_BYTES < byteCnt; ++i)
@@ -843,11 +839,9 @@ int Skein1024_Output(Skein1024_Ctxt_t *ctx, u08b_t *hashVal)
 
     /* run Threefish in "counter mode" to generate output */
     memset(ctx->b,0,sizeof(ctx->b));  /* zero out b[], so it can hold the counter */
-
+    //memcpy(X,ctx->X,sizeof(X));       /* keep a local copy of counter mode "key" */
     uint8_t *dst = (uint8_t *)X;
     uint8_t *src = (uint8_t *)ctx->X;
-
-    //memcpy(X,ctx->X,sizeof(X));       /* keep a local copy of counter mode "key" */
     std::copy(src, src + sizeof(X), dst);
 
     for (i=0; i*SKEIN1024_BLOCK_BYTES < byteCnt; ++i)

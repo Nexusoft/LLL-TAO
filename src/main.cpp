@@ -105,8 +105,12 @@ int main(int argc, char** argv)
 
 
     /* Create directories if they don't exist yet. */
-    if(!filesystem::exists(config::GetDataDir(false)) && filesystem::create_directory(config::GetDataDir(false)))
+    if(!filesystem::exists(config::GetDataDir(false)) &&
+        filesystem::create_directory(config::GetDataDir(false)))
+    {
         debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir(false));
+    }
+
 
 
     /* Create the database instances. */

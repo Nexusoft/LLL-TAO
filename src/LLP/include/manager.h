@@ -59,6 +59,16 @@ namespace LLP
         ~AddressManager();
 
 
+        /** IsEmpty
+         *
+         *  Determine if the address manager has any addresses in it or not
+         *
+         *  @return True if no addresses exist. false otherwise.
+         *
+         **/
+        bool IsEmpty() const;
+
+
         /** GetAddresses
          *
          *  Gets a list of addresses in the manager
@@ -206,7 +216,7 @@ namespace LLP
         LLD::AddressDB *pDatabase;
         std::unordered_map<uint64_t, AddressInfo> mapAddrInfo;
 
-        std::mutex mut;
+        mutable std::mutex mut;
     };
 }
 

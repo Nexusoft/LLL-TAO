@@ -46,6 +46,15 @@ namespace LLP
         }
     }
 
+    /*  Determine if the address manager has any addresses in it or not */
+    bool AddressManager::IsEmpty() const
+    {
+        std::unique_lock<std::mutex> lk(mut);
+        bool empty = mapAddrInfo.empty();
+        lk.unlock();
+        return empty;
+    }
+
 
     /*  Gets a list of addresses in the manager */
     std::vector<Address> AddressManager::GetAddresses(const uint8_t flags)
@@ -161,7 +170,7 @@ namespace LLP
     {
         std::unique_lock<std::mutex> lk(mut);
 
-        /*put unconnected address info scores into a vector and sort */
+        /* put unconnected address info scores into a vector and sort */
         uint8_t flags = ConnectState::NEW | ConnectState::FAILED | ConnectState::DROPPED;
 
         std::vector<AddressInfo> vInfo = get_info(flags);
@@ -177,7 +186,7 @@ namespace LLP
         uint64_t nRand = LLC::GetRand(nTimestamp);
         uint32_t nHash = LLC::SK32(BEGIN(nRand), END(nRand));
 
-        /*select an index with a good random weight bias toward the front of the list */
+        /* select an index with a good random weight bias toward the front of the list */
         uint32_t nSelect = ((std::numeric_limits<uint64_t>::max() /
             std::max((uint64_t)std::pow(nHash, 1.95) + 1, (uint64_t)1)) - 3) % vInfo.size();
 
