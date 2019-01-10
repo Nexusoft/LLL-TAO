@@ -74,7 +74,7 @@ namespace TAO::API
         *  @return the sanitized json parameters array.
         *
         **/
-        virtual json::json SanitizeParams( const std::string& strMethod, const json::json& jsonParams ) = 0;
+        virtual json::json SanitizeParams( const std::string& strMethod, const json::json& jsonParams ) {return jsonParams;};
 
     protected:
 
