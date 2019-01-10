@@ -305,10 +305,9 @@ namespace Legacy
         bool fIsEncrypted = false;
         { /* Begin lock scope */
             std::lock_guard<std::recursive_mutex> walletLock(wallet.cs_wallet);
-            std::vector<uint8_t> vchLoadedDefaultKey;
 
-            /* Set empty default key into wallet to clear any current value. (done now so it stays empty if none loaded) */
-            wallet.SetDefaultKey(vchLoadedDefaultKey);
+            /* Reset default key into wallet to clear any current value. (done now so it stays empty if none loaded) */
+            wallet.vchDefaultKey.clear();
 
             /* Read and validate minversion required by database file */
             uint32_t nMinVersion = 0;

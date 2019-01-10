@@ -274,7 +274,7 @@ namespace Legacy
             }
         }
 
-        return false;
+        return true;
     }
 
 

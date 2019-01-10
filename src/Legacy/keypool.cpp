@@ -38,8 +38,8 @@ namespace Legacy
         {
             std::lock_guard<std::recursive_mutex> walletLock(poolWallet.cs_wallet);
 
-	        if (poolWallet.IsLocked())
-	            return false;
+            if (poolWallet.IsLocked())
+                return false;
 
             CWalletDB walletdb(poolWallet.GetWalletFile());
 
