@@ -56,6 +56,8 @@ SOFTWARE.
 #include <string> // string
 #include <vector> // vector
 
+#include <Util/include/fifo_map.h>
+
 /*!
 @brief namespace for Niels Lohmann
 @see https://github.com/nlohmann
@@ -107,7 +109,11 @@ uses the standard template types.
 
 @since version 1.0.0
 */
-using json = basic_json<>;
+template<class K, class V, class dummy_compare, class A>
+using workaround_fifo_map = nlohmann::fifo_map<K, V, nlohmann::fifo_map_compare<K>, A>;
+using json = basic_json<workaround_fifo_map>;
+
+
 }  // namespace json
 
 #endif
