@@ -85,11 +85,10 @@ namespace TAO::API
         if (!Legacy::CWallet::GetInstance().IsLocked())
             throw APIException(-17, "Error: Wallet is already unlocked, use walletlock first if need to change unlock settings.");
 
-        // Note that the walletpassphrase is stored in params[0] which is not mlock()ed
+        // Note that the walletpassphrase is stored in params[0] 
         SecureString strWalletPass;
-        strWalletPass.reserve(100);
-        
-        strWalletPass = params[0];
+        strWalletPass.reserve(100); 
+        strWalletPass = std::string(params.at(0)).c_str();
 
         if (strWalletPass.length() > 0)
         {
@@ -97,90 +96,86 @@ namespace TAO::API
             if (params.size() > 1)
                 nLockSeconds = (uint32_t)params[1];
 
+            // Nexus: if user OS account compromised prevent trivial sendmoney commands
+            if (params.size() > 2)
+                Legacy::fWalletUnlockMintOnly = (bool)params[2];
+            else
+                Legacy::fWalletUnlockMintOnly = false;
+
             if (!Legacy::CWallet::GetInstance().Unlock(strWalletPass, nLockSeconds))
                 throw APIException(-14, "Error: The wallet passphrase entered was incorrect.");
+
+            // asynchronously top up the keypool while we have the wallet unlocked.
+            std::thread([]()
+            {
+                Legacy::CWallet::GetInstance().GetKeyPool().TopUpKeyPool();
+
+            }).detach();   
         }
         else
             return std::string(
                 "walletpassphrase <passphrase> [timeout]"
                 " - Stores the wallet decryption key in memory for [timeout] seconds.");
 
-        // asynchronously top up the keypool while we have the wallet unlocked.
-        std::thread([]()
-        {
-            Legacy::CWallet::GetInstance().GetKeyPool().TopUpKeyPool();
-
-        }).detach();
         
-        // Nexus: if user OS account compromised prevent trivial sendmoney commands
-        if (params.size() > 2)
-            Legacy::fWalletUnlockMintOnly = (bool)params[2];
-        else
-            Legacy::fWalletUnlockMintOnly = false;
 
         return "";
     }
 
     /* walletpassphrasechange <oldpassphrase> <newpassphrase>
     *  Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>*/
-    // json::json walletpassphrasechange(const json::json& params, bool fHelp)
-    // {
-    //     if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() != 2))
-    //         return std::string(
-    //             "walletpassphrasechange <oldpassphrase> <newpassphrase>"
-    //             " - Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>.");
-    //     if (fHelp)
-    //         return true;
-    //     if (!Legacy::CWallet::GetInstance().IsCrypted())
-    //         throw APIException(-15, "Error: running with an unencrypted wallet, but walletpassphrasechange was called.");
+    json::json RPC::WalletPassphraseChange(const json::json& params, bool fHelp)
+    {
+        if (fHelp || (Legacy::CWallet::GetInstance().IsCrypted() && params.size() != 2))
+            return std::string(
+                "walletpassphrasechange <oldpassphrase> <newpassphrase>"
+                " - Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>.");
+        
+        if (!Legacy::CWallet::GetInstance().IsCrypted())
+            throw APIException(-15, "Error: running with an unencrypted wallet, but walletpassphrasechange was called.");
 
-    //     // TODO: get rid of these .c_str() calls by implementing SecureString::operator=(std::string)
-    //     // Alternately, find a way to make params[0] mlock()'d to begin with.
-    //     SecureString strOldWalletPass;
-    //     strOldWalletPass.reserve(100);
-    //     strOldWalletPass = params[0].get_str().c_str();
+        SecureString strOldWalletPass;
+        strOldWalletPass.reserve(100);
+        strOldWalletPass = std::string(params.at(0)).c_str();
 
-    //     SecureString strNewWalletPass;
-    //     strNewWalletPass.reserve(100);
-    //     strNewWalletPass = params[1].get_str().c_str();
+        SecureString strNewWalletPass;
+        strNewWalletPass.reserve(100);
+        strNewWalletPass = std::string(params.at(1)).c_str();
 
-    //     if (strOldWalletPass.length() < 1 || strNewWalletPass.length() < 1)
-    //         return std::string(
-    //             "walletpassphrasechange <oldpassphrase> <newpassphrase>"
-    //             " - Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>.");
+        if (strOldWalletPass.length() < 1 || strNewWalletPass.length() < 1)
+            return std::string(
+                "walletpassphrasechange <oldpassphrase> <newpassphrase>"
+                " - Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>.");
 
-    //     if (!Legacy::CWallet::GetInstance().ChangeWalletPassphrase(strOldWalletPass, strNewWalletPass))
-    //         throw APIException(-14, "Error: The wallet passphrase entered was incorrect.");
+        if (!Legacy::CWallet::GetInstance().ChangeWalletPassphrase(strOldWalletPass, strNewWalletPass))
+            throw APIException(-14, "Error: The wallet passphrase entered was incorrect.");
 
-    //     return Value::null;
-    // }
+        return "";
+    }
 
 
     /* walletlock"
     *  Removes the wallet encryption key from memory, locking the wallet.
     *  After calling this method, you will need to call walletpassphrase again
     *  before being able to call any methods which require the wallet to be unlocked */
-    // json::json walletlock(const json::json& params, bool fHelp)
-    // {
-    //     if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() != 0))
-    //         return std::string(
-    //             "walletlock"
-    //             " - Removes the wallet encryption key from memory, locking the wallet."
-    //             " After calling this method, you will need to call walletpassphrase again"
-    //             " before being able to call any methods which require the wallet to be unlocked.");
-    //     if (fHelp)
-    //         return true;
-    //     if (!Legacy::CWallet::GetInstance().IsCrypted())
-    //         throw APIException(-15, "Error: running with an unencrypted wallet, but walletlock was called.");
+    json::json RPC::WalletLock(const json::json& params, bool fHelp)
+    {
+        if (fHelp || (Legacy::CWallet::GetInstance().IsCrypted() && params.size() != 0))
+            return std::string(
+                "walletlock"
+                " - Removes the wallet encryption key from memory, locking the wallet."
+                " After calling this method, you will need to call walletpassphrase again"
+                " before being able to call any methods which require the wallet to be unlocked.");
+        
+        if (!Legacy::CWallet::GetInstance().IsCrypted())
+            throw APIException(-15, "Error: running with an unencrypted wallet, but walletlock was called.");
 
-    //     {
-    //         LOCK(cs_nWalletUnlockTime);
-    //         Legacy::CWallet::GetInstance().Lock();
-    //         nWalletUnlockTime = 0;
-    //     }
+        {
+            Legacy::CWallet::GetInstance().Lock();
+        }
 
-    //     return Value::null;
-    // }
+        return "";
+    }
 
     /* encryptwallet <passphrase>
     *  Encrypts the wallet with <passphrase>. */

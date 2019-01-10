@@ -29,11 +29,6 @@ ________________________________________________________________________________
 
 namespace TAO::API
 {
-    // TODO MOVE TO UTILS
-    double ValueFromAmount(int64_t amount)
-    {
-        return (double)amount / (double)Legacy::COIN;
-    }
 
     /* getinfo
        Returns an object containing various state info */
@@ -48,9 +43,9 @@ namespace TAO::API
         obj["version"] = LLP::strProtocolName; //PS TODO
         obj["protocolversion"] = LLP::PROTOCOL_VERSION;
         obj["walletversion"] = Legacy::CWallet::GetInstance().GetVersion();
-        obj["balance"] = ValueFromAmount(Legacy::CWallet::GetInstance().GetBalance());
-        obj["newmint"] = ValueFromAmount(Legacy::CWallet::GetInstance().GetNewMint());
-        obj["stake"] = ValueFromAmount(Legacy::CWallet::GetInstance().GetStake());
+        obj["balance"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetBalance());
+        obj["newmint"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetNewMint());
+        obj["stake"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetStake());
     
 
     //   double dPercent = ((double)Core::dTrustWeight + (double)Core::dBlockWeight) / 37.5;
@@ -74,7 +69,16 @@ namespace TAO::API
         obj["keypoolsize"] = Legacy::CWallet::GetInstance().GetKeyPool().GetKeyPoolSize();
     //   obj.push_back(std::make_pair("paytxfee", Core::nTransactionFee / Core::COIN));
         if (Legacy::CWallet::GetInstance().IsCrypted())
-            obj["unlocked_until"] = (uint64_t) Legacy::CWallet::GetInstance().GetWalletUnlockTime() ;
+        {
+            obj["locked"] = Legacy::CWallet::GetInstance().IsLocked();  
+            if( !Legacy::CWallet::GetInstance().IsLocked())
+            {
+                if( (uint64_t) Legacy::CWallet::GetInstance().GetWalletUnlockTime() > 0 )
+                    obj["unlocked_until"] = (uint64_t) Legacy::CWallet::GetInstance().GetWalletUnlockTime() ;
+                
+                obj["minting_only"] = Legacy::fWalletUnlockMintOnly;
+            }
+        }
     //    obj.push_back(std::make_pair("errors",        Core::GetWarnings("statusbar")));
 
 
@@ -204,10 +208,10 @@ namespace TAO::API
         // const Core::CBlockIndex* pindexGPU = Core::GetLastChannelIndex(Core::pindexBest, 2);
         // obj.push_back(Pair("primeDifficulty",       Core::GetDifficulty(Core::GetNextTargetRequired(Core::pindexBest, 1, false), 1)));
         // obj.push_back(Pair("hashDifficulty",        Core::GetDifficulty(Core::GetNextTargetRequired(Core::pindexBest, 2, false), 2)));
-        // obj.push_back(Pair("primeReserve",           ValueFromAmount(pindexCPU->nReleasedReserve[0])));
-        // obj.push_back(Pair("hashReserve",            ValueFromAmount(pindexGPU->nReleasedReserve[0])));
-        // obj.push_back(Pair("primeValue",               ValueFromAmount(Core::GetCoinbaseReward(Core::pindexBest, 1, 0))));
-        // obj.push_back(Pair("hashValue",                ValueFromAmount(Core::GetCoinbaseReward(Core::pindexBest, 2, 0))));
+        // obj.push_back(Pair("primeReserve",           SatoshisToAmount(pindexCPU->nReleasedReserve[0])));
+        // obj.push_back(Pair("hashReserve",            SatoshisToAmount(pindexGPU->nReleasedReserve[0])));
+        // obj.push_back(Pair("primeValue",               SatoshisToAmount(Core::GetCoinbaseReward(Core::pindexBest, 1, 0))));
+        // obj.push_back(Pair("hashValue",                SatoshisToAmount(Core::GetCoinbaseReward(Core::pindexBest, 2, 0))));
         // obj.push_back(Pair("pooledtx",              (boost::uint64_t)Core::mempool.size()));
         // obj.push_back(Pair("primesPerSecond",         (boost::uint64_t)nPrimePS));
         // obj.push_back(Pair("hashPerSecond",         (boost::uint64_t)nHashRate));

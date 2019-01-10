@@ -67,6 +67,8 @@ namespace TAO::API
         mapFunctions["backupwallet"] = Function(std::bind(&RPC::BackupWallet, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["walletpassphrase"] = Function(std::bind(&RPC::WalletPassphrase, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["encryptwallet"] = Function(std::bind(&RPC::EncryptWallet, this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["walletpassphrasechange"] = Function(std::bind(&RPC::WalletPassphraseChange, this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["walletlock"] = Function(std::bind(&RPC::WalletLock, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["checkwallet"] = Function(std::bind(&RPC::CheckWallet, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["listtrustkeys"] = Function(std::bind(&RPC::ListTrustKeys, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["repairwallet"] = Function(std::bind(&RPC::RepairWallet, this, std::placeholders::_1, std::placeholders::_2));
@@ -76,6 +78,57 @@ namespace TAO::API
         mapFunctions["importkeys"] = Function(std::bind(&RPC::ImportKeys, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["exportkeys"] = Function(std::bind(&RPC::ExportKeys, this, std::placeholders::_1, std::placeholders::_2));
 
+    }
+
+    
+
+    /* Allows derived API's to check the values in the parameters array for the method being called.
+    *  The return json contains the sanitized parameter values, which derived implementations might convert to the correct type
+    *  for the method being called */
+    json::json RPC::SanitizeParams( const std::string& strMethod, const json::json& jsonParams )
+    { 
+        json::json jsonSanitizedParams = jsonParams;
+
+        int n = jsonSanitizedParams.size();
+
+        //
+        // Special case non-string parameter types
+        //
+        if (strMethod == "setgenerate"            && n > 0) ConvertStringValueTo<bool>(jsonSanitizedParams[0]);
+        if (strMethod == "dumprichlist"           && n > 0) ConvertStringValueTo<int>(jsonSanitizedParams[0]);
+        if (strMethod == "setgenerate"            && n > 1) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[1]);
+        if (strMethod == "sendtoaddress"          && n > 1) ConvertStringValueTo<double>(jsonSanitizedParams[1]);
+        if (strMethod == "settxfee"               && n > 0) ConvertStringValueTo<double>(jsonSanitizedParams[0]);
+        if (strMethod == "getreceivedbyaddress"   && n > 1) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[1]);
+        if (strMethod == "getreceivedbyaccount"   && n > 1) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[1]);
+        if (strMethod == "listreceivedbyaddress"  && n > 0) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[0]);
+        if (strMethod == "listreceivedbyaddress"  && n > 1) ConvertStringValueTo<bool>(jsonSanitizedParams[1]);
+        if (strMethod == "listreceivedbyaccount"  && n > 0) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[0]);
+        if (strMethod == "listreceivedbyaccount"  && n > 1) ConvertStringValueTo<bool>(jsonSanitizedParams[1]);
+        if (strMethod == "getbalance"             && n > 1) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[1]);
+        if (strMethod == "getblockhash"           && n > 0) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[0]);
+        if (strMethod == "getblock"               && n > 1) ConvertStringValueTo<bool>(jsonSanitizedParams[1]);
+        if (strMethod == "move"                   && n > 2) ConvertStringValueTo<double>(jsonSanitizedParams[2]);
+        if (strMethod == "move"                   && n > 3) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[3]);
+        if (strMethod == "sendfrom"               && n > 2) ConvertStringValueTo<double>(jsonSanitizedParams[2]);
+        if (strMethod == "sendfrom"               && n > 3) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[3]);
+        if (strMethod == "listtransactions"       && n > 1) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[1]);
+        if (strMethod == "listtransactions"       && n > 2) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[2]);
+        if (strMethod == "totaltransactions"      && n > 0) ConvertStringValueTo<bool>(jsonSanitizedParams[0]);
+        if (strMethod == "gettransactions"        && n > 1) ConvertStringValueTo<int>(jsonSanitizedParams[1]);
+        if (strMethod == "gettransactions"        && n > 2) ConvertStringValueTo<bool>(jsonSanitizedParams[2]);
+        if (strMethod == "listaddresses"          && n > 0) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[0]);
+        if (strMethod == "listaccounts"           && n > 0) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[0]);
+        if (strMethod == "listunspent"            && n > 0) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[0]);
+        if (strMethod == "listunspent"            && n > 1) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[1]);
+        if (strMethod == "walletpassphrase"       && n > 1) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[1]);
+        if (strMethod == "walletpassphrase"       && n > 2) ConvertStringValueTo<bool>(jsonSanitizedParams[2]);
+        if (strMethod == "listsinceblock"         && n > 1) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[1]);
+        if (strMethod == "sendmany"                && n > 2) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[2]);
+        if (strMethod == "addmultisigaddress"      && n > 0) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[0]);
+        
+
+        return jsonSanitizedParams;
     }
 
 

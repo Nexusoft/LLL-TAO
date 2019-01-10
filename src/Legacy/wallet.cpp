@@ -449,10 +449,11 @@ namespace Legacy
                 if (CCryptoKeyStore::Unlock(vMasterKey))
                 {
                     /* If the caller has provided an nUnlockSeconds value then initiate a thread to lock  
-                     * the wallet once this time has expired */
-                    if(nUnlockSeconds > 0)
+                     * the wallet once this time has expired.  NOTE: the fWalletUnlockMintOnly flag overrides this timeout
+                     * as we unlock indefinitely if fWalletUnlockMintOnly is true */
+                    if(nUnlockSeconds > 0 && !Legacy::fWalletUnlockMintOnly)
                     {
-                        nWalletUnlockTime = runtime::timestamp() + (nUnlockSeconds *1000);
+                        nWalletUnlockTime = runtime::timestamp() + nUnlockSeconds;
 
                         // use C++ lambda to creating a threaded callback to lock the wallet
                         std::thread([=]()
