@@ -100,10 +100,12 @@ class sdk_init():
         if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
-        # Varkable data can be a string whitespace in it. Make it URL friendly.
+        # URL quote data since specical characters in data string don't
+        # conflict with URI encoding characters.
         #
         if (type(data) != str): data = str(data)
-        data = data.replace(" ", "%20")
+        data = urllib.quote_plus(data)
+        data = data.replace("&", "%26")
 
         parms = "?pin={}&session={}&data={}".format(self.pin, self.session_id,
             data)
@@ -116,10 +118,12 @@ class sdk_init():
         if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
-        # Varkable data can be a string whitespace in it. Make it URL friendly.
+        # URL quote data since specical characters in data string don't
+        # conflict with URI encoding characters.
         #
         if (type(data) != str): data = str(data)
-        data = data.replace(" ", "%20")
+        data = urllib.quote_plus(data)
+        data = data.replace("&", "%26")
 
         parms = "?pin={}&session={}&address={}&data={}".format(self.pin,
             self.session_id, address, data)
@@ -132,6 +136,14 @@ class sdk_init():
         parms = "?address={}".format(address)
         url = supply_url.format("getitem") + parms
         json_data = self.__get(url)
+
+        #
+        # Unquote data if "state" key is present.
+        #
+        if (json_data.has_key("state")):
+            data = json_data["state"]
+            json_data["state"] = urllib.unquote_plus(data)
+        #endif
         return(json_data)
     #enddef
 
