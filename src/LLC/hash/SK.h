@@ -16,16 +16,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 #include <LLC/hash/SK/skein.h>
-
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 #include <LLC/hash/SK/KeccakHash.h>
-
-#if defined(__cplusplus)
-}
-#endif
 
 /** Namespace LLC (Lower Level Crypto) **/
 namespace LLC

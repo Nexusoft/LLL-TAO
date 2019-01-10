@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <LLP/include/hosts.h> //Lookup
 #include <Util/include/debug.h>
 
+#include <algorithm>
+
 
 namespace LLP
 {
@@ -145,7 +147,8 @@ namespace LLP
     {
         std::vector<uint8_t> vKey;
         vKey.resize(18);
-        memcpy(&vKey[0], ip, 16);
+        //memcpy(&vKey[0], ip, 16);
+        std::copy(ip, ip+16, &vKey[0]);
         vKey[16] = port / 0x100;
         vKey[17] = port & 0x0FF;
         return vKey;

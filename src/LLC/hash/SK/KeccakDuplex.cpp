@@ -17,6 +17,7 @@ http://creativecommons.org/publicdomain/zero/1.0/
 #ifdef KeccakReference
 #include "displayIntermediateValues.h"
 #endif
+#include <algorithm>
 
 int Keccak_DuplexInitialize(Keccak_DuplexInstance *instance, uint32_t rate, uint32_t capacity)
 {
@@ -39,7 +40,8 @@ int Keccak_Duplexing(Keccak_DuplexInstance *instance, const uint8_t *sigmaBegin,
         return 1;
     if (sigmaBeginByteLen*8 > rho_max)
         return 1;
-    if (rho_max - sigmaBeginByteLen*8 < 7) {
+    if (rho_max - sigmaBeginByteLen*8 < 7)
+    {
         uint32_t maxBitsInDelimitedSigmaEnd = rho_max - sigmaBeginByteLen*8;
         if (delimitedSigmaEnd >= (1 << (maxBitsInDelimitedSigmaEnd+1)))
             return 1;
@@ -47,7 +49,8 @@ int Keccak_Duplexing(Keccak_DuplexInstance *instance, const uint8_t *sigmaBegin,
     if (ZByteLen > (instance->rate+7)/8)
         return 1; // The output length must not be greater than the rate (rounded up to a byte)
 
-    if ((sigmaBeginByteLen%KeccakF_laneInBytes) > 0) {
+    if ((sigmaBeginByteLen%KeccakF_laneInBytes) > 0)
+    {
         uint32_t offsetBeyondLane = (sigmaBeginByteLen/KeccakF_laneInBytes)*KeccakF_laneInBytes;
         uint32_t beyondLaneBytes = sigmaBeginByteLen%KeccakF_laneInBytes;
         KeccakF1600_StateXORBytesInLane(instance->state, sigmaBeginByteLen/KeccakF_laneInBytes,
@@ -57,7 +60,8 @@ int Keccak_Duplexing(Keccak_DuplexInstance *instance, const uint8_t *sigmaBegin,
     #ifdef KeccakReference
     {
         uint8_t block[KeccakF_width/8];
-        memcpy(block, sigmaBegin, sigmaBeginByteLen);
+        //memcpy(block, sigmaBegin, sigmaBeginByteLen);
+        std::copy(sigmaBegin, sigmaBegin+sigmaBeginByteLen, block);
         block[sigmaBeginByteLen] = delimitedSigmaEnd;
         memset(block+sigmaBeginByteLen+1, 0, ((instance->rate+63)/64)*8-sigmaBeginByteLen-1);
         block[(instance->rate-1)/8] |= 1 << ((instance->rate-1) % 8);
@@ -74,13 +78,15 @@ int Keccak_Duplexing(Keccak_DuplexInstance *instance, const uint8_t *sigmaBegin,
     KeccakF1600_StateXORPermuteExtract(instance->state, sigmaBegin, sigmaBeginByteLen/KeccakF_laneInBytes,
         Z, ZByteLen/KeccakF_laneInBytes);
 
-    if ((ZByteLen%KeccakF_laneInBytes) > 0) {
+    if ((ZByteLen%KeccakF_laneInBytes) > 0)
+    {
         uint32_t offsetBeyondLane = (ZByteLen/KeccakF_laneInBytes)*KeccakF_laneInBytes;
         uint32_t beyondLaneBytes = ZByteLen%KeccakF_laneInBytes;
         KeccakF1600_StateExtractBytesInLane(instance->state, ZByteLen/KeccakF_laneInBytes,
             Z+offsetBeyondLane, 0, beyondLaneBytes);
     }
-    if (ZByteLen*8 > instance->rate) {
+    if (ZByteLen*8 > instance->rate)
+    {
         uint8_t mask = (uint8_t)(1 << (instance->rate % 8)) - 1;
         Z[ZByteLen-1] &= mask;
     }

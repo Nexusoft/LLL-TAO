@@ -729,8 +729,8 @@ namespace Legacy
                         std::vector<uint8_t> vchHash(32);
 
                         uint256_t hash256 = LLC::SK256(vch);
-                        memcpy(&vchHash[0], &hash256, sizeof(hash256));
-
+                        //memcpy(&vchHash[0], &hash256, sizeof(hash256));
+                        std::copy((uint8_t *)&hash256, (uint8_t *)&hash256 + sizeof(hash256), &vchHash[0]);
                         popstack(stack);
                         stack.push_back(vchHash);
                     }

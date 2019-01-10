@@ -120,7 +120,8 @@ namespace Legacy
     {
         assert(vchData.size() == 32);
         uint256_t hash256;
-        memcpy(&hash256, &vchData[0], 32);
+        //memcpy(&hash256, &vchData[0], 32);
+        std::copy(&vchData[0], &vchData[0] + 32, (uint8_t *)&hash256);
         return hash256;
     }
 

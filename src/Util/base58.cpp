@@ -176,7 +176,7 @@ namespace encoding
     {
         // zero the memory, as it may contain sensitive data
         if (!vchData.empty())
-            memset(&vchData[0], 0, vchData.size()); //TODO: Remove all memset, memcpy functions. They are unsafe and prone to buffer overflows
+            memset(&vchData[0], 0, vchData.size());
     }
 
 
@@ -186,7 +186,8 @@ namespace encoding
         nVersion = nVersionIn;
         vchData.resize(nSize);
         if (!vchData.empty())
-            memcpy(&vchData[0], pdata, nSize); //TODO: remove all instances of memcpy
+            //memcpy(&vchData[0], pdata, nSize);
+            std::copy((uint8_t *)pdata, (uint8_t *)pdata + nSize, &vchData[0]);
     }
 
 
@@ -200,7 +201,7 @@ namespace encoding
     /* Set arbitrary data from c-style string */
     bool CBase58Data::SetString(const char* psz)
     {
-        std::vector<unsigned char> vchTemp;
+        std::vector<uint8_t> vchTemp;
         DecodeBase58Check(psz, vchTemp);
         if (vchTemp.empty())
         {
@@ -211,9 +212,8 @@ namespace encoding
         nVersion = vchTemp[0];
         vchData.resize(vchTemp.size() - 1);
         if (!vchData.empty())
-            //std::copy(vchData.begin(), vchData.end(), vchTemp.begin() + 1);
-            memcpy(&vchData[0], &vchTemp[1], vchData.size()); //TODO: remove all instances of memcpy for a safer alternative
-
+            //memcpy(&vchData[0], &vchTemp[1], vchData.size());
+            std::copy(&vchTemp[1], &vchTemp[1] + vchData.size(), &vchData[0]);
         memset(&vchTemp[0], 0, vchTemp.size());
         return true;
     }

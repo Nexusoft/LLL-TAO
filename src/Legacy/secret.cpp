@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <Legacy/types/enum.h>
 
 #include <Util/include/args.h>
+#include <Util/include/debug.h>
 
 namespace Legacy
 {
@@ -43,7 +44,14 @@ namespace Legacy
     {
         LLC::CSecret vchSecret;
         vchSecret.resize(72);
-        memcpy(&vchSecret[0], &vchData[0], 72);
+        //memcpy(&vchSecret[0], &vchData[0], 72);
+        if(vchData.size() < 72)
+        {
+            debug::error(FUNCTION, "buffer overrun.");
+            return vchSecret;
+        }
+
+        std::copy(&vchData[0], &vchData[0] + 72, &vchSecret[0]);
         fCompressedOut = vchData.size() == 73;
         return vchSecret;
     }

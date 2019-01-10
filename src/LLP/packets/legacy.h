@@ -16,13 +16,13 @@ ________________________________________________________________________________
 
 #include <queue>
 #include <vector>
+#include <algorithm>
 
 #include <LLC/hash/SK.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/args.h>
 #include <Util/templates/serialize.h>
-
 
 
 namespace LLP
@@ -110,9 +110,15 @@ namespace LLP
         void SetHeader()
         {
             if (config::fTestNet)
-                memcpy(HEADER, MESSAGE_START_TESTNET, sizeof(MESSAGE_START_TESTNET));
+                //memcpy(HEADER, MESSAGE_START_TESTNET, sizeof(MESSAGE_START_TESTNET));
+                std::copy(MESSAGE_START_TESTNET,
+                    MESSAGE_START_TESTNET + sizeof(MESSAGE_START_TESTNET),
+                    HEADER);
             else
-                memcpy(HEADER, MESSAGE_START_MAINNET, sizeof(MESSAGE_START_MAINNET));
+                //memcpy(HEADER, MESSAGE_START_MAINNET, sizeof(MESSAGE_START_MAINNET));
+                std::copy(MESSAGE_START_MAINNET,
+                    MESSAGE_START_MAINNET + sizeof(MESSAGE_START_MAINNET),
+                    HEADER);
         }
 
 
@@ -135,8 +141,8 @@ namespace LLP
         void SetChecksum()
         {
             uint512_t hash = LLC::SK512(DATA.begin(), DATA.end());
-            //std::copy(hash, hash + sizeof(CHECKSUM), CHECKSUM);
-            memcpy(&CHECKSUM, &hash, sizeof(CHECKSUM));
+            //memcpy(&CHECKSUM, &hash, sizeof(CHECKSUM));
+            std::copy((uint8_t *)&hash, (uint8_t *)&hash + sizeof(CHECKSUM), (uint8_t *)&CHECKSUM);
         }
 
 
@@ -170,12 +176,12 @@ namespace LLP
             /* Double check the Message Checksum. */
             uint512_t hash = LLC::SK512(DATA.begin(), DATA.end());
             uint32_t nChecksum = 0;
-            //std::copy(hash.begin(), hash.begin() + sizeof(nChecksum), &nChecksum);
-            memcpy(&nChecksum, &hash, sizeof(nChecksum));
+            //memcpy(&nChecksum, &hash, sizeof(nChecksum));
+            std::copy((uint8_t *)&hash, (uint8_t *)&hash + sizeof(nChecksum), (uint8_t *)&nChecksum);
 
             if (nChecksum != CHECKSUM)
-                return debug::error("Message Packet (%s, %u bytes) : CHECKSUM MISMATCH nChecksum=%u hdr.nChecksum=%u",
-                                MESSAGE, LENGTH, nChecksum, CHECKSUM);
+                return debug::error("Message Packet (", MESSAGE, ", ", LENGTH,
+                    " bytes) : CHECKSUM MISMATCH nChecksum=", nChecksum, " hdr.nChecksum=", CHECKSUM);
 
             return true;
         }
