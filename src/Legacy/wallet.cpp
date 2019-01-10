@@ -203,21 +203,32 @@ namespace Legacy
     /* Add a public/encrypted private key pair to the key store. */
     bool CWallet::AddCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret)
     {
+        /* Call overridden inherited method to add key to key store */
+        if (!CCryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret))
+            return false;
+
+        if (fFileBacked)
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
 
-            /* Call overridden inherited method to add key to key store */
-            if (!CCryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret))
-                return false;
+            bool result = false;
 
-            if (fFileBacked)
+            if (pWalletDbEncryption != nullptr)
             {
-                CWalletDB walletdb(strWalletFile);
-                bool result = walletdb.WriteCryptedKey(vchPubKey, vchCryptedSecret);
-                walletdb.Close();
-
-                return result;
+                /* Adding this encrypted key as part of wallet encryption process.
+                 * Use the wallet encryption db to maintain the database transaction
+                 */
+                result = pWalletDbEncryption->WriteCryptedKey(vchPubKey, vchCryptedSecret);
             }
+            else
+            {
+                /* This is a one-off add, so no open wallet db. Open one and use it for write */
+                CWalletDB walletdb(strWalletFile);
+                result = walletdb.WriteCryptedKey(vchPubKey, vchCryptedSecret);
+                walletdb.Close();
+            }
+
+            return result;
         }
 
         return true;
@@ -359,18 +370,16 @@ namespace Legacy
 
             mapMasterKeys[++nMasterKeyMaxID] = kMasterKey;
 
-            /* Declaration needs to be in this scope, but cannot instantiate until afer check fFileBacked.
-             * Use pointer to do this.
-             */
-            CWalletDB* pwalletdb = nullptr;
             if (fFileBacked)
             {
-                pwalletdb = new CWalletDB(strWalletFile);
+                /* Set up the encryption database pointer for the encryption transaction */
+                pWalletDbEncryption = std::make_shared<CWalletDB>(strWalletFile);
 
-                if (!pwalletdb->TxnBegin())
+                if (!pWalletDbEncryption->TxnBegin())
                     return false;
 
-                pwalletdb->WriteMasterKey(nMasterKeyMaxID, kMasterKey);
+                /* Start encryption transaction by writing the master key */
+                pWalletDbEncryption->WriteMasterKey(nMasterKeyMaxID, kMasterKey);
             }
 
             /* EncryptKeys() in CCryptoKeyStore will encrypt every public key/private key pair in the key store, including those that
@@ -384,24 +393,29 @@ namespace Legacy
             if (!EncryptKeys(vMasterKey))
             {
                 if (fFileBacked)
-                    pwalletdb->TxnAbort();
+                    pWalletDbEncryption->TxnAbort();
 
                 /* We now probably have half of our keys encrypted in memory,
                  * and half not...die to let the user reload their unencrypted wallet.
                  */
-                exit(1);
+                config::fShutdown = true;
+                return debug::error("Error encrypting wallet. Shutting down.");;
             }
 
             if (fFileBacked)
             {
-                if (pwalletdb->TxnCommit())
+                if (!pWalletDbEncryption->TxnCommit())
                 {
                     /* Keys encrypted in memory, but not on disk...die to let the user reload their unencrypted wallet. */
-                    exit(1);
+                    config::fShutdown = true;
+                    return debug::error("Error committing encryption updates to wallet file. Shutting down.");;
                 }
 
-                pwalletdb->Close();
-                delete pwalletdb;
+
+                pWalletDbEncryption->Close();
+
+                /* Reset the encryption database pointer (CWalletDB it pointed to before will be destroyed) */
+                pWalletDbEncryption = nullptr;
             }
 
             Lock();
