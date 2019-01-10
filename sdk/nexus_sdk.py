@@ -49,8 +49,9 @@ class sdk_init():
     #enddef
 
     def nexus_accounts_create(self):
-        parms = "?username={}&password={}&pin={}".format(self.username,
-            self.password, self.pin)
+        pw = urllib.quote_plus(self.password)
+        parms = "?username={}&password={}&pin={}".format(self.username, pw,
+            self.pin)
         url = accounts_url.format("create") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -59,7 +60,8 @@ class sdk_init():
     def nexus_accounts_login(self):
         if (self.session_id != None): return(self.__error("Already logged in"))
 
-        parms = "?username={}&password={}".format(self.username, self.password)
+        pw = urllib.quote_plus(self.password)
+        parms = "?username={}&password={}".format(self.username, pw)
         url = accounts_url.format("login") + parms
         json_data = self.__get(url)
         if (json_data.has_key("error")): return(json_data)
