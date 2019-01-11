@@ -64,7 +64,7 @@ namespace LLP
 
         std::unique_lock<std::mutex> lk(mut);
 
-        vAddrInfo = get_info(flags);
+        get_info(vAddrInfo, flags);
 
         for(auto it = vAddrInfo.begin(); it != vAddrInfo.end(); ++it)
             vAddr.push_back(static_cast<Address>(*it));
@@ -76,8 +76,11 @@ namespace LLP
     /*  Gets a list of address info in the manager */
     std::vector<AddressInfo> AddressManager::GetInfo(const uint8_t flags)
     {
+        std::vector<AddressInfo> vAddrInfo;
         std::unique_lock<std::mutex> lk(mut);
-        return get_info(flags);
+        get_info(vAddrInfo, flags);
+
+        return vAddrInfo;
     }
 
     uint32_t AddressManager::GetInfoCount(const uint8_t flags)
@@ -173,7 +176,9 @@ namespace LLP
         /* put unconnected address info scores into a vector and sort */
         uint8_t flags = ConnectState::NEW | ConnectState::FAILED | ConnectState::DROPPED;
 
-        std::vector<AddressInfo> vInfo = get_info(flags);
+        std::vector<AddressInfo> vInfo;
+
+        get_info(vInfo, flags);
 
         if(!vInfo.size())
             return false;
@@ -228,7 +233,7 @@ namespace LLP
         PrintStats();
     }
 
-    void AddressManager::PrintStats() const
+    void AddressManager::PrintStats()
     {
         debug::log(3,
             " C=", get_current_count(ConnectState::CONNECTED),
@@ -255,27 +260,33 @@ namespace LLP
 
     /*  Helper function to get an array of info on the connected states specified
      *  by flags */
-    std::vector<AddressInfo> AddressManager::get_info(const uint8_t flags) const
+    void AddressManager::get_info(std::vector<AddressInfo> &info, const uint8_t flags)
     {
-        std::vector<AddressInfo> addrs;
+        info.clear();
+
         for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
         {
             if(it->second.nState & flags)
-                addrs.push_back(it->second);
+                info.push_back(it->second);
         }
-
-        return addrs;
     }
 
     /*  Helper function to get the number of addresses of the connect type */
-    uint32_t AddressManager::get_current_count(const uint8_t flags) const
+    uint32_t AddressManager::get_current_count(const uint8_t flags)
     {
-        return static_cast<uint32_t>(get_info(flags).size());
+        std::vector<AddressInfo> info;
+
+        get_info(info, flags);
+
+        return static_cast<uint32_t>(info.size());
     }
 
-    uint32_t AddressManager::get_total_count(const uint8_t flags) const
+    uint32_t AddressManager::get_total_count(const uint8_t flags)
     {
-        std::vector<AddressInfo> vInfo = get_info();
+        std::vector<AddressInfo> vInfo;
+
+        get_info(vInfo);
+
         uint32_t total = 0;
         uint32_t s = static_cast<uint32_t>(vInfo.size());
 

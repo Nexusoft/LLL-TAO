@@ -58,7 +58,8 @@ namespace LLD
         /* Hashmap Custom Hash Using SK. */
         struct SK_Hashmap
         {
-            std::size_t operator()(const std::vector<uint8_t>& k) const {
+            std::size_t operator()(const std::vector<uint8_t>& k) const
+            {
                 return LLC::SK32(k);
             }
         };

@@ -99,6 +99,10 @@ namespace LLP
             *this = ip;
     }
 
+    Service::~Service()
+    {
+    }
+
     void Service::Init()
     {
         port = 0;

@@ -32,6 +32,8 @@ namespace LLP
     {
     public:
         Address();
+        ~Address();
+        
         explicit Address(Service ipIn, uint64_t nServicesIn = NODE_NETWORK);
 
         void Init();

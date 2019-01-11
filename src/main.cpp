@@ -74,6 +74,8 @@ namespace LLP
 
 int main(int argc, char** argv)
 {
+    LLP::Server<LLP::CoreNode>* CORE_SERVER = nullptr;
+    LLP::Server<LLP::RPCNode>* RPC_SERVER = nullptr;
 
     /* Setup the timer timer. */
     runtime::timer timer;
@@ -234,7 +236,7 @@ int main(int argc, char** argv)
     }
 
     /* Create the Core API Server. */
-    LLP::Server<LLP::CoreNode>* CORE_SERVER = new LLP::Server<LLP::CoreNode>(
+    CORE_SERVER = new LLP::Server<LLP::CoreNode>(
         config::GetArg("-apiport", 8080),
         10,
         30,
@@ -247,9 +249,10 @@ int main(int argc, char** argv)
         false);
 
 
+
     /* Set up RPC server */
     TAO::API::RPCCommands = new TAO::API::RPC();
-    LLP::Server<LLP::RPCNode>* RPC_SERVER = new LLP::Server<LLP::RPCNode>(
+    RPC_SERVER = new LLP::Server<LLP::RPCNode>(
         config::GetArg("-rpcport", config::fTestNet? 8336 : 9336),
         1,
         30,
@@ -260,6 +263,7 @@ int main(int argc, char** argv)
         config::GetBoolArg("-listen", true),
         false,
         false);
+
 
 
     /* Elapsed Milliseconds from timer. */

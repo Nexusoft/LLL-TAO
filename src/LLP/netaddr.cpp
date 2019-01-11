@@ -24,19 +24,6 @@ namespace LLP
 {
     static const uint8_t pchIPv4[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff };
 
-    void NetAddr::Init()
-    {
-        memset(ip, 0, 16);
-    }
-
-
-    void NetAddr::SetIP(const NetAddr& ipIn)
-    {
-        //memcpy(ip, ipIn.ip, sizeof(ip));
-        std::copy(ipIn.ip, ipIn.ip + sizeof(ip), ip);
-    }
-
-
     NetAddr::NetAddr()
     {
         Init();
@@ -74,6 +61,23 @@ namespace LLP
         std::vector<NetAddr> vIP;
         if (LookupHost(strIp.c_str(), vIP, 1, fAllowLookup))
             *this = vIP[0];
+    }
+
+    NetAddr::~NetAddr()
+    {
+
+    }
+
+    void NetAddr::Init()
+    {
+        memset(ip, 0, 16);
+    }
+
+
+    void NetAddr::SetIP(const NetAddr& ipIn)
+    {
+        //memcpy(ip, ipIn.ip, sizeof(ip));
+        std::copy(ipIn.ip, ipIn.ip + sizeof(ip), ip);
     }
 
 
