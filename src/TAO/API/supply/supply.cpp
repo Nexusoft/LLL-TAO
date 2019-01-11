@@ -31,6 +31,7 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
+
         Supply supply;
 
         /* Standard initialization function. */

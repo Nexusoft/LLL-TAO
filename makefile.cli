@@ -350,7 +350,7 @@ LIBS+= $(BDB_LIB_PATH)/libdb_cxx.a \
 
 
 #OS Specific Compiler Flags
-CXXFLAGS+= -mmacosx-version-min=10.10 \
+CXXFLAGS+= -mmacosx-version-min=10.13 \
 	-O3 \
 	$(DEFS) \
 	$(DEBUG) \
