@@ -17,88 +17,94 @@ ________________________________________________________________________________
 #include <TAO/Register/include/state.h>
 #include <TAO/Register/include/enum.h>
 
-namespace TAO::Operation
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /* Writes data to a register. */
-    bool Append(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
+    /* Operation Layer namespace. */
+    namespace Operation
     {
-        /* Read the binary data of the Register. */
-        TAO::Register::State state;
 
-        /* Write pre-states. */
-        if((nFlags & TAO::Register::FLAGS::PRESTATE))
+        /* Writes data to a register. */
+        bool Append(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
         {
-            if(!LLD::regDB->ReadState(hashAddress, state))
-                return debug::error(FUNCTION, "register address doesn't exist ", hashAddress.ToString());
+            /* Read the binary data of the Register. */
+            TAO::Register::State state;
 
-            ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
+            /* Write pre-states. */
+            if((nFlags & TAO::Register::FLAGS::PRESTATE))
+            {
+                if(!LLD::regDB->ReadState(hashAddress, state))
+                    return debug::error(FUNCTION, "register address doesn't exist ", hashAddress.ToString());
+
+                ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
+            }
+
+            /* Get pre-states on write. */
+            if(nFlags & TAO::Register::FLAGS::WRITE  || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            {
+                /* Get the state byte. */
+                uint8_t nState = 0; //RESERVED
+                ssRegister >> nState;
+
+                /* Check for the pre-state. */
+                if(nState != TAO::Register::STATES::PRESTATE)
+                    return debug::error(FUNCTION, "register script not in pre-state");
+
+                /* Get the pre-state. */
+                ssRegister >> state;
+            }
+
+            /* Check ReadOnly permissions. */
+            if(state.nType == TAO::Register::OBJECT::READONLY)
+                return debug::error(FUNCTION, "append operation called on read-only register");
+
+            /* Check write permissions for raw state registers. */
+            if(state.nType != TAO::Register::OBJECT::APPEND)
+                return debug::error(FUNCTION, "append operation called on raw register");
+
+            /*state Check that the proper owner is commiting the write. */
+            if(hashCaller != state.hashOwner)
+                return debug::error(FUNCTION, "no append permissions for caller ", hashCaller.ToString());
+
+            /* Set the new state of the register. */
+            std::vector<uint8_t> vchState = state.GetState();
+            vchState.insert(vchState.end(), vchData.begin(), vchData.end());
+            state.SetState(vchState);
+
+            /* Check that the register is in a valid state. */
+            if(!state.IsValid())
+                return debug::error(FUNCTION, "memory address ", hashAddress.ToString(), " is in invalid state");
+
+            /* Write post-state checksum. */
+            if((nFlags & TAO::Register::FLAGS::POSTSTATE))
+                ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
+
+            /* Verify the post-state checksum. */
+            if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            {
+                /* Get the state byte. */
+                uint8_t nState = 0; //RESERVED
+                ssRegister >> nState;
+
+                /* Check for the pre-state. */
+                if(nState != TAO::Register::STATES::POSTSTATE)
+                    return debug::error(FUNCTION, "register script not in post-state");
+
+                /* Get the post state checksum. */
+                uint64_t nChecksum;
+                ssRegister >> nChecksum;
+
+                /* Check for matching post states. */
+                if(nChecksum != state.GetHash())
+                    return debug::error(FUNCTION, "register script has invalid post-state");
+
+                /* Write the register to the database. */
+                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, state))
+                    return debug::error(FUNCTION, "failed to write new state");
+            }
+
+            return true;
         }
-
-        /* Get pre-states on write. */
-        if(nFlags & TAO::Register::FLAGS::WRITE  || nFlags & TAO::Register::FLAGS::MEMPOOL)
-        {
-            /* Get the state byte. */
-            uint8_t nState = 0; //RESERVED
-            ssRegister >> nState;
-
-            /* Check for the pre-state. */
-            if(nState != TAO::Register::STATES::PRESTATE)
-                return debug::error(FUNCTION, "register script not in pre-state");
-
-            /* Get the pre-state. */
-            ssRegister >> state;
-        }
-
-        /* Check ReadOnly permissions. */
-        if(state.nType == TAO::Register::OBJECT::READONLY)
-            return debug::error(FUNCTION, "append operation called on read-only register");
-
-        /* Check write permissions for raw state registers. */
-        if(state.nType != TAO::Register::OBJECT::APPEND)
-            return debug::error(FUNCTION, "append operation called on raw register");
-
-        /*state Check that the proper owner is commiting the write. */
-        if(hashCaller != state.hashOwner)
-            return debug::error(FUNCTION, "no append permissions for caller ", hashCaller.ToString());
-
-        /* Set the new state of the register. */
-        std::vector<uint8_t> vchState = state.GetState();
-        vchState.insert(vchState.end(), vchData.begin(), vchData.end());
-        state.SetState(vchState);
-
-        /* Check that the register is in a valid state. */
-        if(!state.IsValid())
-            return debug::error(FUNCTION, "memory address ", hashAddress.ToString(), " is in invalid state");
-
-        /* Write post-state checksum. */
-        if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-            ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
-
-        /* Verify the post-state checksum. */
-        if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
-        {
-            /* Get the state byte. */
-            uint8_t nState = 0; //RESERVED
-            ssRegister >> nState;
-
-            /* Check for the pre-state. */
-            if(nState != TAO::Register::STATES::POSTSTATE)
-                return debug::error(FUNCTION, "register script not in post-state");
-
-            /* Get the post state checksum. */
-            uint64_t nChecksum;
-            ssRegister >> nChecksum;
-
-            /* Check for matching post states. */
-            if(nChecksum != state.GetHash())
-                return debug::error(FUNCTION, "register script has invalid post-state");
-
-            /* Write the register to the database. */
-            if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, state))
-                return debug::error(FUNCTION, "failed to write new state");
-        }
-
-        return true;
     }
 }

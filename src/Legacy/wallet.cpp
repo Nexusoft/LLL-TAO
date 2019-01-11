@@ -1302,8 +1302,7 @@ namespace Legacy
                  * Really should not get this because of initial check at start of function. Could only happen
                  * if calculates an additional fee such that nFeeRequired > MIN_TX_FEE
                  */
-                strError = debug::strprintf(std::string("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  "),
-                                            FormatMoney(nFeeRequired).c_str());
+                strError = debug::strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  ", FormatMoney(nFeeRequired).c_str());
             }
             else
             {

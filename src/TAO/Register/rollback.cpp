@@ -19,227 +19,233 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/rollback.h>
 
-namespace TAO::Register
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /* Verify the pre-states of a register to current network state. */
-    bool Rollback(TAO::Ledger::Transaction tx)
+    /* Register Layer namespace. */
+    namespace Register
     {
-        /* Make sure no exceptions are thrown. */
-        try
+
+        /* Verify the pre-states of a register to current network state. */
+        bool Rollback(TAO::Ledger::Transaction tx)
         {
-            /* Loop through the operations. */
-            while(!tx.ssOperation.end())
+            /* Make sure no exceptions are thrown. */
+            try
             {
-                uint8_t OPERATION;
-                tx.ssOperation >> OPERATION;
-
-                /* Check the current opcode. */
-                switch(OPERATION)
+                /* Loop through the operations. */
+                while(!tx.ssOperation.end())
                 {
+                    uint8_t OPERATION;
+                    tx.ssOperation >> OPERATION;
 
-                    /* Check pre-state to database. */
-                    case TAO::Operation::OP::WRITE:
-                    case TAO::Operation::OP::APPEND:
+                    /* Check the current opcode. */
+                    switch(OPERATION)
                     {
-                        /* Get the Address of the Register. */
-                        uint256_t hashAddress;
-                        tx.ssOperation >> hashAddress;
 
-                        /* Verify the first register code. */
-                        uint8_t nState;
-                        tx.ssRegister  >> nState;
+                        /* Check pre-state to database. */
+                        case TAO::Operation::OP::WRITE:
+                        case TAO::Operation::OP::APPEND:
+                        {
+                            /* Get the Address of the Register. */
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
 
-                        /* Check the state is prestate. */
-                        if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION, "register state not in pre-state");
+                            /* Verify the first register code. */
+                            uint8_t nState;
+                            tx.ssRegister  >> nState;
 
-                        /* Verify the register's prestate. */
-                        State prestate;
-                        tx.ssRegister  >> prestate;
+                            /* Check the state is prestate. */
+                            if(nState != STATES::PRESTATE)
+                                return debug::error(FUNCTION, "register state not in pre-state");
 
-                        /* Write the register from database. */
-                        if(!LLD::regDB->WriteState(hashAddress, prestate))
-                            return debug::error(FUNCTION, "failed to rollback to pre-state");
+                            /* Verify the register's prestate. */
+                            State prestate;
+                            tx.ssRegister  >> prestate;
 
-                        /* Skip over the post-state data. */
-                        uint64_t nSize = ReadCompactSize(tx.ssOperation);
+                            /* Write the register from database. */
+                            if(!LLD::regDB->WriteState(hashAddress, prestate))
+                                return debug::error(FUNCTION, "failed to rollback to pre-state");
 
-                        /* Seek the tx.ssOperation to next operation. */
-                        tx.ssOperation.seek(nSize);
+                            /* Skip over the post-state data. */
+                            uint64_t nSize = ReadCompactSize(tx.ssOperation);
 
-                        /* Seek registers past the post state */
-                        tx.ssRegister.seek(9);
+                            /* Seek the tx.ssOperation to next operation. */
+                            tx.ssOperation.seek(nSize);
 
-                        break;
-                    }
+                            /* Seek registers past the post state */
+                            tx.ssRegister.seek(9);
 
-
-                    /*
-                     * Erase the register
-                     */
-                    case TAO::Operation::OP::REGISTER:
-                    {
-                        /* Get the address of the Register. */
-                        uint256_t hashAddress;
-                        tx.ssOperation >> hashAddress;
-
-                        /* Skip over type. */
-                        tx.ssOperation.seek(1);
-
-                        /* Skip over the post-state data. */
-                        uint64_t nSize = ReadCompactSize(tx.ssOperation);
-
-                        /* Seek the tx.ssOperation to next operation. */
-                        tx.ssOperation.seek(nSize);
-
-                        /* Seek register past the post state */
-                        tx.ssRegister.seek(9);
-
-                        /* Erase the register from database. */
-                        if(!LLD::regDB->EraseState(hashAddress))
-                            return debug::error(FUNCTION, "failed to erase post-state");
-
-                        break;
-                    }
+                            break;
+                        }
 
 
-                    /* Transfer ownership of a register to another signature chain. */
-                    case TAO::Operation::OP::TRANSFER:
-                    {
-                        /* Extract the address from the tx.ssOperation. */
-                        uint256_t hashAddress;
-                        tx.ssOperation >> hashAddress;
+                        /*
+                         * Erase the register
+                         */
+                        case TAO::Operation::OP::REGISTER:
+                        {
+                            /* Get the address of the Register. */
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
 
-                        /* Read the register from database. */
-                        State dbstate;
-                        if(!LLD::regDB->ReadState(hashAddress, dbstate))
-                            return debug::error(FUNCTION, "register pre-state doesn't exist");
+                            /* Skip over type. */
+                            tx.ssOperation.seek(1);
 
-                        /* Set the previous owner to this sigchain. */
-                        dbstate.hashOwner = tx.hashGenesis;
+                            /* Skip over the post-state data. */
+                            uint64_t nSize = ReadCompactSize(tx.ssOperation);
 
-                        /* Write the register to database. */
-                        if(!LLD::regDB->WriteState(hashAddress, dbstate))
-                            return debug::error(FUNCTION, "failed to rollback to pre-state");
+                            /* Seek the tx.ssOperation to next operation. */
+                            tx.ssOperation.seek(nSize);
 
-                        /* Seek to next operation. */
-                        tx.ssOperation.seek(32);
+                            /* Seek register past the post state */
+                            tx.ssRegister.seek(9);
 
-                        /* Seek register past the post state */
-                        tx.ssRegister.seek(9);
+                            /* Erase the register from database. */
+                            if(!LLD::regDB->EraseState(hashAddress))
+                                return debug::error(FUNCTION, "failed to erase post-state");
 
-                        break;
-                    }
-
-                    /* Coinbase operation. Creates an account if none exists. */
-                    case TAO::Operation::OP::COINBASE:
-                    {
-                        tx.ssOperation.seek(8);
-
-                        break;
-                    }
+                            break;
+                        }
 
 
-                    /* Coinstake operation. Requires an account. */
-                    case TAO::Operation::OP::TRUST:
-                    {
-                        /* The account that is being staked. */
-                        uint256_t hashAccount;
-                        tx.ssOperation >> hashAccount;
+                        /* Transfer ownership of a register to another signature chain. */
+                        case TAO::Operation::OP::TRANSFER:
+                        {
+                            /* Extract the address from the tx.ssOperation. */
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
 
-                        /* The previous trust block. */
-                        uint1024_t hashLastTrust;
-                        tx.ssOperation >> hashLastTrust;
+                            /* Read the register from database. */
+                            State dbstate;
+                            if(!LLD::regDB->ReadState(hashAddress, dbstate))
+                                return debug::error(FUNCTION, "register pre-state doesn't exist");
 
-                        /* Previous trust sequence number. */
-                        uint32_t nSequence;
-                        tx.ssOperation >> nSequence;
+                            /* Set the previous owner to this sigchain. */
+                            dbstate.hashOwner = tx.hashGenesis;
 
-                        /* The previous trust calculated. */
-                        uint64_t nLastTrust;
-                        tx.ssOperation >> nLastTrust;
+                            /* Write the register to database. */
+                            if(!LLD::regDB->WriteState(hashAddress, dbstate))
+                                return debug::error(FUNCTION, "failed to rollback to pre-state");
 
-                        /* The total to be staked. */
-                        uint64_t  nStake;
-                        tx.ssOperation >> nStake;
+                            /* Seek to next operation. */
+                            tx.ssOperation.seek(32);
 
-                        break;
-                    }
+                            /* Seek register past the post state */
+                            tx.ssRegister.seek(9);
 
+                            break;
+                        }
 
-                    /* Debit tokens from an account you own. */
-                    case TAO::Operation::OP::DEBIT:
-                    {
-                        uint256_t hashAddress;
-                        tx.ssOperation >> hashAddress;
+                        /* Coinbase operation. Creates an account if none exists. */
+                        case TAO::Operation::OP::COINBASE:
+                        {
+                            tx.ssOperation.seek(8);
 
-                        /* Verify the first register code. */
-                        uint8_t nState;
-                        tx.ssRegister  >> nState;
-
-                        /* Check the state is prestate. */
-                        if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION, "register state not in pre-state");
-
-                        /* Verify the register's prestate. */
-                        State prestate;
-                        tx.ssRegister  >> prestate;
-
-                        /* Read the register from database. */
-                        if(!LLD::regDB->WriteState(hashAddress, prestate))
-                            return debug::error(FUNCTION, "failed to rollback to pre-state");
-
-                        /* Seek to the next operation. */
-                        tx.ssOperation.seek(40);
-
-                        /* Seek register past the post state */
-                        tx.ssRegister.seek(9);
-
-                        break;
-                    }
+                            break;
+                        }
 
 
-                    /* Credit tokens to an account you own. */
-                    case TAO::Operation::OP::CREDIT:
-                    {
-                        /* The transaction that this credit is claiming. */
-                        tx.ssOperation.seek(96);
+                        /* Coinstake operation. Requires an account. */
+                        case TAO::Operation::OP::TRUST:
+                        {
+                            /* The account that is being staked. */
+                            uint256_t hashAccount;
+                            tx.ssOperation >> hashAccount;
 
-                        /* The account that is being credited. */
-                        uint256_t hashAddress;
-                        tx.ssOperation >> hashAddress;
+                            /* The previous trust block. */
+                            uint1024_t hashLastTrust;
+                            tx.ssOperation >> hashLastTrust;
 
-                        /* Verify the first register code. */
-                        uint8_t nState;
-                        tx.ssRegister  >> nState;
+                            /* Previous trust sequence number. */
+                            uint32_t nSequence;
+                            tx.ssOperation >> nSequence;
 
-                        /* Check the state is prestate. */
-                        if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION, "register state not in pre-state");
+                            /* The previous trust calculated. */
+                            uint64_t nLastTrust;
+                            tx.ssOperation >> nLastTrust;
 
-                        /* Verify the register's prestate. */
-                        State prestate;
-                        tx.ssRegister  >> prestate;
+                            /* The total to be staked. */
+                            uint64_t  nStake;
+                            tx.ssOperation >> nStake;
 
-                        /* Read the register from database. */
-                        if(!LLD::regDB->ReadState(hashAddress, prestate))
-                            return debug::error(FUNCTION, "failed to rollback to pre-state");
+                            break;
+                        }
 
-                        /* Seek to the next operation. */
-                        tx.ssOperation.seek(8);
 
-                        break;
+                        /* Debit tokens from an account you own. */
+                        case TAO::Operation::OP::DEBIT:
+                        {
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
+
+                            /* Verify the first register code. */
+                            uint8_t nState;
+                            tx.ssRegister  >> nState;
+
+                            /* Check the state is prestate. */
+                            if(nState != STATES::PRESTATE)
+                                return debug::error(FUNCTION, "register state not in pre-state");
+
+                            /* Verify the register's prestate. */
+                            State prestate;
+                            tx.ssRegister  >> prestate;
+
+                            /* Read the register from database. */
+                            if(!LLD::regDB->WriteState(hashAddress, prestate))
+                                return debug::error(FUNCTION, "failed to rollback to pre-state");
+
+                            /* Seek to the next operation. */
+                            tx.ssOperation.seek(40);
+
+                            /* Seek register past the post state */
+                            tx.ssRegister.seek(9);
+
+                            break;
+                        }
+
+
+                        /* Credit tokens to an account you own. */
+                        case TAO::Operation::OP::CREDIT:
+                        {
+                            /* The transaction that this credit is claiming. */
+                            tx.ssOperation.seek(96);
+
+                            /* The account that is being credited. */
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
+
+                            /* Verify the first register code. */
+                            uint8_t nState;
+                            tx.ssRegister  >> nState;
+
+                            /* Check the state is prestate. */
+                            if(nState != STATES::PRESTATE)
+                                return debug::error(FUNCTION, "register state not in pre-state");
+
+                            /* Verify the register's prestate. */
+                            State prestate;
+                            tx.ssRegister  >> prestate;
+
+                            /* Read the register from database. */
+                            if(!LLD::regDB->ReadState(hashAddress, prestate))
+                                return debug::error(FUNCTION, "failed to rollback to pre-state");
+
+                            /* Seek to the next operation. */
+                            tx.ssOperation.seek(8);
+
+                            break;
+                        }
                     }
                 }
             }
-        }
-        catch(std::runtime_error& e)
-        {
-            return debug::error(FUNCTION, "exception encountered ", e.what());
-        }
+            catch(std::runtime_error& e)
+            {
+                return debug::error(FUNCTION, "exception encountered ", e.what());
+            }
 
-        /* If nothing failed, return true for evaluation. */
-        return true;
+            /* If nothing failed, return true for evaluation. */
+            return true;
+        }
     }
 }

@@ -19,138 +19,144 @@ ________________________________________________________________________________
 
 #include <Util/templates/serialize.h>
 
-namespace TAO::Register
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /** Token Object.
-     *
-     *  Holds the state of parameters of a given token.
-     *
-     **/
-    class Token
+    /* Register Layer namespace. */
+    namespace Register
     {
-    public:
 
-        /** The version of this object register. **/
-        uint32_t nVersion;
-
-
-        /** The identifier of the account token. **/
-        uint32_t nIdentifier;
-
-
-        /** The maximum supply of said token. **/
-        uint64_t nMaxSupply;
-
-
-        /** The current token supply. */
-        uint64_t nCurrentSupply;
-
-
-        /** The significant figures of said token. **/
-        uint8_t  nCoinDigits;
-
-
-        //serialization functions
-        IMPLEMENT_SERIALIZE
-        (
-            READWRITE(nVersion);
-            READWRITE(nIdentifier);
-            READWRITE(nMaxSupply);
-            READWRITE(nCurrentSupply);
-            READWRITE(nCoinDigits);
-        )
-
-
-        /** Default Constructor. **/
-        Token()
-        : nVersion(1)
-        , nIdentifier(0)
-        , nMaxSupply(0)
-        , nCurrentSupply(0)
-        , nCoinDigits(0)
-        {
-
-        }
-
-
-        /** Consturctor
+        /** Token Object.
          *
-         *  Builds Token with specified parameters. Default digits is 6 significant figures.
-         *
-         *  @param[in] nIdentifierIn The identifier in
-         *  @param[in] nMaxSupplyIn The max supply of token
+         *  Holds the state of parameters of a given token.
          *
          **/
-        Token(uint32_t nIdentifierIn, uint64_t nMaxSupplyIn)
-        : nVersion(1)
-        , nIdentifier(nIdentifierIn)
-        , nMaxSupply(nMaxSupplyIn)
-        , nCurrentSupply(nMaxSupply)
-        , nCoinDigits(6)
+        class Token
         {
+        public:
 
-        }
-
-
-        /** Consturctor
-         *
-         *  Builds Token with specified parameters.
-         *
-         *  @param[in] nIdentifierIn The identifier in
-         *  @param[in] nMaxSupplyIn The max supply of token
-         *  @param[in] nCoinDigitsIn The significant figures of token
-         *
-         **/
-        Token(uint32_t nIdentifierIn, uint64_t nMaxSupplyIn, uint8_t nCoinDigitsIn)
-        : nVersion(1)
-        , nIdentifier(nIdentifierIn)
-        , nMaxSupply(nMaxSupplyIn)
-        , nCurrentSupply(nMaxSupplyIn)
-        , nCoinDigits(nCoinDigitsIn)
-        {
-
-        }
+            /** The version of this object register. **/
+            uint32_t nVersion;
 
 
-        /** SetNull
-         *
-         *  Set this object to null state.
-         *
-         **/
-        void SetNull()
-        {
-            nVersion       = 0;
-            nIdentifier = 0;
-            nMaxSupply     = 0;
-            nCoinDigits    = 0;
-        }
+            /** The identifier of the account token. **/
+            uint32_t nIdentifier;
 
 
-        /** IsNull
-         *
-         *  Checks if object is in null state
-         *
-         **/
-        bool IsNull() const
-        {
-            return (nVersion == 0 && nIdentifier == 0 && nMaxSupply == 0 && nCoinDigits == 0);
-        }
+            /** The maximum supply of said token. **/
+            uint64_t nMaxSupply;
 
 
-        /** print
-         *
-         *  Output the state of this object.
-         *
-         **/
-        void print() const
-        {
-            debug::log(0, "Token(version=", nVersion,
-                ", id=", nIdentifier,
-                ", maxsupply=", nMaxSupply,
-                ", digits=)", nCoinDigits);
-        }
-    };
+            /** The current token supply. */
+            uint64_t nCurrentSupply;
+
+
+            /** The significant figures of said token. **/
+            uint8_t  nCoinDigits;
+
+
+            //serialization functions
+            IMPLEMENT_SERIALIZE
+            (
+                READWRITE(nVersion);
+                READWRITE(nIdentifier);
+                READWRITE(nMaxSupply);
+                READWRITE(nCurrentSupply);
+                READWRITE(nCoinDigits);
+            )
+
+
+            /** Default Constructor. **/
+            Token()
+            : nVersion(1)
+            , nIdentifier(0)
+            , nMaxSupply(0)
+            , nCurrentSupply(0)
+            , nCoinDigits(0)
+            {
+
+            }
+
+
+            /** Consturctor
+             *
+             *  Builds Token with specified parameters. Default digits is 6 significant figures.
+             *
+             *  @param[in] nIdentifierIn The identifier in
+             *  @param[in] nMaxSupplyIn The max supply of token
+             *
+             **/
+            Token(uint32_t nIdentifierIn, uint64_t nMaxSupplyIn)
+            : nVersion(1)
+            , nIdentifier(nIdentifierIn)
+            , nMaxSupply(nMaxSupplyIn)
+            , nCurrentSupply(nMaxSupply)
+            , nCoinDigits(6)
+            {
+
+            }
+
+
+            /** Consturctor
+             *
+             *  Builds Token with specified parameters.
+             *
+             *  @param[in] nIdentifierIn The identifier in
+             *  @param[in] nMaxSupplyIn The max supply of token
+             *  @param[in] nCoinDigitsIn The significant figures of token
+             *
+             **/
+            Token(uint32_t nIdentifierIn, uint64_t nMaxSupplyIn, uint8_t nCoinDigitsIn)
+            : nVersion(1)
+            , nIdentifier(nIdentifierIn)
+            , nMaxSupply(nMaxSupplyIn)
+            , nCurrentSupply(nMaxSupplyIn)
+            , nCoinDigits(nCoinDigitsIn)
+            {
+
+            }
+
+
+            /** SetNull
+             *
+             *  Set this object to null state.
+             *
+             **/
+            void SetNull()
+            {
+                nVersion       = 0;
+                nIdentifier = 0;
+                nMaxSupply     = 0;
+                nCoinDigits    = 0;
+            }
+
+
+            /** IsNull
+             *
+             *  Checks if object is in null state
+             *
+             **/
+            bool IsNull() const
+            {
+                return (nVersion == 0 && nIdentifier == 0 && nMaxSupply == 0 && nCoinDigits == 0);
+            }
+
+
+            /** print
+             *
+             *  Output the state of this object.
+             *
+             **/
+            void print() const
+            {
+                debug::log(0, "Token(version=", nVersion,
+                    ", id=", nIdentifier,
+                    ", maxsupply=", nMaxSupply,
+                    ", digits=)", nCoinDigits);
+            }
+        };
+    }
 }
 
 #endif

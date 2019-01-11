@@ -55,7 +55,7 @@ namespace debug
 
 
     /* Prints output into a string that is returned. */
-    std::string real_strprintf(const std::string &format, ...)
+    std::string real_strprintf(const char* format, ...)
     {
         char buffer[50000];
         char* p = buffer;
@@ -64,8 +64,8 @@ namespace debug
         while(true)
         {
             va_list arg_ptr;
-            va_start(arg_ptr, 0);
-            ret = _vsnprintf(p, limit, format.c_str(), arg_ptr);
+            va_start(arg_ptr, format);
+            ret = _vsnprintf(p, limit, format, arg_ptr);
             va_end(arg_ptr);
             if (ret >= 0 && ret < limit)
                 break;

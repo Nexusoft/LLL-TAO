@@ -186,7 +186,7 @@ namespace debug
      *  @return the output string of the printed message
      *
      **/
-    std::string real_strprintf(const std::string &format, ...);
+    std::string real_strprintf(const char* format, ...);
     #define strprintf(format, ...) real_strprintf(format, __VA_ARGS__)
 
 

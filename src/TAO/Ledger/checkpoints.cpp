@@ -20,87 +20,92 @@ ________________________________________________________________________________
 
 #include <cmath>
 
-namespace TAO::Ledger
+/* Global TAO namespace. */
+namespace TAO
 {
 
-
-    /** Checkpoint timespan. **/
-    uint32_t CHECKPOINT_TIMESPAN = 1;
-
-
-    /* Check if the new block triggers a new Checkpoint timespan.*/
-    bool IsNewTimespan(const BlockState state)
+    /* Ledger Layer namespace. */
+    namespace Ledger
     {
-        /* Catch if checkpoint is not established. */
-        if(ChainState::hashCheckpoint == 0)
-            return true;
 
-        /* Get previous block state. */
-        BlockState statePrev;
-        if(!LLD::legDB->ReadBlock(state.hashPrevBlock, statePrev))
-            return true;
-
-        /* Get checkpoint state. */
-        BlockState stateCheck;
-        if(!LLD::legDB->ReadBlock(state.hashCheckpoint, stateCheck))
-            return debug::error(FUNCTION, "failed to read checkpoint");
-
-        /* Calculate the time differences. */
-        uint32_t nFirstMinutes = floor((state.GetBlockTime() - stateCheck.GetBlockTime()) / 60.0);
-        uint32_t nLastMinutes =  floor((statePrev.GetBlockTime() - stateCheck.GetBlockTime()) / 60.0);
-
-        return (nFirstMinutes != nLastMinutes && nFirstMinutes >= CHECKPOINT_TIMESPAN);
-    }
+        /** Checkpoint timespan. **/
+        uint32_t CHECKPOINT_TIMESPAN = 1;
 
 
-    /* Check that the checkpoint is a Descendant of previous Checkpoint.*/
-    bool IsDescendant(const BlockState state)
-    {
-        if(ChainState::hashCheckpoint == 0)
-            return true;
-
-        /* Get checkpoint state. */
-        BlockState stateCheckpoint;
-        if(!LLD::legDB->ReadBlock(state.hashCheckpoint, stateCheckpoint))
-            return debug::error(FUNCTION, "failed to read checkpoint");
-
-        /* Check The Block Hash */
-        BlockState check = state;
-        while(!check.IsNull())
+        /* Check if the new block triggers a new Checkpoint timespan.*/
+        bool IsNewTimespan(const BlockState state)
         {
-            /* Check that checkpoint exists in the map. */
-            if(ChainState::hashCheckpoint == check.hashCheckpoint)
+            /* Catch if checkpoint is not established. */
+            if(ChainState::hashCheckpoint == 0)
                 return true;
 
-            /* Break when new height is found. */
-            if(state.nHeight < stateCheckpoint.nHeight)
-                return false;
+            /* Get previous block state. */
+            BlockState statePrev;
+            if(!LLD::legDB->ReadBlock(state.hashPrevBlock, statePrev))
+                return true;
 
-            /* Iterate backwards. */
-            check = check.Prev();
+            /* Get checkpoint state. */
+            BlockState stateCheck;
+            if(!LLD::legDB->ReadBlock(state.hashCheckpoint, stateCheck))
+                return debug::error(FUNCTION, "failed to read checkpoint");
+
+            /* Calculate the time differences. */
+            uint32_t nFirstMinutes = floor((state.GetBlockTime() - stateCheck.GetBlockTime()) / 60.0);
+            uint32_t nLastMinutes =  floor((statePrev.GetBlockTime() - stateCheck.GetBlockTime()) / 60.0);
+
+            return (nFirstMinutes != nLastMinutes && nFirstMinutes >= CHECKPOINT_TIMESPAN);
         }
 
 
+        /* Check that the checkpoint is a Descendant of previous Checkpoint.*/
+        bool IsDescendant(const BlockState state)
+        {
+            if(ChainState::hashCheckpoint == 0)
+                return true;
 
-        printf("%s - %s\n", ChainState::hashCheckpoint.ToString().substr(0, 20).c_str(), state.hashCheckpoint.ToString().substr(0, 20).c_str());
+            /* Get checkpoint state. */
+            BlockState stateCheckpoint;
+            if(!LLD::legDB->ReadBlock(state.hashCheckpoint, stateCheckpoint))
+                return debug::error(FUNCTION, "failed to read checkpoint");
 
-        return false;
-    }
+            /* Check The Block Hash */
+            BlockState check = state;
+            while(!check.IsNull())
+            {
+                /* Check that checkpoint exists in the map. */
+                if(ChainState::hashCheckpoint == check.hashCheckpoint)
+                    return true;
+
+                /* Break when new height is found. */
+                if(state.nHeight < stateCheckpoint.nHeight)
+                    return false;
+
+                /* Iterate backwards. */
+                check = check.Prev();
+            }
 
 
-    /*Harden a checkpoint into the checkpoint chain.*/
-    bool HardenCheckpoint(const BlockState state)
-    {
-        /* Only Harden New Checkpoint if it Fits new timestamp. */
-        if(!IsNewTimespan(state))
+
+            printf("%s - %s\n", ChainState::hashCheckpoint.ToString().substr(0, 20).c_str(), state.hashCheckpoint.ToString().substr(0, 20).c_str());
+
             return false;
+        }
 
-        /* Update the Checkpoints into Memory. */
-        ChainState::hashCheckpoint    = state.hashCheckpoint;
 
-        /* Dump the Checkpoint if not Initializing. */
-        debug::log(0, "===== Hardened Checkpoint ", ChainState::hashCheckpoint.ToString().substr(0, 20));
+        /*Harden a checkpoint into the checkpoint chain.*/
+        bool HardenCheckpoint(const BlockState state)
+        {
+            /* Only Harden New Checkpoint if it Fits new timestamp. */
+            if(!IsNewTimespan(state))
+                return false;
 
-        return true;
+            /* Update the Checkpoints into Memory. */
+            ChainState::hashCheckpoint    = state.hashCheckpoint;
+
+            /* Dump the Checkpoint if not Initializing. */
+            debug::log(0, "===== Hardened Checkpoint ", ChainState::hashCheckpoint.ToString().substr(0, 20));
+
+            return true;
+        }
     }
 }

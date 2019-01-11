@@ -23,71 +23,78 @@ ________________________________________________________________________________
 
 #include <Util/include/hex.h>
 
-namespace TAO::API
+/* Global TAO namespace. */
+namespace TAO
 {
-    /** List of accounts in API. **/
-    Ledger ledger;
 
-
-    /* Standard initialization function. */
-    void Ledger::Initialize()
+    /* API Layer namespace. */
+    namespace API
     {
-        mapFunctions["createblock"]               = Function(std::bind(&Ledger::CreateBlock,           this, std::placeholders::_1, std::placeholders::_2));
-    }
+
+        /** List of accounts in API. **/
+        Ledger ledger;
 
 
-    /* Creates a register with given RAW state. */
-    json::json Ledger::CreateBlock(const json::json& params, bool fHelp)
-    {
-        /* Check for username parameter. */
-        if(params.find("session") == params.end())
-            throw APIException(-25, "Missing Session ID");
+        /* Standard initialization function. */
+        void Ledger::Initialize()
+        {
+            mapFunctions["createblock"]               = Function(std::bind(&Ledger::CreateBlock,           this, std::placeholders::_1, std::placeholders::_2));
+        }
 
-        /* Check for pin parameter. */
-        if(params.find("pin") == params.end())
-            throw APIException(-25, "Missing PIN");
 
-        /* Get the session. */
-        uint64_t nSession = std::stoull(params["session"].get<std::string>());
+        /* Creates a register with given RAW state. */
+        json::json Ledger::CreateBlock(const json::json& params, bool fHelp)
+        {
+            /* Check for username parameter. */
+            if(params.find("session") == params.end())
+                throw APIException(-25, "Missing Session ID");
 
-        /* Get the account. */
-        TAO::Ledger::SignatureChain* user;
-        if(!accounts.GetAccount(nSession, user))
-            throw APIException(-25, "Invalid session ID");
+            /* Check for pin parameter. */
+            if(params.find("pin") == params.end())
+                throw APIException(-25, "Missing PIN");
 
-        /* Create the block object. */
-        TAO::Ledger::TritiumBlock block;
-        if(!TAO::Ledger::CreateBlock(user, params["pin"].get<std::string>().c_str(), 2, block))
-            throw APIException(-26, "Failed to create block");
+            /* Get the session. */
+            uint64_t nSession = std::stoull(params["session"].get<std::string>());
 
-        /* Get the secret from new key. */
-        std::vector<uint8_t> vBytes = accounts.GetKey(block.producer.nSequence, params["pin"].get<std::string>().c_str(), nSession).GetBytes();
-        LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
+            /* Get the account. */
+            TAO::Ledger::SignatureChain* user;
+            if(!accounts.GetAccount(nSession, user))
+                throw APIException(-25, "Invalid session ID");
 
-        /* Generate the EC Key. */
-        LLC::ECKey key(NID_brainpoolP512t1, 64);
-        if(!key.SetSecret(vchSecret, true))
-            throw APIException(-26, "Failed to set secret key");
+            /* Create the block object. */
+            TAO::Ledger::TritiumBlock block;
+            if(!TAO::Ledger::CreateBlock(user, params["pin"].get<std::string>().c_str(), 2, block))
+                throw APIException(-26, "Failed to create block");
 
-        /* Generate new block signature. */
-        block.GenerateSignature(key);
+            /* Get the secret from new key. */
+            std::vector<uint8_t> vBytes = accounts.GetKey(block.producer.nSequence, params["pin"].get<std::string>().c_str(), nSession).GetBytes();
+            LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
-        /* Verify the block object. */
-        if(!block.Check())
-            throw APIException(-26, "Block is invalid");
+            /* Generate the EC Key. */
+            LLC::ECKey key(NID_brainpoolP512t1, 64);
+            if(!key.SetSecret(vchSecret, true))
+                throw APIException(-26, "Failed to set secret key");
 
-        /* Create the state object. */
-        TAO::Ledger::BlockState state = TAO::Ledger::BlockState(block);
-        if(!state.Accept())
-            throw APIException(-26, "State is invalid");
+            /* Generate new block signature. */
+            block.GenerateSignature(key);
 
-        /* Write transaction to local database. */
-        LLD::legDB->WriteTx(state.producer.GetHash(), state.producer);
-        LLD::locDB->WriteLast(user->Genesis(), state.producer.GetHash());
+            /* Verify the block object. */
+            if(!block.Check())
+                throw APIException(-26, "Block is invalid");
 
-        json::json ret;
-        ret["block"] = block.GetHash().ToString();
+            /* Create the state object. */
+            TAO::Ledger::BlockState state = TAO::Ledger::BlockState(block);
+            if(!state.Accept())
+                throw APIException(-26, "State is invalid");
 
-        return ret;
+            /* Write transaction to local database. */
+            LLD::legDB->WriteTx(state.producer.GetHash(), state.producer);
+            LLD::locDB->WriteLast(user->Genesis(), state.producer.GetHash());
+
+            json::json ret;
+            ret["block"] = block.GetHash().ToString();
+
+            return ret;
+        }
     }
 }

@@ -19,103 +19,108 @@ ________________________________________________________________________________
 
 #include <Util/templates/serialize.h>
 
-namespace TAO::Ledger
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /** Defines the types of transaction hash stored in the TritiumBlock vtx **/
-    enum TYPE
+    /* Ledger Layer namespace. */
+    namespace Ledger
     {
-        LEGACY_TX  = 0x00,
-        TRITIUM_TX = 0x01,
-        CHECKPOINT = 0x02, //for private chain checkpointing into mainnet blocks.
-    };
 
-
-    /** Tritium Block
-     *
-     *  A tritium block contains referecnes to the transactions in blocks.
-     *  These are used to build the merkle tree for checking.
-     *  Transactions are processed before block is recieved, and commit
-     *  When a block is recieved to break up processing requirements.
-     *
-     **/
-    class TritiumBlock : public Block
-    {
-    public:
-
-        /** Verifier Transaction.
-         *
-         *  Transaction responsible for the block producer.
-         *
-         **/
-        Transaction producer;
-
-
-        /** The transaction history.
-         *  uint8_t = TransactionType (per enum)
-         *  uint512_t = Tx hash
-         **/
-        std::vector< std::pair<uint8_t, uint512_t> > vtx;
-
-
-        IMPLEMENT_SERIALIZE
-        (
-            READWRITE(nVersion);
-            READWRITE(hashPrevBlock);
-            READWRITE(hashMerkleRoot);
-            READWRITE(nChannel);
-            READWRITE(nHeight);
-            READWRITE(nBits);
-            READWRITE(nNonce);
-
-            READWRITE(nTime);
-            READWRITE(vchBlockSig);
-
-            READWRITE(producer);
-            READWRITE(vtx);
-        )
-
-
-        /** The default constructor. **/
-        TritiumBlock()
-        : Block()
-        , producer()
-        , vtx()
+        /** Defines the types of transaction hash stored in the TritiumBlock vtx **/
+        enum TYPE
         {
-            SetNull();
-        }
+            LEGACY_TX  = 0x00,
+            TRITIUM_TX = 0x01,
+            CHECKPOINT = 0x02, //for private chain checkpointing into mainnet blocks.
+        };
 
 
-        /** Copy Constructor. **/
-        TritiumBlock(const TritiumBlock& state)
-        : Block(state)
-        , producer(state.producer)
-        , vtx(state.vtx)
+        /** Tritium Block
+         *
+         *  A tritium block contains referecnes to the transactions in blocks.
+         *  These are used to build the merkle tree for checking.
+         *  Transactions are processed before block is recieved, and commit
+         *  When a block is recieved to break up processing requirements.
+         *
+         **/
+        class TritiumBlock : public Block
         {
+        public:
 
-        }
-
-
-        /** Check a tritium block for consistency. **/
-        bool Check() const;
-
-
-        /** ToString
-         *
-         *  For debugging Purposes seeing block state data dump
-         *
-         **/
-        std::string ToString() const;
+            /** Verifier Transaction.
+             *
+             *  Transaction responsible for the block producer.
+             *
+             **/
+            Transaction producer;
 
 
-        /** print
-         *
-         *  For debugging purposes, printing the block to stdout
-         *
-         **/
-        virtual void print() const;
-    };
+            /** The transaction history.
+             *  uint8_t = TransactionType (per enum)
+             *  uint512_t = Tx hash
+             **/
+            std::vector< std::pair<uint8_t, uint512_t> > vtx;
 
+
+            IMPLEMENT_SERIALIZE
+            (
+                READWRITE(nVersion);
+                READWRITE(hashPrevBlock);
+                READWRITE(hashMerkleRoot);
+                READWRITE(nChannel);
+                READWRITE(nHeight);
+                READWRITE(nBits);
+                READWRITE(nNonce);
+
+                READWRITE(nTime);
+                READWRITE(vchBlockSig);
+
+                READWRITE(producer);
+                READWRITE(vtx);
+            )
+
+
+            /** The default constructor. **/
+            TritiumBlock()
+            : Block()
+            , producer()
+            , vtx()
+            {
+                SetNull();
+            }
+
+
+            /** Copy Constructor. **/
+            TritiumBlock(const TritiumBlock& state)
+            : Block(state)
+            , producer(state.producer)
+            , vtx(state.vtx)
+            {
+
+            }
+
+
+            /** Check a tritium block for consistency. **/
+            bool Check() const;
+
+
+            /** ToString
+             *
+             *  For debugging Purposes seeing block state data dump
+             *
+             **/
+            std::string ToString() const;
+
+
+            /** print
+             *
+             *  For debugging purposes, printing the block to stdout
+             *
+             **/
+            virtual void print() const;
+        };
+    }
 }
 
 #endif

@@ -21,198 +21,204 @@ ________________________________________________________________________________
 
 #include <Util/include/runtime.h>
 
-namespace TAO::Ledger
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /** Tritium Transaction.
-     *
-     *  State of a tritium specific transaction.
-     *
-     **/
-    class Transaction //transaction header size is 144 bytes
+    /* Ledger Layer namespace. */
+    namespace Ledger
     {
-    public:
 
-        /** The operations that create post-states. **/
-        TAO::Operation::Stream ssOperation;
-
-
-        /** The register pre-states. **/
-        TAO::Register::Stream  ssRegister;
-
-
-        /** The transaction version. **/
-        uint32_t nVersion;
-
-
-        /** The sequence identifier. **/
-        uint32_t nSequence;
-
-
-        /** The transaction timestamp. **/
-        uint64_t nTimestamp;
-
-
-        /** The nextHash which can claim the signature chain. */
-        uint256_t hashNext;
-
-
-        /** The genesis ID hash. **/
-        uint256_t hashGenesis;
-
-
-        /** The previous transaction. **/
-        uint512_t hashPrevTx;
-
-
-        //memory only, to be disposed once fully locked into the chain behind a checkpoint
-        //this is for the segregated keys from transaction data.
-        std::vector<uint8_t> vchPubKey;
-        std::vector<uint8_t> vchSig;
-
-
-        //memory only read position
-        uint32_t nReadPos;
-
-
-        //serialization methods
-        IMPLEMENT_SERIALIZE
-        (
-            /* Operations layer. */
-            READWRITE(ssOperation);
-
-            /* Register layer. */
-            READWRITE(ssRegister);
-
-            /* Ledger layer */
-            READWRITE(this->nVersion);
-            READWRITE(nSequence);
-            READWRITE(nTimestamp);
-            READWRITE(hashNext);
-            READWRITE(hashGenesis);
-            READWRITE(hashPrevTx);
-            READWRITE(vchPubKey);
-            if(!(nSerType & SER_GETHASH))
-                READWRITE(vchSig);
-        )
-
-
-        /** Default Constructor. **/
-        Transaction()
-        : nVersion(1)
-        , nSequence(0)
-        , nTimestamp(runtime::unifiedtimestamp())
-        , hashNext(0)
-        , hashGenesis(0)
-        , hashPrevTx(0)
-        , nReadPos(0) {}
-
-
-        /** Operator Overload <<
+        /** Tritium Transaction.
          *
-         *  Serializes data into vchOperations
-         *
-         *  @param[in] obj The object to serialize into ledger data
+         *  State of a tritium specific transaction.
          *
          **/
-        template<typename Type> Transaction& operator<<(const Type& obj)
+        class Transaction //transaction header size is 144 bytes
         {
-            /* Serialize to the stream. */
-            ssOperation << obj;
+        public:
 
-            return (*this);
-        }
-
-
-        /** IsValid
-         *
-         *  Determines if the transaction is a valid transaciton and passes ledger level checks.
-         *
-         *  @return true if transaction is valid.
-         *
-         **/
-        bool IsValid() const;
+            /** The operations that create post-states. **/
+            TAO::Operation::Stream ssOperation;
 
 
-        /** Is Coinbase
-         *
-         *  Determines if the transaction is a coinbase transaction.
-         *
-         *  @return true if transaction is a coinbase.
-         *
-         **/
-        bool IsCoinbase() const;
+            /** The register pre-states. **/
+            TAO::Register::Stream  ssRegister;
 
 
-        /** Is Trust
-         *
-         *  Determines if the transaction is a trust transaction.
-         *
-         *  @return true if transaction is a coinbase.
-         *
-         **/
-        bool IsTrust() const;
+            /** The transaction version. **/
+            uint32_t nVersion;
 
 
-        /** IsGenesis
-         *
-         *  Determines if the transaction is a genesis transaction
-         *
-         *  @return true if transaction is genesis
-         *
-         **/
-        bool IsGenesis() const;
+            /** The sequence identifier. **/
+            uint32_t nSequence;
 
 
-        /** GetHash
-         *
-         *  Gets the hash of the transaction object.
-         *
-         *  @return 512-bit unsigned integer of hash.
-         *
-         **/
-        uint512_t GetHash() const;
+            /** The transaction timestamp. **/
+            uint64_t nTimestamp;
 
 
-        /** NextHash
-         *
-         *  Sets the Next Hash from the key
-         *
-         *  @param[in] hashSecret The secret phrase to generate the keys.
-         *
-         **/
-        void NextHash(uint512_t hashSecret);
+            /** The nextHash which can claim the signature chain. */
+            uint256_t hashNext;
 
 
-        /** PrevHash
-         *
-         *  Gets the nextHash from the previous transaction
-         *
-         *  @return 256-bit hash of previous transaction
-         *
-         **/
-        uint256_t PrevHash() const;
+            /** The genesis ID hash. **/
+            uint256_t hashGenesis;
 
 
-        /** Sign
-         *
-         *  Signs the transaction with the private key and sets the public key
-         *
-         *  @param[in] hashSecret The secret phrase to generate the keys.
-         *
-         **/
-         bool Sign(uint512_t hashSecret);
+            /** The previous transaction. **/
+            uint512_t hashPrevTx;
+
+
+            //memory only, to be disposed once fully locked into the chain behind a checkpoint
+            //this is for the segregated keys from transaction data.
+            std::vector<uint8_t> vchPubKey;
+            std::vector<uint8_t> vchSig;
+
+
+            //memory only read position
+            uint32_t nReadPos;
+
+
+            //serialization methods
+            IMPLEMENT_SERIALIZE
+            (
+                /* Operations layer. */
+                READWRITE(ssOperation);
+
+                /* Register layer. */
+                READWRITE(ssRegister);
+
+                /* Ledger layer */
+                READWRITE(this->nVersion);
+                READWRITE(nSequence);
+                READWRITE(nTimestamp);
+                READWRITE(hashNext);
+                READWRITE(hashGenesis);
+                READWRITE(hashPrevTx);
+                READWRITE(vchPubKey);
+                if(!(nSerType & SER_GETHASH))
+                    READWRITE(vchSig);
+            )
+
+
+            /** Default Constructor. **/
+            Transaction()
+            : nVersion(1)
+            , nSequence(0)
+            , nTimestamp(runtime::unifiedtimestamp())
+            , hashNext(0)
+            , hashGenesis(0)
+            , hashPrevTx(0)
+            , nReadPos(0) {}
+
+
+            /** Operator Overload <<
+             *
+             *  Serializes data into vchOperations
+             *
+             *  @param[in] obj The object to serialize into ledger data
+             *
+             **/
+            template<typename Type> Transaction& operator<<(const Type& obj)
+            {
+                /* Serialize to the stream. */
+                ssOperation << obj;
+
+                return (*this);
+            }
+
+
+            /** IsValid
+             *
+             *  Determines if the transaction is a valid transaciton and passes ledger level checks.
+             *
+             *  @return true if transaction is valid.
+             *
+             **/
+            bool IsValid() const;
+
+
+            /** Is Coinbase
+             *
+             *  Determines if the transaction is a coinbase transaction.
+             *
+             *  @return true if transaction is a coinbase.
+             *
+             **/
+            bool IsCoinbase() const;
+
+
+            /** Is Trust
+             *
+             *  Determines if the transaction is a trust transaction.
+             *
+             *  @return true if transaction is a coinbase.
+             *
+             **/
+            bool IsTrust() const;
+
+
+            /** IsGenesis
+             *
+             *  Determines if the transaction is a genesis transaction
+             *
+             *  @return true if transaction is genesis
+             *
+             **/
+            bool IsGenesis() const;
+
+
+            /** GetHash
+             *
+             *  Gets the hash of the transaction object.
+             *
+             *  @return 512-bit unsigned integer of hash.
+             *
+             **/
+            uint512_t GetHash() const;
+
+
+            /** NextHash
+             *
+             *  Sets the Next Hash from the key
+             *
+             *  @param[in] hashSecret The secret phrase to generate the keys.
+             *
+             **/
+            void NextHash(uint512_t hashSecret);
+
+
+            /** PrevHash
+             *
+             *  Gets the nextHash from the previous transaction
+             *
+             *  @return 256-bit hash of previous transaction
+             *
+             **/
+            uint256_t PrevHash() const;
+
+
+            /** Sign
+             *
+             *  Signs the transaction with the private key and sets the public key
+             *
+             *  @param[in] hashSecret The secret phrase to generate the keys.
+             *
+             **/
+             bool Sign(uint512_t hashSecret);
 
 
 
-         /** Print
-          *
-          * Prints the object to the console.
-          *
-          **/
-         void print() const;
+             /** Print
+              *
+              * Prints the object to the console.
+              *
+              **/
+             void print() const;
 
-    };
+        };
+    }
 }
 
 #endif

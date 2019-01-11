@@ -15,39 +15,45 @@ ________________________________________________________________________________
 
 #include <Util/include/json.h>
 
-namespace TAO::API
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /** API Exception
-     *
-     *  Encapsulates an exception that can be converted into a valid JSON error object
-     *
-     **/
-    class APIException : public json::detail::exception
+    /* API Layer namespace. */
+    namespace API
     {
-    public:
-        APIException(int32_t nCode, const char* strMessage)
-        : json::detail::exception(nCode, strMessage) {}
 
-
-        APIException(int32_t nCode, const std::string& strMessage)
-        : json::detail::exception(nCode, strMessage.c_str()) {}
-
-
-        /** ToJSON
+        /** API Exception
          *
-         *  Converts this exception into a json object conforming to the JSON-RPC specification.
-         *
-         *  @return the json object containing the exception code and message.
+         *  Encapsulates an exception that can be converted into a valid JSON error object
          *
          **/
-        json::json ToJSON()
+        class APIException : public json::detail::exception
         {
-            json::json jsonError;
-            jsonError["code"] = id;
-            jsonError["message"] = std::string(what());
-            return jsonError;
-        }
+        public:
+            APIException(int32_t nCode, const char* strMessage)
+            : json::detail::exception(nCode, strMessage) {}
 
-    };
+
+            APIException(int32_t nCode, const std::string& strMessage)
+            : json::detail::exception(nCode, strMessage.c_str()) {}
+
+
+            /** ToJSON
+             *
+             *  Converts this exception into a json object conforming to the JSON-RPC specification.
+             *
+             *  @return the json object containing the exception code and message.
+             *
+             **/
+            json::json ToJSON()
+            {
+                json::json jsonError;
+                jsonError["code"] = id;
+                jsonError["message"] = std::string(what());
+                return jsonError;
+            }
+
+        };
+    }
 }

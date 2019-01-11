@@ -16,56 +16,62 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/base.h>
 
-namespace TAO::API
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /** Ledger API Class
-     *
-     *  Lower level API to interact directly with registers.
-     *
-     **/
-    class Ledger : public Base
+    /* API Layer namespace. */
+    namespace API
     {
-    public:
 
-        /** Default Constructor. **/
-        Ledger() { Initialize(); }
-
-
-        /** Initialize.
+        /** Ledger API Class
          *
-         *  Sets the function pointers for this API.
+         *  Lower level API to interact directly with registers.
          *
          **/
-        void Initialize() final;
-
-
-        /** Get Name
-         *
-         *  Returns the name of this API.
-         *
-         **/
-        std::string GetName() const final
+        class Ledger : public Base
         {
-            return "Ledger";
-        }
+        public:
+
+            /** Default Constructor. **/
+            Ledger() { Initialize(); }
 
 
-        /** Create
-         *
-         *  Creates a register with given RAW state.
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        json::json CreateBlock(const json::json& params, bool fHelp);
+            /** Initialize.
+             *
+             *  Sets the function pointers for this API.
+             *
+             **/
+            void Initialize() final;
 
-    };
 
-    extern Ledger ledger;
+            /** Get Name
+             *
+             *  Returns the name of this API.
+             *
+             **/
+            std::string GetName() const final
+            {
+                return "Ledger";
+            }
+
+
+            /** Create
+             *
+             *  Creates a register with given RAW state.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json CreateBlock(const json::json& params, bool fHelp);
+
+        };
+
+        extern Ledger ledger;
+    }
 }
 
 #endif

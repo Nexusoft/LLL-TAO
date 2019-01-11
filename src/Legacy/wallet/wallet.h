@@ -33,11 +33,16 @@ ________________________________________________________________________________
 #include <Util/include/allocators.h> /* for SecureString */
 
 
-namespace TAO::Ledger
+/* Global TAO namespace. */
+namespace TAO
 {
-    /* forward declarations */
-    class TritiumBlock;
-    class BlockState;
+    /* Ledger Layer namespace. */
+    namespace Ledger
+    {
+        /* forward declarations */
+        class TritiumBlock;
+        class BlockState;
+    }
 }
 
 namespace Legacy
@@ -85,6 +90,9 @@ namespace Legacy
         friend class CWalletDB;
 
     private:
+        using CCryptoKeyStore::Unlock;
+
+
         /** The current wallet version: clients below this version are not able to load the wallet **/
         int nWalletVersion;
 
@@ -421,7 +429,7 @@ namespace Legacy
          *  @return true if wallet was locked, passphrase matches the one used to encrypt it, and unlock is successful
          *
          */
-        bool Unlock(const SecureString& strWalletPassphrase);
+        virtual bool Unlock(const SecureString& strWalletPassphrase);
 
 
         /** ChangeWalletPassphrase

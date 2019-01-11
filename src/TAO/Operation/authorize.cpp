@@ -17,20 +17,25 @@ ________________________________________________________________________________
 #include <TAO/Register/include/state.h>
 #include <TAO/Register/include/enum.h>
 
-namespace TAO::Operation
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /* Writes data to a register. */
-    bool Authorize(uint512_t hashTx, uint256_t hashProof, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
+    /* Operation Layer namespace. */
+    namespace Operation
     {
 
-        //read the proof
-        //read the transaction
-        //check that transaction operation is requiring a proof by checking the register owner to a token.
-        //have a register handle the votes tally. Only transactions with proofs can tally the authorization
-        //if the proofs are above a threshold on the register writes, allow the validation logic to succeed
+        /* Writes data to a register. */
+        bool Authorize(uint512_t hashTx, uint256_t hashProof, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
+        {
 
-        return true;
+            //read the proof
+            //read the transaction
+            //check that transaction operation is requiring a proof by checking the register owner to a token.
+            //have a register handle the votes tally. Only transactions with proofs can tally the authorization
+            //if the proofs are above a threshold on the register writes, allow the validation logic to succeed
+
+            return true;
+        }
     }
-
 }
