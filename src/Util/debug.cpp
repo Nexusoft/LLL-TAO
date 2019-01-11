@@ -35,93 +35,6 @@ namespace debug
 {
     static FILE* fileout = nullptr;
 
-    /* Prints output to the console. It may also write output to a debug.log
-     * if the global fileout file is assigned. */
-    int log(uint32_t nLevel, const char* pszFormat, ...)
-    {
-        /* Don't write if log level is below set level. */
-        if(config::GetArg("-verbose", 0) < nLevel)
-            return 0;
-
-        LOCK(DEBUG_MUTEX);
-
-        std::string strFormat(pszFormat);
-        strFormat += "\n";
-
-        //TODO: add timestamps to log messages
-
-        /* print to console */
-        int ret = 0;
-        va_list arg_ptr;
-        va_start(arg_ptr, pszFormat);
-        ret = vprintf(strFormat.c_str(), arg_ptr);
-        va_end(arg_ptr);
-
-        /* print to debug.log */
-        if (!fileout)
-        {
-            std::string pathDebug = config::GetDataDir() + "debug.log";
-            fileout = fopen(pathDebug.c_str(), "a");
-            if (fileout)
-                setbuf(fileout, nullptr); // unbuffered
-        }
-
-        if (fileout)
-        {
-            va_start(arg_ptr, pszFormat);
-            ret = vfprintf(fileout, strFormat.c_str(), arg_ptr);
-            va_end(arg_ptr);
-        }
-
-    #ifdef WIN32
-        if (fPrintToDebugger)
-        {
-            /* accumulate a line at a time */
-            {
-                static char pszBuffer[50000];
-                static char* pend;
-                if (pend == nullptr)
-                        pend = pszBuffer;
-
-                va_start(arg_ptr, pszFormat);
-                int limit = END(pszBuffer) - pend - 2;
-                int ret = _vsnprintf(pend, limit, pszFormat, arg_ptr);
-                va_end(arg_ptr);
-                if (ret < 0 || ret >= limit)
-                {
-                        pend = END(pszBuffer) - 2;
-                        *pend++ = '\n';
-                }
-                else
-                        pend += ret;
-
-                    *pend = '\0';
-
-                char* p1 = pszBuffer;
-                char* p2;
-
-                while ((p2 = strchr(p1, '\n')))
-                {
-                    p2++;
-                    char c = *p2;
-
-                    *p2 = '\0';
-
-                    OutputDebugStringA(p1);
-                    *p2 = c;
-                    p1 = p2;
-                }
-
-                if (p1 != pszBuffer)
-                    memmove(pszBuffer, p1, pend - p1 + 1);
-
-                pend -= (p1 - pszBuffer);
-            }
-        }
-    #endif
-        return ret;
-    }
-
     /*  Safer snprintf output string is always null terminated even if the limit
      *  is reach. Returns the number of characters printed. */
     int my_snprintf(char* buffer, size_t limit, const char* format, ...)
@@ -142,7 +55,7 @@ namespace debug
 
 
     /* Prints output into a string that is returned. */
-    std::string real_strprintf(const std::string &format, ...)
+    std::string real_strprintf(const char* format, ...)
     {
         char buffer[50000];
         char* p = buffer;
@@ -151,8 +64,8 @@ namespace debug
         while(true)
         {
             va_list arg_ptr;
-            va_start(arg_ptr, 0);
-            ret = _vsnprintf(p, limit, format.c_str(), arg_ptr);
+            va_start(arg_ptr, format);
+            ret = _vsnprintf(p, limit, format, arg_ptr);
             va_end(arg_ptr);
             if (ret >= 0 && ret < limit)
                 break;
@@ -185,7 +98,7 @@ namespace debug
             buffer[limit-1] = 0;
         }
 
-        debug::log(0, ANSI_COLOR_RED "ERROR: %s" ANSI_COLOR_RESET, buffer);
+        debug::log(0, ANSI_COLOR_RED, "ERROR: ", buffer, ANSI_COLOR_RESET);
         return false;
     }
 
@@ -203,7 +116,7 @@ namespace debug
             buffer[limit-1] = 0;
         }
 
-        debug::log(0, ANSI_COLOR_FUNCTION "%s::%s()" ANSI_COLOR_RESET " : %s", base, __func__, buffer);
+        debug::log(0, ANSI_COLOR_FUNCTION, base, "::", __func__, "()", ANSI_COLOR_RESET, " : ", buffer);
     }
 
     /*  Prints and logs the stack trace of the code execution call stack up to
@@ -245,7 +158,7 @@ namespace debug
     {
         char pszMessage[10000];
         FormatException(pszMessage, pex, pszThread);
-        debug::log(0, "%s", pszMessage);
+        debug::log(0, pszMessage);
     }
 
     /*  Prints the exception with the named calling thread and throws it */
@@ -253,7 +166,7 @@ namespace debug
     {
         char pszMessage[10000];
         FormatException(pszMessage, pex, pszThread);
-        debug::log(0, "\n\n************************\n%s", pszMessage);
+        debug::log(0, "\n\n************************\n", pszMessage);
         fprintf(stderr, "\n\n************************\n%s\n", pszMessage);
 
         throw;
@@ -264,7 +177,7 @@ namespace debug
     {
         char pszMessage[10000];
         FormatException(pszMessage, pex, pszThread);
-        debug::log(0, "************************%s", pszMessage);
+        debug::log(0, "************************", pszMessage);
         fprintf(stderr, "************************%s", pszMessage);
 
     }

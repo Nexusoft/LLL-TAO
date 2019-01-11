@@ -24,6 +24,7 @@ ________________________________________________________________________________
 
 #include <cstring>
 #include <vector>
+#include <algorithm>
 
 namespace Legacy
 {
@@ -32,7 +33,7 @@ namespace Legacy
     std::string ValueString(const std::vector<uint8_t>& vch)
     {
         if (vch.size() <= 4)
-            return debug::strprintf("%d", LLC::CBigNum(vch).getint());
+            return debug::strprintf("%d", LLC::CBigNum(vch).getint32());
         else
             return HexStr(vch);
     }
@@ -151,14 +152,16 @@ namespace Legacy
                 if (end() - pc < 2)
                     return false;
                 nSize = 0;
-                memcpy(&nSize, &pc[0], 2);
+                //memcpy(&nSize, &pc[0], 2);
+                std::copy((uint8_t *)&pc[0], (uint8_t *)&pc[0] + 2, &nSize);
                 pc += 2;
             }
             else if (opcode == OP_PUSHDATA4)
             {
                 if (end() - pc < 4)
                     return false;
-                memcpy(&nSize, &pc[0], 4);
+                //memcpy(&nSize, &pc[0], 4);
+                std::copy((uint8_t *)&pc[0], (uint8_t *)&pc[0] + 4, &nSize);
                 pc += 4;
             }
             if (end() - pc < nSize)
@@ -349,7 +352,7 @@ namespace Legacy
     /* Print the Hex output of the script */
     void CScript::PrintHex() const
     {
-        debug::log(0, "CScript(%s)", HexStr(begin(), end(), true).c_str());
+        debug::log(0, "CScript(", HexStr(begin(), end(), true), ")");
     }
 
 

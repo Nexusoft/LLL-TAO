@@ -19,122 +19,128 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 
 
-
-namespace TAO::Ledger
+/* Global TAO namespace. */
+namespace TAO
 {
-    Mempool mempool;
 
-    /* Add a transaction to the memory pool without validation checks. */
-    bool Mempool::AddUnchecked(TAO::Ledger::Transaction tx)
+    /* Ledger Layer namespace. */
+    namespace Ledger
     {
-        LOCK(MUTEX);
 
-        /* Get the transaction hash. */
-        uint512_t hash = tx.GetHash();
+        Mempool mempool;
 
-        /* Check the mempool. */
-        if(mapLedger.count(hash))
-            return debug::error(FUNCTION "%s already exists", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
-
-        /* Add to the map. */
-        mapLedger[hash] = tx;
-
-        return true;
-    }
-
-
-    /* Accepts a transaction with validation rules. */
-    bool Mempool::Accept(TAO::Ledger::Transaction tx)
-    {
-        LOCK(MUTEX);
-
-        /* Check the mempool. */
-        uint512_t hash = tx.GetHash();
-        if(mapLedger.count(hash))
-            return debug::error(FUNCTION "%s already exists", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
-
-        /* The next hash that is being claimed. */
-        uint256_t hashClaim = tx.PrevHash();
-        if(mapPrevHashes.count(hashClaim))
-            return debug::error(FUNCTION "trying to claim spent next hash", __PRETTY_FUNCTION__, hashClaim.ToString().substr(0, 20).c_str());
-
-        /* Check for duplicate coinbase or coinstake. */
-        if(tx.IsCoinbase())
-            return debug::error(FUNCTION "coinbase %s not accepted in pool", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
-
-        /* Check for duplicate coinbase or coinstake. */
-        if(tx.IsTrust())
-            return debug::error(FUNCTION "trust %s not accepted in pool", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
-
-        /* Check for duplicate coinbase or coinstake. */
-        if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
-            return debug::error(FUNCTION "tx %s too far in the future", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
-
-        /* Check that the transaction is in a valid state. */
-        if(!tx.IsValid())
-            return debug::error(FUNCTION "%s is invalid", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
-
-        /* Verify the Ledger Pre-States. */
-        if(!TAO::Register::Verify(tx))
-            return debug::error(FUNCTION "%s register verification failed", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
-
-        /* Calculate the future potential states. */
-        if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::MEMPOOL))
-            return debug::error(FUNCTION "%s operations execution failed", __PRETTY_FUNCTION__, tx.GetHash().ToString().substr(0, 20).c_str());
-
-        /* Add to the map. */
-        mapLedger[hash] = tx;
-
-        /* Debug output. */
-        debug::log(2, FUNCTION "%s ACCEPTED", hash.ToString().substr(0, 20).c_str());
-
-        return true;
-    }
-
-
-    /* Checks if a transaction exists. */
-    bool Mempool::Has(uint512_t hashTx)
-    {
-        LOCK(MUTEX);
-
-        return mapLedger.count(hashTx);
-    }
-
-
-    /* Remove a transaction from pool. */
-    bool Mempool::Remove(uint512_t hashTx)
-    {
-        LOCK(MUTEX);
-
-        /* Find the transaction in pool. */
-        TAO::Ledger::Transaction tx;
-        if(mapLedger.count(hashTx))
+        /* Add a transaction to the memory pool without validation checks. */
+        bool Mempool::AddUnchecked(TAO::Ledger::Transaction tx)
         {
-            tx = mapLedger[hashTx];
+            LOCK(MUTEX);
 
-            /* Erase from the memory map. */
-            mapPrevHashes.erase(tx.PrevHash());
-            mapLedger.erase(hashTx);
+            /* Get the transaction hash. */
+            uint512_t hash = tx.GetHash();
+
+            /* Check the mempool. */
+            if(mapLedger.count(hash))
+                return debug::error(FUNCTION, "%s already exists", tx.GetHash().ToString().substr(0, 20).c_str());
+
+            /* Add to the map. */
+            mapLedger[hash] = tx;
 
             return true;
         }
 
-        return false;
-    }
+
+        /* Accepts a transaction with validation rules. */
+        bool Mempool::Accept(TAO::Ledger::Transaction tx)
+        {
+            LOCK(MUTEX);
+
+            /* Check the mempool. */
+            uint512_t hash = tx.GetHash();
+            if(mapLedger.count(hash))
+                return debug::error(FUNCTION, tx.GetHash().ToString().substr(0, 20), " already exists");
+
+            /* The next hash that is being claimed. */
+            uint256_t hashClaim = tx.PrevHash();
+            if(mapPrevHashes.count(hashClaim))
+                return debug::error(FUNCTION, "trying to claim spent next hash ", hashClaim.ToString().substr(0, 20));
+
+            /* Check for duplicate coinbase or coinstake. */
+            if(tx.IsCoinbase())
+                return debug::error(FUNCTION, "coinbase ", tx.GetHash().ToString().substr(0, 20), " not accepted in pool");
+
+            /* Check for duplicate coinbase or coinstake. */
+            if(tx.IsTrust())
+                return debug::error(FUNCTION, "trust ", tx.GetHash().ToString().substr(0, 20), " not accepted in pool");
+
+            /* Check for duplicate coinbase or coinstake. */
+            if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+                return debug::error(FUNCTION, "tx ", tx.GetHash().ToString().substr(0, 20), " too far in the future");
+
+            /* Check that the transaction is in a valid state. */
+            if(!tx.IsValid())
+                return debug::error(FUNCTION, tx.GetHash().ToString().substr(0, 20), " is invalid");
+
+            /* Verify the Ledger Pre-States. */
+            if(!TAO::Register::Verify(tx))
+                return debug::error(FUNCTION, tx.GetHash().ToString().substr(0, 20), " register verification failed");
+
+            /* Calculate the future potential states. */
+            if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::MEMPOOL))
+                return debug::error(FUNCTION, tx.GetHash().ToString().substr(0, 20), " operations execution failed");
+
+            /* Add to the map. */
+            mapLedger[hash] = tx;
+
+            /* Debug output. */
+            debug::log(2, FUNCTION, hash.ToString().substr(0, 20), " ACCEPTED");
+
+            return true;
+        }
 
 
-    /* Gets a transaction from mempool */
-    bool Mempool::Get(uint512_t hashTx, TAO::Ledger::Transaction& tx)
-    {
-        LOCK(MUTEX);
+        /* Checks if a transaction exists. */
+        bool Mempool::Has(uint512_t hashTx)
+        {
+            LOCK(MUTEX);
 
-        /* Fail if not found. */
-        if(!mapLedger.count(hashTx))
+            return mapLedger.count(hashTx);
+        }
+
+
+        /* Remove a transaction from pool. */
+        bool Mempool::Remove(uint512_t hashTx)
+        {
+            LOCK(MUTEX);
+
+            /* Find the transaction in pool. */
+            TAO::Ledger::Transaction tx;
+            if(mapLedger.count(hashTx))
+            {
+                tx = mapLedger[hashTx];
+
+                /* Erase from the memory map. */
+                mapPrevHashes.erase(tx.PrevHash());
+                mapLedger.erase(hashTx);
+
+                return true;
+            }
+
             return false;
+        }
 
-        /* Find the object. */
-        tx = mapLedger[hashTx];
 
-        return true;
+        /* Gets a transaction from mempool */
+        bool Mempool::Get(uint512_t hashTx, TAO::Ledger::Transaction& tx)
+        {
+            LOCK(MUTEX);
+
+            /* Fail if not found. */
+            if(!mapLedger.count(hashTx))
+                return false;
+
+            /* Find the object. */
+            tx = mapLedger[hashTx];
+
+            return true;
+        }
     }
 }

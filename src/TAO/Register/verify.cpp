@@ -17,228 +17,234 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Register/include/verify.h>
 
-namespace TAO::Register
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /* Verify the pre-states of a register to current network state. */
-    bool Verify(TAO::Ledger::Transaction tx)
+    /* Register Layer namespace. */
+    namespace Register
     {
-        /* Make sure no exceptions are thrown. */
-        try
+        
+        /* Verify the pre-states of a register to current network state. */
+        bool Verify(TAO::Ledger::Transaction tx)
         {
-            /* Loop through the operations */
-            while(!tx.ssOperation.end())
+            /* Make sure no exceptions are thrown. */
+            try
             {
-                uint8_t OPERATION;
-                tx.ssOperation >> OPERATION;
-
-                /* Check the current opcode. */
-                switch(OPERATION)
+                /* Loop through the operations */
+                while(!tx.ssOperation.end())
                 {
+                    uint8_t OPERATION;
+                    tx.ssOperation >> OPERATION;
 
-                    /* Check pre-state to database. */
-                    case TAO::Operation::OP::WRITE:
-                    case TAO::Operation::OP::APPEND:
+                    /* Check the current opcode. */
+                    switch(OPERATION)
                     {
-                        /* Get the Address of the Register. */
-                        uint256_t hashAddress;
-                        tx.ssOperation >> hashAddress;
 
-                        /* Verify the first register code. */
-                        uint8_t nState;
-                        tx.ssRegister  >> nState;
+                        /* Check pre-state to database. */
+                        case TAO::Operation::OP::WRITE:
+                        case TAO::Operation::OP::APPEND:
+                        {
+                            /* Get the Address of the Register. */
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
 
-                        /* Check the state is prestate. */
-                        if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION "register state not in pre-state", __PRETTY_FUNCTION__);
+                            /* Verify the first register code. */
+                            uint8_t nState;
+                            tx.ssRegister  >> nState;
 
-                        /* Verify the register's prestate. */
-                        State prestate;
-                        tx.ssRegister  >> prestate;
+                            /* Check the state is prestate. */
+                            if(nState != STATES::PRESTATE)
+                                return debug::error(FUNCTION, "register state not in pre-state");
 
-                        /* Read the register from database. */
-                        State dbstate;
-                        if(!LLD::regDB->ReadState(hashAddress, dbstate))
-                            return debug::error(FUNCTION "register pre-state doesn't exist", __PRETTY_FUNCTION__);
+                            /* Verify the register's prestate. */
+                            State prestate;
+                            tx.ssRegister  >> prestate;
 
-                        /* Check the ownership. */
-                        if(dbstate.hashOwner != tx.hashGenesis)
-                            return debug::error(FUNCTION "cannot generate pre-state if not owner", __PRETTY_FUNCTION__);
+                            /* Read the register from database. */
+                            State dbstate;
+                            if(!LLD::regDB->ReadState(hashAddress, dbstate))
+                                return debug::error(FUNCTION, "register pre-state doesn't exist");
 
-                        /* Check the prestate to the dbstate. */
-                        if(prestate != dbstate)
-                            return debug::error(FUNCTION "prestate and dbstate mismatch", __PRETTY_FUNCTION__);
+                            /* Check the ownership. */
+                            if(dbstate.hashOwner != tx.hashGenesis)
+                                return debug::error(FUNCTION, "cannot generate pre-state if not owner");
 
-                        /* Skip over the post-state data. */
-                        uint64_t nSize = ReadCompactSize(tx.ssOperation);
+                            /* Check the prestate to the dbstate. */
+                            if(prestate != dbstate)
+                                return debug::error(FUNCTION, "prestate and dbstate mismatch");
 
-                        /* Seek the tx.ssOperation to next operation. */
-                        tx.ssOperation.seek(nSize);
+                            /* Skip over the post-state data. */
+                            uint64_t nSize = ReadCompactSize(tx.ssOperation);
 
-                        /* Seek registers past the post state */
-                        tx.ssRegister.seek(9);
+                            /* Seek the tx.ssOperation to next operation. */
+                            tx.ssOperation.seek(nSize);
 
-                        break;
+                            /* Seek registers past the post state */
+                            tx.ssRegister.seek(9);
+
+                            break;
+                        }
+
+
+                        /*
+                         * This does not contain any prestates.
+                         */
+                        case TAO::Operation::OP::REGISTER:
+                        {
+                            /* Skip over address and type. */
+                            tx.ssOperation.seek(33);
+
+                            /* Skip over the post-state data. */
+                            uint64_t nSize = ReadCompactSize(tx.ssOperation);
+
+                            /* Seek the tx.ssOperation to next operation. */
+                            tx.ssOperation.seek(nSize);
+
+                            /* Seek register past the post state */
+                            tx.ssRegister.seek(9);
+
+                            break;
+                        }
+
+
+                        /* Transfer ownership of a register to another signature chain. */
+                        case TAO::Operation::OP::TRANSFER:
+                        {
+                            /* Extract the address from the tx.ssOperation. */
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
+
+                            /* Read the register from database. */
+                            State dbstate;
+                            if(!LLD::regDB->ReadState(hashAddress, dbstate))
+                                return debug::error(FUNCTION, "register pre-state doesn't exist");
+
+                            /* Check the ownership. */
+                            if(dbstate.hashOwner != tx.hashGenesis)
+                                return debug::error(FUNCTION, "cannot generate pre-state if not owner");
+
+                            /* Seek to next operation. */
+                            tx.ssOperation.seek(32);
+
+                            /* Seek register past the post state */
+                            tx.ssRegister.seek(9);
+
+                            break;
+                        }
+
+                        /* Coinbase operation. Creates an account if none exists. */
+                        case TAO::Operation::OP::COINBASE:
+                        {
+                            tx.ssOperation.seek(8);
+
+                            break;
+                        }
+
+
+                        /* Coinstake operation. Requires an account. */
+                        case TAO::Operation::OP::TRUST:
+                        {
+                            tx.ssOperation.seek(180);
+
+                            break;
+                        }
+
+
+                        /* Debit tokens from an account you own. */
+                        case TAO::Operation::OP::DEBIT:
+                        {
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
+
+                            /* Verify the first register code. */
+                            uint8_t nState;
+                            tx.ssRegister  >> nState;
+
+                            /* Check the state is prestate. */
+                            if(nState != STATES::PRESTATE)
+                                return debug::error(FUNCTION, "register state not in pre-state");
+
+                            /* Verify the register's prestate. */
+                            State prestate;
+                            tx.ssRegister  >> prestate;
+
+                            /* Read the register from database. */
+                            State dbstate;
+                            if(!LLD::regDB->ReadState(hashAddress, dbstate))
+                                return debug::error(FUNCTION, "register pre-state doesn't exist");
+
+                            /* Check the ownership. */
+                            if(dbstate.hashOwner != tx.hashGenesis)
+                                return debug::error(FUNCTION, "cannot generate pre-state if not owner");
+
+                            /* Check the prestate to the dbstate. */
+                            if(prestate != dbstate)
+                                return debug::error(FUNCTION, "prestate and dbstate mismatch");
+
+                            /* Seek to the next operation. */
+                            tx.ssOperation.seek(40);
+
+                            /* Seek register past the post state */
+                            tx.ssRegister.seek(9);
+
+                            break;
+                        }
+
+
+                        /* Credit tokens to an account you own. */
+                        case TAO::Operation::OP::CREDIT:
+                        {
+                            /* The transaction that this credit is claiming. */
+                            tx.ssOperation.seek(96);
+
+                            /* The account that is being credited. */
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
+
+                            /* Verify the first register code. */
+                            uint8_t nState;
+                            tx.ssRegister  >> nState;
+
+                            /* Check the state is prestate. */
+                            if(nState != STATES::PRESTATE)
+                                return debug::error(FUNCTION, "register state not in pre-state");
+
+                            /* Verify the register's prestate. */
+                            State prestate;
+                            tx.ssRegister  >> prestate;
+
+                            /* Read the register from database. */
+                            State dbstate;
+                            if(!LLD::regDB->ReadState(hashAddress, dbstate))
+                                return debug::error(FUNCTION, "register pre-state doesn't exist");
+
+                            /* Check the ownership. */
+                            if(dbstate.hashOwner != tx.hashGenesis)
+                                return debug::error(FUNCTION, "cannot generate pre-state if not owner");
+
+                            /* Check the prestate to the dbstate. */
+                            if(prestate != dbstate)
+                                return debug::error(FUNCTION, "prestate and dbstate mismatch");
+
+                            /* Seek to the next operation. */
+                            tx.ssOperation.seek(8);
+
+                            break;
+                        }
+
+                        default:
+                            return debug::error(FUNCTION, "invalid code for register verification");
                     }
-
-
-                    /*
-                     * This does not contain any prestates.
-                     */
-                    case TAO::Operation::OP::REGISTER:
-                    {
-                        /* Skip over address and type. */
-                        tx.ssOperation.seek(33);
-
-                        /* Skip over the post-state data. */
-                        uint64_t nSize = ReadCompactSize(tx.ssOperation);
-
-                        /* Seek the tx.ssOperation to next operation. */
-                        tx.ssOperation.seek(nSize);
-
-                        /* Seek register past the post state */
-                        tx.ssRegister.seek(9);
-
-                        break;
-                    }
-
-
-                    /* Transfer ownership of a register to another signature chain. */
-                    case TAO::Operation::OP::TRANSFER:
-                    {
-                        /* Extract the address from the tx.ssOperation. */
-                        uint256_t hashAddress;
-                        tx.ssOperation >> hashAddress;
-
-                        /* Read the register from database. */
-                        State dbstate;
-                        if(!LLD::regDB->ReadState(hashAddress, dbstate))
-                            return debug::error(FUNCTION "register pre-state doesn't exist", __PRETTY_FUNCTION__);
-
-                        /* Check the ownership. */
-                        if(dbstate.hashOwner != tx.hashGenesis)
-                            return debug::error(FUNCTION "cannot generate pre-state if not owner", __PRETTY_FUNCTION__);
-
-                        /* Seek to next operation. */
-                        tx.ssOperation.seek(32);
-
-                        /* Seek register past the post state */
-                        tx.ssRegister.seek(9);
-
-                        break;
-                    }
-
-                    /* Coinbase operation. Creates an account if none exists. */
-                    case TAO::Operation::OP::COINBASE:
-                    {
-                        tx.ssOperation.seek(8);
-
-                        break;
-                    }
-
-
-                    /* Coinstake operation. Requires an account. */
-                    case TAO::Operation::OP::TRUST:
-                    {
-                        tx.ssOperation.seek(180);
-
-                        break;
-                    }
-
-
-                    /* Debit tokens from an account you own. */
-                    case TAO::Operation::OP::DEBIT:
-                    {
-                        uint256_t hashAddress;
-                        tx.ssOperation >> hashAddress;
-
-                        /* Verify the first register code. */
-                        uint8_t nState;
-                        tx.ssRegister  >> nState;
-
-                        /* Check the state is prestate. */
-                        if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION "register state not in pre-state", __PRETTY_FUNCTION__);
-
-                        /* Verify the register's prestate. */
-                        State prestate;
-                        tx.ssRegister  >> prestate;
-
-                        /* Read the register from database. */
-                        State dbstate;
-                        if(!LLD::regDB->ReadState(hashAddress, dbstate))
-                            return debug::error(FUNCTION "register pre-state doesn't exist", __PRETTY_FUNCTION__);
-
-                        /* Check the ownership. */
-                        if(dbstate.hashOwner != tx.hashGenesis)
-                            return debug::error(FUNCTION "cannot generate pre-state if not owner", __PRETTY_FUNCTION__);
-
-                        /* Check the prestate to the dbstate. */
-                        if(prestate != dbstate)
-                            return debug::error(FUNCTION "prestate and dbstate mismatch", __PRETTY_FUNCTION__);
-
-                        /* Seek to the next operation. */
-                        tx.ssOperation.seek(40);
-
-                        /* Seek register past the post state */
-                        tx.ssRegister.seek(9);
-
-                        break;
-                    }
-
-
-                    /* Credit tokens to an account you own. */
-                    case TAO::Operation::OP::CREDIT:
-                    {
-                        /* The transaction that this credit is claiming. */
-                        tx.ssOperation.seek(96);
-
-                        /* The account that is being credited. */
-                        uint256_t hashAddress;
-                        tx.ssOperation >> hashAddress;
-
-                        /* Verify the first register code. */
-                        uint8_t nState;
-                        tx.ssRegister  >> nState;
-
-                        /* Check the state is prestate. */
-                        if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION "register state not in pre-state", __PRETTY_FUNCTION__);
-
-                        /* Verify the register's prestate. */
-                        State prestate;
-                        tx.ssRegister  >> prestate;
-
-                        /* Read the register from database. */
-                        State dbstate;
-                        if(!LLD::regDB->ReadState(hashAddress, dbstate))
-                            return debug::error(FUNCTION "register pre-state doesn't exist", __PRETTY_FUNCTION__);
-
-                        /* Check the ownership. */
-                        if(dbstate.hashOwner != tx.hashGenesis)
-                            return debug::error(FUNCTION "cannot generate pre-state if not owner", __PRETTY_FUNCTION__);
-
-                        /* Check the prestate to the dbstate. */
-                        if(prestate != dbstate)
-                            return debug::error(FUNCTION "prestate and dbstate mismatch", __PRETTY_FUNCTION__);
-
-                        /* Seek to the next operation. */
-                        tx.ssOperation.seek(8);
-
-                        break;
-                    }
-
-                    default:
-                        return debug::error(FUNCTION "invalid code for register verification", __PRETTY_FUNCTION__);
                 }
             }
-        }
-        catch(std::runtime_error& e)
-        {
-            return debug::error(FUNCTION "exception encountered %s", __PRETTY_FUNCTION__, e.what());
-        }
+            catch(std::runtime_error& e)
+            {
+                return debug::error(FUNCTION, "exception encountered ", e.what());
+            }
 
-        /* If nothing failed, return true for evaluation. */
-        return true;
+            /* If nothing failed, return true for evaluation. */
+            return true;
+        }
     }
 }

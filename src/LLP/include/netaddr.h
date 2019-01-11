@@ -32,6 +32,8 @@ namespace LLP
         NetAddr(const struct in_addr& ipv4Addr);
         explicit NetAddr(const char *pszIp, bool fAllowLookup = false);
         explicit NetAddr(const std::string &strIp, bool fAllowLookup = false);
+        ~NetAddr();
+
         void Init();
         void SetIP(const NetAddr& ip);
         bool IsIPv4() const;    // IPv4 mapped address (::FFFF:0:0/96, 0.0.0.0/0)

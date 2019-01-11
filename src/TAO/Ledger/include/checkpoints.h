@@ -18,46 +18,50 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-namespace TAO::Ledger
+/* Global TAO namespace. */
+namespace TAO
 {
 
+    /* Ledger Layer namespace. */
+    namespace Ledger
+    {
 
-    /** Is New Timespan
-     *
-     *  Check if the new block triggers a new Checkpoint timespan.
-     *
-     *  @param[in] state The state object to check from.
-     *
-     *  @returns true if a new timespan has elapsed
-     *
-     **/
-    bool IsNewTimespan(const BlockState state);
-
-
-    /** Is Descendant
-     *
-     *  Check that the checkpoint is a Descendant of previous Checkpoint.
-     *
-     *  @param[in] state The state object to check from.
-     *
-     *  @returns true if a block is a descendant.
-     *
-     **/
-    bool IsDescendant(const BlockState state);
+        /** Is New Timespan
+         *
+         *  Check if the new block triggers a new Checkpoint timespan.
+         *
+         *  @param[in] state The state object to check from.
+         *
+         *  @returns true if a new timespan has elapsed
+         *
+         **/
+        bool IsNewTimespan(const BlockState state);
 
 
-    /** Harden Checkpoint
-     *
-     *  Harden a checkpoint into the checkpoint chain.
-     *
-     *  @param[in] state The state object to check from.
-     *
-     *  @returns true if a checkpoint was hardened.
-     *
-     **/
-    bool HardenCheckpoint(const BlockState state);
+        /** Is Descendant
+         *
+         *  Check that the checkpoint is a Descendant of previous Checkpoint.
+         *
+         *  @param[in] state The state object to check from.
+         *
+         *  @returns true if a block is a descendant.
+         *
+         **/
+        bool IsDescendant(const BlockState state);
 
 
+        /** Harden Checkpoint
+         *
+         *  Harden a checkpoint into the checkpoint chain.
+         *
+         *  @param[in] state The state object to check from.
+         *
+         *  @returns true if a checkpoint was hardened.
+         *
+         **/
+        bool HardenCheckpoint(const BlockState state);
+
+    }
 }
 
 

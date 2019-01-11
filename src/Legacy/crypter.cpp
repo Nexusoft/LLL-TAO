@@ -23,20 +23,25 @@ ________________________________________________________________________________
 
 #include <Legacy/wallet/crypter.h>
 
+#include <algorithm>
+
 
 namespace Legacy
 {
-    
+
     /* Copy constructor */
-    CCrypter::CCrypter(const CCrypter &c) 
+    CCrypter::CCrypter(const CCrypter &c)
     {
         if (c.IsKeySet())
         {
-            mlock(&chKey[0], sizeof chKey);
-            mlock(&chIV[0], sizeof chIV);
+            mlock(&chKey[0], sizeof(chKey));
+            mlock(&chIV[0], sizeof(chIV));
 
-            memcpy(&chKey[0], &c.chKey[0], sizeof chKey);
-            memcpy(&chIV[0], &c.chIV[0], sizeof chIV);
+            //memcpy(&chKey[0], &c.chKey[0], sizeof(chKey));
+            //memcpy(&chIV[0], &c.chIV[0], sizeof(chIV));
+
+            std::copy(&c.chKey[0], &c.chKey[0] + sizeof(chKey), &chKey[0]);
+            std::copy(&c.chIV[0], &c.chIV[0] + sizeof(chIV), &chIV[0]);
 
             fKeySet = true;
         }
@@ -55,11 +60,14 @@ namespace Legacy
 
             if (rhs.IsKeySet())
             {
-                mlock(&chKey[0], sizeof chKey);
-                mlock(&chIV[0], sizeof chIV);
+                mlock(&chKey[0], sizeof(chKey));
+                mlock(&chIV[0], sizeof(chIV));
 
-                memcpy(&chKey[0], &rhs.chKey[0], sizeof chKey);
-                memcpy(&chIV[0], &rhs.chIV[0], sizeof chIV);
+                //memcpy(&chKey[0], &rhs.chKey[0], sizeof(chKey));
+                //memcpy(&chIV[0], &rhs.chIV[0], sizeof(chIV));
+
+                std::copy(&rhs.chKey[0], &rhs.chKey[0] + sizeof(chKey), &chKey[0]);
+                std::copy(&rhs.chIV[0],  &rhs.chIV[0]  + sizeof(chIV),  &chIV[0]);
 
                 fKeySet = true;
             }
@@ -84,14 +92,17 @@ namespace Legacy
 
         /* Try to keep the keydata out of swap
          * Note that this does nothing about suspend-to-disk (which will put all our key data on disk)
-         * Note as well that at no point in this program is any attempt made to prevent stealing of keys 
+         * Note as well that at no point in this program is any attempt made to prevent stealing of keys
          * by reading the memory of the running process.
          */
-        mlock(&chKey[0], sizeof chKey);
-        mlock(&chIV[0], sizeof chIV);
+        mlock(&chKey[0], sizeof(chKey));
+        mlock(&chIV[0], sizeof(chIV));
 
-        memcpy(&chKey[0], &chNewKey[0], sizeof chKey);
-        memcpy(&chIV[0], &chNewIV[0], sizeof chIV);
+        //memcpy(&chKey[0], &chNewKey[0], sizeof(chKey));
+        //memcpy(&chIV[0], &chNewIV[0], sizeof(chIV));
+
+        std::copy((uint8_t *)&chNewKey[0], (uint8_t *)&chNewKey[0] + sizeof(chKey), &chKey[0]);
+        std::copy(&chNewIV[0],  &chNewIV[0]  + sizeof(chIV),  &chIV[0]);
 
         fKeySet = true;
         return true;
@@ -104,9 +115,9 @@ namespace Legacy
         if (nRounds < 1 || chSalt.size() != WALLET_CRYPTO_SALT_SIZE)
             return false;
 
-        /* Try to keep the keydata out of swap 
+        /* Try to keep the keydata out of swap
          * Note that this does nothing about suspend-to-disk (which will put all our key data on disk)
-         * Note as well that at no point in this program is any attempt made to prevent stealing of keys 
+         * Note as well that at no point in this program is any attempt made to prevent stealing of keys
          * by reading the memory of the running process.
          */
         mlock(&chKey[0], sizeof chKey);
@@ -202,14 +213,15 @@ namespace Legacy
         return true;
     }
 
-    
+
     /* Function to encrypt a private key using a master key and IV pair. */
     bool EncryptSecret(const CKeyingMaterial& vMasterKey, const LLC::CSecret &vchPlaintext, const uint576_t& nIV, std::vector<uint8_t> &vchCiphertext)
     {
         CCrypter cKeyCrypter;
 
         std::vector<uint8_t> chIV(WALLET_CRYPTO_KEY_SIZE);
-        memcpy(&chIV[0], &nIV, WALLET_CRYPTO_KEY_SIZE);
+        //memcpy(&chIV[0], &nIV, WALLET_CRYPTO_KEY_SIZE);
+        std::copy((uint8_t *)&nIV, (uint8_t *)&nIV + WALLET_CRYPTO_KEY_SIZE, &chIV[0]);
 
         if(!cKeyCrypter.SetKey(vMasterKey, chIV))
             return false;
@@ -226,8 +238,9 @@ namespace Legacy
         CCrypter cKeyCrypter;
 
         std::vector<uint8_t> chIV(WALLET_CRYPTO_KEY_SIZE);
-        memcpy(&chIV[0], &nIV, WALLET_CRYPTO_KEY_SIZE);
-
+        //memcpy(&chIV[0], &nIV, WALLET_CRYPTO_KEY_SIZE);
+        std::copy((uint8_t *)&nIV, (uint8_t *)&nIV + WALLET_CRYPTO_KEY_SIZE, &chIV[0]);
+        
         if(!cKeyCrypter.SetKey(vMasterKey, chIV))
             return false;
 

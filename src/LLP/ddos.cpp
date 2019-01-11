@@ -120,7 +120,10 @@ namespace LLP
 
         BANTIME = std::max(TOTALBANS * (rSCORE.Score() + 1) * (cSCORE.Score() + 1), TOTALBANS * 1200u);
 
-        debug::log(0, "XXXXX DDOS Filter cScore = %i rScore = %i Banned for %u Seconds. [VIOLATION: %s]", cSCORE.Score(), rSCORE.Score(), BANTIME, strViolation.c_str());
+        debug::log(0, "XXXXX DDOS Filter cScore = ", cSCORE.Score(),
+            " rScore = ", rSCORE.Score(),
+            " Banned for ", BANTIME,
+            " Seconds. [VIOLATION: ", strViolation, "]");
 
         cSCORE.Flush();
         rSCORE.Flush();

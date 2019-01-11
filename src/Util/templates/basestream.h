@@ -116,7 +116,7 @@ public:
     uint8_t get(uint32_t nPos) const
     {
         if(nPos >= vchData.size())
-            throw std::runtime_error(debug::strprintf(FUNCTION "get out of bounds %u", __PRETTY_FUNCTION__, nPos));
+            throw std::runtime_error(debug::strprintf(FUNCTION, "get out of bounds %u", nPos));
 
         return vchData[nPos];
     }
@@ -144,7 +144,7 @@ public:
         if(nFlags == STREAM::CURSOR)
         {
             if(nReadPos + nSeek > vchData.size())
-                throw std::runtime_error(debug::strprintf(FUNCTION "seek out of bounds %u", __PRETTY_FUNCTION__, nSeek));
+                throw std::runtime_error(debug::strprintf(FUNCTION, "seek out of bounds %u", nSeek));
 
             nReadPos += nSeek;
 
@@ -155,7 +155,7 @@ public:
         if(nFlags == STREAM::BEGIN)
         {
             if(nSeek > vchData.size())
-                throw std::runtime_error(debug::strprintf(FUNCTION "seek out of bounds %u", __PRETTY_FUNCTION__, nSeek));
+                throw std::runtime_error(debug::strprintf(FUNCTION, "seek out of bounds %u", nSeek));
 
             nReadPos = nSeek;
 
@@ -166,7 +166,7 @@ public:
         if(nFlags == STREAM::END)
         {
             if(nSeek > vchData.size())
-                throw std::runtime_error(debug::strprintf(FUNCTION "seek out of bounds %u", __PRETTY_FUNCTION__, nSeek));
+                throw std::runtime_error(debug::strprintf(FUNCTION, "seek out of bounds %u", nSeek));
 
             nReadPos = vchData.size() - nSeek;
 
@@ -210,7 +210,7 @@ public:
     {
         /* Check size constraints. */
         if(nReadPos + nSize > vchData.size())
-            throw std::runtime_error(debug::strprintf(FUNCTION "reached end of stream %u", __PRETTY_FUNCTION__, nReadPos));
+            throw std::runtime_error(debug::strprintf(FUNCTION, "reached end of stream %u", nReadPos));
 
         /* Copy the bytes into tmp object. */
         std::copy((uint8_t*)&vchData[nReadPos], (uint8_t*)&vchData[nReadPos] + nSize, (uint8_t*)pch);

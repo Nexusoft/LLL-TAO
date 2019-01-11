@@ -20,59 +20,66 @@ ________________________________________________________________________________
 
 #include <Util/include/hex.h>
 
-namespace TAO::API
+/* Global TAO namespace. */
+namespace TAO
 {
-    /** List of accounts in API. **/
-    Accounts accounts;
 
-
-    /* Standard initialization function. */
-    void Accounts::Initialize()
+    /* API Layer namespace. */
+    namespace API
     {
-        mapFunctions["login"]               = Function(std::bind(&Accounts::Login,           this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["logout"]              = Function(std::bind(&Accounts::Logout,          this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["create"]              = Function(std::bind(&Accounts::CreateAccount,   this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["transactions"]        = Function(std::bind(&Accounts::GetTransactions, this, std::placeholders::_1, std::placeholders::_2));
-    }
+
+        /** List of accounts in API. **/
+        Accounts accounts;
 
 
-    /* Returns a key from the account logged in. */
-    uint512_t Accounts::GetKey(uint32_t nKey, SecureString strSecret, uint64_t nSession) const
-    {
-        LOCK(MUTEX);
-
-        /* Check if you are logged in. */
-        if(!mapSessions.count(nSession))
-            throw APIException(-1, debug::strprintf("session %" PRIu64 " doesn't exist", nSession));
-
-        return mapSessions[nSession]->Generate(nKey, strSecret);
-    }
+        /* Standard initialization function. */
+        void Accounts::Initialize()
+        {
+            mapFunctions["login"]               = Function(std::bind(&Accounts::Login,           this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["logout"]              = Function(std::bind(&Accounts::Logout,          this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["create"]              = Function(std::bind(&Accounts::CreateAccount,   this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["transactions"]        = Function(std::bind(&Accounts::GetTransactions, this, std::placeholders::_1, std::placeholders::_2));
+        }
 
 
-    /* Returns the genesis ID from the account logged in. */
-    uint256_t Accounts::GetGenesis(uint64_t nSession) const
-    {
-        LOCK(MUTEX);
+        /* Returns a key from the account logged in. */
+        uint512_t Accounts::GetKey(uint32_t nKey, SecureString strSecret, uint64_t nSession) const
+        {
+            LOCK(MUTEX);
 
-        /* Check if you are logged in. */
-        if(!mapSessions.count(nSession))
-            throw APIException(-1, debug::strprintf("session %" PRIu64 " doesn't exist", nSession));
+            /* Check if you are logged in. */
+            if(!mapSessions.count(nSession))
+                throw APIException(-1, debug::strprintf("session %" PRIu64 " doesn't exist", nSession));
 
-        return mapSessions[nSession]->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
-    }
+            return mapSessions[nSession]->Generate(nKey, strSecret);
+        }
 
 
-    /* Returns the sigchain the account logged in. */
-    bool Accounts::GetAccount(uint64_t nSession, TAO::Ledger::SignatureChain* &user) const
-    {
-        LOCK(MUTEX);
+        /* Returns the genesis ID from the account logged in. */
+        uint256_t Accounts::GetGenesis(uint64_t nSession) const
+        {
+            LOCK(MUTEX);
 
-        /* Check if you are logged in. */
-        if(!mapSessions.count(nSession))
-            return false;
+            /* Check if you are logged in. */
+            if(!mapSessions.count(nSession))
+                throw APIException(-1, debug::strprintf("session %" PRIu64 " doesn't exist", nSession));
 
-        user = mapSessions[nSession];
+            return mapSessions[nSession]->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
+        }
 
-        return true;
+
+        /* Returns the sigchain the account logged in. */
+        bool Accounts::GetAccount(uint64_t nSession, TAO::Ledger::SignatureChain* &user) const
+        {
+            LOCK(MUTEX);
+
+            /* Check if you are logged in. */
+            if(!mapSessions.count(nSession))
+                return false;
+
+            user = mapSessions[nSession];
+
+            return true;
+        }
     }
 }

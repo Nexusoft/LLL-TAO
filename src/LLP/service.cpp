@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <LLP/include/hosts.h> //Lookup
 #include <Util/include/debug.h>
 
+#include <algorithm>
+
 
 namespace LLP
 {
@@ -25,28 +27,38 @@ namespace LLP
         Init();
     }
 
-    Service::Service(const NetAddr& cip, uint16_t portIn) : NetAddr(cip), port(portIn)
+    Service::Service(const NetAddr& cip, uint16_t portIn)
+    : NetAddr(cip)
+    , port(portIn)
     {
     }
 
 
-    Service::Service(const struct in_addr& ipv4Addr, uint16_t portIn) : NetAddr(ipv4Addr), port(portIn)
+    Service::Service(const struct in_addr& ipv4Addr, uint16_t portIn)
+    : NetAddr(ipv4Addr)
+    , port(portIn)
     {
     }
 
 
-    Service::Service(const struct in6_addr& ipv6Addr, uint16_t portIn) : NetAddr(ipv6Addr), port(portIn)
+    Service::Service(const struct in6_addr& ipv6Addr, uint16_t portIn)
+    : NetAddr(ipv6Addr)
+    , port(portIn)
     {
     }
 
 
-    Service::Service(const struct sockaddr_in& addr) : NetAddr(addr.sin_addr), port(ntohs(addr.sin_port))
+    Service::Service(const struct sockaddr_in& addr)
+    : NetAddr(addr.sin_addr)
+    , port(ntohs(addr.sin_port))
     {
         assert(addr.sin_family == AF_INET);
     }
 
 
-    Service::Service(const struct sockaddr_in6 &addr) : NetAddr(addr.sin6_addr), port(ntohs(addr.sin6_port))
+    Service::Service(const struct sockaddr_in6 &addr)
+    : NetAddr(addr.sin6_addr)
+    , port(ntohs(addr.sin6_port))
     {
         assert(addr.sin6_family == AF_INET6);
     }
@@ -85,6 +97,10 @@ namespace LLP
         Service ip;
         if (Lookup(strIpPort.c_str(), ip, portDefault, fAllowLookup))
             *this = ip;
+    }
+
+    Service::~Service()
+    {
     }
 
     void Service::Init()
@@ -145,7 +161,8 @@ namespace LLP
     {
         std::vector<uint8_t> vKey;
         vKey.resize(18);
-        memcpy(&vKey[0], ip, 16);
+        //memcpy(&vKey[0], ip, 16);
+        std::copy(ip, ip+16, &vKey[0]);
         vKey[16] = port / 0x100;
         vKey[17] = port & 0x0FF;
         return vKey;
@@ -172,7 +189,7 @@ namespace LLP
 
     void Service::print() const
     {
-        debug::log(0, "Service(%s)", ToString().c_str());
+        debug::log(0, "Service(", ToString(), ")");
     }
 
 

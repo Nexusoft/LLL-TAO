@@ -16,19 +16,26 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/transaction.h>
 
-namespace TAO::Register
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /** Verify
-     *
-     *  Verify the pre-states of a register to current network state.
-     *
-     *  @param[in] tx The transaction to verify pre-states with.
-     *  @param[in] nFlags The flags to verify for     *
-     *  @return true if verified correctly.
-     *
-     **/
-    bool Verify(TAO::Ledger::Transaction tx);
+    /* Register Layer namespace. */
+    namespace Register
+    {
+
+        /** Verify
+         *
+         *  Verify the pre-states of a register to current network state.
+         *
+         *  @param[in] tx The transaction to verify pre-states with.
+         *  @param[in] nFlags The flags to verify for     *
+         *  @return true if verified correctly.
+         *
+         **/
+        bool Verify(TAO::Ledger::Transaction tx);
+        
+    }
 
 }
 

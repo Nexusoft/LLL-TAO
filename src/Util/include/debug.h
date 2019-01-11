@@ -60,7 +60,7 @@ ________________________________________________________________________________
 #define ANSI_COLOR_FUNCTION ANSI_COLOR_BRIGHT_BLUE
 
 #define VALUE(data) data
-#define FUNCTION ANSI_COLOR_FUNCTION "%s" ANSI_COLOR_RESET " : "
+//#define FUNCTION ANSI_COLOR_FUNCTION "%s" ANSI_COLOR_RESET " : "
 
 #define NODE ANSI_COLOR_FUNCTION "Node" ANSI_COLOR_RESET " : "
 
@@ -69,7 +69,7 @@ ________________________________________________________________________________
 #define __PRETTY_FUNCTION__ __FUNCTION__
 #endif
 
-#define TESTING ANSI_COLOR_FUNCTION, __PRETTY_FUNCTION__, ANSI_COLOR_RESET, " : "
+#define FUNCTION ANSI_COLOR_FUNCTION, __PRETTY_FUNCTION__, ANSI_COLOR_RESET, " : "
 
 namespace debug
 {
@@ -134,6 +134,7 @@ namespace debug
         return ss.str();
     }
 
+
     /** log
      *
      *  Safe constant format debugging logs.
@@ -144,7 +145,7 @@ namespace debug
      *
      **/
     template<class... Args>
-    void log2(uint32_t nLevel, Args&&... args)
+    void log(uint32_t nLevel, Args&&... args)
     {
         /* Don't write if log level is below set level. */
         if(config::GetArg("-verbose", 0) < nLevel)
@@ -164,24 +165,13 @@ namespace debug
         ssFile << debug << std::endl;
     }
 
+    template<class... Args>
+    bool error(Args&&... args)
+    {
+        log(0, args...);
 
-    /** log
-     *
-     *  Prints output to the console. It may also write output to a debug.log
-     *  if the global fileout file is assigned.
-     *
-     *  @param[in] nLevel The logging level to Output
-     *
-     *  @param[in] pszFormat The format string specifier.
-     *
-     *  @param[in] ... The variable argument list to supply to each format
-     *                 specifier in the format string.
-     *
-     *  @return the total number of characters written. If a writing error occurs,
-     *          the error indicator (ferror) is set and a negative number is returned.
-     *
-     **/
-    int log(uint32_t nLevel, const char* pszFormat, ...);
+        return false;
+    }
 
 
     /** real_strprintf
@@ -196,7 +186,7 @@ namespace debug
      *  @return the output string of the printed message
      *
      **/
-    std::string real_strprintf(const std::string &format, ...);
+    std::string real_strprintf(const char* format, ...);
     #define strprintf(format, ...) real_strprintf(format, __VA_ARGS__)
 
 

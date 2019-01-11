@@ -18,22 +18,11 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>        //LLC::SK64
 
 #include <cstring> //memset, memcmp, memcpy
+#include <algorithm> //std::copy
 
 namespace LLP
 {
     static const uint8_t pchIPv4[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff };
-
-    void NetAddr::Init()
-    {
-        memset(ip, 0, 16);
-    }
-
-
-    void NetAddr::SetIP(const NetAddr& ipIn)
-    {
-        memcpy(ip, ipIn.ip, sizeof(ip));
-    }
-
 
     NetAddr::NetAddr()
     {
@@ -43,14 +32,17 @@ namespace LLP
 
     NetAddr::NetAddr(const struct in_addr& ipv4Addr)
     {
-        memcpy(ip,    pchIPv4, 12);
-        memcpy(ip+12, &ipv4Addr, 4);
+        //memcpy(ip,    pchIPv4, 12);
+        //memcpy(ip+12, &ipv4Addr, 4);
+        std::copy(pchIPv4, pchIPv4 + 12, ip);
+        std::copy((uint8_t *)&ipv4Addr, (uint8_t *)&ipv4Addr + 4, ip + 12);
     }
 
 
     NetAddr::NetAddr(const struct in6_addr& ipv6Addr)
     {
-        memcpy(ip, &ipv6Addr, 16);
+        //memcpy(ip, &ipv6Addr, 16);
+        std::copy((uint8_t *)&ipv6Addr, (uint8_t *)&ipv6Addr + 16, ip);
     }
 
 
@@ -69,6 +61,23 @@ namespace LLP
         std::vector<NetAddr> vIP;
         if (LookupHost(strIp.c_str(), vIP, 1, fAllowLookup))
             *this = vIP[0];
+    }
+
+    NetAddr::~NetAddr()
+    {
+
+    }
+
+    void NetAddr::Init()
+    {
+        memset(ip, 0, 16);
+    }
+
+
+    void NetAddr::SetIP(const NetAddr& ipIn)
+    {
+        //memcpy(ip, ipIn.ip, sizeof(ip));
+        std::copy(ipIn.ip, ipIn.ip + sizeof(ip), ip);
     }
 
 
@@ -262,14 +271,16 @@ namespace LLP
     {
         if (!IsIPv4())
             return false;
-        memcpy(pipv4Addr, ip+12, 4);
+        //memcpy(pipv4Addr, ip+12, 4);
+        std::copy(ip+12, ip+16, (uint8_t *)pipv4Addr);
         return true;
     }
 
 
     bool NetAddr::GetIn6Addr(struct in6_addr* pipv6Addr) const
     {
-        memcpy(pipv6Addr, ip, 16);
+        //memcpy(pipv6Addr, ip, 16);
+        std::copy(ip, ip + 16, (uint8_t *)pipv6Addr);
         return true;
     }
 
@@ -346,6 +357,6 @@ namespace LLP
 
     void NetAddr::print() const
     {
-        debug::log(0, "NetAddr(%s)", ToString().c_str());
+        debug::log(0, "NetAddr(", ToString(), ")");
     }
 }

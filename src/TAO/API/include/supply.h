@@ -16,107 +16,113 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/base.h>
 
-namespace TAO::API
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /** Supply API Class
-     *
-     *  Manages the function pointers for all Supply commands.
-     *
-     **/
-    class Supply : public Base
+    /* API Layer namespace. */
+    namespace API
     {
-    public:
 
-        /** Default Constructor. **/
-        Supply() { Initialize(); }
-
-
-        /** Initialize.
+        /** Supply API Class
          *
-         *  Sets the function pointers for this API.
+         *  Manages the function pointers for all Supply commands.
          *
          **/
-        void Initialize() final;
-
-
-        /** Get Name
-         *
-         *  Returns the name of this API.
-         *
-         **/
-        std::string GetName() const final
+        class Supply : public Base
         {
-            return "Supply";
-        }
+        public:
+
+            /** Default Constructor. **/
+            Supply() { Initialize(); }
 
 
-        /** Get Item
-         *
-         *  Get's the description of an item.
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        json::json GetItem(const json::json& params, bool fHelp);
+            /** Initialize.
+             *
+             *  Sets the function pointers for this API.
+             *
+             **/
+            void Initialize() final;
 
 
-        /** Transfer
-         *
-         *  Transfers an item.
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        json::json Transfer(const json::json& params, bool fHelp);
+            /** Get Name
+             *
+             *  Returns the name of this API.
+             *
+             **/
+            std::string GetName() const final
+            {
+                return "Supply";
+            }
 
 
-        /** Create Item
-         *
-         *  Creates an item.
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        json::json CreateItem(const json::json& params, bool fHelp);
+            /** Get Item
+             *
+             *  Get's the description of an item.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json GetItem(const json::json& params, bool fHelp);
 
 
-        /** Update Item
-         *
-         *  Updates data to an item.
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        json::json UpdateItem(const json::json& params, bool fHelp);
+            /** Transfer
+             *
+             *  Transfers an item.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Transfer(const json::json& params, bool fHelp);
 
 
-        /** History
-         *
-         *  Gets the history of an item.
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        json::json History(const json::json& params, bool fHelp);
-    };
+            /** Create Item
+             *
+             *  Creates an item.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json CreateItem(const json::json& params, bool fHelp);
 
-    extern Supply supply;
+
+            /** Update Item
+             *
+             *  Updates data to an item.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json UpdateItem(const json::json& params, bool fHelp);
+
+
+            /** History
+             *
+             *  Gets the history of an item.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json History(const json::json& params, bool fHelp);
+        };
+
+        extern Supply supply;
+    }
 }
 
 #endif

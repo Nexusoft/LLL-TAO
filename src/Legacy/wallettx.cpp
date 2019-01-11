@@ -425,8 +425,8 @@ namespace Legacy
             /* Get the Nexus address from the txout public key */
             if (!ExtractAddress(txout.scriptPubKey, address))
             {
-                debug::log(0, "CWalletTx::GetAmounts: Unknown transaction type found, txid %s",
-                           this->GetHash().ToString().c_str());
+                debug::log(0, "CWalletTx::GetAmounts: Unknown transaction type found, txid ",
+                           this->GetHash().ToString());
 
                 address = " unknown ";
             }
@@ -611,7 +611,7 @@ namespace Legacy
             /* Relay this tx if we don't have it in our database, yet */
             if (!legacydb.HasTx(hash))
             {
-                debug::log(0, "Relaying wtx %s", hash.ToString().substr(0,10).c_str());
+                debug::log(0, "Relaying wtx ", hash.ToString().substr(0,10));
 // TODO: Need implementation to support RelayMessage()
                 //RelayMessage(LLP::CInv(LLP::MSG_TX, hash), (Transaction)*this);
             }

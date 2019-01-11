@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 
 /* buffer for determing hex value of ASCII table */
-static signed char phexdigit[256] =
+const signed char phexdigit[256] =
 {
     -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
     -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
@@ -51,12 +51,13 @@ static signed char phexdigit[256] =
  **/
 inline bool IsHex(const std::string& str)
 {
-    for(int i = 0; i < str.size(); i++)
+    uint64_t s = str.size();
+    for(uint64_t i = 0; i < s; ++i)
     {
         if (phexdigit[ (uint8_t) str[i] ] < 0)
             return false;
     }
-    return (str.size() > 0) && (str.size()%2 == 0);
+    return (s > 0) && (s % 2 == 0);
 }
 
 
@@ -100,14 +101,19 @@ inline std::vector<uint8_t> ParseHex(const char* psz)
     for(;;)
     {
         while (isspace(*psz))
-            psz++;
+            ++psz;
+
         signed char c = phexdigit[(uint8_t)*psz++];
+
         if (c == (signed char)-1)
             break;
+
         uint8_t n = (c << 4);
         c = phexdigit[(uint8_t)*psz++];
+
         if (c == (signed char)-1)
             break;
+
         n |= c;
         vch.push_back(n);
     }
@@ -150,7 +156,7 @@ std::string HexStr(const T itbegin, const T itend, bool fSpaces=false)
     rv.reserve((itend-itbegin)*3);
 
     int nTotal = 0;
-    for(T it = itbegin; it < itend; ++it, nTotal++)
+    for(T it = itbegin; it < itend; ++it, ++nTotal)
     {
         uint8_t val = (uint8_t)(*it);
         if(fSpaces && it != itbegin && nTotal % 32 == 0)
@@ -188,15 +194,13 @@ inline std::string HexStr(const std::vector<uint8_t>& vch, bool fSpaces=false)
  *
  *  @param[in] itend The iterator container end
  *
- *  @param[in] pszFormat The format specifier string for formatted output
- *
  *  @param[in] fSpaces The flag for if there should be spaces
  *
  **/
 template<typename T>
-inline void PrintHex(const T pbegin, const T pend, const char* pszFormat="%s", bool fSpaces=true)
+inline void PrintHex(const T pbegin, const T pend, bool fSpaces=true)
 {
-    debug::log(0, pszFormat, HexStr(pbegin, pend, fSpaces).c_str());
+    debug::log(0, HexStr(pbegin, pend, fSpaces));
 }
 
 /** PrintHex
@@ -210,9 +214,9 @@ inline void PrintHex(const T pbegin, const T pend, const char* pszFormat="%s", b
  *  @param[in] fSpaces The flag for if there should be spaces
  *
  **/
-inline void PrintHex(const std::vector<uint8_t>& vch, const char* pszFormat="%s", bool fSpaces=true)
+inline void PrintHex(const std::vector<uint8_t>& vch, bool fSpaces=true)
 {
-    debug::log(0, pszFormat, HexStr(vch, fSpaces).c_str());
+    debug::log(0, HexStr(vch, fSpaces));
 }
 
 #endif

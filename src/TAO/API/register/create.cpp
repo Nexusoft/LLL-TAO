@@ -13,13 +13,18 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/base.h>
 
-namespace TAO::API
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /* Creates a register with given RAW state. */
-    json::json Register::Create(const json::json& params, bool fHelp)
+    /* API Layer namespace. */
+    namespace API
     {
 
-    }
+        /* Creates a register with given RAW state. */
+        json::json Register::Create(const json::json& params, bool fHelp)
+        {
 
+        }
+    }
 }

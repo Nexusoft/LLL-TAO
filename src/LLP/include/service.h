@@ -34,6 +34,9 @@ namespace LLP
         explicit Service(const char *pszIpPort, bool fAllowLookup = false);
         explicit Service(const std::string& strIpPort, int portDefault, bool fAllowLookup = false);
         explicit Service(const std::string& strIpPort, bool fAllowLookup = false);
+
+        ~Service();
+
         void Init();
         void SetPort(uint16_t portIn);
         uint16_t GetPort() const;

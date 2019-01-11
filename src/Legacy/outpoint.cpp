@@ -30,6 +30,6 @@ namespace Legacy
 	/* Dump the full object to the console (stdout) */
 	void COutPoint::print() const
 	{
-		debug::log(0, "%s", ToString().c_str());
+		debug::log(0, ToString());
 	}
 }

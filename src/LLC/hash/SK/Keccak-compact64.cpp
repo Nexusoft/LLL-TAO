@@ -18,6 +18,8 @@ http://creativecommons.org/publicdomain/zero/1.0/
 #include <LLC/hash/SK/brg_endian.h>
 #include <LLC/hash/SK/KeccakF-1600-interface.h>
 
+#include <algorithm>
+
 #define USE_MEMSET
 //#define DIVISION_INSTRUCTION    //comment if no division instruction or more compact when not using division
 #define UNROLL_CHILOOP        //comment more compact using for loop
@@ -38,7 +40,8 @@ typedef uint64_t tKeccakLane;
 #if defined(_MSC_VER)
 #define ROL64(a, offset) _rotl64(a, offset)
 #elif defined(UseSHLD)
-    #define ROL64(x,N) ({ \
+    #define ROL64(x,N) ( \
+    { \
     register uint64_t __out; \
     register uint64_t __in = x; \
     __asm__ ("shld %2,%0,%0" : "=r"(__out) : "0"(__in), "i"(N)); \
@@ -132,11 +135,11 @@ void KeccakF1600_StateXORBytesInLane(void *argState, uint32_t lanePosition, cons
     uint32_t i;
     #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
     uint8_t * state = (uint8_t*)argState + lanePosition * sizeof(tKeccakLane) + offset;
-    for(i=0; i<length; i++)
+    for(i=0; i<length; ++i)
         ((uint8_t *)state)[i] ^= data[i];
     #else
     tKeccakLane lane = 0;
-    for(i=0; i<length; i++)
+    for(i=0; i<length; ++i)
         lane |= ((tKeccakLane)data[i]) << ((i+offset)*8);
     ((tKeccakLane*)state)[lanePosition] ^= lane;
     #endif
@@ -149,13 +152,15 @@ void KeccakF1600_StateXORLanes(void *state, const uint8_t *data, uint32_t laneCo
 #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
     tSmaUtilInt i;
     laneCount *= sizeof(tKeccakLane);
-    for( i = 0; i < laneCount; ++i) {
+    for( i = 0; i < laneCount; ++i)
+    {
         ((uint8_t*)state)[i] ^= data[i];
     }
 #else
     tSmaUtilInt i;
     UINT8 *curData = data;
-    for(i=0; i<laneCount; i++, curData+=8) {
+    for(i=0; i<laneCount; ++i, curData+=8)
+    {
         tKeccakLane lane = (tKeccakLane)curData[0]
             | ((tKeccakLane)curData[1] << 8)
             | ((tKeccakLane)curData[2] << 16)
@@ -187,7 +192,7 @@ void KeccakF1600_StatePermute(void *argState)
     tKeccakLane     *state;
     UINT8             LFSRstate;
 
-    state = argState;
+    state = reinterpret_cast<tKeccakLane *>(argState);
     LFSRstate = 0x01;
     round = cKeccakNumberOfRounds;
     do
@@ -247,12 +252,15 @@ void KeccakF1600_StatePermute(void *argState)
 void KeccakF1600_StateExtractBytesInLane(const void *state, uint32_t lanePosition, uint8_t *data, uint32_t offset, uint32_t length)
 {
 #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
-    memcpy(data, ((UINT8*)&((tKeccakLane*)state)[lanePosition])+offset, length);
+    //memcpy(data, ((UINT8*)&((tKeccakLane*)state)[lanePosition])+offset, length);
+    const uint8_t *ptr = ((uint8_t *)&((tKeccakLane *)state)[lanePosition])+offset;
+    std::copy(ptr, ptr+length, data);
 #else
     tSmaUtilInt i;
     tKeccakLane lane = ((tKeccakLane*)state)[lanePosition];
     lane >>= offset*8;
-    for(i=0; i<length; i++) {
+    for(i=0; i<length; ++i)
+    {
         data[i] = lane & 0xFF;
         lane >>= 8;
     }
@@ -264,14 +272,16 @@ void KeccakF1600_StateExtractBytesInLane(const void *state, uint32_t lanePositio
 void KeccakF1600_StateExtractLanes(const void *state, uint8_t *data, uint32_t laneCount)
 {
 #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
-    memcpy(data, state, laneCount*8);
+    //memcpy(data, state, laneCount*8);
+    const uint8_t *ptr = reinterpret_cast<const uint8_t *>(state);
+    std::copy(ptr, ptr+laneCount*8, data);
 #else
     tSmaUtilInt i, j;
-    for(i=0; i<laneCount; i++)
+    for(i=0; i<laneCount; ++i)
     {
-        for(j=0; j<(64/8); j++)
+        for(j=0; j<(64/8); ++j)
         {
-            bytes[data+(i*8] = state[i] >> (8*j)) & 0xFF;
+            bytes[data+(i*8)] = state[i] >> (8*j)) & 0xFF;
         }
     }
 #endif

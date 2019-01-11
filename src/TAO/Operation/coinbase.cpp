@@ -20,42 +20,48 @@ ________________________________________________________________________________
 #include <TAO/Register/include/state.h>
 #include <TAO/Register/objects/account.h>
 
-namespace TAO::Operation
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /* Commits funds from a coinbase transaction. */
-    bool Coinbase(uint256_t hashAddress, uint64_t nAmount, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
+    /* Operation Layer namespace. */
+    namespace Operation
     {
-        //make the coinbase able to be credited as a debit check in credit
-        //this will allow the number of confirmations to be defined.
 
-        /* Read the to account state. */
-        TAO::Register::State state;
-        if(!LLD::regDB->ReadState(hashAddress, state))
+        /* Commits funds from a coinbase transaction. */
+        bool Coinbase(uint256_t hashAddress, uint64_t nAmount, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
         {
-            /* Set the owner of this register. */
-            state.nVersion  = 1;
-            state.nType     = TAO::Register::OBJECT::ACCOUNT;
-            state.hashOwner = hashCaller;
+            //make the coinbase able to be credited as a debit check in credit
+            //this will allow the number of confirmations to be defined.
 
-            /* Create the new account. */
-            TAO::Register::Account acct;
-            acct.nVersion    = 1;
-            acct.nIdentifier = 0; //NXS native token.
-            acct.nBalance    = 0; //Always start with a 0 balance
-            state << acct;
+            /* Read the to account state. */
+            TAO::Register::State state;
+            if(!LLD::regDB->ReadState(hashAddress, state))
+            {
+                /* Set the owner of this register. */
+                state.nVersion  = 1;
+                state.nType     = TAO::Register::OBJECT::ACCOUNT;
+                state.hashOwner = hashCaller;
 
-            /* Check the state change is correct. */
-            if(!state.IsValid())
-                return debug::error(FUNCTION "memory address %s is in invalid state", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+                /* Create the new account. */
+                TAO::Register::Account acct;
+                acct.nVersion    = 1;
+                acct.nIdentifier = 0; //NXS native token.
+                acct.nBalance    = 0; //Always start with a 0 balance
+                state << acct;
 
-            /* Write the register to database. */
-            if(!LLD::regDB->WriteState(hashAddress, state))
-                return debug::error(FUNCTION "failed to write state register %s memory address", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+                /* Check the state change is correct. */
+                if(!state.IsValid())
+                    return debug::error(FUNCTION, "memory address ", hashAddress.ToString().c_str(), " is in invalid state");
 
-            debug::log(0, FUNCTION "created new account %s for coinbase transaction", __PRETTY_FUNCTION__, hashAddress.ToString().c_str());
+                /* Write the register to database. */
+                if(!LLD::regDB->WriteState(hashAddress, state))
+                    return debug::error(FUNCTION, "failed to write state register ", hashAddress.ToString(), " memory address");
+
+                debug::log(0, FUNCTION, "created new account ", hashAddress.ToString(), " for coinbase transaction");
+            }
+
+            return true;
         }
-
-        return true;
     }
 }

@@ -394,7 +394,7 @@ namespace Legacy
                         // (xn ... x2 x1 x0 n - ... x2 x1 x0 xn)
                         if (stack.size() < 2)
                             return false;
-                        int n = CastToBigNum(stacktop(-1)).getint();
+                        int n = CastToBigNum(stacktop(-1)).getint32();
                         popstack(stack);
                         if (n < 0 || n >= (int)stack.size())
                             return false;
@@ -460,8 +460,8 @@ namespace Legacy
                         if (stack.size() < 3)
                             return false;
                         std::vector<uint8_t>& vch = stacktop(-3);
-                        int nBegin = CastToBigNum(stacktop(-2)).getint();
-                        int nEnd = nBegin + CastToBigNum(stacktop(-1)).getint();
+                        int nBegin = CastToBigNum(stacktop(-2)).getint32();
+                        int nEnd = nBegin + CastToBigNum(stacktop(-1)).getint32();
                         if (nBegin < 0 || nEnd < nBegin)
                             return false;
                         if (nBegin > (int)vch.size())
@@ -482,7 +482,7 @@ namespace Legacy
                         if (stack.size() < 2)
                             return false;
                         std::vector<uint8_t>& vch = stacktop(-2);
-                        int nSize = CastToBigNum(stacktop(-1)).getint();
+                        int nSize = CastToBigNum(stacktop(-1)).getint32();
                         if (nSize < 0)
                             return false;
                         if (nSize > (int)vch.size())
@@ -664,13 +664,13 @@ namespace Legacy
                         case OP_LSHIFT:
                             if (bn2 < bnZero || bn2 > LLC::CBigNum(2048))
                                 return false;
-                            bn = bn1 << bn2.getulong();
+                            bn = bn1 << bn2.getuint32();
                             break;
 
                         case OP_RSHIFT:
                             if (bn2 < bnZero || bn2 > LLC::CBigNum(2048))
                                 return false;
-                            bn = bn1 >> bn2.getulong();
+                            bn = bn1 >> bn2.getuint32();
                             break;
 
                         case OP_BOOLAND:             bn = (bn1 != bnZero && bn2 != bnZero); break;
@@ -729,8 +729,8 @@ namespace Legacy
                         std::vector<uint8_t> vchHash(32);
 
                         uint256_t hash256 = LLC::SK256(vch);
-                        memcpy(&vchHash[0], &hash256, sizeof(hash256));
-
+                        //memcpy(&vchHash[0], &hash256, sizeof(hash256));
+                        std::copy((uint8_t *)&hash256, (uint8_t *)&hash256 + sizeof(hash256), &vchHash[0]);
                         popstack(stack);
                         stack.push_back(vchHash);
                     }
@@ -786,7 +786,7 @@ namespace Legacy
                         if (stack.size() < i)
                             return false;
 
-                        int nKeysCount = CastToBigNum(stacktop(-i)).getint();
+                        int nKeysCount = CastToBigNum(stacktop(-i)).getint32();
                         if (nKeysCount < 0 || nKeysCount > 20)
                             return false;
                         nOpCount += nKeysCount;
@@ -797,7 +797,7 @@ namespace Legacy
                         if (stack.size() < i)
                             return false;
 
-                        int nSigsCount = CastToBigNum(stacktop(-i)).getint();
+                        int nSigsCount = CastToBigNum(stacktop(-i)).getint32();
                         if (nSigsCount < 0 || nSigsCount > nKeysCount)
                             return false;
                         int isig = ++i;
