@@ -29,7 +29,7 @@ namespace TAO
     {
 
         /* Commits funds from a coinbase transaction. */
-        bool Coinbase(uint256_t hashAddress, uint64_t nAmount, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
+        bool Coinbase(const uint256_t &hashAddress, const uint64_t nAmount, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             //make the coinbase able to be credited as a debit check in credit
             //this will allow the number of confirmations to be defined.
@@ -41,6 +41,7 @@ namespace TAO
                 /* Set the owner of this register. */
                 state.nVersion  = 1;
                 state.nType     = TAO::Register::OBJECT::ACCOUNT;
+                state.nTimestamp = tx.nTimestamp;
                 state.hashOwner = hashCaller;
 
                 /* Create the new account. */

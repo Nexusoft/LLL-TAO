@@ -40,6 +40,8 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
 
+#include <TAO/Operation/include/execute.h>
+
 #include <LLP/types/miner.h>
 
 #include <iostream>
@@ -71,6 +73,10 @@ namespace LLP
     Server<LegacyNode> * LEGACY_SERVER;
 }
 
+void Thread()
+{
+
+}
 
 int main(int argc, char** argv)
 {
@@ -140,46 +146,6 @@ int main(int argc, char** argv)
 
     /** Initialize ChainState. */
     TAO::Ledger::ChainState::Initialize();
-
-
-    if(config::GetArg("-test", 0) > 0)
-    {
-        /* Get the account. */
-        TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("user", "pass");
-
-        for(int i = 0; i < config::GetArg("-test", 0); i++)
-        {
-            /* Create the block object. */
-            TAO::Ledger::TritiumBlock block;
-            if(!TAO::Ledger::CreateBlock(user, std::string("1234").c_str(), 2, block))
-                return debug::error("cant create block");
-
-            /* Get the secret from new key. */
-            std::vector<uint8_t> vBytes = user->Generate(block.producer.nSequence, "1234").GetBytes();
-            LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
-
-            /* Generate the EC Key. */
-            LLC::ECKey key(NID_brainpoolP512t1, 64);
-            if(!key.SetSecret(vchSecret, true))
-                return debug::error("cant set securet");
-
-            /* Generate new block signature. */
-            block.GenerateSignature(key);
-
-            /* Verify the block object. */
-            if(!block.Check())
-                return debug::error("check failed");
-
-            /* Create the state object. */
-            TAO::Ledger::BlockState state = TAO::Ledger::BlockState(block);
-            if(!state.Accept())
-                return debug::error("invalid state");
-
-            /* Write transaction to local database. */
-            if(!LLD::locDB->WriteLast(user->Genesis(), state.producer.GetHash()))
-                return debug::error("failed to write last");
-        }
-    }
 
 
     /* Initialize the Tritium Server. */
@@ -278,6 +244,44 @@ int main(int argc, char** argv)
     /* Startup performance metric. */
     debug::log(0, FUNCTION, "Started up in ", nElapsed, "ms");
 
+
+    /* Get the account. */
+    TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("colin", "pass");
+
+    for(uint32_t n = 0; n < config::GetArg("-test", 0); n++)
+    {
+        /* Create the transaction. */
+        TAO::Ledger::Transaction tx;
+        if(!TAO::Ledger::CreateTransaction(user, "1234", tx))
+            debug::error(0, FUNCTION, "failed to create");
+
+        /* Submit the transaction payload. */
+        uint256_t hashRegister = LLC::GetRand256();
+
+        /* Test the payload feature. */
+        DataStream ssData(SER_REGISTER, 1);
+        ssData << std::string("this is test data");
+
+        /* Submit the payload object. */
+        tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::APPEND << static_cast<std::vector<uint8_t>>(ssData);
+
+        /* Execute the operations layer. */
+        if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
+            debug::error(0, FUNCTION, "Operations failed to execute");
+
+        /* Sign the transaction. */
+        if(!tx.Sign(user->Generate(tx.nSequence, "1234")))
+            debug::error(0, FUNCTION, "Failed to sign");
+
+        /* Execute the operations layer. */
+        if(!TAO::Ledger::mempool.Accept(tx))
+            debug::error(0, FUNCTION, "Failed to accept");
+    }
+
+    /* Initialize generator thread. */
+    std::thread thread;
+    if(config::GetBoolArg("-private"))
+        thread = std::thread(TAO::Ledger::ThreadGenerator);
 
     /* Wait for shutdown. */
     std::mutex SHUTDOWN_MUTEX;

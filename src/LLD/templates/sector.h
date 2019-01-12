@@ -36,7 +36,7 @@ namespace LLD
 
 
     /* Maximum cache buckets for sectors. */
-    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 64; //32 MB Max Cache
+    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 256; //256 MB Max Cache
 
 
     /* The maximum amount of bytes allowed in the memory buffer for disk flushes. **/
@@ -83,6 +83,7 @@ namespace LLD
             Will allow higher efficiency for thread concurrency. */
         std::recursive_mutex SECTOR_MUTEX;
         std::recursive_mutex BUFFER_MUTEX;
+        std::recursive_mutex TRANSACTION_MUTEX;
 
 
         /* The String to hold the Disk Location of Database File. */
@@ -260,12 +261,17 @@ namespace LLD
             ssKey << key;
 
             /* Check that the key is not pending in a transaction for Erase. */
-            if(pTransaction && pTransaction->mapEraseData.count(static_cast<std::vector<uint8_t>>(ssKey)))
-                return false;
+            if(pTransaction)
+            {
+                LOCK(TRANSACTION_MUTEX);
 
-            /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-            if(pTransaction && pTransaction->mapTransactions.count(static_cast<std::vector<uint8_t>>(ssKey)))
-                return true;
+                if(pTransaction->mapEraseData.count(static_cast<std::vector<uint8_t>>(ssKey)))
+                    return false;
+
+                /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
+                if(pTransaction->mapTransactions.count(static_cast<std::vector<uint8_t>>(ssKey)))
+                    return true;
+            }
 
             /* Return the Key existance in the Keychain Database. */
             SectorKey cKey;
@@ -286,6 +292,8 @@ namespace LLD
             /* Add transaction to erase queue. */
             if(pTransaction)
             {
+                LOCK(TRANSACTION_MUTEX);
+
                 pTransaction->EraseTransaction(static_cast<std::vector<uint8_t>>(ssKey));
 
                 return true;
@@ -315,13 +323,19 @@ namespace LLD
             std::vector<uint8_t> vData;
 
             /* Check that the key is not pending in a transaction for Erase. */
-            if(pTransaction && pTransaction->mapEraseData.count(static_cast<std::vector<uint8_t>>(ssKey)))
-                return false;
+            if(pTransaction)
+            {
+                LOCK(TRANSACTION_MUTEX);
 
-            /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-            if(pTransaction && pTransaction->mapTransactions.count(static_cast<std::vector<uint8_t>>(ssKey)))
-                vData = pTransaction->mapTransactions[static_cast<std::vector<uint8_t>>(ssKey)];
-            else if(!Get(static_cast<std::vector<uint8_t>>(ssKey), vData))
+                if(pTransaction->mapEraseData.count(static_cast<std::vector<uint8_t>>(ssKey)))
+                    return false;
+
+                /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
+                if(pTransaction->mapTransactions.count(static_cast<std::vector<uint8_t>>(ssKey)))
+                    vData = pTransaction->mapTransactions[static_cast<std::vector<uint8_t>>(ssKey)];
+            }
+
+            if(vData.empty() && !Get(static_cast<std::vector<uint8_t>>(ssKey), vData))
                 return false;
 
             /* Deserialize Value. */
@@ -367,6 +381,8 @@ namespace LLD
             /* Check for transaction. */
             if(pTransaction)
             {
+                LOCK(TRANSACTION_MUTEX);
+
                 /* Set the transaction data. */
                 pTransaction->mapTransactions[static_cast<std::vector<uint8_t>>(ssKey)] = static_cast<std::vector<uint8_t>>(ssData);
 

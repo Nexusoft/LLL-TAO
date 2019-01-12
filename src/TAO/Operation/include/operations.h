@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_TAO_OPERATION_INCLUDE_OPERATIONS_H
 
 #include <TAO/Register/include/stream.h>
+#include <TAO/Ledger/types/transaction.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -31,13 +32,13 @@ namespace TAO
          *  @param[in] hashAddress The register address to write to.
          *  @param[in] hashCaller The calling signature chain.
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[ou] ssRegister The register pre and post states if applicable.
+         *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Write(uint256_t hashAddress, std::vector<uint8_t> vchData,
-            uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister);
+        bool Write(const uint256_t &hashAddress, const std::vector<uint8_t> &vchData,
+            const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
 
 
         /** Append
@@ -47,13 +48,13 @@ namespace TAO
          *  @param[in] hashAddress The register address to write to.
          *  @param[in] hashCaller The calling signature chain.
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[ou] ssRegister The register pre and post states if applicable.
+         *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Append(uint256_t hashAddress, std::vector<uint8_t> vchData,
-            uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister);
+        bool Append(const uint256_t &hashAddress, const std::vector<uint8_t> &vchData,
+            const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
 
 
         /** Register
@@ -65,14 +66,14 @@ namespace TAO
          *  @param[in] vchData The binary data to record in register.
          *  @param[in] hashCaller The calling signature chain.
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[ou] ssRegister The register pre and post states if applicable.
+         *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Register(uint256_t hashAddress, uint8_t nType,
-            std::vector<uint8_t> vchData, uint256_t hashCaller, uint8_t nFlags,
-            TAO::Register::Stream &ssRegister);
+        bool Register(const uint256_t &hashAddress, const uint8_t nType,
+            const std::vector<uint8_t> &vchData, const uint256_t &hashCaller, const uint8_t nFlags,
+            TAO::Ledger::Transaction &tx);
 
 
         /** Transfer
@@ -83,13 +84,13 @@ namespace TAO
          *  @param[in] hashTransfer The register to transfer to.
          *  @param[in] hashCaller The calling signature chain.
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[ou] ssRegister The register pre and post states if applicable.
+         *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Transfer(uint256_t hashAddress, uint256_t hashTransfer,
-            uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister);
+        bool Transfer(const uint256_t &hashAddress, const uint256_t &hashTransfer,
+            const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
 
 
         /** Debit
@@ -101,13 +102,13 @@ namespace TAO
          *  @param[in] nAmount The amount being transferred
          *  @param[in] hashCaller The calling signature chain.
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[ou] ssRegister The register pre and post states if applicable.
+         *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Debit(uint256_t hashFrom, uint256_t hashTo, uint64_t nAmount,
-            uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister);
+        bool Debit(const uint256_t &hashFrom, const uint256_t &hashTo, const uint64_t nAmount,
+            const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
 
 
         /** Credit
@@ -120,14 +121,14 @@ namespace TAO
          *  @param[in] nAmount The amount being transferred
          *  @param[in] hashCaller The calling signature chain.
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[ou] ssRegister The register pre and post states if applicable.
+         *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Credit(uint512_t hashTx, uint256_t hashProof,
-            uint256_t hashTo, uint64_t nAmount, uint256_t hashCaller, uint8_t nFlags,
-            TAO::Register::Stream &ssRegister);
+        bool Credit(const uint512_t &hashTx, const uint256_t &hashProof,
+            const uint256_t &hashTo, const uint64_t nAmount, const uint256_t &hashCaller, const uint8_t nFlags,
+            TAO::Ledger::Transaction &tx);
 
 
         /** Coinbase
@@ -138,13 +139,13 @@ namespace TAO
          *  @param[in] nAmount The amount being transferred
          *  @param[in] hashCaller The calling signature chain.
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[ou] ssRegister The register pre and post states if applicable.
+         *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Coinbase(uint256_t hashAccount, uint64_t nAmount,
-            uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister);
+        bool Coinbase(const uint256_t &hashAccount, const uint64_t nAmount,
+            const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
 
 
         /** Trust
@@ -158,14 +159,14 @@ namespace TAO
          *  @param[in] nAmount The amount being transferred
          *  @param[in] hashCaller The calling signature chain.
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[ou] ssRegister The register pre and post states if applicable.
+         *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Trust(uint256_t hashAddress, uint1024_t hashLastTrust,
-            uint32_t nSequence, uint32_t nLastTrust, uint64_t nAmount, uint256_t hashCaller,
-            uint8_t nFlags, TAO::Register::Stream &ssRegister);
+        bool Trust(const uint256_t &hashAddress, const uint1024_t &hashLastTrust,
+            const uint32_t nSequence, const uint32_t nLastTrust, const uint64_t nAmount, const uint256_t &hashCaller,
+            const uint8_t nFlags, TAO::Ledger::Transaction &tx);
 
 
         /** Authorize
@@ -176,13 +177,13 @@ namespace TAO
          *  @param[in] hashProof The register temporal proof to use.
          *  @param[in] hashCaller The calling signature chain.
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[ou] ssRegister The register pre and post states if applicable.
+         *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Authorize(uint512_t hashTx, uint256_t hashProof,
-            uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister);
+        bool Authorize(const uint512_t &hashTx, const uint256_t &hashProof,
+            const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
     }
 }
 

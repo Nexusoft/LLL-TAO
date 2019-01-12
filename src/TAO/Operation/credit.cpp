@@ -30,17 +30,17 @@ namespace TAO
     {
 
         /* Commits funds from an account to an account */
-        bool Credit(uint512_t hashTx, uint256_t hashProof, uint256_t hashAccount, uint64_t nAmount, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
+        bool Credit(const uint512_t &hashTx, const uint256_t &hashProof, const uint256_t &hashAccount, const uint64_t nAmount, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
 
             /* Read the claimed transaction. */
-            TAO::Ledger::Transaction tx;
-            if(!LLD::legDB->ReadTx(hashTx, tx))
+            TAO::Ledger::Transaction txSpend;
+            if(!LLD::legDB->ReadTx(hashTx, txSpend))
                 return debug::error(FUNCTION, hashTx.ToString(), " tx doesn't exist");
 
             /* Extract the state from tx. */
             uint8_t TX_OP;
-            tx.ssOperation >> TX_OP;
+            txSpend.ssOperation >> TX_OP;
 
             /* Read the binary data of the Register. */
             TAO::Register::State state;
@@ -51,7 +51,7 @@ namespace TAO
                 if(!LLD::regDB->ReadState(hashAccount, state))
                     return debug::error(FUNCTION, "register address doesn't exist ", hashAccount.ToString());
 
-                ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
+                tx.ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
             }
 
             /* Get pre-states on write. */
@@ -59,14 +59,14 @@ namespace TAO
             {
                 /* Get the state byte. */
                 uint8_t nState = 0; //RESERVED
-                ssRegister >> nState;
+                tx.ssRegister >> nState;
 
                 /* Check for the pre-state. */
                 if(nState != TAO::Register::STATES::PRESTATE)
                     return debug::error(FUNCTION, "register script not in pre-state");
 
                 /* Get the pre-state. */
-                ssRegister >> state;
+                tx.ssRegister >> state;
             }
 
             /* Check that the creditor has permissions. */
@@ -82,10 +82,10 @@ namespace TAO
 
                 /* Get the coinbase amount. */
                 uint64_t nCredit;
-                tx.ssOperation >> nCredit;
+                txSpend.ssOperation >> nCredit;
 
                 /* Make sure the claimed account is the debited account. */
-                if(tx.hashGenesis != hashCaller)
+                if(txSpend.hashGenesis != hashCaller)
                     return debug::error(FUNCTION, "cannot claim coinbase from different sigchain");
 
                 /* Get the account being sent to. */
@@ -105,6 +105,7 @@ namespace TAO
 
                 /* Write new state to the regdb. */
                 state.ClearState();
+                state.nTimestamp = tx.nTimestamp;
                 state << acctTo;
 
                 /* Check that the register is in a valid state. */
@@ -113,14 +114,14 @@ namespace TAO
 
                 /* Write post-state checksum. */
                 if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-                    ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
+                    tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
 
                 /* Verify the post-state checksum. */
                 if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
                 {
                     /* Get the state byte. */
                     uint8_t nState = 0; //RESERVED
-                    ssRegister >> nState;
+                    tx.ssRegister >> nState;
 
                     /* Check for the pre-state. */
                     if(nState != TAO::Register::STATES::POSTSTATE)
@@ -128,7 +129,7 @@ namespace TAO
 
                     /* Get the post state checksum. */
                     uint64_t nChecksum;
-                    ssRegister >> nChecksum;
+                    tx.ssRegister >> nChecksum;
 
                     /* Check for matching post states. */
                     if(nChecksum != state.GetHash())
@@ -152,11 +153,11 @@ namespace TAO
 
             /* Get the debit from account. */
             uint256_t hashFrom;
-            tx.ssOperation >> hashFrom;
+            txSpend.ssOperation >> hashFrom;
 
             /* Get the debit to account. */
             uint256_t hashTo;
-            tx.ssOperation >> hashTo;
+            txSpend.ssOperation >> hashTo;
 
             /* Credits specific to account objects. */
             if(state.nType == TAO::Register::OBJECT::ACCOUNT)
@@ -192,7 +193,7 @@ namespace TAO
 
                 /* Get the debit amount. */
                 uint64_t nTotal;
-                tx.ssOperation >> nTotal;
+                txSpend.ssOperation >> nTotal;
 
                 /* Check the proper balance requirements. */
                 if(nAmount != nTotal)
@@ -203,6 +204,7 @@ namespace TAO
 
                 /* Write new state to the regdb. */
                 state.ClearState();
+                state.nTimestamp = tx.nTimestamp;
                 state << acctTo;
 
                 /* Check that the register is in a valid state. */
@@ -211,14 +213,14 @@ namespace TAO
 
                 /* Write post-state checksum. */
                 if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-                    ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
+                    tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
 
                 /* Verify the post-state checksum. */
                 if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
                 {
                     /* Get the state byte. */
                     uint8_t nState = 0; //RESERVED
-                    ssRegister >> nState;
+                    tx.ssRegister >> nState;
 
                     /* Check for the pre-state. */
                     if(nState != TAO::Register::STATES::POSTSTATE)
@@ -226,7 +228,7 @@ namespace TAO
 
                     /* Get the post state checksum. */
                     uint64_t nChecksum;
-                    ssRegister >> nChecksum;
+                    tx.ssRegister >> nChecksum;
 
                     /* Check for matching post states. */
                     if(nChecksum != state.GetHash())
@@ -267,7 +269,7 @@ namespace TAO
                     return debug::error(FUNCTION, "temporal proof register is not found");
 
                 /* Compare the last timestamp update to transaction timestamp. */
-                if(stateProof.nTimestamp > tx.nTimestamp)
+                if(stateProof.nTimestamp > txSpend.nTimestamp)
                     return debug::error(FUNCTION, "temporal proof is stale");
 
                 /* Check that the proof is an account being used. */
@@ -292,7 +294,7 @@ namespace TAO
 
                 /* Get the total amount of the debit. */
                 uint64_t nDebit;
-                tx.ssOperation >> nDebit;
+                txSpend.ssOperation >> nDebit;
 
                 /* Get the total tokens to be distributed. */
                 uint64_t nTotal = (acctProof.nBalance * nDebit) / token.nMaxSupply;
@@ -329,6 +331,7 @@ namespace TAO
 
                 /* Update the register. */
                 state.ClearState();
+                state.nTimestamp = tx.nTimestamp;
                 state << acctTo;
 
                 /* Check that the register is in a valid state. */
@@ -337,14 +340,14 @@ namespace TAO
 
                 /* Write post-state checksum. */
                 if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-                    ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
+                    tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
 
                 /* Verify the post-state checksum. */
                 if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
                 {
                     /* Get the state byte. */
                     uint8_t nState = 0; //RESERVED
-                    ssRegister >> nState;
+                    tx.ssRegister >> nState;
 
                     /* Check for the pre-state. */
                     if(nState != TAO::Register::STATES::POSTSTATE)
@@ -352,7 +355,7 @@ namespace TAO
 
                     /* Get the post state checksum. */
                     uint64_t nChecksum;
-                    ssRegister >> nChecksum;
+                    tx.ssRegister >> nChecksum;
 
                     /* Check for matching post states. */
                     if(nChecksum != state.GetHash())

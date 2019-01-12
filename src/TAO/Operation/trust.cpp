@@ -22,7 +22,7 @@ namespace TAO
     {
 
         /* Commits funds from a coinbase transaction. */
-        bool Trust(uint256_t hashAddress, uint1024_t hashLastTrust, uint32_t nSequence, uint32_t nLastTrust, uint64_t nStake, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
+        bool Trust(const uint256_t &hashAddress, const uint1024_t &hashLastTrust, const uint32_t nSequence, const uint32_t nLastTrust, const uint64_t nStake, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
 
             return true;

@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/accounts.h>
 
 #include <TAO/Ledger/include/create.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/hex.h>
 
@@ -51,7 +52,7 @@ namespace TAO
             /* Get the Genesis ID. */
             uint256_t hashGenesis = user.Genesis();
 
-            /* Check for duplicates in local db. */
+            /* Check for duplicates in ledger db. */
             TAO::Ledger::Transaction tx;
             if(LLD::legDB->HasGenesis(hashGenesis))
                 throw APIException(-26, "Account already exists");
@@ -70,11 +71,10 @@ namespace TAO
             tx.print();
 
             /* Write transaction to ledger database. */
-            LLD::legDB->WriteGenesis(hashGenesis, tx);
-            LLD::legDB->WriteTx(tx.GetHash(), tx);
+            LLD::locDB->WriteGenesis(hashGenesis, tx);
 
-            /* Write last to local database. */
-            LLD::locDB->WriteLast(hashGenesis, tx.GetHash());
+            /* Accept to memory pool. */
+            TAO::Ledger::mempool.Accept(tx);
 
             /* Build a JSON response object. */
             ret["version"]   = tx.nVersion;

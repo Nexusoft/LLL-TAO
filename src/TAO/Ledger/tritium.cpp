@@ -60,7 +60,7 @@ namespace TAO
         {
             /* Check the Size limits of the Current Block. */
             if (::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
-                return debug::error(FUNCTION, "size limits failed");
+                return debug::error(FUNCTION, "size ", ::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION), " limits failed ", MAX_BLOCK_SIZE);
 
 
             /* Make sure the Block was Created within Active Channel. */

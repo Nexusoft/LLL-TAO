@@ -26,7 +26,7 @@ namespace TAO
     {
 
         /* Writes data to a register. */
-        bool Append(uint256_t hashAddress, std::vector<uint8_t> vchData, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
+        bool Append(const uint256_t &hashAddress, const std::vector<uint8_t> &vchData, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Read the binary data of the Register. */
             TAO::Register::State state;
@@ -37,7 +37,7 @@ namespace TAO
                 if(!LLD::regDB->ReadState(hashAddress, state))
                     return debug::error(FUNCTION, "register address doesn't exist ", hashAddress.ToString());
 
-                ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
+                tx.ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
             }
 
             /* Get pre-states on write. */
@@ -45,14 +45,14 @@ namespace TAO
             {
                 /* Get the state byte. */
                 uint8_t nState = 0; //RESERVED
-                ssRegister >> nState;
+                tx.ssRegister >> nState;
 
                 /* Check for the pre-state. */
                 if(nState != TAO::Register::STATES::PRESTATE)
                     return debug::error(FUNCTION, "register script not in pre-state");
 
                 /* Get the pre-state. */
-                ssRegister >> state;
+                tx.ssRegister >> state;
             }
 
             /* Check ReadOnly permissions. */
@@ -70,6 +70,7 @@ namespace TAO
             /* Set the new state of the register. */
             std::vector<uint8_t> vchState = state.GetState();
             vchState.insert(vchState.end(), vchData.begin(), vchData.end());
+            state.nTimestamp = tx.nTimestamp;
             state.SetState(vchState);
 
             /* Check that the register is in a valid state. */
@@ -78,14 +79,14 @@ namespace TAO
 
             /* Write post-state checksum. */
             if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-                ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
+                tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
 
             /* Verify the post-state checksum. */
             if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 /* Get the state byte. */
                 uint8_t nState = 0; //RESERVED
-                ssRegister >> nState;
+                tx.ssRegister >> nState;
 
                 /* Check for the pre-state. */
                 if(nState != TAO::Register::STATES::POSTSTATE)
@@ -93,7 +94,7 @@ namespace TAO
 
                 /* Get the post state checksum. */
                 uint64_t nChecksum;
-                ssRegister >> nChecksum;
+                tx.ssRegister >> nChecksum;
 
                 /* Check for matching post states. */
                 if(nChecksum != state.GetHash())

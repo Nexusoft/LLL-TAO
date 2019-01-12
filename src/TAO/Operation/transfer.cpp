@@ -25,7 +25,7 @@ namespace TAO
     {
 
         /* Transfers a register between sigchains. */
-        bool Transfer(uint256_t hashAddress, uint256_t hashTransfer, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
+        bool Transfer(const uint256_t &hashAddress, const uint256_t &hashTransfer, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Read the register from the database. */
             TAO::Register::State state = TAO::Register::State();
@@ -42,6 +42,7 @@ namespace TAO
 
             /* Set the new owner of the register. */
             state.hashOwner = hashTransfer;
+            state.nTimestamp = tx.nTimestamp;
             state.SetChecksum();
 
             /* Check register for validity. */
@@ -50,14 +51,14 @@ namespace TAO
 
             /* Write post-state checksum. */
             if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-                ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
+                tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
 
             /* Verify the post-state checksum. */
             if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 /* Get the state byte. */
                 uint8_t nState; //RESERVED
-                ssRegister >> nState;
+                tx.ssRegister >> nState;
 
                 /* Check for the pre-state. */
                 if(nState != TAO::Register::STATES::POSTSTATE)
@@ -65,7 +66,7 @@ namespace TAO
 
                 /* Get the post state checksum. */
                 uint64_t nChecksum;
-                ssRegister >> nChecksum;
+                tx.ssRegister >> nChecksum;
 
                 /* Check for matching post states. */
                 if(nChecksum != state.GetHash())

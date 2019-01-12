@@ -20,6 +20,8 @@ ________________________________________________________________________________
 
 #include <Util/include/allocators.h>
 
+#include <condition_variable>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -27,6 +29,9 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+
+        /** Condition variable for private blocks. */
+        extern std::condition_variable PRIVATE_CONDITION;
 
         /** Create Transaction
          *
@@ -60,6 +65,15 @@ namespace TAO
          *
          **/
         bool CreateGenesis();
+
+
+        /** Thread Generator
+         *
+         *  Handles the creation of a private block chain.
+         *  Only executes when a transaction is broadcast.
+         *
+         **/
+        void ThreadGenerator();
     }
 }
 

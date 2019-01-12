@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 
 #include <TAO/Ledger/include/create.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <LLC/include/random.h>
 #include <LLD/include/global.h>
@@ -31,6 +32,7 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
+
         Supply supply;
 
         /* Standard initialization function. */
@@ -112,9 +114,6 @@ namespace TAO
             /* Get the session. */
             uint64_t nSession = std::stoull(params["session"].get<std::string>());
 
-            /* Get the Genesis ID. */
-            uint256_t hashGenesis = accounts.GetGenesis(nSession);
-
             /* Get the account. */
             TAO::Ledger::SignatureChain* user;
             if(!accounts.GetAccount(nSession, user))
@@ -136,25 +135,13 @@ namespace TAO
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
                 throw APIException(-26, "Operations failed to execute");
 
-            /* Verify the register layer. */
-            if(!TAO::Register::Verify(tx))
-                throw APIException(-26, "Registers failed to verify");
-
             /* Sign the transaction. */
             if(!tx.Sign(accounts.GetKey(tx.nSequence, params["pin"].get<std::string>().c_str(), nSession)))
                 throw APIException(-26, "Ledger failed to sign transaction");
 
-            /* Check that the transaction is valid. */
-            if(!tx.IsValid())
-                throw APIException(-26, "Ledger Transaction Invalid");
-
-            /* Write transaction to local database. */
-            LLD::legDB->WriteTx(tx.GetHash(), tx);
-            LLD::locDB->WriteLast(hashGenesis, tx.GetHash());
-
             /* Execute the operations layer. */
-            if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::WRITE))
-                throw APIException(-26, "Operations failed to execute");
+            if(!TAO::Ledger::mempool.Accept(tx))
+                throw APIException(-26, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();
@@ -184,9 +171,6 @@ namespace TAO
             /* Get the session. */
             uint64_t nSession = std::stoull(params["session"].get<std::string>());
 
-            /* Get the Genesis ID. */
-            uint256_t hashGenesis = accounts.GetGenesis(nSession);
-
             /* Get the account. */
             TAO::Ledger::SignatureChain* user;
             if(!accounts.GetAccount(nSession, user))
@@ -211,25 +195,13 @@ namespace TAO
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
                 throw APIException(-26, "Operations failed to execute");
 
-            /* Verify the register layer. */
-            if(!TAO::Register::Verify(tx))
-                throw APIException(-26, "Registers failed to verify");
-
             /* Sign the transaction. */
             if(!tx.Sign(accounts.GetKey(tx.nSequence, params["pin"].get<std::string>().c_str(), nSession)))
                 throw APIException(-26, "Ledger failed to sign transaction");
 
-            /* Check that the transaction is valid. */
-            if(!tx.IsValid())
-                throw APIException(-26, "Ledger Transaction Invalid");
-
-            /* Write transaction to local database. */
-            LLD::legDB->WriteTx(tx.GetHash(), tx);
-            LLD::locDB->WriteLast(hashGenesis, tx.GetHash());
-
             /* Execute the operations layer. */
-            if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::WRITE))
-                throw APIException(-26, "Operations failed to execute");
+            if(!TAO::Ledger::mempool.Accept(tx))
+                throw APIException(-26, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();
@@ -263,25 +235,15 @@ namespace TAO
             /* Get the session. */
             uint64_t nSession = std::stoull(params["session"].get<std::string>());
 
-            /* Get the Genesis ID. */
-            uint256_t hashGenesis = accounts.GetGenesis(nSession);
+            /* Get the account. */
+            TAO::Ledger::SignatureChain* user;
+            if(!accounts.GetAccount(nSession, user))
+                throw APIException(-25, "Invalid session ID");
 
-            /* Get the last transaction. */
-            uint512_t hashLast;
-            if(!LLD::locDB->ReadLast(hashGenesis, hashLast))
-                throw APIException(-28, "No transactions found");
-
-            /* Get previous transaction */
-            TAO::Ledger::Transaction txPrev;
-            if(!LLD::legDB->ReadTx(hashLast, txPrev))
-                throw APIException(-29, "Failed to read previous transaction");
-
-            /* Build new transaction object. */
+            /* Create the transaction. */
             TAO::Ledger::Transaction tx;
-            tx.nSequence   = txPrev.nSequence + 1;
-            tx.hashGenesis = txPrev.hashGenesis;
-            tx.hashPrevTx  = hashLast;
-            tx.NextHash(accounts.GetKey(tx.nSequence + 1, params["pin"].get<std::string>().c_str(), nSession));
+            if(!TAO::Ledger::CreateTransaction(user, params["pin"].get<std::string>().c_str(), tx))
+                throw APIException(-25, "Failed to create transaction");
 
             /* Submit the transaction payload. */
             uint256_t hashRegister;
@@ -298,25 +260,13 @@ namespace TAO
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
                 throw APIException(-26, "Operations failed to execute");
 
-            /* Verify the register layer. */
-            if(!TAO::Register::Verify(tx))
-                throw APIException(-26, "Registers failed to verify");
-
             /* Sign the transaction. */
             if(!tx.Sign(accounts.GetKey(tx.nSequence, params["pin"].get<std::string>().c_str(), nSession)))
                 throw APIException(-26, "Ledger failed to sign transaction");
 
-            /* Check that the transaction is valid. */
-            if(!tx.IsValid())
-                throw APIException(-26, "Ledger Transaction Invalid");
-
-            /* Write transaction to local database. */
-            LLD::legDB->WriteTx(tx.GetHash(), tx);
-            LLD::locDB->WriteLast(hashGenesis, tx.GetHash());
-
             /* Execute the operations layer. */
-            if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::WRITE))
-                throw APIException(-26, "Operations failed to execute");
+            if(!TAO::Ledger::mempool.Accept(tx))
+                throw APIException(-26, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();
