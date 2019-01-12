@@ -83,24 +83,6 @@ namespace debug
         return str;
     }
 
-    /*  Prints output with a red error caption to the console. It may also write output to a debug.log
-     *  if the global fileout file is assigned. */
-    bool error(const char *format, ...)
-    {
-        char buffer[50000];
-        int limit = sizeof(buffer);
-        va_list arg_ptr;
-        va_start(arg_ptr, format);
-        int ret = _vsnprintf(buffer, limit, format, arg_ptr);
-        va_end(arg_ptr);
-        if (ret < 0 || ret >= limit)
-        {
-            buffer[limit-1] = 0;
-        }
-
-        debug::log(0, ANSI_COLOR_RED, "ERROR: ", buffer, ANSI_COLOR_RESET);
-        return false;
-    }
 
     /*  Prints output with base class and function information. */
     void print_base(const char* base, const char* format, ...)

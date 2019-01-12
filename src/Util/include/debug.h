@@ -190,22 +190,6 @@ namespace debug
     #define strprintf(format, ...) real_strprintf(format, __VA_ARGS__)
 
 
-    /** error
-     *
-     *  Prints output with a red error caption to the console. It may also write output to a debug.log
-     *  if the global fileout file is assigned.
-     *
-     *  @param[in] format The format string specifier.
-     *
-     *  @param[in] ... The variable argument list to supply to each format
-     *                 specifier in the format string.
-     *
-     *  @return Always returns false.
-     *
-     **/
-    bool error(const char *format, ...);
-
-
 
     /** LogStackTrace
      *
