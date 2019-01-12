@@ -49,7 +49,8 @@ class sdk_init():
     #enddef
 
     def nexus_accounts_create(self):
-        pw = urllib.quote_plus(self.password)
+        pw = self.password.replace("&", "%26")
+        pw = urllib.quote_plus(pw)
         parms = "?username={}&password={}&pin={}".format(self.username, pw,
             self.pin)
         url = accounts_url.format("create") + parms
@@ -60,7 +61,8 @@ class sdk_init():
     def nexus_accounts_login(self):
         if (self.session_id != None): return(self.__error("Already logged in"))
 
-        pw = urllib.quote_plus(self.password)
+        pw = self.password.replace("&", "%26")
+        pw = urllib.quote_plus(pw)
         parms = "?username={}&password={}".format(self.username, pw)
         url = accounts_url.format("login") + parms
         json_data = self.__get(url)
@@ -106,8 +108,8 @@ class sdk_init():
         # conflict with URI encoding characters.
         #
         if (type(data) != str): data = str(data)
-        data = urllib.quote_plus(data)
         data = data.replace("&", "%26")
+        data = urllib.quote_plus(data)
 
         parms = "?pin={}&session={}&data={}".format(self.pin, self.session_id,
             data)
@@ -124,8 +126,8 @@ class sdk_init():
         # conflict with URI encoding characters.
         #
         if (type(data) != str): data = str(data)
-        data = urllib.quote_plus(data)
         data = data.replace("&", "%26")
+        data = urllib.quote_plus(data)
 
         parms = "?pin={}&session={}&address={}&data={}".format(self.pin,
             self.session_id, address, data)
@@ -142,9 +144,9 @@ class sdk_init():
         #
         # Unquote data if "state" key is present.
         #
-        if (json_data.has_key("state")):
-            data = json_data["state"]
-            json_data["state"] = urllib.unquote_plus(data)
+        if (json_data.has_key("result")):
+            data = urllib.unquote_plus(json_data["result"]["state"])
+            json_data["result"]["state"] = data.replace("%26", "&")
         #endif
         return(json_data)
     #enddef
