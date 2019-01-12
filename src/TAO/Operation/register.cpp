@@ -29,7 +29,7 @@ namespace TAO
     {
 
         /* Creates a new register if it doesn't exist. */
-        bool Register(uint256_t hashAddress, uint8_t nType, std::vector<uint8_t> vchData, uint256_t hashCaller, uint8_t nFlags, TAO::Register::Stream &ssRegister)
+        bool Register(const uint256_t &hashAddress, const uint8_t nType, const std::vector<uint8_t> &vchData, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Check that the register doesn't exist yet. */
             if(LLD::regDB->HasState(hashAddress))
@@ -107,6 +107,7 @@ namespace TAO
             }
 
             /* Set the state from binary data. */
+            state.nTimestamp = tx.nTimestamp;
             state.SetState(vchData);
 
             /* Check the state change is correct. */
@@ -115,26 +116,26 @@ namespace TAO
 
             /* Write post-state checksum. */
             if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-                ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
+                tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
 
             /* Verify the post-state checksum. */
             if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 /* Get the state byte. */
                 uint8_t nState = 0; //RESERVED
-                ssRegister >> nState;
+                tx.ssRegister >> nState;
 
-                /* Check for the pre-state. */
+                /* Check for the post-state. */
                 if(nState != TAO::Register::STATES::POSTSTATE)
                     return debug::error(FUNCTION, "register script not in post-state");
 
                 /* Get the post state checksum. */
                 uint64_t nChecksum;
-                ssRegister >> nChecksum;
+                tx.ssRegister >> nChecksum;
 
                 /* Check for matching post states. */
                 if(nChecksum != state.GetHash())
-                    return debug::error(FUNCTION, "register script has invalid post-state");
+                    return debug::error(FUNCTION, "register script ", std::hex, nChecksum, " has invalid post-state ", std::hex, state.GetHash());
 
                 /* Write the register to the database. */
                 if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, state))

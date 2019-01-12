@@ -24,10 +24,16 @@ namespace TAO
     /* Register Layer namespace. */
     namespace Register
     {
-        
+
         /* Verify the pre-states of a register to current network state. */
         bool Verify(TAO::Ledger::Transaction tx)
         {
+            /* Start the stream at the beginning. */
+            tx.ssOperation.seek(0, STREAM::BEGIN);
+
+            /* Start the register stream at the beginning. */
+            tx.ssRegister.seek(0, STREAM::BEGIN);
+            
             /* Make sure no exceptions are thrown. */
             try
             {

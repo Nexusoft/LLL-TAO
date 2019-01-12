@@ -44,7 +44,7 @@ class BaseStream
 protected:
 
     /** The current reading position. **/
-    uint32_t nReadPos;
+    mutable uint32_t nReadPos;
 
 
     /** The operation data vector. **/

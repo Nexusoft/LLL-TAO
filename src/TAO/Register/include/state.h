@@ -193,7 +193,6 @@ namespace TAO
             /** Set the Checksum of this Register. **/
             void SetChecksum()
             {
-                nTimestamp   = runtime::unifiedtimestamp();
                 hashChecksum = GetHash();
             }
 
@@ -325,15 +324,15 @@ namespace TAO
             }
 
 
-            void print()
+            void print() const
             {
                 debug::log(0,
                     "State(version=", nVersion,
-                    ", type=", nType,
+                    ", type=", (uint32_t)nType,
                     ", length=", vchState.size(),
                     ", owner=", hashOwner.ToString().substr(0, 20),
                     ", checksum=", hashChecksum,
-                    ", state=)", HexStr(vchState.begin(), vchState.end()));
+                    ", state=", HexStr(vchState.begin(), vchState.end()));
             }
 
         };

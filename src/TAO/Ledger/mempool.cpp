@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/mempool.h>
 
+#include <TAO/Ledger/include/create.h>
+
 
 /* Global TAO namespace. */
 namespace TAO
@@ -52,6 +54,10 @@ namespace TAO
         bool Mempool::Accept(TAO::Ledger::Transaction tx)
         {
             LOCK(MUTEX);
+
+            /* Runtime calculations. */
+            runtime::timer time;
+            time.Start();
 
             /* Check the mempool. */
             uint512_t hash = tx.GetHash();
@@ -91,7 +97,11 @@ namespace TAO
             mapLedger[hash] = tx;
 
             /* Debug output. */
-            debug::log(2, FUNCTION, hash.ToString().substr(0, 20), " ACCEPTED");
+            debug::log(2, FUNCTION, hash.ToString().substr(0, 20), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
+
+            /* Notify private to produce block if valid. */
+            if(config::GetBoolArg("-private"))
+                PRIVATE_CONDITION.notify_all();
 
             return true;
         }
@@ -141,6 +151,29 @@ namespace TAO
             tx = mapLedger[hashTx];
 
             return true;
+        }
+
+
+        /* List transactions in memory pool. */
+        bool Mempool::List(std::vector<uint512_t> &vHashes, uint32_t nCount)
+        {
+            LOCK(MUTEX);
+
+            for(auto it = mapLedger.begin(); it != mapLedger.end() && nCount > 0; it++)
+            {
+
+                vHashes.push_back(it->first);
+                --nCount;
+            }
+
+            return vHashes.size() > 1;
+        }
+
+
+        /* Gets the size of the memory pool. */
+        uint32_t Mempool::Size()
+        {
+            return mapLedger.size();
         }
     }
 }

@@ -135,6 +135,27 @@ namespace TAO
              *
              **/
             bool Get(uint512_t hashTx, TAO::Ledger::Transaction& tx);
+
+
+            /** List.
+             *
+             *  List transactions in memory pool.
+             *
+             *  @param[out] vHashes List the transactions.
+             *  @param[in] nCount The total transactions to get.
+             *
+             *  @return true if added.
+             *
+             **/
+            bool List(std::vector<uint512_t> &vHashes, uint32_t nCount = std::numeric_limits<uint32_t>::max());
+
+
+            /** Size
+             *
+             *  Gets the size of the memory pool.
+             *
+             **/
+            uint32_t Size();
         };
 
         extern Mempool mempool;

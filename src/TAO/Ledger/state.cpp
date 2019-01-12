@@ -92,7 +92,8 @@ namespace TAO
         bool BlockState::Accept()
         {
             /* Debug output. */
-            print();
+            TritiumBlock block = static_cast<TritiumBlock>(*this);
+            block.print();
 
 
             /* Read leger DB for duplicate block. */
@@ -227,6 +228,7 @@ namespace TAO
             /* Start the database transaction. */
             LLD::legDB->TxnBegin();
             LLD::regDB->TxnBegin();
+            LLD::locDB->TxnBegin();
 
 
             /* Write the block to disk. */
@@ -237,6 +239,10 @@ namespace TAO
             /* Signal to set the best chain. */
             if(nChainTrust > ChainState::nBestChainTrust)
             {
+
+                /* Runtime calculations. */
+                runtime::timer time;
+                time.Start();
 
                 /* Watch for genesis. */
                 if (ChainState::stateGenesis.IsNull())
@@ -283,7 +289,15 @@ namespace TAO
                         vDisconnect.push_back(fork);
                         fork = fork.Prev();
                         if(fork.IsNull())
+                        {
+                            /* Abort the Transaction. */
+                            LLD::legDB->TxnAbort();
+                            LLD::regDB->TxnAbort();
+                            LLD::locDB->TxnAbort();
+
+                            /* Debug errors. */
                             return debug::error(FUNCTION, "failed to find ancestor fork block");
+                        }
                     }
 
                     /* Log if there are blocks to disconnect. */
@@ -305,8 +319,17 @@ namespace TAO
                     {
                         /* Connect the block. */
                         if(!state.Disconnect())
+                        {
+                            /* Abort the Transaction. */
+                            LLD::legDB->TxnAbort();
+                            LLD::regDB->TxnAbort();
+                            LLD::locDB->TxnAbort();
+
+                            /* Debug errors. */
+
                             return debug::error(FUNCTION, "failed to disconnect ",
                                 state.GetHash().ToString().substr(0, 20));
+                        }
 
                         /* Add transactions into memory pool. */
                         for(auto tx : state.vtx)
@@ -326,8 +349,16 @@ namespace TAO
 
                         /* Connect the block. */
                         if(!state.Connect())
+                        {
+                            /* Abort the Transaction. */
+                            LLD::legDB->TxnAbort();
+                            LLD::regDB->TxnAbort();
+                            LLD::locDB->TxnAbort();
+
+                            /* Debug errors. */
                             return debug::error(FUNCTION, "failed to connect ",
                                 state.GetHash().ToString().substr(0, 20));
+                        }
 
                         /* Remove transactions from memory pool. */
                         for(auto tx : state.vtx)
@@ -371,7 +402,9 @@ namespace TAO
                     debug::log(0, FUNCTION,
                         "New Best Block hash=", GetHash().ToString().substr(0, 20),
                         " height=", ChainState::nBestHeight,
-                        " trust=", ChainState::nBestChainTrust);
+                        " trust=", ChainState::nBestChainTrust,
+                        " [verified in ", time.ElapsedMilliseconds(), " ms]",
+                        " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
 
 
                     //TODO: blocknotify
@@ -383,6 +416,7 @@ namespace TAO
             /* Commit the transaction to database. */
             LLD::legDB->TxnCommit();
             LLD::regDB->TxnCommit();
+            LLD::locDB->TxnCommit();
 
 
             /* Debug output. */
@@ -412,7 +446,7 @@ namespace TAO
                     if(!mempool.Get(hash, tx))
                         return debug::error(FUNCTION, "transaction is not in memory pool"); //TODO: recover from this and ask sending node.
 
-                    /* Execute the operations layers. */
+                    /* Verify the ledger layer. */
                     if(!TAO::Register::Verify(tx))
                         return debug::error(FUNCTION, "transaction register layer failed to verify");
 
@@ -423,6 +457,14 @@ namespace TAO
                     /* Write to disk. */
                     if(!LLD::legDB->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "transaction is not on disk");
+
+                    /* Check for genesis. */
+                    if(tx.IsGenesis() && !LLD::legDB->WriteGenesis(tx.hashGenesis, tx))
+                        return debug::error(FUNCTION, "failed to write genesis");
+
+                    /* Check for genesis. */
+                    if(LLD::locDB->HasGenesis(tx.hashGenesis))
+                        LLD::locDB->WriteLast(tx.hashGenesis, tx.GetHash());
                 }
             }
 

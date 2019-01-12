@@ -55,7 +55,7 @@ namespace TAO
 
 
         /** Maximum size a block can be in transit. **/
-        const uint32_t MAX_BLOCK_SIZE = 2000000;
+        const uint32_t MAX_BLOCK_SIZE = 1024 * 1024 * 2;
 
 
         /** Maximum size a block can be generated as. **/

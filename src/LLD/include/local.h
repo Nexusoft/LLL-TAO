@@ -45,6 +45,11 @@ namespace LLD
             return Read(std::make_pair(std::string("genesis"), hashGenesis), tx);
         }
 
+        bool HasGenesis(uint256_t hashGenesis)
+        {
+            return Exists(std::make_pair(std::string("genesis"), hashGenesis));
+        }
+
         bool WriteLast(uint256_t hashGenesis, uint512_t hashLast)
         {
             return Write(std::make_pair(std::string("last"), hashGenesis), hashLast);

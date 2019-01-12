@@ -84,7 +84,7 @@ namespace TAO
                             tx.ssOperation >> vchData;
 
                             /* Execute the operation method. */
-                            if(!Write(hashAddress, vchData, hashOwner, nFlags, tx.ssRegister))
+                            if(!Write(hashAddress, vchData, hashOwner, nFlags, tx))
                                 return false;
 
                             break;
@@ -103,7 +103,7 @@ namespace TAO
                             tx.ssOperation >> vchData;
 
                             /* Execute the operation method. */
-                            if(!Append(hashAddress, vchData, hashOwner, nFlags, tx.ssRegister))
+                            if(!Append(hashAddress, vchData, hashOwner, nFlags, tx))
                                 return false;
 
                             break;
@@ -126,7 +126,7 @@ namespace TAO
                             tx.ssOperation >> vchData;
 
                             /* Execute the operation method. */
-                            if(!Register(hashAddress, nType, vchData, hashOwner, nFlags, tx.ssRegister))
+                            if(!Register(hashAddress, nType, vchData, hashOwner, nFlags, tx))
                                 return false;
 
                             break;
@@ -145,7 +145,7 @@ namespace TAO
                             tx.ssOperation >> hashTransfer;
 
                             /* Execute the operation method. */
-                            if(!Transfer(hashAddress, hashTransfer, hashOwner, nFlags, tx.ssRegister))
+                            if(!Transfer(hashAddress, hashTransfer, hashOwner, nFlags, tx))
                                 return false;
 
                             break;
@@ -165,7 +165,7 @@ namespace TAO
                             tx.ssOperation >> nAmount;
 
                             /* Execute the operation method. */
-                            if(!Debit(hashAddress, hashTransfer, nAmount, hashOwner, nFlags, tx.ssRegister))
+                            if(!Debit(hashAddress, hashTransfer, nAmount, hashOwner, nFlags, tx))
                                 return false;
 
                             break;
@@ -192,7 +192,7 @@ namespace TAO
                             tx.ssOperation >> nCredit;
 
                             /* Execute the operation method. */
-                            if(!Credit(hashTx, hashProof, hashAccount, nCredit, hashOwner, nFlags, tx.ssRegister))
+                            if(!Credit(hashTx, hashProof, hashAccount, nCredit, hashOwner, nFlags, tx))
                                 return false;
 
                             break;
@@ -246,7 +246,7 @@ namespace TAO
                             tx.ssOperation >> nStake;
 
                             /* Execute the operation method. */
-                            if(!Trust(hashAccount, hashLastTrust, nSequence, nLastTrust, nStake, hashOwner, nFlags, tx.ssRegister))
+                            if(!Trust(hashAccount, hashLastTrust, nSequence, nLastTrust, nStake, hashOwner, nFlags, tx))
                                 return false;
 
                             /* Ensure that it as end of tx.ssOperation. TODO: coinbase should be followed by ambassador and developer scripts */
@@ -269,7 +269,7 @@ namespace TAO
                             tx.ssOperation >> hashProof;
 
                             /* Execute the operation method. */
-                            if(!Authorize(hashTx, hashProof, hashOwner, nFlags, tx.ssRegister))
+                            if(!Authorize(hashTx, hashProof, hashOwner, nFlags, tx))
                                 return false;
 
                             break;
