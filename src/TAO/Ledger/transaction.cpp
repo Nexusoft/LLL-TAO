@@ -67,6 +67,10 @@ namespace TAO
                 //    return debug::error(FUNCTION, "operation data too large for coinbase ", ssOperation.size());
             }
 
+            /* Check for genesis valid numbers. */
+            if(hashGenesis == 0)
+                return debug::error(FUNCTION, "genesis cannot be zero");
+
             /* Check the timestamp. */
             if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                 return debug::error(FUNCTION, "transaction timestamp too far in the future ", nTimestamp);

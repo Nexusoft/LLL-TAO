@@ -270,9 +270,13 @@ int main(int argc, char** argv)
         if(!tx.Sign(user->Generate(tx.nSequence, "1234")))
             debug::error(0, FUNCTION, "Failed to sign");
 
+            tx.print();
+
         /* Execute the operations layer. */
         if(!TAO::Ledger::mempool.Accept(tx))
             debug::error(0, FUNCTION, "Failed to accept");
+
+        LLD::locDB->WriteLast(tx.hashGenesis, tx.GetHash());
     }
 
     /* Initialize generator thread. */
