@@ -150,7 +150,7 @@ namespace TAO
 
             SecureString strNewWalletPass;
             strNewWalletPass.reserve(100);
-            strNewWalletPass = params[0].get<std::string>().c_str();
+            strNewWalletPass = params[1].get<std::string>().c_str();
 
             if (strOldWalletPass.length() < 1 || strNewWalletPass.length() < 1)
                 return std::string(
