@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #ifndef NEXUS_LLP_TYPES_RPCNODE_H
-#define NEXUS_LLP_TYPES_RPCNODE
+#define NEXUS_LLP_TYPES_RPCNODE_H
 
 #include <LLP/types/http.h>
 #include <TAO/API/types/base.h>

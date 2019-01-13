@@ -35,11 +35,16 @@ ________________________________________________________________________________
 #include <Util/include/allocators.h> /* for SecureString */
 
 
-namespace TAO::Ledger
+/* Global TAO namespace. */
+namespace TAO
 {
-    /* forward declarations */
-    class TritiumBlock;
-    class BlockState;
+    /* Ledger Layer namespace. */
+    namespace Ledger
+    {
+        /* forward declarations */
+        class TritiumBlock;
+        class BlockState;
+    }
 }
 
 namespace Legacy
@@ -137,6 +142,9 @@ namespace Legacy
 
 
     private:
+        using CCryptoKeyStore::Unlock;
+
+
         /** Flag indicating whether or not the wallet instance has been initialized **/
         static bool fWalletInitialized;
 

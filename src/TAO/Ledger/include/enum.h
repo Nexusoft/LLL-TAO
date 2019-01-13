@@ -14,14 +14,21 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_ENUM_H
 #define NEXUS_TAO_LEDGER_INCLUDE_ENUM_H
 
-namespace TAO::Ledger
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /** Enumeration for transaction types. */
-    enum
+    /* Ledger Layer namespace. */
+    namespace Ledger
     {
-        TRITIUM = 0x00,
-        LEGACY  = 0x01
+
+        /** Enumeration for transaction types. */
+        enum
+        {
+            TRITIUM = 0x00,
+            LEGACY  = 0x01
+        }
+
     }
 }
 

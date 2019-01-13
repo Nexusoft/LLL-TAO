@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <algorithm>
 
 /** Base class without constructors for uint256_t, uint512_t, uint576_t, uint1024_t.
 * This makes the compiler let u use it in a union.
@@ -34,7 +35,7 @@ public:
 
     bool operator!() const
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             if (pn[i] != 0)
                 return false;
         return true;
@@ -43,7 +44,7 @@ public:
     const base_uint operator~() const
     {
         base_uint ret;
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             ret.pn[i] = ~pn[i];
         return ret;
     }
@@ -51,7 +52,7 @@ public:
     const base_uint operator-() const
     {
         base_uint ret;
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             ret.pn[i] = ~pn[i];
         ret++;
         return ret;
@@ -62,28 +63,28 @@ public:
     {
         pn[0] = (uint32_t)b;
         pn[1] = (uint32_t)(b >> 32);
-        for (int i = 2; i < WIDTH; i++)
+        for (int i = 2; i < WIDTH; ++i)
             pn[i] = 0;
         return *this;
     }
 
     base_uint& operator^=(const base_uint& b)
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] ^= b.pn[i];
         return *this;
     }
 
     base_uint& operator&=(const base_uint& b)
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] &= b.pn[i];
         return *this;
     }
 
     base_uint& operator|=(const base_uint& b)
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] |= b.pn[i];
         return *this;
     }
@@ -105,11 +106,11 @@ public:
     base_uint& operator<<=(uint32_t shift)
     {
         base_uint a(*this);
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] = 0;
         int k = shift / 32;
         shift = shift % 32;
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
         {
             if (i+k+1 < WIDTH && shift != 0)
                 pn[i+k+1] |= (a.pn[i] >> (32-shift));
@@ -122,11 +123,11 @@ public:
     base_uint& operator>>=(uint32_t shift)
     {
         base_uint a(*this);
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] = 0;
         int k = shift / 32;
         shift = shift % 32;
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
         {
             if (i-k-1 >= 0 && shift != 0)
                 pn[i-k-1] |= (a.pn[i] << (32-shift));
@@ -139,7 +140,7 @@ public:
     base_uint& operator+=(const base_uint& b)
     {
         uint64_t carry = 0;
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
         {
             uint64_t n = carry + pn[i] + b.pn[i];
             pn[i] = n & 0xffffffff;
@@ -176,7 +177,7 @@ public:
         // prefix operator
         int i = 0;
         while (++pn[i] == 0 && i < WIDTH-1)
-            i++;
+            ++i;
         return *this;
     }
 
@@ -193,7 +194,7 @@ public:
         // prefix operator
         int i = 0;
         while (--pn[i] == -1 && i < WIDTH-1)
-            i++;
+            ++i;
         return *this;
     }
 
@@ -208,7 +209,7 @@ public:
 
     friend inline bool operator<(const base_uint& a, const base_uint& b)
     {
-        for (int i = base_uint::WIDTH-1; i >= 0; i--)
+        for (int i = base_uint::WIDTH-1; i >= 0; --i)
         {
             if (a.pn[i] < b.pn[i])
                 return true;
@@ -220,7 +221,7 @@ public:
 
     friend inline bool operator<=(const base_uint& a, const base_uint& b)
     {
-        for (int i = base_uint::WIDTH-1; i >= 0; i--)
+        for (int i = base_uint::WIDTH-1; i >= 0; --i)
         {
             if (a.pn[i] < b.pn[i])
                 return true;
@@ -232,7 +233,7 @@ public:
 
     friend inline bool operator>(const base_uint& a, const base_uint& b)
     {
-        for (int i = base_uint::WIDTH-1; i >= 0; i--)
+        for (int i = base_uint::WIDTH-1; i >= 0; --i)
         {
             if (a.pn[i] > b.pn[i])
                 return true;
@@ -244,7 +245,7 @@ public:
 
     friend inline bool operator>=(const base_uint& a, const base_uint& b)
     {
-        for (int i = base_uint::WIDTH-1; i >= 0; i--)
+        for (int i = base_uint::WIDTH-1; i >= 0; --i)
         {
             if (a.pn[i] > b.pn[i])
                 return true;
@@ -256,7 +257,7 @@ public:
 
     friend inline bool operator==(const base_uint& a, const base_uint& b)
     {
-        for (int i = 0; i < base_uint::WIDTH; i++)
+        for (int i = 0; i < base_uint::WIDTH; ++i)
             if (a.pn[i] != b.pn[i])
                 return false;
         return true;
@@ -268,7 +269,7 @@ public:
             return false;
         if (a.pn[1] != (uint32_t)(b >> 32))
             return false;
-        for (int i = 2; i < base_uint::WIDTH; i++)
+        for (int i = 2; i < base_uint::WIDTH; ++i)
             if (a.pn[i] != 0)
                 return false;
         return true;
@@ -289,18 +290,18 @@ public:
     std::string GetHex() const
     {
         char psz[sizeof(pn)*2 + 1];
-        for (uint32_t i = 0; i < sizeof(pn); i++)
+        for (uint32_t i = 0; i < sizeof(pn); ++i)
             sprintf(psz + i*2, "%02x", ((uint8_t*)pn)[sizeof(pn) - i - 1]);
         return std::string(psz, psz + sizeof(pn)*2);
     }
 
     void SetHex(const char* psz)
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] = 0;
 
         while (isspace(*psz))
-            psz++;
+            ++psz;
 
         if (psz[0] == '0' && tolower(psz[1]) == 'x')
             psz += 2;
@@ -309,8 +310,8 @@ public:
         static uint8_t phexdigit[256] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,1,2,3,4,5,6,7,8,9,0,0,0,0,0,0, 0,0xa,0xb,0xc,0xd,0xe,0xf,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0xa,0xb,0xc,0xd,0xe,0xf,0,0,0,0,0,0,0,0,0 };
         const char* pbegin = psz;
         while (phexdigit[(uint8_t)*psz] || *psz == '0')
-            psz++;
-        psz--;
+            ++psz;
+        --psz;
         uint8_t* p1 = (uint8_t*)pn;
         uint8_t* pend = p1 + WIDTH * 4;
         while (psz >= pbegin && p1 < pend)
@@ -319,7 +320,7 @@ public:
             if (psz >= pbegin)
             {
                 *p1 |= (phexdigit[(uint8_t)*psz--] << 4);
-                p1++;
+                ++p1;
             }
         }
     }
@@ -335,7 +336,7 @@ public:
     {
         std::vector<uint8_t> DATA;
 
-        for(int index = 0; index < WIDTH; index++)
+        for(int index = 0; index < WIDTH; ++index)
         {
             std::vector<uint8_t> BYTES(4, 0);
             BYTES[0] = (pn[index] >> 24);
@@ -353,7 +354,7 @@ public:
         Used for de-serializing in Miner LLP **/
     void SetBytes(const std::vector<uint8_t> DATA)
     {
-        for(int index = 0; index < WIDTH; index++)
+        for(int index = 0; index < WIDTH; ++index)
         {
             std::vector<uint8_t> BYTES(DATA.begin() + (index * 4), DATA.begin() + (index * 4) + 4);
             pn[index] = (BYTES[0] << 24) + (BYTES[1] << 16) + (BYTES[2] << 8) + (BYTES[3] );
@@ -426,19 +427,19 @@ public:
 
     uint256_t()
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] = 0;
     }
 
     uint256_t(const basetype& b)
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] = b.pn[i];
     }
 
     uint256_t& operator=(const basetype& b)
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] = b.pn[i];
         return *this;
     }
@@ -447,7 +448,7 @@ public:
     {
         pn[0] = (uint32_t)b;
         pn[1] = (uint32_t)(b >> 32);
-        for (int i = 2; i < WIDTH; i++)
+        for (int i = 2; i < WIDTH; ++i)
             pn[i] = 0;
     }
 
@@ -455,7 +456,7 @@ public:
     {
         pn[0] = (uint32_t)b;
         pn[1] = (uint32_t)(b >> 32);
-        for (int i = 2; i < WIDTH; i++)
+        for (int i = 2; i < WIDTH; ++i)
             pn[i] = 0;
         return *this;
     }
@@ -468,7 +469,8 @@ public:
     explicit uint256_t(const std::vector<uint8_t>& vch)
     {
         if (vch.size() == sizeof(pn))
-            memcpy(pn, &vch[0], sizeof(pn));
+            //memcpy(pn, &vch[0], sizeof(pn));
+            std::copy(&vch[0], &vch[0] + sizeof(pn), pn);
         else
             *this = 0;
     }
@@ -532,19 +534,19 @@ public:
 
     uint512_t()
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] = 0;
     }
 
     uint512_t(const basetype& b)
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] = b.pn[i];
     }
 
     uint512_t& operator=(const basetype& b)
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] = b.pn[i];
         return *this;
     }
@@ -553,7 +555,7 @@ public:
     {
         pn[0] = (uint32_t)b;
         pn[1] = (uint32_t)(b >> 32);
-        for (int i = 2; i < WIDTH; i++)
+        for (int i = 2; i < WIDTH; ++i)
             pn[i] = 0;
     }
 
@@ -561,7 +563,7 @@ public:
     {
         pn[0] = (uint32_t)b;
         pn[1] = (uint32_t)(b >> 32);
-        for (int i = 2; i < WIDTH; i++)
+        for (int i = 2; i < WIDTH; ++i)
             pn[i] = 0;
         return *this;
     }
@@ -581,6 +583,7 @@ public:
     {
         if (vch.size() == sizeof(pn))
             memcpy(pn, &vch[0], sizeof(pn));
+            std::copy(&vch[0], &vch[0] + sizeof(pn), pn);
         else
             *this = 0;
     }
@@ -644,19 +647,19 @@ public:
 
     uint576_t()
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] = 0;
     }
 
     uint576_t(const basetype& b)
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] = b.pn[i];
     }
 
     uint576_t& operator=(const basetype& b)
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] = b.pn[i];
         return *this;
     }
@@ -665,7 +668,7 @@ public:
     {
         pn[0] = (uint32_t)b;
         pn[1] = (uint32_t)(b >> 32);
-        for (int i = 2; i < WIDTH; i++)
+        for (int i = 2; i < WIDTH; ++i)
             pn[i] = 0;
     }
 
@@ -673,7 +676,7 @@ public:
     {
         pn[0] = (uint32_t)b;
         pn[1] = (uint32_t)(b >> 32);
-        for (int i = 2; i < WIDTH; i++)
+        for (int i = 2; i < WIDTH; ++i)
             pn[i] = 0;
         return *this;
     }
@@ -686,7 +689,8 @@ public:
     explicit uint576_t(const std::vector<uint8_t>& vch)
     {
         if (vch.size() == sizeof(pn))
-            memcpy(pn, &vch[0], sizeof(pn));
+            //memcpy(pn, &vch[0], sizeof(pn));
+            std::copy(&vch[0], &vch[0] + sizeof(pn), pn);
         else
             *this = 0;
     }
@@ -751,19 +755,19 @@ public:
 
     uint1024_t()
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] = 0;
     }
 
     uint1024_t(const basetype& b)
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] = b.pn[i];
     }
 
     uint1024_t& operator=(const basetype& b)
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             pn[i] = b.pn[i];
         return *this;
     }
@@ -772,7 +776,7 @@ public:
     {
         pn[0] = (uint32_t)b;
         pn[1] = (uint32_t)(b >> 32);
-        for (int i = 2; i < WIDTH; i++)
+        for (int i = 2; i < WIDTH; ++i)
             pn[i] = 0;
     }
 
@@ -780,14 +784,14 @@ public:
     {
         pn[0] = (uint32_t)b;
         pn[1] = (uint32_t)(b >> 32);
-        for (int i = 2; i < WIDTH; i++)
+        for (int i = 2; i < WIDTH; ++i)
             pn[i] = 0;
         return *this;
     }
 
     uint1024_t(uint256_t b)
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             if(i < b.WIDTH)
                 pn[i] = b.pn[i];
             else
@@ -796,7 +800,7 @@ public:
 
     uint1024_t& operator=(uint256_t b)
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             if(i < b.WIDTH)
                 pn[i] = b.pn[i];
             else
@@ -807,7 +811,7 @@ public:
 
     uint1024_t(uint512_t b)
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             if(i < b.WIDTH)
                 pn[i] = b.pn[i];
             else
@@ -816,7 +820,7 @@ public:
 
     uint1024_t& operator=(uint512_t b)
     {
-        for (int i = 0; i < WIDTH; i++)
+        for (int i = 0; i < WIDTH; ++i)
             if(i < b.WIDTH)
                 pn[i] = b.pn[i];
             else
@@ -830,7 +834,7 @@ public:
     uint256_t getuint256() const
     {
         uint256_t b;
-        for (int i = 0; i < b.WIDTH; i++)
+        for (int i = 0; i < b.WIDTH; ++i)
             b.pn[i] = pn[i];
 
         return b;
@@ -842,7 +846,7 @@ public:
     uint512_t getuint512() const
     {
         uint512_t b;
-        for (int i = 0; i < b.WIDTH; i++)
+        for (int i = 0; i < b.WIDTH; ++i)
             b.pn[i] = pn[i];
 
         return b;
@@ -856,7 +860,8 @@ public:
     explicit uint1024_t(const std::vector<uint8_t>& vch)
     {
         if (vch.size() == sizeof(pn))
-            memcpy(pn, &vch[0], sizeof(pn));
+            //memcpy(pn, &vch[0], sizeof(pn));
+            std::copy(&vch[0], &vch[0] + sizeof(pn), pn);
         else
             *this = 0;
     }

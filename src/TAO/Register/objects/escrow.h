@@ -16,51 +16,57 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-namespace TAO::Register
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    //TODO: this needs some work 
-    class Escrow
+    /* Register Layer namespace. */
+    namespace Register
     {
-    public:
 
-        /** The total signers. **/
-        uint32_t nSignatories;
-
-
-        /** The required signers. **/
-        uint32_t nRequired;
-
-
-        /** The authorised signatories (genesis id's) **/
-        std::vector<uint512_t> hashSignatories;
-
-
-        /** The validation script to satisfy. **/
-        std::vector<uint8_t> vValidationScript;
-
-
-        /** Serialization methods. **/
-        IMPLEMENT_SERIALIZE
-        (
-            READWRITE(nSignatories);
-            READWRITE(nRequired);
-            READWRITE(hashSignatories);
-            READWRITE(vValidationScript);
-        )
-
-
-        Escrow()
-        : nSignatories(0)
-        , nRequired(0)
-        , hashSignatories()
-        , vValidationScript()
+        //TODO: this needs some work
+        class Escrow
         {
+        public:
 
-        }
+            /** The total signers. **/
+            uint32_t nSignatories;
 
-        void print() const;
-    };
+
+            /** The required signers. **/
+            uint32_t nRequired;
+
+
+            /** The authorised signatories (genesis id's) **/
+            std::vector<uint512_t> hashSignatories;
+
+
+            /** The validation script to satisfy. **/
+            std::vector<uint8_t> vValidationScript;
+
+
+            /** Serialization methods. **/
+            IMPLEMENT_SERIALIZE
+            (
+                READWRITE(nSignatories);
+                READWRITE(nRequired);
+                READWRITE(hashSignatories);
+                READWRITE(vValidationScript);
+            )
+
+
+            Escrow()
+            : nSignatories(0)
+            , nRequired(0)
+            , hashSignatories()
+            , vValidationScript()
+            {
+
+            }
+
+            void print() const;
+        };
+    }
 }
 
 #endif

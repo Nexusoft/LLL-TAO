@@ -45,7 +45,7 @@ namespace LLP
                     nLastPing    = runtime::timestamp();
 
                     /* Debut output. */
-                    debug::log(0, NODE "%s Connected at timestamp %" PRIu64 "", GetAddress().ToString().c_str(), runtime::unifiedtimestamp());
+                    debug::log(0, NODE, GetAddress().ToString(), " Connected at timestamp ", runtime::unifiedtimestamp());
 
                     /* Send version if making the connection. */
                     if(fOUTGOING)
@@ -136,7 +136,7 @@ namespace LLP
                     if(!TRITIUM_SERVER->addrThisNode.IsValid())
                     {
                         addr.SetPort(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
-                        debug::log2(0, NODE, "recieved external address ", addr.ToString());
+                        debug::log(0, NODE, "recieved external address ", addr.ToString());
 
                         TRITIUM_SERVER->addrThisNode = addr;
                     }
@@ -146,7 +146,7 @@ namespace LLP
                     {
                         if(addr.ToStringIP() == TRITIUM_SERVER->addrThisNode.ToStringIP())
                         {
-                            debug::log2(0, NODE, "connected to self ", addr.ToString());
+                            debug::log(0, NODE, "connected to self ", addr.ToString());
 
                             return false;
                         }
@@ -158,7 +158,7 @@ namespace LLP
                         PushMessage(GET_ADDRESSES);
 
                     /* Debug output for offsets. */
-                    debug::log2(3, NODE, "received session identifier ",nSessionID);
+                    debug::log(3, NODE, "received session identifier ",nSessionID);
 
                     break;
                 }
@@ -178,7 +178,7 @@ namespace LLP
                     int32_t nOffset = (runtime::timestamp(true) - nTimestamp);
 
                     /* Debug output for offsets. */
-                    debug::log2(3, NODE, "received timestamp of ", nTimestamp, " sending offset ", nOffset);
+                    debug::log(3, NODE, "received timestamp of ", nTimestamp, " sending offset ", nOffset);
 
                     /* Push a timestamp in response. */
                     PushMessage(DAT_OFFSET, nRequestID, nOffset);
@@ -200,7 +200,7 @@ namespace LLP
                     /* Check the time since request was sent. */
                     if(runtime::timestamp() - mapSentRequests[nRequestID] > 10)
                     {
-                        debug::log2(0, NODE, "offset is stale.");
+                        debug::log(0, NODE, "offset is stale.");
                         mapSentRequests.erase(nRequestID);
 
                         break;
@@ -211,7 +211,7 @@ namespace LLP
                     ssPacket >> nOffset;
 
                     /* Debug output for offsets. */
-                    debug::log2(3, NODE, "received offset ", nOffset);
+                    debug::log(3, NODE, "received offset ", nOffset);
 
                     /* Remove sent requests from mpa. */
                     mapSentRequests.erase(nRequestID);
@@ -259,12 +259,12 @@ namespace LLP
                     if(!LLD::legDB->HasTx(tx.GetHash()))
                     {
                         /* Debug output for tx. */
-                        debug::log(3, NODE "recieved tx %s", tx.GetHash().ToString().substr(0, 20).c_str());
+                        debug::log(3, NODE "recieved tx ", tx.GetHash().ToString().substr(0, 20));
 
                         /* Check if tx is valid. */
                         if(!tx.IsValid())
                         {
-                            debug::error(NODE "tx %s REJECTED", tx.GetHash().ToString().substr(0, 20).c_str());
+                            debug::error(NODE "tx ", tx.GetHash().ToString().substr(0, 20), " REJECTED");
 
                             break;
                         }
@@ -273,7 +273,7 @@ namespace LLP
                     }
 
                     /* Debug output for offsets. */
-                    debug::log(3, NODE "already have tx %s", tx.GetHash().ToString().substr(0, 20).c_str());
+                    debug::log(3, NODE "already have tx ", tx.GetHash().ToString().substr(0, 20));
 
                     break;
                 }
@@ -349,7 +349,7 @@ namespace LLP
                         TRITIUM_SERVER->pAddressManager->SetLatency(lat, GetAddress());
 
                     /* Debug output for latency. */
-                    debug::log(3, NODE "latency %u ms", lat);
+                    debug::log(3, NODE "latency ", lat, " ms");
 
                     /* Clear the latency tracker record. */
                     mapLatencyTracker.erase(nNonce);

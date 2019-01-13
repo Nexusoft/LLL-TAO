@@ -40,6 +40,8 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
 
+#include <TAO/Operation/include/execute.h>
+
 #include <LLP/types/miner.h>
 
 #include <iostream>
@@ -66,9 +68,15 @@ namespace LLP
     Server<LegacyNode> * LEGACY_SERVER;
 }
 
+void Thread()
+{
+
+}
 
 int main(int argc, char** argv)
 {
+    LLP::Server<LLP::CoreNode>* CORE_SERVER = nullptr;
+    LLP::Server<LLP::RPCNode>* RPC_SERVER = nullptr;
 
     /* Setup the timer timer. */
     runtime::timer timer;
@@ -100,12 +108,16 @@ int main(int argc, char** argv)
 
 
     /* Create directories if they don't exist yet. */
-    if(!filesystem::exists(config::GetDataDir(false)) && filesystem::create_directory(config::GetDataDir(false)))
-        debug::log2(0, TESTING "Generated Path ", config::GetDataDir(false).c_str());
+    if(!filesystem::exists(config::GetDataDir(false)) &&
+        filesystem::create_directory(config::GetDataDir(false)))
+    {
+        debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir(false));
+    }
+
 
 
     /* Create the database instances. */
-    LLD::regDB = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::APPEND);
+    LLD::regDB = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::APPEND | LLD::FLAGS::FORCE);
     LLD::locDB = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
     LLD::legDB = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
 
@@ -133,46 +145,6 @@ int main(int argc, char** argv)
     TAO::Ledger::ChainState::Initialize();
 
 
-    if(config::GetArg("-test", 0) > 0)
-    {
-        /* Get the account. */
-        TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("user", "pass");
-
-        for(int i = 0; i < config::GetArg("-test", 0); i++)
-        {
-            /* Create the block object. */
-            TAO::Ledger::TritiumBlock block;
-            if(!TAO::Ledger::CreateBlock(user, std::string("1234").c_str(), 2, block))
-                return debug::error("cant create block");
-
-            /* Get the secret from new key. */
-            std::vector<uint8_t> vBytes = user->Generate(block.producer.nSequence, "1234").GetBytes();
-            LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
-
-            /* Generate the EC Key. */
-            LLC::ECKey key(NID_brainpoolP512t1, 64);
-            if(!key.SetSecret(vchSecret, true))
-                return debug::error("cant set securet");
-
-            /* Generate new block signature. */
-            block.GenerateSignature(key);
-
-            /* Verify the block object. */
-            if(!block.Check())
-                return debug::error("check failed");
-
-            /* Create the state object. */
-            TAO::Ledger::BlockState state = TAO::Ledger::BlockState(block);
-            if(!state.Accept())
-                return debug::error("invalid state");
-
-            /* Write transaction to local database. */
-            if(!LLD::locDB->WriteLast(user->Genesis(), state.producer.GetHash()))
-                return debug::error("failed to write last");
-        }
-    }
-
-
     /* Initialize the Tritium Server. */
     LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(
         config::GetArg("-port", config::fTestNet ? 8888 : 9888),
@@ -187,6 +159,8 @@ int main(int argc, char** argv)
         true);
 
 
+    //-addnode means add to address manager for this specific Server
+    //-connect means follow the logic below this and try to establish a connection
     /* Add node to Tritium server */
     if(config::mapMultiArgs["-addnode"].size() > 0)
     {
@@ -199,7 +173,9 @@ int main(int argc, char** argv)
     }
 
 
-    /* Initialize the Legacy Server.
+    //try to addnode 127.0.0.1 or some unreachable address
+    //get both of these to try and race on connection so they break getaddrinfo
+    /* Initialize the Legacy Server. */
     LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(
         config::GetArg("-port", config::fTestNet ? 8323 : 9323),
         10,
@@ -221,10 +197,9 @@ int main(int argc, char** argv)
                 config::GetArg("-port", config::fTestNet ? 8323 : 9323));
         }
     }
-    */
 
     /* Create the Core API Server. */
-    LLP::Server<LLP::CoreNode>* CORE_SERVER = new LLP::Server<LLP::CoreNode>(
+    CORE_SERVER = new LLP::Server<LLP::CoreNode>(
         config::GetArg("-apiport", 8080),
         10,
         30,
@@ -237,9 +212,10 @@ int main(int argc, char** argv)
         false);
 
 
+
     /* Set up RPC server */
     TAO::API::RPCCommands = new TAO::API::RPC();
-    LLP::Server<LLP::RPCNode>* RPC_SERVER = new LLP::Server<LLP::RPCNode>(
+    RPC_SERVER = new LLP::Server<LLP::RPCNode>(
         config::GetArg("-rpcport", config::fTestNet? 8336 : 9336),
         1,
         30,
@@ -252,6 +228,7 @@ int main(int argc, char** argv)
         false);
 
 
+
     /* Elapsed Milliseconds from timer. */
     uint32_t nElapsed = timer.ElapsedMilliseconds();
     timer.Stop();
@@ -262,8 +239,46 @@ int main(int argc, char** argv)
 
 
     /* Startup performance metric. */
-    debug::log2(0, TESTING, "Started up in ", nElapsed, "ms");
+    debug::log(0, FUNCTION, "Started up in ", nElapsed, "ms");
 
+
+    /* Get the account. */
+    TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("colin", "pass");
+
+    for(uint32_t n = 0; n < config::GetArg("-test", 0); n++)
+    {
+        /* Create the transaction. */
+        TAO::Ledger::Transaction tx;
+        if(!TAO::Ledger::CreateTransaction(user, "1234", tx))
+            debug::error(0, FUNCTION, "failed to create");
+
+        /* Submit the transaction payload. */
+        uint256_t hashRegister = LLC::GetRand256();
+
+        /* Test the payload feature. */
+        DataStream ssData(SER_REGISTER, 1);
+        ssData << std::string("this is test data");
+
+        /* Submit the payload object. */
+        tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::APPEND << static_cast<std::vector<uint8_t>>(ssData);
+
+        /* Execute the operations layer. */
+        if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
+            debug::error(0, FUNCTION, "Operations failed to execute");
+
+        /* Sign the transaction. */
+        if(!tx.Sign(user->Generate(tx.nSequence, "1234")))
+            debug::error(0, FUNCTION, "Failed to sign");
+
+        /* Execute the operations layer. */
+        if(!TAO::Ledger::mempool.Accept(tx))
+            debug::error(0, FUNCTION, "Failed to accept");
+    }
+
+    /* Initialize generator thread. */
+    std::thread thread;
+    if(config::GetBoolArg("-private"))
+        thread = std::thread(TAO::Ledger::ThreadGenerator);
 
     /* Wait for shutdown. */
     std::mutex SHUTDOWN_MUTEX;
@@ -278,7 +293,7 @@ int main(int argc, char** argv)
     /* Cleanup the ledger database. */
     if(LLD::legDB)
     {
-        debug::log2(0, TESTING, "Shutting down ledgerDB");
+        debug::log(0, FUNCTION, "Shutting down ledgerDB");
 
         delete LLD::legDB;
     }
@@ -287,7 +302,7 @@ int main(int argc, char** argv)
     /* Cleanup the register database. */
     if(LLD::regDB)
     {
-        debug::log2(0, TESTING, "Shutting down registerDB");
+        debug::log(0, FUNCTION, "Shutting down registerDB");
 
         delete LLD::regDB;
     }
@@ -296,7 +311,7 @@ int main(int argc, char** argv)
     /* Cleanup the local database. */
     if(LLD::locDB)
     {
-        debug::log2(0, TESTING, "Shutting down localDB");
+        debug::log(0, FUNCTION, "Shutting down localDB");
 
         delete LLD::locDB;
     }
@@ -305,7 +320,7 @@ int main(int argc, char** argv)
     /* Shutdown the tritium server and its subsystems */
     if(LLP::TRITIUM_SERVER)
     {
-        debug::log2(0, TESTING, "Shutting down Tritium Server");
+        debug::log(0, FUNCTION, "Shutting down Tritium Server");
 
         LLP::TRITIUM_SERVER->Shutdown();
         delete LLP::TRITIUM_SERVER;
@@ -315,17 +330,18 @@ int main(int argc, char** argv)
     /* Shutdown the legacy server and its subsystems */
     if(LLP::LEGACY_SERVER)
     {
-        debug::log2(0, TESTING, "Shutting down Legacy Server");
+        debug::log(0, FUNCTION, "Shutting down Legacy Server");
 
         LLP::LEGACY_SERVER->Shutdown();
         delete LLP::LEGACY_SERVER;
     }
 
 
+    //checkout these guys for memory leaks
     /* Shutdown the core API server and its subsystems */
     if(CORE_SERVER)
     {
-        debug::log2(0, TESTING, "Shutting down API Server");
+        debug::log(0, FUNCTION, "Shutting down API Server");
 
         CORE_SERVER->Shutdown();
         delete CORE_SERVER;
@@ -335,7 +351,7 @@ int main(int argc, char** argv)
     /* Shutdown the RPC server and its subsystems */
     if(RPC_SERVER)
     {
-        debug::log2(0, TESTING, "Shutting down RPC Server");
+        debug::log(0, FUNCTION, "Shutting down RPC Server");
 
         RPC_SERVER->Shutdown();
         delete RPC_SERVER;
@@ -348,7 +364,7 @@ int main(int argc, char** argv)
 
 
     /* Startup performance metric. */
-    debug::log2(0, TESTING, "Closed in ", nElapsed, "ms");
+    debug::log(0, FUNCTION, "Closed in ", nElapsed, "ms");
 
 
     return 0;

@@ -9,7 +9,7 @@
 #   accounts/create        supply/getitem
 #   accounts/login         supply/transfer
 #   accounts/logout        supply/createitem
-#   accounts/transactions  supply/appenditem
+#   accounts/transactions  supply/updateitem
 #                          supply/history
 #
 # Here is a program calling sequence to list transactions for 2 users:
@@ -49,8 +49,10 @@ class sdk_init():
     #enddef
 
     def nexus_accounts_create(self):
-        parms = "?username={}&password={}&pin={}".format(self.username,
-            self.password, self.pin)
+        pw = self.password.replace("&", "%26")
+        pw = urllib.quote_plus(pw)
+        parms = "?username={}&password={}&pin={}".format(self.username, pw,
+            self.pin)
         url = accounts_url.format("create") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -59,7 +61,9 @@ class sdk_init():
     def nexus_accounts_login(self):
         if (self.session_id != None): return(self.__error("Already logged in"))
 
-        parms = "?username={}&password={}".format(self.username, self.password)
+        pw = self.password.replace("&", "%26")
+        pw = urllib.quote_plus(pw)
+        parms = "?username={}&password={}".format(self.username, pw)
         url = accounts_url.format("login") + parms
         json_data = self.__get(url)
         if (json_data.has_key("error")): return(json_data)
@@ -100,10 +104,12 @@ class sdk_init():
         if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
-        # Varkable data can be a string whitespace in it. Make it URL friendly.
+        # URL quote data since specical characters in data string don't
+        # conflict with URI encoding characters.
         #
         if (type(data) != str): data = str(data)
-        data = data.replace(" ", "%20")
+        data = data.replace("&", "%26")
+        data = urllib.quote_plus(data)
 
         parms = "?pin={}&session={}&data={}".format(self.pin, self.session_id,
             data)
@@ -112,18 +118,20 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_supply_appenditem(self, address, data):
+    def nexus_supply_updateitem(self, address, data):
         if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
-        # Varkable data can be a string whitespace in it. Make it URL friendly.
+        # URL quote data since specical characters in data string don't
+        # conflict with URI encoding characters.
         #
         if (type(data) != str): data = str(data)
-        data = data.replace(" ", "%20")
+        data = data.replace("&", "%26")
+        data = urllib.quote_plus(data)
 
         parms = "?pin={}&session={}&address={}&data={}".format(self.pin,
             self.session_id, address, data)
-        url = supply_url.format("appenditem") + parms
+        url = supply_url.format("updateitem") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
@@ -132,6 +140,14 @@ class sdk_init():
         parms = "?address={}".format(address)
         url = supply_url.format("getitem") + parms
         json_data = self.__get(url)
+
+        #
+        # Unquote data if "state" key is present.
+        #
+        if (json_data.has_key("result")):
+            data = urllib.unquote_plus(json_data["result"]["state"])
+            json_data["result"]["state"] = data.replace("%26", "&")
+        #endif
         return(json_data)
     #enddef
 

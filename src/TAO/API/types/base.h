@@ -18,73 +18,79 @@ ________________________________________________________________________________
 #include <TAO/API/types/exception.h>
 #include <Util/include/debug.h>
 
-namespace TAO::API
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /** Base class for all JSON based API's.
-     *
-     *  Instances of JSONAPIBase derivations must be registered with the JSONAPINode processing the HTTP requests.
-     *  This class holds a map of JSONAPIMethod instances that in turn perform the processing for each API method request.
-     *
-     **/
-    class Base
+    /* API Layer namespace. */
+    namespace API
     {
-    public:
-        Base() : fInitialized(false) { }
 
-
-        /** Abstract initializor that all derived API's must implement to register their specific APICommands. **/
-        virtual void Initialize() = 0;
-
-
-        /** Name of this API.  Derivations should implement this and return an appropriate API name */
-        virtual std::string GetName() const = 0;
-
-
-        /** Execute
+        /** Base class for all JSON based API's.
          *
-         *  Handles the processing of the requested method.
-         *  Derivations should implement this to lookup the requested method in the mapFunctions map and pass the processing on.
-         *  Derivations should also form the response JSON according to the API specification
-         *
-         *  @param[in] strMethod The requested API method.
-         *  @param[in] jsonParameters The parameters that the caller has passed to the API request.
-         *  @param[in] fHelp Flag to determine if command help is requested.
-         *
-         *  @return JSON encoded response.
+         *  Instances of JSONAPIBase derivations must be registered with the JSONAPINode processing the HTTP requests.
+         *  This class holds a map of JSONAPIMethod instances that in turn perform the processing for each API method request.
          *
          **/
-        json::json Execute(const std::string& strMethod, const json::json& jsonParams, bool fHelp = false)
+        class Base
         {
-            if(mapFunctions.find(strMethod) != mapFunctions.end())
-                return mapFunctions[strMethod].Execute(SanitizeParams(strMethod, jsonParams), fHelp);
-            else
-                throw APIException(-32601, debug::strprintf("Method not found: %s", strMethod.c_str()));
-        }
-
-        /** SanitizeParams
-        *
-        *  Allows derived API's to check the values in the parameters array for the method being called.
-        *  The return json contains the sanitized parameter values, which derived implementations might convert to the correct type
-        *  for the method being called.
-        *
-        *  @param[in] strMethod The name of the method being invoked.
-        *  @param[in] jsonParams The json array of parameters being passed to this method.
-        *
-        *  @return the sanitized json parameters array.
-        *
-        **/
-        virtual json::json SanitizeParams( const std::string& strMethod, const json::json& jsonParams ) {return jsonParams;};
-
-    protected:
-
-        /** Initializer Flag. */
-        bool fInitialized;
+        public:
+            Base() : fInitialized(false) { }
 
 
-        /** Map of method names to method function pointer objects for each method supported by this API. **/
-        std::map<std::string, Function > mapFunctions;
-    };
+            /** Abstract initializor that all derived API's must implement to register their specific APICommands. **/
+            virtual void Initialize() = 0;
+
+
+            /** Name of this API.  Derivations should implement this and return an appropriate API name */
+            virtual std::string GetName() const = 0;
+
+
+            /** Execute
+             *
+             *  Handles the processing of the requested method.
+             *  Derivations should implement this to lookup the requested method in the mapFunctions map and pass the processing on.
+             *  Derivations should also form the response JSON according to the API specification
+             *
+             *  @param[in] strMethod The requested API method.
+             *  @param[in] jsonParameters The parameters that the caller has passed to the API request.
+             *  @param[in] fHelp Flag to determine if command help is requested.
+             *
+             *  @return JSON encoded response.
+             *
+             **/
+            json::json Execute(const std::string& strMethod, const json::json& jsonParams, bool fHelp = false)
+            {
+                if(mapFunctions.find(strMethod) != mapFunctions.end())
+                    return mapFunctions[strMethod].Execute(SanitizeParams(strMethod, jsonParams), fHelp);
+                else
+                    throw APIException(-32601, debug::strprintf("Method not found: %s", strMethod.c_str()));
+            }
+
+            /** SanitizeParams
+            *
+            *  Allows derived API's to check the values in the parameters array for the method being called.
+            *  The return json contains the sanitized parameter values, which derived implementations might convert to the correct type
+            *  for the method being called.
+            *
+            *  @param[in] strMethod The name of the method being invoked.
+            *  @param[in] jsonParams The json array of parameters being passed to this method.
+            *
+            *  @return the sanitized json parameters array.
+            *
+            **/
+            virtual json::json SanitizeParams( const std::string& strMethod, const json::json& jsonParams ) {return jsonParams;};
+
+        protected:
+
+            /** Initializer Flag. */
+            bool fInitialized;
+
+
+            /** Map of method names to method function pointer objects for each method supported by this API. **/
+            std::map<std::string, Function > mapFunctions;
+        };
+    }
 }
 
 

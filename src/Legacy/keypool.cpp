@@ -27,7 +27,7 @@ ________________________________________________________________________________
 
 namespace Legacy
 {
-    
+
     /*  Clears any existing keys in the pool and the wallet database
      *  and generates a completely new key set.
      */
@@ -62,9 +62,9 @@ namespace Legacy
 
                 setKeyPool.insert(nPoolIndex);
             }
-            
+
             if (config::GetBoolArg("-printkeypool"))
-                debug::log(0, "CKeyPool::NewKeyPool wrote %" PRI64d " new keys", nKeys);
+                debug::log(0, "CKeyPool::NewKeyPool wrote ", nKeys, " new keys");
 
             walletdb.Close();
         }
@@ -119,13 +119,13 @@ namespace Legacy
                 setKeyPool.insert(nNewPoolIndex);
 
                 if (fPrintKeyPool)
-                    debug::log(0, "Keypool added key %" PRI64d "", nNewPoolIndex);
+                    debug::log(0, "Keypool added key ", nNewPoolIndex);
 
                 fKeysAdded = true;
             }
 
             if (fPrintKeyPool && fKeysAdded)
-                debug::log(0, "Keypool topped up, %d keys added, new size=%d", (nTargetSize - nStartingSize), nTargetSize);
+                debug::log(0, "Keypool topped up, ", (nTargetSize - nStartingSize), " keys added, new size=",  nTargetSize);
 
             walletdb.Close();
         }
@@ -204,7 +204,7 @@ namespace Legacy
 
 
     /* Reserves a key pool entry out of this key pool. After reserving it, the
-     * key pool entry is unavailable for other use. 
+     * key pool entry is unavailable for other use.
      */
     void CKeyPool::ReserveKeyFromPool(uint64_t& nPoolIndex, CKeyPoolEntry& keypoolEntry)
     {
@@ -243,7 +243,7 @@ namespace Legacy
 
             assert(!keypoolEntry.vchPubKey.empty());
             if (config::GetBoolArg("-printkeypool"))
-                debug::log(0, "Keypool reserve %" PRI64d "", nPoolIndex);
+                debug::log(0, "Keypool reserve ", nPoolIndex);
 
             walletdb.Close();
         }
@@ -262,7 +262,7 @@ namespace Legacy
             walletdb.ErasePool(nPoolIndex);
 
             if (config::GetBoolArg("-printkeypool"))
-	            debug::log(0, "Keypool keep %" PRI64d "", nPoolIndex);
+	            debug::log(0, "Keypool keep ", nPoolIndex);
 
 	        walletdb.Close();
         }
@@ -281,7 +281,7 @@ namespace Legacy
         }
 
         if (config::GetBoolArg("-printkeypool"))
-            debug::log(0, "Keypool return %" PRI64d "", nPoolIndex);
+            debug::log(0, "Keypool return ", nPoolIndex);
     }
 
 

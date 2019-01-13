@@ -18,66 +18,72 @@ ________________________________________________________________________________
 #include <functional>
 #include <memory>
 
-namespace TAO::API
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /** Base class for all JSON based API methods
-     *
-     *  Encapsulates the function pointer to the method to process the API request
-     *
-     **/
-    class Function
+    /* API Layer namespace. */
+    namespace API
     {
-        /** The function pointer to be called. */
-        std::function<json::json(const json::json&, bool)> function;
 
-
-        /** The state being enabled or not. **/
-        bool fEnabled;
-
-
-    public:
-        /** Default Constructor. **/
-        Function() { };
-
-
-        /** Function input **/
-        Function(std::function<json::json(const json::json&, bool)> functionIn) :
-        function(functionIn),
-        fEnabled(true)
-        {
-        }
-
-
-        /** Execute
+        /** Base class for all JSON based API methods
          *
-         *  Executes the function pointer.
-         *
-         *  @param[in] fHelp Flag if help is invoked
-         *  @param[in] params The json formatted parameters
-         *
-         *  @return The json formatted response.
+         *  Encapsulates the function pointer to the method to process the API request
          *
          **/
-        json::json Execute(const json::json& jsonParams, bool fHelp)
+        class Function
         {
-            if(!fEnabled)
-                return json::json::object({"error", "method disabled"});
-
-            return function(jsonParams, fHelp);
-        }
+            /** The function pointer to be called. */
+            std::function<json::json(const json::json&, bool)> function;
 
 
-        /** Disable
-         *
-         *  Disables the method from executing.
-         *
-         **/
-        void Disable()
-        {
-            fEnabled = false;
-        }
-    };
+            /** The state being enabled or not. **/
+            bool fEnabled;
+
+
+        public:
+            /** Default Constructor. **/
+            Function() { };
+
+
+            /** Function input **/
+            Function(std::function<json::json(const json::json&, bool)> functionIn) :
+            function(functionIn),
+            fEnabled(true)
+            {
+            }
+
+
+            /** Execute
+             *
+             *  Executes the function pointer.
+             *
+             *  @param[in] fHelp Flag if help is invoked
+             *  @param[in] params The json formatted parameters
+             *
+             *  @return The json formatted response.
+             *
+             **/
+            json::json Execute(const json::json& jsonParams, bool fHelp)
+            {
+                if(!fEnabled)
+                    return json::json::object({"error", "method disabled"});
+
+                return function(jsonParams, fHelp);
+            }
+
+
+            /** Disable
+             *
+             *  Disables the method from executing.
+             *
+             **/
+            void Disable()
+            {
+                fEnabled = false;
+            }
+        };
+    }
 }
 
 #endif

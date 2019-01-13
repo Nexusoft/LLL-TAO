@@ -17,64 +17,71 @@ ________________________________________________________________________________
 #include <LLP/include/hosts.h>
 #include <LLP/include/global.h>
 
-namespace TAO::API
+/* Global TAO namespace. */
+namespace TAO
 {
-    // json::json stop(const json::json& params, bool fHelp)
-    // {
-    //     if (fHelp || params.size() != 0)
-    //         return std::string(
-    //             "stop"
-    //             " - Stop Nexus server.");
-    //     // Shutdown will take long enough that the response should get back
-    //     StartShutdown();
-    //     return "Nexus server stopping";
-    // }
 
-    /* getconnectioncount
-       Returns the number of connections to other nodes */
-    json::json RPC::GetConnectionCount(const json::json& params, bool fHelp)
+    /* API Layer namespace. */
+    namespace API
     {
-        if (fHelp || params.size() != 0)
-            return std::string(
-                "getconnectioncount"
-                " - Returns the number of connections to other nodes.");
 
-        return GetTotalConnectionCount();
-    }
+        // json::json stop(const json::json& params, bool fHelp)
+        // {
+        //     if (fHelp || params.size() != 0)
+        //         return std::string(
+        //             "stop"
+        //             " - Stop Nexus server.");
+        //     // Shutdown will take long enough that the response should get back
+        //     StartShutdown();
+        //     return "Nexus server stopping";
+        // }
 
-    /* Restart all node connections */
-    json::json RPC::Reset(const json::json& params, bool fHelp)
-    {
-        if(fHelp || params.size() != 0)
-            return std::string(
-                "reset"
-                " - Restart all node connections");
+        /* getconnectioncount
+           Returns the number of connections to other nodes */
+        json::json RPC::GetConnectionCount(const json::json& params, bool fHelp)
+        {
+            if (fHelp || params.size() != 0)
+                return std::string(
+                    "getconnectioncount"
+                    " - Returns the number of connections to other nodes.");
 
-    //     //disconnect all nodes currently active
-    //     {
-    //         LOCK(cs_vNodes);
-    //         // Disconnect unused nodes
-    //         vector<CNode*> vNodesCopy = vNodes;
-    //         BOOST_FOREACH(CNode* pnode, vNodesCopy)
-    //         {
-    //             // remove from vNodes
-    //             vNodes.erase(remove(vNodes.begin(), vNodes.end(), pnode), vNodes.end());
+            return GetTotalConnectionCount();
+        }
 
-    //             // close socket and cleanup
-    //             pnode->CloseSocketDisconnect();
-    //             pnode->Cleanup();
+        /* Restart all node connections */
+        json::json RPC::Reset(const json::json& params, bool fHelp)
+        {
+            if(fHelp || params.size() != 0)
+                return std::string(
+                    "reset"
+                    " - Restart all node connections");
 
-    //             // hold in disconnected pool until all refs are released
-    //             pnode->nReleaseTime = max(pnode->nReleaseTime, GetUnifiedTimestamp() + 15 * 60);
-    //             if (pnode->fNetworkNode || pnode->fInbound)
-    //                 pnode->Release();
-    //             vNodesDisconnected.push_back(pnode);
-    //         }
-    //     }
-    //     ReadConfigFile(mapArgs, mapMultiArgs);
+        //     //disconnect all nodes currently active
+        //     {
+        //         LOCK(cs_vNodes);
+        //         // Disconnect unused nodes
+        //         vector<CNode*> vNodesCopy = vNodes;
+        //         BOOST_FOREACH(CNode* pnode, vNodesCopy)
+        //         {
+        //             // remove from vNodes
+        //             vNodes.erase(remove(vNodes.begin(), vNodes.end(), pnode), vNodes.end());
 
-    //     return "success";
-        json::json ret;
-        return ret;
+        //             // close socket and cleanup
+        //             pnode->CloseSocketDisconnect();
+        //             pnode->Cleanup();
+
+        //             // hold in disconnected pool until all refs are released
+        //             pnode->nReleaseTime = max(pnode->nReleaseTime, GetUnifiedTimestamp() + 15 * 60);
+        //             if (pnode->fNetworkNode || pnode->fInbound)
+        //                 pnode->Release();
+        //             vNodesDisconnected.push_back(pnode);
+        //         }
+        //     }
+        //     ReadConfigFile(mapArgs, mapMultiArgs);
+
+        //     return "success";
+            json::json ret;
+            return ret;
+        }
     }
 }

@@ -21,95 +21,102 @@ ________________________________________________________________________________
 
 #include <Util/include/allocators.h>
 
-namespace TAO::Ledger
+/* Global TAO namespace. */
+namespace TAO
 {
-    /** Base Class for a Signature SignatureChain
-     *
-     *  Similar to HD wallet systems, but integrated into the Layer 2 of the nexus software stack.
-     *  Seed phrase includes at least 128 bits of entropy (8 char username, 8 char password) and pin
-     *  to attack a signature chain by dictionary attack.
-     *
-     */
-    class SignatureChain
+
+    /* Ledger Layer namespace. */
+    namespace Ledger
     {
 
-        /** Secure allocator to represent the username of this signature chain. **/
-        SecureString strUsername;
-
-
-        /** Secure allocater to represent the password of this signature chain. **/
-        SecureString strPassword;
-
-    public:
-        /** Constructor to generate Keychain
+        /** Base Class for a Signature SignatureChain
          *
-         * @param[in] strUsernameIn The username to seed the signature chain
-         * @param[in] strPasswordIn The password to seed the signature chain
-         **/
-        SignatureChain(SecureString strUsernameIn, SecureString strPasswordIn)
-        : strUsername(strUsernameIn.c_str())
-        , strPassword(strPasswordIn.c_str())
+         *  Similar to HD wallet systems, but integrated into the Layer 2 of the nexus software stack.
+         *  Seed phrase includes at least 128 bits of entropy (8 char username, 8 char password) and pin
+         *  to attack a signature chain by dictionary attack.
+         *
+         */
+        class SignatureChain
         {
 
-        }
+            /** Secure allocator to represent the username of this signature chain. **/
+            SecureString strUsername;
 
 
-        /** Genesis Function
-         *
-         *  This function is responsible for generating the genesis ID.
-         *
-         *  @return The 512 bit hash of this key in the series.
-         **/
-        uint256_t Genesis()
-        {
-            /* Generate the Secret Phrase */
-            std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
-            vSecret.insert(vSecret.end(), strPassword.begin(), strPassword.end());
+            /** Secure allocater to represent the password of this signature chain. **/
+            SecureString strPassword;
 
-            /* Generate the Hashes */
-            uint1024_t hashSecret = LLC::SK1024(vSecret);
+        public:
+            /** Constructor to generate Keychain
+             *
+             * @param[in] strUsernameIn The username to seed the signature chain
+             * @param[in] strPasswordIn The password to seed the signature chain
+             **/
+            SignatureChain(SecureString strUsernameIn, SecureString strPasswordIn)
+            : strUsername(strUsernameIn.c_str())
+            , strPassword(strPasswordIn.c_str())
+            {
 
-            /* Generate the Final Root Hash. */
-            return LLC::SK256(hashSecret.GetBytes());
-        }
+            }
 
 
-        /** Generate Function
-         *
-         *  This function is responsible for genearting the private key in the keychain of a specific account.
-         *  The keychain is a series of keys seeded from a secret phrase and a PIN number.
-         *
-         *  @param[in] nKeyID The key number in the keychian
-         *  @param[in] strSecret The secret phrase to use (Never Cached)
-         *
-         *  @return The 512 bit hash of this key in the series.
-         **/
-        uint512_t Generate(uint32_t nKeyID, SecureString strSecret)
-        {
-            /* Serialize the Key ID (Big Endian). */
-            std::vector<uint8_t> vKeyID((uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
+            /** Genesis Function
+             *
+             *  This function is responsible for generating the genesis ID.
+             *
+             *  @return The 512 bit hash of this key in the series.
+             **/
+            uint256_t Genesis()
+            {
+                /* Generate the Secret Phrase */
+                std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
+                vSecret.insert(vSecret.end(), strPassword.begin(), strPassword.end());
 
-            /* Generate the Secret Phrase */
-            std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
-            vSecret.insert(vSecret.end(), vKeyID.begin(), vKeyID.end());
-            vSecret.insert(vSecret.end(), strPassword.begin(), strPassword.end());
+                /* Generate the Hashes */
+                uint1024_t hashSecret = LLC::SK1024(vSecret);
 
-            /* Generate the secret data. */
-            std::vector<uint8_t> vPin(strSecret.begin(), strSecret.end());
-            vPin.insert(vPin.end(), vKeyID.begin(), vKeyID.end());
+                /* Generate the Final Root Hash. */
+                return LLC::SK256(hashSecret.GetBytes());
+            }
 
-            /* Generate the Hashes */
-            uint1024_t hashSecret = LLC::SK1024(vSecret);
-            uint1024_t hashPIN    = LLC::SK1024(vPin);
 
-            std::vector<uint8_t> vFinal;
-            vFinal.insert(vFinal.end(), (uint8_t*)&hashSecret, (uint8_t*)&hashSecret + 128);
-            vFinal.insert(vFinal.end(), (uint8_t*)&hashPIN, (uint8_t*)&hashPIN + 128);
+            /** Generate Function
+             *
+             *  This function is responsible for genearting the private key in the keychain of a specific account.
+             *  The keychain is a series of keys seeded from a secret phrase and a PIN number.
+             *
+             *  @param[in] nKeyID The key number in the keychian
+             *  @param[in] strSecret The secret phrase to use (Never Cached)
+             *
+             *  @return The 512 bit hash of this key in the series.
+             **/
+            uint512_t Generate(uint32_t nKeyID, SecureString strSecret)
+            {
+                /* Serialize the Key ID (Big Endian). */
+                std::vector<uint8_t> vKeyID((uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
 
-            /* Generate the Final Root Hash. */
-            return LLC::SK512(vFinal);
-        }
-    };
+                /* Generate the Secret Phrase */
+                std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
+                vSecret.insert(vSecret.end(), vKeyID.begin(), vKeyID.end());
+                vSecret.insert(vSecret.end(), strPassword.begin(), strPassword.end());
+
+                /* Generate the secret data. */
+                std::vector<uint8_t> vPin(strSecret.begin(), strSecret.end());
+                vPin.insert(vPin.end(), vKeyID.begin(), vKeyID.end());
+
+                /* Generate the Hashes */
+                uint1024_t hashSecret = LLC::SK1024(vSecret);
+                uint1024_t hashPIN    = LLC::SK1024(vPin);
+
+                std::vector<uint8_t> vFinal;
+                vFinal.insert(vFinal.end(), (uint8_t*)&hashSecret, (uint8_t*)&hashSecret + 128);
+                vFinal.insert(vFinal.end(), (uint8_t*)&hashPIN, (uint8_t*)&hashPIN + 128);
+
+                /* Generate the Final Root Hash. */
+                return LLC::SK512(vFinal);
+            }
+        };
+    }
 }
 
 #endif

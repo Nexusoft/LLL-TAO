@@ -28,6 +28,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 #include <LLC/hash/Skein3Fish/include/skeinApi.h>
 #include <cstring>
 #include <stdio.h>
+#include <algorithm>
 
 int skeinCtxPrepare(SkeinCtx_t* ctx, SkeinSize_t size)
 {
@@ -58,7 +59,8 @@ int skeinInit(SkeinCtx_t* ctx, size_t hashBitLen)
      * If size is the same and hash bit length is zero then reuse
      * the save chaining variables.
      */
-    switch (ctx->skeinSize) {
+    switch (ctx->skeinSize)
+    {
     case Skein256:
         ret = Skein_256_InitExt(&ctx->m.s256, hashBitLen,
                                 treeInfo, nullptr, 0);
@@ -73,9 +75,11 @@ int skeinInit(SkeinCtx_t* ctx, size_t hashBitLen)
         break;
     }
 
-    if (ret == SKEIN_SUCCESS) {
+    if (ret == SKEIN_SUCCESS)
+    {
         /* Save chaining variables for this combination of size and hashBitLen */
-        memcpy(ctx->XSave, X, Xlen);
+        //memcpy(ctx->XSave, X, Xlen);
+        std::copy((uint8_t *)X, (uint8_t *)X + Xlen, (uint8_t *)ctx->XSave);
     }
     return ret;
 }
@@ -95,7 +99,8 @@ int skeinMacInit(SkeinCtx_t* ctx, const uint8_t *key, size_t keyLen,
 
     Skein_Assert(hashBitLen, SKEIN_BAD_HASHLEN);
 
-    switch (ctx->skeinSize) {
+    switch (ctx->skeinSize)
+    {
     case Skein256:
         ret = Skein_256_InitExt(&ctx->m.s256, hashBitLen,
                                 treeInfo,
@@ -114,9 +119,11 @@ int skeinMacInit(SkeinCtx_t* ctx, const uint8_t *key, size_t keyLen,
 
         break;
     }
-    if (ret == SKEIN_SUCCESS) {
+    if (ret == SKEIN_SUCCESS)
+    {
         /* Save chaining variables for this combination of key, keyLen, hashBitLen */
-        memcpy(ctx->XSave, X, Xlen);
+        //memcpy(ctx->XSave, X, Xlen);
+        std::copy((uint8_t *)X, (uint8_t *)X + Xlen, (uint8_t *)ctx->XSave);
     }
     return ret;
 }
@@ -134,7 +141,8 @@ void skeinReset(SkeinCtx_t* ctx)
     X = ctx->m.s256.X;
     Xlen = ctx->skeinSize/8;
     /* Restore the chaing variable, reset byte counter */
-    memcpy(X, ctx->XSave, Xlen);
+    //memcpy(X, ctx->XSave, Xlen);
+    std::copy((uint8_t *)ctx->XSave, (uint8_t *)ctx->XSave + Xlen, (uint8_t *)X);
 
     /* Setup context to process the message */
     Skein_Start_New_Type(&ctx->m, MSG);
@@ -177,7 +185,8 @@ int skeinUpdateBits(SkeinCtx_t *ctx, const uint8_t *msg,
     Skein_Assert((ctx->m.h.T[1] & SKEIN_T1_FLAG_BIT_PAD) == 0 || msgBitCnt == 0, SKEIN_FAIL);
 
     /* if number of bits is a multiple of bytes - that's easy */
-    if ((msgBitCnt & 0x7) == 0) {
+    if ((msgBitCnt & 0x7) == 0)
+    {
         return skeinUpdate(ctx, msg, msgBitCnt >> 3);
     }
     skeinUpdate(ctx, msg, (msgBitCnt >> 3) + 1);
@@ -206,7 +215,8 @@ int skeinFinal(SkeinCtx_t* ctx, uint8_t* hash)
     int ret = SKEIN_FAIL;
     Skein_Assert(ctx, SKEIN_FAIL);
 
-    switch (ctx->skeinSize) {
+    switch (ctx->skeinSize)
+    {
     case Skein256:
         ret = Skein_256_Final(&ctx->m.s256, (u08b_t*)hash);
         break;

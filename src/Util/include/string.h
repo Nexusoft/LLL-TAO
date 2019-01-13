@@ -107,24 +107,6 @@ inline std::string FormatMoney(int64_t n, bool fPlus = false, int64_t COIN_SIZE 
  *  Parse the money amount from input string and return the encoded money value.
  *  Return if there were errors or not.
  *
- *  @param[in] str The input string to parse money amount from.
- *
- *  @param[out] nRet The amount encoded from the parsed money string
- *
- *  @return True if no errors, false otherwise.
- *
- **/
-inline bool ParseMoney(const std::string& str, int64_t& nRet)
-{
-    return ParseMoney(str.c_str(), nRet);
-}
-
-
-/** ParseMoney
- *
- *  Parse the money amount from input string and return the encoded money value.
- *  Return if there were errors or not.
- *
  *  @param[in] pszIn The input string to parse money amount from.
  *
  *  @param[out] nRet The amount encoded from the parsed money string
@@ -180,6 +162,24 @@ inline bool ParseMoney(const char* pszIn, int64_t& nRet, int64_t COIN_SIZE = 100
 
     nRet = nValue;
     return true;
+}
+
+
+/** ParseMoney
+ *
+ *  Parse the money amount from input string and return the encoded money value.
+ *  Return if there were errors or not.
+ *
+ *  @param[in] str The input string to parse money amount from.
+ *
+ *  @param[out] nRet The amount encoded from the parsed money string
+ *
+ *  @return True if no errors, false otherwise.
+ *
+ **/
+inline bool ParseMoney(const std::string& str, int64_t& nRet)
+{
+    return ParseMoney(str.c_str(), nRet);
 }
 
 

@@ -355,7 +355,7 @@ namespace Legacy
         if (kMasterKey.nDeriveIterations < 25000)
             kMasterKey.nDeriveIterations = 25000;
 
-        debug::log(0, "Encrypting Wallet with nDeriveIterations of %i", kMasterKey.nDeriveIterations);
+        debug::log(0, "Encrypting Wallet with nDeriveIterations of ", kMasterKey.nDeriveIterations);
 
         /* Encrypt the master key value using the new passphrase */
         if (!crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, kMasterKey.nDeriveIterations, kMasterKey.nDerivationMethod))
@@ -541,7 +541,7 @@ namespace Legacy
                     if (pMasterKey.second.nDeriveIterations < 25000)
                         pMasterKey.second.nDeriveIterations = 25000;
 
-                    debug::log(0, "Wallet passphrase changed to use nDeriveIterations of %i", pMasterKey.second.nDeriveIterations);
+                    debug::log(0, "Wallet passphrase changed to use nDeriveIterations of ", pMasterKey.second.nDeriveIterations);
 
                     /* Re-encrypt the master key using the new passphrase */
                     if (!crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
@@ -785,8 +785,8 @@ namespace Legacy
             }
 
             /* debug print */
-            debug::log(0, "CWallet::AddToWallet : %s  %s%s",
-                       wtxIn.GetHash().ToString().substr(0,10).c_str(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+            debug::log(0, "CWallet::AddToWallet : ", wtxIn.GetHash().ToString().substr(0,10),"  ",
+                        (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
 
             /* Write to disk */
             if (fInsertedNew || fUpdated)
@@ -1035,8 +1035,8 @@ namespace Legacy
                 if (wtx.CheckTransaction())
                     wtx.RelayWalletTransaction(legacydb);
                 else
-                    debug::log(0, "ResendWalletTransactions : CheckTransaction failed for transaction %s",
-                               wtx.GetHash().ToString().c_str());
+                    debug::log(0, "ResendWalletTransactions : CheckTransaction failed for transaction ",
+                               wtx.GetHash().ToString());
             }
         }
     }
@@ -1067,8 +1067,8 @@ namespace Legacy
                      */
                     if (!prevTx.IsSpent(txin.prevout.n) && IsMine(prevTx.vout[txin.prevout.n]))
                     {
-                        debug::log(0, "WalletUpdateSpent found spent coin %s Nexus %s",
-                                   FormatMoney(prevTx.GetCredit()).c_str(), prevTx.GetHash().ToString().c_str());
+                        debug::log(0, "WalletUpdateSpent found spent coin ", FormatMoney(prevTx.GetCredit()), " Nexus ",
+                                    prevTx.GetHash().ToString());
 
                         prevTx.MarkSpent(txin.prevout.n);
                         prevTx.WriteToDisk();
@@ -1114,11 +1114,10 @@ namespace Legacy
 //TODO - Fix txindex reference
 //                    if (IsMine(walletTx.vout[n]) && walletTx.IsSpent(n) && (txindex.vSpent.size() <= n || txindex.vSpent[n].IsNull()))
 //                    {
-                        debug::log(0, "FixSpentCoins found lost coin %s Nexus %s[%d], %s",
-                                   FormatMoney(walletTx.vout[n].nValue).c_str(), walletTx.GetHash().ToString().c_str(),
-                                   n, fCheckOnly? "repair not attempted" : "repairing");
+                        debug::log(0, "FixSpentCoins found lost coin ", FormatMoney(walletTx.vout[n].nValue), " Nexus ", walletTx.GetHash().ToString(),
+                            "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
 
-                        nMismatchFound++;
+                        ++nMismatchFound;
 
                         nBalanceInQuestion += walletTx.vout[n].nValue;
 
@@ -1132,11 +1131,10 @@ namespace Legacy
 //                    /* Handle the wallet missing a spend that was updated in the indexes. The index is updated on connect inputs. */
 //                    else if (IsMine(walletTx.vout[n]) && !walletTx.IsSpent(n) && (txindex.vSpent.size() > n && !txindex.vSpent[n].IsNull()))
 //                    {
-                        debug::log(0, "FixSpentCoins found spent coin %s Nexus %s[%d], %s",
-                                   FormatMoney(walletTx.vout[n].nValue).c_str(), walletTx.GetHash().ToString().c_str(),
-                                   n, fCheckOnly? "repair not attempted" : "repairing");
+                        debug::log(0, "FixSpentCoins found spent coin ", FormatMoney(walletTx.vout[n].nValue).c_str(), " Nexus ", walletTx.GetHash().ToString(),
+                            "[", n, "] ", fCheckOnly? "repair not attempted" : "repairing");
 
-                        nMismatchFound++;
+                        ++nMismatchFound;
 
                         nBalanceInQuestion += walletTx.vout[n].nValue;
 
@@ -1353,7 +1351,7 @@ namespace Legacy
         {
             /* Cannot create transaction when wallet locked */
             std::string strError = std::string("Error: Wallet locked, unable to create transaction  ");
-            debug::log(0, "SendToNexusAddress() : %s", strError.c_str());
+            debug::log(0, "SendToNexusAddress() : ", strError);
             return strError;
         }
 
@@ -1361,7 +1359,7 @@ namespace Legacy
         {
             /* Cannot create transaction if unlocked for mint only */
             std::string strError = std::string("Error: Wallet unlocked for block minting only, unable to create transaction.");
-            debug::log(0, "SendToNexusAddress() : %s", strError.c_str());
+            debug::log(0, "SendToNexusAddress() : ", strError);
             return strError;
         }
 
@@ -1375,8 +1373,7 @@ namespace Legacy
                  * Really should not get this because of initial check at start of function. Could only happen
                  * if calculates an additional fee such that nFeeRequired > MIN_TX_FEE
                  */
-                strError = debug::strprintf(std::string("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  "),
-                                            FormatMoney(nFeeRequired).c_str());
+                strError = debug::strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  ", FormatMoney(nFeeRequired).c_str());
             }
             else
             {
@@ -1384,7 +1381,7 @@ namespace Legacy
                 strError = std::string("Error: Transaction creation failed  ");
             }
 
-            debug::log(0, "SendToNexusAddress() : %s", strError.c_str());
+            debug::log(0, "SendToNexusAddress() : ", strError);
 
             return strError;
         }
@@ -1547,7 +1544,7 @@ namespace Legacy
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
 
-            debug::log(0, "CommitTransaction:%s", wtxNew.ToString().c_str());
+            debug::log(0, "CommitTransaction:", wtxNew.ToString());
 
             /* This is only to keep the database open to defeat the auto-flush for the
              * duration of this scope.  This is the only place where this optimization
@@ -1785,7 +1782,7 @@ namespace Legacy
 
         if (config::GetBoolArg("-printselectcoin", false))
         {
-            debug::log(0, "SelectCoins() for Account %s\n", nConfMine, strAccount.c_str());
+            debug::log(0, "SelectCoins() for Account ", strAccount);
         }
 
         {
@@ -1880,16 +1877,16 @@ namespace Legacy
             for(auto item : setCoinsRet)
                 item.first->print();
 
-            debug::log(0, "total %s", FormatMoney(nValueRet).c_str());
+            debug::log(0, "total ", FormatMoney(nValueRet));
         }
 
         /* Ensure input total value does not exceed maximum allowed */
         if(!MoneyRange(nValueRet))
-            return debug::error("CWallet::SelectCoins() : Input total over TX limit Total: %" PRI64d " Limit %" PRI64d, nValueRet, MaxTxOut());
+            return debug::error("CWallet::SelectCoins() : Input total over TX limit Total: ", nValueRet, " Limit ",  MaxTxOut());
 
         /* Ensure balance is sufficient to cover transaction */
         if(nValueRet < nTargetValue)
-            return debug::error("CWallet::SelectCoins() : Insufficient Balance Target: %" PRI64d " Actual %" PRI64d, nTargetValue, nValueRet);
+            return debug::error("CWallet::SelectCoins() : Insufficient Balance Target: ", nTargetValue, " Actual ",  nValueRet);
 
         return true;
     }

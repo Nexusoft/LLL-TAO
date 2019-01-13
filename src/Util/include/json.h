@@ -34,7 +34,7 @@ SOFTWARE.
 #define NLOHMANN_JSON_VERSION_MINOR 4
 #define NLOHMANN_JSON_VERSION_PATCH 0
 
-#include <algorithm> // all_of, find, for_each
+#include <algorithm> // all_of, find, for_each, copy
 #include <cassert> // assert
 #include <ciso646> // and, not, or
 #include <cstddef> // nullptr_t, ptrdiff_t, size_t
@@ -6348,7 +6348,7 @@ class output_adapter
 #include <cstddef> // size_t
 #include <cstdint> // uint8_t, uint16_t, uint32_t, uint64_t
 #include <cstdio> // snprintf
-#include <cstring> // memcpy
+//#include <cstring> // memcpy
 #include <iterator> // back_inserter
 #include <limits> // numeric_limits
 #include <string> // char_traits, string
@@ -8211,7 +8211,8 @@ class binary_reader
         }
 
         // step 2: convert array into number of type T and return
-        std::memcpy(&result, vec.data(), sizeof(NumberType));
+        //std::memcpy(&result, vec.data(), sizeof(NumberType));
+        std::copy((uint8_t *)&vec[0], (uint8_t *)&vec[0] + sizeof(NumberType), (uint8_t *)&result);
         return true;
     }
 
@@ -8336,7 +8337,7 @@ class binary_reader
 #include <algorithm> // reverse
 #include <array> // array
 #include <cstdint> // uint8_t, uint16_t, uint32_t, uint64_t
-#include <cstring> // memcpy
+//#include <cstring> // memcpy
 #include <limits> // numeric_limits
 
 // #include <nlohmann/detail/input/binary_reader.hpp>
@@ -9610,7 +9611,8 @@ class binary_writer
     {
         // step 1: write number to array of length NumberType
         std::array<CharType, sizeof(NumberType)> vec;
-        std::memcpy(vec.data(), &n, sizeof(NumberType));
+        //std::memcpy(vec.data(), &n, sizeof(NumberType));
+        std::copy((uint8_t *)&n, (uint8_t *)&n + sizeof(NumberType), (uint8_t *)vec.data());
 
         // step 2: write array to output (with possible reordering)
         if (is_little_endian and not OutputIsLittleEndian)
@@ -9641,7 +9643,8 @@ class binary_writer
         static_assert(sizeof(std::uint8_t) == sizeof(CharType), "size of CharType must be equal to std::uint8_t");
         static_assert(std::is_pod<CharType>::value, "CharType must be POD");
         CharType result;
-        std::memcpy(&result, &x, sizeof(x));
+        //std::memcpy(&result, &x, sizeof(x));
+        std::copy(&x, &x + sizeof(x), (uint8_t *)&result);
         return result;
     }
 
@@ -9733,7 +9736,8 @@ Target reinterpret_bits(const Source source)
     static_assert(sizeof(Target) == sizeof(Source), "size mismatch");
 
     Target target;
-    std::memcpy(&target, &source, sizeof(Source));
+    //std::memcpy(&target, &source, sizeof(Source));
+    std::copy((uint8_t *)&source, (uint8_t *)&source + sizeof(Source), (uint8_t *)&target);
     return target;
 }
 

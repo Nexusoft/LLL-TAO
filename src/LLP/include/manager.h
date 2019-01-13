@@ -59,6 +59,16 @@ namespace LLP
         ~AddressManager();
 
 
+        /** IsEmpty
+         *
+         *  Determine if the address manager has any addresses in it or not
+         *
+         *  @return True if no addresses exist. false otherwise.
+         *
+         **/
+        bool IsEmpty() const;
+
+
         /** GetAddresses
          *
          *  Gets a list of addresses in the manager
@@ -166,7 +176,7 @@ namespace LLP
          *  print the current state of the address manager
          *
          **/
-        void PrintStats() const;
+        void PrintStats();
 
     private:
 
@@ -176,10 +186,12 @@ namespace LLP
          *  Helper function to get an array of info on the connected states specified
          *  by flags
          *
+         *  @param[out] info The resulting outputted address info vector
+         *
          *  @param[in] flags Specify which types of connections to get the info from.
          *
          **/
-        std::vector<AddressInfo> get_info(const uint8_t flags = CONNECT_FLAGS_ALL) const;
+        void get_info(std::vector<AddressInfo> &info, const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
         /** get_count
@@ -189,7 +201,7 @@ namespace LLP
          *  *  @param[in] flags Specify which types of connections to get the info from.
          *
          **/
-        uint32_t get_current_count(const uint8_t flags = CONNECT_FLAGS_ALL) const;
+        uint32_t get_current_count(const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
         /** get_total_count
@@ -200,13 +212,13 @@ namespace LLP
          *  @param[in] flags Specify which types of connections to get the info from.
          *
          **/
-        uint32_t get_total_count(const uint8_t flags) const;
+        uint32_t get_total_count(const uint8_t flags);
 
 
         LLD::AddressDB *pDatabase;
         std::unordered_map<uint64_t, AddressInfo> mapAddrInfo;
 
-        std::mutex mut;
+        mutable std::mutex mut;
     };
 }
 

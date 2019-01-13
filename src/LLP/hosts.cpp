@@ -17,8 +17,14 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 
 #include <vector>
+#include <mutex>
 
 #include <Util/include/strlcpy.h>
+
+namespace
+{
+    std::mutex LOOKUP_MUTEX;
+}
 
 namespace LLP
 {
@@ -27,9 +33,9 @@ namespace LLP
     std::vector<Address> DNS_Lookup(std::vector<std::string> DNS_Seed)
     {
         std::vector<Address> vNodes;
-        for (int nSeed = 0; nSeed < DNS_Seed.size(); nSeed ++ )
+        for (int nSeed = 0; nSeed < DNS_Seed.size(); ++nSeed)
         {
-            debug::log(0, "%u Host: %s", nSeed, DNS_Seed[nSeed].c_str());
+            debug::log(0, nSeed, " Host: ",  DNS_Seed[nSeed]);
             std::vector<LLP::NetAddr> vaddr;
             if (LookupHost(DNS_Seed[nSeed].c_str(), vaddr))
             {
@@ -38,7 +44,7 @@ namespace LLP
                     Address addr = Address(Service(ip, GetDefaultPort()));
                     vNodes.push_back(addr);
 
-                    debug::log(0, "DNS Seed: %s", addr.ToStringIP().c_str());
+                    debug::log(0, "DNS Seed: ", addr.ToStringIP());
                 }
             }
         }
@@ -63,8 +69,8 @@ namespace LLP
         aiHint.ai_flags = AI_ADDRCONFIG | (fAllowLookup ? 0 : AI_NUMERICHOST);
     #endif
         struct addrinfo *aiRes = nullptr;
-        int nErr = getaddrinfo(pszName, nullptr, &aiHint, &aiRes);
-        if (nErr)
+
+        if(getaddrinfo(pszName, nullptr, &aiHint, &aiRes) != 0)
             return false;
 
         struct addrinfo *aiTrav = aiRes;
@@ -145,11 +151,14 @@ namespace LLP
         }
 
         std::vector<NetAddr> vIP;
+
+        std::unique_lock<std::mutex> lk(::LOOKUP_MUTEX);
+
         bool fRet = LookupIntern(pszHost, vIP, nMaxSolutions, fAllowLookup);
         if (!fRet)
             return false;
         vAddr.resize(vIP.size());
-        for (uint32_t i = 0; i < vIP.size(); i++)
+        for (uint32_t i = 0; i < vIP.size(); ++i)
             vAddr[i] = Service(vIP[i], port);
         return true;
     }

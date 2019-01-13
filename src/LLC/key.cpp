@@ -293,11 +293,11 @@ namespace LLC
 
         /* Ensure length is within range of first length indicator. */
         if (vchSig[1] != vchSig.size() - 6)
-            return debug::error("length mismatch byte 1 %u %u", vchSig[1], vchSig.size());
+            return debug::error("length mismatch byte 1 ", vchSig[1], " ", vchSig.size());
 
         /* Ensure length is within range of second length indicator. */
         if (vchSig[2] != vchSig.size() - 3)
-            return debug::error("length mismatch byte 2 %u - %u", vchSig[2], vchSig.size());
+            return debug::error("length mismatch byte 2 ", vchSig[2], " - ", vchSig.size());
 
         /* Byte 3 needs to indicate integer value for R (0x02) */
         if (vchSig[3] != 0x02)

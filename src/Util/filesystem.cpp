@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #else
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 #endif
 
@@ -87,13 +88,18 @@ namespace filesystem
 #ifndef WIN32
             /* Set destination file permissions (read/write by owner only for data files) */
             mode_t m = S_IRUSR | S_IWUSR;
-            chmod(pathDest.c_str(), m);
+            int file_des = open(pathDest.c_str(), O_RDWR);
+
+            if(file_des < 0)
+                return false;
+
+            fchmod(file_des, m);
 #endif
 
         }
         catch(const std::ios_base::failure &e)
         {
-            return debug::error(FUNCTION " failed to write %s", __PRETTY_FUNCTION__, e.what());
+            return debug::error(FUNCTION, " failed to write ", e.what());
         }
 
         return true;
@@ -140,8 +146,7 @@ namespace filesystem
         /* Handle failures. */
         if(status < 0)
         {
-            return debug::error(FUNCTION "Failed to create directory: %s\nReason: %s", __PRETTY_FUNCTION__,
-                path.c_str(), strerror(errno));
+            return debug::error(FUNCTION, "Failed to create directory: ", path, "\nReason: ", strerror(errno));
         }
 
         return true;
@@ -157,6 +162,14 @@ namespace filesystem
 
         //get the path of the current directory and append path name to that
         abs_path = getcwd(buffer, MAX_PATH);
+
+        if(abs_path.size() > MAX_PATH)
+        {
+            debug::error(FUNCTION, "buffer overrun.");
+            abs_path.clear();
+            return abs_path;
+        }
+
     #ifdef WIN32
         rel_path += '\\';
         abs_path += '\\';

@@ -18,42 +18,49 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/state.h>
 
-namespace TAO::Ledger
+/* Global TAO namespace. */
+namespace TAO
 {
-    struct ChainState
+
+    /* Ledger Layer namespace. */
+    namespace Ledger
     {
-        /** The best block height in the chain. **/
-        static uint32_t nBestHeight;
+
+        struct ChainState
+        {
+            /** The best block height in the chain. **/
+            static uint32_t nBestHeight;
 
 
-        /** The best hash in the chain. */
-        static uint1024_t hashBestChain;
+            /** The best hash in the chain. */
+            static uint1024_t hashBestChain;
 
 
-        /** The best trust in the chain. **/
-        static uint64_t nBestChainTrust;
+            /** The best trust in the chain. **/
+            static uint64_t nBestChainTrust;
 
 
-        /** Hardened Checkpoint. **/
-        static uint1024_t hashCheckpoint;
+            /** Hardened Checkpoint. **/
+            static uint1024_t hashCheckpoint;
 
 
-        /** Flag to tell if initial blocks are downloading. **/
-        static bool Synchronizing();
+            /** Flag to tell if initial blocks are downloading. **/
+            static bool Synchronizing();
 
 
-        /** Initialize the Chain State. */
-        static bool Initialize();
+            /** Initialize the Chain State. */
+            static bool Initialize();
 
 
-        /** The best block in the chain. **/
-        static BlockState stateBest;
+            /** The best block in the chain. **/
+            static BlockState stateBest;
 
 
-        /** The best block in the chain. **/
-        static BlockState stateGenesis;
+            /** The best block in the chain. **/
+            static BlockState stateGenesis;
 
-    };
+        };
+    }
 }
 
 

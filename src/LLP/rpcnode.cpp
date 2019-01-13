@@ -49,7 +49,7 @@ namespace LLP
         /* Check HTTP authorization */
         if (!Authorized(INCOMING.mapHeaders))
         {
-            debug::log(0, "RPC incorrect password attempt from %s\n", this->addr.ToString().c_str()); //PS TODO this address of the peer is incorrect
+            debug::log(0, "RPC incorrect password attempt from ", this->addr.ToString()); //PS TODO this address of the peer is incorrect
 
             /* Deter brute-forcing short passwords.
              * If this results in a DOS the user really
@@ -102,7 +102,7 @@ namespace LLP
         {
             ErrorReply(e.ToJSON(), jsonID);
 
-            return debug::error("RPC Exception: %s", e.what());
+            return debug::error("RPC Exception: ", e.what());
         }
 
         /* Handle for JSON exceptions. */
@@ -110,7 +110,7 @@ namespace LLP
         {
             ErrorReply(APIException(e.id, e.what()).ToJSON(), jsonID);
 
-            return debug::error("RPC Exception: %s", e.what());
+            return debug::error("RPC Exception: ", e.what());
         }
 
         /* Handle for STD exceptions. */
@@ -118,7 +118,7 @@ namespace LLP
         {
             ErrorReply(APIException(-32700, e.what()).ToJSON(), jsonID);
 
-            return debug::error("RPC Exception: %s", e.what());
+            return debug::error("RPC Exception: ", e.what());
         }
 
         /* Handle a connection close header. */
@@ -179,11 +179,11 @@ namespace LLP
     {
         /* Check the headers. */
         if(!mapHeaders.count("authorization"))
-            return debug::error(FUNCTION "no authorization in header", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION, "no authorization in header");
 
         std::string strAuth = mapHeaders["authorization"];
         if (strAuth.substr(0,6) != "Basic ")
-            return debug::error(FUNCTION "incorrect authorization type", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION, "incorrect authorization type");
 
         /* Get the encoded content */
         std::string strUserPass64 = strAuth.substr(6);

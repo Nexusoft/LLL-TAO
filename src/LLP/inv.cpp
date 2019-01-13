@@ -84,7 +84,7 @@ namespace LLP
 
 	std::string CInv::ToString() const
 	{
-		if(GetCommand() == (const char*)"tx")
+		if(GetCommand() == std::string("tx"))
 		{
 			std::string invHash = hash.ToString();
 			return debug::strprintf("tx %s", invHash.substr(invHash.length() - 20, invHash.length()).c_str());
@@ -96,7 +96,7 @@ namespace LLP
 
 	void CInv::print() const
 	{
-		debug::log(0, "CInv(%s)", ToString().c_str());
+		debug::log(0, "CInv(", ToString(), ")");
 	}
 
 

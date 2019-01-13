@@ -346,7 +346,7 @@ namespace Legacy
             return 0;
 
         int64_t nResult = 0;
-        for (uint32_t i = (uint32_t) IsCoinStake(); i < vin.size(); i++)
+        for (uint32_t i = (uint32_t) IsCoinStake(); i < vin.size(); ++i)
         {
             nResult += GetOutputFor(vin[i], mapInputs).nValue;
         }
@@ -449,7 +449,7 @@ namespace Legacy
 	/* Dump the transaction data to the console. */
 	void Transaction::print() const
     {
-        debug::log(0, "%s", ToString().c_str());
+        debug::log(0, ToString());
     }
 
 
@@ -458,15 +458,15 @@ namespace Legacy
     {
         /* Check for empty inputs. */
         if (vin.empty())
-            return debug::error(FUNCTION "vin empty", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION, "vin empty");
 
         /* Check for empty outputs. */
         if (vout.empty())
-            return debug::error(FUNCTION "vout empty", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION, "vout empty");
 
         /* Check for size limits. */
         if (::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > TAO::Ledger::MAX_BLOCK_SIZE)
-            return debug::error(FUNCTION "size limits failed", __PRETTY_FUNCTION__);
+            return debug::error(FUNCTION, "size limits failed");
 
         /* Check for negative or overflow output values */
         int64_t nValueOut = 0;
@@ -474,20 +474,20 @@ namespace Legacy
         {
             /* Checkout for empty outputs. */
             if (txout.IsEmpty() && (!IsCoinBase()) && (!IsCoinStake()))
-                return debug::error(FUNCTION "txout empty for user transaction", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION, "txout empty for user transaction");
 
             /* Enforce minimum output amount. */
             if ((!txout.IsEmpty()) && txout.nValue < MIN_TXOUT_AMOUNT)
-                return debug::error(FUNCTION "txout.nValue below minimum", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION, "txout.nValue below minimum");
 
             /* Enforce maximum output amount. */
             if (txout.nValue > MaxTxOut())
-                return debug::error(FUNCTION "txout.nValue too high", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION, "txout.nValue too high");
 
             /* Enforce maximum total output value. */
             nValueOut += txout.nValue;
             if (!MoneyRange(nValueOut))
-                return debug::error(FUNCTION "txout total out of range", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION, "txout total out of range");
         }
 
         /* Check for duplicate inputs */
@@ -505,7 +505,7 @@ namespace Legacy
         {
             for(auto txin : vin)
                 if (txin.prevout.IsNull())
-                    return debug::error(FUNCTION "prevout is null", __PRETTY_FUNCTION__);
+                    return debug::error(FUNCTION, "prevout is null");
         }
 
         return true;

@@ -19,94 +19,102 @@ ________________________________________________________________________________
 
 #include <Util/templates/serialize.h>
 
-namespace TAO::Register
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /** Account Object.
-     *
-     *  Holds the state of account identifier and account balance.
-     *
-     **/
-    class Account
+    /* Register Layer namespace. */
+    namespace Register
     {
-    public:
 
-        /** The version of this account. **/
-        uint32_t nVersion;
-
-
-        /** The identifier of the account token. **/
-        uint32_t nIdentifier;
-
-
-        /** The balance of total tokens in account. **/
-        uint64_t nBalance;
-
-
-        /** Default Constructor. **/
-        Account()
-        {
-            SetNull();
-        }
-
-        //serialization functions
-        IMPLEMENT_SERIALIZE
-        (
-            READWRITE(nVersion);
-            READWRITE(nIdentifier);
-            READWRITE(nBalance);
-        )
-
-
-        /** Consturctor
+        /** Account Object.
          *
-         *  @param[in] nIdentifierIn The identifier in
-         *  @param[in] nBalanceIn The balance in
+         *  Holds the state of account identifier and account balance.
          *
          **/
-        Account(uint32_t nIdentifierIn, uint64_t nBalanceIn)
-        : nVersion(1)
-        , nIdentifier(nIdentifierIn)
-        , nBalance(nBalanceIn)
+        class Account
         {
+        public:
 
-        }
-
-
-        /** SetNull
-         *
-         *  Set this object to null state.
-         *
-         **/
-        void SetNull()
-        {
-            nVersion       = 0;
-            nIdentifier    = 0;
-            nBalance       = 0;
-        }
+            /** The version of this account. **/
+            uint32_t nVersion;
 
 
-        /** IsNull
-         *
-         *  Checks if object is in null state
-         *
-         **/
-        bool IsNull() const
-        {
-            return (nVersion == 0 && nIdentifier == 0 && nBalance == 0);
-        }
+            /** The identifier of the account token. **/
+            uint32_t nIdentifier;
 
 
-        /** print
-         *
-         *  Output the state of this object.
-         *
-         **/
-        void print() const
-        {
-            debug::log(0, "Account(version=%u, id=%u, balance=%" PRIu64 ")", nVersion, nIdentifier, nBalance);
-        }
-    };
+            /** The balance of total tokens in account. **/
+            uint64_t nBalance;
+
+
+            /** Default Constructor. **/
+            Account()
+            {
+                SetNull();
+            }
+
+            //serialization functions
+            IMPLEMENT_SERIALIZE
+            (
+                READWRITE(nVersion);
+                READWRITE(nIdentifier);
+                READWRITE(nBalance);
+            )
+
+
+            /** Consturctor
+             *
+             *  @param[in] nIdentifierIn The identifier in
+             *  @param[in] nBalanceIn The balance in
+             *
+             **/
+            Account(uint32_t nIdentifierIn, uint64_t nBalanceIn)
+            : nVersion(1)
+            , nIdentifier(nIdentifierIn)
+            , nBalance(nBalanceIn)
+            {
+
+            }
+
+
+            /** SetNull
+             *
+             *  Set this object to null state.
+             *
+             **/
+            void SetNull()
+            {
+                nVersion       = 0;
+                nIdentifier    = 0;
+                nBalance       = 0;
+            }
+
+
+            /** IsNull
+             *
+             *  Checks if object is in null state
+             *
+             **/
+            bool IsNull() const
+            {
+                return (nVersion == 0 && nIdentifier == 0 && nBalance == 0);
+            }
+
+
+            /** print
+             *
+             *  Output the state of this object.
+             *
+             **/
+            void print() const
+            {
+                debug::log(0, "Account(version=", nVersion,
+                    ", id=", nIdentifier,
+                    ", balance=", nBalance, ")");
+            }
+        };
+    }
 }
 
 #endif

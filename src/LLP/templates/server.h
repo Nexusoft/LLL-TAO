@@ -164,6 +164,25 @@ namespace LLP
         }
 
 
+        /** AddNode
+         *
+         *  Add a node address to the internal address manager
+         *
+         *  @param[in] strAddress	IPv4 Address of outgoing connection
+         *
+         *  @param[in] strPort		Port of outgoing connection
+         *
+         **/
+        void AddNode(std::string strAddress, uint16_t nPort)
+        {
+            Service service(debug::strprintf("%s:%u", strAddress.c_str(), nPort).c_str(), false);
+            Address addr = Address(service);
+
+            if(pAddressManager)
+                pAddressManager->AddAddress(addr, ConnectState::NEW);
+        }
+
+
         /** AddConnection
          *
          *  Public Wraper to Add a Connection Manually.
@@ -278,10 +297,10 @@ namespace LLP
                 /* assume the connect state is in a failed state */
                 uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
 
-
                 /* Pick a weighted random priority from a sorted list of addresses */
                 if(pAddressManager && pAddressManager->StochasticSelect(addr))
                 {
+
                     /* Check for connect to self. */
                     if(addr.ToStringIP() == addrThisNode.ToStringIP())
                     {
@@ -295,10 +314,9 @@ namespace LLP
                     uint16_t port = addr.GetPort();
 
                     /* Attempt the connection. */
-                    debug::log(0, NODE "%s Attempting Connection %s:%u", ProtocolType::Name().c_str(), ip.c_str(), port);
+                    debug::log(0, NODE, ProtocolType::Name(), " Attempting Connection ", ip, ":", port);
                     pAddressManager->PrintStats();
 
-                    /* Attempt the connection. */
                     if(AddConnection(ip, port))
                         state = static_cast<uint8_t>(ConnectState::CONNECTED);
 
@@ -319,7 +337,7 @@ namespace LLP
         std::recursive_mutex DDOS_MUTEX;
 
 
-        /* Determine the thread with the least amount of active connections.
+        /* Determine thfalsee thread with the least amount of active connections.
             This keeps the load balanced across all server threads. */
         int32_t FindThread()
         {
@@ -403,7 +421,7 @@ namespace LLP
                     if (hSocket == INVALID_SOCKET)
                     {
                         if (GetLastError() != WSAEWOULDBLOCK)
-                            debug::error("socket error accept failed: %d", GetLastError());
+                            debug::error("socket error accept failed: ", GetLastError());
                     }
                     else
                     {
@@ -414,7 +432,7 @@ namespace LLP
                         /* DDOS Operations: Only executed when DDOS is enabled. */
                         if((fDDOS && DDOS_MAP[(Service)addr]->Banned()))
                         {
-                            debug::log(0, NODE "Connection Request %s refused... Banned.", addr.ToString().c_str());
+                            debug::log(0, NODE "Connection Request ",  addr.ToString(), " refused... Banned.");
                             close(hSocket);
 
                             continue;
@@ -433,7 +451,7 @@ namespace LLP
                             continue;
 
                         dt->AddConnection(sockNew, DDOS_MAP[(Service)addr]);
-                        debug::log(3, NODE "Accepted Connection %s on port %u", addr.ToString().c_str(), PORT);
+                        debug::log(3, NODE "Accepted Connection ", addr.ToString(), " on port ",  PORT);
                     }
                 }
             }
@@ -450,7 +468,7 @@ namespace LLP
                 int32_t ret = WSAStartup(MAKEWORD(2, 2), &wsadata);
                 if (ret != NO_ERROR)
                 {
-                    debug::error("TCP/IP socket library failed to start (WSAStartup returned error %d)", ret);
+                    debug::error("TCP/IP socket library failed to start (WSAStartup returned error )", ret);
                     return false;
                 }
             #endif
@@ -459,7 +477,7 @@ namespace LLP
             hListenSocket = socket(fIPv4 ? AF_INET : AF_INET6, SOCK_STREAM, IPPROTO_TCP);
             if (hListenSocket == INVALID_SOCKET)
             {
-                debug::error("Couldn't open socket for incoming connections (socket returned error %d)", GetLastError());
+                debug::error("Couldn't open socket for incoming connections (socket returned error )", GetLastError());
                 return false;
             }
 
@@ -488,14 +506,14 @@ namespace LLP
                 {
                     int32_t nErr = GetLastError();
                     if (nErr == WSAEADDRINUSE)
-                        debug::error("Unable to bind to port %d on this computer. Address already in use.", ntohs(sockaddr.sin_port));
+                        debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer. Address already in use.");
                     else
-                        debug::error("Unable to bind to port %d on this computer (bind returned error %d)", ntohs(sockaddr.sin_port), nErr);
+                        debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer (bind returned error )",  nErr);
 
                     return false;
                 }
 
-                debug::log(0, NODE "(v4) Bound to port %d", ntohs(sockaddr.sin_port));
+                debug::log(0, NODE "(v4) Bound to port ", ntohs(sockaddr.sin_port));
             }
             else
             {
@@ -508,20 +526,20 @@ namespace LLP
                 {
                     int32_t nErr = GetLastError();
                     if (nErr == WSAEADDRINUSE)
-                        debug::error("Unable to bind to port %d on this computer. Address already in use.", ntohs(sockaddr.sin6_port));
+                        debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer. Address already in use.");
                     else
-                        debug::error("Unable to bind to port %d on this computer (bind returned error %d)", ntohs(sockaddr.sin6_port), nErr);
+                        debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer (bind returned error )",  nErr);
 
                     return false;
                 }
 
-                debug::log(0, NODE "(v6) Bound to port %d", ntohs(sockaddr.sin6_port));
+                debug::log(0, NODE "(v6) Bound to port ", ntohs(sockaddr.sin6_port));
             }
 
             /* Listen for incoming connections */
             if (listen(hListenSocket, SOMAXCONN) == SOCKET_ERROR)
             {
-                debug::error("Listening for incoming connections failed (listen returned error %d)", GetLastError());
+                debug::error("Listening for incoming connections failed (listen returned error )", GetLastError());
                 return false;
             }
 
@@ -560,7 +578,7 @@ namespace LLP
 
 
                 uint32_t RPS = TotalRequests() / TIMER.Elapsed();
-                debug::log(0, FUNCTION "LLP Running at %u requests/s with %u connections.", __PRETTY_FUNCTION__, RPS, nGlobalConnections);
+                debug::log(0, FUNCTION, "LLP Running at ", RPS, " requests/s with ", nGlobalConnections, " connections.");
 
                 TIMER.Reset();
                 ClearRequests();

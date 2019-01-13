@@ -20,6 +20,10 @@ namespace LLP
         Init();
     }
 
+    Address::~Address()
+    {
+    }
+
 
     Address::Address(Service ipIn, uint64_t nServicesIn) : Service(ipIn)
     {

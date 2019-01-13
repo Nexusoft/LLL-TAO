@@ -21,72 +21,79 @@ ________________________________________________________________________________
 
 #include <Util/templates/serialize.h>
 
-namespace TAO::Register
+/* Global TAO namespace. */
+namespace TAO
 {
-    /** Stream
-     *
-     *  Class to handle the serializaing and deserializing of operations and their types
-     *
-     **/
-    class Stream : public BaseStream
+
+    /* Register Layer namespace. */
+    namespace Register
     {
-    public:
 
-        /** Default Constructor. **/
-        Stream()
-        : BaseStream()
-        {
-
-        }
-
-
-        /** Data Constructor.
+        /** Stream
          *
-         *  @param[in] vchDataIn The byte vector to insert.
+         *  Class to handle the serializaing and deserializing of operations and their types
          *
          **/
-        Stream(std::vector<uint8_t> vchDataIn)
-        : BaseStream(vchDataIn)
+        class Stream : public BaseStream
         {
-        }
+        public:
+
+            /** Default Constructor. **/
+            Stream()
+            : BaseStream()
+            {
+
+            }
 
 
-        IMPLEMENT_SERIALIZE
-        (
-            READWRITE(vchData);
-        )
+            /** Data Constructor.
+             *
+             *  @param[in] vchDataIn The byte vector to insert.
+             *
+             **/
+            Stream(std::vector<uint8_t> vchDataIn)
+            : BaseStream(vchDataIn)
+            {
+            }
 
 
-        /** Operator Overload <<
-         *
-         *  Serializes data into vchOperations
-         *
-         *  @param[in] obj The object to serialize into ledger data
-         *
-         **/
-        template<typename Type> Stream& operator<<(const Type& obj)
-        {
-            /* Serialize to the stream. */
-            ::Serialize(*this, obj, (uint32_t)SER_REGISTER, LLD::DATABASE_VERSION); //temp versinos for now
-
-            return (*this);
-        }
+            IMPLEMENT_SERIALIZE
+            (
+                READWRITE(vchData);
+            )
 
 
-        /** Operator Overload >>
-         *
-         *  Serializes data into vchOperations
-         *
-         *  @param[out] obj The object to de-serialize from ledger data
-         *
-         **/
-        template<typename Type> Stream& operator>>(Type& obj)
-        {
-            /* Unserialize from the stream. */
-            ::Unserialize(*this, obj, (uint32_t)SER_REGISTER, LLD::DATABASE_VERSION); //TODO: version should be object version
-            return (*this);
-        }
-    };
+            /** Operator Overload <<
+             *
+             *  Serializes data into vchOperations
+             *
+             *  @param[in] obj The object to serialize into ledger data
+             *
+             **/
+            template<typename Type> Stream& operator<<(const Type& obj)
+            {
+                /* Serialize to the stream. */
+                ::Serialize(*this, obj, (uint32_t)SER_REGISTER, LLD::DATABASE_VERSION); //temp versinos for now
+
+                return (*this);
+            }
+
+
+            /** Operator Overload >>
+             *
+             *  Serializes data into vchOperations
+             *
+             *  @param[out] obj The object to de-serialize from ledger data
+             *
+             **/
+            template<typename Type> Stream& operator>>(Type& obj)
+            {
+                /* Unserialize from the stream. */
+                ::Unserialize(*this, obj, (uint32_t)SER_REGISTER, LLD::DATABASE_VERSION); //TODO: version should be object version
+                return (*this);
+            }
+        };
+    }
 }
 
 #endif

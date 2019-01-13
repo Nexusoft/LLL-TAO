@@ -36,7 +36,7 @@ namespace LLD
 
 
     /* Maximum cache buckets for sectors. */
-    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 64; //32 MB Max Cache
+    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 256; //256 MB Max Cache
 
 
     /* The maximum amount of bytes allowed in the memory buffer for disk flushes. **/
@@ -83,6 +83,7 @@ namespace LLD
             Will allow higher efficiency for thread concurrency. */
         std::recursive_mutex SECTOR_MUTEX;
         std::recursive_mutex BUFFER_MUTEX;
+        std::recursive_mutex TRANSACTION_MUTEX;
 
 
         /* The String to hold the Disk Location of Database File. */
@@ -177,7 +178,11 @@ namespace LLD
             Initialize();
 
             if(config::GetBoolArg("-runtime", false))
-                debug::log(0, ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
+            {
+                debug::log(0, ANSI_COLOR_GREEN FUNCTION, "executed in ",
+                    runtime.ElapsedMicroseconds(), " micro-seconds" ANSI_COLOR_RESET);
+            }
+
         }
 
         ~SectorDatabase()
@@ -199,7 +204,7 @@ namespace LLD
         {
             /* Create directories if they don't exist yet. */
             if(nFlags & FLAGS::CREATE && !filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
-                debug::log(0, FUNCTION "Generated Path %s", __PRETTY_FUNCTION__, strBaseLocation.c_str());
+                debug::log(0, FUNCTION, "Generated Path ", strBaseLocation);
 
             /* Find the most recent append file. */
             while(true)
@@ -256,12 +261,17 @@ namespace LLD
             ssKey << key;
 
             /* Check that the key is not pending in a transaction for Erase. */
-            if(pTransaction && pTransaction->mapEraseData.count(static_cast<std::vector<uint8_t>>(ssKey)))
-                return false;
+            if(pTransaction)
+            {
+                LOCK(TRANSACTION_MUTEX);
 
-            /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-            if(pTransaction && pTransaction->mapTransactions.count(static_cast<std::vector<uint8_t>>(ssKey)))
-                return true;
+                if(pTransaction->mapEraseData.count(static_cast<std::vector<uint8_t>>(ssKey)))
+                    return false;
+
+                /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
+                if(pTransaction->mapTransactions.count(static_cast<std::vector<uint8_t>>(ssKey)))
+                    return true;
+            }
 
             /* Return the Key existance in the Keychain Database. */
             SectorKey cKey;
@@ -282,6 +292,8 @@ namespace LLD
             /* Add transaction to erase queue. */
             if(pTransaction)
             {
+                LOCK(TRANSACTION_MUTEX);
+
                 pTransaction->EraseTransaction(static_cast<std::vector<uint8_t>>(ssKey));
 
                 return true;
@@ -291,7 +303,10 @@ namespace LLD
             bool fErased = pSectorKeys->Erase(static_cast<std::vector<uint8_t>>(ssKey));
 
             if(config::GetBoolArg("-runtime", false))
-                debug::log(0, ANSI_COLOR_GREEN FUNCTION "executed in %u micro-seconds" ANSI_COLOR_RESET, __PRETTY_FUNCTION__, runtime.ElapsedMicroseconds());
+            {
+                debug::log(0, ANSI_COLOR_GREEN FUNCTION, "executed in ",
+                    runtime.ElapsedMicroseconds(), " micro-seconds" ANSI_COLOR_RESET);
+            }
 
             return fErased;
         }
@@ -308,13 +323,19 @@ namespace LLD
             std::vector<uint8_t> vData;
 
             /* Check that the key is not pending in a transaction for Erase. */
-            if(pTransaction && pTransaction->mapEraseData.count(static_cast<std::vector<uint8_t>>(ssKey)))
-                return false;
+            if(pTransaction)
+            {
+                LOCK(TRANSACTION_MUTEX);
 
-            /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-            if(pTransaction && pTransaction->mapTransactions.count(static_cast<std::vector<uint8_t>>(ssKey)))
-                vData = pTransaction->mapTransactions[static_cast<std::vector<uint8_t>>(ssKey)];
-            else if(!Get(static_cast<std::vector<uint8_t>>(ssKey), vData))
+                if(pTransaction->mapEraseData.count(static_cast<std::vector<uint8_t>>(ssKey)))
+                    return false;
+
+                /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
+                if(pTransaction->mapTransactions.count(static_cast<std::vector<uint8_t>>(ssKey)))
+                    vData = pTransaction->mapTransactions[static_cast<std::vector<uint8_t>>(ssKey)];
+            }
+
+            if(vData.empty() && !Get(static_cast<std::vector<uint8_t>>(ssKey), vData))
                 return false;
 
             /* Deserialize Value. */
@@ -360,6 +381,8 @@ namespace LLD
             /* Check for transaction. */
             if(pTransaction)
             {
+                LOCK(TRANSACTION_MUTEX);
+
                 /* Set the transaction data. */
                 pTransaction->mapTransactions[static_cast<std::vector<uint8_t>>(ssKey)] = static_cast<std::vector<uint8_t>>(ssData);
 
@@ -399,8 +422,9 @@ namespace LLD
                 {
                     /* Set the new stream pointer. */
                     pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+
                     if(!pstream)
-                        return debug::error(FUNCTION "couldn't create stream file", __PRETTY_FUNCTION__);
+                        return debug::error(FUNCTION, "couldn't create stream file");
 
                     /* If file not found add to LRU cache. */
                     fileCache->Put(cKey.nSectorFile, pstream);
@@ -415,14 +439,16 @@ namespace LLD
                     vData.resize(cKey.nSectorSize);
 
                     /* Read the State and Size of Sector Header. */
-                    pstream->read((char*) &vData[0], vData.size());
+                    if(!pstream->read((char*) &vData[0], vData.size()))
+                        debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
                 }
 
                 /* Add to cache */
                 cachePool->Put(vKey, vData);
 
                 /* Verbose Debug Logging. */
-                debug::log(5, FUNCTION "Current File: %u | Current File Size: %u\n%s", __PRETTY_FUNCTION__, cKey.nSectorFile, cKey.nSectorStart, HexStr(vData.begin(), vData.end(), true).c_str());
+                debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
+                    " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
 
                 return true;
             }
@@ -447,7 +473,7 @@ namespace LLD
             nBytesRead += (cKey.vKey.size() + vData.size());
 
             /* Find the file stream for LRU cache. */
-            std::fstream* pstream;
+            std::fstream *pstream;
             if(!fileCache->Get(cKey.nSectorFile, pstream))
             {
                 /* Set the new stream pointer. */
@@ -468,11 +494,13 @@ namespace LLD
                 vData.resize(cKey.nSectorSize);
 
                 /* Read the State and Size of Sector Header. */
-                pstream->read((char*) &vData[0], vData.size());
+                if(!pstream->read((char*) &vData[0], vData.size()))
+                    debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
             }
 
             /* Verboe output. */
-            debug::log(5, FUNCTION "Current File: %u | Current File Size: %u\n%s", __PRETTY_FUNCTION__, cKey.nSectorFile, cKey.nSectorStart, HexStr(vData.begin(), vData.end(), true).c_str());
+            debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
+                " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
 
             return true;
         }
@@ -497,7 +525,7 @@ namespace LLD
 
             /* Check data size constraints. */
             if(vData.size() != key.nSectorSize)
-                return debug::error(FUNCTION "sector size %u mismatch %u", __PRETTY_FUNCTION__, key.nSectorSize, vData.size());
+                return debug::error(FUNCTION, "sector size ", key.nSectorSize, " mismatch ", vData.size());
 
             /* Write the data into the memory cache. */
             cachePool->Put(vKey, vData, false);
@@ -529,7 +557,8 @@ namespace LLD
             nBytesWrote += vData.size();
 
             /* Verboe output. */
-            debug::log(5, FUNCTION "Current File: %u | Current File Size: %u\n%s", __PRETTY_FUNCTION__, key.nSectorFile, key.nSectorStart, HexStr(vData.begin(), vData.end(), true).c_str());
+            debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
+                " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
 
             return true;
         }
@@ -552,7 +581,7 @@ namespace LLD
                 /* Create new file if above current file size. */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                 {
-                    debug::log(4, FUNCTION "allocating new sector file %u", __PRETTY_FUNCTION__, nCurrentFileSize, nCurrentFile + 1);
+                    debug::log(4, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
 
                     ++ nCurrentFile;
                     nCurrentFileSize = 0;
@@ -594,7 +623,8 @@ namespace LLD
                 pSectorKeys->Put(key);
 
                 /* Verboe output. */
-                debug::log(5, FUNCTION "Current File: %u | Current File Size: %u\n%s", __PRETTY_FUNCTION__, key.nSectorFile, key.nSectorStart, HexStr(vData.begin(), vData.end(), true).c_str());
+                debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
+                    " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
             }
 
             return true;
@@ -683,7 +713,7 @@ namespace LLD
                 /* Create a new file if the sector file size is over file size limits. */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                 {
-                    debug::log(0, FUNCTION "allocating new sector file %u", __PRETTY_FUNCTION__, nCurrentFile + 1);
+                    debug::log(0, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
 
                     /* Iterate the current file and reset current file sie. */
                     ++nCurrentFile;
@@ -730,7 +760,8 @@ namespace LLD
                 CONDITION.notify_all();
 
                 /* Verbose logging. */
-                debug::log(3, FUNCTION "Flushed %u Records of %u Bytes", __PRETTY_FUNCTION__, nRecordsFlushed.load(), nBytesWrote.load());
+                debug::log(3, FUNCTION, "Flushed ", nRecordsFlushed.load(),
+                    " Records of ", nBytesWrote.load(), " Bytes");
 
                 /* Reset counters if not in meter mode. */
                 if(!config::GetBoolArg("-meters"))
@@ -761,9 +792,9 @@ namespace LLD
                 double WPS = nBytesWrote.load() / (TIMER.Elapsed() * 1024.0);
                 double RPS = nBytesRead.load() / (TIMER.Elapsed() * 1024.0);
 
-                debug::log(0, FUNCTION ">>>>> LLD Writing at %f Kb/s", __PRETTY_FUNCTION__, WPS);
-                debug::log(0, FUNCTION ">>>>> LLD Reading at %f Kb/s", __PRETTY_FUNCTION__, RPS);
-                debug::log(0, FUNCTION ">>>>> LLD Flushed %u Records", __PRETTY_FUNCTION__, nRecordsFlushed.load());
+                debug::log(0, FUNCTION, ">>>>> LLD Writing at ", WPS, " Kb/s");
+                debug::log(0, FUNCTION, ">>>>> LLD Reading at ", RPS, " Kb/s");
+                debug::log(0, FUNCTION, ">>>>> LLD Flushed ", nRecordsFlushed.load(), " Records");
 
                 TIMER.Reset();
             }
@@ -812,7 +843,7 @@ namespace LLD
             /* Commit the sector data. */
             for(auto it = pTransaction->mapOriginalData.begin(); it != pTransaction->mapOriginalData.end(); ++it )
                 if(!Force(it->first, it->second))
-                    return debug::error(FUNCTION "failed to rollback transaction", __PRETTY_FUNCTION__);
+                    return debug::error(FUNCTION, "failed to rollback transaction");
 
             return true;
         }
@@ -827,7 +858,7 @@ namespace LLD
         {
             /* Check that there is a valid transaction to apply to the database. */
             if(!pTransaction)
-                return debug::error(FUNCTION "nothing to commit.", __PRETTY_FUNCTION__);
+                return debug::error(FUNCTION, "nothing to commit.");
 
             /* Erase data set to be removed. */
             for(auto it = pTransaction->mapEraseData.begin(); it != pTransaction->mapEraseData.end(); ++it )
@@ -838,7 +869,7 @@ namespace LLD
                     RollbackTransactions();
                     TxnAbort();
 
-                    return debug::error(FUNCTION "failed to erase from keychain", __PRETTY_FUNCTION__);
+                    return debug::error(FUNCTION, "failed to erase from keychain");
                 }
             }
 
@@ -850,7 +881,7 @@ namespace LLD
                     RollbackTransactions();
                     TxnAbort();
 
-                    return debug::error(FUNCTION "failed to commit sector data", __PRETTY_FUNCTION__);
+                    return debug::error(FUNCTION, "failed to commit sector data");
                 }
             }
 
