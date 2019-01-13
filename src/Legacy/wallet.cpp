@@ -462,7 +462,7 @@ namespace Legacy
                 /* Attempt to unlock the wallet using the decrypted value for the master key */
                 if (CCryptoKeyStore::Unlock(vMasterKey))
                 {
-                    /* If the caller has provided an nUnlockSeconds value then initiate a thread to lock  
+                    /* If the caller has provided an nUnlockSeconds value then initiate a thread to lock
                      * the wallet once this time has expired.  NOTE: the fWalletUnlockMintOnly flag overrides this timeout
                      * as we unlock indefinitely if fWalletUnlockMintOnly is true */
                     if(nUnlockSeconds > 0 && !Legacy::fWalletUnlockMintOnly)
@@ -480,7 +480,7 @@ namespace Legacy
                             nWalletUnlockTime = 0;
                         }).detach();
 
-                    } 
+                    }
                     return true;
                 }
             }
