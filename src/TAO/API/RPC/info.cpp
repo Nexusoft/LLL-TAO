@@ -17,7 +17,13 @@ ________________________________________________________________________________
 #include <LLP/include/version.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <LLP/include/global.h>
+#include <LLP/include/service.h>
 #include <LLP/include/addressinfo.h>
+#include <Util/include/version.h>
+
+#include <Legacy/wallet/wallet.h>
+#include <Legacy/wallet/walletdb.h>
+#include <Legacy/include/money.h>
 
 #include <vector>
 //#include <TAO/Ledger/include/global.h>
@@ -31,7 +37,7 @@ namespace TAO
     {
 
         /* getinfo
-           Returns an object containing various state info */
+        Returns an object containing various state info */
         json::json RPC::GetInfo(const json::json& params, bool fHelp)
         {
             if (fHelp || params.size() != 0)
@@ -40,36 +46,45 @@ namespace TAO
                     " - Returns an object containing various state info.");
 
             json::json obj;
-            obj["version"] = LLP::strProtocolName; //PS TODO
+            obj["version"] = version::CLIENT_VERSION_BUILD_STRING; //PS TODO
             obj["protocolversion"] = LLP::PROTOCOL_VERSION;
-            /*obj.push_back(std::make_pair("walletversion", pwalletMain->GetVersion()));
-            obj.push_back(std::make_pair("balance",       ValueFromAmount(pwalletMain->GetBalance())));
-            obj.push_back(std::make_pair("newmint",       ValueFromAmount(pwalletMain->GetNewMint())));
-            obj.push_back(std::make_pair("stake",         ValueFromAmount(pwalletMain->GetStake())));
-        */
+            obj["walletversion"] = Legacy::CWallet::GetInstance().GetVersion();
+            obj["balance"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetBalance());
+            obj["newmint"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetNewMint());
+            obj["stake"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetStake());
+        
 
         //   double dPercent = ((double)Core::dTrustWeight + (double)Core::dBlockWeight) / 37.5;
         //   obj.push_back(std::make_pair("interestweight", (double)Core::dInterestRate * 100.0));
         //   obj.push_back(std::make_pair("stakeweight",    dPercent * 100.0));
         //   obj.push_back(std::make_pair("trustweight",    (double)Core::dTrustWeight * 100.0 / 17.5));
         //   obj.push_back(std::make_pair("blockweight",    (double)Core::dBlockWeight * 100.0  / 20.0));
-        //   obj.push_back(std::make_pair("txtotal",        (int)pwalletMain->mapWallet.size()));
+            obj["txtotal"] =(int)Legacy::CWallet::GetInstance().mapWallet.size();
 
 
-           obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
+            obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
 
             obj["timestamp"] =  (int)runtime::unifiedtimestamp();
 
-          obj["connections"] = GetTotalConnectionCount();
-        //    obj.push_back(std::make_pair("proxy",         (fUseProxy ? addrProxy.ToStringIPPort() : string())));
-        //    obj.push_back(std::make_pair("ip",            addrSeenByPeer.ToStringIP()));
+            obj["connections"] = GetTotalConnectionCount();
+            obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToStringIPPort() : std::string());
+            obj["ip"] = LLP::TRITIUM_SERVER->addrThisNode.ToStringIP();
 
-        //    obj.push_back(std::make_pair("testnet",       fTestNet));
-        //    obj.push_back(std::make_pair("keypoololdest", (boost::int64_t)pwalletMain->GetOldestKeyPoolTime()));
-        //    obj.push_back(std::make_pair("keypoolsize",   pwalletMain->GetKeyPoolSize()));
+            obj["testnet"] = config::fTestNet;
+            obj["keypoololdest"] = (int64_t)Legacy::CWallet::GetInstance().GetKeyPool().GetOldestKeyPoolTime();
+            obj["keypoolsize"] = Legacy::CWallet::GetInstance().GetKeyPool().GetKeyPoolSize();
         //   obj.push_back(std::make_pair("paytxfee", Core::nTransactionFee / Core::COIN));
-        //    if (pwalletMain->IsCrypted())
-        //        obj.push_back(std::make_pair("unlocked_until", (boost::int64_t)nWalletUnlockTime / 1000));
+            if (Legacy::CWallet::GetInstance().IsCrypted())
+            {
+                obj["locked"] = Legacy::CWallet::GetInstance().IsLocked();  
+                if( !Legacy::CWallet::GetInstance().IsLocked())
+                {
+                    if( (uint64_t) Legacy::CWallet::GetInstance().GetWalletUnlockTime() > 0 )
+                        obj["unlocked_until"] = (uint64_t) Legacy::CWallet::GetInstance().GetWalletUnlockTime() ;
+                    
+                    obj["minting_only"] = Legacy::fWalletUnlockMintOnly;
+                }
+            }
         //    obj.push_back(std::make_pair("errors",        Core::GetWarnings("statusbar")));
 
 
@@ -77,15 +92,15 @@ namespace TAO
         }
 
         /* getpeerinfo
-           Returns data about each connected network node */
+        Returns data about each connected network node */
         json::json RPC::GetPeerInfo(const json::json& params, bool fHelp)
         {
             json::json response;
 
             if (fHelp || params.size() != 0)
-                     return std::string(
-                         "getpeerinfo"
-                         " - Returns data about each connected network node.");
+                    return std::string(
+                        "getpeerinfo"
+                        " - Returns data about each connected network node.");
 
             std::vector<LLP::AddressInfo> vLegacyInfo;
             std::vector<LLP::AddressInfo> vTritiumInfo;
@@ -141,7 +156,7 @@ namespace TAO
 
 
         /* getmininginfo
-           Returns an object containing mining-related information.*/
+        Returns an object containing mining-related information.*/
         json::json RPC::GetMiningInfo(const json::json& params, bool fHelp)
         {
             if (fHelp || params.size() != 0)
@@ -199,10 +214,10 @@ namespace TAO
             // const Core::CBlockIndex* pindexGPU = Core::GetLastChannelIndex(Core::pindexBest, 2);
             // obj.push_back(Pair("primeDifficulty",       Core::GetDifficulty(Core::GetNextTargetRequired(Core::pindexBest, 1, false), 1)));
             // obj.push_back(Pair("hashDifficulty",        Core::GetDifficulty(Core::GetNextTargetRequired(Core::pindexBest, 2, false), 2)));
-            // obj.push_back(Pair("primeReserve",           ValueFromAmount(pindexCPU->nReleasedReserve[0])));
-            // obj.push_back(Pair("hashReserve",            ValueFromAmount(pindexGPU->nReleasedReserve[0])));
-            // obj.push_back(Pair("primeValue",               ValueFromAmount(Core::GetCoinbaseReward(Core::pindexBest, 1, 0))));
-            // obj.push_back(Pair("hashValue",                ValueFromAmount(Core::GetCoinbaseReward(Core::pindexBest, 2, 0))));
+            // obj.push_back(Pair("primeReserve",           SatoshisToAmount(pindexCPU->nReleasedReserve[0])));
+            // obj.push_back(Pair("hashReserve",            SatoshisToAmount(pindexGPU->nReleasedReserve[0])));
+            // obj.push_back(Pair("primeValue",               SatoshisToAmount(Core::GetCoinbaseReward(Core::pindexBest, 1, 0))));
+            // obj.push_back(Pair("hashValue",                SatoshisToAmount(Core::GetCoinbaseReward(Core::pindexBest, 2, 0))));
             // obj.push_back(Pair("pooledtx",              (boost::uint64_t)Core::mempool.size()));
             // obj.push_back(Pair("primesPerSecond",         (boost::uint64_t)nPrimePS));
             // obj.push_back(Pair("hashPerSecond",         (boost::uint64_t)nHashRate));

@@ -62,10 +62,24 @@ namespace TAO
             json::json Execute(const std::string& strMethod, const json::json& jsonParams, bool fHelp = false)
             {
                 if(mapFunctions.find(strMethod) != mapFunctions.end())
-                    return mapFunctions[strMethod].Execute(jsonParams, fHelp);
+                    return mapFunctions[strMethod].Execute(SanitizeParams(strMethod, jsonParams), fHelp);
                 else
                     throw APIException(-32601, debug::strprintf("Method not found: %s", strMethod.c_str()));
             }
+
+            /** SanitizeParams
+            *
+            *  Allows derived API's to check the values in the parameters array for the method being called.
+            *  The return json contains the sanitized parameter values, which derived implementations might convert to the correct type
+            *  for the method being called.
+            *
+            *  @param[in] strMethod The name of the method being invoked.
+            *  @param[in] jsonParams The json array of parameters being passed to this method.
+            *
+            *  @return the sanitized json parameters array.
+            *
+            **/
+            virtual json::json SanitizeParams( const std::string& strMethod, const json::json& jsonParams ) {return jsonParams;};
 
         protected:
 

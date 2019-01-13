@@ -55,6 +55,20 @@ namespace TAO
                 return "RPC";
             }
 
+            /** SanitizeParams
+            *
+            *  Allows derived API's to check the values in the parameters array for the method being called.
+            *  The return json contains the sanitized parameter values, which derived implementations might convert to the correct type
+            *  for the method being called.
+            *
+            *  @param[in] strMethod The name of the method being invoked.
+            *  @param[in] jsonParams The json array of parameters being passed to this method.
+            *
+            *  @return the sanitized json parameters array.
+            *
+            **/
+            virtual json::json SanitizeParams( const std::string& strMethod, const json::json& jsonParams );
+
             /** Echo
              *
              *  echo <params>
@@ -579,6 +593,59 @@ namespace TAO
             *
             **/
             json::json BackupWallet(const json::json& params, bool fHelp);
+
+            /** WalletPassphrase
+            *
+            *  walletpassphrase <passphrase> [timeout] [mintonly]
+            *  Stores the wallet decryption key in memory for <timeout> seconds.
+            *  mintonly is optional true/false allowing only block minting
+            *  timeout is ignored if mintonly is true
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json WalletPassphrase(const json::json& params, bool fHelp);
+
+            /** EncryptWallet
+            *
+            *  encryptwallet <passphrase>
+            *  Encrypts the wallet with <passphrase>
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json EncryptWallet(const json::json& params, bool fHelp);
+
+            /** WalletPassphraseChange
+            *
+            *  walletpassphrasechange <oldpassphrase> <newpassphrase>
+            *  Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json WalletPassphraseChange(const json::json& params, bool fHelp);
+
+            /** WalletLock
+            *
+            *  walletlock
+            *  Removes the wallet encryption key from memory, locking the wallet.
+            *  After calling this method, you will need to call walletpassphrase again
+            *  before being able to call any methods which require the wallet to be unlocked
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json WalletLock(const json::json& params, bool fHelp);
+
 
             /** CheckWallet
             *

@@ -37,7 +37,7 @@ namespace Legacy
 
     bool CDB::fDbEnvInit = false;
 
-    std::map<std::string, int> CDB::mapFileUseCount; //initializes empty map
+    std::map<std::string, uint32_t> CDB::mapFileUseCount; //initializes empty map
 
     std::map<std::string, Db*> CDB::mapDb;  //initializes empty map
 
@@ -84,7 +84,7 @@ namespace Legacy
     /* Performs work of initialization for constructors. */
     void CDB::Init(const std::string strFileIn, const char* pszMode)
     {
-        int ret;
+        int32_t ret;
 
         { /* Begin lock scope */
             std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db); // Need to lock before test fDbEnvInit
@@ -102,7 +102,7 @@ namespace Legacy
                 std::string pathErrorFile(pathDataDir + "/db.log");
                 //debug::log(0, FUNCTION, "dbenv.open LogDir=", pathLogDir, " ErrorFile=",  pathErrorFile);
 
-                int nDbCache = config::GetArg("-dbcache", 25);
+                uint32_t nDbCache = config::GetArg("-dbcache", 25);
 
                 CDB::dbenv.set_lg_dir(pathLogDir.c_str());
                 CDB::dbenv.set_cachesize(nDbCache / 1024, (nDbCache % 1024)*1048576, 1);
@@ -141,9 +141,9 @@ namespace Legacy
                  * This setting overrides default of readable/writable by both owner and group
                  */
 #ifndef WIN32
-                int dbMode = S_IRUSR | S_IWUSR;
+                uint32_t dbMode = S_IRUSR | S_IWUSR;
 #else
-                int dbMode = 0;
+                uint32_t dbMode = 0;
 #endif
 
                 /* Open the Berkely DB environment */
@@ -237,7 +237,7 @@ namespace Legacy
 
         Dbc* pcursor = nullptr;
 
-        int ret = pdb->cursor(nullptr, &pcursor, 0);
+        int32_t ret = pdb->cursor(nullptr, &pcursor, 0);
 
         if (ret != 0)
             return nullptr;
@@ -247,7 +247,7 @@ namespace Legacy
 
 
     /* Read a database key-value pair from the current cursor location. */
-    int CDB::ReadAtCursor(Dbc* pcursor, DataStream& ssKey, DataStream& ssValue, uint32_t fFlags)
+    int32_t CDB::ReadAtCursor(Dbc* pcursor, DataStream& ssKey, DataStream& ssValue, uint32_t fFlags)
     {
         /* Key - Initialize with argument data for flag settings that need it */
         Dbt datKey;
@@ -270,7 +270,7 @@ namespace Legacy
         datValue.set_flags(DB_DBT_MALLOC);
 
         /* Execute cursor operation */
-        int ret = pcursor->get(&datKey, &datValue, fFlags);
+        int32_t ret = pcursor->get(&datKey, &datValue, fFlags);
 
         if (ret != 0)
             return ret;
@@ -330,7 +330,7 @@ namespace Legacy
         DbTxn* pTxn = nullptr;
 
         /* Begin new transaction */
-        int ret = CDB::dbenv.txn_begin(GetTxn(), &pTxn, DB_TXN_WRITE_NOSYNC);
+        int32_t ret = CDB::dbenv.txn_begin(GetTxn(), &pTxn, DB_TXN_WRITE_NOSYNC);
 
         if (pTxn == nullptr || ret != 0)
             return false;
@@ -353,7 +353,7 @@ namespace Legacy
         if (pTxn == nullptr)
             return false;
 
-        int ret = pTxn->commit(0);
+        int32_t ret = pTxn->commit(0);
 
         vTxn.pop_back();
 
@@ -372,7 +372,7 @@ namespace Legacy
         if (pTxn == nullptr)
             return false;
 
-        int ret = pTxn->abort();
+        int32_t ret = pTxn->abort();
 
         vTxn.pop_back();
 
@@ -381,7 +381,7 @@ namespace Legacy
 
 
     /* Read the current value for key "version" from the database */
-    bool CDB::ReadVersion(int& nVersion)
+    bool CDB::ReadVersion(uint32_t& nVersion)
     {
         nVersion = 0;
         return Read(std::string("version"), nVersion);
@@ -389,7 +389,7 @@ namespace Legacy
 
 
     /* Writes a number into the database using the key "version". */
-    bool CDB::WriteVersion(int nVersion)
+    bool CDB::WriteVersion(uint32_t nVersion)
     {
         return Write(std::string("version"), nVersion);
     }
@@ -464,7 +464,7 @@ namespace Legacy
             for (auto mi = CDB::mapFileUseCount.cbegin(); mi != CDB::mapFileUseCount.cend(); /*no increment */)
             {
                 const std::string strFile = (*mi).first;
-                const int nRefCount = (*mi).second;
+                const uint32_t nRefCount = (*mi).second;
 
                 debug::log(0, strFile, " refcount=", nRefCount);
 
@@ -531,12 +531,12 @@ namespace Legacy
                         Db* pdbCopy = new Db(&CDB::dbenv, 0);
 
                         /* Open database handle to temp file */
-                        int ret = pdbCopy->open(nullptr,            // Txn pointer
-                                                strFileRes.c_str(), // Filename
-                                                "main",             // Logical db name
-                                                DB_BTREE,           // Database type
-                                                DB_CREATE,          // Flags
-                                                0);
+                        int32_t ret = pdbCopy->open(nullptr,            // Txn pointer
+                                                    strFileRes.c_str(), // Filename
+                                                    "main",             // Logical db name
+                                                    DB_BTREE,           // Database type
+                                                    DB_CREATE,          // Flags
+                                                    0);
                         if (ret > 0)
                         {
                             debug::log(0, "Cannot create database file ", strFileRes.c_str());
@@ -552,7 +552,7 @@ namespace Legacy
                                 DataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
 
                                 /* Read next key-value pair to copy */
-                                int ret = dbToRewrite.ReadAtCursor(pcursor, ssKey, ssValue, DB_NEXT);
+                                int32_t ret = dbToRewrite.ReadAtCursor(pcursor, ssKey, ssValue, DB_NEXT);
 
                                 if (ret == DB_NOTFOUND)
                                 {
@@ -584,7 +584,7 @@ namespace Legacy
                                 Dbt datValue((char*)&ssValue[0], ssValue.size());
 
                                 /* Write the data to temp file */
-                                int ret2 = pdbCopy->put(nullptr, &datKey, &datValue, DB_NOOVERWRITE);
+                                int32_t ret2 = pdbCopy->put(nullptr, &datKey, &datValue, DB_NOOVERWRITE);
 
                                 if (ret2 > 0)
                                     fProcessSuccess = false;

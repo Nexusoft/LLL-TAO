@@ -52,11 +52,6 @@ ________________________________________________________________________________
 
 
 
-namespace Legacy
-{
-    Legacy::CWallet* pwalletMain;
-}
-
 /* Declare the Global LLD Instances. */
 namespace LLD
 {
@@ -129,8 +124,10 @@ int main(int argc, char** argv)
 
     /** Load the Wallet Database. **/
     bool fFirstRun;
-    Legacy::pwalletMain = new Legacy::CWallet(config::GetArg("-wallet", "wallet.dat"));
-    int nLoadWalletRet = Legacy::pwalletMain->LoadWallet(fFirstRun);
+    if (!Legacy::CWallet::InitializeWallet(config::GetArg("-wallet", Legacy::CWalletDB::DEFAULT_WALLET_DB)))
+        return debug::error("failed initializing wallet");
+
+    uint32_t nLoadWalletRet = Legacy::CWallet::GetInstance().LoadWallet(fFirstRun);
     if (nLoadWalletRet != Legacy::DB_LOAD_OK)
     {
         if (nLoadWalletRet == Legacy::DB_CORRUPT)
@@ -360,14 +357,6 @@ int main(int argc, char** argv)
         delete RPC_SERVER;
     }
 
-
-    /* Cleanup the wallet. */
-    if(Legacy::pwalletMain)
-    {
-        debug::log(0, FUNCTION, "Closing the wallet");
-
-        delete Legacy::pwalletMain;
-    }
 
 
     /* Elapsed Milliseconds from timer. */

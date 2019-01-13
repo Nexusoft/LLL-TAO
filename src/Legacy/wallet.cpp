@@ -51,8 +51,44 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    /* Nexus: Setting to unlock wallet for block minting only */
+    /* Nexus: Setting indicating wallet unlocked for block minting only */
     bool fWalletUnlockMintOnly = false;
+
+
+    /* Initialize static variables */
+    bool CWallet::fWalletInitialized = false;
+
+
+    /* Implement static methods */
+
+    /* Initializes the wallet instance. */
+    bool CWallet::InitializeWallet(std::string strWalletFileIn)
+    {
+        if (CWallet::fWalletInitialized)
+            return false;
+        else
+        {
+            CWallet& wallet = CWallet::GetInstance();
+            wallet.strWalletFile = strWalletFileIn;
+            wallet.fFileBacked = true;
+        }
+
+        return true;
+    }
+
+
+    CWallet& CWallet::GetInstance()
+    {
+        /* This will create a default initialized, memory only wallet file on first call (lazy instantiation) */
+        static CWallet wallet;
+
+        if (!CWallet::fWalletInitialized)
+        {
+            CWallet::fWalletInitialized = true;
+        }
+
+        return wallet;
+    }
 
 
     /* Assign the minimum supported version for the wallet. */
@@ -92,7 +128,7 @@ namespace Legacy
 
 
     /* Assign the maximum version we're allowed to upgrade to.  */
-    bool CWallet::SetMaxVersion(const int nVersion)
+    bool CWallet::SetMaxVersion(const enum Legacy::WalletFeature nVersion)
     {
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
@@ -109,7 +145,7 @@ namespace Legacy
 
 
     /* Loads all data for a file backed wallet from the database. */
-    int CWallet::LoadWallet(bool& fFirstRunRet)
+    uint32_t CWallet::LoadWallet(bool& fFirstRunRet)
     {
         if (!fFileBacked)
             return false;
@@ -124,7 +160,7 @@ namespace Legacy
             fFirstRunRet = false;
 
             CWalletDB walletdb(strWalletFile,"cr+");
-            int nLoadWalletRet = walletdb.LoadWallet(*this);
+            uint32_t nLoadWalletRet = walletdb.LoadWallet(*this);
             walletdb.Close();
 
             if (nLoadWalletRet == DB_NEED_REWRITE)
@@ -167,21 +203,32 @@ namespace Legacy
     /* Add a public/encrypted private key pair to the key store. */
     bool CWallet::AddCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret)
     {
+        /* Call overridden inherited method to add key to key store */
+        if (!CCryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret))
+            return false;
+
+        if (fFileBacked)
         {
             std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
 
-            /* Call overridden inherited method to add key to key store */
-            if (!CCryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret))
-                return false;
+            bool result = false;
 
-            if (fFileBacked)
+            if (pWalletDbEncryption != nullptr)
             {
-                CWalletDB walletdb(strWalletFile);
-                bool result = walletdb.WriteCryptedKey(vchPubKey, vchCryptedSecret);
-                walletdb.Close();
-
-                return result;
+                /* Adding this encrypted key as part of wallet encryption process.
+                 * Use the wallet encryption db to maintain the database transaction
+                 */
+                result = pWalletDbEncryption->WriteCryptedKey(vchPubKey, vchCryptedSecret);
             }
+            else
+            {
+                /* This is a one-off add, so no open wallet db. Open one and use it for write */
+                CWalletDB walletdb(strWalletFile);
+                result = walletdb.WriteCryptedKey(vchPubKey, vchCryptedSecret);
+                walletdb.Close();
+            }
+
+            return result;
         }
 
         return true;
@@ -227,7 +274,7 @@ namespace Legacy
             }
         }
 
-        return false;
+        return true;
     }
 
 
@@ -323,18 +370,16 @@ namespace Legacy
 
             mapMasterKeys[++nMasterKeyMaxID] = kMasterKey;
 
-            /* Declaration needs to be in this scope, but cannot instantiate until afer check fFileBacked.
-             * Use pointer to do this.
-             */
-            CWalletDB* pwalletdb = nullptr;
             if (fFileBacked)
             {
-                pwalletdb = new CWalletDB(strWalletFile);
+                /* Set up the encryption database pointer for the encryption transaction */
+                pWalletDbEncryption = std::make_shared<CWalletDB>(strWalletFile);
 
-                if (!pwalletdb->TxnBegin())
+                if (!pWalletDbEncryption->TxnBegin())
                     return false;
 
-                pwalletdb->WriteMasterKey(nMasterKeyMaxID, kMasterKey);
+                /* Start encryption transaction by writing the master key */
+                pWalletDbEncryption->WriteMasterKey(nMasterKeyMaxID, kMasterKey);
             }
 
             /* EncryptKeys() in CCryptoKeyStore will encrypt every public key/private key pair in the key store, including those that
@@ -348,24 +393,29 @@ namespace Legacy
             if (!EncryptKeys(vMasterKey))
             {
                 if (fFileBacked)
-                    pwalletdb->TxnAbort();
+                    pWalletDbEncryption->TxnAbort();
 
                 /* We now probably have half of our keys encrypted in memory,
                  * and half not...die to let the user reload their unencrypted wallet.
                  */
-                exit(1);
+                config::fShutdown = true;
+                return debug::error("Error encrypting wallet. Shutting down.");;
             }
 
             if (fFileBacked)
             {
-                if (pwalletdb->TxnCommit())
+                if (!pWalletDbEncryption->TxnCommit())
                 {
                     /* Keys encrypted in memory, but not on disk...die to let the user reload their unencrypted wallet. */
-                    exit(1);
+                    config::fShutdown = true;
+                    return debug::error("Error committing encryption updates to wallet file. Shutting down.");;
                 }
 
-                pwalletdb->Close();
-                delete pwalletdb;
+
+                pWalletDbEncryption->Close();
+
+                /* Reset the encryption database pointer (CWalletDB it pointed to before will be destroyed) */
+                pWalletDbEncryption = nullptr;
             }
 
             Lock();
@@ -384,7 +434,7 @@ namespace Legacy
 
 
     /* Attempt to unlock an encrypted wallet using the passphrase provided. */
-    bool CWallet::Unlock(const SecureString& strWalletPassphrase)
+    bool CWallet::Unlock(const SecureString& strWalletPassphrase, const uint32_t nUnlockSeconds)
     {
         if (!IsLocked())
             return false;
@@ -411,7 +461,28 @@ namespace Legacy
 
                 /* Attempt to unlock the wallet using the decrypted value for the master key */
                 if (CCryptoKeyStore::Unlock(vMasterKey))
+                {
+                    /* If the caller has provided an nUnlockSeconds value then initiate a thread to lock  
+                     * the wallet once this time has expired.  NOTE: the fWalletUnlockMintOnly flag overrides this timeout
+                     * as we unlock indefinitely if fWalletUnlockMintOnly is true */
+                    if(nUnlockSeconds > 0 && !Legacy::fWalletUnlockMintOnly)
+                    {
+                        nWalletUnlockTime = runtime::timestamp() + nUnlockSeconds;
+
+                        // use C++ lambda to creating a threaded callback to lock the wallet
+                        std::thread([=]()
+                        {
+                            // check the time every second until the unlock time is surpassed or the wallet is manually locked
+                            while( runtime::timestamp() < nWalletUnlockTime && !this->IsLocked())
+                                std::this_thread::sleep_for(std::chrono::seconds(1));
+
+                            Lock();
+                            nWalletUnlockTime = 0;
+                        }).detach();
+
+                    } 
                     return true;
+                }
             }
         }
 
@@ -613,7 +684,7 @@ namespace Legacy
                 if ((walletTx.IsCoinBase() || walletTx.IsCoinStake()) && walletTx.GetBlocksToMaturity() > 0)
                     continue;
 
-                for (int i = 0; i < walletTx.vout.size(); i++)
+                for (uint32_t i = 0; i < walletTx.vout.size(); i++)
                 {
                     /* Filter transactions after requested spend time */
                     if (walletTx.nTime > nSpendTime)
@@ -845,10 +916,10 @@ namespace Legacy
     /* Scan the block chain for transactions from or to keys in this wallet.
      * Add/update the current wallet transactions for any found.
      */
-    int CWallet::ScanForWalletTransactions(TAO::Ledger::BlockState* pstartBlock, const bool fUpdate)
+    uint32_t CWallet::ScanForWalletTransactions(TAO::Ledger::BlockState* pstartBlock, const bool fUpdate)
     {
         /* Count the number of transactions process for this wallet to use as return value */
-        int nTransactionCount = 0;
+        uint32_t nTransactionCount = 0;
         TAO::Ledger::BlockState block;
 
         if (pstartBlock == nullptr)
@@ -1037,7 +1108,7 @@ namespace Legacy
                     continue;
 
                 /* Check all the outputs to make sure the flags are all set properly. */
-                for (int n=0; n < walletTx.vout.size(); ++n)
+                for (uint32_t n=0; n < walletTx.vout.size(); n++)
                 {
                     /* Handle the Index on Disk for Transaction being inconsistent from the Wallet's accounting to the UTXO. */
 //TODO - Fix txindex reference
@@ -1431,7 +1502,7 @@ namespace Legacy
                     wtxNew.vin.push_back(CTxIn(coin.first->GetHash(),coin.second));
 
                 /* Sign inputs to unlock previously unspent outputs */
-                int nIn = 0;
+                uint32_t nIn = 0;
                 for(const auto coin : setSelectedCoins)
                     if (!SignSignature(*this, *(coin.first), wtxNew, nIn++))
                         return false;
@@ -1598,7 +1669,7 @@ namespace Legacy
 //        block.vtx[0].vout[0].nValue += nInterest;
 
         /* Sign Each Input to Transaction. */
-        for(int nIndex = 0; nIndex < vInputs.size(); nIndex++)
+        for(uint32_t nIndex = 0; nIndex < vInputs.size(); nIndex++)
         {
 //            if (!SignSignature(*this, vInputs[nIndex], block.vtx[0], nIndex + 1))
 //                return debug::error("AddCoinstakeInputs() : Unable to sign Coinstake Transaction Input.");
@@ -1638,7 +1709,7 @@ namespace Legacy
 
 
     /* Load the minimum supported version without updating the database */
-    bool CWallet::LoadMinVersion(const int nVersion)
+    bool CWallet::LoadMinVersion(const uint32_t nVersion)
     {
         nWalletVersion = nVersion;
         nWalletMaxVersion = std::max(nWalletMaxVersion, nVersion);

@@ -14,24 +14,23 @@ ________________________________________________________________________________
 #ifndef NEXUS_UTIL_INCLUDE_VERSION_H
 #define NEXUS_UTIL_INCLUDE_VERSION_H
 
-
-#define CLIENT_MAJOR         0
-#define CLIENT_MINOR         3
-#define CLIENT_PATCH         0
-#define CLIENT_BUILD         0
+#include <string>
 
 
-/* The version of the actual wallet client. */
-const int CLIENT_VERSION =
-                    1000000 * CLIENT_MAJOR
-                  +   10000 * CLIENT_MINOR
-                  +     100 * CLIENT_PATCH
-                  +       1 * CLIENT_BUILD;
+namespace version
+{
+	const int CLIENT_MAJOR	= 	0;
+	const int CLIENT_MINOR	=	3;
+	const int CLIENT_PATCH	=	0;
+	const int CLIENT_BUILD	=	0;
 
-/* Client Version Outputs. */
-const std::string CLIENT_NAME("Tritium");
-const std::string CLIENT_TYPE("Alpha");
-const std::string CLIENT_DATE(__DATE__ " " __TIME__);
+	/** These external variables are the display only variables. They are used to track the updates of Nexus independent of Database and Protocol Upgrades. **/
+	extern const std::string CLIENT_VERSION_BUILD_STRING;
+	extern const std::string CLIENT_DATE;
 
+	/* The version of the actual wallet client. */
+	extern const int CLIENT_VERSION;
+
+}
 
 #endif
