@@ -68,11 +68,6 @@ namespace TAO
             if(!tx.IsValid())
                 throw APIException(-26, "Invalid Transaction");
 
-            tx.print();
-
-            /* Write transaction to ledger database. */
-            LLD::locDB->WriteGenesis(hashGenesis, tx);
-
             /* Accept to memory pool. */
             TAO::Ledger::mempool.Accept(tx);
 
@@ -106,7 +101,7 @@ namespace TAO
 
             /* Get the last transaction. */
             uint512_t hashLast;
-            if(!LLD::locDB->ReadLast(hashGenesis, hashLast))
+            if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
                 throw APIException(-28, "No transactions found");
 
             /* Loop until genesis. */

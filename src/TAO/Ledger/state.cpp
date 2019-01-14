@@ -456,15 +456,38 @@ namespace TAO
 
                     /* Write to disk. */
                     if(!LLD::legDB->WriteTx(hash, tx))
-                        return debug::error(FUNCTION, "transaction is not on disk");
+                        return debug::error(FUNCTION, "failed to write tx to disk");
 
                     /* Check for genesis. */
-                    if(tx.IsGenesis() && !LLD::legDB->WriteGenesis(tx.hashGenesis, tx))
-                        return debug::error(FUNCTION, "failed to write genesis");
+                    if(tx.IsGenesis())
+                    {
+                        //Check for duplicate genesis
 
-                    /* Check for genesis. */
-                    if(LLD::locDB->HasGenesis(tx.hashGenesis))
-                        LLD::locDB->WriteLast(tx.hashGenesis, tx.GetHash());
+                        /* Write the Genesis to disk. */
+                        if(!LLD::legDB->WriteGenesis(tx.hashGenesis, tx.GetHash()))
+                            return debug::error(FUNCTION, "failed to write genesis");
+
+                        /* Write the last to disk. */
+                        if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.GetHash()))
+                            return debug::error(FUNCTION, "failed to write last hash");
+                    }
+                    else
+                    {
+                        /* Check for the last hash. */
+                        uint512_t hashLast;
+                        if(!LLD::legDB->ReadLast(tx.hashGenesis, hashLast))
+                            return debug::error(FUNCTION, "failed to read last on non-genesis");
+
+                        /* Check that advertised last transaction is correct. */
+                        if(tx.hashPrevTx != hashLast)
+                            return debug::error(FUNCTION,
+                                "previous transaction ", tx.hashPrevTx.ToString().substr(0, 20),
+                                " and last hash mismatch ", hashLast.ToString().substr(0, 20));
+
+                        /* Write the last to disk. */
+                        if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.GetHash()))
+                            return debug::error(FUNCTION, "failed to write last hash");
+                    }
                 }
             }
 

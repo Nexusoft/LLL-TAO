@@ -68,6 +68,9 @@ namespace LLD
         /** New Data to be Added. **/
         std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapTransactions;
 
+        /** Keychain items to commit. */
+        std::map< std::vector<uint8_t>, uint8_t > mapKeychain;
+
         /** Original Data that is retained when new one is added. **/
         std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapOriginalData;
 

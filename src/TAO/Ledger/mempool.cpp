@@ -95,9 +95,10 @@ namespace TAO
 
             /* Add to the map. */
             mapLedger[hash] = tx;
+            mapPrevHashes[hashClaim] = tx.GetHash();
 
             /* Debug output. */
-            debug::log(2, FUNCTION, hash.ToString().substr(0, 20), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
+            debug::log(2, FUNCTION, "TX ", hash.ToString().substr(0, 20), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
             /* Notify private to produce block if valid. */
             if(config::GetBoolArg("-private"))
