@@ -40,7 +40,7 @@ namespace TAO
     {
 
         /* Get the block state object. */
-        bool GetLastState(BlockState& state, uint32_t nChannel)
+        bool GetLastState(BlockState &state, uint32_t nChannel)
         {
             for(uint32_t index = 0; index < 10000; index++) //set limit on searchable blocks
             {

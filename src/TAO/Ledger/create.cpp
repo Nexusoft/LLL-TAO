@@ -38,8 +38,9 @@ namespace TAO
 
         /* Condition variable for private blocks. */
         std::condition_variable PRIVATE_CONDITION;
+        
 
-        /*Create a new transaction object from signature chain.*/
+        /* Create a new transaction object from signature chain. */
         bool CreateTransaction(TAO::Ledger::SignatureChain* user, SecureString pin, TAO::Ledger::Transaction& tx)
         {
             /* Get the last transaction. */
