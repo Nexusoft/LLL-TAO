@@ -667,7 +667,7 @@ namespace Legacy
         while (!config::fShutdown)
         {
             {
-                std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db);
+                LOCK(CDB::cs_db);
 
                 std::string strSource = wallet.GetWalletFile();
 
