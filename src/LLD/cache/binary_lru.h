@@ -123,7 +123,7 @@ namespace LLD
             /* Loop through the linked list. */
             for(auto & item : hashmap)
                 if(item)
-                    delete item;            LOCK(MUTEX);
+                    delete item;
         }
 
 
