@@ -66,7 +66,7 @@ namespace LLD
 
 
         /* Mutex for thread concurrency. */
-        mutable std::recursive_mutex MUTEX;
+        mutable std::mutex MUTEX;
 
 
         /* Map of the current holding data. */
@@ -123,7 +123,7 @@ namespace LLD
             /* Loop through the linked list. */
             for(auto & item : hashmap)
                 if(item)
-                    delete item;
+                    delete item;            LOCK(MUTEX);
         }
 
 
@@ -173,7 +173,6 @@ namespace LLD
          */
         void RemoveNode(BinaryNode* pthis)
         {
-            LOCK(MUTEX);
 
             /* Link the next pointer if not null */
             if(pthis->pnext)
@@ -194,7 +193,6 @@ namespace LLD
          **/
         void MoveToFront(BinaryNode* pthis)
         {
-            LOCK(MUTEX);
 
             /* Don't move to front if already in the front. */
             if(pthis == pfirst)

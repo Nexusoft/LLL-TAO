@@ -64,7 +64,7 @@ namespace LLD
 
 
         /* Mutex for thread concurrency. */
-        mutable std::recursive_mutex MUTEX;
+        mutable std::mutex MUTEX;
 
 
         /* Map of the current holding data. */
@@ -122,7 +122,7 @@ namespace LLD
             for(auto & item : hashmap)
                 if(item)
                     delete item;
-                    
+
         }
 
         TemplateLRU& operator=(TemplateLRU map)

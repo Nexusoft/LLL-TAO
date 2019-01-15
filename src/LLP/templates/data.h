@@ -28,7 +28,7 @@ namespace LLP
     template <class ProtocolType>
     class DataThread
     {
-        std::recursive_mutex MUTEX;
+        std::mutex MUTEX;
         //Need Pointer Reference to Object in Server Class to push data from Data Thread Messages into Server Class
 
     public:

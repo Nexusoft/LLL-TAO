@@ -81,9 +81,9 @@ namespace LLD
         /* Mutex for Thread Synchronization.
             TODO: Lock Mutex based on Read / Writes on a per Sector Basis.
             Will allow higher efficiency for thread concurrency. */
-        std::recursive_mutex SECTOR_MUTEX;
-        std::recursive_mutex BUFFER_MUTEX;
-        std::recursive_mutex TRANSACTION_MUTEX;
+        std::mutex SECTOR_MUTEX;
+        std::mutex BUFFER_MUTEX;
+        std::mutex TRANSACTION_MUTEX;
 
 
         /* The String to hold the Disk Location of Database File. */

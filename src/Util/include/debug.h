@@ -74,7 +74,7 @@ ________________________________________________________________________________
 namespace debug
 {
 
-    static std::recursive_mutex DEBUG_MUTEX;
+    static std::mutex DEBUG_MUTEX;
 
     /** Block debug output flags. **/
     enum flags
