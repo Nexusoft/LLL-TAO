@@ -73,6 +73,20 @@ namespace Legacy
         return (nValue >= 0 && nValue <= MaxTxOut());
     }
 
+    /** SatoshisToAmount
+    *
+    *  Converts a value represented in satoshis to a coin Amount
+    *
+    *  @param[in] satoshis The value in satoshis to be converted.
+    *
+    *  @return satoshis value converted to coin Amount.
+    *
+    **/
+    inline double SatoshisToAmount(int64_t satoshis)
+    {
+        return (double)satoshis / (double)Legacy::COIN;
+    }
+
 }
 
 #endif

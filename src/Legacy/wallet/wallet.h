@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_LEGACY_WALLET_WALLET_H
 
 #include <map>
+#include <memory>
 #include <mutex>
 #include <set>
 #include <string>
@@ -28,6 +29,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/cryptokeystore.h>
 #include <Legacy/wallet/keypool.h>
 #include <Legacy/wallet/masterkey.h>
+#include <Legacy/wallet/walletdb.h>
 #include <Legacy/wallet/wallettx.h>
 
 #include <Util/include/allocators.h> /* for SecureString */
@@ -57,7 +59,6 @@ namespace Legacy
 
     class COutput;
     class CReserveKey;
-    class CWalletDB;
     class CWalletTx;
 
 
@@ -84,21 +85,76 @@ namespace Legacy
      *
      *  A CWallet is an extension of a keystore, which also maintains a set of transactions and balances,
      *  and provides the ability to create new transactions.
+     *
+     *  Implemented as a Singleton where GetInstance is used wherever the wallet instance is needed.
+     *
+     *  To use the wallet, first call InitializeWallet followed by LoadWallet. The following
+     *  example will use the default wallet database file name:
+     * 
+     *  if (!CWallet::InitializeWallet())
+     *      //initialization not successful
+     *
+     *  if (CWallet::GetInstance().LoadWallet() != Legacy::DB_LOAD_OK)
+     *      //load not successful
+     *
+     *  CWallet& wallet = CWallet::GetInstance();
+     *  //use wallet
+     *
      **/
     class CWallet : public CCryptoKeyStore
     {
         friend class CWalletDB;
 
+    public:
+        /** InitializeWallet
+         *
+         *  Initializes the wallet instance backed by a wallet database file with the provided 
+         *  file name. Only call this method once (returns false on subsequent calls).
+         *  
+         *  This method only constructs the wallet. It does not call LoadWallet to populate 
+         *  data from the backing file. 
+         *
+         *  @param[in] strWalletFileIn The wallet database file name that backs the wallet.
+         *
+         *  @return true if wallet intance initialized, false otherwise
+         *
+         *  @see CWallet::GetInstance
+         *  @see LoadWallet
+         *
+         **/
+        static bool InitializeWallet(std::string strWalletFileIn = Legacy::CWalletDB::DEFAULT_WALLET_DB);
+
+
+        /** GetInstance
+         *
+         *  Retrieves the wallet. 
+         *
+         *  If the wallet is not yet initialized, this will call InitializeWallet using the
+         *  default setting. 
+         *
+         *  @return reference to the CWallet instance
+         *
+         *  @see InitializeWallet
+         *  @see LoadWallet
+         *
+         **/
+        static CWallet& GetInstance();
+
+
     private:
         using CCryptoKeyStore::Unlock;
 
 
+        /** Flag indicating whether or not the wallet instance has been initialized **/
+        static bool fWalletInitialized;
+
+
         /** The current wallet version: clients below this version are not able to load the wallet **/
-        int nWalletVersion;
+        uint32_t nWalletVersion;
 
 
         /** The maximum wallet version: memory-only variable that specifies to what version this wallet may be upgraded **/
-        int nWalletMaxVersion;
+        uint32_t nWalletMaxVersion;
 
 
         /** Flag indicating whether or not wallet is backed by a wallet database. When true, strWalletFile contains database file name. **/
@@ -139,17 +195,18 @@ namespace Legacy
         std::vector<uint8_t> vchDefaultKey;
 
 
-    public:
-        /** Mutex for thread concurrency across wallet operations **/
-        mutable std::recursive_mutex cs_wallet;
+        /** The timestamp that this wallet will remain unlocked until **/
+        uint64_t nWalletUnlockTime;
 
 
-        /** Map of wallet transactions contained in this wallet **/
-        TransactionMap mapWallet;
-
-
-        std::map<uint1024_t, int> mapRequestCount;
-
+        /** Wallet database only used during encryption process to maintain
+         *  open database transaction across the process.
+         *
+         *  This has to be a shared_ptr in C++11 because there is no make_unique function
+         *  for assigning it when used. If we move to C++14 or higher standard that function
+         *  is added and this can be changed.
+         **/
+        std::shared_ptr<CWalletDB> pWalletDbEncryption;
 
 
         /** Constructor
@@ -168,6 +225,8 @@ namespace Legacy
         , addressBook(CAddressBook(*this))
         , keyPool(CKeyPool(*this))
         , vchDefaultKey()
+        , nWalletUnlockTime(0)
+        , pWalletDbEncryption(nullptr)
         , mapWallet()
         , mapRequestCount()
         {
@@ -187,7 +246,8 @@ namespace Legacy
          *  @see LoadWallet()
          *
          **/
-        CWallet(std::string strWalletFileIn)
+/*TODO - test singleton design and on test success remove this constructor (not used with that design)
+        CWallet(std::string strWalletFileIn) 
         : nWalletVersion(FEATURE_BASE)
         , nWalletMaxVersion(FEATURE_BASE)
         , fFileBacked(true)
@@ -198,11 +258,26 @@ namespace Legacy
         , addressBook(CAddressBook(*this))
         , keyPool(CKeyPool(*this))
         , vchDefaultKey()
+        , nWalletUnlockTime(0)
+        , pWalletDbEncryption(nullptr)
         , mapWallet()
         , mapRequestCount()
         {
 
         }
+*/
+
+
+    public:
+        /** Mutex for thread concurrency across wallet operations **/
+        mutable std::recursive_mutex cs_wallet;
+
+
+        /** Map of wallet transactions contained in this wallet **/
+        TransactionMap mapWallet;
+
+
+        std::map<uint1024_t, uint32_t> mapRequestCount;
 
 
     /*----------------------------------------------------------------------------------------*/
@@ -250,7 +325,7 @@ namespace Legacy
          *  @return true if version assigned successfully
          *
          */
-        bool SetMaxVersion(const int nVersion);
+        bool SetMaxVersion(const enum Legacy::WalletFeature nVersion);
 
 
         /** GetVersion
@@ -260,7 +335,7 @@ namespace Legacy
          *  @return current wallet version
          *
          */
-        inline int GetVersion() const { return nWalletVersion; }
+        inline uint32_t GetVersion() const { return nWalletVersion; }
 
 
         /** IsFileBacked
@@ -306,7 +381,7 @@ namespace Legacy
          *  @return Value from Legacy::DBErrors, DB_LOAD_OK on success
          *
          */
-        int LoadWallet(bool& fFirstRunRet);
+        uint32_t LoadWallet(bool& fFirstRunRet);
 
 
         /** Inventory
@@ -320,6 +395,16 @@ namespace Legacy
          *
          */
         void Inventory(const uint1024_t &hash);  //Not really a very intuitive method name
+
+
+        /** GetWalletUnlockTime
+         *
+         *  Get the time until which this wallet will remain unlocked
+         *
+         *  @return the time until which this wallet will remain unlocked
+         *
+         */
+        inline uint64_t GetWalletUnlockTime() const { return nWalletUnlockTime; }
 
 
     /*----------------------------------------------------------------------------------------*/
@@ -421,15 +506,19 @@ namespace Legacy
 
         /** Unlock
          *
-         *  Attempt to unlock an encrypted wallet using the passphrase provided.
+         *  Attempt to unlock an encrypted wallet using the passphrase provided.  If the UnlockSeconds parameter
+         *  is provided then the wallet will automatically relock when this time has expired
          *  Encrypted wallet cannot be used until unlocked by providing the passphrase used to encrypt it.
          *
          *  @param[in] strWalletPassphrase The wallet's passphrase
+         * 
+         *  @param[in] nUnlockSeconds The number of seconds to remain unlocked, 0 to unlock indefinitely
+         *                            This setting is ignored if fWalletUnlockMintOnly=true (always unlocks indefinitely)
          *
          *  @return true if wallet was locked, passphrase matches the one used to encrypt it, and unlock is successful
          *
          */
-        virtual bool Unlock(const SecureString& strWalletPassphrase);
+        bool Unlock(const SecureString& strWalletPassphrase, const uint32_t nUnlockSeconds = 0);
 
 
         /** ChangeWalletPassphrase
@@ -604,7 +693,7 @@ namespace Legacy
          *  @return The number of transactions added/updated by the scan
          *
          **/
-        int ScanForWalletTransactions(TAO::Ledger::BlockState* pstartBlock, const bool fUpdate = false);
+        uint32_t ScanForWalletTransactions(TAO::Ledger::BlockState* pstartBlock, const bool fUpdate = false);
 
 
         /** ResendWalletTransactions
@@ -903,7 +992,7 @@ namespace Legacy
          *  @see CWalletDB::LoadWallet
          *
          **/
-        bool LoadMinVersion(const int nVersion);
+        bool LoadMinVersion(const uint32_t nVersion);
 
 
         /** LoadMasterKey
@@ -1027,10 +1116,6 @@ namespace Legacy
                                 int64_t& nValueRet, const std::string strAccount = "*");
 
     };
-
-
-    /** Main wallet pointer. **/
-    extern Legacy::CWallet* pwalletMain;
 
 }
 

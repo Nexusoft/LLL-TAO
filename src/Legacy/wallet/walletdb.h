@@ -201,7 +201,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteMinVersion(const int nVersion);
+        bool WriteMinVersion(const uint32_t nVersion);
 
 
         /** ReadAccount
@@ -450,7 +450,7 @@ namespace Legacy
          *  @return true if the key pool entry is present in the database and read successfully
          *
          **/
-        bool ReadPool(const int64_t nPool, CKeyPoolEntry& keypoolEntry);
+        bool ReadPool(const uint64_t nPool, CKeyPoolEntry& keypoolEntry);
 
 
         /** WritePool
@@ -464,7 +464,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WritePool(const int64_t nPool, const CKeyPoolEntry& keypoolEntry);
+        bool WritePool(const uint64_t nPool, const CKeyPoolEntry& keypoolEntry);
 
 
         /** ErasePool
@@ -476,7 +476,7 @@ namespace Legacy
          *  @return true if database entry successfully removed
          *
          **/
-        bool ErasePool(const int64_t nPool);
+        bool ErasePool(const uint64_t nPool);
 
 
         /** WriteAccountingEntry
@@ -535,7 +535,7 @@ namespace Legacy
          *  @return Value from Legacy::DBErrors, DB_LOAD_OK on success
          *
          **/
-        int LoadWallet(CWallet& wallet);
+        uint32_t LoadWallet(CWallet& wallet);
 
 
          /** @fn ThreadFlushWalletDB

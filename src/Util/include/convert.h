@@ -17,8 +17,9 @@ ________________________________________________________________________________
 #include <cstdlib>
 #include <cstdint>
 #include <string>
+#include <iostream>
 #include <Util/include/debug.h>
-
+#include <Util/include/json.h>
 
 /** i64tostr
  *
@@ -399,6 +400,37 @@ inline std::string bytes2string(std::vector<uint8_t> BYTES)
 {
     std::string STRING(BYTES.begin(), BYTES.end());
     return STRING;
+}
+
+/** ConvertStringValueTo
+*
+*  Template function for converting a string value to the given template type.
+*  If the value is not a string then no conversion takes place
+* 
+*  @param[in] value - a reference to the value to be converted.
+*
+*  @return void.
+*
+**/
+template<typename T>
+void ConvertStringValueTo(json::json::value_type& value)
+{
+    if(value.is_string())
+    {
+        std::string strValue = value.get<std::string>();
+        std::istringstream ss(strValue);
+
+        T tValueOut = T();
+        bool bValueOut = false;
+        // if the caller has requested conversion to a bool then test for boolean true|false value first 
+        // as istringsteam won't convert this implicitly
+        if( std::is_same<T, bool>::value && (ss >> std::boolalpha >> bValueOut))
+            tValueOut = bValueOut;
+        else
+            ss >> tValueOut;
+        
+        value = tValueOut;
+    }
 }
 
 #endif

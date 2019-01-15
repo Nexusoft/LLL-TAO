@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/rpc.h>
 #include <Util/include/json.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <Legacy/include/money.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -22,7 +23,6 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-
         /* Get network hashrate for the hashing channel */
         json::json RPC::GetNetworkHashps(const json::json& params, bool fHelp)
         {
@@ -148,7 +148,7 @@ namespace TAO
         //             continue;
 
         //         Object obj;
-        //         Wallet::NexusAddress address;
+        //         Legacy::NexusAddress address;
         //         address.SetPubKey(trustKey.vchPubKey);
 
         //         /* Read the previous block from disk. */
@@ -191,7 +191,7 @@ namespace TAO
                     "getblocknumber"
                     " - Deprecated.  Use getblockcount.");
 
-             return (int)TAO::Ledger::ChainState::nBestHeight;
+            return (int)TAO::Ledger::ChainState::nBestHeight;
         }
 
         /* Returns difficulty as a multiple of the minimum difficulty */
@@ -218,9 +218,9 @@ namespace TAO
         }
 
         /* getsupplyrates
-           Returns an object containing current Nexus production rates in set time intervals.
-           Time Frequency is in base 13 month, 28 day totalling 364 days.
-           This is to prevent error from Gregorian Figures */
+        Returns an object containing current Nexus production rates in set time intervals.
+        Time Frequency is in base 13 month, 28 day totalling 364 days.
+        This is to prevent error from Gregorian Figures */
         json::json RPC::GetSupplyRates(const json::json& params, bool fHelp)
         {
             if (fHelp || params.size() != 0)
@@ -238,16 +238,16 @@ namespace TAO
         //     int64 nSupply = Core::pindexBest->nMoneySupply;
         //     int64 nTarget = Core::CompoundSubsidy(nMinutes);
 
-        //     obj.push_back(Pair("moneysupply",   ValueFromAmount(nSupply)));
-        //     obj.push_back(Pair("targetsupply",   ValueFromAmount(nTarget)));
+        //     obj.push_back(Pair("moneysupply",   Legacy::SatoshisToAmount(nSupply)));
+        //     obj.push_back(Pair("targetsupply",   Legacy::SatoshisToAmount(nTarget)));
         //     obj.push_back(Pair("inflationrate",   ((nSupply * 100.0) / nTarget) - 100.0));
 
-        //     obj.push_back(Pair("minuteSupply",  ValueFromAmount(Core::SubsidyInterval(nMinutes, 1)))); //1
-        //     obj.push_back(Pair("hourSupply",    ValueFromAmount(Core::SubsidyInterval(nMinutes, 60)))); //60
-        //     obj.push_back(Pair("daySupply",     ValueFromAmount(Core::SubsidyInterval(nMinutes, 1440)))); //1440
-        //     obj.push_back(Pair("weekSupply",    ValueFromAmount(Core::SubsidyInterval(nMinutes, 10080)))); //10080
-        //     obj.push_back(Pair("monthSupply",   ValueFromAmount(Core::SubsidyInterval(nMinutes, 40320)))); //40320
-        //     obj.push_back(Pair("yearSupply",    ValueFromAmount(Core::SubsidyInterval(nMinutes, 524160)))); //524160
+        //     obj.push_back(Pair("minuteSupply",  Legacy::SatoshisToAmount(Core::SubsidyInterval(nMinutes, 1)))); //1
+        //     obj.push_back(Pair("hourSupply",    Legacy::SatoshisToAmount(Core::SubsidyInterval(nMinutes, 60)))); //60
+        //     obj.push_back(Pair("daySupply",     Legacy::SatoshisToAmount(Core::SubsidyInterval(nMinutes, 1440)))); //1440
+        //     obj.push_back(Pair("weekSupply",    Legacy::SatoshisToAmount(Core::SubsidyInterval(nMinutes, 10080)))); //10080
+        //     obj.push_back(Pair("monthSupply",   Legacy::SatoshisToAmount(Core::SubsidyInterval(nMinutes, 40320)))); //40320
+        //     obj.push_back(Pair("yearSupply",    Legacy::SatoshisToAmount(Core::SubsidyInterval(nMinutes, 524160)))); //524160
 
         //     return obj;
             json::json ret;
@@ -255,8 +255,8 @@ namespace TAO
         }
 
         /* getmoneysupply <timestamp>
-           Returns the total supply of Nexus produced by miners, holdings, developers, and ambassadors.
-           Default timestamp is the current Unified timestamp. The timestamp is recorded as a UNIX timestamp */
+        Returns the total supply of Nexus produced by miners, holdings, developers, and ambassadors.
+        Default timestamp is the current Unified timestamp. The timestamp is recorded as a UNIX timestamp */
         json::json RPC::GetMoneySupply(const json::json& params, bool fHelp)
         {
             if(fHelp || params.size() != 0)
@@ -269,9 +269,9 @@ namespace TAO
         //     unsigned int nMinutes = Core::GetChainAge(Core::pindexBest->GetBlockTime());
 
         //     obj.push_back(Pair("chainAge",       (int)nMinutes));
-        //     obj.push_back(Pair("miners", ValueFromAmount(Core::CompoundSubsidy(nMinutes, 0))));
-        //     obj.push_back(Pair("ambassadors", ValueFromAmount(Core::CompoundSubsidy(nMinutes, 1))));
-        //     obj.push_back(Pair("developers", ValueFromAmount(Core::CompoundSubsidy(nMinutes, 2))));
+        //     obj.push_back(Pair("miners", Legacy::SatoshisToAmount(Core::CompoundSubsidy(nMinutes, 0))));
+        //     obj.push_back(Pair("ambassadors", Legacy::SatoshisToAmount(Core::CompoundSubsidy(nMinutes, 1))));
+        //     obj.push_back(Pair("developers", Legacy::SatoshisToAmount(Core::CompoundSubsidy(nMinutes, 2))));
 
         //     return obj;
             json::json ret;

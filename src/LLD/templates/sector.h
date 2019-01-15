@@ -271,6 +271,10 @@ namespace LLD
                 /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
                 if(pTransaction->mapTransactions.count(static_cast<std::vector<uint8_t>>(ssKey)))
                     return true;
+
+                /* Check for keychain commits. */
+                if(pTransaction->mapKeychain.count(static_cast<std::vector<uint8_t>>(ssKey)))
+                    return true;
             }
 
             /* Return the Key existance in the Keychain Database. */
@@ -356,7 +360,16 @@ namespace LLD
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
 
-            //TODO: add transaction writes
+            /* Check for transaction. */
+            if(pTransaction)
+            {
+                LOCK(TRANSACTION_MUTEX);
+
+                /* Set the transaction data. */
+                pTransaction->mapKeychain[static_cast<std::vector<uint8_t>>(ssKey)] = 0;
+
+                return true;
+            }
 
             /* Return the Key existance in the Keychain Database. */
             SectorKey cKey(STATE::READY, static_cast<std::vector<uint8_t>>(ssKey), 0, 0, 0);
@@ -866,10 +879,21 @@ namespace LLD
                 /* Erase the transaction data. */
                 if(!pSectorKeys->Erase(it->first))
                 {
-                    RollbackTransactions();
+                    //RollbackTransactions();
                     TxnAbort();
 
                     return debug::error(FUNCTION, "failed to erase from keychain");
+                }
+            }
+
+            /* Commit keychain entries. */
+            for(auto it = pTransaction->mapKeychain.begin(); it != pTransaction->mapKeychain.end(); ++it )
+            {
+                SectorKey cKey(STATE::READY, it->first, 0, 0, 0);
+                if(!pSectorKeys->Put(cKey))
+                {
+                    //RollbackTransactions();
+                    TxnAbort();
                 }
             }
 
@@ -878,7 +902,7 @@ namespace LLD
             {
                 if(!Force(it->first, it->second))
                 {
-                    RollbackTransactions();
+                    //RollbackTransactions();
                     TxnAbort();
 
                     return debug::error(FUNCTION, "failed to commit sector data");

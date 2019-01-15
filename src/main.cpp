@@ -52,11 +52,6 @@ ________________________________________________________________________________
 
 
 
-namespace Legacy
-{
-    Legacy::CWallet* pwalletMain;
-}
-
 /* Declare the Global LLD Instances. */
 namespace LLD
 {
@@ -129,8 +124,10 @@ int main(int argc, char** argv)
 
     /** Load the Wallet Database. **/
     bool fFirstRun;
-    Legacy::pwalletMain = new Legacy::CWallet(config::GetArg("-wallet", "wallet.dat"));
-    int nLoadWalletRet = Legacy::pwalletMain->LoadWallet(fFirstRun);
+    if (!Legacy::CWallet::InitializeWallet(config::GetArg("-wallet", Legacy::CWalletDB::DEFAULT_WALLET_DB)))
+        return debug::error("failed initializing wallet");
+
+    uint32_t nLoadWalletRet = Legacy::CWallet::GetInstance().LoadWallet(fFirstRun);
     if (nLoadWalletRet != Legacy::DB_LOAD_OK)
     {
         if (nLoadWalletRet == Legacy::DB_CORRUPT)
@@ -273,9 +270,13 @@ int main(int argc, char** argv)
         if(!tx.Sign(user->Generate(tx.nSequence, "1234")))
             debug::error(0, FUNCTION, "Failed to sign");
 
+            tx.print();
+
         /* Execute the operations layer. */
         if(!TAO::Ledger::mempool.Accept(tx))
             debug::error(0, FUNCTION, "Failed to accept");
+
+        LLD::locDB->WriteLast(tx.hashGenesis, tx.GetHash());
     }
 
     /* Initialize generator thread. */
@@ -360,14 +361,6 @@ int main(int argc, char** argv)
         delete RPC_SERVER;
     }
 
-
-    /* Cleanup the wallet. */
-    if(Legacy::pwalletMain)
-    {
-        debug::log(0, FUNCTION, "Closing the wallet");
-
-        delete Legacy::pwalletMain;
-    }
 
 
     /* Elapsed Milliseconds from timer. */

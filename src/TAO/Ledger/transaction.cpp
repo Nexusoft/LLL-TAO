@@ -67,6 +67,10 @@ namespace TAO
                 //    return debug::error(FUNCTION, "operation data too large for coinbase ", ssOperation.size());
             }
 
+            /* Check for genesis valid numbers. */
+            if(hashGenesis == 0)
+                return debug::error(FUNCTION, "genesis cannot be zero");
+
             /* Check the timestamp. */
             if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                 return debug::error(FUNCTION, "transaction timestamp too far in the future ", nTimestamp);
@@ -147,8 +151,8 @@ namespace TAO
 
 
         /* Signs the transaction with the private key and sets the public key */
-         bool Transaction::Sign(uint512_t hashSecret)
-         {
+        bool Transaction::Sign(uint512_t hashSecret)
+        {
             /* Get the secret from new key. */
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
@@ -166,12 +170,13 @@ namespace TAO
 
             /* Sign the hash. */
             return key.Sign(hashThis.GetBytes(), vchSig);
-         }
+        }
 
-         /* Debug output - use ANSI colors. TODO: turn ansi colors on or off with a commandline flag */
-         void Transaction::print() const
-         {
-             debug::log(0, IsGenesis() ? "Genesis" : "Tritium", "(",
+
+        /* Debug output - use ANSI colors. TODO: turn ansi colors on or off with a commandline flag */
+        void Transaction::print() const
+        {
+            debug::log(0, IsGenesis() ? "Genesis" : "Tritium", "(",
                 "nVersion = ", nVersion, ", ",
                 "nSequence = ", nSequence, ", ",
                 "nTimestamp = ", nTimestamp, ", ",
@@ -181,8 +186,8 @@ namespace TAO
                 "pub = ", HexStr(vchPubKey).substr(0, 20), ", ",
                 "sig = ", HexStr(vchSig).substr(0, 20), ", ",
                 "hash = ", GetHash().ToString().substr(0, 20), ", ",
-                "register.size() = ", ssRegister.size(), ",",
-                "operation.size() = ", ssOperation.size(), ")");
+                "register.size() = ", ssRegister.size(), ", ",
+                "operation.size() = ", ssOperation.size(), ")" );
         }
     }
 }

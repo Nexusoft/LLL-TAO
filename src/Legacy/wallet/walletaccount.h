@@ -25,9 +25,8 @@ namespace Legacy
      *
      *  Account information.
      *
-     *  A wallet account is basically an alias of the public key value
-     *  for an account/Nexus address (which is not stored here. These are 
-     *  used to store public keys in the wallet database.
+     *  A wallet account contains the public key value for an account/Nexus address 
+     *  (which is not stored here). These are used to store public keys in the wallet database.
      *  
      *  Database key is acc<account> 
      **/

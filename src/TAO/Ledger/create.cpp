@@ -39,12 +39,13 @@ namespace TAO
         /* Condition variable for private blocks. */
         std::condition_variable PRIVATE_CONDITION;
 
-        /*Create a new transaction object from signature chain.*/
+
+        /* Create a new transaction object from signature chain. */
         bool CreateTransaction(TAO::Ledger::SignatureChain* user, SecureString pin, TAO::Ledger::Transaction& tx)
         {
             /* Get the last transaction. */
             uint512_t hashLast;
-            if(LLD::locDB->ReadLast(user->Genesis(), hashLast))
+            if(LLD::legDB->ReadLast(user->Genesis(), hashLast))
             {
                 /* Get previous transaction */
                 TAO::Ledger::Transaction txPrev;
@@ -291,6 +292,8 @@ namespace TAO
             {
                 std::unique_lock<std::mutex> CONDITION_LOCK(MUTEX);
                 PRIVATE_CONDITION.wait(CONDITION_LOCK, []{ return config::fShutdown || mempool.Size() > 0; });
+
+                runtime::sleep(5000);
 
                 /* Check for shutdown. */
                 if(config::fShutdown)
