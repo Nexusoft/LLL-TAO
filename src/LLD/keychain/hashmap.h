@@ -226,7 +226,7 @@ namespace LLD
         {
             /* Get an MD5 digest. */
             uint8_t digest[MD5_DIGEST_LENGTH];
-            MD5((unsigned char*)&vKey[0], vKey.size(), (unsigned char*)&digest);
+            MD5((uint8_t*)&vKey[0], vKey.size(), (uint8_t*)&digest);
 
             /* Copy bytes into the bucket. */
             uint64_t nBucket;
