@@ -95,7 +95,7 @@ namespace Legacy
     bool CWallet::SetMinVersion(const enum Legacy::WalletFeature nVersion, const bool fForceLatest)
     {
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             /* Allows potential to override nVersion with FEATURE_LATEST */
             Legacy::WalletFeature nVersionToSet = nVersion;
@@ -131,7 +131,7 @@ namespace Legacy
     bool CWallet::SetMaxVersion(const enum Legacy::WalletFeature nVersion)
     {
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             /* Cannot downgrade below current version */
             if (nWalletVersion > nVersion)
@@ -154,24 +154,20 @@ namespace Legacy
         if (fLoaded)
             return DB_LOAD_OK;
 
-        {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+        fFirstRunRet = false;
 
-            fFirstRunRet = false;
+        CWalletDB walletdb(strWalletFile,"cr+");
+        uint32_t nLoadWalletRet = walletdb.LoadWallet(*this);
+        walletdb.Close();
 
-            CWalletDB walletdb(strWalletFile,"cr+");
-            uint32_t nLoadWalletRet = walletdb.LoadWallet(*this);
-            walletdb.Close();
+        if (nLoadWalletRet == DB_NEED_REWRITE)
+            CDB::DBRewrite(strWalletFile);
 
-            if (nLoadWalletRet == DB_NEED_REWRITE)
-                CDB::DBRewrite(strWalletFile);
+        if (nLoadWalletRet != DB_LOAD_OK)
+            return nLoadWalletRet;
 
-            if (nLoadWalletRet != DB_LOAD_OK)
-                return nLoadWalletRet;
-
-            /* New wallet is indicated by an empty default key */
-            fFirstRunRet = vchDefaultKey.empty();
-        }
+        /* New wallet is indicated by an empty default key */
+        fFirstRunRet = vchDefaultKey.empty();
 
         /* Launch background thread to periodically flush the wallet to the backing database */
         std::thread flushThread(Legacy::CWalletDB::ThreadFlushWalletDB, std::string(strWalletFile));
@@ -187,7 +183,7 @@ namespace Legacy
     void CWallet::Inventory(const uint1024_t &hash)
     {
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             auto mi = mapRequestCount.find(hash);
 
@@ -209,7 +205,7 @@ namespace Legacy
 
         if (fFileBacked)
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             bool result = false;
 
@@ -256,7 +252,7 @@ namespace Legacy
          * It violates encapsulation, though, because we should not have to rely on how CCryptoKeyStore implements AddKey
          */
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             /* Call overridden method to add key to key store */
             /* For encrypted wallet, this adds to both key store and wallet database (as described above) */
@@ -282,7 +278,7 @@ namespace Legacy
     bool CWallet::AddCScript(const CScript& redeemScript)
     {
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             /* Call overridden inherited method to add key to key store */
             if (!CCryptoKeyStore::AddCScript(redeemScript))
@@ -366,7 +362,7 @@ namespace Legacy
 
         /* kMasterKey now contains the master key encrypted by the provided passphrase. Ready to perform wallet encryption. */
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             mapMasterKeys[++nMasterKeyMaxID] = kMasterKey;
 
@@ -443,7 +439,7 @@ namespace Legacy
         CKeyingMaterial vMasterKey;
 
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             /* If more than one master key in wallet's map (unusual), this will attempt each one with the passphrase.
              * If any one master key decryption works and unlocks the wallet, then the unlock is successful.
@@ -499,7 +495,7 @@ namespace Legacy
          */
 
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             /* Save current lock state so it can be reset when done */
             bool fWasLocked = IsLocked();
@@ -577,7 +573,7 @@ namespace Legacy
         int64_t nTotalBalance = 0;
 
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             for (const auto& item : mapWallet)
             {
@@ -601,7 +597,7 @@ namespace Legacy
         int64_t nUnconfirmedBalance = 0;
 
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             for (const auto& item : mapWallet)
             {
@@ -624,7 +620,7 @@ namespace Legacy
         int64_t nTotalStake = 0;
 
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             for (const auto& item : mapWallet)
             {
@@ -645,7 +641,7 @@ namespace Legacy
         int64_t nTotalMint = 0;
 
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             for (const auto& item : mapWallet)
             {
@@ -664,7 +660,7 @@ namespace Legacy
     void CWallet::AvailableCoins(const uint32_t nSpendTime, std::vector<COutput>& vCoins, const bool fOnlyConfirmed)
     {
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             vCoins.clear();
 
@@ -707,7 +703,7 @@ namespace Legacy
     void CWallet::MarkDirty()
     {
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             for(auto& item : mapWallet)
                 item.second.MarkDirty();
@@ -719,7 +715,7 @@ namespace Legacy
     bool CWallet::GetTransaction(const uint512_t &hashTx, CWalletTx& wtx)
     {
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             /* Find the requested transaction in the wallet */
             TransactionMap::iterator mi = mapWallet.find(hashTx);
@@ -741,7 +737,7 @@ namespace Legacy
         uint512_t hash = wtxIn.GetHash();
 
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             /* Inserts only if not already there, returns tx inserted or tx found */
             std::pair<TransactionMap::iterator, bool> ret = mapWallet.insert(std::make_pair(hash, wtxIn));
@@ -828,7 +824,7 @@ namespace Legacy
         uint512_t hash = tx.GetHash();
 
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             /* Check to see if transaction hash in this wallet */
             bool fExisted = mapWallet.count(hash);
@@ -866,7 +862,7 @@ namespace Legacy
         if (!fFileBacked)
             return false;
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             if (mapWallet.erase(hash))
             {
@@ -891,7 +887,7 @@ namespace Legacy
 
         {
             /* Disconnecting coinstake requires marking input unspent */
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             for(const CTxIn& txin : tx.vin)
             {
@@ -935,7 +931,7 @@ namespace Legacy
             block = *pstartBlock;
 
         { // Begin lock scope
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
             Legacy::Transaction tx;
@@ -1014,7 +1010,7 @@ namespace Legacy
         LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
 
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             /* Find any sent tx not in block and sort them in chronological order */
             std::multimap<uint64_t, CWalletTx> mapSorted;
@@ -1049,7 +1045,7 @@ namespace Legacy
     void CWallet::WalletUpdateSpent(const Transaction &tx)
     {
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             /* Loop through and the tx inputs, checking each separately */
             for(const auto& txin : tx.vin)
@@ -1086,7 +1082,7 @@ namespace Legacy
         nBalanceInQuestion = 0;
 
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             std::vector<CWalletTx> transactionsInWallet;
             transactionsInWallet.reserve(mapWallet.size());
@@ -1167,7 +1163,7 @@ namespace Legacy
     bool CWallet::IsMine(const CTxIn &txin)
     {
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             /* Any input from this wallet will have a corresponding UTXO in the previous transaction
              * Thus, if the wallet doesn't contain the previous transaction, the input is not from this wallet.
@@ -1258,7 +1254,7 @@ namespace Legacy
             return 0;
 
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             /* A debit spends the txout value from a previous output
              * so begin by finding the previous transaction in the wallet
@@ -1310,7 +1306,7 @@ namespace Legacy
         NexusAddress address;
 
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             if (ExtractAddress(txout.scriptPubKey, address) && HaveKey(address))
             {
@@ -1417,7 +1413,7 @@ namespace Legacy
         wtxNew.BindWallet(this);
 
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
 
@@ -1542,7 +1538,7 @@ namespace Legacy
     bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
     {
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             debug::log(0, "CommitTransaction:", wtxNew.ToString());
 
@@ -1610,7 +1606,7 @@ namespace Legacy
 //        block.vtx[0].vout[0].nValue = 0;
 
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             vCoins.reserve(mapWallet.size());
 
@@ -1689,7 +1685,7 @@ namespace Legacy
     bool CWallet::SetDefaultKey(const std::vector<uint8_t> &vchPubKey)
     {
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             if (fFileBacked)
             {
@@ -1786,7 +1782,7 @@ namespace Legacy
         }
 
         {
-            std::lock_guard<std::recursive_mutex> walletLock(cs_wallet);
+            LOCK(cs_wallet);
 
             vallWalletTx.reserve(mapWallet.size());
 
