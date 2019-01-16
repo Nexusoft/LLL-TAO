@@ -48,33 +48,26 @@ namespace TAO
         }
 
 
-        // json::json keypoolrefill(const json::json& params, bool fHelp)
-        // {
-        //     if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() > 0))
-        //         return std::string(
-        //             "keypoolrefill"
-        //             " - Fills the keypool, requires wallet passphrase to be set.");
-        //     if (!Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() > 0))
-        //         return std::string(
-        //             "keypoolrefill"
-        //             " - Fills the keypool.");
+        /*  keypoolrefill
+        *   Fills the keypool, requires wallet passphrase to be set */
+        json::json RPC::KeypoolRefill(const json::json& params, bool fHelp)
+        {
+            if ((fHelp || params.size() > 0))
+                return std::string(
+                    "keypoolrefill"
+                    " - Fills the keypool, requires wallet passphrase to be set.");
+            
+            if (Legacy::CWallet::GetInstance().IsLocked())
+                throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
-        //     if (Legacy::CWallet::GetInstance().IsLocked())
-        //         throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+            Legacy::CWallet::GetInstance().GetKeyPool().TopUpKeyPool();
 
-        //     Legacy::CWallet::GetInstance().TopUpKeyPool();
+            if (Legacy::CWallet::GetInstance().GetKeyPool().GetKeyPoolSize() < config::GetArg("-keypool", 100))
+                throw APIException(-4, "Error refreshing keypool.");
 
-        //     if (Legacy::CWallet::GetInstance().GetKeyPoolSize() < GetArg("-keypool", 100))
-        //         throw APIException(-4, "Error refreshing keypool.");
+            return "";
+        }
 
-        //     return Value::null;
-        // }
-
-
-        // void ThreadTopUpKeyPool(void* parg)
-        // {
-        //     Legacy::CWallet::GetInstance().TopUpKeyPool();
-        // }
 
 
 
@@ -386,56 +379,57 @@ namespace TAO
                     " - Import List of Private Keys and return if they import properly or fail with their own code in the output sequence"
                     " You need to list the imported keys in a JSON array of {[account],[privatekey]}");
             }
-                /** Make sure the Wallet is Unlocked fully before proceeding. **/
-        //         if (Legacy::CWallet::GetInstance().IsLocked())
-        //             throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
-        //         if (Legacy::fWalletUnlockMintOnly)
-        //             throw APIException(-102, "Wallet is unlocked for minting only.");
+            /** Make sure the Wallet is Unlocked fully before proceeding. **/
+            if (Legacy::CWallet::GetInstance().IsLocked())
+                throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+            if (Legacy::fWalletUnlockMintOnly)
+                throw APIException(-102, "Wallet is unlocked for minting only.");
 
-        //         /** Establish the JSON Object from the Parameters. **/
-        //         Object entry = params[0].get_obj();
+            debug::log(0, params.dump());
+            if(!params[0].is_array())
+                throw APIException(-1, "Import list should be an array of objects.");
 
-        //         /** Establish a return value JSON object for Error Reporting. **/
-        //         Object response;
+            /** Establish the JSON Object from the Parameters. **/
+            json::json jsonImportArray = params[0];
 
-        //         /** Import the Keys one by One. **/
-        //         for(int nIndex = 0; nIndex < entry.size(); nIndex++) {
 
-        //             Wallet::NexusSecret vchSecret;
-        //             if(!vchSecret.SetString(entry[nIndex].value_.get_str())){
-        //                 response.push_back(Pair(entry[nIndex].name_, "Code -5 Invalid Key"));
+            /** Establish a return value JSON object for Error Reporting. **/
+            json::json response;
 
-        //                 continue;
-        //             }
+            /** Import the Keys one by One. **/
+            for (json::json::iterator it = jsonImportArray.begin(); it != jsonImportArray.end(); ++it)
+            {
+                Legacy::NexusSecret vchSecret;
+                if(!vchSecret.SetString(it.value()))
+                {
+                    response[it.key()] =  "Code -5 Invalid Key";
+                    continue;
+                }
 
-        //             Wallet::CKey key;
-        //             bool fCompressed;
-        //             Wallet::CSecret secret = vchSecret.GetSecret(fCompressed);
-        //             key.SetSecret(secret, fCompressed);
-        //             Legacy::NexusAddress vchAddress = Legacy::NexusAddress(key.GetPubKey());
+                LLC::ECKey key;
+                bool fCompressed;
+                LLC::CSecret secret = vchSecret.GetSecret(fCompressed);
+                key.SetSecret(secret, fCompressed);
+                Legacy::NexusAddress vchAddress = Legacy::NexusAddress(key.GetPubKey());
 
-        //             {
-        //                 LOCK2(Core::cs_main, Legacy::CWallet::GetInstance().cs_wallet);
+                {
+                    std::lock_guard<std::recursive_mutex> walletLock( Legacy::CWallet::GetInstance().cs_wallet);
 
-        //                 Legacy::CWallet::GetInstance().MarkDirty();
-        //                 Legacy::CWallet::GetInstance().SetAddressBookName(vchAddress, entry[nIndex].name_);
+                    Legacy::CWallet::GetInstance().MarkDirty();
+                    Legacy::CWallet::GetInstance().GetAddressBook().SetAddressBookName(vchAddress, it.key());
 
-        //                 if (!Legacy::CWallet::GetInstance().AddKey(key))
-        //                 {
-        //                     response.push_back(Pair(entry[nIndex].name_, "Code -4 Error Adding to Wallet"));
+                    if (!Legacy::CWallet::GetInstance().AddKey(key))
+                    {
+                        response[it.key()] = "Code -4 Error Adding to Wallet";
 
-        //                     continue;
-        //                 }
-        //             }
+                        continue;
+                    }
+                }
 
-        //             response.push_back(Pair(entry[nIndex].name_, "Successfully Imported"));
-        //         }
+                response[it.key()] =  "Successfully Imported";
+            }
 
-        //         MainFrameRepaint();
-
-        //         return response;
-            json::json ret;
-            return ret;
+            return response;
         }
 
         /* exportkeys

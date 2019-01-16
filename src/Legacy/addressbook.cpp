@@ -185,4 +185,56 @@ namespace Legacy
         return true;
     }
 
+    /* returns the address for the given account, adding a new address if one has not already been assigned*/
+    Legacy::NexusAddress CAddressBook::GetAccountAddress(std::string strAccount, bool fForceNew )
+    {
+        Legacy::NexusAddress address;
+        bool fKeyUsed = false;
+        
+        if( !fForceNew )
+        {
+            // first look up the address currently assigned to the account
+            AddressBookMap::iterator it = std::find_if(std::begin(mapAddressBook), std::end(mapAddressBook),
+                            [=](AddressBookMap::value_type& entry) { return entry.second == strAccount; });
+
+            if (it != std::end(mapAddressBook))
+                address = it->first;
+
+            
+
+            // Check if the current key has been used
+            if( address.IsValid() )
+            {
+                Legacy::CScript scriptPubKey;
+                scriptPubKey.SetNexusAddress(address);
+                for (std::map<uint512_t, Legacy::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin();
+                        it != Legacy::CWallet::GetInstance().mapWallet.end() && !fKeyUsed;
+                        ++it)
+                {
+                    const Legacy::CWalletTx& wtx = (*it).second;
+                    for(const Legacy::CTxOut& txout : wtx.vout)
+                        if (txout.scriptPubKey == scriptPubKey)
+                        {
+                            fKeyUsed = true;
+                            break;
+                        }
+                }
+            }
+        }
+
+        // Generate a new key
+        if (!address.IsValid() || fForceNew || fKeyUsed)
+        {
+            std::vector<uint8_t> vchPubKey;
+
+            if (!Legacy::CWallet::GetInstance().GetKeyPool().GetKeyFromPool(vchPubKey, false))
+                throw std::runtime_error("Error: Keypool ran out, please call keypoolrefill first");
+
+            address = Legacy::NexusAddress(vchPubKey);
+            SetAddressBookName(address, strAccount);
+        }
+
+        return address;
+    }
+
 }

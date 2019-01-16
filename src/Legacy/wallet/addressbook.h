@@ -161,6 +161,28 @@ namespace Legacy
          **/
         bool BalanceByAccount(const std::string strAccount, int64_t& nBalance, const uint32_t nMinDepth = 3) const;
 
+        
+        /** GetAccountAddress
+        *
+        *  Get the address for the given account, adding a new address if one has not already been assigned
+        *
+        *  @param[in] strAccount The account name to search for
+        *  @param[in] fForceNew If true a new address will always be generated and assigned to the account
+        *
+        *  @return The nexus address assigned to the requested account name
+        *
+        **/
+        Legacy::NexusAddress GetAccountAddress(std::string strAccount, bool fForceNew = false );
+
+        /** GetAddressBookMap
+        *
+        *  Gets const access to the internal AddressBookMap (NexusAddress to account name)
+        * 
+        *  @return The AddressBookMap
+        *
+        **/
+        const AddressBookMap& GetAddressBookMap() const { return mapAddressBook;}
+
     };
 
 }

@@ -188,8 +188,13 @@ namespace TAO
             /* Build the JSON request object. */
             json::json parameters = json::json::array();
             for(int i = argn + 1; i < argc; i++)
-                parameters.push_back(argv[i]);
-
+            {
+                std::string strArg = argv[i];
+                if( strArg.compare("{") == 0)
+                    parameters.push_back(json::json::parse(argv[i]));
+                else
+                    parameters.push_back(argv[i]);
+            }
             /* Build the HTTP Header. */
             json::json body = { {"method", argv[argn]}, {"params", parameters}, {"id", 1} };
             std::string strContent = body.dump();

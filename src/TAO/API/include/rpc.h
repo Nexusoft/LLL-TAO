@@ -594,6 +594,20 @@ namespace TAO
             **/
             json::json BackupWallet(const json::json& params, bool fHelp);
 
+            /** KeypoolRefill
+            *
+            *  keypoolrefill
+            *  Fills the keypool, requires wallet passphrase to be set
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            /*  keypoolrefill
+            *   Fills the keypool, requires wallet passphrase to be set */
+            json::json KeypoolRefill(const json::json& params, bool fHelp);
+
             /** WalletPassphrase
             *
             *  walletpassphrase <passphrase> [timeout] [mintonly]

@@ -70,6 +70,7 @@ namespace TAO
             mapFunctions["getsupplyrates"] = Function(std::bind(&RPC::GetSupplyRates, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getmoneysupply"] = Function(std::bind(&RPC::GetMoneySupply, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["backupwallet"] = Function(std::bind(&RPC::BackupWallet, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["keypoolrefill"] = Function(std::bind(&RPC::KeypoolRefill, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["walletpassphrase"] = Function(std::bind(&RPC::WalletPassphrase, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["encryptwallet"] = Function(std::bind(&RPC::EncryptWallet, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["walletpassphrasechange"] = Function(std::bind(&RPC::WalletPassphraseChange, this, std::placeholders::_1, std::placeholders::_2));
@@ -80,8 +81,8 @@ namespace TAO
             mapFunctions["rescan"] = Function(std::bind(&RPC::Rescan, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["importprivkey"] = Function(std::bind(&RPC::ImportPrivKey, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["dumpprivkey"] = Function(std::bind(&RPC::DumpPrivKey, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["importkeys"] = Function(std::bind(&RPC::ImportKeys, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["exportkeys"] = Function(std::bind(&RPC::ExportKeys, this, std::placeholders::_1, std::placeholders::_2));
+            //mapFunctions["importkeys"] = Function(std::bind(&RPC::ImportKeys, this, std::placeholders::_1, std::placeholders::_2));
+            //mapFunctions["exportkeys"] = Function(std::bind(&RPC::ExportKeys, this, std::placeholders::_1, std::placeholders::_2));
 
         }
 
@@ -103,7 +104,6 @@ namespace TAO
             if (strMethod == "dumprichlist"           && n > 0) ConvertStringValueTo<int>(jsonSanitizedParams[0]);
             if (strMethod == "setgenerate"            && n > 1) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[1]);
             if (strMethod == "sendtoaddress"          && n > 1) ConvertStringValueTo<double>(jsonSanitizedParams[1]);
-            if (strMethod == "settxfee"               && n > 0) ConvertStringValueTo<double>(jsonSanitizedParams[0]);
             if (strMethod == "getreceivedbyaddress"   && n > 1) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[1]);
             if (strMethod == "getreceivedbyaccount"   && n > 1) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[1]);
             if (strMethod == "listreceivedbyaddress"  && n > 0) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[0]);
