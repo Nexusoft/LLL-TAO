@@ -413,8 +413,6 @@ namespace TAO
                 Legacy::NexusAddress vchAddress = Legacy::NexusAddress(key.GetPubKey());
 
                 {
-                    std::lock_guard<std::recursive_mutex> walletLock( Legacy::CWallet::GetInstance().cs_wallet);
-
                     Legacy::CWallet::GetInstance().MarkDirty();
                     Legacy::CWallet::GetInstance().GetAddressBook().SetAddressBookName(vchAddress, it.key());
 
