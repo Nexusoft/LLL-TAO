@@ -37,7 +37,7 @@ namespace Legacy
 	void Transaction::SetNull()
 	{
 		nVersion = 1;
-		nTime = runtime::unifiedtimestamp();
+		nTime = (uint32_t)runtime::unifiedtimestamp();
 		vin.clear();
 		vout.clear();
 		nLockTime = 0;

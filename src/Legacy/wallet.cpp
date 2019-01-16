@@ -752,7 +752,10 @@ namespace Legacy
 
             bool fInsertedNew = ret.second;
             if (fInsertedNew)
-                wtx.nTimeReceived = runtime::unifiedtimestamp();
+            {
+                /* wtx.nTimeReceive must remain uint32_t for backward compatability */
+                wtx.nTimeReceived = (uint32_t)runtime::unifiedtimestamp();
+            }
 
             bool fUpdated = false;
             if (!fInsertedNew)
@@ -843,7 +846,9 @@ namespace Legacy
                 CWalletTx wtx(this,tx);
 
                 if (fRescan) {
-                    /* On rescan or initial download, set wtx time to transaction time instead of time tx received */
+                    /* On rescan or initial download, set wtx time to transaction time instead of time tx received. 
+                     * These are both uint32_t timestamps to support unserialization of legacy data.
+                     */
                     wtx.nTimeReceived = tx.nTime;
                 }
 

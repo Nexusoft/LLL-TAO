@@ -37,7 +37,12 @@ namespace Legacy
 		int32_t nVersion;
 
 
-		/** The timestamp of transaction. **/
+		/** The timestamp of transaction. 
+         *
+         *  Timestamps are generally uint64_t but this one must remain uint32_t
+         *  to support unserialization of unsigned int values in legacy wallets.
+         *
+         **/
 		uint32_t nTime;
 
 
