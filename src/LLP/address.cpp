@@ -12,31 +12,89 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/address.h>
+#include <algorithm>
 
 namespace LLP
 {
-    Address::Address() : Service()
+    Address::Address()
+    : Service()
+    , nServices(NODE_NETWORK)
+    , nTime(100000000)
+    , nLastTry(0)
     {
-        Init();
     }
+
+    Address::Address(const Address &other)
+    : Service()
+    , nServices(other.nServices)
+    , nTime(other.nTime)
+    , nLastTry(other.nLastTry)
+    {
+        nPort = other.nPort;
+
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
+    }
+
+    Address::Address(Address &other)
+    : Service()
+    , nServices(other.nServices)
+    , nTime(other.nTime)
+    , nLastTry(other.nLastTry)
+    {
+        nPort = other.nPort;
+
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
+    }
+
+    Address::Address(const Service &ipIn, uint64_t nServicesIn)
+    : Service(ipIn)
+    , nServices(nServicesIn)
+    , nTime(100000000)
+    , nLastTry(0)
+    {
+    }
+
+    Address::Address(Service &ipIn, uint64_t nServicesIn)
+    : Service(ipIn)
+    , nServices(nServicesIn)
+    , nTime(100000000)
+    , nLastTry(0)
+    {
+    }
+
 
     Address::~Address()
     {
     }
 
-
-    Address::Address(Service ipIn, uint64_t nServicesIn) : Service(ipIn)
+    Address &Address::operator=(const Address &other)
     {
-        Init();
-        nServices = nServicesIn;
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
+
+        nPort = other.nPort;
+
+        nServices = other.nServices;
+        nTime = other.nTime;
+        nLastTry = other.nLastTry;
+
+        return *this;
     }
 
-
-    void Address::Init()
+    Address &Address::operator=(Address &other)
     {
-        nServices = NODE_NETWORK;
-        nTime = 100000000;
-        nLastTry = 0;
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
+
+        nPort = other.nPort;
+
+        nServices = other.nServices;
+        nTime = other.nTime;
+        nLastTry = other.nLastTry;
+
+        return *this;
     }
 
 }

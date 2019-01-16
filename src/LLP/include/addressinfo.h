@@ -50,8 +50,11 @@ namespace LLP
          *  @param[in] addr The address to initalize associated hash
          *
          **/
-        AddressInfo(const Address &addr);
         AddressInfo();
+        AddressInfo(const Address &addr);
+        AddressInfo(const AddressInfo &other);
+        AddressInfo(Address &addr);
+        AddressInfo(AddressInfo &other);
 
 
         /** ~AddressInfo
@@ -59,7 +62,10 @@ namespace LLP
          *  Default destructor
          *
          **/
-        ~AddressInfo();
+        virtual ~AddressInfo();
+
+        AddressInfo &operator=(const AddressInfo &other);
+        AddressInfo &operator=(AddressInfo &other);
 
 
         /* Serialization */
@@ -76,14 +82,6 @@ namespace LLP
             READWRITE(nLatency);
             READWRITE(*pAddr);
         )
-
-
-        /** Init
-         *
-         *  Initalizes stats to zero.
-         *
-         **/
-        void Init();
 
 
         /** Score

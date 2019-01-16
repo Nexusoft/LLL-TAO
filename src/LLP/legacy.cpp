@@ -45,8 +45,8 @@ namespace LLP
         uint64_t nLocalServices = 0;
 
         /* Relay Your Address. */
-        Address addrMe  = Address(Service("0.0.0.0",0));
-        Address addrYou = Address(Service("0.0.0.0",0));
+        Address addrMe;
+        Address addrYou;
 
         /* Push the Message to receiving node. */
         PushMessage("version", LLP::PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,

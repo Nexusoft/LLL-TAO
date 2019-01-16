@@ -176,7 +176,8 @@ namespace LLP
         void AddNode(std::string strAddress, uint16_t nPort)
         {
             Service service(debug::strprintf("%s:%u", strAddress.c_str(), nPort).c_str(), false);
-            Address addr = Address(service);
+
+            Address addr(service);
 
             if(pAddressManager)
                 pAddressManager->AddAddress(addr, ConnectState::NEW);
@@ -287,7 +288,7 @@ namespace LLP
         void Manager()
         {
             /* Address to select. */
-            Address addr;
+            Address addr = Address();
 
             /* Loop connections. */
             while(!fDestruct.load())

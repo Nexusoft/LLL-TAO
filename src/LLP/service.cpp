@@ -23,34 +23,41 @@ ________________________________________________________________________________
 namespace LLP
 {
     Service::Service()
+    : NetAddr()
+    , nPort(0)
     {
-        Init();
     }
 
     Service::Service(const NetAddr& cip, uint16_t portIn)
     : NetAddr(cip)
-    , port(portIn)
+    , nPort(portIn)
+    {
+    }
+
+    Service::Service(NetAddr& cip, uint16_t portIn)
+    : NetAddr(cip)
+    , nPort(portIn)
     {
     }
 
 
     Service::Service(const struct in_addr& ipv4Addr, uint16_t portIn)
     : NetAddr(ipv4Addr)
-    , port(portIn)
+    , nPort(portIn)
     {
     }
 
 
     Service::Service(const struct in6_addr& ipv6Addr, uint16_t portIn)
     : NetAddr(ipv6Addr)
-    , port(portIn)
+    , nPort(portIn)
     {
     }
 
 
     Service::Service(const struct sockaddr_in& addr)
     : NetAddr(addr.sin_addr)
-    , port(ntohs(addr.sin_port))
+    , nPort(ntohs(addr.sin_port))
     {
         assert(addr.sin_family == AF_INET);
     }
@@ -58,78 +65,94 @@ namespace LLP
 
     Service::Service(const struct sockaddr_in6 &addr)
     : NetAddr(addr.sin6_addr)
-    , port(ntohs(addr.sin6_port))
+    , nPort(ntohs(addr.sin6_port))
     {
         assert(addr.sin6_family == AF_INET6);
     }
 
-
-    Service::Service(const char *pszIpPort, bool fAllowLookup)
+    Service::Service(const char *pszIpPort, uint16_t portDefault, bool fAllowLookup)
+    : NetAddr()
+    , nPort(0)
     {
-        Init();
-        Service ip;
-        if (Lookup(pszIpPort, ip, 0, fAllowLookup))
-            *this = ip;
-    }
-
-
-    Service::Service(const char *pszIpPort, int portDefault, bool fAllowLookup)
-    {
-        Init();
         Service ip;
         if (Lookup(pszIpPort, ip, portDefault, fAllowLookup))
             *this = ip;
     }
 
 
-    Service::Service(const std::string &strIpPort, bool fAllowLookup)
+    Service::Service(const char *pszIpPort, bool fAllowLookup)
+    : NetAddr()
+    , nPort(0)
     {
-        Init();
+        Service ip;
+        if (Lookup(pszIpPort, ip, 0, fAllowLookup))
+            *this = ip;
+    }
+
+    Service::Service(const std::string &strIpPort, uint16_t portDefault, bool fAllowLookup)
+    : NetAddr()
+    , nPort(0)
+    {
+        Service ip;
+        if (Lookup(strIpPort.c_str(), ip, portDefault, fAllowLookup))
+            *this = ip;
+    }
+
+    Service::Service(const std::string &strIpPort, bool fAllowLookup)
+    : NetAddr()
+    , nPort(0)
+    {
         Service ip;
         if (Lookup(strIpPort.c_str(), ip, 0, fAllowLookup))
             *this = ip;
     }
 
 
-    Service::Service(const std::string &strIpPort, int portDefault, bool fAllowLookup)
-    {
-        Init();
-        Service ip;
-        if (Lookup(strIpPort.c_str(), ip, portDefault, fAllowLookup))
-            *this = ip;
-    }
-
     Service::~Service()
     {
     }
 
-    void Service::Init()
+    Service &Service::operator=(const Service &other)
     {
-        port = 0;
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
+
+        nPort = other.nPort;
+
+        return *this;
     }
 
+    Service &Service::operator=(Service &other)
+    {
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
+
+        nPort = other.nPort;
+
+        return *this;
+    }
 
     uint16_t Service::GetPort() const
     {
-        return port;
+        return nPort;
     }
 
 
     bool operator==(const Service& a, const Service& b)
     {
-        return (NetAddr)a == (NetAddr)b && a.port == b.port;
+        return (NetAddr)a == (NetAddr)b && a.nPort == b.nPort;
     }
 
 
     bool operator!=(const Service& a, const Service& b)
     {
-        return (NetAddr)a != (NetAddr)b || a.port != b.port;
+        return (NetAddr)a != (NetAddr)b || a.nPort != b.nPort;
     }
 
 
     bool operator<(const Service& a, const Service& b)
     {
-        return (NetAddr)a < (NetAddr)b || ((NetAddr)a == (NetAddr)b && a.port < b.port);
+        return (NetAddr)a < (NetAddr)b || ((NetAddr)a == (NetAddr)b && a.nPort < b.nPort);
     }
 
 
@@ -141,7 +164,7 @@ namespace LLP
         if (!GetInAddr(&paddr->sin_addr))
             return false;
         paddr->sin_family = AF_INET;
-        paddr->sin_port = htons(port);
+        paddr->sin_port = htons(nPort);
         return true;
     }
 
@@ -152,7 +175,7 @@ namespace LLP
         if (!GetIn6Addr(&paddr->sin6_addr))
             return false;
         paddr->sin6_family = AF_INET6;
-        paddr->sin6_port = htons(port);
+        paddr->sin6_port = htons(nPort);
         return true;
     }
 
@@ -163,15 +186,15 @@ namespace LLP
         vKey.resize(18);
         //memcpy(&vKey[0], ip, 16);
         std::copy(ip, ip+16, &vKey[0]);
-        vKey[16] = port / 0x100;
-        vKey[17] = port & 0x0FF;
+        vKey[16] = nPort / 0x100;
+        vKey[17] = nPort & 0x0FF;
         return vKey;
     }
 
 
     std::string Service::ToStringPort() const
     {
-        return debug::strprintf(":%i", port);
+        return debug::strprintf(":%i", nPort);
     }
 
 
@@ -195,6 +218,6 @@ namespace LLP
 
     void Service::SetPort(uint16_t portIn)
     {
-        port = portIn;
+        nPort = portIn;
     }
 }

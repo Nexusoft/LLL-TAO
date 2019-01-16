@@ -171,12 +171,12 @@ namespace LLP
     /*  Select a good address to connect to that isn't already connected. */
     bool AddressManager::StochasticSelect(Address &addr)
     {
-        std::unique_lock<std::mutex> lk(mut);
-
         /* put unconnected address info scores into a vector and sort */
         uint8_t flags = ConnectState::NEW | ConnectState::FAILED | ConnectState::DROPPED;
-
         std::vector<AddressInfo> vInfo;
+
+        std::unique_lock<std::mutex> lk(mut);
+
 
         get_info(vInfo, flags);
 

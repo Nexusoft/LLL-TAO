@@ -16,6 +16,9 @@ ________________________________________________________________________________
 
 #include <LLP/include/netaddr.h>
 #include <Util/templates/serialize.h>
+#include <string>
+#include <vector>
+#include <cstdint>
 
 namespace LLP
 {
@@ -23,21 +26,26 @@ namespace LLP
     class Service : public NetAddr
     {
     protected:
-        uint16_t port; // host order
+        uint16_t nPort; // host order
 
     public:
         Service();
         Service(const NetAddr& ip, uint16_t port);
+        Service(NetAddr& ip, uint16_t port);
         Service(const struct in_addr& ipv4Addr, uint16_t port);
+        Service(const struct in6_addr& ipv6Addr, uint16_t port);
         Service(const struct sockaddr_in& addr);
-        explicit Service(const char *pszIpPort, int portDefault, bool fAllowLookup = false);
-        explicit Service(const char *pszIpPort, bool fAllowLookup = false);
-        explicit Service(const std::string& strIpPort, int portDefault, bool fAllowLookup = false);
-        explicit Service(const std::string& strIpPort, bool fAllowLookup = false);
+        Service(const struct sockaddr_in6& addr);
+        Service(const char *pszIpPort, uint16_t portDefault, bool fAllowLookup = false);
+        Service(const char *pszIpPort, bool fAllowLookup = false);
+        Service(const std::string& strIpPort, uint16_t portDefault, bool fAllowLookup = false);
+        Service(const std::string& strIpPort, bool fAllowLookup = false);
 
-        ~Service();
+        virtual ~Service();
 
-        void Init();
+        Service &operator=(const Service &other);
+        Service &operator=(Service &other);
+
         void SetPort(uint16_t portIn);
         uint16_t GetPort() const;
         bool GetSockAddr(struct sockaddr_in* paddr) const;
@@ -50,23 +58,23 @@ namespace LLP
         std::string ToStringIPPort() const;
         void print() const;
 
-        Service(const struct in6_addr& ipv6Addr, uint16_t port);
+
         bool GetSockAddr6(struct sockaddr_in6* paddr) const;
-        Service(const struct sockaddr_in6& addr);
+
 
         IMPLEMENT_SERIALIZE
         (
             Service* pthis = const_cast<Service*>(this);
             READWRITE(FLATDATA(ip));
-            uint16_t portN = htons(port);
+            uint16_t portN = htons(nPort);
             READWRITE(portN);
             if (fRead)
-                pthis->port = ntohs(portN);
+                pthis->nPort = ntohs(portN);
         )
     };
 
     /* Proxy Settings for Nexus Core. */
-    static Service addrProxy("127.0.0.1", 9050);
+    static Service addrProxy(std::string("127.0.0.1"), static_cast<uint16_t>(9050));
 }
 
 #endif

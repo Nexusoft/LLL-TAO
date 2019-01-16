@@ -215,7 +215,7 @@ namespace LLP
 
 
         /* Connect Socket to a Remote Endpoint. */
-        bool Connect(std::string strAddress, int nPort)
+        bool Connect(std::string strAddress, uint16_t nPort)
         {
             Service addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
 

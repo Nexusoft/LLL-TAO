@@ -14,23 +14,39 @@ ________________________________________________________________________________
 #include <LLP/include/netaddr.h>
 #include <LLP/include/network.h>
 #include <LLP/include/hosts.h>  //LookupHost
-#include <Util/include/debug.h> //debug::log
 #include <LLC/hash/SK.h>        //LLC::SK64
+#include <Util/include/debug.h> //debug::log
 
 #include <cstring> //memset, memcmp, memcpy
 #include <algorithm> //std::copy
+#include <cassert>
 
 namespace LLP
 {
     static const uint8_t pchIPv4[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff };
 
     NetAddr::NetAddr()
+    : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     {
-        Init();
+    }
+
+    NetAddr::NetAddr(const NetAddr &other)
+    : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+    {
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
+    }
+
+    NetAddr::NetAddr(NetAddr &other)
+    : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+    {
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
     }
 
 
     NetAddr::NetAddr(const struct in_addr& ipv4Addr)
+    : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     {
         //memcpy(ip,    pchIPv4, 12);
         //memcpy(ip+12, &ipv4Addr, 4);
@@ -40,6 +56,7 @@ namespace LLP
 
 
     NetAddr::NetAddr(const struct in6_addr& ipv6Addr)
+    : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     {
         //memcpy(ip, &ipv6Addr, 16);
         std::copy((uint8_t*)&ipv6Addr, (uint8_t*)&ipv6Addr + 16, (uint8_t*)&ip[0]);
@@ -47,8 +64,8 @@ namespace LLP
 
 
     NetAddr::NetAddr(const char *pszIp, bool fAllowLookup)
+    : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     {
-        Init();
         std::vector<NetAddr> vIP;
         if (LookupHost(pszIp, vIP, 1, fAllowLookup))
             *this = vIP[0];
@@ -56,8 +73,8 @@ namespace LLP
 
 
     NetAddr::NetAddr(const std::string &strIp, bool fAllowLookup)
+    : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     {
-        Init();
         std::vector<NetAddr> vIP;
         if (LookupHost(strIp.c_str(), vIP, 1, fAllowLookup))
             *this = vIP[0];
@@ -65,24 +82,36 @@ namespace LLP
 
     NetAddr::~NetAddr()
     {
-
     }
 
-    void NetAddr::Init()
+    NetAddr &NetAddr::operator=(const NetAddr &other)
     {
-        memset(ip, 0, 16);
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
+
+        return *this;
+    }
+
+    NetAddr &NetAddr::operator=(NetAddr &other)
+    {
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
+
+        return *this;
     }
 
 
     void NetAddr::SetIP(const NetAddr& ipIn)
     {
-        //memcpy(ip, ipIn.ip, sizeof(ip));
-        std::copy((uint8_t *)&ipIn.ip[0], (uint8_t *)&ipIn.ip[0] + sizeof(ip), (uint8_t *)&ip[0]);
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = ipIn.ip[i];
     }
 
 
-    int NetAddr::GetByte(int n) const
+    uint8_t NetAddr::GetByte(uint8_t n) const
     {
+        assert(n < 16);
+
         return ip[15-n];
     }
 
@@ -339,7 +368,7 @@ namespace LLP
         while (nBits >= 8)
         {
             vchRet.push_back(GetByte(15 - nStartByte));
-            nStartByte++;
+            ++nStartByte;
             nBits -= 8;
         }
         if (nBits > 0)

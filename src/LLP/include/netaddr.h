@@ -29,12 +29,19 @@ namespace LLP
 
     public:
         NetAddr();
-        NetAddr(const struct in_addr& ipv4Addr);
-        explicit NetAddr(const char *pszIp, bool fAllowLookup = false);
-        explicit NetAddr(const std::string &strIp, bool fAllowLookup = false);
-        ~NetAddr();
+        NetAddr(const NetAddr &other);
+        NetAddr(NetAddr &other);
 
-        void Init();
+        NetAddr(const struct in_addr& ipv4Addr);
+        NetAddr(const struct in6_addr& ipv6Addr);
+        NetAddr(const char *pszIp, bool fAllowLookup = false);
+        NetAddr(const std::string &strIp, bool fAllowLookup = false);
+
+        NetAddr &operator=(const NetAddr &other);
+        NetAddr &operator=(NetAddr &other);
+
+        virtual ~NetAddr();
+
         void SetIP(const NetAddr& ip);
         bool IsIPv4() const;    // IPv4 mapped address (::FFFF:0:0/96, 0.0.0.0/0)
         bool IsRFC1918() const; // IPv4 private networks (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12)
@@ -53,14 +60,13 @@ namespace LLP
         bool IsMulticast() const;
         std::string ToString() const;
         std::string ToStringIP() const;
-        int GetByte(int n) const;
+        uint8_t GetByte(uint8_t n) const;
         uint64_t GetHash() const;
         bool GetInAddr(struct in_addr* pipv4Addr) const;
+        bool GetIn6Addr(struct in6_addr* pipv6Addr) const;
         std::vector<uint8_t> GetGroup() const;
         void print() const;
 
-        NetAddr(const struct in6_addr& pipv6Addr);
-        bool GetIn6Addr(struct in6_addr* pipv6Addr) const;
 
         friend bool operator==(const NetAddr& a, const NetAddr& b);
         friend bool operator!=(const NetAddr& a, const NetAddr& b);

@@ -16,10 +16,10 @@ ________________________________________________________________________________
 namespace
 {
     /* constant variables to tweak score */
-    const uint32_t nConnectedWeight = 100;
-    const uint32_t nDroppedWeight = 2;
-    const uint32_t nFailedWeight = 5;
-    const uint32_t nFailsWeight = 10;
+    const double nConnectedWeight = 100.0;
+    const double nDroppedWeight = 2.0;
+    const double nFailedWeight = 5.0;
+    const double nFailsWeight = 10.0;
     const double nLatencyWeight = 10.0;
 
     const uint32_t nMaxConnected = 100;
@@ -47,50 +47,147 @@ namespace LLP
         return false;
     }
 
+    AddressInfo::AddressInfo()
+    : Address()
+    , nSession(0)
+    , nLastSeen(0)
+    , nConnected(0)
+    , nDropped(0)
+    , nFailed(0)
+    , nFails(0)
+    , nLatency(std::numeric_limits<uint32_t>::max())
+    , nState(static_cast<uint8_t>(ConnectState::NEW))
+    {
+    }
 
     AddressInfo::AddressInfo(const Address &addr)
     : Address(addr)
+    , nSession(0)
+    , nLastSeen(0)
+    , nConnected(0)
+    , nDropped(0)
+    , nFailed(0)
+    , nFails(0)
+    , nLatency(std::numeric_limits<uint32_t>::max())
+    , nState(static_cast<uint8_t>(ConnectState::NEW))
     {
-        Init();
     }
 
-
-    AddressInfo::AddressInfo()
+    AddressInfo::AddressInfo(const AddressInfo &other)
     : Address()
+    , nSession(other.nSession)
+    , nLastSeen(other.nLastSeen)
+    , nConnected(other.nConnected)
+    , nDropped(other.nDropped)
+    , nFailed(other.nFailed)
+    , nFails(other.nFails)
+    , nLatency(other.nLatency)
+    , nState(other.nState)
     {
-        Init();
+        nPort = other.nPort;
+
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
     }
 
-    AddressInfo::~AddressInfo() { }
 
-
-    void AddressInfo::Init()
+    AddressInfo::AddressInfo(Address &addr)
+    : Address(addr)
+    , nSession(0)
+    , nLastSeen(0)
+    , nConnected(0)
+    , nDropped(0)
+    , nFailed(0)
+    , nFails(0)
+    , nLatency(std::numeric_limits<uint32_t>::max())
+    , nState(static_cast<uint8_t>(ConnectState::NEW))
     {
-        nLastSeen = 0;
-        nSession = 0;
-        nConnected = 0;
-        nDropped = 0;
-        nFailed = 0;
-        nFails = 0;
-        nLatency = std::numeric_limits<uint32_t>::max();
-        nState = static_cast<uint8_t>(ConnectState::NEW);
+    }
+
+    AddressInfo::AddressInfo(AddressInfo &other)
+    : Address()
+    , nSession(other.nSession)
+    , nLastSeen(other.nLastSeen)
+    , nConnected(other.nConnected)
+    , nDropped(other.nDropped)
+    , nFailed(other.nFailed)
+    , nFails(other.nFails)
+    , nLatency(other.nLatency)
+    , nState(other.nState)
+    {
+        nPort = other.nPort;
+
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
+    }
+
+
+    AddressInfo::~AddressInfo()
+    {
+    }
+
+    AddressInfo &AddressInfo::operator=(const AddressInfo &other)
+    {
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
+
+        nPort = other.nPort;
+
+        nServices = other.nServices;
+        nTime = other.nTime;
+        nLastTry = other.nLastTry;
+
+        nSession = other.nSession;
+        nLastSeen = other.nLastSeen;
+        nConnected = other.nConnected;
+        nDropped = other.nDropped;
+        nFailed = other.nFailed;
+        nFails = other.nFails;
+        nLatency = other.nLatency;
+        nState = other.nState;
+
+        return *this;
+    }
+
+    AddressInfo &AddressInfo::operator=(AddressInfo &other)
+    {
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
+
+        nPort = other.nPort;
+
+        nServices = other.nServices;
+        nTime = other.nTime;
+        nLastTry = other.nLastTry;
+
+        nSession = other.nSession;
+        nLastSeen = other.nLastSeen;
+        nConnected = other.nConnected;
+        nDropped = other.nDropped;
+        nFailed = other.nFailed;
+        nFails = other.nFails;
+        nLatency = other.nLatency;
+        nState = other.nState;
+
+        return *this;
     }
 
 
     /*  Calculates a score based on stats. Higher is better */
     double AddressInfo::Score() const
     {
-        double nLatencyScore = nLatencyMax - std::min(nLatencyMax, static_cast<double>(nLatency));
+        double nLat = static_cast<double>(nLatency);
+
+        double nLatencyScore = nLatencyMax - std::min(nLatencyMax, nLat);
 
         /* Add up the good stats */
-        double good = std::min(nConnected, nMaxConnected) * nConnectedWeight +
-                      //nSessionHours +
+        double good = nConnectedWeight * std::min(nConnected, nMaxConnected) +
                       nLatencyScore * nLatencyWeight;
 
         /* Add up the bad stats */
-        double bad = std::min(nDropped, nMaxDropped) * nDroppedWeight +
-                     std::min(nFailed,  nMaxFailed)  * nFailedWeight  +
-                     std::min(nFails,   nMaxFails)   * nFailsWeight;
+        double bad = nDroppedWeight * std::min(nDropped, nMaxDropped) +
+                     nFailedWeight  * std::min(nFailed,  nMaxFailed)  +
+                     nFailsWeight   * std::min(nFails,   nMaxFails);
 
         /* Subtract good stats by bad stats */
         return good - bad;

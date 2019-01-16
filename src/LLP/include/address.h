@@ -32,11 +32,15 @@ namespace LLP
     {
     public:
         Address();
-        ~Address();
-        
-        explicit Address(Service ipIn, uint64_t nServicesIn = NODE_NETWORK);
+        Address(const Address &other);
+        Address(Address &other);
+        Address(const Service &ipIn, uint64_t nServicesIn = NODE_NETWORK);
+        Address(Service &ipIn, uint64_t nServicesIn = NODE_NETWORK);
 
-        void Init();
+        virtual ~Address();
+
+        Address &operator=(const Address &other);
+        Address &operator=(Address &other);
 
         IMPLEMENT_SERIALIZE
         (
@@ -44,7 +48,12 @@ namespace LLP
             Service* pip = (Service*)pthis;
 
             if (fRead)
-                pthis->Init();
+            {
+                pthis->nServices = NODE_NETWORK;
+                pthis->nTime = 100000000;
+                pthis->nLastTry = 0;
+            }
+
 
             if (nSerType & SER_DISK)
                 READWRITE(nSerVersion);
@@ -58,8 +67,7 @@ namespace LLP
 
         void print() const;
 
-    // TODO: make private (improves encapsulation)
-    public:
+    protected:
         uint64_t nServices;
 
         // disk and network only

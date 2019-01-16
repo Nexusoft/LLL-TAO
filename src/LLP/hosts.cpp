@@ -117,12 +117,13 @@ namespace LLP
         return LookupHost(pszName, vIP, nMaxSolutions, false);
     }
 
-    bool Lookup(const char *pszName, std::vector<Service>& vAddr, int portDefault, bool fAllowLookup, uint32_t nMaxSolutions)
+    bool Lookup(const char *pszName, std::vector<Service>& vAddr, uint16_t portDefault, bool fAllowLookup, uint32_t nMaxSolutions)
     {
         if (pszName[0] == 0)
             return false;
-        int port = portDefault;
-        char psz[256];
+
+        uint16_t port = portDefault;
+        char psz[256] = { 0 };
         char *pszHost = psz;
         strlcpy(psz, pszName, sizeof(psz));
         char* pszColon = strrchr(psz+1,':');
@@ -137,8 +138,8 @@ namespace LLP
             }
             else
                 pszColon[0] = 0;
-            if (port >= 0 && port <= USHRT_MAX)
-                port = portParsed;
+
+            port = static_cast<uint16_t>(portParsed);
         }
         else
         {
@@ -157,13 +158,16 @@ namespace LLP
         bool fRet = LookupIntern(pszHost, vIP, nMaxSolutions, fAllowLookup);
         if (!fRet)
             return false;
+
         vAddr.resize(vIP.size());
+
         for (uint32_t i = 0; i < vIP.size(); ++i)
             vAddr[i] = Service(vIP[i], port);
+
         return true;
     }
 
-    bool Lookup(const char *pszName, Service& addr, int portDefault, bool fAllowLookup)
+    bool Lookup(const char *pszName, Service& addr, uint16_t portDefault, bool fAllowLookup)
     {
         std::vector<Service> vService;
         bool fRet = Lookup(pszName, vService, portDefault, fAllowLookup, 1);
@@ -173,7 +177,7 @@ namespace LLP
         return true;
     }
 
-    bool LookupNumeric(const char *pszName, Service& addr, int portDefault)
+    bool LookupNumeric(const char *pszName, Service& addr, uint16_t portDefault)
     {
         return Lookup(pszName, addr, portDefault, false);
     }
