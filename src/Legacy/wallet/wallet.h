@@ -461,6 +461,16 @@ namespace Legacy
     /*----------------------------------------------------------------------------------------*/
     /*  Key, Encryption, and Passphrase                                                       */
     /*----------------------------------------------------------------------------------------*/
+        /** GetKeyPool
+         *
+         *  Retrieve a reference to the key pool for this wallet.
+         *
+         *  @return this wallet's key pool
+         *
+         */
+        inline CKeyPool& GetKeyPool() { return keyPool; }
+
+
         /** GenerateNewKey
          *
          *  Generates a new key and adds it to the key store.
@@ -481,14 +491,23 @@ namespace Legacy
         inline std::vector<uint8_t> GetDefaultKey() { return vchDefaultKey; }
 
 
-        /** GetKeyPool
+        /** SetDefaultKey
          *
-         *  Retrieve a reference to the key pool for this wallet.
+         *  Assigns a new default key to this wallet. The key itself
+         *  should be obtained from the wallet's key pool or generated new.
          *
-         *  @return this wallet's key pool
+         *  Wallet also writes the key in the wallet database for file backed wallets.
+         *  This will overwrite any prior default key value.
+         *
+         *  @param[in] vchPubKey The key to make default
+         *
+         *  @return true if setting default key successful
+         *
+         *  @see CKeyPool::GetKeyFromPool
+         *  @see GenerateNewKey
          *
          */
-        inline CKeyPool& GetKeyPool() { return keyPool; }
+        bool SetDefaultKey(const std::vector<uint8_t> &vchPubKey);
 
 
         /** EncryptWallet
@@ -962,21 +981,6 @@ namespace Legacy
 
 
     private:
-        /** SetDefaultKey
-         *
-         *  Assigns a new default key to this wallet. The key itself
-         *  should already have been added to the wallet.
-         *
-         *  Wallet also stores the key in the wallet database for file backed wallets.
-         *
-         *  @param[in] vchPubKey The key to make default
-         *
-         *  @return true if setting default key successful
-         *
-         */
-        bool SetDefaultKey(const std::vector<uint8_t> &vchPubKey);
-
-
     /*----------------------------------------------------------------------------------------*/
     /*  Load Wallet operations - require CWalletDB declared friend                            */
     /*----------------------------------------------------------------------------------------*/

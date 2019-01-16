@@ -316,6 +316,29 @@ namespace Legacy
     }
 
 
+    /* Assigns a new default key to this wallet. */
+    bool CWallet::SetDefaultKey(const std::vector<uint8_t> &vchPubKey)
+    {
+        {
+            LOCK(cs_wallet);
+
+            if (fFileBacked)
+            {
+                CWalletDB walletdb(strWalletFile);
+                bool result = walletdb.WriteDefaultKey(vchPubKey);
+                walletdb.Close();
+
+                if (!result)
+                    return false;
+            }
+
+            vchDefaultKey = vchPubKey;
+        }
+
+        return true;
+    }
+
+
     /* Encrypts the wallet in both memory and file backing, assigning a passphrase that will be required
      * to unlock and access the wallet.
      */
@@ -1685,29 +1708,6 @@ namespace Legacy
      *  Private load operations are accessible from CWalletDB via friend declaration.
      *  Everyone else uses corresponding set/add operation.
      */
-
-    /* Assigns a new default key to this wallet. */
-    bool CWallet::SetDefaultKey(const std::vector<uint8_t> &vchPubKey)
-    {
-        {
-            LOCK(cs_wallet);
-
-            if (fFileBacked)
-            {
-                CWalletDB walletdb(strWalletFile);
-                bool result = walletdb.WriteDefaultKey(vchPubKey);
-                walletdb.Close();
-
-                if (!result)
-                    return false;
-            }
-
-            vchDefaultKey = vchPubKey;
-        }
-
-        return true;
-    }
-
 
     /* Load the minimum supported version without updating the database */
     bool CWallet::LoadMinVersion(const uint32_t nVersion)
