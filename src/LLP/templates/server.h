@@ -54,10 +54,6 @@ namespace LLP
         std::vector<DataThread<ProtocolType> *> DATA_THREADS;
 
 
-        /* List of internal addresses. */
-        std::recursive_mutex MUTEX;
-
-
         /* Connection Manager. */
         std::thread MANAGER_THREAD;
 
@@ -333,9 +329,7 @@ namespace LLP
         /* Basic Socket Handle Variables. */
         std::thread          LISTEN_THREAD_V4;
         std::thread          LISTEN_THREAD_V6;
-
         std::thread          METER_THREAD;
-        std::recursive_mutex DDOS_MUTEX;
 
 
         /* Determine thfalsee thread with the least amount of active connections.

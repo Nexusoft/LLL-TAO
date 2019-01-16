@@ -90,7 +90,7 @@ namespace Legacy
      *
      *  To use the wallet, first call InitializeWallet followed by LoadWallet. The following
      *  example will use the default wallet database file name:
-     * 
+     *
      *  if (!CWallet::InitializeWallet())
      *      //initialization not successful
      *
@@ -108,11 +108,11 @@ namespace Legacy
     public:
         /** InitializeWallet
          *
-         *  Initializes the wallet instance backed by a wallet database file with the provided 
+         *  Initializes the wallet instance backed by a wallet database file with the provided
          *  file name. Only call this method once (returns false on subsequent calls).
-         *  
-         *  This method only constructs the wallet. It does not call LoadWallet to populate 
-         *  data from the backing file. 
+         *
+         *  This method only constructs the wallet. It does not call LoadWallet to populate
+         *  data from the backing file.
          *
          *  @param[in] strWalletFileIn The wallet database file name that backs the wallet.
          *
@@ -127,10 +127,10 @@ namespace Legacy
 
         /** GetInstance
          *
-         *  Retrieves the wallet. 
+         *  Retrieves the wallet.
          *
          *  If the wallet is not yet initialized, this will call InitializeWallet using the
-         *  default setting. 
+         *  default setting.
          *
          *  @return reference to the CWallet instance
          *
@@ -247,7 +247,7 @@ namespace Legacy
          *
          **/
 /*TODO - test singleton design and on test success remove this constructor (not used with that design)
-        CWallet(std::string strWalletFileIn) 
+        CWallet(std::string strWalletFileIn)
         : nWalletVersion(FEATURE_BASE)
         , nWalletMaxVersion(FEATURE_BASE)
         , fFileBacked(true)
@@ -270,7 +270,7 @@ namespace Legacy
 
     public:
         /** Mutex for thread concurrency across wallet operations **/
-        mutable std::recursive_mutex cs_wallet;
+        mutable std::mutex cs_wallet;
 
 
         /** Map of wallet transactions contained in this wallet **/
@@ -461,6 +461,16 @@ namespace Legacy
     /*----------------------------------------------------------------------------------------*/
     /*  Key, Encryption, and Passphrase                                                       */
     /*----------------------------------------------------------------------------------------*/
+        /** GetKeyPool
+         *
+         *  Retrieve a reference to the key pool for this wallet.
+         *
+         *  @return this wallet's key pool
+         *
+         */
+        inline CKeyPool& GetKeyPool() { return keyPool; }
+
+
         /** GenerateNewKey
          *
          *  Generates a new key and adds it to the key store.
@@ -481,14 +491,23 @@ namespace Legacy
         inline std::vector<uint8_t> GetDefaultKey() { return vchDefaultKey; }
 
 
-        /** GetKeyPool
+        /** SetDefaultKey
          *
-         *  Retrieve a reference to the key pool for this wallet.
+         *  Assigns a new default key to this wallet. The key itself
+         *  should be obtained from the wallet's key pool or generated new.
          *
-         *  @return this wallet's key pool
+         *  Wallet also writes the key in the wallet database for file backed wallets.
+         *  This will overwrite any prior default key value.
+         *
+         *  @param[in] vchPubKey The key to make default
+         *
+         *  @return true if setting default key successful
+         *
+         *  @see CKeyPool::GetKeyFromPool
+         *  @see GenerateNewKey
          *
          */
-        inline CKeyPool& GetKeyPool() { return keyPool; }
+        bool SetDefaultKey(const std::vector<uint8_t> &vchPubKey);
 
 
         /** EncryptWallet
@@ -511,7 +530,7 @@ namespace Legacy
          *  Encrypted wallet cannot be used until unlocked by providing the passphrase used to encrypt it.
          *
          *  @param[in] strWalletPassphrase The wallet's passphrase
-         * 
+         *
          *  @param[in] nUnlockSeconds The number of seconds to remain unlocked, 0 to unlock indefinitely
          *                            This setting is ignored if fWalletUnlockMintOnly=true (always unlocks indefinitely)
          *
@@ -962,21 +981,6 @@ namespace Legacy
 
 
     private:
-        /** SetDefaultKey
-         *
-         *  Assigns a new default key to this wallet. The key itself
-         *  should already have been added to the wallet.
-         *
-         *  Wallet also stores the key in the wallet database for file backed wallets.
-         *
-         *  @param[in] vchPubKey The key to make default
-         *
-         *  @return true if setting default key successful
-         *
-         */
-        bool SetDefaultKey(const std::vector<uint8_t> &vchPubKey);
-
-
     /*----------------------------------------------------------------------------------------*/
     /*  Load Wallet operations - require CWalletDB declared friend                            */
     /*----------------------------------------------------------------------------------------*/

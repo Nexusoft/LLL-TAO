@@ -303,8 +303,7 @@ namespace Legacy
         time.Start();
 
         bool fIsEncrypted = false;
-        { /* Begin lock scope */
-            std::lock_guard<std::recursive_mutex> walletLock(wallet.cs_wallet);
+        { LOCK(wallet.cs_wallet);
 
             /* Reset default key into wallet to clear any current value. (done now so it stays empty if none loaded) */
             wallet.vchDefaultKey.clear();
@@ -668,7 +667,7 @@ namespace Legacy
         while (!config::fShutdown)
         {
             {
-                std::lock_guard<std::recursive_mutex> dbLock(CDB::cs_db);
+                LOCK(CDB::cs_db);
 
                 std::string strSource = wallet.GetWalletFile();
 

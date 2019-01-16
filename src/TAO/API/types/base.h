@@ -37,6 +37,11 @@ namespace TAO
         public:
             Base() : fInitialized(false) { }
 
+            virtual ~Base()
+            {
+                mapFunctions.clear();
+            }
+
 
             /** Abstract initializor that all derived API's must implement to register their specific APICommands. **/
             virtual void Initialize() = 0;

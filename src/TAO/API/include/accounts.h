@@ -40,7 +40,7 @@ namespace TAO
 
 
             /** The mutex for locking. **/
-            mutable std::recursive_mutex MUTEX;
+            mutable std::mutex MUTEX;
 
         public:
 

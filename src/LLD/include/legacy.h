@@ -22,7 +22,6 @@ ________________________________________________________________________________
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
 
-#include <TAO/Register/include/state.h>
 #include <Legacy/types/transaction.h>
 
 namespace LLD
@@ -40,6 +39,7 @@ namespace LLD
         LegacyDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
         : SectorDatabase("legacy", nFlags) {}
 
+
         bool WriteTx(uint512_t hashTransaction, Legacy::Transaction tx)
         {
             return Write(std::make_pair(std::string("tx"), hashTransaction), tx);
@@ -52,22 +52,33 @@ namespace LLD
         }
 
 
+        bool EraseTx(uint512_t hashTransaction)
+        {
+            return Erase(std::make_pair(std::string("tx"), hashTransaction));
+        }
+
+
         bool HasTx(uint512_t hashTransaction)
         {
             return Exists(std::make_pair(std::string("tx"), hashTransaction));
         }
 
 
-        bool WriteProof(uint256_t hashProof, uint512_t hashTransaction)
+        bool WriteSpend(uint512_t hashTransaction, uint32_t nOutput)
         {
-            uint64_t nDummy = 0; //this is being used as a boolean express. TODO: make LLD handle bool key writes
-            return Write(std::make_pair(hashProof, hashTransaction), nDummy);
+            return Write(std::make_pair(hashTransaction, nOutput));
         }
 
 
-        bool HasProof(uint256_t hashProof, uint512_t hashTransaction)
+        bool EraseSpend(uint512_t hashTransaction, uint32_t nOutput)
         {
-            return Exists(std::make_pair(hashProof, hashTransaction));
+            return Erase(std::make_pair(hashTransaction, nOutput));
+        }
+
+
+        bool IsSpent(uint512_t hashTransaction, uint32_t nOutput)
+        {
+            return Exists(std::make_pair(hashTransaction, nOutput));
         }
     };
 }

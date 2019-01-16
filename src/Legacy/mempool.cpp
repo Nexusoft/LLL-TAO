@@ -11,11 +11,17 @@
 
 ____________________________________________________________________________________________*/
 
+#include <cmath>
+
 #include <LLC/types/uint1024.h>
 
+#include <Legacy/include/money.h>
+
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <Util/include/args.h>
+#include <Util/include/runtime.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -55,10 +61,77 @@ namespace TAO
                     return debug::error(FUNCTION, "double spend attempt on inputs");
             }
 
+            /* Check the inputs for spends. */
+            std::map<uint512_t, Legacy::Transaction> inputs;
+
+            /* Fetch the inputs. */
+            if(!tx.FetchInputs(inputs))
+                return debug::error(FUNCTION, "failed to fetch the inputs");
+
+            /* Check for standard inputs. */
+            if(!tx.AreInputsStandard(inputs))
+                return debug::error(FUNCTION, "inputs are non-standard");
+
+            /* Check the transaction fees. */
+            uint64_t nFees = tx.GetValueIn(inputs) - tx.GetValueOut();
+            uint32_t nSize = ::GetSerializeSize(tx, SER_NETWORK, LLP::PROTOCOL_VERSION);
+
+            /* Don't accept if the fees are too low. */
+            if (nFees < tx.GetMinFee(1000, false))
+                return debug::error(FUNCTION, "not enough fees");
+
+            /* Rate limit free transactions to prevent penny flooding attacks. */
+            if (nFees < Legacy::MIN_RELAY_TX_FEE)
+            {
+                /* Static values to keep track of last tx's. */
+                static double dFreeCount;
+                static uint64_t nLastTime;
+
+                /* Get the current time. */
+                uint64_t nNow = runtime::unifiedtimestamp();
+
+                // Use an exponentially decaying ~10-minute window:
+                dFreeCount *= pow(1.0 - 1.0/600.0, (double)(nNow - nLastTime));
+                nLastTime = nNow;
+
+                // -limitfreerelay unit is thousand-bytes-per-minute
+                // At default rate it would take over a month to fill 1GB
+                if (dFreeCount > config::GetArg("-limitfreerelay", 15) * 10 * 1000)
+                    return debug::error(FUNCTION, "free transaction rejected by rate limiter");
+
+                debug::log(2, FUNCTION, "Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount + nSize);
+                dFreeCount += nSize;
+            }
+
+            /* See if inputs can be connected. */
+            if(!tx.Connect(inputs, &ChainState::stateBest, Legacy::FLAGS::MEMPOOL))
+                return debug::error(FUNCTION, "failed to connect inputs");
+
             /* Set the inputs to be claimed. */
             uint32_t s = tx.vin.size();
             for (uint32_t i = 0; i < s; ++i)
-                mapInputs[tx.vin[i].prevout] = Legacy::CInPoint(&tx, i);
+                mapInputs[tx.vin[i].prevout] = tx.GetHash();
+
+            /* Add to the legacy map. */
+            mapLegacy[tx.GetHash()] = tx;
+
+            /* Log outputs. */
+            debug::log(2, FUNCTION, tx.GetHash().ToString().substr(0, 20), " ACCEPTED");
+
+            return true;
+        }
+
+        /* Gets a legacy transaction from mempool */
+        bool Mempool::Get(uint512_t hashTx, Legacy::Transaction& tx) const
+        {
+            LOCK(MUTEX);
+
+            /* Check the memory map. */
+            if(!mapLegacy.count(hashTx))
+                return false;
+
+            /* Get the transaction from memory. */
+            tx = mapLegacy.at(hashTx);
 
             return true;
         }

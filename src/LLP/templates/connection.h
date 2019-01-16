@@ -38,7 +38,7 @@ namespace LLP
     protected:
 
         /** Recursive mutex for thread synchronization. **/
-        std::recursive_mutex MUTEX;
+        std::mutex MUTEX;
 
 
         /*  Pure Virtual Event Function to be Overridden allowing Custom Read Events.

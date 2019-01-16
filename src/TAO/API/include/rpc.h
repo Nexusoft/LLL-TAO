@@ -37,6 +37,13 @@ namespace TAO
             RPC() { Initialize(); }
 
 
+            /** Virtual destructor. **/
+            virtual ~RPC()
+            {
+                mapFunctions.clear();
+            }
+
+
             /** Initialize.
              *
              *  Sets the function pointers for this API.
@@ -594,6 +601,20 @@ namespace TAO
             **/
             json::json BackupWallet(const json::json& params, bool fHelp);
 
+            /** KeypoolRefill
+            *
+            *  keypoolrefill
+            *  Fills the keypool, requires wallet passphrase to be set
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            /*  keypoolrefill
+            *   Fills the keypool, requires wallet passphrase to be set */
+            json::json KeypoolRefill(const json::json& params, bool fHelp);
+
             /** WalletPassphrase
             *
             *  walletpassphrase <passphrase> [timeout] [mintonly]
@@ -750,7 +771,7 @@ namespace TAO
         };
 
         /** The instance of RPC commands. */
-        extern RPC* RPCCommands;
+        extern RPC RPCCommands;
     }
 }
 

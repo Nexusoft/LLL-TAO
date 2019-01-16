@@ -34,7 +34,7 @@ namespace LLD
 
     class LedgerDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
-        std::recursive_mutex MEMORY_MUTEX;
+        std::mutex MEMORY_MUTEX;
 
         std::map< std::pair<uint256_t, uint512_t>, uint32_t > mapProofs;
 

@@ -58,6 +58,9 @@ namespace LLD
     RegisterDB* regDB;
     LedgerDB*   legDB;
     LocalDB*    locDB;
+
+    //for legacy objects.
+    LegacyDB*   legacyDB;
 }
 
 
@@ -122,11 +125,17 @@ int main(int argc, char** argv)
     LLD::legDB = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
 
 
+    /* Initialize the Legacy Database. */
+    LLD::legacyDB = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+
+
     /** Load the Wallet Database. **/
     bool fFirstRun;
     if (!Legacy::CWallet::InitializeWallet(config::GetArg("-wallet", Legacy::CWalletDB::DEFAULT_WALLET_DB)))
         return debug::error("failed initializing wallet");
 
+
+    /** Check the wallet loading for errors. **/
     uint32_t nLoadWalletRet = Legacy::CWallet::GetInstance().LoadWallet(fFirstRun);
     if (nLoadWalletRet != Legacy::DB_LOAD_OK)
     {
@@ -214,7 +223,6 @@ int main(int argc, char** argv)
 
 
     /* Set up RPC server */
-    TAO::API::RPCCommands = new TAO::API::RPC();
     RPC_SERVER = new LLP::Server<LLP::RPCNode>(
         config::GetArg("-rpcport", config::fTestNet? 8336 : 9336),
         1,
@@ -244,7 +252,6 @@ int main(int argc, char** argv)
 
     /* Get the account. */
     TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("colin", "pass");
-
     for(uint32_t n = 0; n < config::GetArg("-test", 0); n++)
     {
         /* Create the transaction. */
@@ -278,6 +285,7 @@ int main(int argc, char** argv)
 
         LLD::locDB->WriteLast(tx.hashGenesis, tx.GetHash());
     }
+    delete user;
 
     /* Initialize generator thread. */
     std::thread thread;

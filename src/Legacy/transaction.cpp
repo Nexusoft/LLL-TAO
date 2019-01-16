@@ -13,11 +13,14 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 
+#include <LLD/include/global.h>
+
 #include <LLP/include/version.h>
 
 #include <Legacy/types/transaction.h>
 #include <Legacy/include/money.h>
 #include <Legacy/types/script.h>
+#include <Legacy/include/signature.h>
 #include <Legacy/include/evaluate.h>
 
 #include <TAO/Ledger/include/constants.h>
@@ -37,7 +40,7 @@ namespace Legacy
 	void Transaction::SetNull()
 	{
 		nVersion = 1;
-		nTime = runtime::unifiedtimestamp();
+		nTime = (uint32_t)runtime::unifiedtimestamp();
 		vin.clear();
 		vout.clear();
 		nLockTime = 0;
@@ -325,7 +328,7 @@ namespace Legacy
 
 
 	/* Amount of Coins spent by this transaction. */
-	int64_t Transaction::GetValueOut() const
+	uint64_t Transaction::GetValueOut() const
 	{
 		int64_t nValueOut = 0;
 		for(auto txout : vout)
@@ -340,7 +343,7 @@ namespace Legacy
 
 
 	/* Amount of Coins coming in to this transaction */
-	int64_t Transaction::GetValueIn(const std::map<uint512_t, Transaction>& mapInputs) const
+	uint64_t Transaction::GetValueIn(const std::map<uint512_t, Transaction>& mapInputs) const
     {
         if (IsCoinBase())
             return 0;
@@ -365,7 +368,7 @@ namespace Legacy
 
 
 	/* Get the minimum fee to pay for broadcast. */
-	int64_t Transaction::GetMinFee(uint32_t nBlockSize, bool fAllowFree, enum GetMinFee_mode mode) const
+	uint64_t Transaction::GetMinFee(uint32_t nBlockSize, bool fAllowFree, enum GetMinFee_mode mode) const
     {
 
         /* Base fee is either MIN_TX_FEE or MIN_RELAY_TX_FEE */
@@ -507,6 +510,130 @@ namespace Legacy
                 if (txin.prevout.IsNull())
                     return debug::error(FUNCTION, "prevout is null");
         }
+
+        return true;
+    }
+
+
+    /* Get the inputs for a transaction. */
+    bool Transaction::FetchInputs(std::map<uint512_t, Transaction>& inputs) const
+    {
+        /* Coinbase has no inputs. */
+        if (IsCoinBase())
+            return true;
+
+        /* Read all of the inputs. */
+        for (uint32_t i = IsCoinStake() ? 1 : 0; i < vin.size(); i++)
+        {
+            /* Skip inputs that are already found. */
+            COutPoint prevout = vin[i].prevout;
+            if (inputs.count(prevout.hash))
+                continue;
+
+            /* Read the previous transaction. */
+            Transaction txPrev;
+            if(!LLD::legacyDB->ReadTx(prevout.hash, txPrev))
+            {
+                //TODO: check the memory pool for previous
+                return debug::error(FUNCTION, "previous transaction not found");
+            }
+
+            /* Check that it is valid. */
+            if(prevout.n >= txPrev.vout.size())
+                return debug::error(FUNCTION, "prevout is out of range");
+
+            /* Add to the inputs. */
+            inputs[prevout.hash] = txPrev;
+        }
+
+        return true;
+    }
+
+
+    /* Mark the inputs in a transaction as spent. */
+    bool Transaction::Connect(const std::map<uint512_t, Transaction>& inputs, const TAO::Ledger::BlockState* state, uint8_t nFlags) const
+    {
+        /* Coinbase has no inputs. */
+        if (IsCoinBase())
+            return true;
+
+        /* Read all of the inputs. */
+        uint64_t nValueIn = 0;
+        for (uint32_t i = IsCoinStake() ? 1 : 0; i < vin.size(); i++)
+        {
+            /* Check the inputs map to tx inputs. */
+            COutPoint prevout = vin[i].prevout;
+            assert(inputs.count(prevout.hash) > 0);
+
+            /* Get the previous transaction. */
+            Transaction txPrev = inputs.at(prevout.hash);
+
+            /* Check the inputs range. */
+            if (prevout.n >= txPrev.vout.size())
+                return debug::error(FUNCTION, "prevout is out of range");
+
+            /* Check maturity before spend. */
+            if (txPrev.IsCoinBase() || txPrev.IsCoinStake())
+            {
+                //TODO: read state vs txPrev state hashblock state.
+            }
+
+            /* Check the transaction timestamp. */
+            if (txPrev.nTime > nTime)
+                return debug::error(FUNCTION, "transaction timestamp earlier than input transaction");
+
+            /* Check for overflow input values. */
+            nValueIn += txPrev.vout[prevout.n].nValue;
+            if (!MoneyRange(txPrev.vout[prevout.n].nValue) || !MoneyRange(nValueIn))
+                return debug::error(FUNCTION, "txin values out of range");
+
+            /* Check for double spends. */
+            if(LLD::legacyDB->IsSpent(prevout.hash, prevout.n))
+                return debug::error(FUNCTION, "prev tx is already spent");
+
+            /* Check the ECDSA signatures. */
+            if(!VerifySignature(txPrev, *this, i, 0))
+                return debug::error(FUNCTION, "signature is invalid");
+
+            /* Commit to disk if flagged. */
+            if(nFlags & FLAGS::BLOCK && !LLD::legacyDB->WriteSpend(prevout.hash, prevout.n))
+                return debug::error(FUNCTION, "failed to write spend");
+
+        }
+
+        /* Check the coinstake transaction. */
+        if (IsCoinStake())
+        {
+            uint64_t nInterest = 0;
+
+            //TODO: Check the coinstake inputs.
+            if (vout[0].nValue > nInterest + nValueIn)
+                return debug::error(FUNCTION, GetHash().ToString().substr(0,10), " stake reward mismatch");
+
+        }
+        else if (nValueIn < GetValueOut())
+            return debug::error(FUNCTION, GetHash().ToString().substr(0,10), "value in < value out");
+
+        return true;
+    }
+
+    /* Mark the inputs in a transaction as unspent. */
+    bool Transaction::Disconnect() const
+    {
+        /* Coinbase has no inputs. */
+        if (!IsCoinBase())
+        {
+            /* Read all of the inputs. */
+            for (uint32_t i = IsCoinStake() ? 1 : 0; i < vin.size(); i++)
+            {
+                /* Erase the spends. */
+                if(!LLD::legacyDB->EraseSpend(vin[i].prevout.hash, vin[i].prevout.n))
+                    return debug::error(FUNCTION, "failed to erase spends.");
+            }
+        }
+
+        /* Erase the transaction object. */
+        LLD::legacyDB->EraseTx(GetHash());
 
         return true;
     }

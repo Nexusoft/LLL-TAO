@@ -46,9 +46,10 @@ namespace TAO
                     " - Returns an object containing various state info.");
 
             json::json obj;
-            obj["version"] = version::CLIENT_VERSION_BUILD_STRING; //PS TODO
+            obj["version"] = version::CLIENT_VERSION_BUILD_STRING; 
             obj["protocolversion"] = LLP::PROTOCOL_VERSION;
             obj["walletversion"] = Legacy::CWallet::GetInstance().GetVersion();
+            obj["testnet"] = config::fTestNet;
             obj["balance"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetBalance());
             obj["newmint"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetNewMint());
             obj["stake"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetStake());
@@ -68,12 +69,11 @@ namespace TAO
 
             obj["connections"] = GetTotalConnectionCount();
             obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToStringIPPort() : std::string());
-            obj["ip"] = LLP::TRITIUM_SERVER->addrThisNode.ToStringIP();
+            obj["ip"] = LLP::TRITIUM_SERVER->addrThisNode.ToStringIP(); //PS TODO
 
             obj["testnet"] = config::fTestNet;
             obj["keypoololdest"] = (int64_t)Legacy::CWallet::GetInstance().GetKeyPool().GetOldestKeyPoolTime();
             obj["keypoolsize"] = Legacy::CWallet::GetInstance().GetKeyPool().GetKeyPoolSize();
-        //   obj.push_back(std::make_pair("paytxfee", Core::nTransactionFee / Core::COIN));
             if (Legacy::CWallet::GetInstance().IsCrypted())
             {
                 obj["locked"] = Legacy::CWallet::GetInstance().IsLocked();  
