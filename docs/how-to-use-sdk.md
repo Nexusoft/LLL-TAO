@@ -161,8 +161,8 @@ Modifying an Existing Supply-Chain Item
 ```
 
 Where myuser is the return value from sdk_init(). Modifies the value stored
-in address register <address> (with current value &lt;data&gt;) with the new
-value &lt;new-data&gt;.
+in address register &lt;address&gt; (with current value &lt;data&gt;) with the
+new value &lt;new-data&gt;.
 
 Returns:
 ```
