@@ -583,7 +583,7 @@ public:
     {
         if (vch.size() == sizeof(pn))
             memcpy(pn, &vch[0], sizeof(pn));
-            std::copy(&vch[0], &vch[0] + sizeof(pn), pn);
+            std::copy(&vch[0], &vch[0] + sizeof(pn), (uint8_t *)pn);
         else
             *this = 0;
     }
@@ -690,7 +690,7 @@ public:
     {
         if (vch.size() == sizeof(pn))
             //memcpy(pn, &vch[0], sizeof(pn));
-            std::copy(&vch[0], &vch[0] + sizeof(pn), pn);
+            std::copy(&vch[0], &vch[0] + sizeof(pn), (uint8_t *)pn);
         else
             *this = 0;
     }
@@ -861,7 +861,7 @@ public:
     {
         if (vch.size() == sizeof(pn))
             //memcpy(pn, &vch[0], sizeof(pn));
-            std::copy(&vch[0], &vch[0] + sizeof(pn), pn);
+            std::copy(&vch[0], &vch[0] + sizeof(pn), (uint8_t *)pn);
         else
             *this = 0;
     }
