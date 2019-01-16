@@ -112,11 +112,11 @@ namespace Legacy
         /** Flag indicating that the received time is also the transaction time.
          *  Should be set for transactions created and sent by bound wallet.
          **/
-        uint64_t fTimeReceivedIsTxTime;
+        uint32_t fTimeReceivedIsTxTime;
 
 
         /** timestamp when this transaction was received by this node. **/
-        uint64_t nTimeReceived; 
+        uint32_t nTimeReceived; 
 
 
         /** Flag to indicate transaction is from bound wallet.
