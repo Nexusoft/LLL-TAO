@@ -328,7 +328,7 @@ namespace Legacy
 
 
 	/* Amount of Coins spent by this transaction. */
-	int64_t Transaction::GetValueOut() const
+	uint64_t Transaction::GetValueOut() const
 	{
 		int64_t nValueOut = 0;
 		for(auto txout : vout)
@@ -343,7 +343,7 @@ namespace Legacy
 
 
 	/* Amount of Coins coming in to this transaction */
-	int64_t Transaction::GetValueIn(const std::map<uint512_t, Transaction>& mapInputs) const
+	uint64_t Transaction::GetValueIn(const std::map<uint512_t, Transaction>& mapInputs) const
     {
         if (IsCoinBase())
             return 0;
@@ -368,7 +368,7 @@ namespace Legacy
 
 
 	/* Get the minimum fee to pay for broadcast. */
-	int64_t Transaction::GetMinFee(uint32_t nBlockSize, bool fAllowFree, enum GetMinFee_mode mode) const
+	uint64_t Transaction::GetMinFee(uint32_t nBlockSize, bool fAllowFree, enum GetMinFee_mode mode) const
     {
 
         /* Base fee is either MIN_TX_FEE or MIN_RELAY_TX_FEE */

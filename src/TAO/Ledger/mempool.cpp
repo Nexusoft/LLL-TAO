@@ -140,7 +140,7 @@ namespace TAO
 
 
         /* Gets a transaction from mempool */
-        bool Mempool::Get(uint512_t hashTx, TAO::Ledger::Transaction& tx)
+        bool Mempool::Get(uint512_t hashTx, TAO::Ledger::Transaction& tx) const
         {
             LOCK(MUTEX);
 
@@ -149,7 +149,7 @@ namespace TAO
                 return false;
 
             /* Find the object. */
-            tx = mapLedger[hashTx];
+            tx = mapLedger.at(hashTx);
 
             return true;
         }

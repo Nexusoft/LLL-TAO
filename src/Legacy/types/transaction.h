@@ -246,7 +246,7 @@ namespace Legacy
 		 *  @return sum of all outputs (note: does not include fees)
 		 *
 		 **/
-		int64_t GetValueOut() const;
+		uint64_t GetValueOut() const;
 
 
 		/** Get Value In
@@ -259,7 +259,7 @@ namespace Legacy
 		 *  @see CTransaction::FetchInputs
 		 *
 		 **/
-		int64_t GetValueIn(const std::map<uint512_t, Transaction>& mapInputs) const;
+		uint64_t GetValueIn(const std::map<uint512_t, Transaction>& mapInputs) const;
 
 
 		/** Allow Free
@@ -285,7 +285,7 @@ namespace Legacy
 		 *  @return The fee in satoshi's for transaction.
 		 *
 		 **/
-		int64_t GetMinFee(uint32_t nBlockSize=1, bool fAllowFree=false, enum GetMinFee_mode mode=GMF_BLOCK) const;
+		uint64_t GetMinFee(uint32_t nBlockSize=1, bool fAllowFree=false, enum GetMinFee_mode mode=GMF_BLOCK) const;
 
 
 		/** To String Short
