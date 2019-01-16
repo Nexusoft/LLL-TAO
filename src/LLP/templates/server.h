@@ -288,7 +288,7 @@ namespace LLP
         void Manager()
         {
             /* Address to select. */
-            Address addr = Address();
+            Address addr;
 
             /* Loop connections. */
             while(!fDestruct.load())

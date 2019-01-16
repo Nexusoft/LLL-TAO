@@ -43,6 +43,8 @@ namespace LLP
     class AddressInfo : public Address
     {
     public:
+
+        
         /** AddressInfo
          *
          *  Default constructor

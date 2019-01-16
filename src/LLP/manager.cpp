@@ -180,7 +180,9 @@ namespace LLP
 
         get_info(vInfo, flags);
 
-        if(!vInfo.size())
+        uint32_t s = static_cast<uint32_t>(vInfo.size());
+
+        if(s == 0)
             return false;
 
         std::sort(vInfo.begin(), vInfo.end());
@@ -193,7 +195,7 @@ namespace LLP
 
         /* select an index with a good random weight bias toward the front of the list */
         uint32_t nSelect = ((std::numeric_limits<uint64_t>::max() /
-            std::max((uint64_t)std::pow(nHash, 1.95) + 1, (uint64_t)1)) - 3) % vInfo.size();
+            std::max((uint64_t)std::pow(nHash, 1.95) + 1, (uint64_t)1)) - 3) % s;
 
         addr = vInfo[nSelect];
 
