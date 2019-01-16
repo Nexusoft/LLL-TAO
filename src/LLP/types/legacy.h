@@ -25,8 +25,6 @@ namespace LLP
 
     class LegacyNode : public BaseConnection<LegacyPacket>
     {
-        Address addrThisNode;
-
     public:
 
         static std::string Name() { return "Legacy"; }

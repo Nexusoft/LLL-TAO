@@ -160,7 +160,7 @@ namespace Legacy
         int32_t nRequests = -1;
 
         {
-            std::lock_guard<std::recursive_mutex> walletLock(ptransactionWallet->cs_wallet);
+            LOCK(ptransactionWallet->cs_wallet);
 
             if (IsCoinBase() || IsCoinStake())
             {
@@ -473,7 +473,7 @@ namespace Legacy
 
         if (fHaveWallet)
         {
-            std::lock_guard<std::recursive_mutex> walletLock(ptransactionWallet->cs_wallet);
+            LOCK(ptransactionWallet->cs_wallet);
 
             for(const auto& r : listReceived)
             {
@@ -511,7 +511,7 @@ namespace Legacy
                 vWorkQueue.push_back(txin.prevout.hash);
 
             { // Begin lock scope
-                std::lock_guard<std::recursive_mutex> walletLock(ptransactionWallet->cs_wallet);
+                LOCK(ptransactionWallet->cs_wallet);
 
                 /* Map keeps track of tx previously loaded, while set contains hash values already processed */
                 std::map<uint512_t, const CWalletTx*> mapWalletPrev;

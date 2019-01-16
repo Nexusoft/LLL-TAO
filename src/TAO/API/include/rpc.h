@@ -37,6 +37,13 @@ namespace TAO
             RPC() { Initialize(); }
 
 
+            /** Virtual destructor. **/
+            virtual ~RPC()
+            {
+                mapFunctions.clear();
+            }
+
+
             /** Initialize.
              *
              *  Sets the function pointers for this API.
@@ -764,7 +771,7 @@ namespace TAO
         };
 
         /** The instance of RPC commands. */
-        extern RPC* RPCCommands;
+        extern RPC RPCCommands;
     }
 }
 

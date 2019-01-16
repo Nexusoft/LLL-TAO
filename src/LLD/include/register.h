@@ -30,7 +30,7 @@ namespace LLD
 
     class RegisterDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
-        std::recursive_mutex MEMORY_MUTEX;
+        std::mutex MEMORY_MUTEX;
 
         std::map<uint256_t, TAO::Register::State> mapStates;
         std::map<uint32_t, uint256_t> mapIdentifiers;

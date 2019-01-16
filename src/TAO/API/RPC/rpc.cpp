@@ -23,12 +23,12 @@ namespace TAO
     namespace API
     {
 
-    /* Create the list of commands. */
-        TAO::API::RPC* RPCCommands;
+        /* Create the list of commands. */
+        TAO::API::RPC RPCCommands;
 
+        /* Initialize the list of commands. */
         void RPC::Initialize()
         {
-
             mapFunctions["echo"] = Function(std::bind(&RPC::Echo, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["help"] = Function(std::bind(&RPC::Help, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getinfo"] = Function(std::bind(&RPC::GetInfo, this, std::placeholders::_1, std::placeholders::_2));
@@ -86,13 +86,13 @@ namespace TAO
 
         }
 
-        
+
 
         /* Allows derived API's to check the values in the parameters array for the method being called.
         *  The return json contains the sanitized parameter values, which derived implementations might convert to the correct type
         *  for the method being called */
         json::json RPC::SanitizeParams( const std::string& strMethod, const json::json& jsonParams )
-        { 
+        {
             json::json jsonSanitizedParams = jsonParams;
 
             int n = jsonSanitizedParams.size();
@@ -131,7 +131,7 @@ namespace TAO
             if (strMethod == "listsinceblock"         && n > 1) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[1]);
             if (strMethod == "sendmany"                && n > 2) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[2]);
             if (strMethod == "addmultisigaddress"      && n > 0) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[0]);
-            
+
 
             return jsonSanitizedParams;
         }

@@ -39,7 +39,7 @@ namespace LLD
     protected:
 
         /** Mutex for Thread Synchronization. **/
-        mutable std::recursive_mutex KEY_MUTEX;
+        mutable std::mutex KEY_MUTEX;
 
 
         /** The string to hold the database location. **/

@@ -31,7 +31,7 @@ namespace LLD
     {
     protected:
         /** Mutex for Thread Synchronization. **/
-        mutable std::recursive_mutex KEY_MUTEX;
+        mutable std::mutex KEY_MUTEX;
 
 
         /** The String to hold the Disk Location of Database File.
@@ -138,7 +138,7 @@ namespace LLD
         /** Read the Database Keys and File Positions. **/
         void Initialize()
         {
-            std::unique_lock<std::recursive_mutex> lk(KEY_MUTEX);
+            LOCK(KEY_MUTEX);
 
             /* Create directories if they don't exist yet. */
             if(!filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))

@@ -24,17 +24,15 @@ namespace Legacy
     /* Activate encryption for the key store. */
     bool CCryptoKeyStore::SetCrypted()
     {
-        {
-            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
-            if (fUseCrypto)
-                return true;
+        LOCK(cs_KeyStore);
+        if (fUseCrypto)
+            return true;
 
-            /* Cannot activate encryption if key store contains any unencrypted keys */
-            if (!mapKeys.empty())
-                return false;
+        /* Cannot activate encryption if key store contains any unencrypted keys */
+        if (!mapKeys.empty())
+            return false;
 
-            fUseCrypto = true;
-        }
+        fUseCrypto = true;
 
         return true;
     }
@@ -43,44 +41,42 @@ namespace Legacy
     /*  Convert the key store from unencrypted to encrypted. */
     bool CCryptoKeyStore::EncryptKeys(const CKeyingMaterial& vMasterKeyIn)
     {
-        {
-            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
+        LOCK(cs_KeyStore);
 
-            /* Check whether key store already encrypted */
-            if (!mapCryptedKeys.empty() || IsCrypted())
+        /* Check whether key store already encrypted */
+        if (!mapCryptedKeys.empty() || IsCrypted())
+            return false;
+
+        /* Set key store as encrypted */
+        fUseCrypto = true;
+
+        /* Convert unencrypted keys from mapKeys to encrypted keys in mapCryptedKeys
+         * mKey will have pair for each map entry
+         * mKey.first = base 58 address (map key)
+         * mKey.second = std::pair<LLC::CSecret, bool> where bool indicates key compressed true/false
+         */
+        for(const auto mKey : mapKeys)
+        {
+            LLC::ECKey key;
+            LLC::CSecret vchSecret = mKey.second.first;
+
+            if (!key.SetSecret(vchSecret, mKey.second.second))
                 return false;
 
-            /* Set key store as encrypted */
-            fUseCrypto = true;
+            const std::vector<uint8_t> vchPubKey = key.GetPubKey();
+            std::vector<uint8_t> vchCryptedSecret;
+            bool fCompressed;
 
-            /* Convert unencrypted keys from mapKeys to encrypted keys in mapCryptedKeys
-             * mKey will have pair for each map entry
-             * mKey.first = base 58 address (map key)
-             * mKey.second = std::pair<LLC::CSecret, bool> where bool indicates key compressed true/false
-             */
-            for(const auto mKey : mapKeys)
-            {
-                LLC::ECKey key;
-                LLC::CSecret vchSecret = mKey.second.first;
+            /* Successful encryption will place encrypted private key into vchCryptedSecret */
+            if (!EncryptSecret(vMasterKeyIn, key.GetSecret(fCompressed), LLC::SK576(vchPubKey.begin(), vchPubKey.end()), vchCryptedSecret))
+                return false;
 
-                if (!key.SetSecret(vchSecret, mKey.second.second))
-                    return false;
-
-                const std::vector<uint8_t> vchPubKey = key.GetPubKey();
-                std::vector<uint8_t> vchCryptedSecret;
-                bool fCompressed;
-
-                /* Successful encryption will place encrypted private key into vchCryptedSecret */
-                if (!EncryptSecret(vMasterKeyIn, key.GetSecret(fCompressed), LLC::SK576(vchPubKey.begin(), vchPubKey.end()), vchCryptedSecret))
-                    return false;
-
-                if (!AddCryptedKey(vchPubKey, vchCryptedSecret))
-                    return false;
-            }
-
-            mapKeys.clear();
-
+            if (!AddCryptedKey(vchPubKey, vchCryptedSecret))
+                return false;
         }
+
+        mapKeys.clear();
+
         return true;
     }
 
@@ -88,43 +84,41 @@ namespace Legacy
     /*  Attempt to unlock an encrypted key store using the key provided. */
     bool CCryptoKeyStore::Unlock(const CKeyingMaterial& vMasterKeyIn)
     {
-        {
-            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
+        LOCK(cs_KeyStore);
 
-            /* Cannot unlock unencrypted key store (it is unlocked by default) */
-            if (!SetCrypted())
+        /* Cannot unlock unencrypted key store (it is unlocked by default) */
+        if (!SetCrypted())
+            return false;
+
+        auto mi = mapCryptedKeys.cbegin();
+
+        /* Only need to check first entry in map to determine successful/unsuccessful unlock
+         * Will also unlock successfully if map has no entries
+         */
+        if (mi != mapCryptedKeys.cend())
+        {
+            const std::vector<uint8_t> &vchPubKey = (*mi).second.first;
+            const std::vector<uint8_t> &vchCryptedSecret = (*mi).second.second;
+            LLC::CSecret vchSecret;
+
+            /* Successful decryption will place decrypted private key into vchSecret */
+            if(!DecryptSecret(vMasterKeyIn, vchCryptedSecret, LLC::SK576(vchPubKey.begin(), vchPubKey.end()), vchSecret))
                 return false;
 
-            auto mi = mapCryptedKeys.cbegin();
+            if (vchSecret.size() != 72)
+                return false;
 
-            /* Only need to check first entry in map to determine successful/unsuccessful unlock
-             * Will also unlock successfully if map has no entries
-             */
-            if (mi != mapCryptedKeys.cend())
-            {
-                const std::vector<uint8_t> &vchPubKey = (*mi).second.first;
-                const std::vector<uint8_t> &vchCryptedSecret = (*mi).second.second;
-                LLC::CSecret vchSecret;
+            LLC::ECKey key;
+            key.SetPubKey(vchPubKey);
+            key.SetSecret(vchSecret);
 
-                /* Successful decryption will place decrypted private key into vchSecret */
-                if(!DecryptSecret(vMasterKeyIn, vchCryptedSecret, LLC::SK576(vchPubKey.begin(), vchPubKey.end()), vchSecret))
-                    return false;
-
-                if (vchSecret.size() != 72)
-                    return false;
-
-                LLC::ECKey key;
-                key.SetPubKey(vchPubKey);
-                key.SetSecret(vchSecret);
-
-                /* When these are equal, the decryption is successful and vMasterKeyIn is a match */
-                if (key.GetPubKey() != vchPubKey)
-                    return false;
-            }
-
-            /* Key store unlocked, store encryption key for further use */
-            vMasterKey = vMasterKeyIn;
+            /* When these are equal, the decryption is successful and vMasterKeyIn is a match */
+            if (key.GetPubKey() != vchPubKey)
+                return false;
         }
+
+        /* Key store unlocked, store encryption key for further use */
+        vMasterKey = vMasterKeyIn;
 
         return true;
     }
@@ -139,12 +133,10 @@ namespace Legacy
 
         bool result;
 
-        {
-            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
+        LOCK(cs_KeyStore);
 
-            /* If encryption key is not stored, cannot decrypt keys and key store is locked */
-            result = vMasterKey.empty();
-        }
+        /* If encryption key is not stored, cannot decrypt keys and key store is locked */
+        result = vMasterKey.empty();
 
         return result;
     }
@@ -157,12 +149,10 @@ namespace Legacy
         if (!SetCrypted())
             return false;
 
-        {
-            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
+        LOCK(cs_KeyStore);
 
-            /* Remove any stored encryption key so key store values cannot be decrypted, locking the key store */
-            vMasterKey.clear();
-        }
+        /* Remove any stored encryption key so key store values cannot be decrypted, locking the key store */
+        vMasterKey.clear();
 
         return true;
     }
@@ -172,7 +162,7 @@ namespace Legacy
     bool CCryptoKeyStore::AddCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret)
     {
         {
-            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
+            LOCK(cs_KeyStore);
 
             /* Key store must be encrypted */
             if (!SetCrypted())
@@ -189,13 +179,13 @@ namespace Legacy
     bool CCryptoKeyStore::AddKey(const LLC::ECKey& key)
     {
         {
-            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
+            LOCK(cs_KeyStore);
 
             /* Add key to basic key store if encryption not active */
             if (!IsCrypted())
                 return CBasicKeyStore::AddKey(key);
 
-            /* Cannot add key if key store is encrypted and locked */  
+            /* Cannot add key if key store is encrypted and locked */
             if (IsLocked())
                 return false;
 
@@ -219,7 +209,7 @@ namespace Legacy
     bool CCryptoKeyStore::GetKey(const NexusAddress &address, LLC::ECKey& keyOut) const
     {
         {
-            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
+            LOCK(cs_KeyStore);
 
             /* Cannot decrypt key if key store is encrypted and locked */
             if (IsLocked())
@@ -249,10 +239,10 @@ namespace Legacy
 
 
     /*  Retrieve the set of public addresses for all keys currently present in the key store. */
-    void CCryptoKeyStore::GetKeys(std::set<NexusAddress> &setAddress) const 
+    void CCryptoKeyStore::GetKeys(std::set<NexusAddress> &setAddress) const
     {
         {
-            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
+            LOCK(cs_KeyStore);
 
             if (!IsCrypted())
             {
@@ -269,10 +259,10 @@ namespace Legacy
 
 
     /*  Check whether a key corresponding to a given address is present in the store. */
-    bool CCryptoKeyStore::HaveKey(const NexusAddress &address) const 
+    bool CCryptoKeyStore::HaveKey(const NexusAddress &address) const
     {
         {
-            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
+            LOCK(cs_KeyStore);
 
             if (!IsCrypted())
                 return CBasicKeyStore::HaveKey(address);
@@ -288,7 +278,7 @@ namespace Legacy
     bool CCryptoKeyStore::GetPubKey(const NexusAddress &address, std::vector<uint8_t>& vchPubKeyOut) const
     {
         {
-            std::lock_guard<std::recursive_mutex> ksLock(cs_KeyStore);
+            LOCK(cs_KeyStore);
 
             if (!IsCrypted())
                 return CKeyStore::GetPubKey(address, vchPubKeyOut);

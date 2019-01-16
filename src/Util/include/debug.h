@@ -62,7 +62,7 @@ ________________________________________________________________________________
 #define VALUE(data) data
 //#define FUNCTION ANSI_COLOR_FUNCTION "%s" ANSI_COLOR_RESET " : "
 
-#define NODE ANSI_COLOR_FUNCTION "Node" ANSI_COLOR_RESET " : "
+#define NODE ANSI_COLOR_FUNCTION "Node" ANSI_COLOR_RESET " : ", "\u001b[1m", GetAddress().ToStringIP(), ANSI_COLOR_RESET, " "
 
 /* Support for Windows */
 #ifndef __PRETTY_FUNCTION__
@@ -74,7 +74,7 @@ ________________________________________________________________________________
 namespace debug
 {
 
-    static std::recursive_mutex DEBUG_MUTEX;
+    static std::mutex DEBUG_MUTEX;
 
     /** Block debug output flags. **/
     enum flags

@@ -54,10 +54,6 @@ namespace LLP
         std::vector<DataThread<ProtocolType> *> DATA_THREADS;
 
 
-        /* List of internal addresses. */
-        std::recursive_mutex MUTEX;
-
-
         /* Connection Manager. */
         std::thread MANAGER_THREAD;
 
@@ -314,7 +310,7 @@ namespace LLP
                     uint16_t port = addr.GetPort();
 
                     /* Attempt the connection. */
-                    debug::log(0, NODE, ProtocolType::Name(), " Attempting Connection ", ip, ":", port);
+                    debug::log(0, FUNCTION, ProtocolType::Name(), " Attempting Connection ", ip, ":", port);
                     pAddressManager->PrintStats();
 
                     if(AddConnection(ip, port))
@@ -332,9 +328,7 @@ namespace LLP
         /* Basic Socket Handle Variables. */
         std::thread          LISTEN_THREAD_V4;
         std::thread          LISTEN_THREAD_V6;
-
         std::thread          METER_THREAD;
-        std::recursive_mutex DDOS_MUTEX;
 
 
         /* Determine thfalsee thread with the least amount of active connections.
@@ -432,7 +426,7 @@ namespace LLP
                         /* DDOS Operations: Only executed when DDOS is enabled. */
                         if((fDDOS && DDOS_MAP[(Service)addr]->Banned()))
                         {
-                            debug::log(0, NODE "Connection Request ",  addr.ToString(), " refused... Banned.");
+                            debug::log(0, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Banned.");
                             close(hSocket);
 
                             continue;
@@ -451,7 +445,7 @@ namespace LLP
                             continue;
 
                         dt->AddConnection(sockNew, DDOS_MAP[(Service)addr]);
-                        debug::log(3, NODE "Accepted Connection ", addr.ToString(), " on port ",  PORT);
+                        debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ",  PORT);
                     }
                 }
             }
@@ -513,7 +507,7 @@ namespace LLP
                     return false;
                 }
 
-                debug::log(0, NODE "(v4) Bound to port ", ntohs(sockaddr.sin_port));
+                debug::log(0, FUNCTION,"(v4) Bound to port ", ntohs(sockaddr.sin_port));
             }
             else
             {
@@ -533,7 +527,7 @@ namespace LLP
                     return false;
                 }
 
-                debug::log(0, NODE "(v6) Bound to port ", ntohs(sockaddr.sin6_port));
+                debug::log(0, FUNCTION, "(v6) Bound to port ", ntohs(sockaddr.sin6_port));
             }
 
             /* Listen for incoming connections */

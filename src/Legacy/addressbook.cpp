@@ -29,7 +29,7 @@ namespace Legacy
     bool CAddressBook::SetAddressBookName(const NexusAddress& address, const std::string& strName)
     {
         {
-            std::lock_guard<std::recursive_mutex> walletLock(addressBookWallet.cs_wallet);
+            LOCK(addressBookWallet.cs_wallet);
 
             mapAddressBook[address] = strName;
 
@@ -52,7 +52,7 @@ namespace Legacy
     bool CAddressBook::DelAddressBookName(const NexusAddress& address)
     {
         {
-            std::lock_guard<std::recursive_mutex> walletLock(addressBookWallet.cs_wallet);
+            LOCK(addressBookWallet.cs_wallet);
 
             mapAddressBook.erase(address);
 
@@ -72,11 +72,11 @@ namespace Legacy
 
 
     /* Get Nexus addresses that have a balance associated with the wallet for this address book */
-    bool CAddressBook::AvailableAddresses(const uint32_t nSpendTime, std::map<NexusAddress, int64_t>& mapAddressBalances, 
+    bool CAddressBook::AvailableAddresses(const uint32_t nSpendTime, std::map<NexusAddress, int64_t>& mapAddressBalances,
                                           const bool fOnlyConfirmed, const uint32_t nMinDepth) const
     {
         { //Begin lock scope
-            std::lock_guard<std::recursive_mutex> walletLock(addressBookWallet.cs_wallet);
+            LOCK(addressBookWallet.cs_wallet);
 
             for (auto& item : addressBookWallet.mapWallet)
             {
@@ -84,7 +84,7 @@ namespace Legacy
 
                 /* Filter any transaction output with timestamp exceeding requested spend time */
                 if (walletTx.nTime > nSpendTime)
-                    continue;  
+                    continue;
 
                 /* Filter transaction from results if not final */
                 if (!walletTx.IsFinal())
@@ -105,7 +105,7 @@ namespace Legacy
                 for (int i = 0; i < walletTx.vout.size(); i++)
                 {
                     /* For all unfiltered transactions, add any unspent output belonging to this wallet to the available balance */
-                    if (!(walletTx.IsSpent(i)) && addressBookWallet.IsMine(walletTx.vout[i]) && walletTx.vout[i].nValue > 0) 
+                    if (!(walletTx.IsSpent(i)) && addressBookWallet.IsMine(walletTx.vout[i]) && walletTx.vout[i].nValue > 0)
                     {
                         NexusAddress address;
 
@@ -131,7 +131,7 @@ namespace Legacy
     bool CAddressBook::BalanceByAccount(const std::string strAccount, int64_t& nBalance, const uint32_t nMinDepth) const
     {
         { //Begin lock scope
-            std::lock_guard<std::recursive_mutex> walletLock(addressBookWallet.cs_wallet);
+            LOCK(addressBookWallet.cs_wallet);
 
             nBalance = 0;
 
