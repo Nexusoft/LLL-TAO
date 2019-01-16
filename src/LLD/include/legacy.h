@@ -52,6 +52,12 @@ namespace LLD
         }
 
 
+        bool EraseTx(uint512_t hashTransaction)
+        {
+            return Erase(std::make_pair(std::string("tx"), hashTransaction));
+        }
+
+
         bool HasTx(uint512_t hashTransaction)
         {
             return Exists(std::make_pair(std::string("tx"), hashTransaction));

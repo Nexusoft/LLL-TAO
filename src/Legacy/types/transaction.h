@@ -22,6 +22,8 @@ ________________________________________________________________________________
 #include <Legacy/types/txout.h>
 #include <Legacy/types/enum.h>
 
+#include <TAO/Ledger/types/state.h>
+
 namespace Legacy
 {
 
@@ -335,15 +337,27 @@ namespace Legacy
 
 
 		/** Connect Inputs
+	     *
+	     *  Mark the inputs in a transaction as spent.
+	     *
+	     *  @param[in] inputs The inputs map that has prev transactions
+		 *  @param[in] state The block state that is connecting
+	     *  @param[in] nFlags The flags to determine legacy state.
+	     *
+	     *  @return true if the inputs were found
+	     *
+	     **/
+		bool Connect(const std::map<uint512_t, Transaction>& inputs, const TAO::Ledger::BlockState* state, uint8_t nFlags = FLAGS::MEMPOOL) const;
+
+
+		/** Disconnect
 		 *
-		 *  Mark the inputs in a transaction as spent.
+		 *  Mark the inputs in a transaction as unspent.
 		 *
-		 *  @param[in] inputs The inputs map that has prev transactions
-		 *
-		 *  @return true if the inputs were found
+		 *  @return true if the inputs were disconnected
 		 *
 		 **/
-		bool Connect(uint8_t nFlags = FLAGS::MEMPOOL) const;
+		bool Disconnect() const;
 
 
 	protected:
