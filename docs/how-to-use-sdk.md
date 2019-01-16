@@ -153,6 +153,23 @@ Returns:
 {u'result': {u'owner': u'8f2b585ad33bdadda440830c44d7d40036b81a39d637a0ec9efbf1dcfd5cda1a', u'state': u'<data>'}}
 ```
 
+Modifying an Existing Supply-Chain Item
+---------------------------------------
+
+```
+    status = myuser.nexus_supply_updateitem("<address>", "<new-data>")
+```
+
+Where myuser is the return value from sdk_init(). Modifies the value
+stored data a address register <address> with new value &lt;data&gt;.
+
+Returns:
+```
+>>> status = myuser.nexus_supply_updateitem("26a47e31f4e7886eaf53618eb96346a6178b219ded1926927fb73e9566424989", "<new-data>")
+>>> status
+{u'result': {u'txid': u'c4bebcdccd6a18a76a52d1a03e81822d1eb7b6e8431f1daccee765a966937de651e25691fba3a843cea274825c95fecf49df231678c9a31642c94b05b55d6728', u'address': u'26a47e31f4e7886eaf53618eb96346a6178b219ded1926927fb73e9566424989'}}
+```
+
 Transfering Ownership of a Register Address
 -------------------------------------------
 
