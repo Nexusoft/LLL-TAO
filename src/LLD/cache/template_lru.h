@@ -23,6 +23,7 @@ ________________________________________________________________________________
 namespace LLD
 {
 
+
     /** Template Node
      *
      *  Node to hold the key/values of the double linked list.
@@ -31,6 +32,35 @@ namespace LLD
     template<typename KeyType, typename DataType>
     struct TemplateNode
     {
+        /** Delete
+         *
+         *  Template function to delete pointer.
+         *  This one is dummy non pointer catch
+         *
+         **/
+        template<typename Type>
+        void Delete(Type data)
+        { }
+
+
+        /** Delete
+         *
+         *  Delete a pointer object. Closes the file.
+         *
+         **/
+        template<typename Type>
+        void Delete(Type* data)
+        {
+            delete data;
+        }
+
+        /** Destructor. **/
+        ~TemplateNode()
+        {
+            Delete(Key);
+            Delete(Data);
+        }
+
         TemplateNode<KeyType, DataType>* pprev;
         TemplateNode<KeyType, DataType>* pnext;
 
@@ -303,6 +333,9 @@ namespace LLD
             {
                 /* Update the cache node. */
                 pthis = hashmap[nBucket];
+                delete pthis;
+
+                pthis = new TemplateNode<KeyType, DataType>();
                 pthis->Data = Data;
                 pthis->Key  = Key;
             }
@@ -341,9 +374,7 @@ namespace LLD
                     pnode->pnext = nullptr;
 
                     /* Free memory. */
-                    Delete(pnode->Key);
-                    Delete(pnode->Data);
-                    Delete(pnode);
+                    delete pnode;
 
                     /* Clear the pointers. */
                     pnode = nullptr;
@@ -353,31 +384,6 @@ namespace LLD
                 }
             }
         }
-
-
-        /** Delete
-         *
-         *  Template function to delete pointer.
-         *  This one is dummy non pointer catch
-         *
-         **/
-        template<typename Type>
-        void Delete(Type data) { }
-
-
-        /** Delete
-         *
-         *  Delete a stream object. Closes the file.
-         *
-         **/
-        template<typename Type>
-        void Delete(Type* data)
-        {
-            //data->close();
-            delete data;
-        }
-
-
 
 
 
@@ -409,9 +415,7 @@ namespace LLD
             hashmap[Bucket(Key)] = nullptr;
 
             /* Free memory. */
-            Delete(pnode->Key);
-            Delete(pnode->Data);
-            Delete(pnode);
+            delete pnode;
 
             return true;
         }

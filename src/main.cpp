@@ -243,7 +243,6 @@ int main(int argc, char** argv)
 
     /* Get the account. */
     TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("colin", "pass");
-
     for(uint32_t n = 0; n < config::GetArg("-test", 0); n++)
     {
         /* Create the transaction. */
@@ -275,6 +274,7 @@ int main(int argc, char** argv)
 
         LLD::locDB->WriteLast(tx.hashGenesis, tx.GetHash());
     }
+    delete user;
 
     /* Initialize generator thread. */
     std::thread thread;

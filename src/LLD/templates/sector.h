@@ -193,8 +193,11 @@ namespace LLD
             CacheWriterThread.join();
             MeterThread.join();
 
-            delete pTransaction;
+            if(pTransaction)
+                delete pTransaction;
+
             delete cachePool;
+            delete fileCache;
             delete pSectorKeys;
         }
 
@@ -435,9 +438,11 @@ namespace LLD
                 {
                     /* Set the new stream pointer. */
                     pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
-
-                    if(!pstream)
+                    if(!pstream->is_open())
+                    {
+                        delete pstream;
                         return debug::error(FUNCTION, "couldn't create stream file");
+                    }
 
                     /* If file not found add to LRU cache. */
                     fileCache->Put(cKey.nSectorFile, pstream);
@@ -491,8 +496,11 @@ namespace LLD
             {
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
-                if(!pstream)
+                if(!pstream->is_open())
+                {
+                    delete pstream;
                     return false;
+                }
 
                 /* If file not found add to LRU cache. */
                 fileCache->Put(cKey.nSectorFile, pstream);
@@ -549,8 +557,11 @@ namespace LLD
             {
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
-                if(!pstream)
+                if(!pstream->is_open())
+                {
+                    delete pstream;
                     return false;
+                }
 
                 /* If file not found add to LRU cache. */
                 fileCache->Put(key.nSectorFile, pstream);
@@ -609,8 +620,11 @@ namespace LLD
                 {
                     /* Set the new stream pointer. */
                     pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream)
+                    if(!pstream->is_open())
+                    {
+                        delete pstream;
                         return false;
+                    }
 
                     /* If file not found add to LRU cache. */
                     fileCache->Put(nCurrentFile, pstream);
@@ -745,8 +759,11 @@ namespace LLD
                     {
                         /* Set the new stream pointer. */
                         pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
-                        if(!pstream)
+                        if(!pstream->is_open())
+                        {
+                            delete pstream;
                             continue;
+                        }
 
                         /* If file not found add to LRU cache. */
                         fileCache->Put(nCurrentFile, pstream);

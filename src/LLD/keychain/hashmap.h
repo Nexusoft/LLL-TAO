@@ -348,8 +348,11 @@ namespace LLD
                 {
                     /* Set the new stream pointer. */
                     pstream = new std::fstream(debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream)
+                    if(!pstream->is_open())
+                    {
+                        delete pstream;
                         return debug::error(FUNCTION, "couldn't create hashmap object");
+                    }
 
                     /* If file not found add to LRU cache. */
                     fileCache->Put(i, pstream);
@@ -586,8 +589,11 @@ namespace LLD
             {
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary);
-                if(!pstream)
+                if(!pstream->is_open())
+                {
+                    delete pstream;
                     return debug::error(FUNCTION, "Failed to generate file object");
+                }
 
                 /* If not in cache, add to the LRU. */
                 fileCache->Put(hashmap[nBucket], pstream);

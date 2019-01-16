@@ -156,7 +156,7 @@ namespace Legacy
 
         fFirstRunRet = false;
 
-        CWalletDB walletdb(strWalletFile,"cr+");
+        CWalletDB walletdb(strWalletFile, "cr+");
         uint32_t nLoadWalletRet = walletdb.LoadWallet(*this);
         walletdb.Close();
 
