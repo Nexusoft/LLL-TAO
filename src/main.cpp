@@ -58,6 +58,9 @@ namespace LLD
     RegisterDB* regDB;
     LedgerDB*   legDB;
     LocalDB*    locDB;
+
+    //for legacy objects.
+    LegacyDB*   legacyDB;
 }
 
 
@@ -122,11 +125,17 @@ int main(int argc, char** argv)
     LLD::legDB = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
 
 
+    /* Initialize the Legacy Database. */
+    LLD::legacyDB = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+
+
     /** Load the Wallet Database. **/
     bool fFirstRun;
     if (!Legacy::CWallet::InitializeWallet(config::GetArg("-wallet", Legacy::CWalletDB::DEFAULT_WALLET_DB)))
         return debug::error("failed initializing wallet");
 
+
+    /** Check the wallet loading for errors. **/
     uint32_t nLoadWalletRet = Legacy::CWallet::GetInstance().LoadWallet(fFirstRun);
     if (nLoadWalletRet != Legacy::DB_LOAD_OK)
     {

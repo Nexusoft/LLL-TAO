@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 
+#include <LLD/include/global.h>
+
 #include <LLP/include/version.h>
 
 #include <Legacy/types/transaction.h>
@@ -508,6 +510,56 @@ namespace Legacy
                     return debug::error(FUNCTION, "prevout is null");
         }
 
+        return true;
+    }
+
+
+    /* Get the inputs for a transaction. */
+    bool Transaction::FetchInputs(std::map<uint512_t, Transaction>& inputs) const
+    {
+        /* Coinbase has no inputs. */
+        if (IsCoinBase())
+            return true;
+
+        /* Read all of the inputs. */
+        for (uint32_t i = IsCoinStake() ? 1 : 0; i < vin.size(); i++)
+        {
+            /* Skip inputs that are already found. */
+            COutPoint prevout = vin[i].prevout;
+            if (inputs.count(prevout.hash))
+                continue;
+
+            /* Read the previous transaction. */
+            Transaction txPrev;
+            if(!LLD::legacyDB->ReadTx(prevout.hash, txPrev))
+            {
+                //TODO: check the memory pool for previous
+                return debug::error(FUNCTION, "previous transaction not found");
+            }
+
+            /* Check that it is valid. */
+            if(prevout.n >= txPrev.vout.size())
+                return debug::error(FUNCTION, "prevout is out of range");
+
+            /* Add to the inputs. */
+            inputs[prevout.hash] = txPrev;
+        }
+
+        return true;
+    }
+
+
+    /** Connect Inputs
+     *
+     *  Mark the inputs in a transaction as spent.
+     *
+     *  @param[in] inputs The inputs map that has prev transactions
+     *
+     *  @return true if the inputs were found
+     *
+     **/
+    bool Transaction::Connect(uint8_t nFlags) const
+    {
         return true;
     }
 

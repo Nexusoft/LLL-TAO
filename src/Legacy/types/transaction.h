@@ -16,6 +16,8 @@ ________________________________________________________________________________
 
 #include <Util/templates/serialize.h>
 
+#include <Legacy/include/enum.h>
+
 #include <Legacy/types/txin.h>
 #include <Legacy/types/txout.h>
 #include <Legacy/types/enum.h>
@@ -318,6 +320,30 @@ namespace Legacy
 		 *
 		 **/
 		bool CheckTransaction() const;
+
+
+		/** Fetch Inputs
+		 *
+		 *  Get the inputs for a transaction.
+		 *
+		 *  @param[in] inputs The inputs map that has prev transactions
+		 *
+		 *  @return true if the inputs were found
+		 *
+		 **/
+		bool FetchInputs(std::map<uint512_t, Transaction>& inputs) const;
+
+
+		/** Connect Inputs
+		 *
+		 *  Mark the inputs in a transaction as spent.
+		 *
+		 *  @param[in] inputs The inputs map that has prev transactions
+		 *
+		 *  @return true if the inputs were found
+		 *
+		 **/
+		bool Connect(uint8_t nFlags = FLAGS::MEMPOOL) const;
 
 
 	protected:
