@@ -160,8 +160,9 @@ Modifying an Existing Supply-Chain Item
     status = myuser.nexus_supply_updateitem("<address>", "<new-data>")
 ```
 
-Where myuser is the return value from sdk_init(). Modifies the value
-stored data a address register <address> with new value &lt;data&gt;.
+Where myuser is the return value from sdk_init(). Modifies the value stored
+in address register <address> (with current value &lt;data&gt;) with the new
+value &lt;new-data&gt;.
 
 Returns:
 ```
