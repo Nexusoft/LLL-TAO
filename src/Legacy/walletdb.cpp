@@ -32,7 +32,7 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/debug.h>
 #include <Util/include/convert.h>
-#include <Util/include/filesystem.h>
+#include <Util/include/filesystem.h> 
 #include <Util/include/runtime.h>
 
 
@@ -46,10 +46,13 @@ namespace Legacy
 
     uint64_t CWalletDB::nAccountingEntryNumber = 0;
 
+    std::mutex CWalletDB::cs_walletdb;
+
 
     /* Stores an encrypted master key into the database. */
     bool CWalletDB::WriteMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey)
     {
+        LOCK(CWalletDB::cs_walletdb);
         CWalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("mkey"), nMasterKeyId), kMasterKey, true);
     }
@@ -58,6 +61,7 @@ namespace Legacy
     /* Stores the minimum database version supported by this wallet database. */
     bool CWalletDB::WriteMinVersion(const uint32_t nVersion)
     {
+        LOCK(CWalletDB::cs_walletdb);
         return Write(std::string("minversion"), nVersion, true);
     }
 
@@ -65,6 +69,7 @@ namespace Legacy
     /* Reads the wallet account data associated with an account (Nexus address). */
     bool CWalletDB::ReadAccount(const std::string& strAccount, CAccount& account)
     {
+        LOCK(CWalletDB::cs_walletdb);
         account.SetNull();
         return Read(std::make_pair(std::string("acc"), strAccount), account);
     }
@@ -73,6 +78,7 @@ namespace Legacy
     /* Stores the wallet account data for an address in the database. */
     bool CWalletDB::WriteAccount(const std::string& strAccount, const CAccount& account)
     {
+        LOCK(CWalletDB::cs_walletdb);
         return Write(std::make_pair(std::string("acc"), strAccount), account);
     }
 
@@ -80,6 +86,7 @@ namespace Legacy
     /* Reads a logical name (label) for an address into the database. */
     bool CWalletDB::ReadName(const std::string& strAddress, std::string& strName)
     {
+        LOCK(CWalletDB::cs_walletdb);
         strName = "";
         return Read(std::make_pair(std::string("name"), strAddress), strName);
     }
@@ -88,6 +95,7 @@ namespace Legacy
     /* Stores a logical name (label) for an address in the database. */
     bool CWalletDB::WriteName(const std::string& strAddress, const std::string& strName)
     {
+        LOCK(CWalletDB::cs_walletdb);
         CWalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("name"), strAddress), strName);
     }
@@ -96,6 +104,7 @@ namespace Legacy
     /* Removes the name entry associated with an address. */
     bool CWalletDB::EraseName(const std::string& strAddress)
     {
+        LOCK(CWalletDB::cs_walletdb);
         CWalletDB::nWalletDBUpdated++;
         return Erase(std::make_pair(std::string("name"), strAddress));
     }
@@ -104,6 +113,7 @@ namespace Legacy
     /* Reads the default public key from the wallet database. */
     bool CWalletDB::ReadDefaultKey(std::vector<uint8_t>& vchPubKey)
     {
+        LOCK(CWalletDB::cs_walletdb);
         vchPubKey.clear();
         return Read(std::string("defaultkey"), vchPubKey);
     }
@@ -112,6 +122,7 @@ namespace Legacy
     /* Stores the default public key to the wallet database. */
     bool CWalletDB::WriteDefaultKey(const std::vector<uint8_t>& vchPubKey)
     {
+        LOCK(CWalletDB::cs_walletdb);
         CWalletDB::nWalletDBUpdated++;
         return Write(std::string("defaultkey"), vchPubKey);
     }
@@ -120,6 +131,7 @@ namespace Legacy
     /* Reads the unencrypted private key associated with a public key */
     bool CWalletDB::ReadKey(const std::vector<uint8_t>& vchPubKey, LLC::CPrivKey& vchPrivKey)
     {
+        LOCK(CWalletDB::cs_walletdb);
         vchPrivKey.clear();
         return Read(std::make_pair(std::string("key"), vchPubKey), vchPrivKey);
     }
@@ -128,6 +140,7 @@ namespace Legacy
     /* Stores an unencrypted private key using the corresponding public key. */
     bool CWalletDB::WriteKey(const std::vector<uint8_t>& vchPubKey, const LLC::CPrivKey& vchPrivKey)
     {
+        LOCK(CWalletDB::cs_walletdb);
         CWalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("key"), vchPubKey), vchPrivKey, false);
     }
@@ -136,6 +149,7 @@ namespace Legacy
     /* Stores an encrypted private key using the corresponding public key. */
     bool CWalletDB::WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret, bool fEraseUnencryptedKey)
     {
+        LOCK(CWalletDB::cs_walletdb);
         CWalletDB::nWalletDBUpdated++;
         if (!Write(std::make_pair(std::string("ckey"), vchPubKey), vchCryptedSecret, false))
             return false;
@@ -152,6 +166,7 @@ namespace Legacy
     /* Reads the wallet transaction for a given transaction hash. */
     bool CWalletDB::ReadTx(const uint512_t hash, CWalletTx& wtx)
     {
+        LOCK(CWalletDB::cs_walletdb);
         return Read(std::make_pair(std::string("tx"), hash), wtx);
     }
 
@@ -159,6 +174,7 @@ namespace Legacy
     /* Stores a wallet transaction using its transaction hash. */
     bool CWalletDB::WriteTx(const uint512_t hash, const CWalletTx& wtx)
     {
+        LOCK(CWalletDB::cs_walletdb);
         CWalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("tx"), hash), wtx);
     }
@@ -167,6 +183,7 @@ namespace Legacy
     /* Removes the wallet transaction associated with a transaction hash. */
     bool CWalletDB::EraseTx(const uint512_t hash)
     {
+        LOCK(CWalletDB::cs_walletdb);
         CWalletDB::nWalletDBUpdated++;
         return Erase(std::make_pair(std::string("tx"), hash));
     }
@@ -175,6 +192,7 @@ namespace Legacy
     /* Reads the script for a given script hash. */
     bool CWalletDB::ReadCScript(const uint256_t &hash, CScript& redeemScript)
     {
+        LOCK(CWalletDB::cs_walletdb);
         redeemScript.clear();
         return Read(std::make_pair(std::string("cscript"), hash), redeemScript);
     }
@@ -183,6 +201,7 @@ namespace Legacy
     /* Stores a redeem script using its script hash. */
     bool CWalletDB::WriteCScript(const uint256_t& hash, const CScript& redeemScript)
     {
+        LOCK(CWalletDB::cs_walletdb);
         CWalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("cscript"), hash), redeemScript, false);
     }
@@ -191,6 +210,7 @@ namespace Legacy
     /* Reads a key pool entry from the database. */
     bool CWalletDB::ReadPool(const uint64_t nPool, CKeyPoolEntry& keypoolEntry)
     {
+        LOCK(CWalletDB::cs_walletdb);
         return Read(std::make_pair(std::string("pool"), nPool), keypoolEntry);
     }
 
@@ -198,6 +218,7 @@ namespace Legacy
     /* Stores a key pool entry using its pool entry number (ID value). */
     bool CWalletDB::WritePool(const uint64_t nPool, const CKeyPoolEntry& keypoolEntry)
     {
+        LOCK(CWalletDB::cs_walletdb);
         CWalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("pool"), nPool), keypoolEntry);
     }
@@ -206,6 +227,7 @@ namespace Legacy
     /* Removes a key pool entry associated with a pool entry number. */
     bool CWalletDB::ErasePool(const uint64_t nPool)
     {
+        LOCK(CWalletDB::cs_walletdb);
         CWalletDB::nWalletDBUpdated++;
         return Erase(std::make_pair(std::string("pool"), nPool));
     }
@@ -214,6 +236,7 @@ namespace Legacy
     /* Stores an accounting entry in the wallet database. */
     bool CWalletDB::WriteAccountingEntry(const CAccountingEntry& acentry)
     {
+        LOCK(CWalletDB::cs_walletdb);
         return Write(std::make_tuple(std::string("acentry"), acentry.strAccount, ++CWalletDB::nAccountingEntryNumber), acentry);
     }
 
@@ -235,6 +258,7 @@ namespace Legacy
     /* Retrieves a list of individual accounting entries for an account (Nexus address) */
     void CWalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& entries)
     {
+        LOCK(CWalletDB::cs_walletdb);
         bool fAllAccounts = (strAccount == "*");
 
         auto pcursor = GetCursor();

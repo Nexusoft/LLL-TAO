@@ -217,13 +217,13 @@ namespace Legacy
 
         if (poolWallet.IsFileBacked())
         {
-            LOCK(CKeyPool::cs_keyPool);
-
             if (!poolWallet.IsLocked())
                 TopUpKeyPool();
 
             if(setKeyPool.empty())
                 return;
+
+            LOCK(CKeyPool::cs_keyPool);
 
             CWalletDB walletdb(poolWallet.GetWalletFile());
 
