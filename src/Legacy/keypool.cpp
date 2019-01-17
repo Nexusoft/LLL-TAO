@@ -169,35 +169,33 @@ namespace Legacy
         uint64_t nPoolIndex = 0;
         CKeyPoolEntry keypoolEntry;
 
+        /* Attempt to reserve a key from the key pool */
+        ReserveKeyFromPool(nPoolIndex, keypoolEntry);
+
+        if (nPoolIndex == -1)
         {
             std::lock_guard<std::recursive_mutex> walletLock(poolWallet.cs_wallet);
 
-            /* Attempt to reserve a key from the key pool */
-            ReserveKeyFromPool(nPoolIndex, keypoolEntry);
+        	/* Key pool is empty, attempt to use default key when requested */
+            auto vchPoolWalletDefaultKey = poolWallet.GetDefaultKey();
 
-            if (nPoolIndex == -1)
+            if (fUseDefaultWhenEmpty && !vchPoolWalletDefaultKey.empty())
             {
-            	/* Key pool is empty, attempt to use default key when requested */
-                auto vchPoolWalletDefaultKey = poolWallet.GetDefaultKey();
-
-                if (fUseDefaultWhenEmpty && !vchPoolWalletDefaultKey.empty())
-                {
-                    key = vchPoolWalletDefaultKey;
-                    return true;
-                }
-
-                /* When not using default key, generate a new key */
-                if (poolWallet.IsLocked()) return false;
-
-                key = poolWallet.GenerateNewKey();
-
+                key = vchPoolWalletDefaultKey;
                 return true;
             }
 
-            KeepKey(nPoolIndex);
+            /* When not using default key, generate a new key */
+            if (poolWallet.IsLocked()) return false;
 
-            key = keypoolEntry.vchPubKey;
+            key = poolWallet.GenerateNewKey();
+
+            return true;
         }
+
+        KeepKey(nPoolIndex);
+
+        key = keypoolEntry.vchPubKey;
 
         return true;
     }
@@ -213,15 +211,15 @@ namespace Legacy
 
         if (poolWallet.IsFileBacked())
         {
-            std::lock_guard<std::recursive_mutex> walletLock(poolWallet.cs_wallet);
-
+            /* Top up the keypool if not locked. */
             if (!poolWallet.IsLocked())
                 TopUpKeyPool();
 
+            CWalletDB walletdb(poolWallet.GetWalletFile());
+
+            LOCK(poolWallet.cs_wallet);
             if(setKeyPool.empty())
                 return;
-
-            CWalletDB walletdb(poolWallet.GetWalletFile());
 
             /* Get the oldest key (smallest key pool index) */
             auto si = setKeyPool.begin();

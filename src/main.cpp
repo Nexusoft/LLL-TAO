@@ -39,6 +39,7 @@ ________________________________________________________________________________
 
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
+#include <Legacy/include/ambassador.h>
 
 #include <TAO/Operation/include/execute.h>
 
@@ -143,6 +144,10 @@ int main(int argc, char** argv)
 
     /** Initialize ChainState. */
     TAO::Ledger::ChainState::Initialize();
+
+
+    /** Initialize the scripts for legacy mode. **/
+    Legacy::InitializeScripts();
 
 
     /* Initialize the Tritium Server. */
@@ -269,8 +274,6 @@ int main(int argc, char** argv)
         /* Sign the transaction. */
         if(!tx.Sign(user->Generate(tx.nSequence, "1234")))
             debug::error(0, FUNCTION, "Failed to sign");
-
-            tx.print();
 
         /* Execute the operations layer. */
         if(!TAO::Ledger::mempool.Accept(tx))

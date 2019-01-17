@@ -34,7 +34,7 @@ ________________________________________________________________________________
 #include <Legacy/include/evaluate.h>
 #include <Legacy/include/money.h>
 #include <Legacy/include/signature.h>
-#include <Legacy/types/enum.h> // For GMF_SEND
+#include <Legacy/include/enum.h> // For GMF_SEND
 #include <Legacy/types/script.h>
 
 #include <Legacy/wallet/crypter.h>
@@ -843,7 +843,9 @@ namespace Legacy
                 CWalletTx wtx(this,tx);
 
                 if (fRescan) {
-                    /* On rescan or initial download, set wtx time to transaction time instead of time tx received */
+                    /* On rescan or initial download, set wtx time to transaction time instead of time tx received.
+                     * These are both uint32_t timestamps to support unserialization of legacy data.
+                     */
                     wtx.nTimeReceived = tx.nTime;
                 }
 

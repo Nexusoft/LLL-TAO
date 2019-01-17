@@ -191,6 +191,7 @@ OBJS= \
 	build/Legacy_evaluate.o \
 	build/Legacy_address.o \
 	build/Legacy_addressbook.o \
+	build/Legacy_ambassador.o \
 	build/Legacy_basickeystore.o \
 	build/Legacy_crypted.o \
 	build/Legacy_crypter.o \
@@ -200,6 +201,7 @@ OBJS= \
 	build/Legacy_evaluate.o \
 	build/Legacy_keypool.o \
 	build/Legacy_keystore.o \
+	build/Legacy_legacy.o \
 	build/Legacy_mempool.o \
 	build/Legacy_merkle.o \
 	build/Legacy_outpoint.o \

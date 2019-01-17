@@ -91,10 +91,6 @@ namespace TAO
         /* Accept a block state into chain. */
         bool BlockState::Accept()
         {
-            /* Debug output. */
-            TritiumBlock block = static_cast<TritiumBlock>(*this);
-            block.print();
-
 
             /* Read leger DB for duplicate block. */
             BlockState state;

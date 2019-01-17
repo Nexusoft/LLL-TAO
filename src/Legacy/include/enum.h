@@ -18,6 +18,16 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+    /* Flags for connect inputs. */
+    struct FLAGS
+    {
+        enum
+        {
+            MEMPOOL = (1 << 1),
+            BLOCK   = (1 << 2)
+        };
+    };
+
     /** Transaction Fee Based Relay Codes. **/
     enum GetMinFee_mode
     {
