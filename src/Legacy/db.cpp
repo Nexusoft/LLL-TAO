@@ -95,10 +95,10 @@ namespace Legacy
                 return;
 
             std::string pathDataDir(config::GetDataDir());
-            std::string pathLogDir(pathDataDir + "/database");
+            std::string pathLogDir(pathDataDir + "database");
             filesystem::create_directory(pathLogDir);
 
-            std::string pathErrorFile(pathDataDir + "/db.log");
+            std::string pathErrorFile(pathDataDir + "db.log");
             //debug::log(0, FUNCTION, "dbenv.open LogDir=", pathLogDir, " ErrorFile=",  pathErrorFile);
 
             uint32_t nDbCache = config::GetArg("-dbcache", 25);
@@ -419,7 +419,7 @@ namespace Legacy
             --CDB::mapFileUseCount[strFile];
         }
 
-        delete pdb;
+        //delete pdb; //Don't delete here, pointer is stored in mapDb so handle can be reused. It is deleted in CloseDb()
         pdb = nullptr;
         strFile = "";
 
@@ -633,7 +633,23 @@ namespace Legacy
         if (!CDB::fDbEnvInit)
             return;
 
+        /* Ensure all open db handles are closed and pointers deleted.
+         * CloseDb calls erase() on mapDb so build list of open files first
+         * thus avoiding any problems with erase invalidating iterators.
+         */
+        std::vector<std::string> dbFilesToClose;
+        for (auto& mapEntry : mapDb)
+        {
+            if (mapEntry.second != nullptr)
+                dbFilesToClose.push_back(mapEntry.first);
+        }
+
+        for (auto& dbFile : dbFilesToClose)
+            CDB::CloseDb(dbFile);
+
+        /* Shut down the database environment */
         CDB::fDbEnvInit = false;
+
         try
         {
             CDB::dbenv.close(0);
