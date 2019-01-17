@@ -132,7 +132,7 @@ namespace Legacy
 
 
     /*  Get the current balance for a given account */
-    bool CAddressBook::BalanceByAccount(const std::string strAccount, int64_t& nBalance, const uint32_t nMinDepth) const
+    bool CAddressBook::BalanceByAccount(const std::string& strAccount, int64_t& nBalance, const uint32_t nMinDepth) const
     {
         { //Begin lock scope
             LOCK(CAddressBook::CAddressBook::cs_addressBook);
@@ -190,7 +190,7 @@ namespace Legacy
     }
 
     /* returns the address for the given account, adding a new address if one has not already been assigned*/
-    Legacy::NexusAddress CAddressBook::GetAccountAddress(std::string strAccount, bool fForceNew )
+    Legacy::NexusAddress CAddressBook::GetAccountAddress(const std::string& strAccount, bool fForceNew )
     {
         Legacy::NexusAddress address;
         bool fKeyUsed = false;

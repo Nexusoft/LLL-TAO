@@ -164,7 +164,7 @@ namespace Legacy
 
 
     /* Reads the wallet transaction for a given transaction hash. */
-    bool CWalletDB::ReadTx(const uint512_t hash, CWalletTx& wtx)
+    bool CWalletDB::ReadTx(const uint512_t& hash, CWalletTx& wtx)
     {
         LOCK(CWalletDB::cs_walletdb);
         return Read(std::make_pair(std::string("tx"), hash), wtx);
@@ -172,7 +172,7 @@ namespace Legacy
 
 
     /* Stores a wallet transaction using its transaction hash. */
-    bool CWalletDB::WriteTx(const uint512_t hash, const CWalletTx& wtx)
+    bool CWalletDB::WriteTx(const uint512_t& hash, const CWalletTx& wtx)
     {
         LOCK(CWalletDB::cs_walletdb);
         CWalletDB::nWalletDBUpdated++;
@@ -181,7 +181,7 @@ namespace Legacy
 
 
     /* Removes the wallet transaction associated with a transaction hash. */
-    bool CWalletDB::EraseTx(const uint512_t hash)
+    bool CWalletDB::EraseTx(const uint512_t& hash)
     {
         LOCK(CWalletDB::cs_walletdb);
         CWalletDB::nWalletDBUpdated++;
@@ -190,7 +190,7 @@ namespace Legacy
 
 
     /* Reads the script for a given script hash. */
-    bool CWalletDB::ReadCScript(const uint256_t &hash, CScript& redeemScript)
+    bool CWalletDB::ReadCScript(const uint256_t& hash, CScript& redeemScript)
     {
         LOCK(CWalletDB::cs_walletdb);
         redeemScript.clear();
@@ -606,7 +606,7 @@ namespace Legacy
 
 
     /* Function that loops until shutdown and periodically flushes a wallet db */
-    void CWalletDB::ThreadFlushWalletDB(const std::string strWalletFile)
+    void CWalletDB::ThreadFlushWalletDB(const std::string& strWalletFile)
     {
         if (!config::GetBoolArg("-flushwallet", true))
             return;

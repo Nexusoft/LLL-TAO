@@ -82,7 +82,7 @@ namespace Legacy
 
 
     /* Performs work of initialization for constructors. */
-    void CDB::Init(const std::string strFileIn, const char* pszMode)
+    void CDB::Init(const std::string& strFileIn, const char* pszMode)
     {
         int32_t ret;
 
@@ -386,7 +386,7 @@ namespace Legacy
 
 
     /* Writes a number into the database using the key "version". */
-    bool CDB::WriteVersion(uint32_t nVersion)
+    bool CDB::WriteVersion(const uint32_t nVersion)
     {
         return Write(std::string("version"), nVersion);
     }

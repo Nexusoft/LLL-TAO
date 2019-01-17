@@ -53,7 +53,7 @@ namespace Legacy
          *  Sets nTimeCreated to current time if nExpires has a value. 
          *
          **/
-        CWalletKey(uint64_t nExpires=0)
+        CWalletKey(const uint64_t nExpires=0)
         {
             nTimeCreated = (nExpires ? runtime::unifiedtimestamp() : 0);
             nTimeExpires = nExpires;

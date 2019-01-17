@@ -171,7 +171,7 @@ namespace Legacy
          *  @return true if balance retrieved successfully
          *
          **/
-        bool BalanceByAccount(const std::string strAccount, int64_t& nBalance, const uint32_t nMinDepth = 3) const;
+        bool BalanceByAccount(const std::string& strAccount, int64_t& nBalance, const uint32_t nMinDepth = 3) const;
 
         
         /** GetAccountAddress
@@ -184,7 +184,7 @@ namespace Legacy
         *  @return The nexus address assigned to the requested account name
         *
         **/
-        Legacy::NexusAddress GetAccountAddress(std::string strAccount, bool fForceNew = false );
+        Legacy::NexusAddress GetAccountAddress(const std::string& strAccount, bool fForceNew = false );
 
         /** GetAddressBookMap
         *

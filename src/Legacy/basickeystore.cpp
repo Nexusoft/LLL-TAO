@@ -32,7 +32,7 @@ namespace Legacy
 
 
     /*  Retrieve a key from the key store. */
-    bool CBasicKeyStore::GetKey(const NexusAddress &address, LLC::ECKey &keyOut) const
+    bool CBasicKeyStore::GetKey(const NexusAddress& address, LLC::ECKey &keyOut) const
     {
         {
             LOCK(cs_BasicKeyStore);
@@ -49,7 +49,7 @@ namespace Legacy
 
 
     /*  Retrieve the set of public addresses for all keys currently present in the key store. */
-    void CBasicKeyStore::GetKeys(std::set<NexusAddress> &setAddress) const
+    void CBasicKeyStore::GetKeys(std::set<NexusAddress>& setAddress) const
     {
         setAddress.clear();
         {
@@ -65,7 +65,7 @@ namespace Legacy
 
 
     /*  Check whether a key corresponding to a given address is present in the store. */
-    bool CBasicKeyStore::HaveKey(const NexusAddress &address) const
+    bool CBasicKeyStore::HaveKey(const NexusAddress& address) const
     {
         bool result;
         {
@@ -88,7 +88,7 @@ namespace Legacy
 
 
     /*  Retrieve a script from the key store. */
-    bool CBasicKeyStore::GetCScript(const uint256_t &hash, CScript& redeemScriptOut) const
+    bool CBasicKeyStore::GetCScript(const uint256_t& hash, CScript& redeemScriptOut) const
     {
         {
             LOCK(cs_BasicKeyStore);

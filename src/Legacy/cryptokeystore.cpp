@@ -159,7 +159,7 @@ namespace Legacy
 
 
     /*  Add a public/encrypted private key pair to the key store. */
-    bool CCryptoKeyStore::AddCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret)
+    bool CCryptoKeyStore::AddCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret)
     {
         {
             LOCK(cs_CryptoKeyStore);
@@ -206,7 +206,7 @@ namespace Legacy
 
 
     /*  Retrieve a key from the key store. */
-    bool CCryptoKeyStore::GetKey(const NexusAddress &address, LLC::ECKey& keyOut) const
+    bool CCryptoKeyStore::GetKey(const NexusAddress& address, LLC::ECKey& keyOut) const
     {
         {
             LOCK(cs_CryptoKeyStore);
@@ -239,7 +239,7 @@ namespace Legacy
 
 
     /*  Retrieve the set of public addresses for all keys currently present in the key store. */
-    void CCryptoKeyStore::GetKeys(std::set<NexusAddress> &setAddress) const
+    void CCryptoKeyStore::GetKeys(std::set<NexusAddress>& setAddress) const
     {
         {
             LOCK(cs_CryptoKeyStore);
@@ -259,7 +259,7 @@ namespace Legacy
 
 
     /*  Check whether a key corresponding to a given address is present in the store. */
-    bool CCryptoKeyStore::HaveKey(const NexusAddress &address) const
+    bool CCryptoKeyStore::HaveKey(const NexusAddress& address) const
     {
         {
             LOCK(cs_CryptoKeyStore);
@@ -275,7 +275,7 @@ namespace Legacy
 
 
     /*  Retrieve the public key for a key in the key store. */
-    bool CCryptoKeyStore::GetPubKey(const NexusAddress &address, std::vector<uint8_t>& vchPubKeyOut) const
+    bool CCryptoKeyStore::GetPubKey(const NexusAddress& address, std::vector<uint8_t>& vchPubKeyOut) const
     {
         {
             LOCK(cs_CryptoKeyStore);

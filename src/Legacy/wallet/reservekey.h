@@ -99,7 +99,7 @@ namespace Legacy
 
 
         /** Copy assignment operator deleted. No copy allowed **/
-        CReserveKey& operator= (const CReserveKey &rhs) = delete;
+        CReserveKey& operator= (const CReserveKey& rhs) = delete;
 
 
         /** GetReservedKey

@@ -167,7 +167,7 @@ namespace Legacy
          *  @return true if key successfully added
          *
          **/
-        virtual bool AddCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret);
+        virtual bool AddCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret);
 
 
         /** AddKey
@@ -197,7 +197,7 @@ namespace Legacy
          *  @return true if key successfully retrieved
          *
          **/
-        virtual bool GetKey(const NexusAddress &address, LLC::ECKey& keyOut) const override;
+        virtual bool GetKey(const NexusAddress& address, LLC::ECKey& keyOut) const override;
 
 
         /** GetKeys
@@ -208,7 +208,7 @@ namespace Legacy
          *  @param[out] setAddress A Set containing the Base 58-encoded addresses of the all keys currently in the key store
          *
          **/
-        virtual void GetKeys(std::set<NexusAddress> &setAddress) const override;
+        virtual void GetKeys(std::set<NexusAddress>& setAddress) const override;
 
 
         /** HaveKey
@@ -220,7 +220,7 @@ namespace Legacy
          *  @return true if key is present in the key store
          *
          **/
-        virtual bool HaveKey(const NexusAddress &address) const override;
+        virtual bool HaveKey(const NexusAddress& address) const override;
 
 
         /** GetPubKey
@@ -234,7 +234,7 @@ namespace Legacy
          *  @return true if public key was successfully retrieved
          *
          **/
-        virtual bool GetPubKey(const NexusAddress &address, std::vector<uint8_t>& vchPubKeyOut) const override;
+        virtual bool GetPubKey(const NexusAddress& address, std::vector<uint8_t>& vchPubKeyOut) const override;
     };
 
 }
