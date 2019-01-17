@@ -419,7 +419,6 @@ namespace Legacy
             --CDB::mapFileUseCount[strFile];
         }
 
-        delete pdb;
         pdb = nullptr;
         strFile = "";
 
