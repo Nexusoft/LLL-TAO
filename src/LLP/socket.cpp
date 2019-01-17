@@ -117,7 +117,7 @@ namespace LLP
                 /* If the connection attempt timed out with select. */
                 if (nRet == 0)
                 {
-                    debug::log(0, NODE "connection timeout ", addrDest.ToString(), "...");
+                    debug::log(0, FUNCTION, "connection timeout ", addrDest.ToString(), "...");
 
                     close(fd);
 
@@ -127,7 +127,7 @@ namespace LLP
                 /* If the select failed. */
                 if (nRet == SOCKET_ERROR)
                 {
-                    debug::log(0, NODE "select failed ", addrDest.ToString(), " (",  GetLastError(), ")");
+                    debug::log(0, FUNCTION, "select failed ", addrDest.ToString(), " (",  GetLastError(), ")");
 
                     close(fd);
 
@@ -142,7 +142,7 @@ namespace LLP
                 if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
     #endif
                 {
-                    debug::log(0, NODE "get options failed ", addrDest.ToString(), " (", GetLastError(), ")");
+                    debug::log(0, FUNCTION, "get options failed ", addrDest.ToString(), " (", GetLastError(), ")");
                     close(fd);
 
                     return false;
@@ -151,7 +151,7 @@ namespace LLP
                 /* If there are no socket options set. TODO: Remove preprocessors for cross platform sockets. */
                 if (nRet != 0)
                 {
-                    debug::log(0, NODE "failed after select ", addrDest.ToString(), " (", nRet, ")");
+                    debug::log(0, FUNCTION, "failed after select ", addrDest.ToString(), " (", nRet, ")");
                     close(fd);
 
                     return false;
@@ -163,7 +163,7 @@ namespace LLP
             else
     #endif
             {
-                debug::log(0, NODE "connect failed ", addrDest.ToString(), " (", GetLastError(), ")");
+                debug::log(0, FUNCTION, "connect failed ", addrDest.ToString(), " (", GetLastError(), ")");
                 close(fd);
 
                 return false;
@@ -203,7 +203,7 @@ namespace LLP
         if (nRead < 0)
         {
             nError = GetLastError();
-            debug::log(2, NODE "read failed ", addr.ToString(), " (", nError, " ", strerror(nError), ")");
+            debug::log(2, FUNCTION, "read failed ", addr.ToString(), " (", nError, " ", strerror(nError), ")");
 
             return nError;
         }
@@ -220,7 +220,7 @@ namespace LLP
         if (nRead < 0)
         {
             nError = GetLastError();
-            debug::log(2, NODE "read failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
+            debug::log(2, FUNCTION, "read failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
 
             return nError;
         }
@@ -251,7 +251,7 @@ namespace LLP
         if(nSent < 0)
         {
             nError = GetLastError();
-            debug::log(2, NODE "write failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
+            debug::log(2, FUNCTION, "write failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
 
             return nError;
         }
@@ -282,7 +282,7 @@ namespace LLP
         if(nSent < 0)
         {
             nError = GetLastError();
-            debug::log(2, NODE "flush failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
+            debug::log(2, FUNCTION, "flush failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
 
             return nError;
         }

@@ -154,7 +154,7 @@ namespace config
     std::string GetDataDir(bool fNetSpecific)
     {
         static std::string pathCached[2];
-        static std::recursive_mutex csPathCached;
+        static std::mutex csPathCached;
         static bool cachedPath[2] = {false, false};
 
         std::string &path = pathCached[fNetSpecific];
@@ -201,7 +201,7 @@ namespace config
     std::string static StartupShortcutPath()
     {
         std::string str = MyGetSpecialFolderPath(CSIDL_STARTUP, true);
-        return str.append("\exus.lnk");
+        return str.append("\nexus.lnk");
     }
 
     /* Determine if the system startup shortcut path exists */

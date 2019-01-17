@@ -54,16 +54,13 @@ namespace LLD
 
     **/
 
-    /** Transactino Class to hold the data that is stored in Binary. **/
+    /** Transaction Class to hold the data that is stored in Binary. **/
     class SectorTransaction
     {
     public:
 
         /** The hash for the Transaction to be saved under. **/
         uint64_t TransactionID;
-
-        /** Only let one operation happen on the transaction at one time. **/
-        std::recursive_mutex TX_MUTEX;
 
         /** New Data to be Added. **/
         std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapTransactions;
@@ -80,23 +77,10 @@ namespace LLD
         /** Basic Constructor. **/
         SectorTransaction(){ }
 
-        /** Add a new Transaction to the Memory Map. **/
-        bool AddTransaction(std::vector<uint8_t> vKey, std::vector<uint8_t> vData,
-                            std::vector<uint8_t> vOriginalData)
-        {
-            LOCK(TX_MUTEX);
-
-            mapTransactions[vKey] = vData;
-            mapOriginalData[vKey] = vOriginalData;
-
-            return true;
-        }
 
         /** Function to Erase a Key from the Keychain. **/
         bool EraseTransaction(std::vector<uint8_t> vKey)
         {
-            LOCK(TX_MUTEX);
-
             mapEraseData[vKey] = 0;
             if(mapTransactions.count(vKey))
                 mapTransactions.erase(vKey);

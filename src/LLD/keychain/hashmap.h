@@ -47,7 +47,7 @@ namespace LLD
     protected:
 
         /** Mutex for Thread Synchronization. **/
-        mutable std::recursive_mutex KEY_MUTEX;
+        mutable std::mutex KEY_MUTEX;
 
 
         /* The condition for thread sleeping. */
@@ -226,7 +226,7 @@ namespace LLD
         {
             /* Get an MD5 digest. */
             uint8_t digest[MD5_DIGEST_LENGTH];
-            MD5((unsigned char*)&vKey[0], vKey.size(), (unsigned char*)&digest);
+            MD5((uint8_t*)&vKey[0], vKey.size(), (uint8_t*)&digest);
 
             /* Copy bytes into the bucket. */
             uint64_t nBucket;
@@ -348,8 +348,11 @@ namespace LLD
                 {
                     /* Set the new stream pointer. */
                     pstream = new std::fstream(debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream)
+                    if(!pstream->is_open())
+                    {
+                        delete pstream;
                         return debug::error(FUNCTION, "couldn't create hashmap object");
+                    }
 
                     /* If file not found add to LRU cache. */
                     fileCache->Put(i, pstream);
@@ -586,8 +589,11 @@ namespace LLD
             {
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary);
-                if(!pstream)
+                if(!pstream->is_open())
+                {
+                    delete pstream;
                     return debug::error(FUNCTION, "Failed to generate file object");
+                }
 
                 /* If not in cache, add to the LRU. */
                 fileCache->Put(hashmap[nBucket], pstream);

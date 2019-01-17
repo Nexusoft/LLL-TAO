@@ -51,7 +51,7 @@ namespace LLP
         std::vector< std::pair<bool, uint32_t> > SCORE;
         runtime::timer TIMER;
         uint32_t nIterator;
-        std::recursive_mutex MUTEX;
+        std::mutex MUTEX;
 
     public:
 
@@ -118,7 +118,7 @@ namespace LLP
     public:
 
         DDOS_Score rSCORE, cSCORE;
-        std::recursive_mutex MUTEX;
+        std::mutex MUTEX;
 
         /** DDOS_Filter
          *

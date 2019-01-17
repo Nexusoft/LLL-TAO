@@ -14,24 +14,25 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_KEYSTORE_H
 #define NEXUS_LEGACY_WALLET_KEYSTORE_H
 
-#include <mutex>
 #include <set>
 #include <vector>
 
 #include <LLC/include/key.h>
 #include <LLC/types/uint1024.h>
 
-namespace Legacy 
+#include <Util/include/mutex.h>
+
+namespace Legacy
 {
-    
-    /* forward declarations */    
+
+    /* forward declarations */
     class NexusAddress;
     class CScript;
 
     /** @class CKeyStrore
      *
-     *  An abstract base class for key stores. 
-     * 
+     *  An abstract base class for key stores.
+     *
      *  Can store ECKey or CScript (or both).
      *
      **/
@@ -39,11 +40,11 @@ namespace Legacy
     {
     protected:
         /* Mutex for thread concurrency. */
-        mutable std::recursive_mutex cs_KeyStore;
+        mutable std::mutex cs_KeyStore;
 
     public:
-        /** Virtual destructor 
-         * 
+        /** Virtual destructor
+         *
          *  Supports dynamic allocation of objects in inheritance hierarchy.
          *
          **/
@@ -52,7 +53,7 @@ namespace Legacy
 
         /** AddKey
          *
-         *  Add a key to the key store. 
+         *  Add a key to the key store.
          *  Pure virtual method for implementation by derived class.
          *
          *  @param[in] key The key to add
@@ -65,7 +66,7 @@ namespace Legacy
 
         /** GetKey
          *
-         *  Retrieve a key from the key store. 
+         *  Retrieve a key from the key store.
          *  Pure virtual method for implementation by derived class.
          *
          *  @param[in] address The Base 58-encoded address of the key to retrieve
@@ -80,7 +81,7 @@ namespace Legacy
 
         /** GetKeys
          *
-         *  Retrieve the set of public addresses for all keys currently present in the key store. 
+         *  Retrieve the set of public addresses for all keys currently present in the key store.
          *  Pure virtual method for implementation by derived class.
          *
          *  @param[out] setAddress A Set containing the Base 58-encoded addresses of the all keys currently in the key store
@@ -91,7 +92,7 @@ namespace Legacy
 
         /** HaveKey
          *
-         *  Check whether a key corresponding to a given address is present in the store. 
+         *  Check whether a key corresponding to a given address is present in the store.
          *  Pure virtual method for implementation by derived class.
          *
          *  @param[in] address The Base 58-encoded address of the key to check
@@ -104,7 +105,7 @@ namespace Legacy
 
         /** AddCScript
          *
-         *  Add a script to the key store. 
+         *  Add a script to the key store.
          *  Pure virtual method for implementation by derived class.
          *
          *  @param[in] redeemScript The script to add
@@ -117,7 +118,7 @@ namespace Legacy
 
         /** GetCScript
          *
-         *  Retrieve a script from the key store. 
+         *  Retrieve a script from the key store.
          *  Pure virtual method for implementation by derived class.
          *
          *  @param[in] hash The 256 bit hash of the script to retrieve
@@ -132,7 +133,7 @@ namespace Legacy
 
         /** HaveCScript
          *
-         *  Check whether a script is present in the store. 
+         *  Check whether a script is present in the store.
          *  Pure virtual method for implementation by derived class.
          *
          *  @param[in] hash The 256 bit hash of the script to check
@@ -145,7 +146,7 @@ namespace Legacy
 
         /** GetPubKey
          *
-         *  Retrieve the public key for a key in the key store. 
+         *  Retrieve the public key for a key in the key store.
          *
          *  @param[in] address The Base 58-encoded address of the key to retrieve
          *
@@ -159,7 +160,7 @@ namespace Legacy
 
         /** GetSecret
          *
-         *  Retrieve the private key associated with an address. 
+         *  Retrieve the private key associated with an address.
          *
          *  @param[in] address The Base 58-encoded address of the key to retrieve
          *

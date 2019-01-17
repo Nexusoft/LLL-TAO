@@ -24,23 +24,23 @@ namespace Legacy
 {
 
     /** Total Significant figures in a coin. **/
-    const int64_t COIN = 1000000;
+    const uint64_t COIN = 1000000;
 
 
     /** Total Significant figures in a cent. **/
-    const int64_t CENT = 10000;
+    const uint64_t CENT = 10000;
 
 
     /** Minimum Output can be 1 Satoshi. **/
-    const int64_t MIN_TXOUT_AMOUNT = 1;
+    const uint64_t MIN_TXOUT_AMOUNT = 1;
 
 
     /** Minimum Transaction Fees are 1 cent. **/
-    const int64_t MIN_TX_FEE = CENT;
+    const uint64_t MIN_TX_FEE = CENT;
 
 
     /** Minimum Transaction Relay Fees are 1 cent. */
-    const int64_t MIN_RELAY_TX_FEE = CENT;
+    const uint64_t MIN_RELAY_TX_FEE = CENT;
 
 
     /** Max TxOut
@@ -50,7 +50,7 @@ namespace Legacy
      *  @return the maximum value out
      *
      **/
-    inline int64_t MaxTxOut()
+    inline uint64_t MaxTxOut()
     {
         if(runtime::unifiedtimestamp() > (config::fTestNet ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[3] : TAO::Ledger::NETWORK_VERSION_TIMELOCK[3]))
             return 50000000 * COIN;
@@ -68,9 +68,9 @@ namespace Legacy
      *  @return true if value is within range.
      *
      **/
-    inline bool MoneyRange(int64_t nValue)
+    inline bool MoneyRange(uint64_t nValue)
     {
-        return (nValue >= 0 && nValue <= MaxTxOut());
+        return (nValue <= MaxTxOut());
     }
 
     /** SatoshisToAmount
@@ -82,9 +82,9 @@ namespace Legacy
     *  @return satoshis value converted to coin Amount.
     *
     **/
-    inline double SatoshisToAmount(int64_t satoshis)
+    inline double SatoshisToAmount(uint64_t viz)
     {
-        return (double)satoshis / (double)Legacy::COIN;
+        return (double)viz / (double)Legacy::COIN;
     }
 
 }

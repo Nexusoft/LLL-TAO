@@ -36,7 +36,7 @@ namespace TAO
 
         class Mempool
         {
-            std::recursive_mutex MUTEX;
+            mutable std::mutex MUTEX;
 
             /** The transactions in the ledger memory pool. **/
             std::map<uint512_t, Legacy::Transaction> mapLegacy;
@@ -51,7 +51,7 @@ namespace TAO
 
 
             /** Record of legacy inputs in the mempool. **/
-            std::map<Legacy::COutPoint, Legacy::CInPoint> mapInputs;
+            std::map<Legacy::COutPoint, uint512_t> mapInputs;
 
         public:
 
@@ -134,7 +134,19 @@ namespace TAO
              *  @return true if added.
              *
              **/
-            bool Get(uint512_t hashTx, TAO::Ledger::Transaction& tx);
+            bool Get(uint512_t hashTx, TAO::Ledger::Transaction& tx) const;
+
+
+            /** Get.
+             *
+             *  Gets a legacy transaction from mempool
+             *
+             *  @param[in] tx The transaction to add.
+             *
+             *  @return true if added.
+             *
+             **/
+            bool Get(uint512_t hashTx, Legacy::Transaction& tx) const;
 
 
             /** List.

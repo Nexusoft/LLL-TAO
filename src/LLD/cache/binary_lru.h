@@ -66,7 +66,7 @@ namespace LLD
 
 
         /* Mutex for thread concurrency. */
-        mutable std::recursive_mutex MUTEX;
+        mutable std::mutex MUTEX;
 
 
         /* Map of the current holding data. */
@@ -138,7 +138,7 @@ namespace LLD
         {
             /* Get an MD5 digest. */
             uint8_t digest[MD5_DIGEST_LENGTH];
-            MD5((unsigned char*)&vKey[0], vKey.size(), (unsigned char*)&digest);
+            MD5((uint8_t*)&vKey[0], vKey.size(), (uint8_t*)&digest);
 
             /* Copy bytes into the bucket. */
             uint64_t nBucket;
@@ -173,7 +173,6 @@ namespace LLD
          */
         void RemoveNode(BinaryNode* pthis)
         {
-            LOCK(MUTEX);
 
             /* Link the next pointer if not null */
             if(pthis->pnext)
@@ -194,7 +193,6 @@ namespace LLD
          **/
         void MoveToFront(BinaryNode* pthis)
         {
-            LOCK(MUTEX);
 
             /* Don't move to front if already in the front. */
             if(pthis == pfirst)

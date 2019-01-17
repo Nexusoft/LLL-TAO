@@ -135,7 +135,7 @@ namespace LLP
                 return false;
 
             if(config::GetArg("-verbose", 0) >= 2)
-                printf("***** Mining LLP: Channel Set %u\n", nChannel);
+                debug::log(0, FUNCTION, "Channel Set %u\n", nChannel);
 
             return true;
         }

@@ -16,8 +16,12 @@ ________________________________________________________________________________
 
 #include <Util/templates/serialize.h>
 
+#include <Legacy/include/enum.h>
+
 #include <Legacy/types/txin.h>
 #include <Legacy/types/txout.h>
+
+#include <TAO/Ledger/types/state.h>
 
 namespace Legacy
 {
@@ -246,7 +250,7 @@ namespace Legacy
 		 *  @return sum of all outputs (note: does not include fees)
 		 *
 		 **/
-		int64_t GetValueOut() const;
+		uint64_t GetValueOut() const;
 
 
 		/** Get Value In
@@ -259,7 +263,7 @@ namespace Legacy
 		 *  @see CTransaction::FetchInputs
 		 *
 		 **/
-		int64_t GetValueIn(const std::map<uint512_t, Transaction>& mapInputs) const;
+		uint64_t GetValueIn(const std::map<uint512_t, Transaction>& mapInputs) const;
 
 
 		/** Allow Free
@@ -285,7 +289,7 @@ namespace Legacy
 		 *  @return The fee in satoshi's for transaction.
 		 *
 		 **/
-		int64_t GetMinFee(uint32_t nBlockSize=1, bool fAllowFree=false, enum GetMinFee_mode mode=GMF_BLOCK) const;
+		uint64_t GetMinFee(uint32_t nBlockSize=1, bool fAllowFree=false, enum GetMinFee_mode mode=GMF_BLOCK) const;
 
 
 		/** To String Short
@@ -322,6 +326,42 @@ namespace Legacy
 		 *
 		 **/
 		bool CheckTransaction() const;
+
+
+		/** Fetch Inputs
+		 *
+		 *  Get the inputs for a transaction.
+		 *
+		 *  @param[in] inputs The inputs map that has prev transactions
+		 *
+		 *  @return true if the inputs were found
+		 *
+		 **/
+		bool FetchInputs(std::map<uint512_t, Transaction>& inputs) const;
+
+
+		/** Connect Inputs
+	     *
+	     *  Mark the inputs in a transaction as spent.
+	     *
+	     *  @param[in] inputs The inputs map that has prev transactions
+		 *  @param[in] state The block state that is connecting
+	     *  @param[in] nFlags The flags to determine legacy state.
+	     *
+	     *  @return true if the inputs were found
+	     *
+	     **/
+		bool Connect(const std::map<uint512_t, Transaction>& inputs, const TAO::Ledger::BlockState* state, uint8_t nFlags = FLAGS::MEMPOOL) const;
+
+
+		/** Disconnect
+		 *
+		 *  Mark the inputs in a transaction as unspent.
+		 *
+		 *  @return true if the inputs were disconnected
+		 *
+		 **/
+		bool Disconnect() const;
 
 
 	protected:

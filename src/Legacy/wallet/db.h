@@ -42,7 +42,7 @@ namespace Legacy
          *
          *  Used to manage concurrency across CDB databases.
          */
-        static std::recursive_mutex cs_db;
+        static std::mutex cs_db;
 
 
         /** The Berkeley database environment.
