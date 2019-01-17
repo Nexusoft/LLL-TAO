@@ -133,7 +133,7 @@ namespace Legacy
          *  @param[in] pszMode A string containing one or more access mode characters
          *
          **/
-        explicit CDB(const std::string strFileIn, const char* pszMode="r+");
+        explicit CDB(const std::string& strFileIn, const char* pszMode="r+");
 
 
         /** Destructor

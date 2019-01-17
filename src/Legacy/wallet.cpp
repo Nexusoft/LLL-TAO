@@ -532,7 +532,7 @@ namespace Legacy
             /* If more than one master key in wallet's map (unusual), have to find the one that corresponds to old passphrase.
              * Do this by attempting to use each to unlock with old passphrase until find a match.
              */
-            for(auto& pMasterKey : mapMasterKeys)
+            for(const auto& pMasterKey : mapMasterKeys)
             {
                 /* Attempt to decrypt the current master key and unlock the wallet with it */
                 if(!crypter.SetKeyFromPassphrase(strOldWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
@@ -1460,7 +1460,7 @@ namespace Legacy
                 int64_t nTotalValue = nValue + nFeeRet;
 
                 /* Add transactions outputs to vout */
-                for (auto& s : vecSend)
+                for (const auto& s : vecSend)
                     wtxNew.vout.push_back(CTxOut(s.second, s.first));
 
                 /* This set will hold txouts (UTXOs) to use as input for this transaction as transaction/vout index pairs */

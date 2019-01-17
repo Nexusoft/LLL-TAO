@@ -78,7 +78,7 @@ namespace Legacy
         { //Begin lock scope
             LOCK(addressBookWallet.cs_wallet);
 
-            for (auto& item : addressBookWallet.mapWallet)
+            for (const auto& item : addressBookWallet.mapWallet)
             {
                 const CWalletTx& walletTx = item.second;
 
@@ -135,7 +135,7 @@ namespace Legacy
 
             nBalance = 0;
 
-            for (auto& item : addressBookWallet.mapWallet)
+            for (const auto& item : addressBookWallet.mapWallet)
             {
                 const CWalletTx& walletTx = item.second;
 
