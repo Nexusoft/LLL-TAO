@@ -62,7 +62,7 @@ namespace Legacy
 
     /* Constructor */
     /* Initializes database environment on first use */
-    CDB::CDB(const std::string strFileIn, const char* pszMode) : pdb(nullptr)
+    CDB::CDB(const std::string& strFileIn, const char* pszMode) : pdb(nullptr)
     {
         /* Passing an empty string will initialize a null instance */
         if (strFileIn.empty())

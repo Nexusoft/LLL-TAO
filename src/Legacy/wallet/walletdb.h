@@ -142,7 +142,7 @@ namespace Legacy
          *  @see CDB for modes
          *
          **/
-        CWalletDB(std::string strFileName, const char* pszMode="r+")
+        CWalletDB(const std::string& strFileName, const char* pszMode="r+")
         : CDB(strFileName, pszMode)
         { }
 

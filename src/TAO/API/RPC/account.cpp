@@ -307,7 +307,7 @@ namespace TAO
 
             // Tally
             int64_t nAmount = 0;
-            for (auto& entry : Legacy::CWallet::GetInstance().mapWallet)
+            for (const auto& entry : Legacy::CWallet::GetInstance().mapWallet)
             {
                 const Legacy::CWalletTx& wtx = entry.second;
                 if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
@@ -1098,7 +1098,7 @@ namespace TAO
                 throw APIException(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
             /* Find all the addresses in the list */
-            for (auto& entry : mapAddresses)
+            for (const auto& entry : mapAddresses)
             {
                 if(Legacy::CWallet::GetInstance().GetAddressBook().HasAddress(entry.first))
                 {
@@ -1113,7 +1113,7 @@ namespace TAO
             }
 
             json::json ret;
-            for(auto& accountBalance :  mapAccountBalances) {
+            for(const auto& accountBalance :  mapAccountBalances) {
                 ret[accountBalance.first] = Legacy::SatoshisToAmount(accountBalance.second);
             }
 
