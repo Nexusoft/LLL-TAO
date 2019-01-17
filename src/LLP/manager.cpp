@@ -74,18 +74,19 @@ namespace LLP
 
 
     /*  Gets a list of address info in the manager */
-    std::vector<AddressInfo> AddressManager::GetInfo(const uint8_t flags)
+    void AddressManager::GetInfo(std::vector<AddressInfo> &vAddrInfo, const uint8_t flags)
     {
-        std::vector<AddressInfo> vAddrInfo;
         std::unique_lock<std::mutex> lk(mut);
         get_info(vAddrInfo, flags);
 
-        return vAddrInfo;
     }
 
     uint32_t AddressManager::GetInfoCount(const uint8_t flags)
     {
-        return static_cast<uint32_t>(GetInfo(flags).size());
+        std::unique_lock<std::mutex> lk(mut);
+        uint32_t c = get_info_count(flags);
+        lk.unlock();
+        return c;
     }
 
 
@@ -97,11 +98,11 @@ namespace LLP
         std::unique_lock<std::mutex> lk(mut);
 
         if(mapAddrInfo.find(hash) == mapAddrInfo.end())
-            mapAddrInfo[hash] = AddressInfo(addr);
+            mapAddrInfo.emplace(std::make_pair(hash, AddressInfo(addr)));
 
 
         AddressInfo *pInfo = &mapAddrInfo[hash];
-        int64_t ms = runtime::unifiedtimestamp(true);
+        uint64_t ms = runtime::unifiedtimestamp(true);
 
         switch(state)
         {
@@ -171,31 +172,32 @@ namespace LLP
     /*  Select a good address to connect to that isn't already connected. */
     bool AddressManager::StochasticSelect(Address &addr)
     {
-        /* put unconnected address info scores into a vector and sort */
-        uint8_t flags = ConnectState::NEW | ConnectState::FAILED | ConnectState::DROPPED;
-        std::vector<AddressInfo> vInfo;
-
-        std::unique_lock<std::mutex> lk(mut);
-
-
-        get_info(vInfo, flags);
-
-        uint32_t s = static_cast<uint32_t>(vInfo.size());
-
-        if(s == 0)
-            return false;
-
-        std::sort(vInfo.begin(), vInfo.end());
-
-        std::reverse(vInfo.begin(), vInfo.end());
-
         uint64_t nTimestamp = runtime::unifiedtimestamp();
         uint64_t nRand = LLC::GetRand(nTimestamp);
         uint32_t nHash = LLC::SK32(BEGIN(nRand), END(nRand));
 
+        /* put unconnected address info scores into a vector and sort */
+        uint8_t flags = ConnectState::NEW | ConnectState::FAILED | ConnectState::DROPPED;
+
+        /* critical section: get address info for selected flags */
+        std::unique_lock<std::mutex> lk(mut);
+        uint32_t s = get_info_count(flags);
+
+        std::vector<AddressInfo> vInfo(s);
+        get_info(vInfo, flags);
+
+        lk.unlock();
+
+        if(s == 0)
+            return false;
+
         /* select an index with a good random weight bias toward the front of the list */
         uint32_t nSelect = ((std::numeric_limits<uint64_t>::max() /
             std::max((uint64_t)std::pow(nHash, 1.95) + 1, (uint64_t)1)) - 3) % s;
+
+        /* sort info vector and assign the selected address */
+        std::sort(vInfo.begin(), vInfo.end());
+        std::reverse(vInfo.begin(), vInfo.end());
 
         addr = vInfo[nSelect];
 
@@ -206,12 +208,11 @@ namespace LLP
     /*  Read the address database into the manager */
     void AddressManager::ReadDatabase()
     {
-        std::unique_lock<std::mutex> lk(mut);
+        LOCK(mut);
 
         std::vector<std::vector<uint8_t> > keys = pDatabase->GetKeys();
 
         uint32_t s = static_cast<uint32_t>(keys.size());
-
 
         for(uint32_t i = 0; i < s; ++i)
         {
@@ -230,17 +231,21 @@ namespace LLP
             mapAddrInfo[nHash] = addr_info;
         }
 
-        //debug::log(3, "keys.size() = ", s);
-
-        PrintStats();
+        print_stats();
     }
 
     void AddressManager::PrintStats()
     {
+        std::unique_lock<std::mutex> lk(mut);
+        print_stats();
+    }
+
+    void AddressManager::print_stats()
+    {
         debug::log(3,
-            " C=", get_current_count(ConnectState::CONNECTED),
-            " D=", get_current_count(ConnectState::DROPPED),
-            " F=", get_current_count(ConnectState::FAILED), " |",
+            " C=", get_info_count(ConnectState::CONNECTED),
+            " D=", get_info_count(ConnectState::DROPPED),
+            " F=", get_info_count(ConnectState::FAILED), " |",
             " TC=", get_total_count(ConnectState::CONNECTED),
             " TD=", get_total_count(ConnectState::DROPPED),
             " TF=", get_total_count(ConnectState::FAILED), " |",
@@ -256,7 +261,7 @@ namespace LLP
         for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
             pDatabase->WriteAddressInfo(it->first, it->second);
 
-        PrintStats();
+        print_stats();
     }
 
 
@@ -274,35 +279,32 @@ namespace LLP
     }
 
     /*  Helper function to get the number of addresses of the connect type */
-    uint32_t AddressManager::get_current_count(const uint8_t flags)
+    uint32_t AddressManager::get_info_count(const uint8_t flags)
     {
-        std::vector<AddressInfo> info;
-
-        get_info(info, flags);
-
-        return static_cast<uint32_t>(info.size());
+        uint32_t c = 0;
+        for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
+        {
+            if(it->second.nState & flags)
+                ++c;
+        }
+        return c;
     }
+
 
     uint32_t AddressManager::get_total_count(const uint8_t flags)
     {
-        std::vector<AddressInfo> vInfo;
-
-        get_info(vInfo);
-
         uint32_t total = 0;
-        uint32_t s = static_cast<uint32_t>(vInfo.size());
 
-        for(uint32_t i = 0; i < s; ++i)
+        for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
         {
-            AddressInfo &addr = vInfo[i];
-
             if(flags & ConnectState::CONNECTED)
-                total += addr.nConnected;
+                total += it->second.nConnected;
             if(flags & ConnectState::DROPPED)
-                total += addr.nDropped;
+                total += it->second.nDropped;
             if(flags & ConnectState::FAILED)
-                total += addr.nFailed;
+                total += it->second.nFailed;
         }
+
         return total;
     }
 }

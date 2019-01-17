@@ -85,12 +85,12 @@ namespace LLP
          *
          *  Gets a list of address info in the manager
          *
+         *  @param[out] vAddrInfo The vector of address info output
+         *
          *  @param[in] flags the types of connect state
          *
-         *  @return A list of address info in the manager
-         *
          **/
-        std::vector<AddressInfo> GetInfo(const uint8_t flags = CONNECT_FLAGS_ALL);
+        void GetInfo(std::vector<AddressInfo> &vAddrInfo, const uint8_t flags = CONNECT_FLAGS_ALL);
 
         /** GetInfoCount
          *
@@ -180,6 +180,13 @@ namespace LLP
 
     private:
 
+        /** print_stats
+         *
+         *  print the current state of the address manager
+         *
+         **/
+        void print_stats();
+
 
         /** get_info
          *
@@ -194,14 +201,14 @@ namespace LLP
         void get_info(std::vector<AddressInfo> &info, const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
-        /** get_count
+        /** get_info_count
          *
          *  Helper function to get the number of addresses of the connect type
          *
          *  *  @param[in] flags Specify which types of connections to get the info from.
          *
          **/
-        uint32_t get_current_count(const uint8_t flags = CONNECT_FLAGS_ALL);
+        uint32_t get_info_count(const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
         /** get_total_count

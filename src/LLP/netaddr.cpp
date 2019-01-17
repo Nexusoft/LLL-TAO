@@ -110,7 +110,8 @@ namespace LLP
 
     uint8_t NetAddr::GetByte(uint8_t n) const
     {
-        assert(n < 16);
+        if(n > 15)
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, "out of range ", n));
 
         return ip[15-n];
     }
@@ -343,6 +344,7 @@ namespace LLP
             nClass = 1;
             nStartByte = 12;
         }
+
         // for 6to4 tunneled addresses, use the encapsulated IPv4 address
         else if (IsRFC3964())
         {

@@ -46,14 +46,14 @@ namespace TAO
                     " - Returns an object containing various state info.");
 
             json::json obj;
-            obj["version"] = version::CLIENT_VERSION_BUILD_STRING; 
+            obj["version"] = version::CLIENT_VERSION_BUILD_STRING;
             obj["protocolversion"] = LLP::PROTOCOL_VERSION;
             obj["walletversion"] = Legacy::CWallet::GetInstance().GetVersion();
             obj["testnet"] = config::fTestNet;
             obj["balance"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetBalance());
             obj["newmint"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetNewMint());
             obj["stake"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetStake());
-        
+
 
         //   double dPercent = ((double)Core::dTrustWeight + (double)Core::dBlockWeight) / 37.5;
         //   obj.push_back(std::make_pair("interestweight", (double)Core::dInterestRate * 100.0));
@@ -76,12 +76,12 @@ namespace TAO
             obj["keypoolsize"] = Legacy::CWallet::GetInstance().GetKeyPool().GetKeyPoolSize();
             if (Legacy::CWallet::GetInstance().IsCrypted())
             {
-                obj["locked"] = Legacy::CWallet::GetInstance().IsLocked();  
+                obj["locked"] = Legacy::CWallet::GetInstance().IsLocked();
                 if( !Legacy::CWallet::GetInstance().IsLocked())
                 {
                     if( (uint64_t) Legacy::CWallet::GetInstance().GetWalletUnlockTime() > 0 )
                         obj["unlocked_until"] = (uint64_t) Legacy::CWallet::GetInstance().GetWalletUnlockTime() ;
-                    
+
                     obj["minting_only"] = Legacy::fWalletUnlockMintOnly;
                 }
             }
@@ -107,7 +107,7 @@ namespace TAO
 
             /* query address information from tritium server address manager */
             if(LLP::LEGACY_SERVER && LLP::LEGACY_SERVER->pAddressManager)
-                vLegacyInfo = LLP::LEGACY_SERVER->pAddressManager->GetInfo(LLP::ConnectState::CONNECTED);
+                 LLP::LEGACY_SERVER->pAddressManager->GetInfo(vLegacyInfo, LLP::ConnectState::CONNECTED);
 
             std::sort(vLegacyInfo.begin(), vLegacyInfo.end());
 
@@ -130,7 +130,7 @@ namespace TAO
 
             /* query address information from legacy server address manager */
             if(LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->pAddressManager)
-                vTritiumInfo = LLP::TRITIUM_SERVER->pAddressManager->GetInfo(LLP::ConnectState::CONNECTED);
+                 LLP::TRITIUM_SERVER->pAddressManager->GetInfo(vTritiumInfo, LLP::ConnectState::CONNECTED);
 
             std::sort(vTritiumInfo.begin(), vTritiumInfo.end());
 

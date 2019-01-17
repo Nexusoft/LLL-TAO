@@ -144,7 +144,7 @@ public:
         if(nFlags == STREAM::CURSOR)
         {
             if(nReadPos + nSeek > vchData.size())
-                throw std::runtime_error(debug::strprintf(FUNCTION, "seek out of bounds %u", nSeek));
+                throw std::runtime_error(debug::strprintf(FUNCTION, "out of bounds %u", nSeek));
 
             nReadPos += nSeek;
 
@@ -155,7 +155,7 @@ public:
         if(nFlags == STREAM::BEGIN)
         {
             if(nSeek > vchData.size())
-                throw std::runtime_error(debug::strprintf(FUNCTION, "seek out of bounds %u", nSeek));
+                throw std::runtime_error(debug::strprintf(FUNCTION, "out of bounds %u", nSeek));
 
             nReadPos = nSeek;
 
@@ -166,7 +166,7 @@ public:
         if(nFlags == STREAM::END)
         {
             if(nSeek > vchData.size())
-                throw std::runtime_error(debug::strprintf(FUNCTION, "seek out of bounds %u", nSeek));
+                throw std::runtime_error(debug::strprintf(FUNCTION, "out of bounds %u", nSeek));
 
             nReadPos = vchData.size() - nSeek;
 

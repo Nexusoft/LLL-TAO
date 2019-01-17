@@ -26,7 +26,7 @@ namespace
     const uint32_t nMaxDropped = 5000;
     const uint32_t nMaxFailed = 2000;
     const uint32_t nMaxFails = 1000;
-    const double nLatencyMax = 1000.0;
+    const double nMaxLatency = 1000.0;
 
 }
 
@@ -178,16 +178,16 @@ namespace LLP
     {
         double nLat = static_cast<double>(nLatency);
 
-        double nLatencyScore = nLatencyMax - std::min(nLatencyMax, nLat);
+        double nLatencyScore = ::nMaxLatency - std::min(::nMaxLatency, nLat);
 
         /* Add up the good stats */
-        double good = nConnectedWeight * std::min(nConnected, nMaxConnected) +
-                      nLatencyScore * nLatencyWeight;
+        double good = ::nConnectedWeight * std::min(nConnected, ::nMaxConnected) +
+                      nLatencyScore * ::nLatencyWeight;
 
         /* Add up the bad stats */
-        double bad = nDroppedWeight * std::min(nDropped, nMaxDropped) +
-                     nFailedWeight  * std::min(nFailed,  nMaxFailed)  +
-                     nFailsWeight   * std::min(nFails,   nMaxFails);
+        double bad = ::nDroppedWeight * std::min(nDropped, ::nMaxDropped) +
+                     ::nFailedWeight  * std::min(nFailed,  ::nMaxFailed)  +
+                     ::nFailsWeight   * std::min(nFails,   ::nMaxFails);
 
         /* Subtract good stats by bad stats */
         return good - bad;

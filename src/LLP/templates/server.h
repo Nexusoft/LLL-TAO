@@ -283,8 +283,12 @@ namespace LLP
          **/
         void Manager()
         {
+            /* Wait for data threads to startup. */
+            while(DATA_THREADS.size() < MAX_THREADS)
+                runtime::sleep(1000);
+
             /* Address to select. */
-            Address addr;
+            Address addr = Address();
 
             /* Loop connections. */
             while(!fDestruct.load())
@@ -295,14 +299,15 @@ namespace LLP
                 uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
 
                 /* Pick a weighted random priority from a sorted list of addresses */
-                if(pAddressManager && pAddressManager->StochasticSelect(addr))
-                {
+                if(!pAddressManager)
+                    continue;
 
+                if(pAddressManager->StochasticSelect(addr))
+                {
                     /* Check for connect to self. */
                     if(addr.ToStringIP() == addrThisNode.ToStringIP())
                     {
                         runtime::sleep(1000);
-
                         continue;
                     }
 
@@ -312,7 +317,6 @@ namespace LLP
 
                     /* Attempt the connection. */
                     debug::log(0, FUNCTION, ProtocolType::Name(), " Attempting Connection ", ip, ":", port);
-                    pAddressManager->PrintStats();
 
                     if(AddConnection(ip, port))
                         state = static_cast<uint8_t>(ConnectState::CONNECTED);

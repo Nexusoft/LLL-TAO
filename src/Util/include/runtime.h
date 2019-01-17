@@ -19,9 +19,6 @@ ________________________________________________________________________________
 #include <chrono>
 #include <locale>
 
-/* This is needed because the foreach macro can't get over the comma in pair<t1, t2> */
-#define PAIRTYPE(t1, t2)    std::pair<t1, t2>
-
 #define ARRAYLEN(array)     (sizeof(array)/sizeof((array)[0]))
 
 /** The location of the unified time seed. To enable a Unified Time System push data to this variable. **/

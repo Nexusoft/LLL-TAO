@@ -70,7 +70,7 @@ namespace LLP
 
         friend bool operator==(const NetAddr& a, const NetAddr& b);
         friend bool operator!=(const NetAddr& a, const NetAddr& b);
-        friend bool operator<(const NetAddr& a, const NetAddr& b);
+        friend bool operator<(const NetAddr& a,  const NetAddr& b);
 
         IMPLEMENT_SERIALIZE
         (
