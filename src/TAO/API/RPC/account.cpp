@@ -16,6 +16,7 @@
 
     #include <Legacy/wallet/wallet.h>
     #include <Legacy/wallet/walletdb.h>
+    #include <Legacy/wallet/accountingentry.h>
 
     #include <Legacy/include/money.h>
     #include <Legacy/include/evaluate.h>
@@ -175,43 +176,43 @@ namespace TAO
         /* sendtoaddress <Nexusaddress> <amount> [comment] [comment-to]
         *  - <amount> is a real and is rounded to the nearest 0.000001
         *  requires wallet passphrase to be set with walletpassphrase first */
-        // json::json sendtoaddress(const json::json& params, bool fHelp)
-        // {
-        //     if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
-        //         return std::string(
-        //             "sendtoaddress <Nexusaddress> <amount> [comment] [comment-to]"
-        //             " - <amount> is a real and is rounded to the nearest 0.000001"
-        //             " requires wallet passphrase to be set with walletpassphrase first");
-        //     if (!Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
-        //         return std::string(
-        //             "sendtoaddress <Nexusaddress> <amount> [comment] [comment-to]"
-        //             "<amount> is a real and is rounded to the nearest 0.000001");
+        json::json RPC::SendToAddress(const json::json& params, bool fHelp)
+        {
+            if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
+                return std::string(
+                    "sendtoaddress <Nexusaddress> <amount> [comment] [comment-to]"
+                    " - <amount> is a real and is rounded to the nearest 0.000001"
+                    " requires wallet passphrase to be set with walletpassphrase first");
+            if (!Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
+                return std::string(
+                    "sendtoaddress <Nexusaddress> <amount> [comment] [comment-to]"
+                    "<amount> is a real and is rounded to the nearest 0.000001");
 
-        //     Legacy::NexusAddress address(params[0].get<std::string>());
-        //     if (!address.IsValid())
-        //         throw APIException(-5, "Invalid Nexus address");
+            Legacy::NexusAddress address(params[0].get<std::string>());
+            if (!address.IsValid())
+                throw APIException(-5, "Invalid Nexus address");
 
-        //     // Amount
-        //     int64_t nAmount = AmountFromValue(params[1]);
-        //     if (nAmount < Core::MIN_TXOUT_AMOUNT)
-        //         throw APIException(-101, "Send amount too small");
+            // Amount
+            int64_t nAmount = Legacy::AmountToSatoshis(params[1]);
+            if (nAmount < Legacy::MIN_TXOUT_AMOUNT)
+                throw APIException(-101, "Send amount too small");
 
-        //     // Wallet comments
-        //     Legacy::CWalletTx wtx;
-        //     if (params.size() > 2 && params[2].type() != null_type && !params[2].get<std::string>().empty())
-        //         wtx.mapValue["comment"] = params[2].get<std::string>();
-        //     if (params.size() > 3 && params[3].type() != null_type && !params[3].get<std::string>().empty())
-        //         wtx.mapValue["to"]      = params[3].get<std::string>();
+            // Wallet comments
+            Legacy::CWalletTx wtx;
+            if (params.size() > 2 && !params[2].is_null() && params[2].get<std::string>() != "")
+                wtx.mapValue["comment"] = params[2].get<std::string>();
+            if (params.size() > 3 && !params[3].is_null()&& params[3].get<std::string>() != "")
+                wtx.mapValue["to"]      = params[3].get<std::string>();
 
-        //     if (Legacy::CWallet::GetInstance().IsLocked())
-        //         throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+            if (Legacy::CWallet::GetInstance().IsLocked())
+                throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
-        //     std::string strError = Legacy::CWallet::GetInstance().SendToNexusAddress(address, nAmount, wtx);
-        //     if (strError != "")
-        //         throw APIException(-4, strError);
+            std::string strError = Legacy::CWallet::GetInstance().SendToNexusAddress(address, nAmount, wtx);
+            if (strError != "")
+                throw APIException(-4, strError);
 
-        //     return wtx.GetHash().GetHex();
-        // }
+            return wtx.GetHash().GetHex();
+        }
 
         /* signmessage <Nexusaddress> <message>
         Sign a message with the private key of an address */
@@ -473,46 +474,48 @@ namespace TAO
                     "move <fromaccount> <toaccount> <amount> [minconf=1] [comment]"
                     " - Move from one account in your wallet to another.");
 
-        //     std::string strFrom = AccountFromValue(params[0]);
-        //     std::string strTo = AccountFromValue(params[1]);
-        //     int64_t nAmount = AmountFromValue(params[2]);
-        //     if (params.size() > 3)
-        //         // unused parameter, used to be nMinDepth, keep type-checking it though
-        //         (void)params[3].get_int();
-        //     std::string strComment;
-        //     if (params.size() > 4)
-        //         strComment = params[4].get<std::string>();
+            std::string strFrom = AccountFromValue(params[0]);
+            std::string strTo = AccountFromValue(params[1]);
+            int64_t nAmount = Legacy::AmountToSatoshis(params[2]);
+            
+            // unused parameter, used to be nMinDepth, keep type-checking it though
+            if (params.size() > 3 && !params[3].is_number() )
+                throw APIException(-3, "Invalid minconf value");
+                
+                
+            std::string strComment;
+            if (params.size() > 4)
+                strComment = params[4].get<std::string>();
 
-        //     Legacy::CWalletDB walletdb(Legacy::CWallet::GetInstance().strWalletFile);
-        //     if (!walletdb.TxnBegin())
-        //         throw APIException(-20, "database error");
+            Legacy::CWalletDB walletdb(Legacy::CWallet::GetInstance().GetWalletFile());
+            if (!walletdb.TxnBegin())
+                throw APIException(-20, "database error");
 
-        //     int64_t nNow = GetUnifiedTimestamp();
+            int64_t nNow = runtime::unifiedtimestamp();
 
-        //     // Debit
-        //     Wallet::CAccountingEntry debit;
-        //     debit.strAccount = strFrom;
-        //     debit.nCreditDebit = -nAmount;
-        //     debit.nTime = nNow;
-        //     debit.strOtherAccount = strTo;
-        //     debit.strComment = strComment;
-        //     walletdb.WriteAccountingEntry(debit);
+            // Debit
+            Legacy::CAccountingEntry debit;
+            debit.strAccount = strFrom;
+            debit.nCreditDebit = -nAmount;
+            debit.nTime = nNow;
+            debit.strOtherAccount = strTo;
+            debit.strComment = strComment;
+            walletdb.WriteAccountingEntry(debit);
 
-        //     // Credit
-        //     Wallet::CAccountingEntry credit;
-        //     credit.strAccount = strTo;
-        //     credit.nCreditDebit = nAmount;
-        //     credit.nTime = nNow;
-        //     credit.strOtherAccount = strFrom;
-        //     credit.strComment = strComment;
-        //     walletdb.WriteAccountingEntry(credit);
+            // Credit
+            Legacy::CAccountingEntry credit;
+            credit.strAccount = strTo;
+            credit.nCreditDebit = nAmount;
+            credit.nTime = nNow;
+            credit.strOtherAccount = strFrom;
+            credit.strComment = strComment;
+            walletdb.WriteAccountingEntry(credit);
 
-        //     if (!walletdb.TxnCommit())
-        //         throw APIException(-20, "database error");
+            if (!walletdb.TxnCommit())
+                throw APIException(-20, "database error");
 
-        //     return true;
-            json::json ret;
-            return ret;
+            return true;
+            
         }
 
 
@@ -532,7 +535,7 @@ namespace TAO
         //     Legacy::NexusAddress address(params[1].get<std::string>());
         //     if (!address.IsValid())
         //         throw APIException(-5, "Invalid Nexus address");
-        //     int64_t nAmount = AmountFromValue(params[2]);
+        //     int64_t nAmount = Legacy::AmountToSatoshis(params[2]);
         //     if (nAmount < Core::MIN_TXOUT_AMOUNT)
         //         throw APIException(-101, "Send amount too small");
         //     int nMinDepth = 1;
@@ -602,7 +605,7 @@ namespace TAO
 
         //         Wallet::CScript scriptPubKey;
         //         scriptPubKey.SetNexusAddress(address);
-        //         int64_t nAmount = AmountFromValue(s.value_);
+        //         int64_t nAmount = Legacy::AmountToSatoshis(s.value_);
         //         if (nAmount < Core::MIN_TXOUT_AMOUNT)
         //             throw APIException(-101, "Send amount too small");
         //         totalAmount += nAmount;

@@ -328,7 +328,6 @@ namespace TAO
             Legacy::NexusAddress vchAddress = Legacy::NexusAddress(key.GetPubKey());
 
             {
-                LOCK(Legacy::CWallet::GetInstance().cs_wallet);
 
                 Legacy::CWallet::GetInstance().MarkDirty();
                 Legacy::CWallet::GetInstance().GetAddressBook().SetAddressBookName(vchAddress, strLabel);

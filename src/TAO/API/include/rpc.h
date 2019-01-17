@@ -206,7 +206,19 @@ namespace TAO
              **/
             json::json GetAddressesByAccount(const json::json& params, bool fHelp);
 
-
+            /** SendToAddress
+            *
+            *  sendtoaddress <Nexusaddress> <amount> [comment] [comment-to]
+            *  - <amount> is a real and is rounded to the nearest 0.000001
+            *  requires wallet passphrase to be set with walletpassphrase first.
+            *
+             *  @param[in] params Parameters array passed by the caller.
+             *
+             *  @return JSON containing the information.
+             *
+             **/
+            json::json SendToAddress(const json::json& params, bool fHelp);
+            
             /** SignMessage
              *
              *  signmessage <Nexusaddress> <message>
