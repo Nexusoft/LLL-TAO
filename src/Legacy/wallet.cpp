@@ -532,7 +532,7 @@ namespace Legacy
             /* If more than one master key in wallet's map (unusual), have to find the one that corresponds to old passphrase.
              * Do this by attempting to use each to unlock with old passphrase until find a match.
              */
-            for(const auto& pMasterKey : mapMasterKeys)
+            for(auto& pMasterKey : mapMasterKeys)
             {
                 /* Attempt to decrypt the current master key and unlock the wallet with it */
                 if(!crypter.SetKeyFromPassphrase(strOldWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
