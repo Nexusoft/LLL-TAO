@@ -192,12 +192,12 @@ namespace TAO
         //         throw APIException(-5, "Invalid Nexus address");
 
         //     // Amount
-        //     int64 nAmount = AmountFromValue(params[1]);
+        //     int64_t nAmount = AmountFromValue(params[1]);
         //     if (nAmount < Core::MIN_TXOUT_AMOUNT)
         //         throw APIException(-101, "Send amount too small");
 
         //     // Wallet comments
-        //     Wallet::CWalletTx wtx;
+        //     Legacy::CWalletTx wtx;
         //     if (params.size() > 2 && params[2].type() != null_type && !params[2].get<std::string>().empty())
         //         wtx.mapValue["comment"] = params[2].get<std::string>();
         //     if (params.size() > 3 && params[3].type() != null_type && !params[3].get<std::string>().empty())
@@ -325,16 +325,16 @@ namespace TAO
         }
 
 
-        // void GetAccountAddresses(string strAccount, set<Legacy::NexusAddress>& setAddress)
-        // {
-        //     BOOST_FOREACH(const PAIRTYPE(Legacy::NexusAddress, std::string)& item, Legacy::CWallet::GetInstance().mapAddressBook)
-        //     {
-        //         const Legacy::NexusAddress& address = item.first;
-        //         const std::string& strName = item.second;
-        //         if (strName == strAccount)
-        //             setAddress.insert(address);
-        //     }
-        // }
+        void GetAccountAddresses(const std::string& strAccount, std::set<Legacy::NexusAddress>& setAddress)
+        {
+            for(const auto& item : Legacy::CWallet::GetInstance().GetAddressBook().GetAddressBookMap())
+            {
+                const Legacy::NexusAddress& address = item.first;
+                const std::string& strName = item.second;
+                if (strName == strAccount)
+                    setAddress.insert(address);
+            }
+        }
 
         /* getreceivedbyaccount <account> [minconf=1]
         Returns the total amount received by addresses with <account> in transactions with at least [minconf] confirmations */
@@ -345,69 +345,68 @@ namespace TAO
                     "getreceivedbyaccount <account> [minconf=1]"
                     " - Returns the total amount received by addresses with <account> in transactions with at least [minconf] confirmations.");
 
-        //     // Minimum confirmations
-        //     int nMinDepth = 1;
-        //     if (params.size() > 1)
-        //         nMinDepth = params[1].get_int();
+            // Minimum confirmations
+            int nMinDepth = 1;
+            if (params.size() > 1)
+                nMinDepth = params[1];
 
-        //     // Get the set of pub keys assigned to account
-        //     std::string strAccount = AccountFromValue(params[0]);
-        //     set<Legacy::NexusAddress> setAddress;
-        //     GetAccountAddresses(strAccount, setAddress);
+            // Get the set of pub keys assigned to account
+            std::string strAccount = AccountFromValue(params[0]);
+            std::set<Legacy::NexusAddress> setAddress;
+            GetAccountAddresses(strAccount, setAddress);
 
-        //     // Tally
-        //     int64 nAmount = 0;
-        //     for (map<uint512, Wallet::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); ++it)
-        //     {
-        //         const Wallet::CWalletTx& wtx = (*it).second;
-        //         if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
-        //             continue;
+            // Tally
+            int64_t nAmount = 0;
+            for (const auto& entry : Legacy::CWallet::GetInstance().mapWallet)
+            {
+                const Legacy::CWalletTx& wtx = entry.second;
+                if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
+                    continue;
 
-        //         BOOST_FOREACH(const Core::CTxOut& txout, wtx.vout)
-        //         {
-        //             Legacy::NexusAddress address;
-        //             if (ExtractAddress(txout.scriptPubKey, address) && Legacy::CWallet::GetInstance().HaveKey(address) && setAddress.count(address))
-        //                 if (wtx.GetDepthInMainChain() >= nMinDepth)
-        //                     nAmount += txout.nValue;
-        //         }
-            json::json ret;
-            return ret;
+                for(const Legacy::CTxOut& txout : wtx.vout)
+                {
+                    Legacy::NexusAddress address;
+                    if (ExtractAddress(txout.scriptPubKey, address) && Legacy::CWallet::GetInstance().HaveKey(address) && setAddress.count(address))
+                        if (wtx.GetDepthInMainChain() >= nMinDepth)
+                            nAmount += txout.nValue;
+                }
+            
+            }
+
+             return Legacy::SatoshisToAmount(nAmount);
         }
 
-        //     return (double)nAmount / (double)COIN;
-        // }
+        int64_t GetAccountBalance(Legacy::CWalletDB& walletdb, const std::string& strAccount, int nMinDepth)
+        {
+            int64_t nBalance = 0;
 
-        // int64 GetAccountBalance(Wallet::CWalletDB& walletdb, const std::string& strAccount, int nMinDepth)
-        // {
-        //     int64 nBalance = 0;
+            // Tally wallet transactions
+            for (const auto& entry : Legacy::CWallet::GetInstance().mapWallet)
+            {
+                const Legacy::CWalletTx& wtx = entry.second;
+                if (!wtx.IsFinal())
+                    continue;
 
-        //     // Tally wallet transactions
-        //     for (map<uint512, Wallet::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); ++it)
-        //     {
-        //         const Wallet::CWalletTx& wtx = (*it).second;
-        //         if (!wtx.IsFinal())
-        //             continue;
+                int64_t nGenerated, nReceived, nSent, nFee;
+                wtx.GetAccountAmounts(strAccount, nGenerated, nReceived, nSent, nFee);
 
-        //         int64 nGenerated, nReceived, nSent, nFee;
-        //         wtx.GetAccountAmounts(strAccount, nGenerated, nReceived, nSent, nFee);
+                if (nReceived != 0 && wtx.GetDepthInMainChain() >= nMinDepth)
+                    nBalance += nReceived;
+                nBalance += nGenerated - nSent - nFee;
+            }
 
-        //         if (nReceived != 0 && wtx.GetDepthInMainChain() >= nMinDepth)
-        //             nBalance += nReceived;
-        //         nBalance += nGenerated - nSent - nFee;
-        //     }
+            // Tally internal accounting entries
+            nBalance += walletdb.GetAccountCreditDebit(strAccount);
 
-        //     // Tally internal accounting entries
-        //     nBalance += walletdb.GetAccountCreditDebit(strAccount);
-
-        //     return nBalance;
-        // }
+            return nBalance;
+        }
 
 
-        // int64 GetAccountBalance(const std::string& strAccount, int nMinDepth)
-        // {
-        //     Wallet::CWalletDB walletdb(Legacy::CWallet::GetInstance().strWalletFile);
-        //     return GetAccountBalance(walletdb, strAccount, nMinDepth);
-        // }
+        int64_t GetAccountBalance(const std::string& strAccount, int nMinDepth)
+        {
+            Legacy::CWalletDB walletdb(Legacy::CWallet::GetInstance().GetWalletFile());
+            return GetAccountBalance(walletdb, strAccount, nMinDepth);
+        }
 
         /* getbalance [account] [minconf=1]
         *  If [account] is not specified, returns the server's total available balance.
@@ -420,50 +419,49 @@ namespace TAO
                     " - If [account] is not specified, returns the server's total available balance."
                     " If [account] is specified, returns the balance in the account.");
 
-        //     if (params.size() == 0)
-        //         return  Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetBalance());
+            if (params.size() == 0)
+                return  Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetBalance());
 
-        //     int nMinDepth = 1;
-        //     if (params.size() > 1)
-        //         nMinDepth = params[1].get_int();
+            int nMinDepth = 1;
+            if (params.size() > 1)
+                nMinDepth = params[1];
 
-        //     if (params[0].get<std::string>() == "*") {
-        //         // Calculate total balance a different way from GetBalance()
-        //         // (GetBalance() sums up all unspent TxOuts)
-        //         // getbalance and getbalance '*' should always return the same number.
-        //         int64 nBalance = 0;
-        //         for (map<uint512, Wallet::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); ++it)
-        //         {
-        //             const Wallet::CWalletTx& wtx = (*it).second;
-        //             if (!wtx.IsFinal())
-        //                 continue;
+            if (params[0].get<std::string>() == "*") {
+                // Calculate total balance a different way from GetBalance()
+                // (GetBalance() sums up all unspent TxOuts)
+                // getbalance and getbalance '*' should always return the same number.
+                int64_t nBalance = 0;
+                for (const auto& entry : Legacy::CWallet::GetInstance().mapWallet)
+                {
+                    const Legacy::CWalletTx& wtx = entry.second;
+                    if (!wtx.IsFinal())
+                        continue;
 
-        //             int64 allGeneratedImmature, allGeneratedMature, allFee;
-        //             allGeneratedImmature = allGeneratedMature = allFee = 0;
-        //             std::string strSentAccount;
-        //             list<pair<Legacy::NexusAddress, int64> > listReceived;
-        //             list<pair<Legacy::NexusAddress, int64> > listSent;
-        //             wtx.GetAmounts(allGeneratedImmature, allGeneratedMature, listReceived, listSent, allFee, strSentAccount);
-        //             if (wtx.GetDepthInMainChain() >= nMinDepth)
-        //             {
-        //                 BOOST_FOREACH(const PAIRTYPE(Legacy::NexusAddress,int64)& r, listReceived)
-        //                     nBalance += r.second;
-        //             }
-        //             BOOST_FOREACH(const PAIRTYPE(Legacy::NexusAddress,int64)& r, listSent)
-        //                 nBalance -= r.second;
-        //             nBalance -= allFee;
-        //             nBalance += allGeneratedMature;
-        //         }
-        //         return  Legacy::SatoshisToAmount(nBalance);
-        //     }
+                    int64_t allGeneratedImmature, allGeneratedMature, allFee;
+                    allGeneratedImmature = allGeneratedMature = allFee = 0;
+                    std::string strSentAccount;
+                    std::list<std::pair<Legacy::NexusAddress, int64_t> > listReceived;
+                    std::list<std::pair<Legacy::NexusAddress, int64_t> > listSent;
+                    wtx.GetAmounts(allGeneratedImmature, allGeneratedMature, listReceived, listSent, allFee, strSentAccount);
+                    if (wtx.GetDepthInMainChain() >= nMinDepth)
+                    {
+                        for(const auto& r : listReceived)
+                            nBalance += r.second;
+                    }
+                    for(const auto& r : listSent)
+                        nBalance -= r.second;
+                    nBalance -= allFee;
+                    nBalance += allGeneratedMature;
+                }
+                return  Legacy::SatoshisToAmount(nBalance);
+            }
 
-        //     std::string strAccount = AccountFromValue(params[0]);
+            std::string strAccount = AccountFromValue(params[0]);
 
-        //     int64 nBalance = GetAccountBalance(strAccount, nMinDepth);
+            int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
 
-        //     return Legacy::SatoshisToAmount(nBalance);
-            json::json ret;
-            return ret;
+            return Legacy::SatoshisToAmount(nBalance);
+            
         }
 
         /* move <fromaccount> <toaccount> <amount> [minconf=1] [comment]
@@ -477,7 +475,7 @@ namespace TAO
 
         //     std::string strFrom = AccountFromValue(params[0]);
         //     std::string strTo = AccountFromValue(params[1]);
-        //     int64 nAmount = AmountFromValue(params[2]);
+        //     int64_t nAmount = AmountFromValue(params[2]);
         //     if (params.size() > 3)
         //         // unused parameter, used to be nMinDepth, keep type-checking it though
         //         (void)params[3].get_int();
@@ -485,11 +483,11 @@ namespace TAO
         //     if (params.size() > 4)
         //         strComment = params[4].get<std::string>();
 
-        //     Wallet::CWalletDB walletdb(Legacy::CWallet::GetInstance().strWalletFile);
+        //     Legacy::CWalletDB walletdb(Legacy::CWallet::GetInstance().strWalletFile);
         //     if (!walletdb.TxnBegin())
         //         throw APIException(-20, "database error");
 
-        //     int64 nNow = GetUnifiedTimestamp();
+        //     int64_t nNow = GetUnifiedTimestamp();
 
         //     // Debit
         //     Wallet::CAccountingEntry debit;
@@ -534,14 +532,14 @@ namespace TAO
         //     Legacy::NexusAddress address(params[1].get<std::string>());
         //     if (!address.IsValid())
         //         throw APIException(-5, "Invalid Nexus address");
-        //     int64 nAmount = AmountFromValue(params[2]);
+        //     int64_t nAmount = AmountFromValue(params[2]);
         //     if (nAmount < Core::MIN_TXOUT_AMOUNT)
         //         throw APIException(-101, "Send amount too small");
         //     int nMinDepth = 1;
         //     if (params.size() > 3)
         //         nMinDepth = params[3].get_int();
 
-        //     Wallet::CWalletTx wtx;
+        //     Legacy::CWalletTx wtx;
         //     wtx.strFromAccount = strAccount;
         //     if (params.size() > 4 && params[4].type() != null_type && !params[4].get<std::string>().empty())
         //         wtx.mapValue["comment"] = params[4].get<std::string>();
@@ -552,7 +550,7 @@ namespace TAO
         //         throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
         //     // Check funds
-        //     int64 nBalance = GetAccountBalance(strAccount, nMinDepth);
+        //     int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
         //     if (nAmount > nBalance)
         //         throw APIException(-6, "Account has insufficient funds");
 
@@ -583,15 +581,15 @@ namespace TAO
         //     if (params.size() > 2)
         //         nMinDepth = params[2].get_int();
 
-        //     Wallet::CWalletTx wtx;
+        //     Legacy::CWalletTx wtx;
         //     wtx.strFromAccount = strAccount;
         //     if (params.size() > 3 && params[3].type() != null_type && !params[3].get<std::string>().empty())
         //         wtx.mapValue["comment"] = params[3].get<std::string>();
 
         //     set<Legacy::NexusAddress> setAddress;
-        //     std::vector<pair<Wallet::CScript, int64> > vecSend;
+        //     std::vector<pair<Wallet::CScript, int64_t> > vecSend;
 
-        //     int64 totalAmount = 0;
+        //     int64_t totalAmount = 0;
         //     BOOST_FOREACH(const Pair& s, sendTo)
         //     {
         //         Legacy::NexusAddress address(s.name_);
@@ -604,7 +602,7 @@ namespace TAO
 
         //         Wallet::CScript scriptPubKey;
         //         scriptPubKey.SetNexusAddress(address);
-        //         int64 nAmount = AmountFromValue(s.value_);
+        //         int64_t nAmount = AmountFromValue(s.value_);
         //         if (nAmount < Core::MIN_TXOUT_AMOUNT)
         //             throw APIException(-101, "Send amount too small");
         //         totalAmount += nAmount;
@@ -618,13 +616,13 @@ namespace TAO
         //         throw APIException(-13, "Error: Wallet unlocked for block minting only.");
 
         //     // Check funds
-        //     int64 nBalance = GetAccountBalance(strAccount, nMinDepth);
+        //     int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
         //     if (totalAmount > nBalance)
         //         throw APIException(-6, "Account has insufficient funds");
 
         //     // Send
         //     Wallet::CReserveKey keyChange(pwalletMain);
-        //     int64 nFeeRequired = 0;
+        //     int64_t nFeeRequired = 0;
         //     bool fCreated = Legacy::CWallet::GetInstance().CreateTransaction(vecSend, wtx, keyChange, nFeeRequired);
         //     if (!fCreated)
         //     {
@@ -720,7 +718,7 @@ namespace TAO
 
         // struct tallyitem
         // {
-        //     int64 nAmount;
+        //     int64_t nAmount;
         //     int nConf;
         //     tallyitem()
         //     {
@@ -743,9 +741,9 @@ namespace TAO
 
         //     // Tally
         //     map<Legacy::NexusAddress, tallyitem> mapTally;
-        //     for (map<uint512, Wallet::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); ++it)
+        //     for (map<uint512, Legacy::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); ++it)
         //     {
-        //         const Wallet::CWalletTx& wtx = (*it).second;
+        //         const Legacy::CWalletTx& wtx = (*it).second;
 
         //         if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
         //             continue;
@@ -777,7 +775,7 @@ namespace TAO
         //         if (it == mapTally.end() && !fIncludeEmpty)
         //             continue;
 
-        //         int64 nAmount = 0;
+        //         int64_t nAmount = 0;
         //         int nConf = std::numeric_limits<int>::max();
         //         if (it != mapTally.end())
         //         {
@@ -806,7 +804,7 @@ namespace TAO
         //     {
         //         for (map<string, tallyitem>::iterator it = mapAccountTally.begin(); it != mapAccountTally.end(); ++it)
         //         {
-        //             int64 nAmount = (*it).second.nAmount;
+        //             int64_t nAmount = (*it).second.nAmount;
         //             int nConf = (*it).second.nConf;
         //             Object obj;
         //             obj.push_back(Pair("account",       (*it).first));
@@ -870,12 +868,12 @@ namespace TAO
             return ret;
         }
 
-        // void ListTransactions(const Wallet::CWalletTx& wtx, const std::string& strAccount, int nMinDepth, bool fLong, Array& ret)
+        // void ListTransactions(const Legacy::CWalletTx& wtx, const std::string& strAccount, int nMinDepth, bool fLong, Array& ret)
         // {
-        //     int64 nGeneratedImmature, nGeneratedMature, nFee;
+        //     int64_t nGeneratedImmature, nGeneratedMature, nFee;
         //     std::string strSentAccount;
-        //     list<pair<Legacy::NexusAddress, int64> > listReceived;
-        //     list<pair<Legacy::NexusAddress, int64> > listSent;
+        //     list<pair<Legacy::NexusAddress, int64_t> > listReceived;
+        //     list<pair<Legacy::NexusAddress, int64_t> > listSent;
 
         //     wtx.GetAmounts(nGeneratedImmature, nGeneratedMature, listReceived, listSent, nFee, strSentAccount);
 
@@ -909,7 +907,7 @@ namespace TAO
         //     // Sent
         //     if ((!listSent.empty() || nFee != 0) && (fAllAccounts || strAccount == strSentAccount))
         //     {
-        //         BOOST_FOREACH(const PAIRTYPE(Legacy::NexusAddress, int64)& s, listSent)
+        //         BOOST_FOREACH(const PAIRTYPE(Legacy::NexusAddress, int64_t)& s, listSent)
         //         {
         //             Object entry;
         //             entry.push_back(Pair("account", strSentAccount));
@@ -926,7 +924,7 @@ namespace TAO
         //     // Received
         //     if (listReceived.size() > 0 && wtx.GetDepthInMainChain() >= nMinDepth)
         //     {
-        //         BOOST_FOREACH(const PAIRTYPE(Legacy::NexusAddress, int64)& r, listReceived)
+        //         BOOST_FOREACH(const PAIRTYPE(Legacy::NexusAddress, int64_t)& r, listReceived)
         //         {
         //             std::string account;
         //             if (Legacy::CWallet::GetInstance().mapAddressBook.count(r.first))
@@ -988,31 +986,31 @@ namespace TAO
         //         throw APIException(-8, "Negative from");
 
         //     Array ret;
-        //     Wallet::CWalletDB walletdb(Legacy::CWallet::GetInstance().strWalletFile);
+        //     Legacy::CWalletDB walletdb(Legacy::CWallet::GetInstance().strWalletFile);
 
-        //     // First: get all Wallet::CWalletTx and Wallet::CAccountingEntry into a sorted-by-time multimap.
-        //     typedef pair<Wallet::CWalletTx*, Wallet::CAccountingEntry*> TxPair;
-        //     typedef multimap<int64, TxPair > TxItems;
+        //     // First: get all Legacy::CWalletTx and Wallet::CAccountingEntry into a sorted-by-time multimap.
+        //     typedef pair<Legacy::CWalletTx*, Wallet::CAccountingEntry*> TxPair;
+        //     typedef multimap<int64_t, TxPair > TxItems;
         //     TxItems txByTime;
 
         //     // Note: maintaining indices in the database of (account,time) --> txid and (account, time) --> acentry
         //     // would make this much faster for applications that do this a lot.
-        //     for (map<uint512, Wallet::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); ++it)
+        //     for (map<uint512, Legacy::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); ++it)
         //     {
-        //         Wallet::CWalletTx* wtx = &((*it).second);
+        //         Legacy::CWalletTx* wtx = &((*it).second);
         //         txByTime.insert(make_pair(wtx->GetTxTime(), TxPair(wtx, (Wallet::CAccountingEntry*)0)));
         //     }
         //     list<Wallet::CAccountingEntry> acentries;
         //     walletdb.ListAccountCreditDebit(strAccount, acentries);
         //     BOOST_FOREACH(Wallet::CAccountingEntry& entry, acentries)
         //     {
-        //         txByTime.insert(make_pair(entry.nTime, TxPair((Wallet::CWalletTx*)0, &entry)));
+        //         txByTime.insert(make_pair(entry.nTime, TxPair((Legacy::CWalletTx*)0, &entry)));
         //     }
 
         //     // iterate backwards until we have nCount items to return:
         //     for (TxItems::reverse_iterator it = txByTime.rbegin(); it != txByTime.rend(); ++it)
         //     {
-        //         Wallet::CWalletTx *const pwtx = (*it).second.first;
+        //         Legacy::CWalletTx *const pwtx = (*it).second.first;
         //         if (pwtx != 0)
         //             ListTransactions(*pwtx, strAccount, 0, true, ret);
         //         Wallet::CAccountingEntry *const pacentry = (*it).second.second;
@@ -1058,13 +1056,13 @@ namespace TAO
         //         nMax = params[0].get_int();
 
         //     /* Get the available addresses from the wallet */
-        //     map<Legacy::NexusAddress, int64> mapAddresses;
+        //     map<Legacy::NexusAddress, int64_t> mapAddresses;
         //     if(!Legacy::CWallet::GetInstance().AvailableAddresses((unsigned int)GetUnifiedTimestamp(), mapAddresses))
         //         throw APIException(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
         //     /* Find all the addresses in the list */
         //     Object list;
-        //     for (map<Legacy::NexusAddress, int64>::iterator it = mapAddresses.begin(); it != mapAddresses.end() && list.size() < nMax; ++it)
+        //     for (map<Legacy::NexusAddress, int64_t>::iterator it = mapAddresses.begin(); it != mapAddresses.end() && list.size() < nMax; ++it)
         //         list.push_back(Pair(it->first.ToString(), Legacy::SatoshisToAmount(it->second)));
 
         //     return list;
@@ -1153,9 +1151,9 @@ namespace TAO
 
         //     Array transactions;
 
-        //     for (map<uint512, Wallet::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); it++)
+        //     for (map<uint512, Legacy::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); it++)
         //     {
-        //         Wallet::CWalletTx tx = (*it).second;
+        //         Legacy::CWalletTx tx = (*it).second;
 
         //         if (depth == -1 || tx.GetDepthInMainChain() < depth)
         //             ListTransactions(tx, "*", 0, true, transactions);
@@ -1206,12 +1204,12 @@ namespace TAO
 
         //     if (!Legacy::CWallet::GetInstance().mapWallet.count(hash))
         //         throw APIException(-5, "Invalid or non-wallet transaction id");
-        //     const Wallet::CWalletTx& wtx = Legacy::CWallet::GetInstance().mapWallet[hash];
+        //     const Legacy::CWalletTx& wtx = Legacy::CWallet::GetInstance().mapWallet[hash];
 
-        //     int64 nCredit = wtx.GetCredit();
-        //     int64 nDebit = wtx.GetDebit();
-        //     int64 nNet = nCredit - nDebit;
-        //     int64 nFee = (wtx.IsFromMe() ? wtx.GetValueOut() - nDebit : 0);
+        //     int64_t nCredit = wtx.GetCredit();
+        //     int64_t nDebit = wtx.GetDebit();
+        //     int64_t nNet = nCredit - nDebit;
+        //     int64_t nFee = (wtx.IsFromMe() ? wtx.GetValueOut() - nDebit : 0);
 
         //     entry.push_back(Pair("amount", Legacy::SatoshisToAmount(nNet - nFee)));
         //     if (wtx.IsFromMe())
@@ -1432,7 +1430,7 @@ namespace TAO
         //     std::vector<Wallet::COutput> vecOutputs;
         //     Legacy::CWallet::GetInstance().AvailableCoins((unsigned int)GetUnifiedTimestamp(), vecOutputs, false);
 
-        //     int64 nCredit = 0;
+        //     int64_t nCredit = 0;
         //     BOOST_FOREACH(const Wallet::COutput& out, vecOutputs)
         //     {
         //         if(setAddresses.size())
@@ -1445,7 +1443,7 @@ namespace TAO
         //                 continue;
         //         }
 
-        //         int64 nValue = out.tx->vout[out.i].nValue;
+        //         int64_t nValue = out.tx->vout[out.i].nValue;
         //         const Wallet::CScript& pk = out.tx->vout[out.i].scriptPubKey;
         //         Legacy::NexusAddress address;
 
@@ -1525,7 +1523,7 @@ namespace TAO
         //                 continue;
         //         }
 
-        //         int64 nValue = out.tx->vout[out.i].nValue;
+        //         int64_t nValue = out.tx->vout[out.i].nValue;
         //         const Wallet::CScript& pk = out.tx->vout[out.i].scriptPubKey;
         //         Legacy::NexusAddress address;
         //         Object entry;
