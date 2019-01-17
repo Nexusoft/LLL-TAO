@@ -385,7 +385,8 @@ namespace Legacy
 
         /* kMasterKey now contains the master key encrypted by the provided passphrase. Ready to perform wallet encryption. */
         {
-            LOCK(cs_wallet);
+            /* Lock for writing master key */
+            LOCK(cs_wallet); 
 
             mapMasterKeys[++nMasterKeyMaxID] = kMasterKey;
 
@@ -400,53 +401,64 @@ namespace Legacy
                 /* Start encryption transaction by writing the master key */
                 pWalletDbEncryption->WriteMasterKey(nMasterKeyMaxID, kMasterKey);
             }
+        } //Lock must be released before call to EncryptKeys()
 
-            /* EncryptKeys() in CCryptoKeyStore will encrypt every public key/private key pair in the key store, including those that
-             * are part of the key pool. It calls CCryptoKeyStore::AddCryptedKey() to add each to the key store, which will polymorphically
-             * call CWallet::AddCryptedKey and also write them to the database.
-             *
-             * See CWallet::AddKey() for more discussion on how this works
-             *
-             * When it writes the encrypted key to the database, it will also remove any unencrypted entry for the same public key
-             */
-            if (!EncryptKeys(vMasterKey))
-            {
-                if (fFileBacked)
-                    pWalletDbEncryption->TxnAbort();
-
-                /* We now probably have half of our keys encrypted in memory,
-                 * and half not...die to let the user reload their unencrypted wallet.
-                 */
-                config::fShutdown = true;
-                return debug::error("Error encrypting wallet. Shutting down.");;
-            }
-
+        /* EncryptKeys() in CCryptoKeyStore will encrypt every public key/private key pair in the key store, including those that
+         * are part of the key pool. It calls CCryptoKeyStore::AddCryptedKey() to add each to the key store, which will polymorphically
+         * call CWallet::AddCryptedKey and also write them to the database.
+         *
+         * See CWallet::AddKey() for more discussion on how this works
+         *
+         * When it writes the encrypted key to the database, it will also remove any unencrypted entry for the same public key
+         */
+        if (!EncryptKeys(vMasterKey))
+        {
             if (fFileBacked)
+                pWalletDbEncryption->TxnAbort();
+
+            /* We now probably have half of our keys encrypted in memory,
+             * and half not...die to let the user reload their unencrypted wallet.
+             */
+            config::fShutdown = true;
+            return debug::error("Error encrypting wallet. Shutting down.");;
+        }
+
+        if (fFileBacked)
+        {
+            if (!pWalletDbEncryption->TxnCommit())
             {
-                if (!pWalletDbEncryption->TxnCommit())
-                {
-                    /* Keys encrypted in memory, but not on disk...die to let the user reload their unencrypted wallet. */
-                    config::fShutdown = true;
-                    return debug::error("Error committing encryption updates to wallet file. Shutting down.");;
-                }
-
-
-                pWalletDbEncryption->Close();
-
-                /* Reset the encryption database pointer (CWalletDB it pointed to before will be destroyed) */
-                pWalletDbEncryption = nullptr;
+                /* Keys encrypted in memory, but not on disk...die to let the user reload their unencrypted wallet. */
+                config::fShutdown = true;
+                return debug::error("Error committing encryption updates to wallet file. Shutting down.");;
             }
 
-            Lock();
-            Unlock(strWalletPassphrase);
-            keyPool.NewKeyPool();
-            Lock();
 
-            /* Need to completely rewrite the wallet file; if we don't, bdb might keep
-             * bits of the unencrypted private key in slack space in the database file.
-             */
-            CDB::DBRewrite(strWalletFile);
+            pWalletDbEncryption->Close();
+
+            {
+                /* Need lock on database access before close db */
+                LOCK(CDB::cs_db);
+                CDB::CloseDb(strWalletFile);
+            }
+
+            /* Reset the encryption database pointer (CWalletDB it pointed to before will be destroyed) */
+            pWalletDbEncryption = nullptr;
         }
+
+        /* Lock wallet, then unlock with new passphrase to update key pool */
+        Lock();
+        Unlock(strWalletPassphrase);
+
+        /* Replace key pool with encrypted keys */
+        keyPool.NewKeyPool();
+
+        /* Lock wallet before rewrite */
+        Lock();
+
+        /* Need to completely rewrite the wallet file; if we don't, bdb might keep
+         * bits of the unencrypted private key in slack space in the database file.
+         */
+        CDB::DBRewrite(strWalletFile);
 
         return true;
     }

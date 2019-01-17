@@ -327,7 +327,9 @@ namespace Legacy
         time.Start();
 
         bool fIsEncrypted = false;
-        { LOCK(wallet.cs_wallet);
+
+        { 
+            LOCK(wallet.cs_wallet);
 
             /* Reset default key into wallet to clear any current value. (done now so it stays empty if none loaded) */
             wallet.vchDefaultKey.clear();
@@ -579,7 +581,7 @@ namespace Legacy
                 }
             }
 
-            pcursor->close();
+            CloseCursor(pcursor);
 
         } /* End lock scope */
 
@@ -679,6 +681,10 @@ namespace Legacy
                 }
             }
         }
+
+        /* Should be shutdown if get here, so this thread can shutdown database environment */
+        if (config::fShutdown)
+            CDB::EnvShutdown();
     }
 
 

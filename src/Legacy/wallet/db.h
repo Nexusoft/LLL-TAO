@@ -469,6 +469,10 @@ namespace Legacy
          *  instances) or the pdb copy in active instances will become invalid and results of continued
          *  use are undefined.
          *
+         *  This method does not obtain a lock on CDB::cs_db, thus any methods calling it must first 
+         *  obtain that lock. This supports usage within methods that also require obtaining a CDB::cs_db 
+         *  lock for other purposes.
+         *
          *  @param[in] strFile Database to close
          *
          **/

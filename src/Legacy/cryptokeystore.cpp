@@ -24,23 +24,29 @@ namespace Legacy
     /* Activate encryption for the key store. */
     bool CCryptoKeyStore::SetCrypted()
     {
-        { 
-            /* First need basic keystore lock to check mapKeys. Always obtain this one first. */
-            LOCK(cs_basicKeyStore);
+
+        {
+            /* Need crypto keystore lock to check and update fUseCrypto. Need to hold it between check and update */
+            LOCK(cs_cryptoKeyStore);
+
+            if (fUseCrypto)
+                return true;
 
             {
-                /* Also need crypto keystore lock to check and update fUseCrypto */
-                LOCK(cs_cryptoKeyStore);
-
-                if (fUseCrypto)
-                    return true;
+                /* Need basic keystore lock to check mapKeys. 
+                 * This is a nested lock. 
+                 * Have to ensure any others that might nest them also get them in the same order to avoid deadlock potential.
+                 * Good part is we only actually need this when first activating encryption. After that, above returns true.
+                 */
+                LOCK(cs_basicKeyStore);
 
                 /* Cannot activate encryption if key store contains any unencrypted keys */
                 if (!mapKeys.empty())
                     return false;
-
-                fUseCrypto = true;
             }
+
+            /* Now can activate encryption */
+            fUseCrypto = true;
         }
 
         return true;
@@ -63,15 +69,27 @@ namespace Legacy
         /* Set key store as encrypted */
         fUseCrypto = true;
 
-        /* Need basic keystore lock for iterating mapKeys. Always obtain this one first. */
-        LOCK(cs_basicKeyStore);
+        /* Need basic keystore lock for iterating mapKeys, but will also need it within AddCryptedKey. 
+         * Thus, can't keep it. To ensure a good mapKeys, make a copy while have hold of lock 
+         */
+        KeyMap mapKeysToEncrypt;
+        {
+            LOCK(cs_basicKeyStore);
+
+            for(const auto mKey : mapKeys)
+            {
+                NexusAddress keyAddress = mKey.first;
+
+                mapKeysToEncrypt[keyAddress] = mKey.second;
+            }
+        } //Now can let go of basic keystore lock
 
         /* Convert unencrypted keys from mapKeys to encrypted keys in mapCryptedKeys
          * mKey will have pair for each map entry
          * mKey.first = base 58 address (map key)
          * mKey.second = std::pair<LLC::CSecret, bool> where bool indicates key compressed true/false
          */
-        for(const auto mKey : mapKeys)
+        for(const auto mKey : mapKeysToEncrypt)
         {
             LLC::ECKey key;
             LLC::CSecret vchSecret = mKey.second.first;
@@ -92,7 +110,12 @@ namespace Legacy
                 return false;
         }
 
-        mapKeys.clear();
+        {
+            /* Need to obtain lock again to clear mapKeys */
+            LOCK(cs_basicKeyStore);
+
+            mapKeys.clear();
+        }
 
         return true;
     }

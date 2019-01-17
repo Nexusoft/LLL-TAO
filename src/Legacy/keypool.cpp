@@ -40,12 +40,12 @@ namespace Legacy
 
         if (poolWallet.IsFileBacked())
         {
-            LOCK(CKeyPool::cs_keyPool);
-
             if (poolWallet.IsLocked())
                 return false;
 
             CWalletDB walletdb(poolWallet.GetWalletFile());
+
+            LOCK(CKeyPool::cs_keyPool);
 
             /* Remove all entries for old key pool from database */
             for(uint64_t nPoolIndex : setKeyPool)
