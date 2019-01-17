@@ -43,12 +43,11 @@ namespace Legacy
      **/
     class CBasicKeyStore : public CKeyStore
     {
-    private:
-        /** Mutex for thread concurrency. **/
-        mutable std::mutex cs_BasicKeyStore;
-
-
     protected:
+        /** Mutex for thread concurrency. **/
+        mutable std::mutex cs_basicKeyStore;
+
+
         /** Map containing KeyMap of Nexus address/unencrypted private key **/
         KeyMap mapKeys;
 

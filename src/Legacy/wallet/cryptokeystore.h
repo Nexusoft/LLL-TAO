@@ -51,10 +51,6 @@ namespace Legacy
     class CCryptoKeyStore : public CBasicKeyStore
     {
     private:
-        /** Mutex for thread concurrency. **/
-        mutable std::mutex cs_CryptoKeyStore;
-
-
         /** Map containing public key/encrypted private key pairs, keyed by Nexus address **/
         CryptedKeyMap mapCryptedKeys;
 
@@ -75,6 +71,10 @@ namespace Legacy
 
 
     protected:
+        /** Mutex for thread concurrency. **/
+        mutable std::mutex cs_cryptoKeyStore;
+
+
         /** SetCrypted
          *
          * Activate encryption for an empty key store.

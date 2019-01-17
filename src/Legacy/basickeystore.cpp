@@ -24,7 +24,7 @@ namespace Legacy
         bool fCompressed = false;
         LLC::CSecret secret = key.GetSecret(fCompressed);
         {
-            LOCK(cs_BasicKeyStore);
+            LOCK(cs_basicKeyStore);
             mapKeys[NexusAddress(key.GetPubKey())] = make_pair(secret, fCompressed);
         }
         return true;
@@ -35,7 +35,7 @@ namespace Legacy
     bool CBasicKeyStore::GetKey(const NexusAddress& address, LLC::ECKey &keyOut) const
     {
         {
-            LOCK(cs_BasicKeyStore);
+            LOCK(cs_basicKeyStore);
             auto mi = mapKeys.find(address);
             if (mi != mapKeys.end())
             {
@@ -53,7 +53,7 @@ namespace Legacy
     {
         setAddress.clear();
         {
-            LOCK(cs_BasicKeyStore);
+            LOCK(cs_basicKeyStore);
 
             setAddress.clear();
 
@@ -69,7 +69,7 @@ namespace Legacy
     {
         bool result;
         {
-            LOCK(cs_BasicKeyStore);
+            LOCK(cs_basicKeyStore);
             result = (mapKeys.count(address) > 0);
         }
         return result;
@@ -80,7 +80,7 @@ namespace Legacy
     bool CBasicKeyStore::AddCScript(const CScript& redeemScript)
     {
         {
-            LOCK(cs_BasicKeyStore);
+            LOCK(cs_basicKeyStore);
             mapScripts[LLC::SK256(redeemScript)] = redeemScript;
         }
         return true;
@@ -91,7 +91,7 @@ namespace Legacy
     bool CBasicKeyStore::GetCScript(const uint256_t& hash, CScript& redeemScriptOut) const
     {
         {
-            LOCK(cs_BasicKeyStore);
+            LOCK(cs_basicKeyStore);
             ScriptMap::const_iterator mi = mapScripts.find(hash);
             if (mi != mapScripts.end())
             {
@@ -108,7 +108,7 @@ namespace Legacy
     {
         bool result;
         {
-            LOCK(cs_BasicKeyStore);
+            LOCK(cs_basicKeyStore);
             result = (mapScripts.count(hash) > 0);
         }
         return result;
