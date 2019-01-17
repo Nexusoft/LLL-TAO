@@ -20,8 +20,6 @@ ________________________________________________________________________________
 #include <LLC/include/key.h>
 #include <LLC/types/uint1024.h>
 
-#include <Util/include/mutex.h>
-
 namespace Legacy
 {
 

@@ -25,11 +25,15 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+    /* Initialize static variables */
+    std::mutex CAddressBook::cs_addressBook;
+
+
     /* Adds an address book entry for a given Nexus address and address label. */
     bool CAddressBook::SetAddressBookName(const NexusAddress& address, const std::string& strName)
     {
         {
-            LOCK(addressBookWallet.cs_wallet);
+            LOCK(CAddressBook::cs_addressBook);
 
             mapAddressBook[address] = strName;
 
@@ -52,7 +56,7 @@ namespace Legacy
     bool CAddressBook::DelAddressBookName(const NexusAddress& address)
     {
         {
-            LOCK(addressBookWallet.cs_wallet);
+            LOCK(CAddressBook::cs_addressBook);
 
             mapAddressBook.erase(address);
 
@@ -76,7 +80,7 @@ namespace Legacy
                                           const bool fOnlyConfirmed, const uint32_t nMinDepth) const
     {
         { //Begin lock scope
-            LOCK(addressBookWallet.cs_wallet);
+            LOCK(CAddressBook::cs_addressBook);
 
             for (auto& item : addressBookWallet.mapWallet)
             {
@@ -131,7 +135,7 @@ namespace Legacy
     bool CAddressBook::BalanceByAccount(const std::string strAccount, int64_t& nBalance, const uint32_t nMinDepth) const
     {
         { //Begin lock scope
-            LOCK(addressBookWallet.cs_wallet);
+            LOCK(CAddressBook::CAddressBook::cs_addressBook);
 
             nBalance = 0;
 

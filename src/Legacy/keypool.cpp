@@ -28,6 +28,10 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+    /* Initialize static variables */
+    std::mutex CKeyPool::cs_keyPool;
+
+
     /*  Clears any existing keys in the pool and the wallet database
      *  and generates a completely new key set.
      */
@@ -36,7 +40,7 @@ namespace Legacy
 
         if (poolWallet.IsFileBacked())
         {
-            LOCK(poolWallet.cs_wallet);
+            LOCK(CKeyPool::cs_keyPool);
 
             if (poolWallet.IsLocked())
                 return false;
@@ -81,7 +85,7 @@ namespace Legacy
 
         if (poolWallet.IsFileBacked())
         {
-            LOCK(poolWallet.cs_wallet);
+            LOCK(CKeyPool::cs_keyPool);
 
             /* Current key pool size */
             uint64_t nStartingSize = setKeyPool.size();
@@ -139,7 +143,7 @@ namespace Legacy
     {
         if (poolWallet.IsFileBacked())
         {
-            LOCK(poolWallet.cs_wallet);
+            LOCK(CKeyPool::cs_keyPool);
 
             CWalletDB walletdb(poolWallet.GetWalletFile());
 
@@ -170,7 +174,7 @@ namespace Legacy
         CKeyPoolEntry keypoolEntry;
 
         {
-            LOCK(poolWallet.cs_wallet);
+            LOCK(CKeyPool::cs_keyPool);
 
             /* Attempt to reserve a key from the key pool */
             ReserveKeyFromPool(nPoolIndex, keypoolEntry);
@@ -213,7 +217,7 @@ namespace Legacy
 
         if (poolWallet.IsFileBacked())
         {
-            LOCK(poolWallet.cs_wallet);
+            LOCK(CKeyPool::cs_keyPool);
 
             if (!poolWallet.IsLocked())
                 TopUpKeyPool();
@@ -255,7 +259,7 @@ namespace Legacy
     {
         if (poolWallet.IsFileBacked())
         {
-            LOCK(poolWallet.cs_wallet);
+            LOCK(CKeyPool::cs_keyPool);
 
             /* Remove from key pool */
             CWalletDB walletdb(poolWallet.GetWalletFile());
@@ -275,7 +279,7 @@ namespace Legacy
     {
         if (poolWallet.IsFileBacked())
         {
-            LOCK(poolWallet.cs_wallet);
+            LOCK(CKeyPool::cs_keyPool);
 
             setKeyPool.insert(nPoolIndex);
         }

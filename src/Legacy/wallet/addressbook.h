@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <map>
 #include <string>
 
+#include <Util/include/mutex.h>
+
 namespace Legacy
 {
     
@@ -41,8 +43,18 @@ namespace Legacy
     class CAddressBook
     {
         friend class CWalletDB;
-        
+
+
     private:
+        /** Mutex for thread concurrency. 
+         *
+         *  Static because having instance-specific mutex causes move constructor (used in CWallet initialization) to be deleted.
+         *  We really only use one CAddressBook so no problem simply sharing one mutex within the class.
+         *  
+         **/
+        static std::mutex cs_addressBook;
+
+
         /** Map of address book labels for this address book **/
         AddressBookMap mapAddressBook;
 

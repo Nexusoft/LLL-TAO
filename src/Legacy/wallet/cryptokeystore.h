@@ -22,6 +22,8 @@ ________________________________________________________________________________
 #include <Legacy/wallet/basickeystore.h>
 #include <Legacy/wallet/crypter.h>
 
+#include <Util/include/mutex.h>
+
 /* forward declaration */    
 namespace LLC 
 {
@@ -48,13 +50,14 @@ namespace Legacy
      **/
     class CCryptoKeyStore : public CBasicKeyStore
     {
-    protected:
-        /* Mutex for thread concurrency. */
+    private:
+        /** Mutex for thread concurrency. **/
         mutable std::mutex cs_CryptoKeyStore;
 
-    private:
-        /** Map containing public key/encrypted private key pairs **/
+
+        /** Map containing public key/encrypted private key pairs, keyed by Nexus address **/
         CryptedKeyMap mapCryptedKeys;
+
 
         /** Key used for mapCryptedKeys encryption and decryption. 
          *  When present, key store is unlocked and keys can be decrypted and retrieved 
@@ -62,12 +65,14 @@ namespace Legacy
          **/
         CKeyingMaterial vMasterKey;
 
+
         /** Indicates whether key store is storing private keys in encrypted or unencrypted format.
          *
          * If fUseCrypto is true, mapCryptedKeys is used and mapKeys must be empty
          * if fUseCrypto is false, mapKeys (from CBasicKeyStore) is used and vMasterKey/mapCryptedKeys must be empty 
          */
         bool fUseCrypto;
+
 
     protected:
         /** SetCrypted
