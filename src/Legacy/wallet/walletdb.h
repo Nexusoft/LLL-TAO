@@ -568,6 +568,10 @@ namespace Legacy
          *
          **/
         static bool BackupWallet(const CWallet& wallet, const std::string& strDest);
+
+    private:
+        /** mutex to provide synchronized access on mutable methods **/
+        static std::mutex cs_walletdb;
     };
 
 }
