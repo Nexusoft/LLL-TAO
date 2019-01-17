@@ -241,6 +241,37 @@ namespace LLC
          **/
         bool Sign(uint1024_t hash, std::vector<uint8_t>& vchSig, int nBits);
 
+        /** SignCompact
+        *
+        *  Legacy Signing Function
+        *  create a compact signature (65 bytes), which allows reconstructing the used public key
+        * The format is one header byte, followed by two times 32 bytes for the serialized r and s values.
+        * The header byte: 0x1B = first key with even y, 0x1C = first key with odd y,
+        *                  0x1D = second key with even y, 0x1E = second key with odd 
+        *
+        *  @param[in] hash The input hash to be signed.
+        *  @param[out] vchSig The output signature data
+        *
+        *  @return True if the Signature was created successfully.
+        *
+        **/
+        bool SignCompact(uint256_t hash, std::vector<unsigned char>& vchSig);
+
+        /** SetCompactSignature
+        *
+        *  reconstruct public key from a compact signature
+        *  This is only slightly more CPU intensive than just verifying it.
+        *  If this function succeeds, the recovered public key is guaranteed to be valid
+        *  (the signature is a valid signature of the given data for that key).
+        *
+        *  @param[in] hash The input compact signature hash
+        *  @param[out] vchSig The output public key data
+        *
+        *  @return True if the Signature was set.
+        *
+        **/
+        bool SetCompactSignature(uint256_t hash, const std::vector<unsigned char>& vchSig);
+
 
         /** Legacy Verifying Function.
          *
