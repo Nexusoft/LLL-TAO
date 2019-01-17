@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <map>
 #include <string>
 
+#include <Util/include/mutex.h>
+
 namespace Legacy
 {
     
@@ -41,8 +43,18 @@ namespace Legacy
     class CAddressBook
     {
         friend class CWalletDB;
-        
+
+
     private:
+        /** Mutex for thread concurrency. 
+         *
+         *  Static because having instance-specific mutex causes move constructor (used in CWallet initialization) to be deleted.
+         *  We really only use one CAddressBook so no problem simply sharing one mutex within the class.
+         *  
+         **/
+        static std::mutex cs_addressBook;
+
+
         /** Map of address book labels for this address book **/
         AddressBookMap mapAddressBook;
 
@@ -159,7 +171,7 @@ namespace Legacy
          *  @return true if balance retrieved successfully
          *
          **/
-        bool BalanceByAccount(const std::string strAccount, int64_t& nBalance, const uint32_t nMinDepth = 3) const;
+        bool BalanceByAccount(const std::string& strAccount, int64_t& nBalance, const uint32_t nMinDepth = 3) const;
 
         
         /** GetAccountAddress
@@ -172,7 +184,7 @@ namespace Legacy
         *  @return The nexus address assigned to the requested account name
         *
         **/
-        Legacy::NexusAddress GetAccountAddress(std::string strAccount, bool fForceNew = false );
+        Legacy::NexusAddress GetAccountAddress(const std::string& strAccount, bool fForceNew = false );
 
         /** GetAddressBookMap
         *

@@ -32,7 +32,7 @@ namespace Legacy
 {
 
     /* Assigns the wallet for this wallet transaction. */
-    void CWalletTx::BindWallet(CWallet *pwalletIn)
+    void CWalletTx::BindWallet(CWallet* pwalletIn)
     {
         ptransactionWallet = pwalletIn;
         fHaveWallet = true;

@@ -77,7 +77,7 @@ namespace Legacy
          *  Performs work of initialization for constructors.
          *
          **/
-        void Init(const std::string strFileIn, const char* pszMode);
+        void Init(const std::string& strFileIn, const char* pszMode);
 
 
     protected:
@@ -133,7 +133,7 @@ namespace Legacy
          *  @param[in] pszMode A string containing one or more access mode characters
          *
          **/
-        explicit CDB(const std::string strFileIn, const char* pszMode="r+");
+        explicit CDB(const std::string& strFileIn, const char* pszMode="r+");
 
 
         /** Destructor
@@ -345,7 +345,7 @@ namespace Legacy
          *     DB_CURRENT - Read the current entry in the database. Allows same entry to be read multiple times without moving cursor.
          *     DB_LAST    - Move to and read the last entry in the database.
          *
-         *  @param[in] pcursor The cursor used to read from the database
+         *  @param[in,out] pcursor The cursor used to read from the database
          *
          *  @param[in,out] ssKey A stream containing the serialized key read. May also contain input to cursor
          *                       operation for certain flag settings
@@ -365,7 +365,7 @@ namespace Legacy
          *
          *  Closes and discards a cursor. After calling this method, the cursor is no longer valid for use.
          *
-         *  @param[in] pcursor The cursor to close
+         *  @param[in,out] pcursor The cursor to close
          *
          **/
         void CloseCursor(Dbc* pcursor);
@@ -443,7 +443,7 @@ namespace Legacy
          *  @return true if the value was successfully written
          *
          **/
-        bool WriteVersion(uint32_t nVersion);
+        bool WriteVersion(const uint32_t nVersion);
 
 
         /** Close

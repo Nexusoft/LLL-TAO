@@ -22,6 +22,8 @@ ________________________________________________________________________________
 #include <Legacy/wallet/basickeystore.h>
 #include <Legacy/wallet/crypter.h>
 
+#include <Util/include/mutex.h>
+
 /* forward declaration */    
 namespace LLC 
 {
@@ -49,14 +51,16 @@ namespace Legacy
     class CCryptoKeyStore : public CBasicKeyStore
     {
     private:
-        /** Map containing public key/encrypted private key pairs **/
+        /** Map containing public key/encrypted private key pairs, keyed by Nexus address **/
         CryptedKeyMap mapCryptedKeys;
+
 
         /** Key used for mapCryptedKeys encryption and decryption. 
          *  When present, key store is unlocked and keys can be decrypted and retrieved 
          *  All keys in a single encrypted key store must be encrypted using the same master key.
          **/
         CKeyingMaterial vMasterKey;
+
 
         /** Indicates whether key store is storing private keys in encrypted or unencrypted format.
          *
@@ -65,7 +69,12 @@ namespace Legacy
          */
         bool fUseCrypto;
 
+
     protected:
+        /** Mutex for thread concurrency. **/
+        mutable std::mutex cs_cryptoKeyStore;
+
+
         /** SetCrypted
          *
          * Activate encryption for an empty key store.
@@ -158,7 +167,7 @@ namespace Legacy
          *  @return true if key successfully added
          *
          **/
-        virtual bool AddCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret);
+        virtual bool AddCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret);
 
 
         /** AddKey
@@ -188,7 +197,7 @@ namespace Legacy
          *  @return true if key successfully retrieved
          *
          **/
-        virtual bool GetKey(const NexusAddress &address, LLC::ECKey& keyOut) const override;
+        virtual bool GetKey(const NexusAddress& address, LLC::ECKey& keyOut) const override;
 
 
         /** GetKeys
@@ -199,7 +208,7 @@ namespace Legacy
          *  @param[out] setAddress A Set containing the Base 58-encoded addresses of the all keys currently in the key store
          *
          **/
-        virtual void GetKeys(std::set<NexusAddress> &setAddress) const override;
+        virtual void GetKeys(std::set<NexusAddress>& setAddress) const override;
 
 
         /** HaveKey
@@ -211,7 +220,7 @@ namespace Legacy
          *  @return true if key is present in the key store
          *
          **/
-        virtual bool HaveKey(const NexusAddress &address) const override;
+        virtual bool HaveKey(const NexusAddress& address) const override;
 
 
         /** GetPubKey
@@ -225,7 +234,7 @@ namespace Legacy
          *  @return true if public key was successfully retrieved
          *
          **/
-        virtual bool GetPubKey(const NexusAddress &address, std::vector<uint8_t>& vchPubKeyOut) const override;
+        virtual bool GetPubKey(const NexusAddress& address, std::vector<uint8_t>& vchPubKeyOut) const override;
     };
 
 }

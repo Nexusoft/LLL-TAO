@@ -142,7 +142,7 @@ namespace Legacy
          *  @see CDB for modes
          *
          **/
-        CWalletDB(std::string strFileName, const char* pszMode="r+")
+        CWalletDB(const std::string& strFileName, const char* pszMode="r+")
         : CDB(strFileName, pszMode)
         { }
 
@@ -356,7 +356,7 @@ namespace Legacy
          *  @return true if the transaction is present in the database and read successfully
          *
          **/
-        bool ReadTx(const uint512_t hash, CWalletTx& wtx);
+        bool ReadTx(const uint512_t& hash, CWalletTx& wtx);
 
 
         /** WriteTx
@@ -370,7 +370,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteTx(const uint512_t hash, const CWalletTx& wtx);
+        bool WriteTx(const uint512_t& hash, const CWalletTx& wtx);
 
 
         /** EraseTx
@@ -382,7 +382,7 @@ namespace Legacy
          *  @return true if database entry successfully removed
          *
          **/
-        bool EraseTx(const uint512_t hash);
+        bool EraseTx(const uint512_t& hash);
 
 
         /** ReadCScript
@@ -396,7 +396,7 @@ namespace Legacy
          *  @return true if the script is present in the database and read successfully
          *
          **/
-        bool ReadCScript(const uint256_t &hash, CScript& redeemScript);
+        bool ReadCScript(const uint256_t& hash, CScript& redeemScript);
 
 
         /** WriteCScript
@@ -530,7 +530,7 @@ namespace Legacy
          *
          *  Initializes a wallet instance from the data in this wallet database.
          *
-         *  @param[in] pwallet The wallet instance to initialize
+         *  @param[in,out] pwallet The wallet instance to initialize
          *
          *  @return Value from Legacy::DBErrors, DB_LOAD_OK on success
          *
@@ -552,7 +552,7 @@ namespace Legacy
          *  @param[in] strWalletFile The wallet database file to flush
          *
          **/
-        static void ThreadFlushWalletDB(const std::string strWalletFile);
+        static void ThreadFlushWalletDB(const std::string& strWalletFile);
 
 
        /** @fn BackupWallet
@@ -568,6 +568,10 @@ namespace Legacy
          *
          **/
         static bool BackupWallet(const CWallet& wallet, const std::string& strDest);
+
+    private:
+        /** mutex to provide synchronized access on mutable methods **/
+        static std::mutex cs_walletdb;
     };
 
 }

@@ -25,11 +25,15 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+    /* Initialize static variables */
+    std::mutex CAddressBook::cs_addressBook;
+
+
     /* Adds an address book entry for a given Nexus address and address label. */
     bool CAddressBook::SetAddressBookName(const NexusAddress& address, const std::string& strName)
     {
         {
-            LOCK(addressBookWallet.cs_wallet);
+            LOCK(CAddressBook::cs_addressBook);
 
             mapAddressBook[address] = strName;
 
@@ -52,7 +56,7 @@ namespace Legacy
     bool CAddressBook::DelAddressBookName(const NexusAddress& address)
     {
         {
-            LOCK(addressBookWallet.cs_wallet);
+            LOCK(CAddressBook::cs_addressBook);
 
             mapAddressBook.erase(address);
 
@@ -76,9 +80,9 @@ namespace Legacy
                                           const bool fOnlyConfirmed, const uint32_t nMinDepth) const
     {
         { //Begin lock scope
-            LOCK(addressBookWallet.cs_wallet);
+            LOCK(CAddressBook::cs_addressBook);
 
-            for (auto& item : addressBookWallet.mapWallet)
+            for (const auto& item : addressBookWallet.mapWallet)
             {
                 const CWalletTx& walletTx = item.second;
 
@@ -128,14 +132,14 @@ namespace Legacy
 
 
     /*  Get the current balance for a given account */
-    bool CAddressBook::BalanceByAccount(const std::string strAccount, int64_t& nBalance, const uint32_t nMinDepth) const
+    bool CAddressBook::BalanceByAccount(const std::string& strAccount, int64_t& nBalance, const uint32_t nMinDepth) const
     {
         { //Begin lock scope
-            LOCK(addressBookWallet.cs_wallet);
+            LOCK(CAddressBook::CAddressBook::cs_addressBook);
 
             nBalance = 0;
 
-            for (auto& item : addressBookWallet.mapWallet)
+            for (const auto& item : addressBookWallet.mapWallet)
             {
                 const CWalletTx& walletTx = item.second;
 
@@ -186,7 +190,7 @@ namespace Legacy
     }
 
     /* returns the address for the given account, adding a new address if one has not already been assigned*/
-    Legacy::NexusAddress CAddressBook::GetAccountAddress(std::string strAccount, bool fForceNew )
+    Legacy::NexusAddress CAddressBook::GetAccountAddress(const std::string& strAccount, bool fForceNew )
     {
         Legacy::NexusAddress address;
         bool fKeyUsed = false;

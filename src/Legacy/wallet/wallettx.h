@@ -307,7 +307,7 @@ namespace Legacy
          *  @see CWallet::AddToWallet()
          *
          **/
-        void BindWallet(CWallet *pwalletIn);
+        void BindWallet(CWallet* pwalletIn);
 
 
         /** GetDebit

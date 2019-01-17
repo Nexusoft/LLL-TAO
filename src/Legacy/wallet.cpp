@@ -62,7 +62,7 @@ namespace Legacy
     /* Implement static methods */
 
     /* Initializes the wallet instance. */
-    bool CWallet::InitializeWallet(std::string strWalletFileIn)
+    bool CWallet::InitializeWallet(const std::string& strWalletFileIn)
     {
         if (CWallet::fWalletInitialized)
             return false;
@@ -180,7 +180,7 @@ namespace Legacy
 
 
     /*  Tracks requests for transactions contained in this wallet, or the blocks that contain them. */
-    void CWallet::Inventory(const uint1024_t &hash)
+    void CWallet::Inventory(const uint1024_t& hash)
     {
         {
             LOCK(cs_wallet);
@@ -197,7 +197,7 @@ namespace Legacy
 
 
     /* Add a public/encrypted private key pair to the key store. */
-    bool CWallet::AddCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret)
+    bool CWallet::AddCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret)
     {
         /* Call overridden inherited method to add key to key store */
         if (!CCryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret))
@@ -317,7 +317,7 @@ namespace Legacy
 
 
     /* Assigns a new default key to this wallet. */
-    bool CWallet::SetDefaultKey(const std::vector<uint8_t> &vchPubKey)
+    bool CWallet::SetDefaultKey(const std::vector<uint8_t>& vchPubKey)
     {
         {
             LOCK(cs_wallet);
@@ -735,7 +735,7 @@ namespace Legacy
 
 
     /*  Retrieves the transaction for a given transaction hash. */
-    bool CWallet::GetTransaction(const uint512_t &hashTx, CWalletTx& wtx)
+    bool CWallet::GetTransaction(const uint512_t& hashTx, CWalletTx& wtx)
     {
         {
             LOCK(cs_wallet);
@@ -885,7 +885,7 @@ namespace Legacy
 
 
     /* Removes a wallet transaction from the wallet, if present. */
-    bool CWallet::EraseFromWallet(const uint512_t hash)
+    bool CWallet::EraseFromWallet(const uint512_t& hash)
     {
         if (!fFileBacked)
             return false;
@@ -907,7 +907,7 @@ namespace Legacy
     /* When disconnecting a coinstake transaction, this method to marks
      *  any previous outputs from this wallet as unspent.
      */
-    void CWallet::DisableTransaction(const Transaction &tx)
+    void CWallet::DisableTransaction(const Transaction& tx)
     {
         /* If transaction is not coinstake or not from this wallet, nothing to process */
         if (!tx.IsCoinStake() || !IsFromMe(tx))
@@ -940,7 +940,7 @@ namespace Legacy
     /* Scan the block chain for transactions from or to keys in this wallet.
      * Add/update the current wallet transactions for any found.
      */
-    uint32_t CWallet::ScanForWalletTransactions(TAO::Ledger::BlockState* pstartBlock, const bool fUpdate)
+    uint32_t CWallet::ScanForWalletTransactions(const TAO::Ledger::BlockState* pstartBlock, const bool fUpdate)
     {
         /* Count the number of transactions process for this wallet to use as return value */
         uint32_t nTransactionCount = 0;
@@ -1347,7 +1347,7 @@ namespace Legacy
 
 
     /* Generate a transaction to send balance to a given Nexus address. */
-    std::string CWallet::SendToNexusAddress(const NexusAddress& address, int64_t nValue, CWalletTx& wtxNew,
+    std::string CWallet::SendToNexusAddress(const NexusAddress& address, const int64_t nValue, CWalletTx& wtxNew,
                                             const bool fAskFee, const uint32_t nMinDepth)
     {
         /* Validate amount */
@@ -1460,7 +1460,7 @@ namespace Legacy
                 int64_t nTotalValue = nValue + nFeeRet;
 
                 /* Add transactions outputs to vout */
-                for (auto& s : vecSend)
+                for (const auto& s : vecSend)
                     wtxNew.vout.push_back(CTxOut(s.second, s.first));
 
                 /* This set will hold txouts (UTXOs) to use as input for this transaction as transaction/vout index pairs */
@@ -1735,7 +1735,7 @@ namespace Legacy
 
 
     /* Load a public/encrypted private key pair to the key store without updating the database. */
-    bool CWallet::LoadCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret)
+    bool CWallet::LoadCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret)
     {
         return CCryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret);
     }
@@ -1757,7 +1757,7 @@ namespace Legacy
 
     /* Selects the unspent transaction outputs to use as inputs when creating a transaction that sends balance from this wallet. */
     bool CWallet::SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::set<std::pair<const CWalletTx*, uint32_t> >& setCoinsRet,
-                              int64_t& nValueRet, std::string strAccount, uint32_t nMinDepth)
+                              int64_t& nValueRet, const std::string& strAccount, uint32_t nMinDepth)
     {
         /* Call detailed select up to 3 times if it fails, using the returns from the first successful call.
          * This allows it to attempt multiple input sets if it doesn't find a workable one on the first try.
@@ -1773,7 +1773,7 @@ namespace Legacy
      * balance from this wallet while requiring a minimum confirmation depth to be included in result.
      */
     bool CWallet::SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const uint32_t nConfMine, const uint32_t nConfTheirs,
-                                std::set<std::pair<const CWalletTx*, uint32_t> >& setCoinsRet, int64_t& nValueRet, std::string strAccount)
+                                std::set<std::pair<const CWalletTx*, uint32_t> >& setCoinsRet, int64_t& nValueRet, const std::string& strAccount)
     {
         /* Add Each Input to Transaction. */
         setCoinsRet.clear();

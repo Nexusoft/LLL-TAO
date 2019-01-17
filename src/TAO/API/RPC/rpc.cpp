@@ -39,12 +39,13 @@ namespace TAO
             mapFunctions["setaccount"] = Function(std::bind(&RPC::SetAccount, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getaccount"] = Function(std::bind(&RPC::GetAccount, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getaddressesbyaccount"] = Function(std::bind(&RPC::GetAddressesByAccount, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["sendtoaddress"] = Function(std::bind(&RPC::SendToAddress, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["signmessage"] = Function(std::bind(&RPC::SignMessage, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["verifymessage"] = Function(std::bind(&RPC::VerifyMessage, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getreceivedbyaddress"] = Function(std::bind(&RPC::GetReceivedByAddress, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getreceivedbyaccount"] = Function(std::bind(&RPC::GetReceivedByAccount, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getbalance"] = Function(std::bind(&RPC::GetBalance, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["movecmd"] = Function(std::bind(&RPC::MoveCmd, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["move"] = Function(std::bind(&RPC::MoveCmd, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["addmultisigaddress"] = Function(std::bind(&RPC::AddMultisigAddress, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["listreceivedbyaddress"] = Function(std::bind(&RPC::ListReceivedByAddress, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["listreceivedbyaccount"] = Function(std::bind(&RPC::ListReceivedByAccount, this, std::placeholders::_1, std::placeholders::_2));
