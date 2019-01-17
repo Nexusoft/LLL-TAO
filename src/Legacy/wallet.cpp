@@ -251,24 +251,23 @@ namespace Legacy
          * Would be better to have a more intuitive way for code to handle encrypted key, but this way does work.
          * It violates encapsulation, though, because we should not have to rely on how CCryptoKeyStore implements AddKey
          */
+        
+
+        /* Call overridden method to add key to key store */
+        /* For encrypted wallet, this adds to both key store and wallet database (as described above) */
+        if (!CCryptoKeyStore::AddKey(key))
+            return false;
+
+        if (fFileBacked && !IsCrypted())
         {
-            LOCK(cs_wallet);
+            /* Only if wallet is not encrypted */
+            CWalletDB walletdb(strWalletFile);
+            bool result = walletdb.WriteKey(key.GetPubKey(), key.GetPrivKey());
+            walletdb.Close();
 
-            /* Call overridden method to add key to key store */
-            /* For encrypted wallet, this adds to both key store and wallet database (as described above) */
-            if (!CCryptoKeyStore::AddKey(key))
-                return false;
-
-            if (fFileBacked && !IsCrypted())
-            {
-                /* Only if wallet is not encrypted */
-                CWalletDB walletdb(strWalletFile);
-                bool result = walletdb.WriteKey(key.GetPubKey(), key.GetPrivKey());
-                walletdb.Close();
-
-                return result;
-            }
+            return result;
         }
+        
 
         return true;
     }
