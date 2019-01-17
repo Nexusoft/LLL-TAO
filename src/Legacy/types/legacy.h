@@ -76,12 +76,28 @@ namespace Legacy
         }
 
 
-        /** Check a legacy block for consistency. **/
+        /** Check
+         *
+         *  Check a legacy block for consistency.
+         *
+         **/
         bool Check() const;
 
 
-        /** Check a legacy block for consistency. **/
+        /** Accept
+         *
+         *  Accept a legacy block with chain state parameters.
+         *
+         **/
         bool Accept();
+
+
+        /** Check Stake
+         *
+         *  Check the proof of stake calculations.
+         *
+         **/
+        bool CheckStake() const;
 
 
         /** ToString

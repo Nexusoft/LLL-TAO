@@ -324,10 +324,6 @@ namespace TAO
                 TAO::Ledger::BlockState state = TAO::Ledger::BlockState(block);
                 if(!state.Accept())
                     continue;
-
-                /* Write transaction to local database. */
-                if(!LLD::locDB->WriteLast(user->Genesis(), state.producer.GetHash()))
-                    continue;
             }
         }
     }

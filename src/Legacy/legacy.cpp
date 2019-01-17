@@ -392,9 +392,27 @@ namespace Legacy
         }
         else if (IsProofOfStake())
         {
+            /* Check that the Coinbase / CoinstakeTimstamp is after Previous Block. */
+            if (vtx[0].nTime < statePrev.GetBlockTime())
+                return debug::error(FUNCTION, "coinstake transaction too early");
 
+            /* Check the claimed stake limits are met. */
+            if(nVersion >= 5 && !CheckStake())
+                return debug::error(FUNCTION, "invalid proof of stake");
         }
 
+        /* Check that Transactions are Finalized. */
+        for(const auto & tx : vtx)
+            if (!tx.IsFinal(nHeight, GetBlockTime()))
+                return debug::error(FUNCTION, "contains a non-final transaction");
+
+        return true;
+    }
+
+
+    /* Check the proof of stake calculations. */
+    bool LegacyBlock::CheckStake() const
+    {
         return true;
     }
 }

@@ -13,10 +13,18 @@ ________________________________________________________________________________
 
 #include <LLC/include/key.h>
 
+#include <LLD/include/global.h>
+
 #include <TAO/Ledger/types/tritium.h>
+#include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/checkpoints.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
@@ -223,6 +231,104 @@ namespace TAO
                 /* Check the Block Signature. */
                 if (!VerifySignature(key))
                     return debug::error(FUNCTION, "bad block signature");
+            }
+
+            return true;
+        }
+
+
+        /** Accept a tritium block. **/
+        bool TritiumBlock::Accept()
+        {
+            /* Read leger DB for duplicate block. */
+            BlockState state;
+            if(LLD::legDB->ReadBlock(GetHash(), state))
+                return debug::error(FUNCTION, "block state already exists");
+
+
+            /* Read leger DB for previous block. */
+            TAO::Ledger::BlockState statePrev;
+            if(!LLD::legDB->ReadBlock(hashPrevBlock, statePrev))
+                return debug::error(FUNCTION, "previous block state not found");
+
+
+            /* Check the Height of Block to Previous Block. */
+            if(statePrev.nHeight + 1 != nHeight)
+                return debug::error(FUNCTION, "incorrect block height.");
+
+
+            /* Get the proof hash for this block. */
+            uint1024_t hash = (nVersion < 5 ? GetHash() : GetChannel() == 0 ? StakeHash() : ProofHash());
+
+
+            /* Get the target hash for this block. */
+            uint1024_t hashTarget = LLC::CBigNum().SetCompact(nBits).getuint1024();
+
+
+            /* Verbose logging of proof and target. */
+            debug::log(2, "  proof:  ", hash.ToString().substr(0, 30));
+
+
+            /* Channel switched output. */
+            if(GetChannel() == 1)
+                debug::log(2, "  prime cluster verified of size ", GetDifficulty(nBits, 1));
+            else
+                debug::log(2, "  target: ", hashTarget.ToString().substr(0, 30));
+
+
+            /* Check that the nBits match the current Difficulty. **/
+            if (nBits != GetNextTargetRequired(statePrev, GetChannel()))
+                return debug::error(FUNCTION, "incorrect proof-of-work/proof-of-stake");
+
+
+            /* Check That Block timestamp is not before previous block. */
+            //if (GetBlockTime() <= statePrev.GetBlockTime())
+            //    return debug::error(FUNCTION, "block's timestamp too early Block: ", GetBlockTime(), " Prev: ",
+            //     statePrev.GetBlockTime());
+
+
+            /* Check that Block is Descendant of Hardened Checkpoints. */
+            if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
+                return debug::error(FUNCTION, "not descendant of last checkpoint");
+
+
+            /* Check the block proof of work rewards. */
+            if(IsProofOfWork() && nVersion >= 3)
+            {
+                /* Get the stream from coinbase. */
+                producer.ssOperation.seek(1, STREAM::BEGIN); //set the read position to where reward will be.
+
+                /* Read the mining reward. */
+                uint64_t nMiningReward;
+                producer.ssOperation >> nMiningReward;
+
+                /* Check that the Mining Reward Matches the Coinbase Calculations. */
+                if (nMiningReward != GetCoinbaseReward(statePrev, GetChannel(), 0))
+                    return debug::error(FUNCTION, "miner reward mismatch ", nMiningReward, " : ",
+                         GetCoinbaseReward(statePrev, GetChannel(), 0));
+            }
+            else if (IsProofOfStake())
+            {
+                /* Check that the Coinbase / CoinstakeTimstamp is after Previous Block. */
+                if (producer.nTimestamp < statePrev.GetBlockTime())
+                    return debug::error(FUNCTION, "coinstake transaction too early");
+            }
+
+
+            /* Check legacy transactions for finality. */
+            for(const auto & tx : vtx)
+            {
+                /* Only work on tritium transactions for now. */
+                if(tx.first == TYPE::LEGACY_TX)
+                {
+                    /* Check if in memory pool. */
+                    Legacy::Transaction txCheck;
+                    if(!mempool.Get(tx.second, txCheck))
+                        return debug::error(FUNCTION, "transaction is not in memory pool");
+
+                    if (!txCheck.IsFinal(nHeight, GetBlockTime()))
+                        return debug::error(FUNCTION, "contains a non-final transaction");
+                }
             }
 
             return true;

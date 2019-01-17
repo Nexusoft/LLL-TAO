@@ -101,8 +101,20 @@ namespace TAO
             }
 
 
-            /** Check a tritium block for consistency. **/
+            /** Check
+             *
+             *  Check a tritium block for consistency.
+             *
+             **/
             bool Check() const;
+
+
+            /** Accept
+             *
+             *  Accept a tritium block with chain state parameters.
+             *
+             **/
+            bool Accept();
 
 
             /** ToString

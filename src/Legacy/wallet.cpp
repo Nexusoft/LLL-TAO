@@ -956,8 +956,8 @@ namespace Legacy
                             continue;
                         }
 
-                        if (AddToWalletIfInvolvingMe(tx, block, fUpdate, false, true))
-                            nTransactionCount++;
+                        //if (AddToWalletIfInvolvingMe(tx, block, fUpdate, false, true))
+                        //    nTransactionCount++;
                     }
                 }
 

@@ -91,83 +91,10 @@ namespace TAO
         /* Accept a block state into chain. */
         bool BlockState::Accept()
         {
-
-            /* Read leger DB for duplicate block. */
-            BlockState state;
-            if(LLD::legDB->ReadBlock(GetHash(), state))
-                return debug::error(FUNCTION, "block state already exists");
-
-
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();
             if(statePrev.IsNull())
                 return debug::error(FUNCTION, "previous block state not found");
-
-
-            /* Check the Height of Block to Previous Block. */
-            if(statePrev.nHeight + 1 != nHeight)
-                return debug::error(FUNCTION, "incorrect block height.");
-
-
-            /* Get the proof hash for this block. */
-            uint1024_t hash = (nVersion < 5 ? GetHash() : GetChannel() == 0 ? StakeHash() : ProofHash());
-
-
-            /* Get the target hash for this block. */
-            uint1024_t hashTarget = LLC::CBigNum().SetCompact(nBits).getuint1024();
-
-
-            /* Verbose logging of proof and target. */
-            debug::log(2, "  proof:  ", hash.ToString().substr(0, 30));
-
-
-            /* Channel switched output. */
-            if(GetChannel() == 1)
-                debug::log(2, "  prime cluster verified of size ", GetDifficulty(nBits, 1));
-            else
-                debug::log(2, "  target: ", hashTarget.ToString().substr(0, 30));
-
-
-            /* Check that the nBits match the current Difficulty. **/
-            if (nBits != GetNextTargetRequired(statePrev, GetChannel()))
-                return debug::error(FUNCTION, "incorrect proof-of-work/proof-of-stake");
-
-
-            /* Check That Block timestamp is not before previous block. */
-            //if (GetBlockTime() <= statePrev.GetBlockTime())
-            //    return debug::error(FUNCTION, "block's timestamp too early Block: ", GetBlockTime(), " Prev: ",
-            //     statePrev.GetBlockTime());
-
-
-            /* Check that Block is Descendant of Hardened Checkpoints. */
-            if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
-                return debug::error(FUNCTION, "not descendant of last checkpoint");
-
-
-            /* Check the block proof of work rewards. */
-            if(IsProofOfWork() && nVersion >= 3)
-            {
-                /* Get the stream from coinbase. */
-                producer.ssOperation.seek(1, STREAM::BEGIN); //set the read position to where reward will be.
-
-                /* Read the mining reward. */
-                uint64_t nMiningReward;
-                producer.ssOperation >> nMiningReward;
-
-                /* Check that the Mining Reward Matches the Coinbase Calculations. */
-                if (nMiningReward != GetCoinbaseReward(statePrev, GetChannel(), 0))
-                    return debug::error(FUNCTION, "miner reward mismatch ", nMiningReward, " : ",
-                         GetCoinbaseReward(statePrev, GetChannel(), 0));
-            }
-            else if (IsProofOfStake())
-            {
-                /* Check that the Coinbase / CoinstakeTimstamp is after Previous Block. */
-                if (producer.nTimestamp < statePrev.GetBlockTime())
-                    return debug::error(FUNCTION, "coinstake transaction too early");
-            }
-
-
-            //TODO: check legacy transactions for finality
 
             /* Compute the Chain Trust */
             nChainTrust = statePrev.nChainTrust + GetBlockTrust();
@@ -425,11 +352,11 @@ namespace TAO
         /** Connect a block state into chain. **/
         bool BlockState::Connect()
         {
-            if(!LLD::legDB->WriteTx(producer.GetHash(), producer))
-                return debug::error(FUNCTION, "failed to write producer");
+            //if(!LLD::legDB->WriteTx(producer.GetHash(), producer))
+            //    return debug::error(FUNCTION, "failed to write producer");
 
             /* Check through all the transactions. */
-            for(auto tx : vtx)
+            for(const auto & tx : vtx)
             {
                 /* Only work on tritium transactions for now. */
                 if(tx.first == TYPE::TRITIUM_TX)
