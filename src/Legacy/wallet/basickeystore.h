@@ -42,6 +42,9 @@ namespace Legacy
     class CBasicKeyStore : public CKeyStore
     {
     protected:
+        /* Mutex for thread concurrency. */
+        mutable std::mutex cs_BasicKeyStore;
+
         KeyMap mapKeys;
         ScriptMap mapScripts;
 

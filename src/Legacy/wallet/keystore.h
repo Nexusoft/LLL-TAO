@@ -38,10 +38,6 @@ namespace Legacy
      **/
     class CKeyStore
     {
-    protected:
-        /* Mutex for thread concurrency. */
-        mutable std::mutex cs_KeyStore;
-
     public:
         /** Virtual destructor
          *

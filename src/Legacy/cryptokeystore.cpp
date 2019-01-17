@@ -24,7 +24,7 @@ namespace Legacy
     /* Activate encryption for the key store. */
     bool CCryptoKeyStore::SetCrypted()
     {
-        LOCK(cs_KeyStore);
+        LOCK(cs_CryptoKeyStore);
         if (fUseCrypto)
             return true;
 
@@ -41,7 +41,7 @@ namespace Legacy
     /*  Convert the key store from unencrypted to encrypted. */
     bool CCryptoKeyStore::EncryptKeys(const CKeyingMaterial& vMasterKeyIn)
     {
-        LOCK(cs_KeyStore);
+        LOCK(cs_CryptoKeyStore);
 
         /* Check whether key store already encrypted */
         if (!mapCryptedKeys.empty() || IsCrypted())
@@ -84,7 +84,7 @@ namespace Legacy
     /*  Attempt to unlock an encrypted key store using the key provided. */
     bool CCryptoKeyStore::Unlock(const CKeyingMaterial& vMasterKeyIn)
     {
-        LOCK(cs_KeyStore);
+        LOCK(cs_CryptoKeyStore);
 
         /* Cannot unlock unencrypted key store (it is unlocked by default) */
         if (!SetCrypted())
@@ -133,7 +133,7 @@ namespace Legacy
 
         bool result;
 
-        LOCK(cs_KeyStore);
+        LOCK(cs_CryptoKeyStore);
 
         /* If encryption key is not stored, cannot decrypt keys and key store is locked */
         result = vMasterKey.empty();
@@ -149,7 +149,7 @@ namespace Legacy
         if (!SetCrypted())
             return false;
 
-        LOCK(cs_KeyStore);
+        LOCK(cs_CryptoKeyStore);
 
         /* Remove any stored encryption key so key store values cannot be decrypted, locking the key store */
         vMasterKey.clear();
@@ -162,7 +162,7 @@ namespace Legacy
     bool CCryptoKeyStore::AddCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret)
     {
         {
-            LOCK(cs_KeyStore);
+            LOCK(cs_CryptoKeyStore);
 
             /* Key store must be encrypted */
             if (!SetCrypted())
@@ -179,7 +179,7 @@ namespace Legacy
     bool CCryptoKeyStore::AddKey(const LLC::ECKey& key)
     {
         {
-            LOCK(cs_KeyStore);
+            LOCK(cs_CryptoKeyStore);
 
             /* Add key to basic key store if encryption not active */
             if (!IsCrypted())
@@ -209,7 +209,7 @@ namespace Legacy
     bool CCryptoKeyStore::GetKey(const NexusAddress &address, LLC::ECKey& keyOut) const
     {
         {
-            LOCK(cs_KeyStore);
+            LOCK(cs_CryptoKeyStore);
 
             /* Cannot decrypt key if key store is encrypted and locked */
             if (IsLocked())
@@ -242,7 +242,7 @@ namespace Legacy
     void CCryptoKeyStore::GetKeys(std::set<NexusAddress> &setAddress) const
     {
         {
-            LOCK(cs_KeyStore);
+            LOCK(cs_CryptoKeyStore);
 
             if (!IsCrypted())
             {
@@ -262,7 +262,7 @@ namespace Legacy
     bool CCryptoKeyStore::HaveKey(const NexusAddress &address) const
     {
         {
-            LOCK(cs_KeyStore);
+            LOCK(cs_CryptoKeyStore);
 
             if (!IsCrypted())
                 return CBasicKeyStore::HaveKey(address);
@@ -278,7 +278,7 @@ namespace Legacy
     bool CCryptoKeyStore::GetPubKey(const NexusAddress &address, std::vector<uint8_t>& vchPubKeyOut) const
     {
         {
-            LOCK(cs_KeyStore);
+            LOCK(cs_CryptoKeyStore);
 
             if (!IsCrypted())
                 return CKeyStore::GetPubKey(address, vchPubKeyOut);
