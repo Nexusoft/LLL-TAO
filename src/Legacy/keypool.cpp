@@ -174,8 +174,7 @@ namespace Legacy
         CKeyPoolEntry keypoolEntry;
 
         {
-            LOCK(CKeyPool::cs_keyPool);
-
+            
             /* Attempt to reserve a key from the key pool */
             ReserveKeyFromPool(nPoolIndex, keypoolEntry);
 
