@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/netaddr.h>
 #include <LLP/include/network.h>
-#include <LLP/include/hosts.h>  //LookupHost
+#include <LLP/include/hosts.h>  //Lookup
 #include <LLC/hash/SK.h>        //LLC::SK64
 #include <Util/include/debug.h> //debug::log
 
@@ -27,26 +27,25 @@ namespace LLP
 
     NetAddr::NetAddr()
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+    , nPort(0)
     {
     }
 
-    NetAddr::NetAddr(const NetAddr &other)
+    NetAddr::NetAddr(const NetAddr &other, uint16_t port)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-    {
-        for(uint8_t i = 0; i < 16; ++i)
-            ip[i] = other.ip[i];
-    }
-
-    NetAddr::NetAddr(NetAddr &other)
-    : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+    , nPort(port)
     {
         for(uint8_t i = 0; i < 16; ++i)
             ip[i] = other.ip[i];
+
+        if(port == 0)
+            nPort = other.nPort;
     }
 
 
-    NetAddr::NetAddr(const struct in_addr& ipv4Addr)
+    NetAddr::NetAddr(const struct in_addr& ipv4Addr, uint16_t port)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+    , nPort(port)
     {
         //memcpy(ip,    pchIPv4, 12);
         //memcpy(ip+12, &ipv4Addr, 4);
@@ -55,29 +54,53 @@ namespace LLP
     }
 
 
-    NetAddr::NetAddr(const struct in6_addr& ipv6Addr)
+    NetAddr::NetAddr(const struct in6_addr& ipv6Addr, uint16_t port)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+    , nPort(port)
     {
         //memcpy(ip, &ipv6Addr, 16);
         std::copy((uint8_t*)&ipv6Addr, (uint8_t*)&ipv6Addr + 16, (uint8_t*)&ip[0]);
     }
 
-
-    NetAddr::NetAddr(const char *pszIp, bool fAllowLookup)
+    NetAddr::NetAddr(const struct sockaddr_in& addr)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+    , nPort(ntohs(addr.sin_port))
     {
-        std::vector<NetAddr> vIP;
-        if (LookupHost(pszIp, vIP, 1, fAllowLookup))
-            *this = vIP[0];
+        assert(addr.sin_family == AF_INET);
+
+        //memcpy(ip,    pchIPv4, 12);
+        //memcpy(ip+12, &addr.sin_addr, 4);
+        std::copy((uint8_t*)&pchIPv4[0], (uint8_t*)&pchIPv4[0] + 12, (uint8_t*)&ip[0]);
+        std::copy((uint8_t*)&addr.sin_addr, (uint8_t*)&addr.sin_addr + 4, (uint8_t*)&ip[0] + 12);
     }
 
 
-    NetAddr::NetAddr(const std::string &strIp, bool fAllowLookup)
+    NetAddr::NetAddr(const struct sockaddr_in6 &addr)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+    , nPort(ntohs(addr.sin6_port))
     {
-        std::vector<NetAddr> vIP;
-        if (LookupHost(strIp.c_str(), vIP, 1, fAllowLookup))
-            *this = vIP[0];
+        assert(addr.sin6_family == AF_INET6);
+
+        //memcpy(ip, &addr.sin6_addr, 16);
+        std::copy((uint8_t*)&addr.sin6_addr, (uint8_t*)&addr.sin6_addr + 16, (uint8_t*)&ip[0]);
+    }
+
+    NetAddr::NetAddr(const char *pszIpPort, uint16_t portDefault, bool fAllowLookup)
+    : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+    , nPort(portDefault)
+    {
+        NetAddr ip;
+        if (Lookup(pszIpPort, ip, portDefault, fAllowLookup))
+            *this = ip;
+    }
+
+    NetAddr::NetAddr(const std::string &strIpPort, uint16_t portDefault, bool fAllowLookup)
+    : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+    , nPort(portDefault)
+    {
+        NetAddr ip;
+        if (Lookup(strIpPort.c_str(), ip, portDefault, fAllowLookup))
+            *this = ip;
     }
 
     NetAddr::~NetAddr()
@@ -89,17 +112,20 @@ namespace LLP
         for(uint8_t i = 0; i < 16; ++i)
             ip[i] = other.ip[i];
 
+        nPort = other.nPort;
+
         return *this;
     }
 
-    NetAddr &NetAddr::operator=(NetAddr &other)
+    void NetAddr::SetPort(uint16_t portIn)
     {
-        for(uint8_t i = 0; i < 16; ++i)
-            ip[i] = other.ip[i];
-
-        return *this;
+        nPort = portIn;
     }
 
+    uint16_t NetAddr::GetPort() const
+    {
+        return nPort;
+    }
 
     void NetAddr::SetIP(const NetAddr& ipIn)
     {
@@ -275,7 +301,17 @@ namespace LLP
 
     std::string NetAddr::ToString() const
     {
-        return ToStringIP();
+        return ToStringIPPort();
+    }
+
+    std::string NetAddr::ToStringPort() const
+    {
+        return std::to_string(nPort);
+    }
+
+    std::string NetAddr::ToStringIPPort() const
+    {
+        return ToStringIP() + std::string(":") + ToStringPort();
     }
 
 
@@ -294,6 +330,37 @@ namespace LLP
     bool operator<(const NetAddr& a, const NetAddr& b)
     {
         return (memcmp(a.ip, b.ip, 16) < 0);
+    }
+
+
+    bool NetAddr::GetSockAddr(struct sockaddr_in* paddr) const
+    {
+        if (!IsIPv4())
+            return false;
+
+        memset(paddr, 0, sizeof(struct sockaddr_in));
+
+        if (!GetInAddr(&paddr->sin_addr))
+            return false;
+
+        paddr->sin_family = AF_INET;
+        paddr->sin_port = htons(nPort);
+
+        return true;
+    }
+
+
+    bool NetAddr::GetSockAddr6(struct sockaddr_in6* paddr) const
+    {
+        memset(paddr, 0, sizeof(struct sockaddr_in6));
+
+        if (!GetIn6Addr(&paddr->sin6_addr))
+            return false;
+
+        paddr->sin6_family = AF_INET6;
+        paddr->sin6_port = htons(nPort);
+
+        return true;
     }
 
 

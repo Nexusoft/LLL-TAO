@@ -489,37 +489,36 @@ namespace LLC
         vchSig.clear();
         vchSig.resize(145,0);
 
-        const BIGNUM* sig_r = nullptr;
-        const BIGNUM* sig_s = nullptr;;
-        #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-            ECDSA_SIG_get0(sig, &sig_r, &sig_s);
-        #else
-            sig_r = sig->r;
-            sig_s = sig->s;
-        #endif
+        BIGNUM *sig_r = nullptr;
+        BIGNUM *sig_s = nullptr;
+        int nBitsR = 0;
+        int nBitsS = 0;
 
-        int nBitsR, nBitsS;
-        #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-            nBitsR = BN_num_bits(sig_r);
-            nBitsS = BN_num_bits(sig_s);
-        #else
-            nBitsR = BN_num_bits(sig->r);
-            nBitsS = BN_num_bits(sig->s);
-        #endif
+    #if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        ECDSA_SIG_get0(sig, &sig_r, &sig_s);
+
+        nBitsR = BN_num_bits(sig_r);
+        nBitsS = BN_num_bits(sig_s);
+    #else
+        sig_r = sig->r;
+        sig_s = sig->s;
+
+        nBitsR = BN_num_bits(sig->r);
+        nBitsS = BN_num_bits(sig->s);
+    #endif
 
 
         if (nBitsR <= 571 && nBitsS <= 571)
         {
             int nRecId = -1;
-            for (int i=0; i < 9; i++)
+            for (int i=0; i < 9; ++i)
             {
                 ECKey keyRec;
                 keyRec.fSet = true;
                 if (fCompressedPubKey)
                     keyRec.SetCompressedPubKey();
 
-                #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-                if (ECDSA_SIG_recover_key_GFp(keyRec.pkey, const_cast<BIGNUM*>(sig_r), const_cast<BIGNUM*>(sig_s), (unsigned char*)&hash, sizeof(hash), i, 1) == 1)
+                if (ECDSA_SIG_recover_key_GFp(keyRec.pkey, sig_r, sig_s, (unsigned char*)&hash, sizeof(hash), i, 1) == 1)
                 {
                     if (keyRec.GetPubKey() == this->GetPubKey())
                     {
@@ -527,18 +526,6 @@ namespace LLC
                         break;
                     }
                 }
-                #else
-                if (ECDSA_SIG_recover_key_GFp(keyRec.pkey, sig->r, sig->s, (unsigned char*)&hash, sizeof(hash), i, 1) == 1)
-                {
-                    if (keyRec.GetPubKey() == this->GetPubKey())
-                    {
-                        nRecId = i;
-                        break;
-                    }
-                }
-                #endif
-
-
             }
 
             if (nRecId == -1)
@@ -549,13 +536,8 @@ namespace LLC
 
             vchSig[0] = nRecId+27+(fCompressedPubKey ? 4 : 0);
 
-            #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-                BN_bn2bin(sig_r, &vchSig[73-(nBitsR+7)/8]);
-                BN_bn2bin(sig_s, &vchSig[145-(nBitsS+7)/8]);
-            #else
-                BN_bn2bin(sig->r, &vchSig[73-(nBitsR+7)/8]);
-                BN_bn2bin(sig->s, &vchSig[145-(nBitsS+7)/8]);
-            #endif
+            BN_bn2bin(sig_r, &vchSig[73-(nBitsR+7)/8]);
+            BN_bn2bin(sig_s, &vchSig[145-(nBitsS+7)/8]);
 
             fOk = true;
         }

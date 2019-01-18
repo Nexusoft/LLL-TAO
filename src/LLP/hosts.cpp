@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/port.h>
-#include <LLP/include/address.h>
+#include <LLP/include/legacyaddress.h>
 #include <LLP/include/hosts.h>
 #include <Util/include/debug.h>
 
@@ -30,9 +30,9 @@ namespace LLP
 {
 
     /** DNS Query of Domain Names Associated with Seed Nodes **/
-    std::vector<Address> DNS_Lookup(std::vector<std::string> DNS_Seed)
+    std::vector<LegacyAddress> DNS_Lookup(std::vector<std::string> DNS_Seed)
     {
-        std::vector<Address> vNodes;
+        std::vector<LegacyAddress> vNodes;
         for (int nSeed = 0; nSeed < DNS_Seed.size(); ++nSeed)
         {
             debug::log(0, nSeed, " Host: ",  DNS_Seed[nSeed]);
@@ -41,7 +41,9 @@ namespace LLP
             {
                 for(NetAddr& ip : vaddr)
                 {
-                    Address addr = Address(Service(ip, GetDefaultPort()));
+                    LegacyAddress addr(ip);
+                    addr.SetPort(GetDefaultPort());
+
                     vNodes.push_back(addr);
 
                     debug::log(0, "DNS Seed: ", addr.ToStringIP());
@@ -117,7 +119,7 @@ namespace LLP
         return LookupHost(pszName, vIP, nMaxSolutions, false);
     }
 
-    bool Lookup(const char *pszName, std::vector<Service>& vAddr, uint16_t portDefault, bool fAllowLookup, uint32_t nMaxSolutions)
+    bool Lookup(const char *pszName, std::vector<NetAddr>& vAddr, uint16_t portDefault, bool fAllowLookup, uint32_t nMaxSolutions)
     {
         if (pszName[0] == 0)
             return false;
@@ -162,14 +164,17 @@ namespace LLP
         vAddr.resize(vIP.size());
 
         for (uint32_t i = 0; i < vIP.size(); ++i)
-            vAddr[i] = Service(vIP[i], port);
+        {
+            vAddr[i] = vIP[i];
+            vAddr[i].SetPort(port);
+        }
 
         return true;
     }
 
-    bool Lookup(const char *pszName, Service& addr, uint16_t portDefault, bool fAllowLookup)
+    bool Lookup(const char *pszName, NetAddr& addr, uint16_t portDefault, bool fAllowLookup)
     {
-        std::vector<Service> vService;
+        std::vector<NetAddr> vService;
         bool fRet = Lookup(pszName, vService, portDefault, fAllowLookup, 1);
         if (!fRet)
             return false;
@@ -177,7 +182,7 @@ namespace LLP
         return true;
     }
 
-    bool LookupNumeric(const char *pszName, Service& addr, uint16_t portDefault)
+    bool LookupNumeric(const char *pszName, NetAddr& addr, uint16_t portDefault)
     {
         return Lookup(pszName, addr, portDefault, false);
     }

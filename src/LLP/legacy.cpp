@@ -45,8 +45,8 @@ namespace LLP
         uint64_t nLocalServices = 0;
 
         /* Relay Your Address. */
-        Address addrMe;
-        Address addrYou;
+        LegacyAddress addrMe;
+        LegacyAddress addrYou;
 
         /* Push the Message to receiving node. */
         PushMessage("version", LLP::PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,
@@ -356,8 +356,8 @@ namespace LLP
         {
 
             int64_t nTime;
-            Address addrMe;
-            Address addrFrom;
+            LegacyAddress addrMe;
+            LegacyAddress addrFrom;
             uint64_t nServices = 0;
 
 
@@ -391,22 +391,30 @@ namespace LLP
         */
         else if (INCOMING.GetMessage() == "addr")
         {
-            std::vector<Address> vAddr;
-            ssMessage >> vAddr;
+            std::vector<LegacyAddress> vLegacyAddr;
+            std::vector<NetAddr> vAddr;
+
+            ssMessage >> vLegacyAddr;
 
             /* Don't want addr from older versions unless seeding */
-            if (vAddr.size() > 2000)
+            if (vLegacyAddr.size() > 2000)
             {
                 DDOS->rSCORE += 20;
 
-                return debug::error(NODE, "message addr size() = ", vAddr.size(), "... Dropping Connection");
+                return debug::error(NODE, "message addr size() = ", vLegacyAddr.size(), "... Dropping Connection");
             }
 
             if(LEGACY_SERVER)
             {
                 /* try to establish the connection on the port the server is listening to */
-                for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
+                for(auto it = vLegacyAddr.begin(); it != vLegacyAddr.end(); ++it)
+                {
                     it->SetPort(LEGACY_SERVER->PORT);
+
+                    /* Create a base address vector from legacy addresses */
+                    vAddr.push_back(*it);
+                }
+
 
                 /* Add the connections to Legacy Server. */
                 if(LEGACY_SERVER->pAddressManager)
@@ -491,7 +499,7 @@ namespace LLP
         /* TODO: Change this Algorithm. */
         else if (INCOMING.GetMessage() == "getaddr")
         {
-            //std::vector<LLP::Address> vAddr = Core::pManager->GetAddresses();
+            //std::vector<LLP::LegacyAddress> vAddr = Core::pManager->GetAddresses();
 
             //PushMessage("addr", vAddr);
         }

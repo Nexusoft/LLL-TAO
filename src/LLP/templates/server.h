@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <LLP/templates/data.h>
 #include <LLP/include/permissions.h>
 #include <LLP/include/manager.h>
-#include <LLP/include/address.h>
+#include <LLP/include/legacyaddress.h>
 #include <LLP/include/addressinfo.h>
 
 #include <functional>
@@ -38,7 +38,7 @@ namespace LLP
     {
     private:
         /* The DDOS variables. */
-        std::map<Service, DDOS_Filter *> DDOS_MAP;
+        std::map<NetAddr, DDOS_Filter *> DDOS_MAP;
         bool fDDOS;
         bool fLISTEN;
         bool fMETER;
@@ -63,7 +63,7 @@ namespace LLP
 
 
         /* Address of the server node */
-        Address addrThisNode;
+        LegacyAddress addrThisNode;
 
         /* returns the name of the protocol type of this server */
         std::string Name()
@@ -171,9 +171,9 @@ namespace LLP
          **/
         void AddNode(std::string strAddress, uint16_t nPort)
         {
-            Service service(debug::strprintf("%s:%u", strAddress.c_str(), nPort).c_str(), false);
+            NetAddr base_addr(debug::strprintf("%s:%u", strAddress.c_str(), nPort).c_str(), false);
 
-            Address addr(service);
+            LegacyAddress addr(base_addr);
 
             if(pAddressManager)
                 pAddressManager->AddAddress(addr, ConnectState::NEW);
@@ -191,10 +191,10 @@ namespace LLP
          *  @return	Returns true if the connection was established successfully
          *
          **/
-        bool AddConnection(std::string strAddress, int32_t nPort)
+        bool AddConnection(std::string strAddress, uint16_t nPort)
         {
             /* Initialize DDOS Protection for Incoming IP Address. */
-            Service addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), false);
+            NetAddr addrConnect(strAddress, nPort);
 
             /* Create new DDOS Filter if Needed. */
             if(!DDOS_MAP.count(addrConnect))
@@ -265,14 +265,22 @@ namespace LLP
          *  @return Returns the list of active connections in a vector
          *
          **/
-        std::vector<Address> GetAddresses()
+        std::vector<LegacyAddress> GetAddresses()
         {
-            std::vector<Address> vAddr;
+            std::vector<NetAddr> vAddr;
+            std::vector<LegacyAddress> vLegacyAddr;
 
             if(pAddressManager)
+            {
+                /* Get the base addresses from address manager and convert
+                   into legacy addresses */
                 vAddr = pAddressManager->GetAddresses();
 
-            return vAddr;
+                for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
+                    vLegacyAddr.push_back((LegacyAddress)*it);
+            }
+
+            return vLegacyAddr;
         }
 
 
@@ -288,7 +296,7 @@ namespace LLP
                 runtime::sleep(1000);
 
             /* Address to select. */
-            Address addr = Address();
+            NetAddr addr;
 
             /* Loop connections. */
             while(!fDestruct.load())
@@ -299,7 +307,7 @@ namespace LLP
                 uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
 
                 /* Pick a weighted random priority from a sorted list of addresses */
-                if(!pAddressManager)
+                if(pAddressManager == nullptr)
                     continue;
 
                 if(pAddressManager->StochasticSelect(addr))
@@ -366,7 +374,7 @@ namespace LLP
         {
             int32_t hListenSocket;
             SOCKET hSocket;
-            Address addr;
+            NetAddr addr;
             socklen_t len_v4 = sizeof(struct sockaddr_in);
             socklen_t len_v6 = sizeof(struct sockaddr_in6);
 
@@ -406,7 +414,7 @@ namespace LLP
 
                         hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v4);
                         if (hSocket != INVALID_SOCKET)
-                            addr = Address(sockaddr);
+                            addr = NetAddr(sockaddr);
                     }
                     else
                     {
@@ -414,7 +422,7 @@ namespace LLP
 
                         hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v6);
                         if (hSocket != INVALID_SOCKET)
-                            addr = Address(sockaddr);
+                            addr = NetAddr(sockaddr);
                     }
 
                     if (hSocket == INVALID_SOCKET)
@@ -425,11 +433,11 @@ namespace LLP
                     else
                     {
                         /* Create new DDOS Filter if Needed. */
-                        if(!DDOS_MAP.count((Service)addr))
+                        if(!DDOS_MAP.count(addr))
                             DDOS_MAP[addr] = new DDOS_Filter(DDOS_TIMESPAN);
 
                         /* DDOS Operations: Only executed when DDOS is enabled. */
-                        if((fDDOS && DDOS_MAP[(Service)addr]->Banned()))
+                        if((fDDOS && DDOS_MAP[addr]->Banned()))
                         {
                             debug::log(0, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Banned.");
                             close(hSocket);
@@ -449,7 +457,7 @@ namespace LLP
                         if(!dt)
                             continue;
 
-                        dt->AddConnection(sockNew, DDOS_MAP[(Service)addr]);
+                        dt->AddConnection(sockNew, DDOS_MAP[addr]);
                         debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ",  PORT);
                     }
                 }

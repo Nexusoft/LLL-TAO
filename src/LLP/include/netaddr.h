@@ -26,21 +26,32 @@ namespace LLP
     {
     protected:
         uint8_t ip[16]; // in network byte order
+        uint16_t nPort; // host order
 
     public:
         NetAddr();
-        NetAddr(const NetAddr &other);
-        NetAddr(NetAddr &other);
+        NetAddr(const NetAddr &other, uint16_t port = 0);
 
-        NetAddr(const struct in_addr& ipv4Addr);
-        NetAddr(const struct in6_addr& ipv6Addr);
-        NetAddr(const char *pszIp, bool fAllowLookup = false);
-        NetAddr(const std::string &strIp, bool fAllowLookup = false);
+        NetAddr(NetAddr &other) = delete;
+
+        NetAddr(const struct in_addr& ipv4Addr, uint16_t port = 0);
+        NetAddr(const struct in6_addr& ipv6Addr, uint16_t port = 0);
+        NetAddr(const struct sockaddr_in& addr);
+        NetAddr(const struct sockaddr_in6& addr);
+        NetAddr(const char *pszIp, uint16_t portDefault = 0, bool fAllowLookup = false);
+        NetAddr(const std::string &strIp, uint16_t portDefault = 0, bool fAllowLookup = false);
+
 
         NetAddr &operator=(const NetAddr &other);
-        NetAddr &operator=(NetAddr &other);
+        
 
         virtual ~NetAddr();
+
+        void SetPort(uint16_t portIn);
+        uint16_t GetPort() const;
+
+        bool GetSockAddr(struct sockaddr_in* paddr) const;
+        bool GetSockAddr6(struct sockaddr_in6* paddr) const;
 
         void SetIP(const NetAddr& ip);
         bool IsIPv4() const;    // IPv4 mapped address (::FFFF:0:0/96, 0.0.0.0/0)
@@ -60,6 +71,8 @@ namespace LLP
         bool IsMulticast() const;
         std::string ToString() const;
         std::string ToStringIP() const;
+        std::string ToStringPort() const;
+        std::string ToStringIPPort() const;
         uint8_t GetByte(uint8_t n) const;
         uint64_t GetHash() const;
         bool GetInAddr(struct in_addr* pipv4Addr) const;
@@ -74,9 +87,17 @@ namespace LLP
 
         IMPLEMENT_SERIALIZE
         (
+            NetAddr *pthis = const_cast<NetAddr *>(this);
             READWRITE(FLATDATA(ip));
+            uint16_t portN = htons(nPort);
+            READWRITE(portN);
+            if(fRead)
+                pthis->nPort = ntohs(portN);
         )
     };
+
+    /* Proxy Settings for Nexus Core. */
+    static NetAddr addrProxy(std::string("127.0.0.1"), static_cast<uint16_t>(9050));
 
 }
 #endif

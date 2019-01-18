@@ -21,7 +21,7 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    extern Address addrMyNode; //TODO: move this to a better location
+    extern LegacyAddress addrMyNode; //TODO: move this to a better location
 
     class LegacyNode : public BaseConnection<LegacyPacket>
     {
@@ -95,12 +95,12 @@ namespace LLP
         void PushVersion();
 
 
-        /** Send an Address to Node.
+        /** Send an LegacyAddress to Node.
          *
          * @param[in] addr The address to send to nodes
          *
          **/
-        void PushAddress(const Address& addr);
+        void PushAddress(const LegacyAddress& addr);
 
 
         /** Send the DoS Score to DDOS Filte
@@ -119,7 +119,7 @@ namespace LLP
 
 
         /** Get the current IP address of this node. **/
-        //Address GetAddress();
+        //LegacyAddress GetAddress();
 
 
         /** ReadPacket

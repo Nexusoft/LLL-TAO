@@ -55,7 +55,7 @@ namespace LLP
     protected:
 
         /* The local address of this node. */
-        Address addrThisNode;
+        LegacyAddress addrThisNode;
 
 
     public:
@@ -111,7 +111,7 @@ namespace LLP
          *  @return The address of this node
          *
          **/
-        Address GetAddress() const
+        LegacyAddress GetAddress() const
         {
             return addrThisNode;
         }

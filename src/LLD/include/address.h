@@ -31,7 +31,7 @@ namespace LLD
         AddressDB(uint16_t port, uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
         : SectorDatabase("addr/" + std::to_string(port), nFlags) { }
 
-        bool WriteAddressInfo(uint64_t key, LLP::AddressInfo info)
+        bool WriteAddressInfo(uint64_t key, const LLP::AddressInfo &info)
         {
             return Write(std::make_pair(std::string("info"), key), info);
         }

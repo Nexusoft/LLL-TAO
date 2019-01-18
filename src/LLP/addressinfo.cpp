@@ -48,7 +48,7 @@ namespace LLP
     }
 
     AddressInfo::AddressInfo()
-    : Address()
+    : NetAddr()
     , nSession(0)
     , nLastSeen(0)
     , nConnected(0)
@@ -60,8 +60,8 @@ namespace LLP
     {
     }
 
-    AddressInfo::AddressInfo(const Address &addr)
-    : Address(addr)
+    AddressInfo::AddressInfo(const NetAddr &addr)
+    : NetAddr(addr)
     , nSession(0)
     , nLastSeen(0)
     , nConnected(0)
@@ -74,7 +74,7 @@ namespace LLP
     }
 
     AddressInfo::AddressInfo(const AddressInfo &other)
-    : Address()
+    : NetAddr()
     , nSession(other.nSession)
     , nLastSeen(other.nLastSeen)
     , nConnected(other.nConnected)
@@ -89,38 +89,6 @@ namespace LLP
         for(uint8_t i = 0; i < 16; ++i)
             ip[i] = other.ip[i];
     }
-
-
-    AddressInfo::AddressInfo(Address &addr)
-    : Address(addr)
-    , nSession(0)
-    , nLastSeen(0)
-    , nConnected(0)
-    , nDropped(0)
-    , nFailed(0)
-    , nFails(0)
-    , nLatency(std::numeric_limits<uint32_t>::max())
-    , nState(static_cast<uint8_t>(ConnectState::NEW))
-    {
-    }
-
-    AddressInfo::AddressInfo(AddressInfo &other)
-    : Address()
-    , nSession(other.nSession)
-    , nLastSeen(other.nLastSeen)
-    , nConnected(other.nConnected)
-    , nDropped(other.nDropped)
-    , nFailed(other.nFailed)
-    , nFails(other.nFails)
-    , nLatency(other.nLatency)
-    , nState(other.nState)
-    {
-        nPort = other.nPort;
-
-        for(uint8_t i = 0; i < 16; ++i)
-            ip[i] = other.ip[i];
-    }
-
 
     AddressInfo::~AddressInfo()
     {
@@ -133,10 +101,6 @@ namespace LLP
 
         nPort = other.nPort;
 
-        nServices = other.nServices;
-        nTime = other.nTime;
-        nLastTry = other.nLastTry;
-
         nSession = other.nSession;
         nLastSeen = other.nLastSeen;
         nConnected = other.nConnected;
@@ -148,30 +112,6 @@ namespace LLP
 
         return *this;
     }
-
-    AddressInfo &AddressInfo::operator=(AddressInfo &other)
-    {
-        for(uint8_t i = 0; i < 16; ++i)
-            ip[i] = other.ip[i];
-
-        nPort = other.nPort;
-
-        nServices = other.nServices;
-        nTime = other.nTime;
-        nLastTry = other.nLastTry;
-
-        nSession = other.nSession;
-        nLastSeen = other.nLastSeen;
-        nConnected = other.nConnected;
-        nDropped = other.nDropped;
-        nFailed = other.nFailed;
-        nFails = other.nFails;
-        nLatency = other.nLatency;
-        nState = other.nState;
-
-        return *this;
-    }
-
 
     /*  Calculates a score based on stats. Higher is better */
     double AddressInfo::Score() const

@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <LLP/include/version.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <LLP/include/global.h>
-#include <LLP/include/service.h>
+#include <LLP/include/netaddr.h>
 #include <LLP/include/addressinfo.h>
 #include <Util/include/version.h>
 
@@ -111,7 +111,7 @@ namespace TAO
 
             std::sort(vLegacyInfo.begin(), vLegacyInfo.end());
 
-            for(auto addr : vLegacyInfo)
+            for(auto &addr : vLegacyInfo)
             {
                 json::json obj;
 
@@ -134,7 +134,7 @@ namespace TAO
 
             std::sort(vTritiumInfo.begin(), vTritiumInfo.end());
 
-            for(auto addr : vTritiumInfo)
+            for(auto &addr : vTritiumInfo)
             {
                 json::json obj;
 

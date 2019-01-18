@@ -140,8 +140,7 @@ OBJS= \
 	build/LLC_key.o \
     build/LLC_bignum.o \
 	build/LLP_netaddr.o \
-	build/LLP_service.o \
-	build/LLP_address.o \
+	build/LLP_legacyaddress.o \
 	build/LLP_addressinfo.o \
 	build/LLP_hosts.o \
 	build/LLP_socket.o \

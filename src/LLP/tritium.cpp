@@ -129,7 +129,7 @@ namespace LLP
                     ssPacket >> nSessionID;
 
                     /* Get your address. */
-                    Address addr;
+                    LegacyAddress addr;
                     ssPacket >> addr;
 
                     /* Check the server if it is set. */
@@ -284,10 +284,14 @@ namespace LLP
                     /* Grab the connections. */
                     if(TRITIUM_SERVER)
                     {
-                        std::vector<Address> vAddr = TRITIUM_SERVER->GetAddresses();
+                        std::vector<LegacyAddress> vAddr = TRITIUM_SERVER->GetAddresses();
+                        std::vector<LegacyAddress> vLegacyAddr;
+
+                        for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
+                            vLegacyAddr.push_back(*it);
 
                         /* Push the response addresses. */
-                        PushMessage(DAT_ADDRESSES, vAddr);
+                        PushMessage(DAT_ADDRESSES, vLegacyAddr);
                     }
 
                     break;
@@ -297,18 +301,22 @@ namespace LLP
                 case DAT_ADDRESSES:
                 {
                     /* De-Serialize the Addresses. */
-                    std::vector<Address> vAddr;
-                    ssPacket >> vAddr;
+                    std::vector<LegacyAddress> vLegacyAddr;
+                    std::vector<NetAddr> vAddr;
+                    ssPacket >> vLegacyAddr;
 
                     if(TRITIUM_SERVER)
                     {
                         /* try to establish the connection on the port the server is listening to */
-                        for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
+                        for(auto it = vLegacyAddr.begin(); it != vLegacyAddr.end(); ++it)
                         {
                             if(config::mapArgs.find("-port") != config::mapArgs.end())
                                 it->SetPort(atoi(config::mapArgs["-port"].c_str()));
                             else
                                 it->SetPort(TRITIUM_SERVER->PORT);
+
+                            /* Create a base address vector from legacy addresses */
+                            vAddr.push_back(*it);
                         }
 
 

@@ -11,21 +11,21 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLP/include/address.h>
+#include <LLP/include/legacyaddress.h>
 #include <algorithm>
 
 namespace LLP
 {
-    Address::Address()
-    : Service()
+    LegacyAddress::LegacyAddress()
+    : NetAddr()
     , nServices(NODE_NETWORK)
     , nTime(100000000)
     , nLastTry(0)
     {
     }
 
-    Address::Address(const Address &other)
-    : Service()
+    LegacyAddress::LegacyAddress(const LegacyAddress &other)
+    : NetAddr()
     , nServices(other.nServices)
     , nTime(other.nTime)
     , nLastTry(other.nLastTry)
@@ -36,28 +36,9 @@ namespace LLP
             ip[i] = other.ip[i];
     }
 
-    Address::Address(Address &other)
-    : Service()
-    , nServices(other.nServices)
-    , nTime(other.nTime)
-    , nLastTry(other.nLastTry)
-    {
-        nPort = other.nPort;
 
-        for(uint8_t i = 0; i < 16; ++i)
-            ip[i] = other.ip[i];
-    }
-
-    Address::Address(const Service &ipIn, uint64_t nServicesIn)
-    : Service(ipIn)
-    , nServices(nServicesIn)
-    , nTime(100000000)
-    , nLastTry(0)
-    {
-    }
-
-    Address::Address(Service &ipIn, uint64_t nServicesIn)
-    : Service(ipIn)
+    LegacyAddress::LegacyAddress(const NetAddr &ipIn, uint64_t nServicesIn)
+    : NetAddr(ipIn)
     , nServices(nServicesIn)
     , nTime(100000000)
     , nLastTry(0)
@@ -65,25 +46,11 @@ namespace LLP
     }
 
 
-    Address::~Address()
+    LegacyAddress::~LegacyAddress()
     {
     }
 
-    Address &Address::operator=(const Address &other)
-    {
-        for(uint8_t i = 0; i < 16; ++i)
-            ip[i] = other.ip[i];
-
-        nPort = other.nPort;
-
-        nServices = other.nServices;
-        nTime = other.nTime;
-        nLastTry = other.nLastTry;
-
-        return *this;
-    }
-
-    Address &Address::operator=(Address &other)
+    LegacyAddress &LegacyAddress::operator=(const LegacyAddress &other)
     {
         for(uint8_t i = 0; i < 16; ++i)
             ip[i] = other.ip[i];

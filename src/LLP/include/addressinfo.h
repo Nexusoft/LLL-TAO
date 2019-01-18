@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <cstdint>
 #include <Util/templates/serialize.h>
-#include <LLP/include/address.h>
+#include <LLP/include/netaddr.h>
 
 namespace LLP
 {
@@ -40,11 +40,11 @@ namespace LLP
      *  for handling and tracking connections in a meaningful way
      *
      **/
-    class AddressInfo : public Address
+    class AddressInfo : public NetAddr
     {
     public:
 
-        
+
         /** AddressInfo
          *
          *  Default constructor
@@ -53,10 +53,11 @@ namespace LLP
          *
          **/
         AddressInfo();
-        AddressInfo(const Address &addr);
+        AddressInfo(const NetAddr &addr);
         AddressInfo(const AddressInfo &other);
-        AddressInfo(Address &addr);
-        AddressInfo(AddressInfo &other);
+
+        AddressInfo(NetAddr &other) = delete;
+        AddressInfo(AddressInfo &other) = delete;
 
 
         /** ~AddressInfo
@@ -67,14 +68,13 @@ namespace LLP
         virtual ~AddressInfo();
 
         AddressInfo &operator=(const AddressInfo &other);
-        AddressInfo &operator=(AddressInfo &other);
 
 
         /* Serialization */
         IMPLEMENT_SERIALIZE
         (
             AddressInfo *pthis = const_cast<AddressInfo *>(this);
-            Address *pAddr = (Address *)pthis;
+            NetAddr *pAddr = (NetAddr *)pthis;
 
             READWRITE(nSession);
             READWRITE(nConnected);

@@ -19,11 +19,10 @@ ________________________________________________________________________________
 #include <poll.h>
 
 #include <Util/include/runtime.h>
+#include <LLP/include/netaddr.h>
 
 namespace LLP
 {
-    class Service;
-    class Address;
 
     /* Base Template class to handle outgoing / incoming LLP data for both Client and Server. */
     class Socket : public pollfd
@@ -48,7 +47,7 @@ namespace LLP
     public:
 
         /** The address of this connection. */
-        Address addr;
+        NetAddr addr;
 
 
         /** The default constructor. **/
@@ -64,7 +63,7 @@ namespace LLP
 
 
         /** The socket constructor. **/
-        Socket(int32_t nSocketIn, Address addrIn)
+        Socket(int32_t nSocketIn, const NetAddr &addrIn)
         : nError(0)
         , nLastSend(runtime::timestamp())
         , nLastRecv(runtime::timestamp())
@@ -75,12 +74,12 @@ namespace LLP
         }
 
 
-        /** Constructor for Address
+        /** Constructor for Socket
          *
-         *  @param[in] addrConnect The address to connect socket to
+         *  @param[in] addrDest The address to connect socket to
          *
          **/
-        Socket(Service addrDest);
+        Socket(NetAddr addrDest);
 
 
 
@@ -103,7 +102,7 @@ namespace LLP
          *  @return true if the socket is in a valid state.
          *
          **/
-        bool Attempt(Service addrDest, int32_t nTimeout = 5000);
+        bool Attempt(const NetAddr &addrDest, uint32_t nTimeout = 5000);
 
 
         /** Available
