@@ -162,6 +162,10 @@ namespace TAO
             std::set<uint512_t> uniqueTx;
 
 
+            /* Missing transactions. */
+            std::vector<uint512_t> missingTx;
+
+
             /* Get the hashes for the merkle root. */
             std::vector<uint512_t> vHashes;
 
@@ -187,25 +191,50 @@ namespace TAO
                 /* Basic checks for legacy transactions. */
                 if(tx.first == TYPE::LEGACY_TX)
                 {
-                    //check the legacy memory pool.
+                    /* Check the memory pool. */
+                    Legacy::Transaction txMem;
+                    if(!mempool.Get(tx.second, txMem))
+                    {
+                        missingTx.push_back(tx.second);
 
-                    //if (!tx.CheckTransaction())
-                    //    return DoS(tx.nDoS, error("CheckBlock() : CheckTransaction failed"));
+                        continue;
+                    }
 
-                    // Nexus: check transaction timestamp
-                    //if (GetBlockTime() < (int64)tx.nTime)
-                    //    return DoS(50, error("CheckBlock() : block timestamp earlier than transaction timestamp"));
+                    /* Check the transaction timestamp. */
+                    if(GetBlockTime() < (uint64_t) txMem.nTime)
+                        return debug::error(FUNCTION, "block timestamp earlier than transaction timestamp");
 
-                    //nSigOps += tx.GetLegacySigOpCount();
+                    /* Check the transaction for validitity. */
+                    if(!txMem.CheckTransaction())
+                        return debug::error(FUNCTION, "check transaction failed.");
                 }
 
                 /* Basic checks for tritium transactions. */
                 else if(tx.first == TYPE::TRITIUM_TX)
                 {
-                    //check the tritium memory pool.
+                    /* Check the memory pool. */
+                    TAO::Ledger::Transaction txMem;
+                    if(!mempool.Has(tx.second))
+                    {
+                        missingTx.push_back(tx.second);
+
+                        continue;
+                    }
                 }
-                else if(tx.first != TYPE::CHECKPOINT)
+                else
                     return debug::error(FUNCTION, "unknown transaction type");
+            }
+
+            /* Fail and ask for response of missing transctions. */
+            if(missingTx.size() > 0)
+            {
+                //NodeType* pnode;
+                //pnode->PushMessage("GetInv("....")");
+                //send pnode as a template for this method.
+
+                //TODO: ask the sending node for the missing transactions
+                //Keep a list of missing transactions and then send a work queue once done
+                return debug::error(FUNCTION, "block contains missing transactions");
             }
 
 
