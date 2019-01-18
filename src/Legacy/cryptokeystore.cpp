@@ -101,6 +101,7 @@ namespace Legacy
                 return false;
 
             /* Also need crypto keystore lock to add key. AddCryptedKey() obtains this */
+            /* During wallet encryption, this will call this->AddCryptedKey() which is actually CWallet::AddCryptedKey() */
             if (!AddCryptedKey(vchPubKey, vchCryptedSecret))
                 return false;
         }
