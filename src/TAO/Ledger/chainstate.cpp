@@ -73,7 +73,6 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to create genesis");
 
             /* Read the best chain. */
-            uint1024_t hashBestChain;
             if(!LLD::legDB->ReadBestChain(hashBestChain))
                 return debug::error(FUNCTION, "failed to read best chain");
 
@@ -111,7 +110,7 @@ namespace TAO
 
             /* Debug logging. */
             debug::log(0, FUNCTION, config::fTestNet? "Test" : "Nexus", " Network: genesis=", hashGenesis.ToString().substr(0, 20),
-            " nBitsStart=0x", std::hex, bnProofOfWorkStart[0].GetCompact(), " best=", stateBest.GetHash().ToString().substr(0, 20),
+            " nBitsStart=0x", std::hex, bnProofOfWorkStart[0].GetCompact(), " best=", hashBestChain.ToString().substr(0, 20),
             " checkpoint=", hashCheckpoint.ToString().substr(0, 20).c_str()," height=", std::dec, stateBest.nHeight);
 
             return true;

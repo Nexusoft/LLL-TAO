@@ -320,13 +320,17 @@ namespace LLP
             }
 
             /* Check for orphan. */
+            static uint1024_t hashLastGetblocks = 0;
             if(!LLD::legDB->HasBlock(block.hashPrevBlock))
             {
                 DDOS->rSCORE += 5;
                 debug::log(3, NODE, "Block is an orphan");
 
                 /* Ask for getblocks. */
-                //PushMessage("getblocks", Legacy::Locator(TAO::Ledger::ChainState::hashBestChain), uint1024_t(0));
+                if(TAO::Ledger::ChainState::hashBestChain != hashLastGetblocks)
+                    PushMessage("getblocks", Legacy::Locator(TAO::Ledger::ChainState::hashBestChain), uint1024_t(0));
+
+                hashLastGetblocks = TAO::Ledger::ChainState::hashBestChain;
 
                 return true;
             }
@@ -428,8 +432,10 @@ namespace LLP
 
 
             /* Push our version back since we just completed getting the version from the other node. */
-            if (fOUTGOING)
+            static uint32_t nAsked = 0;
+            if (fOUTGOING && nAsked == 0)
             {
+                nAsked++;
                 PushMessage("getblocks", Legacy::Locator(TAO::Ledger::ChainState::hashBestChain), uint1024_t(0));
             }
             else
