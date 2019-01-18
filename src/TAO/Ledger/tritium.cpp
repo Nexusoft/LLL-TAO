@@ -314,6 +314,10 @@ namespace TAO
                 /* Check that the Coinbase / CoinstakeTimstamp is after Previous Block. */
                 if (producer.nTimestamp < statePrev.GetBlockTime())
                     return debug::error(FUNCTION, "coinstake transaction too early");
+
+                /* Check the proof of stake. */
+                if(!CheckStake())
+                    return debug::error(FUNCTION, "proof of stake is invalid");
             }
 
 

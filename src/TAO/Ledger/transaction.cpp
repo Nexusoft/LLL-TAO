@@ -97,7 +97,7 @@ namespace TAO
                 return debug::error(FUNCTION, "not proof of stake");
 
             /* Seek the stream to the beginning. */
-            ssOperation.seek(1);
+            ssOperation.seek(1, STREAM::BEGIN);
 
             /* The account that is being staked. */
             uint256_t hashAccount;
@@ -118,7 +118,7 @@ namespace TAO
                 return debug::error(FUNCTION, "not proof of stake");
 
             /* Seek the stream to the beginning. */
-            ssOperation.seek(169);
+            ssOperation.seek(169, STREAM::BEGIN);
 
             /* Deserialize the values from stream. */
             ssOperation >> nStake;
