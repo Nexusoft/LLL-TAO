@@ -126,7 +126,6 @@ namespace TAO
             else
                 nChannelHeight = stateLast.nChannelHeight + 1;
 
-
             /* Compute the Released Reserves. */
             for(int nType = 0; nType < 3; nType++)
             {
@@ -454,6 +453,12 @@ namespace TAO
 
                     /* Check if in memory pool. */
                     Legacy::Transaction tx;
+
+                    /* Make sure the transaction isn't on disk. */
+                    if(LLD::legacyDB->ReadTx(hash, tx))
+                        return debug::error(FUNCTION, "transaction already exists");
+
+                    /* Check the memory pool. */
                     if(!mempool.Get(hash, tx))
                         return debug::error(FUNCTION, "transaction is not in memory pool"); //TODO: recover from this and ask sending node.
 
@@ -471,6 +476,8 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write tx to disk");
 
                 }
+                else
+                    return debug::error(FUNCTION, "using an unknown transaction type");
             }
 
             /* Update the previous state's next pointer. */
