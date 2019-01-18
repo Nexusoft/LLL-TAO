@@ -26,7 +26,7 @@ namespace TAO
         uint32_t SetBits(double nDiff)
         {
             /* Bits are with 10^7 significant figures. */
-            unsigned int nBits = 10000000;
+            uint32_t nBits = 10000000;
             nBits *= nDiff;
 
             return nBits;

@@ -35,7 +35,7 @@ namespace TAO
          *  @returns true if a new timespan has elapsed
          *
          **/
-        bool IsNewTimespan(const BlockState state);
+        bool IsNewTimespan(const BlockState& state);
 
 
         /** Is Descendant
@@ -47,7 +47,7 @@ namespace TAO
          *  @returns true if a block is a descendant.
          *
          **/
-        bool IsDescendant(const BlockState state);
+        bool IsDescendant(const BlockState& state);
 
 
         /** Harden Checkpoint
@@ -59,7 +59,7 @@ namespace TAO
          *  @returns true if a checkpoint was hardened.
          *
          **/
-        bool HardenCheckpoint(const BlockState state);
+        bool HardenCheckpoint(const BlockState& state);
 
     }
 }

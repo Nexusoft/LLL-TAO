@@ -310,7 +310,7 @@ namespace LLP
             }
 
             /* Process the block. */
-            if(!LLD::legDB->HasBlock(block.GetHash()))
+            if(LLD::legDB->HasBlock(block.GetHash()))
             {
                 DDOS->rSCORE += 25; //make a penalty for sending blocks we already have.
                 //TODO: check if blocks are sent unsolicited.
@@ -326,7 +326,7 @@ namespace LLP
                 debug::log(3, NODE, "Block is an orphan");
 
                 /* Ask for getblocks. */
-                PushMessage("getblocks", Legacy::Locator(TAO::Ledger::ChainState::hashBestChain), uint1024_t(0));
+                //PushMessage("getblocks", Legacy::Locator(TAO::Ledger::ChainState::hashBestChain), uint1024_t(0));
 
                 return true;
             }
@@ -337,7 +337,7 @@ namespace LLP
                 DDOS->rSCORE += 25;
                 debug::log(3, NODE, "Block failed to be added to chain");
 
-                return true;
+                return false;
             }
 
             /* Create the Block State. */

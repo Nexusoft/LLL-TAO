@@ -164,7 +164,7 @@ namespace Legacy
 
 
         /* Check the Required Mining Outputs. */
-        if (IsProofOfWork())
+        if (nHeight > 0 && IsProofOfWork())
         {
             uint32_t nSize = vtx[0].vout.size();
 
@@ -314,6 +314,8 @@ namespace Legacy
     /* Accept a block into the chain. */
     bool LegacyBlock::Accept()
     {
+        print();
+        
         /* Read leger DB for duplicate block. */
         TAO::Ledger::BlockState state;
         if(LLD::legDB->ReadBlock(GetHash(), state))
@@ -351,8 +353,8 @@ namespace Legacy
 
 
         /* Check that the nBits match the current Difficulty. **/
-        if (nBits != TAO::Ledger::GetNextTargetRequired(statePrev, GetChannel()))
-            return debug::error(FUNCTION, "incorrect proof-of-work/proof-of-stake");
+        if (nBits != TAO::Ledger::GetNextTargetRequired(statePrev, GetChannel(), true))
+            return debug::error(FUNCTION, "incorrect ", nBits, " proof-of-work/proof-of-stake ", TAO::Ledger::GetNextTargetRequired(statePrev, GetChannel()));
 
 
         /* Check That Block timestamp is not before previous block. */

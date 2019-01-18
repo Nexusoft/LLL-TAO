@@ -179,7 +179,7 @@ namespace TAO
             if(GetChannel() == 1)
             {
                 /* Check prime minimum origins. */
-                if(nVersion < 5 && ProofHash() < bnPrimeMinOrigins.getuint1024())
+                if(nVersion >= 5 && ProofHash() < bnPrimeMinOrigins.getuint1024())
                     return debug::error(FUNCTION, "prime origins below 1016-bits");
 
                 /* Check proof of work limits. */

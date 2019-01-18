@@ -131,7 +131,7 @@ namespace TAO
          *  @return The subsidy reward.
          *
          **/
-        uint64_t GetCoinbaseReward(const BlockState state, uint32_t nChannel, uint8_t nType);
+        uint64_t GetCoinbaseReward(const BlockState& state, uint32_t nChannel, uint8_t nType);
 
 
         /** Release Rewards
@@ -159,7 +159,7 @@ namespace TAO
          *  @return The released reserves.
          *
          **/
-        uint64_t GetReleasedReserve(const BlockState state, uint32_t nChannel, uint8_t nType);
+        uint64_t GetReleasedReserve(const BlockState& state, uint32_t nChannel, uint8_t nType);
     }
 }
 

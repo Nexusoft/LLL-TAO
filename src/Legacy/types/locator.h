@@ -25,11 +25,12 @@ namespace Legacy
     class Locator
     {
     public:
+        int32_t nVersion;
         std::vector<uint1024_t> vHave;
 
         IMPLEMENT_SERIALIZE
         (
-            READWRITE(nSerVersion);
+            READWRITE(nVersion);
             READWRITE(vHave);
         )
 
