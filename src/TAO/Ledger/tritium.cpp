@@ -196,7 +196,6 @@ namespace TAO
                     if(!mempool.Get(tx.second, txMem))
                     {
                         missingTx.push_back(tx.second);
-
                         continue;
                     }
 
@@ -217,7 +216,6 @@ namespace TAO
                     if(!mempool.Has(tx.second))
                     {
                         missingTx.push_back(tx.second);
-
                         continue;
                     }
                 }

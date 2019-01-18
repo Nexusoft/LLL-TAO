@@ -44,7 +44,25 @@ namespace TAO
         /* Flag to tell if initial blocks are downloading. */
         bool ChainState::Synchronizing()
         {
-            return false;
+            /* Check for null best state. */
+            if(!stateBest)
+                return true;
+
+            /* Check if there's been a new block. */
+            static uint1024_t hashLast = 0;
+            static uint32_t nLastTime  = 0;
+            if(hashBestChain != hashLast)
+            {
+                hashLast = hashBestChain;
+                nLastTime = runtime::unifiedtimestamp();
+            }
+
+            /* Special testnet rule. */
+            if(config::fTestNet)
+                return (runtime::unifiedtimestamp() - nLastTime < 60);
+
+            /* Check if block has been created within 20 minutes. */
+            return (stateBest.GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60);
         }
 
         /* Initialize the Chain State. */
