@@ -17,7 +17,7 @@ ________________________________________________________________________________
 namespace LLP
 {
     LegacyAddress::LegacyAddress()
-    : NetAddr()
+    : BaseAddress()
     , nServices(NODE_NETWORK)
     , nTime(100000000)
     , nLastTry(0)
@@ -25,7 +25,7 @@ namespace LLP
     }
 
     LegacyAddress::LegacyAddress(const LegacyAddress &other)
-    : NetAddr()
+    : BaseAddress()
     , nServices(other.nServices)
     , nTime(other.nTime)
     , nLastTry(other.nLastTry)
@@ -37,8 +37,8 @@ namespace LLP
     }
 
 
-    LegacyAddress::LegacyAddress(const NetAddr &ipIn, uint64_t nServicesIn)
-    : NetAddr(ipIn)
+    LegacyAddress::LegacyAddress(const BaseAddress &ipIn, uint64_t nServicesIn)
+    : BaseAddress(ipIn)
     , nServices(nServicesIn)
     , nTime(100000000)
     , nLastTry(0)

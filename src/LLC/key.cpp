@@ -489,8 +489,8 @@ namespace LLC
         vchSig.clear();
         vchSig.resize(145,0);
 
-        BIGNUM *sig_r = nullptr;
-        BIGNUM *sig_s = nullptr;
+        const BIGNUM *sig_r = nullptr;
+        const BIGNUM *sig_s = nullptr;
         int nBitsR = 0;
         int nBitsS = 0;
 
@@ -518,7 +518,7 @@ namespace LLC
                 if (fCompressedPubKey)
                     keyRec.SetCompressedPubKey();
 
-                if (ECDSA_SIG_recover_key_GFp(keyRec.pkey, sig_r, sig_s, (unsigned char*)&hash, sizeof(hash), i, 1) == 1)
+                if (ECDSA_SIG_recover_key_GFp(keyRec.pkey, const_cast<BIGNUM *>(sig_r), const_cast<BIGNUM *>(sig_s), (unsigned char*)&hash, sizeof(hash), i, 1) == 1)
                 {
                     if (keyRec.GetPubKey() == this->GetPubKey())
                     {

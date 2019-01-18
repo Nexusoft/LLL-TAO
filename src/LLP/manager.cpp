@@ -56,10 +56,10 @@ namespace LLP
 
 
     /*  Gets a list of addresses in the manager */
-    std::vector<NetAddr> AddressManager::GetAddresses(const uint8_t flags)
+    std::vector<BaseAddress> AddressManager::GetAddresses(const uint8_t flags)
     {
         std::vector<AddressInfo> vAddrInfo;
-        std::vector<NetAddr> vAddr;
+        std::vector<BaseAddress> vAddr;
 
         LOCK(mut);
 
@@ -67,7 +67,7 @@ namespace LLP
 
         for(auto it = vAddrInfo.begin(); it != vAddrInfo.end(); ++it)
         {
-            const NetAddr &addr = *it;
+            const BaseAddress &addr = *it;
             vAddr.emplace_back(addr);
         }
 
@@ -94,7 +94,7 @@ namespace LLP
 
 
     /*  Adds the address to the manager and sets the connect state for that address */
-    void AddressManager::AddAddress(const NetAddr &addr, const uint8_t state)
+    void AddressManager::AddAddress(const BaseAddress &addr, const uint8_t state)
     {
         uint64_t hash = addr.GetHash();
 
@@ -152,7 +152,7 @@ namespace LLP
 
 
     /*  Adds the addresses to the manager and sets the connect state for that address */
-    void AddressManager::AddAddresses(const std::vector<NetAddr> &addrs, const uint8_t state)
+    void AddressManager::AddAddresses(const std::vector<BaseAddress> &addrs, const uint8_t state)
     {
         for(uint32_t i = 0; i < addrs.size(); ++i)
             AddAddress(addrs[i], state);
@@ -161,7 +161,7 @@ namespace LLP
 
     /*  Finds the managed address info and sets the latency experienced by
      *  that address. */
-    void AddressManager::SetLatency(uint32_t lat, const NetAddr &addr)
+    void AddressManager::SetLatency(uint32_t lat, const BaseAddress &addr)
     {
         uint64_t hash = addr.GetHash();
         std::unique_lock<std::mutex> lk(mut);
@@ -173,7 +173,7 @@ namespace LLP
 
 
     /*  Select a good address to connect to that isn't already connected. */
-    bool AddressManager::StochasticSelect(NetAddr &addr)
+    bool AddressManager::StochasticSelect(BaseAddress &addr)
     {
         std::vector<AddressInfo> vInfo;
         std::unique_lock<std::mutex> lk(mut, std::defer_lock);
@@ -208,7 +208,7 @@ namespace LLP
 
         const AddressInfo &info = vInfo[nSelect];
 
-        addr = static_cast<NetAddr>(info);
+        addr = static_cast<BaseAddress>(info);
 
         return true;
     }

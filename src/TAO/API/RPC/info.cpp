@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <LLP/include/version.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <LLP/include/global.h>
-#include <LLP/include/netaddr.h>
+#include <LLP/include/baseaddress.h>
 #include <LLP/include/addressinfo.h>
 #include <Util/include/version.h>
 

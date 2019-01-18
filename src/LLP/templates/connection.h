@@ -217,7 +217,7 @@ namespace LLP
         /* Connect Socket to a Remote Endpoint. */
         bool Connect(std::string strAddress, uint16_t nPort)
         {
-            NetAddr addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
+            BaseAddress addrConnect(strAddress, nPort);
 
             /// debug print
             debug::log(1, NODE, "Connecting to ", addrConnect.ToString());

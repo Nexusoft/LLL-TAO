@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <cstdint>
 #include <Util/templates/serialize.h>
-#include <LLP/include/netaddr.h>
+#include <LLP/include/baseaddress.h>
 
 namespace LLP
 {
@@ -40,7 +40,7 @@ namespace LLP
      *  for handling and tracking connections in a meaningful way
      *
      **/
-    class AddressInfo : public NetAddr
+    class AddressInfo : public BaseAddress
     {
     public:
 
@@ -53,10 +53,10 @@ namespace LLP
          *
          **/
         AddressInfo();
-        AddressInfo(const NetAddr &addr);
+        AddressInfo(const BaseAddress &addr);
         AddressInfo(const AddressInfo &other);
 
-        AddressInfo(NetAddr &other) = delete;
+        AddressInfo(BaseAddress &other) = delete;
         AddressInfo(AddressInfo &other) = delete;
 
 
@@ -74,7 +74,7 @@ namespace LLP
         IMPLEMENT_SERIALIZE
         (
             AddressInfo *pthis = const_cast<AddressInfo *>(this);
-            NetAddr *pAddr = (NetAddr *)pthis;
+            BaseAddress *pAddr = (BaseAddress *)pthis;
 
             READWRITE(nSession);
             READWRITE(nConnected);

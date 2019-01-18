@@ -36,10 +36,10 @@ namespace LLP
         for (int nSeed = 0; nSeed < DNS_Seed.size(); ++nSeed)
         {
             debug::log(0, nSeed, " Host: ",  DNS_Seed[nSeed]);
-            std::vector<LLP::NetAddr> vaddr;
+            std::vector<LLP::BaseAddress> vaddr;
             if (LookupHost(DNS_Seed[nSeed].c_str(), vaddr))
             {
-                for(NetAddr& ip : vaddr)
+                for(BaseAddress& ip : vaddr)
                 {
                     LegacyAddress addr(ip);
                     addr.SetPort(GetDefaultPort());
@@ -55,7 +55,7 @@ namespace LLP
     }
 
 
-    bool static LookupIntern(const char *pszName, std::vector<NetAddr>& vIP, uint32_t nMaxSolutions, bool fAllowLookup)
+    bool static LookupIntern(const char *pszName, std::vector<BaseAddress>& vIP, uint32_t nMaxSolutions, bool fAllowLookup)
     {
         vIP.clear();
         struct addrinfo aiHint;
@@ -81,13 +81,13 @@ namespace LLP
             if (aiTrav->ai_family == AF_INET)
             {
                 assert(aiTrav->ai_addrlen >= sizeof(sockaddr_in));
-                vIP.push_back(NetAddr(((struct sockaddr_in*)(aiTrav->ai_addr))->sin_addr));
+                vIP.push_back(BaseAddress(((struct sockaddr_in*)(aiTrav->ai_addr))->sin_addr));
             }
 
             if (aiTrav->ai_family == AF_INET6)
             {
                 assert(aiTrav->ai_addrlen >= sizeof(sockaddr_in6));
-                vIP.push_back(NetAddr(((struct sockaddr_in6*)(aiTrav->ai_addr))->sin6_addr));
+                vIP.push_back(BaseAddress(((struct sockaddr_in6*)(aiTrav->ai_addr))->sin6_addr));
             }
 
             aiTrav = aiTrav->ai_next;
@@ -98,7 +98,7 @@ namespace LLP
         return (vIP.size() > 0);
     }
 
-    bool LookupHost(const char *pszName, std::vector<NetAddr>& vIP, uint32_t nMaxSolutions, bool fAllowLookup)
+    bool LookupHost(const char *pszName, std::vector<BaseAddress>& vIP, uint32_t nMaxSolutions, bool fAllowLookup)
     {
         if (pszName[0] == 0)
             return false;
@@ -114,12 +114,12 @@ namespace LLP
         return LookupIntern(pszHost, vIP, nMaxSolutions, fAllowLookup);
     }
 
-    bool LookupHostNumeric(const char *pszName, std::vector<NetAddr>& vIP, uint32_t nMaxSolutions)
+    bool LookupHostNumeric(const char *pszName, std::vector<BaseAddress>& vIP, uint32_t nMaxSolutions)
     {
         return LookupHost(pszName, vIP, nMaxSolutions, false);
     }
 
-    bool Lookup(const char *pszName, std::vector<NetAddr>& vAddr, uint16_t portDefault, bool fAllowLookup, uint32_t nMaxSolutions)
+    bool Lookup(const char *pszName, std::vector<BaseAddress>& vAddr, uint16_t portDefault, bool fAllowLookup, uint32_t nMaxSolutions)
     {
         if (pszName[0] == 0)
             return false;
@@ -153,7 +153,7 @@ namespace LLP
 
         }
 
-        std::vector<NetAddr> vIP;
+        std::vector<BaseAddress> vIP;
 
         std::unique_lock<std::mutex> lk(::LOOKUP_MUTEX);
 
@@ -172,9 +172,9 @@ namespace LLP
         return true;
     }
 
-    bool Lookup(const char *pszName, NetAddr& addr, uint16_t portDefault, bool fAllowLookup)
+    bool Lookup(const char *pszName, BaseAddress& addr, uint16_t portDefault, bool fAllowLookup)
     {
-        std::vector<NetAddr> vService;
+        std::vector<BaseAddress> vService;
         bool fRet = Lookup(pszName, vService, portDefault, fAllowLookup, 1);
         if (!fRet)
             return false;
@@ -182,7 +182,7 @@ namespace LLP
         return true;
     }
 
-    bool LookupNumeric(const char *pszName, NetAddr& addr, uint16_t portDefault)
+    bool LookupNumeric(const char *pszName, BaseAddress& addr, uint16_t portDefault)
     {
         return Lookup(pszName, addr, portDefault, false);
     }

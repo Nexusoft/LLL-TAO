@@ -21,7 +21,7 @@ namespace LLP
 {
 
     class LegacyAddress;
-    class NetAddr;
+    class BaseAddress;
 
     /** These addresses are the first point of contact on the P2P network
     *  They are established and maintained by the owners of each domain.
@@ -116,11 +116,11 @@ namespace LLP
 
 
     /* Standard Wrapper Function to Interact with cstdlib DNS functions. */
-    bool LookupHost(const char *pszName, std::vector<NetAddr>& vIP, uint32_t nMaxSolutions = 0, bool fAllowLookup = true);
-    bool LookupHostNumeric(const char *pszName, std::vector<NetAddr>& vIP, uint32_t nMaxSolutions = 0);
-    bool Lookup(const char *pszName, NetAddr& addr, uint16_t portDefault = 0, bool fAllowLookup = true);
-    bool Lookup(const char *pszName, std::vector<NetAddr>& vAddr, uint16_t portDefault = 0, bool fAllowLookup = true, uint32_t nMaxSolutions = 0);
-    bool LookupNumeric(const char *pszName, NetAddr& addr, uint16_t portDefault = 0);
+    bool LookupHost(const char *pszName, std::vector<BaseAddress>& vIP, uint32_t nMaxSolutions = 0, bool fAllowLookup = true);
+    bool LookupHostNumeric(const char *pszName, std::vector<BaseAddress>& vIP, uint32_t nMaxSolutions = 0);
+    bool Lookup(const char *pszName, BaseAddress& addr, uint16_t portDefault = 0, bool fAllowLookup = true);
+    bool Lookup(const char *pszName, std::vector<BaseAddress>& vAddr, uint16_t portDefault = 0, bool fAllowLookup = true, uint32_t nMaxSolutions = 0);
+    bool LookupNumeric(const char *pszName, BaseAddress& addr, uint16_t portDefault = 0);
 }
 
 #endif

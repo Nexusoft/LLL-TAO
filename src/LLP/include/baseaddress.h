@@ -22,30 +22,30 @@ ________________________________________________________________________________
 namespace LLP
 {
     /** IP address (IPv6, or IPv4 using mapped IPv6 range (::FFFF:0:0/96)) */
-    class NetAddr
+    class BaseAddress
     {
     protected:
         uint8_t ip[16]; // in network byte order
         uint16_t nPort; // host order
 
     public:
-        NetAddr();
-        NetAddr(const NetAddr &other, uint16_t port = 0);
+        BaseAddress();
+        BaseAddress(const BaseAddress &other, uint16_t port = 0);
 
-        NetAddr(NetAddr &other) = delete;
+        BaseAddress(BaseAddress &other) = delete;
 
-        NetAddr(const struct in_addr& ipv4Addr, uint16_t port = 0);
-        NetAddr(const struct in6_addr& ipv6Addr, uint16_t port = 0);
-        NetAddr(const struct sockaddr_in& addr);
-        NetAddr(const struct sockaddr_in6& addr);
-        NetAddr(const char *pszIp, uint16_t portDefault = 0, bool fAllowLookup = false);
-        NetAddr(const std::string &strIp, uint16_t portDefault = 0, bool fAllowLookup = false);
+        BaseAddress(const struct in_addr& ipv4Addr, uint16_t port = 0);
+        BaseAddress(const struct in6_addr& ipv6Addr, uint16_t port = 0);
+        BaseAddress(const struct sockaddr_in& addr);
+        BaseAddress(const struct sockaddr_in6& addr);
+        BaseAddress(const char *pszIp, uint16_t portDefault = 0, bool fAllowLookup = false);
+        BaseAddress(const std::string &strIp, uint16_t portDefault = 0, bool fAllowLookup = false);
 
 
-        NetAddr &operator=(const NetAddr &other);
-        
+        BaseAddress &operator=(const BaseAddress &other);
 
-        virtual ~NetAddr();
+
+        virtual ~BaseAddress();
 
         void SetPort(uint16_t portIn);
         uint16_t GetPort() const;
@@ -53,7 +53,7 @@ namespace LLP
         bool GetSockAddr(struct sockaddr_in* paddr) const;
         bool GetSockAddr6(struct sockaddr_in6* paddr) const;
 
-        void SetIP(const NetAddr& ip);
+        void SetIP(const BaseAddress& ip);
         bool IsIPv4() const;    // IPv4 mapped address (::FFFF:0:0/96, 0.0.0.0/0)
         bool IsRFC1918() const; // IPv4 private networks (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12)
         bool IsRFC3849() const; // IPv6 documentation address (2001:0DB8::/32)
@@ -81,13 +81,13 @@ namespace LLP
         void print() const;
 
 
-        friend bool operator==(const NetAddr& a, const NetAddr& b);
-        friend bool operator!=(const NetAddr& a, const NetAddr& b);
-        friend bool operator<(const NetAddr& a,  const NetAddr& b);
+        friend bool operator==(const BaseAddress& a, const BaseAddress& b);
+        friend bool operator!=(const BaseAddress& a, const BaseAddress& b);
+        friend bool operator<(const BaseAddress& a,  const BaseAddress& b);
 
         IMPLEMENT_SERIALIZE
         (
-            NetAddr *pthis = const_cast<NetAddr *>(this);
+            BaseAddress *pthis = const_cast<BaseAddress *>(this);
             READWRITE(FLATDATA(ip));
             uint16_t portN = htons(nPort);
             READWRITE(portN);
@@ -97,7 +97,7 @@ namespace LLP
     };
 
     /* Proxy Settings for Nexus Core. */
-    static NetAddr addrProxy(std::string("127.0.0.1"), static_cast<uint16_t>(9050));
+    static BaseAddress addrProxy(std::string("127.0.0.1"), static_cast<uint16_t>(9050));
 
 }
 #endif

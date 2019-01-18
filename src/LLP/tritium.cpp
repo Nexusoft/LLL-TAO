@@ -302,7 +302,7 @@ namespace LLP
                 {
                     /* De-Serialize the Addresses. */
                     std::vector<LegacyAddress> vLegacyAddr;
-                    std::vector<NetAddr> vAddr;
+                    std::vector<BaseAddress> vAddr;
                     ssPacket >> vLegacyAddr;
 
                     if(TRITIUM_SERVER)

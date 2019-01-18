@@ -30,7 +30,7 @@ namespace LLP
 {
 
     /* Constructor for Socket */
-    Socket::Socket(NetAddr addrConnect)
+    Socket::Socket(BaseAddress addrConnect)
     : nError(0)
     , nLastSend(runtime::timestamp())
     , nLastRecv(runtime::timestamp())
@@ -58,7 +58,7 @@ namespace LLP
 
 
     /* Connects the socket to an external address */
-    bool Socket::Attempt(const NetAddr &addrDest, uint32_t nTimeout)
+    bool Socket::Attempt(const BaseAddress &addrDest, uint32_t nTimeout)
     {
         /* Create the Socket Object (Streaming TCP/IP). */
         if(addrDest.IsIPv4())
@@ -77,23 +77,23 @@ namespace LLP
         bool fConnected = false;
         if(addrDest.IsIPv4())
         {
-            /* Set the socket address from the NetAddr. */
+            /* Set the socket address from the BaseAddress. */
             struct sockaddr_in sockaddr;
             addrDest.GetSockAddr(&sockaddr);
 
             /* Copy in the new address. */
-            addr = NetAddr(sockaddr);
+            addr = BaseAddress(sockaddr);
 
             fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
         else
         {
-            /* Set the socket address from the NetAddr. */
+            /* Set the socket address from the BaseAddress. */
             struct sockaddr_in6 sockaddr;
             addrDest.GetSockAddr6(&sockaddr);
 
             /* Copy in the new address. */
-            addr = NetAddr(sockaddr);
+            addr = BaseAddress(sockaddr);
 
             fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }

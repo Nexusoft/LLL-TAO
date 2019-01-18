@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLP/include/netaddr.h>
+#include <LLP/include/baseaddress.h>
 #include <LLP/include/network.h>
 #include <LLP/include/hosts.h>  //Lookup
 #include <LLC/hash/SK.h>        //LLC::SK64
@@ -25,13 +25,13 @@ namespace LLP
 {
     static const uint8_t pchIPv4[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff };
 
-    NetAddr::NetAddr()
+    BaseAddress::BaseAddress()
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(0)
     {
     }
 
-    NetAddr::NetAddr(const NetAddr &other, uint16_t port)
+    BaseAddress::BaseAddress(const BaseAddress &other, uint16_t port)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(port)
     {
@@ -43,7 +43,7 @@ namespace LLP
     }
 
 
-    NetAddr::NetAddr(const struct in_addr& ipv4Addr, uint16_t port)
+    BaseAddress::BaseAddress(const struct in_addr& ipv4Addr, uint16_t port)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(port)
     {
@@ -54,7 +54,7 @@ namespace LLP
     }
 
 
-    NetAddr::NetAddr(const struct in6_addr& ipv6Addr, uint16_t port)
+    BaseAddress::BaseAddress(const struct in6_addr& ipv6Addr, uint16_t port)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(port)
     {
@@ -62,7 +62,7 @@ namespace LLP
         std::copy((uint8_t*)&ipv6Addr, (uint8_t*)&ipv6Addr + 16, (uint8_t*)&ip[0]);
     }
 
-    NetAddr::NetAddr(const struct sockaddr_in& addr)
+    BaseAddress::BaseAddress(const struct sockaddr_in& addr)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(ntohs(addr.sin_port))
     {
@@ -75,7 +75,7 @@ namespace LLP
     }
 
 
-    NetAddr::NetAddr(const struct sockaddr_in6 &addr)
+    BaseAddress::BaseAddress(const struct sockaddr_in6 &addr)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(ntohs(addr.sin6_port))
     {
@@ -85,29 +85,29 @@ namespace LLP
         std::copy((uint8_t*)&addr.sin6_addr, (uint8_t*)&addr.sin6_addr + 16, (uint8_t*)&ip[0]);
     }
 
-    NetAddr::NetAddr(const char *pszIpPort, uint16_t portDefault, bool fAllowLookup)
+    BaseAddress::BaseAddress(const char *pszIpPort, uint16_t portDefault, bool fAllowLookup)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(portDefault)
     {
-        NetAddr ip;
+        BaseAddress ip;
         if (Lookup(pszIpPort, ip, portDefault, fAllowLookup))
             *this = ip;
     }
 
-    NetAddr::NetAddr(const std::string &strIpPort, uint16_t portDefault, bool fAllowLookup)
+    BaseAddress::BaseAddress(const std::string &strIpPort, uint16_t portDefault, bool fAllowLookup)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(portDefault)
     {
-        NetAddr ip;
+        BaseAddress ip;
         if (Lookup(strIpPort.c_str(), ip, portDefault, fAllowLookup))
             *this = ip;
     }
 
-    NetAddr::~NetAddr()
+    BaseAddress::~BaseAddress()
     {
     }
 
-    NetAddr &NetAddr::operator=(const NetAddr &other)
+    BaseAddress &BaseAddress::operator=(const BaseAddress &other)
     {
         for(uint8_t i = 0; i < 16; ++i)
             ip[i] = other.ip[i];
@@ -117,24 +117,24 @@ namespace LLP
         return *this;
     }
 
-    void NetAddr::SetPort(uint16_t portIn)
+    void BaseAddress::SetPort(uint16_t portIn)
     {
         nPort = portIn;
     }
 
-    uint16_t NetAddr::GetPort() const
+    uint16_t BaseAddress::GetPort() const
     {
         return nPort;
     }
 
-    void NetAddr::SetIP(const NetAddr& ipIn)
+    void BaseAddress::SetIP(const BaseAddress& ipIn)
     {
         for(uint8_t i = 0; i < 16; ++i)
             ip[i] = ipIn.ip[i];
     }
 
 
-    uint8_t NetAddr::GetByte(uint8_t n) const
+    uint8_t BaseAddress::GetByte(uint8_t n) const
     {
         if(n > 15)
             throw std::runtime_error(debug::safe_printstr(FUNCTION, "out of range ", n));
@@ -143,13 +143,13 @@ namespace LLP
     }
 
 
-    bool NetAddr::IsIPv4() const
+    bool BaseAddress::IsIPv4() const
     {
         return (memcmp(ip, pchIPv4, sizeof(pchIPv4)) == 0);
     }
 
 
-    bool NetAddr::IsRFC1918() const
+    bool BaseAddress::IsRFC1918() const
     {
         return IsIPv4() && (
             GetByte(3) == 10 ||
@@ -158,64 +158,64 @@ namespace LLP
     }
 
 
-    bool NetAddr::IsRFC3927() const
+    bool BaseAddress::IsRFC3927() const
     {
         return IsIPv4() && (GetByte(3) == 169 && GetByte(2) == 254);
     }
 
 
-    bool NetAddr::IsRFC3849() const
+    bool BaseAddress::IsRFC3849() const
     {
         return GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0x0D && GetByte(12) == 0xB8;
     }
 
 
-    bool NetAddr::IsRFC3964() const
+    bool BaseAddress::IsRFC3964() const
     {
         return (GetByte(15) == 0x20 && GetByte(14) == 0x02);
     }
 
 
-    bool NetAddr::IsRFC6052() const
+    bool BaseAddress::IsRFC6052() const
     {
         static const uint8_t pchRFC6052[] = {0,0x64,0xFF,0x9B,0,0,0,0,0,0,0,0};
         return (memcmp(ip, pchRFC6052, sizeof(pchRFC6052)) == 0);
     }
 
 
-    bool NetAddr::IsRFC4380() const
+    bool BaseAddress::IsRFC4380() const
     {
         return (GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0 && GetByte(12) == 0);
     }
 
 
-    bool NetAddr::IsRFC4862() const
+    bool BaseAddress::IsRFC4862() const
     {
         static const uint8_t pchRFC4862[] = {0xFE,0x80,0,0,0,0,0,0};
         return (memcmp(ip, pchRFC4862, sizeof(pchRFC4862)) == 0);
     }
 
 
-    bool NetAddr::IsRFC4193() const
+    bool BaseAddress::IsRFC4193() const
     {
         return ((GetByte(15) & 0xFE) == 0xFC);
     }
 
 
-    bool NetAddr::IsRFC6145() const
+    bool BaseAddress::IsRFC6145() const
     {
         static const uint8_t pchRFC6145[] = {0,0,0,0,0,0,0,0,0xFF,0xFF,0,0};
         return (memcmp(ip, pchRFC6145, sizeof(pchRFC6145)) == 0);
     }
 
 
-    bool NetAddr::IsRFC4843() const
+    bool BaseAddress::IsRFC4843() const
     {
         return (GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0x00 && (GetByte(12) & 0xF0) == 0x10);
     }
 
 
-    bool NetAddr::IsLocal() const
+    bool BaseAddress::IsLocal() const
     {
         // IPv4 loopback
     if (IsIPv4() && (GetByte(3) == 127 || GetByte(3) == 0))
@@ -230,14 +230,14 @@ namespace LLP
     }
 
 
-    bool NetAddr::IsMulticast() const
+    bool BaseAddress::IsMulticast() const
     {
         return    (IsIPv4() && (GetByte(3) & 0xF0) == 0xE0)
             || (GetByte(15) == 0xFF);
     }
 
 
-    bool NetAddr::IsValid() const
+    bool BaseAddress::IsValid() const
     {
         // Clean up 3-byte shifted addresses caused by garbage in size field
         // of addr messages from versions before 0.2.9 checksum.
@@ -274,13 +274,13 @@ namespace LLP
     }
 
 
-    bool NetAddr::IsRoutable() const
+    bool BaseAddress::IsRoutable() const
     {
         return IsValid() && !(IsRFC1918() || IsRFC3927() || IsRFC4862() || IsRFC4193() || IsRFC4843() || IsLocal());
     }
 
 
-    std::string NetAddr::ToStringIP() const
+    std::string BaseAddress::ToStringIP() const
     {
         if (IsIPv4())
         {
@@ -299,41 +299,41 @@ namespace LLP
     }
 
 
-    std::string NetAddr::ToString() const
+    std::string BaseAddress::ToString() const
     {
         return ToStringIPPort();
     }
 
-    std::string NetAddr::ToStringPort() const
+    std::string BaseAddress::ToStringPort() const
     {
         return std::to_string(nPort);
     }
 
-    std::string NetAddr::ToStringIPPort() const
+    std::string BaseAddress::ToStringIPPort() const
     {
         return ToStringIP() + std::string(":") + ToStringPort();
     }
 
 
-    bool operator==(const NetAddr& a, const NetAddr& b)
+    bool operator==(const BaseAddress& a, const BaseAddress& b)
     {
         return (memcmp(a.ip, b.ip, 16) == 0);
     }
 
 
-    bool operator!=(const NetAddr& a, const NetAddr& b)
+    bool operator!=(const BaseAddress& a, const BaseAddress& b)
     {
         return (memcmp(a.ip, b.ip, 16) != 0);
     }
 
 
-    bool operator<(const NetAddr& a, const NetAddr& b)
+    bool operator<(const BaseAddress& a, const BaseAddress& b)
     {
         return (memcmp(a.ip, b.ip, 16) < 0);
     }
 
 
-    bool NetAddr::GetSockAddr(struct sockaddr_in* paddr) const
+    bool BaseAddress::GetSockAddr(struct sockaddr_in* paddr) const
     {
         if (!IsIPv4())
             return false;
@@ -350,7 +350,7 @@ namespace LLP
     }
 
 
-    bool NetAddr::GetSockAddr6(struct sockaddr_in6* paddr) const
+    bool BaseAddress::GetSockAddr6(struct sockaddr_in6* paddr) const
     {
         memset(paddr, 0, sizeof(struct sockaddr_in6));
 
@@ -364,7 +364,7 @@ namespace LLP
     }
 
 
-    bool NetAddr::GetInAddr(struct in_addr* pipv4Addr) const
+    bool BaseAddress::GetInAddr(struct in_addr* pipv4Addr) const
     {
         if (!IsIPv4())
             return false;
@@ -374,7 +374,7 @@ namespace LLP
     }
 
 
-    bool NetAddr::GetIn6Addr(struct in6_addr* pipv6Addr) const
+    bool BaseAddress::GetIn6Addr(struct in6_addr* pipv6Addr) const
     {
         //memcpy(pipv6Addr, ip, 16);
         std::copy((uint8_t*)&ip[0], (uint8_t*)&ip[0] + 16, (uint8_t*)pipv6Addr);
@@ -384,7 +384,7 @@ namespace LLP
 
     // get canonical identifier of an address' group
     // no two connections will be attempted to addresses with the same group
-    std::vector<uint8_t> NetAddr::GetGroup() const
+    std::vector<uint8_t> BaseAddress::GetGroup() const
     {
         std::vector<uint8_t> vchRet;
         int nClass = 0; // 0=IPv6, 1=IPv4, 254=local, 255=unroutable
@@ -447,14 +447,14 @@ namespace LLP
     }
 
 
-    uint64_t NetAddr::GetHash() const
+    uint64_t BaseAddress::GetHash() const
     {
         return LLC::SK64(&ip[0], &ip[16]);
     }
 
 
-    void NetAddr::print() const
+    void BaseAddress::print() const
     {
-        debug::log(0, "NetAddr(", ToString(), ")");
+        debug::log(0, "BaseAddress(", ToString(), ")");
     }
 }

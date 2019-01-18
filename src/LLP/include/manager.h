@@ -78,7 +78,7 @@ namespace LLP
          *  @return A list of addresses in the manager
          *
          **/
-        std::vector<NetAddr> GetAddresses(const uint8_t flags = CONNECT_FLAGS_ALL);
+        std::vector<BaseAddress> GetAddresses(const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
         /** GetInfo
@@ -114,7 +114,7 @@ namespace LLP
          *  @param[in] state The state of the connection for the address
          *
          **/
-        void AddAddress(const NetAddr &addr, const uint8_t state = ConnectState::NEW);
+        void AddAddress(const BaseAddress &addr, const uint8_t state = ConnectState::NEW);
 
 
         /** AddAddresses
@@ -127,7 +127,7 @@ namespace LLP
          *  @param[in] state The state of the connection for the address
          *
          **/
-        void AddAddresses(const std::vector<NetAddr> &addrs, const uint8_t state = ConnectState::NEW);
+        void AddAddresses(const std::vector<BaseAddress> &addrs, const uint8_t state = ConnectState::NEW);
 
 
         /** SetLatency
@@ -140,7 +140,7 @@ namespace LLP
          *  @param[in] addr The address in reference to
          *
          **/
-        void SetLatency(uint32_t lat, const NetAddr &addr);
+        void SetLatency(uint32_t lat, const BaseAddress &addr);
 
 
         /** StochasticSelect
@@ -152,7 +152,7 @@ namespace LLP
          *  @return True is successful, false otherwise
          *
          **/
-        bool StochasticSelect(NetAddr &addr);
+        bool StochasticSelect(BaseAddress &addr);
 
 
         /** ReadDatabase

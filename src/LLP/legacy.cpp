@@ -392,7 +392,7 @@ namespace LLP
         else if (INCOMING.GetMessage() == "addr")
         {
             std::vector<LegacyAddress> vLegacyAddr;
-            std::vector<NetAddr> vAddr;
+            std::vector<BaseAddress> vAddr;
 
             ssMessage >> vLegacyAddr;
 

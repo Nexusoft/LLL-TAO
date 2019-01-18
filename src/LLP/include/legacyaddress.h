@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_ADDRESS_H
 #define NEXUS_LLP_INCLUDE_ADDRESS_H
 
-#include <LLP/include/netaddr.h>
+#include <LLP/include/baseaddress.h>
 #include <Util/templates/serialize.h>
 #include <cstdint>
 
@@ -28,12 +28,12 @@ namespace LLP
 
 
     /** An Address with information about it as peer (Legacy) */
-    class LegacyAddress : public NetAddr
+    class LegacyAddress : public BaseAddress
     {
     public:
         LegacyAddress();
         LegacyAddress(const LegacyAddress &other);
-        LegacyAddress(const NetAddr &ipIn, uint64_t nServicesIn = NODE_NETWORK);
+        LegacyAddress(const BaseAddress &ipIn, uint64_t nServicesIn = NODE_NETWORK);
         virtual ~LegacyAddress();
         LegacyAddress &operator=(const LegacyAddress &other);
 
@@ -42,7 +42,7 @@ namespace LLP
         IMPLEMENT_SERIALIZE
         (
             LegacyAddress* pthis = const_cast<LegacyAddress*>(this);
-            NetAddr* pip = (NetAddr*)pthis;
+            BaseAddress* pip = (BaseAddress*)pthis;
 
             if (fRead)
             {

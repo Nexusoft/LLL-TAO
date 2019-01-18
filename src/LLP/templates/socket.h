@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <poll.h>
 
 #include <Util/include/runtime.h>
-#include <LLP/include/netaddr.h>
+#include <LLP/include/baseaddress.h>
 
 namespace LLP
 {
@@ -47,7 +47,7 @@ namespace LLP
     public:
 
         /** The address of this connection. */
-        NetAddr addr;
+        BaseAddress addr;
 
 
         /** The default constructor. **/
@@ -63,7 +63,7 @@ namespace LLP
 
 
         /** The socket constructor. **/
-        Socket(int32_t nSocketIn, const NetAddr &addrIn)
+        Socket(int32_t nSocketIn, const BaseAddress &addrIn)
         : nError(0)
         , nLastSend(runtime::timestamp())
         , nLastRecv(runtime::timestamp())
@@ -79,7 +79,7 @@ namespace LLP
          *  @param[in] addrDest The address to connect socket to
          *
          **/
-        Socket(NetAddr addrDest);
+        Socket(BaseAddress addrDest);
 
 
 
@@ -102,7 +102,7 @@ namespace LLP
          *  @return true if the socket is in a valid state.
          *
          **/
-        bool Attempt(const NetAddr &addrDest, uint32_t nTimeout = 5000);
+        bool Attempt(const BaseAddress &addrDest, uint32_t nTimeout = 5000);
 
 
         /** Available

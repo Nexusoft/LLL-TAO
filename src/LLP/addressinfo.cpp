@@ -48,7 +48,7 @@ namespace LLP
     }
 
     AddressInfo::AddressInfo()
-    : NetAddr()
+    : BaseAddress()
     , nSession(0)
     , nLastSeen(0)
     , nConnected(0)
@@ -60,8 +60,8 @@ namespace LLP
     {
     }
 
-    AddressInfo::AddressInfo(const NetAddr &addr)
-    : NetAddr(addr)
+    AddressInfo::AddressInfo(const BaseAddress &addr)
+    : BaseAddress(addr)
     , nSession(0)
     , nLastSeen(0)
     , nConnected(0)
@@ -74,7 +74,7 @@ namespace LLP
     }
 
     AddressInfo::AddressInfo(const AddressInfo &other)
-    : NetAddr()
+    : BaseAddress()
     , nSession(other.nSession)
     , nLastSeen(other.nLastSeen)
     , nConnected(other.nConnected)

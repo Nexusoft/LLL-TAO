@@ -38,7 +38,7 @@ namespace LLP
     {
     private:
         /* The DDOS variables. */
-        std::map<NetAddr, DDOS_Filter *> DDOS_MAP;
+        std::map<BaseAddress, DDOS_Filter *> DDOS_MAP;
         bool fDDOS;
         bool fLISTEN;
         bool fMETER;
@@ -171,7 +171,7 @@ namespace LLP
          **/
         void AddNode(std::string strAddress, uint16_t nPort)
         {
-            NetAddr base_addr(debug::strprintf("%s:%u", strAddress.c_str(), nPort).c_str(), false);
+            BaseAddress base_addr(debug::strprintf("%s:%u", strAddress.c_str(), nPort).c_str(), false);
 
             LegacyAddress addr(base_addr);
 
@@ -194,7 +194,7 @@ namespace LLP
         bool AddConnection(std::string strAddress, uint16_t nPort)
         {
             /* Initialize DDOS Protection for Incoming IP Address. */
-            NetAddr addrConnect(strAddress, nPort);
+            BaseAddress addrConnect(strAddress, nPort);
 
             /* Create new DDOS Filter if Needed. */
             if(!DDOS_MAP.count(addrConnect))
@@ -267,7 +267,7 @@ namespace LLP
          **/
         std::vector<LegacyAddress> GetAddresses()
         {
-            std::vector<NetAddr> vAddr;
+            std::vector<BaseAddress> vAddr;
             std::vector<LegacyAddress> vLegacyAddr;
 
             if(pAddressManager)
@@ -296,7 +296,7 @@ namespace LLP
                 runtime::sleep(1000);
 
             /* Address to select. */
-            NetAddr addr;
+            BaseAddress addr;
 
             /* Loop connections. */
             while(!fDestruct.load())
@@ -374,7 +374,7 @@ namespace LLP
         {
             int32_t hListenSocket;
             SOCKET hSocket;
-            NetAddr addr;
+            BaseAddress addr;
             socklen_t len_v4 = sizeof(struct sockaddr_in);
             socklen_t len_v6 = sizeof(struct sockaddr_in6);
 
@@ -414,7 +414,7 @@ namespace LLP
 
                         hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v4);
                         if (hSocket != INVALID_SOCKET)
-                            addr = NetAddr(sockaddr);
+                            addr = BaseAddress(sockaddr);
                     }
                     else
                     {
@@ -422,7 +422,7 @@ namespace LLP
 
                         hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v6);
                         if (hSocket != INVALID_SOCKET)
-                            addr = NetAddr(sockaddr);
+                            addr = BaseAddress(sockaddr);
                     }
 
                     if (hSocket == INVALID_SOCKET)
