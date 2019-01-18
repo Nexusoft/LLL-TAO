@@ -103,7 +103,8 @@ namespace Legacy
      **/
     class CWallet : public CCryptoKeyStore
     {
-        friend class CWalletDB;
+        /** CWalletDB declared friend so it can use private Load methods within LoadWallet **/
+        friend class CWalletDB; 
 
     public:
         /** InitializeWallet
