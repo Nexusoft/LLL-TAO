@@ -107,7 +107,7 @@ namespace TAO
 
 
         /* Switching function for each difficulty re-target [each channel uses their own version] */
-        uint32_t GetNextTargetRequired(const BlockState state, int nChannel, bool fDebug)
+        uint32_t GetNextTargetRequired(const BlockState& state, int nChannel, bool fDebug)
         {
             if(nChannel == 0)
                 return RetargetTrust(state, fDebug);
@@ -123,7 +123,7 @@ namespace TAO
 
 
         /* Trust Retargeting: Modulate Difficulty based on production rate. */
-        uint32_t RetargetTrust(const BlockState state, bool fDebug)
+        uint32_t RetargetTrust(const BlockState& state, bool fDebug)
         {
 
             /* Get Last Block Index [1st block back in Channel]. **/
@@ -221,19 +221,19 @@ namespace TAO
 
 
         /* Prime Retargeting: Modulate Difficulty based on production rate. */
-        uint32_t RetargetPrime(const BlockState state, bool fDebug)
+        uint32_t RetargetPrime(const BlockState& state, bool fDebug)
         {
 
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
             if (!GetLastState(first, 1))
-                return bnProofOfWorkStart[1].GetCompact();
+                return bnProofOfWorkStart[1].getuint32();
 
 
             /* Get Last Block Index [2nd block back in Channel]. */
             BlockState last = first.Prev();
             if (!GetLastState(last, 1))
-                return bnProofOfWorkStart[1].GetCompact();
+                return bnProofOfWorkStart[1].getuint32();
 
 
             /* Standard Time Proportions */
@@ -325,7 +325,7 @@ namespace TAO
 
             /* If there is a change in difficulty, multiply by mod. */
             nDifficulty *= nMod;
-
+            
 
             /* Keep the target difficulty at minimum (allow -regtest difficulty) */
             uint32_t nBits = SetBits(nDifficulty);
@@ -337,8 +337,8 @@ namespace TAO
 
 
             /* Check for minimum value. */
-            if (nBits < bnProofOfWorkLimit[0].getuint32())
-                nBits = bnProofOfWorkLimit[0].getuint32();
+            if (nBits < bnProofOfWorkLimit[1].getuint32())
+                nBits = bnProofOfWorkLimit[1].getuint32();
 
 
             /* Debug output. */
@@ -366,7 +366,7 @@ namespace TAO
 
 
         /* Trust Retargeting: Modulate Difficulty based on production rate. */
-        uint32_t RetargetHash(const BlockState state, bool fDebug)
+        uint32_t RetargetHash(const BlockState& state, bool fDebug)
         {
 
             /* Get Last Block Index [1st block back in Channel]. **/

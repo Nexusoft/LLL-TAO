@@ -182,6 +182,7 @@ namespace TAO
             /* Check all the transactions. */
             for(auto & tx : vtx)
             {
+
                 /* Insert txid into set to check for duplicates. */
                 uniqueTx.insert(tx.second);
 
@@ -224,7 +225,7 @@ namespace TAO
             }
 
             /* Fail and ask for response of missing transctions. */
-            if(missingTx.size() > 0)
+            if(missingTx.size() > 0 && nHeight > 0)
             {
                 //NodeType* pnode;
                 //pnode->PushMessage("GetInv("....")");

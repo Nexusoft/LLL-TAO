@@ -14,6 +14,12 @@ ________________________________________________________________________________
 
 #include <LLC/include/random.h>
 
+#include <LLD/include/global.h>
+
+#include <Legacy/types/transaction.h>
+#include <Legacy/types/legacy.h>
+#include <Legacy/types/locator.h>
+
 #include <LLP/include/hosts.h>
 #include <LLP/include/inv.h>
 #include <LLP/include/global.h>
@@ -26,7 +32,7 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 
 #include <TAO/Ledger/types/transaction.h>
-
+#include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/chainstate.h>
 
 namespace LLP
@@ -278,29 +284,77 @@ namespace LLP
         /* Push a transaction into the Node's Recieved Transaction Queue. */
         else if (INCOMING.GetMessage() == "tx")
         {
-
             /* Deserialize the Transaction. */
-            //Core::CTransaction tx;
-            //ssMessage >> tx;
-        }
-
-
-        else if(INCOMING.GetMessage() == "tritium")
-        {
-            TAO::Ledger::Transaction tx;
+            Legacy::Transaction tx;
             ssMessage >> tx;
 
-            tx.print();
+            /* Accept to memory pool. */
+            TAO::Ledger::mempool.Accept(tx);
         }
 
 
         /* Push a block into the Node's Recieved Blocks Queue. */
         else if (INCOMING.GetMessage() == "block")
         {
-            //Core::CBlock block;
-            //ssMessage >> block;
+            /* Deserialize the block. */
+            Legacy::LegacyBlock block;
+            ssMessage >> block;
 
+            /* Check if the block is valid. */
+            if(!block.Check())
+            {
+                DDOS->rSCORE += 25;
+                debug::log(3, "Block failed checks");
 
+                return true;
+            }
+
+            /* Process the block. */
+            if(LLD::legDB->HasBlock(block.GetHash()))
+            {
+                DDOS->rSCORE += 25; //make a penalty for sending blocks we already have.
+                //TODO: check if blocks are sent unsolicited.
+                debug::log(3, NODE, "Already have block");
+
+                return true;
+            }
+
+            /* Check for orphan. */
+            if(!LLD::legDB->HasBlock(block.hashPrevBlock))
+            {
+                DDOS->rSCORE += 5;
+                debug::log(3, NODE, "Block is an orphan");
+
+                /* Ask for getblocks. */
+                //PushMessage("getblocks", Legacy::Locator(TAO::Ledger::ChainState::hashBestChain), uint1024_t(0));
+
+                return true;
+            }
+
+            /* Check if valid in the chain. */
+            if(!block.Accept())
+            {
+                DDOS->rSCORE += 25;
+                debug::log(3, NODE, "Block failed to be added to chain");
+
+                return false;
+            }
+
+            /* Create the Block State. */
+            TAO::Ledger::BlockState state(block);
+
+            /* Add the transactions to mempool for processing. */
+            for(const auto & tx : block.vtx)
+                TAO::Ledger::mempool.AddUnchecked(tx);
+
+            /* Process the block state. */
+            if(!state.Accept())
+            {
+                DDOS->rSCORE += 25;
+                debug::log(3, NODE, "Block state failed processing");
+
+                return true;
+            }
         }
 
 
@@ -360,7 +414,6 @@ namespace LLP
             Address addrFrom;
             uint64_t nServices = 0;
 
-
             /* Check the Protocol Versions */
             ssMessage >> nCurrentVersion;
 
@@ -377,7 +430,7 @@ namespace LLP
             /* Push our version back since we just completed getting the version from the other node. */
             if (fOUTGOING)
             {
-
+                PushMessage("getblocks", Legacy::Locator(TAO::Ledger::ChainState::hashBestChain), uint1024_t(0));
             }
             else
                 PushVersion();

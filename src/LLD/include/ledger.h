@@ -262,6 +262,21 @@ namespace LLD
         }
 
 
+        /** Has Block
+         *
+         *  Checks if there is a block state object on disk.
+         *
+         *  @param[in] hashBlock The block hash to check
+         *
+         *  @return True if it exists.
+         *
+         **/
+        bool HasBlock(uint1024_t hashBlock)
+        {
+            return Exists(hashBlock);
+        }
+
+
         /** Has Genesis.
          *
          *  Checks if a genesis transaction exists.

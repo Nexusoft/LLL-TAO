@@ -125,6 +125,7 @@ namespace LLP
         /* Set the message in the packet header. */
         void SetMessage(const char* chMessage)
         {
+            //std::copy((char*)chMessage, (char*)chMessage + std::min((size_t)12, sizeof(chMessage)), (char*)&MESSAGE);
             strncpy(MESSAGE, chMessage, 12);
         }
 
