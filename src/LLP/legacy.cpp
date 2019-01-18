@@ -14,6 +14,9 @@ ________________________________________________________________________________
 
 #include <LLC/include/random.h>
 
+#include <Legacy/types/transaction.h>
+#include <Legacy/types/legacy.h>
+
 #include <LLP/include/hosts.h>
 #include <LLP/include/inv.h>
 #include <LLP/include/global.h>
@@ -26,7 +29,7 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 
 #include <TAO/Ledger/types/transaction.h>
-
+#include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/chainstate.h>
 
 namespace LLP
@@ -278,19 +281,12 @@ namespace LLP
         /* Push a transaction into the Node's Recieved Transaction Queue. */
         else if (INCOMING.GetMessage() == "tx")
         {
-
             /* Deserialize the Transaction. */
-            //Core::CTransaction tx;
-            //ssMessage >> tx;
-        }
-
-
-        else if(INCOMING.GetMessage() == "tritium")
-        {
-            TAO::Ledger::Transaction tx;
+            Legacy::Transaction tx;
             ssMessage >> tx;
 
-            tx.print();
+            /* Accept to memory pool. */
+            TAO::Ledger::mempool.Accept(tx);
         }
 
 
