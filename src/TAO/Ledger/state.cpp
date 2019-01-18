@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <Legacy/types/legacy.h>
+
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/enum.h>
@@ -38,6 +40,23 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+
+        /* Construct a block state from a legacy block. */
+        BlockState::BlockState(Legacy::LegacyBlock block)
+        : Block(block)
+        , vtx()
+        , nChainTrust(0)
+        , nMoneySupply(0)
+        , nChannelHeight(0)
+        , nReleasedReserve{0, 0, 0}
+        , hashNextBlock(0)
+        , hashCheckpoint(0)
+        {
+            /* Construct a block state from legacy block tx set. */
+            for(const auto & tx : block.vtx)
+                vtx.push_back(std::make_pair(TYPE::LEGACY_TX, tx.GetHash()));
+        }
+
 
         /* Get the block state object. */
         bool GetLastState(BlockState &state, uint32_t nChannel)
@@ -352,8 +371,7 @@ namespace TAO
         /** Connect a block state into chain. **/
         bool BlockState::Connect()
         {
-            //if(!LLD::legDB->WriteTx(producer.GetHash(), producer))
-            //    return debug::error(FUNCTION, "failed to write producer");
+            //TODO: check if the transaction is already on disk.
 
             /* Check through all the transactions. */
             for(const auto & tx : vtx)
@@ -411,6 +429,30 @@ namespace TAO
                         if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.GetHash()))
                             return debug::error(FUNCTION, "failed to write last hash");
                     }
+                }
+                else if(tx.first == TYPE::LEGACY_TX)
+                {
+                    /* Get the transaction hash. */
+                    uint512_t hash = tx.second;
+
+                    /* Check if in memory pool. */
+                    Legacy::Transaction tx;
+                    if(!mempool.Get(hash, tx))
+                        return debug::error(FUNCTION, "transaction is not in memory pool"); //TODO: recover from this and ask sending node.
+
+                    /* Fetch the inputs. */
+                    std::map<uint512_t, Legacy::Transaction> inputs;
+                    if(!tx.FetchInputs(inputs))
+                        return debug::error(FUNCTION, "failed to fetch the inputs");
+
+                    /* Connect the inputs. */
+                    if(!tx.Connect(inputs, this, Legacy::FLAGS::BLOCK))
+                        return debug::error(FUNCTION, "failed to connect inputs");
+
+                    /* Write to disk. */
+                    if(!LLD::legacyDB->WriteTx(hash, tx))
+                        return debug::error(FUNCTION, "failed to write tx to disk");
+
                 }
             }
 

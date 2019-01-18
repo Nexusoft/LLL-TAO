@@ -16,6 +16,11 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/tritium.h>
 
+namespace Legacy
+{
+    class LegacyBlock;
+}
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -120,6 +125,9 @@ namespace TAO
                 vtx.push_back(std::make_pair(TYPE::TRITIUM_TX, block.producer.GetHash()));
                 vtx.insert(vtx.end(), block.vtx.begin(), block.vtx.end());
             }
+
+
+            BlockState(Legacy::LegacyBlock block);
 
 
             /** Virtual Destructor. **/

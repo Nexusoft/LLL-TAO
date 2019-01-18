@@ -109,7 +109,7 @@ namespace TAO
 
 
         /* Checks if a transaction exists. */
-        bool Mempool::Has(uint512_t hashTx)
+        bool Mempool::Has(uint512_t hashTx) const
         {
             LOCK(MUTEX);
 
@@ -156,7 +156,7 @@ namespace TAO
 
 
         /* List transactions in memory pool. */
-        bool Mempool::List(std::vector<uint512_t> &vHashes, uint32_t nCount)
+        bool Mempool::List(std::vector<uint512_t> &vHashes, uint32_t nCount) const
         {
             LOCK(MUTEX);
 

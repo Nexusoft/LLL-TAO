@@ -89,6 +89,18 @@ namespace TAO
             bool AddUnchecked(TAO::Ledger::Transaction tx);
 
 
+            /** Add Unchecked.
+             *
+             *  Add a legacy transaction to the memory pool without validation checks.
+             *
+             *  @param[in] tx The transaction to add.
+             *
+             *  @return true if added.
+             *
+             **/
+            bool AddUnchecked(Legacy::Transaction tx);
+
+
             /** Accept.
              *
              *  Accepts a transaction with validation rules.
@@ -110,7 +122,7 @@ namespace TAO
              *  @return true if added.
              *
              **/
-            bool Has(uint512_t hashTx);
+            bool Has(uint512_t hashTx) const;
 
 
             /** Remove.
@@ -159,7 +171,7 @@ namespace TAO
              *  @return true if added.
              *
              **/
-            bool List(std::vector<uint512_t> &vHashes, uint32_t nCount = std::numeric_limits<uint32_t>::max());
+            bool List(std::vector<uint512_t> &vHashes, uint32_t nCount = std::numeric_limits<uint32_t>::max()) const;
 
 
             /** Size
