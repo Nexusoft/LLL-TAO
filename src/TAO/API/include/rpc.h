@@ -292,6 +292,32 @@ namespace TAO
             **/
             json::json MoveCmd(const json::json& params, bool fHelp);
 
+            /** SendFrom
+            *
+            *  sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]
+            *  <amount> is a real and is rounded to the nearest 0.000001
+            *  requires wallet passphrase to be set with walletpassphrase firsther
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json SendFrom(const json::json& params, bool fHelp);
+
+            /** SendMany
+            *
+            *  sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]
+            *  - amounts are double-precision floating point numbers
+            *  requires wallet passphrase to be set with walletpassphrase first
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json SendMany(const json::json& params, bool fHelp);  
+
             /** AddMultisigAddress
             *
             *  addmultisigaddress <nrequired> <'[\"key\",\"key\"]'> [account]

@@ -17,6 +17,7 @@
     #include <Legacy/wallet/wallet.h>
     #include <Legacy/wallet/walletdb.h>
     #include <Legacy/wallet/accountingentry.h>
+    #include <Legacy/wallet/reservekey.h>
 
     #include <Legacy/include/money.h>
     #include <Legacy/include/evaluate.h>
@@ -518,126 +519,133 @@ namespace TAO
             
         }
 
+        /* sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]
+        * <amount> is a real and is rounded to the nearest 0.000001
+        * requires wallet passphrase to be set with walletpassphrase first */
+        json::json RPC::SendFrom(const json::json& params, bool fHelp)
+        {
+            if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
+                return std::string(
+                    "sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]"
+                    " - <amount> is a real and is rounded to the nearest 0.000001"
+                    " requires wallet passphrase to be set with walletpassphrase first");
+            if (!Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
+                return std::string(
+                    "sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]"
+                    "<amount> is a real and is rounded to the nearest 0.000001");
 
-        // json::json sendfrom(const json::json& params, bool fHelp)
-        // {
-        //     if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
-        //         return std::string(
-        //             "sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]"
-        //             " - <amount> is a real and is rounded to the nearest 0.000001"
-        //             " requires wallet passphrase to be set with walletpassphrase first");
-        //     if (!Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
-        //         return std::string(
-        //             "sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]"
-        //             "<amount> is a real and is rounded to the nearest 0.000001");
+            std::string strAccount = AccountFromValue(params[0]);
+            Legacy::NexusAddress address(params[1].get<std::string>());
+            if (!address.IsValid())
+                throw APIException(-5, "Invalid Nexus address");
+            int64_t nAmount = Legacy::AmountToSatoshis(params[2]);
+            if (nAmount < Legacy::MIN_TXOUT_AMOUNT)
+                throw APIException(-101, "Send amount too small");
+            int nMinDepth = 1;
+            if (params.size() > 3)
+                nMinDepth = params[3];
 
-        //     std::string strAccount = AccountFromValue(params[0]);
-        //     Legacy::NexusAddress address(params[1].get<std::string>());
-        //     if (!address.IsValid())
-        //         throw APIException(-5, "Invalid Nexus address");
-        //     int64_t nAmount = Legacy::AmountToSatoshis(params[2]);
-        //     if (nAmount < Core::MIN_TXOUT_AMOUNT)
-        //         throw APIException(-101, "Send amount too small");
-        //     int nMinDepth = 1;
-        //     if (params.size() > 3)
-        //         nMinDepth = params[3].get_int();
+            Legacy::CWalletTx wtx;
+            wtx.strFromAccount = strAccount;
+            if (params.size() > 4 && !params[4].is_null() && params[4].get<std::string>() != "")
+                wtx.mapValue["comment"] = params[4].get<std::string>();
+            if (params.size() > 5 && !params[5].is_null() && params[5].get<std::string>() != "")
+                wtx.mapValue["to"]      = params[5].get<std::string>();
 
-        //     Legacy::CWalletTx wtx;
-        //     wtx.strFromAccount = strAccount;
-        //     if (params.size() > 4 && params[4].type() != null_type && !params[4].get<std::string>().empty())
-        //         wtx.mapValue["comment"] = params[4].get<std::string>();
-        //     if (params.size() > 5 && params[5].type() != null_type && !params[5].get<std::string>().empty())
-        //         wtx.mapValue["to"]      = params[5].get<std::string>();
+            if (Legacy::CWallet::GetInstance().IsLocked())
+                throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
-        //     if (Legacy::CWallet::GetInstance().IsLocked())
-        //         throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+            // Check funds
+            int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
+            if (nAmount > nBalance)
+                throw APIException(-6, "Account has insufficient funds");
 
-        //     // Check funds
-        //     int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
-        //     if (nAmount > nBalance)
-        //         throw APIException(-6, "Account has insufficient funds");
+            // Send
+            std::string strError = Legacy::CWallet::GetInstance().SendToNexusAddress(address, nAmount, wtx);
+            if (strError != "")
+                throw APIException(-4, strError);
 
-        //     // Send
-        //     std::string strError = Legacy::CWallet::GetInstance().SendToNexusAddress(address, nAmount, wtx);
-        //     if (strError != "")
-        //         throw APIException(-4, strError);
+            return wtx.GetHash().GetHex();
+        }
 
-        //     return wtx.GetHash().GetHex();
-        // }
+        /* sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]
+        * - amounts are double-precision floating point numbers
+        * requires wallet passphrase to be set with walletpassphrase first*/
+        json::json RPC::SendMany(const json::json& params, bool fHelp)
+        {
+            if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4 ))
+                return std::string(
+                    "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]"
+                    " - amounts are double-precision floating point numbers"
+                    " requires wallet passphrase to be set with walletpassphrase first");
+            if (!Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4 ))
+                return std::string(
+                    "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]"
+                    "amounts are double-precision floating point numbers");
 
+            std::string strAccount = AccountFromValue(params[0]);
+            if(!params[1].is_object())
+                throw APIException(-8, std::string("Invalid recipient list format") );
 
-        // json::json sendmany(const json::json& params, bool fHelp)
-        // {
-        //     if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
-        //         return std::string(
-        //             "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]"
-        //             " - amounts are double-precision floating point numbers"
-        //             " requires wallet passphrase to be set with walletpassphrase first");
-        //     if (!Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
-        //         return std::string(
-        //             "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]"
-        //             "amounts are double-precision floating point numbers");
+            json::json sendTo = params[1];
+            int nMinDepth = 1;
+            if (params.size() > 2)
+                nMinDepth = params[2];
 
-        //     std::string strAccount = AccountFromValue(params[0]);
-        //     Object sendTo = params[1].get_obj();
-        //     int nMinDepth = 1;
-        //     if (params.size() > 2)
-        //         nMinDepth = params[2].get_int();
+            Legacy::CWalletTx wtx;
+            wtx.strFromAccount = strAccount;
+            if (params.size() > 3 && !params[3].is_null() && params[3].get<std::string>() != "")
+                wtx.mapValue["comment"] = params[3].get<std::string>();
 
-        //     Legacy::CWalletTx wtx;
-        //     wtx.strFromAccount = strAccount;
-        //     if (params.size() > 3 && params[3].type() != null_type && !params[3].get<std::string>().empty())
-        //         wtx.mapValue["comment"] = params[3].get<std::string>();
+            std::set<Legacy::NexusAddress> setAddress;
+            std::vector<std::pair<Legacy::CScript, int64_t> > vecSend;
 
-        //     set<Legacy::NexusAddress> setAddress;
-        //     std::vector<pair<Wallet::CScript, int64_t> > vecSend;
+            int64_t totalAmount = 0;
+            for (json::json::iterator it = sendTo.begin(); it != sendTo.end(); ++it)
+            {
+                Legacy::NexusAddress address(it.key());
+                if (!address.IsValid())
+                    throw APIException(-5, std::string("Invalid Nexus address:")+it.key());
 
-        //     int64_t totalAmount = 0;
-        //     BOOST_FOREACH(const Pair& s, sendTo)
-        //     {
-        //         Legacy::NexusAddress address(s.name_);
-        //         if (!address.IsValid())
-        //             throw APIException(-5, std::string("Invalid Nexus address:")+s.name_);
+                if (setAddress.count(address))
+                    throw APIException(-8, std::string("Invalid parameter, duplicated address: ")+it.key());
+                setAddress.insert(address);
 
-        //         if (setAddress.count(address))
-        //             throw APIException(-8, std::string("Invalid parameter, duplicated address: ")+s.name_);
-        //         setAddress.insert(address);
+                Legacy::CScript scriptPubKey;
+                scriptPubKey.SetNexusAddress(address);
+                int64_t nAmount = Legacy::AmountToSatoshis(it.value());
+                if (nAmount < Legacy::MIN_TXOUT_AMOUNT)
+                    throw APIException(-101, "Send amount too small");
+                totalAmount += nAmount;
 
-        //         Wallet::CScript scriptPubKey;
-        //         scriptPubKey.SetNexusAddress(address);
-        //         int64_t nAmount = Legacy::AmountToSatoshis(s.value_);
-        //         if (nAmount < Core::MIN_TXOUT_AMOUNT)
-        //             throw APIException(-101, "Send amount too small");
-        //         totalAmount += nAmount;
+                vecSend.push_back(make_pair(scriptPubKey, nAmount));
+            }
 
-        //         vecSend.push_back(make_pair(scriptPubKey, nAmount));
-        //     }
+            if (Legacy::CWallet::GetInstance().IsLocked())
+                throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+            if (Legacy::fWalletUnlockMintOnly)
+                throw APIException(-13, "Error: Wallet unlocked for block minting only.");
 
-        //     if (Legacy::CWallet::GetInstance().IsLocked())
-        //         throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
-        //     if (Legacy::fWalletUnlockMintOnly)
-        //         throw APIException(-13, "Error: Wallet unlocked for block minting only.");
+            // Check funds
+            int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
+            if (totalAmount > nBalance)
+                throw APIException(-6, "Account has insufficient funds");
 
-        //     // Check funds
-        //     int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
-        //     if (totalAmount > nBalance)
-        //         throw APIException(-6, "Account has insufficient funds");
+            // Send
+            Legacy::CReserveKey keyChange(Legacy::CWallet::GetInstance());
+            int64_t nFeeRequired = 0;
+            bool fCreated = Legacy::CWallet::GetInstance().CreateTransaction(vecSend, wtx, keyChange, nFeeRequired);
+            if (!fCreated)
+            {
+                if (totalAmount + nFeeRequired > Legacy::CWallet::GetInstance().GetBalance())
+                    throw APIException(-6, "Insufficient funds");
+                throw APIException(-4, "Transaction creation failed");
+            }
+            if (!Legacy::CWallet::GetInstance().CommitTransaction(wtx, keyChange))
+                throw APIException(-4, "Transaction commit failed");
 
-        //     // Send
-        //     Wallet::CReserveKey keyChange(pwalletMain);
-        //     int64_t nFeeRequired = 0;
-        //     bool fCreated = Legacy::CWallet::GetInstance().CreateTransaction(vecSend, wtx, keyChange, nFeeRequired);
-        //     if (!fCreated)
-        //     {
-        //         if (totalAmount + nFeeRequired > Legacy::CWallet::GetInstance().GetBalance())
-        //             throw APIException(-6, "Insufficient funds");
-        //         throw APIException(-4, "Transaction creation failed");
-        //     }
-        //     if (!Legacy::CWallet::GetInstance().CommitTransaction(wtx, keyChange))
-        //         throw APIException(-4, "Transaction commit failed");
-
-        //     return wtx.GetHash().GetHex();
-        // }
+            return wtx.GetHash().GetHex();
+        }
 
         /* addmultisigaddress <nrequired> <'[\"key\",\"key\"]'> [account]
         *  Add a nrequired-to-sign multisignature address to the wallet

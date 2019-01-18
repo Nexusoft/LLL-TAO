@@ -383,10 +383,8 @@ namespace TAO
                 throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
             if (Legacy::fWalletUnlockMintOnly)
                 throw APIException(-102, "Wallet is unlocked for minting only.");
-
-            debug::log(0, params.dump());
-            if(!params[0].is_array())
-                throw APIException(-1, "Import list should be an array of objects.");
+            if(!params[0].is_object())
+                throw APIException(-8, "Invalid import list format.");
 
             /** Establish the JSON Object from the Parameters. **/
             json::json jsonImportArray = params[0];
