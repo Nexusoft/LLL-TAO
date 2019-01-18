@@ -68,7 +68,6 @@ namespace TAO
         /* Initialize the Chain State. */
         bool ChainState::Initialize()
         {
-
             /* Initialize the Genesis. */
             if(!CreateGenesis())
                 return debug::error(FUNCTION, "failed to create genesis");
@@ -92,7 +91,6 @@ namespace TAO
             /* Find the last checkpoint. */
             if(stateBest != stateGenesis)
             {
-
                 /* Search back until fail or different checkpoint. */
                 BlockState state;
                 if(!LLD::legDB->ReadBlock(hashCheckpoint, state))
