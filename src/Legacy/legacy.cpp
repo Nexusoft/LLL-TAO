@@ -164,7 +164,7 @@ namespace Legacy
 
 
         /* Check the Required Mining Outputs. */
-        if (nHeight > 0 && IsProofOfWork())
+        if (nHeight > 0 && IsProofOfWork() && nVersion >= 3)
         {
             uint32_t nSize = vtx[0].vout.size();
 
@@ -194,7 +194,7 @@ namespace Legacy
 
 
         /* Check the Coinstake Transaction is First, with no repetitions. */
-        if (vtx.empty() || (!vtx[0].IsCoinStake() && nChannel == 0))
+        if (vtx.empty() || (!vtx[0].IsCoinStake() && IsProofOfStake()))
             return debug::error(FUNCTION, "first tx is not coinstake for proof of stake");
 
 
@@ -266,6 +266,7 @@ namespace Legacy
 
         /* Check for duplicate txid's. */
         if (uniqueTx.size() != vtx.size())
+            //TODO: push this block to a chainstate worker thread.
             return debug::error(FUNCTION, "duplicate transaction");
 
 
@@ -315,7 +316,7 @@ namespace Legacy
     bool LegacyBlock::Accept()
     {
         print();
-        
+
         /* Read leger DB for duplicate block. */
         TAO::Ledger::BlockState state;
         if(LLD::legDB->ReadBlock(GetHash(), state))
@@ -353,7 +354,7 @@ namespace Legacy
 
 
         /* Check that the nBits match the current Difficulty. **/
-        if (nBits != TAO::Ledger::GetNextTargetRequired(statePrev, GetChannel(), true))
+        if (nBits != TAO::Ledger::GetNextTargetRequired(statePrev, GetChannel()))
             return debug::error(FUNCTION, "incorrect ", nBits, " proof-of-work/proof-of-stake ", TAO::Ledger::GetNextTargetRequired(statePrev, GetChannel()));
 
 
@@ -368,8 +369,10 @@ namespace Legacy
 
 
         /* Check the block proof of work rewards. */
-        if(IsProofOfWork() && nVersion >= 3)
+        if(IsProofOfWork() && nVersion != 2)
         {
+            //This is skipped in version 2 blocks due to the disk coinbase bug from early 2014.
+            //Reward checks were re-enabled in version 3 blocks
             uint32_t nSize = vtx[0].vout.size();
 
             /* Add up the Miner Rewards from Coinbase Tx Outputs. */

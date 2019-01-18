@@ -118,38 +118,57 @@ namespace TAO
             /* Compute the Chain Trust */
             nChainTrust = statePrev.nChainTrust + GetBlockTrust();
 
-
             /* Compute the Channel Height. */
             BlockState stateLast = statePrev;
             if(!GetLastState(stateLast, GetChannel()))
-                nChannelHeight = 1;
+                nChannelHeight = 2;
             else
                 nChannelHeight = stateLast.nChannelHeight + 1;
 
             /* Compute the Released Reserves. */
-            for(int nType = 0; nType < 3; nType++)
+            if(IsProofOfWork())
             {
-                if(IsProofOfWork())
+                /* Calculate the coinbase rewards from the coinbase transaction. */
+                uint64_t nCoinbaseRewards[3] = {0, 0, 0};
+                if(vtx[0].first == TYPE::LEGACY_TX)
+                {
+                    /* Get the coinbase from the memory pool. */
+                    Legacy::Transaction tx;
+                    if(!mempool.Get(vtx[0].second, tx))
+                        return debug::error(FUNCTION, "coinbase is not in the memory pool");
+
+                    /* Get the size of the coinbase. */
+                    uint32_t nSize = tx.vout.size();
+
+                    /* Add up the Miner Rewards from Coinbase Tx Outputs. */
+                    for(int32_t nIndex = 0; nIndex < nSize - 2; nIndex++)
+                        nCoinbaseRewards[0] += tx.vout[nIndex].nValue;
+
+                    /* Get the ambassador and developer coinbase. */
+                    nCoinbaseRewards[1] = tx.vout[nSize - 2].nValue;
+                    nCoinbaseRewards[2] = tx.vout[nSize - 1].nValue;
+                }
+                else
+                {
+                    //TODO: handle for the coinbase in Tritium
+                }
+
+                for(int nType = 0; nType < 3; nType++)
                 {
                     /* Calculate the Reserves from the Previous Block in Channel's reserve and new Release. */
                     uint64_t nReserve  = stateLast.nReleasedReserve[nType] +
                         GetReleasedReserve(*this, GetChannel(), nType);
 
-                    /* Get the coinbase rewards. */
-                    uint64_t nCoinbaseRewards = GetCoinbaseReward(statePrev, GetChannel(), nType);
-
                     /* Block Version 3 Check. Disable Reserves from going below 0. */
-                    if(nVersion >= 3 && nCoinbaseRewards >= nReserve)
+                    if(nVersion != 2 && nCoinbaseRewards[nType] >= nReserve)
                         return debug::error(FUNCTION, "out of reserve limits");
 
                     /* Check coinbase rewards. */
-                    nReleasedReserve[nType] =  (nReserve - nCoinbaseRewards);
+                    nReleasedReserve[nType] =  (nReserve - nCoinbaseRewards[nType]);
 
-                    debug::log(2, "Reserve Balance ", nType, " | ", nReleasedReserve[nType] / 1000000.0,
-                        " Nexus | Released ", (nReserve - stateLast.nReleasedReserve[nType]) / 1000000.0);
+                    debug::log(2, "Reserve Balance ", nType, " | ", std::fixed, nReleasedReserve[nType] / 1000000.0,
+                        " Nexus | Released ", std::fixed, (nReserve - stateLast.nReleasedReserve[nType]) / 1000000.0);
                 }
-                else
-                    nReleasedReserve[nType] = 0;
             }
 
             /* Add the Pending Checkpoint into the Blockchain. */
