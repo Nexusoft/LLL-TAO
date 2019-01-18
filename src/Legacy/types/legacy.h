@@ -100,6 +100,40 @@ namespace Legacy
         bool CheckStake() const;
 
 
+        /** Check Trust
+         *
+         *  Check the calculated trust score meets published one.
+         *
+         **/
+        bool CheckTrust() const;
+
+
+        /** Block Age
+         *
+         *  Get the current block age of the trust key.
+         *
+         **/
+        bool BlockAge(uint32_t& nAge) const;
+
+
+        /** Trust Score
+         *
+         *  Get the score of the current trust block.
+         *
+         **/
+        bool TrustScore(uint32_t& nScore) const;
+
+
+        /** Stake Hash
+         *
+         *  Prove that you staked a number of seconds based on weight
+         *
+         *  @return 1024-bit stake hash
+         *
+         **/
+        uint1024_t StakeHash() const;
+
+
         /** ToString
          *
          *  For debugging Purposes seeing block state data dump

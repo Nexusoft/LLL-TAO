@@ -206,6 +206,55 @@ namespace Legacy
 		bool IsStandard() const;
 
 
+		/** Trust Key
+		 *
+		 *  Extract the trust key out of the coinstake transaction.
+		 *
+		 *  @param[out] vchTrustKey The trust key to return.
+		 *
+		 *  @return true if the trust key was found.
+		 *
+		 **/
+		bool TrustKey(std::vector<uint8_t>& vchTrustKey) const;
+
+
+		/** Trust Key
+		 *
+		 *  Extract the trust key out of the coinstake transaction.
+		 *
+		 *  @param[out] cKey The trust key to return.
+		 *
+		 *  @return true if the trust key was found.
+		 *
+		 **/
+		bool TrustKey(uint576_t& cKey) const;
+
+
+
+        /** Extract Trust
+         *
+         *  Extract the trust data from the input script.
+		 *
+		 *  @param[out] hashLastBlock The last block to extract.
+		 *  @param[out] nSequence The sequence number of proof of stake blocks.
+		 *  @param[out] nTrustScore The trust score to extract.
+         *
+         **/
+        bool ExtractTrust(uint1024_t& hashLastBlock, uint32_t& nSequence, uint32_t& nTrustScore) const;
+
+
+		/** Coinstake Age
+		 *
+		 *  Age is determined by average time from previous transactions.
+		 *
+		 *  @param[out] nAge The age to return.
+		 *
+		 *  @return true if succeeded.
+		 *
+		 **/
+		bool CoinstakeAge(uint64_t& nAge) const;
+
+
 		/** Are Inputs Standard
 		 *
 		 *  Check for standard transaction types

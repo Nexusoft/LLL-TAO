@@ -117,6 +117,16 @@ namespace TAO
             bool Accept();
 
 
+            /** Stake Hash
+             *
+             *  Prove that you staked a number of seconds based on weight
+             *
+             *  @return 1024-bit stake hash
+             *
+             **/
+            uint1024_t StakeHash() const;
+
+
             /** ToString
              *
              *  For debugging Purposes seeing block state data dump
