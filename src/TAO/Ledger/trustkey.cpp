@@ -11,6 +11,10 @@
 
 ____________________________________________________________________________________________*/
 
+#include <cmath>
+
+#include <Legacy/types/legacy.h>
+
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/trustkey.h>
@@ -54,7 +58,6 @@ namespace TAO
             hashGenesisTx        = 0;
             nGenesisTime         = 0;
 
-            hashPrevBlocks.clear();
             vchPubKey.clear();
         }
 
@@ -92,7 +95,7 @@ namespace TAO
 
 
         /* Check the Genesis Transaction of this Trust Key. */
-        bool TrustKey::CheckGenesis(TritiumBlock block) const
+        bool TrustKey::CheckGenesis(const Legacy::LegacyBlock& block) const
         {
             /* Invalid if Null. */
             if(IsNull())
@@ -114,12 +117,31 @@ namespace TAO
             if (block.vtx.size() == 0)
                 return debug::error("TrustKey::CheckGenesis() : genesis coinstake not present");
 
-            uint512_t txHash = block.vtx[0].second;
-
+            uint512_t txHash = block.vtx[0].GetHash();
             if(txHash != hashGenesisTx)
                 return debug::error("TrustKey::CheckGenesis() : genesis coinstake hash mismatch");
 
             return true;
+        }
+
+
+        /* Interest is Determined By Logarithmic Equation from Genesis Key. */
+        double TrustKey::InterestRate(const Legacy::LegacyBlock& block, uint32_t nTime) const
+        {
+            /* Genesis interest rate is 0.5% */
+            if(block.vtx[0].IsGenesis())
+                return 0.005;
+
+            /* Block version 4 is the age of key from timestamp. */
+            uint32_t nTrustScore;
+            if(block.nVersion == 4)
+                nTrustScore = (nTime - nGenesisTime);
+
+            /* Block version 5 is the trust score of the key. */
+            else if(!block.TrustScore(nTrustScore))
+                return 0.0; //this will trigger an interest rate failure
+
+            return std::min(0.03, ((((0.025 * log(((9.0 * (nTrustScore)) / (60 * 60 * 24 * 28 * 13)) + 1.0)) / log(10))) + 0.005));
         }
 
 

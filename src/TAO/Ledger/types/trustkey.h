@@ -22,6 +22,11 @@ ________________________________________________________________________________
 
 #include <Util/templates/serialize.h>
 
+namespace Legacy
+{
+    class LegacyBlock;
+}
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -29,8 +34,6 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-
-        class TritiumBlock;
 
 
         /** @class TrustKey
@@ -46,7 +49,7 @@ namespace TAO
 
 
             /** Trust Key version **/
-            int32_t nVersion;
+            uint32_t nVersion;
 
 
             /** Hash of legacy block containing the Genesis transaction for this Trust Key **/
@@ -58,11 +61,7 @@ namespace TAO
 
 
             /** Timestamp of the Genesis transaction for this Trust Key **/
-            int32_t nGenesisTime;
-
-
-            /** Previous Blocks Vector to store list of blocks for this Trust Key. **/
-            mutable std::vector<uint1024_t> hashPrevBlocks;
+            uint32_t nGenesisTime;
 
 
             /** Constructor
@@ -174,7 +173,20 @@ namespace TAO
              *  @return true if block contains valid Genesis transaction for this Trust Key, false otherwise
              *
              */
-            bool CheckGenesis(const TritiumBlock block) const;
+            bool CheckGenesis(const Legacy::LegacyBlock& block) const;
+
+
+            /** Interest Rate
+             *
+             *  Interest is Determined By Logarithmic Equation from Genesis Key.
+             *
+             *  @param[in] block The block to check against.
+             *  @param[in] nTime The time to check against.
+             *
+             *  @return the total interest rate of trust key.
+             *
+             **/
+            double InterestRate(const Legacy::LegacyBlock& block, uint32_t nTime) const;
 
 
             /** ToString
