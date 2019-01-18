@@ -85,7 +85,7 @@ namespace TAO
              *  @param[out] obj The object to de-serialize from ledger data
              *
              **/
-            template<typename Type> Stream& operator>>(Type& obj)
+            template<typename Type> const Stream& operator>>(Type& obj) const
             {
                 /* Unserialize from the stream. */
                 ::Unserialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //TODO: version should be object version

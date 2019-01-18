@@ -89,6 +89,44 @@ namespace TAO
         }
 
 
+        /* Extract the trust data from the input script. */
+        bool Transaction::ExtractTrust(uint1024_t& hashLastBlock, uint32_t& nSequence, uint32_t& nTrustScore) const
+        {
+            /* Don't extract trust if not coinstake. */
+            if(!IsTrust())
+                return debug::error(FUNCTION, "not proof of stake");
+
+            /* Seek the stream to the beginning. */
+            ssOperation.seek(1);
+
+            /* The account that is being staked. */
+            uint256_t hashAccount;
+            ssOperation >> hashAccount;
+
+            /* Deserialize the values from stream. */
+            ssOperation >> hashLastBlock >> nSequence >> nTrustScore;
+
+            return true;
+        }
+
+
+        /* Extract the stake data from the input script. */
+        bool Transaction::ExtractStake(uint64_t& nStake) const
+        {
+            /* Don't extract trust if not coinstake. */
+            if(!IsTrust())
+                return debug::error(FUNCTION, "not proof of stake");
+
+            /* Seek the stream to the beginning. */
+            ssOperation.seek(169);
+
+            /* Deserialize the values from stream. */
+            ssOperation >> nStake;
+
+            return true;
+        }
+
+
         /* Determines if the transaction is a coinbase transaction. */
         bool Transaction::IsCoinbase() const
         {

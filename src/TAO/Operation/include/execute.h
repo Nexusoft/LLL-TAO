@@ -237,16 +237,16 @@ namespace TAO
                             uint32_t nSequence;
                             tx.ssOperation >> nSequence;
 
-                            /* The previous trust calculated. */
-                            uint64_t nLastTrust;
-                            tx.ssOperation >> nLastTrust;
+                            /* The trust calculated. */
+                            uint64_t nTrust;
+                            tx.ssOperation >> nTrust;
 
                             /* The total to be staked. */
                             uint64_t  nStake;
                             tx.ssOperation >> nStake;
 
                             /* Execute the operation method. */
-                            if(!Trust(hashAccount, hashLastTrust, nSequence, nLastTrust, nStake, hashOwner, nFlags, tx))
+                            if(!Trust(hashAccount, hashLastTrust, nSequence, nTrust, nStake, hashOwner, nFlags, tx))
                                 return false;
 
                             /* Ensure that it as end of tx.ssOperation. TODO: coinbase should be followed by ambassador and developer scripts */
