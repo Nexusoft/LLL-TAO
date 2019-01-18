@@ -103,23 +103,19 @@ namespace TAO
 
             /* Trust Keys must be created from only Proof of Stake Blocks. */
             if(!block.IsProofOfStake())
-                return debug::error("TrustKey::CheckGenesis() : genesis has to be proof of stake");
+                return debug::error(FUNCTION, "genesis has to be proof of stake");
 
             /* Trust Key Timestamp must be the same as Genesis Key Block Timestamp. */
             if(nGenesisTime != block.nTime)
-                return debug::error("TrustKey::CheckGenesis() : genesis time mismatch");
+                return debug::error(FUNCTION, "genesis time mismatch");
+
+            /* Genesis Key Transaction must match Trust Key Genesis Hash. */
+            if(block.vtx[0].GetHash() != hashGenesisTx)
+                return debug::error(FUNCTION, "genesis coinstake hash mismatch");
 
             /* Check the genesis block hash. */
             if(block.GetHash() != hashGenesisBlock)
-                return debug::error("TrustKey::CheckGenesis() : genesis hash mismatch");
-
-            /* Genesis Transaction must match Trust Key Genesis Hash. */
-            if (block.vtx.size() == 0)
-                return debug::error("TrustKey::CheckGenesis() : genesis coinstake not present");
-
-            uint512_t txHash = block.vtx[0].GetHash();
-            if(txHash != hashGenesisTx)
-                return debug::error("TrustKey::CheckGenesis() : genesis coinstake hash mismatch");
+                return debug::error(FUNCTION, "genesis hash mismatch");
 
             return true;
         }
