@@ -230,6 +230,92 @@ namespace Legacy
         return true;
     }
 
+    /* Extract the trust key out of the coinstake transaction. */
+    bool Transaction::TrustKey(std::vector<uint8_t>& vchTrustKey) const
+    {
+        /* Extract the Key from the Script Signature. */
+        std::vector<std::vector<uint8_t> > vSolutions;
+        TransactionType whichType;
+
+        /* Extract the key from script sig. */
+        if (!Solver(vout[0].scriptPubKey, whichType, vSolutions))
+            return debug::error(FUNCTION, "couldn't find trust key in script");
+
+        /* Enforce public key rules. */
+        if (whichType != TX_PUBKEY)
+            return debug::error(FUNCTION, "key not of public key type");
+
+        /* Set the Public Key Integer Key from Bytes. */
+        vchTrustKey = vSolutions[0];
+
+        return true;
+    }
+
+
+    /* Extract the trust key out of the coinstake transaction. */
+    bool Transaction::TrustKey(uint576_t& cKey) const
+    {
+        /* Extract the trust key. */
+        std::vector<uint8_t> vchTrustKey;
+        if(!TrustKey(vchTrustKey))
+            return debug::error(FUNCTION, "trust key failed to extract");
+
+        /* Set the bytes for the key object. */
+        cKey.SetBytes(vchTrustKey);
+        return true;
+
+    }
+
+
+    /* Extract the trust data from the input script. */
+    bool Transaction::ExtractTrust(uint1024_t& hashLastBlock, uint32_t& nSequence, uint32_t& nTrustScore) const
+    {
+        /* Don't extract trust if not coinstake. */
+        if(!IsCoinStake())
+            return debug::error(FUNCTION, "not proof of stake");
+
+        /* Check the script size matches expected length. */
+        if(vin[0].scriptSig.size() != 144)
+            return debug::error(FUNCTION, "script not 144 bytes");
+
+        /* Put script in deserializing stream. */
+        DataStream scriptPub(vin[0].scriptSig, SER_NETWORK, LLP::PROTOCOL_VERSION);
+
+        /* Erase the first 8 bytes of the fib byte series flag. */
+        scriptPub.erase(scriptPub.begin(), scriptPub.begin() + 8);
+
+        /* Deserialize the values from stream. */
+        scriptPub >> hashLastBlock >> nSequence >> nTrustScore;
+
+        return true;
+    }
+
+
+    /* Age is determined by average time from previous transactions. */
+    bool Transaction::CoinstakeAge(uint64_t& nAge) const
+    {
+        /* Output figure to show the amount of coins being staked at their interest rates. */
+        nAge = 0;
+
+        /* Check that the transaction is Coinstake. */
+        if(!IsCoinStake())
+            return false;
+
+        /* Check the coin age of each Input. */
+        for(int nIndex = 1; nIndex < vin.size(); nIndex++)
+        {
+            /** Calculate the Age and Value of given output. **/
+            int64_t nCoinAge = (nTime - 0);//block.GetBlockTime());
+
+            /** Compound the Total Figures. **/
+            nAge += nCoinAge;
+        }
+
+        nAge /= (vin.size() - 1);
+
+        return true;
+    }
+
 
 	/* Check for standard transaction types */
 	bool Transaction::AreInputsStandard(const std::map<uint512_t, Transaction>& mapInputs) const

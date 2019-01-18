@@ -106,14 +106,6 @@ namespace TAO
         }
 
 
-        uint1024_t Block::StakeHash()
-        {
-            uint1024_t hash;
-            //TODO: finish this method
-            return hash;
-        }
-
-
         /* Generate a Hash For the Block from the Header. */
         uint1024_t Block::GetHash() const
         {
@@ -214,16 +206,6 @@ namespace TAO
             /* Check that the that enough work was done on this block. */
             if (ProofHash() > bnTarget.getuint1024())
                 return debug::error(FUNCTION, "proof-of-work hash below target");
-
-            return true;
-        }
-
-
-        /* Verify the Proof of Stake satisfies network requirements. */
-        bool Block::VerifyStake() const
-        {
-
-            //TODO: Fill in when trust source file complete
 
             return true;
         }

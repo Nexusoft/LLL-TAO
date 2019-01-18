@@ -14,8 +14,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_TYPES_SCRIPT_H
 #define NEXUS_LEGACY_TYPES_SCRIPT_H
 
-#include <Legacy/types/enum.h>
 #include <Legacy/types/address.h>
+#include <Legacy/include/enum.h>
 
 #include <LLC/types/bignum.h>
 #include <LLC/include/key.h>

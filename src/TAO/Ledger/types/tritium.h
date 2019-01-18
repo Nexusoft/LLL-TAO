@@ -101,8 +101,62 @@ namespace TAO
             }
 
 
-            /** Check a tritium block for consistency. **/
+            /** Check
+             *
+             *  Check a tritium block for consistency.
+             *
+             **/
             bool Check() const;
+
+
+            /** Accept
+             *
+             *  Accept a tritium block with chain state parameters.
+             *
+             **/
+            bool Accept();
+
+            
+            /** Check Stake
+             *
+             *  Check the proof of stake calculations.
+             *
+             **/
+            bool CheckStake() const;
+
+
+            /** Check Trust
+             *
+             *  Check the calculated trust score meets published one.
+             *
+             **/
+            bool CheckTrust() const;
+
+
+            /** Block Age
+             *
+             *  Get the current block age of the trust key.
+             *
+             **/
+            bool BlockAge(uint32_t& nAge) const;
+
+
+            /** Trust Score
+             *
+             *  Get the score of the current trust block.
+             *
+             **/
+            bool TrustScore(uint32_t& nScore) const;
+
+
+            /** Stake Hash
+             *
+             *  Prove that you staked a number of seconds based on weight
+             *
+             *  @return 1024-bit stake hash
+             *
+             **/
+            uint1024_t StakeHash() const;
 
 
             /** ToString

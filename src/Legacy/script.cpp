@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>
 
-#include <Legacy/types/enum.h>
+#include <Legacy/include/enum.h>
 #include <Legacy/types/address.h>
 #include <Legacy/types/script.h>
 

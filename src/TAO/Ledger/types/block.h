@@ -177,16 +177,6 @@ namespace TAO
             uint1024_t SignatureHash() const;
 
 
-            /** Stake Hash
-             *
-             *    Prove that you staked a number of seconds based on weight
-             *
-             *    @return 1024-bit stake hash
-             *
-             **/
-            uint1024_t StakeHash();
-
-
             /** Get Hash
              *
              *    Get the Hash of the block.
@@ -248,16 +238,6 @@ namespace TAO
              *
              **/
             bool VerifyWork() const;
-
-
-            /** VerifyStake
-             *
-             *    Verify the stake work was completed
-             *
-             *    @return true if stake is valid, false otherwise
-             *
-             **/
-            bool VerifyStake() const;
 
 
             /** GenerateSignature

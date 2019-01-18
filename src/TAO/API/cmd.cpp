@@ -190,7 +190,7 @@ namespace TAO
             for(int i = argn + 1; i < argc; i++)
             {
                 std::string strArg = argv[i];
-                if( strArg.compare("{") == 0)
+                if( strArg.compare(0,1,"{") == 0)
                     parameters.push_back(json::json::parse(argv[i]));
                 else
                     parameters.push_back(argv[i]);

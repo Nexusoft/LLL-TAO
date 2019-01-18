@@ -98,27 +98,5 @@ namespace config
      **/
     std::string GetDataDir(bool fNetSpecific = true);
 
-
-    /** GetStartOnSystemStartup
-     *
-     *  Check if set to start when system boots.
-     *
-     *  @return True if set to start on system startup, false otherwise.
-     *
-     **/
-    bool GetStartOnSystemStartup();
-
-
-    /** SetStartOnSystemStartup
-     *
-     *  Setup to auto start when system boots.
-     *
-     *  @param[in] fAutoStart Flag indicating if program should auto start.
-     *
-     *  @return True if flag set successful, false otherwise.
-     *
-     **/
-    bool SetStartOnSystemStartup(bool fAutoStart);
-
 }
 #endif

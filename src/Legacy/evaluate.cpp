@@ -18,8 +18,8 @@ ________________________________________________________________________________
 #include <Legacy/include/constants.h>
 #include <Legacy/include/evaluate.h>
 #include <Legacy/include/signature.h>
+#include <Legacy/include/enum.h>
 
-#include <Legacy/types/enum.h>
 #include <Legacy/types/script.h>
 
 #include <string>
