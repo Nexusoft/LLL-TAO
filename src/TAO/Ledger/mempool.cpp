@@ -123,14 +123,28 @@ namespace TAO
             LOCK(MUTEX);
 
             /* Find the transaction in pool. */
-            TAO::Ledger::Transaction tx;
             if(mapLedger.count(hashTx))
             {
-                tx = mapLedger[hashTx];
+                TAO::Ledger::Transaction tx = mapLedger[hashTx];
 
                 /* Erase from the memory map. */
                 mapPrevHashes.erase(tx.PrevHash());
                 mapLedger.erase(hashTx);
+
+                return true;
+            }
+
+            /* Find out if this was a legacy transaction. */
+            if(mapLegacy.count(hashTx))
+            {
+                Legacy::Transaction tx = mapLegacy[hashTx];
+
+                /* Erase the claimed inputs */
+                uint32_t s = tx.vin.size();
+                for (uint32_t i = 0; i < s; ++i)
+                    mapInputs.erase(tx.vin[i].prevout);
+
+                mapLegacy.erase(hashTx);
 
                 return true;
             }

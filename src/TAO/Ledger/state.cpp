@@ -254,7 +254,7 @@ namespace TAO
                     }
 
                     /* List of transactions to resurrect. */
-                    std::vector<uint512_t> vResurrect;
+                    std::vector<std::pair<uint8_t, uint512_t>> vResurrect;
 
                     /* Disconnect given blocks. */
                     for(auto & state : vDisconnect)
@@ -268,14 +268,13 @@ namespace TAO
                             LLD::locDB->TxnAbort();
 
                             /* Debug errors. */
-
                             return debug::error(FUNCTION, "failed to disconnect ",
                                 state.GetHash().ToString().substr(0, 20));
                         }
 
                         /* Add transactions into memory pool. */
                         for(auto tx : state.vtx)
-                            vResurrect.push_back(tx.second);
+                            vResurrect.push_back(tx);
                     }
 
                     /* List of transactions to remove from pool. */
@@ -316,15 +315,28 @@ namespace TAO
                         mempool.Remove(hashTx);
 
                     /* Add transaction back to memory pool. */
-                    for(auto & hashTx : vResurrect)
+                    for(auto & txAdd : vResurrect)
                     {
-                        /* Check if in memory pool. */
-                        TAO::Ledger::Transaction tx;
-                        if(!LLD::legDB->ReadTx(hashTx, tx))
-                            return debug::error(FUNCTION, "transaction is not on disk");
+                        if(txAdd.first == TYPE::TRITIUM_TX)
+                        {
+                            /* Check if in memory pool. */
+                            TAO::Ledger::Transaction tx;
+                            if(!LLD::legDB->ReadTx(txAdd.second, tx))
+                                return debug::error(FUNCTION, "transaction is not on disk");
 
-                        /* Add to the mempool. */
-                        mempool.Accept(tx);
+                            /* Add to the mempool. */
+                            mempool.AddUnchecked(tx);
+                        }
+                        else if(txAdd.first == TYPE::LEGACY_TX)
+                        {
+                            /* Check if in memory pool. */
+                            Legacy::Transaction tx;
+                            if(!LLD::legacyDB->ReadTx(txAdd.second, tx))
+                                return debug::error(FUNCTION, "transaction is not on disk");
+
+                            /* Add to the mempool. */
+                            mempool.AddUnchecked(tx);
+                        }
                     }
 
 
@@ -371,7 +383,6 @@ namespace TAO
         /** Connect a block state into chain. **/
         bool BlockState::Connect()
         {
-            //TODO: check if the transaction is already on disk.
 
             /* Check through all the transactions. */
             for(const auto & tx : vtx)
@@ -384,6 +395,12 @@ namespace TAO
 
                     /* Check if in memory pool. */
                     TAO::Ledger::Transaction tx;
+
+                    /* Make sure the transaction isn't on disk. */
+                    if(LLD::legDB->ReadTx(hash, tx))
+                        return debug::error(FUNCTION, "transaction already exists");
+
+                    /* Check the memory pool. */
                     if(!mempool.Get(hash, tx))
                         return debug::error(FUNCTION, "transaction is not in memory pool"); //TODO: recover from this and ask sending node.
 
@@ -486,9 +503,28 @@ namespace TAO
                     if(!LLD::legDB->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction is not on disk");
 
-                    /* Execute the operations layers. */
+                    /* Rollback the register layer. */
                     if(!TAO::Register::Rollback(tx))
                         return debug::error(FUNCTION, "transaction register layer failed to rollback");
+
+                    /* Delete the transaction. */
+                    if(!LLD::legDB->EraseTx(hash))
+                        return debug::error(FUNCTION, "could not erase transaction");
+                }
+                else if(tx.first == TYPE::LEGACY_TX)
+                {
+                    /* Get the transaction hash. */
+                    uint512_t hash = tx.second;
+
+                    /* Check if in memory pool. */
+                    Legacy::Transaction tx;
+                    if(!LLD::legacyDB->ReadTx(hash, tx))
+                        return debug::error(FUNCTION, "transaction is not on disk");
+
+                    /* Disconnect the inputs. */
+                    if(!tx.Disconnect())
+                        return debug::error(FUNCTION, "failed to connect inputs");
+
                 }
             }
 

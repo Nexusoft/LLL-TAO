@@ -106,6 +106,21 @@ namespace LLD
         }
 
 
+        /** Erase Tx.
+         *
+         *  Erases a transaction from the ledger DB.
+         *
+         *  @param[in] hashTransaction The txid of transaction to erase.
+         *
+         *  @return True if the transaction was successfully erased.
+         *
+         **/
+        bool EraseTx(uint512_t hashTransaction)
+        {
+            return Erase(hashTransaction);
+        }
+
+
         /** Has Tx.
          *
          *  Checks LedgerDB if a transaction exists.
