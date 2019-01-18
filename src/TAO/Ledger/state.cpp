@@ -121,7 +121,7 @@ namespace TAO
             /* Compute the Channel Height. */
             BlockState stateLast = statePrev;
             if(!GetLastState(stateLast, GetChannel()))
-                nChannelHeight = 1;
+                nChannelHeight = 2;
             else
                 nChannelHeight = stateLast.nChannelHeight + 1;
 
@@ -160,7 +160,7 @@ namespace TAO
                         GetReleasedReserve(*this, GetChannel(), nType);
 
                     /* Block Version 3 Check. Disable Reserves from going below 0. */
-                    if(nVersion >= 3 && nCoinbaseRewards[nType] >= nReserve)
+                    if(nVersion != 2 && nCoinbaseRewards[nType] >= nReserve)
                         return debug::error(FUNCTION, "out of reserve limits");
 
                     /* Check coinbase rewards. */
