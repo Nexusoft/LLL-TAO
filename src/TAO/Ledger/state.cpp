@@ -324,7 +324,7 @@ namespace TAO
                                 return debug::error(FUNCTION, "transaction is not on disk");
 
                             /* Add to the mempool. */
-                            mempool.AddUnchecked(tx);
+                            mempool.Accept(tx);
                         }
                         else if(txAdd.first == TYPE::LEGACY_TX)
                         {
@@ -334,7 +334,7 @@ namespace TAO
                                 return debug::error(FUNCTION, "transaction is not on disk");
 
                             /* Add to the mempool. */
-                            mempool.AddUnchecked(tx);
+                            mempool.Accept(tx);
                         }
                     }
 
