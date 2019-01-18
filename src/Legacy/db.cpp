@@ -673,6 +673,11 @@ namespace Legacy
             pdbCopy->close(0);
             delete pdbCopy;
 
+            /* Flush log data to the dat files */
+            CDB::dbenv.txn_checkpoint(0, 0, 0);
+            CDB::dbenv.lsn_reset(strFile.c_str(), 0);
+            CDB::dbenv.lsn_reset(strFileRewrite.c_str(), 0);
+
             if (fProcessSuccess)
             {
                 /* Remove original database file */
@@ -743,7 +748,8 @@ namespace Legacy
             }
 
             /* Use of DB_FORCE should not be necessary after calling dbenv.close() but included in case there is an exception */
-            CDB::dbenv.remove(config::GetDataDir().c_str(), DB_FORCE);
+            // Throwing an error, do we need?
+            //CDB::dbenv.remove(config::GetDataDir().c_str(), DB_FORCE);
 
         } //End lock scope
     }
