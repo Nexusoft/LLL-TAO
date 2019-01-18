@@ -133,7 +133,7 @@ namespace LLP
 
 
         /* Adds a new connection to current Data Thread */
-        bool AddConnection(std::string strAddress, int nPort, DDOS_Filter* DDOS)
+        bool AddConnection(std::string strAddress, uint16_t nPort, DDOS_Filter* DDOS)
         {
             LOCK(MUTEX);
 
@@ -291,7 +291,7 @@ namespace LLP
 
                             /* Handle Meters and DDOS. */
                             if(fMETER)
-                                REQUESTS++;
+                                ++REQUESTS;
                             if(fDDOS)
                                 CONNECTIONS[nIndex]->DDOS->rSCORE += 1;
 

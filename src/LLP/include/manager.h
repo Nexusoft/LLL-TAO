@@ -43,6 +43,8 @@ namespace LLP
     {
     public:
 
+        AddressManager() = delete;
+
         /** AddressManager
          *
          *  Default constructor
@@ -71,7 +73,7 @@ namespace LLP
 
         /** GetAddresses
          *
-         *  Gets a list of addresses in the manager
+         *  Get a list of addresses in the manager that have the flagged state.
          *
          *  @param[in] flags the types of connect state
          *
@@ -173,20 +175,12 @@ namespace LLP
 
         /** PrintStats
          *
-         *  print the current state of the address manager
+         *  Print the current state of the address manager.
          *
          **/
         void PrintStats();
 
     private:
-
-        /** print_stats
-         *
-         *  print the current state of the address manager
-         *
-         **/
-        void print_stats();
-
 
         /** get_info
          *
@@ -220,6 +214,14 @@ namespace LLP
          *
          **/
         uint32_t get_total_count(const uint8_t flags);
+
+
+        /** print_stats
+         *
+         *  Print the current state of the address manager.
+         *
+         **/
+        void print_stats();
 
 
         LLD::AddressDB *pDatabase;

@@ -46,7 +46,7 @@ namespace LLP
         std::atomic<bool> fDestruct;
 
     public:
-        uint32_t PORT;
+        uint16_t PORT;
         uint32_t MAX_THREADS;
         uint32_t DDOS_TIMESPAN;
 
@@ -71,8 +71,8 @@ namespace LLP
             return ProtocolType::Name();
         }
 
-        Server<ProtocolType>(int32_t nPort, int32_t nMaxThreads, int32_t nTimeout = 30, bool isDDOS = false,
-                             int32_t cScore = 0, int32_t rScore = 0, int32_t nTimespan = 60, bool fListen = true,
+        Server<ProtocolType>(uint16_t nPort, uint32_t nMaxThreads, uint32_t nTimeout = 30, bool isDDOS = false,
+                             uint32_t cScore = 0, uint32_t rScore = 0, uint32_t nTimespan = 60, bool fListen = true,
                              bool fMeter = false, bool fManager = false)
         : fDDOS(isDDOS)
         , fLISTEN(fListen)
@@ -86,8 +86,11 @@ namespace LLP
         , addrThisNode()
         {
             for(int32_t index = 0; index < MAX_THREADS; ++index)
+            {
                 DATA_THREADS.push_back(new DataThread<ProtocolType>(
                     index, fDDOS, rScore, cScore, nTimeout, fMeter));
+            }
+
 
             if(fManager)
             {
@@ -171,7 +174,7 @@ namespace LLP
          **/
         void AddNode(std::string strAddress, uint16_t nPort)
         {
-            BaseAddress base_addr(debug::strprintf("%s:%u", strAddress.c_str(), nPort).c_str(), false);
+            BaseAddress base_addr(strAddress, nPort, false);
 
             LegacyAddress addr(base_addr);
 

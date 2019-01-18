@@ -105,7 +105,7 @@ DEFS+=  -D$(BUILD_ARCH)
 
 #Display Warnings while compiling
 ifdef ENABLE_WARNINGS
-	CXXFLAGS+= -Wall -Wextra -Wno-sign-compare -Wno-invalid-offsetof -Wno-unused-parameter -Wformat -Wformat-security
+	CXXFLAGS+= -Wall -Wextra -Wno-sign-compare -Wno-invalid-offsetof -Wno-unused-parameter -Wformat -Wformat-security -pedantic
 else
 	CXXFLAGS+= -w
 endif

@@ -67,7 +67,7 @@ namespace LLD
 
 
         /** Keychain stream object. **/
-        mutable TemplateLRU<uint32_t, std::fstream*>* fileCache;
+        mutable TemplateLRU<uint32_t, std::fstream *> *fileCache;
 
 
         /** Total elements in hashmap for quick inserts. **/
@@ -100,7 +100,7 @@ namespace LLD
         , HASHMAP_MAX_KEY_SIZE(128)
         , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11)
         , fInitialized(false)
-        , fileCache(new TemplateLRU<uint32_t, std::fstream*>())
+        , fileCache(new TemplateLRU<uint32_t, std::fstream *>())
         , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
@@ -112,7 +112,8 @@ namespace LLD
         /** Clean up Memory Usage. **/
         ~BinaryHashTree()
         {
-            delete fileCache;
+            if(fileCache)
+                delete fileCache;
         }
 
 
@@ -120,7 +121,7 @@ namespace LLD
         uint32_t GetBucket(const std::vector<uint8_t> vKey) const
         {
             uint64_t nBucket = 0;
-            for(int i = 0; i < vKey.size() && i < 8; i++)
+            for(uint32_t i = 0; i < vKey.size() && i < 8; ++i)
                 nBucket += vKey[i] << (8 * i);
 
             return nBucket % HASHMAP_TOTAL_BUCKETS;
@@ -210,7 +211,7 @@ namespace LLD
             uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
-            for(int i = hashmap[nBucket]; i >= 0; i--)
+            for(uint32_t i = hashmap[nBucket]; i >= 0; --i)
             {
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
@@ -284,7 +285,7 @@ namespace LLD
             }
 
             /* Iterate the linked list value in the hashmap. */
-            hashmap[nBucket]++;
+            ++hashmap[nBucket];
 
             /* Read the State and Size of Sector Header. */
             DataStream ssKey(SER_LLD, DATABASE_VERSION);

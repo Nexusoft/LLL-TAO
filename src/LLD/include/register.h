@@ -114,7 +114,7 @@ namespace LLD
             {
                 LOCK(MEMORY_MUTEX);
 
-                /* Remove the me mory state if writing the disk state. */
+                /* Remove the memory state if writing the disk state. */
                 if(mapIdentifiers.count(nIdentifier))
                     mapIdentifiers.erase(nIdentifier);
             }
@@ -211,7 +211,7 @@ namespace LLD
 
             /* Get the list of sector keys. */
             std::vector<SectorKey> vKeys;
-            if(!pSectorKeys->Get(static_cast<std::vector<uint8_t>>(ssKey), vKeys))
+            if(!pSectorKeys->Get(static_cast<std::vector<uint8_t> >(ssKey), vKeys))
                 return false;
 
             /* Iterate the list of keys. */

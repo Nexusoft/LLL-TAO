@@ -322,7 +322,7 @@ namespace LLD
         }
 
         /** Get a Record from the Database with Given Key. **/
-        bool Get(const std::vector<uint8_t> vKey, SectorKey& cKey)
+        bool Get(const std::vector<uint8_t> vKey, SectorKey &cKey)
         {
             LOCK(KEY_MUTEX);
 

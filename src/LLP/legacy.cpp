@@ -140,7 +140,8 @@ namespace LLP
         {
             nLastPing    = runtime::unifiedtimestamp();
 
-            debug::log(1, NODE, "", fOUTGOING ? "Outgoing" : "Incoming", " Connected at timestamp ",   runtime::unifiedtimestamp());
+            debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming",
+                       " Connected at timestamp ",   runtime::unifiedtimestamp());
 
             if(fOUTGOING)
                 PushVersion();
@@ -175,7 +176,7 @@ namespace LLP
             if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
                 LEGACY_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
-            debug::log(1, "xxxxx ", fOUTGOING ? "Outgoing" : "Incoming",
+            debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming",
                 " Disconnected (", strReason, ") at timestamp ", runtime::unifiedtimestamp());
 
             return;

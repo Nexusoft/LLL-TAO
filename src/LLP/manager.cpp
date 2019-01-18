@@ -25,14 +25,18 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-
     /* Default constructor */
     AddressManager::AddressManager(uint16_t nPort)
-    : pDatabase(new LLD::AddressDB(nPort, LLD::FLAGS::CREATE | LLD::FLAGS::WRITE))
-    , mapAddrInfo()
+    : mapAddrInfo()
     {
-        if(!pDatabase)
-            debug::error(FUNCTION, "Failed to allocate memory for AddressManager");
+        pDatabase = new LLD::AddressDB(nPort,
+                                       LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+
+        if(pDatabase)
+            return;
+
+        /* This should never occur. */
+        debug::error(FUNCTION, "Failed to allocate memory for AddressManager");
     }
 
 
@@ -46,7 +50,7 @@ namespace LLP
         }
     }
 
-    /*  Determine if the address manager has any addresses in it or not */
+    /*  Determine if the address manager has any addresses in it or not. */
     bool AddressManager::IsEmpty() const
     {
         LOCK(mut);
@@ -55,7 +59,7 @@ namespace LLP
     }
 
 
-    /*  Gets a list of addresses in the manager */
+    /*  Get a list of addresses in the manager that have the flagged state. */
     std::vector<BaseAddress> AddressManager::GetAddresses(const uint8_t flags)
     {
         std::vector<AddressInfo> vAddrInfo;
@@ -77,7 +81,8 @@ namespace LLP
 
 
     /*  Gets a list of address info in the manager */
-    void AddressManager::GetInfo(std::vector<AddressInfo> &vAddrInfo, const uint8_t flags)
+    void AddressManager::GetInfo(std::vector<AddressInfo> &vAddrInfo,
+                                 const uint8_t flags)
     {
         LOCK(mut);
 
@@ -93,8 +98,10 @@ namespace LLP
     }
 
 
-    /*  Adds the address to the manager and sets the connect state for that address */
-    void AddressManager::AddAddress(const BaseAddress &addr, const uint8_t state)
+    /*  Adds the address to the manager and sets the connect state for that
+     *  address */
+    void AddressManager::AddAddress(const BaseAddress &addr,
+                                    const uint8_t state)
     {
         uint64_t hash = addr.GetHash();
 
@@ -147,12 +154,15 @@ namespace LLP
         debug::log(5, FUNCTION, addr.ToString());
 
         /* update the LLD Database with a new entry */
-        pDatabase->WriteAddressInfo(hash, info);
+        if(pDatabase)
+            pDatabase->WriteAddressInfo(hash, info);
     }
 
 
-    /*  Adds the addresses to the manager and sets the connect state for that address */
-    void AddressManager::AddAddresses(const std::vector<BaseAddress> &addrs, const uint8_t state)
+    /*  Adds the addresses to the manager and sets the connect state for that
+        address */
+    void AddressManager::AddAddresses(const std::vector<BaseAddress> &addrs,
+                                      const uint8_t state)
     {
         for(uint32_t i = 0; i < addrs.size(); ++i)
             AddAddress(addrs[i], state);
@@ -184,30 +194,31 @@ namespace LLP
         uint32_t nSelect = 0;
 
         /* Put unconnected address info scores into a vector and sort them. */
-        uint8_t flags = ConnectState::NEW | ConnectState::FAILED | ConnectState::DROPPED;
+        uint8_t flags = ConnectState::NEW    |
+                        ConnectState::FAILED | ConnectState::DROPPED;
 
         /* Critical section: Get address info for the selected flags. */
         lk.lock();
         {
             nSize = get_info_count(flags);
-
-            if(nSize == 0)
-                return false;
-
             get_info(vInfo, flags);
         }
         lk.unlock();
 
-        /* Select an index with a good random weight bias toward the front of the list */
+        if(nSize == 0)
+            return false;
+
+        /* Select an index with a good random weight bias toward the front of
+         * the list */
         nSelect = ((std::numeric_limits<uint64_t>::max() /
-            std::max((uint64_t)std::pow(nHash, 1.95) + 1, (uint64_t)1)) - 3) % nSize;
+            std::max((uint64_t)std::pow(nHash, 1.95) + 1, (uint64_t)1)) - 3) %
+            nSize;
 
         /* sort info vector and assign the selected address */
         std::sort(vInfo.begin(), vInfo.end());
         std::reverse(vInfo.begin(), vInfo.end());
 
         const AddressInfo &info = vInfo[nSelect];
-
         addr = static_cast<BaseAddress>(info);
 
         return true;
@@ -219,30 +230,42 @@ namespace LLP
     {
         LOCK(mut);
 
-        std::vector<std::vector<uint8_t> > keys = pDatabase->GetKeys();
+        /* Make sure the database exists */
+        if(!pDatabase)
+        {
+            debug::error(FUNCTION, "database null");
+            return;
+        }
 
+        /* Get database keys */
+        std::vector<std::vector<uint8_t> > keys = pDatabase->GetKeys();
         uint32_t s = static_cast<uint32_t>(keys.size());
 
+        /* Load address info from each key */
         for(uint32_t i = 0; i < s; ++i)
         {
             std::string str;
             uint64_t nKey;
             AddressInfo addr_info;
 
+            /* Create datastream and deserialize the key/address pair. */
             DataStream ssKey(keys[i], SER_LLD, LLD::DATABASE_VERSION);
             ssKey >> str;
             ssKey >> nKey;
 
             pDatabase->ReadAddressInfo(nKey, addr_info);
 
+            /* Get the hash and load it into the map. */
             uint64_t nHash = addr_info.GetHash();
-
             mapAddrInfo[nHash] = addr_info;
         }
 
+        debug::log(3, FUNCTION, "read ", s, " addresses");
         print_stats();
     }
 
+
+    /* Print the current state of the address manager. */
     void AddressManager::PrintStats()
     {
         LOCK(mut);
@@ -250,34 +273,33 @@ namespace LLP
         print_stats();
     }
 
-    void AddressManager::print_stats()
-    {
-        debug::log(3,
-            " C=", get_info_count(ConnectState::CONNECTED),
-            " D=", get_info_count(ConnectState::DROPPED),
-            " F=", get_info_count(ConnectState::FAILED), " |",
-            " TC=", get_total_count(ConnectState::CONNECTED),
-            " TD=", get_total_count(ConnectState::DROPPED),
-            " TF=", get_total_count(ConnectState::FAILED), " |",
-            " size=", mapAddrInfo.size());
-    }
 
-
-    /*  Write the addresses from the manager into the address database */
+    /*  Write the addresses from the manager into the address database. */
     void AddressManager::WriteDatabase()
     {
         LOCK(mut);
 
-        for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
+        /* Make sure the database exists. */
+        if(!pDatabase)
+        {
+            debug::error(FUNCTION, "database null");
+            return;
+        }
+        uint32_t s = 0;
+
+        /* Write the keys and addresses. */
+        for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it, ++s)
             pDatabase->WriteAddressInfo(it->first, it->second);
 
+        debug::log(3, FUNCTION, "wrote ", s, " addresses");
         print_stats();
     }
 
 
-    /*  Helper function to get an array of info on the connected states specified
-     *  by flags */
-    void AddressManager::get_info(std::vector<AddressInfo> &info, const uint8_t flags)
+    /*  Helper function to get an array of info on the connected states
+     *  specified by flags */
+    void AddressManager::get_info(std::vector<AddressInfo> &info,
+                                  const uint8_t flags)
     {
         for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
         {
@@ -318,5 +340,19 @@ namespace LLP
         }
 
         return total;
+    }
+
+
+    /* Print the current state of the address manager. */
+    void AddressManager::print_stats()
+    {
+        debug::log(3,
+            " C=", get_info_count(ConnectState::CONNECTED),
+            " D=", get_info_count(ConnectState::DROPPED),
+            " F=", get_info_count(ConnectState::FAILED),   " |",
+            " TC=", get_total_count(ConnectState::CONNECTED),
+            " TD=", get_total_count(ConnectState::DROPPED),
+            " TF=", get_total_count(ConnectState::FAILED), " |",
+            " size=", mapAddrInfo.size());
     }
 }
