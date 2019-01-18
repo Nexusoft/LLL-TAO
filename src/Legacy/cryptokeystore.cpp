@@ -57,11 +57,6 @@ namespace Legacy
     bool CCryptoKeyStore::EncryptKeys(const CKeyingMaterial& vMasterKeyIn)
     {
 
-        /*
-         * This method nests cs_cryptoKeyStore locks (obtained within AddCryptedKey) inside a cs_BasicKeyStore lock.
-         * All other methods that have potential to use both should scope locks accordingly to avoid possible deadlock.
-         */
-
         /* Check whether key store already encrypted */
         if (!mapCryptedKeys.empty() || IsCrypted())
             return false;
@@ -169,14 +164,16 @@ namespace Legacy
     {
         bool result;
 
-        LOCK(cs_cryptoKeyStore);
+        {
+            LOCK(cs_cryptoKeyStore);
 
-        /* Unencrypted key store is not locked */
-        if (!IsCrypted())
-            return false;
+            /* Unencrypted key store is not locked */
+            if (!IsCrypted())
+                return false;
 
-        /* If encryption key is not stored, cannot decrypt keys and key store is locked */
-        result = vMasterKey.empty();
+            /* If encryption key is not stored, cannot decrypt keys and key store is locked */
+            result = vMasterKey.empty();
+        }
 
         return result;
     }

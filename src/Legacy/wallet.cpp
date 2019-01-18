@@ -457,9 +457,9 @@ namespace Legacy
         /* Need to completely rewrite the wallet file; if we don't, bdb might keep
          * bits of the unencrypted private key in slack space in the database file.
          */
-        CDB::DBRewrite(strWalletFile);
+        bool rewriteResult = CDB::DBRewrite(strWalletFile);
 
-        return true;
+        return rewriteResult;
     }
 
 

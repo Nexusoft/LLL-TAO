@@ -678,7 +678,10 @@ namespace Legacy
                 /* Remove original database file */
                 Db dbOld(&CDB::dbenv, 0);
                 if (dbOld.remove(strFile.c_str(), nullptr, 0) != 0)
+                {
+                    debug::log(0, "Unable to remove old database file ", strFile.c_str());
                     fProcessSuccess = false;
+                }
             }
 
             if (fProcessSuccess)
@@ -686,7 +689,10 @@ namespace Legacy
                 /* Rename temp file to original file name */
                 Db dbNew(&CDB::dbenv, 0);
                 if (dbNew.rename(strFileRewrite.c_str(), nullptr, strFile.c_str(), 0) != 0)
+                {
+                    debug::log(0, "Unable to rename database file ", strFileRewrite.c_str(), " to ", strFile.c_str());
                     fProcessSuccess = false;
+                }
             }
 
             if (!fProcessSuccess)

@@ -323,8 +323,7 @@ namespace Legacy
         uint32_t nFileVersion = 0;
         std::vector<uint512_t> vWalletRemove;
 
-        runtime::timer time;
-        time.Start();
+        uint64_t startTimestamp = runtime::timestamp(true);
 
         bool fIsEncrypted = false;
 
@@ -601,7 +600,9 @@ namespace Legacy
         if (nFileVersion < LLD::DATABASE_VERSION)
             WriteVersion(LLD::DATABASE_VERSION);
 
-        debug::log(0, FUNCTION, "", fIsEncrypted ? "Encrypted Wallet" : "Wallet", " Loaded in ", time.ElapsedMilliseconds(), " ms FileVersion = ", nFileVersion);
+        uint64_t elapsedTime = runtime::timestamp(true) - startTimestamp;
+
+        debug::log(0, FUNCTION, "", fIsEncrypted ? "Encrypted Wallet" : "Wallet", " Loaded in ", elapsedTime, " ms FileVersion = ", nFileVersion);
 
         return DB_LOAD_OK;
     }
