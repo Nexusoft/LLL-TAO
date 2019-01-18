@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <assert.h>
 
 #include <Legacy/types/address.h>
-#include <Legacy/types/enum.h>
+#include <Legacy/include/enum.h>
 
 #include <LLC/hash/SK.h>
 #include <Util/include/args.h>

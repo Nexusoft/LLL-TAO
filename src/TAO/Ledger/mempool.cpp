@@ -109,7 +109,7 @@ namespace TAO
 
 
         /* Checks if a transaction exists. */
-        bool Mempool::Has(uint512_t hashTx)
+        bool Mempool::Has(uint512_t hashTx) const
         {
             LOCK(MUTEX);
 
@@ -123,14 +123,28 @@ namespace TAO
             LOCK(MUTEX);
 
             /* Find the transaction in pool. */
-            TAO::Ledger::Transaction tx;
             if(mapLedger.count(hashTx))
             {
-                tx = mapLedger[hashTx];
+                TAO::Ledger::Transaction tx = mapLedger[hashTx];
 
                 /* Erase from the memory map. */
                 mapPrevHashes.erase(tx.PrevHash());
                 mapLedger.erase(hashTx);
+
+                return true;
+            }
+
+            /* Find out if this was a legacy transaction. */
+            if(mapLegacy.count(hashTx))
+            {
+                Legacy::Transaction tx = mapLegacy[hashTx];
+
+                /* Erase the claimed inputs */
+                uint32_t s = tx.vin.size();
+                for (uint32_t i = 0; i < s; ++i)
+                    mapInputs.erase(tx.vin[i].prevout);
+
+                mapLegacy.erase(hashTx);
 
                 return true;
             }
@@ -156,7 +170,7 @@ namespace TAO
 
 
         /* List transactions in memory pool. */
-        bool Mempool::List(std::vector<uint512_t> &vHashes, uint32_t nCount)
+        bool Mempool::List(std::vector<uint512_t> &vHashes, uint32_t nCount) const
         {
             LOCK(MUTEX);
 

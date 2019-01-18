@@ -39,6 +39,7 @@ ________________________________________________________________________________
 
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
+#include <Legacy/include/ambassador.h>
 
 #include <TAO/Operation/include/execute.h>
 
@@ -152,6 +153,10 @@ int main(int argc, char** argv)
 
     /** Initialize ChainState. */
     TAO::Ledger::ChainState::Initialize();
+
+
+    /** Initialize the scripts for legacy mode. **/
+    Legacy::InitializeScripts();
 
 
     /* Initialize the Tritium Server. */

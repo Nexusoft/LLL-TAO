@@ -16,6 +16,11 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/tritium.h>
 
+namespace Legacy
+{
+    class LegacyBlock;
+}
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -32,9 +37,15 @@ namespace TAO
          *  in the chain with all previous states before it.
          *
          **/
-        class BlockState : public TritiumBlock
+        class BlockState : public Block
         {
         public:
+
+            /** The transaction history.
+             *  uint8_t = TransactionType (per enum)
+             *  uint512_t = Tx hash
+             **/
+            std::vector< std::pair<uint8_t, uint512_t> > vtx;
 
 
             /** The Trust of the Chain to this Block. */
@@ -88,7 +99,8 @@ namespace TAO
 
 
             BlockState()
-            : TritiumBlock()
+            : Block()
+            , vtx()
             , nChainTrust(0)
             , nMoneySupply(0)
             , nChannelHeight(0)
@@ -101,7 +113,8 @@ namespace TAO
 
 
             BlockState(TritiumBlock block)
-            : TritiumBlock(block)
+            : Block(block)
+            , vtx()
             , nChainTrust(0)
             , nMoneySupply(0)
             , nChannelHeight(0)
@@ -109,7 +122,12 @@ namespace TAO
             , hashNextBlock(0)
             , hashCheckpoint(0)
             {
+                vtx.push_back(std::make_pair(TYPE::TRITIUM_TX, block.producer.GetHash()));
+                vtx.insert(vtx.end(), block.vtx.begin(), block.vtx.end());
             }
+
+
+            BlockState(Legacy::LegacyBlock block);
 
 
             /** Virtual Destructor. **/
@@ -118,8 +136,11 @@ namespace TAO
 
             /** Copy Constructor. **/
             BlockState(const BlockState& state)
-            : TritiumBlock(state)
+            : Block(state)
             {
+                vchBlockSig         = state.vchBlockSig;
+                vtx                 = state.vtx;
+
                 nChainTrust         = state.nChainTrust;
                 nMoneySupply        = state.nMoneySupply;
                 nChannelHeight      = state.nChannelHeight;
@@ -157,8 +178,6 @@ namespace TAO
 
                 hashNextBlock       = state.hashNextBlock;
                 hashCheckpoint      = state.hashCheckpoint;
-
-                producer            = state.producer;
 
                 return *this;
             }
