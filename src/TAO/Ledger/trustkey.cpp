@@ -137,7 +137,9 @@ namespace TAO
             else if(!block.TrustScore(nTrustScore))
                 return 0.0; //this will trigger an interest rate failure
 
-            return std::min(0.03, ((((0.025 * log(((9.0 * (nTrustScore)) / (60 * 60 * 24 * 28 * 13)) + 1.0)) / log(10))) + 0.005));
+            return std::min(0.03,
+                ((((0.025 * log(((9.0 * (nTrustScore)) / (60 * 60 * 24 * 28 * 13)) + 1.0)) /
+                log(10))) + 0.005));
         }
 
 
@@ -147,20 +149,23 @@ namespace TAO
             uint576_t cKey;
             cKey.SetBytes(vchPubKey);
 
-            return debug::strprintf("hash=%s, key=%s, genesis=%s, tx=%s, time=%u, age=%u",
-                                    GetHash().ToString().c_str(),
-                                    cKey.ToString().c_str(),
-                                    hashGenesisBlock.ToString().c_str(),
-                                    hashGenesisTx.ToString().c_str(),
-                                    nGenesisTime,
-                                    GetAge(runtime::unifiedtimestamp()));
+            return debug::safe_printstr(
+                "hash=", GetHash().ToString(), ", ",
+                "key=", cKey.ToString(), ", ",
+                "genesis=", hashGenesisBlock.ToString(), ", ",
+                "tx=", hashGenesisTx.ToString(), ", ",
+                "time=", nGenesisTime, ", ",
+                "age=", GetAge(runtime::unifiedtimestamp()), ", "
+            );
         }
 
 
         /* Print a string representation of this Trust Key to the debug log. */
         void TrustKey::Print()
         {
-            debug::log(0, "TrustKey(", ToString(), ")");
+            debug::log(0,
+                "TrustKey(", ToString(), ")"
+            );
         }
     }
 }

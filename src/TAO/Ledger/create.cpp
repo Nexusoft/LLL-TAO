@@ -258,7 +258,11 @@ namespace TAO
 
                 /* Set the proper chain state variables. */
                 ChainState::stateGenesis = BlockState(block);
+                ChainState::stateGenesis.nChannelHeight = 1;
                 ChainState::stateGenesis.hashCheckpoint = hashGenesis;
+                ChainState::stateGenesis.print();
+
+                /* Set the best block. */
                 ChainState::stateBest = ChainState::stateGenesis;
 
                 /* Write the block to disk. */

@@ -41,6 +41,30 @@ namespace TAO
     namespace Ledger
     {
 
+        /* Get the block state object. */
+        bool GetLastState(BlockState &state, uint32_t nChannel)
+        {
+            /* Loop back 10k blocks. */
+            while(!config::fShutdown)
+            {
+                /* Return false on genesis. */
+                if(state.GetHash() == hashGenesis)
+                    return false;
+
+                /* Return true on channel found. */
+                if(state.GetChannel() == nChannel)
+                    return true;
+
+                /* Iterate backwards. */
+                state = state.Prev();
+                if(state.IsNull())
+                    return false;
+            }
+
+            return false;
+        }
+
+
         /* Construct a block state from a legacy block. */
         BlockState::BlockState(Legacy::LegacyBlock block)
         : Block(block)
@@ -55,26 +79,6 @@ namespace TAO
             /* Construct a block state from legacy block tx set. */
             for(const auto & tx : block.vtx)
                 vtx.push_back(std::make_pair(TYPE::LEGACY_TX, tx.GetHash()));
-        }
-
-
-        /* Get the block state object. */
-        bool GetLastState(BlockState &state, uint32_t nChannel)
-        {
-            for(uint32_t index = 0; index < 10000; index++) //set limit on searchable blocks
-            {
-                if(state.GetHash() == hashGenesis)
-                    return false;
-
-                if(state.GetChannel() == nChannel)
-                    return true;
-
-                state = state.Prev();
-                if(state.IsNull())
-                    return false;
-            }
-
-            return false;
         }
 
 
@@ -120,10 +124,8 @@ namespace TAO
 
             /* Compute the Channel Height. */
             BlockState stateLast = statePrev;
-            if(!GetLastState(stateLast, GetChannel()))
-                nChannelHeight = 2;
-            else
-                nChannelHeight = stateLast.nChannelHeight + 1;
+            GetLastState(stateLast, GetChannel());
+            nChannelHeight = stateLast.nChannelHeight + 1;
 
             /* Compute the Released Reserves. */
             if(IsProofOfWork())
@@ -184,6 +186,7 @@ namespace TAO
 
                 debug::log(0, "===== Pending Checkpoint Hash = ", hashCheckpoint.ToString().substr(0, 15));
             }
+
 
             /* Start the database transaction. */
             LLD::legDB->TxnBegin();
