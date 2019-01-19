@@ -149,9 +149,11 @@ namespace Legacy
             ret = CDB::dbenv.open(pathDataDir.c_str(), dbFlags, dbMode);
 
             if (ret > 0)
-                throw std::runtime_error(debug::strprintf("CDB() : error %d opening database environment", ret));
+                throw std::runtime_error(debug::strprintf(FUNCTION, "Error %d initializing Berkeley database environment", ret));
 
             CDB::fDbEnvInit = true;
+
+            debug::log(0, FUNCTION, "Initialized Legacy Berkeley database environment");
         }
 
         /* Initialize current CDB instance */
@@ -219,7 +221,7 @@ namespace Legacy
 
                 --CDB::mapFileUseCount[strFile];
 
-                throw std::runtime_error(debug::strprintf("CDB() : can't open database file %s, error %d", strFile.c_str(), ret));
+                throw std::runtime_error(debug::strprintf(FUNCTION, "Cannot open database file %s, error %d", strFile.c_str(), ret));
             }
         }
     }
@@ -449,7 +451,7 @@ namespace Legacy
     void CDB::DBFlush(bool fShutdown)
     {
         /* Flush log data to the actual data file on all files that are not in use */
-        debug::log(0, "DBFlush(", fShutdown ? "true" : "false", ")",  CDB::fDbEnvInit ? "" : " db not started");
+        debug::log(0, FUNCTION, "Shutdown ", fShutdown ? "true" : "false", ")",  CDB::fDbEnvInit ? "" : " db not started");
 
         {
             LOCK(CDB::cs_db);
@@ -465,7 +467,7 @@ namespace Legacy
                 const std::string strFile = (*mi).first;
                 const uint32_t nRefCount = (*mi).second;
 
-                debug::log(0, strFile, " refcount=", nRefCount);
+                debug::log(2, FUNCTION, strFile, " refcount=", nRefCount);
 
                 if (nRefCount == 0)
                 {
@@ -473,13 +475,13 @@ namespace Legacy
                     CloseDb(strFile);
 
                     /* Flush log data to the dat file and detach the file */
-                    debug::log(0, strFile, " checkpoint");
+                    debug::log(2, FUNCTION, strFile, " checkpoint");
                     CDB::dbenv.txn_checkpoint(0, 0, 0);
 
-                    debug::log(0, strFile, " detach");
+                    debug::log(2, FUNCTION, strFile, " detach");
                     CDB::dbenv.lsn_reset(strFile.c_str(), 0);
 
-                    debug::log(0, strFile, " closed");
+                    debug::log(2, FUNCTION, strFile, " closed");
                     CDB::mapFileUseCount.erase(strFile);
                 }
             }
@@ -537,7 +539,7 @@ namespace Legacy
                 CDB::mapFileUseCount.erase(strFile);
             }
 
-            debug::log(0, "Rewriting ", strFile.c_str(), "...");
+            debug::log(0, FUNCTION, "Rewriting ", strFile.c_str(), "...");
 
             Db* pdbSource = new Db(&CDB::dbenv, 0);
             Db* pdbCopy = new Db(&CDB::dbenv, 0);
@@ -552,7 +554,7 @@ namespace Legacy
 
             if (dbReturn != 0)
             {
-                debug::log(0, "CDB::DBRewrite: Cannot open source database file ", strFile.c_str());
+                debug::log(0, FUNCTION, "Cannot open source database file ", strFile.c_str());
                 return false;
             }
 
@@ -566,7 +568,7 @@ namespace Legacy
 
             if (dbReturn != 0)
             {
-                debug::log(0, "CDB::DBRewrite: Cannot create target database file ", strFileRewrite.c_str());
+                debug::log(0, FUNCTION, "Cannot create target database file ", strFileRewrite.c_str());
                 return false;
             }
 
@@ -576,7 +578,7 @@ namespace Legacy
 
             if (dbReturn != 0 || pcursor == nullptr)
             {
-                debug::log(0, "CDB::DBRewrite: Failure opening cursor on source database file ", strFile.c_str());
+                debug::log(0, FUNCTION, "Failure opening cursor on source database file ", strFile.c_str());
                 return false;
             }
 
@@ -609,7 +611,7 @@ namespace Legacy
                     /* No data reading cursor */
                     pcursor->close();
                     fProcessSuccess = false;
-                    debug::log(0, "CDB::DBRewrite: No data reading cursor on database file ", strFile.c_str());
+                    debug::log(0, FUNCTION, "No data reading cursor on database file ", strFile.c_str());
                     break;
                 }
                 else if (dbReturn == 0)
@@ -635,7 +637,7 @@ namespace Legacy
                     /* Error reading cursor */
                     pcursor->close();
                     fProcessSuccess = false;
-                    debug::log(0, "CDB::DBRewrite: Failure reading cursor on database file ", strFile.c_str());
+                    debug::log(0, FUNCTION, "Failure reading cursor on database file ", strFile.c_str());
                     break;
                 }
 
@@ -661,7 +663,7 @@ namespace Legacy
                 {
                     pcursor->close();
                     fProcessSuccess = false;
-                    debug::log(0, "CDB::DBRewrite: Failure writing target database file ", strFile.c_str());
+                    debug::log(0, FUNCTION, "Failure writing target database file ", strFile.c_str());
                     break;
                 }
             }
@@ -684,7 +686,7 @@ namespace Legacy
                 Db dbOld(&CDB::dbenv, 0);
                 if (dbOld.remove(strFile.c_str(), nullptr, 0) != 0)
                 {
-                    debug::log(0, "Unable to remove old database file ", strFile.c_str());
+                    debug::log(0, FUNCTION, "Unable to remove old database file ", strFile.c_str());
                     fProcessSuccess = false;
                 }
             }
@@ -695,13 +697,13 @@ namespace Legacy
                 Db dbNew(&CDB::dbenv, 0);
                 if (dbNew.rename(strFileRewrite.c_str(), nullptr, strFile.c_str(), 0) != 0)
                 {
-                    debug::log(0, "Unable to rename database file ", strFileRewrite.c_str(), " to ", strFile.c_str());
+                    debug::log(0, FUNCTION, "Unable to rename database file ", strFileRewrite.c_str(), " to ", strFile.c_str());
                     fProcessSuccess = false;
                 }
             }
 
             if (!fProcessSuccess)
-                debug::log(0, "Rewriting of ", strFile.c_str(), " FAILED!");
+                debug::log(0, FUNCTION, "Rewriting of ", strFile.c_str(), " FAILED!");
 
         } //End lock scope
 
@@ -719,7 +721,7 @@ namespace Legacy
             if (!CDB::fDbEnvInit)
                 return;
 
-            debug::log(0, "Shutting down Berkeley database environment");
+            debug::log(0, FUNCTION, "Shutting down Legacy Berkeley database environment");
 
             /* Ensure all open db handles are closed and pointers deleted.
              * CloseDb calls erase() on mapDb so build list of open files first
@@ -744,12 +746,8 @@ namespace Legacy
             }
             catch (const DbException& e)
             {
-                debug::log(0, "EnvShutdown exception: ", e.what(), "(", e.get_errno(), ")");
+                debug::log(0, FUNCTION, "Exception: ", e.what(), "(", e.get_errno(), ")");
             }
-
-            /* Use of DB_FORCE should not be necessary after calling dbenv.close() but included in case there is an exception */
-            // Throwing an error, do we need?
-            //CDB::dbenv.remove(config::GetDataDir().c_str(), DB_FORCE);
 
         } //End lock scope
     }
