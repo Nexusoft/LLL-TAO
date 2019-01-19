@@ -673,7 +673,7 @@ namespace Legacy
                             CDB::dbenv.lsn_reset(strWalletFile.c_str(), 0);
 
                             CDB::mapFileUseCount.erase(mi++);
-                            debug::log(0, FUNCTION, "Flushed wallet in ", strWalletFile, runtime::timestamp(true) - nStart, " ms");
+                            debug::log(0, FUNCTION, "Flushed ", strWalletFile, " in ", runtime::timestamp(true) - nStart, " ms");
                         }
                     }
 
