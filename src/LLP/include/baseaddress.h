@@ -32,7 +32,7 @@ namespace LLP
         BaseAddress();
         BaseAddress(const BaseAddress &other, uint16_t port = 0);
 
-        BaseAddress(BaseAddress &other) = delete;
+        //BaseAddress(BaseAddress &other) = delete;
 
         BaseAddress(const struct in_addr& ipv4Addr, uint16_t port = 0);
         BaseAddress(const struct in6_addr& ipv6Addr, uint16_t port = 0);

@@ -90,6 +90,23 @@ namespace LLP
             ip[i] = other.ip[i];
     }
 
+    AddressInfo::AddressInfo(const AddressInfo&& other)
+    : BaseAddress()
+    , nSession(other.nSession)
+    , nLastSeen(other.nLastSeen)
+    , nConnected(other.nConnected)
+    , nDropped(other.nDropped)
+    , nFailed(other.nFailed)
+    , nFails(other.nFails)
+    , nLatency(other.nLatency)
+    , nState(other.nState)
+    {
+        nPort = other.nPort;
+
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
+    }
+
     AddressInfo::~AddressInfo()
     {
     }

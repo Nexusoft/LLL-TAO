@@ -56,8 +56,8 @@ namespace LLP
         AddressInfo(const BaseAddress &addr);
         AddressInfo(const AddressInfo &other);
 
-        AddressInfo(BaseAddress &other) = delete;
-        AddressInfo(AddressInfo &other) = delete;
+        //AddressInfo(BaseAddress &other) = delete;
+        AddressInfo(const AddressInfo&& other);
 
 
         /** ~AddressInfo

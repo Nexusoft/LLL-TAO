@@ -97,6 +97,7 @@ namespace LLP
                 pAddressManager = new AddressManager(nPort);
                 pAddressManager->ReadDatabase();
 
+
                 MANAGER_THREAD = std::thread((std::bind(&Server::Manager, this)));
             }
 
@@ -232,7 +233,7 @@ namespace LLP
          *  @return Returns the list of active connections in a vector
          *
          **/
-        std::vector<ProtocolType*> GetConnections()
+        std::vector<ProtocolType *> GetConnections()
         {
             /* List of connections to return. */
             std::vector<ProtocolType *> vConnections;
@@ -322,22 +323,19 @@ namespace LLP
                         continue;
                     }
 
-                    /* Get the IP in proper type. */
-                    std::string ip = addr.ToStringIP();
-                    uint16_t port = addr.GetPort();
-
                     /* Attempt the connection. */
-                    debug::log(0, FUNCTION, ProtocolType::Name(), " Attempting Connection ", ip, ":", port);
+                    debug::log(0, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
 
-                    if(AddConnection(ip, port))
+                    if(AddConnection(addr.ToStringIP(), addr.GetPort()))
                         state = static_cast<uint8_t>(ConnectState::CONNECTED);
 
                     /* Update the address state. */
                     pAddressManager->AddAddress(addr, state);
                 }
+
+                pAddressManager->PrintStats();
             }
         }
-
 
     private:
 

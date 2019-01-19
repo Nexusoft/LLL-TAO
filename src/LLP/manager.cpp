@@ -30,7 +30,7 @@ namespace LLP
     : mapAddrInfo()
     {
         pDatabase = new LLD::AddressDB(nPort,
-                                       LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+                                       LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
         if(pDatabase)
             return;
@@ -67,8 +67,7 @@ namespace LLP
 
         LOCK(mut);
 
-        get_info(vAddrInfo, flags);
-
+        vAddrInfo = get_info(flags);
         for(auto it = vAddrInfo.begin(); it != vAddrInfo.end(); ++it)
         {
             const BaseAddress &addr = *it;
@@ -86,7 +85,7 @@ namespace LLP
     {
         LOCK(mut);
 
-        get_info(vAddrInfo, flags);
+        vAddrInfo = get_info(flags);
 
     }
 
@@ -185,12 +184,9 @@ namespace LLP
     /*  Select a good address to connect to that isn't already connected. */
     bool AddressManager::StochasticSelect(BaseAddress &addr)
     {
-        std::vector<AddressInfo> vInfo;
-        std::unique_lock<std::mutex> lk(mut, std::defer_lock);
         uint64_t nTimestamp = runtime::unifiedtimestamp();
         uint64_t nRand = LLC::GetRand(nTimestamp);
         uint32_t nHash = LLC::SK32(BEGIN(nRand), END(nRand));
-        uint32_t nSize = 0;
         uint32_t nSelect = 0;
 
         /* Put unconnected address info scores into a vector and sort them. */
@@ -198,34 +194,31 @@ namespace LLP
                         ConnectState::FAILED | ConnectState::DROPPED;
 
         /* Critical section: Get address info for the selected flags. */
-        lk.lock();
         {
-            nSize = get_info_count(flags);
-            get_info(vInfo, flags);
+            LOCK(mut);
+
+            std::vector<AddressInfo> vAddresses = get_info(flags);
+            if(vAddresses.size() == 0)
+                return false;
+
+            /* Select an index with a good random weight bias toward the front of
+             * the list */
+            nSelect = ((std::numeric_limits<uint64_t>::max() /
+                std::max((uint64_t)std::pow(nHash, 1.95) + 1, (uint64_t)1)) - 3) %
+                vAddresses.size();
+
+            /* sort info vector and assign the selected address */
+            std::sort(vAddresses.begin(), vAddresses.end());
+            std::reverse(vAddresses.begin(), vAddresses.end());
+
+            addr = static_cast<BaseAddress>(vAddresses[nSelect]);
         }
-        lk.unlock();
-
-        if(nSize == 0)
-            return false;
-
-        /* Select an index with a good random weight bias toward the front of
-         * the list */
-        nSelect = ((std::numeric_limits<uint64_t>::max() /
-            std::max((uint64_t)std::pow(nHash, 1.95) + 1, (uint64_t)1)) - 3) %
-            nSize;
-
-        /* sort info vector and assign the selected address */
-        std::sort(vInfo.begin(), vInfo.end());
-        std::reverse(vInfo.begin(), vInfo.end());
-
-        const AddressInfo &info = vInfo[nSelect];
-        addr = static_cast<BaseAddress>(info);
 
         return true;
     }
 
 
-    /*  Read the address database into the manager */
+    /*  Read the address database into the manager. */
     void AddressManager::ReadDatabase()
     {
         LOCK(mut);
@@ -258,9 +251,10 @@ namespace LLP
             /* Get the hash and load it into the map. */
             uint64_t nHash = addr_info.GetHash();
             mapAddrInfo[nHash] = addr_info;
+
+            debug::log(0, "[", i, "]", addr_info.ToString());
         }
 
-        debug::log(3, FUNCTION, "read ", s, " addresses");
         print_stats();
     }
 
@@ -285,31 +279,37 @@ namespace LLP
             debug::error(FUNCTION, "database null");
             return;
         }
+
         uint32_t s = 0;
+
+        pDatabase->TxnBegin();
 
         /* Write the keys and addresses. */
         for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it, ++s)
+        {
             pDatabase->WriteAddressInfo(it->first, it->second);
 
-        debug::log(3, FUNCTION, "wrote ", s, " addresses");
+            //debug::log(0, FUNCTION, "(", s, ") ", it->second.ToStringIPPort());
+        }
+
+        pDatabase->TxnCommit();
+
         print_stats();
     }
 
 
     /*  Helper function to get an array of info on the connected states
      *  specified by flags */
-    void AddressManager::get_info(std::vector<AddressInfo> &info,
-                                  const uint8_t flags)
+    std::vector<AddressInfo> AddressManager::get_info(const uint8_t flags)
     {
+        std::vector<AddressInfo> info;
         for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
         {
             if(it->second.nState & flags)
-            {
-                const AddressInfo &i = it->second;
-                info.emplace_back(i);
-            }
-
+                info.push_back(it->second);
         }
+
+        return info;
     }
 
     /*  Helper function to get the number of addresses of the connect type */

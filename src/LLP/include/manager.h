@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <Util/templates/serialize.h>
 
 
-#include <unordered_map>
+#include <map>
 #include <vector>
 #include <cstdint>
 #include <mutex>
@@ -140,7 +140,7 @@ namespace LLP
          *  @param[in] lat The latency, in milliseconds
          *
          *  @param[in] addr The address in reference to
-         *
+         *unordered_map
          **/
         void SetLatency(uint32_t lat, const BaseAddress &addr);
 
@@ -192,7 +192,7 @@ namespace LLP
          *  @param[in] flags Specify which types of connections to get the info from.
          *
          **/
-        void get_info(std::vector<AddressInfo> &info, const uint8_t flags = CONNECT_FLAGS_ALL);
+        std::vector<AddressInfo> get_info(const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
         /** get_info_count
@@ -225,7 +225,7 @@ namespace LLP
 
 
         LLD::AddressDB *pDatabase;
-        std::unordered_map<uint64_t, AddressInfo> mapAddrInfo;
+        std::map<uint64_t, AddressInfo> mapAddrInfo;
 
         mutable std::mutex mut;
     };

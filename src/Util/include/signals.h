@@ -37,6 +37,8 @@ void HandleSIGTERM(int signum)
         config::fShutdown = true;
         SHUTDOWN.notify_all();
     }
+
+    //printf("Signal caught %i\n", signum);
 }
 
 

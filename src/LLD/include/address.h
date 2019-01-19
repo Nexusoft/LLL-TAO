@@ -28,7 +28,7 @@ namespace LLD
     {
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        AddressDB(uint16_t port, uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
+        AddressDB(uint16_t port, uint8_t nFlags = FLAGS::CREATE | FLAGS::FORCE)
         : SectorDatabase("addr/" + std::to_string(port), nFlags) { }
 
         bool WriteAddressInfo(uint64_t key, const LLP::AddressInfo &info)
