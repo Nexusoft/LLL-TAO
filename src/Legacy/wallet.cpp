@@ -640,18 +640,25 @@ namespace Legacy
     {
         int64_t nUnconfirmedBalance = 0;
 
+        TransactionMap mapWalletCopy;
+
         {
+            /* Lock wallet only to take a snapshot of current transaction map for calculating balance 
+             * After unlock, mapWallet can change but it won't affect balance calculation
+             */
             LOCK(cs_wallet);
 
-            for (const auto& item : mapWallet)
-            {
-                const CWalletTx& walletTx = item.second;
+            mapWalletCopy = mapWallet;
+        }
 
-                if (walletTx.IsFinal() && walletTx.IsConfirmed())
-                    continue;
+        for (const auto& item : mapWalletCopy)
+        {
+            const CWalletTx& walletTx = item.second;
 
-                nUnconfirmedBalance += walletTx.GetAvailableCredit();
-            }
+            if (walletTx.IsFinal() && walletTx.IsConfirmed())
+                continue;
+
+            nUnconfirmedBalance += walletTx.GetAvailableCredit();
         }
 
         return nUnconfirmedBalance;
