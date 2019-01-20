@@ -258,7 +258,11 @@ namespace TAO
 
                 /* Set the proper chain state variables. */
                 ChainState::stateGenesis = BlockState(block);
+                ChainState::stateGenesis.nChannelHeight = 1;
                 ChainState::stateGenesis.hashCheckpoint = hashGenesis;
+                ChainState::stateGenesis.print();
+
+                /* Set the best block. */
                 ChainState::stateBest = ChainState::stateGenesis;
 
                 /* Write the block to disk. */
@@ -293,8 +297,6 @@ namespace TAO
                 std::unique_lock<std::mutex> CONDITION_LOCK(MUTEX);
                 PRIVATE_CONDITION.wait(CONDITION_LOCK, []{ return config::fShutdown || mempool.Size() > 0; });
 
-                runtime::sleep(5000);
-
                 /* Check for shutdown. */
                 if(config::fShutdown)
                     return;
@@ -315,6 +317,9 @@ namespace TAO
 
                 /* Generate new block signature. */
                 block.GenerateSignature(key);
+
+                /* Add the producer into the memory pool. */
+                mempool.AddUnchecked(block.producer);
 
                 /* Verify the block object. */
                 if(!block.Check())

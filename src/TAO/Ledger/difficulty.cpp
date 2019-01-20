@@ -325,7 +325,7 @@ namespace TAO
 
             /* If there is a change in difficulty, multiply by mod. */
             nDifficulty *= nMod;
-            
+
 
             /* Keep the target difficulty at minimum (allow -regtest difficulty) */
             uint32_t nBits = SetBits(nDifficulty);
@@ -400,7 +400,7 @@ namespace TAO
 
             /* Enforce Block Version 2 Rule. Chain mod changes block time requirements, not actual mod after block times. */
             if(state.nVersion >= 2)
-            nBlockTarget *= nChainMod;
+                nBlockTarget *= nChainMod;
 
 
             /* The Upper and Lower Bound Adjusters. */
@@ -489,14 +489,15 @@ namespace TAO
                 GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
                 debug::log(2,
-                "RETARGET weighted time=", nBlockTime, " actual time ", std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1),
-                " [", (100.0 * nLowerBound) / nUpperBound, " %]\n",
-                "\tchain time: [", nBlockTarget, " / ", nBlockTime, "]\n",
-                "\treleased reward: ", first.nReleasedReserve[0] / Legacy::COIN,
-                " [", 100.0 * nChainMod, " %]\n",
-                "\tdifficulty: [", GetDifficulty(first.nBits, 2), " to ", GetDifficulty(bnNew.GetCompact(), 2), "]\n",
-                "\thash height: ", first.nChannelHeight,
-                " [AGE ", nDays, " days, ", nHours, " hours, ", nMinutes, " minutes]\n");
+                    "RETARGET weighted time=", nBlockTime, " actual time ", std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1),
+                    " [", (100.0 * nLowerBound) / nUpperBound, " %]\n",
+                    "\tchain time: [", nBlockTarget, " / ", nBlockTime, "]\n",
+                    "\treleased reward: ", first.nReleasedReserve[0] / Legacy::COIN,
+                    " [", 100.0 * nChainMod, " %]\n",
+                    "\tdifficulty: [", GetDifficulty(first.nBits, 2), " to ", GetDifficulty(bnNew.GetCompact(), 2), "]\n",
+                    "\thash height: ", first.nChannelHeight,
+                    " [AGE ", nDays, " days, ", nHours, " hours, ", nMinutes, " minutes]\n"
+                );
             }
 
             return bnNew.GetCompact();
