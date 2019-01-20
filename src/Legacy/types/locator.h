@@ -12,10 +12,9 @@
 ____________________________________________________________________________________________*/
 
 #ifndef NEXUS_LEGACY_TYPES_LOCATOR_H
-#define NEXUS_LEGACY_TYPES_LOGCATOR_H
+#define NEXUS_LEGACY_TYPES_LOCATOR_H
 
 #include <Util/templates/serialize.h>
-
 
 /* Global Legacy namespace. */
 namespace Legacy
