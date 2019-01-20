@@ -51,6 +51,7 @@ namespace TAO
             obj["walletversion"] = Legacy::CWallet::GetInstance().GetVersion();
             obj["testnet"] = config::fTestNet;
             obj["balance"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetBalance());
+            obj["unconfirmedbalance"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetUnconfirmedBalance());
             obj["newmint"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetNewMint());
             obj["stake"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetStake());
         

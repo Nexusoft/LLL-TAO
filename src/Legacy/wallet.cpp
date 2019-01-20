@@ -373,7 +373,7 @@ namespace Legacy
         if (kMasterKey.nDeriveIterations < 25000)
             kMasterKey.nDeriveIterations = 25000;
 
-        debug::log(0, "Encrypting Wallet with nDeriveIterations of ", kMasterKey.nDeriveIterations);
+        debug::log(0, FUNCTION, "Encrypting Wallet with nDeriveIterations of ", kMasterKey.nDeriveIterations);
 
         /* Encrypt the master key value using the new passphrase */
         if (!crypter.SetKeyFromPassphrase(strWalletPassphrase, kMasterKey.vchSalt, kMasterKey.nDeriveIterations, kMasterKey.nDerivationMethod))
@@ -419,7 +419,7 @@ namespace Legacy
              * and half not...die to let the user reload their unencrypted wallet.
              */
             config::fShutdown = true;
-            return debug::error("Error encrypting wallet. Shutting down.");;
+            return debug::error(FUNCTION, "Error encrypting wallet. Shutting down.");;
         }
 
         if (fFileBacked)
@@ -428,7 +428,7 @@ namespace Legacy
             {
                 /* Keys encrypted in memory, but not on disk...die to let the user reload their unencrypted wallet. */
                 config::fShutdown = true;
-                return debug::error("Error committing encryption updates to wallet file. Shutting down.");;
+                return debug::error(FUNCTION, "Error committing encryption updates to wallet file. Shutting down.");;
             }
 
 
@@ -458,6 +458,9 @@ namespace Legacy
          * bits of the unencrypted private key in slack space in the database file.
          */
         bool rewriteResult = CDB::DBRewrite(strWalletFile);
+
+        if (rewriteResult)
+            debug::log(0, FUNCTION, "Wallet encryption completed successfully");
 
         return rewriteResult;
     }
@@ -571,7 +574,7 @@ namespace Legacy
                     if (pMasterKey.second.nDeriveIterations < 25000)
                         pMasterKey.second.nDeriveIterations = 25000;
 
-                    debug::log(0, "Wallet passphrase changed to use nDeriveIterations of ", pMasterKey.second.nDeriveIterations);
+                    debug::log(0, FUNCTION, "Wallet passphrase changed to use nDeriveIterations of ", pMasterKey.second.nDeriveIterations);
 
                     /* Re-encrypt the master key using the new passphrase */
                     if (!crypter.SetKeyFromPassphrase(strNewWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
@@ -606,19 +609,26 @@ namespace Legacy
     {
         int64_t nTotalBalance = 0;
 
+        TransactionMap mapWalletCopy;
+
         {
+            /* Lock wallet only to take a snapshot of current transaction map for calculating balance 
+             * After unlock, mapWallet can change but it won't affect balance calculation
+             */
             LOCK(cs_wallet);
 
-            for (const auto& item : mapWallet)
-            {
-                const CWalletTx& walletTx = item.second;
+            mapWalletCopy = mapWallet;
+        }
 
-                /* Skip any transaction that isn't final, isn't completely confirmed, or has a future timestamp */
-                if (!walletTx.IsFinal() || !walletTx.IsConfirmed() || walletTx.nTime > runtime::unifiedtimestamp())
-                    continue;
+        for (const auto& item : mapWalletCopy)
+        {
+            const CWalletTx& walletTx = item.second;
 
-                nTotalBalance += walletTx.GetAvailableCredit();
-            }
+            /* Skip any transaction that isn't final, isn't completely confirmed, or has a future timestamp */
+            if (!walletTx.IsFinal() || !walletTx.IsConfirmed() || walletTx.nTime > runtime::unifiedtimestamp())
+                continue;
+
+            nTotalBalance += walletTx.GetAvailableCredit();
         }
 
         return nTotalBalance;
@@ -630,18 +640,25 @@ namespace Legacy
     {
         int64_t nUnconfirmedBalance = 0;
 
+        TransactionMap mapWalletCopy;
+
         {
+            /* Lock wallet only to take a snapshot of current transaction map for calculating balance 
+             * After unlock, mapWallet can change but it won't affect balance calculation
+             */
             LOCK(cs_wallet);
 
-            for (const auto& item : mapWallet)
-            {
-                const CWalletTx& walletTx = item.second;
+            mapWalletCopy = mapWallet;
+        }
 
-                if (walletTx.IsFinal() && walletTx.IsConfirmed())
-                    continue;
+        for (const auto& item : mapWalletCopy)
+        {
+            const CWalletTx& walletTx = item.second;
 
-                nUnconfirmedBalance += walletTx.GetAvailableCredit();
-            }
+            if (walletTx.IsFinal() && walletTx.IsConfirmed())
+                continue;
+
+            nUnconfirmedBalance += walletTx.GetAvailableCredit();
         }
 
         return nUnconfirmedBalance;
@@ -818,8 +835,7 @@ namespace Legacy
             }
 
             /* debug print */
-            debug::log(0, "CWallet::AddToWallet : ", wtxIn.GetHash().ToString().substr(0,10),"  ",
-                        (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+            debug::log(0, FUNCTION, wtxIn.GetHash().ToString().substr(0,10), " ", (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
 
             /* Write to disk */
             if (fInsertedNew || fUpdated)
@@ -962,7 +978,7 @@ namespace Legacy
             /* Use start of chain */
             if (!LLD::legDB->ReadBlock(TAO::Ledger::ChainState::hashBestChain, block))
             {
-                debug::log(0, "Error: CWallet::ScanForWalletTransactions() could not get start of chain");
+                debug::error(0, FUNCTION, "Could not get start of chain");
                 return 0;
             }
         }
@@ -989,7 +1005,7 @@ namespace Legacy
                         /* Read transaction from database */
                         if (!legacydb.ReadTx(txHash, tx))
                         {
-                            debug::log(2, "ScanForWalletTransactions() Error reading tx from legacydb");
+                            debug::log(2, FUNCTION, "Error reading tx from legacydb");
                             continue;
                         }
 
@@ -1045,7 +1061,7 @@ namespace Legacy
         snLastHeight = TAO::Ledger::ChainState::nBestHeight;
 
         /* Rebroadcast any of our tx that aren't in a block yet */
-        debug::log(0, "ResendWalletTransactions");
+        debug::log(0, FUNCTION, "Resending wallet transactions");
         LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
 
         {
@@ -1070,8 +1086,7 @@ namespace Legacy
                 if (wtx.CheckTransaction())
                     wtx.RelayWalletTransaction(legacydb);
                 else
-                    debug::log(0, "ResendWalletTransactions : CheckTransaction failed for transaction ",
-                               wtx.GetHash().ToString());
+                    debug::log(0, FUNCTION, "CheckTransaction failed for transaction ", wtx.GetHash().ToString());
             }
         }
     }
@@ -1102,8 +1117,7 @@ namespace Legacy
                      */
                     if (!prevTx.IsSpent(txin.prevout.n) && IsMine(prevTx.vout[txin.prevout.n]))
                     {
-                        debug::log(0, "WalletUpdateSpent found spent coin ", FormatMoney(prevTx.GetCredit()), " Nexus ",
-                                    prevTx.GetHash().ToString());
+                        debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(prevTx.GetCredit()), " Nexus ", prevTx.GetHash().ToString());
 
                         prevTx.MarkSpent(txin.prevout.n);
                         prevTx.WriteToDisk();
@@ -1149,7 +1163,7 @@ namespace Legacy
 //TODO - Fix txindex reference
 //                    if (IsMine(walletTx.vout[n]) && walletTx.IsSpent(n) && (txindex.vSpent.size() <= n || txindex.vSpent[n].IsNull()))
 //                    {
-                        debug::log(0, "FixSpentCoins found lost coin ", FormatMoney(walletTx.vout[n].nValue), " Nexus ", walletTx.GetHash().ToString(),
+                        debug::log(0, FUNCTION, "Found lost coin ", FormatMoney(walletTx.vout[n].nValue), " Nexus ", walletTx.GetHash().ToString(),
                             "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
 
                         ++nMismatchFound;
@@ -1166,7 +1180,7 @@ namespace Legacy
 //                    /* Handle the wallet missing a spend that was updated in the indexes. The index is updated on connect inputs. */
 //                    else if (IsMine(walletTx.vout[n]) && !walletTx.IsSpent(n) && (txindex.vSpent.size() > n && !txindex.vSpent[n].IsNull()))
 //                    {
-                        debug::log(0, "FixSpentCoins found spent coin ", FormatMoney(walletTx.vout[n].nValue).c_str(), " Nexus ", walletTx.GetHash().ToString(),
+                        debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(walletTx.vout[n].nValue), " Nexus ", walletTx.GetHash().ToString(),
                             "[", n, "] ", fCheckOnly? "repair not attempted" : "repairing");
 
                         ++nMismatchFound;
@@ -1386,7 +1400,7 @@ namespace Legacy
         {
             /* Cannot create transaction when wallet locked */
             std::string strError = std::string("Error: Wallet locked, unable to create transaction  ");
-            debug::log(0, "SendToNexusAddress() : ", strError);
+            debug::log(0, FUNCTION, strError);
             return strError;
         }
 
@@ -1394,7 +1408,7 @@ namespace Legacy
         {
             /* Cannot create transaction if unlocked for mint only */
             std::string strError = std::string("Error: Wallet unlocked for block minting only, unable to create transaction.");
-            debug::log(0, "SendToNexusAddress() : ", strError);
+            debug::log(0, FUNCTION, strError);
             return strError;
         }
 
@@ -1408,22 +1422,24 @@ namespace Legacy
                  * Really should not get this because of initial check at start of function. Could only happen
                  * if calculates an additional fee such that nFeeRequired > MIN_TX_FEE
                  */
-                strError = debug::strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  ", FormatMoney(nFeeRequired).c_str());
+                strError = debug::strprintf(
+                    "SendToNexusAddress : This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  ", 
+                    FormatMoney(nFeeRequired).c_str());
             }
             else
             {
                 /* Other transaction creation failure */
-                strError = std::string("Error: Transaction creation failed  ");
+                strError = std::string("SendToNexusAddress : Transaction creation failed  ");
             }
 
-            debug::log(0, "SendToNexusAddress() : ", strError);
+            debug::log(0, FUNCTION, strError);
 
             return strError;
         }
 
         /* With QT interface removed, we no longer display the fee confirmation here. Successful transaction creation will be committed automatically */
         if (!CommitTransaction(wtxNew, reservekey))
-            return std::string("Error: The transaction was rejected.  This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+            return std::string("SendToNexusAddress : The transaction was rejected.  This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
 
         return "";
     }
@@ -1579,7 +1595,7 @@ namespace Legacy
         {
             LOCK(cs_wallet);
 
-            debug::log(0, "CommitTransaction:", wtxNew.ToString());
+            debug::log(0, FUNCTION, wtxNew.ToString());
 
             /* This is only to keep the database open to defeat the auto-flush for the
              * duration of this scope.  This is the only place where this optimization
@@ -1622,7 +1638,7 @@ namespace Legacy
 //            if (!wtxNew.AcceptToMemoryPool())
 //            {
 //                /* This must not fail. The transaction has already been signed and recorded. */
-//                debug::log(0, "CWallet::CommitTransaction : Error: Transaction not valid");
+//                debug::log(0, FUNCTION, "Error: Transaction not valid");
 //                return false;
 //            }
 
@@ -1699,7 +1715,7 @@ namespace Legacy
         //int64_t nInterest;
         LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
 //        if(!block.vtx[0].GetCoinstakeInterest(block, legacydb, nInterest))
-//            return debug::error("AddCoinstakeInputs() : Failed to Get Interest");
+//            return debug::error(FUNCTION, "Failed to Get Interest");
 
 //        block.vtx[0].vout[0].nValue += nInterest;
 
@@ -1707,7 +1723,7 @@ namespace Legacy
         for(uint32_t nIndex = 0; nIndex < vInputs.size(); nIndex++)
         {
 //            if (!SignSignature(*this, vInputs[nIndex], block.vtx[0], nIndex + 1))
-//                return debug::error("AddCoinstakeInputs() : Unable to sign Coinstake Transaction Input.");
+//                return debug::error(FUNCTION, "Unable to sign Coinstake Transaction Input.");
 
         }
 
@@ -1794,7 +1810,7 @@ namespace Legacy
 
         if (config::GetBoolArg("-printselectcoin", false))
         {
-            debug::log(0, "SelectCoins() for Account ", strAccount);
+            debug::log(0, FUNCTION, "Selecting coins for account ", strAccount);
         }
 
         {
@@ -1885,20 +1901,20 @@ namespace Legacy
         /* Print result set when argument set */
         if (config::GetBoolArg("-printselectcoin", false))
         {
-            debug::log(0, "SelectCoins() selected: ");
+            debug::log(0, FUNCTION, "Coins selected: ");
             for(auto item : setCoinsRet)
                 item.first->print();
 
-            debug::log(0, "total ", FormatMoney(nValueRet));
+            debug::log(0, FUNCTION, "Total ", FormatMoney(nValueRet));
         }
 
         /* Ensure input total value does not exceed maximum allowed */
         if(!MoneyRange(nValueRet))
-            return debug::error("CWallet::SelectCoins() : Input total over TX limit Total: ", nValueRet, " Limit ",  MaxTxOut());
+            return debug::error(FUNCTION, "Input total over TX limit. Total: ", nValueRet, " Limit ",  MaxTxOut());
 
         /* Ensure balance is sufficient to cover transaction */
         if(nValueRet < nTargetValue)
-            return debug::error("CWallet::SelectCoins() : Insufficient Balance Target: ", nTargetValue, " Actual ",  nValueRet);
+            return debug::error(FUNCTION, "Insufficient Balance. Target: ", nTargetValue, " Actual ",  nValueRet);
 
         return true;
     }
