@@ -109,9 +109,9 @@ namespace LLD
         , fCacheActive(false)
         , fDestruct(false)
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+        , hashmap(HASHMAP_TOTAL_BUCKETS)
         , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
-            hashmap.resize(HASHMAP_TOTAL_BUCKETS);
         }
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
@@ -125,10 +125,9 @@ namespace LLD
         , fCacheActive(false)
         , fDestruct(false)
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+        , hashmap(HASHMAP_TOTAL_BUCKETS)
         , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
-            hashmap.resize(HASHMAP_TOTAL_BUCKETS);
-
             Initialize();
         }
 
@@ -141,10 +140,9 @@ namespace LLD
         , nFlags(nFlagsIn)
         , fCacheActive(false)
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+        , hashmap(HASHMAP_TOTAL_BUCKETS)
         , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
-            hashmap.resize(HASHMAP_TOTAL_BUCKETS);
-
             Initialize();
         }
 
