@@ -211,17 +211,18 @@ namespace LLD
 
             /* Get the list of sector keys. */
             std::vector<SectorKey> vKeys;
-            if(!pSectorKeys->Get(static_cast<std::vector<uint8_t>>(ssKey), vKeys))
+            if(!pSectorKeys->Get(ssKey.Bytes(), vKeys))
                 return false;
 
             /* Iterate the list of keys. */
             for(auto & key : vKeys)
             {
-                DataStream ssData(SER_LLD, DATABASE_VERSION);
-                if(!Get(key, ssData))
+                std::vector<uint8_t> vData;
+                if(!Get(key, vData))
                     continue;
 
                 TAO::Register::State state;
+                DataStream ssData(vData, SER_LLD, DATABASE_VERSION);
                 ssData >> state;
 
                 states.push_back(state);

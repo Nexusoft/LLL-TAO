@@ -250,7 +250,7 @@ namespace Legacy
         Dbt datKey;
         if (fFlags == DB_SET || fFlags == DB_SET_RANGE || fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE)
         {
-            datKey.set_data((char*)&ssKey[0]);
+            datKey.set_data((char*)ssKey.data());
             datKey.set_size(ssKey.size());
         }
 
@@ -258,7 +258,7 @@ namespace Legacy
         Dbt datValue;
         if (fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE)
         {
-            datValue.set_data((char*)&ssValue[0]);
+            datValue.set_data((char*)ssValue.data());
             datValue.set_size(ssValue.size());
         }
 
@@ -566,19 +566,19 @@ namespace Legacy
                             }
 
                             /* Skip any key value defined by pszSkip argument */
-                            if (pszSkip != nullptr && strncmp((char*)&ssKey[0], pszSkip, std::min(ssKey.size(), strlen(pszSkip))) == 0)
+                            if (pszSkip != nullptr && strncmp((char*)ssKey.data(), pszSkip, std::min(ssKey.size(), strlen(pszSkip))) == 0)
                                 continue;
 
                             /* Don't copy the version, instead use latest version */
-                            if (strncmp((char*)&ssKey[0], "version", 7) == 0)
+                            if (strncmp((char*)ssKey.data(), "version", 7) == 0)
                             {
                                 /* Update version */
                                 ssValue.clear();
                                 ssValue << LLD::DATABASE_VERSION;
                             }
 
-                            Dbt datKey((char*)&ssKey[0], ssKey.size());
-                            Dbt datValue((char*)&ssValue[0], ssValue.size());
+                            Dbt datKey((char*)ssKey.data(), ssKey.size());
+                            Dbt datValue((char*)ssValue.data(), ssValue.size());
 
                             /* Write the data to temp file */
                             int32_t ret2 = pdbCopy->put(nullptr, &datKey, &datValue, DB_NOOVERWRITE);

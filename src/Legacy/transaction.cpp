@@ -275,10 +275,10 @@ namespace Legacy
             return debug::error(FUNCTION, "script not 144 bytes");
 
         /* Put script in deserializing stream. */
-        DataStream scriptPub(vin[0].scriptSig, SER_NETWORK, LLP::PROTOCOL_VERSION);
+        DataStream scriptPub(vin[0].scriptSig.begin() + 8, vin[0].scriptSig.end(), SER_NETWORK, LLP::PROTOCOL_VERSION);
 
         /* Erase the first 8 bytes of the fib byte series flag. */
-        scriptPub.erase(scriptPub.begin(), scriptPub.begin() + 8);
+        //scriptPub.erase(scriptPub.begin(), scriptPub.begin() + 8);
 
         /* Deserialize the values from stream. */
         scriptPub >> hashLastBlock >> nSequence >> nTrustScore;

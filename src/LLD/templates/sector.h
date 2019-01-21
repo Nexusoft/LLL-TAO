@@ -268,21 +268,21 @@ namespace LLD
             {
                 LOCK(TRANSACTION_MUTEX);
 
-                if(pTransaction->mapEraseData.count(static_cast<std::vector<uint8_t>>(ssKey)))
+                if(pTransaction->mapEraseData.count(ssKey.Bytes()))
                     return false;
 
                 /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-                if(pTransaction->mapTransactions.count(static_cast<std::vector<uint8_t>>(ssKey)))
+                if(pTransaction->mapTransactions.count(ssKey.Bytes()))
                     return true;
 
                 /* Check for keychain commits. */
-                if(pTransaction->mapKeychain.count(static_cast<std::vector<uint8_t>>(ssKey)))
+                if(pTransaction->mapKeychain.count(ssKey.Bytes()))
                     return true;
             }
 
             /* Return the Key existance in the Keychain Database. */
             SectorKey cKey;
-            return pSectorKeys->Get(static_cast<std::vector<uint8_t>>(ssKey), cKey);
+            return pSectorKeys->Get(ssKey.Bytes(), cKey);
         }
 
 
@@ -301,13 +301,13 @@ namespace LLD
             {
                 LOCK(TRANSACTION_MUTEX);
 
-                pTransaction->EraseTransaction(static_cast<std::vector<uint8_t>>(ssKey));
+                pTransaction->EraseTransaction(ssKey.Bytes());
 
                 return true;
             }
 
             /* Return the Key existance in the Keychain Database. */
-            bool fErased = pSectorKeys->Erase(static_cast<std::vector<uint8_t>>(ssKey));
+            bool fErased = pSectorKeys->Erase(ssKey.Bytes());
 
             if(config::GetBoolArg("-runtime", false))
             {
@@ -334,15 +334,15 @@ namespace LLD
             {
                 LOCK(TRANSACTION_MUTEX);
 
-                if(pTransaction->mapEraseData.count(static_cast<std::vector<uint8_t>>(ssKey)))
+                if(pTransaction->mapEraseData.count(ssKey.Bytes()))
                     return false;
 
                 /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-                if(pTransaction->mapTransactions.count(static_cast<std::vector<uint8_t>>(ssKey)))
-                    vData = pTransaction->mapTransactions[static_cast<std::vector<uint8_t>>(ssKey)];
+                if(pTransaction->mapTransactions.count(ssKey.Bytes()))
+                    vData = pTransaction->mapTransactions[ssKey.Bytes()];
             }
 
-            if(vData.empty() && !Get(static_cast<std::vector<uint8_t>>(ssKey), vData))
+            if(vData.empty() && !Get(ssKey.Bytes(), vData))
                 return false;
 
             /* Deserialize Value. */
@@ -369,13 +369,13 @@ namespace LLD
                 LOCK(TRANSACTION_MUTEX);
 
                 /* Set the transaction data. */
-                pTransaction->mapKeychain[static_cast<std::vector<uint8_t>>(ssKey)] = 0;
+                pTransaction->mapKeychain[ssKey.Bytes()] = 0;
 
                 return true;
             }
 
             /* Return the Key existance in the Keychain Database. */
-            SectorKey cKey(STATE::READY, static_cast<std::vector<uint8_t>>(ssKey), 0, 0, 0);
+            SectorKey cKey(STATE::READY, ssKey.Bytes(), 0, 0, 0);
             return pSectorKeys->Put(cKey);
         }
 
@@ -400,12 +400,12 @@ namespace LLD
                 LOCK(TRANSACTION_MUTEX);
 
                 /* Set the transaction data. */
-                pTransaction->mapTransactions[static_cast<std::vector<uint8_t>>(ssKey)] = static_cast<std::vector<uint8_t>>(ssData);
+                pTransaction->mapTransactions[ssKey.Bytes()] = ssData.Bytes();
 
                 return true;
             }
 
-            return Put(static_cast<std::vector<uint8_t>>(ssKey), static_cast<std::vector<uint8_t>>(ssData));
+            return Put(ssKey.Bytes(), ssData.Bytes());
         }
 
 
@@ -419,7 +419,7 @@ namespace LLD
          *  @return True if the record was read successfully.
          *
          **/
-        bool Get(std::vector<uint8_t> vKey, std::vector<uint8_t>& vData)
+        bool Get(const std::vector<uint8_t>& vKey, std::vector<uint8_t>& vData)
         {
             /* Iterate if meters are enabled. */
             nBytesRead += (vKey.size() + vData.size());
@@ -537,7 +537,7 @@ namespace LLD
          *  @return True if the flush was successful.
          *
          **/
-        bool Update(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
+        bool Update(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
         {
             /* Check the keychain for key. */
             SectorKey key;
@@ -598,7 +598,7 @@ namespace LLD
          *  @return True if the flush was successful.
          *
          **/
-        bool Force(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
+        bool Force(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
         {
             if(nFlags & FLAGS::APPEND || !Update(vKey, vData))
             {
@@ -668,7 +668,7 @@ namespace LLD
          *  @return True if the record was written successfully.
          *
          **/
-        bool Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
+        bool Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
         {
             /* Write the data into the memory cache. */
             cachePool->Put(vKey, vData, !(nFlags & FLAGS::FORCE));

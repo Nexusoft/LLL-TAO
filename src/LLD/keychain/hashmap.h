@@ -222,7 +222,7 @@ namespace LLD
          *  @return The bucket assigned to key
          *
          **/
-        uint32_t GetBucket(std::vector<uint8_t> vKey)
+        uint32_t GetBucket(const std::vector<uint8_t>& vKey)
         {
             /* Get an MD5 digest. */
             uint8_t digest[MD5_DIGEST_LENGTH];
@@ -533,7 +533,7 @@ namespace LLD
 
                             /* Flush the key file to disk. */
                             pstream->seekp (nFilePos, std::ios::beg);
-                            pstream->write((char*)&ssKey[0], ssKey.size());
+                            pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
                             pstream->flush();
                         }
 
@@ -604,7 +604,7 @@ namespace LLD
 
                 /* Flush the key file to disk. */
                 pstream->seekp (nFilePos, std::ios::beg);
-                pstream->write((char*)&ssKey[0], ssKey.size());
+                pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
                 pstream->flush();
 
                 /* Iterate the linked list value in the hashmap. */

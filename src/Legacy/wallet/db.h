@@ -166,7 +166,7 @@ namespace Legacy
             DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             ssKey.reserve(1000);
             ssKey << key;
-            Dbt datKey(&ssKey[0], ssKey.size());
+            Dbt datKey(ssKey.data(), ssKey.size());
 
             /* Value */
             Dbt datValue;
@@ -232,13 +232,13 @@ namespace Legacy
             DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             ssKey.reserve(1000);
             ssKey << key;
-            Dbt datKey(&ssKey[0], ssKey.size());
+            Dbt datKey(ssKey.data(), ssKey.size());
 
             /* Value */
             DataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
             ssValue.reserve(10000);
             ssValue << value;
-            Dbt datValue(&ssValue[0], ssValue.size());
+            Dbt datValue(ssValue.data(), ssValue.size());
 
             /* Write */
             int32_t ret = pdb->put(GetTxn(), &datKey, &datValue, (fOverwrite ? 0 : DB_NOOVERWRITE));
@@ -275,7 +275,7 @@ namespace Legacy
             DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             ssKey.reserve(1000);
             ssKey << key;
-            Dbt datKey(&ssKey[0], ssKey.size());
+            Dbt datKey(ssKey.data(), ssKey.size());
 
             /* Erase */
             int32_t ret = pdb->del(GetTxn(), &datKey, 0);
@@ -306,7 +306,7 @@ namespace Legacy
             DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             ssKey.reserve(1000);
             ssKey << key;
-            Dbt datKey(&ssKey[0], ssKey.size());
+            Dbt datKey(ssKey.data(), ssKey.size());
 
             /* Exists */
             int32_t ret = pdb->exists(GetTxn(), &datKey, 0);

@@ -869,8 +869,11 @@ struct ser_streamplaceholder
  *  Class to handle the serializaing and deserializing of data to disk or over the network
  *
  **/
-class DataStream : public std::vector<uint8_t>
+class DataStream
 {
+    /** The byte vector of data . **/
+    std::vector<uint8_t> vData;
+
 
     /** The current reading position. **/
     uint32_t nReadPos;
@@ -888,12 +891,11 @@ public:
 
     /** Default Constructor. **/
     DataStream(uint32_t nSerTypeIn, uint32_t nSerVersionIn)
-    : std::vector<uint8_t>()
+    : vData()
     , nReadPos(0)
     , nSerType(nSerTypeIn)
     , nSerVersion(nSerVersionIn)
     {
-        clear();
     }
 
 
@@ -909,7 +911,7 @@ public:
      *
      **/
     DataStream(std::vector<uint8_t> vchDataIn, uint32_t nSerTypeIn, uint32_t nSerVersionIn)
-    : std::vector<uint8_t>(vchDataIn)
+    : vData(vchDataIn)
     , nReadPos(0)
     , nSerType(nSerTypeIn)
     , nSerVersion(nSerVersionIn)
@@ -923,7 +925,7 @@ public:
      *
      **/
     DataStream(std::vector<uint8_t>::const_iterator pbegin, std::vector<uint8_t>::const_iterator pend, uint32_t nSerTypeIn, uint32_t nSerVersionIn)
-    : std::vector<uint8_t>(pbegin, pend)
+    : vData(pbegin, pend)
     , nReadPos(0)
     , nSerType(nSerTypeIn)
     , nSerVersion(nSerVersionIn)
@@ -940,7 +942,7 @@ public:
      *
      **/
     DataStream(const char* pbegin, const char* pend, uint32_t nSerTypeIn, uint32_t nSerVersionIn)
-    : std::vector<uint8_t>((uint8_t*)pbegin, (uint8_t*)pend)
+    : vData((uint8_t*)pbegin, (uint8_t*)pend)
     , nReadPos(0)
     , nSerType(nSerTypeIn)
     , nSerVersion(nSerVersionIn)
@@ -955,7 +957,7 @@ public:
      *
      **/
     DataStream(const std::vector<char>& vchDataIn, uint32_t nSerTypeIn, uint32_t nSerVersionIn)
-    : std::vector<uint8_t>((uint8_t*)&vchDataIn.begin()[0], (uint8_t*)&vchDataIn.end()[0])
+    : vData((uint8_t*)&vchDataIn.begin()[0], (uint8_t*)&vchDataIn.end()[0])
     , nReadPos(0)
     , nSerType(nSerTypeIn)
     , nSerVersion(nSerVersionIn)
@@ -998,7 +1000,7 @@ public:
     void SetNull()
     {
         nReadPos = 0;
-        clear();
+        vData.clear();
     }
 
 
@@ -1051,12 +1053,88 @@ public:
             throw std::runtime_error(debug::strprintf(FUNCTION, "reached end of stream %u", nReadPos));
 
         /* Copy the bytes into tmp object. */
-        std::copy((uint8_t*)&at(nReadPos), (uint8_t*)&at(nReadPos) + nSize, (uint8_t*)pch);
+        std::copy((uint8_t*)&vData.at(nReadPos), (uint8_t*)&vData.at(nReadPos) + nSize, (uint8_t*)pch);
 
         /* Iterate the read position. */
         nReadPos += nSize;
 
         return *this;
+    }
+
+
+    /** Get
+     *
+     *  Get the data stream from the object.
+     *
+     **/
+    const std::vector<uint8_t>& Bytes()
+    {
+        return vData;
+    }
+
+
+    /** Reserve
+     *
+     *  Implement the same reserve functionality to vector.
+     *
+     **/
+    void reserve(const uint32_t nSize)
+    {
+        vData.reserve(nSize);
+    }
+
+
+    /** Begin
+     *
+     *  Wrapper around the vector iterator.
+     *
+     **/
+    std::vector<uint8_t>::iterator begin()
+    {
+        return vData.begin();
+    }
+
+
+    /** End
+     *
+     *  Wrapper around the vector iterator.
+     *
+     **/
+    std::vector<uint8_t>::iterator end()
+    {
+        return vData.end();
+    }
+
+    /** Data
+     *
+     *  Wrapper around data to get the start of vector.
+     *
+     **/
+     uint8_t* data()
+     {
+         return vData.data();
+     }
+
+
+    /** Clear
+     *
+     *  Wrapper around the vector clear.
+     *
+     **/
+    void clear()
+    {
+        return vData.clear();
+    }
+
+
+    /** Size
+     *
+     *  Get the size of the data stream.
+     *
+     **/
+    size_t size()
+    {
+        return vData.size();
     }
 
 
@@ -1072,7 +1150,7 @@ public:
     DataStream& write(const char* pch, uint32_t nSize)
     {
         /* Push the obj bytes into the vector. */
-        insert(end(), (uint8_t*)pch, (uint8_t*)pch + nSize);
+        vData.insert(vData.end(), (uint8_t*)pch, (uint8_t*)pch + nSize);
 
         return *this;
     }

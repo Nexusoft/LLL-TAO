@@ -115,15 +115,15 @@ namespace LLD
         }
 
         /* Iterator to the beginning of the raw key. */
-        uint32_t Begin() { return 13; }
+        uint32_t Begin() const { return 13; }
 
 
         /* Return the Size of the Key Sector on Disk. */
-        uint32_t Size() { return (13 + nLength); }
+        uint32_t Size() const { return (13 + nLength); }
 
 
         /* Dump Key to Debug Console. */
-        void Print()
+        void Print() const
         {
             debug::log(0, "SectorKey(nState=", nState,
             ", nLength=", nLength,
@@ -134,9 +134,9 @@ namespace LLD
 
 
         /* Check for Key Activity on Sector. */
-        bool Empty() { return (nState == STATE::EMPTY); }
-        bool Ready() { return (nState == STATE::READY); }
-        bool IsTxn() { return (nState == STATE::TRANSACTION); }
+        bool Empty() const { return (nState == STATE::EMPTY); }
+        bool Ready() const { return (nState == STATE::READY); }
+        bool IsTxn() const { return (nState == STATE::TRANSACTION); }
 
     };
 }
