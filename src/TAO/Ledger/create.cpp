@@ -302,6 +302,8 @@ namespace TAO
                     return;
 
                 /* Create the block object. */
+                runtime::timer TIMER;
+                TIMER.Start();
                 TAO::Ledger::TritiumBlock block;
                 if(!TAO::Ledger::CreateBlock(user, std::string("1234").c_str(), 2, block))
                     continue;
@@ -329,6 +331,9 @@ namespace TAO
                 TAO::Ledger::BlockState state = TAO::Ledger::BlockState(block);
                 if(!state.Accept())
                     continue;
+
+                /* Debug output. */
+                debug::log(0, FUNCTION, "Private Block Cleared in ", TIMER.ElapsedMilliseconds(), " ms");
             }
         }
     }

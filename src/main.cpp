@@ -300,6 +300,13 @@ int main(int argc, char** argv)
     std::unique_lock<std::mutex> SHUTDOWN_LOCK(SHUTDOWN_MUTEX);
     SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown; });
 
+    /* Wait for the private condition. */
+    if(config::GetBoolArg("-private"))
+    {
+        TAO::Ledger::PRIVATE_CONDITION.notify_all();
+        thread.join();
+    }
+
 
     /* Shutdown metrics. */
     timer.Reset();
