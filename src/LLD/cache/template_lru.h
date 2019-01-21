@@ -176,7 +176,6 @@ namespace LLD
             return *this;
         }
 
-
         TemplateLRU(const TemplateLRU& map)
         {
             MAX_CACHE_ELEMENTS = map.MAX_CACHE_ELEMENTS;

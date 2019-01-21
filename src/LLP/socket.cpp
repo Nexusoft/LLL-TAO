@@ -35,6 +35,8 @@ namespace LLP
     : nError(0)
     , nLastSend(runtime::timestamp())
     , nLastRecv(runtime::timestamp())
+    , vBuffer()
+    , addr()
     {
         fd = -1;
         events = POLLIN; //consider using POLLOUT
@@ -232,7 +234,7 @@ namespace LLP
 
 
     /* Write data into the socket buffer non-blocking */
-    int Socket::Write(std::vector<uint8_t> vData, size_t nBytes)
+    int Socket::Write(const std::vector<uint8_t>& vData, size_t nBytes)
     {
         /* Check overflow buffer. */
         if(vBuffer.size() > 0)

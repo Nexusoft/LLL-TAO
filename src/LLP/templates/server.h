@@ -282,6 +282,7 @@ namespace LLP
          **/
         void Manager()
         {
+            return;
             
             /* Address to select. */
             Address addr;
