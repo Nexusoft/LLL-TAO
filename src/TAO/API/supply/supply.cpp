@@ -308,7 +308,7 @@ namespace TAO
                     std::string data;
                     state >> data;
 
-                    //ret["checksum"] = state.hashChecksum;
+                    obj["checksum"] = state.hashChecksum;
                     obj["state"] = data;
                 }
 
