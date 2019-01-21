@@ -49,6 +49,23 @@ The Nexus Daemon must already be running for this to work. Make sure you are in 
 This will return all data in JSON format into your console.
 
 
+### Results JSON
+The response JSON you will receive will contain one of two keys, results or error.
+When a command is successfully executed, you will receive a JSON string such as:
+```
+{"result":{"genesis":"69c2479c6780782448f419a0865542002ee85fec39228275b2db44bb6d3aa503","session":4940881975319897416}}
+```
+
+You will need to parse out the values of the result object in your corresponding language of choice. If you happen to receive a
+failure, it will look like this:
+
+```
+{"error":{"code":-24,"message":"Missing Password"}}
+```
+
+Note that you will be parsing for the error key now, and there will be no results. This allows you the choice of a programmer to check for the existence of the "error" key to check for errors, or check for the existence of the "result" key to find if it executed successfully. The choice is yours how you handle it, just know that it is an either / or situation. You will get only one or the other. 
+
+
 ## Accounts API
 
 The accounts API is responsible for maintaining account level
