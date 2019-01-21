@@ -186,6 +186,7 @@ namespace LLP
                 throw;
             }
         }
+        
 
         template<typename T1>
         void PushMessage(const char* chMessage, const T1& t1)

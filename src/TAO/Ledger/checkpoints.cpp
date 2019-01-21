@@ -29,11 +29,11 @@ namespace TAO
     {
 
         /** Checkpoint timespan. **/
-        uint32_t CHECKPOINT_TIMESPAN = 1;
+        uint32_t CHECKPOINT_TIMESPAN = 10;
 
 
         /* Check if the new block triggers a new Checkpoint timespan.*/
-        bool IsNewTimespan(const BlockState state)
+        bool IsNewTimespan(const BlockState& state)
         {
             /* Catch if checkpoint is not established. */
             if(ChainState::hashCheckpoint == 0)
@@ -58,7 +58,7 @@ namespace TAO
 
 
         /* Check that the checkpoint is a Descendant of previous Checkpoint.*/
-        bool IsDescendant(const BlockState state)
+        bool IsDescendant(const BlockState& state)
         {
             if(ChainState::hashCheckpoint == 0)
                 return true;
@@ -84,16 +84,12 @@ namespace TAO
                 check = check.Prev();
             }
 
-
-
-            printf("%s - %s\n", ChainState::hashCheckpoint.ToString().substr(0, 20).c_str(), state.hashCheckpoint.ToString().substr(0, 20).c_str());
-
             return false;
         }
 
 
         /*Harden a checkpoint into the checkpoint chain.*/
-        bool HardenCheckpoint(const BlockState state)
+        bool HardenCheckpoint(const BlockState& state)
         {
             /* Only Harden New Checkpoint if it Fits new timestamp. */
             if(!IsNewTimespan(state))

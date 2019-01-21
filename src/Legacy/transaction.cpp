@@ -149,10 +149,6 @@ namespace Legacy
 		if(vin.size() <= 1)
 			return false;
 
-		/* First Input Script Signature must be 8 Bytes. */
-		if(vin[0].scriptSig.size() != 8)
-			return false;
-
 		/* First Input Script Signature must Contain Fibanacci Byte Series. */
 		if(!vin[0].IsStakeSig())
 			return false;

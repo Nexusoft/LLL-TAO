@@ -61,7 +61,7 @@ namespace TAO
 
 
             /** The reserves that are released. */
-            uint64_t nReleasedReserve[3];
+            int64_t nReleasedReserve[3];
 
 
             /** Used to Iterate forward in the chain */

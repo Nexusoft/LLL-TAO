@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/json.h>
 
+
 /** i64tostr
  *
  *  Converts a 64-bit signed integer into a string.
@@ -406,7 +407,7 @@ inline std::string bytes2string(std::vector<uint8_t> BYTES)
 *
 *  Template function for converting a string value to the given template type.
 *  If the value is not a string then no conversion takes place
-* 
+*
 *  @param[in] value - a reference to the value to be converted.
 *
 *  @return void.
@@ -422,13 +423,13 @@ void ConvertStringValueTo(json::json::value_type& value)
 
         T tValueOut = T();
         bool bValueOut = false;
-        // if the caller has requested conversion to a bool then test for boolean true|false value first 
+        // if the caller has requested conversion to a bool then test for boolean true|false value first
         // as istringsteam won't convert this implicitly
         if( std::is_same<T, bool>::value && (ss >> std::boolalpha >> bValueOut))
             tValueOut = bValueOut;
         else
             ss >> tValueOut;
-        
+
         value = tValueOut;
     }
 }

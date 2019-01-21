@@ -890,6 +890,8 @@ namespace LLD
             if(!pTransaction)
                 return debug::error(FUNCTION, "nothing to commit.");
 
+            //std::ofstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
+
             /* Erase data set to be removed. */
             for(auto it = pTransaction->mapEraseData.begin(); it != pTransaction->mapEraseData.end(); ++it )
             {

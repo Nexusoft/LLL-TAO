@@ -11,6 +11,10 @@
 
 ____________________________________________________________________________________________*/
 
+#include <cmath>
+
+#include <Legacy/types/legacy.h>
+
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/trustkey.h>
@@ -54,7 +58,6 @@ namespace TAO
             hashGenesisTx        = 0;
             nGenesisTime         = 0;
 
-            hashPrevBlocks.clear();
             vchPubKey.clear();
         }
 
@@ -92,7 +95,7 @@ namespace TAO
 
 
         /* Check the Genesis Transaction of this Trust Key. */
-        bool TrustKey::CheckGenesis(TritiumBlock block) const
+        bool TrustKey::CheckGenesis(const Legacy::LegacyBlock& block) const
         {
             /* Invalid if Null. */
             if(IsNull())
@@ -100,26 +103,43 @@ namespace TAO
 
             /* Trust Keys must be created from only Proof of Stake Blocks. */
             if(!block.IsProofOfStake())
-                return debug::error("TrustKey::CheckGenesis() : genesis has to be proof of stake");
+                return debug::error(FUNCTION, "genesis has to be proof of stake");
 
             /* Trust Key Timestamp must be the same as Genesis Key Block Timestamp. */
             if(nGenesisTime != block.nTime)
-                return debug::error("TrustKey::CheckGenesis() : genesis time mismatch");
+                return debug::error(FUNCTION, "genesis time mismatch");
+
+            /* Genesis Key Transaction must match Trust Key Genesis Hash. */
+            if(block.vtx[0].GetHash() != hashGenesisTx)
+                return debug::error(FUNCTION, "genesis coinstake hash mismatch");
 
             /* Check the genesis block hash. */
             if(block.GetHash() != hashGenesisBlock)
-                return debug::error("TrustKey::CheckGenesis() : genesis hash mismatch");
-
-            /* Genesis Transaction must match Trust Key Genesis Hash. */
-            if (block.vtx.size() == 0)
-                return debug::error("TrustKey::CheckGenesis() : genesis coinstake not present");
-
-            uint512_t txHash = block.vtx[0].second;
-
-            if(txHash != hashGenesisTx)
-                return debug::error("TrustKey::CheckGenesis() : genesis coinstake hash mismatch");
+                return debug::error(FUNCTION, "genesis hash mismatch");
 
             return true;
+        }
+
+
+        /* Interest is Determined By Logarithmic Equation from Genesis Key. */
+        double TrustKey::InterestRate(const Legacy::LegacyBlock& block, uint32_t nTime) const
+        {
+            /* Genesis interest rate is 0.5% */
+            if(block.vtx[0].IsGenesis())
+                return 0.005;
+
+            /* Block version 4 is the age of key from timestamp. */
+            uint32_t nTrustScore;
+            if(block.nVersion == 4)
+                nTrustScore = (nTime - nGenesisTime);
+
+            /* Block version 5 is the trust score of the key. */
+            else if(!block.TrustScore(nTrustScore))
+                return 0.0; //this will trigger an interest rate failure
+
+            return std::min(0.03,
+                ((((0.025 * log(((9.0 * (nTrustScore)) / (60 * 60 * 24 * 28 * 13)) + 1.0)) /
+                log(10))) + 0.005));
         }
 
 
@@ -129,20 +149,23 @@ namespace TAO
             uint576_t cKey;
             cKey.SetBytes(vchPubKey);
 
-            return debug::strprintf("hash=%s, key=%s, genesis=%s, tx=%s, time=%u, age=%u",
-                                    GetHash().ToString().c_str(),
-                                    cKey.ToString().c_str(),
-                                    hashGenesisBlock.ToString().c_str(),
-                                    hashGenesisTx.ToString().c_str(),
-                                    nGenesisTime,
-                                    GetAge(runtime::unifiedtimestamp()));
+            return debug::safe_printstr(
+                "hash=", GetHash().ToString(), ", ",
+                "key=", cKey.ToString(), ", ",
+                "genesis=", hashGenesisBlock.ToString(), ", ",
+                "tx=", hashGenesisTx.ToString(), ", ",
+                "time=", nGenesisTime, ", ",
+                "age=", GetAge(runtime::unifiedtimestamp()), ", "
+            );
         }
 
 
         /* Print a string representation of this Trust Key to the debug log. */
         void TrustKey::Print()
         {
-            debug::log(0, "TrustKey(", ToString(), ")");
+            debug::log(0,
+                "TrustKey(", ToString(), ")"
+            );
         }
     }
 }
