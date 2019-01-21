@@ -988,7 +988,6 @@ namespace Legacy
         { // Begin lock scope
             LOCK(cs_wallet);
 
-            LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
             Legacy::Transaction tx;
 
             while (!config::fShutdown)
@@ -1003,9 +1002,9 @@ namespace Legacy
                     if (txHashType == TAO::Ledger::LEGACY_TX)
                     {
                         /* Read transaction from database */
-                        if (!legacydb.ReadTx(txHash, tx))
+                        if (!LLD::legacyDB->ReadTx(txHash, tx))
                         {
-                            debug::log(2, FUNCTION, "Error reading tx from legacydb");
+                            debug::log(2, FUNCTION, "Error reading tx from legacyDB");
                             continue;
                         }
 
@@ -1062,7 +1061,6 @@ namespace Legacy
 
         /* Rebroadcast any of our tx that aren't in a block yet */
         debug::log(0, FUNCTION, "Resending wallet transactions");
-        LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
 
         {
             LOCK(cs_wallet);
@@ -1084,7 +1082,7 @@ namespace Legacy
 
                 /* Validate the transaction, then process rebroadcast on it */
                 if (wtx.CheckTransaction())
-                    wtx.RelayWalletTransaction(legacydb);
+                    wtx.RelayWalletTransaction();
                 else
                     debug::log(0, FUNCTION, "CheckTransaction failed for transaction ", wtx.GetHash().ToString());
             }
@@ -1143,8 +1141,6 @@ namespace Legacy
             for (auto& item : mapWallet)
                 transactionsInWallet.push_back(item.second);
 
-            LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
-
             for(CWalletTx& walletTx : transactionsInWallet)
             {
                 /* Verify transaction is in the tx db */
@@ -1153,7 +1149,7 @@ namespace Legacy
 //Apparently because that is what we are attempting to fix?
                 Legacy::Transaction txTemp;
 
-                if(!legacydb.ReadTx(walletTx.GetHash(), txTemp))
+                if(!LLD::legacyDB->ReadTx(walletTx.GetHash(), txTemp))
                     continue;
 
                 /* Check all the outputs to make sure the flags are all set properly. */
@@ -1470,8 +1466,6 @@ namespace Legacy
         {
             LOCK(cs_wallet);
 
-            LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
-
             nFeeRet = MIN_TX_FEE;
 
             /* This loop is generally executed only once, unless the size of the transaction requires a fee increase.
@@ -1578,7 +1572,7 @@ namespace Legacy
                 }
 
                 /* Fill vtxPrev by copying from previous transactions vtxPrev */
-                wtxNew.AddSupportingTransactions(legacydb);
+                wtxNew.AddSupportingTransactions();
 
                 wtxNew.fTimeReceivedIsTxTime = true;
 
@@ -1713,8 +1707,7 @@ namespace Legacy
 
         /* Calculate the Interest for the Coinstake Transaction. */
         //int64_t nInterest;
-        LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
-//        if(!block.vtx[0].GetCoinstakeInterest(block, legacydb, nInterest))
+//        if(!block.vtx[0].GetCoinstakeInterest(block, nInterest))
 //            return debug::error(FUNCTION, "Failed to Get Interest");
 
 //        block.vtx[0].vout[0].nValue += nInterest;

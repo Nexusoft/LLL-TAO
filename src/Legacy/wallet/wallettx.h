@@ -518,27 +518,13 @@ namespace Legacy
          *  Populates transaction data for previous transactions into vtxPrev.
          *  Adds no transaction of no wallet bound.
          *
-         *  @param[in] indexdb Local index database containing previous transaction data
-         *
          **/
-        void AddSupportingTransactions(LLD::LegacyDB& legacydb);
+        void AddSupportingTransactions();
 
 
         /** RelayWalletTransaction
          *
          *  Send this transaction to the network if not in our database, yet.
-         *
-         *  @param[in] legacydb Local transaction database to check
-         *
-         **/
-        void RelayWalletTransaction(LLD::LegacyDB& legacydb);
-
-
-        /** RelayWalletTransaction
-         *
-         *  Send this transaction to the network if not in our database, yet.
-         *
-         *  This method open the lobal index database to check it.
          *
          **/
         void RelayWalletTransaction();
