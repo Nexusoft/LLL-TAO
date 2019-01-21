@@ -42,9 +42,13 @@ namespace TAO
             }
 
             std::string strDest = params[0].get<std::string>();
-            //Legacy::CWalletDB::BackupWallet(*Legacy::pwalletMain, strDest);
+            std::string result;
+            if (Legacy::CWalletDB::BackupWallet(Legacy::CWallet::GetInstance(), strDest))
+                result = "Wallet backup completed";
+            else
+                result = "Wallet backup unsuccessful";
 
-            return nullptr;
+            return result;
         }
 
 
