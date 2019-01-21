@@ -614,6 +614,9 @@ namespace LLD
                     stream.close();
                 }
 
+                /* Write the data into the memory cache. */
+                cachePool->Put(vKey, vData, false);
+
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
                 if(!fileCache->Get(nCurrentFile, pstream))
