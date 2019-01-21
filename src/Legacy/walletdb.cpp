@@ -689,10 +689,23 @@ namespace Legacy
 
 
     /* Writes a backup copy of a wallet to a designated backup file */
-    bool BackupWallet(const CWallet& wallet, const std::string& strDest)
+    bool CWalletDB::BackupWallet(const CWallet& wallet, const std::string& strDest)
     {
         if (!wallet.IsFileBacked())
             return false;
+
+        /* Validate the length of strDest. This assures pathDest.size() cast to uint32_t is always valid (nobody can pass a ridiculously long string) */
+#ifndef WIN32
+        if (strDest.size() > 4096) {
+            debug::log(0, FUNCTION, "Error: Invalid destination path. Path size exceeds maximum limit");
+            return false;
+        }
+#else
+        if (strDest.size() > 260) {
+            debug::log(0, FUNCTION, "Error: Invalid destination path. Path size exceeds maximum limit");
+            return false;
+        }
+#endif
 
         while (!config::fShutdown)
         {
@@ -710,12 +723,37 @@ namespace Legacy
                     CDB::dbenv.lsn_reset(strSource.c_str(), 0);
                     CDB::mapFileUseCount.erase(strSource);
 
-                    std::string pathSource(config::GetDataDir() + "/" + strSource);
+                    std::string pathSource(config::GetDataDir() + strSource);
                     std::string pathDest(strDest);
 
-                    /* If destination is a folder, use wallet database name */
+                    /* Create any missing directories in the destination path.
+                     * If final character in pathDest is not / then the last entry in path is not created (could be a file name)
+                     */
+                    filesystem::create_directories(pathDest);
+
+                    /* If destination is a folder, append source file name to use as dest file name */
                     if (filesystem::is_directory(pathDest))
-                        pathDest = pathDest + "/" + strSource;
+                    {
+                        uint32_t s = static_cast<uint32_t>(pathDest.size());
+
+                        if (pathDest[s-1] != '/')
+                            pathDest += '/';
+
+                        pathDest = pathDest + strSource;
+
+                        /* After appending to pathDest, need to validate again */
+#ifndef WIN32
+                        if (strDest.size() > 4096) {
+                            debug::log(0, FUNCTION, "Error: Invalid destination path. Path size exceeds maximum limit");
+                            return false;
+                        }
+#else
+                        if (strDest.size() > 260) {
+                            debug::log(0, FUNCTION, "Error: Invalid destination path. Path size exceeds maximum limit");
+                            return false;
+                        }
+#endif
+                    }
 
                     /* Copy wallet.dat (this method is a bit slow, but is simple and should be ok for an occasional copy) */
                     if (filesystem::copy_file(pathSource, pathDest))
