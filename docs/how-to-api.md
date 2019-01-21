@@ -63,7 +63,7 @@ failure, it will look like this:
 {"error":{"code":-24,"message":"Missing Password"}}
 ```
 
-Note that you will be parsing for the error key now, and there will be no results. This allows you the choice of a programmer to check for the existence of the "error" key to check for errors, or check for the existence of the "result" key to find if it executed successfully. The choice is yours how you handle it, just know that it is an either / or situation. You will get only one or the other. 
+Note that you will be parsing for the error key now, and there will be no results. This allows you the choice as a programmer to check for the existence of the "error" key to check for errors, or check for the existence of the "result" key to find if it executed successfully. The choice is yours how you handle it, just know that it is an either / or situation. You will get only one or the other. 
 
 
 ## Accounts API
