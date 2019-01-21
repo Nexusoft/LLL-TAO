@@ -349,14 +349,22 @@ namespace Legacy
     /*  Retrieve the public key for a key in the key store. */
     bool CCryptoKeyStore::GetPubKey(const NexusAddress& address, std::vector<uint8_t>& vchPubKeyOut) const
     {
+        /* Only use LOCK to check IsCrypted() -- use internal flag so we can release before potential call to CKeyStore::GetPubKey */
+        bool fCrypted = false;
+
         {
-            /* This lock can wrap across CKeyStore::GetPubKey, which performs no internal locking. 
-             * It covers call to IsCrypted() and access to mapCryptedKeys
-             */
             LOCK(cs_cryptoKeyStore);
 
-            if (!IsCrypted())
-                return CKeyStore::GetPubKey(address, vchPubKeyOut);
+            if (IsCrypted())
+                fCrypted = true;
+        }
+
+        if (!fCrypted)
+            return CKeyStore::GetPubKey(address, vchPubKeyOut);
+
+        {
+            /* Get the lock back if we need to check mapCryptedKeys */
+            LOCK(cs_cryptoKeyStore);
 
             auto mi = mapCryptedKeys.find(address);
             if (mi != mapCryptedKeys.end())
