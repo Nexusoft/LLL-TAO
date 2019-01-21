@@ -67,7 +67,7 @@ namespace TAO
             /* Build the response JSON. */
             //ret["version"]  = state.nVersion;
             //ret["type"]     = state.nType;
-            ret["updated"]  = state.nTimestamp;
+            ret["timestamp"]  = state.nTimestamp;
             ret["owner"]    = state.hashOwner.ToString();
 
             while(!state.end())
@@ -300,7 +300,7 @@ namespace TAO
                 json::json obj;
                 obj["version"]  = state.nVersion;
                 obj["owner"]    = state.hashOwner.ToString();
-                obj["updated"]  = state.nTimestamp;
+                obj["timestamp"]  = state.nTimestamp;
 
                 while(!state.end())
                 {
