@@ -226,5 +226,55 @@ namespace TAO
 
             return key.Verify((nVersion == 4) ? SignatureHash() : GetHash(), vchBlockSig, 1024);
         }
+
+        /* Generates the StakeHash for this block from a uint256_t hashGenesis*/
+        uint1024_t Block::StakeHash(bool fIsGenesis, uint256_t hashGenesis) const
+        {
+            /* Create a data stream to get the hash. */
+            DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+            ss.reserve(10000);
+
+            /* Trust Key is part of stake hash if not genesis. */
+            if(nHeight > 2392970 && fIsGenesis)
+            {
+                /* Genesis must hash a prvout of 0. */
+                uint512_t hashPrevout = 0;
+
+                /* Serialize the data to hash into a stream. */
+                ss << nVersion << hashPrevBlock << nChannel << nHeight << nBits << hashPrevout << nNonce;
+
+                return LLC::SK1024(ss.begin(), ss.end());
+            }
+
+            /* Serialize the data to hash into a stream. */
+            ss << nVersion << hashPrevBlock << nChannel << nHeight << nBits << hashGenesis << nNonce;
+
+            return LLC::SK1024(ss.begin(), ss.end());
+        }
+
+        /* Generates the StakeHash for this block from a uint256_t hashGenesis*/
+        uint1024_t Block::StakeHash(bool fIsGenesis, uint576_t trustKey) const
+        {
+            /* Create a data stream to get the hash. */
+            DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+            ss.reserve(10000);
+
+            /* Trust Key is part of stake hash if not genesis. */
+            if(nHeight > 2392970 && fIsGenesis)
+            {
+                /* Genesis must hash a prvout of 0. */
+                uint512_t hashPrevout = 0;
+
+                /* Serialize the data to hash into a stream. */
+                ss << nVersion << hashPrevBlock << nChannel << nHeight << nBits << hashPrevout << nNonce;
+
+                return LLC::SK1024(ss.begin(), ss.end());
+            }
+
+            /* Serialize the data to hash into a stream. */
+            ss << nVersion << hashPrevBlock << nChannel << nHeight << nBits << trustKey << nNonce;
+
+            return LLC::SK1024(ss.begin(), ss.end());
+        }
     }
 }

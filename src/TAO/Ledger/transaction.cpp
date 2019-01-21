@@ -22,6 +22,7 @@ ________________________________________________________________________________
 
 #include <Util/templates/serialize.h>
 #include <Util/include/hex.h>
+#include <Util/include/debug.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/transaction.h>
@@ -226,6 +227,23 @@ namespace TAO
                 "hash = ", GetHash().ToString().substr(0, 20), ", ",
                 "register.size() = ", ssRegister.size(), ", ",
                 "operation.size() = ", ssOperation.size(), ")" );
+        }
+
+        /* Short form of the debug output. */
+        std::string Transaction::ToStringShort() const
+        {
+            std::string str;
+            std::string txtype = "tritium ";
+            if(IsCoinbase())
+                txtype += "base";
+            else if(IsTrust())
+                txtype += "trust";
+            else if(IsGenesis())
+                txtype += "genesis";
+            else 
+                txtype += "user";
+            str += debug::strprintf("%s %s", GetHash().ToString().c_str(), txtype.c_str());
+            return str;
         }
     }
 }

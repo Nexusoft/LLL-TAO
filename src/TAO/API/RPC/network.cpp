@@ -13,8 +13,12 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/rpc.h>
 #include <Util/include/json.h>
+#include <Util/include/hex.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <Legacy/include/money.h>
+#include <TAO/Ledger/include/difficulty.h>
+#include <LLD/include/global.h>
+#include <TAO/Ledger/types/tritium.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -276,6 +280,150 @@ namespace TAO
         //     return obj;
             json::json ret;
             return ret;
+        }
+
+        /* getblockhash <index>"
+        *  Returns hash of block in best-block-chain at <index> */
+        json::json RPC::GetBlockHash(const json::json& params, bool fHelp)
+        {
+
+            if (fHelp || params.size() != 1)
+                return std::string(
+                    "getblockhash <index>"
+                    " - Returns hash of block in best-block-chain at <index>.");
+
+            int nHeight = params[0];
+            if (nHeight < 0 || nHeight > TAO::Ledger::ChainState::nBestHeight)
+                return std::string("Block number out of range.");
+
+
+            //PS TODO
+            // Core::CBlock block;
+            // Core::CBlockIndex* pblockindex = Core::mapBlockIndex[Core::hashBestChain];
+            // while (pblockindex->nHeight > nHeight)
+            //     pblockindex = pblockindex->pprev;
+            // return pblockindex->phashBlock->GetHex();
+
+            json::json ret;
+            return ret;
+        }
+
+        /* isorphan <hash>"
+        *  Returns whether a block is an orphan or not*/
+        json::json RPC::IsOrphan(const json::json& params, bool fHelp)
+        {
+            if (fHelp || params.size() != 1 )
+                return std::string(
+                    "isorphan <hash> "
+                    " - Returns whether a block is an orphan or not");
+
+
+            TAO::Ledger::BlockState block;
+            uint1024_t blockId = 0;
+            blockId.SetHex(params[0].get<std::string>());
+            
+            if (!LLD::legDB->ReadBlock(blockId, block))
+            {
+                throw APIException(-5, "Block not found");
+                return "";
+            }
+
+            return !block.IsInMainChain();
+            
+        }
+
+        json::json blockToJSON(const TAO::Ledger::BlockState& block,  bool fPrintTransactionDetail)
+        {
+            json::json result;
+            result["hash"] = block.GetHash().GetHex();
+            // the hash that was relevant for Proof of Stake or Proof of Work (depending on block version)
+            result["proofhash"] =
+                                    block.nVersion < 5 ? block.GetHash().GetHex() :
+                                    ((block.nChannel == 0) ? block.StakeHash().GetHex() : block.ProofHash().GetHex());
+
+            result["size"] = (int)::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION);
+            result["height"] = (int)block.nHeight;
+            result["channel"] = (int)block.nChannel;
+            result["version"] = (int)block.nVersion;
+            result["merkleroot"] = block.hashMerkleRoot.GetHex();
+            result["time"] = DateTimeStrFormat(block.GetBlockTime());
+            result["nonce"] = (uint64_t)block.nNonce;
+            result["bits"] = HexBits(block.nBits);
+            result["difficulty"] = TAO::Ledger::GetDifficulty(block.nBits, block.nChannel);
+            //result["mint"] = Legacy::SatoshisToAmount(block.nMint); //PS TTODO
+            if (block.hashPrevBlock != 0)
+                result["previousblockhash"] = block.hashPrevBlock.GetHex();
+            if (block.hashNextBlock != 0)
+                result["nextblockhash"] = block.hashNextBlock.GetHex();
+
+            json::json txinfo = json::json::array();
+
+            for (const auto& vtx : block.vtx)
+            {
+                if(vtx.first == TAO::Ledger::TYPE::TRITIUM_TX)
+                {
+                    
+                    /* Get the tritium transaction  from the database*/
+                    TAO::Ledger::Transaction tx;
+                    if(!LLD::legDB->ReadTx(vtx.second, tx))
+                        throw APIException( -1, "transaction is not on disk");
+
+                    if (fPrintTransactionDetail)
+                    {
+                        txinfo.push_back(tx.ToStringShort());
+                        txinfo.push_back(DateTimeStrFormat(tx.nTimestamp));
+                    }
+                    else
+                        txinfo.push_back(tx.GetHash().GetHex());
+                }
+                else if(vtx.first == TAO::Ledger::TYPE::LEGACY_TX)
+                { 
+                    /* Get the legacy transaction from the database. */
+                    Legacy::Transaction tx;
+                    if(!LLD::legacyDB->ReadTx(vtx.second, tx))
+                        throw APIException( -1, "transaction is not on disk");
+                        
+                    if (fPrintTransactionDetail)
+                    {
+                        txinfo.push_back(tx.ToStringShort());
+                        txinfo.push_back(DateTimeStrFormat(tx.nTime));
+                        for(const Legacy::CTxIn& txin : tx.vin)
+                            txinfo.push_back(txin.ToStringShort());
+                        for(const Legacy::CTxOut& txout : tx.vout)
+                            txinfo.push_back(txout.ToStringShort());
+                    }
+                    else
+                        txinfo.push_back(tx.GetHash().GetHex());
+                }
+
+            }
+            
+            result["tx"] = txinfo;
+            return result;
+        }
+
+        /* getblock <hash> [txinfo]"
+        *  txinfo optional to print more detailed tx info."
+        *  Returns details of a block with given block-hash */
+        json::json RPC::GetBlock(const json::json& params, bool fHelp)
+        {
+            if (fHelp || params.size() < 1 || params.size() > 2)
+                return std::string(
+                    "getblock <hash> [txinfo]"
+                    " - txinfo optional to print more detailed tx info."
+                    " Returns details of a block with given block-hash.");
+
+            TAO::Ledger::BlockState block;
+            uint1024_t blockId = 0;
+            blockId.SetHex(params[0].get<std::string>());
+            
+            if (!LLD::legDB->ReadBlock(blockId, block))
+            {
+                throw APIException(-5, "Block not found");
+                return "";
+            }
+
+            return blockToJSON(block, params.size() > 1 ? params[1].get<bool>() : false);
         }
     }
 }

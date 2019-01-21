@@ -505,7 +505,16 @@ namespace Legacy
 	std::string Transaction::ToStringShort() const
     {
         std::string str;
-        str += debug::strprintf("%s %s", GetHash().ToString().c_str(), IsCoinBase()? "base" : (IsCoinStake()? "stake" : "user"));
+        std::string txtype = "legacy ";
+            if(IsCoinBase())
+                txtype += "base";
+            else if(IsTrust())
+                txtype += "trust";
+            else if(IsGenesis())
+                txtype += "genesis";
+            else 
+                txtype += "user";
+        str += debug::strprintf("%s %s", GetHash().ToString().c_str(), txtype.c_str());
         return str;
     }
 

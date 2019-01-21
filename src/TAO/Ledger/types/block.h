@@ -261,7 +261,25 @@ namespace TAO
              **/
             bool VerifySignature(LLC::ECKey key) const;
 
+        protected:
 
+            /** StakeHash
+             *
+             *  Generates the StakeHash for this block from a uint256_t hashGenesis
+             *
+             *  @return 1024-bit stake hash
+             *
+             **/
+            uint1024_t StakeHash(bool fIsGenesis, uint256_t hashGenesis) const;
+
+            /** StakeHash
+             *
+             *  Generates the StakeHash for this block from a uint576_t trust key
+             *
+             *  @return 1024-bit stake hash
+             *
+             **/
+            uint1024_t StakeHash(bool fIsGenesis, uint576_t trustKey) const;
         };
     }
 }

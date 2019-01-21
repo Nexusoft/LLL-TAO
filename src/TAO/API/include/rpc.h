@@ -627,6 +627,44 @@ namespace TAO
             **/
             json::json GetMoneySupply(const json::json& params, bool fHelp);
 
+            /** GetBlockHash
+            *
+            *  getblockhash <index>"
+            *  Returns hash of block in best-block-chain at <index>
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json GetBlockHash(const json::json& params, bool fHelp);
+
+            /** IsOrphan
+            *
+            *  isorphan <hash>"
+            *  Returns whether a block is an orphan or not
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json IsOrphan(const json::json& params, bool fHelp);
+
+            /** GetBlock
+            *
+            *  getblock <hash> [txinfo]"
+            *  txinfo optional to print more detailed tx info."
+            *  Returns details of a block with given block-hash
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json GetBlock(const json::json& params, bool fHelp);
+
+
             /** BackupWallet
             *
             *  backupwallet <destination>
