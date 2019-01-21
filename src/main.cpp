@@ -187,28 +187,29 @@ int main(int argc, char** argv)
     }
 
 
-    //try to addnode 127.0.0.1 or some unreachable address
-    //get both of these to try and race on connection so they break getaddrinfo
     /* Initialize the Legacy Server. */
-    LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(
-        config::GetArg("-port", config::fTestNet ? 8323 : 9323),
-        10,
-        30,
-        false,
-        0,
-        0,
-        60,
-        config::GetBoolArg("-listen", true),
-        config::GetBoolArg("-meters", false),
-        true);
-
-    if(config::mapMultiArgs["-addnode"].size() > 0)
+    if(config::GetBoolArg("-legacy"))
     {
-        for(auto node : config::mapMultiArgs["-addnode"])
+        LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(
+            config::GetArg("-port", config::fTestNet ? 8323 : 9323),
+            10,
+            30,
+            false,
+            0,
+            0,
+            60,
+            config::GetBoolArg("-listen", true),
+            config::GetBoolArg("-meters", false),
+            true);
+
+        if(config::mapMultiArgs["-addnode"].size() > 0)
         {
-            LLP::LEGACY_SERVER->AddConnection(
-                node,
-                config::GetArg("-port", config::fTestNet ? 8323 : 9323));
+            for(auto node : config::mapMultiArgs["-addnode"])
+            {
+                LLP::LEGACY_SERVER->AddConnection(
+                    node,
+                    config::GetArg("-port", config::fTestNet ? 8323 : 9323));
+            }
         }
     }
 
