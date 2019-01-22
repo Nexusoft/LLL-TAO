@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEDGER_INCLUDE_TRUST_H
-#define NEXUS_TAO_LEDGER_INCLUDE_TRUST_H
+#ifndef NEXUS_TAO_LEDGER_INCLUDE_TRUSTKEY_H
+#define NEXUS_TAO_LEDGER_INCLUDE_TRUSTKEY_H
 
 #include <vector>
 

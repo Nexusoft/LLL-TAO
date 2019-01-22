@@ -65,6 +65,7 @@ namespace TAO
         }
 
 
+
         /* Construct a block state from a legacy block. */
         BlockState::BlockState(Legacy::LegacyBlock block)
         : Block(block)
