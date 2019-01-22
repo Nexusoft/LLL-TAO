@@ -6,6 +6,8 @@
 # debian system used with Nexus use-cases. It installs the python dependencies
 # and networking tools to run LISP on a Nexus node.
 #
+# Run this script in the LLL-TAO/lisp directory.
+#
 # To start LISP, use the RL or RL-seed script.
 #
 sudo apt-get update && sudo apt-get -yq install \
