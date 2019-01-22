@@ -100,13 +100,14 @@ namespace Legacy
             /* Allows potential to override nVersion with FEATURE_LATEST */
             Legacy::WalletFeature nVersionToSet = nVersion;
 
-            /* Ignore new setting if current setting is higher version */
-            if (nWalletVersion >= nVersionToSet)
-                return true;
-
-            /* When force, if we pass the max version currently supported, use latest */
+            /* When force, if we pass a value greater than the max version currently supported, upgrade all the way to latest */
             if (fForceLatest && nVersionToSet > nWalletMaxVersion)
                     nVersionToSet = FEATURE_LATEST;
+
+            /* Ignore new setting if current setting is higher version 
+             * Will still process if they are equal, because nWalletVersion defaults to FEATURE_BASE and it needs to call WriteMinVersin for new wallet */
+            if (nWalletVersion > nVersionToSet)
+                return true;
 
             nWalletVersion = nVersionToSet;
 
@@ -202,6 +203,24 @@ namespace Legacy
                     return DB_LOAD_FAIL;
                 }
             }
+        }
+        else if (nWalletVersion == FEATURE_BASE)
+        {
+            /* Old wallets set min version but it never got recorded because constructor defaulted the value. 
+             * This assures older wallet files have it stored. 
+             */
+
+            /* Need second db declare so not in use if Rewrite required, but should just reuse already open db handle */
+            CWalletDB walletdb(strWalletFile, "cr+"); 
+            uint32_t nStoredMinVersion = 0;
+
+            if (!walletdb.ReadMinVersion(nStoredMinVersion) || nStoredMinVersion == 0)
+            {
+                SetMinVersion(FEATURE_BASE);
+                SetMaxVersion(FEATURE_LATEST);
+            }
+
+            walletdb.Close();
         }
 
         /* Launch background thread to periodically flush the wallet to the backing database */
@@ -463,7 +482,7 @@ namespace Legacy
             {
                 /* Keys encrypted in memory, but not on disk...die to let the user reload their unencrypted wallet. */
                 config::fShutdown = true;
-                return debug::error(FUNCTION, "Error committing encryption updates to wallet file. Shutting down.");;
+                return debug::error(FUNCTION, "Error committing encryption updates to wallet file. Shutting down.");
             }
 
 

@@ -191,6 +191,18 @@ namespace Legacy
         bool WriteMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey);
 
 
+        /** ReadMinVersion
+         *
+         *  Reads the minimum database version supported by this wallet database.
+         *
+         *  @param[out] nVersion Vesion number to store
+         *
+         *  @return true if min version is present in the database entry and read successfully
+         *
+         **/
+        bool ReadMinVersion(uint32_t& nVersion);
+
+
         /** WriteMinVersion
          *
          *  Stores the minimum database version supported by this wallet database.

@@ -58,10 +58,19 @@ namespace Legacy
     }
 
 
+    /* Reads the minimum database version supported by this wallet database. */
+    bool CWalletDB::ReadMinVersion(uint32_t& nVersion)
+    {
+        LOCK(CWalletDB::cs_walletdb);
+        return Read(std::string("minversion"), nVersion);
+    }
+
+
     /* Stores the minimum database version supported by this wallet database. */
     bool CWalletDB::WriteMinVersion(const uint32_t nVersion)
     {
         LOCK(CWalletDB::cs_walletdb);
+        CWalletDB::nWalletDBUpdated++;
         return Write(std::string("minversion"), nVersion, true);
     }
 
@@ -79,6 +88,7 @@ namespace Legacy
     bool CWalletDB::WriteAccount(const std::string& strAccount, const CAccount& account)
     {
         LOCK(CWalletDB::cs_walletdb);
+        CWalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("acc"), strAccount), account);
     }
 
@@ -335,9 +345,9 @@ namespace Legacy
 
             /* Read and validate minversion required by database file */
             uint32_t nMinVersion = 0;
-            if (Read(std::string("minversion"), nMinVersion))
+            if (ReadMinVersion(nMinVersion))
             {
-                if (nMinVersion > LLD::DATABASE_VERSION)
+                if (nMinVersion > FEATURE_LATEST)
                     return DB_TOO_NEW;
 
                 wallet.LoadMinVersion(nMinVersion);
@@ -598,6 +608,9 @@ namespace Legacy
         /* Update file version to latest version */
         if (nFileVersion < LLD::DATABASE_VERSION)
             WriteVersion(LLD::DATABASE_VERSION);
+
+        /* Assign maximum upgrade version for wallet */
+        wallet.SetMaxVersion(FEATURE_LATEST);
 
         uint64_t elapsedTime = runtime::timestamp(true) - startTimestamp;
 
