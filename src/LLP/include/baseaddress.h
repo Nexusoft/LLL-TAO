@@ -39,16 +39,7 @@ namespace LLP
         BaseAddress(const std::string &strIp, uint16_t portDefault = 0, bool fAllowLookup = false);
 
 
-        BaseAddress(BaseAddress &other, uint16_t port = 0);
-        BaseAddress(BaseAddress &&other, uint16_t port = 0);
-        BaseAddress(const BaseAddress &&other, uint16_t port = 0);
-
-
         BaseAddress &operator=(const BaseAddress &other);
-        BaseAddress &operator=(BaseAddress &other);
-
-        BaseAddress &operator=(const BaseAddress &&other);
-        BaseAddress &operator=(BaseAddress &&other);
 
 
         virtual ~BaseAddress();

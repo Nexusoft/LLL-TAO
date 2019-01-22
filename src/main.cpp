@@ -71,112 +71,307 @@ namespace LLP
     Server<LegacyNode> * LEGACY_SERVER;
 }
 
-#include <LLP/include/baseaddress.h>
-#include <LLP/include/addressinfo.h>
-#include <LLP/include/manager.h>
-using namespace LLP;
 int main(int argc, char** argv)
 {
-   AddressManager m(8888);
-   BaseAddress b1, b2;
-   AddressInfo a1, a2;
+    LLP::Server<LLP::CoreNode>* CORE_SERVER = nullptr;
+    LLP::Server<LLP::RPCNode>* RPC_SERVER = nullptr;
 
-   std::vector<AddressInfo> vA;
-   std::vector<BaseAddress> vB;
+    /* Setup the timer timer. */
+    runtime::timer timer;
+    timer.Start();
 
-
-   debug::log(0, "size of BaseAddress: ", sizeof(BaseAddress));
-
-
-   debug::log(0, "size of AddressInfo: ", sizeof(AddressInfo));
-
-   /*default intialized */
-   debug::log(0, a1.ToString());
-
-   /* set ip */
-   a1.SetIP("192.168.0.1");
-   debug::log(0, "a1.SetIP ", a1.ToString());
-
-  /* set port */
-   a1.SetPort(9323);
-   debug::log(0, "a1.SetPort ", a1.ToString());
-
-   /* add single address */
-   debug::log(0, "Adding Address ", a1.ToString());
-   m.AddAddress(a1, ConnectState::NEW);
-
-   /* select an address */
-   m.StochasticSelect(b1);
-   debug::log(0, "Manager Selected ", b1.ToString());
-
-   /* get count */
-   debug::log(0, "GetInfoCount ", m.GetInfoCount());
-
-   /* set ip */
-   b2.SetIP("192.168.0.2");
-   debug::log(0, "b2.SetIP ", b2.ToString());
-
-  /* set port */
-   b2.SetPort(8323);
-   debug::log(0, "b2.SetPort ", b2.ToString());
-
-   /* add single address */
-   //debug::log(0, "Adding Address ", b2.ToString());
-   //m.AddAddress(b2, ConnectState::NEW);
-
-   /* select an address */
-   m.StochasticSelect(b1);
-   debug::log(0, "Manager Selected ", b1.ToString());
-
-   /* create 23 addresses */
+    /* Handle all the signals with signal handler method. */
+    SetupSignals();
 
 
-   vB.push_back("188.25.62.40");
-   vB.push_back("66.231.19.15");
-   vB.push_back("89.17.150.169");
-   vB.push_back("86.128.67.48");
-   vB.push_back("59.15.19.170");
-   vB.push_back("83.27.246.52");
-   vB.push_back("101.183.92.90");
-   vB.push_back("86.139.222.80");
-   vB.push_back("73.68.17.62");
-   vB.push_back("110.78.173.250");
-   vB.push_back("181.208.99.210");
-   vB.push_back("79.185.49.82");
-   vB.push_back("37.248.79.235");
-   vB.push_back("188.255.113.22");
+    /* Parse out the parameters */
+    config::ParseParameters(argc, argv);
 
 
-   vB.push_back("104.250.163.34");
-   vB.push_back("90.202.124.33");
-   //vB.push_back("158.222.168.204");
-   //vB.push_back("176.120.43.212");
-   //vB.push_back("70.95.81.133");
-   //vB.push_back("75.157.46.127");
-   //vB.push_back("66.189.172.36");
-   //vB.push_back("100.36.84.193");
-   //vB.push_back("95.156.243.20");
+    /* Read the configuration file. */
+    config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
 
-   /* add multiple addresses */
-   m.AddAddresses(vB);
 
-   /* select an address */
-   m.StochasticSelect(b1);
-   debug::log(0, "Manager Selected ", b1.ToString());
+    /* Handle Commandline switch */
+    for (int i = 1; i < argc; ++i)
+    {
+        if (!IsSwitchChar(argv[i][0]))
+        {
+            if(config::GetBoolArg("-api"))
+                return TAO::API::CommandLineAPI(argc, argv, i);
 
-   /* get base addresses */
-   debug::log(0, "GetAddresses");
-   vB = m.GetAddresses();
+            return TAO::API::CommandLineRPC(argc, argv, i);
+        }
+    }
 
-   /* get address info */
-   debug::log(0, "GetInfo");
-   m.GetInfo(vA);
 
-   /* get count */
-   debug::log(0, "GetInfoCount ", m.GetInfoCount());
+    /* Create directories if they don't exist yet. */
+    if(!filesystem::exists(config::GetDataDir(false)) &&
+        filesystem::create_directory(config::GetDataDir(false)))
+    {
+        debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir(false));
+    }
 
-   /* print */
-   m.PrintStats();
 
-  return 0;
+
+    /* Create the database instances. */
+    LLD::regDB = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::APPEND | LLD::FLAGS::FORCE);
+    LLD::locDB = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+    LLD::legDB = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+
+
+    /* Initialize the Legacy Database. */
+    LLD::legacyDB = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+
+
+    /** Load the Wallet Database. **/
+    bool fFirstRun;
+    if (!Legacy::CWallet::InitializeWallet(config::GetArg("-wallet", Legacy::CWalletDB::DEFAULT_WALLET_DB)))
+        return debug::error("failed initializing wallet");
+
+
+    /** Check the wallet loading for errors. **/
+    uint32_t nLoadWalletRet = Legacy::CWallet::GetInstance().LoadWallet(fFirstRun);
+    if (nLoadWalletRet != Legacy::DB_LOAD_OK)
+    {
+        if (nLoadWalletRet == Legacy::DB_CORRUPT)
+            return debug::error("failed loading wallet.dat: Wallet corrupted");
+        else if (nLoadWalletRet == Legacy::DB_TOO_NEW)
+            return debug::error("failed loading wallet.dat: Wallet requires newer version of Nexus");
+        else if (nLoadWalletRet == Legacy::DB_NEED_REWRITE)
+            return debug::error("wallet needed to be rewritten: restart Nexus to complete");
+        else
+            return debug::error("failed loading wallet.dat");
+    }
+
+
+    /** Initialize ChainState. */
+    TAO::Ledger::ChainState::Initialize();
+
+
+    /* Initialize the Tritium Server. */
+    LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(
+        config::GetArg("-port", config::fTestNet ? 8888 : 9888),
+        10,
+        30,
+        false,
+        0,
+        0,
+        60,
+        config::GetBoolArg("-listen", true),
+        config::GetBoolArg("-meters", false),
+        true);
+
+
+    //-addnode means add to address manager for this specific Server
+    //-connect means follow the logic below this and try to establish a connection
+    /* Add node to Tritium server */
+    if(config::mapMultiArgs["-addnode"].size() > 0)
+    {
+        for(auto node : config::mapMultiArgs["-addnode"])
+        {
+            LLP::TRITIUM_SERVER->AddConnection(
+                node,
+                config::GetArg("-port", config::fTestNet ? 8888 : 9888));
+        }
+    }
+
+
+    //try to addnode 127.0.0.1 or some unreachable address
+    //get both of these to try and race on connection so they break getaddrinfo
+    /* Initialize the Legacy Server. */
+    LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(
+        config::GetArg("-port", config::fTestNet ? 8323 : 9323),
+        10,
+        30,
+        false,
+        0,
+        0,
+        60,
+        config::GetBoolArg("-listen", true),
+        config::GetBoolArg("-meters", false),
+        true);
+
+    if(config::mapMultiArgs["-addnode"].size() > 0)
+    {
+        for(auto node : config::mapMultiArgs["-addnode"])
+        {
+            LLP::LEGACY_SERVER->AddConnection(
+                node,
+                config::GetArg("-port", config::fTestNet ? 8323 : 9323));
+        }
+    }
+
+    /* Create the Core API Server. */
+    CORE_SERVER = new LLP::Server<LLP::CoreNode>(
+        config::GetArg("-apiport", 8080),
+        10,
+        30,
+        false,
+        0,
+        0,
+        60,
+        config::GetBoolArg("-listen", true),
+        false,
+        false);
+
+
+
+    /* Set up RPC server */
+    RPC_SERVER = new LLP::Server<LLP::RPCNode>(
+        config::GetArg("-rpcport", config::fTestNet? 8336 : 9336),
+        1,
+        30,
+        false,
+        0,
+        0,
+        60,
+        config::GetBoolArg("-listen", true),
+        false,
+        false);
+
+
+
+    /* Elapsed Milliseconds from timer. */
+    uint32_t nElapsed = timer.ElapsedMilliseconds();
+    timer.Stop();
+
+
+    /* Sleep before output. */
+    runtime::sleep(100);
+
+
+    /* Startup performance metric. */
+    debug::log(0, FUNCTION, "Started up in ", nElapsed, "ms");
+
+
+    /* Get the account. */
+    TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("colin", "pass");
+    for(uint32_t n = 0; n < config::GetArg("-test", 0); n++)
+    {
+        /* Create the transaction. */
+        TAO::Ledger::Transaction tx;
+        if(!TAO::Ledger::CreateTransaction(user, "1234", tx))
+            debug::error(0, FUNCTION, "failed to create");
+
+        /* Submit the transaction payload. */
+        uint256_t hashRegister = LLC::GetRand256();
+
+        /* Test the payload feature. */
+        DataStream ssData(SER_REGISTER, 1);
+        ssData << std::string("this is test data");
+
+        /* Submit the payload object. */
+        tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::APPEND << static_cast<std::vector<uint8_t>>(ssData);
+
+        /* Execute the operations layer. */
+        if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
+            debug::error(0, FUNCTION, "Operations failed to execute");
+
+        /* Sign the transaction. */
+        if(!tx.Sign(user->Generate(tx.nSequence, "1234")))
+            debug::error(0, FUNCTION, "Failed to sign");
+
+        tx.print();
+
+        /* Execute the operations layer. */
+        if(!TAO::Ledger::mempool.Accept(tx))
+            debug::error(0, FUNCTION, "Failed to accept");
+
+        LLD::locDB->WriteLast(tx.hashGenesis, tx.GetHash());
+    }
+    delete user;
+
+    /* Initialize generator thread. */
+    std::thread thread;
+    if(config::GetBoolArg("-private"))
+        thread = std::thread(TAO::Ledger::ThreadGenerator);
+
+    /* Wait for shutdown. */
+    std::mutex SHUTDOWN_MUTEX;
+    std::unique_lock<std::mutex> SHUTDOWN_LOCK(SHUTDOWN_MUTEX);
+    SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown; });
+
+
+    /* Shutdown metrics. */
+    timer.Reset();
+
+
+    /* Cleanup the ledger database. */
+    if(LLD::legDB)
+    {
+        debug::log(0, FUNCTION, "Shutting down ledgerDB");
+
+        delete LLD::legDB;
+    }
+
+
+    /* Cleanup the register database. */
+    if(LLD::regDB)
+    {
+        debug::log(0, FUNCTION, "Shutting down registerDB");
+
+        delete LLD::regDB;
+    }
+
+
+    /* Cleanup the local database. */
+    if(LLD::locDB)
+    {
+        debug::log(0, FUNCTION, "Shutting down localDB");
+
+        delete LLD::locDB;
+    }
+
+
+    /* Shutdown the tritium server and its subsystems */
+    if(LLP::TRITIUM_SERVER)
+    {
+        debug::log(0, FUNCTION, "Shutting down Tritium Server");
+
+        LLP::TRITIUM_SERVER->Shutdown();
+        delete LLP::TRITIUM_SERVER;
+    }
+
+
+    /* Shutdown the legacy server and its subsystems */
+    if(LLP::LEGACY_SERVER)
+    {
+        debug::log(0, FUNCTION, "Shutting down Legacy Server");
+
+        LLP::LEGACY_SERVER->Shutdown();
+        delete LLP::LEGACY_SERVER;
+    }
+
+
+    //checkout these guys for memory leaks
+    /* Shutdown the core API server and its subsystems */
+    if(CORE_SERVER)
+    {
+        debug::log(0, FUNCTION, "Shutting down API Server");
+
+        CORE_SERVER->Shutdown();
+        delete CORE_SERVER;
+    }
+
+
+    /* Shutdown the RPC server and its subsystems */
+    if(RPC_SERVER)
+    {
+        debug::log(0, FUNCTION, "Shutting down RPC Server");
+
+        RPC_SERVER->Shutdown();
+        delete RPC_SERVER;
+    }
+
+
+
+    /* Elapsed Milliseconds from timer. */
+    nElapsed = timer.ElapsedMilliseconds();
+
+
+    /* Startup performance metric. */
+    debug::log(0, FUNCTION, "Closed in ", nElapsed, "ms");
+
+    return 0;
 }

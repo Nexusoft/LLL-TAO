@@ -42,41 +42,6 @@ namespace LLP
             nPort = other.nPort;
     }
 
-    BaseAddress::BaseAddress(BaseAddress &other, uint16_t port)
-    : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-    , nPort(port)
-    {
-        for(uint8_t i = 0; i < 16; ++i)
-            ip[i] = other.ip[i];
-
-        if(port == 0)
-            nPort = other.nPort;
-    }
-
-    BaseAddress::BaseAddress(BaseAddress &&other, uint16_t port)
-    : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-    , nPort(port)
-    {
-        for(uint8_t i = 0; i < 16; ++i)
-            ip[i] = other.ip[i];
-
-        if(port == 0)
-            nPort = other.nPort;
-    }
-
-    BaseAddress::BaseAddress(const BaseAddress &&other, uint16_t port)
-    : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-    , nPort(port)
-    {
-        for(uint8_t i = 0; i < 16; ++i)
-            ip[i] = other.ip[i];
-
-        if(port == 0)
-            nPort = other.nPort;
-    }
-
-
-
 
     BaseAddress::BaseAddress(const struct in_addr& ipv4Addr, uint16_t port)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
@@ -147,36 +112,6 @@ namespace LLP
     }
 
     BaseAddress &BaseAddress::operator=(const BaseAddress &other)
-    {
-        for(uint8_t i = 0; i < 16; ++i)
-            ip[i] = other.ip[i];
-
-        nPort = other.nPort;
-
-        return *this;
-    }
-
-    BaseAddress &BaseAddress::operator=(BaseAddress &other)
-    {
-        for(uint8_t i = 0; i < 16; ++i)
-            ip[i] = other.ip[i];
-
-        nPort = other.nPort;
-
-        return *this;
-    }
-
-    BaseAddress &BaseAddress::operator=(const BaseAddress &&other)
-    {
-        for(uint8_t i = 0; i < 16; ++i)
-            ip[i] = other.ip[i];
-
-        nPort = other.nPort;
-
-        return *this;
-    }
-
-    BaseAddress &BaseAddress::operator=(BaseAddress &&other)
     {
         for(uint8_t i = 0; i < 16; ++i)
             ip[i] = other.ip[i];

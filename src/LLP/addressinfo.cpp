@@ -41,7 +41,7 @@ namespace LLP
             return true;
 
         /*use latency as a tiebreaker */
-        if((s1 == s2) && (info1.nLatency >= info2.nLatency))
+        if((s1 == s2) && (info2.nLatency < info1.nLatency))
             return true;
 
         return false;

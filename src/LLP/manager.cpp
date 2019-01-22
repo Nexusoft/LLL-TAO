@@ -67,7 +67,8 @@ namespace LLP
 
         LOCK(mut);
 
-        vAddrInfo = get_info(flags);
+        get_info(vAddrInfo, flags);
+
         for(auto it = vAddrInfo.begin(); it != vAddrInfo.end(); ++it)
         {
             const BaseAddress &addr = *it;
@@ -85,7 +86,7 @@ namespace LLP
     {
         LOCK(mut);
 
-        vAddrInfo = get_info(flags);
+        get_info(vAddrInfo, flags);
 
     }
 
@@ -153,11 +154,7 @@ namespace LLP
             break;
         }
 
-        debug::log(5, FUNCTION, addr.ToString());
-
-        /* update the LLD Database with a new entry */
-        //if(pDatabase)
-        //    pDatabase->WriteAddressInfo(hash, info);
+        print_stats();
     }
 
 
@@ -187,6 +184,7 @@ namespace LLP
     /*  Select a good address to connect to that isn't already connected. */
     bool AddressManager::StochasticSelect(BaseAddress &addr)
     {
+        std::vector<AddressInfo> vAddresses;
         uint64_t nTimestamp = runtime::unifiedtimestamp();
         uint64_t nRand = LLC::GetRand(nTimestamp);
         uint32_t nHash = LLC::SK32(BEGIN(nRand), END(nRand));
@@ -200,7 +198,8 @@ namespace LLP
         {
             LOCK(mut);
 
-            std::vector<AddressInfo> vAddresses = get_info(flags);
+            get_info(vAddresses, flags);
+
             if(vAddresses.size() == 0)
                 return false;
 
@@ -217,16 +216,40 @@ namespace LLP
             std::sort(vAddresses.begin(), vAddresses.end());
             std::reverse(vAddresses.begin(), vAddresses.end());
 
-            addr = static_cast<BaseAddress>(vAddresses[nSelect]);
+
+            addr.SetIP(vAddresses[nSelect]);
+            addr.SetPort(vAddresses[nSelect].GetPort());
         }
 
         return true;
     }
 
 
+    /* Print the current state of the address manager. */
+    void AddressManager::PrintStats()
+    {
+        LOCK(mut);
+
+        print_stats();
+    }
+
+
+    /*  Set the port number for all addresses in the manager. */
+    void AddressManager::SetPort(uint16_t port)
+    {
+        LOCK(mut);
+
+        for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
+            it->second.SetPort(port);
+    }
+
+
     /*  Read the address database into the manager. */
     void AddressManager::ReadDatabase()
     {
+        /* make sure the map is empty */
+        mapAddrInfo.clear();
+
         LOCK(mut);
 
         /* Make sure the database exists */
@@ -257,18 +280,7 @@ namespace LLP
             /* Get the hash and load it into the map. */
             uint64_t nHash = addr_info.GetHash();
             mapAddrInfo[nHash] = addr_info;
-
-            debug::log(0, "[", i, "]", addr_info.ToString());
         }
-
-        print_stats();
-    }
-
-
-    /* Print the current state of the address manager. */
-    void AddressManager::PrintStats()
-    {
-        LOCK(mut);
 
         print_stats();
     }
@@ -286,17 +298,11 @@ namespace LLP
             return;
         }
 
-        uint32_t s = 0;
-
         pDatabase->TxnBegin();
 
         /* Write the keys and addresses. */
-        for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it, ++s)
-        {
+        for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
             pDatabase->WriteAddressInfo(it->first, it->second);
-
-            //debug::log(0, FUNCTION, "(", s, ") ", it->second.ToStringIPPort());
-        }
 
         pDatabase->TxnCommit();
 
@@ -306,16 +312,14 @@ namespace LLP
 
     /*  Helper function to get an array of info on the connected states
      *  specified by flags */
-    std::vector<AddressInfo> AddressManager::get_info(const uint8_t flags)
+    void AddressManager::get_info(std::vector<AddressInfo> &vInfo, const uint8_t flags)
     {
-        std::vector<AddressInfo> info;
+        vInfo.clear();
         for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
         {
             if(it->second.nState & flags)
-                info.push_back(it->second);
+                vInfo.push_back(it->second);
         }
-
-        return info;
     }
 
     /*  Helper function to get the number of addresses of the connect type */

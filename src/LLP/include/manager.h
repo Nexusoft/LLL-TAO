@@ -180,6 +180,14 @@ namespace LLP
          **/
         void PrintStats();
 
+
+        /** SetPort
+         *
+         *  Set the port number for all addresses in the manager.
+         *
+         **/
+        void SetPort(uint16_t port);
+
     private:
 
         /** get_info
@@ -192,7 +200,7 @@ namespace LLP
          *  @param[in] flags Specify which types of connections to get the info from.
          *
          **/
-        std::vector<AddressInfo> get_info(const uint8_t flags = CONNECT_FLAGS_ALL);
+        void get_info(std::vector<AddressInfo> &vInfo, const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
         /** get_info_count
