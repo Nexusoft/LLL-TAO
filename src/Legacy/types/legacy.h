@@ -100,14 +100,6 @@ namespace Legacy
         bool CheckStake() const;
 
 
-        /** Check Trust
-         *
-         *  Check the calculated trust score meets published one.
-         *
-         **/
-        bool CheckTrust() const;
-
-
         /** Block Age
          *
          *  Get the current block age of the trust key.

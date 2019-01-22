@@ -438,6 +438,18 @@ namespace Legacy
 		bool Disconnect() const;
 
 
+		/** Check Trust
+		 *
+		 *  Check the calculated trust score meets published one.
+		 *
+		 *  @param[in] state The block state to check from.
+		 *
+		 *  @return true if the trust score was satisfied.
+		 *
+		 **/
+		bool CheckTrust(const TAO::Ledger::BlockState& state) const;
+
+
 	protected:
 
 		/** Get Output For

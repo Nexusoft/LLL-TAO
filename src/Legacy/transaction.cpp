@@ -736,6 +736,10 @@ namespace Legacy
             if (IsCoinBase())
                 return true;
 
+            /* Check that the trust score is accurate. */
+            if(state.nVersion >= 5 && !CheckTrust(state))
+                return debug::error(FUNCTION, "invalid trust score");
+
             /* Get the trust key. */
             std::vector<uint8_t> vTrustKey;
             if(!TrustKey(vTrustKey))
@@ -877,6 +881,164 @@ namespace Legacy
 
         /* Erase the transaction object. */
         LLD::legacyDB->EraseTx(GetHash());
+
+        return true;
+    }
+
+
+    /* Check the calculated trust score meets published one. */
+    bool Transaction::CheckTrust(const TAO::Ledger::BlockState& state) const
+    {
+        /* No trust score for non proof of stake (for now). */
+        if(!IsCoinStake())
+            return debug::error(FUNCTION, "not proof of stake");
+
+        /* Extract the trust key from the coinstake. */
+        uint576_t cKey;
+        if(!TrustKey(cKey))
+            return debug::error(FUNCTION, "trust key not found in script");
+
+        /* Genesis has a trust score of 0. */
+        if(IsGenesis())
+        {
+            if(vin[0].scriptSig.size() != 8)
+                return debug::error(FUNCTION, "genesis unexpected size ", vin[0].scriptSig.size());
+
+            return true;
+        }
+
+        /* Version 5 - last trust block. */
+        uint1024_t hashLastBlock;
+        uint32_t   nSequence;
+        uint32_t   nTrustScore;
+
+        /* Extract values from coinstake vin. */
+        if(!ExtractTrust(hashLastBlock, nSequence, nTrustScore))
+            return debug::error(FUNCTION, "failed to extract values from script");
+
+        /* Check that the last trust block is in the block database. */
+        TAO::Ledger::BlockState stateLast;
+        if(!LLD::legDB->ReadBlock(hashLastBlock, stateLast))
+            return debug::error(FUNCTION, "last block not in database");
+
+        /* Check that the previous block is in the block database. */
+        TAO::Ledger::BlockState statePrev;
+        if(!LLD::legDB->ReadBlock(state.hashPrevBlock, statePrev))
+            return debug::error(FUNCTION, "prev block not in database");
+
+        /* Get the last coinstake transaction. */
+        Transaction txLast;
+        if(!LLD::legacyDB->ReadTx(stateLast.vtx[0].second, txLast))
+            return debug::error(FUNCTION, "last state coinstake tx not found");
+
+        /* Enforce the minimum trust key interval of 120 blocks. */
+        if(state.nHeight - stateLast.nHeight < (config::fTestNet ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL : TAO::Ledger::MAINNET_MINIMUM_INTERVAL))
+            return debug::error(FUNCTION, "trust key interval below minimum interval ", state.nHeight - stateLast.nHeight);
+
+        /* Extract the last trust key */
+        uint576_t keyLast;
+        if(!txLast.TrustKey(keyLast))
+            return debug::error(FUNCTION, "couldn't extract trust key from previous tx");
+
+        /* Ensure the last block being checked is the same trust key. */
+        if(keyLast != cKey)
+            return debug::error(FUNCTION,
+                "trust key in previous block ", cKey.ToString().substr(0, 20),
+                " to this one ", keyLast.ToString().substr(0, 20));
+
+        /* Placeholder in case previous block is a version 4 block. */
+        uint32_t nScorePrev = 0;
+        uint32_t nScore     = 0;
+
+        /* If previous block is genesis, set previous score to 0. */
+        if(txLast.IsGenesis())
+        {
+            /* Enforce sequence number 1 if previous block was genesis */
+            if(nSequence != 1)
+                return debug::error("CBlock::CheckTrust() : first trust block and sequence is not 1 (%u)", nSequence);
+
+            /* Genesis results in a previous score of 0. */
+            nScorePrev = 0;
+        }
+
+        /* Version 4 blocks need to get score from previous blocks calculated score from the trust pool. */
+        else if(stateLast.nVersion < 5)
+        {
+            /* Check the trust pool - this should only execute once transitioning from version 4 to version 5 trust keys. */
+            TAO::Ledger::TrustKey trustKey;
+            if(!LLD::legDB->ReadTrustKey(cKey, trustKey))
+            {
+                /* Find the genesis if it isn't found. */
+                if(!FindGenesis(cKey, state.hashPrevBlock, trustKey))
+                    return debug::error(FUNCTION, "trust key not found in database");
+
+                LLD::legDB->WriteTrustKey(cKey, trustKey);
+            }
+
+            /* Enforce sequence number of 1 for anything made from version 4 blocks. */
+            if(nSequence != 1)
+                return debug::error(FUNCTION, "version 4 block sequence number is ", nSequence);
+
+            /* Ensure that a version 4 trust key is not expired based on new timespan rules. */
+            if(trustKey.Expired(TAO::Ledger::ChainState::stateBest))
+                return debug::error("version 4 key expired.");
+
+            /* Score is the total age of the trust key for version 4. */
+            nScorePrev = trustKey.Age(TAO::Ledger::ChainState::stateBest.GetBlockTime());
+        }
+
+        /* Version 5 blocks that are trust must pass sequence checks. */
+        else
+        {
+            /* The last block of previous. */
+            uint1024_t hashBlockPrev = 0; //dummy variable unless we want to do recursive checking of scores all the way back to genesis
+
+            /* Extract the value from the previous block. */
+            uint32_t nSequencePrev;
+            if(!txLast.ExtractTrust(hashBlockPrev, nSequencePrev, nScorePrev))
+                return debug::error(FUNCTION, "failed to extract trust");
+
+            /* Enforce Sequence numbering, must be +1 always. */
+            if(nSequence != nSequencePrev + 1)
+                return debug::error(FUNCTION, "previous sequence broken");
+        }
+
+        /* The time it has been since the last trust block for this trust key. */
+        uint32_t nTimespan = (statePrev.GetBlockTime() - stateLast.GetBlockTime());
+
+        /* Timespan less than required timespan is awarded the total seconds it took to find. */
+        if(nTimespan < (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
+            nScore = nScorePrev + nTimespan;
+
+        /* Timespan more than required timespan is penalized 3 times the time it took past the required timespan. */
+        else
+        {
+            /* Calculate the penalty for score (3x the time). */
+            uint32_t nPenalty = (nTimespan - (config::fTestNet ?
+                TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN)) * 3;
+
+            /* Catch overflows and zero out if penalties are greater than previous score. */
+            if(nPenalty > nScorePrev)
+                nScore = 0;
+            else
+                nScore = (nScorePrev - nPenalty);
+        }
+
+        /* Set maximum trust score to seconds passed for interest rate. */
+        if(nScore > (60 * 60 * 24 * 28 * 13))
+            nScore = (60 * 60 * 24 * 28 * 13);
+
+        /* Debug output. */
+        debug::log(2, FUNCTION,
+            "score=", nScore, ", ",
+            "prev=", nScorePrev, ", ",
+            "timespan=", nTimespan, ", ",
+            "change=", (int32_t)(nScore - nScorePrev), ")"
+        );
+
+        /* Check that published score in this block is equivilent to calculated score. */
+        if(nTrustScore != nScore)
+            return debug::error(FUNCTION, "published trust score ", nTrustScore, " not meeting calculated score ", nScore);
 
         return true;
     }
