@@ -4,7 +4,8 @@
 #
 # Nexus/LISP wrapper script to start the lispers.net LISP subsystem. The
 # lisp.config configuration file will be provisioned with parameters in
-# variables at the top of this file.
+# variables at the top of this file. The intention of this script is to be
+# used in a docker container for a client Nexus node (not a seed node).
 #
 #------------------------------------------------------------------------------
 

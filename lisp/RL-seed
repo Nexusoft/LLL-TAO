@@ -1,0 +1,99 @@
+#!/bin/tcsh
+#
+# RL - Restart LISP Wrapper Script
+#
+# Nexus/LISP wrapper script to start the lispers.net LISP subsystem. The
+# lisp.config configuration file will be provisioned with parameters in
+# variables at the top of this file. The intention of this script is to not
+# be used inside a docker container and is for seed node use only.
+#
+# This script requires the file lisp.conifg.xtr to be present in the 
+# lispers.net directory this script executes in.
+#
+#------------------------------------------------------------------------------
+
+#
+# The seed node deployer needs to uniquely configure these parameters. The
+# parameters are the instance-ID, the IPv4 and IPv6 EIDs and the RLOC
+# interface. The convention for a seed-node is to use IPv4 EID 240.0.x.x where
+# the deployer chooses a unique x.x. That value is then used as the IPv6 EID
+# as well.
+#
+set iid    = 200
+set v4_eid = 240.0.x.x
+set v6_eid = fe::x:x
+set device = "eth0"
+
+if ($v4_eid == "240.0.x.x") then
+    echo "This RL file needs modification for seed node configuration"
+    exit
+endif
+
+#
+# If the lisp.config file already provisioned, then just start the lispers.net
+# LISP subsystem.
+#
+egrep "<iid>" lisp.config >& /dev/null
+if ($status == 1) then
+  echo "Provisioning lisp.config file already performed"
+
+  #
+  # Set MTU for $device interface.
+  #
+  sudo ifconfig $device mtu 1400
+
+  #
+  # Start LISP.
+  #
+  /lispers.net/RESTART-LISP -9090 $device
+  exit
+endif
+
+#
+# Provision instance-ID, EIDs, and RLOCs.
+#
+set v4_rloc = `ifconfig $device | egrep "inet "`
+set v4_rloc = `echo $v4_rloc | cut -d " " -f 2`
+
+echo "Provisioning lisp.config file with EIDs [$iid]$v4_eid & [$iid]$v6_eid"
+cat lisp.config.xtr | \
+    sed "s/<sample>/$hostname/; s/eth0/$device/" > lisp.config.bak
+cat lisp.config.bak | sed "s/<iid>/$iid/" > lisp.config
+cat lisp.config | sed "s/<v4-eid>/$v4_eid/" > lisp.config.bak
+cat lisp.config.bak | sed "s/<v6-eid>/$v6_eid/" > lisp.config
+cat lisp.config | sed "s/<v4-rloc>/$v4_rloc/" > lisp.config.bak
+mv lisp.config.bak lisp.config
+
+#
+# Configure IPv4 EIDs on interface lo and routes for EID source selection.
+#
+sudo ip addr add $v4_eid/32 dev lo >& /dev/null
+sudo ip route add 240.0.0.0/8 dev lo src $v4_eid
+sudo ip route add 224.0.0.0/4 dev lo src $v4_eid
+
+#
+# Tell kernel LISP wants to use IPv6 and configure IPv6 routing.
+#
+sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null
+sysctl -w net.ipv6.conf.all.forwarding=1 > /dev/null
+
+#
+# An IPv6 EID MUST not be assigned to interface lo or it will be unreachable.
+#
+sudo ip addr add $v6_eid/128 dev $device >& /dev/null
+sudo ip neighbor add fe80::1 lladdr 0:0:0:0:0:1 dev $device
+sleep 2
+sudo ip route add fd00::/8 via fe80::1 dev $device src $v6_eid
+sudo ip route add fe00::/8 via fe80::1 dev $device src $v6_eid
+sudo ip route add ff00::/8 via fe80::1 dev $device src $v6_eid
+
+#
+# Set MTU for $device interface.
+#
+sudo ifconfig $device mtu 1400
+
+#
+# Start LISP quietly.
+#
+/lispers.net/RESTART-LISP -9090 $device > /dev/null
+exit
