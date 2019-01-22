@@ -47,6 +47,21 @@ namespace LLP
         return false;
     }
 
+    bool operator<(AddressInfo &info1, AddressInfo &info2)
+    {
+        double s1 = info1.Score();
+        double s2 = info2.Score();
+
+        if(s1 < s2)
+            return true;
+
+        /*use latency as a tiebreaker */
+        if((s1 == s2) && (info1.nLatency >= info2.nLatency))
+            return true;
+
+        return false;
+    }
+
     AddressInfo::AddressInfo()
     : BaseAddress()
     , nSession(0)
@@ -90,7 +105,54 @@ namespace LLP
             ip[i] = other.ip[i];
     }
 
-    AddressInfo::AddressInfo(const AddressInfo&& other)
+    AddressInfo::AddressInfo(BaseAddress &addr)
+    : BaseAddress(addr)
+    , nSession(0)
+    , nLastSeen(0)
+    , nConnected(0)
+    , nDropped(0)
+    , nFailed(0)
+    , nFails(0)
+    , nLatency(std::numeric_limits<uint32_t>::max())
+    , nState(static_cast<uint8_t>(ConnectState::NEW))
+    {
+    }
+
+    AddressInfo::AddressInfo(AddressInfo &other)
+    : BaseAddress()
+    , nSession(other.nSession)
+    , nLastSeen(other.nLastSeen)
+    , nConnected(other.nConnected)
+    , nDropped(other.nDropped)
+    , nFailed(other.nFailed)
+    , nFails(other.nFails)
+    , nLatency(other.nLatency)
+    , nState(other.nState)
+    {
+        nPort = other.nPort;
+
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
+    }
+
+    AddressInfo::AddressInfo(const AddressInfo &&other)
+    : BaseAddress()
+    , nSession(other.nSession)
+    , nLastSeen(other.nLastSeen)
+    , nConnected(other.nConnected)
+    , nDropped(other.nDropped)
+    , nFailed(other.nFailed)
+    , nFails(other.nFails)
+    , nLatency(other.nLatency)
+    , nState(other.nState)
+    {
+        nPort = other.nPort;
+
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
+    }
+
+    AddressInfo::AddressInfo(AddressInfo &&other)
     : BaseAddress()
     , nSession(other.nSession)
     , nLastSeen(other.nLastSeen)
@@ -112,6 +174,63 @@ namespace LLP
     }
 
     AddressInfo &AddressInfo::operator=(const AddressInfo &other)
+    {
+        for(uint8_t i = 0; i < 16; ++i)
+            this->ip[i] = other.ip[i];
+
+        this->nPort = other.nPort;
+
+        this->nSession = other.nSession;
+        this->nLastSeen = other.nLastSeen;
+        this->nConnected = other.nConnected;
+        this->nDropped = other.nDropped;
+        this->nFailed = other.nFailed;
+        this->nFails = other.nFails;
+        this->nLatency = other.nLatency;
+        this->nState = other.nState;
+
+        return *this;
+    }
+
+    AddressInfo &AddressInfo::operator=(AddressInfo &other)
+    {
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
+
+        nPort = other.nPort;
+
+        nSession = other.nSession;
+        nLastSeen = other.nLastSeen;
+        nConnected = other.nConnected;
+        nDropped = other.nDropped;
+        nFailed = other.nFailed;
+        nFails = other.nFails;
+        nLatency = other.nLatency;
+        nState = other.nState;
+
+        return *this;
+    }
+
+    AddressInfo &AddressInfo::operator=(const AddressInfo &&other)
+    {
+        for(uint8_t i = 0; i < 16; ++i)
+            ip[i] = other.ip[i];
+
+        nPort = other.nPort;
+
+        nSession = other.nSession;
+        nLastSeen = other.nLastSeen;
+        nConnected = other.nConnected;
+        nDropped = other.nDropped;
+        nFailed = other.nFailed;
+        nFails = other.nFails;
+        nLatency = other.nLatency;
+        nState = other.nState;
+
+        return *this;
+    }
+
+    AddressInfo &AddressInfo::operator=(AddressInfo &&other)
     {
         for(uint8_t i = 0; i < 16; ++i)
             ip[i] = other.ip[i];

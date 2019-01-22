@@ -31,9 +31,6 @@ namespace LLP
     public:
         BaseAddress();
         BaseAddress(const BaseAddress &other, uint16_t port = 0);
-
-        //BaseAddress(BaseAddress &other) = delete;
-
         BaseAddress(const struct in_addr& ipv4Addr, uint16_t port = 0);
         BaseAddress(const struct in6_addr& ipv6Addr, uint16_t port = 0);
         BaseAddress(const struct sockaddr_in& addr);
@@ -42,7 +39,16 @@ namespace LLP
         BaseAddress(const std::string &strIp, uint16_t portDefault = 0, bool fAllowLookup = false);
 
 
+        BaseAddress(BaseAddress &other, uint16_t port = 0);
+        BaseAddress(BaseAddress &&other, uint16_t port = 0);
+        BaseAddress(const BaseAddress &&other, uint16_t port = 0);
+
+
         BaseAddress &operator=(const BaseAddress &other);
+        BaseAddress &operator=(BaseAddress &other);
+
+        BaseAddress &operator=(const BaseAddress &&other);
+        BaseAddress &operator=(BaseAddress &&other);
 
 
         virtual ~BaseAddress();
