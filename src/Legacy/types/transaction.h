@@ -33,7 +33,7 @@ namespace Legacy
 	 *
 	 */
 	class Transaction
-	{
+	{	
 	public:
 
 		/** The version specifier of transaction. **/
@@ -425,7 +425,7 @@ namespace Legacy
 	     *  @return true if the inputs were found
 	     *
 	     **/
-		bool Connect(const std::map<uint512_t, Transaction>& inputs, const TAO::Ledger::BlockState& state, uint8_t nFlags = FLAGS::MEMPOOL) const;
+		bool Connect(const std::map<uint512_t, Transaction>& inputs, TAO::Ledger::BlockState& state, uint8_t nFlags = FLAGS::MEMPOOL) const;
 
 
 		/** Disconnect

@@ -723,7 +723,7 @@ namespace Legacy
 
 
     /* Mark the inputs in a transaction as spent. */
-    bool Transaction::Connect(const std::map<uint512_t, Transaction>& inputs, const TAO::Ledger::BlockState& state, uint8_t nFlags) const
+    bool Transaction::Connect(const std::map<uint512_t, Transaction>& inputs, TAO::Ledger::BlockState& state, uint8_t nFlags) const
     {
         /* Special checks for coinbase and coinstake. */
         if (IsCoinStake() || IsCoinBase())
@@ -734,7 +734,13 @@ namespace Legacy
 
             /* Coinbase has no inputs. */
             if (IsCoinBase())
+            {
+                /* Calculate the mint when on a block. */
+                if(nFlags & FLAGS::BLOCK)
+                    state.nMint = GetValueOut();
+
                 return true;
+            }
 
             /* Check that the trust score is accurate. */
             if(state.nVersion >= 5 && !CheckTrust(state))
@@ -820,7 +826,7 @@ namespace Legacy
 
                 /* Check the maturity. */
                 if((state.nHeight - statePrev.nHeight) < TAO::Ledger::NEXUS_MATURITY_BLOCKS)
-                    return debug::error(FUNCTION, "tried to spend immature balance");
+                    return debug::error(FUNCTION, "tried to spend immature balance ", (state.nHeight - statePrev.nHeight));
             }
 
             /* Check the transaction timestamp. */
@@ -836,8 +842,8 @@ namespace Legacy
             if(LLD::legacyDB->IsSpent(prevout.hash, prevout.n))
                 return debug::error(FUNCTION, "prev tx is already spent");
 
-            /* Check the ECDSA signatures. */
-            if(!VerifySignature(txPrev, *this, i, 0))
+            /* Check the ECDSA signatures. (...When not syncronizing) */
+            if(!TAO::Ledger::ChainState::Synchronizing() && !VerifySignature(txPrev, *this, i, 0))
                 return debug::error(FUNCTION, "signature is invalid");
 
             /* Commit to disk if flagged. */
@@ -860,6 +866,10 @@ namespace Legacy
         }
         else if (nValueIn < GetValueOut())
             return debug::error(FUNCTION, GetHash().ToString().substr(0,10), "value in < value out");
+
+        /* Calculate the mint if connected with a block. */
+        if(nFlags & FLAGS::BLOCK)
+            state.nMint += (int32_t)(GetValueOut() - nValueIn);
 
         return true;
     }

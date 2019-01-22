@@ -72,7 +72,7 @@ namespace TAO
 
 
         /** Mainnet maturity for blocks. */
-        const uint32_t NEXUS_MATURITY_BLOCKS   = 120;
+        const uint32_t NEXUS_MATURITY_BLOCKS   = 100;
 
 
         /** nVersion 4 and earlier trust keys expire after 24 hours. **/

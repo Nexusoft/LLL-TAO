@@ -66,6 +66,9 @@ namespace TAO
         /* Find the genesis block of given trust key. */
         bool FindGenesis(const uint576_t& cKey, const uint1024_t& hashTrustBlock, TrustKey& trustKey)
         {
+            /* Debug output to monitor the calling of this function. */
+            debug::error(FUNCTION, "no genesis found triggered. Recovering...");
+
             /* Create the state object. */
             TAO::Ledger::BlockState state;
             if(!LLD::legDB->ReadBlock(hashTrustBlock, state))

@@ -72,6 +72,7 @@ namespace TAO
         , vtx()
         , nChainTrust(0)
         , nMoneySupply(0)
+        , nMint(0)
         , nChannelHeight(0)
         , nReleasedReserve{0, 0, 0}
         , hashNextBlock(0)
@@ -520,11 +521,23 @@ namespace TAO
 
             /* Update the previous state's next pointer. */
             BlockState prev = Prev();
+
+            /* Update the money supply. */
+            nMoneySupply = (prev.IsNull() ? 0 : prev.nMoneySupply) + nMint;
+
+            /* Log how much was generated / destroyed. */
+            debug::log(0, FUNCTION, nMint > 0 ? "Generated " : "Destroyed ", std::fixed, (double)nMint / Legacy::COIN, " Nexus | Money Supply ", std::fixed, (double)nMoneySupply / Legacy::COIN);
+
+            /* Write the updated block state to disk. */
+            if(!LLD::legDB->WriteBlock(GetHash(), *this))
+                return debug::error(FUNCTION, "failed to update block state");
+
+            /* Update chain pointer for previous block. */
             if(!prev.IsNull())
             {
                 prev.hashNextBlock = GetHash();
                 if(!LLD::legDB->WriteBlock(prev.GetHash(), prev))
-                    return debug::error(FUNCTION, "failed to write producer");
+                    return debug::error(FUNCTION, "failed to update previous block state");
             }
 
             return true;

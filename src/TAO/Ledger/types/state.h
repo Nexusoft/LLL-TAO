@@ -56,6 +56,10 @@ namespace TAO
             uint64_t nMoneySupply;
 
 
+            /** The Total NXS mint. **/
+            int32_t nMint;
+
+
             /** The height of this channel. */
             uint32_t nChannelHeight;
 
@@ -87,6 +91,7 @@ namespace TAO
 
                 READWRITE(nChainTrust);
                 READWRITE(nMoneySupply);
+                READWRITE(nMint);
                 READWRITE(nChannelHeight);
                 READWRITE(nReleasedReserve[0]);
                 READWRITE(nReleasedReserve[1]);
@@ -103,6 +108,7 @@ namespace TAO
             , vtx()
             , nChainTrust(0)
             , nMoneySupply(0)
+            , nMint(0)
             , nChannelHeight(0)
             , nReleasedReserve{0, 0, 0}
             , hashNextBlock(0)
@@ -117,6 +123,7 @@ namespace TAO
             , vtx()
             , nChainTrust(0)
             , nMoneySupply(0)
+            , nMint(0)
             , nChannelHeight(0)
             , nReleasedReserve{0, 0, 0}
             , hashNextBlock(0)
@@ -143,6 +150,7 @@ namespace TAO
 
                 nChainTrust         = state.nChainTrust;
                 nMoneySupply        = state.nMoneySupply;
+                nMint               = state.nMint;
                 nChannelHeight      = state.nChannelHeight;
 
                 nReleasedReserve[0] = state.nReleasedReserve[0];
@@ -170,6 +178,7 @@ namespace TAO
 
                 nChainTrust         = state.nChainTrust;
                 nMoneySupply        = state.nMoneySupply;
+                nMoneySupply        = state.nMint;
                 nChannelHeight      = state.nChannelHeight;
 
                 nReleasedReserve[0] = state.nReleasedReserve[0];
