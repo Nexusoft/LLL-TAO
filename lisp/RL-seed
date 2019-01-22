@@ -23,6 +23,7 @@ set iid    = 200
 set v4_eid = 240.0.x.x
 set v6_eid = fe::x:x
 set device = "eth0"
+set hostname = `hostname`
 
 if ($v4_eid == "240.0.x.x") then
     echo "This RL file needs modification for seed node configuration"
