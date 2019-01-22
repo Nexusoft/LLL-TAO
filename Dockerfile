@@ -94,6 +94,7 @@ COPY config/.cshrc /root/.cshrc
 # Startup lispers.net and nexus. Output some useful data and drop into tcsh.
 #
 ENV RUN_LISP    /lispers.net/RL
+#ENV RUN_LISP    /lispers.net/RL-seed
 ENV RUN_NEXUS   /nexus/run-nexus
 ENV RUN_GETINFO /nexus/nexus -test getinfo
 ENV RUN_PSLISP  /lispers.net/pslisp
