@@ -169,6 +169,41 @@ namespace Legacy
         /* New wallet is indicated by an empty default key */
         fFirstRunRet = vchDefaultKey.empty();
 
+        /* On first run, assign min/max version, generate key pool, and generate a default key for this wallet */
+        if (fFirstRunRet && !IsLocked())
+        {
+            /* For a newly created wallet, set the min and max version to the latest */
+            debug::log(2, FUNCTION, "Setting wallet min version to ", FEATURE_LATEST);
+
+            SetMinVersion(FEATURE_LATEST);
+            SetMaxVersion(FEATURE_LATEST);
+
+            std::vector<uint8_t> vchNewDefaultKey;
+
+            /* For a new wallet, may need to generate initial key pool */
+            if (keyPool.GetKeyPoolSize() == 0)
+                keyPool.NewKeyPool();
+
+            if (keyPool.GetKeyPoolSize() > 0)
+            {
+                debug::log(2, FUNCTION, "Adding wallet default key");
+
+                if (!keyPool.GetKeyFromPool(vchNewDefaultKey, false))
+                {
+                    debug::error(FUNCTION, "Error adding wallet default key. Cannot get key from key pool.");
+                    return DB_LOAD_FAIL;
+                }
+
+                SetDefaultKey(vchNewDefaultKey);
+
+                if (!addressBook.SetAddressBookName(NexusAddress(vchDefaultKey), "default"))
+                {
+                    debug::error(FUNCTION, "Error adding wallet default key. Unable to add key to address book.");
+                    return DB_LOAD_FAIL;
+                }
+            }
+        }
+
         /* Launch background thread to periodically flush the wallet to the backing database */
         std::thread flushThread(Legacy::CWalletDB::ThreadFlushWalletDB, std::string(strWalletFile));
         flushThread.detach();

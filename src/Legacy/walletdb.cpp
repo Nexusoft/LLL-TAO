@@ -562,15 +562,14 @@ namespace Legacy
                 else if (strType == "acentry")
                 {
                     /* Accounting entry */
-                    /* Ignore these and do not load. Accounting entry support to be removed */
-                    //std::string strAccount;
-                    //ssKey >> strAccount;
-                    //uint64_t nNumber;
-                    //ssKey >> nNumber;
+                    std::string strAccount;
+                    ssKey >> strAccount;
+                    uint64_t nNumber;
+                    ssKey >> nNumber;
 
                     /* After load, nAccountingEntryNumber will contain the maximum accounting entry number currently stored in the database */
-                    //if (nNumber > CWalletDB::nAccountingEntryNumber)
-                    //    CWalletDB::nAccountingEntryNumber = nNumber;
+                    if (nNumber > CWalletDB::nAccountingEntryNumber)
+                        CWalletDB::nAccountingEntryNumber = nNumber;
 
                 }
 
@@ -602,7 +601,7 @@ namespace Legacy
 
         uint64_t elapsedTime = runtime::timestamp(true) - startTimestamp;
 
-        debug::log(0, FUNCTION, "", fIsEncrypted ? "Encrypted Wallet" : "Wallet", " Loaded in ", elapsedTime, " ms FileVersion = ", nFileVersion);
+        debug::log(0, FUNCTION, "", fIsEncrypted ? "Encrypted Wallet" : "Wallet", " Loaded in ", elapsedTime, " ms file version = ", nFileVersion);
 
         return DB_LOAD_OK;
     }
@@ -625,6 +624,8 @@ namespace Legacy
         uint32_t nLastSeen = CWalletDB::nWalletDBUpdated;
         uint32_t nLastFlushed = CWalletDB::nWalletDBUpdated;
         uint64_t nLastWalletUpdate = runtime::unifiedtimestamp();
+
+        debug::log(1, FUNCTION, "Wallet flush thread started");
 
         while (!config::fShutdown)
         {
@@ -681,6 +682,8 @@ namespace Legacy
                 }
             }
         }
+
+        debug::log(1, FUNCTION, "Shutting down wallet flush thread");
 
         /* Should be shutdown if get here, so this thread can shutdown database environment */
         if (config::fShutdown)
