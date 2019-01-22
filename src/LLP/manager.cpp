@@ -71,7 +71,7 @@ namespace LLP
         for(auto it = vAddrInfo.begin(); it != vAddrInfo.end(); ++it)
         {
             const BaseAddress &addr = *it;
-            vAddr.emplace_back(addr);
+            vAddr.push_back(addr);
         }
 
 
@@ -107,7 +107,10 @@ namespace LLP
         std::unique_lock<std::mutex> lk(mut);
 
         if(mapAddrInfo.find(hash) == mapAddrInfo.end())
-            mapAddrInfo.emplace(std::make_pair(hash, AddressInfo(addr)));
+        {
+            mapAddrInfo[hash] = addr;
+        }
+
 
 
         AddressInfo &info = mapAddrInfo[hash];
@@ -153,8 +156,8 @@ namespace LLP
         debug::log(5, FUNCTION, addr.ToString());
 
         /* update the LLD Database with a new entry */
-        if(pDatabase)
-            pDatabase->WriteAddressInfo(hash, info);
+        //if(pDatabase)
+        //    pDatabase->WriteAddressInfo(hash, info);
     }
 
 
@@ -206,6 +209,9 @@ namespace LLP
             nSelect = ((std::numeric_limits<uint64_t>::max() /
                 std::max((uint64_t)std::pow(nHash, 1.95) + 1, (uint64_t)1)) - 3) %
                 vAddresses.size();
+
+            if(nSelect >= vAddresses.size())
+              return debug::error(FUNCTION, "index out of bounds");
 
             /* sort info vector and assign the selected address */
             std::sort(vAddresses.begin(), vAddresses.end());

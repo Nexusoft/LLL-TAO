@@ -127,6 +127,8 @@ namespace LLP
         BaseAddress ip;
         if (Lookup(pszIpPort, ip, portDefault, fAllowLookup))
             *this = ip;
+        else
+          debug::log(0, FUNCTION, "bad lookup");
     }
 
     BaseAddress::BaseAddress(const std::string &strIpPort, uint16_t portDefault, bool fAllowLookup)
@@ -136,6 +138,8 @@ namespace LLP
         BaseAddress ip;
         if (Lookup(strIpPort.c_str(), ip, portDefault, fAllowLookup))
             *this = ip;
+        else
+          debug::log(0, FUNCTION, "bad lookup");
     }
 
     BaseAddress::~BaseAddress()

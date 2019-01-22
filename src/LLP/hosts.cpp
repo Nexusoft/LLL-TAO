@@ -55,7 +55,7 @@ namespace LLP
     }
 
 
-    bool static LookupIntern(const char *pszName, std::vector<BaseAddress>& vIP, uint32_t nMaxSolutions, bool fAllowLookup)
+    bool static LookupIntern(const char *pszName, std::vector<BaseAddress> &vIP, uint32_t nMaxSolutions, bool fAllowLookup)
     {
         vIP.clear();
         struct addrinfo aiHint;
@@ -153,26 +153,21 @@ namespace LLP
 
         }
 
-        std::vector<BaseAddress> vIP;
-
         std::unique_lock<std::mutex> lk(::LOOKUP_MUTEX);
 
-        bool fRet = LookupIntern(pszHost, vIP, nMaxSolutions, fAllowLookup);
+        bool fRet = LookupIntern(pszHost, vAddr, nMaxSolutions, fAllowLookup);
+
         if (!fRet)
             return false;
 
-        vAddr.resize(vIP.size());
-
-        for (uint32_t i = 0; i < vIP.size(); ++i)
-        {
-            vAddr[i] = vIP[i];
+        /* Set the ports to the lookup port or default port. */
+        for (uint32_t i = 0; i < vAddr.size(); ++i)
             vAddr[i].SetPort(port);
-        }
 
         return true;
     }
 
-    bool Lookup(const char *pszName, BaseAddress& addr, uint16_t portDefault, bool fAllowLookup)
+    bool Lookup(const char *pszName, BaseAddress &addr, uint16_t portDefault, bool fAllowLookup)
     {
         std::vector<BaseAddress> vService;
         bool fRet = Lookup(pszName, vService, portDefault, fAllowLookup, 1);

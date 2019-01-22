@@ -53,14 +53,8 @@ namespace LLP
          *
          **/
         AddressInfo();
-        AddressInfo(const BaseAddress &addr);
         AddressInfo(const AddressInfo &other);
-        AddressInfo(BaseAddress &addr);
-        AddressInfo(AddressInfo &other);
-
-        //AddressInfo(BaseAddress &other) = delete;
-        AddressInfo(const AddressInfo &&other);
-        AddressInfo(AddressInfo &&other);
+        AddressInfo(const BaseAddress &other);
 
 
         /** ~AddressInfo
@@ -70,11 +64,8 @@ namespace LLP
          **/
         virtual ~AddressInfo();
 
+        AddressInfo &operator=(const BaseAddress &other);
         AddressInfo &operator=(const AddressInfo &other);
-        AddressInfo &operator=(AddressInfo &other);
-
-        AddressInfo &operator=(const AddressInfo &&other);
-        AddressInfo &operator=(AddressInfo &&other);
 
 
         /* Serialization */
@@ -111,7 +102,6 @@ namespace LLP
         uint8_t  nState;      //the flag for the state of connection
 
         friend bool operator<(const AddressInfo &info1, const AddressInfo &info2);
-        friend bool operator<(AddressInfo &info1, AddressInfo &info2);
     };
 
 }

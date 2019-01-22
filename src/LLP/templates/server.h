@@ -95,7 +95,7 @@ namespace LLP
             if(fManager)
             {
                 pAddressManager = new AddressManager(nPort);
-                pAddressManager->ReadDatabase();
+                //pAddressManager->ReadDatabase();
 
 
                 MANAGER_THREAD = std::thread((std::bind(&Server::Manager, this)));
@@ -159,8 +159,8 @@ namespace LLP
          **/
         void Shutdown()
         {
-            if(pAddressManager)
-                pAddressManager->WriteDatabase();
+            //if(pAddressManager)
+            //    pAddressManager->WriteDatabase();
         }
 
 
