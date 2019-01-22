@@ -95,12 +95,9 @@ namespace LLD
          , MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 32)
          , nCurrentSize(MAX_CACHE_BUCKETS * 8)
          , hashmap(MAX_CACHE_BUCKETS)
-         , pfirst(0)
-         , plast(0)
+         , pfirst(nullptr)
+         , plast(nullptr)
         {
-            /* Set the start and end pointers. */
-            pfirst = nullptr;
-            plast  = nullptr;
         }
 
 
@@ -114,13 +111,9 @@ namespace LLD
         , MAX_CACHE_BUCKETS(nCacheSizeIn / 32)
         , nCurrentSize(MAX_CACHE_BUCKETS * 8)
         , hashmap(MAX_CACHE_BUCKETS)
-        , pfirst(0)
-        , plast(0)
+        , pfirst(nullptr)
+        , plast(nullptr)
         {
-
-            /* Set the start and end pointers. */
-            pfirst = nullptr;
-            plast  = nullptr;
         }
 
 

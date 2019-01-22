@@ -194,6 +194,7 @@ namespace LLP
 
             std::vector<uint8_t> BYTES(ssHeader.begin(), ssHeader.end());
             BYTES.insert(BYTES.end(), DATA.begin(), DATA.end());
+            
             return BYTES;
         }
     };

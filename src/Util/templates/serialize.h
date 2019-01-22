@@ -910,7 +910,7 @@ public:
      *  @param[in] nSerVersionIn The serialize version
      *
      **/
-    DataStream(std::vector<uint8_t> vchDataIn, uint32_t nSerTypeIn, uint32_t nSerVersionIn)
+    DataStream(const std::vector<uint8_t>& vchDataIn, const uint32_t nSerTypeIn, const uint32_t nSerVersionIn)
     : vData(vchDataIn)
     , nReadPos(0)
     , nSerType(nSerTypeIn)
@@ -924,7 +924,9 @@ public:
      *  Default constructor for initialization with serialize data, type and version
      *
      **/
-    DataStream(std::vector<uint8_t>::const_iterator pbegin, std::vector<uint8_t>::const_iterator pend, uint32_t nSerTypeIn, uint32_t nSerVersionIn)
+    DataStream( const std::vector<uint8_t>::const_iterator pbegin,
+                const std::vector<uint8_t>::const_iterator pend,
+                const uint32_t nSerTypeIn, const uint32_t nSerVersionIn)
     : vData(pbegin, pend)
     , nReadPos(0)
     , nSerType(nSerTypeIn)
@@ -941,7 +943,7 @@ public:
      *  (Microsoft compiler compatible)
      *
      **/
-    DataStream(const char* pbegin, const char* pend, uint32_t nSerTypeIn, uint32_t nSerVersionIn)
+    DataStream(const char* pbegin, const char* pend, const uint32_t nSerTypeIn, const uint32_t nSerVersionIn)
     : vData((uint8_t*)pbegin, (uint8_t*)pend)
     , nReadPos(0)
     , nSerType(nSerTypeIn)
@@ -956,7 +958,7 @@ public:
      *  Default constructor for initialization with serialize data, type and version.
      *
      **/
-    DataStream(const std::vector<char>& vchDataIn, uint32_t nSerTypeIn, uint32_t nSerVersionIn)
+    DataStream(const std::vector<char>& vchDataIn, const uint32_t nSerTypeIn, const uint32_t nSerVersionIn)
     : vData((uint8_t*)&vchDataIn.begin()[0], (uint8_t*)&vchDataIn.end()[0])
     , nReadPos(0)
     , nSerType(nSerTypeIn)
@@ -1009,7 +1011,7 @@ public:
      *  Returns if object is in null state.
      *
      **/
-    bool IsNull()
+    bool IsNull() const
     {
         return nReadPos == 0 && size() == 0;
     }
@@ -1031,9 +1033,9 @@ public:
      *  Returns if end of stream is found
      *
      **/
-    bool End()
+    bool End() const
     {
-        return nReadPos == size();
+        return nReadPos >= size();
     }
 
 
@@ -1089,6 +1091,28 @@ public:
      *  Wrapper around the vector iterator.
      *
      **/
+    std::vector<uint8_t>::const_iterator begin() const
+    {
+        return vData.begin();
+    }
+
+
+    /** End
+     *
+     *  Wrapper around the vector iterator.
+     *
+     **/
+    std::vector<uint8_t>::const_iterator end() const
+    {
+        return vData.end();
+    }
+
+
+    /** Begin
+     *
+     *  Wrapper around the vector iterator.
+     *
+     **/
     std::vector<uint8_t>::iterator begin()
     {
         return vData.begin();
@@ -1132,7 +1156,7 @@ public:
      *  Get the size of the data stream.
      *
      **/
-    size_t size()
+    size_t size() const
     {
         return vData.size();
     }
