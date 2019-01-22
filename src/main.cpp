@@ -381,6 +381,15 @@ int main(int argc, char** argv)
     }
 
 
+    /* Cleanup the local database. */
+    if(LLD::legacyDB)
+    {
+        debug::log(0, FUNCTION, "Shutting down legacyDB");
+
+        delete LLD::legacyDB;
+    }
+
+
 
     /* Elapsed Milliseconds from timer. */
     nElapsed = timer.ElapsedMilliseconds();

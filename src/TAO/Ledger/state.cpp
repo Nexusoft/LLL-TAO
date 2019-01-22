@@ -502,13 +502,13 @@ namespace TAO
                     if(!tx.FetchInputs(inputs))
                         return debug::error(FUNCTION, "failed to fetch the inputs");
 
-                    /* Connect the inputs. */
-                    if(!tx.Connect(inputs, *this, Legacy::FLAGS::BLOCK))
-                        return debug::error(FUNCTION, "failed to connect inputs");
-
                     /* Write to disk. */
                     if(!LLD::legacyDB->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
+
+                    /* Connect the inputs. */
+                    if(!tx.Connect(inputs, *this, Legacy::FLAGS::BLOCK))
+                        return debug::error(FUNCTION, "failed to connect inputs");
 
                 }
                 else

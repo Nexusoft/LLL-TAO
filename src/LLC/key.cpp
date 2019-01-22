@@ -283,7 +283,7 @@ namespace LLC
 
 
     /* Nexus sepcific strict DER rules. */
-    bool ECKey::Encoding(const std::vector<uint8_t> vchSig)
+    bool ECKey::Encoding(const std::vector<uint8_t>& vchSig) const
     {
         /* Check the signature length. Strict encoding requires no more than 135 bytes. */
         if (vchSig.size() != 135) return false;
@@ -342,7 +342,7 @@ namespace LLC
 
 
     /* Based on standard set of byte data as input of any length. Checks for DER encoding */
-    bool ECKey::Sign(const std::vector<uint8_t> vchData, std::vector<uint8_t>& vchSig)
+    bool ECKey::Sign(const std::vector<uint8_t>& vchData, std::vector<uint8_t>& vchSig) const
     {
         uint32_t nSize = ECDSA_size(pkey);
         vchSig.resize(nSize); // Make sure it is big enough
@@ -363,7 +363,7 @@ namespace LLC
 
 
     /* Tritium Signature Verification Function */
-    bool ECKey::Verify(const std::vector<uint8_t> vchData, const std::vector<uint8_t>& vchSig)
+    bool ECKey::Verify(const std::vector<uint8_t>& vchData, const std::vector<uint8_t>& vchSig) const
     {
         return Encoding(vchSig) &&
             (ECDSA_verify(0, &vchData[0], vchData.size(), &vchSig[0], vchSig.size(), pkey) == 1);
@@ -371,7 +371,7 @@ namespace LLC
 
 
     /* Legacy Signing Function */
-    bool ECKey::Sign(uint1024_t hash, std::vector<uint8_t>& vchSig, int nBits)
+    bool ECKey::Sign(const uint1024_t& hash, std::vector<uint8_t>& vchSig, const uint32_t nBits) const
     {
         uint32_t nSize = ECDSA_size(pkey);
         vchSig.resize(nSize); // Make sure it is big enough
@@ -402,7 +402,7 @@ namespace LLC
 
 
     /* Legacy Verifying Function.*/
-    bool ECKey::Verify(uint1024_t hash, const std::vector<uint8_t>& vchSig, int nBits)
+    bool ECKey::Verify(const uint1024_t& hash, const std::vector<uint8_t>& vchSig, const uint32_t nBits) const
     {
         bool fSuccess = false;
         if(nBits == 256)
@@ -423,7 +423,7 @@ namespace LLC
 
 
     /* Check if a Key is valid based on a few parameters*/
-    bool ECKey::IsValid()
+    bool ECKey::IsValid() const
     {
         if (!fSet)
             return false;

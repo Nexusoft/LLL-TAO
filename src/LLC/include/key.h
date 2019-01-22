@@ -202,7 +202,7 @@ namespace LLC
          *  @return true if encoding check passed.
          *
          **/
-        bool Encoding(const std::vector<uint8_t> vchSig);
+        bool Encoding(const std::vector<uint8_t>& vchSig) const;
 
 
         /** Tritium Signing Function.
@@ -214,7 +214,7 @@ namespace LLC
          *
          *  @return True if the Signature was created successfully
          **/
-        bool Sign(const std::vector<uint8_t> vchData, std::vector<uint8_t>& vchSig);
+        bool Sign(const std::vector<uint8_t>& vchData, std::vector<uint8_t>& vchSig) const;
 
 
         /** Tritium Signature Verification Function
@@ -226,7 +226,7 @@ namespace LLC
          *
          *  @return True if the Signature was Verified as Valid
          **/
-        bool Verify(const std::vector<uint8_t> vchData, const std::vector<uint8_t>& vchSig);
+        bool Verify(const std::vector<uint8_t>& vchData, const std::vector<uint8_t>& vchSig) const;
 
 
         /** Legacy Signing Function
@@ -239,7 +239,7 @@ namespace LLC
          *
          *  @return True if the Signature was created successfully
          **/
-        bool Sign(uint1024_t hash, std::vector<uint8_t>& vchSig, int nBits);
+        bool Sign(const uint1024_t& hash, std::vector<uint8_t>& vchSig, const uint32_t nBits) const;
 
 
         /** Legacy Verifying Function.
@@ -252,14 +252,14 @@ namespace LLC
          *
          *  @return True if the Signature was verified successfully
          **/
-        bool Verify(uint1024_t hash, const std::vector<uint8_t>& vchSig, int nBits);
+        bool Verify(const uint1024_t& hash, const std::vector<uint8_t>& vchSig, const uint32_t nBits) const;
 
 
         /** Check if a Key is valid based on a few parameters
          *
          *  @return True if the Key is in a valid state
          **/
-        bool IsValid();
+        bool IsValid() const;
 
     };
 }
