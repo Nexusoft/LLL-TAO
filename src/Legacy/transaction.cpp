@@ -725,34 +725,69 @@ namespace Legacy
     /* Mark the inputs in a transaction as spent. */
     bool Transaction::Connect(const std::map<uint512_t, Transaction>& inputs, const TAO::Ledger::BlockState& state, uint8_t nFlags) const
     {
-        /* Check the input script size. */
-        if (vin[0].scriptSig.size() < 2 || vin[0].scriptSig.size() > (state.nVersion < 5 ? 100 : 144))
-            return debug::error(FUNCTION, "coinbase/coinstake script invalid size");
-
-        /* Coinbase has no inputs. */
-        if (IsCoinBase())
-            return true;
-
-        /* Get the trust key. */
-        std::vector<uint8_t> vTrustKey;
-        if(!TrustKey(vTrustKey))
-            return debug::error(FUNCTION, "can't extract trust key.");
-
-        /* Check for trust key. */
-        uint576_t cKey;
-        cKey.SetBytes(vTrustKey);
-
-        /* Verify that we have the trust key for stake block in the indexdb */
-        TAO::Ledger::TrustKey trustKey;
-        if(IsTrust())
+        /* Special checks for coinbase and coinstake. */
+        if (IsCoinStake() || IsCoinBase())
         {
-            /* No Trust Transaction without a Genesis. */
-            if(!LLD::legDB->ReadTrustKey(cKey, trustKey))
-            {
-                /* FindGenesis will set hashPrevBlock to genesis block. Don't want to change that here, so use temp hash */
-                if(!TAO::Ledger::FindGenesis(cKey, state.hashPrevBlock, trustKey))
-                    return debug::error(FUNCTION, "no trust without genesis");
+            /* Check the input script size. */
+            if(vin[0].scriptSig.size() < 2 || vin[0].scriptSig.size() > (state.nVersion < 5 ? 100 : 144))
+                return debug::error(FUNCTION, "coinbase/coinstake script invalid size ", vin[0].scriptSig.size());
 
+            /* Coinbase has no inputs. */
+            if (IsCoinBase())
+                return true;
+
+            /* Get the trust key. */
+            std::vector<uint8_t> vTrustKey;
+            if(!TrustKey(vTrustKey))
+                return debug::error(FUNCTION, "can't extract trust key.");
+
+            /* Check for trust key. */
+            uint576_t cKey;
+            cKey.SetBytes(vTrustKey);
+
+            /* Handle Genesis Transaction Rules. Genesis is checked after Trust Key Established. */
+            TAO::Ledger::TrustKey trustKey;
+            if(IsGenesis())
+            {
+                /* Create the Trust Key from Genesis Transaction Block. */
+                trustKey = TAO::Ledger::TrustKey(vTrustKey, state.GetHash(), GetHash(), state.GetBlockTime());
+
+                /* Check the genesis transaction. */
+                if(!trustKey.CheckGenesis(state))
+                    return debug::error(FUNCTION, "invalid genesis transaction");
+
+                /* Write the trust key to indexDB */
+                LLD::legDB->WriteTrustKey(cKey, trustKey);
+            }
+
+            /* Handle Adding Trust Transactions. */
+            else if(IsTrust())
+            {
+                /* No Trust Transaction without a Genesis. */
+                if(!LLD::legDB->ReadTrustKey(cKey, trustKey))
+                {
+                    /* FindGenesis will set hashPrevBlock to genesis block. Don't want to change that here, so use temp hash */
+                    if(!TAO::Ledger::FindGenesis(cKey, state.hashPrevBlock, trustKey))
+                        return debug::error(FUNCTION, "no trust without genesis");
+
+                    LLD::legDB->WriteTrustKey(cKey, trustKey);
+                }
+
+                /* Check that the Trust Key and Current Block match. */
+                if(trustKey.vchPubKey != vTrustKey)
+                    return debug::error(FUNCTION, "trust key and block trust key mismatch");
+
+                /* Trust Keys can only exist after the Genesis Transaction. */
+                TAO::Ledger::BlockState stateGenesis;
+                if(!LLD::legDB->ReadBlock(trustKey.hashGenesisBlock, stateGenesis))
+                    return debug::error(FUNCTION, "genesis block not found");
+
+                /* Double Check the Genesis Transaction. */
+                if(!trustKey.CheckGenesis(stateGenesis))
+                    return debug::error(FUNCTION, "invalid genesis transaction");
+
+                /* Write trust key changes to disk. */
+                trustKey.hashLastBlock = state.GetHash();
                 LLD::legDB->WriteTrustKey(cKey, trustKey);
             }
         }
@@ -818,41 +853,6 @@ namespace Legacy
             /* Check that the interest is within range. */
             if (vout[0].nValue > nInterest + nValueIn)
                 return debug::error(FUNCTION, GetHash().ToString().substr(0,10), " stake reward mismatch");
-
-            /* Handle Genesis Transaction Rules. Genesis is checked after Trust Key Established. */
-            if(IsGenesis())
-            {
-                /* Create the Trust Key from Genesis Transaction Block. */
-                trustKey = TAO::Ledger::TrustKey(vTrustKey, state.GetHash(), GetHash(), state.GetBlockTime());
-
-                /* Check the genesis transaction. */
-                if(!trustKey.CheckGenesis(state))
-                    return debug::error(FUNCTION, "invalid genesis transaction");
-
-                /* Write the trust key to indexDB */
-                LLD::legDB->WriteTrustKey(cKey, trustKey);
-            }
-
-            /* Handle Adding Trust Transactions. */
-            else if(IsTrust())
-            {
-                /* Check that the Trust Key and Current Block match. */
-                if(trustKey.vchPubKey != vTrustKey)
-                    return debug::error(FUNCTION, "trust key and block trust key mismatch");
-
-                /* Trust Keys can only exist after the Genesis Transaction. */
-                TAO::Ledger::BlockState stateGenesis;
-                if(!LLD::legDB->ReadBlock(trustKey.hashGenesisBlock, stateGenesis))
-                    return debug::error(FUNCTION, "genesis block not found");
-
-                /* Double Check the Genesis Transaction. */
-                if(!trustKey.CheckGenesis(stateGenesis))
-                    return debug::error(FUNCTION, "invalid genesis transaction");
-
-                /* Write trust key changes to disk. */
-                trustKey.hashLastBlock = state.GetHash();
-                LLD::legDB->WriteTrustKey(cKey, trustKey);
-            }
         }
         else if (nValueIn < GetValueOut())
             return debug::error(FUNCTION, GetHash().ToString().substr(0,10), "value in < value out");

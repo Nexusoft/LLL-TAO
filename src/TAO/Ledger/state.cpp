@@ -194,6 +194,9 @@ namespace TAO
             LLD::regDB->TxnBegin();
             LLD::locDB->TxnBegin();
 
+            /* Start the legacy transaction. */
+            LLD::legacyDB->TxnBegin();
+
 
             /* Write the block to disk. */
             if(!LLD::legDB->WriteBlock(GetHash(), *this))
@@ -289,6 +292,9 @@ namespace TAO
                             LLD::regDB->TxnAbort();
                             LLD::locDB->TxnAbort();
 
+                            /* Cleanup legacy Txn. */
+                            LLD::legacyDB->TxnAbort();
+
                             /* Debug errors. */
                             return debug::error(FUNCTION, "failed to disconnect ",
                                 state.GetHash().ToString().substr(0, 20));
@@ -317,6 +323,9 @@ namespace TAO
                             LLD::legDB->TxnAbort();
                             LLD::regDB->TxnAbort();
                             LLD::locDB->TxnAbort();
+
+                            /* Cleanup legacy Txn. */
+                            LLD::legacyDB->TxnAbort();
 
                             /* Debug errors. */
                             return debug::error(FUNCTION, "failed to connect ",
@@ -393,6 +402,9 @@ namespace TAO
             LLD::legDB->TxnCommit();
             LLD::regDB->TxnCommit();
             LLD::locDB->TxnCommit();
+
+            /* Commit the legacy database. */
+            LLD::legacyDB->TxnCommit();
 
 
             /* Debug output. */
