@@ -13,11 +13,25 @@
 #------------------------------------------------------------------------------
 
 import nexus_sdk
+import time
 
 #
 # Column width for continuation output line.
 #
 width = 48
+
+#
+# sleep
+#
+# If you want to play around with delay times between API operations. Defaults
+# to 1 second. You can litter sleep() calls whereever you like below.
+#
+def sleep():
+    delay = 1
+    if (delay == 0): return
+    print "Sleeping for {} ...".format(delay)
+    time.sleep(delay)
+#enddef    
 
 #------------------------------------------------------------------------------
 
@@ -75,7 +89,7 @@ api_print(json, "genesis {}".format(primer.genesis_id))
 #print json
 print "Login user 'new-owner' ...".ljust(width),
 json = new_owner.nexus_accounts_login()
-api_print(json, "genesis {}".format(primer.genesis_id))
+api_print(json, "genesis {}".format(new_owner.genesis_id))
 #print json
 
 #
@@ -105,9 +119,11 @@ print ""
 data = "0xdeadbeef"
 print "Supply-Chain create item, data '{}' ...".format(data).ljust(width),
 json = primer.nexus_supply_createitem(data)
+#print json
 address = json["result"]["address"] if json.has_key("result") else "?"
 api_print(json, "address {}".format(address))
-#print json
+
+sleep()
 
 #
 # Call API supply/getitem
@@ -120,6 +136,8 @@ msg = "stored data '{}', owner {}".format(state, owner)
 api_print(json, msg)
 #print json
 
+sleep()
+
 #
 # Call API supply/transfer
 #
@@ -130,6 +148,8 @@ json = primer.nexus_supply_transfer(address, new_owner.genesis_id)
 api_print(json)
 #print json
 
+sleep()
+
 #
 # Call API supply/history
 #
@@ -138,13 +158,14 @@ json = primer.nexus_supply_history(address)
 api_print(json)
 #print json
 
-print ""
-print "Ownership History:"
-for owner in json["result"]:
-    print "Owner {}\n  checksum {}, state {}, version {}, type {}".format \
-        (owner["owner"], owner["checksum"], owner["state"], owner["version"],
-        owner["type"])
-#endfor                                                                        
+if (json.has_key("error") == False):
+    print "Ownership History:"
+    for owner in json["result"]:
+        print "owner {}:".format(owner["owner"])
+        owner.pop("owner")
+        print "  {}".format(owner)
+    #endfor
+#endif
 
 print ""
 print "All Done!"

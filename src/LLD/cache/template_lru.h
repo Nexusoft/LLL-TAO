@@ -340,9 +340,6 @@ namespace LLD
             {
                 /* Update the cache node. */
                 pthis = hashmap[nBucket];
-                delete pthis;
-
-                pthis = new TemplateNode<KeyType, DataType>();
                 pthis->Data = Data;
                 pthis->Key  = Key;
             }
