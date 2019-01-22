@@ -406,6 +406,10 @@ namespace Legacy
             /* Check the claimed stake limits are met. */
             if(nVersion >= 5 && !CheckStake())
                 return debug::error(FUNCTION, "invalid proof of stake");
+
+            /* Check the stake for version 4. */
+            if(nVersion < 5 && !VerifyStake())
+                return debug::error(FUNCTION, "invalid proof of stake");
         }
 
         /* Check that Transactions are Finalized. */
@@ -487,6 +491,79 @@ namespace Legacy
             "required=", nRequired, ", ",
             "time=", (nTime - vtx[0].nTime), ", ",
             "nonce=", nNonce, ")");
+
+        return true;
+    }
+
+
+    /* Check the proof of stake calculations. */
+    bool LegacyBlock::VerifyStake() const
+    {
+        /* Set the Public Key Integer Key from Bytes. */
+        uint576_t cKey;
+        if(!vtx[0].TrustKey(cKey))
+            return debug::error(FUNCTION, "cannot extract trust key");
+
+        /* Determine Trust Age if the Trust Key Exists. */
+        uint64_t nCoinAge = 0, nTrustAge = 0, nBlockAge = 0;
+        double nTrustWeight = 0.0, nBlockWeight = 0.0;
+
+        /* Check for trust block. */
+        if(vtx[0].IsTrust())
+        {
+            /* Get the trust key. */
+            TAO::Ledger::TrustKey trustKey;
+            if(!LLD::legDB->ReadTrustKey(cKey, trustKey))
+            {
+                /* If no trust key, find the genesis. */
+                if(!FindGenesis(cKey, hashPrevBlock, trustKey))
+                    return debug::error(FUNCTION, "trust key doesn't exist");
+
+                /* Write the genesis if found. */
+                if(!LLD::legDB->WriteTrustKey(cKey, trustKey))
+                    return debug::error(FUNCTION, "failed to write trust key to disk");
+            }
+
+            /* Check the genesis and trust timestamps. */
+            TAO::Ledger::BlockState statePrev;
+            if(!LLD::legDB->ReadBlock(hashPrevBlock, statePrev))
+                return debug::error(FUNCTION, "failed to read previous block");
+
+            /* Check the genesis time. */
+            if(trustKey.nGenesisTime > statePrev.GetBlockTime())
+                return debug::error(FUNCTION, "genesis time cannot be after trust time");
+
+            nTrustAge = trustKey.Age(statePrev.GetBlockTime());
+            nBlockAge = trustKey.BlockAge(statePrev);
+
+            /** Trust Weight Reaches Maximum at 30 day Limit. **/
+            nTrustWeight = std::min(17.5, (((16.5 * log(((2.0 * nTrustAge) / (60 * 60 * 24 * 28)) + 1.0)) / log(3))) + 1.0);
+
+            /** Block Weight Reaches Maximum At Trust Key Expiration. **/
+            nBlockWeight = std::min(20.0, (((19.0 * log(((2.0 * nBlockAge) / (60 * 60 * 24)) + 1.0)) / log(3))) + 1.0);
+        }
+        else
+        {
+            /* Calculate the Average Coinstake Age. */
+            if(!vtx[0].CoinstakeAge(nCoinAge))
+                return debug::error(FUNCTION, "failed to get coinstake age");
+
+            /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */
+            nTrustWeight = std::min(17.5, (((16.5 * log(((2.0 * nCoinAge) / (60 * 60 * 24 * 28 * 3)) + 1.0)) / log(3))) + 1.0);
+        }
+
+        /* Check the nNonce Efficiency Proportion Requirements. */
+        uint32_t nThreshold = (((nTime - vtx[0].nTime) * 100.0) / nNonce) + 3;
+        uint32_t nRequired  = ((50.0 - nTrustWeight - nBlockWeight) * 1000) / std::min((int64_t)1000, vtx[0].vout[0].nValue);
+        if(nThreshold < nRequired)
+            debug::error(FUNCTION, "energy efficiency threshold violated");
+
+
+        /** H] Check the Block Hash with Weighted Hash to Target. **/
+        LLC::CBigNum bnTarget;
+        bnTarget.SetCompact(nBits);
+        if(GetHash() > bnTarget.getuint1024())
+            return debug::error(FUNCTION, "proof of stake not meeting target");
 
         return true;
     }
