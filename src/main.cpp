@@ -290,16 +290,19 @@ int main(int argc, char** argv)
         LLD::locDB->WriteLast(tx.hashGenesis, tx.GetHash());
     }
     delete user;
+    
 
     /* Initialize generator thread. */
     std::thread thread;
     if(config::GetBoolArg("-private"))
         thread = std::thread(TAO::Ledger::ThreadGenerator);
 
+
     /* Wait for shutdown. */
     std::mutex SHUTDOWN_MUTEX;
     std::unique_lock<std::mutex> SHUTDOWN_LOCK(SHUTDOWN_MUTEX);
     SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown; });
+
 
     /* Wait for the private condition. */
     if(config::GetBoolArg("-private"))
@@ -311,33 +314,6 @@ int main(int argc, char** argv)
 
     /* Shutdown metrics. */
     timer.Reset();
-
-
-    /* Cleanup the ledger database. */
-    if(LLD::legDB)
-    {
-        debug::log(0, FUNCTION, "Shutting down ledgerDB");
-
-        delete LLD::legDB;
-    }
-
-
-    /* Cleanup the register database. */
-    if(LLD::regDB)
-    {
-        debug::log(0, FUNCTION, "Shutting down registerDB");
-
-        delete LLD::regDB;
-    }
-
-
-    /* Cleanup the local database. */
-    if(LLD::locDB)
-    {
-        debug::log(0, FUNCTION, "Shutting down localDB");
-
-        delete LLD::locDB;
-    }
 
 
     /* Shutdown the tritium server and its subsystems */
@@ -378,6 +354,33 @@ int main(int argc, char** argv)
 
         RPC_SERVER->Shutdown();
         delete RPC_SERVER;
+    }
+
+
+    /* Cleanup the ledger database. */
+    if(LLD::legDB)
+    {
+        debug::log(0, FUNCTION, "Shutting down ledgerDB");
+
+        delete LLD::legDB;
+    }
+
+
+    /* Cleanup the register database. */
+    if(LLD::regDB)
+    {
+        debug::log(0, FUNCTION, "Shutting down registerDB");
+
+        delete LLD::regDB;
+    }
+
+
+    /* Cleanup the local database. */
+    if(LLD::locDB)
+    {
+        debug::log(0, FUNCTION, "Shutting down localDB");
+
+        delete LLD::locDB;
     }
 
 
