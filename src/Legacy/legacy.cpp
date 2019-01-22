@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/trust.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/chainstate.h>
 
@@ -569,7 +570,27 @@ namespace Legacy
         /* Version 4 blocks need to get score from previous blocks calculated score from the trust pool. */
         else if(stateLast.nVersion < 5)
         {
-            //TODO: handle version 4 trust keys here
+            /* Check the trust pool - this should only execute once transitioning from version 4 to version 5 trust keys. */
+            TAO::Ledger::TrustKey trustKey;
+            if(!LLD::legDB->ReadTrustKey(cKey, trustKey))
+            {
+                /* Find the genesis if it isn't found. */
+                if(!FindGenesis(cKey, hashPrevBlock, trustKey))
+                    return debug::error(FUNCTION, "trust key not found in database");
+
+                LLD::legDB->WriteTrustKey(cKey, trustKey);
+            }
+
+            /* Enforce sequence number of 1 for anything made from version 4 blocks. */
+            if(nSequence != 1)
+                return debug::error(FUNCTION, "version 4 block sequence number is ", nSequence);
+
+            /* Ensure that a version 4 trust key is not expired based on new timespan rules. */
+            if(trustKey.Expired(TAO::Ledger::ChainState::stateBest))
+                return debug::error("version 4 key expired.");
+
+            /* Score is the total age of the trust key for version 4. */
+            nScorePrev = trustKey.Age(TAO::Ledger::ChainState::stateBest.GetBlockTime());
         }
 
         /* Version 5 blocks that are trust must pass sequence checks. */

@@ -66,16 +66,12 @@ namespace TAO
 
 
         /* Retrieve how old the Trust Key is at a given point in time. */
-        uint64_t TrustKey::GetAge(const uint32_t nTime) const
+        uint64_t TrustKey::Age(const uint64_t nTime) const
         {
             if (nTime < nGenesisTime)
-            {
                 return 0;
-            }
-            else
-            {
-                return (uint64_t)(nTime - nGenesisTime);
-            }
+
+            return (uint64_t)(nTime - nGenesisTime);
         }
 
 
@@ -168,7 +164,7 @@ namespace TAO
                 "genesis=", hashGenesisBlock.ToString(), ", ",
                 "tx=", hashGenesisTx.ToString(), ", ",
                 "time=", nGenesisTime, ", ",
-                "age=", GetAge(runtime::unifiedtimestamp()), ", "
+                "age=", Age(runtime::unifiedtimestamp()), ", "
             );
         }
 

@@ -104,7 +104,7 @@ namespace TAO
             void SetNull();
 
 
-            /** GetAge
+            /** Age
              *
              *  Retrieve how old the Trust Key is at a given point in time.
              *
@@ -113,7 +113,7 @@ namespace TAO
              *  @return Elapsed time between Trust Key Genesis timestamp and the requested nTime, or 0 if nTime < nGenesisTime
              *
              **/
-            uint64_t GetAge(const uint32_t nTime) const;
+            uint64_t Age(const uint64_t nTime) const;
 
 
             /** BlockAge
