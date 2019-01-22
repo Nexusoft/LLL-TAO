@@ -377,7 +377,7 @@ namespace LLD
 
             /* Get the key. */
             SectorKey cKey;
-            if(!pSectorKeys->Get(index.Bytes(), cKey))
+            if(!pSectorKeys->Get(ssIndex.Bytes(), cKey))
                 return false;
 
             /* Write the new sector key. */

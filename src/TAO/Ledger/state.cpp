@@ -500,6 +500,9 @@ namespace TAO
                 }
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");
+
+                /* Write the indexing entries. */
+                LLD::legDB->IndexBlock(tx.second, GetHash());
             }
 
             /* Update the previous state's next pointer. */

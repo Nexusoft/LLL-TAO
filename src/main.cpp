@@ -51,8 +51,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/constants.h>
 
-
-
 /* Declare the Global LLD Instances. */
 namespace LLD
 {
@@ -117,7 +115,6 @@ int main(int argc, char** argv)
     {
         debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir(false));
     }
-
 
 
     /* Create the database instances. */
@@ -290,7 +287,7 @@ int main(int argc, char** argv)
         LLD::locDB->WriteLast(tx.hashGenesis, tx.GetHash());
     }
     delete user;
-    
+
 
     /* Initialize generator thread. */
     std::thread thread;

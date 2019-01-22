@@ -121,6 +121,38 @@ namespace LLD
         }
 
 
+        /** IndexBlock
+         *
+         *  Index a transaction hash to a block in keychain
+         *
+         *  @param[in] hashTransaction The txid of transaction to write.
+         *  @param[in] hashBlock The block hash to index to
+         *
+         *  @return True if the transaction was successfully written.
+         *
+         **/
+        bool IndexBlock(const uint512_t& hashTransaction, const uint1024_t& hashBlock)
+        {
+            return Index(std::make_pair(std::string("index"), hashTransaction), hashBlock);
+        }
+
+
+        /** Read Block
+         *
+         *  Reads a block state from disk from a tx index
+         *
+         *  @param[in] hashBlock The block hash to read.
+         *  @param[in] state The block state object to read.
+         *
+         *  @return True if the read was successful.
+         *
+         **/
+        bool ReadBlock(const uint512_t& hashTransaction, TAO::Ledger::BlockState& state)
+        {
+            return Read(std::make_pair(std::string("index"), hashTransaction), state);
+        }
+
+
         /** Has Tx.
          *
          *  Checks LedgerDB if a transaction exists.
