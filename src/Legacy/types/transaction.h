@@ -230,6 +230,18 @@ namespace Legacy
 		bool TrustKey(uint576_t& cKey) const;
 
 
+		/** Trust Score
+		 *
+		 *  Extract the trust score out of the coinstake transaction.
+		 *
+		 *  @param[out] nScore The trust score to return.
+		 *
+		 *  @return true if the trust score was found.
+		 *
+		 **/
+		bool TrustScore(uint32_t& nScore) const;
+
+
 
         /** Extract Trust
          *
@@ -265,7 +277,7 @@ namespace Legacy
 		 *  @return true if succeeded.
 		 *
 		 **/
-		bool CoinstakeInterest(const LegacyBlock& block, uint64_t& nInterest) const;
+		bool CoinstakeInterest(const TAO::Ledger::BlockState& block, uint64_t& nInterest) const;
 
 
 		/** Are Inputs Standard
@@ -413,7 +425,7 @@ namespace Legacy
 	     *  @return true if the inputs were found
 	     *
 	     **/
-		bool Connect(const std::map<uint512_t, Transaction>& inputs, const TAO::Ledger::BlockState* state, uint8_t nFlags = FLAGS::MEMPOOL) const;
+		bool Connect(const std::map<uint512_t, Transaction>& inputs, const TAO::Ledger::BlockState& state, uint8_t nFlags = FLAGS::MEMPOOL) const;
 
 
 		/** Disconnect

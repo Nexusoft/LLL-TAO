@@ -123,7 +123,7 @@ namespace TAO
             }
 
             /* See if inputs can be connected. */
-            if(!tx.Connect(inputs, &ChainState::stateBest, Legacy::FLAGS::MEMPOOL))
+            if(!tx.Connect(inputs, ChainState::stateBest, Legacy::FLAGS::MEMPOOL))
                 return debug::error(FUNCTION, "failed to connect inputs");
 
             /* Set the inputs to be claimed. */

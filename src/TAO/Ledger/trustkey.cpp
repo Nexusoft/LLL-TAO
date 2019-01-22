@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <Legacy/types/legacy.h>
 
+#include <LLD/include/global.h>
+
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/trust.h>
 #include <TAO/Ledger/types/tritium.h>
@@ -101,7 +103,7 @@ namespace TAO
 
 
         /* Check the Genesis Transaction of this Trust Key. */
-        bool TrustKey::CheckGenesis(const Legacy::LegacyBlock& block) const
+        bool TrustKey::CheckGenesis(const TAO::Ledger::BlockState& block) const
         {
             /* Invalid if Null. */
             if(IsNull())
@@ -112,11 +114,11 @@ namespace TAO
                 return debug::error(FUNCTION, "genesis has to be proof of stake");
 
             /* Trust Key Timestamp must be the same as Genesis Key Block Timestamp. */
-            if(nGenesisTime != block.nTime)
+            if(nGenesisTime != block.GetBlockTime())
                 return debug::error(FUNCTION, "genesis time mismatch");
 
             /* Genesis Key Transaction must match Trust Key Genesis Hash. */
-            if(block.vtx[0].GetHash() != hashGenesisTx)
+            if(block.vtx[0].second != hashGenesisTx)
                 return debug::error(FUNCTION, "genesis coinstake hash mismatch");
 
             /* Check the genesis block hash. */
@@ -128,10 +130,15 @@ namespace TAO
 
 
         /* Interest is Determined By Logarithmic Equation from Genesis Key. */
-        double TrustKey::InterestRate(const Legacy::LegacyBlock& block, uint32_t nTime) const
+        double TrustKey::InterestRate(const TAO::Ledger::BlockState& block, uint32_t nTime) const
         {
+            /* Get the previous coinstake transaction. */
+            Legacy::Transaction tx;
+            if(!LLD::legacyDB->ReadTx(block.vtx[0].second, tx))
+                return debug::error(FUNCTION, "failed to read coinstake from legacy DB");
+
             /* Genesis interest rate is 0.5% */
-            if(block.vtx[0].IsGenesis())
+            if(tx.IsGenesis())
                 return 0.005;
 
             /* Block version 4 is the age of key from timestamp. */
@@ -140,7 +147,7 @@ namespace TAO
                 nTrustScore = (nTime - nGenesisTime);
 
             /* Block version 5 is the trust score of the key. */
-            else if(!block.TrustScore(nTrustScore))
+            else if(!tx.TrustScore(nTrustScore))
                 return 0.0; //this will trigger an interest rate failure
 
             return std::min(0.03,

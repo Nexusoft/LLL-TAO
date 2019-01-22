@@ -34,7 +34,7 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-
+        class BlockState;
 
         /** @class TrustKey
          *
@@ -173,7 +173,7 @@ namespace TAO
              *  @return true if block contains valid Genesis transaction for this Trust Key, false otherwise
              *
              */
-            bool CheckGenesis(const Legacy::LegacyBlock& block) const;
+            bool CheckGenesis(const TAO::Ledger::BlockState& block) const;
 
 
             /** Interest Rate
@@ -186,7 +186,7 @@ namespace TAO
              *  @return the total interest rate of trust key.
              *
              **/
-            double InterestRate(const Legacy::LegacyBlock& block, uint32_t nTime) const;
+            double InterestRate(const TAO::Ledger::BlockState& block, uint32_t nTime) const;
 
 
             /** ToString

@@ -265,6 +265,23 @@ namespace Legacy
     }
 
 
+    /* Extract the trust score out of the coinstake transaction. */
+    bool Transaction::TrustScore(uint32_t& nScore) const
+    {
+        /* Extract the trust key. */
+        uint1024_t hashBlock;
+
+        /* Get the sequence. */
+        uint32_t nSequence;
+
+        /* Extract the trust score from vin. */
+        if(!ExtractTrust(hashBlock, nSequence, nScore))
+            return debug::error(FUNCTION, "failed to get trust score");
+
+        return true;
+    }
+
+
     /* Extract the trust data from the input script. */
     bool Transaction::ExtractTrust(uint1024_t& hashLastBlock, uint32_t& nSequence, uint32_t& nTrustScore) const
     {
@@ -321,7 +338,7 @@ namespace Legacy
 
 
     /* Get the total calculated interest of the coinstake transaction */
-    bool Transaction::CoinstakeInterest(const LegacyBlock& block, uint64_t& nInterest) const
+    bool Transaction::CoinstakeInterest(const TAO::Ledger::BlockState& block, uint64_t& nInterest) const
     {
         /* Check that the transaction is Coinstake. */
         if(!IsCoinStake())
@@ -342,7 +359,7 @@ namespace Legacy
             nInterestRate = 0.005;
 
         /* Get the trust key from index database. */
-        if(!block.vtx[0].IsGenesis() || block.nVersion >= 6)
+        if(!IsGenesis() || block.nVersion >= 6)
         {
             /* Read the trust key from the disk. */
             TAO::Ledger::TrustKey trustKey;
@@ -350,7 +367,7 @@ namespace Legacy
                 nInterestRate = trustKey.InterestRate(block, nTime);
 
             /* Check if it failed to read and this is genesis. */
-            else if(!block.vtx[0].IsGenesis())
+            else if(!IsGenesis())
                 return debug::error(FUNCTION, "unable to read trust key");
         }
 
@@ -705,7 +722,7 @@ namespace Legacy
 
 
     /* Mark the inputs in a transaction as spent. */
-    bool Transaction::Connect(const std::map<uint512_t, Transaction>& inputs, const TAO::Ledger::BlockState* state, uint8_t nFlags) const
+    bool Transaction::Connect(const std::map<uint512_t, Transaction>& inputs, const TAO::Ledger::BlockState& state, uint8_t nFlags) const
     {
         /* Coinbase has no inputs. */
         if (IsCoinBase())
@@ -734,7 +751,7 @@ namespace Legacy
                     return debug::error(FUNCTION, "failed to read previous tx block");
 
                 /* Check the maturity. */
-                if((state->nHeight - statePrev.nHeight) < TAO::Ledger::NEXUS_MATURITY_BLOCKS)
+                if((state.nHeight - statePrev.nHeight) < TAO::Ledger::NEXUS_MATURITY_BLOCKS)
                     return debug::error(FUNCTION, "tried to spend immature balance");
             }
 
@@ -764,9 +781,12 @@ namespace Legacy
         /* Check the coinstake transaction. */
         if (IsCoinStake())
         {
+            /* Get the coinstake interest. */
             uint64_t nInterest = 0;
+            if(!CoinstakeInterest(state, nInterest))
+                return debug::error(FUNCTION, GetHash().ToString().substr(0, 10), " failed to get coinstake interest");
 
-            //TODO: Check the coinstake inputs.
+            /* Check that the interest is within range. */
             if (vout[0].nValue > nInterest + nValueIn)
                 return debug::error(FUNCTION, GetHash().ToString().substr(0,10), " stake reward mismatch");
 
