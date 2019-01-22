@@ -57,7 +57,7 @@ namespace Legacy
          *  @param[in] nDepthIn The depth of the transaction at time of COutput creation
          *
          **/
-        COutput(const CWalletTx& walletTxIn, uint32_t iIn, uint32_t nDepthIn) :
+        COutput(const CWalletTx& walletTxIn, const uint32_t iIn, const uint32_t nDepthIn) :
             walletTx(walletTxIn), 
             i(iIn),
             nDepth(nDepthIn)

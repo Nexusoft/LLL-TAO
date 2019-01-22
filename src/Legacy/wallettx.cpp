@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <LLD/include/legacy.h>
+#include <LLD/include/global.h>
 
 #include <Legacy/include/evaluate.h>
 #include <Legacy/include/money.h>
@@ -32,7 +33,7 @@ namespace Legacy
 {
 
     /* Assigns the wallet for this wallet transaction. */
-    void CWalletTx::BindWallet(CWallet *pwalletIn)
+    void CWalletTx::BindWallet(CWallet* pwalletIn)
     {
         ptransactionWallet = pwalletIn;
         fHaveWallet = true;
@@ -425,8 +426,7 @@ namespace Legacy
             /* Get the Nexus address from the txout public key */
             if (!ExtractAddress(txout.scriptPubKey, address))
             {
-                debug::log(0, "CWalletTx::GetAmounts: Unknown transaction type found, txid ",
-                           this->GetHash().ToString());
+                debug::log(0, FUNCTION, "Unknown transaction type found, txid ", this->GetHash().ToString());
 
                 address = " unknown ";
             }
@@ -496,7 +496,7 @@ namespace Legacy
 
 
     /* Populates transaction data for previous transactions into vtxPrev */
-    void CWalletTx::AddSupportingTransactions(LLD::LegacyDB& legacydb)
+    void CWalletTx::AddSupportingTransactions()
     {
         vtxPrev.clear();
 
@@ -552,14 +552,14 @@ namespace Legacy
                         tx = *mapWalletPrev[prevoutTxHash];
 
                     }
-                    else if (!config::fClient && legacydb.ReadTx(prevoutTxHash, parentTransaction))
+                    else if (!config::fClient && LLD::legacyDB->ReadTx(prevoutTxHash, parentTransaction))
                     {
                         /* Found transaction in database, but it isn't in wallet so don't save */
                     }
                     else
                     {
                         /* Transaction not found */
-                        debug::log(0, "CWalletTx::AddSupportingTransactions: Error: AddSupportingTransactions() : unsupported transaction");
+                        debug::log(0, FUNCTION, "Error: Unsupported transaction");
                         continue;
                     }
 
@@ -571,7 +571,7 @@ namespace Legacy
                         /* vtxPrev gets loaded with inputs to this transaction, but when one of these inputs
                          * is recent (depth < copy depth) we go one deeper and also load its inputs (inputs of inputs).
                          * This helps assure, when transactions are relayed, that we transmit anything not yet added
-                         * to a block and included in legacydb. Obviously, it is unikely that inputs of inputs are
+                         * to a block and included in legacyDB. Obviously, it is unikely that inputs of inputs are
                          * within the copy depth because we'd be spending balance that probably is not completely confirmed,
                          * so this really should never be processed. Code is from legacy and left here intact just in case.
                          */
@@ -587,7 +587,7 @@ namespace Legacy
 
 
     /* Send this transaction to the network if not in our database, yet. */
-    void CWalletTx::RelayWalletTransaction(LLD::LegacyDB& legacydb)
+    void CWalletTx::RelayWalletTransaction()
     {
         for(const CMerkleTx& tx : vtxPrev)
         {
@@ -597,7 +597,7 @@ namespace Legacy
                 uint512_t hash = tx.GetHash();
 
 // TODO: Need implementation to support RelayMessage()
-                if (!legacydb.HasTx(hash))
+                if (!LLD::legacyDB->HasTx(hash))
                 {
                     //RelayMessage(LLP::CInv(LLP::MSG_TX, hash), (Transaction)tx);
                 }
@@ -609,21 +609,13 @@ namespace Legacy
             uint512_t hash = GetHash();
 
             /* Relay this tx if we don't have it in our database, yet */
-            if (!legacydb.HasTx(hash))
+            if (!LLD::legacyDB->HasTx(hash))
             {
-                debug::log(0, "Relaying wtx ", hash.ToString().substr(0,10));
+                debug::log(0, FUNCTION, "Relaying wtx ", hash.ToString().substr(0,10));
 // TODO: Need implementation to support RelayMessage()
                 //RelayMessage(LLP::CInv(LLP::MSG_TX, hash), (Transaction)*this);
             }
         }
-    }
-
-
-    /* Send this transaction to the network if not in our database, yet. */
-    void CWalletTx::RelayWalletTransaction()
-    {
-        LLD::LegacyDB legacydb(LLD::FLAGS::READONLY);
-        RelayWalletTransaction(legacydb);
     }
 
 }

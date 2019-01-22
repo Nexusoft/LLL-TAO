@@ -111,12 +111,20 @@ namespace Legacy
 
         /** Flag indicating that the received time is also the transaction time.
          *  Should be set for transactions created and sent by bound wallet.
+         *
+         *  This is actually a bool value, set to true or false. Type
+         *  declaration is uint32_t to support unserialization from legacy wallets.
          **/
-        uint64_t fTimeReceivedIsTxTime;
+        uint32_t fTimeReceivedIsTxTime;
 
 
-        /** timestamp when this transaction was received by this node. **/
-        uint64_t nTimeReceived; 
+        /** Timestamp when this transaction was received by this node. 
+         *
+         *  Timestamps are generally uint64_t but this one must remain uint32_t
+         *  to support unserialization of unsigned int values in legacy wallets.
+         *
+         **/
+        uint32_t nTimeReceived; 
 
 
         /** Flag to indicate transaction is from bound wallet.
@@ -299,7 +307,7 @@ namespace Legacy
          *  @see CWallet::AddToWallet()
          *
          **/
-        void BindWallet(CWallet *pwalletIn);
+        void BindWallet(CWallet* pwalletIn);
 
 
         /** GetDebit
@@ -510,27 +518,13 @@ namespace Legacy
          *  Populates transaction data for previous transactions into vtxPrev.
          *  Adds no transaction of no wallet bound.
          *
-         *  @param[in] indexdb Local index database containing previous transaction data
-         *
          **/
-        void AddSupportingTransactions(LLD::LegacyDB& legacydb);
+        void AddSupportingTransactions();
 
 
         /** RelayWalletTransaction
          *
          *  Send this transaction to the network if not in our database, yet.
-         *
-         *  @param[in] legacydb Local transaction database to check
-         *
-         **/
-        void RelayWalletTransaction(LLD::LegacyDB& legacydb);
-
-
-        /** RelayWalletTransaction
-         *
-         *  Send this transaction to the network if not in our database, yet.
-         *
-         *  This method open the lobal index database to check it.
          *
          **/
         void RelayWalletTransaction();

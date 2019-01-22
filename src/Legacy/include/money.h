@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <inttypes.h>
 #include <Util/include/runtime.h>
 #include <Util/include/args.h>
+#include <Util/include/convert.h>
 
 namespace Legacy
 {
@@ -85,6 +86,16 @@ namespace Legacy
     inline double SatoshisToAmount(uint64_t viz)
     {
         return (double)viz / (double)Legacy::COIN;
+    }
+
+    inline int64_t AmountToSatoshis(double dAmount)
+    {
+        if (dAmount <= 0.0 || dAmount > Legacy::MaxTxOut())
+            throw std::runtime_error( "Invalid amount");
+        int64_t nAmount = roundint64(dAmount * COIN);
+        if (!MoneyRange(nAmount))
+            throw std::runtime_error("Invalid amount");
+        return nAmount;
     }
 
 }

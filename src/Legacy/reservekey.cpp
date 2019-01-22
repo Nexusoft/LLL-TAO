@@ -40,7 +40,7 @@ namespace Legacy
                 vchPubKey = keypoolEntry.vchPubKey;
             else
             {
-                debug::log(0, "CReserveKey::GetReservedKey(): Warning: using default key instead of a new key, top up your keypool.");
+                debug::log(0, FUNCTION, "Warning: Using default key instead of a new key, top up your keypool.");
                 vchPubKey = wallet.GetDefaultKey();
             }
         }

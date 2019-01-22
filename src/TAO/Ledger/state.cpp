@@ -675,5 +675,33 @@ namespace TAO
         {
             debug::log(0, ToString(debug::flags::header | debug::flags::chain));
         }
+
+        uint1024_t BlockState::StakeHash() const
+        {
+            if(vtx[0].first == TYPE::TRITIUM_TX)
+            {
+                /* Get the tritium transaction  from the database*/
+                TAO::Ledger::Transaction tx;
+                if(!LLD::legDB->ReadTx(vtx[0].second, tx))
+                    return debug::error(FUNCTION, "transaction is not on disk");
+
+                return Block::StakeHash( tx.IsGenesis(), tx.hashGenesis);
+            }
+            else if(vtx[0].first == TYPE::LEGACY_TX)
+            {
+                /* Get the legacy transaction from the database. */
+                Legacy::Transaction tx;
+                if(!LLD::legacyDB->ReadTx(vtx[0].second, tx))
+                    return debug::error(FUNCTION, "transaction is not on disk");
+
+                /* Get the trust key. */
+                uint576_t keyTrust;
+                tx.TrustKey(keyTrust);
+
+                return Block::StakeHash(tx.IsGenesis(), keyTrust);
+            }
+            else
+                return debug::error(FUNCTION, "StakeHash called on invalid BlockState");
+        }
     }
 }

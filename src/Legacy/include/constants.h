@@ -54,6 +54,9 @@ namespace Legacy
     /** Maximum size of numeric values. **/
     const size_t nMaxNumSize = 4;
 
+    /** string used to sign Nexus messages **/
+    const std::string strMessageMagic = "Nexus Signed Message:\n";
+
 }
 
 #endif

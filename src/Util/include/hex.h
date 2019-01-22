@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <vector>
 
 #include <Util/include/debug.h>
+#include <LLC/hash/macro.h>
+#include <LLP/include/network.h>
 
 /* buffer for determing hex value of ASCII table */
 const signed char phexdigit[256] =
@@ -217,6 +219,24 @@ inline void PrintHex(const T pbegin, const T pend, bool fSpaces=true)
 inline void PrintHex(const std::vector<uint8_t>& vch, bool fSpaces=true)
 {
     debug::log(0, HexStr(vch, fSpaces));
+}
+
+/** HexBits
+ *
+ *  Converts bits to a hex string.
+ *
+ *  @param[in] nBits The bits to convert 
+ *
+ * @return The newly created hex string
+ **/
+inline std::string HexBits(unsigned int nBits)
+{
+    union {
+        int32_t nBits;
+        char cBits[4];
+    } uBits;
+    uBits.nBits = htonl((int32_t)nBits);
+    return HexStr(BEGIN(uBits.cBits), END(uBits.cBits));
 }
 
 #endif

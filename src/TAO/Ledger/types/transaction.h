@@ -239,6 +239,15 @@ namespace TAO
               **/
              void print() const;
 
+             /** To String Short
+             *
+             *  Short form of the debug output.
+             *
+             *  @return The string value to return;
+             *
+             **/
+            std::string ToStringShort() const;
+
         };
     }
 }

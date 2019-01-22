@@ -20,8 +20,6 @@ ________________________________________________________________________________
 #include <LLC/include/key.h>
 #include <LLC/types/uint1024.h>
 
-#include <Util/include/mutex.h>
-
 namespace Legacy
 {
 
@@ -38,10 +36,6 @@ namespace Legacy
      **/
     class CKeyStore
     {
-    protected:
-        /* Mutex for thread concurrency. */
-        mutable std::mutex cs_KeyStore;
-
     public:
         /** Virtual destructor
          *
@@ -76,7 +70,7 @@ namespace Legacy
          *  @return true if key successfully retrieved
          *
          **/
-        virtual bool GetKey(const NexusAddress &address, LLC::ECKey& keyOut) const = 0;
+        virtual bool GetKey(const NexusAddress& address, LLC::ECKey& keyOut) const = 0;
 
 
         /** GetKeys
@@ -87,7 +81,7 @@ namespace Legacy
          *  @param[out] setAddress A Set containing the Base 58-encoded addresses of the all keys currently in the key store
          *
          **/
-        virtual void GetKeys(std::set<NexusAddress> &setAddress) const = 0;
+        virtual void GetKeys(std::set<NexusAddress>& setAddress) const = 0;
 
 
         /** HaveKey
@@ -100,7 +94,7 @@ namespace Legacy
          *  @return true if key is present in the key store
          *
          **/
-        virtual bool HaveKey(const NexusAddress &address) const = 0;
+        virtual bool HaveKey(const NexusAddress& address) const = 0;
 
 
         /** AddCScript
@@ -128,7 +122,7 @@ namespace Legacy
          *  @return true if script successfully retrieved
          *
          **/
-        virtual bool GetCScript(const uint256_t &hash, CScript& redeemScriptOut) const = 0;
+        virtual bool GetCScript(const uint256_t& hash, CScript& redeemScriptOut) const = 0;
 
 
         /** HaveCScript
@@ -141,7 +135,7 @@ namespace Legacy
          *  @return true if script is present in the key store
          *
          **/
-        virtual bool HaveCScript(const uint256_t &hash) const = 0;
+        virtual bool HaveCScript(const uint256_t& hash) const = 0;
 
 
         /** GetPubKey
@@ -155,7 +149,7 @@ namespace Legacy
          *  @return true if public key was successfully retrieved
          *
          **/
-        virtual bool GetPubKey(const NexusAddress &address, std::vector<uint8_t>& vchPubKeyOut) const;
+        virtual bool GetPubKey(const NexusAddress& address, std::vector<uint8_t>& vchPubKeyOut) const;
 
 
         /** GetSecret
@@ -171,7 +165,7 @@ namespace Legacy
          *  @return true if address present in the key store and private key was successfully retrieved
          *
          **/
-        virtual bool GetSecret(const NexusAddress &address, LLC::CSecret& vchSecret, bool &fCompressed) const;
+        virtual bool GetSecret(const NexusAddress& address, LLC::CSecret& vchSecret, bool& fCompressed) const;
 
     };
 
