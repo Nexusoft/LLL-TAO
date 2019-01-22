@@ -64,12 +64,25 @@ namespace TAO
             uint32_t nGenesisTime;
 
 
+            /** The last block that was found by this key. */
+            uint1024_t hashLastBlock;
+
+
             /** Constructor
              *
              *  Initializes a null Trust Key.
              *
              **/
-            TrustKey();
+            TrustKey()
+            : vchPubKey()
+            , nVersion(1)
+            , hashGenesisBlock(0)
+            , hashGenesisTx(0)
+            , nGenesisTime(0)
+            , hashLastBlock(0)
+            {
+
+            }
 
 
             /** Constructor
@@ -82,7 +95,16 @@ namespace TAO
              *  @param[in] nTimeIn The nGenesisTime value for this Trust Key
              *
              **/
-            TrustKey(const std::vector<uint8_t> vchPubKeyIn, const uint1024_t hashBlockIn, const uint512_t hashTxIn, const int32_t nTimeIn);
+            TrustKey(const std::vector<uint8_t> vchPubKeyIn, const uint1024_t hashBlockIn, const uint512_t hashTxIn, const int32_t nTimeIn)
+            : vchPubKey(vchPubKeyIn)
+            , nVersion(1)
+            , hashGenesisBlock(hashBlockIn)
+            , hashGenesisTx(hashTxIn)
+            , nGenesisTime(nTimeIn)
+            , hashLastBlock(0)
+            {
+
+            }
 
 
             /* Define Serialization/Deserialization for Trust Key */
@@ -93,6 +115,7 @@ namespace TAO
                 READWRITE(hashGenesisBlock);
                 READWRITE(hashGenesisTx);
                 READWRITE(nGenesisTime);
+                READWRITE(hashLastBlock);
             )
 
 

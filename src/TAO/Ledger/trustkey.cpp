@@ -33,37 +33,6 @@ namespace TAO
     namespace Ledger
     {
 
-        /* Initializes a null Trust Key. */
-        TrustKey::TrustKey()
-        {
-            SetNull();
-        }
-
-
-        /* Initializes a Trust Key. */
-        TrustKey::TrustKey(std::vector<uint8_t> vchPubKeyIn, uint1024_t hashBlockIn, uint512_t hashTxIn, int32_t nTimeIn)
-        {
-            SetNull();
-
-            nVersion               = 1;
-            vchPubKey              = vchPubKeyIn;
-            hashGenesisBlock       = hashBlockIn;
-            hashGenesisTx          = hashTxIn;
-            nGenesisTime           = nTimeIn;
-        }
-
-
-        /* Set the Trust Key data to Null (uninitialized) values. */
-        void TrustKey::SetNull()
-        {
-            nVersion             = 1;
-            hashGenesisBlock     = 0;
-            hashGenesisTx        = 0;
-            nGenesisTime         = 0;
-
-            vchPubKey.clear();
-        }
-
 
         /* Retrieve how old the Trust Key is at a given point in time. */
         uint64_t TrustKey::Age(const uint64_t nTime) const
