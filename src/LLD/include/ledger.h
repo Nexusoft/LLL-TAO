@@ -24,6 +24,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/state.h>
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/trustkey.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Register/include/enum.h>
 
@@ -103,6 +104,38 @@ namespace LLD
         bool ReadTx(const uint512_t& hashTransaction, TAO::Ledger::Transaction& tx)
         {
             return Read(hashTransaction, tx);
+        }
+
+
+        /** Write Trust Key
+         *
+         *  Writes a trust key to the ledger DB.
+         *
+         *  @param[in] hashKey The key of trust key to write.
+         *  @param[in] key The trust key object
+         *
+         *  @return True if the trust key was successfully written.
+         *
+         **/
+        bool WriteTrustKey(const uint576_t& hashKey, const TAO::Ledger::TrustKey& key)
+        {
+            return Write(hashKey, key);
+        }
+
+
+        /** Read Trust Key
+         *
+         *  Reads a trust key from the ledger DB.
+         *
+         *  @param[in] hashKey The key of trust key to write.
+         *  @param[in] key The trust key object
+         *
+         *  @return True if the trust key was successfully written.
+         *
+         **/
+        bool ReadTrustKey(const uint576_t& hashKey, TAO::Ledger::TrustKey& key)
+        {
+            return Read(hashKey, key);
         }
 
 

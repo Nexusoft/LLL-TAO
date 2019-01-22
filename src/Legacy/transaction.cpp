@@ -20,11 +20,13 @@ ________________________________________________________________________________
 #include <Legacy/types/transaction.h>
 #include <Legacy/include/money.h>
 #include <Legacy/types/script.h>
+#include <Legacy/types/legacy.h>
 #include <Legacy/include/signature.h>
 #include <Legacy/include/evaluate.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/types/trustkey.h>
 
 #include <Util/include/runtime.h>
 
@@ -300,14 +302,84 @@ namespace Legacy
         /* Check the coin age of each Input. */
         for(int nIndex = 1; nIndex < vin.size(); nIndex++)
         {
-            /** Calculate the Age and Value of given output. **/
-            int64_t nCoinAge = (nTime - 0);//block.GetBlockTime());
+            /* Calculate the Age and Value of given output. */
+            TAO::Ledger::BlockState statePrev;
+            if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev))
+                return debug::error(FUNCTION, "failed to read previous tx block");
 
-            /** Compound the Total Figures. **/
+            /* Time is from current transaction to previous block time. */
+            uint64_t nCoinAge = (nTime - statePrev.GetBlockTime());
+
+            /* Compound the Total Figures. */
             nAge += nCoinAge;
         }
 
         nAge /= (vin.size() - 1);
+
+        return true;
+    }
+
+
+    /* Get the total calculated interest of the coinstake transaction */
+    bool Transaction::CoinstakeInterest(const LegacyBlock& block, uint64_t& nInterest) const
+    {
+        /* Check that the transaction is Coinstake. */
+        if(!IsCoinStake())
+            return debug::error(FUNCTION, "not coinstake transaction");
+
+        /* Extract the Key from the Script Signature. */
+        uint576_t cKey;
+        if(!TrustKey(cKey))
+            return debug::error(FUNCTION, "trust key couldn't be extracted");
+
+        /* Output figure to show the amount of coins being staked at their interest rates. */
+        uint64_t nTotalCoins = 0, nAverageAge = 0;
+        nInterest = 0;
+
+        /* Calculate the Variable Interest Rate for Given Coin Age Input. */
+        double nInterestRate = 0.05; //genesis interest rate
+        if(block.nVersion >= 6)
+            nInterestRate = 0.005;
+
+        /* Get the trust key from index database. */
+        if(!block.vtx[0].IsGenesis() || block.nVersion >= 6)
+        {
+            /* Read the trust key from the disk. */
+            TAO::Ledger::TrustKey trustKey;
+            if(LLD::legDB->ReadTrustKey(cKey, trustKey))
+                nInterestRate = trustKey.InterestRate(block, nTime);
+
+            /* Check if it failed to read and this is genesis. */
+            else if(!block.vtx[0].IsGenesis())
+                return debug::error(FUNCTION, "unable to read trust key");
+        }
+
+        /** Check the coin age of each Input. **/
+        for(int nIndex = 1; nIndex < vin.size(); nIndex++)
+        {
+            /* Calculate the Age and Value of given output. */
+            TAO::Ledger::BlockState statePrev;
+            if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev))
+                return debug::error(FUNCTION, "failed to read previous tx block");
+
+            /* Read the previous transaction. */
+            Legacy::Transaction txPrev;
+            if(!LLD::legacyDB->ReadTx(vin[nIndex].prevout.hash, txPrev))
+                return debug::error(FUNCTION, "failed to read previous tx");
+
+            /* Calculate the Age and Value of given output. */
+            uint64_t nCoinAge = (nTime - statePrev.GetBlockTime());
+            uint64_t nValue = txPrev.vout[vin[nIndex].prevout.n].nValue;
+
+            /* Compound the Total Figures. */
+            nTotalCoins += nValue;
+            nAverageAge += nCoinAge;
+
+            /* Interest is 3% of Year's Interest of Value of Coins. Coin Age is in Seconds. */
+            nInterest += ((nValue * nInterestRate * nCoinAge) / (60 * 60 * 24 * 28 * 13));
+        }
+
+        nAverageAge /= (vin.size() - 1);
 
         return true;
     }
@@ -657,7 +729,13 @@ namespace Legacy
             /* Check maturity before spend. */
             if (txPrev.IsCoinBase() || txPrev.IsCoinStake())
             {
-                //TODO: read state vs txPrev state hashblock state.
+                TAO::Ledger::BlockState statePrev;
+                if(!LLD::legDB->ReadBlock(txPrev.GetHash(), statePrev))
+                    return debug::error(FUNCTION, "failed to read previous tx block");
+
+                /* Check the maturity. */
+                if((state->nHeight - statePrev.nHeight) < TAO::Ledger::NEXUS_MATURITY_BLOCKS)
+                    return debug::error(FUNCTION, "tried to spend immature balance");
             }
 
             /* Check the transaction timestamp. */

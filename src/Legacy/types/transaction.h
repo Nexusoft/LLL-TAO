@@ -255,6 +255,19 @@ namespace Legacy
 		bool CoinstakeAge(uint64_t& nAge) const;
 
 
+		/** Coinstake Interest
+		 *
+		 *  Get the total calculated interest of the coinstake transaction
+		 *
+		 *  @param[in] block The block to check from
+		 *  @param[out] nAge The age to return.
+		 *
+		 *  @return true if succeeded.
+		 *
+		 **/
+		bool CoinstakeInterest(const LegacyBlock& block, uint64_t& nInterest) const;
+
+
 		/** Are Inputs Standard
 		 *
 		 *  Check for standard transaction types
