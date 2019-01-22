@@ -280,6 +280,10 @@ namespace LLD
                     return true;
             }
 
+            /* Check the cache pool. */
+            if(cachePool->Has(ssKey.Bytes()))
+                return true;
+
             /* Return the Key existance in the Keychain Database. */
             SectorKey cKey;
             return pSectorKeys->Get(ssKey.Bytes(), cKey);
