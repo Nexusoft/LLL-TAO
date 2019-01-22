@@ -116,16 +116,16 @@ namespace TAO
             uint64_t GetAge(const uint32_t nTime) const;
 
 
-            /** GetBlockAge
+            /** BlockAge
              *
              *  Retrieve the time since this Trust Key last generated a Proof of Stake block.
              *
-             *  @param[in] nTime The timestamp of the end time for determining age
+             *  @param[in] state The block state to search from
              *
              *  @return Elapsed time between last block genereated and the requested nTime
              *
              **/
-            uint64_t GetBlockAge(const uint32_t nTime) const;
+            uint64_t BlockAge(const TAO::Ledger::BlockState& state) const;
 
 
             /** GetHash
@@ -138,17 +138,17 @@ namespace TAO
             inline uint512_t GetHash() const { return LLC::SK512(vchPubKey, BEGIN(hashGenesisBlock), END(nGenesisTime)); }
 
 
-            /** IsExpired
+            /** Expired
              *
              *  Determine if a key is expired at a given point in time.
              *  Expiration only applies to nVersion=4 or earlier trust keys, though this method may be called for any.
              *
-             *  @param[in] nTime The timestamp of the point in time to check for expiration
+             *  @param[in] state The block state to search from
              *
              *  @return true if Trust Key expired, false otherwise
              *
              */
-            bool IsExpired(uint32_t nTime) const;
+            bool Expired(const TAO::Ledger::BlockState& state) const;
 
 
             /** IsNull

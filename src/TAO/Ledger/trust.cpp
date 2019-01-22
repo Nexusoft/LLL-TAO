@@ -30,13 +30,8 @@ namespace TAO
     {
 
         /* Find the last trust block of given key. */
-        bool GetLastTrust(const TrustKey& trustKey, uint1024_t& hashTrustBlock)
+        bool GetLastTrust(const TrustKey& trustKey, TAO::Ledger::BlockState& state)
         {
-            /* Create the state object. */
-            TAO::Ledger::BlockState state;
-            if(!LLD::legDB->ReadBlock(hashTrustBlock, state))
-                return debug::error(FUNCTION, "couldn't find hash trust block");
-
             /* Loop through all previous blocks looking for most recent trust block. */
             std::vector<uint8_t> vTrustKey;
             while(vTrustKey != trustKey.vchPubKey)
@@ -48,10 +43,7 @@ namespace TAO
 
                 /* Check for genesis. */
                 if(state.GetHash() == trustKey.hashGenesisBlock)
-                {
-                    hashTrustBlock = state.GetHash();
                     return true;
-                }
 
                 /* If serach block isn't proof of stake, return an error. */
                 if(!state.IsProofOfStake())
@@ -65,9 +57,6 @@ namespace TAO
                 /* Extract the trust key from coinstake. */
                 if(!tx.TrustKey(vTrustKey))
                     return debug::error(FUNCTION, "couldn't extract trust key");
-
-                /* Set current trust block in recursion. */
-                hashTrustBlock = state.GetHash();
             }
 
             return true;
@@ -75,7 +64,7 @@ namespace TAO
 
 
         /* Find the genesis block of given trust key. */
-        bool FindGenesis(const uint576_t& cKey, TrustKey& trustKey, uint1024_t& hashTrustBlock)
+        bool FindGenesis(const uint576_t& cKey, const uint1024_t& hashTrustBlock, TrustKey& trustKey)
         {
             /* Create the state object. */
             TAO::Ledger::BlockState state;
@@ -90,13 +79,6 @@ namespace TAO
                 state = state.Prev();
                 if(!GetLastState(state, 0))
                     return debug::error(FUNCTION, "couldn't find previous block");
-
-                /* Check for genesis. */
-                if(state.GetHash() == trustKey.hashGenesisBlock)
-                {
-                    hashTrustBlock = state.GetHash();
-                    return true;
-                }
 
                 /* If serach block isn't proof of stake, return an error. */
                 if(!state.IsProofOfStake())
@@ -120,9 +102,6 @@ namespace TAO
 
                     return true;
                 }
-
-                /* Set current trust block in recursion. */
-                hashTrustBlock = state.GetHash();
             }
 
             return false;

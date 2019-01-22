@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <Legacy/types/legacy.h>
 
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/trust.h>
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/trustkey.h>
 
@@ -77,17 +78,22 @@ namespace TAO
 
 
         /* Retrieve the time since this Trust Key last generated a Proof of Stake block. */
-        uint64_t TrustKey::GetBlockAge(const uint32_t nTime) const
+        uint64_t TrustKey::BlockAge(const TAO::Ledger::BlockState& state) const
         {
-            //TODO requires implementation
-            return 0; //temp until implementation completed
+            /* Check the index for the last block. */
+            TAO::Ledger::BlockState stateLast = state;
+            if(!GetLastTrust(*this, stateLast))
+                return debug::error(FUNCTION, "last trust block not found");
+
+            /* Block Age is Time to Previous Block's Time. */
+            return state.GetBlockTime() - stateLast.GetBlockTime();
         }
 
 
         /* Determine if a key is expired at a given point in time. */
-        bool TrustKey::IsExpired(uint32_t nTime) const
+        bool TrustKey::Expired(const TAO::Ledger::BlockState& state) const
         {
-            if (GetBlockAge(nTime) > TRUST_KEY_EXPIRE)
+            if (BlockAge(state) > 60 * 60 * 24)
                 return true;
 
             return false;

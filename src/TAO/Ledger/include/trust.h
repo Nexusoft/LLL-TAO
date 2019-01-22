@@ -29,12 +29,12 @@ namespace TAO
          *  Find the last trust block of given key.
          *
          *  @param[in] trustKey The trust key to search for
-         *  @param[out] hashTrustBlock The trust key block found.
+         *  @param[out] state The trust key block found.
          *
          *  @return true if the trust block was found.
          *
          **/
-        bool GetLastTrust(const TrustKey& trustKey, uint1024_t& hashTrustBlock);
+        bool GetLastTrust(const TrustKey& trustKey, TAO::Ledger::BlockState& state);
 
 
         /** Find Genesis
@@ -48,7 +48,7 @@ namespace TAO
          *  @return true if the trust block was found.
          *
          **/
-        bool FindGenesis(const uint576_t& cKey, TrustKey& trustKey, uint1024_t& hashTrustBlock);
+        bool FindGenesis(const uint576_t& cKey, const uint1024_t& hashTrustBlock, TrustKey& trustKey);
     }
 }
 
