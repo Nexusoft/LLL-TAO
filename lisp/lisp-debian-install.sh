@@ -1,6 +1,12 @@
-
+#!/bin/bash
 #
-# Install LISP dependecies and useful networking tools 
+# lisp-debian-install.sh
+#
+# This script is used to install the lispers.net LISP implementation on a
+# debian system used with Nexus use-cases. It installs the python dependencies
+# and networking tools to run LISP on a Nexus node.
+#
+# To start LISP, use the RL or RL-seed script.
 #
 sudo apt-get update && sudo apt-get -yq install \
     gcc libc-dev python python-dev libffi-dev openssl libpcap-dev \
@@ -18,23 +24,13 @@ sudo mkdir /lispers.net; cd /lispers.net; curl --insecure -L https://www.dropbox
 sudo python /lispers.net/get-pip.py
 sudo pip install -r /lispers.net/pip-requirements.txt
 
-
-
 #
 # Copy LISP startup config.
 #
 cd -
 sudo cp RL /lispers.net/RL
+sudo cp RL-seed /lispers.net/RL-seed
 sudo cp lisp.config.xtr /lispers.net/lisp.config.xtr
 sudo cp lisp-join.py /lispers.net/lisp-join.py
 sudo cp make-crypto-eid.py /lispers.net/make-crypto-eid.py
-
-cd /lispers.net
-sudo ./RL
-sudo ./pslisp
-
-#
-# Show the EID's
-#
-curl --silent --insecure -u root: http://localhost:9090/lisp/api/database-mapping | jq .| egrep "eid-prefix"
-
+exit
