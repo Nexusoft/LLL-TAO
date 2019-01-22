@@ -114,6 +114,13 @@ namespace LLD
             vKey            = key.vKey;
         }
 
+        /* Set the key for this object. */
+        void SetKey(const std::vector<uint8_t>& vKeyIn)
+        {
+            vKey = vKeyIn;
+            nLength = vKey.size();
+        }
+
         /* Iterator to the beginning of the raw key. */
         uint32_t Begin() const { return 13; }
 

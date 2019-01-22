@@ -353,6 +353,39 @@ namespace LLD
         }
 
 
+        template<typename Key, typename Type>
+        bool Index(const Key& key, const Type& index)
+        {
+            /* Serialize Key into Bytes. */
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
+            ssKey << key;
+
+            /* Serialize the index into bytes. */
+            DataStream ssIndex(SER_LLD, DATABASE_VERSION);
+            ssIndex << index;
+
+            /* Check that the key is not pending in a transaction for Erase. */
+            if(pTransaction)
+            {
+                LOCK(TRANSACTION_MUTEX);
+
+                /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
+                pTransaction->mapIndex[ssKey.Bytes()] = ssIndex.Bytes();
+
+                return true;
+            }
+
+            /* Get the key. */
+            SectorKey cKey;
+            if(!pSectorKeys->Get(index.Bytes(), cKey))
+                return false;
+
+            /* Write the new sector key. */
+            cKey.SetKey(ssKey.Bytes());
+            return pSectorKeys->Put(cKey);
+        }
+
+
         template<typename Key>
         bool Write(const Key& key)
         {
@@ -928,6 +961,36 @@ namespace LLD
                     TxnAbort();
 
                     return debug::error(FUNCTION, "failed to commit sector data");
+                }
+            }
+
+            /* Commit the index data. */
+            std::map<std::vector<uint8_t>, SectorKey> mapIndex;
+            for(auto it = pTransaction->mapIndex.begin(); it != pTransaction->mapIndex.end(); ++it )
+            {
+                /* Get the key. */
+                SectorKey cKey;
+                if(mapIndex.count(it->second))
+                    cKey = mapIndex[it->second];
+                else
+                {
+                    if(!pSectorKeys->Get(it->second, cKey))
+                    {
+                        TxnAbort();
+
+                        return debug::error(FUNCTION, "failed to read indexing entry");
+                    }
+
+                    mapIndex[it->second] = cKey;
+                }
+
+                /* Write the new sector key. */
+                cKey.SetKey(it->first);
+                if(!pSectorKeys->Put(cKey))
+                {
+                    TxnAbort();
+
+                    return debug::error(FUNCTION, "failed to write indexing entry");
                 }
             }
 
