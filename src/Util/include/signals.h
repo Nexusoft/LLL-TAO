@@ -22,6 +22,17 @@ ________________________________________________________________________________
 
 static std::condition_variable SHUTDOWN;
 
+/** Shutdown
+ *
+ *  Shutdown the system and all its subsystems.
+ *
+ **/
+void Shutdown()
+{
+    config::fShutdown = true;
+    SHUTDOWN.notify_all();
+}
+
 
 /** HandleSIGTERM
  *
@@ -33,10 +44,7 @@ static std::condition_variable SHUTDOWN;
 void HandleSIGTERM(int signum)
 {
     if(signum != SIGPIPE)
-    {
-        config::fShutdown = true;
-        SHUTDOWN.notify_all();
-    }
+        Shutdown();
 }
 
 
