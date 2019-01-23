@@ -30,6 +30,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/rpc.h>
 
 #include <LLP/include/global.h>
+#include <LLP/include/baseaddress.h>
 
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -194,11 +195,13 @@ int main(int argc, char** argv)
 
     if(config::mapMultiArgs["-addnode"].size() > 0)
     {
+        uint16_t port = static_cast<uint16_t>(config::GetArg("-port", config::fTestNet ? 8323 : 9323));
         for(auto node : config::mapMultiArgs["-addnode"])
         {
-            LLP::LEGACY_SERVER->AddConnection(
-                node,
-                config::GetArg("-port", config::fTestNet ? 8323 : 9323));
+            LLP::LEGACY_SERVER->AddConnection(node, port);
+
+            if(LLP::LEGACY_SERVER->pAddressManager)
+                LLP::LEGACY_SERVER->pAddressManager->AddAddress(LLP::BaseAddress(node, port));
         }
     }
 
