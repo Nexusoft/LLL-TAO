@@ -425,10 +425,10 @@ namespace LLP
             /* Check the server if it is set. */
             if(!LEGACY_SERVER->addrThisNode.IsValid())
             {
-                addr.SetPort(config::GetArg("-port", config::fTestNet ? 8323 : 9323));
+                addrMe.SetPort(config::GetArg("-port", config::fTestNet ? 8323 : 9323));
                 debug::log(0, NODE, "recieved external address ", addrMe.ToString());
 
-                LEGACY_SERVER->addrThisNode = addr;
+                LEGACY_SERVER->addrThisNode = addrMe;
             }
 
             /* Send version message if connection is inbound. */
