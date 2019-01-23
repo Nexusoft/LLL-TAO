@@ -316,7 +316,9 @@ namespace Legacy
     /* Accept a block into the chain. */
     bool LegacyBlock::Accept()
     {
-        print();
+        /* Print the block on verbose 2. */
+        if(config::GetArg("-verbose", 0) >= 2)
+            print();
 
         /* Read leger DB for duplicate block. */
         TAO::Ledger::BlockState state;
