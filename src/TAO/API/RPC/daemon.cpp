@@ -58,15 +58,22 @@ namespace TAO
                     "reset"
                     " - Restart all node connections");
 
+            // read in any config file changes
+            config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
+
             //disconnect all nodes currently active
             if(LLP::LEGACY_SERVER )
+            {
                 LLP::LEGACY_SERVER->DisconnectAll();
+                LLP::LEGACY_SERVER->AddNodesFromConfig();
+            }
 
             if(LLP::TRITIUM_SERVER)
+            {
                 LLP::TRITIUM_SERVER->DisconnectAll();
-        
-             config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
-
+                LLP::TRITIUM_SERVER->AddNodesFromConfig();
+            }
+            
             return "success";
         }
     }

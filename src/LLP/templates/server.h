@@ -217,6 +217,14 @@ namespace LLP
             if(!dt->AddConnection(strAddress, nPort, DDOS_MAP[addrConnect]))
                 return false;
 
+            /* since this is a manual connection we need to also manually add the the address to the 
+                address manager already in the CONNECTED state*/
+            if(pAddressManager)
+            {
+                Address addr = Address(addrConnect);
+                pAddressManager->AddAddress(addr, ConnectState::CONNECTED);
+            }
+
             return true;
         }
 
@@ -284,6 +292,22 @@ namespace LLP
             for(int32_t index = 0; index < MAX_THREADS; ++index)
             {
                 DATA_THREADS[index]->DisconnectAll();
+            }
+        }
+
+        /** AddNodesFromConfig
+        *
+        *  Uses the addnode args to establish a connection to each specified IP
+        *
+        **/
+        void AddNodesFromConfig()
+        {
+            if(config::mapMultiArgs["-addnode"].size() > 0)
+            {
+                for(auto node : config::mapMultiArgs["-addnode"])
+                {
+                    AddConnection( node, PORT);
+                }
             }
         }
 

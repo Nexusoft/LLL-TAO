@@ -173,15 +173,7 @@ int main(int argc, char** argv)
     //-addnode means add to address manager for this specific Server
     //-connect means follow the logic below this and try to establish a connection
     /* Add node to Tritium server */
-    if(config::mapMultiArgs["-addnode"].size() > 0)
-    {
-        for(auto node : config::mapMultiArgs["-addnode"])
-        {
-            LLP::TRITIUM_SERVER->AddConnection(
-                node,
-                config::GetArg("-port", config::fTestNet ? 8888 : 9888));
-        }
-    }
+    LLP::TRITIUM_SERVER->AddNodesFromConfig();
 
 
     /* Initialize the Legacy Server. */
@@ -199,15 +191,7 @@ int main(int argc, char** argv)
             config::GetBoolArg("-meters", false),
             true);
 
-        if(config::mapMultiArgs["-addnode"].size() > 0)
-        {
-            for(auto node : config::mapMultiArgs["-addnode"])
-            {
-                LLP::LEGACY_SERVER->AddConnection(
-                    node,
-                    config::GetArg("-port", config::fTestNet ? 8323 : 9323));
-            }
-        }
+        LLP::LEGACY_SERVER->AddNodesFromConfig();
     }
 
     /* Create the Core API Server. */
