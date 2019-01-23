@@ -107,7 +107,7 @@ namespace TAO
 
 
         /* Switching function for each difficulty re-target [each channel uses their own version] */
-        uint32_t GetNextTargetRequired(const BlockState state, int nChannel, bool fDebug)
+        uint32_t GetNextTargetRequired(const BlockState& state, int nChannel, bool fDebug)
         {
             if(nChannel == 0)
                 return RetargetTrust(state, fDebug);
@@ -123,7 +123,7 @@ namespace TAO
 
 
         /* Trust Retargeting: Modulate Difficulty based on production rate. */
-        uint32_t RetargetTrust(const BlockState state, bool fDebug)
+        uint32_t RetargetTrust(const BlockState& state, bool fDebug)
         {
 
             /* Get Last Block Index [1st block back in Channel]. **/
@@ -221,19 +221,19 @@ namespace TAO
 
 
         /* Prime Retargeting: Modulate Difficulty based on production rate. */
-        uint32_t RetargetPrime(const BlockState state, bool fDebug)
+        uint32_t RetargetPrime(const BlockState& state, bool fDebug)
         {
 
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
             if (!GetLastState(first, 1))
-                return bnProofOfWorkStart[1].GetCompact();
+                return bnProofOfWorkStart[1].getuint32();
 
 
             /* Get Last Block Index [2nd block back in Channel]. */
             BlockState last = first.Prev();
             if (!GetLastState(last, 1))
-                return bnProofOfWorkStart[1].GetCompact();
+                return bnProofOfWorkStart[1].getuint32();
 
 
             /* Standard Time Proportions */
@@ -337,8 +337,8 @@ namespace TAO
 
 
             /* Check for minimum value. */
-            if (nBits < bnProofOfWorkLimit[0].getuint32())
-                nBits = bnProofOfWorkLimit[0].getuint32();
+            if (nBits < bnProofOfWorkLimit[1].getuint32())
+                nBits = bnProofOfWorkLimit[1].getuint32();
 
 
             /* Debug output. */
@@ -366,7 +366,7 @@ namespace TAO
 
 
         /* Trust Retargeting: Modulate Difficulty based on production rate. */
-        uint32_t RetargetHash(const BlockState state, bool fDebug)
+        uint32_t RetargetHash(const BlockState& state, bool fDebug)
         {
 
             /* Get Last Block Index [1st block back in Channel]. **/
@@ -400,7 +400,7 @@ namespace TAO
 
             /* Enforce Block Version 2 Rule. Chain mod changes block time requirements, not actual mod after block times. */
             if(state.nVersion >= 2)
-            nBlockTarget *= nChainMod;
+                nBlockTarget *= nChainMod;
 
 
             /* The Upper and Lower Bound Adjusters. */
@@ -489,14 +489,15 @@ namespace TAO
                 GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
                 debug::log(2,
-                "RETARGET weighted time=", nBlockTime, " actual time ", std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1),
-                " [", (100.0 * nLowerBound) / nUpperBound, " %]\n",
-                "\tchain time: [", nBlockTarget, " / ", nBlockTime, "]\n",
-                "\treleased reward: ", first.nReleasedReserve[0] / Legacy::COIN,
-                " [", 100.0 * nChainMod, " %]\n",
-                "\tdifficulty: [", GetDifficulty(first.nBits, 2), " to ", GetDifficulty(bnNew.GetCompact(), 2), "]\n",
-                "\thash height: ", first.nChannelHeight,
-                " [AGE ", nDays, " days, ", nHours, " hours, ", nMinutes, " minutes]\n");
+                    "RETARGET weighted time=", nBlockTime, " actual time ", std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1),
+                    " [", (100.0 * nLowerBound) / nUpperBound, " %]\n",
+                    "\tchain time: [", nBlockTarget, " / ", nBlockTime, "]\n",
+                    "\treleased reward: ", first.nReleasedReserve[0] / Legacy::COIN,
+                    " [", 100.0 * nChainMod, " %]\n",
+                    "\tdifficulty: [", GetDifficulty(first.nBits, 2), " to ", GetDifficulty(bnNew.GetCompact(), 2), "]\n",
+                    "\thash height: ", first.nChannelHeight,
+                    " [AGE ", nDays, " days, ", nHours, " hours, ", nMinutes, " minutes]\n"
+                );
             }
 
             return bnNew.GetCompact();

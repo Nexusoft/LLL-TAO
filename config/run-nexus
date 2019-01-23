@@ -4,4 +4,4 @@
 #
 cd /nexus
 ./nexus -verbose=5 -addnode=240.0.255.255 -addnode=fe::255:255 -port=7323 \
-        -threads=10 -pings=5 >& /nexus/nexus.log &
+        -threads=10 -private >& /nexus/nexus.log &

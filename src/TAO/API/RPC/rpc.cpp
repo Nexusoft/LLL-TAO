@@ -31,6 +31,7 @@ namespace TAO
         {
             mapFunctions["echo"] = Function(std::bind(&RPC::Echo, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["help"] = Function(std::bind(&RPC::Help, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["stop"] = Function(std::bind(&RPC::Stop, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getinfo"] = Function(std::bind(&RPC::GetInfo, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getmininginfo"] = Function(std::bind(&RPC::GetMiningInfo, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getconnectioncount"] = Function(std::bind(&RPC::GetConnectionCount, this, std::placeholders::_1, std::placeholders::_2));
@@ -47,6 +48,8 @@ namespace TAO
             mapFunctions["getbalance"] = Function(std::bind(&RPC::GetBalance, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["move"] = Function(std::bind(&RPC::MoveCmd, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["addmultisigaddress"] = Function(std::bind(&RPC::AddMultisigAddress, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["sendfrom"] = Function(std::bind(&RPC::SendFrom, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["sendmany"] = Function(std::bind(&RPC::SendMany, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["listreceivedbyaddress"] = Function(std::bind(&RPC::ListReceivedByAddress, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["listreceivedbyaccount"] = Function(std::bind(&RPC::ListReceivedByAccount, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["listtransactions"] = Function(std::bind(&RPC::ListTransactions, this, std::placeholders::_1, std::placeholders::_2));
@@ -70,6 +73,9 @@ namespace TAO
             mapFunctions["getdifficulty"] = Function(std::bind(&RPC::GetDifficulty, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getsupplyrates"] = Function(std::bind(&RPC::GetSupplyRates, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getmoneysupply"] = Function(std::bind(&RPC::GetMoneySupply, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["getblockHash"] = Function(std::bind(&RPC::GetBlockHash, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["isorphan"] = Function(std::bind(&RPC::IsOrphan, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["getblock"] = Function(std::bind(&RPC::GetBlock, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["backupwallet"] = Function(std::bind(&RPC::BackupWallet, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["keypoolrefill"] = Function(std::bind(&RPC::KeypoolRefill, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["walletpassphrase"] = Function(std::bind(&RPC::WalletPassphrase, this, std::placeholders::_1, std::placeholders::_2));

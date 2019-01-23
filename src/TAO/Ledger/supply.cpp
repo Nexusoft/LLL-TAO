@@ -99,7 +99,7 @@ namespace TAO
 
 
         /* Get the Coinbase Rewards based on the Reserve Balances to keep the Coinbase rewards under the Reserve Production Rates. */
-        uint64_t GetCoinbaseReward(const BlockState state, uint32_t nChannel, uint8_t nType)
+        uint64_t GetCoinbaseReward(const BlockState& state, uint32_t nChannel, uint8_t nType)
         {
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
@@ -157,16 +157,12 @@ namespace TAO
                 nSubsidy += GetSubsidy(nMinutes, nType);
             }
 
-            //debug::log(0, "Reserve ", nType,
-            //    ": ", (double)nSubsidy / COIN,
-            //    " Nexus | Timespan: ", nStart, " - ", (nStart + nTimespan), " Minutes");
-
             return nSubsidy;
         }
 
 
         /* Get the total amount released into this given reserve by this point in time in the block state */
-        uint64_t GetReleasedReserve(const BlockState state, uint32_t nChannel, uint8_t nType)
+        uint64_t GetReleasedReserve(const BlockState& state, uint32_t nChannel, uint8_t nType)
         {
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
@@ -179,12 +175,10 @@ namespace TAO
             if (!GetLastState(last, nChannel))
                 return ReleaseRewards(nMinutes + 5, 1, nType);
 
-
             /* Only allow rewards to be released one time per minute */
             int32_t nLastMinutes = GetChainAge(last.GetBlockTime());
             if(nMinutes == nLastMinutes)
                 return 0;
-
 
             return ReleaseRewards((nMinutes - nLastMinutes), nLastMinutes, nType);
         }
@@ -193,7 +187,7 @@ namespace TAO
         /* TODO: DEPRECATE THIS METHOD
          * If the Reserves are Depleted, this Tells a miner if there is a new Time Interval with their Previous Block which would signal new release into reserve.
          * If for some reason this is a false flag, the block will be rejected by the network for attempting to deplete the reserves past 0 */
-        bool ReleaseAvailable(const BlockState state, int nChannel)
+        bool ReleaseAvailable(const BlockState& state, int nChannel)
         {
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState last = state;

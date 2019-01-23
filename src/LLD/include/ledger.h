@@ -24,6 +24,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/state.h>
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/trustkey.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Register/include/enum.h>
 
@@ -53,7 +54,7 @@ namespace LLD
          *  @return True if the write was successful.
          *
          **/
-        bool WriteBestChain(uint1024_t hashBest)
+        bool WriteBestChain(const uint1024_t& hashBest)
         {
             return Write(std::string("hashbestchain"), hashBest);
         }
@@ -84,7 +85,7 @@ namespace LLD
          *  @return True if the transaction was successfully written.
          *
          **/
-        bool WriteTx(uint512_t hashTransaction, TAO::Ledger::Transaction tx)
+        bool WriteTx(const uint512_t& hashTransaction, const TAO::Ledger::Transaction& tx)
         {
             return Write(hashTransaction, tx);
         }
@@ -100,9 +101,88 @@ namespace LLD
          *  @return True if the transaction was successfully read.
          *
          **/
-        bool ReadTx(uint512_t hashTransaction, TAO::Ledger::Transaction& tx)
+        bool ReadTx(const uint512_t& hashTransaction, TAO::Ledger::Transaction& tx)
         {
             return Read(hashTransaction, tx);
+        }
+
+
+        /** Write Trust Key
+         *
+         *  Writes a trust key to the ledger DB.
+         *
+         *  @param[in] hashKey The key of trust key to write.
+         *  @param[in] key The trust key object
+         *
+         *  @return True if the trust key was successfully written.
+         *
+         **/
+        bool WriteTrustKey(const uint576_t& hashKey, const TAO::Ledger::TrustKey& key)
+        {
+            return Write(hashKey, key);
+        }
+
+
+        /** Read Trust Key
+         *
+         *  Reads a trust key from the ledger DB.
+         *
+         *  @param[in] hashKey The key of trust key to write.
+         *  @param[in] key The trust key object
+         *
+         *  @return True if the trust key was successfully written.
+         *
+         **/
+        bool ReadTrustKey(const uint576_t& hashKey, TAO::Ledger::TrustKey& key)
+        {
+            return Read(hashKey, key);
+        }
+
+
+        /** Erase Tx.
+         *
+         *  Erases a transaction from the ledger DB.
+         *
+         *  @param[in] hashTransaction The txid of transaction to erase.
+         *
+         *  @return True if the transaction was successfully erased.
+         *
+         **/
+        bool EraseTx(const uint512_t& hashTransaction)
+        {
+            return Erase(hashTransaction);
+        }
+
+
+        /** IndexBlock
+         *
+         *  Index a transaction hash to a block in keychain
+         *
+         *  @param[in] hashTransaction The txid of transaction to write.
+         *  @param[in] hashBlock The block hash to index to
+         *
+         *  @return True if the transaction was successfully written.
+         *
+         **/
+        bool IndexBlock(const uint512_t& hashTransaction, const uint1024_t& hashBlock)
+        {
+            return Index(std::make_pair(std::string("index"), hashTransaction), hashBlock);
+        }
+
+
+        /** Read Block
+         *
+         *  Reads a block state from disk from a tx index
+         *
+         *  @param[in] hashBlock The block hash to read.
+         *  @param[in] state The block state object to read.
+         *
+         *  @return True if the read was successful.
+         *
+         **/
+        bool ReadBlock(const uint512_t& hashTransaction, TAO::Ledger::BlockState& state)
+        {
+            return Read(std::make_pair(std::string("index"), hashTransaction), state);
         }
 
 
@@ -115,7 +195,7 @@ namespace LLD
          *  @return True if the transaction exists.
          *
          **/
-        bool HasTx(uint512_t hashTransaction)
+        bool HasTx(const uint512_t& hashTransaction)
         {
             return Exists(hashTransaction);
         }
@@ -131,7 +211,7 @@ namespace LLD
          *  @return True if the last was successfully written.
          *
          **/
-        bool WriteLast(uint256_t hashGenesis, uint512_t hashLast)
+        bool WriteLast(const uint256_t& hashGenesis, const uint512_t& hashLast)
         {
             return Write(std::make_pair(std::string("last"), hashGenesis), hashLast);
         }
@@ -147,7 +227,7 @@ namespace LLD
          *  @return True if the last was successfully read.
          *
          **/
-        bool ReadLast(uint256_t hashGenesis, uint512_t& hashLast)
+        bool ReadLast(const uint256_t& hashGenesis, uint512_t& hashLast)
         {
             return Read(std::make_pair(std::string("last"), hashGenesis), hashLast);
         }
@@ -164,7 +244,7 @@ namespace LLD
          *  @return True if the last was successfully written.
          *
          **/
-        bool WriteProof(uint256_t hashProof, uint512_t hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
+        bool WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             /* Memory mode for pre-database commits. */
             if(nFlags & TAO::Register::FLAGS::MEMPOOL)
@@ -199,7 +279,7 @@ namespace LLD
          *  @return True if the last was successfully read.
          *
          **/
-        bool HasProof(uint256_t hashProof, uint512_t hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
+        bool HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             /* Memory mode for pre-database commits. */
             if(nFlags & TAO::Register::FLAGS::MEMPOOL)
@@ -225,7 +305,7 @@ namespace LLD
          *  @return True if the write was successful.
          *
          **/
-        bool WriteBlock(uint1024_t hashBlock, TAO::Ledger::BlockState state)
+        bool WriteBlock(const uint1024_t& hashBlock, const TAO::Ledger::BlockState& state)
         {
             return Write(hashBlock, state);
         }
@@ -241,9 +321,24 @@ namespace LLD
          *  @return True if the read was successful.
          *
          **/
-        bool ReadBlock(uint1024_t hashBlock, TAO::Ledger::BlockState& state)
+        bool ReadBlock(const uint1024_t& hashBlock, TAO::Ledger::BlockState& state)
         {
             return Read(hashBlock, state);
+        }
+
+
+        /** Has Block
+         *
+         *  Checks if there is a block state object on disk.
+         *
+         *  @param[in] hashBlock The block hash to check
+         *
+         *  @return True if it exists.
+         *
+         **/
+        bool HasBlock(const uint1024_t& hashBlock)
+        {
+            return Exists(hashBlock);
         }
 
 
@@ -256,7 +351,7 @@ namespace LLD
          *  @return True if the genesis exists.
          *
          **/
-        bool HasGenesis(uint256_t hashGenesis)
+        bool HasGenesis(const uint256_t& hashGenesis)
         {
             return Exists(std::make_pair(std::string("genesis"), hashGenesis));
         }
@@ -272,7 +367,7 @@ namespace LLD
          *  @return True if the genesis exists.
          *
          **/
-        bool WriteGenesis(uint256_t hashGenesis, uint512_t hashTransaction)
+        bool WriteGenesis(const uint256_t& hashGenesis, const uint512_t& hashTransaction)
         {
             return Write(std::make_pair(std::string("genesis"), hashGenesis), hashTransaction);
         }
@@ -288,7 +383,7 @@ namespace LLD
          *  @return True if the genesis was read..
          *
          **/
-        bool ReadGenesis(uint256_t hashGenesis, uint512_t& hashTransaction)
+        bool ReadGenesis(const uint256_t& hashGenesis, uint512_t& hashTransaction)
         {
             return Read(std::make_pair(std::string("genesis"), hashGenesis), hashTransaction);
         }

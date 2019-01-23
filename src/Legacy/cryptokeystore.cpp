@@ -24,23 +24,29 @@ namespace Legacy
     /* Activate encryption for the key store. */
     bool CCryptoKeyStore::SetCrypted()
     {
-        { 
-            /* First need basic keystore lock to check mapKeys. Always obtain this one first. */
-            LOCK(cs_basicKeyStore);
+
+        {
+            /* Need crypto keystore lock to check and update fUseCrypto. Need to hold it between check and update */
+            LOCK(cs_cryptoKeyStore);
+
+            if (fUseCrypto)
+                return true;
 
             {
-                /* Also need crypto keystore lock to check and update fUseCrypto */
-                LOCK(cs_cryptoKeyStore);
-
-                if (fUseCrypto)
-                    return true;
+                /* Need basic keystore lock to check mapKeys. 
+                 * This is a nested lock. 
+                 * Have to ensure any others that might nest them also get them in the same order to avoid deadlock potential.
+                 * Good part is we only actually need this when first activating encryption. After that, above returns true.
+                 */
+                LOCK(cs_basicKeyStore);
 
                 /* Cannot activate encryption if key store contains any unencrypted keys */
                 if (!mapKeys.empty())
                     return false;
-
-                fUseCrypto = true;
             }
+
+            /* Now can activate encryption */
+            fUseCrypto = true;
         }
 
         return true;
@@ -51,11 +57,6 @@ namespace Legacy
     bool CCryptoKeyStore::EncryptKeys(const CKeyingMaterial& vMasterKeyIn)
     {
 
-        /*
-         * This method nests cs_cryptoKeyStore locks (obtained within AddCryptedKey) inside a cs_BasicKeyStore lock.
-         * All other methods that have potential to use both should scope locks accordingly to avoid possible deadlock.
-         */
-
         /* Check whether key store already encrypted */
         if (!mapCryptedKeys.empty() || IsCrypted())
             return false;
@@ -63,15 +64,27 @@ namespace Legacy
         /* Set key store as encrypted */
         fUseCrypto = true;
 
-        /* Need basic keystore lock for iterating mapKeys. Always obtain this one first. */
-        LOCK(cs_basicKeyStore);
+        /* Need basic keystore lock for iterating mapKeys, but will also need it within AddCryptedKey. 
+         * Thus, can't keep it. To ensure a good mapKeys, make a copy while have hold of lock 
+         */
+        KeyMap mapKeysToEncrypt;
+        {
+            LOCK(cs_basicKeyStore);
+
+            for(const auto mKey : mapKeys)
+            {
+                NexusAddress keyAddress = mKey.first;
+
+                mapKeysToEncrypt[keyAddress] = mKey.second;
+            }
+        } //Now can let go of basic keystore lock
 
         /* Convert unencrypted keys from mapKeys to encrypted keys in mapCryptedKeys
          * mKey will have pair for each map entry
          * mKey.first = base 58 address (map key)
          * mKey.second = std::pair<LLC::CSecret, bool> where bool indicates key compressed true/false
          */
-        for(const auto mKey : mapKeys)
+        for(const auto mKey : mapKeysToEncrypt)
         {
             LLC::ECKey key;
             LLC::CSecret vchSecret = mKey.second.first;
@@ -88,11 +101,17 @@ namespace Legacy
                 return false;
 
             /* Also need crypto keystore lock to add key. AddCryptedKey() obtains this */
+            /* During wallet encryption, this will call this->AddCryptedKey() which is actually CWallet::AddCryptedKey() */
             if (!AddCryptedKey(vchPubKey, vchCryptedSecret))
                 return false;
         }
 
-        mapKeys.clear();
+        {
+            /* Need to obtain lock again to clear mapKeys */
+            LOCK(cs_basicKeyStore);
+
+            mapKeys.clear();
+        }
 
         return true;
     }
@@ -146,14 +165,16 @@ namespace Legacy
     {
         bool result;
 
-        LOCK(cs_cryptoKeyStore);
+        {
+            LOCK(cs_cryptoKeyStore);
 
-        /* Unencrypted key store is not locked */
-        if (!IsCrypted())
-            return false;
+            /* Unencrypted key store is not locked */
+            if (!IsCrypted())
+                return false;
 
-        /* If encryption key is not stored, cannot decrypt keys and key store is locked */
-        result = vMasterKey.empty();
+            /* If encryption key is not stored, cannot decrypt keys and key store is locked */
+            result = vMasterKey.empty();
+        }
 
         return result;
     }
@@ -328,14 +349,22 @@ namespace Legacy
     /*  Retrieve the public key for a key in the key store. */
     bool CCryptoKeyStore::GetPubKey(const NexusAddress& address, std::vector<uint8_t>& vchPubKeyOut) const
     {
+        /* Only use LOCK to check IsCrypted() -- use internal flag so we can release before potential call to CKeyStore::GetPubKey */
+        bool fCrypted = false;
+
         {
-            /* This lock can wrap across CKeyStore::GetPubKey, which performs no internal locking. 
-             * It covers call to IsCrypted() and access to mapCryptedKeys
-             */
             LOCK(cs_cryptoKeyStore);
 
-            if (!IsCrypted())
-                return CKeyStore::GetPubKey(address, vchPubKeyOut);
+            if (IsCrypted())
+                fCrypted = true;
+        }
+
+        if (!fCrypted)
+            return CKeyStore::GetPubKey(address, vchPubKeyOut);
+
+        {
+            /* Get the lock back if we need to check mapCryptedKeys */
+            LOCK(cs_cryptoKeyStore);
 
             auto mi = mapCryptedKeys.find(address);
             if (mi != mapCryptedKeys.end())

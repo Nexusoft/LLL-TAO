@@ -22,6 +22,7 @@ ________________________________________________________________________________
 
 #include <Util/templates/serialize.h>
 #include <Util/include/hex.h>
+#include <Util/include/debug.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/transaction.h>
@@ -84,6 +85,44 @@ namespace TAO
             ecPub.SetPubKey(vchPubKey);
             if(!ecPub.Verify(GetHash().GetBytes(), vchSig))
                 return debug::error(FUNCTION, "invalid transaction signature");
+
+            return true;
+        }
+
+
+        /* Extract the trust data from the input script. */
+        bool Transaction::ExtractTrust(uint1024_t& hashLastBlock, uint32_t& nSequence, uint32_t& nTrustScore) const
+        {
+            /* Don't extract trust if not coinstake. */
+            if(!IsTrust())
+                return debug::error(FUNCTION, "not proof of stake");
+
+            /* Seek the stream to the beginning. */
+            ssOperation.seek(1, STREAM::BEGIN);
+
+            /* The account that is being staked. */
+            uint256_t hashAccount;
+            ssOperation >> hashAccount;
+
+            /* Deserialize the values from stream. */
+            ssOperation >> hashLastBlock >> nSequence >> nTrustScore;
+
+            return true;
+        }
+
+
+        /* Extract the stake data from the input script. */
+        bool Transaction::ExtractStake(uint64_t& nStake) const
+        {
+            /* Don't extract trust if not coinstake. */
+            if(!IsTrust())
+                return debug::error(FUNCTION, "not proof of stake");
+
+            /* Seek the stream to the beginning. */
+            ssOperation.seek(169, STREAM::BEGIN);
+
+            /* Deserialize the values from stream. */
+            ssOperation >> nStake;
 
             return true;
         }
@@ -188,6 +227,23 @@ namespace TAO
                 "hash = ", GetHash().ToString().substr(0, 20), ", ",
                 "register.size() = ", ssRegister.size(), ", ",
                 "operation.size() = ", ssOperation.size(), ")" );
+        }
+
+        /* Short form of the debug output. */
+        std::string Transaction::ToStringShort() const
+        {
+            std::string str;
+            std::string txtype = "tritium ";
+            if(IsCoinbase())
+                txtype += "base";
+            else if(IsTrust())
+                txtype += "trust";
+            else if(IsGenesis())
+                txtype += "genesis";
+            else 
+                txtype += "user";
+            str += debug::strprintf("%s %s", GetHash().ToString().c_str(), txtype.c_str());
+            return str;
         }
     }
 }

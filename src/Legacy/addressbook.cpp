@@ -42,7 +42,7 @@ namespace Legacy
                 CWalletDB walletdb(addressBookWallet.GetWalletFile());
 
                 if (!walletdb.WriteName(address.ToString(), strName))
-                    throw std::runtime_error("CAddressBook::AddAddressBookName() : writing added address book entry failed");
+                    return debug::error(FUNCTION, "Failed writing address book entry");
 
                 walletdb.Close();
             }
@@ -114,7 +114,7 @@ namespace Legacy
                         NexusAddress address;
 
                         if(!ExtractAddress(walletTx.vout[i].scriptPubKey, address) || !address.IsValid())
-                            return false; // Unable to extract valid address from mapWallet. Should it really eat that error?
+                            return debug::error(FUNCTION, "Unable to extract valid Nexus address from walletTx key");
 
                         /* Add txout value to result */
                         if(mapAddressBalances.count(address) > 0)

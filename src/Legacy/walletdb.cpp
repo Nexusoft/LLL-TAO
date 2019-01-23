@@ -58,10 +58,19 @@ namespace Legacy
     }
 
 
+    /* Reads the minimum database version supported by this wallet database. */
+    bool CWalletDB::ReadMinVersion(uint32_t& nVersion)
+    {
+        LOCK(CWalletDB::cs_walletdb);
+        return Read(std::string("minversion"), nVersion);
+    }
+
+
     /* Stores the minimum database version supported by this wallet database. */
     bool CWalletDB::WriteMinVersion(const uint32_t nVersion)
     {
         LOCK(CWalletDB::cs_walletdb);
+        CWalletDB::nWalletDBUpdated++;
         return Write(std::string("minversion"), nVersion, true);
     }
 
@@ -79,6 +88,7 @@ namespace Legacy
     bool CWalletDB::WriteAccount(const std::string& strAccount, const CAccount& account)
     {
         LOCK(CWalletDB::cs_walletdb);
+        CWalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("acc"), strAccount), account);
     }
 
@@ -323,20 +333,21 @@ namespace Legacy
         uint32_t nFileVersion = 0;
         std::vector<uint512_t> vWalletRemove;
 
-        runtime::timer time;
-        time.Start();
+        uint64_t startTimestamp = runtime::timestamp(true);
 
         bool fIsEncrypted = false;
-        { LOCK(wallet.cs_wallet);
+
+        { 
+            LOCK(wallet.cs_wallet);
 
             /* Reset default key into wallet to clear any current value. (done now so it stays empty if none loaded) */
             wallet.vchDefaultKey.clear();
 
             /* Read and validate minversion required by database file */
             uint32_t nMinVersion = 0;
-            if (Read(std::string("minversion"), nMinVersion))
+            if (ReadMinVersion(nMinVersion))
             {
-                if (nMinVersion > LLD::DATABASE_VERSION)
+                if (nMinVersion > FEATURE_LATEST)
                     return DB_TOO_NEW;
 
                 wallet.LoadMinVersion(nMinVersion);
@@ -346,7 +357,7 @@ namespace Legacy
             auto pcursor = GetCursor();
             if (pcursor == nullptr)
             {
-                debug::error(FUNCTION, "error getting wallet database cursor");
+                debug::error(FUNCTION, "Error getting wallet database cursor");
                 return DB_CORRUPT;
             }
 
@@ -366,7 +377,7 @@ namespace Legacy
                 }
                 else if (ret != 0)
                 {
-                    debug::error(FUNCTION, "error reading next record from wallet database");
+                    debug::error(FUNCTION, "Error reading next record from wallet database");
                     return DB_CORRUPT;
                 }
 
@@ -408,7 +419,7 @@ namespace Legacy
 
                     }
                     else if (wtx.GetHash() != hash) {
-                        debug::error(FUNCTION, "error in wallet.dat, hash mismatch. Removing Transaction from wallet map. Run the rescan command to restore.");
+                        debug::error(FUNCTION, "Error in wallet.dat, hash mismatch. Removing Transaction from wallet map. Run the rescan command to restore.");
 
                         /* Add mismatched transaction to list of transactions to remove from database */
                         vWalletRemove.push_back(hash);
@@ -436,7 +447,7 @@ namespace Legacy
                     /* Load the master key into the wallet */
                     if (!wallet.LoadMasterKey(nMasterKeyId, kMasterKey))
                     {
-                        debug::error(FUNCTION, "error reading wallet database: duplicate CMasterKey id ", nMasterKeyId);
+                        debug::error(FUNCTION, "Error reading wallet database: duplicate CMasterKey id ", nMasterKeyId);
                         return DB_CORRUPT;
                     }
 
@@ -460,13 +471,13 @@ namespace Legacy
                         /* Validate the key data */
                         if (key.GetPubKey() != vchPubKey)
                         {
-                            debug::error(FUNCTION, "error reading wallet database: CPrivKey pubkey inconsistency");
+                            debug::error(FUNCTION, "Error reading wallet database: CPrivKey pubkey inconsistency");
                             return DB_CORRUPT;
                         }
 
                         if (!key.IsValid())
                         {
-                            debug::error(FUNCTION, "error reading wallet database: invalid CPrivKey");
+                            debug::error(FUNCTION, "Error reading wallet database: invalid CPrivKey");
                             return DB_CORRUPT;
                         }
                     }
@@ -484,13 +495,13 @@ namespace Legacy
                         /* Validate the key data  */
                         if (key.GetPubKey() != vchPubKey)
                         {
-                            debug::error(FUNCTION, "error reading wallet database: CWalletKey pubkey inconsistency");
+                            debug::error(FUNCTION, "Error reading wallet database: CWalletKey pubkey inconsistency");
                             return DB_CORRUPT;
                         }
 
                         if (!key.IsValid())
                         {
-                            debug::error(FUNCTION, "error reading wallet database: invalid CWalletKey");
+                            debug::error(FUNCTION, "Error reading wallet database: invalid CWalletKey");
                             return DB_CORRUPT;
                         }
                     }
@@ -498,7 +509,7 @@ namespace Legacy
                     /* Load the key into the wallet */
                     if (!wallet.LoadKey(key))
                     {
-                        debug::error(FUNCTION, "error reading wallet database: LoadKey failed");
+                        debug::error(FUNCTION, "Error reading wallet database: LoadKey failed");
                         return DB_CORRUPT;
                     }
 
@@ -514,7 +525,7 @@ namespace Legacy
 
                     if (!wallet.LoadCryptedKey(vchPubKey, vchPrivKey))
                     {
-                        debug::error(FUNCTION, "error reading wallet database: LoadCryptedKey failed");
+                        debug::error(FUNCTION, "Error reading wallet database: LoadCryptedKey failed");
                         return DB_CORRUPT;
                     }
 
@@ -552,7 +563,7 @@ namespace Legacy
 
                     if (!wallet.LoadCScript(script))
                     {
-                        debug::error(FUNCTION, "error reading wallet database: LoadCScript failed");
+                        debug::error(FUNCTION, "Error reading wallet database: LoadCScript failed");
                         return DB_CORRUPT;
                     }
 
@@ -561,15 +572,14 @@ namespace Legacy
                 else if (strType == "acentry")
                 {
                     /* Accounting entry */
-                    /* Ignore these and do not load. Accounting entry support to be removed */
-                    //std::string strAccount;
-                    //ssKey >> strAccount;
-                    //uint64_t nNumber;
-                    //ssKey >> nNumber;
+                    std::string strAccount;
+                    ssKey >> strAccount;
+                    uint64_t nNumber;
+                    ssKey >> nNumber;
 
                     /* After load, nAccountingEntryNumber will contain the maximum accounting entry number currently stored in the database */
-                    //if (nNumber > CWalletDB::nAccountingEntryNumber)
-                    //    CWalletDB::nAccountingEntryNumber = nNumber;
+                    if (nNumber > CWalletDB::nAccountingEntryNumber)
+                        CWalletDB::nAccountingEntryNumber = nNumber;
 
                 }
 
@@ -579,7 +589,7 @@ namespace Legacy
                 }
             }
 
-            pcursor->close();
+            CloseCursor(pcursor);
 
         } /* End lock scope */
 
@@ -591,7 +601,7 @@ namespace Legacy
                 EraseTx(hash);
                 wallet.mapWallet.erase(hash);
 
-                debug::log(0, FUNCTION, "erasing Transaction at hash ", hash.ToString());
+                debug::log(0, FUNCTION, "Erasing Transaction at hash ", hash.ToString());
             }
         }
 
@@ -599,7 +609,12 @@ namespace Legacy
         if (nFileVersion < LLD::DATABASE_VERSION)
             WriteVersion(LLD::DATABASE_VERSION);
 
-        debug::log(0, FUNCTION, "", fIsEncrypted ? "Encrypted Wallet" : "Wallet", " Loaded in ", time.ElapsedMilliseconds(), " ms FileVersion = ", nFileVersion);
+        /* Assign maximum upgrade version for wallet */
+        wallet.SetMaxVersion(FEATURE_LATEST);
+
+        uint64_t elapsedTime = runtime::timestamp(true) - startTimestamp;
+
+        debug::log(0, FUNCTION, "", fIsEncrypted ? "Encrypted Wallet" : "Wallet", " Loaded in ", elapsedTime, " ms file version = ", nFileVersion);
 
         return DB_LOAD_OK;
     }
@@ -622,6 +637,8 @@ namespace Legacy
         uint32_t nLastSeen = CWalletDB::nWalletDBUpdated;
         uint32_t nLastFlushed = CWalletDB::nWalletDBUpdated;
         uint64_t nLastWalletUpdate = runtime::unifiedtimestamp();
+
+        debug::log(1, FUNCTION, "Wallet flush thread started");
 
         while (!config::fShutdown)
         {
@@ -660,8 +677,7 @@ namespace Legacy
                         auto mi = CDB::mapFileUseCount.find(strWalletFile);
                         if (CDB::fDbEnvInit && mi != CDB::mapFileUseCount.end())
                         {
-                            debug::log(0, DateTimeStrFormat(runtime::unifiedtimestamp()));
-                            debug::log(0, "ThreadFlushWalletDB : Flushing wallet.dat");
+                            debug::log(0, FUNCTION, DateTimeStrFormat(runtime::unifiedtimestamp()), " Flushing ", strWalletFile);
                             nLastFlushed = CWalletDB::nWalletDBUpdated;
                             int64_t nStart = runtime::timestamp(true);
 
@@ -671,7 +687,7 @@ namespace Legacy
                             CDB::dbenv.lsn_reset(strWalletFile.c_str(), 0);
 
                             CDB::mapFileUseCount.erase(mi++);
-                            debug::log(0, "ThreadFlushWalletDB : Flushed ", strWalletFile, runtime::timestamp(true) - nStart, " ms");
+                            debug::log(0, FUNCTION, "Flushed ", strWalletFile, " in ", runtime::timestamp(true) - nStart, " ms");
                         }
                     }
 
@@ -679,14 +695,33 @@ namespace Legacy
                 }
             }
         }
+
+        debug::log(1, FUNCTION, "Shutting down wallet flush thread");
+
+        /* Should be shutdown if get here, so this thread can shutdown database environment */
+        if (config::fShutdown)
+            CDB::EnvShutdown();
     }
 
 
     /* Writes a backup copy of a wallet to a designated backup file */
-    bool BackupWallet(const CWallet& wallet, const std::string& strDest)
+    bool CWalletDB::BackupWallet(const CWallet& wallet, const std::string& strDest)
     {
         if (!wallet.IsFileBacked())
             return false;
+
+        /* Validate the length of strDest. This assures pathDest.size() cast to uint32_t is always valid (nobody can pass a ridiculously long string) */
+#ifndef WIN32
+        if (strDest.size() > 4096) {
+            debug::log(0, FUNCTION, "Error: Invalid destination path. Path size exceeds maximum limit");
+            return false;
+        }
+#else
+        if (strDest.size() > 260) {
+            debug::log(0, FUNCTION, "Error: Invalid destination path. Path size exceeds maximum limit");
+            return false;
+        }
+#endif
 
         while (!config::fShutdown)
         {
@@ -704,23 +739,48 @@ namespace Legacy
                     CDB::dbenv.lsn_reset(strSource.c_str(), 0);
                     CDB::mapFileUseCount.erase(strSource);
 
-                    std::string pathSource(config::GetDataDir() + "/" + strSource);
+                    std::string pathSource(config::GetDataDir() + strSource);
                     std::string pathDest(strDest);
 
-                    /* If destination is a folder, use wallet database name */
+                    /* Create any missing directories in the destination path.
+                     * If final character in pathDest is not / then the last entry in path is not created (could be a file name)
+                     */
+                    filesystem::create_directories(pathDest);
+
+                    /* If destination is a folder, append source file name to use as dest file name */
                     if (filesystem::is_directory(pathDest))
-                        pathDest = pathDest + "/" + strSource;
+                    {
+                        uint32_t s = static_cast<uint32_t>(pathDest.size());
+
+                        if (pathDest[s-1] != '/')
+                            pathDest += '/';
+
+                        pathDest = pathDest + strSource;
+
+                        /* After appending to pathDest, need to validate again */
+#ifndef WIN32
+                        if (strDest.size() > 4096) {
+                            debug::log(0, FUNCTION, "Error: Invalid destination path. Path size exceeds maximum limit");
+                            return false;
+                        }
+#else
+                        if (strDest.size() > 260) {
+                            debug::log(0, FUNCTION, "Error: Invalid destination path. Path size exceeds maximum limit");
+                            return false;
+                        }
+#endif
+                    }
 
                     /* Copy wallet.dat (this method is a bit slow, but is simple and should be ok for an occasional copy) */
                     if (filesystem::copy_file(pathSource, pathDest))
                     {
-                        debug::log(0, "BackupWallet : Copied wallet.dat to ", pathDest);
+                        debug::log(0, FUNCTION, "Copied ", strSource, " to ", pathDest);
                         return true;
                     }
 
                     else
                     {
-                        debug::log(0, "BackupWallet : Error copying wallet.dat to ", pathDest);
+                        debug::log(0, FUNCTION, "Error copying ", strSource, " to ", pathDest);
                         return false;
                     }
                 }

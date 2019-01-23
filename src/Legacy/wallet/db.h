@@ -166,7 +166,7 @@ namespace Legacy
             DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             ssKey.reserve(1000);
             ssKey << key;
-            Dbt datKey(&ssKey[0], ssKey.size());
+            Dbt datKey(ssKey.data(), ssKey.size());
 
             /* Value */
             Dbt datValue;
@@ -232,13 +232,13 @@ namespace Legacy
             DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             ssKey.reserve(1000);
             ssKey << key;
-            Dbt datKey(&ssKey[0], ssKey.size());
+            Dbt datKey(ssKey.data(), ssKey.size());
 
             /* Value */
             DataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
             ssValue.reserve(10000);
             ssValue << value;
-            Dbt datValue(&ssValue[0], ssValue.size());
+            Dbt datValue(ssValue.data(), ssValue.size());
 
             /* Write */
             int32_t ret = pdb->put(GetTxn(), &datKey, &datValue, (fOverwrite ? 0 : DB_NOOVERWRITE));
@@ -275,7 +275,7 @@ namespace Legacy
             DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             ssKey.reserve(1000);
             ssKey << key;
-            Dbt datKey(&ssKey[0], ssKey.size());
+            Dbt datKey(ssKey.data(), ssKey.size());
 
             /* Erase */
             int32_t ret = pdb->del(GetTxn(), &datKey, 0);
@@ -306,7 +306,7 @@ namespace Legacy
             DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             ssKey.reserve(1000);
             ssKey << key;
-            Dbt datKey(&ssKey[0], ssKey.size());
+            Dbt datKey(ssKey.data(), ssKey.size());
 
             /* Exists */
             int32_t ret = pdb->exists(GetTxn(), &datKey, 0);
@@ -468,6 +468,10 @@ namespace Legacy
          *  Should only be called when CDB::mapFileUseCount is 0 (after Close() called on any in-use
          *  instances) or the pdb copy in active instances will become invalid and results of continued
          *  use are undefined.
+         *
+         *  This method does not obtain a lock on CDB::cs_db, thus any methods calling it must first 
+         *  obtain that lock. This supports usage within methods that also require obtaining a CDB::cs_db 
+         *  lock for other purposes.
          *
          *  @param[in] strFile Database to close
          *

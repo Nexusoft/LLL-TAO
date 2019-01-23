@@ -11,37 +11,12 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_UTIL_INCLUDE_SIGNALS_H
-#define NEXUS_UTIL_INCLUDE_SIGNALS_H
+#ifndef NEXUS_UTIL_INCLUDE_MEMORY_H
+#define NEXUS_UTIL_INCLUDE_MEMORY_H
 
-
-#include <condition_variable>
-
-
-extern std::condition_variable SHUTDOWN;
-
-/** Shutdown
- *
- *  Shutdown the system and all its subsystems.
- *
- **/
-void Shutdown();
-
-/** HandleSIGTERM
- *
- *  Catch Signal Handler function
- *
- *  @param[in] signum the signal number
- *
- **/
-void HandleSIGTERM(int signum);
-
-
-/** SetupSignals
- *
- *  Setup the signal handlers.
- *
- **/
-void SetupSignals();
+namespace memory
+{
+    
+}
 
 #endif

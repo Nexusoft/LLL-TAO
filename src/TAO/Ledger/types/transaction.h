@@ -139,6 +139,28 @@ namespace TAO
             bool IsValid() const;
 
 
+            /** Extract Trust
+             *
+             *  Extract the trust data from the input script.
+             *
+             *  @param[out] hashLastBlock The last block to extract.
+             *  @param[out] nSequence The sequence number of proof of stake blocks.
+             *  @param[out] nTrustScore The trust score to extract.
+             *
+             **/
+            bool ExtractTrust(uint1024_t& hashLastBlock, uint32_t& nSequence, uint32_t& nTrustScore) const;
+
+
+            /** Extract Stake
+             *
+             *  Extract the stake data from the input script.
+             *
+             *  @param[out] nStake The amount being staked.
+             *
+             **/
+            bool ExtractStake(uint64_t& nStake) const;
+
+
             /** Is Coinbase
              *
              *  Determines if the transaction is a coinbase transaction.
@@ -216,6 +238,15 @@ namespace TAO
               *
               **/
              void print() const;
+
+             /** To String Short
+             *
+             *  Short form of the debug output.
+             *
+             *  @return The string value to return;
+             *
+             **/
+            std::string ToStringShort() const;
 
         };
     }

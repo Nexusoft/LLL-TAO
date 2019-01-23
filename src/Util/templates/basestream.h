@@ -91,7 +91,7 @@ public:
      *  Returns if object is in null state.
      *
      **/
-    bool IsNull()
+    bool IsNull() const
     {
         return nReadPos == 0 && vchData.size() == 0;
     }
@@ -102,7 +102,7 @@ public:
      *  Resets the internal read pointer
      *
      **/
-    void reset()
+    void reset() const
     {
         nReadPos = 0;
     }
@@ -138,7 +138,7 @@ public:
      *  Seeks the read pointer to position.
      *
      **/
-    void seek(uint32_t nSeek, uint8_t nFlags = STREAM::CURSOR)
+    void seek(uint32_t nSeek, uint8_t nFlags = STREAM::CURSOR) const
     {
         /* Seek from end of stream. */
         if(nFlags == STREAM::CURSOR)
@@ -206,7 +206,7 @@ public:
      *  @param[in] nSize The total number of bytes to read
      *
      **/
-    BaseStream& read(char* pch, int nSize)
+    const BaseStream& read(char* pch, int nSize) const
     {
         /* Check size constraints. */
         if(nReadPos + nSize > vchData.size())

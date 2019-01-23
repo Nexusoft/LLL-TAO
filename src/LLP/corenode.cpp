@@ -169,7 +169,7 @@ namespace LLP
         }
 
         /* Send the response packet. */
-        json::json ret = { { "result", nullptr }, { "error", jsonError } };
+        json::json ret = { { "error", jsonError } };
         PushResponse(nStatus, ret.dump());
     }
 

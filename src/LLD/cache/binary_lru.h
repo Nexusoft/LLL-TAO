@@ -90,14 +90,14 @@ namespace LLD
          * MAX_CACHE_BUCKETS default value is 65,539 (2 bytes)
          *
          */
-        BinaryLRU() : MAX_CACHE_SIZE(1024 * 1024), MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 32), nCurrentSize(MAX_CACHE_BUCKETS * 8), pfirst(0), plast(0)
+        BinaryLRU()
+         : MAX_CACHE_SIZE(1024 * 1024)
+         , MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 32)
+         , nCurrentSize(MAX_CACHE_BUCKETS * 8)
+         , hashmap(MAX_CACHE_BUCKETS)
+         , pfirst(nullptr)
+         , plast(nullptr)
         {
-            /* Resize the hashmap vector. */
-            hashmap.resize(MAX_CACHE_BUCKETS);
-
-            /* Set the start and end pointers. */
-            pfirst = nullptr;
-            plast  = nullptr;
         }
 
 
@@ -106,14 +106,14 @@ namespace LLD
          * @param[in] nCacheSizeIn The maximum size of this Cache Pool
          *
          */
-        BinaryLRU(uint32_t nCacheSizeIn) : MAX_CACHE_SIZE(nCacheSizeIn), MAX_CACHE_BUCKETS(nCacheSizeIn / 32), nCurrentSize(MAX_CACHE_BUCKETS * 8)
+        BinaryLRU(uint32_t nCacheSizeIn)
+        : MAX_CACHE_SIZE(nCacheSizeIn)
+        , MAX_CACHE_BUCKETS(nCacheSizeIn / 32)
+        , nCurrentSize(MAX_CACHE_BUCKETS * 8)
+        , hashmap(MAX_CACHE_BUCKETS)
+        , pfirst(nullptr)
+        , plast(nullptr)
         {
-            /* Resize the hashmap vector. */
-            hashmap.resize(MAX_CACHE_BUCKETS);
-
-            /* Set the start and end pointers. */
-            pfirst = nullptr;
-            plast  = nullptr;
         }
 
 
@@ -155,7 +155,7 @@ namespace LLD
          * @return True/False whether pool contains data by index
          *
          */
-        bool Has(std::vector<uint8_t> vKey) const
+        bool Has(const std::vector<uint8_t>& vKey) const
         {
             LOCK(MUTEX);
 
@@ -237,7 +237,7 @@ namespace LLD
          * @return True if object was found, false if none found by index.
          *
          */
-        bool Get(std::vector<uint8_t> vKey, std::vector<uint8_t>& vData)
+        bool Get(const std::vector<uint8_t>& vKey, std::vector<uint8_t>& vData)
         {
             LOCK(MUTEX);
 
@@ -265,7 +265,7 @@ namespace LLD
          * @param[in] vData The input data in binary form
          *
          */
-        void Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData, bool fReserve = false)
+        void Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData, bool fReserve = false)
         {
             LOCK(MUTEX);
 

@@ -25,14 +25,6 @@ ________________________________________________________________________________
 
 #include <Legacy/wallet/db.h>
 
-namespace TAO
-{
-    namespace Ledger
-    {
-        class CBlockLocator;
-    }
-}
-
 namespace Legacy
 {
 
@@ -189,6 +181,18 @@ namespace Legacy
          *
          **/
         bool WriteMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey);
+
+
+        /** ReadMinVersion
+         *
+         *  Reads the minimum database version supported by this wallet database.
+         *
+         *  @param[out] nVersion Vesion number to store
+         *
+         *  @return true if min version is present in the database entry and read successfully
+         *
+         **/
+        bool ReadMinVersion(uint32_t& nVersion);
 
 
         /** WriteMinVersion
@@ -411,32 +415,6 @@ namespace Legacy
          *
          **/
         bool WriteCScript(const uint256_t& hash, const CScript& redeemScript);
-
-
-        /** ReadBestBlock
-         *
-         *  Reads the stored CBlockLocator of the last recorded best block.
-         *
-         *  @param[out] locator Block locator of the best block as recorded in wallet database
-         *
-         *  @return true if best block entry present in database and successfully read
-         *
-         **/
-        bool ReadBestBlock(TAO::Ledger::CBlockLocator& locator);
-
-
-        /** WriteBestBlock
-         *
-         *  Stores a CBlockLocator to record current best block.
-         *
-         *  @param[in] locator The block locator to store
-         *
-         *  @param[out] wtx The retrieved wallet transaction
-         *
-         *  @return true if database entry successfully written
-         *
-         **/
-        bool WriteBestBlock(const TAO::Ledger::CBlockLocator& locator);
 
 
         /** ReadPool

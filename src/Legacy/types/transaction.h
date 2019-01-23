@@ -20,7 +20,6 @@ ________________________________________________________________________________
 
 #include <Legacy/types/txin.h>
 #include <Legacy/types/txout.h>
-#include <Legacy/types/enum.h>
 
 #include <TAO/Ledger/types/state.h>
 
@@ -34,14 +33,14 @@ namespace Legacy
 	 *
 	 */
 	class Transaction
-	{
+	{	
 	public:
 
 		/** The version specifier of transaction. **/
 		int32_t nVersion;
 
 
-		/** The timestamp of transaction. 
+		/** The timestamp of transaction.
          *
          *  Timestamps are generally uint64_t but this one must remain uint32_t
          *  to support unserialization of unsigned int values in legacy wallets.
@@ -207,6 +206,80 @@ namespace Legacy
 		bool IsStandard() const;
 
 
+		/** Trust Key
+		 *
+		 *  Extract the trust key out of the coinstake transaction.
+		 *
+		 *  @param[out] vchTrustKey The trust key to return.
+		 *
+		 *  @return true if the trust key was found.
+		 *
+		 **/
+		bool TrustKey(std::vector<uint8_t>& vchTrustKey) const;
+
+
+		/** Trust Key
+		 *
+		 *  Extract the trust key out of the coinstake transaction.
+		 *
+		 *  @param[out] cKey The trust key to return.
+		 *
+		 *  @return true if the trust key was found.
+		 *
+		 **/
+		bool TrustKey(uint576_t& cKey) const;
+
+
+		/** Trust Score
+		 *
+		 *  Extract the trust score out of the coinstake transaction.
+		 *
+		 *  @param[out] nScore The trust score to return.
+		 *
+		 *  @return true if the trust score was found.
+		 *
+		 **/
+		bool TrustScore(uint32_t& nScore) const;
+
+
+
+        /** Extract Trust
+         *
+         *  Extract the trust data from the input script.
+		 *
+		 *  @param[out] hashLastBlock The last block to extract.
+		 *  @param[out] nSequence The sequence number of proof of stake blocks.
+		 *  @param[out] nTrustScore The trust score to extract.
+         *
+         **/
+        bool ExtractTrust(uint1024_t& hashLastBlock, uint32_t& nSequence, uint32_t& nTrustScore) const;
+
+
+		/** Coinstake Age
+		 *
+		 *  Age is determined by average time from previous transactions.
+		 *
+		 *  @param[out] nAge The age to return.
+		 *
+		 *  @return true if succeeded.
+		 *
+		 **/
+		bool CoinstakeAge(uint64_t& nAge) const;
+
+
+		/** Coinstake Interest
+		 *
+		 *  Get the total calculated interest of the coinstake transaction
+		 *
+		 *  @param[in] block The block to check from
+		 *  @param[out] nAge The age to return.
+		 *
+		 *  @return true if succeeded.
+		 *
+		 **/
+		bool CoinstakeInterest(const TAO::Ledger::BlockState& block, uint64_t& nInterest) const;
+
+
 		/** Are Inputs Standard
 		 *
 		 *  Check for standard transaction types
@@ -352,7 +425,7 @@ namespace Legacy
 	     *  @return true if the inputs were found
 	     *
 	     **/
-		bool Connect(const std::map<uint512_t, Transaction>& inputs, const TAO::Ledger::BlockState* state, uint8_t nFlags = FLAGS::MEMPOOL) const;
+		bool Connect(const std::map<uint512_t, Transaction>& inputs, TAO::Ledger::BlockState& state, uint8_t nFlags = FLAGS::MEMPOOL) const;
 
 
 		/** Disconnect
@@ -363,6 +436,18 @@ namespace Legacy
 		 *
 		 **/
 		bool Disconnect() const;
+
+
+		/** Check Trust
+		 *
+		 *  Check the calculated trust score meets published one.
+		 *
+		 *  @param[in] state The block state to check from.
+		 *
+		 *  @return true if the trust score was satisfied.
+		 *
+		 **/
+		bool CheckTrust(const TAO::Ledger::BlockState& state) const;
 
 
 	protected:

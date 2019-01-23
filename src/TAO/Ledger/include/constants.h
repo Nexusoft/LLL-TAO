@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_INCLUDE_CONSTANTS_H
 
 #include <LLC/types/bignum.h>
+#include <Legacy/include/money.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -71,7 +72,7 @@ namespace TAO
 
 
         /** Mainnet maturity for blocks. */
-        const uint32_t NEXUS_MATURITY_BLOCKS   = 120;
+        const uint32_t NEXUS_MATURITY_BLOCKS   = 100;
 
 
         /** nVersion 4 and earlier trust keys expire after 24 hours. **/
@@ -84,6 +85,18 @@ namespace TAO
 
         /** Timestamp of trust key for testnet. **/
         const uint32_t TRUST_KEY_TIMESPAN_TESTNET = 60 * 30;
+
+
+        /** Minimum span between trust blocks testnet. **/
+        const uint32_t TESTNET_MINIMUM_INTERVAL = 3;
+
+
+        /** Minimum span between trust blocks mainnet. **/
+        const uint32_t MAINNET_MINIMUM_INTERVAL = 120;
+
+
+        /** Set the Maximum Output Value of Coinstake Transaction. **/
+        const uint64_t MAX_STAKE_WEIGHT = 1000 * Legacy::COIN;
     }
 }
 

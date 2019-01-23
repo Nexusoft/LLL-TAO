@@ -190,7 +190,8 @@ namespace TAO
             for(int i = argn + 1; i < argc; i++)
             {
                 std::string strArg = argv[i];
-                if( strArg.compare("{") == 0)
+                // if the paramter is a JSON list or array then we need to parse it
+                if( strArg.compare(0,1,"{") == 0 || strArg.compare(0,1,"[") == 0)
                     parameters.push_back(json::json::parse(argv[i]));
                 else
                     parameters.push_back(argv[i]);

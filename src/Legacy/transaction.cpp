@@ -20,11 +20,14 @@ ________________________________________________________________________________
 #include <Legacy/types/transaction.h>
 #include <Legacy/include/money.h>
 #include <Legacy/types/script.h>
+#include <Legacy/types/legacy.h>
 #include <Legacy/include/signature.h>
 #include <Legacy/include/evaluate.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/trust.h>
+#include <TAO/Ledger/types/trustkey.h>
 
 #include <Util/include/runtime.h>
 
@@ -149,10 +152,6 @@ namespace Legacy
 		if(vin.size() <= 1)
 			return false;
 
-		/* First Input Script Signature must be 8 Bytes. */
-		if(vin[0].scriptSig.size() != 8)
-			return false;
-
 		/* First Input Script Signature must Contain Fibanacci Byte Series. */
 		if(!vin[0].IsStakeSig())
 			return false;
@@ -226,6 +225,179 @@ namespace Legacy
         for(auto txout : vout)
             if (!Legacy::IsStandard(txout.scriptPubKey))
                 return false;
+
+        return true;
+    }
+
+    /* Extract the trust key out of the coinstake transaction. */
+    bool Transaction::TrustKey(std::vector<uint8_t>& vchTrustKey) const
+    {
+        /* Extract the Key from the Script Signature. */
+        std::vector<std::vector<uint8_t> > vSolutions;
+        TransactionType whichType;
+
+        /* Extract the key from script sig. */
+        if (!Solver(vout[0].scriptPubKey, whichType, vSolutions))
+            return debug::error(FUNCTION, "couldn't find trust key in script");
+
+        /* Enforce public key rules. */
+        if (whichType != TX_PUBKEY)
+            return debug::error(FUNCTION, "key not of public key type");
+
+        /* Set the Public Key Integer Key from Bytes. */
+        vchTrustKey = vSolutions[0];
+
+        return true;
+    }
+
+
+    /* Extract the trust key out of the coinstake transaction. */
+    bool Transaction::TrustKey(uint576_t& cKey) const
+    {
+        /* Extract the trust key. */
+        std::vector<uint8_t> vchTrustKey;
+        if(!TrustKey(vchTrustKey))
+            return debug::error(FUNCTION, "trust key failed to extract");
+
+        /* Set the bytes for the key object. */
+        cKey.SetBytes(vchTrustKey);
+        return true;
+
+    }
+
+
+    /* Extract the trust score out of the coinstake transaction. */
+    bool Transaction::TrustScore(uint32_t& nScore) const
+    {
+        /* Extract the trust key. */
+        uint1024_t hashBlock;
+
+        /* Get the sequence. */
+        uint32_t nSequence;
+
+        /* Extract the trust score from vin. */
+        if(!ExtractTrust(hashBlock, nSequence, nScore))
+            return debug::error(FUNCTION, "failed to get trust score");
+
+        return true;
+    }
+
+
+    /* Extract the trust data from the input script. */
+    bool Transaction::ExtractTrust(uint1024_t& hashLastBlock, uint32_t& nSequence, uint32_t& nTrustScore) const
+    {
+        /* Don't extract trust if not coinstake. */
+        if(!IsCoinStake())
+            return debug::error(FUNCTION, "not proof of stake");
+
+        /* Check the script size matches expected length. */
+        if(vin[0].scriptSig.size() != 144)
+            return debug::error(FUNCTION, "script not 144 bytes");
+
+        /* Put script in deserializing stream. */
+        DataStream scriptPub(vin[0].scriptSig.begin() + 8, vin[0].scriptSig.end(), SER_NETWORK, LLP::PROTOCOL_VERSION);
+
+        /* Erase the first 8 bytes of the fib byte series flag. */
+        //scriptPub.erase(scriptPub.begin(), scriptPub.begin() + 8);
+
+        /* Deserialize the values from stream. */
+        scriptPub >> hashLastBlock >> nSequence >> nTrustScore;
+
+        return true;
+    }
+
+
+    /* Age is determined by average time from previous transactions. */
+    bool Transaction::CoinstakeAge(uint64_t& nAge) const
+    {
+        /* Output figure to show the amount of coins being staked at their interest rates. */
+        nAge = 0;
+
+        /* Check that the transaction is Coinstake. */
+        if(!IsCoinStake())
+            return false;
+
+        /* Check the coin age of each Input. */
+        for(int nIndex = 1; nIndex < vin.size(); nIndex++)
+        {
+            /* Calculate the Age and Value of given output. */
+            TAO::Ledger::BlockState statePrev;
+            if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev))
+                return debug::error(FUNCTION, "failed to read previous tx block");
+
+            /* Time is from current transaction to previous block time. */
+            uint64_t nCoinAge = (nTime - statePrev.GetBlockTime());
+
+            /* Compound the Total Figures. */
+            nAge += nCoinAge;
+        }
+
+        nAge /= (vin.size() - 1);
+
+        return true;
+    }
+
+
+    /* Get the total calculated interest of the coinstake transaction */
+    bool Transaction::CoinstakeInterest(const TAO::Ledger::BlockState& block, uint64_t& nInterest) const
+    {
+        /* Check that the transaction is Coinstake. */
+        if(!IsCoinStake())
+            return debug::error(FUNCTION, "not coinstake transaction");
+
+        /* Extract the Key from the Script Signature. */
+        uint576_t cKey;
+        if(!TrustKey(cKey))
+            return debug::error(FUNCTION, "trust key couldn't be extracted");
+
+        /* Output figure to show the amount of coins being staked at their interest rates. */
+        uint64_t nTotalCoins = 0, nAverageAge = 0;
+        nInterest = 0;
+
+        /* Calculate the Variable Interest Rate for Given Coin Age Input. */
+        double nInterestRate = 0.05; //genesis interest rate
+        if(block.nVersion >= 6)
+            nInterestRate = 0.005;
+
+        /* Get the trust key from index database. */
+        if(!IsGenesis() || block.nVersion >= 6)
+        {
+            /* Read the trust key from the disk. */
+            TAO::Ledger::TrustKey trustKey;
+            if(LLD::legDB->ReadTrustKey(cKey, trustKey))
+                nInterestRate = trustKey.InterestRate(block, nTime);
+
+            /* Check if it failed to read and this is genesis. */
+            else if(!IsGenesis())
+                return debug::error(FUNCTION, "unable to read trust key");
+        }
+
+        /** Check the coin age of each Input. **/
+        for(int nIndex = 1; nIndex < vin.size(); nIndex++)
+        {
+            /* Calculate the Age and Value of given output. */
+            TAO::Ledger::BlockState statePrev;
+            if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev))
+                return debug::error(FUNCTION, "failed to read previous tx block");
+
+            /* Read the previous transaction. */
+            Legacy::Transaction txPrev;
+            if(!LLD::legacyDB->ReadTx(vin[nIndex].prevout.hash, txPrev))
+                return debug::error(FUNCTION, "failed to read previous tx");
+
+            /* Calculate the Age and Value of given output. */
+            uint64_t nCoinAge = (nTime - statePrev.GetBlockTime());
+            uint64_t nValue = txPrev.vout[vin[nIndex].prevout.n].nValue;
+
+            /* Compound the Total Figures. */
+            nTotalCoins += nValue;
+            nAverageAge += nCoinAge;
+
+            /* Interest is 3% of Year's Interest of Value of Coins. Coin Age is in Seconds. */
+            nInterest += ((nValue * nInterestRate * nCoinAge) / (60 * 60 * 24 * 28 * 13));
+        }
+
+        nAverageAge /= (vin.size() - 1);
 
         return true;
     }
@@ -423,7 +595,16 @@ namespace Legacy
 	std::string Transaction::ToStringShort() const
     {
         std::string str;
-        str += debug::strprintf("%s %s", GetHash().ToString().c_str(), IsCoinBase()? "base" : (IsCoinStake()? "stake" : "user"));
+        std::string txtype = "legacy ";
+            if(IsCoinBase())
+                txtype += "base";
+            else if(IsTrust())
+                txtype += "trust";
+            else if(IsGenesis())
+                txtype += "genesis";
+            else 
+                txtype += "user";
+        str += debug::strprintf("%s %s", GetHash().ToString().c_str(), txtype.c_str());
         return str;
     }
 
@@ -551,11 +732,84 @@ namespace Legacy
 
 
     /* Mark the inputs in a transaction as spent. */
-    bool Transaction::Connect(const std::map<uint512_t, Transaction>& inputs, const TAO::Ledger::BlockState* state, uint8_t nFlags) const
+    bool Transaction::Connect(const std::map<uint512_t, Transaction>& inputs, TAO::Ledger::BlockState& state, uint8_t nFlags) const
     {
-        /* Coinbase has no inputs. */
-        if (IsCoinBase())
-            return true;
+        /* Special checks for coinbase and coinstake. */
+        if (IsCoinStake() || IsCoinBase())
+        {
+            /* Check the input script size. */
+            if(vin[0].scriptSig.size() < 2 || vin[0].scriptSig.size() > (state.nVersion < 5 ? 100 : 144))
+                return debug::error(FUNCTION, "coinbase/coinstake script invalid size ", vin[0].scriptSig.size());
+
+            /* Coinbase has no inputs. */
+            if (IsCoinBase())
+            {
+                /* Calculate the mint when on a block. */
+                if(nFlags & FLAGS::BLOCK)
+                    state.nMint = GetValueOut();
+
+                return true;
+            }
+
+            /* Check that the trust score is accurate. */
+            if(state.nVersion >= 5 && !CheckTrust(state))
+                return debug::error(FUNCTION, "invalid trust score");
+
+            /* Get the trust key. */
+            std::vector<uint8_t> vTrustKey;
+            if(!TrustKey(vTrustKey))
+                return debug::error(FUNCTION, "can't extract trust key.");
+
+            /* Check for trust key. */
+            uint576_t cKey;
+            cKey.SetBytes(vTrustKey);
+
+            /* Handle Genesis Transaction Rules. Genesis is checked after Trust Key Established. */
+            TAO::Ledger::TrustKey trustKey;
+            if(IsGenesis())
+            {
+                /* Create the Trust Key from Genesis Transaction Block. */
+                trustKey = TAO::Ledger::TrustKey(vTrustKey, state.GetHash(), GetHash(), state.GetBlockTime());
+
+                /* Check the genesis transaction. */
+                if(!trustKey.CheckGenesis(state))
+                    return debug::error(FUNCTION, "invalid genesis transaction");
+
+                /* Write the trust key to indexDB */
+                LLD::legDB->WriteTrustKey(cKey, trustKey);
+            }
+
+            /* Handle Adding Trust Transactions. */
+            else if(IsTrust())
+            {
+                /* No Trust Transaction without a Genesis. */
+                if(!LLD::legDB->ReadTrustKey(cKey, trustKey))
+                {
+                    /* FindGenesis will set hashPrevBlock to genesis block. Don't want to change that here, so use temp hash */
+                    if(!TAO::Ledger::FindGenesis(cKey, state.hashPrevBlock, trustKey))
+                        return debug::error(FUNCTION, "no trust without genesis");
+
+                    LLD::legDB->WriteTrustKey(cKey, trustKey);
+                }
+
+                /* Check that the Trust Key and Current Block match. */
+                if(trustKey.vchPubKey != vTrustKey)
+                    return debug::error(FUNCTION, "trust key and block trust key mismatch");
+
+                /* Trust Keys can only exist after the Genesis Transaction. */
+                TAO::Ledger::BlockState stateGenesis;
+                if(!LLD::legDB->ReadBlock(trustKey.hashGenesisBlock, stateGenesis))
+                    return debug::error(FUNCTION, "genesis block not found");
+
+                /* Double Check the Genesis Transaction. */
+                if(!trustKey.CheckGenesis(stateGenesis))
+                    return debug::error(FUNCTION, "invalid genesis transaction");
+
+                /* Write trust key changes to disk. */
+                trustKey.hashLastBlock = state.GetHash();
+                LLD::legDB->WriteTrustKey(cKey, trustKey);
+            }
+        }
 
         /* Read all of the inputs. */
         uint64_t nValueIn = 0;
@@ -575,7 +829,13 @@ namespace Legacy
             /* Check maturity before spend. */
             if (txPrev.IsCoinBase() || txPrev.IsCoinStake())
             {
-                //TODO: read state vs txPrev state hashblock state.
+                TAO::Ledger::BlockState statePrev;
+                if(!LLD::legDB->ReadBlock(txPrev.GetHash(), statePrev))
+                    return debug::error(FUNCTION, "failed to read previous tx block");
+
+                /* Check the maturity. */
+                if((state.nHeight - statePrev.nHeight) < TAO::Ledger::NEXUS_MATURITY_BLOCKS)
+                    return debug::error(FUNCTION, "tried to spend immature balance ", (state.nHeight - statePrev.nHeight));
             }
 
             /* Check the transaction timestamp. */
@@ -591,8 +851,8 @@ namespace Legacy
             if(LLD::legacyDB->IsSpent(prevout.hash, prevout.n))
                 return debug::error(FUNCTION, "prev tx is already spent");
 
-            /* Check the ECDSA signatures. */
-            if(!VerifySignature(txPrev, *this, i, 0))
+            /* Check the ECDSA signatures. (...When not syncronizing) */
+            if(!TAO::Ledger::ChainState::Synchronizing() && !VerifySignature(txPrev, *this, i, 0))
                 return debug::error(FUNCTION, "signature is invalid");
 
             /* Commit to disk if flagged. */
@@ -604,15 +864,21 @@ namespace Legacy
         /* Check the coinstake transaction. */
         if (IsCoinStake())
         {
+            /* Get the coinstake interest. */
             uint64_t nInterest = 0;
+            if(!CoinstakeInterest(state, nInterest))
+                return debug::error(FUNCTION, GetHash().ToString().substr(0, 10), " failed to get coinstake interest");
 
-            //TODO: Check the coinstake inputs.
+            /* Check that the interest is within range. */
             if (vout[0].nValue > nInterest + nValueIn)
                 return debug::error(FUNCTION, GetHash().ToString().substr(0,10), " stake reward mismatch");
-
         }
         else if (nValueIn < GetValueOut())
             return debug::error(FUNCTION, GetHash().ToString().substr(0,10), "value in < value out");
+
+        /* Calculate the mint if connected with a block. */
+        if(nFlags & FLAGS::BLOCK)
+            state.nMint += (int32_t)(GetValueOut() - nValueIn);
 
         return true;
     }
@@ -634,6 +900,164 @@ namespace Legacy
 
         /* Erase the transaction object. */
         LLD::legacyDB->EraseTx(GetHash());
+
+        return true;
+    }
+
+
+    /* Check the calculated trust score meets published one. */
+    bool Transaction::CheckTrust(const TAO::Ledger::BlockState& state) const
+    {
+        /* No trust score for non proof of stake (for now). */
+        if(!IsCoinStake())
+            return debug::error(FUNCTION, "not proof of stake");
+
+        /* Extract the trust key from the coinstake. */
+        uint576_t cKey;
+        if(!TrustKey(cKey))
+            return debug::error(FUNCTION, "trust key not found in script");
+
+        /* Genesis has a trust score of 0. */
+        if(IsGenesis())
+        {
+            if(vin[0].scriptSig.size() != 8)
+                return debug::error(FUNCTION, "genesis unexpected size ", vin[0].scriptSig.size());
+
+            return true;
+        }
+
+        /* Version 5 - last trust block. */
+        uint1024_t hashLastBlock;
+        uint32_t   nSequence;
+        uint32_t   nTrustScore;
+
+        /* Extract values from coinstake vin. */
+        if(!ExtractTrust(hashLastBlock, nSequence, nTrustScore))
+            return debug::error(FUNCTION, "failed to extract values from script");
+
+        /* Check that the last trust block is in the block database. */
+        TAO::Ledger::BlockState stateLast;
+        if(!LLD::legDB->ReadBlock(hashLastBlock, stateLast))
+            return debug::error(FUNCTION, "last block not in database");
+
+        /* Check that the previous block is in the block database. */
+        TAO::Ledger::BlockState statePrev;
+        if(!LLD::legDB->ReadBlock(state.hashPrevBlock, statePrev))
+            return debug::error(FUNCTION, "prev block not in database");
+
+        /* Get the last coinstake transaction. */
+        Transaction txLast;
+        if(!LLD::legacyDB->ReadTx(stateLast.vtx[0].second, txLast))
+            return debug::error(FUNCTION, "last state coinstake tx not found");
+
+        /* Enforce the minimum trust key interval of 120 blocks. */
+        if(state.nHeight - stateLast.nHeight < (config::fTestNet ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL : TAO::Ledger::MAINNET_MINIMUM_INTERVAL))
+            return debug::error(FUNCTION, "trust key interval below minimum interval ", state.nHeight - stateLast.nHeight);
+
+        /* Extract the last trust key */
+        uint576_t keyLast;
+        if(!txLast.TrustKey(keyLast))
+            return debug::error(FUNCTION, "couldn't extract trust key from previous tx");
+
+        /* Ensure the last block being checked is the same trust key. */
+        if(keyLast != cKey)
+            return debug::error(FUNCTION,
+                "trust key in previous block ", cKey.ToString().substr(0, 20),
+                " to this one ", keyLast.ToString().substr(0, 20));
+
+        /* Placeholder in case previous block is a version 4 block. */
+        uint32_t nScorePrev = 0;
+        uint32_t nScore     = 0;
+
+        /* If previous block is genesis, set previous score to 0. */
+        if(txLast.IsGenesis())
+        {
+            /* Enforce sequence number 1 if previous block was genesis */
+            if(nSequence != 1)
+                return debug::error("CBlock::CheckTrust() : first trust block and sequence is not 1 (%u)", nSequence);
+
+            /* Genesis results in a previous score of 0. */
+            nScorePrev = 0;
+        }
+
+        /* Version 4 blocks need to get score from previous blocks calculated score from the trust pool. */
+        else if(stateLast.nVersion < 5)
+        {
+            /* Check the trust pool - this should only execute once transitioning from version 4 to version 5 trust keys. */
+            TAO::Ledger::TrustKey trustKey;
+            if(!LLD::legDB->ReadTrustKey(cKey, trustKey))
+            {
+                /* Find the genesis if it isn't found. */
+                if(!FindGenesis(cKey, state.hashPrevBlock, trustKey))
+                    return debug::error(FUNCTION, "trust key not found in database");
+
+                LLD::legDB->WriteTrustKey(cKey, trustKey);
+            }
+
+            /* Enforce sequence number of 1 for anything made from version 4 blocks. */
+            if(nSequence != 1)
+                return debug::error(FUNCTION, "version 4 block sequence number is ", nSequence);
+
+            /* Ensure that a version 4 trust key is not expired based on new timespan rules. */
+            if(trustKey.Expired(TAO::Ledger::ChainState::stateBest))
+                return debug::error("version 4 key expired.");
+
+            /* Score is the total age of the trust key for version 4. */
+            nScorePrev = trustKey.Age(TAO::Ledger::ChainState::stateBest.GetBlockTime());
+        }
+
+        /* Version 5 blocks that are trust must pass sequence checks. */
+        else
+        {
+            /* The last block of previous. */
+            uint1024_t hashBlockPrev = 0; //dummy variable unless we want to do recursive checking of scores all the way back to genesis
+
+            /* Extract the value from the previous block. */
+            uint32_t nSequencePrev;
+            if(!txLast.ExtractTrust(hashBlockPrev, nSequencePrev, nScorePrev))
+                return debug::error(FUNCTION, "failed to extract trust");
+
+            /* Enforce Sequence numbering, must be +1 always. */
+            if(nSequence != nSequencePrev + 1)
+                return debug::error(FUNCTION, "previous sequence broken");
+        }
+
+        /* The time it has been since the last trust block for this trust key. */
+        uint32_t nTimespan = (statePrev.GetBlockTime() - stateLast.GetBlockTime());
+
+        /* Timespan less than required timespan is awarded the total seconds it took to find. */
+        if(nTimespan < (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
+            nScore = nScorePrev + nTimespan;
+
+        /* Timespan more than required timespan is penalized 3 times the time it took past the required timespan. */
+        else
+        {
+            /* Calculate the penalty for score (3x the time). */
+            uint32_t nPenalty = (nTimespan - (config::fTestNet ?
+                TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN)) * 3;
+
+            /* Catch overflows and zero out if penalties are greater than previous score. */
+            if(nPenalty > nScorePrev)
+                nScore = 0;
+            else
+                nScore = (nScorePrev - nPenalty);
+        }
+
+        /* Set maximum trust score to seconds passed for interest rate. */
+        if(nScore > (60 * 60 * 24 * 28 * 13))
+            nScore = (60 * 60 * 24 * 28 * 13);
+
+        /* Debug output. */
+        debug::log(2, FUNCTION,
+            "score=", nScore, ", ",
+            "prev=", nScorePrev, ", ",
+            "timespan=", nTimespan, ", ",
+            "change=", (int32_t)(nScore - nScorePrev), ")"
+        );
+
+        /* Check that published score in this block is equivilent to calculated score. */
+        if(nTrustScore != nScore)
+            return debug::error(FUNCTION, "published trust score ", nTrustScore, " not meeting calculated score ", nScore);
 
         return true;
     }

@@ -55,6 +55,7 @@ namespace LLP
         : nError(0)
         , nLastSend(runtime::timestamp())
         , nLastRecv(runtime::timestamp())
+        , vBuffer()
         , addr()
         {
             fd = -1;
@@ -67,6 +68,7 @@ namespace LLP
         : nError(0)
         , nLastSend(runtime::timestamp())
         , nLastRecv(runtime::timestamp())
+        , vBuffer()
         , addr(addrIn)
         {
             fd = nSocketIn;
@@ -159,7 +161,7 @@ namespace LLP
          *  @return the total bytes that were written
          *
          **/
-        int32_t Write(std::vector<uint8_t> vData, size_t nBytes);
+        int32_t Write(const std::vector<uint8_t>& vData, size_t nBytes);
 
 
         /** Flush

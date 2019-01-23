@@ -163,7 +163,7 @@ namespace LLP
         }
 
 
-        LegacyPacket NewMessage(const char* chCommand, DataStream ssData)
+        LegacyPacket NewMessage(const char* chCommand, DataStream& ssData)
         {
             LegacyPacket RESPONSE(chCommand);
             RESPONSE.SetData(ssData);
@@ -174,161 +174,92 @@ namespace LLP
 
         void PushMessage(const char* chCommand)
         {
-            try
-            {
-                LegacyPacket RESPONSE(chCommand);
-                RESPONSE.SetChecksum();
+            LegacyPacket RESPONSE(chCommand);
+            RESPONSE.SetChecksum();
 
-                this->WritePacket(RESPONSE);
-            }
-            catch(...)
-            {
-                throw;
-            }
+            this->WritePacket(RESPONSE);
         }
+
 
         template<typename T1>
         void PushMessage(const char* chMessage, const T1& t1)
         {
-            try
-            {
-                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-                ssData << t1;
+            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+            ssData << t1;
 
-                this->WritePacket(NewMessage(chMessage, ssData));
-            }
-            catch(...)
-            {
-                throw;
-            }
+            this->WritePacket(NewMessage(chMessage, ssData));
         }
 
         template<typename T1, typename T2>
         void PushMessage(const char* chMessage, const T1& t1, const T2& t2)
         {
-            try
-            {
-                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-                ssData << t1 << t2;
+            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+            ssData << t1 << t2;
 
-                this->WritePacket(NewMessage(chMessage, ssData));
-            }
-            catch(...)
-            {
-                throw;
-            }
+            this->WritePacket(NewMessage(chMessage, ssData));
         }
 
         template<typename T1, typename T2, typename T3>
         void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3)
         {
-            try
-            {
-                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-                ssData << t1 << t2 << t3;
+            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+            ssData << t1 << t2 << t3;
 
-                this->WritePacket(NewMessage(chMessage, ssData));
-            }
-            catch(...)
-            {
-                throw;
-            }
+            this->WritePacket(NewMessage(chMessage, ssData));
         }
 
         template<typename T1, typename T2, typename T3, typename T4>
         void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4)
         {
-            try
-            {
-                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-                ssData << t1 << t2 << t3 << t4;
+            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+            ssData << t1 << t2 << t3 << t4;
 
-                this->WritePacket(NewMessage(chMessage, ssData));
-            }
-            catch(...)
-            {
-                throw;
-            }
+            this->WritePacket(NewMessage(chMessage, ssData));
         }
 
         template<typename T1, typename T2, typename T3, typename T4, typename T5>
         void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5)
         {
-            try
-            {
-                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-                ssData << t1 << t2 << t3 << t4 << t5;
+            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+            ssData << t1 << t2 << t3 << t4 << t5;
 
-                this->WritePacket(NewMessage(chMessage, ssData));
-            }
-            catch(...)
-            {
-                throw;
-            }
+            this->WritePacket(NewMessage(chMessage, ssData));
         }
 
         template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
         void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6)
         {
-            try
-            {
-                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-                ssData << t1 << t2 << t3 << t4 << t5 << t6;
+            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+            ssData << t1 << t2 << t3 << t4 << t5 << t6;
 
-                this->WritePacket(NewMessage(chMessage, ssData));
-            }
-            catch(...)
-            {
-                throw;
-            }
+            this->WritePacket(NewMessage(chMessage, ssData));
         }
 
         template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7>
         void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7)
         {
-            try
-            {
-                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-                ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7;
+            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+            ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7;
 
-                this->WritePacket(NewMessage(chMessage, ssData));
-            }
-            catch(...)
-            {
-                throw;
-            }
+            this->WritePacket(NewMessage(chMessage, ssData));
         }
 
         template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8>
         void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7, const T8& t8)
         {
-            try
-            {
-                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-                ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7 << t8;
+            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+            ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7 << t8;
 
-                this->WritePacket(NewMessage(chMessage, ssData));
-            }
-            catch(...)
-            {
-                throw;
-            }
+            this->WritePacket(NewMessage(chMessage, ssData));
         }
 
         template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9>
         void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7, const T8& t8, const T9& t9)
         {
-            try
-            {
-                DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-                ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7 << t8 << t9;
+            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+            ssData << t1 << t2 << t3 << t4 << t5 << t6 << t7 << t8 << t9;
 
-                this->WritePacket(NewMessage(chMessage, ssData));
-            }
-            catch(...)
-            {
-                throw;
-            }
+            this->WritePacket(NewMessage(chMessage, ssData));
         }
 
     };

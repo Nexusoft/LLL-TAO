@@ -291,7 +291,7 @@ namespace LLD
         }
 
         /** Simple Erase for now, not efficient in Data Usage of HD but quick to get erase function working. **/
-        bool Erase(const std::vector<uint8_t> vKey)
+        bool Erase(const std::vector<uint8_t>& vKey)
         {
             LOCK(KEY_MUTEX);
 
@@ -322,7 +322,7 @@ namespace LLD
         }
 
         /** Get a Record from the Database with Given Key. **/
-        bool Get(const std::vector<uint8_t> vKey, SectorKey &cKey)
+        bool Get(const std::vector<uint8_t>& vKey, SectorKey& cKey)
         {
             LOCK(KEY_MUTEX);
 

@@ -102,6 +102,18 @@ namespace TAO
              **/
             json::json Help( const json::json& params, bool fHelp);
 
+            /** Stop
+             *
+             *  stop
+             *  Stop Nexus server
+             *
+             *  @param[in] params Parameters array passed by the caller
+             *
+             *  @return JSON containing the help list
+             *
+             **/
+            json::json Stop(const json::json& params, bool fHelp);
+
 
             /** GetInfo
              *
@@ -291,6 +303,32 @@ namespace TAO
             *
             **/
             json::json MoveCmd(const json::json& params, bool fHelp);
+
+            /** SendFrom
+            *
+            *  sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]
+            *  <amount> is a real and is rounded to the nearest 0.000001
+            *  requires wallet passphrase to be set with walletpassphrase firsther
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json SendFrom(const json::json& params, bool fHelp);
+
+            /** SendMany
+            *
+            *  sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]
+            *  - amounts are double-precision floating point numbers
+            *  requires wallet passphrase to be set with walletpassphrase first
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json SendMany(const json::json& params, bool fHelp);  
 
             /** AddMultisigAddress
             *
@@ -600,6 +638,44 @@ namespace TAO
             *
             **/
             json::json GetMoneySupply(const json::json& params, bool fHelp);
+
+            /** GetBlockHash
+            *
+            *  getblockhash <index>"
+            *  Returns hash of block in best-block-chain at <index>
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json GetBlockHash(const json::json& params, bool fHelp);
+
+            /** IsOrphan
+            *
+            *  isorphan <hash>"
+            *  Returns whether a block is an orphan or not
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json IsOrphan(const json::json& params, bool fHelp);
+
+            /** GetBlock
+            *
+            *  getblock <hash> [txinfo]"
+            *  txinfo optional to print more detailed tx info."
+            *  Returns details of a block with given block-hash
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json GetBlock(const json::json& params, bool fHelp);
+
 
             /** BackupWallet
             *

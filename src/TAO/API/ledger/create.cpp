@@ -87,10 +87,6 @@ namespace TAO
             if(!state.Accept())
                 throw APIException(-26, "State is invalid");
 
-            /* Write transaction to local database. */
-            LLD::legDB->WriteTx(state.producer.GetHash(), state.producer);
-            LLD::locDB->WriteLast(user->Genesis(), state.producer.GetHash());
-
             json::json ret;
             ret["block"] = block.GetHash().ToString();
 

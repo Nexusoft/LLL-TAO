@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <Legacy/types/legacy.h>
+
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/enum.h>
@@ -42,20 +44,43 @@ namespace TAO
         /* Get the block state object. */
         bool GetLastState(BlockState &state, uint32_t nChannel)
         {
-            for(uint32_t index = 0; index < 10000; index++) //set limit on searchable blocks
+            /* Loop back 10k blocks. */
+            while(!config::fShutdown)
             {
+                /* Return false on genesis. */
                 if(state.GetHash() == hashGenesis)
                     return false;
 
+                /* Return true on channel found. */
                 if(state.GetChannel() == nChannel)
                     return true;
 
+                /* Iterate backwards. */
                 state = state.Prev();
                 if(state.IsNull())
                     return false;
             }
 
             return false;
+        }
+
+
+
+        /* Construct a block state from a legacy block. */
+        BlockState::BlockState(Legacy::LegacyBlock block)
+        : Block(block)
+        , vtx()
+        , nChainTrust(0)
+        , nMoneySupply(0)
+        , nMint(0)
+        , nChannelHeight(0)
+        , nReleasedReserve{0, 0, 0}
+        , hashNextBlock(0)
+        , hashCheckpoint(0)
+        {
+            /* Construct a block state from legacy block tx set. */
+            for(const auto & tx : block.vtx)
+                vtx.push_back(std::make_pair(TYPE::LEGACY_TX, tx.GetHash()));
         }
 
 
@@ -91,124 +116,63 @@ namespace TAO
         /* Accept a block state into chain. */
         bool BlockState::Accept()
         {
-            /* Debug output. */
-            TritiumBlock block = static_cast<TritiumBlock>(*this);
-            block.print();
-
-
-            /* Read leger DB for duplicate block. */
-            BlockState state;
-            if(LLD::legDB->ReadBlock(GetHash(), state))
-                return debug::error(FUNCTION, "block state already exists");
-
-
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();
             if(statePrev.IsNull())
                 return debug::error(FUNCTION, "previous block state not found");
 
-
-            /* Check the Height of Block to Previous Block. */
-            if(statePrev.nHeight + 1 != nHeight)
-                return debug::error(FUNCTION, "incorrect block height.");
-
-
-            /* Get the proof hash for this block. */
-            uint1024_t hash = (nVersion < 5 ? GetHash() : GetChannel() == 0 ? StakeHash() : ProofHash());
-
-
-            /* Get the target hash for this block. */
-            uint1024_t hashTarget = LLC::CBigNum().SetCompact(nBits).getuint1024();
-
-
-            /* Verbose logging of proof and target. */
-            debug::log(2, "  proof:  ", hash.ToString().substr(0, 30));
-
-
-            /* Channel switched output. */
-            if(GetChannel() == 1)
-                debug::log(2, "  prime cluster verified of size ", GetDifficulty(nBits, 1));
-            else
-                debug::log(2, "  target: ", hashTarget.ToString().substr(0, 30));
-
-
-            /* Check that the nBits match the current Difficulty. **/
-            if (nBits != GetNextTargetRequired(statePrev, GetChannel()))
-                return debug::error(FUNCTION, "incorrect proof-of-work/proof-of-stake");
-
-
-            /* Check That Block timestamp is not before previous block. */
-            //if (GetBlockTime() <= statePrev.GetBlockTime())
-            //    return debug::error(FUNCTION, "block's timestamp too early Block: ", GetBlockTime(), " Prev: ",
-            //     statePrev.GetBlockTime());
-
-
-            /* Check that Block is Descendant of Hardened Checkpoints. */
-            if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
-                return debug::error(FUNCTION, "not descendant of last checkpoint");
-
-
-            /* Check the block proof of work rewards. */
-            if(IsProofOfWork() && nVersion >= 3)
-            {
-                /* Get the stream from coinbase. */
-                producer.ssOperation.seek(1, STREAM::BEGIN); //set the read position to where reward will be.
-
-                /* Read the mining reward. */
-                uint64_t nMiningReward;
-                producer.ssOperation >> nMiningReward;
-
-                /* Check that the Mining Reward Matches the Coinbase Calculations. */
-                if (nMiningReward != GetCoinbaseReward(statePrev, GetChannel(), 0))
-                    return debug::error(FUNCTION, "miner reward mismatch ", nMiningReward, " : ",
-                         GetCoinbaseReward(statePrev, GetChannel(), 0));
-            }
-            else if (IsProofOfStake())
-            {
-                /* Check that the Coinbase / CoinstakeTimstamp is after Previous Block. */
-                if (producer.nTimestamp < statePrev.GetBlockTime())
-                    return debug::error(FUNCTION, "coinstake transaction too early");
-            }
-
-
-            //TODO: check legacy transactions for finality
-
             /* Compute the Chain Trust */
             nChainTrust = statePrev.nChainTrust + GetBlockTrust();
 
-
             /* Compute the Channel Height. */
             BlockState stateLast = statePrev;
-            if(!GetLastState(stateLast, GetChannel()))
-                nChannelHeight = 1;
-            else
-                nChannelHeight = stateLast.nChannelHeight + 1;
-
+            GetLastState(stateLast, GetChannel());
+            nChannelHeight = stateLast.nChannelHeight + 1;
 
             /* Compute the Released Reserves. */
-            for(int nType = 0; nType < 3; nType++)
+            if(IsProofOfWork())
             {
-                if(IsProofOfWork())
+                /* Calculate the coinbase rewards from the coinbase transaction. */
+                uint64_t nCoinbaseRewards[3] = {0, 0, 0};
+                if(vtx[0].first == TYPE::LEGACY_TX)
+                {
+                    /* Get the coinbase from the memory pool. */
+                    Legacy::Transaction tx;
+                    if(!mempool.Get(vtx[0].second, tx))
+                        return debug::error(FUNCTION, "coinbase is not in the memory pool");
+
+                    /* Get the size of the coinbase. */
+                    uint32_t nSize = tx.vout.size();
+
+                    /* Add up the Miner Rewards from Coinbase Tx Outputs. */
+                    for(int32_t nIndex = 0; nIndex < nSize - 2; nIndex++)
+                        nCoinbaseRewards[0] += tx.vout[nIndex].nValue;
+
+                    /* Get the ambassador and developer coinbase. */
+                    nCoinbaseRewards[1] = tx.vout[nSize - 2].nValue;
+                    nCoinbaseRewards[2] = tx.vout[nSize - 1].nValue;
+                }
+                else
+                {
+                    //TODO: handle for the coinbase in Tritium
+                }
+
+                for(int nType = 0; nType < 3; nType++)
                 {
                     /* Calculate the Reserves from the Previous Block in Channel's reserve and new Release. */
                     uint64_t nReserve  = stateLast.nReleasedReserve[nType] +
                         GetReleasedReserve(*this, GetChannel(), nType);
 
-                    /* Get the coinbase rewards. */
-                    uint64_t nCoinbaseRewards = GetCoinbaseReward(statePrev, GetChannel(), nType);
-
                     /* Block Version 3 Check. Disable Reserves from going below 0. */
-                    if(nVersion >= 3 && nCoinbaseRewards >= nReserve)
+                    if(nVersion != 2 && nCoinbaseRewards[nType] >= nReserve)
                         return debug::error(FUNCTION, "out of reserve limits");
 
                     /* Check coinbase rewards. */
-                    nReleasedReserve[nType] =  (nReserve - nCoinbaseRewards);
+                    nReleasedReserve[nType] =  (nReserve - nCoinbaseRewards[nType]);
 
-                    debug::log(2, "Reserve Balance ", nType, " | ", nReleasedReserve[nType] / 1000000.0,
-                        " Nexus | Released ", (nReserve - stateLast.nReleasedReserve[nType]) / 1000000.0);
+                    debug::log(2, "Reserve Balance ", nType, " | ", std::fixed, nReleasedReserve[nType] / 1000000.0,
+                        " Nexus | Released ", std::fixed, (nReserve - stateLast.nReleasedReserve[nType]) / 1000000.0);
                 }
-                else
-                    nReleasedReserve[nType] = 0;
             }
 
             /* Add the Pending Checkpoint into the Blockchain. */
@@ -222,13 +186,17 @@ namespace TAO
             {
                 hashCheckpoint = statePrev.hashCheckpoint;
 
-                debug::log(0, "===== Pending Checkpoint Hash = ", hashCheckpoint.ToString().substr(0, 15));
+                debug::log(1, "===== Pending Checkpoint Hash = ", hashCheckpoint.ToString().substr(0, 15));
             }
+
 
             /* Start the database transaction. */
             LLD::legDB->TxnBegin();
             LLD::regDB->TxnBegin();
             LLD::locDB->TxnBegin();
+
+            /* Start the legacy transaction. */
+            LLD::legacyDB->TxnBegin();
 
 
             /* Write the block to disk. */
@@ -312,7 +280,7 @@ namespace TAO
                     }
 
                     /* List of transactions to resurrect. */
-                    std::vector<uint512_t> vResurrect;
+                    std::vector<std::pair<uint8_t, uint512_t>> vResurrect;
 
                     /* Disconnect given blocks. */
                     for(auto & state : vDisconnect)
@@ -325,15 +293,17 @@ namespace TAO
                             LLD::regDB->TxnAbort();
                             LLD::locDB->TxnAbort();
 
-                            /* Debug errors. */
+                            /* Cleanup legacy Txn. */
+                            LLD::legacyDB->TxnAbort();
 
+                            /* Debug errors. */
                             return debug::error(FUNCTION, "failed to disconnect ",
                                 state.GetHash().ToString().substr(0, 20));
                         }
 
                         /* Add transactions into memory pool. */
                         for(auto tx : state.vtx)
-                            vResurrect.push_back(tx.second);
+                            vResurrect.push_back(tx);
                     }
 
                     /* List of transactions to remove from pool. */
@@ -355,6 +325,9 @@ namespace TAO
                             LLD::regDB->TxnAbort();
                             LLD::locDB->TxnAbort();
 
+                            /* Cleanup legacy Txn. */
+                            LLD::legacyDB->TxnAbort();
+
                             /* Debug errors. */
                             return debug::error(FUNCTION, "failed to connect ",
                                 state.GetHash().ToString().substr(0, 20));
@@ -374,15 +347,28 @@ namespace TAO
                         mempool.Remove(hashTx);
 
                     /* Add transaction back to memory pool. */
-                    for(auto & hashTx : vResurrect)
+                    for(auto & txAdd : vResurrect)
                     {
-                        /* Check if in memory pool. */
-                        TAO::Ledger::Transaction tx;
-                        if(!LLD::legDB->ReadTx(hashTx, tx))
-                            return debug::error(FUNCTION, "transaction is not on disk");
+                        if(txAdd.first == TYPE::TRITIUM_TX)
+                        {
+                            /* Check if in memory pool. */
+                            TAO::Ledger::Transaction tx;
+                            if(!LLD::legDB->ReadTx(txAdd.second, tx))
+                                return debug::error(FUNCTION, "transaction is not on disk");
 
-                        /* Add to the mempool. */
-                        mempool.Accept(tx);
+                            /* Add to the mempool. */
+                            mempool.Accept(tx);
+                        }
+                        else if(txAdd.first == TYPE::LEGACY_TX)
+                        {
+                            /* Check if in memory pool. */
+                            Legacy::Transaction tx;
+                            if(!LLD::legacyDB->ReadTx(txAdd.second, tx))
+                                return debug::error(FUNCTION, "transaction is not on disk");
+
+                            /* Add to the mempool. */
+                            mempool.Accept(tx);
+                        }
                     }
 
 
@@ -418,6 +404,9 @@ namespace TAO
             LLD::regDB->TxnCommit();
             LLD::locDB->TxnCommit();
 
+            /* Commit the legacy database. */
+            LLD::legacyDB->TxnCommit();
+
 
             /* Debug output. */
             debug::log(0, FUNCTION, "ACCEPTED");
@@ -429,11 +418,9 @@ namespace TAO
         /** Connect a block state into chain. **/
         bool BlockState::Connect()
         {
-            if(!LLD::legDB->WriteTx(producer.GetHash(), producer))
-                return debug::error(FUNCTION, "failed to write producer");
 
             /* Check through all the transactions. */
-            for(auto tx : vtx)
+            for(const auto & tx : vtx)
             {
                 /* Only work on tritium transactions for now. */
                 if(tx.first == TYPE::TRITIUM_TX)
@@ -443,6 +430,12 @@ namespace TAO
 
                     /* Check if in memory pool. */
                     TAO::Ledger::Transaction tx;
+
+                    /* Make sure the transaction isn't on disk. */
+                    if(LLD::legDB->ReadTx(hash, tx))
+                        return debug::error(FUNCTION, "transaction already exists");
+
+                    /* Check the memory pool. */
                     if(!mempool.Get(hash, tx))
                         return debug::error(FUNCTION, "transaction is not in memory pool"); //TODO: recover from this and ask sending node.
 
@@ -489,15 +482,62 @@ namespace TAO
                             return debug::error(FUNCTION, "failed to write last hash");
                     }
                 }
+                else if(tx.first == TYPE::LEGACY_TX)
+                {
+                    /* Get the transaction hash. */
+                    uint512_t hash = tx.second;
+
+                    /* Check if in memory pool. */
+                    Legacy::Transaction tx;
+
+                    /* Make sure the transaction isn't on disk. */
+                    if(LLD::legacyDB->ReadTx(hash, tx))
+                        return debug::error(FUNCTION, "transaction already exists");
+
+                    /* Check the memory pool. */
+                    if(!mempool.Get(hash, tx))
+                        return debug::error(FUNCTION, "transaction is not in memory pool"); //TODO: recover from this and ask sending node.
+
+                    /* Fetch the inputs. */
+                    std::map<uint512_t, Legacy::Transaction> inputs;
+                    if(!tx.FetchInputs(inputs))
+                        return debug::error(FUNCTION, "failed to fetch the inputs");
+
+                    /* Write to disk. */
+                    if(!LLD::legacyDB->WriteTx(hash, tx))
+                        return debug::error(FUNCTION, "failed to write tx to disk");
+
+                    /* Connect the inputs. */
+                    if(!tx.Connect(inputs, *this, Legacy::FLAGS::BLOCK))
+                        return debug::error(FUNCTION, "failed to connect inputs");
+
+                }
+                else
+                    return debug::error(FUNCTION, "using an unknown transaction type");
+
+                /* Write the indexing entries. */
+                LLD::legDB->IndexBlock(tx.second, GetHash());
             }
 
             /* Update the previous state's next pointer. */
             BlockState prev = Prev();
+
+            /* Update the money supply. */
+            nMoneySupply = (prev.IsNull() ? 0 : prev.nMoneySupply) + nMint;
+
+            /* Log how much was generated / destroyed. */
+            debug::log(0, FUNCTION, nMint > 0 ? "Generated " : "Destroyed ", std::fixed, (double)nMint / Legacy::COIN, " Nexus | Money Supply ", std::fixed, (double)nMoneySupply / Legacy::COIN);
+
+            /* Write the updated block state to disk. */
+            if(!LLD::legDB->WriteBlock(GetHash(), *this))
+                return debug::error(FUNCTION, "failed to update block state");
+
+            /* Update chain pointer for previous block. */
             if(!prev.IsNull())
             {
                 prev.hashNextBlock = GetHash();
                 if(!LLD::legDB->WriteBlock(prev.GetHash(), prev))
-                    return debug::error(FUNCTION, "failed to write producer");
+                    return debug::error(FUNCTION, "failed to update previous block state");
             }
 
             return true;
@@ -521,9 +561,28 @@ namespace TAO
                     if(!LLD::legDB->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction is not on disk");
 
-                    /* Execute the operations layers. */
+                    /* Rollback the register layer. */
                     if(!TAO::Register::Rollback(tx))
                         return debug::error(FUNCTION, "transaction register layer failed to rollback");
+
+                    /* Delete the transaction. */
+                    if(!LLD::legDB->EraseTx(hash))
+                        return debug::error(FUNCTION, "could not erase transaction");
+                }
+                else if(tx.first == TYPE::LEGACY_TX)
+                {
+                    /* Get the transaction hash. */
+                    uint512_t hash = tx.second;
+
+                    /* Check if in memory pool. */
+                    Legacy::Transaction tx;
+                    if(!LLD::legacyDB->ReadTx(hash, tx))
+                        return debug::error(FUNCTION, "transaction is not on disk");
+
+                    /* Disconnect the inputs. */
+                    if(!tx.Disconnect())
+                        return debug::error(FUNCTION, "failed to connect inputs");
+
                 }
             }
 
@@ -615,6 +674,34 @@ namespace TAO
         void BlockState::print() const
         {
             debug::log(0, ToString(debug::flags::header | debug::flags::chain));
+        }
+
+        uint1024_t BlockState::StakeHash() const
+        {
+            if(vtx[0].first == TYPE::TRITIUM_TX)
+            {
+                /* Get the tritium transaction  from the database*/
+                TAO::Ledger::Transaction tx;
+                if(!LLD::legDB->ReadTx(vtx[0].second, tx))
+                    return debug::error(FUNCTION, "transaction is not on disk");
+
+                return Block::StakeHash( tx.IsGenesis(), tx.hashGenesis);
+            }
+            else if(vtx[0].first == TYPE::LEGACY_TX)
+            {
+                /* Get the legacy transaction from the database. */
+                Legacy::Transaction tx;
+                if(!LLD::legacyDB->ReadTx(vtx[0].second, tx))
+                    return debug::error(FUNCTION, "transaction is not on disk");
+
+                /* Get the trust key. */
+                uint576_t keyTrust;
+                tx.TrustKey(keyTrust);
+
+                return Block::StakeHash(tx.IsGenesis(), keyTrust);
+            }
+            else
+                return debug::error(FUNCTION, "StakeHash called on invalid BlockState");
         }
     }
 }

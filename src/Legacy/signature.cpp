@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <Legacy/include/signature.h>
 #include <Legacy/include/evaluate.h>
 
-#include <Legacy/types/enum.h>
+#include <Legacy/include/enum.h>
 #include <Legacy/types/transaction.h>
 #include <Legacy/types/script.h>
 

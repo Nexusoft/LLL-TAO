@@ -139,38 +139,65 @@ namespace LLC
 
     /* Consturctor with default curve type. */
     ECKey::ECKey()
+    : pkey(EC_KEY_new_by_curve_name(NID_sect571r1))
+    , fSet(false)
+    , fCompressedPubKey(false)
+    , nCurveID(NID_sect571r1)
+    , nKeySize(72)
     {
         /* Set the Default Curve ID as sect571r1 */
-        nCurveID   = NID_sect571r1;
-        nKeySize = 72;
+        //nCurveID   = NID_sect571r1;
+        //nKeySize = 72;
 
         /* Reset the Current Key. */
-        Reset();
+        //Reset();
+
+        //fCompressedPubKey = false;
+        pkey = EC_KEY_new_by_curve_name(nCurveID);
+        if (pkey == nullptr)
+            throw key_error("ECKey::ECKey() : EC_KEY_new_by_curve_name failed");
+        //fSet = false;
     }
 
 
     /* Constructor from a new curve type. */
     ECKey::ECKey(const int nID, const int nKeySizeIn = 72)
+    : pkey(EC_KEY_new_by_curve_name(nID))
+    , fSet(false)
+    , fCompressedPubKey(false)
+    , nCurveID(nID)
+    , nKeySize(nKeySizeIn)
     {
         /* Set the Curve Type. */
-        nCurveID   = nID;
-        nKeySize = nKeySizeIn;
+        //nCurveID   = nID;
+        //nKeySize = nKeySizeIn;
 
         /* Reset the Current Key. */
-        Reset();
+        //Reset();
+
+        //fCompressedPubKey = false;
+        //pkey = EC_KEY_new_by_curve_name(nCurveID);
+        if (pkey == nullptr)
+            throw key_error("ECKey::ECKey() : EC_KEY_new_by_curve_name failed");
+        //fSet = false;
     }
 
 
     /* Constructor from a ECKey object. */
     ECKey::ECKey(const ECKey& b)
+    : pkey(EC_KEY_dup(b.pkey))
+    , fSet(b.fSet)
+    , fCompressedPubKey(b.fCompressedPubKey)
+    , nCurveID(b.nCurveID)
+    , nKeySize(b.nKeySize)
     {
-        pkey = EC_KEY_dup(b.pkey);
+        //pkey = EC_KEY_dup(b.pkey);
         if (pkey == nullptr)
             throw key_error("ECKey::ECKey(const ECKey&) : EC_KEY_dup failed");
 
-        nCurveID   = b.nCurveID;
-        nKeySize = b.nKeySize;
-        fSet = b.fSet;
+        //nCurveID   = b.nCurveID;
+        //nKeySize = b.nKeySize;
+        //fSet = b.fSet;
     }
 
 
@@ -187,6 +214,11 @@ namespace LLC
         if (!EC_KEY_copy(pkey, b.pkey))
             throw key_error("ECKey::operator=(const ECKey&) : EC_KEY_copy failed");
         fSet = b.fSet;
+
+        fCompressedPubKey = b.fCompressedPubKey;
+        nCurveID = b.nCurveID;
+        nKeySize = b.nKeySize;
+
         return (*this);
     }
 
@@ -358,7 +390,7 @@ namespace LLC
 
 
     /* Nexus sepcific strict DER rules. */
-    bool ECKey::Encoding(const std::vector<uint8_t> vchSig)
+    bool ECKey::Encoding(const std::vector<uint8_t>& vchSig) const
     {
         /* Check the signature length. Strict encoding requires no more than 135 bytes. */
         if (vchSig.size() != 135) return false;
@@ -417,7 +449,7 @@ namespace LLC
 
 
     /* Based on standard set of byte data as input of any length. Checks for DER encoding */
-    bool ECKey::Sign(const std::vector<uint8_t> vchData, std::vector<uint8_t>& vchSig)
+    bool ECKey::Sign(const std::vector<uint8_t>& vchData, std::vector<uint8_t>& vchSig) const
     {
         uint32_t nSize = ECDSA_size(pkey);
         vchSig.resize(nSize); // Make sure it is big enough
@@ -438,7 +470,7 @@ namespace LLC
 
 
     /* Tritium Signature Verification Function */
-    bool ECKey::Verify(const std::vector<uint8_t> vchData, const std::vector<uint8_t>& vchSig)
+    bool ECKey::Verify(const std::vector<uint8_t>& vchData, const std::vector<uint8_t>& vchSig) const
     {
         return Encoding(vchSig) &&
             (ECDSA_verify(0, &vchData[0], vchData.size(), &vchSig[0], vchSig.size(), pkey) == 1);
@@ -446,7 +478,7 @@ namespace LLC
 
 
     /* Legacy Signing Function */
-    bool ECKey::Sign(uint1024_t hash, std::vector<uint8_t>& vchSig, int nBits)
+    bool ECKey::Sign(const uint1024_t& hash, std::vector<uint8_t>& vchSig, const uint32_t nBits) const
     {
         uint32_t nSize = ECDSA_size(pkey);
         vchSig.resize(nSize); // Make sure it is big enough
@@ -482,6 +514,7 @@ namespace LLC
     bool ECKey::SignCompact(uint256_t hash, std::vector<unsigned char>& vchSig)
     {
         bool fOk = false;
+
         ECDSA_SIG *sig = ECDSA_do_sign((unsigned char*)&hash, sizeof(hash), pkey);
         if (sig == nullptr)
             throw key_error("CKey::SignCompact() : Failed to make signature");
@@ -609,7 +642,7 @@ namespace LLC
 
 
     /* Legacy Verifying Function.*/
-    bool ECKey::Verify(uint1024_t hash, const std::vector<uint8_t>& vchSig, int nBits)
+    bool ECKey::Verify(const uint1024_t& hash, const std::vector<uint8_t>& vchSig, const uint32_t nBits) const
     {
         bool fSuccess = false;
         if(nBits == 256)
@@ -630,12 +663,12 @@ namespace LLC
 
 
     /* Check if a Key is valid based on a few parameters*/
-    bool ECKey::IsValid()
+    bool ECKey::IsValid() const
     {
         if (!fSet)
             return false;
 
-        bool fCompr;
+        bool fCompr = false;
         CSecret secret = GetSecret(fCompr);
         ECKey key2;
         key2.SetSecret(secret, fCompr);

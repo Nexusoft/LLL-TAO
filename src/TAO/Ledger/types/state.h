@@ -16,6 +16,11 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/tritium.h>
 
+namespace Legacy
+{
+    class LegacyBlock;
+}
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -32,9 +37,15 @@ namespace TAO
          *  in the chain with all previous states before it.
          *
          **/
-        class BlockState : public TritiumBlock
+        class BlockState : public Block
         {
         public:
+
+            /** The transaction history.
+             *  uint8_t = TransactionType (per enum)
+             *  uint512_t = Tx hash
+             **/
+            std::vector< std::pair<uint8_t, uint512_t> > vtx;
 
 
             /** The Trust of the Chain to this Block. */
@@ -45,12 +56,16 @@ namespace TAO
             uint64_t nMoneySupply;
 
 
+            /** The Total NXS mint. **/
+            int32_t nMint;
+
+
             /** The height of this channel. */
             uint32_t nChannelHeight;
 
 
             /** The reserves that are released. */
-            uint64_t nReleasedReserve[3];
+            int64_t nReleasedReserve[3];
 
 
             /** Used to Iterate forward in the chain */
@@ -76,6 +91,7 @@ namespace TAO
 
                 READWRITE(nChainTrust);
                 READWRITE(nMoneySupply);
+                READWRITE(nMint);
                 READWRITE(nChannelHeight);
                 READWRITE(nReleasedReserve[0]);
                 READWRITE(nReleasedReserve[1]);
@@ -88,9 +104,11 @@ namespace TAO
 
 
             BlockState()
-            : TritiumBlock()
+            : Block()
+            , vtx()
             , nChainTrust(0)
             , nMoneySupply(0)
+            , nMint(0)
             , nChannelHeight(0)
             , nReleasedReserve{0, 0, 0}
             , hashNextBlock(0)
@@ -101,15 +119,22 @@ namespace TAO
 
 
             BlockState(TritiumBlock block)
-            : TritiumBlock(block)
+            : Block(block)
+            , vtx()
             , nChainTrust(0)
             , nMoneySupply(0)
+            , nMint(0)
             , nChannelHeight(0)
             , nReleasedReserve{0, 0, 0}
             , hashNextBlock(0)
             , hashCheckpoint(0)
             {
+                vtx.push_back(std::make_pair(TYPE::TRITIUM_TX, block.producer.GetHash()));
+                vtx.insert(vtx.end(), block.vtx.begin(), block.vtx.end());
             }
+
+
+            BlockState(Legacy::LegacyBlock block);
 
 
             /** Virtual Destructor. **/
@@ -118,10 +143,14 @@ namespace TAO
 
             /** Copy Constructor. **/
             BlockState(const BlockState& state)
-            : TritiumBlock(state)
+            : Block(state)
             {
+                vchBlockSig         = state.vchBlockSig;
+                vtx                 = state.vtx;
+
                 nChainTrust         = state.nChainTrust;
                 nMoneySupply        = state.nMoneySupply;
+                nMint               = state.nMint;
                 nChannelHeight      = state.nChannelHeight;
 
                 nReleasedReserve[0] = state.nReleasedReserve[0];
@@ -149,6 +178,7 @@ namespace TAO
 
                 nChainTrust         = state.nChainTrust;
                 nMoneySupply        = state.nMoneySupply;
+                nMoneySupply        = state.nMint;
                 nChannelHeight      = state.nChannelHeight;
 
                 nReleasedReserve[0] = state.nReleasedReserve[0];
@@ -157,8 +187,6 @@ namespace TAO
 
                 hashNextBlock       = state.hashNextBlock;
                 hashCheckpoint      = state.hashCheckpoint;
-
-                producer            = state.producer;
 
                 return *this;
             }
@@ -274,6 +302,16 @@ namespace TAO
              *
              **/
             virtual void print() const;
+
+            /** Stake Hash
+             *
+             *  Prove that you staked a number of seconds based on weight
+             *
+             *  @return 1024-bit stake hash
+             *
+             **/
+            uint1024_t StakeHash() const;
+        
         };
 
 

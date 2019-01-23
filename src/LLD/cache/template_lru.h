@@ -110,7 +110,6 @@ namespace LLD
         TemplateNode<KeyType, DataType> *plast;
 
 
-
     public:
 
         /** Base Constructor.
@@ -119,11 +118,14 @@ namespace LLD
          *  MAX_CACHE_BUCKETS default value is number of elements
          *
          */
-        TemplateLRU() : MAX_CACHE_ELEMENTS(256), MAX_CACHE_BUCKETS(MAX_CACHE_ELEMENTS * 2), nTotalElements(0), pfirst(0), plast(0)
+        TemplateLRU()
+        : MAX_CACHE_ELEMENTS(256)
+        , MAX_CACHE_BUCKETS(MAX_CACHE_ELEMENTS * 2)
+        , nTotalElements(0)
+        , hashmap(MAX_CACHE_BUCKETS)
+        , pfirst(0)
+        , plast(0)
         {
-            /* Resize the hashmap vector. */
-            hashmap.resize(MAX_CACHE_BUCKETS);
-
             /* Set the start and end pointers. */
             pfirst = nullptr;
             plast  = nullptr;
@@ -135,7 +137,13 @@ namespace LLD
          * @param[in] nTotalElementsIn The maximum size of this Cache Pool
          *
          */
-        TemplateLRU(uint32_t nTotalElementsIn) : MAX_CACHE_ELEMENTS(nTotalElementsIn), MAX_CACHE_BUCKETS(MAX_CACHE_ELEMENTS * 2), nTotalElements(0)
+        TemplateLRU(uint32_t nTotalElementsIn)
+        : MAX_CACHE_ELEMENTS(nTotalElementsIn)
+        , MAX_CACHE_BUCKETS(MAX_CACHE_ELEMENTS * 2)
+        , nTotalElements(0)
+        , hashmap(MAX_CACHE_BUCKETS)
+        , pfirst(0)
+        , plast(0)
         {
             /* Resize the hashmap vector. */
             hashmap.resize(MAX_CACHE_BUCKETS);
@@ -171,7 +179,7 @@ namespace LLD
         }
 
 
-        TemplateLRU(const TemplateLRU &map)
+        TemplateLRU(const TemplateLRU& map)
         {
             MAX_CACHE_ELEMENTS = map.MAX_CACHE_ELEMENTS;
             MAX_CACHE_BUCKETS  = map.MAX_CACHE_BUCKETS;
@@ -214,7 +222,7 @@ namespace LLD
          * @return True/False whether pool contains data by index
          *
          */
-        bool Has(KeyType Key) const
+        bool Has(const KeyType& Key) const
         {
             LOCK(MUTEX);
 
@@ -296,7 +304,7 @@ namespace LLD
          * @return True if object was found, false if none found by index.
          *
          */
-        bool Get(KeyType Key, DataType& Data)
+        bool Get(const KeyType& Key, DataType& Data)
         {
             LOCK(MUTEX);
 
@@ -323,7 +331,7 @@ namespace LLD
          * @param[in] Data The data type object
          *
          */
-        void Put(KeyType Key, DataType Data)
+        void Put(const KeyType& Key, const DataType& Data)
         {
             LOCK(MUTEX);
 
@@ -335,9 +343,7 @@ namespace LLD
             if(pthis != nullptr)
             {
                 /* Update the cache node. */
-                delete pthis;
-
-                pthis = new TemplateNode<KeyType, DataType>();
+                pthis = hashmap[nBucket];
                 pthis->Data = Data;
                 pthis->Key  = Key;
             }
@@ -396,15 +402,15 @@ namespace LLD
          * @return True on successful removal, false if it fails
          *
          */
-        bool Remove(KeyType Key)
+        bool Remove(const KeyType& Key)
         {
-            LOCK(MUTEX);
-
             /* Check if the Record Exists. */
             uint32_t nBucket = Bucket(Key);
 
             if(hashmap[nBucket] == nullptr || hashmap[nBucket]->Key != Key)
                 return false;
+
+            LOCK(MUTEX);
 
             /* Get the node */
             TemplateNode<KeyType, DataType> *pnode = hashmap[Bucket(Key)];

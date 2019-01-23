@@ -175,9 +175,7 @@ namespace LLP
          **/
         void AddNode(std::string strAddress, uint16_t nPort)
         {
-            BaseAddress base_addr(strAddress, nPort, false);
-
-            LegacyAddress addr(base_addr);
+            BaseAddress addr(strAddress, nPort, false);
 
             if(pAddressManager)
                 pAddressManager->AddAddress(addr, ConnectState::NEW);
@@ -285,6 +283,19 @@ namespace LLP
             }
 
             return vLegacyAddr;
+        }
+
+        /** DisconnectAll
+        *
+        *  Notifies all data threads to disconnect their connections
+        *
+        **/
+        void DisconnectAll()
+        {
+            for(int32_t index = 0; index < MAX_THREADS; ++index)
+            {
+                DATA_THREADS[index]->DisconnectAll();
+            }
         }
 
 

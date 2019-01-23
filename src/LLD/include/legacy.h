@@ -40,43 +40,111 @@ namespace LLD
         : SectorDatabase("legacy", nFlags) {}
 
 
-        bool WriteTx(uint512_t hashTransaction, Legacy::Transaction tx)
+        /** Write Tx.
+         *
+         *  Writes a transaction to the legacy DB.
+         *
+         *  @param[in] hashTransaction The txid of transaction to write.
+         *  @param[in] tx The transaction object to write.
+         *
+         *  @return True if the transaction was successfully written.
+         *
+         **/
+        bool WriteTx(const uint512_t& hashTransaction, const Legacy::Transaction& tx)
         {
             return Write(std::make_pair(std::string("tx"), hashTransaction), tx);
         }
 
 
-        bool ReadTx(uint512_t hashTransaction, Legacy::Transaction& tx)
+        /** Read Tx.
+         *
+         *  Reads a transaction from the legacy DB.
+         *
+         *  @param[in] hashTransaction The txid of transaction to read.
+         *  @param[in] tx The transaction object to read.
+         *
+         *  @return True if the transaction was successfully read.
+         *
+         **/
+        bool ReadTx(const uint512_t& hashTransaction, Legacy::Transaction& tx)
         {
             return Read(std::make_pair(std::string("tx"), hashTransaction), tx);
         }
 
 
-        bool EraseTx(uint512_t hashTransaction)
+        /** Erase Tx.
+         *
+         *  Erases a transaction from the ledger DB.
+         *
+         *  @param[in] hashTransaction The txid of transaction to erase.
+         *
+         *  @return True if the transaction was successfully erased.
+         *
+         **/
+        bool EraseTx(const uint512_t& hashTransaction)
         {
             return Erase(std::make_pair(std::string("tx"), hashTransaction));
         }
 
 
-        bool HasTx(uint512_t hashTransaction)
+        /** Has Tx.
+         *
+         *  Checks if a transaction exists.
+         *
+         *  @param[in] hashTransaction The txid of transaction to check.
+         *
+         *  @return True if the transaction exists.
+         *
+         **/
+        bool HasTx(const uint512_t& hashTransaction)
         {
             return Exists(std::make_pair(std::string("tx"), hashTransaction));
         }
 
 
-        bool WriteSpend(uint512_t hashTransaction, uint32_t nOutput)
+        /** Write Spend
+         *
+         *  Writes an output as spent
+         *
+         *  @param[in] hashTransaction The txid of transaction to write.
+         *  @param[in] nOutput The output that was spent
+         *
+         *  @return True if the written.
+         *
+         **/
+        bool WriteSpend(const uint512_t& hashTransaction, uint32_t nOutput)
         {
             return Write(std::make_pair(hashTransaction, nOutput));
         }
 
 
-        bool EraseSpend(uint512_t hashTransaction, uint32_t nOutput)
+        /** Erase Spend
+         *
+         *  Removes a spend flag on an output
+         *
+         *  @param[in] hashTransaction The txid of transaction to write.
+         *  @param[in] nOutput The output that is unspent
+         *
+         *  @return True if the erased.
+         *
+         **/
+        bool EraseSpend(const uint512_t& hashTransaction, uint32_t nOutput)
         {
             return Erase(std::make_pair(hashTransaction, nOutput));
         }
 
 
-        bool IsSpent(uint512_t hashTransaction, uint32_t nOutput)
+        /** Is Spent
+         *
+         *  Checks if an output was spent
+         *
+         *  @param[in] hashTransaction The txid of transaction to check.
+         *  @param[in] nOutput The output to check
+         *
+         *  @return True if the output is spent.
+         *
+         **/
+        bool IsSpent(const uint512_t& hashTransaction, uint32_t nOutput)
         {
             return Exists(std::make_pair(hashTransaction, nOutput));
         }

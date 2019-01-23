@@ -125,12 +125,13 @@ namespace LLP
         /* Set the message in the packet header. */
         void SetMessage(const char* chMessage)
         {
+            //std::copy((char*)chMessage, (char*)chMessage + std::min((size_t)12, sizeof(chMessage)), (char*)&MESSAGE);
             strncpy(MESSAGE, chMessage, 12);
         }
 
 
         /* Sets the size of the packet from Byte Vector. */
-        void SetLength(std::vector<uint8_t> BYTES)
+        void SetLength(const std::vector<uint8_t>& BYTES)
         {
             DataStream ssLength(BYTES, SER_NETWORK, MIN_PROTO_VERSION);
             ssLength >> LENGTH;
@@ -147,12 +148,10 @@ namespace LLP
 
 
         /* Set the Packet Data. */
-        void SetData(DataStream ssData)
+        void SetData(DataStream& ssData)
         {
-            std::vector<uint8_t> vData(ssData.begin(), ssData.end());
-
-            LENGTH = vData.size();
-            DATA   = vData;
+            DATA = std::vector<uint8_t>(ssData.begin(), ssData.end());
+            LENGTH = DATA.size();
 
             SetChecksum();
         }
@@ -188,13 +187,14 @@ namespace LLP
 
 
         /* Serializes class into a Byte Vector. Used to write Packet to Sockets. */
-        std::vector<uint8_t> GetBytes()
+        std::vector<uint8_t> GetBytes() const
         {
             DataStream ssHeader(SER_NETWORK, MIN_PROTO_VERSION);
             ssHeader << *this;
 
             std::vector<uint8_t> BYTES(ssHeader.begin(), ssHeader.end());
             BYTES.insert(BYTES.end(), DATA.begin(), DATA.end());
+            
             return BYTES;
         }
     };

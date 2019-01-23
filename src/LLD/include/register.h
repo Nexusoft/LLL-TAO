@@ -51,7 +51,7 @@ namespace LLD
          *  @return true if write was successul.
          *
          **/
-        bool WriteState(uint256_t hashRegister, TAO::Register::State state)
+        bool WriteState(const uint256_t& hashRegister, const TAO::Register::State& state)
         {
             return Write(std::make_pair(std::string("state"), hashRegister), state);
         }
@@ -67,7 +67,7 @@ namespace LLD
          *  @return true if read was successul.
          *
          **/
-        bool ReadState(uint256_t hashRegister, TAO::Register::State& state)
+        bool ReadState(const uint256_t& hashRegister, TAO::Register::State& state)
         {
             return Read(std::make_pair(std::string("state"), hashRegister), state);
         }
@@ -83,7 +83,7 @@ namespace LLD
          *  @return true if read was successul.
          *
          **/
-        bool EraseState(uint256_t hashRegister)
+        bool EraseState(const uint256_t& hashRegister)
         {
             return Erase(std::make_pair(std::string("state"), hashRegister));
         }
@@ -99,7 +99,7 @@ namespace LLD
          *  @return true if write was successul.
          *
          **/
-        bool WriteIdentifier(uint32_t nIdentifier, uint256_t hashRegister, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
+        bool WriteIdentifier(uint32_t nIdentifier, const uint256_t& hashRegister, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             /* Memory mode for pre-database commits. */
             if(nFlags & TAO::Register::FLAGS::MEMPOOL)
@@ -187,7 +187,7 @@ namespace LLD
          *  @return true if it exists.
          *
          **/
-        bool HasState(uint256_t hashRegister, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
+        bool HasState(const uint256_t& hashRegister, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             return Exists(std::make_pair(std::string("state"), hashRegister));
         }
@@ -203,7 +203,7 @@ namespace LLD
          *  @return true if any states were found.
          *
          **/
-        bool GetStates(uint256_t hashRegister, std::vector<TAO::Register::State>& states)
+        bool GetStates(const uint256_t& hashRegister, std::vector<TAO::Register::State>& states)
         {
             /* Serialize the key to search for. */
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
@@ -211,17 +211,18 @@ namespace LLD
 
             /* Get the list of sector keys. */
             std::vector<SectorKey> vKeys;
-            if(!pSectorKeys->Get(static_cast<std::vector<uint8_t> >(ssKey), vKeys))
+            if(!pSectorKeys->Get(ssKey.Bytes(), vKeys))
                 return false;
 
             /* Iterate the list of keys. */
             for(auto & key : vKeys)
             {
-                DataStream ssData(SER_LLD, DATABASE_VERSION);
-                if(!Get(key, ssData))
+                std::vector<uint8_t> vData;
+                if(!Get(key, vData))
                     continue;
 
                 TAO::Register::State state;
+                DataStream ssData(vData, SER_LLD, DATABASE_VERSION);
                 ssData >> state;
 
                 states.push_back(state);

@@ -17,13 +17,18 @@
     #include <Legacy/wallet/wallet.h>
     #include <Legacy/wallet/walletdb.h>
     #include <Legacy/wallet/accountingentry.h>
+    #include <Legacy/wallet/reservekey.h>
+    #include <Legacy/wallet/output.h>
 
     #include <Legacy/include/money.h>
     #include <Legacy/include/evaluate.h>
     #include <LLC/hash/SK.h>
     #include <Util/include/base64.h>
+    #include <Util/include/hex.h>
     #include <Legacy/include/constants.h>
-    
+    #include <TAO/Ledger/include/chainstate.h>
+    #include <LLD/include/global.h>
+
     /* Global TAO namespace. */
 namespace TAO
 {
@@ -518,126 +523,133 @@ namespace TAO
             
         }
 
+        /* sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]
+        * <amount> is a real and is rounded to the nearest 0.000001
+        * requires wallet passphrase to be set with walletpassphrase first */
+        json::json RPC::SendFrom(const json::json& params, bool fHelp)
+        {
+            if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
+                return std::string(
+                    "sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]"
+                    " - <amount> is a real and is rounded to the nearest 0.000001"
+                    " requires wallet passphrase to be set with walletpassphrase first");
+            if (!Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
+                return std::string(
+                    "sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]"
+                    "<amount> is a real and is rounded to the nearest 0.000001");
 
-        // json::json sendfrom(const json::json& params, bool fHelp)
-        // {
-        //     if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
-        //         return std::string(
-        //             "sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]"
-        //             " - <amount> is a real and is rounded to the nearest 0.000001"
-        //             " requires wallet passphrase to be set with walletpassphrase first");
-        //     if (!Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
-        //         return std::string(
-        //             "sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]"
-        //             "<amount> is a real and is rounded to the nearest 0.000001");
+            std::string strAccount = AccountFromValue(params[0]);
+            Legacy::NexusAddress address(params[1].get<std::string>());
+            if (!address.IsValid())
+                throw APIException(-5, "Invalid Nexus address");
+            int64_t nAmount = Legacy::AmountToSatoshis(params[2]);
+            if (nAmount < Legacy::MIN_TXOUT_AMOUNT)
+                throw APIException(-101, "Send amount too small");
+            int nMinDepth = 1;
+            if (params.size() > 3)
+                nMinDepth = params[3];
 
-        //     std::string strAccount = AccountFromValue(params[0]);
-        //     Legacy::NexusAddress address(params[1].get<std::string>());
-        //     if (!address.IsValid())
-        //         throw APIException(-5, "Invalid Nexus address");
-        //     int64_t nAmount = Legacy::AmountToSatoshis(params[2]);
-        //     if (nAmount < Core::MIN_TXOUT_AMOUNT)
-        //         throw APIException(-101, "Send amount too small");
-        //     int nMinDepth = 1;
-        //     if (params.size() > 3)
-        //         nMinDepth = params[3].get_int();
+            Legacy::CWalletTx wtx;
+            wtx.strFromAccount = strAccount;
+            if (params.size() > 4 && !params[4].is_null() && params[4].get<std::string>() != "")
+                wtx.mapValue["comment"] = params[4].get<std::string>();
+            if (params.size() > 5 && !params[5].is_null() && params[5].get<std::string>() != "")
+                wtx.mapValue["to"]      = params[5].get<std::string>();
 
-        //     Legacy::CWalletTx wtx;
-        //     wtx.strFromAccount = strAccount;
-        //     if (params.size() > 4 && params[4].type() != null_type && !params[4].get<std::string>().empty())
-        //         wtx.mapValue["comment"] = params[4].get<std::string>();
-        //     if (params.size() > 5 && params[5].type() != null_type && !params[5].get<std::string>().empty())
-        //         wtx.mapValue["to"]      = params[5].get<std::string>();
+            if (Legacy::CWallet::GetInstance().IsLocked())
+                throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
-        //     if (Legacy::CWallet::GetInstance().IsLocked())
-        //         throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+            // Check funds
+            int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
+            if (nAmount > nBalance)
+                throw APIException(-6, "Account has insufficient funds");
 
-        //     // Check funds
-        //     int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
-        //     if (nAmount > nBalance)
-        //         throw APIException(-6, "Account has insufficient funds");
+            // Send
+            std::string strError = Legacy::CWallet::GetInstance().SendToNexusAddress(address, nAmount, wtx);
+            if (strError != "")
+                throw APIException(-4, strError);
 
-        //     // Send
-        //     std::string strError = Legacy::CWallet::GetInstance().SendToNexusAddress(address, nAmount, wtx);
-        //     if (strError != "")
-        //         throw APIException(-4, strError);
+            return wtx.GetHash().GetHex();
+        }
 
-        //     return wtx.GetHash().GetHex();
-        // }
+        /* sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]
+        * - amounts are double-precision floating point numbers
+        * requires wallet passphrase to be set with walletpassphrase first*/
+        json::json RPC::SendMany(const json::json& params, bool fHelp)
+        {
+            if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4 ))
+                return std::string(
+                    "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]"
+                    " - amounts are double-precision floating point numbers"
+                    " requires wallet passphrase to be set with walletpassphrase first");
+            if (!Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4 ))
+                return std::string(
+                    "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]"
+                    "amounts are double-precision floating point numbers");
 
+            std::string strAccount = AccountFromValue(params[0]);
+            if(!params[1].is_object())
+                throw APIException(-8, std::string("Invalid recipient list format") );
 
-        // json::json sendmany(const json::json& params, bool fHelp)
-        // {
-        //     if (Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
-        //         return std::string(
-        //             "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]"
-        //             " - amounts are double-precision floating point numbers"
-        //             " requires wallet passphrase to be set with walletpassphrase first");
-        //     if (!Legacy::CWallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
-        //         return std::string(
-        //             "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]"
-        //             "amounts are double-precision floating point numbers");
+            json::json sendTo = params[1];
+            int nMinDepth = 1;
+            if (params.size() > 2)
+                nMinDepth = params[2];
 
-        //     std::string strAccount = AccountFromValue(params[0]);
-        //     Object sendTo = params[1].get_obj();
-        //     int nMinDepth = 1;
-        //     if (params.size() > 2)
-        //         nMinDepth = params[2].get_int();
+            Legacy::CWalletTx wtx;
+            wtx.strFromAccount = strAccount;
+            if (params.size() > 3 && !params[3].is_null() && params[3].get<std::string>() != "")
+                wtx.mapValue["comment"] = params[3].get<std::string>();
 
-        //     Legacy::CWalletTx wtx;
-        //     wtx.strFromAccount = strAccount;
-        //     if (params.size() > 3 && params[3].type() != null_type && !params[3].get<std::string>().empty())
-        //         wtx.mapValue["comment"] = params[3].get<std::string>();
+            std::set<Legacy::NexusAddress> setAddress;
+            std::vector<std::pair<Legacy::CScript, int64_t> > vecSend;
 
-        //     set<Legacy::NexusAddress> setAddress;
-        //     std::vector<pair<Wallet::CScript, int64_t> > vecSend;
+            int64_t totalAmount = 0;
+            for (json::json::iterator it = sendTo.begin(); it != sendTo.end(); ++it)
+            {
+                Legacy::NexusAddress address(it.key());
+                if (!address.IsValid())
+                    throw APIException(-5, std::string("Invalid Nexus address:")+it.key());
 
-        //     int64_t totalAmount = 0;
-        //     BOOST_FOREACH(const Pair& s, sendTo)
-        //     {
-        //         Legacy::NexusAddress address(s.name_);
-        //         if (!address.IsValid())
-        //             throw APIException(-5, std::string("Invalid Nexus address:")+s.name_);
+                if (setAddress.count(address))
+                    throw APIException(-8, std::string("Invalid parameter, duplicated address: ")+it.key());
+                setAddress.insert(address);
 
-        //         if (setAddress.count(address))
-        //             throw APIException(-8, std::string("Invalid parameter, duplicated address: ")+s.name_);
-        //         setAddress.insert(address);
+                Legacy::CScript scriptPubKey;
+                scriptPubKey.SetNexusAddress(address);
+                int64_t nAmount = Legacy::AmountToSatoshis(it.value());
+                if (nAmount < Legacy::MIN_TXOUT_AMOUNT)
+                    throw APIException(-101, "Send amount too small");
+                totalAmount += nAmount;
 
-        //         Wallet::CScript scriptPubKey;
-        //         scriptPubKey.SetNexusAddress(address);
-        //         int64_t nAmount = Legacy::AmountToSatoshis(s.value_);
-        //         if (nAmount < Core::MIN_TXOUT_AMOUNT)
-        //             throw APIException(-101, "Send amount too small");
-        //         totalAmount += nAmount;
+                vecSend.push_back(make_pair(scriptPubKey, nAmount));
+            }
 
-        //         vecSend.push_back(make_pair(scriptPubKey, nAmount));
-        //     }
+            if (Legacy::CWallet::GetInstance().IsLocked())
+                throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+            if (Legacy::fWalletUnlockMintOnly)
+                throw APIException(-13, "Error: Wallet unlocked for block minting only.");
 
-        //     if (Legacy::CWallet::GetInstance().IsLocked())
-        //         throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
-        //     if (Legacy::fWalletUnlockMintOnly)
-        //         throw APIException(-13, "Error: Wallet unlocked for block minting only.");
+            // Check funds
+            int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
+            if (totalAmount > nBalance)
+                throw APIException(-6, "Account has insufficient funds");
 
-        //     // Check funds
-        //     int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
-        //     if (totalAmount > nBalance)
-        //         throw APIException(-6, "Account has insufficient funds");
+            // Send
+            Legacy::CReserveKey keyChange(Legacy::CWallet::GetInstance());
+            int64_t nFeeRequired = 0;
+            bool fCreated = Legacy::CWallet::GetInstance().CreateTransaction(vecSend, wtx, keyChange, nFeeRequired);
+            if (!fCreated)
+            {
+                if (totalAmount + nFeeRequired > Legacy::CWallet::GetInstance().GetBalance())
+                    throw APIException(-6, "Insufficient funds");
+                throw APIException(-4, "Transaction creation failed");
+            }
+            if (!Legacy::CWallet::GetInstance().CommitTransaction(wtx, keyChange))
+                throw APIException(-4, "Transaction commit failed");
 
-        //     // Send
-        //     Wallet::CReserveKey keyChange(pwalletMain);
-        //     int64_t nFeeRequired = 0;
-        //     bool fCreated = Legacy::CWallet::GetInstance().CreateTransaction(vecSend, wtx, keyChange, nFeeRequired);
-        //     if (!fCreated)
-        //     {
-        //         if (totalAmount + nFeeRequired > Legacy::CWallet::GetInstance().GetBalance())
-        //             throw APIException(-6, "Insufficient funds");
-        //         throw APIException(-4, "Transaction creation failed");
-        //     }
-        //     if (!Legacy::CWallet::GetInstance().CommitTransaction(wtx, keyChange))
-        //         throw APIException(-4, "Transaction commit failed");
-
-        //     return wtx.GetHash().GetHex();
-        // }
+            return wtx.GetHash().GetHex();
+        }
 
         /* addmultisigaddress <nrequired> <'[\"key\",\"key\"]'> [account]
         *  Add a nrequired-to-sign multisignature address to the wallet
@@ -654,171 +666,173 @@ namespace TAO
                 return std::string(msg);
             }
 
-        //     int nRequired = params[0].get_int();
-        //     const Array& keys = params[1].get_array();
-        //     std::string strAccount;
-        //     if (params.size() > 2)
-        //         strAccount = AccountFromValue(params[2]);
+            int nRequired = params[0];
+            
+            if( !params[1].is_array())
+                throw APIException(-8, std::string("Invalid address array format") );
 
-        //     // Gather public keys
-        //     if (nRequired < 1)
-        //         return std::string("a multisignature address must require at least one key to redeem");
-        //     if ((int)keys.size() < nRequired)
-        //         return std::string(
-        //             strprintf("not enough keys supplied "
-        //                       "(got %d keys, but need at least %d to redeem)", keys.size(), nRequired));
-        //     std::vector<LLC::ECKey> pubkeys;
-        //     pubkeys.resize(keys.size());
-        //     for (unsigned int i = 0; i < keys.size(); i++)
-        //     {
-        //         const std::string& ks = keys[i].get<std::string>();
+            json::json keys = params[1];
+            std::string strAccount;
+            if (params.size() > 2)
+                strAccount = AccountFromValue(params[2]);
 
-        //         // Case 1: nexus address and we have full public key:
-        //         Legacy::NexusAddress address(ks);
-        //         if (address.IsValid())
-        //         {
-        //             if (address.IsScript())
-        //                 return std::string(
-        //                     strprintf("%s is a pay-to-script address",ks.c_str()));
-        //             std::vector<unsigned char> vchPubKey;
-        //             if (!Legacy::CWallet::GetInstance().GetPubKey(address, vchPubKey))
-        //                 return std::string(
-        //                     strprintf("no full public key for address %s",ks.c_str()));
-        //             if (vchPubKey.empty() || !pubkeys[i].SetPubKey(vchPubKey))
-        //                 return std::string(" Invalid public key: "+ks);
-        //         }
+            // Gather public keys
+            if (nRequired < 1)
+                return std::string("a multisignature address must require at least one key to redeem");
+            if ((int)keys.size() < nRequired)
+                return std::string(
+                    debug::strprintf("not enough keys supplied "
+                              "(got %d keys, but need at least %d to redeem)", keys.size(), nRequired));
+            std::vector<LLC::ECKey> pubkeys;
+            pubkeys.resize(keys.size());
+            for (unsigned int i = 0; i < keys.size(); i++)
+            {
+                const std::string& ks = keys[i].get<std::string>();
 
-        //         // Case 2: hex public key
-        //         else if (IsHex(ks))
-        //         {
-        //             std::vector<unsigned char> vchPubKey = ParseHex(ks);
-        //             if (vchPubKey.empty() || !pubkeys[i].SetPubKey(vchPubKey))
-        //                 return std::string(" Invalid public key: "+ks);
-        //         }
-        //         else
-        //         {
-        //             return std::string(" Invalid public key: "+ks);
-        //         }
-        //    }
+                // Case 1: nexus address and we have full public key:
+                Legacy::NexusAddress address(ks);
+                if (address.IsValid())
+                {
+                    if (address.IsScript())
+                        return std::string(
+                            debug::strprintf("%s is a pay-to-script address",ks.c_str()));
+                    std::vector<unsigned char> vchPubKey;
+                    if (!Legacy::CWallet::GetInstance().GetPubKey(address, vchPubKey))
+                        return std::string(
+                            debug::strprintf("no full public key for address %s",ks.c_str()));
+                    if (vchPubKey.empty() || !pubkeys[i].SetPubKey(vchPubKey))
+                        return std::string(" Invalid public key: "+ks);
+                }
 
-        //     // Construct using pay-to-script-hash:
-        //     Wallet::CScript inner;
-        //     inner.SetMultisig(nRequired, pubkeys);
+                // Case 2: hex public key
+                else if (IsHex(ks))
+                {
+                    std::vector<unsigned char> vchPubKey = ParseHex(ks);
+                    if (vchPubKey.empty() || !pubkeys[i].SetPubKey(vchPubKey))
+                        return std::string(" Invalid public key: "+ks);
+                }
+                else
+                {
+                    return std::string(" Invalid public key: "+ks);
+                }
+           }
 
-        //     uint256 scriptHash = SK256(inner);
-        //     Wallet::CScript scriptPubKey;
-        //     scriptPubKey.SetPayToScriptHash(inner);
-        //     Legacy::CWallet::GetInstance().AddCScript(inner);
-        //     Legacy::NexusAddress address;
-        //     address.SetScriptHash256(scriptHash);
+            // Construct using pay-to-script-hash:
+            Legacy::CScript inner;
+            inner.SetMultisig(nRequired, pubkeys);
 
-        //     Legacy::CWallet::GetInstance().SetAddressBookName(address, strAccount);
-        //     return address.ToString();
-            json::json ret;
-            return ret;
+            uint256_t scriptHash = LLC::SK256(inner);
+            Legacy::CScript scriptPubKey;
+            scriptPubKey.SetPayToScriptHash(inner);
+            Legacy::CWallet::GetInstance().AddCScript(inner);
+            Legacy::NexusAddress address;
+            address.SetScriptHash256(scriptHash);
+
+            Legacy::CWallet::GetInstance().GetAddressBook().SetAddressBookName(address, strAccount);
+            return address.ToString();
         }
 
 
-        // struct tallyitem
-        // {
-        //     int64_t nAmount;
-        //     int nConf;
-        //     tallyitem()
-        //     {
-        //         nAmount = 0;
-        //         nConf = std::numeric_limits<int>::max();
-        //     }
-        // };
+        struct tallyitem
+        {
+            int64_t nAmount;
+            int nConf;
+            tallyitem()
+            {
+                nAmount = 0;
+                nConf = std::numeric_limits<int>::max();
+            }
+        };
 
-        // json::json ListReceived(const json::json& params, bool fByAccounts)
-        // {
-        //     // Minimum confirmations
-        //     int nMinDepth = 1;
-        //     if (params.size() > 0)
-        //         nMinDepth = params[0].get_int();
+        json::json ListReceived(const json::json& params, bool fByAccounts)
+        {
+            // Minimum confirmations
+            int nMinDepth = 1;
+            if (params.size() > 0)
+                nMinDepth = params[0];
 
-        //     // Whether to include empty accounts
-        //     bool fIncludeEmpty = false;
-        //     if (params.size() > 1)
-        //         fIncludeEmpty = params[1].get_bool();
+            // Whether to include empty accounts
+            bool fIncludeEmpty = false;
+            if (params.size() > 1)
+                fIncludeEmpty = params[1];
 
-        //     // Tally
-        //     map<Legacy::NexusAddress, tallyitem> mapTally;
-        //     for (map<uint512, Legacy::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); ++it)
-        //     {
-        //         const Legacy::CWalletTx& wtx = (*it).second;
+            // Tally
+            std::map<Legacy::NexusAddress, tallyitem> mapTally;
+            for (const auto& entry : Legacy::CWallet::GetInstance().mapWallet)
+            {
+                const Legacy::CWalletTx& wtx = entry.second;
 
-        //         if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
-        //             continue;
+                if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
+                    continue;
 
-        //         int nDepth = wtx.GetDepthInMainChain();
-        //         if (nDepth < nMinDepth)
-        //             continue;
+                int nDepth = wtx.GetDepthInMainChain();
+                if (nDepth < nMinDepth)
+                    continue;
 
-        //         BOOST_FOREACH(const Core::CTxOut& txout, wtx.vout)
-        //         {
-        //             Legacy::NexusAddress address;
-        //             if (!ExtractAddress(txout.scriptPubKey, address) || !Legacy::CWallet::GetInstance().HaveKey(address) || !address.IsValid())
-        //                 continue;
+                for(const Legacy::CTxOut& txout : wtx.vout)
+                {
+                    Legacy::NexusAddress address;
+                    if (!ExtractAddress(txout.scriptPubKey, address) || !Legacy::CWallet::GetInstance().HaveKey(address) || !address.IsValid())
+                        continue;
 
-        //             tallyitem& item = mapTally[address];
-        //             item.nAmount += txout.nValue;
-        //             item.nConf = min(item.nConf, nDepth);
-        //         }
-        //     }
+                    tallyitem& item = mapTally[address];
+                    item.nAmount += txout.nValue;
+                    item.nConf = std::min(item.nConf, nDepth);
+                }
+            }
 
-        //     // Reply
-        //     Array ret;
-        //     map<string, tallyitem> mapAccountTally;
-        //     BOOST_FOREACH(const PAIRTYPE(Legacy::NexusAddress, std::string)& item, Legacy::CWallet::GetInstance().mapAddressBook)
-        //     {
-        //         const Legacy::NexusAddress& address = item.first;
-        //         const std::string& strAccount = item.second;
-        //         map<Legacy::NexusAddress, tallyitem>::iterator it = mapTally.find(address);
-        //         if (it == mapTally.end() && !fIncludeEmpty)
-        //             continue;
+            // Reply
+            json::json ret = json::json::array();
+            std::map<std::string, tallyitem> mapAccountTally;
+            for(const auto& item : Legacy::CWallet::GetInstance().GetAddressBook().GetAddressBookMap())
+            {
+                const Legacy::NexusAddress& address = item.first;
+                const std::string& strAccount = item.second;
+                std::map<Legacy::NexusAddress, tallyitem>::iterator it = mapTally.find(address);
+                if (it == mapTally.end() && !fIncludeEmpty)
+                    continue;
 
-        //         int64_t nAmount = 0;
-        //         int nConf = std::numeric_limits<int>::max();
-        //         if (it != mapTally.end())
-        //         {
-        //             nAmount = (*it).second.nAmount;
-        //             nConf = (*it).second.nConf;
-        //         }
+                int64_t nAmount = 0;
+                int nConf = std::numeric_limits<int>::max();
+                if (it != mapTally.end())
+                {
+                    nAmount = (*it).second.nAmount;
+                    nConf = (*it).second.nConf;
+                }
 
-        //         if (fByAccounts)
-        //         {
-        //             tallyitem& item = mapAccountTally[strAccount];
-        //             item.nAmount += nAmount;
-        //             item.nConf = min(item.nConf, nConf);
-        //         }
-        //         else
-        //         {
-        //             Object obj;
-        //             obj.push_back(Pair("address",       address.ToString()));
-        //             obj.push_back(Pair("account",       strAccount));
-        //             obj.push_back(Pair("amount",        Legacy::SatoshisToAmount(nAmount)));
-        //             obj.push_back(Pair("confirmations", (nConf == std::numeric_limits<int>::max() ? 0 : nConf)));
-        //             ret.push_back(obj);
-        //         }
-        //     }
+                if (fByAccounts)
+                {
+                    tallyitem& item = mapAccountTally[strAccount];
+                    item.nAmount += nAmount;
+                    item.nConf = std::min(item.nConf, nConf);
+                }
+                else
+                {
+                    json::json obj;
+                    obj["address"] =       address.ToString();
+                    obj["account"] =       strAccount;
+                    obj["amount"] =        Legacy::SatoshisToAmount(nAmount);
+                    obj["confirmations"] = (nConf == std::numeric_limits<int>::max() ? 0 : nConf);
+                    ret.push_back(obj);
+                }
+            }
 
-        //     if (fByAccounts)
-        //     {
-        //         for (map<string, tallyitem>::iterator it = mapAccountTally.begin(); it != mapAccountTally.end(); ++it)
-        //         {
-        //             int64_t nAmount = (*it).second.nAmount;
-        //             int nConf = (*it).second.nConf;
-        //             Object obj;
-        //             obj.push_back(Pair("account",       (*it).first));
-        //             obj.push_back(Pair("amount",        Legacy::SatoshisToAmount(nAmount)));
-        //             obj.push_back(Pair("confirmations", (nConf == std::numeric_limits<int>::max() ? 0 : nConf)));
-        //             ret.push_back(obj);
-        //         }
-        //     }
+            if (fByAccounts)
+            {
+                for (std::map<std::string, tallyitem>::iterator it = mapAccountTally.begin(); it != mapAccountTally.end(); ++it)
+                {
+                    int64_t nAmount = (*it).second.nAmount;
+                    int nConf = (*it).second.nConf;
+                    json::json obj;
+                    obj["account"] =       (*it).first;
+                    obj["amount"] =        Legacy::SatoshisToAmount(nAmount);
+                    obj["confirmations"] = (nConf == std::numeric_limits<int>::max() ? 0 : nConf);
+                    ret.push_back(obj);
+                }
+            }
 
-        //     return ret;
-        // }
+            return ret;
+        }
 
         /* listreceivedbyaddress [minconf=1] [includeempty=false]
         *  [minconf] is the minimum number of confirmations before payments are included.
@@ -841,9 +855,8 @@ namespace TAO
                     "  \"amount\" : total amount received by the address\n"
                     "  \"confirmations\" : number of confirmations of the most recent transaction included");
 
-        //     return ListReceived(params, false);
-            json::json ret;
-            return ret;
+             return ListReceived(params, false);
+        
         }
 
         /* listreceivedbyaccount [minconf=1] [includeempty=false]
@@ -866,103 +879,116 @@ namespace TAO
                     "  \"amount\" : total amount received by addresses with this account\n"
                     "  \"confirmations\" : number of confirmations of the most recent transaction included");
 
-        //     return ListReceived(params, true);
-            json::json ret;
-            return ret;
+            return ListReceived(params, true);
         }
 
-        // void ListTransactions(const Legacy::CWalletTx& wtx, const std::string& strAccount, int nMinDepth, bool fLong, Array& ret)
-        // {
-        //     int64_t nGeneratedImmature, nGeneratedMature, nFee;
-        //     std::string strSentAccount;
-        //     list<pair<Legacy::NexusAddress, int64_t> > listReceived;
-        //     list<pair<Legacy::NexusAddress, int64_t> > listSent;
+        void WalletTxToJSON(const Legacy::CWalletTx& wtx, json::json& entry)
+        {
+            int confirms = wtx.GetDepthInMainChain();
+            entry["confirmations"] = confirms;
+            if (confirms)
+            {
+                entry["blockhash"] = wtx.hashBlock.GetHex();
+                entry["blockindex"] = wtx.nIndex;
+            }
+            entry["txid"] = wtx.GetHash().GetHex();
+            entry["time"] = (int64_t)wtx.GetTxTime();
+            for( const auto& item : wtx.mapValue)
+                entry[item.first] = item.second;
+        }
 
-        //     wtx.GetAmounts(nGeneratedImmature, nGeneratedMature, listReceived, listSent, nFee, strSentAccount);
+        void ListTransactionsJSON(const Legacy::CWalletTx& wtx, const std::string& strAccount, int nMinDepth, bool fLong, json::json& ret)
+        {
+            int64_t nGeneratedImmature, nGeneratedMature, nFee;
+            std::string strSentAccount;
+            std::list<std::pair<Legacy::NexusAddress, int64_t> > listReceived;
+            std::list<std::pair<Legacy::NexusAddress, int64_t> > listSent;
 
-        //     bool fAllAccounts = (strAccount == std::string("*"));
+            wtx.GetAmounts(nGeneratedImmature, nGeneratedMature, listReceived, listSent, nFee, strSentAccount);
 
-        //     // Generated blocks assigned to account ""
-        //     if ((nGeneratedMature+nGeneratedImmature) != 0 && (fAllAccounts || strAccount == ""))
-        //     {
-        //         Object entry;
-        //         entry.push_back(Pair("account", std::string("")));
-        //         if (nGeneratedImmature)
-        //         {
-        //             entry.push_back(Pair("category", wtx.GetDepthInMainChain() ? "immature" : "orphan"));
-        //             entry.push_back(Pair("amount", Legacy::SatoshisToAmount(nGeneratedImmature)));
-        //         }
-        //         else if (wtx.IsCoinStake())
-        //         {
-        //             entry.push_back(Pair("category", "stake"));
-        //             entry.push_back(Pair("amount", Legacy::SatoshisToAmount(nGeneratedMature)));
-        //         }
-        //         else
-        //         {
-        //             entry.push_back(Pair("category", "generate"));
-        //             entry.push_back(Pair("amount", Legacy::SatoshisToAmount(nGeneratedMature)));
-        //         }
-        //         if (fLong)
-        //             WalletTxToJSON(wtx, entry);
-        //         ret.push_back(entry);
-        //     }
+            bool fAllAccounts = (strAccount == std::string("*"));
 
-        //     // Sent
-        //     if ((!listSent.empty() || nFee != 0) && (fAllAccounts || strAccount == strSentAccount))
-        //     {
-        //         BOOST_FOREACH(const PAIRTYPE(Legacy::NexusAddress, int64_t)& s, listSent)
-        //         {
-        //             Object entry;
-        //             entry.push_back(Pair("account", strSentAccount));
-        //             entry.push_back(Pair("address", s.first.ToString()));
-        //             entry.push_back(Pair("category", "send"));
-        //             entry.push_back(Pair("amount", Legacy::SatoshisToAmount(-s.second)));
-        //             entry.push_back(Pair("fee", Legacy::SatoshisToAmount(-nFee)));
-        //             if (fLong)
-        //                 WalletTxToJSON(wtx, entry);
-        //             ret.push_back(entry);
-        //         }
-        //     }
+            // Generated blocks assigned to account ""
+            if ((nGeneratedMature+nGeneratedImmature) != 0 && (fAllAccounts || strAccount == ""))
+            {
+                json::json entry;
+                entry["account"] = std::string("");
+                if (nGeneratedImmature)
+                {
+                    entry["category"] = wtx.GetDepthInMainChain() ? "immature" : "orphan";
+                    entry["amount"] = Legacy::SatoshisToAmount(nGeneratedImmature);
+                }
+                else if (wtx.IsCoinStake())
+                {
+                    entry["category"] = "stake";
+                    entry["amount"] = Legacy::SatoshisToAmount(nGeneratedMature);
+                }
+                else
+                {
+                    entry["category"] = "generate";
+                    entry["amount"] = Legacy::SatoshisToAmount(nGeneratedMature);
+                }
+                if (fLong)
+                    WalletTxToJSON(wtx, entry);
+                ret.push_back(entry);
+            }
 
-        //     // Received
-        //     if (listReceived.size() > 0 && wtx.GetDepthInMainChain() >= nMinDepth)
-        //     {
-        //         BOOST_FOREACH(const PAIRTYPE(Legacy::NexusAddress, int64_t)& r, listReceived)
-        //         {
-        //             std::string account;
-        //             if (Legacy::CWallet::GetInstance().mapAddressBook.count(r.first))
-        //                 account = Legacy::CWallet::GetInstance().mapAddressBook[r.first];
-        //             if (fAllAccounts || (account == strAccount))
-        //             {
-        //                 Object entry;
-        //                 entry.push_back(Pair("account", account));
-        //                 entry.push_back(Pair("address", r.first.ToString()));
-        //                 entry.push_back(Pair("category", "receive"));
-        //                 entry.push_back(Pair("amount", Legacy::SatoshisToAmount(r.second)));
-        //                 if (fLong)
-        //                     WalletTxToJSON(wtx, entry);
-        //                 ret.push_back(entry);
-        //             }
-        //         }
-        //     }
-        // }
+            // Sent
+            if ((!listSent.empty() || nFee != 0) && (fAllAccounts || strAccount == strSentAccount))
+            {
+                for( const auto& s : listSent)
+                {
+                    json::json entry;
+                    entry["account"] = strSentAccount;
+                    entry["address"] = s.first.ToString();
+                    entry["category"] = "send";
+                    entry["amount"] = Legacy::SatoshisToAmount(-s.second);
+                    entry["fee"] = Legacy::SatoshisToAmount(-nFee);
+                    if (fLong)
+                        WalletTxToJSON(wtx, entry);
+                    ret.push_back(entry);
+                }
+            }
 
-        // void AcentryToJSON(const Wallet::CAccountingEntry& acentry, const std::string& strAccount, Array& ret)
-        // {
-        //     bool fAllAccounts = (strAccount == std::string("*"));
+            // Received
+            if (listReceived.size() > 0 && wtx.GetDepthInMainChain() >= nMinDepth)
+            {
+                for(const auto& r : listReceived)
+                {
+                    std::string account;
+                    if (Legacy::CWallet::GetInstance().GetAddressBook().GetAddressBookMap().count(r.first))
+                        account = Legacy::CWallet::GetInstance().GetAddressBook().GetAddressBookMap().at(r.first);
+                    if (fAllAccounts || (account == strAccount))
+                    {
+                        json::json entry;
+                        entry["account"] = account;
+                        entry["address"] = r.first.ToString();
+                        entry["category"] = "receive";
+                        entry["amount"] = Legacy::SatoshisToAmount(r.second);
+                        if (fLong)
+                            WalletTxToJSON(wtx, entry);
+                        ret.push_back(entry);
+                    }
+                }
+            }
+        }
 
-        //     if (fAllAccounts || acentry.strAccount == strAccount)
-        //     {
-        //         Object entry;
-        //         entry.push_back(Pair("account", acentry.strAccount));
-        //         entry.push_back(Pair("category", "move"));
-        //         entry.push_back(Pair("time", (boost::int64_t)acentry.nTime));
-        //         entry.push_back(Pair("amount", Legacy::SatoshisToAmount(acentry.nCreditDebit)));
-        //         entry.push_back(Pair("otheraccount", acentry.strOtherAccount));
-        //         entry.push_back(Pair("comment", acentry.strComment));
-        //         ret.push_back(entry);
-        //     }
-        // }
+        void AcentryToJSON(const Legacy::CAccountingEntry& acentry, const std::string& strAccount, json::json& ret)
+        {
+            bool fAllAccounts = (strAccount == std::string("*"));
+
+            if (fAllAccounts || acentry.strAccount == strAccount)
+            {
+                json::json entry;
+                entry["account"] = acentry.strAccount;
+                entry["category"] = "move";
+                entry["time"] = (int64_t)acentry.nTime;
+                entry["amount"] = Legacy::SatoshisToAmount(acentry.nCreditDebit);
+                entry["otheraccount"] = acentry.strOtherAccount;
+                entry["comment"] = acentry.strComment;
+                ret.push_back(entry);
+            }
+        }
 
         /* listtransactions [account] [count=10] [from=0]
         Returns up to [count] most recent transactions skipping the first [from] transactions for account [account]*/
@@ -973,73 +999,71 @@ namespace TAO
                     "listtransactions [account] [count=10] [from=0]"
                     " - Returns up to [count] most recent transactions skipping the first [from] transactions for account [account].");
 
-        //     std::string strAccount = "*";
-        //     if (params.size() > 0)
-        //         strAccount = params[0].get<std::string>();
-        //     int nCount = 10;
-        //     if (params.size() > 1)
-        //         nCount = params[1].get_int();
-        //     int nFrom = 0;
-        //     if (params.size() > 2)
-        //         nFrom = params[2].get_int();
+            std::string strAccount = "*";
+            if (params.size() > 0)
+                strAccount = params[0].get<std::string>();
+            int nCount = 10;
+            if (params.size() > 1)
+                nCount = params[1];
+            int nFrom = 0;
+            if (params.size() > 2)
+                nFrom = params[2];
 
-        //     if (nCount < 0)
-        //         throw APIException(-8, "Negative count");
-        //     if (nFrom < 0)
-        //         throw APIException(-8, "Negative from");
+            if (nCount < 0)
+                throw APIException(-8, "Negative count");
+            if (nFrom < 0)
+                throw APIException(-8, "Negative from");
 
-        //     Array ret;
-        //     Legacy::CWalletDB walletdb(Legacy::CWallet::GetInstance().strWalletFile);
+            json::json ret = json::json::array();
+            Legacy::CWalletDB walletdb(Legacy::CWallet::GetInstance().GetWalletFile());
 
-        //     // First: get all Legacy::CWalletTx and Wallet::CAccountingEntry into a sorted-by-time multimap.
-        //     typedef pair<Legacy::CWalletTx*, Wallet::CAccountingEntry*> TxPair;
-        //     typedef multimap<int64_t, TxPair > TxItems;
-        //     TxItems txByTime;
+            // First: get all Legacy::CWalletTx and Wallet::CAccountingEntry into a sorted-by-time multimap.
+            typedef std::pair<const Legacy::CWalletTx*, const Legacy::CAccountingEntry*> TxPair;
+            typedef std::multimap<int64_t, TxPair > TxItems;
+            TxItems txByTime;
 
-        //     // Note: maintaining indices in the database of (account,time) --> txid and (account, time) --> acentry
-        //     // would make this much faster for applications that do this a lot.
-        //     for (map<uint512, Legacy::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); ++it)
-        //     {
-        //         Legacy::CWalletTx* wtx = &((*it).second);
-        //         txByTime.insert(make_pair(wtx->GetTxTime(), TxPair(wtx, (Wallet::CAccountingEntry*)0)));
-        //     }
-        //     list<Wallet::CAccountingEntry> acentries;
-        //     walletdb.ListAccountCreditDebit(strAccount, acentries);
-        //     BOOST_FOREACH(Wallet::CAccountingEntry& entry, acentries)
-        //     {
-        //         txByTime.insert(make_pair(entry.nTime, TxPair((Legacy::CWalletTx*)0, &entry)));
-        //     }
+            // Note: maintaining indices in the database of (account,time) --> txid and (account, time) --> acentry
+            // would make this much faster for applications that do this a lot.
+            for (const auto& entry : Legacy::CWallet::GetInstance().mapWallet)
+            {
+                const Legacy::CWalletTx* wtx = &(entry.second);
+                txByTime.insert(make_pair(wtx->GetTxTime(), TxPair(wtx, (Legacy::CAccountingEntry*)0)));
+            }
+            std::list<Legacy::CAccountingEntry> acentries;
+            walletdb.ListAccountCreditDebit(strAccount, acentries);
+            for(const Legacy::CAccountingEntry& entry : acentries)
+            {
+                txByTime.insert(make_pair(entry.nTime, TxPair((Legacy::CWalletTx*)0, &entry)));
+            }
 
-        //     // iterate backwards until we have nCount items to return:
-        //     for (TxItems::reverse_iterator it = txByTime.rbegin(); it != txByTime.rend(); ++it)
-        //     {
-        //         Legacy::CWalletTx *const pwtx = (*it).second.first;
-        //         if (pwtx != 0)
-        //             ListTransactions(*pwtx, strAccount, 0, true, ret);
-        //         Wallet::CAccountingEntry *const pacentry = (*it).second.second;
-        //         if (pacentry != 0)
-        //             AcentryToJSON(*pacentry, strAccount, ret);
+            // iterate backwards until we have nCount items to return:
+            for (TxItems::reverse_iterator it = txByTime.rbegin(); it != txByTime.rend(); ++it)
+            {
+                const Legacy::CWalletTx* pwtx = (*it).second.first;
+                if (pwtx != 0)
+                    ListTransactionsJSON(*pwtx, strAccount, 0, true, ret);
+                const Legacy::CAccountingEntry * pacentry = (*it).second.second;
+                if (pacentry != 0)
+                    AcentryToJSON(*pacentry, strAccount, ret);
 
-        //         if (ret.size() >= (nCount+nFrom)) break;
-        //     }
-        //     // ret is newest to oldest
+                if (ret.size() >= (nCount+nFrom)) break;
+            }
+            // ret is newest to oldest
 
-        //     if (nFrom > (int)ret.size())
-        //         nFrom = ret.size();
-        //     if ((nFrom + nCount) > (int)ret.size())
-        //         nCount = ret.size() - nFrom;
-        //     Array::iterator first = ret.begin();
-        //     std::advance(first, nFrom);
-        //     Array::iterator last = ret.begin();
-        //     std::advance(last, nFrom+nCount);
+            if (nFrom > (int)ret.size())
+                nFrom = ret.size();
+            if ((nFrom + nCount) > (int)ret.size())
+                nCount = ret.size() - nFrom;
+            auto first = ret.begin();
+            std::advance(first, nFrom);
+            auto last = ret.begin();
+            std::advance(last, nFrom+nCount);
 
-        //     if (last != ret.end()) ret.erase(last, ret.end());
-        //     if (first != ret.begin()) ret.erase(ret.begin(), first);
+            if (last != ret.end()) ret.erase(last, ret.end());
+            if (first != ret.begin()) ret.erase(ret.begin(), first);
 
-        //     std::reverse(ret.begin(), ret.end()); // Return oldest to newest
+            std::reverse(ret.begin(), ret.end()); // Return oldest to newest
 
-        //     return ret;
-            json::json ret;
             return ret;
         }
 
@@ -1053,24 +1077,22 @@ namespace TAO
                     "listaddresses [max=100]"
                     " - Returns list of addresses");
 
-        //     /* Limit the size. */
-        //     int nMax = 100;
-        //     if (params.size() > 0)
-        //         nMax = params[0].get_int();
+            /* Limit the size. */
+            int nMax = 100;
+            if (params.size() > 0)
+                nMax = params[0];
 
-        //     /* Get the available addresses from the wallet */
-        //     map<Legacy::NexusAddress, int64_t> mapAddresses;
-        //     if(!Legacy::CWallet::GetInstance().AvailableAddresses((unsigned int)GetUnifiedTimestamp(), mapAddresses))
-        //         throw APIException(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
+            /* Get the available addresses from the wallet */
+            std::map<Legacy::NexusAddress, int64_t> mapAddresses;
+            if(!Legacy::CWallet::GetInstance().GetAddressBook().AvailableAddresses((unsigned int)runtime::unifiedtimestamp(), mapAddresses))
+                throw APIException(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
-        //     /* Find all the addresses in the list */
-        //     Object list;
-        //     for (map<Legacy::NexusAddress, int64_t>::iterator it = mapAddresses.begin(); it != mapAddresses.end() && list.size() < nMax; ++it)
-        //         list.push_back(Pair(it->first.ToString(), Legacy::SatoshisToAmount(it->second)));
+            /* Find all the addresses in the list */
+            json::json list;
+            for (std::map<Legacy::NexusAddress, int64_t>::iterator it = mapAddresses.begin(); it != mapAddresses.end() && list.size() < nMax; ++it)
+                list[it->first.ToString()] = Legacy::SatoshisToAmount(it->second);
 
-        //     return list;
-            json::json ret;
-            return ret;
+            return list;
         }
 
         /* listaccounts
@@ -1131,63 +1153,48 @@ namespace TAO
                     "listsinceblock [blockhash] [target-confirmations]"
                     " - Get all transactions in blocks since block [blockhash], or all transactions if omitted");
 
-        //     Core::CBlockIndex *pindex = NULL;
-        //     int target_confirms = 1;
+            TAO::Ledger::BlockState block;
+            int target_confirms = 1;
+            uint32_t nBlockHeight = 0;
+            if (params.size() > 0)
+            {
+                uint1024_t blockId = 0;
 
-        //     if (params.size() > 0)
-        //     {
-        //         uint1024 blockId = 0;
+                blockId.SetHex(params[0].get<std::string>());
+                
+                if (!LLD::legDB->ReadBlock(blockId, block))
+                {
+                    throw APIException(-1, "Unknown blockhash parameter");
+                    return "";
+                }
 
-        //         blockId.SetHex(params[0].get<std::string>());
-        //         pindex = Core::CBlockLocator(blockId).GetBlockIndex();
-        //     }
+                nBlockHeight = block.nHeight;
+            }
 
-        //     if (params.size() > 1)
-        //     {
-        //         target_confirms = params[1].get_int();
+            if (params.size() > 1)
+            {
+                target_confirms = params[1];
 
-        //         if (target_confirms < 1)
-        //             throw APIException(-8, "Invalid parameter");
-        //     }
+                if (target_confirms < 1)
+                    throw APIException(-8, "Invalid parameter");
+            }
 
-        //     int depth = pindex ? (1 + Core::ChainState::nBestHeight - pindex->nHeight) : -1;
+            int depth = nBlockHeight ? (1 + TAO::Ledger::ChainState::nBestHeight - nBlockHeight) : -1;
 
-        //     Array transactions;
+            json::json transactions = json::json::array();
 
-        //     for (map<uint512, Legacy::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin(); it != Legacy::CWallet::GetInstance().mapWallet.end(); it++)
-        //     {
-        //         Legacy::CWalletTx tx = (*it).second;
+            for (const auto& entry : Legacy::CWallet::GetInstance().mapWallet)
+            {
+                Legacy::CWalletTx tx = entry.second;
 
-        //         if (depth == -1 || tx.GetDepthInMainChain() < depth)
-        //             ListTransactions(tx, "*", 0, true, transactions);
-        //     }
+                if (depth == -1 || tx.GetDepthInMainChain() < depth)
+                    ListTransactionsJSON(tx, "*", 0, true, transactions);
+            }
 
 
-        //     //NOTE: Do we need this code for anything?
-        //     uint1024 lastblock;
-
-        //     if (target_confirms == 1)
-        //     {
-        //         lastblock = Core::ChainState::hashBestChain;
-        //     }
-        //     else
-        //     {
-        //         int target_height = Core::pindexBest->nHeight + 1 - target_confirms;
-
-        //         Core::CBlockIndex *block;
-        //         for (block = Core::pindexBest;
-        //              block && block->nHeight > target_height;
-        //              block = block->pprev)  { }
-
-        //         lastblock = block ? block->GetBlockHash() : 0;
-        //     }
-
-        //     Object ret;
-        //     ret.push_back(Pair("transactions", transactions));
-        //     ret.push_back(Pair("lastblock", lastblock.GetHex()));
-
-        //     return ret;
             json::json ret;
+            ret["transactions"] = transactions;
+
             return ret;
         }
 
@@ -1200,31 +1207,30 @@ namespace TAO
                     "gettransaction <txid>"
                     " - Get detailed information about <txid>");
 
-        //     uint512 hash;
-        //     hash.SetHex(params[0].get<std::string>());
-
-        //     Object entry;
-
-        //     if (!Legacy::CWallet::GetInstance().mapWallet.count(hash))
-        //         throw APIException(-5, "Invalid or non-wallet transaction id");
-        //     const Legacy::CWalletTx& wtx = Legacy::CWallet::GetInstance().mapWallet[hash];
-
-        //     int64_t nCredit = wtx.GetCredit();
-        //     int64_t nDebit = wtx.GetDebit();
-        //     int64_t nNet = nCredit - nDebit;
-        //     int64_t nFee = (wtx.IsFromMe() ? wtx.GetValueOut() - nDebit : 0);
-
-        //     entry.push_back(Pair("amount", Legacy::SatoshisToAmount(nNet - nFee)));
-        //     if (wtx.IsFromMe())
-        //         entry.push_back(Pair("fee", Legacy::SatoshisToAmount(nFee)));
-
-        //     WalletTxToJSON(Legacy::CWallet::GetInstance().mapWallet[hash], entry);
-
-        //     Array details;
-        //     ListTransactions(Legacy::CWallet::GetInstance().mapWallet[hash], "*", 0, false, details);
-        //     entry.push_back(Pair("details", details));
+            uint512_t hash;
+            hash.SetHex(params[0].get<std::string>());
 
             json::json ret;
+
+            if (!Legacy::CWallet::GetInstance().mapWallet.count(hash))
+                throw APIException(-5, "Invalid or non-wallet transaction id");
+            const Legacy::CWalletTx& wtx = Legacy::CWallet::GetInstance().mapWallet[hash];
+
+            int64_t nCredit = wtx.GetCredit();
+            int64_t nDebit = wtx.GetDebit();
+            int64_t nNet = nCredit - nDebit;
+            int64_t nFee = (wtx.IsFromMe() ? wtx.GetValueOut() - nDebit : 0);
+
+            ret["amount"] = Legacy::SatoshisToAmount(nNet - nFee);
+            if (wtx.IsFromMe())
+                ret["fee"] = Legacy::SatoshisToAmount(nFee);
+
+            WalletTxToJSON(Legacy::CWallet::GetInstance().mapWallet[hash], ret);
+
+            json::json details = json::json::array();
+            ListTransactionsJSON(Legacy::CWallet::GetInstance().mapWallet[hash], "*", 0, false, details);
+            ret["details"] = details;
+
             return ret;
         }
 
@@ -1238,17 +1244,17 @@ namespace TAO
                     " - Returns a std::string that is serialized,"
                     " hex-encoded data for <txid>.");
 
-        //     uint512 hash;
-        //     hash.SetHex(params[0].get<std::string>());
+            // uint512_t hash;
+            // hash.SetHex(params[0].get<std::string>());
 
-        //     Core::CTransaction tx;
-        //     uint1024 hashBlock = 0;
-        //     if (!Core::GetTransaction(hash, tx, hashBlock))
-        //         throw APIException(-5, "No information available about transaction");
+            // Legacy::Transaction tx;
+            // uint1024_t hashBlock = 0;
+            // if (!Legacy::GetTransaction(hash, tx, hashBlock))
+            //     throw APIException(-5, "No information available about transaction");
 
-        //     DataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
-        //     ssTx << tx;
-        //     return HexStr(ssTx.begin(), ssTx.end());
+            // DataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
+            // ssTx << tx;
+            // return HexStr(ssTx.begin(), ssTx.end());
             json::json ret;
             return ret;
         }
@@ -1269,7 +1275,7 @@ namespace TAO
         //     DataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
         //     bool fCheckInputs = false;
         //     if (params.size() > 1)
-        //         fCheckInputs = (params[1].get_int() != 0);
+        //         fCheckInputs = (params[1] != 0);
         //     Core::CTransaction tx;
 
         //     // deserialize binary data stream
@@ -1317,51 +1323,50 @@ namespace TAO
                     "validateaddress <Nexusaddress>"
                     " - Return information about <Nexusaddress>.");
 
-        //     Legacy::NexusAddress address(params[0].get<std::string>());
-        //     bool isValid = address.IsValid();
+            Legacy::NexusAddress address(params[0].get<std::string>());
+            bool isValid = address.IsValid();
 
-        //     Object ret;
-        //     ret.push_back(Pair("isvalid", isValid));
-        //     if (isValid)
-        //     {
-        //         std::string currentAddress = address.ToString();
-        //         ret.push_back(Pair("address", currentAddress));
-        //         if (Legacy::CWallet::GetInstance().HaveKey(address))
-        //         {
-        //             ret.push_back(Pair("ismine", true));
-        //             std::vector<unsigned char> vchPubKey;
-        //             Legacy::CWallet::GetInstance().GetPubKey(address, vchPubKey);
-        //             ret.push_back(Pair("pubkey", HexStr(vchPubKey)));
-        //             LLC::ECKey key;
-        //             key.SetPubKey(vchPubKey);
-        //             ret.push_back(Pair("iscompressed", key.IsCompressed()));
-        //         }
-        //         else if (Legacy::CWallet::GetInstance().HaveCScript(address.GetHash256()))
-        //         {
-        //             ret.push_back(Pair("isscript", true));
-        //             Wallet::CScript subscript;
-        //             Legacy::CWallet::GetInstance().GetCScript(address.GetHash256(), subscript);
-        //             ret.push_back(Pair("ismine", Wallet::IsMine(*pwalletMain, subscript)));
-        //             std::vector<Legacy::NexusAddress> addresses;
-        //             Wallet::TransactionType whichType;
-        //             int nRequired;
-        //             Wallet::ExtractAddresses(subscript, whichType, addresses, nRequired);
-        //             ret.push_back(Pair("script", Wallet::GetTxnOutputType(whichType)));
-        //             Array a;
-        //             BOOST_FOREACH(const Legacy::NexusAddress& addr, addresses)
-        //                 a.push_back(addr.ToString());
-        //             ret.push_back(Pair("addresses", a));
-        //             if (whichType == Wallet::TX_MULTISIG)
-        //                 ret.push_back(Pair("sigsrequired", nRequired));
-        //         }
-        //         else
-        //             ret.push_back(Pair("ismine", false));
-        //         if (Legacy::CWallet::GetInstance().mapAddressBook.count(address))
-        //             ret.push_back(Pair("account", Legacy::CWallet::GetInstance().mapAddressBook[address]));
-        //     }
-        //     return ret;
             json::json ret;
+            ret["isvalid"] = isValid;
+            if (isValid)
+            {
+                std::string currentAddress = address.ToString();
+                ret["address"] = currentAddress;
+                if (Legacy::CWallet::GetInstance().HaveKey(address))
+                {
+                    ret["ismine"] = true;
+                    std::vector<unsigned char> vchPubKey;
+                    Legacy::CWallet::GetInstance().GetPubKey(address, vchPubKey);
+                    ret["pubkey"] = HexStr(vchPubKey);
+                    LLC::ECKey key;
+                    key.SetPubKey(vchPubKey);
+                    ret["iscompressed"] = key.IsCompressed();
+                }
+                else if (Legacy::CWallet::GetInstance().HaveCScript(address.GetHash256()))
+                {
+                    ret["isscript"] = true;
+                    Legacy::CScript subscript;
+                    Legacy::CWallet::GetInstance().GetCScript(address.GetHash256(), subscript);
+                    ret["ismine"] = Legacy::IsMine(Legacy::CWallet::GetInstance(), subscript);
+                    std::vector<Legacy::NexusAddress> addresses;
+                    Legacy::TransactionType whichType;
+                    int nRequired;
+                    Legacy::ExtractAddresses(subscript, whichType, addresses, nRequired);
+                    ret["script"] = Legacy::GetTxnOutputType(whichType);
+                    json::json addressesJSON = json::json::array();
+                    for(const Legacy::NexusAddress& addr : addresses)
+                        addressesJSON.push_back(addr.ToString());
+                    ret["addresses"] = addressesJSON;
+                    if (whichType == Legacy::TX_MULTISIG)
+                        ret["sigsrequired"] = nRequired;
+                }
+                else
+                    ret["ismine"] = false;
+                if (Legacy::CWallet::GetInstance().GetAddressBook().GetAddressBookMap().count(address))
+                    ret["account"] = Legacy::CWallet::GetInstance().GetAddressBook().GetAddressBookMap().at(address);
+            }
             return ret;
+        
         }
 
         /* Make a public/private key pair. [prefix] is optional preferred prefix for the public key */
@@ -1373,28 +1378,27 @@ namespace TAO
                     " - Make a public/private key pair."
                     " [prefix] is optional preferred prefix for the public key.");
 
-        //     std::string strPrefix = "";
-        //     if (params.size() > 0)
-        //         strPrefix = params[0].get<std::string>();
+            std::string strPrefix = "";
+            if (params.size() > 0)
+                strPrefix = params[0].get<std::string>();
 
-        //     LLC::ECKey key;
-        //     int nCount = 0;
-        //     do
-        //     {
-        //         key.MakeNewKey(false);
-        //         nCount++;
-        //     } while (nCount < 10000 && strPrefix != HexStr(key.GetPubKey()).substr(0, strPrefix.size()));
+            LLC::ECKey key;
+            int nCount = 0;
+            do
+            {
+                key.MakeNewKey(false);
+                nCount++;
+            } while (nCount < 10000 && strPrefix != HexStr(key.GetPubKey()).substr(0, strPrefix.size()));
 
-        //     if (strPrefix != HexStr(key.GetPubKey()).substr(0, strPrefix.size()))
-        //         return Value::null;
+            if (strPrefix != HexStr(key.GetPubKey()).substr(0, strPrefix.size()))
+                return "";
 
-        //     Wallet::CPrivKey vchPrivKey = key.GetPrivKey();
-        //     Object result;
-        //     result.push_back(Pair("PrivateKey", HexStr<Wallet::CPrivKey::iterator>(vchPrivKey.begin(), vchPrivKey.end())));
-        //     result.push_back(Pair("PublicKey", HexStr(key.GetPubKey())));
-        //     return result;
-            json::json ret;
-            return ret;
+            LLC::CPrivKey vchPrivKey = key.GetPrivKey();
+            json::json result;
+            result["PrivateKey"] = HexStr<LLC::CPrivKey::iterator>(vchPrivKey.begin(), vchPrivKey.end());
+            result["PublicKey"] = HexStr(key.GetPubKey());
+            return result;
+            
         }
 
         /* unspentbalance [\"address\",...]
@@ -1414,56 +1418,55 @@ namespace TAO
                     " - Returns the total amount of unspent Nexus for given address."
                     " This is a more accurate command than Get Balance.");
 
-        //     set<Legacy::NexusAddress> setAddresses;
-        //     if (params.size() > 0)
-        //     {
-        //         for(int i = 0; i < params.size(); i++)
-        //         {
-        //             Legacy::NexusAddress address(params[i].get<std::string>());
-        //             if (!address.IsValid()) {
-        //                 throw APIException(-5, std::string("Invalid Nexus address: ")+params[i].get<std::string>());
-        //             }
-        //             if (setAddresses.count(address)){
-        //                 throw APIException(-8, std::string("Invalid parameter, duplicated address: ")+params[i].get<std::string>());
-        //             }
-        //            setAddresses.insert(address);
-        //         }
-        //     }
+            std::set<Legacy::NexusAddress> setAddresses;
+            if (params.size() > 0)
+            {
+                for(int i = 0; i < params.size(); i++)
+                {
+                    Legacy::NexusAddress address(params[i].get<std::string>());
+                    if (!address.IsValid()) {
+                        throw APIException(-5, std::string("Invalid Nexus address: ")+params[i].get<std::string>());
+                    }
+                    if (setAddresses.count(address)){
+                        throw APIException(-8, std::string("Invalid parameter, duplicated address: ")+params[i].get<std::string>());
+                    }
+                   setAddresses.insert(address);
+                }
+            }
 
-        //     std::vector<Wallet::COutput> vecOutputs;
-        //     Legacy::CWallet::GetInstance().AvailableCoins((unsigned int)GetUnifiedTimestamp(), vecOutputs, false);
+            std::vector<Legacy::COutput> vecOutputs;
+            Legacy::CWallet::GetInstance().AvailableCoins((unsigned int)runtime::unifiedtimestamp(), vecOutputs, false);
 
-        //     int64_t nCredit = 0;
-        //     BOOST_FOREACH(const Wallet::COutput& out, vecOutputs)
-        //     {
-        //         if(setAddresses.size())
-        //         {
-        //             Legacy::NexusAddress address;
-        //             if(!ExtractAddress(out.tx->vout[out.i].scriptPubKey, address))
-        //                 continue;
+            int64_t nCredit = 0;
+            for(const Legacy::COutput& out : vecOutputs)
+            {
+                if(setAddresses.size())
+                {
+                    Legacy::NexusAddress address;
+                    if(!ExtractAddress(out.walletTx.vout[out.i].scriptPubKey, address))
+                        continue;
 
-        //             if (!setAddresses.count(address))
-        //                 continue;
-        //         }
+                    if (!setAddresses.count(address))
+                        continue;
+                }
 
-        //         int64_t nValue = out.tx->vout[out.i].nValue;
-        //         const Wallet::CScript& pk = out.tx->vout[out.i].scriptPubKey;
-        //         Legacy::NexusAddress address;
+                int64_t nValue = out.walletTx.vout[out.i].nValue;
+                const Legacy::CScript& pk = out.walletTx.vout[out.i].scriptPubKey;
+                Legacy::NexusAddress address;
 
-        //         printf("txid %s | ", out.tx->GetHash().GetHex().c_str());
-        //         printf("vout %u | ", out.i);
-        //         if (Wallet::ExtractAddress(pk, address))
-        //             printf("address %s |", address.ToString().c_str());
+                debug::strprintf("txid %s | ", out.walletTx.GetHash().GetHex().c_str());
+                debug::strprintf("vout %u | ", out.i);
+                if (Legacy::ExtractAddress(pk, address))
+                    debug::strprintf("address %s |", address.ToString().c_str());
 
-        //         printf("amount %f |", (double)nValue / COIN);
-        //         printf("confirmations %u\n",out.nDepth);
+                debug::strprintf("amount %f |", Legacy::SatoshisToAmount(nValue));
+                debug::strprintf("confirmations %u\n",out.nDepth);
 
-        //         nCredit += nValue;
-        //     }
+                nCredit += nValue;
+            }
 
-        //     return Legacy::SatoshisToAmount(nCredit);
-            json::json ret;
-            return ret;
+            return Legacy::SatoshisToAmount(nCredit);
+            
         }
 
 
@@ -1483,71 +1486,73 @@ namespace TAO
                     " - Results are an array of Objects, each of which has:"
                     "{txid, vout, scriptPubKey, amount, confirmations}");
 
-        //     int nMinDepth = 1;
-        //     if (params.size() > 0)
-        //         nMinDepth = params[0].get_int();
+            int nMinDepth = 1;
+            if (params.size() > 0)
+                nMinDepth = params[0];
 
-        //     int nMaxDepth = 9999999;
-        //     if (params.size() > 1)
-        //         nMaxDepth = params[1].get_int();
+            int nMaxDepth = 9999999;
+            if (params.size() > 1)
+                nMaxDepth = params[1];
 
-        //     set<Legacy::NexusAddress> setAddress;
-        //     if (params.size() > 2)
-        //     {
-        //         Array inputs = params[2].get_array();
-        //         BOOST_FOREACH(Value& input, inputs)
-        //         {
-        //             Legacy::NexusAddress address(input.get<std::string>());
-        //             if (!address.IsValid())
-        //                 throw APIException(-5, std::string("Invalid Nexus address: ")+input.get<std::string>());
+            std::set<Legacy::NexusAddress> setAddress;
+            if (params.size() > 2)
+            {
+                if( !params[2].is_array())
+                    throw APIException(-8, std::string("Invalid address array format") );
 
-        //             if (setAddress.count(address))
-        //                 throw APIException(-8, std::string("Invalid parameter, duplicated address: ")+input.get<std::string>());
+                json::json inputs = params[2];
+                for (unsigned int i = 0; i < inputs.size(); i++)
+                {
+                    Legacy::NexusAddress address(inputs[i].get<std::string>());
+                    if (!address.IsValid())
+                        throw APIException(-5, std::string("Invalid Nexus address: ")+inputs[i].get<std::string>());
 
-        //            setAddress.insert(address);
-        //         }
-        //     }
+                    if (setAddress.count(address))
+                        throw APIException(-8, std::string("Invalid parameter, duplicated address: ")+inputs[i].get<std::string>());
 
-        //     Array results;
-        //     std::vector<Wallet::COutput> vecOutputs;
-        //     Legacy::CWallet::GetInstance().AvailableCoins((unsigned int)GetUnifiedTimestamp(), vecOutputs, false);
-        //     BOOST_FOREACH(const Wallet::COutput& out, vecOutputs)
-        //     {
-        //         if (out.nDepth < nMinDepth || out.nDepth > nMaxDepth)
-        //             continue;
+                   setAddress.insert(address);
+                }
+            }
 
-        //         if(!setAddress.empty())
-        //         {
-        //             Legacy::NexusAddress address;
-        //             if(!ExtractAddress(out.tx->vout[out.i].scriptPubKey, address))
-        //                 continue;
+            json::json results = json::json::array();
+            std::vector<Legacy::COutput> vecOutputs;
+            Legacy::CWallet::GetInstance().AvailableCoins((unsigned int)runtime::unifiedtimestamp(), vecOutputs, false);
+            for(const Legacy::COutput& out : vecOutputs)
+            {
+                if (out.nDepth < nMinDepth || out.nDepth > nMaxDepth)
+                    continue;
 
-        //             if (!setAddress.count(address))
-        //                 continue;
-        //         }
+                if(!setAddress.empty())
+                {
+                    Legacy::NexusAddress address;
+                    if(!ExtractAddress(out.walletTx.vout[out.i].scriptPubKey, address))
+                        continue;
 
-        //         int64_t nValue = out.tx->vout[out.i].nValue;
-        //         const Wallet::CScript& pk = out.tx->vout[out.i].scriptPubKey;
-        //         Legacy::NexusAddress address;
-        //         Object entry;
-        //         entry.push_back(Pair("txid", out.tx->GetHash().GetHex()));
-        //         entry.push_back(Pair("vout", out.i));
-        //         if (Wallet::ExtractAddress(pk, address))
-        //         {
-        //             entry.push_back(Pair("address", address.ToString()));
-        //             if (Legacy::CWallet::GetInstance().mapAddressBook.count(address))
-        //                 entry.push_back(Pair("account", Legacy::CWallet::GetInstance().mapAddressBook[address]));
-        //         }
-        //         entry.push_back(Pair("scriptPubKey", HexStr(pk.begin(), pk.end())));
-        //         entry.push_back(Pair("amount",Legacy::SatoshisToAmount(nValue)));
-        //         entry.push_back(Pair("confirmations",out.nDepth));
+                    if (!setAddress.count(address))
+                        continue;
+                }
 
-        //         results.push_back(entry);
-        //     }
+                int64_t nValue = out.walletTx.vout[out.i].nValue;
+                const Legacy::CScript& pk = out.walletTx.vout[out.i].scriptPubKey;
+                Legacy::NexusAddress address;
+                json::json entry;
+                entry["txid"] = out.walletTx.GetHash().GetHex();
+                entry["vout"] = out.i;
+                if (Legacy::ExtractAddress(pk, address))
+                {
+                    entry["address"] = address.ToString();
+                    if (Legacy::CWallet::GetInstance().GetAddressBook().GetAddressBookMap().count(address))
+                        entry["account"] = Legacy::CWallet::GetInstance().GetAddressBook().GetAddressBookMap().at(address);
+                }
+                entry["scriptPubKey"] = HexStr(pk.begin(), pk.end());
+                entry["amount"] = Legacy::SatoshisToAmount(nValue);
+                entry["confirmations"] = out.nDepth;
 
-        //     return results;
-            json::json ret;
-            return ret;
+                results.push_back(entry);
+            }
+
+            return results;
+            
         }
 
     }

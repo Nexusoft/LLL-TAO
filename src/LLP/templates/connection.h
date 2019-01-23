@@ -197,7 +197,7 @@ namespace LLP
             LOCK(MUTEX);
 
             /* Debug dump of message type. */
-            debug::log(4, NODE, "Sent Message (", PACKET.GetBytes().size(), " bytes)");
+            debug::log(3, NODE "Sent Message (", PACKET.GetBytes().size(), " bytes)");
 
             /* Debug dump of packet data. */
             if(config::GetArg("-verbose", 0) >= 5)
