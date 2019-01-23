@@ -58,32 +58,16 @@ namespace TAO
                     "reset"
                     " - Restart all node connections");
 
-        //     //disconnect all nodes currently active
-        //     {
-        //         LOCK(cs_vNodes);
-        //         // Disconnect unused nodes
-        //         vector<CNode*> vNodesCopy = vNodes;
-        //         BOOST_FOREACH(CNode* pnode, vNodesCopy)
-        //         {
-        //             // remove from vNodes
-        //             vNodes.erase(remove(vNodes.begin(), vNodes.end(), pnode), vNodes.end());
+            //disconnect all nodes currently active
+            if(LLP::LEGACY_SERVER )
+                LLP::LEGACY_SERVER->DisconnectAll();
 
-        //             // close socket and cleanup
-        //             pnode->CloseSocketDisconnect();
-        //             pnode->Cleanup();
+            if(LLP::TRITIUM_SERVER)
+                LLP::TRITIUM_SERVER->DisconnectAll();
+        
+             config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
 
-        //             // hold in disconnected pool until all refs are released
-        //             pnode->nReleaseTime = max(pnode->nReleaseTime, GetUnifiedTimestamp() + 15 * 60);
-        //             if (pnode->fNetworkNode || pnode->fInbound)
-        //                 pnode->Release();
-        //             vNodesDisconnected.push_back(pnode);
-        //         }
-        //     }
-        //     ReadConfigFile(mapArgs, mapMultiArgs);
-
-        //     return "success";
-            json::json ret;
-            return ret;
+            return "success";
         }
     }
 }

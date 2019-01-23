@@ -274,6 +274,19 @@ namespace LLP
             return vAddr;
         }
 
+        /** DisconnectAll
+        *
+        *  Notifies all data threads to disconnect their connections
+        *
+        **/
+        void DisconnectAll()
+        {
+            for(int32_t index = 0; index < MAX_THREADS; ++index)
+            {
+                DATA_THREADS[index]->DisconnectAll();
+            }
+        }
+
 
         /** Manager
          *
