@@ -350,7 +350,7 @@ namespace TAO
             result["nonce"] = (uint64_t)block.nNonce;
             result["bits"] = HexBits(block.nBits);
             result["difficulty"] = TAO::Ledger::GetDifficulty(block.nBits, block.nChannel);
-            //result["mint"] = Legacy::SatoshisToAmount(block.nMint); //PS TTODO
+            result["mint"] = Legacy::SatoshisToAmount(block.nMint); 
             if (block.hashPrevBlock != 0)
                 result["previousblockhash"] = block.hashPrevBlock.GetHex();
             if (block.hashNextBlock != 0)

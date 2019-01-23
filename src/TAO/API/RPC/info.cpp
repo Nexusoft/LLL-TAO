@@ -215,10 +215,14 @@ namespace TAO
                     nHashAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 2));
 
                 }
-                nHashAverageDifficulty /= nHTotal;
-                nHashAverageTime /= nHTotal;
+                // protect against getmininginfo being called before hash channel start block
+                if( nHTotal > 0)
+                {
+                    nHashAverageDifficulty /= nHTotal;
+                    nHashAverageTime /= nHTotal;
 
-                nHashRate = (nTimeConstant / nHashAverageTime) * nHashAverageDifficulty;
+                    nHashRate = (nTimeConstant / nHashAverageTime) * nHashAverageDifficulty;
+                }
             }
 
             json::json obj;
