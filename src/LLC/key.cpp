@@ -482,6 +482,7 @@ namespace LLC
     bool ECKey::SignCompact(uint256_t hash, std::vector<unsigned char>& vchSig)
     {
         bool fOk = false;
+        
         ECDSA_SIG *sig = ECDSA_do_sign((unsigned char*)&hash, sizeof(hash), pkey);
         if (sig == nullptr)
             throw key_error("CKey::SignCompact() : Failed to make signature");
@@ -490,6 +491,8 @@ namespace LLC
         vchSig.resize(145,0);
 
         #if OPENSSL_VERSION_NUMBER >= 0x10100000L
+            const BIGNUM* sig_r = nullptr;
+            const BIGNUM* sig_s = nullptr;
             ECDSA_SIG_get0(sig, &sig_r, &sig_s);
         #else
             //const BIGNUM* sig_r = sig->r;
