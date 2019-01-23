@@ -115,20 +115,16 @@ namespace LLP
         if(EVENT == EVENT_GENERIC)
         {
 
-            if(nLastPing + 1 < runtime::unifiedtimestamp())
+            if(nLastPing + 15 < runtime::unifiedtimestamp())
             {
+                RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
 
-                for(int i = 0; i < config::GetArg("-ping", 1); i++)
-                {
-                    RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
+                nLastPing = runtime::unifiedtimestamp();
 
-                    nLastPing = runtime::unifiedtimestamp();
+                mapLatencyTracker.emplace(nSessionID, runtime::timer());
+                mapLatencyTracker[nSessionID].Start();
 
-                    mapLatencyTracker.emplace(nSessionID, runtime::timer());
-                    mapLatencyTracker[nSessionID].Start();
-
-                    PushMessage("ping", nSessionID);
-                }
+                PushMessage("ping", nSessionID);
             }
 
             //TODO: mapRequests data, if no response given retry the request at given times
@@ -407,7 +403,7 @@ namespace LLP
 
             if(LEGACY_SERVER)
             {
-                /* try to establish the connection on the port the server is listening to */
+                /* Try to establish the connection on the port the server is listening to. */
                 for(auto it = vLegacyAddr.begin(); it != vLegacyAddr.end(); ++it)
                 {
                     it->SetPort(LEGACY_SERVER->PORT);
@@ -415,7 +411,6 @@ namespace LLP
                     /* Create a base address vector from legacy addresses */
                     vAddr.push_back(*it);
                 }
-
 
                 /* Add the connections to Legacy Server. */
                 if(LEGACY_SERVER->pAddressManager)

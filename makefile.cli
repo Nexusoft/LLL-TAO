@@ -141,7 +141,7 @@ OBJS= \
     build/LLC_bignum.o \
 	build/LLP_baseaddress.o \
 	build/LLP_legacyaddress.o \
-	build/LLP_addressinfo.o \
+	build/LLP_trustaddress.o \
 	build/LLP_hosts.o \
 	build/LLP_socket.o \
 	build/LLP_inv.o\

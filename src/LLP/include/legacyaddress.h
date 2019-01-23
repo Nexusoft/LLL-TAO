@@ -31,14 +31,21 @@ namespace LLP
     class LegacyAddress : public BaseAddress
     {
     public:
+
+        /* Default constructor */
         LegacyAddress();
+
+        /* Copy constructors */
         LegacyAddress(const LegacyAddress &other);
         LegacyAddress(const BaseAddress &ipIn, uint64_t nServicesIn = NODE_NETWORK);
+
+        /* Default destructor */
         virtual ~LegacyAddress();
+
+        /* Copy assignment operator */
         LegacyAddress &operator=(const LegacyAddress &other);
 
-        LegacyAddress(LegacyAddress &other) = delete;
-
+        /* Serialization */
         IMPLEMENT_SERIALIZE
         (
             LegacyAddress* pthis = const_cast<LegacyAddress*>(this);
@@ -51,7 +58,6 @@ namespace LLP
                 pthis->nLastTry = 0;
             }
 
-
             if (nSerType & SER_DISK)
                 READWRITE(nSerVersion);
 
@@ -62,16 +68,20 @@ namespace LLP
             READWRITE(*pip);
         )
 
-        void print() const;
+
+        /** Print
+         *
+         *  Prints information about this address.
+         *
+         **/
+        virtual void Print() const;
 
     protected:
+
+        int64_t nLastTry;   // memory only
         uint64_t nServices;
+        uint32_t nTime;     // disk and network only
 
-        // disk and network only
-        uint32_t nTime;
-
-        // memory only
-        int64_t nLastTry;
     };
 }
 

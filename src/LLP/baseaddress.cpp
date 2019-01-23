@@ -25,12 +25,15 @@ namespace LLP
 {
     static const uint8_t pchIPv4[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff };
 
+    /* Default constructor */
     BaseAddress::BaseAddress()
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(0)
     {
     }
 
+
+    /* Copy constructor */
     BaseAddress::BaseAddress(const BaseAddress &other, uint16_t port)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(port)
@@ -43,6 +46,7 @@ namespace LLP
     }
 
 
+    /* Copy constructor */
     BaseAddress::BaseAddress(const struct in_addr& ipv4Addr, uint16_t port)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(port)
@@ -54,6 +58,7 @@ namespace LLP
     }
 
 
+    /* Copy constructor */
     BaseAddress::BaseAddress(const struct in6_addr& ipv6Addr, uint16_t port)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(port)
@@ -62,6 +67,8 @@ namespace LLP
         std::copy((uint8_t*)&ipv6Addr, (uint8_t*)&ipv6Addr + 16, (uint8_t*)&ip[0]);
     }
 
+
+    /* Copy constructor */
     BaseAddress::BaseAddress(const struct sockaddr_in& addr)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(ntohs(addr.sin_port))
@@ -75,6 +82,7 @@ namespace LLP
     }
 
 
+    /* Copy constructor */
     BaseAddress::BaseAddress(const struct sockaddr_in6 &addr)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(ntohs(addr.sin6_port))
@@ -85,6 +93,7 @@ namespace LLP
         std::copy((uint8_t*)&addr.sin6_addr, (uint8_t*)&addr.sin6_addr + 16, (uint8_t*)&ip[0]);
     }
 
+    /* Copy constructor */
     BaseAddress::BaseAddress(const char *pszIpPort, uint16_t portDefault, bool fAllowLookup)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(portDefault)
@@ -96,6 +105,7 @@ namespace LLP
           debug::log(0, FUNCTION, "bad lookup");
     }
 
+    /* Copy constructor */
     BaseAddress::BaseAddress(const std::string &strIpPort, uint16_t portDefault, bool fAllowLookup)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(portDefault)
@@ -107,10 +117,12 @@ namespace LLP
           debug::log(0, FUNCTION, "bad lookup");
     }
 
+    /* Default destructor */
     BaseAddress::~BaseAddress()
     {
     }
 
+    /* Copy assignment operator */
     BaseAddress &BaseAddress::operator=(const BaseAddress &other)
     {
         for(uint8_t i = 0; i < 16; ++i)
@@ -121,9 +133,9 @@ namespace LLP
         return *this;
     }
 
-    void BaseAddress::SetPort(uint16_t portIn)
+    void BaseAddress::SetPort(uint16_t port)
     {
-        nPort = portIn;
+        nPort = port;
     }
 
     uint16_t BaseAddress::GetPort() const
@@ -131,10 +143,10 @@ namespace LLP
         return nPort;
     }
 
-    void BaseAddress::SetIP(const BaseAddress& ipIn)
+    void BaseAddress::SetIP(const BaseAddress& addr)
     {
         for(uint8_t i = 0; i < 16; ++i)
-            ip[i] = ipIn.ip[i];
+            ip[i] = addr.ip[i];
     }
 
 
@@ -305,17 +317,12 @@ namespace LLP
 
     std::string BaseAddress::ToString() const
     {
-        return ToStringIPPort();
+        return ToStringIP() + std::string(":") + ToStringPort();
     }
 
     std::string BaseAddress::ToStringPort() const
     {
         return std::to_string(nPort);
-    }
-
-    std::string BaseAddress::ToStringIPPort() const
-    {
-        return ToStringIP() + std::string(":") + ToStringPort();
     }
 
 
@@ -457,7 +464,8 @@ namespace LLP
     }
 
 
-    void BaseAddress::print() const
+    /* Prints information about this address. */
+    void BaseAddress::Print() const
     {
         debug::log(0, "BaseAddress(", ToString(), ")");
     }

@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_MANAGER_H
 #define NEXUS_LLP_INCLUDE_MANAGER_H
 
-#include <LLP/include/addressinfo.h>
+#include <LLP/include/trustaddress.h>
 #include <Util/templates/serialize.h>
 
 
@@ -80,10 +80,10 @@ namespace LLP
          *  @return A list of addresses in the manager
          *
          **/
-        std::vector<BaseAddress> GetAddresses(const uint8_t flags = CONNECT_FLAGS_ALL);
+        void GetAddresses(std::vector<BaseAddress> &vAddr, const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
-        /** GetInfo
+        /** GetAddresses
          *
          *  Gets a list of address info in the manager
          *
@@ -92,9 +92,9 @@ namespace LLP
          *  @param[in] flags the types of connect state
          *
          **/
-        void GetInfo(std::vector<AddressInfo> &vAddrInfo, const uint8_t flags = CONNECT_FLAGS_ALL);
+        void GetAddresses(std::vector<TrustAddress> &vAddrInfo, const uint8_t flags = CONNECT_FLAGS_ALL);
 
-        /** GetInfoCount
+        /** Count
          *
          *  Gets the count of addresses info in the manager
          *
@@ -103,7 +103,7 @@ namespace LLP
          *  @return Count of addresss info with connect state flags
          *
          **/
-        uint32_t GetInfoCount(const uint8_t flags = CONNECT_FLAGS_ALL);
+        uint32_t Count(const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
         /** AddAddress
@@ -190,7 +190,7 @@ namespace LLP
 
     private:
 
-        /** get_info
+        /** get_addresses
          *
          *  Helper function to get an array of info on the connected states specified
          *  by flags
@@ -200,28 +200,27 @@ namespace LLP
          *  @param[in] flags Specify which types of connections to get the info from.
          *
          **/
-        void get_info(std::vector<AddressInfo> &vInfo, const uint8_t flags = CONNECT_FLAGS_ALL);
+        void get_addresses(std::vector<TrustAddress> &vInfo, const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
-        /** get_info_count
+        /** count
          *
          *  Helper function to get the number of addresses of the connect type
          *
          *  *  @param[in] flags Specify which types of connections to get the info from.
          *
          **/
-        uint32_t get_info_count(const uint8_t flags = CONNECT_FLAGS_ALL);
+        uint32_t count(const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
-        /** get_total_count
+        /** total_count
          *
-         *  Helper function to get the total connected, dropped, or failed attempts
-         *  from the entire data set
+         *  Gets the cumulative count of each address state flags.
          *
          *  @param[in] flags Specify which types of connections to get the info from.
          *
          **/
-        uint32_t get_total_count(const uint8_t flags);
+        uint32_t total_count(const uint8_t flags);
 
 
         /** print_stats
@@ -233,7 +232,7 @@ namespace LLP
 
 
         LLD::AddressDB *pDatabase;
-        std::map<uint64_t, AddressInfo> mapAddrInfo;
+        std::map<uint64_t, TrustAddress> mapTrustAddress;
 
         mutable std::mutex mut;
     };

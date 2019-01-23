@@ -12,23 +12,27 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/legacyaddress.h>
+#include <Util/include/debug.h>
 #include <algorithm>
 
 namespace LLP
 {
+    /* Default constructor */
     LegacyAddress::LegacyAddress()
     : BaseAddress()
+    , nLastTry(0)
     , nServices(NODE_NETWORK)
     , nTime(100000000)
-    , nLastTry(0)
     {
     }
 
+
+    /* Copy constructor */
     LegacyAddress::LegacyAddress(const LegacyAddress &other)
     : BaseAddress()
+    , nLastTry(other.nLastTry)
     , nServices(other.nServices)
     , nTime(other.nTime)
-    , nLastTry(other.nLastTry)
     {
         nPort = other.nPort;
 
@@ -37,19 +41,23 @@ namespace LLP
     }
 
 
+    /* Copy constructor */
     LegacyAddress::LegacyAddress(const BaseAddress &ipIn, uint64_t nServicesIn)
     : BaseAddress(ipIn)
+    , nLastTry(0)
     , nServices(nServicesIn)
     , nTime(100000000)
-    , nLastTry(0)
     {
     }
 
 
+    /* Default destructor */
     LegacyAddress::~LegacyAddress()
     {
     }
 
+
+    /* Copy assignment operator */
     LegacyAddress &LegacyAddress::operator=(const LegacyAddress &other)
     {
         for(uint8_t i = 0; i < 16; ++i)
@@ -62,6 +70,16 @@ namespace LLP
         nLastTry = other.nLastTry;
 
         return *this;
+    }
+
+
+    /* Prints information about this address. */
+    void LegacyAddress::Print() const
+    {
+        debug::log(0, "LegacyAddress(", ToString(), ")");
+        debug::log(0, ":\t", "nLastTry=", nLastTry);
+        debug::log(0, ":\t", "nServices=", nServices);
+        debug::log(0, ":\t", "nTime=", nTime);
     }
 
 }

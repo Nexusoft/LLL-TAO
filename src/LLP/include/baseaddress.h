@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LLP_INCLUDE_NETADDR_H
-#define NEXUS_LLP_INCLUDE_NETADDR_H
+#ifndef NEXUS_LLP_INCLUDE_BASEADDRESS_H
+#define NEXUS_LLP_INCLUDE_BASEADDRESS_H
 
 #include <LLP/include/network.h>
 #include <Util/templates/serialize.h>
@@ -29,28 +29,32 @@ namespace LLP
         uint16_t nPort; // host order
 
     public:
+
+        /* Default constructor */
         BaseAddress();
+
+        /* Copy constructors */
         BaseAddress(const BaseAddress &other, uint16_t port = 0);
-        BaseAddress(const struct in_addr& ipv4Addr, uint16_t port = 0);
-        BaseAddress(const struct in6_addr& ipv6Addr, uint16_t port = 0);
-        BaseAddress(const struct sockaddr_in& addr);
-        BaseAddress(const struct sockaddr_in6& addr);
+        BaseAddress(const struct in_addr &ipv4Addr, uint16_t port = 0);
+        BaseAddress(const struct in6_addr &ipv6Addr, uint16_t port = 0);
+        BaseAddress(const struct sockaddr_in &addr);
+        BaseAddress(const struct sockaddr_in6 &addr);
         BaseAddress(const char *pszIp, uint16_t portDefault = 0, bool fAllowLookup = false);
         BaseAddress(const std::string &strIp, uint16_t portDefault = 0, bool fAllowLookup = false);
 
-
+        /* Copy assignment operator */
         BaseAddress &operator=(const BaseAddress &other);
 
-
+        /* Default destructor */
         virtual ~BaseAddress();
 
-        void SetPort(uint16_t portIn);
+        void SetPort(uint16_t port);
         uint16_t GetPort() const;
 
-        bool GetSockAddr(struct sockaddr_in* paddr) const;
-        bool GetSockAddr6(struct sockaddr_in6* paddr) const;
+        bool GetSockAddr(struct sockaddr_in *paddr) const;
+        bool GetSockAddr6(struct sockaddr_in6 *paddr) const;
 
-        void SetIP(const BaseAddress& ip);
+        void SetIP(const BaseAddress &addr);
         bool IsIPv4() const;    // IPv4 mapped address (::FFFF:0:0/96, 0.0.0.0/0)
         bool IsRFC1918() const; // IPv4 private networks (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12)
         bool IsRFC3849() const; // IPv6 documentation address (2001:0DB8::/32)
@@ -69,19 +73,27 @@ namespace LLP
         std::string ToString() const;
         std::string ToStringIP() const;
         std::string ToStringPort() const;
-        std::string ToStringIPPort() const;
         uint8_t GetByte(uint8_t n) const;
         uint64_t GetHash() const;
-        bool GetInAddr(struct in_addr* pipv4Addr) const;
-        bool GetIn6Addr(struct in6_addr* pipv6Addr) const;
+        bool GetInAddr(struct in_addr *pipv4Addr) const;
+        bool GetIn6Addr(struct in6_addr *pipv6Addr) const;
         std::vector<uint8_t> GetGroup() const;
-        void print() const;
+
+
+        /** Print
+         *
+         *  Prints information about this address.
+         *
+         **/
+        virtual void Print() const;
 
 
         friend bool operator==(const BaseAddress& a, const BaseAddress& b);
         friend bool operator!=(const BaseAddress& a, const BaseAddress& b);
         friend bool operator<(const BaseAddress& a,  const BaseAddress& b);
 
+
+        /* Serialization */
         IMPLEMENT_SERIALIZE
         (
             BaseAddress *pthis = const_cast<BaseAddress *>(this);

@@ -1,3 +1,15 @@
+/*__________________________________________________________________________________________
+
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+
+            (c) Copyright The Nexus Developers 2014 - 2018
+
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+            "ad vocem populi" - To the Voice of the People
+
+____________________________________________________________________________________________*/
 #include <tests/unit/LLP/include/manager.h>
 #include <src/Util/include/debug.h>
 
@@ -7,15 +19,15 @@ namespace unit
     {
         LLP::AddressManager m(8888);
         LLP::BaseAddress b1, b2;
-        LLP::AddressInfo a1, a2;
+        LLP::TrustAddress a1, a2;
 
-        std::vector<LLP::AddressInfo> vA;
+        std::vector<LLP::TrustAddress> vA;
         std::vector<LLP::BaseAddress> vB;
 
         debug::log(0, "size of BaseAddress: ", sizeof(LLP::BaseAddress));
 
 
-        debug::log(0, "size of AddressInfo: ", sizeof(LLP::AddressInfo));
+        debug::log(0, "size of TrustAddress: ", sizeof(LLP::TrustAddress));
 
         /*default intialized */
         debug::log(0, a1.ToString());
@@ -37,7 +49,7 @@ namespace unit
         debug::log(0, "Manager Selected ", b1.ToString());
 
         /* get count */
-        debug::log(0, "GetInfoCount ", m.GetInfoCount());
+        debug::log(0, "Count ", m.Count());
 
         /* set ip */
         b2.SetIP("192.168.0.2");
@@ -85,7 +97,7 @@ namespace unit
         m.AddAddresses(vB);
 
         /* get count */
-        debug::log(0, "GetInfoCount ", m.GetInfoCount());
+        debug::log(0, "Count ", m.Count());
 
         /* select an address */
         m.StochasticSelect(b1);
@@ -100,8 +112,8 @@ namespace unit
         m.SetPort(9323);
 
         /* get address info and print */
-        debug::log(0, "GetInfo");
-        m.GetInfo(vA);
+        debug::log(0, "GetAddresses");
+        m.GetAddresses(vA);
         for(auto it = vA.begin(); it != vA.end(); ++it)
          debug::log(0, it->ToString());
 
@@ -117,8 +129,8 @@ namespace unit
         m.ReadDatabase();
 
         /* get address info and print */
-        debug::log(0, "GetInfo");
-        m.GetInfo(vA);
+        debug::log(0, "GetAddresses");
+        m.GetAddresses(vA);
         for(auto it = vA.begin(); it != vA.end(); ++it)
          debug::log(0, it->ToString());
     }

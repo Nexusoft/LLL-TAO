@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <LLP/include/global.h>
 #include <LLP/include/baseaddress.h>
-#include <LLP/include/addressinfo.h>
+#include <LLP/include/trustaddress.h>
 #include <Util/include/version.h>
 
 #include <Legacy/wallet/wallet.h>
@@ -68,7 +68,7 @@ namespace TAO
             obj["timestamp"] =  (int)runtime::unifiedtimestamp();
 
             obj["connections"] = GetTotalConnectionCount();
-            obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToStringIPPort() : std::string());
+            obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToString() : std::string());
             obj["ip"] = LLP::TRITIUM_SERVER->addrThisNode.ToStringIP(); //PS TODO
 
             obj["testnet"] = config::fTestNet;
@@ -102,12 +102,12 @@ namespace TAO
                         "getpeerinfo"
                         " - Returns data about each connected network node.");
 
-            std::vector<LLP::AddressInfo> vLegacyInfo;
-            std::vector<LLP::AddressInfo> vTritiumInfo;
+            std::vector<LLP::TrustAddress> vLegacyInfo;
+            std::vector<LLP::TrustAddress> vTritiumInfo;
 
             /* query address information from tritium server address manager */
             if(LLP::LEGACY_SERVER && LLP::LEGACY_SERVER->pAddressManager)
-                 LLP::LEGACY_SERVER->pAddressManager->GetInfo(vLegacyInfo, LLP::ConnectState::CONNECTED);
+                 LLP::LEGACY_SERVER->pAddressManager->GetAddresses(vLegacyInfo, LLP::ConnectState::CONNECTED);
 
             std::sort(vLegacyInfo.begin(), vLegacyInfo.end());
 
@@ -115,7 +115,7 @@ namespace TAO
             {
                 json::json obj;
 
-                obj["addr"] = addr.ToStringIPPort();
+                obj["addr"] = addr.ToString();
                 obj["type"] = std::string("Legacy");
                 obj["latency"] = debug::strprintf("%u ms", addr.nLatency);
                 obj["lastseen"] = addr.nLastSeen;
@@ -130,7 +130,7 @@ namespace TAO
 
             /* query address information from legacy server address manager */
             if(LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->pAddressManager)
-                 LLP::TRITIUM_SERVER->pAddressManager->GetInfo(vTritiumInfo, LLP::ConnectState::CONNECTED);
+                 LLP::TRITIUM_SERVER->pAddressManager->GetAddresses(vTritiumInfo, LLP::ConnectState::CONNECTED);
 
             std::sort(vTritiumInfo.begin(), vTritiumInfo.end());
 
@@ -138,7 +138,7 @@ namespace TAO
             {
                 json::json obj;
 
-                obj["addr"] = addr.ToStringIPPort();
+                obj["addr"] = addr.ToString();
                 obj["type"] = std::string("Tritium");
                 obj["latency"] = debug::strprintf("%u ms", addr.nLatency);
                 obj["lastseen"] = addr.nLastSeen;

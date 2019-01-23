@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLP/include/addressinfo.h>
+#include <LLP/include/trustaddress.h>
 
 namespace
 {
@@ -32,22 +32,7 @@ namespace
 
 namespace LLP
 {
-    bool operator<(const AddressInfo &info1, const AddressInfo &info2)
-    {
-        double s1 = info1.Score();
-        double s2 = info2.Score();
-
-        if(s1 < s2)
-            return true;
-
-        /*use latency as a tiebreaker */
-        if((s1 == s2) && (info2.nLatency < info1.nLatency))
-            return true;
-
-        return false;
-    }
-
-    AddressInfo::AddressInfo()
+    TrustAddress::TrustAddress()
     : BaseAddress()
     , nSession(0)
     , nLastSeen(0)
@@ -57,10 +42,13 @@ namespace LLP
     , nFails(0)
     , nLatency(std::numeric_limits<uint32_t>::max())
     , nState(static_cast<uint8_t>(ConnectState::NEW))
+    , nType(0)
     {
     }
 
-    AddressInfo::AddressInfo(const AddressInfo &other)
+
+    /*  Copy constructor */
+    TrustAddress::TrustAddress(const TrustAddress &other)
     : BaseAddress()
     , nSession(other.nSession)
     , nLastSeen(other.nLastSeen)
@@ -70,6 +58,7 @@ namespace LLP
     , nFails(other.nFails)
     , nLatency(other.nLatency)
     , nState(other.nState)
+    , nType(0)
     {
         nPort = other.nPort;
 
@@ -77,7 +66,9 @@ namespace LLP
             ip[i] = other.ip[i];
     }
 
-    AddressInfo::AddressInfo(const BaseAddress &other)
+
+    /*  Copy constructors */
+    TrustAddress::TrustAddress(const BaseAddress &other)
     : BaseAddress(other)
     , nSession(0)
     , nLastSeen(0)
@@ -87,14 +78,19 @@ namespace LLP
     , nFails(0)
     , nLatency(std::numeric_limits<uint32_t>::max())
     , nState(static_cast<uint8_t>(ConnectState::NEW))
+    , nType(0)
     {
     }
 
-    AddressInfo::~AddressInfo()
+
+    /* Default destructor */
+    TrustAddress::~TrustAddress()
     {
     }
 
-    AddressInfo &AddressInfo::operator=(const AddressInfo &other)
+
+    /* Copy assignment operator */
+    TrustAddress &TrustAddress::operator=(const TrustAddress &other)
     {
         for(uint8_t i = 0; i < 16; ++i)
             this->ip[i] = other.ip[i];
@@ -109,11 +105,14 @@ namespace LLP
         this->nFails = other.nFails;
         this->nLatency = other.nLatency;
         this->nState = other.nState;
+        this->nType = other.nType;
 
         return *this;
     }
 
-    AddressInfo &AddressInfo::operator=(const BaseAddress &other)
+
+    /* Copy assignment operator */
+    TrustAddress &TrustAddress::operator=(const BaseAddress &other)
     {
         this->SetPort(other.GetPort());
         this->SetIP(other);
@@ -126,27 +125,60 @@ namespace LLP
         this->nFails = 0;
         this->nLatency = std::numeric_limits<uint32_t>::max();
         this->nState = static_cast<uint8_t>(ConnectState::NEW);
+        this->nType = 0;
 
         return *this;
     }
 
-    /*  Calculates a score based on stats. Higher is better */
-    double AddressInfo::Score() const
+
+    /* Calculates a score based on stats. A higher score is better. */
+    double TrustAddress::Score() const
     {
         double nLat = static_cast<double>(nLatency);
 
         double nLatencyScore = ::nMaxLatency - std::min(::nMaxLatency, nLat);
 
-        /* Add up the good stats */
+        /* Add up the good stats. */
         double good = ::nConnectedWeight * std::min(nConnected, ::nMaxConnected) +
                       nLatencyScore * ::nLatencyWeight;
 
-        /* Add up the bad stats */
+        /* Add up the bad stats. */
         double bad = ::nDroppedWeight * std::min(nDropped, ::nMaxDropped) +
                      ::nFailedWeight  * std::min(nFailed,  ::nMaxFailed)  +
                      ::nFailsWeight   * std::min(nFails,   ::nMaxFails);
 
-        /* Subtract good stats by bad stats */
+        /* Subtract the bad stats from the good stats. */
         return good - bad;
+    }
+
+    /* Prints information about this address. */
+    void TrustAddress::Print() const
+    {
+        debug::log(0, "TrustAddress(", ToString(), ")");
+        debug::log(0, ":\t", "nSession=", nSession);
+        debug::log(0, ":\t", "nLastSeen=", nLastSeen);
+        debug::log(0, ":\t", "nConnected=", nConnected);
+        debug::log(0, ":\t", "nDropped=", nDropped);
+        debug::log(0, ":\t", "nFailed=", nFailed);
+        debug::log(0, ":\t", "nFails=", nFails);
+        debug::log(0, ":\t", "nLatency=", nLatency);
+        debug::log(0, ":\t", "nState=",  static_cast<uint32_t>(nState));
+        debug::log(0, ":\t", "nType=", static_cast<uint32_t>(nType));
+    }
+
+    /* Comparison less than operator used for sorting */
+    bool operator<(const TrustAddress &info1, const TrustAddress &info2)
+    {
+        const double s1 = info1.Score();
+        const double s2 = info2.Score();
+
+        if(s1 < s2)
+            return true;
+
+        /*use latency as a tiebreaker */
+        if((s1 == s2) && (info2.nLatency < info1.nLatency))
+            return true;
+
+        return false;
     }
 }

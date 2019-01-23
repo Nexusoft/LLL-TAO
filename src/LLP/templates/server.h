@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <LLP/include/permissions.h>
 #include <LLP/include/manager.h>
 #include <LLP/include/legacyaddress.h>
-#include <LLP/include/addressinfo.h>
+#include <LLP/include/trustaddress.h>
 
 #include <functional>
 #include <numeric>
@@ -278,7 +278,7 @@ namespace LLP
             {
                 /* Get the base addresses from address manager and convert
                    into legacy addresses */
-                vAddr = pAddressManager->GetAddresses();
+                pAddressManager->GetAddresses(vAddr);
 
                 for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
                     vLegacyAddr.push_back((LegacyAddress)*it);

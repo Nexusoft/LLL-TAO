@@ -27,10 +27,9 @@ namespace LLP
 {
     /* Default constructor */
     AddressManager::AddressManager(uint16_t nPort)
-    : mapAddrInfo()
+    : mapTrustAddress()
     {
-        pDatabase = new LLD::AddressDB(nPort,
-                                       LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+        pDatabase = new LLD::AddressDB(nPort, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
         if(pDatabase)
             return;
@@ -43,6 +42,7 @@ namespace LLP
     /* Default destructor */
     AddressManager::~AddressManager()
     {
+        /* Delete the database pointer if it exists. */
         if(pDatabase)
         {
             delete pDatabase;
@@ -50,116 +50,121 @@ namespace LLP
         }
     }
 
-    /*  Determine if the address manager has any addresses in it or not. */
+    /*  Determine if the address manager has any addresses in it. */
     bool AddressManager::IsEmpty() const
     {
         LOCK(mut);
 
-        return mapAddrInfo.empty();
+        return mapTrustAddress.empty();
     }
 
 
     /*  Get a list of addresses in the manager that have the flagged state. */
-    std::vector<BaseAddress> AddressManager::GetAddresses(const uint8_t flags)
+    void AddressManager::GetAddresses(std::vector<BaseAddress> &vBaseAddr, const uint8_t flags)
     {
-        std::vector<AddressInfo> vAddrInfo;
-        std::vector<BaseAddress> vAddr;
+        std::vector<TrustAddress> vTrustAddr;
 
-        LOCK(mut);
-
-        get_info(vAddrInfo, flags);
-
-        for(auto it = vAddrInfo.begin(); it != vAddrInfo.end(); ++it)
+        /* Critical section: Get the flagged trust addresses. */
         {
-            const BaseAddress &addr = *it;
-            vAddr.push_back(addr);
+            LOCK(mut);
+            get_addresses(vTrustAddr, flags);
         }
 
+        /*clear the passed in vector. */
+        vBaseAddr.clear();
 
-        return vAddr;
+        /* build out base address vector */
+        for(auto it = vTrustAddr.begin(); it != vTrustAddr.end(); ++it)
+        {
+            const BaseAddress &base_addr = *it;
+            vBaseAddr.push_back(base_addr);
+        }
     }
 
 
-    /*  Gets a list of address info in the manager */
-    void AddressManager::GetInfo(std::vector<AddressInfo> &vAddrInfo,
-                                 const uint8_t flags)
+    /* Gets a list of trust addresses from the manager. */
+    void AddressManager::GetAddresses(std::vector<TrustAddress> &vTrustAddr, const uint8_t flags)
     {
         LOCK(mut);
-
-        get_info(vAddrInfo, flags);
-
+        get_addresses(vTrustAddr, flags);
     }
 
-    uint32_t AddressManager::GetInfoCount(const uint8_t flags)
+
+    /* Gets the trust address count that have the specified flags */
+    uint32_t AddressManager::Count(const uint8_t flags)
     {
         LOCK(mut);
-
-        return get_info_count(flags);
+        return count(flags);
     }
 
 
-    /*  Adds the address to the manager and sets the connect state for that
-     *  address */
+    /*  Adds the address to the manager and sets it's connect state. */
     void AddressManager::AddAddress(const BaseAddress &addr,
                                     const uint8_t state)
     {
         uint64_t hash = addr.GetHash();
-
-        std::unique_lock<std::mutex> lk(mut);
-
-        if(mapAddrInfo.find(hash) == mapAddrInfo.end())
-        {
-            mapAddrInfo[hash] = addr;
-        }
-
-
-
-        AddressInfo &info = mapAddrInfo[hash];
         uint64_t ms = runtime::unifiedtimestamp(true);
+
+        LOCK(mut);
+
+        if(mapTrustAddress.find(hash) == mapTrustAddress.end())
+            mapTrustAddress[hash] = addr;
+
+        TrustAddress &trust_addr = mapTrustAddress[hash];
 
         switch(state)
         {
+        /* New State */
         case ConnectState::NEW:
             break;
 
+        /* Connected State */
         case ConnectState::CONNECTED:
-            if(info.nState == ConnectState::CONNECTED)
+
+            /* If the address is already connected, don't update */
+            if(trust_addr.nState == ConnectState::CONNECTED)
                 break;
 
-            ++info.nConnected;
-            info.nSession = 0;
-            info.nFails = 0;
-            info.nLastSeen = ms;
-            info.nState = state;
+            ++trust_addr.nConnected;
+            trust_addr.nSession = 0;
+            trust_addr.nFails = 0;
+            trust_addr.nLastSeen = ms;
+            trust_addr.nState = state;
             break;
 
+        /* Dropped State */
         case ConnectState::DROPPED:
-            if(info.nState == ConnectState::DROPPED)
+
+            /* If the address is already dropped, don't update */
+            if(trust_addr.nState == ConnectState::DROPPED)
                 break;
 
-            ++info.nDropped;
-            info.nSession = ms - info.nLastSeen;
-            info.nLastSeen = ms;
-            info.nState = state;
+            ++trust_addr.nDropped;
+            trust_addr.nSession = ms - trust_addr.nLastSeen;
+            trust_addr.nLastSeen = ms;
+            trust_addr.nState = state;
             break;
 
+        /* Failed State */
         case ConnectState::FAILED:
-            ++info.nFailed;
-            ++info.nFails;
-            info.nSession = 0;
-            info.nState = state;
+            ++trust_addr.nFailed;
+            ++trust_addr.nFails;
+            trust_addr.nSession = 0;
+            trust_addr.nState = state;
             break;
 
+        /* Unrecognized state */
         default:
+            debug::log(0, FUNCTION, "Unrecognized state");
             break;
         }
 
-        print_stats();
+        if(state != ConnectState::NEW)
+            print_stats();
     }
 
 
-    /*  Adds the addresses to the manager and sets the connect state for that
-        address */
+    /*  Adds the addresses to the manager and sets their state. */
     void AddressManager::AddAddresses(const std::vector<BaseAddress> &addrs,
                                       const uint8_t state)
     {
@@ -168,15 +173,14 @@ namespace LLP
     }
 
 
-    /*  Finds the managed address info and sets the latency experienced by
-     *  that address. */
+    /*  Finds the trust address and sets it's updated latency. */
     void AddressManager::SetLatency(uint32_t lat, const BaseAddress &addr)
     {
         uint64_t hash = addr.GetHash();
         std::unique_lock<std::mutex> lk(mut);
 
-        auto it = mapAddrInfo.find(hash);
-        if(it != mapAddrInfo.end())
+        auto it = mapTrustAddress.find(hash);
+        if(it != mapTrustAddress.end())
             it->second.nLatency = lat;
     }
 
@@ -184,7 +188,7 @@ namespace LLP
     /*  Select a good address to connect to that isn't already connected. */
     bool AddressManager::StochasticSelect(BaseAddress &addr)
     {
-        std::vector<AddressInfo> vAddresses;
+        std::vector<TrustAddress> vAddresses;
         uint64_t nTimestamp = runtime::unifiedtimestamp();
         uint64_t nRand = LLC::GetRand(nTimestamp);
         uint32_t nHash = LLC::SK32(BEGIN(nRand), END(nRand));
@@ -197,29 +201,28 @@ namespace LLP
         /* Critical section: Get address info for the selected flags. */
         {
             LOCK(mut);
-
-            get_info(vAddresses, flags);
-
-            if(vAddresses.size() == 0)
-                return false;
-
-            /* Select an index with a good random weight bias toward the front of
-             * the list */
-            nSelect = ((std::numeric_limits<uint64_t>::max() /
-                std::max((uint64_t)std::pow(nHash, 1.95) + 1, (uint64_t)1)) - 3) %
-                vAddresses.size();
-
-            if(nSelect >= vAddresses.size())
-              return debug::error(FUNCTION, "index out of bounds");
-
-            /* sort info vector and assign the selected address */
-            std::sort(vAddresses.begin(), vAddresses.end());
-            std::reverse(vAddresses.begin(), vAddresses.end());
-
-
-            addr.SetIP(vAddresses[nSelect]);
-            addr.SetPort(vAddresses[nSelect].GetPort());
+            get_addresses(vAddresses, flags);
         }
+
+        uint32_t s = static_cast<uint32_t>(vAddresses.size());
+
+        if(s == 0)
+            return false;
+
+        /* Select an index with a random weighted bias toward the from of the list. */
+        nSelect = ((std::numeric_limits<uint64_t>::max() /
+            std::max((uint64_t)std::pow(nHash, 1.95) + 1, (uint64_t)1)) - 3) % s;
+
+        if(nSelect >= s)
+          return debug::error(FUNCTION, "index out of bounds");
+
+        /* sort info vector and assign the selected address */
+        std::sort(vAddresses.begin(), vAddresses.end());
+        std::reverse(vAddresses.begin(), vAddresses.end());
+
+
+        addr.SetIP(vAddresses[nSelect]);
+        addr.SetPort(vAddresses[nSelect].GetPort());
 
         return true;
     }
@@ -229,7 +232,6 @@ namespace LLP
     void AddressManager::PrintStats()
     {
         LOCK(mut);
-
         print_stats();
     }
 
@@ -239,7 +241,7 @@ namespace LLP
     {
         LOCK(mut);
 
-        for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
+        for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
             it->second.SetPort(port);
     }
 
@@ -247,41 +249,42 @@ namespace LLP
     /*  Read the address database into the manager. */
     void AddressManager::ReadDatabase()
     {
-        /* make sure the map is empty */
-        mapAddrInfo.clear();
-
         LOCK(mut);
 
-        /* Make sure the database exists */
+        /* Make sure the map is empty. */
+        mapTrustAddress.clear();
+
+        /* Make sure the database exists. */
         if(!pDatabase)
         {
             debug::error(FUNCTION, "database null");
             return;
         }
 
-        /* Get database keys */
+        /* Get the database keys. */
         std::vector<std::vector<uint8_t> > keys = pDatabase->GetKeys();
         uint32_t s = static_cast<uint32_t>(keys.size());
 
-        /* Load address info from each key */
+        /* Load a trust address from each key. */
         for(uint32_t i = 0; i < s; ++i)
         {
             std::string str;
             uint64_t nKey;
-            AddressInfo addr_info;
+            TrustAddress trust_addr;
 
-            /* Create datastream and deserialize the key/address pair. */
+            /* Create a datastream and deserialize the key/address pair. */
             DataStream ssKey(keys[i], SER_LLD, LLD::DATABASE_VERSION);
             ssKey >> str;
             ssKey >> nKey;
 
-            pDatabase->ReadAddressInfo(nKey, addr_info);
+            pDatabase->ReadTrustAddress(nKey, trust_addr);
 
             /* Get the hash and load it into the map. */
-            uint64_t nHash = addr_info.GetHash();
-            mapAddrInfo[nHash] = addr_info;
+            uint64_t nHash = trust_addr.GetHash();
+            mapTrustAddress[nHash] = trust_addr;
         }
 
+        /* Print the stats. */
         print_stats();
     }
 
@@ -301,8 +304,8 @@ namespace LLP
         pDatabase->TxnBegin();
 
         /* Write the keys and addresses. */
-        for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
-            pDatabase->WriteAddressInfo(it->first, it->second);
+        for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
+            pDatabase->WriteTrustAddress(it->first, it->second);
 
         pDatabase->TxnCommit();
 
@@ -310,23 +313,22 @@ namespace LLP
     }
 
 
-    /*  Helper function to get an array of info on the connected states
-     *  specified by flags */
-    void AddressManager::get_info(std::vector<AddressInfo> &vInfo, const uint8_t flags)
+    /*  Gets an array of trust addresses specified by the state flags. */
+    void AddressManager::get_addresses(std::vector<TrustAddress> &vInfo, const uint8_t flags)
     {
         vInfo.clear();
-        for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
+        for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
         {
             if(it->second.nState & flags)
                 vInfo.push_back(it->second);
         }
     }
 
-    /*  Helper function to get the number of addresses of the connect type */
-    uint32_t AddressManager::get_info_count(const uint8_t flags)
+    /*  Gets the number of addresses specified by the state flags. */
+    uint32_t AddressManager::count(const uint8_t flags)
     {
         uint32_t c = 0;
-        for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
+        for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
         {
             if(it->second.nState & flags)
                 ++c;
@@ -334,12 +336,12 @@ namespace LLP
         return c;
     }
 
-
-    uint32_t AddressManager::get_total_count(const uint8_t flags)
+    /* Gets the cumulative count of each address state flags. */
+    uint32_t AddressManager::total_count(const uint8_t flags)
     {
         uint32_t total = 0;
 
-        for(auto it = mapAddrInfo.begin(); it != mapAddrInfo.end(); ++it)
+        for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
         {
             if(flags & ConnectState::CONNECTED)
                 total += it->second.nConnected;
@@ -357,12 +359,12 @@ namespace LLP
     void AddressManager::print_stats()
     {
         debug::log(3,
-            " C=", get_info_count(ConnectState::CONNECTED),
-            " D=", get_info_count(ConnectState::DROPPED),
-            " F=", get_info_count(ConnectState::FAILED),   " |",
-            " TC=", get_total_count(ConnectState::CONNECTED),
-            " TD=", get_total_count(ConnectState::DROPPED),
-            " TF=", get_total_count(ConnectState::FAILED), " |",
-            " size=", mapAddrInfo.size());
+            " C=", count(ConnectState::CONNECTED),
+            " D=", count(ConnectState::DROPPED),
+            " F=", count(ConnectState::FAILED),   " |",
+            " TC=", total_count(ConnectState::CONNECTED),
+            " TD=", total_count(ConnectState::DROPPED),
+            " TF=", total_count(ConnectState::FAILED), " |",
+            " size=", mapTrustAddress.size());
     }
 }

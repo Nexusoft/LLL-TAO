@@ -187,7 +187,7 @@ int main(int argc, char** argv)
         false,
         0,
         0,
-        60,
+        120,
         config::GetBoolArg("-listen", true),
         config::GetBoolArg("-meters", false),
         true);

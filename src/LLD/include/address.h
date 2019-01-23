@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/filemap.h>
 
-#include <LLP/include/addressinfo.h>
+#include <LLP/include/trustaddress.h>
 
 namespace LLD
 {
@@ -31,12 +31,12 @@ namespace LLD
         AddressDB(uint16_t port, uint8_t nFlags = FLAGS::CREATE | FLAGS::FORCE)
         : SectorDatabase("addr/" + std::to_string(port), nFlags) { }
 
-        bool WriteAddressInfo(uint64_t key, const LLP::AddressInfo &info)
+        bool WriteTrustAddress(uint64_t key, const LLP::TrustAddress &info)
         {
             return Write(std::make_pair(std::string("info"), key), info);
         }
 
-        bool ReadAddressInfo(uint64_t key, LLP::AddressInfo &info)
+        bool ReadTrustAddress(uint64_t key, LLP::TrustAddress &info)
         {
             return Read(std::make_pair(std::string("info"), key), info);
         }
