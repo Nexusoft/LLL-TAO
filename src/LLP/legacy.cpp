@@ -52,7 +52,7 @@ namespace LLP
 
         /* Relay Your Address. */
         LegacyAddress addrMe;
-        LegacyAddress addrYou;
+        LegacyAddress addrYou = GetAddress();
 
         /* Push the Message to receiving node. */
         PushMessage("version", LLP::PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,
@@ -418,15 +418,33 @@ namespace LLP
             /* Check the Protocol Versions */
             ssMessage >> nCurrentVersion;
 
-
             /* Deserialize the rest of the data. */
             ssMessage >> nServices >> nTime >> addrMe >> addrFrom >> nSessionID >> strNodeVersion >> nStartingHeight;
             debug::log(1, NODE, "version message: version ", nCurrentVersion, ", blocks=",  nStartingHeight);
 
+            /* Check the server if it is set. */
+            if(!LEGACY_SERVER->addrThisNode.IsValid())
+            {
+                addr.SetPort(config::GetArg("-port", config::fTestNet ? 8323 : 9323));
+                debug::log(0, NODE, "recieved external address ", addrMe.ToString());
+
+                LEGACY_SERVER->addrThisNode = addr;
+            }
+
+            /* Send version message if connection is inbound. */
+            if(!fOUTGOING)
+            {
+                if(addrMe.ToStringIP() == LEGACY_SERVER->addrThisNode.ToStringIP())
+                {
+                    debug::log(0, NODE, "connected to self ", addr.ToString());
+
+                    return false;
+                }
+            }
+
 
             /* Send the Version Response to ensure communication channel is open. */
             PushMessage("verack");
-
 
             /* Push our version back since we just completed getting the version from the other node. */
             static uint32_t nAsked = 0;
