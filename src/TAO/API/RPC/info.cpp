@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <LLP/include/version.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/supply.h>
 #include <LLP/include/global.h>
 #include <LLP/include/service.h>
 #include <LLP/include/addressinfo.h>
@@ -24,6 +26,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
 #include <Legacy/include/money.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <vector>
 //#include <TAO/Ledger/include/global.h>
@@ -165,73 +168,90 @@ namespace TAO
                     "getmininginfo"
                     " - Returns an object containing mining-related information.");
 
-            // uint64 nPrimePS = 0;
-            // if(!Core::pindexBest || Core::pindexBest->GetBlockHash() != Core::hashGenesisBlock)
-            // {
-            //     double nPrimeAverageDifficulty = 0.0;
-            //     unsigned int nPrimeAverageTime = 0;
-            //     unsigned int nPrimeTimeConstant = 2480;
-            //     int nTotal = 0;
-            //     const Core::CBlockIndex* pindex = Core::GetLastChannelIndex(Core::pindexBest, 1);
-            //     for(; (nTotal < 1440 && pindex->pprev); nTotal ++) {
+            // Prime
+            uint64_t nPrimePS = 0;
+            uint64_t nHashRate = 0;
+            if( TAO::Ledger::ChainState::nBestHeight && TAO::Ledger::ChainState::stateBest != TAO::Ledger::ChainState::stateGenesis)
+            {
+                double nPrimeAverageDifficulty = 0.0;
+                unsigned int nPrimeAverageTime = 0;
+                unsigned int nPrimeTimeConstant = 2480;
+                int nTotal = 0;
+                TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest;
+                
+                bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
+                for(; (nTotal < 1440 && bLastStateFound); nTotal ++) 
+                {
+                    uint64_t nLastBlockTime = blockState.GetBlockTime();
+                    blockState = blockState.Prev();
+                    bLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
 
-            //         nPrimeAverageTime += (pindex->GetBlockTime() - Core::GetLastChannelIndex(pindex->pprev, 1)->GetBlockTime());
-            //         nPrimeAverageDifficulty += (Core::GetDifficulty(pindex->nBits, 1));
+                    nPrimeAverageTime += (nLastBlockTime - blockState.GetBlockTime());
+                    nPrimeAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 1));
 
-            //         pindex = Core::GetLastChannelIndex(pindex->pprev, 1);
-            //     }
-            //     nPrimeAverageDifficulty /= nTotal;
-            //     nPrimeAverageTime /= nTotal;
-            //     nPrimePS = (nPrimeTimeConstant / nPrimeAverageTime) * std::pow(50.0, (nPrimeAverageDifficulty - 3.0));
-            // }
+                }
+                nPrimeAverageDifficulty /= nTotal;
+                nPrimeAverageTime /= nTotal;
+                nPrimePS = (nPrimeTimeConstant / nPrimeAverageTime) * std::pow(50.0, (nPrimeAverageDifficulty - 3.0));
+            
+            
 
-            // // Hash
-            // int nHTotal = 0;
-            // unsigned int nHashAverageTime = 0;
-            // double nHashAverageDifficulty = 0.0;
-            // uint64 nTimeConstant = 276758250000;
-            // const Core::CBlockIndex* hindex = Core::GetLastChannelIndex(Core::pindexBest, 2);
-            // for(;  (nHTotal < 1440 && hindex->pprev); nHTotal ++) {
+                // Hash
+                int nHTotal = 0;
+                unsigned int nHashAverageTime = 0;
+                double nHashAverageDifficulty = 0.0;
+                uint64_t nTimeConstant = 276758250000;
+                    
+                blockState = TAO::Ledger::ChainState::stateBest;
+                
+                bLastStateFound = TAO::Ledger::GetLastState(blockState, 2);
+                for(;  (nHTotal < 1440 && bLastStateFound); nHTotal ++) 
+                {
+                    uint64_t nLastBlockTime = blockState.GetBlockTime();
+                    blockState = blockState.Prev();
+                    bLastStateFound = TAO::Ledger::GetLastState(blockState, 2);
 
-            //     nHashAverageTime += (hindex->GetBlockTime() - Core::GetLastChannelIndex(hindex->pprev, 2)->GetBlockTime());
-            //     nHashAverageDifficulty += (Core::GetDifficulty(hindex->nBits, 2));
+                    nHashAverageTime += (nLastBlockTime - blockState.GetBlockTime());
+                    nHashAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 2));
 
-            //     hindex = Core::GetLastChannelIndex(hindex->pprev, 2);
-            // }
-            // nHashAverageDifficulty /= nHTotal;
-            // nHashAverageTime /= nHTotal;
+                }
+                nHashAverageDifficulty /= nHTotal;
+                nHashAverageTime /= nHTotal;
 
-            // uint64 nHashRate = (nTimeConstant / nHashAverageTime) * nHashAverageDifficulty;
+                nHashRate = (nTimeConstant / nHashAverageTime) * nHashAverageDifficulty;
+            }
 
+            json::json obj;
+            obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
+            obj["timestamp"] = (int)runtime::unifiedtimestamp();
 
-            // Object obj;
-            // obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
-            // obj.push_back(Pair("timestamp", (int)GetUnifiedTimestamp()));
+            //PS TODO
+            //obj["currentblocksize"] = (uint64_t)Core::nLastBlockSize;
+            //obj["currentblocktx"] =(uint64_t)Core::nLastBlockTx;
 
-            // obj.push_back(Pair("currentblocksize",(uint64_t)Core::nLastBlockSize));
-            // obj.push_back(Pair("currentblocktx",(uint64_t)Core::nLastBlockTx));
+            TAO::Ledger::BlockState lastPrimeBlockState = TAO::Ledger::ChainState::stateBest;
+            TAO::Ledger::GetLastState(lastPrimeBlockState, 1);
 
-            // const Core::CBlockIndex* pindexCPU = Core::GetLastChannelIndex(Core::pindexBest, 1);
-            // const Core::CBlockIndex* pindexGPU = Core::GetLastChannelIndex(Core::pindexBest, 2);
-            // obj.push_back(Pair("primeDifficulty",       Core::GetDifficulty(Core::GetNextTargetRequired(Core::pindexBest, 1, false), 1)));
-            // obj.push_back(Pair("hashDifficulty",        Core::GetDifficulty(Core::GetNextTargetRequired(Core::pindexBest, 2, false), 2)));
-            // obj.push_back(Pair("primeReserve",           SatoshisToAmount(pindexCPU->nReleasedReserve[0])));
-            // obj.push_back(Pair("hashReserve",            SatoshisToAmount(pindexGPU->nReleasedReserve[0])));
-            // obj.push_back(Pair("primeValue",               SatoshisToAmount(Core::GetCoinbaseReward(Core::pindexBest, 1, 0))));
-            // obj.push_back(Pair("hashValue",                SatoshisToAmount(Core::GetCoinbaseReward(Core::pindexBest, 2, 0))));
-            // obj.push_back(Pair("pooledtx",              (boost::uint64_t)Core::mempool.size()));
-            // obj.push_back(Pair("primesPerSecond",         (boost::uint64_t)nPrimePS));
-            // obj.push_back(Pair("hashPerSecond",         (boost::uint64_t)nHashRate));
+            TAO::Ledger::BlockState lastHashBlockState = TAO::Ledger::ChainState::stateBest;
+            TAO::Ledger::GetLastState(lastHashBlockState, 2);
 
-            // if(GetBoolArg("-mining", false))
-            // {
-            //     obj.push_back(Pair("totalConnections", LLP::MINING_LLP->TotalConnections()));
-            // }
+            obj["primeDifficulty"] =TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastPrimeBlockState, 1, false), 1);
+            obj["hashDifficulty"] = TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastHashBlockState, 2, false), 2);
+            obj["primeReserve"] =    Legacy::SatoshisToAmount(lastPrimeBlockState.nReleasedReserve[0]);
+            obj["hashReserve"] =     Legacy::SatoshisToAmount(lastHashBlockState.nReleasedReserve[0]);
+            obj["primeValue"] =        Legacy::SatoshisToAmount(TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest, 1, 0));
+            obj["hashValue"] =         Legacy::SatoshisToAmount(TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest, 2, 0));
+            obj["pooledtx"] =       (uint64_t)TAO::Ledger::mempool.Size();
+            obj["primesPerSecond"] = nPrimePS;
+            obj["hashPerSecond"] =  nHashRate;
 
+            if(config::GetBoolArg("-mining", false))
+            {
+                //PS TODO
+                //obj["totalConnections"] = LLP::MINING_LLP->TotalConnections();
+            }
 
-            // return obj;
-            json::json ret;
-            return ret;
+            return obj;
         }
     }
 }
