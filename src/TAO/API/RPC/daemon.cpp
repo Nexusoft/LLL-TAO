@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/include/inv.h>
 #include <LLP/include/hosts.h>
 #include <LLP/include/global.h>
+#include <Util/include/signals.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -24,17 +25,18 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-
-        // json::json stop(const json::json& params, bool fHelp)
-        // {
-        //     if (fHelp || params.size() != 0)
-        //         return std::string(
-        //             "stop"
-        //             " - Stop Nexus server.");
-        //     // Shutdown will take long enough that the response should get back
-        //     StartShutdown();
-        //     return "Nexus server stopping";
-        // }
+        /* stop"
+        *  Stop Nexus server */
+        json::json RPC::Stop(const json::json& params, bool fHelp)
+        {
+            if (fHelp || params.size() != 0)
+                return std::string(
+                    "stop"
+                    " - Stop Nexus server.");
+            // Shutdown will take long enough that the response should get back
+            Shutdown();
+            return "Nexus server stopping";
+        }
 
         /* getconnectioncount
            Returns the number of connections to other nodes */

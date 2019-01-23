@@ -14,25 +14,18 @@ ________________________________________________________________________________
 #ifndef NEXUS_UTIL_INCLUDE_SIGNALS_H
 #define NEXUS_UTIL_INCLUDE_SIGNALS_H
 
-#include <signal.h>
-#include <Util/include/args.h>
 
 #include <condition_variable>
 
 
-static std::condition_variable SHUTDOWN;
+extern std::condition_variable SHUTDOWN;
 
 /** Shutdown
  *
  *  Shutdown the system and all its subsystems.
  *
  **/
-void Shutdown()
-{
-    config::fShutdown = true;
-    SHUTDOWN.notify_all();
-}
-
+void Shutdown();
 
 /** HandleSIGTERM
  *
@@ -41,11 +34,7 @@ void Shutdown()
  *  @param[in] signum the signal number
  *
  **/
-void HandleSIGTERM(int signum)
-{
-    if(signum != SIGPIPE)
-        Shutdown();
-}
+void HandleSIGTERM(int signum);
 
 
 /** SetupSignals
@@ -53,35 +42,6 @@ void HandleSIGTERM(int signum)
  *  Setup the signal handlers.
  *
  **/
-void SetupSignals()
-{
-    /* Handle all the signals with signal handler method. */
-    #ifndef WIN32
-        // Clean shutdown on SIGTERM
-        struct sigaction sa;
-        sa.sa_handler = HandleSIGTERM;
-        sigemptyset(&sa.sa_mask);
-        sa.sa_flags = 0;
-
-        //catch all signals to flag fShutdown for all threads
-        sigaction(SIGABRT, &sa, nullptr);
-        sigaction(SIGILL, &sa, nullptr);
-        sigaction(SIGINT, &sa, nullptr);
-        sigaction(SIGTERM, &sa, nullptr);
-        sigaction(SIGPIPE, &sa, nullptr);
-
-    #else
-        //catch all signals to flag fShutdown for all threads
-        signal(SIGABRT, HandleSIGTERM);
-        signal(SIGILL, HandleSIGTERM);
-        signal(SIGINT, HandleSIGTERM);
-        signal(SIGTERM, HandleSIGTERM);
-        signal(SIGPIPE, HandleSIGTERM);
-
-    #ifdef SIGBREAK
-        signal(SIGBREAK, HandleSIGTERM);
-    #endif
-    #endif
-}
+void SetupSignals();
 
 #endif

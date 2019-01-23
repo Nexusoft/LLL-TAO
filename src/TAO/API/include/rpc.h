@@ -102,6 +102,18 @@ namespace TAO
              **/
             json::json Help( const json::json& params, bool fHelp);
 
+            /** Stop
+             *
+             *  stop
+             *  Stop Nexus server
+             *
+             *  @param[in] params Parameters array passed by the caller
+             *
+             *  @return JSON containing the help list
+             *
+             **/
+            json::json Stop(const json::json& params, bool fHelp);
+
 
             /** GetInfo
              *
