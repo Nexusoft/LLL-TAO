@@ -489,13 +489,11 @@ namespace LLC
         vchSig.clear();
         vchSig.resize(145,0);
 
-        const BIGNUM* sig_r = nullptr;
-        const BIGNUM* sig_s = nullptr;;
         #if OPENSSL_VERSION_NUMBER >= 0x10100000L
             ECDSA_SIG_get0(sig, &sig_r, &sig_s);
         #else
-            sig_r = sig->r;
-            sig_s = sig->s;
+            //const BIGNUM* sig_r = sig->r;
+            //const BIGNUM* sig_s = sig->s;
         #endif
 
         int nBitsR, nBitsS;

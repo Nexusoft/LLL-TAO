@@ -186,7 +186,7 @@ namespace TAO
             {
                 hashCheckpoint = statePrev.hashCheckpoint;
 
-                debug::log(0, "===== Pending Checkpoint Hash = ", hashCheckpoint.ToString().substr(0, 15));
+                debug::log(1, "===== Pending Checkpoint Hash = ", hashCheckpoint.ToString().substr(0, 15));
             }
 
 
