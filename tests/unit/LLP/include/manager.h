@@ -10,33 +10,16 @@
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
+#ifndef NEXUS_UNIT_LLP_INCLUDE_MANAGER_H
+#define NEXUS_UNIT_LLP_INCLUDE_MANAGER_H
 
-#include <LLP/include/address.h>
+#include <src/LLP/include/baseaddress.h>
+#include <src/LLP/include/trustaddress.h>
+#include <src/LLP/include/manager.h>
 
-namespace LLP
+namespace unit
 {
-    Address::Address() : Service()
-    {
-        Init();
-    }
-
-    Address::~Address()
-    {
-    }
-
-
-    Address::Address(Service ipIn, uint64_t nServicesIn) : Service(ipIn)
-    {
-        Init();
-        nServices = nServicesIn;
-    }
-
-
-    void Address::Init()
-    {
-        nServices = NODE_NETWORK;
-        nTime = 100000000;
-        nLastTry = 0;
-    }
-
+    void test_address_manager();
 }
+
+#endif

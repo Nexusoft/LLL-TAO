@@ -51,8 +51,8 @@ namespace LLP
         uint64_t nLocalServices = 0;
 
         /* Relay Your Address. */
-        Address addrMe  = Address(Service("0.0.0.0",0));
-        Address addrYou = Address(Service("0.0.0.0",0));
+        LegacyAddress addrMe;
+        LegacyAddress addrYou;
 
         /* Push the Message to receiving node. */
         PushMessage("version", LLP::PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,
@@ -121,20 +121,16 @@ namespace LLP
         if(EVENT == EVENT_GENERIC)
         {
 
-            if(nLastPing + 1 < runtime::unifiedtimestamp())
+            if(nLastPing + 15 < runtime::unifiedtimestamp())
             {
+                RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
 
-                for(int i = 0; i < config::GetArg("-ping", 1); i++)
-                {
-                    RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
+                nLastPing = runtime::unifiedtimestamp();
 
-                    nLastPing = runtime::unifiedtimestamp();
+                mapLatencyTracker.emplace(nSessionID, runtime::timer());
+                mapLatencyTracker[nSessionID].Start();
 
-                    mapLatencyTracker.emplace(nSessionID, runtime::timer());
-                    mapLatencyTracker[nSessionID].Start();
-
-                    PushMessage("ping", nSessionID);
-                }
+                PushMessage("ping", nSessionID);
             }
 
             //TODO: mapRequests data, if no response given retry the request at given times
@@ -146,7 +142,8 @@ namespace LLP
         {
             nLastPing    = runtime::unifiedtimestamp();
 
-            debug::log(1, NODE, "", fOUTGOING ? "Outgoing" : "Incoming", " Connected at timestamp ",   runtime::unifiedtimestamp());
+            debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming",
+                       " Connected at timestamp ",   runtime::unifiedtimestamp());
 
             if(fOUTGOING)
                 PushVersion();
@@ -181,7 +178,7 @@ namespace LLP
             if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
                 LEGACY_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
-            debug::log(1, "xxxxx ", fOUTGOING ? "Outgoing" : "Incoming",
+            debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming",
                 " Disconnected (", strReason, ") at timestamp ", runtime::unifiedtimestamp());
 
             return;
@@ -414,8 +411,8 @@ namespace LLP
         {
 
             int64_t nTime;
-            Address addrMe;
-            Address addrFrom;
+            LegacyAddress addrMe;
+            LegacyAddress addrFrom;
             uint64_t nServices = 0;
 
             /* Check the Protocol Versions */
@@ -450,22 +447,29 @@ namespace LLP
         */
         else if (INCOMING.GetMessage() == "addr")
         {
-            std::vector<Address> vAddr;
-            ssMessage >> vAddr;
+            std::vector<LegacyAddress> vLegacyAddr;
+            std::vector<BaseAddress> vAddr;
+
+            ssMessage >> vLegacyAddr;
 
             /* Don't want addr from older versions unless seeding */
-            if (vAddr.size() > 2000)
+            if (vLegacyAddr.size() > 2000)
             {
                 DDOS->rSCORE += 20;
 
-                return debug::error(NODE, "message addr size() = ", vAddr.size(), "... Dropping Connection");
+                return debug::error(NODE, "message addr size() = ", vLegacyAddr.size(), "... Dropping Connection");
             }
 
             if(LEGACY_SERVER)
             {
-                /* try to establish the connection on the port the server is listening to */
-                for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
+                /* Try to establish the connection on the port the server is listening to. */
+                for(auto it = vLegacyAddr.begin(); it != vLegacyAddr.end(); ++it)
+                {
                     it->SetPort(LEGACY_SERVER->PORT);
+
+                    /* Create a base address vector from legacy addresses */
+                    vAddr.push_back(*it);
+                }
 
                 /* Add the connections to Legacy Server. */
                 if(LEGACY_SERVER->pAddressManager)
@@ -550,7 +554,7 @@ namespace LLP
         /* TODO: Change this Algorithm. */
         else if (INCOMING.GetMessage() == "getaddr")
         {
-            //std::vector<LLP::Address> vAddr = Core::pManager->GetAddresses();
+            //std::vector<LLP::LegacyAddress> vAddr = Core::pManager->GetAddresses();
 
             //PushMessage("addr", vAddr);
         }

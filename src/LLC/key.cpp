@@ -139,38 +139,65 @@ namespace LLC
 
     /* Consturctor with default curve type. */
     ECKey::ECKey()
+    : pkey(EC_KEY_new_by_curve_name(NID_sect571r1))
+    , fSet(false)
+    , fCompressedPubKey(false)
+    , nCurveID(NID_sect571r1)
+    , nKeySize(72)
     {
         /* Set the Default Curve ID as sect571r1 */
-        nCurveID   = NID_sect571r1;
-        nKeySize = 72;
+        //nCurveID   = NID_sect571r1;
+        //nKeySize = 72;
 
         /* Reset the Current Key. */
-        Reset();
+        //Reset();
+
+        //fCompressedPubKey = false;
+        pkey = EC_KEY_new_by_curve_name(nCurveID);
+        if (pkey == nullptr)
+            throw key_error("ECKey::ECKey() : EC_KEY_new_by_curve_name failed");
+        //fSet = false;
     }
 
 
     /* Constructor from a new curve type. */
     ECKey::ECKey(const int nID, const int nKeySizeIn = 72)
+    : pkey(EC_KEY_new_by_curve_name(nID))
+    , fSet(false)
+    , fCompressedPubKey(false)
+    , nCurveID(nID)
+    , nKeySize(nKeySizeIn)
     {
         /* Set the Curve Type. */
-        nCurveID   = nID;
-        nKeySize = nKeySizeIn;
+        //nCurveID   = nID;
+        //nKeySize = nKeySizeIn;
 
         /* Reset the Current Key. */
-        Reset();
+        //Reset();
+
+        //fCompressedPubKey = false;
+        //pkey = EC_KEY_new_by_curve_name(nCurveID);
+        if (pkey == nullptr)
+            throw key_error("ECKey::ECKey() : EC_KEY_new_by_curve_name failed");
+        //fSet = false;
     }
 
 
     /* Constructor from a ECKey object. */
     ECKey::ECKey(const ECKey& b)
+    : pkey(EC_KEY_dup(b.pkey))
+    , fSet(b.fSet)
+    , fCompressedPubKey(b.fCompressedPubKey)
+    , nCurveID(b.nCurveID)
+    , nKeySize(b.nKeySize)
     {
-        pkey = EC_KEY_dup(b.pkey);
+        //pkey = EC_KEY_dup(b.pkey);
         if (pkey == nullptr)
             throw key_error("ECKey::ECKey(const ECKey&) : EC_KEY_dup failed");
 
-        nCurveID   = b.nCurveID;
-        nKeySize = b.nKeySize;
-        fSet = b.fSet;
+        //nCurveID   = b.nCurveID;
+        //nKeySize = b.nKeySize;
+        //fSet = b.fSet;
     }
 
 
@@ -187,6 +214,11 @@ namespace LLC
         if (!EC_KEY_copy(pkey, b.pkey))
             throw key_error("ECKey::operator=(const ECKey&) : EC_KEY_copy failed");
         fSet = b.fSet;
+
+        fCompressedPubKey = b.fCompressedPubKey;
+        nCurveID = b.nCurveID;
+        nKeySize = b.nKeySize;
+
         return (*this);
     }
 
@@ -482,6 +514,7 @@ namespace LLC
     bool ECKey::SignCompact(uint256_t hash, std::vector<unsigned char>& vchSig)
     {
         bool fOk = false;
+
         ECDSA_SIG *sig = ECDSA_do_sign((unsigned char*)&hash, sizeof(hash), pkey);
         if (sig == nullptr)
             throw key_error("CKey::SignCompact() : Failed to make signature");
@@ -489,35 +522,36 @@ namespace LLC
         vchSig.clear();
         vchSig.resize(145,0);
 
-        #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-            ECDSA_SIG_get0(sig, &sig_r, &sig_s);
-        #else
-            //const BIGNUM* sig_r = sig->r;
-            //const BIGNUM* sig_s = sig->s;
-        #endif
+        const BIGNUM *sig_r = nullptr;
+        const BIGNUM *sig_s = nullptr;
+        int nBitsR = 0;
+        int nBitsS = 0;
 
-        int nBitsR, nBitsS;
-        #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-            nBitsR = BN_num_bits(sig_r);
-            nBitsS = BN_num_bits(sig_s);
-        #else
-            nBitsR = BN_num_bits(sig->r);
-            nBitsS = BN_num_bits(sig->s);
-        #endif
+    #if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        ECDSA_SIG_get0(sig, &sig_r, &sig_s);
+
+        nBitsR = BN_num_bits(sig_r);
+        nBitsS = BN_num_bits(sig_s);
+    #else
+        sig_r = sig->r;
+        sig_s = sig->s;
+
+        nBitsR = BN_num_bits(sig->r);
+        nBitsS = BN_num_bits(sig->s);
+    #endif
 
 
         if (nBitsR <= 571 && nBitsS <= 571)
         {
             int nRecId = -1;
-            for (int i=0; i < 9; i++)
+            for (int i=0; i < 9; ++i)
             {
                 ECKey keyRec;
                 keyRec.fSet = true;
                 if (fCompressedPubKey)
                     keyRec.SetCompressedPubKey();
 
-                #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-                if (ECDSA_SIG_recover_key_GFp(keyRec.pkey, const_cast<BIGNUM*>(sig_r), const_cast<BIGNUM*>(sig_s), (unsigned char*)&hash, sizeof(hash), i, 1) == 1)
+                if (ECDSA_SIG_recover_key_GFp(keyRec.pkey, const_cast<BIGNUM *>(sig_r), const_cast<BIGNUM *>(sig_s), (unsigned char*)&hash, sizeof(hash), i, 1) == 1)
                 {
                     if (keyRec.GetPubKey() == this->GetPubKey())
                     {
@@ -525,18 +559,6 @@ namespace LLC
                         break;
                     }
                 }
-                #else
-                if (ECDSA_SIG_recover_key_GFp(keyRec.pkey, sig->r, sig->s, (unsigned char*)&hash, sizeof(hash), i, 1) == 1)
-                {
-                    if (keyRec.GetPubKey() == this->GetPubKey())
-                    {
-                        nRecId = i;
-                        break;
-                    }
-                }
-                #endif
-
-
             }
 
             if (nRecId == -1)
@@ -547,13 +569,8 @@ namespace LLC
 
             vchSig[0] = nRecId+27+(fCompressedPubKey ? 4 : 0);
 
-            #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-                BN_bn2bin(sig_r, &vchSig[73-(nBitsR+7)/8]);
-                BN_bn2bin(sig_s, &vchSig[145-(nBitsS+7)/8]);
-            #else
-                BN_bn2bin(sig->r, &vchSig[73-(nBitsR+7)/8]);
-                BN_bn2bin(sig->s, &vchSig[145-(nBitsS+7)/8]);
-            #endif
+            BN_bn2bin(sig_r, &vchSig[73-(nBitsR+7)/8]);
+            BN_bn2bin(sig_s, &vchSig[145-(nBitsS+7)/8]);
 
             fOk = true;
         }
@@ -651,7 +668,7 @@ namespace LLC
         if (!fSet)
             return false;
 
-        bool fCompr;
+        bool fCompr = false;
         CSecret secret = GetSecret(fCompr);
         ECKey key2;
         key2.SetSecret(secret, fCompr);

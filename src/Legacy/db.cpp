@@ -46,7 +46,11 @@ namespace Legacy
 
     /* Constructor */
     /* Initializes database environment on first use */
-    CDB::CDB(const char *pszFileIn, const char* pszMode) : pdb(nullptr)
+    CDB::CDB(const char *pszFileIn, const char* pszMode)
+    : pdb(nullptr)
+    , strFile()
+    , vTxn()
+    , fReadOnly(true)
     {
         /* Passing a null string will initialize a null instance */
         if (pszFileIn == nullptr)
@@ -62,7 +66,11 @@ namespace Legacy
 
     /* Constructor */
     /* Initializes database environment on first use */
-    CDB::CDB(const std::string& strFileIn, const char* pszMode) : pdb(nullptr)
+    CDB::CDB(const std::string& strFileIn, const char* pszMode)
+    : pdb(nullptr)
+    , strFile()
+    , vTxn()
+    , fReadOnly(true)
     {
         /* Passing an empty string will initialize a null instance */
         if (strFileIn.empty())
@@ -516,9 +524,9 @@ namespace Legacy
         std::string strFileRewrite = strFile + ".rewrite";
 
         {
-            /* Lock database access for full rewrite process. 
-             * This process does not use a CDB instance and manually calls Berkeley methods 
-             * to avoid use of locks within CDB itself. Adds work to do ReadAtCursor(), but 
+            /* Lock database access for full rewrite process.
+             * This process does not use a CDB instance and manually calls Berkeley methods
+             * to avoid use of locks within CDB itself. Adds work to do ReadAtCursor(), but
              * allows a proper lock scope.
              */
             LOCK(CDB::cs_db);
@@ -584,7 +592,7 @@ namespace Legacy
 
             while (fProcessSuccess)
             {
-                /* This section duplicates the process in CDB::ReadAtCursor without the need for a CDB instance 
+                /* This section duplicates the process in CDB::ReadAtCursor without the need for a CDB instance
                  * Code logic from CDB::ReadAtCursor that is not needed for this specific process is left out.
                  */
                 DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);

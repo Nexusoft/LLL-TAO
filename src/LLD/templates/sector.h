@@ -198,7 +198,9 @@ namespace LLD
 
             delete cachePool;
             delete fileCache;
-            delete pSectorKeys;
+
+            if(pSectorKeys)
+                delete pSectorKeys;
         }
 
 

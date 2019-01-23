@@ -104,7 +104,7 @@ namespace Legacy
     class CWallet : public CCryptoKeyStore
     {
         /** CWalletDB declared friend so it can use private Load methods within LoadWallet **/
-        friend class CWalletDB; 
+        friend class CWalletDB;
 
     public:
         /** InitializeWallet
@@ -228,6 +228,7 @@ namespace Legacy
         , vchDefaultKey()
         , nWalletUnlockTime(0)
         , pWalletDbEncryption(nullptr)
+        , cs_wallet()
         , mapWallet()
         , mapRequestCount()
         {
@@ -338,13 +339,13 @@ namespace Legacy
          *  Loads all data for a file backed wallet from the database.
          *
          *  The first time LoadWallet is called the wallet file will not exist and
-         *  will be created. It is new, so there is no data to retrieve. 
+         *  will be created. It is new, so there is no data to retrieve.
          *  fFirstRunRet will be set true to indicate a new wallet.
-         * 
+         *
          *  When fFirstRunRet is true, LoadWallet() will also set the wallet min/max
          *  versions to the latest, fill the key pool, and assign a default key
          *
-         *  @param[out] fFirstRunRet true if new wallet 
+         *  @param[out] fFirstRunRet true if new wallet
          *
          *  @return Value from Legacy::DBErrors, DB_LOAD_OK on success
          *

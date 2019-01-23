@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_ADDRESS_H
 #define NEXUS_LLP_INCLUDE_ADDRESS_H
 
-#include <LLP/include/service.h>
+#include <LLP/include/baseaddress.h>
 #include <Util/templates/serialize.h>
 #include <cstdint>
 
@@ -27,24 +27,36 @@ namespace LLP
     };
 
 
-    /** A Service with information about it as peer */
-    class Address : public Service
+    /** An Address with information about it as peer (Legacy) */
+    class LegacyAddress : public BaseAddress
     {
     public:
-        Address();
-        ~Address();
-        
-        explicit Address(Service ipIn, uint64_t nServicesIn = NODE_NETWORK);
 
-        void Init();
+        /* Default constructor */
+        LegacyAddress();
 
+        /* Copy constructors */
+        LegacyAddress(const LegacyAddress &other);
+        LegacyAddress(const BaseAddress &ipIn, uint64_t nServicesIn = NODE_NETWORK);
+
+        /* Default destructor */
+        virtual ~LegacyAddress();
+
+        /* Copy assignment operator */
+        LegacyAddress &operator=(const LegacyAddress &other);
+
+        /* Serialization */
         IMPLEMENT_SERIALIZE
         (
-            Address* pthis = const_cast<Address*>(this);
-            Service* pip = (Service*)pthis;
+            LegacyAddress* pthis = const_cast<LegacyAddress*>(this);
+            BaseAddress* pip = (BaseAddress*)pthis;
 
             if (fRead)
-                pthis->Init();
+            {
+                pthis->nServices = NODE_NETWORK;
+                pthis->nTime = 100000000;
+                pthis->nLastTry = 0;
+            }
 
             if (nSerType & SER_DISK)
                 READWRITE(nSerVersion);
@@ -56,17 +68,20 @@ namespace LLP
             READWRITE(*pip);
         )
 
-        void print() const;
 
-    // TODO: make private (improves encapsulation)
-    public:
+        /** Print
+         *
+         *  Prints information about this address.
+         *
+         **/
+        virtual void Print() const;
+
+    protected:
+
+        int64_t nLastTry;   // memory only
         uint64_t nServices;
+        uint32_t nTime;     // disk and network only
 
-        // disk and network only
-        uint32_t nTime;
-
-        // memory only
-        int64_t nLastTry;
     };
 }
 

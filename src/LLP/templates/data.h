@@ -133,7 +133,7 @@ namespace LLP
 
 
         /* Adds a new connection to current Data Thread */
-        bool AddConnection(std::string strAddress, int nPort, DDOS_Filter* DDOS)
+        bool AddConnection(std::string strAddress, uint16_t nPort, DDOS_Filter* DDOS)
         {
             LOCK(MUTEX);
 
@@ -181,6 +181,18 @@ namespace LLP
             --nConnections;
 
             CONDITION.notify_all();
+        }
+
+        /* Disconnects all connections by issuing a DISCONNECT_FORCE event message 
+            and then removes the connection from this data thread*/
+        void DisconnectAll()
+        {
+            uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
+            for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+            {
+                CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_FORCE);
+                Remove(nIndex);
+            }   
         }
 
 
@@ -291,7 +303,7 @@ namespace LLP
 
                             /* Handle Meters and DDOS. */
                             if(fMETER)
-                                REQUESTS++;
+                                ++REQUESTS;
                             if(fDDOS)
                                 CONNECTIONS[nIndex]->DDOS->rSCORE += 1;
 

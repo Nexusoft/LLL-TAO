@@ -173,7 +173,6 @@ namespace LLD
          */
         void RemoveNode(BinaryNode* pthis)
         {
-
             /* Link the next pointer if not null */
             if(pthis->pnext)
                 pthis->pnext->pprev = pthis->pprev;
@@ -193,7 +192,6 @@ namespace LLD
          **/
         void MoveToFront(BinaryNode* pthis)
         {
-
             /* Don't move to front if already in the front. */
             if(pthis == pfirst)
                 return;
@@ -309,7 +307,7 @@ namespace LLD
                 /* Get the last key. */
                 if(plast && plast->pprev)
                 {
-                    BinaryNode* pnode = plast;
+                    BinaryNode *pnode = plast;
 
                     /* Relink in memory. */
                     plast = plast->pprev;
@@ -317,7 +315,7 @@ namespace LLD
                     if(plast && plast->pnext)
                         plast->pnext = nullptr;
                     else
-                        printf("plast is nulll\n");
+                        printf("plast is null\n");
 
                     /* Reduce the current cache size. */
                     if(pnode)
@@ -396,12 +394,13 @@ namespace LLD
         {
             LOCK(MUTEX);
 
+            /* Get the node. */
+            BinaryNode* pnode = hashmap[Bucket(vKey)];
+
             /* Check if the Record Exists. */
-            if(!Has(vKey))
+            if (pnode == nullptr || pnode->vKey != vKey)
                 return false;
 
-            /* Get the node */
-            BinaryNode* pnode = hashmap[Bucket(vKey)];
 
             /* Reduce the current cache size. */
             nCurrentSize -= (pnode->vData.size() + vKey.size());

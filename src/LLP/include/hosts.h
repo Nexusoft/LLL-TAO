@@ -1,12 +1,12 @@
 /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
-            
+
             (c) Copyright The Nexus Developers 2014 - 2018
-            
+
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
-            
+
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
@@ -19,15 +19,14 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    
-    class Address;
-    class NetAddr;
-    class Service;
-    
+
+    class LegacyAddress;
+    class BaseAddress;
+
     /** These addresses are the first point of contact on the P2P network
     *  They are established and maintained by the owners of each domain.
     */
-    static std::vector<std::string> DNS_SeedNodes = 
+    static std::vector<std::string> DNS_SeedNodes =
     {
         "node1.nexusearth.com",
         "node1.mercuryminer.com",
@@ -41,7 +40,7 @@ namespace LLP
         "node2.mercuryminer.com",
         "node2.nexusminingpool.com",
         "node2.nexus2.space",
-        "node2.barbequemedia.com",
+        "node2.barbequemeportParseddia.com",
         "node2.nxsorbitalscan.com",
         "node2.nxs.efficienthash.com",
         "node2.henryskinner.net",
@@ -104,24 +103,24 @@ namespace LLP
         "node20.mercuryminer.com",
         "node21.mercuryminer.com"
     };
-    
-    
-    static std::vector<std::string> DNS_SeedNodes_Testnet = 
+
+
+    static std::vector<std::string> DNS_SeedNodes_Testnet =
     {
         "test1.nexusoft.io"
     };
-    
-    
+
+
     /* The DNS Lookup Routine to find the Nodes that are set as DNS seeds. */
-    std::vector<Address> DNS_Lookup(std::vector<std::string> DNS_Seed);
-    
-    
+    std::vector<LegacyAddress> DNS_Lookup(std::vector<std::string> DNS_Seed);
+
+
     /* Standard Wrapper Function to Interact with cstdlib DNS functions. */
-    bool LookupHost(const char *pszName, std::vector<NetAddr>& vIP, uint32_t nMaxSolutions = 0, bool fAllowLookup = true);
-    bool LookupHostNumeric(const char *pszName, std::vector<NetAddr>& vIP, uint32_t nMaxSolutions = 0);
-    bool Lookup(const char *pszName, Service& addr, int portDefault = 0, bool fAllowLookup = true);
-    bool Lookup(const char *pszName, std::vector<Service>& vAddr, int portDefault = 0, bool fAllowLookup = true, uint32_t nMaxSolutions = 0);
-    bool LookupNumeric(const char *pszName, Service& addr, int portDefault = 0);
+    bool LookupHost(const char *pszName, std::vector<BaseAddress>& vIP, uint32_t nMaxSolutions = 0, bool fAllowLookup = true);
+    bool LookupHostNumeric(const char *pszName, std::vector<BaseAddress>& vIP, uint32_t nMaxSolutions = 0);
+    bool Lookup(const char *pszName, BaseAddress& addr, uint16_t portDefault = 0, bool fAllowLookup = true);
+    bool Lookup(const char *pszName, std::vector<BaseAddress>& vAddr, uint16_t portDefault = 0, bool fAllowLookup = true, uint32_t nMaxSolutions = 0);
+    bool LookupNumeric(const char *pszName, BaseAddress& addr, uint16_t portDefault = 0);
 }
 
 #endif

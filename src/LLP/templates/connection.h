@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <vector>
 #include <stdio.h>
 
-#include <LLP/include/address.h>
+#include <LLP/include/legacyaddress.h>
 #include <LLP/packets/packet.h>
 #include <LLP/templates/socket.h>
 #include <LLP/templates/ddos.h>
@@ -215,18 +215,18 @@ namespace LLP
 
 
         /* Connect Socket to a Remote Endpoint. */
-        bool Connect(std::string strAddress, int nPort)
+        bool Connect(std::string strAddress, uint16_t nPort)
         {
-            Service addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
+            BaseAddress addrConnect(strAddress, nPort);
 
             /// debug print
-            debug::log(1, NODE "Connecting to ", addrConnect.ToString());
+            debug::log(1, NODE, "Connecting to ", addrConnect.ToString());
 
             // Connect
             if (Attempt(addrConnect))
             {
                 /// debug print
-                debug::log(1, NODE "Connected to ", addrConnect.ToString());
+                debug::log(1, NODE, "Connected to ", addrConnect.ToString());
 
                 fCONNECTED = true;
                 fOUTGOING  = true;
@@ -238,9 +238,9 @@ namespace LLP
         }
 
         /* Get Address. Returns the address of socket. */
-        Address GetAddress()
+        LegacyAddress GetAddress()
         {
-            return Address(Service(addr));
+            return LegacyAddress(addr);
         }
 
 

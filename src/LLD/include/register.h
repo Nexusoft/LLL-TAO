@@ -114,7 +114,7 @@ namespace LLD
             {
                 LOCK(MEMORY_MUTEX);
 
-                /* Remove the me mory state if writing the disk state. */
+                /* Remove the memory state if writing the disk state. */
                 if(mapIdentifiers.count(nIdentifier))
                     mapIdentifiers.erase(nIdentifier);
             }
