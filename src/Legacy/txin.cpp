@@ -33,7 +33,7 @@ namespace Legacy
 	/* Flag to tell if this input is the flag for proof of stake Transactions */
 	bool CTxIn::IsStakeSig() const
 	{
-		if( scriptSig.size() != 8)
+		if( scriptSig.size() < 8)
 			return false;
 
 		if( scriptSig[0] != 1 || scriptSig[1] != 2 || scriptSig[2] != 3 || scriptSig[3] != 5 ||
