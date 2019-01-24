@@ -572,7 +572,10 @@ namespace Legacy
         {
             for(auto txout : vout)
                 if (txout.nValue < CENT)
+                {
                     nMinFee = nBaseFee;
+                    break;
+                }
         }
 
         /* Raise the price as the block approaches full */

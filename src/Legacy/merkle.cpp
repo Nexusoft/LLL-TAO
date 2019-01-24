@@ -55,28 +55,4 @@ namespace Legacy
         return std::max((uint32_t)0, nBlocksForMaturity - GetDepthInMainChain());
     }
 
-
-//TODO - These were taken out, added old code back in as reference, need to figure out replacement for usage in wallet.cpp
-//    bool CMerkleTx::AcceptToMemoryPool(LLD::CIndexDB& indexdb, bool fCheckInputs)
-//    {
-//        if (config::fClient)
-//        {
-//            if (!IsInMainChain() && !ClientConnectInputs())
-//                return false;
-//
-//            return CTransaction::AcceptToMemoryPool(indexdb, false);
-//        }
-//        else
-//        {
-//            return CTransaction::AcceptToMemoryPool(indexdb, fCheckInputs);
-//        }
-//    }
-//
-//    bool CMerkleTx::AcceptToMemoryPool()
-//    {
-//        LLD::CIndexDB indexdb("r");
-//
-//        return AcceptToMemoryPool(indexdb);
-//    }
-
 }

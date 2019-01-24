@@ -837,10 +837,57 @@ namespace Legacy
     }
 
 
+    int32_t CWallet::GetRequestCount(const CWalletTx& wtx) const
+    {
+        /* Returns -1 if it wasn't being tracked */
+        int32_t nRequests = -1;
+
+        if (wtx.IsCoinBase() || wtx.IsCoinStake())
+        {
+            LOCK(cs_wallet);
+
+            /* If this is a block generated via minting, use request count entry for the block */
+            /* Blocks created via staking/mining have block hash added to request tracking */
+            if (wtx.hashBlock != 0)
+            {
+                auto mi = mapRequestCount.find(wtx.hashBlock);
+
+                if (mi != mapRequestCount.end())
+                    nRequests = (*mi).second;
+            }
+        }
+        else
+        {
+            LOCK(cs_wallet);
+
+            /* Did anyone request this transaction? */
+            auto mi = mapRequestCount.find(wtx.GetHash());
+            if (mi != mapRequestCount.end())
+            {
+                nRequests = (*mi).second;
+
+                /* If no request specifically for the transaction hash, check the count for the block containing it */
+                if (nRequests == 0 && wtx.hashBlock != 0)
+                {
+                    auto mi = mapRequestCount.find(wtx.hashBlock);
+                    if (mi != mapRequestCount.end())
+                        nRequests = (*mi).second;
+                }
+            }
+        }
+
+        return nRequests;
+    }
+
+
     /* Adds a wallet transaction to the wallet. */
     bool CWallet::AddToWallet(const CWalletTx& wtxIn)
     {
         uint512_t hash = wtxIn.GetHash();
+
+        bool fInsertedNew;
+        bool fUpdated = false;
+        CWalletTx wtx;
 
         {
             LOCK(cs_wallet);
@@ -849,75 +896,75 @@ namespace Legacy
             std::pair<TransactionMap::iterator, bool> ret = mapWallet.insert(std::make_pair(hash, wtxIn));
 
             /* Use the returned tx, not wtxIn, in case insert returned an existing transaction */
-            CWalletTx& wtx = (*ret.first).second;
+            wtx = (*ret.first).second;
             wtx.BindWallet(this);
 
-            bool fInsertedNew = ret.second;
-            if (fInsertedNew)
-            {
-                /* wtx.nTimeReceive must remain uint32_t for backward compatability */
-                wtx.nTimeReceived = (uint32_t)runtime::unifiedtimestamp();
-            }
-
-            bool fUpdated = false;
-            if (!fInsertedNew)
-            {
-                /* If found an existing transaction, merge the new one into it */
-                if (wtxIn.hashBlock != 0 && wtxIn.hashBlock != wtx.hashBlock)
-                {
-                    wtx.hashBlock = wtxIn.hashBlock;
-                    fUpdated = true;
-                }
-
-                /* nIndex and vMerkleBranch are deprecated so nIndex will be -1 for all legacy transactions created in Tritium
-                 * Code here is only relevant for processing old transactions previously stored in wallet.dat
-                 */
-                if (wtxIn.nIndex != -1 && (wtxIn.vMerkleBranch != wtx.vMerkleBranch || wtxIn.nIndex != wtx.nIndex))
-                {
-                    wtx.vMerkleBranch = wtxIn.vMerkleBranch;
-                    wtx.nIndex = wtxIn.nIndex;
-                    fUpdated = true;
-                }
-
-                if (wtxIn.fFromMe && wtxIn.fFromMe != wtx.fFromMe)
-                {
-                    wtx.fFromMe = wtxIn.fFromMe;
-                    fUpdated = true;
-                }
-
-                /* Merge spent flags */
-                fUpdated |= wtx.UpdateSpent(wtxIn.vfSpent);
-            }
-
-            /* debug print */
-            debug::log(0, FUNCTION, wtxIn.GetHash().ToString().substr(0,10), " ", (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
-
-            /* Write to disk */
-            if (fInsertedNew || fUpdated)
-                if (!wtx.WriteToDisk())
-                    return false;
-
-            /* If default receiving address gets used, replace it with a new one */
-            CScript scriptDefaultKey;
-            scriptDefaultKey.SetNexusAddress(vchDefaultKey);
-
-            for(const CTxOut& txout : wtx.vout)
-            {
-                if (txout.scriptPubKey == scriptDefaultKey)
-                {
-                    std::vector<uint8_t> newDefaultKey;
-
-                    if (keyPool.GetKeyFromPool(newDefaultKey, false))
-                    {
-                        SetDefaultKey(newDefaultKey);
-                        addressBook.SetAddressBookName(NexusAddress(vchDefaultKey), "");
-                    }
-                }
-            }
-
-            /* since AddToWallet is called directly for self-originating transactions, check for consumption of own coins */
-            WalletUpdateSpent(wtx);
+            fInsertedNew = ret.second;
         }
+
+        if (fInsertedNew && wtx.nTimeReceived == 0)
+        {
+            /* wtx.nTimeReceived must remain uint32_t for backward compatability */
+            wtx.nTimeReceived = (uint32_t)runtime::unifiedtimestamp();
+        }
+        else
+        {
+            /* If found an existing transaction, merge the new one into it */
+            if (wtxIn.hashBlock != 0 && wtxIn.hashBlock != wtx.hashBlock)
+            {
+                wtx.hashBlock = wtxIn.hashBlock;
+                fUpdated = true;
+            }
+
+            /* nIndex is deprecated so nIndex will be -1 for all legacy transactions created in Tritium
+             * Code here is only relevant for processing old transactions previously stored in wallet.dat
+             */
+            if (wtxIn.nIndex != -1 && wtxIn.nIndex != wtx.nIndex)
+            {
+                wtx.nIndex = wtxIn.nIndex;
+                fUpdated = true;
+            }
+
+            if (wtxIn.fFromMe && wtxIn.fFromMe != wtx.fFromMe)
+            {
+                wtx.fFromMe = wtxIn.fFromMe;
+                fUpdated = true;
+            }
+
+            /* Merge spent flags */
+            fUpdated |= wtx.UpdateSpent(wtxIn.vfSpent);
+        }
+
+        /* debug print */
+        debug::log(0, FUNCTION, wtxIn.GetHash().ToString().substr(0,10), " ", (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+
+        /* Write to disk */
+        if (fInsertedNew || fUpdated)
+            if (!wtx.WriteToDisk())
+                return false;
+
+        /* If default receiving address gets used, replace it with a new one */
+        CScript scriptDefaultKey;
+        scriptDefaultKey.SetNexusAddress(vchDefaultKey);
+
+        for (const CTxOut& txout : wtx.vout)
+        {
+            if (txout.scriptPubKey == scriptDefaultKey)
+            {
+                std::vector<uint8_t> newDefaultKey;
+
+                if (keyPool.GetKeyFromPool(newDefaultKey, false))
+                {
+                    SetDefaultKey(newDefaultKey);
+                    addressBook.SetAddressBookName(NexusAddress(vchDefaultKey), "default");
+                }
+
+                break;
+            }
+        }
+
+        /* since AddToWallet is called directly for self-originating transactions, check for consumption of own coins */
+        WalletUpdateSpent(wtx);
 
         return true;
     }
@@ -930,37 +977,40 @@ namespace Legacy
                                            bool fUpdate, bool fFindBlock, bool fRescan)
     {
         uint512_t hash = tx.GetHash();
+        bool fExists = false;
 
         {
             LOCK(cs_wallet);
 
             /* Check to see if transaction hash in this wallet */
-            bool fExisted = mapWallet.count(hash);
-
-            /* When transaction already in wallet, return unless update is specifically requested */
-            if (fExisted && !fUpdate)
-                return false;
-
-            /* Check if transaction has outputs (IsMine) or inputs (IsFromMe) belonging to this wallet */
-            if (IsMine(tx) || IsFromMe(tx))
-            {
-                CWalletTx wtx(this,tx);
-
-                if (fRescan) {
-                    /* On rescan or initial download, set wtx time to transaction time instead of time tx received.
-                     * These are both uint32_t timestamps to support unserialization of legacy data.
-                     */
-                    wtx.nTimeReceived = tx.nTime;
-                }
-
-                wtx.hashBlock = containingBlock.GetHash();
-
-                /* AddToWallet preforms merge (update) for transactions already in wallet */
-                return AddToWallet(wtx);
-            }
-            else
-                WalletUpdateSpent(tx);
+            fExists = mapWallet.count(hash);
         }
+
+        /* When transaction already in wallet, return unless update is specifically requested */
+        if (fExists && !fUpdate)
+            return false;
+
+        /* Check if transaction has outputs (IsMine) or inputs (IsFromMe) belonging to this wallet 
+         * These call the versions in CWallet that take a Transaction and don't require it to be a CWalletTx
+         */
+        if (IsMine(tx) || IsFromMe(tx))
+        {
+            CWalletTx wtx(this, tx);
+
+            if (fRescan) {
+                /* On rescan or initial download, set wtx time to transaction time instead of time tx received.
+                 * These are both uint32_t timestamps to support unserialization of legacy data.
+                 */
+                wtx.nTimeReceived = tx.nTime;
+            }
+
+            wtx.hashBlock = containingBlock.GetHash();
+
+            /* AddToWallet preforms merge (update) for transactions already in wallet */
+            return AddToWallet(wtx);
+        }
+        else
+            WalletUpdateSpent(tx);
 
         return false;
     }
@@ -1166,11 +1216,11 @@ namespace Legacy
                     CWalletTx& prevTx = (*mi).second;
 
                     /* Outputs in wallet tx will have same index recorded in transaction txin
-                     * Check for belonging to this wallet any that are not flagged spent and mark them as spent
+                     * Check any that are not flagged spent for belonging to this wallet and mark them as spent
                      */
                     if (!prevTx.IsSpent(txin.prevout.n) && IsMine(prevTx.vout[txin.prevout.n]))
                     {
-                        debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(prevTx.GetCredit()), " Nexus ", prevTx.GetHash().ToString());
+                        debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(prevTx.GetCredit()), " NXS ", prevTx.GetHash().ToString());
 
                         prevTx.MarkSpent(txin.prevout.n);
                         prevTx.WriteToDisk();
@@ -1414,7 +1464,7 @@ namespace Legacy
 
             if (ExtractAddress(txout.scriptPubKey, address) && HaveKey(address))
             {
-                    return true;
+                return true;
             }
         }
 
@@ -1462,12 +1512,12 @@ namespace Legacy
         }
 
         int64_t nFeeRequired;
-        bool isChangeKeyUsed;
+        bool fChangeKeyUsed;
 
         /* Key will be reserved by CreateTransaction for any change transaction, kept/returned on commit */
         CReserveKey changeKey(*this);
 
-        if (!CreateTransaction(vecSend, wtxNew, changeKey, nFeeRequired, isChangeKeyUsed, nMinDepth))
+        if (!CreateTransaction(vecSend, wtxNew, changeKey, nFeeRequired, fChangeKeyUsed, nMinDepth))
         {
             /* Transaction creation failed */
             std::string strError;
@@ -1495,7 +1545,7 @@ namespace Legacy
         /* In Tritium, with QT interface removed, we no longer display the fee confirmation here. 
          * Successful transaction creation will be committed automatically 
          */
-        if (!CommitTransaction(wtxNew, changeKey, isChangeKeyUsed))
+        if (!CommitTransaction(wtxNew, changeKey, fChangeKeyUsed))
             return std::string("The transaction was rejected. This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
 
         return "";
@@ -1504,7 +1554,7 @@ namespace Legacy
 
     /* Create and populate a new transaction. */
     bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& changeKey,
-                                    int64_t& nFeeRet, bool& isChangeKeyUsed, const uint32_t nMinDepth)
+                                    int64_t& nFeeRet, bool& fChangeKeyUsed, const uint32_t nMinDepth)
     {
         int64_t nValue = 0;
 
@@ -1572,7 +1622,7 @@ namespace Legacy
                 /* Amount of change needed is total of inputs - (total sent + fee) */
                 int64_t nChange = nValueIn - nTotalValue;
 
-                isChangeKeyUsed = false;
+                fChangeKeyUsed = false;
 
                 /* Any change below minimum tx amount is moved to fee */
                 if (nChange > 0 && nChange < MIN_TXOUT_AMOUNT)
@@ -1588,7 +1638,7 @@ namespace Legacy
 
                     if (!config::GetBoolArg("-avatar", true)) //Avatar enabled by default
                     {
-                        isChangeKeyUsed = true; 
+                        fChangeKeyUsed = true; 
 
                         /* When not avatar mode, use a new key pair from key pool for change */
                         std::vector<uint8_t> vchPubKeyChange = changeKey.GetReservedKey();
@@ -1658,8 +1708,7 @@ namespace Legacy
                 /* Fill vtxPrev by copying vtxPrev from previous transactions */
                 wtxNew.AddSupportingTransactions();
 
-                wtxNew.fTimeReceivedIsTxTime = true;
-                wtxNew.nTimeReceived = wtxNew.nTime;
+                wtxNew.fTimeReceivedIsTxTime = true; //wtxNew time received set when AddToWallet
 
                 break;
             }
@@ -1669,7 +1718,7 @@ namespace Legacy
 
 
     /* Commits a transaction and broadcasts it to the network. */
-    bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& changeKey, const bool isChangeKeyUsed)
+    bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& changeKey, const bool fChangeKeyUsed)
     {
         debug::log(0, FUNCTION, wtxNew.ToString());
 
@@ -1686,7 +1735,7 @@ namespace Legacy
          */
         AddToWallet(wtxNew);
 
-        if (isChangeKeyUsed)
+        if (fChangeKeyUsed)
         {
             /* Transaction did not use the change key. Return it. */
             changeKey.ReturnKey();

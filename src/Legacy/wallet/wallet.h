@@ -605,6 +605,21 @@ namespace Legacy
         bool GetTransaction(const uint512_t& hashTx, CWalletTx& wtx);
 
 
+        /** GetRequestCount
+         *
+         *  Get the number of remote requests recorded for a transaction. 
+         *
+         *  Coinbase and Coinstake transactions are tracked at the block level,
+         *  so count records requests for the block containing them.
+         *
+         *  @param[in] wtx The wallet transaction to check
+         *
+         *  @return The request count as recorded by request tracking, -1 if not tracked
+         *
+         **/
+        int32_t GetRequestCount(const CWalletTx& wtx) const;
+
+
         /** AddToWallet
          *
          *  Adds a wallet transaction to the wallet. If this transaction already exists
@@ -923,7 +938,7 @@ namespace Legacy
          *
          **/
         bool CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& changeKey,
-                               int64_t& nFeeRet, bool& isChangeKeyUsed, const uint32_t nMinDepth = 1);
+                               int64_t& nFeeRet, bool& fChangeKeyUsed, const uint32_t nMinDepth = 1);
 
 
         /** CommitTransaction
@@ -939,7 +954,7 @@ namespace Legacy
          *  @return true if transaction successfully committed
          *
          **/
-        bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& changeKey, const bool isChangeKeyUsed);
+        bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& changeKey, const bool fChangeKeyUsed);
 
 
         /** AddCoinstakeInputs

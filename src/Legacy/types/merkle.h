@@ -141,12 +141,6 @@ namespace Legacy
          **/
 		uint32_t GetBlocksToMaturity() const;
 
-
-//TODO - Still to be implemented
-		//bool AcceptToMemoryPool(LLD::CIndexDB& indexdb, bool fCheckInputs=true);
-
-		//bool AcceptToMemoryPool();
-
 	};
 }
 
