@@ -57,7 +57,7 @@ namespace TAO
 
                 /* Iterate backwards. */
                 state = state.Prev();
-                if(state.IsNull())
+                if(!state)
                     return false;
             }
 
@@ -118,7 +118,7 @@ namespace TAO
         {
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();
-            if(statePrev.IsNull())
+            if(!statePrev)
                 return debug::error(FUNCTION, "previous block state not found");
 
             /* Compute the Chain Trust */
@@ -213,7 +213,7 @@ namespace TAO
                 time.Start();
 
                 /* Watch for genesis. */
-                if (ChainState::stateGenesis.IsNull())
+                if (!ChainState::stateGenesis.IsNull())
                 {
                     /* Write the best chain pointer. */
                     if(!LLD::legDB->WriteBestChain(GetHash()))
@@ -245,7 +245,7 @@ namespace TAO
 
                             /* Iterate backwards in chain. */
                             longer = longer.Prev();
-                            if(longer.IsNull())
+                            if(!longer)
                                 return debug::error(FUNCTION, "failed to find longer ancestor block");
                         }
 
@@ -256,7 +256,7 @@ namespace TAO
                         /* Iterate backwards to find fork. */
                         vDisconnect.push_back(fork);
                         fork = fork.Prev();
-                        if(fork.IsNull())
+                        if(!fork)
                         {
                             /* Abort the Transaction. */
                             LLD::legDB->TxnAbort();

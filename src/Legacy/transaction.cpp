@@ -318,12 +318,12 @@ namespace Legacy
             return false;
 
         /* Check the coin age of each Input. */
-        for(int nIndex = 1; nIndex < vin.size(); nIndex++)
+        for(int nIndex = 1; nIndex < vin.size(); ++nIndex)
         {
             /* Calculate the Age and Value of given output. */
             TAO::Ledger::BlockState statePrev;
-            if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev))
-                return debug::error(FUNCTION, "failed to read previous tx block");
+            if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev) && !LLD::legDB->RepairIndex(vin[nIndex].prevout.hash))
+                return debug::error(FUNCTION, "failed to read or repair previous block");
 
             /* Time is from current transaction to previous block time. */
             uint64_t nCoinAge = (nTime - statePrev.GetBlockTime());
@@ -377,7 +377,7 @@ namespace Legacy
         {
             /* Calculate the Age and Value of given output. */
             TAO::Ledger::BlockState statePrev;
-            if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev))
+            if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev) && !LLD::legDB->RepairIndex(vin[nIndex].prevout.hash))
                 return debug::error(FUNCTION, "failed to read previous tx block");
 
             /* Read the previous transaction. */
@@ -830,7 +830,7 @@ namespace Legacy
             if (txPrev.IsCoinBase() || txPrev.IsCoinStake())
             {
                 TAO::Ledger::BlockState statePrev;
-                if(!LLD::legDB->ReadBlock(txPrev.GetHash(), statePrev))
+                if(!LLD::legDB->ReadBlock(txPrev.GetHash(), statePrev) && !LLD::legDB->RepairIndex(txPrev.GetHash()))
                     return debug::error(FUNCTION, "failed to read previous tx block");
 
                 /* Check the maturity. */
@@ -870,8 +870,8 @@ namespace Legacy
                 return debug::error(FUNCTION, GetHash().ToString().substr(0, 10), " failed to get coinstake interest");
 
             /* Check that the interest is within range. */
-            //add tolerance to stake reward of + 1 (viz.) for version 4 and below blocks
-            if (vout[0].nValue > nInterest + nValueIn + (state.nVersion < 5 ? 1 : 0))
+            //add tolerance to stake reward of + 1 (viz.) for stake rewards
+            if (vout[0].nValue > nInterest + nValueIn + 1)
                 return debug::error(FUNCTION, GetHash().ToString().substr(0,10), " stake reward ", vout[0].nValue, " mismatch ", nInterest + nValueIn);
         }
         else if (nValueIn < GetValueOut())
