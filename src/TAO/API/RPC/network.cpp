@@ -35,44 +35,48 @@ namespace TAO
                     "getnetworkhashps"
                     " - Get network hashrate for the hashing channel.");
 
-        //     /* This constant was determined by finding the time it takes to find hash of given difficulty at a given hash rate.
-        //      * It is the total hashes per second required to find a hash of difficulty 1.0 every second.
-        //      * This can then be used in calculing the network hash rate by block times over average of 1440 blocks.
-        //      * */
-        //     uint64 nTimeConstant = 276758250000;
+            /* This constant was determined by finding the time it takes to find hash of given difficulty at a given hash rate.
+             * It is the total hashes per second required to find a hash of difficulty 1.0 every second.
+             * This can then be used in calculing the network hash rate by block times over average of 1440 blocks.
+             * */
+            uint64_t nHashRate = 0;
+            int nHTotal = 0;
+            unsigned int nHashAverageTime = 0;
+            double nHashAverageDifficulty = 0.0;
+            if( TAO::Ledger::ChainState::nBestHeight && TAO::Ledger::ChainState::stateBest != TAO::Ledger::ChainState::stateGenesis)
+            {
+                uint64_t nTimeConstant = 276758250000;
+                    
+                TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest;
+                
+                bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 2);
+                for(;  (nHTotal < 1440 && bLastStateFound); nHTotal ++) 
+                {
+                    uint64_t nLastBlockTime = blockState.GetBlockTime();
+                    blockState = blockState.Prev();
+                    bLastStateFound = TAO::Ledger::GetLastState(blockState, 2);
 
-        //     const Core::CBlockIndex* pindex = Core::GetLastChannelIndex(Core::pindexBest, 2);
-        //     unsigned int nAverageTime = 0, nTotal = 0;
-        //     double nAverageDifficulty = 0.0;
+                    nHashAverageTime += (nLastBlockTime - blockState.GetBlockTime());
+                    nHashAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 2));
 
-        //     for( ; nTotal < 1440 && pindex->pprev; nTotal ++) {
+                }
+                // protect against getmininginfo being called before hash channel start block
+                if( nHTotal > 0)
+                {
+                    nHashAverageDifficulty /= nHTotal;
+                    nHashAverageTime /= nHTotal;
 
-        //         nAverageTime += (pindex->GetBlockTime() - Core::GetLastChannelIndex(pindex->pprev, 2)->GetBlockTime());
-        //         nAverageDifficulty += (Core::GetDifficulty(pindex->nBits, 2));
+                    /* Calculate the hashrate based on nTimeConstant. */
+                    nHashRate = (uint64_t) ((nTimeConstant / nHashAverageTime) * nHashAverageDifficulty);
+                }
+            }
 
-        //         pindex = Core::GetLastChannelIndex(pindex->pprev, 2);
-        //     }
+            json::json obj;
+            obj["averagetime"] =  (int) nHashAverageTime;
+            obj["averagedifficulty"] = nHashAverageDifficulty;
+            obj["hashrate"] = nHashRate;
 
-        //     if(nTotal == 0)
-        //     return std::string("getnetworkhashps"
-        //                         "No Blocks produced on Hashing Channel.");
-
-        //     nAverageTime       /= nTotal;
-        //     nAverageDifficulty /= nTotal;
-        //     /* TODO END **/
-
-        //     Object obj;
-        //     obj.push_back(Pair("averagetime", (int) nAverageTime));
-        //     obj.push_back(Pair("averagedifficulty", nAverageDifficulty));
-
-        //     /* Calculate the hashrate based on nTimeConstant. */
-        //     uint64 nHashRate = (nTimeConstant / nAverageTime) * nAverageDifficulty;
-
-        //     obj.push_back(Pair("hashrate", (boost::uint64_t)nHashRate));
-
-        //     return obj;
-            json::json ret;
-            return ret;
+            return obj;
         }
 
         /* Get network prime searched per second */
@@ -83,40 +87,48 @@ namespace TAO
                     "getnetworkpps"
                     " - Get network prime searched per second.");
 
-        //     /* This constant was determined by finding the time it takes to find primes at given difficulty and Primes Per Second'
-        //      * This constant was found that 2,450 Prime Per Second is required to find 1 3ch Cluster per Second.
-        //      * The difficulty changes are exponential or in other words require 50x more work per difficulty increase
-        //      */
-        //     unsigned int nTimeConstant = 2480;
+            /* This constant was determined by finding the time it takes to find primes at given difficulty and Primes Per Second'
+             * This constant was found that 2,450 Prime Per Second is required to find 1 3ch Cluster per Second.
+             * The difficulty changes are exponential or in other words require 50x more work per difficulty increase
+             */
+            uint64_t nPrimePS = 0;
+            double nPrimeAverageDifficulty = 0.0;
+            unsigned int nPrimeAverageTime = 0;
+            if( TAO::Ledger::ChainState::nBestHeight && TAO::Ledger::ChainState::stateBest != TAO::Ledger::ChainState::stateGenesis)
+            {
+                
+                unsigned int nPrimeTimeConstant = 2480;
+                int nTotal = 0;
+                TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest;
+                
+                bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
+                for(; (nTotal < 1440 && bLastStateFound); nTotal ++) 
+                {
+                    uint64_t nLastBlockTime = blockState.GetBlockTime();
+                    blockState = blockState.Prev();
+                    bLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
 
-        //     const Core::CBlockIndex* pindex = Core::GetLastChannelIndex(Core::pindexBest, 1);
-        //     unsigned int nAverageTime = 0, nTotal = 0;
-        //     double nAverageDifficulty = 0.0;
+                    nPrimeAverageTime += (nLastBlockTime - blockState.GetBlockTime());
+                    nPrimeAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 1));
 
-        //     for( ; nTotal < 1440 && pindex->pprev; nTotal ++) {
+                }
+                nPrimeAverageDifficulty /= nTotal;
+                nPrimeAverageTime /= nTotal;
 
-        //         nAverageTime += (pindex->GetBlockTime() - Core::GetLastChannelIndex(pindex->pprev, 1)->GetBlockTime());
-        //         nAverageDifficulty += (Core::GetDifficulty(pindex->nBits, 1));
+                /* Calculate the hashrate based on nTimeConstant. Set the reference from 3ch and
+                * Above since 1x and 2x were never useful starting difficulties. */
+                nPrimePS = (uint64_t)((nPrimeTimeConstant / nPrimeAverageTime) * std::pow(50.0, (nPrimeAverageDifficulty - 3.0)));
+            }
 
-        //         pindex = Core::GetLastChannelIndex(pindex->pprev, 1);
-        //     }
 
-        //     nAverageTime       /= nTotal;
-        //     nAverageDifficulty /= nTotal;
 
-        //     Object obj;
-        //     obj.push_back(Pair("averagetime", (int) nAverageTime));
-        //     obj.push_back(Pair("averagedifficulty", nAverageDifficulty));
+            
+            json::json obj;
+            obj["averagetime"] = (int) nPrimeAverageTime;
+            obj["averagedifficulty"] = nPrimeAverageDifficulty;
+            obj["primespersecond"] = nPrimePS;
 
-        //     /* Calculate the hashrate based on nTimeConstant. Set the reference from 3ch and
-        //      * Above since 1x and 2x were never useful starting difficulties. */
-        //     uint64 nHashRate = (nTimeConstant / nAverageTime) * std::pow(50.0, (nAverageDifficulty - 3.0));
-
-        //     obj.push_back(Pair("primespersecond", (boost::uint64_t)nHashRate));
-
-        //     return obj;
-            json::json ret;
-            return ret;
+            return obj;
         }
 
         /* List all the Trust Keys on the Network */

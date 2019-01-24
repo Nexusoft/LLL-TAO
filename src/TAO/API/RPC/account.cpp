@@ -1256,6 +1256,7 @@ namespace TAO
             // ssTx << tx;
             // return HexStr(ssTx.begin(), ssTx.end());
             json::json ret;
+            ret = "NOT AVAILABLE IN THIS RELEASE";
             return ret;
         }
 
@@ -1311,6 +1312,7 @@ namespace TAO
 
         //     return hashTx.GetHex();
             json::json ret;
+            ret = "NOT AVAILABLE IN THIS RELEASE";
             return ret;
         }
 
