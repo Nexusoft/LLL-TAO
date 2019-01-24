@@ -378,37 +378,36 @@ namespace TAO
                     
                     /* Get the tritium transaction  from the database*/
                     TAO::Ledger::Transaction tx;
-                    if(!LLD::legDB->ReadTx(vtx.second, tx))
-                        throw APIException( -1, "transaction is not on disk");
-
-                    if (fPrintTransactionDetail)
+                    if(LLD::legDB->ReadTx(vtx.second, tx))
                     {
-                        txinfo.push_back(tx.ToStringShort());
-                        txinfo.push_back(DateTimeStrFormat(tx.nTimestamp));
+                        if (fPrintTransactionDetail)
+                        {
+                            txinfo.push_back(tx.ToStringShort());
+                            txinfo.push_back(DateTimeStrFormat(tx.nTimestamp));
+                        }
+                        else
+                            txinfo.push_back(tx.GetHash().GetHex());
                     }
-                    else
-                        txinfo.push_back(tx.GetHash().GetHex());
                 }
                 else if(vtx.first == TAO::Ledger::TYPE::LEGACY_TX)
                 { 
                     /* Get the legacy transaction from the database. */
                     Legacy::Transaction tx;
-                    if(!LLD::legacyDB->ReadTx(vtx.second, tx))
-                        throw APIException( -1, "transaction is not on disk");
-                        
-                    if (fPrintTransactionDetail)
-                    {
-                        txinfo.push_back(tx.ToStringShort());
-                        txinfo.push_back(DateTimeStrFormat(tx.nTime));
-                        for(const Legacy::CTxIn& txin : tx.vin)
-                            txinfo.push_back(txin.ToStringShort());
-                        for(const Legacy::CTxOut& txout : tx.vout)
-                            txinfo.push_back(txout.ToStringShort());
+                    if(LLD::legacyDB->ReadTx(vtx.second, tx))
+                    {    
+                        if (fPrintTransactionDetail)
+                        {
+                            txinfo.push_back(tx.ToStringShort());
+                            txinfo.push_back(DateTimeStrFormat(tx.nTime));
+                            for(const Legacy::CTxIn& txin : tx.vin)
+                                txinfo.push_back(txin.ToStringShort());
+                            for(const Legacy::CTxOut& txout : tx.vout)
+                                txinfo.push_back(txout.ToStringShort());
+                        }
+                        else
+                            txinfo.push_back(tx.GetHash().GetHex());
                     }
-                    else
-                        txinfo.push_back(tx.GetHash().GetHex());
                 }
-
             }
             
             result["tx"] = txinfo;

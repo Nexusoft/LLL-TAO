@@ -89,6 +89,7 @@ namespace TAO
                     obj["minting_only"] = Legacy::fWalletUnlockMintOnly;
                 }
             }
+            
         //    obj.push_back(std::make_pair("errors",        Core::GetWarnings("statusbar")));
 
 
@@ -258,6 +259,9 @@ namespace TAO
                 //PS TODO
                 //obj["totalConnections"] = LLP::MINING_LLP->TotalConnections();
             }
+
+            obj["genesisblockhash"] = TAO::Ledger::ChainState::stateGenesis.GetHash().GetHex();
+            obj["currentblockhash"] = TAO::Ledger::ChainState::stateBest.GetHash().GetHex();
 
             return obj;
         }
