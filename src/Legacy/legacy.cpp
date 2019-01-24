@@ -372,11 +372,12 @@ namespace Legacy
 
 
         /* Check the block proof of work rewards. */
-        if(IsProofOfWork() && nVersion != 2 && nHeight != 2061881)
+        if(IsProofOfWork() && nVersion != 2 && nHeight != 2061881 && nHeight != 2191756)
         {
-            //height of 2061881 is an exclusion height due to mutation attacks 06/2018
-            
             //This is skipped in version 2 blocks due to the disk coinbase bug from early 2014.
+            //height of 2061881 is an exclusion height due to mutation attack 06/2018
+            //height of 2191756 is an exclusion height due to mutation attack 09/2018
+
             //Reward checks were re-enabled in version 3 blocks
             uint32_t nSize = vtx[0].vout.size();
 

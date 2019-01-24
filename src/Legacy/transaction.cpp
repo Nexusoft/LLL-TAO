@@ -975,7 +975,7 @@ namespace Legacy
         {
             /* Enforce sequence number 1 if previous block was genesis */
             if(nSequence != 1)
-                return debug::error("CBlock::CheckTrust() : first trust block and sequence is not 1 (%u)", nSequence);
+                return debug::error(FUNCTION, "first trust block and sequence is not 1: ", nSequence);
 
             /* Genesis results in a previous score of 0. */
             nScorePrev = 0;
@@ -1001,7 +1001,7 @@ namespace Legacy
 
             /* Ensure that a version 4 trust key is not expired based on new timespan rules. */
             if(trustKey.Expired(TAO::Ledger::ChainState::stateBest))
-                return debug::error("version 4 key expired.");
+                return debug::error("version 4 key expired ", trustKey.BlockAge(TAO::Ledger::ChainState::stateBest));
 
             /* Score is the total age of the trust key for version 4. */
             nScorePrev = trustKey.Age(TAO::Ledger::ChainState::stateBest.GetBlockTime());
