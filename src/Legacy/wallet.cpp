@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
 
+#include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/tritium.h>
 
@@ -1429,6 +1430,9 @@ namespace Legacy
         if (nValue <= 0)
             return std::string("Invalid amount");
 
+        if (nValue < MIN_TXOUT_AMOUNT)
+            return debug::strprintf("Send amount less than minimum of %s NXS", FormatMoney(MIN_TXOUT_AMOUNT).c_str());
+
         /* Validate balance supports value + fees */
         if (nValue + MIN_TX_FEE > GetBalance())
             return std::string("Insufficient funds");
@@ -1441,15 +1445,10 @@ namespace Legacy
         std::vector< std::pair<CScript, int64_t> > vecSend;
         vecSend.push_back(make_pair(scriptPubKey, nValue));
 
-        /* Key will be reserved for any change transaction, kept on commit */
-        CReserveKey reservekey(*this);
-
-        int64_t nFeeRequired;
-
         if (IsLocked())
         {
             /* Cannot create transaction when wallet locked */
-            std::string strError = std::string("Error: Wallet locked, unable to create transaction  ");
+            std::string strError = std::string("Wallet locked, unable to create transaction.");
             debug::log(0, FUNCTION, strError);
             return strError;
         }
@@ -1457,12 +1456,18 @@ namespace Legacy
         if (fWalletUnlockMintOnly)
         {
             /* Cannot create transaction if unlocked for mint only */
-            std::string strError = std::string("Error: Wallet unlocked for block minting only, unable to create transaction.");
+            std::string strError = std::string("Wallet unlocked for block minting only, unable to create transaction.");
             debug::log(0, FUNCTION, strError);
             return strError;
         }
 
-        if (!CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nMinDepth))
+        int64_t nFeeRequired;
+        bool isChangeKeyUsed;
+
+        /* Key will be reserved by CreateTransaction for any change transaction, kept/returned on commit */
+        CReserveKey changeKey(*this);
+
+        if (!CreateTransaction(vecSend, wtxNew, changeKey, nFeeRequired, isChangeKeyUsed, nMinDepth))
         {
             /* Transaction creation failed */
             std::string strError;
@@ -1470,16 +1475,16 @@ namespace Legacy
             {
                 /* Failure resulted because required fee caused transaction amount to exceed available balance.
                  * Really should not get this because of initial check at start of function. Could only happen
-                 * if calculates an additional fee such that nFeeRequired > MIN_TX_FEE
+                 * if it calculates an additional fee such that nFeeRequired > MIN_TX_FEE
                  */
                 strError = debug::strprintf(
-                    "SendToNexusAddress : This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  ", 
+                    "This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  ", 
                     FormatMoney(nFeeRequired).c_str());
             }
             else
             {
                 /* Other transaction creation failure */
-                strError = std::string("SendToNexusAddress : Transaction creation failed  ");
+                strError = std::string("Transaction creation failed");
             }
 
             debug::log(0, FUNCTION, strError);
@@ -1487,17 +1492,19 @@ namespace Legacy
             return strError;
         }
 
-        /* With QT interface removed, we no longer display the fee confirmation here. Successful transaction creation will be committed automatically */
-        if (!CommitTransaction(wtxNew, reservekey))
-            return std::string("SendToNexusAddress : The transaction was rejected.  This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+        /* In Tritium, with QT interface removed, we no longer display the fee confirmation here. 
+         * Successful transaction creation will be committed automatically 
+         */
+        if (!CommitTransaction(wtxNew, changeKey, isChangeKeyUsed))
+            return std::string("The transaction was rejected. This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
 
         return "";
     }
 
 
     /* Create and populate a new transaction. */
-    bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey,
-                                    int64_t& nFeeRet, const uint32_t nMinDepth)
+    bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& changeKey,
+                                    int64_t& nFeeRet, bool& isChangeKeyUsed, const uint32_t nMinDepth)
     {
         int64_t nValue = 0;
 
@@ -1508,18 +1515,19 @@ namespace Legacy
         /* Calculate total send amount */
         for (const auto& s : vecSend)
         {
+            if (s.second < MIN_TXOUT_AMOUNT)
+                return false;
+
             nValue += s.second;
-
-            if (nValue < 0)
-                return false; // Negative value invalid
         }
-
-        /* Link transaction to wallet, don't add it yet (will be done when transaction committed) */
-        wtxNew.BindWallet(this);
 
         {
             LOCK(cs_wallet);
 
+            /* Link wallet to transaction, don't add to wallet yet (will be done when transaction committed) */
+            wtxNew.BindWallet(this);
+
+            /* Set fee to minimum for first loop iteration */
             nFeeRet = MIN_TX_FEE;
 
             /* This loop is generally executed only once, unless the size of the transaction requires a fee increase.
@@ -1544,16 +1552,34 @@ namespace Legacy
                 /* Initialize total value of all inputs */
                 int64_t nValueIn = 0;
 
-                /* Verify that from account has value, or use "default" */
-                if (wtxNew.strFromAccount == "")
-                    wtxNew.strFromAccount = "default";
-
                 /* Choose coins to use for transaction input */
-                if (!SelectCoins(nTotalValue, wtxNew.nTime, setSelectedCoins, nValueIn, wtxNew.strFromAccount, nMinDepth))
+                bool fSelectCoinsSuccessful = false;
+
+                if (wtxNew.strFromAccount == "")
+                {
+                    /* No value for strFromAccount, so use default for SelectCoins */
+                    fSelectCoinsSuccessful = SelectCoins(nTotalValue, wtxNew.nTime, setSelectedCoins, nValueIn, "*", nMinDepth);
+                }
+                else
+                {
+                    /* RPC server calls do use strFromAccount, so pass this value forward */
+                    fSelectCoinsSuccessful = SelectCoins(nTotalValue, wtxNew.nTime, setSelectedCoins, nValueIn, wtxNew.strFromAccount, nMinDepth);
+                }
+
+                if (!fSelectCoinsSuccessful)
                     return false;
 
                 /* Amount of change needed is total of inputs - (total sent + fee) */
                 int64_t nChange = nValueIn - nTotalValue;
+
+                isChangeKeyUsed = false;
+
+                /* Any change below minimum tx amount is moved to fee */
+                if (nChange > 0 && nChange < MIN_TXOUT_AMOUNT)
+                {
+                    nFeeRet += nChange;
+                    nChange = 0;
+                }
 
                 /* When change needed, create a txOut for it and insert into transaction outputs */
                 if (nChange > 0)
@@ -1562,8 +1588,10 @@ namespace Legacy
 
                     if (!config::GetBoolArg("-avatar", true)) //Avatar enabled by default
                     {
+                        isChangeKeyUsed = true; 
+
                         /* When not avatar mode, use a new key pair from key pool for change */
-                        std::vector<uint8_t> vchPubKeyChange = reservekey.GetReservedKey();
+                        std::vector<uint8_t> vchPubKeyChange = changeKey.GetReservedKey();
 
                         /* Fill a vout to return change */
                         scriptChange.SetNexusAddress(vchPubKeyChange);
@@ -1573,12 +1601,16 @@ namespace Legacy
                         if(!ExtractAddress(scriptChange, address) || !address.IsValid())
                             return false;
 
-                        addressBook.SetAddressBookName(address, wtxNew.strFromAccount);
+                        /* Assign address book name for change key, or use "default" if blank or we received it with wildcard set */
+                        if (wtxNew.strFromAccount == "" || wtxNew.strFromAccount == "*")
+                            addressBook.SetAddressBookName(address, "default");
+                        else
+                            addressBook.SetAddressBookName(address, wtxNew.strFromAccount);
 
                     }
                     else
                     {
-                        /* For avatar mode, return change to the last address in the input set */
+                        /* For avatar mode, return change to the last address retrieved by iterating the input set */
                         for(auto item : setSelectedCoins)
                         {
                             const CWalletTx& selectedTransaction = *(item.first);
@@ -1593,12 +1625,10 @@ namespace Legacy
                     wtxNew.vout.insert(position, CTxOut(nChange, scriptChange));
 
                 }
-                else
-                    reservekey.ReturnKey();
 
                 /* Fill vin with selected inputs */
                 for(const auto coin : setSelectedCoins)
-                    wtxNew.vin.push_back(CTxIn(coin.first->GetHash(),coin.second));
+                    wtxNew.vin.push_back(CTxIn(coin.first->GetHash(), coin.second));
 
                 /* Sign inputs to unlock previously unspent outputs */
                 uint32_t nIn = 0;
@@ -1625,10 +1655,11 @@ namespace Legacy
                     continue;
                 }
 
-                /* Fill vtxPrev by copying from previous transactions vtxPrev */
+                /* Fill vtxPrev by copying vtxPrev from previous transactions */
                 wtxNew.AddSupportingTransactions();
 
                 wtxNew.fTimeReceivedIsTxTime = true;
+                wtxNew.nTimeReceived = wtxNew.nTime;
 
                 break;
             }
@@ -1638,28 +1669,37 @@ namespace Legacy
 
 
     /* Commits a transaction and broadcasts it to the network. */
-    bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
+    bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& changeKey, const bool isChangeKeyUsed)
     {
+        debug::log(0, FUNCTION, wtxNew.ToString());
+
+        /* This is only to keep the database open to defeat the auto-flush for the
+         * duration of this scope.  This is the only place where this optimization
+         * maybe makes sense; please don't do it anywhere else.
+         */
+        CWalletDB* pwalletdb = nullptr;
+        if (fFileBacked)
+            pwalletdb = new CWalletDB(strWalletFile,"r");
+
+        /* Add tx to wallet, because if it has change it's also ours, otherwise just for transaction history.
+         * This will update to wallet database
+         */
+        AddToWallet(wtxNew);
+
+        if (isChangeKeyUsed)
+        {
+            /* Transaction did not use the change key. Return it. */
+            changeKey.ReturnKey();
+        }
+        else
+        {
+            /* Transaction used the change key. Remove key pair from key pool so it won't be used again */
+            changeKey.KeepKey();
+        }
+
+
         {
             LOCK(cs_wallet);
-
-            debug::log(0, FUNCTION, wtxNew.ToString());
-
-            /* This is only to keep the database open to defeat the auto-flush for the
-             * duration of this scope.  This is the only place where this optimization
-             * maybe makes sense; please don't do it anywhere else.
-             */
-            CWalletDB* pwalletdb = nullptr;
-            if (fFileBacked)
-                pwalletdb = new CWalletDB(strWalletFile,"r");
-
-            /* Take key pair from key pool so it won't be used again */
-            reservekey.KeepKey();
-
-            /* Add tx to wallet, because if it has change it's also ours, otherwise just for transaction history.
-             * This will update to wallet database
-             */
-            AddToWallet(wtxNew);
 
             /* Mark old coins as spent */
             std::set<CWalletTx*> setCoins;
@@ -1668,30 +1708,29 @@ namespace Legacy
                 CWalletTx& prevTx = mapWallet[txin.prevout.hash];
                 prevTx.BindWallet(this);
                 prevTx.MarkSpent(txin.prevout.n);
-                prevTx.WriteToDisk();
+                prevTx.WriteToDisk(); //Stores to wallet database
             }
-
-            if (fFileBacked)
-            {
-                pwalletdb->Close();
-                delete pwalletdb;
-            }
-
-            /* Add to tracking for how many getdata requests our transaction gets */
-            /* This entry track the transaction hash (not block hash) */
-            mapRequestCount[wtxNew.GetHash()] = 0;
-
-            /* Broadcast transaction to network */
-//TODO implementation for AcceptToMemoryPool()
-//            if (!wtxNew.AcceptToMemoryPool())
-//            {
-//                /* This must not fail. The transaction has already been signed and recorded. */
-//                debug::log(0, FUNCTION, "Error: Transaction not valid");
-//                return false;
-//            }
-
-            wtxNew.RelayWalletTransaction();
         }
+
+        if (fFileBacked)
+        {
+            pwalletdb->Close();
+            delete pwalletdb;
+        }
+
+        /* Add to tracking for how many getdata requests our transaction gets */
+        /* This entry tracks the transaction hash (not block hash) */
+        mapRequestCount[wtxNew.GetHash()] = 0;
+
+        /* Broadcast transaction to network */
+        if (!TAO::Ledger::mempool.Accept(wtxNew))
+        {
+            /* This must not fail. The transaction has already been signed and recorded. */
+            debug::log(0, FUNCTION, "Error: Transaction not valid");
+            return false;
+        }
+
+        wtxNew.RelayWalletTransaction();
 
         return true;
     }
@@ -1849,7 +1888,8 @@ namespace Legacy
     bool CWallet::SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const uint32_t nConfMine, const uint32_t nConfTheirs,
                                 std::set<std::pair<const CWalletTx*, uint32_t> >& setCoinsRet, int64_t& nValueRet, const std::string& strAccount)
     {
-        /* Add Each Input to Transaction. */
+        /* cs_wallet should already be locked when this is called (CreateTransaction) */
+
         setCoinsRet.clear();
         std::vector<CWalletTx> vallWalletTx;
 
@@ -1860,18 +1900,17 @@ namespace Legacy
             debug::log(0, FUNCTION, "Selecting coins for account ", strAccount);
         }
 
-        {
-            LOCK(cs_wallet);
+        /* Build a set of wallet transactions from all transaction in the wallet map */
+        vallWalletTx.reserve(mapWallet.size());
 
-            vallWalletTx.reserve(mapWallet.size());
+        for (auto item : mapWallet)
+            vallWalletTx.push_back(item.second);
 
-            for (auto item : mapWallet)
-                vallWalletTx.push_back(item.second);
 
-        }
-
+        /* Randomly order the transactions as potential inputs */
         std::random_shuffle(vallWalletTx.begin(), vallWalletTx.end(), LLC::GetRandInt);
 
+        /* Loop through all transactions, finding and adding available unspent balance to the list of outputs until reach nTargetValue */
         for(const CWalletTx& walletTx : vallWalletTx)
         {
             /* Can't spend transaction from after spend time */
@@ -1890,6 +1929,7 @@ namespace Legacy
             if ((walletTx.IsCoinBase() || walletTx.IsCoinStake()) && walletTx.GetBlocksToMaturity() > 0)
                 continue;
 
+            /* So far, the transaction itself is available, now have to check each output to see if there are any we can use */
             for (uint32_t i = 0; i < walletTx.vout.size(); i++)
             {
                 /* Can't spend outputs that are already spent or not belonging to this wallet */

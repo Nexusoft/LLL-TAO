@@ -910,17 +910,20 @@ namespace Legacy
          *  @param[in,out] wtxNew Wallet transaction, create will populate with transaction data
          *                        Should have strFromAccount populated with account transaction is sent from. If not, uses "default"
          *
-         *  @param[in,out] reservekey Key reserved for use by change output, key will be returned if no change output
+         *  @param[in,out] changeKey Key reserved for use by change output, key will be returned if no change output
          *
          *  @param[out] nFeeRet Fee paid to send the created transaction
+         *
+         *  @param[out] isChangeKeyUsed Set true if the change key was used to create the transaction, false otherwise
+         *                              Pass this to CommitTransaction. 
          *
          *  @param[in] nMinDepth Minimum depth required before prior transaction output selected as input to this transaction
          *
          *  @return true if transaction successfully created
          *
          **/
-        bool CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey,
-                               int64_t& nFeeRet, const uint32_t nMinDepth = 1);
+        bool CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& changeKey,
+                               int64_t& nFeeRet, bool& isChangeKeyUsed, const uint32_t nMinDepth = 1);
 
 
         /** CommitTransaction
@@ -929,12 +932,14 @@ namespace Legacy
          *
          *  @param[in,out] wtxNew Wallet transaction, commit will relay transaction
          *
-         *  @param[in,out] reservekey Key reserved for use by change output, key will be kept on successful commit
+         *  @param[in,out] changeKey Key reserved for use by change output, key will be kept on successful commit
+         *
+         *  @param[in] isChangeKeyUsed If true, commit will keep the key. If false, commit will return the key.
          *
          *  @return true if transaction successfully committed
          *
          **/
-        bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey);
+        bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& changeKey, const bool isChangeKeyUsed);
 
 
         /** AddCoinstakeInputs

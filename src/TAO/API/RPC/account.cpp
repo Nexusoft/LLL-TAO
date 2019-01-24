@@ -638,14 +638,15 @@ namespace TAO
             // Send
             Legacy::CReserveKey keyChange(Legacy::CWallet::GetInstance());
             int64_t nFeeRequired = 0;
-            bool fCreated = Legacy::CWallet::GetInstance().CreateTransaction(vecSend, wtx, keyChange, nFeeRequired);
+            bool isChangeKeyUsed = false;
+            bool fCreated = Legacy::CWallet::GetInstance().CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, isChangeKeyUsed);
             if (!fCreated)
             {
                 if (totalAmount + nFeeRequired > Legacy::CWallet::GetInstance().GetBalance())
                     throw APIException(-6, "Insufficient funds");
                 throw APIException(-4, "Transaction creation failed");
             }
-            if (!Legacy::CWallet::GetInstance().CommitTransaction(wtx, keyChange))
+            if (!Legacy::CWallet::GetInstance().CommitTransaction(wtx, keyChange, isChangeKeyUsed))
                 throw APIException(-4, "Transaction commit failed");
 
             return wtx.GetHash().GetHex();
