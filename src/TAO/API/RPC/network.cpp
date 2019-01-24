@@ -315,7 +315,8 @@ namespace TAO
             // return pblockindex->phashBlock->GetHex();
 
             json::json ret;
-            ret = "This method has been deprecated.";
+            ret = "This method has been deprecated. Please use the current block hash from getmininginfo\n"
+                    "in conjunction with the previousblockhash in getblock to traverse the chain to your desired block height";
             return ret;
         }
 
