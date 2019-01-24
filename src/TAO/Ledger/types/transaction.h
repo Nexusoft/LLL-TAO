@@ -76,10 +76,6 @@ namespace TAO
             std::vector<uint8_t> vchSig;
 
 
-            //memory only read position
-            mutable uint32_t nReadPos;
-
-
             //serialization methods
             IMPLEMENT_SERIALIZE
             (
@@ -90,7 +86,7 @@ namespace TAO
                 READWRITE(ssRegister);
 
                 /* Ledger layer */
-                READWRITE(this->nVersion);
+                READWRITE(nVersion);
                 READWRITE(nSequence);
                 READWRITE(nTimestamp);
                 READWRITE(hashNext);
@@ -104,13 +100,17 @@ namespace TAO
 
             /** Default Constructor. **/
             Transaction()
-            : nVersion(1)
+            : ssOperation()
+            , ssRegister()
+            , nVersion(1)
             , nSequence(0)
             , nTimestamp(runtime::unifiedtimestamp())
             , hashNext(0)
             , hashGenesis(0)
             , hashPrevTx(0)
-            , nReadPos(0) {}
+            , vchPubKey()
+            , vchSig()
+            {}
 
 
             /** Operator Overload <<

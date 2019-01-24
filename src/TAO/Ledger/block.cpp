@@ -212,14 +212,14 @@ namespace TAO
 
 
         /* Sign the block with the key that found the block. */
-        bool Block::GenerateSignature(LLC::ECKey key)
+        bool Block::GenerateSignature(const LLC::ECKey& key)
         {
             return key.Sign((nVersion == 4) ? SignatureHash() : GetHash(), vchBlockSig, 1024);
         }
 
 
         /* Check that the block signature is a valid signature. */
-        bool Block::VerifySignature(LLC::ECKey key) const
+        bool Block::VerifySignature(const LLC::ECKey& key) const
         {
             if (vchBlockSig.empty())
                 return false;
