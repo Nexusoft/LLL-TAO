@@ -22,7 +22,9 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    /** Core API
+    /** CoreNode
+     *
+     * Core API
      *
      *  A node that can speak over HTTP protocols.
      *

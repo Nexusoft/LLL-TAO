@@ -17,14 +17,17 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 #include <condition_variable>
 #include <functional>
-
 #include <atomic>
 
 namespace LLP
 {
 
-    /** Base Template Thread Class for Server base. Used for Core LLP Packet Functionality.
-        Not to be inherited, only for use by the LLP Server Base Class. **/
+    /** DataThread
+     *
+     *  Base Template Thread Class for Server base. Used for Core LLP Packet Functionality.
+     *  Not to be inherited, only for use by the LLP Server Base Class.
+     *
+     **/
     template <class ProtocolType>
     class DataThread
     {
@@ -183,7 +186,7 @@ namespace LLP
             CONDITION.notify_all();
         }
 
-        /* Disconnects all connections by issuing a DISCONNECT_FORCE event message 
+        /* Disconnects all connections by issuing a DISCONNECT_FORCE event message
             and then removes the connection from this data thread*/
         void DisconnectAll()
         {
@@ -192,7 +195,7 @@ namespace LLP
             {
                 CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_FORCE);
                 Remove(nIndex);
-            }   
+            }
         }
 
 

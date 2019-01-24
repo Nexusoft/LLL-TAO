@@ -33,7 +33,11 @@ namespace LLP
     const uint8_t MESSAGE_START_MAINNET[4] = { 0x05, 0x0d, 0x59, 0xe9 };
 
 
-    /** Class to handle sending and receiving of More Complese Message LLP Packets. **/
+    /** LegacyPacket
+     *
+     *  Class to handle sending and receiving of More Complese Message LLP Packets.
+     *
+     ***/
     class LegacyPacket
     {
     public:
@@ -194,7 +198,7 @@ namespace LLP
 
             std::vector<uint8_t> BYTES(ssHeader.begin(), ssHeader.end());
             BYTES.insert(BYTES.end(), DATA.begin(), DATA.end());
-            
+
             return BYTES;
         }
     };

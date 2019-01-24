@@ -20,14 +20,18 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    /** Services flags */
+    /* Services flags */
     enum
     {
         NODE_NETWORK = (1 << 0),
     };
 
 
-    /** An Address with information about it as peer (Legacy) */
+    /** LegacyAddress
+     *
+     *  An Address with information about it as peer (Legacy)
+     *
+     **/
     class LegacyAddress : public BaseAddress
     {
     public:

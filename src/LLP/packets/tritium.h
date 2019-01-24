@@ -46,7 +46,11 @@ namespace LLP
     };
 
 
-    /** Class to handle sending and receiving of More Complese Message LLP Packets. **/
+    /** TritiumPacket
+     *
+     *  Class to handle sending and receiving of More Complese Message LLP Packets.
+     *
+     **/
     class TritiumPacket
     {
     public:

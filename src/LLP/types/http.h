@@ -27,7 +27,7 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /** HTTP Node
+    /** HTTPNode
      *
      *  A node that can speak over HTTP protocols.
      *

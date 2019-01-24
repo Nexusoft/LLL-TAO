@@ -23,7 +23,11 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /* Class to handle sending and receiving of LLP Packets. */
+    /** HTTPPacket
+     *
+     *  Class to handle sending and receiving of LLP Packets.
+     *
+     **/
     class HTTPPacket
     {
     public:
