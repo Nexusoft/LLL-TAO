@@ -208,7 +208,7 @@ namespace TAO
             /** Not operator overloading. **/
             bool operator !(void)
             {
-                return !IsNull();
+                return IsNull();
             }
 
 
@@ -311,7 +311,7 @@ namespace TAO
              *
              **/
             uint1024_t StakeHash() const;
-        
+
         };
 
 

@@ -295,7 +295,7 @@ namespace TAO
                 throw APIException(-24, "No states found");
 
             /* Build the response JSON. */
-            for(auto & state : states)
+            for(const auto& state : states)
             {
                 json::json obj;
                 obj["version"]  = state.nVersion;

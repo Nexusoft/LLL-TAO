@@ -57,7 +57,7 @@ namespace TAO
 
                 /* Iterate backwards. */
                 state = state.Prev();
-                if(state.IsNull())
+                if(!state)
                     return false;
             }
 
@@ -118,7 +118,7 @@ namespace TAO
         {
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();
-            if(statePrev.IsNull())
+            if(!statePrev)
                 return debug::error(FUNCTION, "previous block state not found");
 
             /* Compute the Chain Trust */
@@ -213,7 +213,7 @@ namespace TAO
                 time.Start();
 
                 /* Watch for genesis. */
-                if (ChainState::stateGenesis.IsNull())
+                if (!ChainState::stateGenesis.IsNull())
                 {
                     /* Write the best chain pointer. */
                     if(!LLD::legDB->WriteBestChain(GetHash()))
@@ -245,7 +245,7 @@ namespace TAO
 
                             /* Iterate backwards in chain. */
                             longer = longer.Prev();
-                            if(longer.IsNull())
+                            if(!longer)
                                 return debug::error(FUNCTION, "failed to find longer ancestor block");
                         }
 
@@ -256,7 +256,7 @@ namespace TAO
                         /* Iterate backwards to find fork. */
                         vDisconnect.push_back(fork);
                         fork = fork.Prev();
-                        if(fork.IsNull())
+                        if(!fork)
                         {
                             /* Abort the Transaction. */
                             LLD::legDB->TxnAbort();
@@ -283,7 +283,7 @@ namespace TAO
                     std::vector<std::pair<uint8_t, uint512_t>> vResurrect;
 
                     /* Disconnect given blocks. */
-                    for(auto & state : vDisconnect)
+                    for(auto& state : vDisconnect)
                     {
                         /* Connect the block. */
                         if(!state.Disconnect())
@@ -302,7 +302,7 @@ namespace TAO
                         }
 
                         /* Add transactions into memory pool. */
-                        for(auto tx : state.vtx)
+                        for(const auto& tx : state.vtx)
                             vResurrect.push_back(tx);
                     }
 
@@ -314,7 +314,7 @@ namespace TAO
 
                     /* Reverse the blocks to connect to connect in ascending height. */
                     std::reverse(vConnect.begin(), vConnect.end());
-                    for(auto & state : vConnect)
+                    for(auto& state : vConnect)
                     {
 
                         /* Connect the block. */
@@ -334,7 +334,7 @@ namespace TAO
                         }
 
                         /* Remove transactions from memory pool. */
-                        for(auto tx : state.vtx)
+                        for(const auto& tx : state.vtx)
                             vDelete.push_back(tx.second);
 
                         /* Harden a checkpoint if there is any. */
@@ -343,11 +343,11 @@ namespace TAO
 
 
                     /* Remove transactions from memory pool. */
-                    for(auto & hashTx : vDelete)
+                    for(const auto& hashTx : vDelete)
                         mempool.Remove(hashTx);
 
                     /* Add transaction back to memory pool. */
-                    for(auto & txAdd : vResurrect)
+                    for(const auto& txAdd : vResurrect)
                     {
                         if(txAdd.first == TYPE::TRITIUM_TX)
                         {
@@ -420,7 +420,7 @@ namespace TAO
         {
 
             /* Check through all the transactions. */
-            for(const auto & tx : vtx)
+            for(const auto& tx : vtx)
             {
                 /* Only work on tritium transactions for now. */
                 if(tx.first == TYPE::TRITIUM_TX)
@@ -548,7 +548,7 @@ namespace TAO
         bool BlockState::Disconnect()
         {
             /* Check through all the transactions. */
-            for(auto tx : vtx)
+            for(const auto& tx : vtx)
             {
                 /* Only work on tritium transactions for now. */
                 if(tx.first == TYPE::TRITIUM_TX)
@@ -662,7 +662,7 @@ namespace TAO
             /* Handle the verbose output for transactions. */
             if(nState & debug::flags::tx)
             {
-                for(auto tx : vtx)
+                for(const auto& tx : vtx)
                     strDebug += debug::strprintf("Proof(nType = %u, hash = %s)\n", tx.first, tx.second);
             }
 

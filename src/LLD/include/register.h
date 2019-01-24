@@ -215,7 +215,7 @@ namespace LLD
                 return false;
 
             /* Iterate the list of keys. */
-            for(auto & key : vKeys)
+            for(const auto& key : vKeys)
             {
                 std::vector<uint8_t> vData;
                 if(!Get(key, vData))
