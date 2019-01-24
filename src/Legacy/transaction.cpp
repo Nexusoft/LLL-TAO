@@ -602,7 +602,7 @@ namespace Legacy
                 txtype += "trust";
             else if(IsGenesis())
                 txtype += "genesis";
-            else 
+            else
                 txtype += "user";
         str += debug::strprintf("%s %s", GetHash().ToString().c_str(), txtype.c_str());
         return str;
@@ -870,8 +870,9 @@ namespace Legacy
                 return debug::error(FUNCTION, GetHash().ToString().substr(0, 10), " failed to get coinstake interest");
 
             /* Check that the interest is within range. */
-            if (vout[0].nValue > nInterest + nValueIn)
-                return debug::error(FUNCTION, GetHash().ToString().substr(0,10), " stake reward mismatch");
+            //add tolerance to stake reward of + 1 (viz.) for version 4 and below blocks
+            if (vout[0].nValue > nInterest + nValueIn + (state.nVersion < 5 ? 1 : 0))
+                return debug::error(FUNCTION, GetHash().ToString().substr(0,10), " stake reward ", vout[0].nValue, " mismatch ", nInterest + nValueIn);
         }
         else if (nValueIn < GetValueOut())
             return debug::error(FUNCTION, GetHash().ToString().substr(0,10), "value in < value out");
