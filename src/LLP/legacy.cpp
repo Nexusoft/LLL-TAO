@@ -390,7 +390,7 @@ namespace LLP
                 LEGACY_SERVER->pAddressManager->SetLatency(nLatency, GetAddress());
 
             /* Debug Level 3: output Node Latencies. */
-            debug::log(3, NODE, "Latency (Nonce ", nonce, " - ", nLatency, " ms)");
+            debug::log(3, NODE, "Latency (Nonce ", std::hex, nonce, " - ", nLatency, " ms)");
         }
 
 
