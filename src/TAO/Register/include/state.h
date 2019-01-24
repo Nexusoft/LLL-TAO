@@ -60,7 +60,7 @@ namespace TAO
 
 
             //memory only read position
-            uint32_t nReadPos;
+            mutable uint32_t nReadPos;
 
 
             IMPLEMENT_SERIALIZE
@@ -139,14 +139,14 @@ namespace TAO
 
 
             /** Operator overload to check for equivilence. **/
-            bool operator==(const State& state)
+            bool operator==(const State& state) const
             {
                 return GetHash() == state.GetHash();
             }
 
 
             /** Operator overload to check for non-equivilence. **/
-            bool operator!=(const State& state)
+            bool operator!=(const State& state) const
             {
                 return GetHash() != state.GetHash();
             }
@@ -174,7 +174,7 @@ namespace TAO
 
 
             /** Flag to determine if the state register has been pruned. **/
-            bool IsPruned()
+            bool IsPruned() const
             {
                 return (nVersion == 0 && vchState.size() == 0 && hashChecksum != 0);
             }
@@ -217,14 +217,14 @@ namespace TAO
 
 
             /** Get the State from the Register. **/
-            std::vector<uint8_t> GetState()
+            const std::vector<uint8_t>& GetState() const
             {
                 return vchState;
             }
 
 
             /** Set the State from Byte Vector. **/
-            void SetState(std::vector<uint8_t> vchStateIn)
+            void SetState(const std::vector<uint8_t>& vchStateIn)
             {
                 vchState = vchStateIn;
 
@@ -241,7 +241,7 @@ namespace TAO
 
 
             /** Detect end of register stream. */
-            bool end()
+            bool end() const
             {
                 return nReadPos >= vchState.size();
             }
@@ -256,7 +256,7 @@ namespace TAO
              *  @param[in] nSize The total number of bytes to read
              *
              **/
-            State& read(char* pch, int nSize)
+            const State& read(char* pch, int nSize) const
             {
                 /* Check size constraints. */
                 if(nReadPos + nSize > vchState.size())
@@ -316,7 +316,7 @@ namespace TAO
              *  @param[out] obj The object to de-serialize from ledger data
              *
              **/
-            template<typename Type> State& operator>>(Type& obj)
+            template<typename Type> const State& operator>>(Type& obj) const
             {
                 /* Unserialize from the stream. */
                 ::Unserialize(*this, obj, (uint32_t)SER_REGISTER, nVersion);

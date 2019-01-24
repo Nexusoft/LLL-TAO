@@ -32,7 +32,7 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/debug.h>
 #include <Util/include/convert.h>
-#include <Util/include/filesystem.h> 
+#include <Util/include/filesystem.h>
 #include <Util/include/runtime.h>
 
 
@@ -337,7 +337,7 @@ namespace Legacy
 
         bool fIsEncrypted = false;
 
-        { 
+        {
             LOCK(wallet.cs_wallet);
 
             /* Reset default key into wallet to clear any current value. (done now so it stays empty if none loaded) */
@@ -596,7 +596,7 @@ namespace Legacy
         /* Remove transactions flagged for removal */
         if(vWalletRemove.size() > 0)
         {
-            for(auto hash : vWalletRemove)
+            for(const auto& hash : vWalletRemove)
             {
                 EraseTx(hash);
                 wallet.mapWallet.erase(hash);

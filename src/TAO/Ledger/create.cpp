@@ -174,7 +174,7 @@ namespace TAO
             mempool.List(vHashes);
 
             /* Add each transaction. */
-            for(auto hash : vHashes)
+            for(const auto& hash : vHashes)
             {
                 /* Check the Size limits of the Current Block. */
                 if (::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 193 >= MAX_BLOCK_SIZE)

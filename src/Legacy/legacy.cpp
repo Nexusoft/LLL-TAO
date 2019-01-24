@@ -244,7 +244,7 @@ namespace Legacy
 
 
         /* Check all the transactions. */
-        for(auto & tx : vtx)
+        for(const auto& tx : vtx)
         {
             /* Insert txid into set to check for duplicates. */
             uniqueTx.insert(tx.GetHash());

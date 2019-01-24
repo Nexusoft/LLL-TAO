@@ -83,7 +83,7 @@ namespace LLP
             CONDITION.notify_all();
             DATA_THREAD.join();
 
-            for(auto & CONNECTION : CONNECTIONS)
+            for(auto& CONNECTION : CONNECTIONS)
                 if(CONNECTION)
                     delete CONNECTION;
         }
@@ -183,7 +183,7 @@ namespace LLP
             CONDITION.notify_all();
         }
 
-        /* Disconnects all connections by issuing a DISCONNECT_FORCE event message 
+        /* Disconnects all connections by issuing a DISCONNECT_FORCE event message
             and then removes the connection from this data thread*/
         void DisconnectAll()
         {
@@ -192,7 +192,7 @@ namespace LLP
             {
                 CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_FORCE);
                 Remove(nIndex);
-            }   
+            }
         }
 
 

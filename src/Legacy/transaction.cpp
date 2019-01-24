@@ -86,7 +86,7 @@ namespace Legacy
 		if ((int64_t)nLockTime < ((int64_t)nLockTime < LOCKTIME_THRESHOLD ? (int64_t)nBlockHeight : nBlockTime))
 			return true;
 
-		for(auto txin : vin)
+		for(const auto& txin : vin)
 			if (!txin.IsFinal())
 				return false;
 
@@ -210,7 +210,7 @@ namespace Legacy
 	/* Check for standard transaction types */
 	bool Transaction::IsStandard() const
     {
-        for(auto txin : vin)
+        for(const auto& txin : vin)
         {
             // Biggest 'standard' txin is a 3-signature 3-of-3 CHECKMULTISIG
             // pay-to-script-hash, which is 3 ~80-byte signatures, 3
@@ -222,7 +222,7 @@ namespace Legacy
                 return false;
         }
 
-        for(auto txout : vout)
+        for(const auto& txout : vout)
             if (!Legacy::IsStandard(txout.scriptPubKey))
                 return false;
 
@@ -465,7 +465,7 @@ namespace Legacy
 	uint32_t Transaction::GetLegacySigOpCount() const
     {
         unsigned int nSigOps = 0;
-        for(auto txin : vin)
+        for(const auto& txin : vin)
         {
             if(txin.IsStakeSig())
                 continue;
@@ -473,7 +473,7 @@ namespace Legacy
             nSigOps += txin.scriptSig.GetSigOpCount(false);
         }
 
-        for(auto txout : vout)
+        for(const auto& txout : vout)
         {
             nSigOps += txout.scriptPubKey.GetSigOpCount(false);
         }
@@ -503,7 +503,7 @@ namespace Legacy
 	uint64_t Transaction::GetValueOut() const
 	{
 		int64_t nValueOut = 0;
-		for(auto txout : vout)
+		for(const auto& txout : vout)
 		{
 			nValueOut += txout.nValue;
 			if (!MoneyRange(txout.nValue) || !MoneyRange(nValueOut))
@@ -570,7 +570,7 @@ namespace Legacy
         /* To limit dust spam, require MIN_TX_FEE/MIN_RELAY_TX_FEE if any output is less than 0.01 */
         if (nMinFee < nBaseFee)
         {
-            for(auto txout : vout)
+            for(const auto& txout : vout)
                 if (txout.nValue < CENT)
                     nMinFee = nBaseFee;
         }
@@ -622,9 +622,9 @@ namespace Legacy
             vout.size(),
             nLockTime);
 
-        for (auto txin : vin)
+        for (const auto& txin : vin)
             str += "    " + txin.ToString() + "";
-        for (auto txout : vout)
+        for (const auto& txout : vout)
             str += "    " + txout.ToString() + "";
         return str;
     }
@@ -654,7 +654,7 @@ namespace Legacy
 
         /* Check for negative or overflow output values */
         int64_t nValueOut = 0;
-        for(auto txout : vout)
+        for(const auto& txout : vout)
         {
             /* Checkout for empty outputs. */
             if (txout.IsEmpty() && (!IsCoinBase()) && (!IsCoinStake()))
@@ -676,7 +676,7 @@ namespace Legacy
 
         /* Check for duplicate inputs */
         std::set<COutPoint> vInOutPoints;
-        for(auto txin : vin)
+        for(const auto& txin : vin)
         {
             if (vInOutPoints.count(txin.prevout))
                 return false;
@@ -687,7 +687,7 @@ namespace Legacy
         /* Check for null previous outputs. */
         if (!IsCoinBase() && !IsCoinStake())
         {
-            for(auto txin : vin)
+            for(const auto& txin : vin)
                 if (txin.prevout.IsNull())
                     return debug::error(FUNCTION, "prevout is null");
         }

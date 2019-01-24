@@ -78,7 +78,7 @@ namespace config
             mapMultiArgs[psz].push_back(pszValue);
         }
 
-        for(auto entry : mapArgs)
+        for(const auto& entry : mapArgs)
         {
             std::string name = entry.first;
 

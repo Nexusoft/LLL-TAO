@@ -77,7 +77,7 @@ namespace TAO
 
 
             //memory only read position
-            uint32_t nReadPos;
+            mutable uint32_t nReadPos;
 
 
             //serialization methods
