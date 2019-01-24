@@ -425,7 +425,7 @@ namespace Legacy
                         vWalletRemove.push_back(hash);
                     }
                     else
-                        wtx.BindWallet(&wallet);
+                        wtx.BindWallet(wallet);
 
                 }
 

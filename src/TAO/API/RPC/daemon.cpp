@@ -66,28 +66,28 @@ namespace TAO
             {
                 LLP::LEGACY_SERVER->DisconnectAll();
 
-                if(config::mapMultiArgs["-addnode"].size() > 0)
-                {
-                    uint16_t port = static_cast<uint16_t>(config::GetArg(
-                        "-port", config::fTestNet ? 8323 : 9323));
+                uint16_t port = static_cast<uint16_t>(config::GetArg(
+                    "-port", config::fTestNet ? 8323 : 9323));
 
-                    for(auto node : config::mapMultiArgs["-addnode"])
-                        LLP::LEGACY_SERVER->AddNode(node, port);
-                }
+                for(auto node : config::mapMultiArgs["-connect"])
+                    LLP::LEGACY_SERVER->AddConnection(node, port);
+
+                for(auto node : config::mapMultiArgs["-addnode"])
+                    LLP::LEGACY_SERVER->AddNode(node, port);
             }
 
             if(LLP::TRITIUM_SERVER)
             {
                 LLP::TRITIUM_SERVER->DisconnectAll();
 
-                if(config::mapMultiArgs["-addnode"].size() > 0)
-                {
-                    uint16_t port = static_cast<uint16_t>(config::GetArg(
-                        "-port", config::fTestNet ? 8888 : 9888));
+                uint16_t port = static_cast<uint16_t>(config::GetArg(
+                    "-port", config::fTestNet ? 8888 : 9888));
 
-                    for(auto node : config::mapMultiArgs["-addnode"])
-                        LLP::TRITIUM_SERVER->AddNode(node, port);
-                }
+                for(auto node : config::mapMultiArgs["-connect"])
+                    LLP::TRITIUM_SERVER->AddConnection(node, port);
+
+                for(auto node : config::mapMultiArgs["-addnode"])
+                    LLP::TRITIUM_SERVER->AddNode(node, port);
 
             }
 

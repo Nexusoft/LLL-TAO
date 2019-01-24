@@ -73,7 +73,7 @@ namespace TAO
             mapFunctions["getdifficulty"] = Function(std::bind(&RPC::GetDifficulty, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getsupplyrates"] = Function(std::bind(&RPC::GetSupplyRates, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getmoneysupply"] = Function(std::bind(&RPC::GetMoneySupply, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["getblockHash"] = Function(std::bind(&RPC::GetBlockHash, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["getblockhash"] = Function(std::bind(&RPC::GetBlockHash, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["isorphan"] = Function(std::bind(&RPC::IsOrphan, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getblock"] = Function(std::bind(&RPC::GetBlock, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["backupwallet"] = Function(std::bind(&RPC::BackupWallet, this, std::placeholders::_1, std::placeholders::_2));
