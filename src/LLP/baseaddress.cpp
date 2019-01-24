@@ -117,11 +117,6 @@ namespace LLP
           debug::log(0, FUNCTION, "bad lookup");
     }
 
-    /* Default destructor */
-    BaseAddress::~BaseAddress()
-    {
-    }
-
     /* Copy assignment operator */
     BaseAddress &BaseAddress::operator=(const BaseAddress &other)
     {
@@ -133,16 +128,28 @@ namespace LLP
         return *this;
     }
 
+
+    /* Default destructor */
+    BaseAddress::~BaseAddress()
+    {
+    }
+
+
+    /*  Sets the port number. */
     void BaseAddress::SetPort(uint16_t port)
     {
         nPort = port;
     }
 
+
+    /* Returns the port number. */
     uint16_t BaseAddress::GetPort() const
     {
         return nPort;
     }
 
+
+    /* Sets the IP address. */
     void BaseAddress::SetIP(const BaseAddress& addr)
     {
         for(uint8_t i = 0; i < 16; ++i)
@@ -150,21 +157,15 @@ namespace LLP
     }
 
 
-    uint8_t BaseAddress::GetByte(uint8_t n) const
-    {
-        if(n > 15)
-            throw std::runtime_error(debug::safe_printstr(FUNCTION, "out of range ", n));
-
-        return ip[15-n];
-    }
-
-
+    /*  Determines if address is IPv4 mapped address. (::FFFF:0:0/96, 0.0.0.0/0) */
     bool BaseAddress::IsIPv4() const
     {
         return (memcmp(ip, pchIPv4, sizeof(pchIPv4)) == 0);
     }
 
 
+    /* Determines if address is IPv4 private networks.
+     * (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12) */
     bool BaseAddress::IsRFC1918() const
     {
         return IsIPv4() && (
@@ -174,37 +175,50 @@ namespace LLP
     }
 
 
-    bool BaseAddress::IsRFC3927() const
-    {
-        return IsIPv4() && (GetByte(3) == 169 && GetByte(2) == 254);
-    }
-
-
+    /* Determines if address is IPv6 documentation address. (2001:0DB8::/32) */
     bool BaseAddress::IsRFC3849() const
     {
         return GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0x0D && GetByte(12) == 0xB8;
     }
 
 
+    /* Determines if address is IPv4 autoconfig. (169.254.0.0/16) */
+    bool BaseAddress::IsRFC3927() const
+    {
+        return IsIPv4() && (GetByte(3) == 169 && GetByte(2) == 254);
+    }
+
+
+    /* Determines if address is IPv6 6to4 tunneling. (2002::/16) */
     bool BaseAddress::IsRFC3964() const
     {
         return (GetByte(15) == 0x20 && GetByte(14) == 0x02);
     }
 
 
-    bool BaseAddress::IsRFC6052() const
+    /* Determines if address is IPv6 unique local. (FC00::/15) */
+    bool BaseAddress::IsRFC4193() const
     {
-        static const uint8_t pchRFC6052[] = {0,0x64,0xFF,0x9B,0,0,0,0,0,0,0,0};
-        return (memcmp(ip, pchRFC6052, sizeof(pchRFC6052)) == 0);
+        return ((GetByte(15) & 0xFE) == 0xFC);
     }
 
 
+    /* Determines if address is IPv6 Teredo tunneling. (2001::/32) */
     bool BaseAddress::IsRFC4380() const
     {
         return (GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0 && GetByte(12) == 0);
     }
 
 
+    /* Determines if address is IPv6 ORCHID.
+     * (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12) */
+    bool BaseAddress::IsRFC4843() const
+    {
+        return (GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0x00 && (GetByte(12) & 0xF0) == 0x10);
+    }
+
+
+    /* Determines if address is IPv6 autoconfig. (FE80::/64) */
     bool BaseAddress::IsRFC4862() const
     {
         static const uint8_t pchRFC4862[] = {0xFE,0x80,0,0,0,0,0,0};
@@ -212,12 +226,15 @@ namespace LLP
     }
 
 
-    bool BaseAddress::IsRFC4193() const
+    /* Determines if address is IPv6 well-known prefix. (64:FF9B::/96) */
+    bool BaseAddress::IsRFC6052() const
     {
-        return ((GetByte(15) & 0xFE) == 0xFC);
+        static const uint8_t pchRFC6052[] = {0,0x64,0xFF,0x9B,0,0,0,0,0,0,0,0};
+        return (memcmp(ip, pchRFC6052, sizeof(pchRFC6052)) == 0);
     }
 
 
+    /* Determines if address is IPv6 IPv4-translated address. (::FFFF:0:0:0/96) */
     bool BaseAddress::IsRFC6145() const
     {
         static const uint8_t pchRFC6145[] = {0,0,0,0,0,0,0,0,0xFF,0xFF,0,0};
@@ -225,12 +242,7 @@ namespace LLP
     }
 
 
-    bool BaseAddress::IsRFC4843() const
-    {
-        return (GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0x00 && (GetByte(12) & 0xF0) == 0x10);
-    }
-
-
+    /* Determines if address is a local address. */
     bool BaseAddress::IsLocal() const
     {
         // IPv4 loopback
@@ -245,14 +257,14 @@ namespace LLP
     return false;
     }
 
-
-    bool BaseAddress::IsMulticast() const
+    /* Determines if address is a routable address. */
+    bool BaseAddress::IsRoutable() const
     {
-        return    (IsIPv4() && (GetByte(3) & 0xF0) == 0xE0)
-            || (GetByte(15) == 0xFF);
+        return IsValid() && !(IsRFC1918() || IsRFC3927() || IsRFC4862() || IsRFC4193() || IsRFC4843() || IsLocal());
     }
 
 
+    /* Determines if address is a valid address. */
     bool BaseAddress::IsValid() const
     {
         // Clean up 3-byte shifted addresses caused by garbage in size field
@@ -290,12 +302,22 @@ namespace LLP
     }
 
 
-    bool BaseAddress::IsRoutable() const
+    /* Determines if address is a multicast address. */
+    bool BaseAddress::IsMulticast() const
     {
-        return IsValid() && !(IsRFC1918() || IsRFC3927() || IsRFC4862() || IsRFC4193() || IsRFC4843() || IsLocal());
+        return    (IsIPv4() && (GetByte(3) & 0xF0) == 0xE0)
+            || (GetByte(15) == 0xFF);
     }
 
 
+    /* Returns the IP and Port in string format. (IP:Port) */
+    std::string BaseAddress::ToString() const
+    {
+        return ToStringIP() + std::string(":") + ToStringPort();
+    }
+
+
+    /* Returns the IP in string format. */
     std::string BaseAddress::ToStringIP() const
     {
         if (IsIPv4())
@@ -315,86 +337,34 @@ namespace LLP
     }
 
 
-    std::string BaseAddress::ToString() const
-    {
-        return ToStringIP() + std::string(":") + ToStringPort();
-    }
-
+    /* Returns the Port in string format. */
     std::string BaseAddress::ToStringPort() const
     {
         return std::to_string(nPort);
     }
 
 
-    bool operator==(const BaseAddress& a, const BaseAddress& b)
+    /* Gets a byte from the IP buffer. */
+    uint8_t BaseAddress::GetByte(uint8_t n) const
     {
-        return (memcmp(a.ip, b.ip, 16) == 0);
+        if(n > 15)
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, "out of range ", n));
+
+        return ip[15-n];
     }
 
 
-    bool operator!=(const BaseAddress& a, const BaseAddress& b)
+    /* Gets a 64-bit hash of the IP. */
+    uint64_t BaseAddress::GetHash() const
     {
-        return (memcmp(a.ip, b.ip, 16) != 0);
+        return LLC::SK64(&ip[0], &ip[16]);
     }
 
 
-    bool operator<(const BaseAddress& a, const BaseAddress& b)
-    {
-        return (memcmp(a.ip, b.ip, 16) < 0);
-    }
-
-
-    bool BaseAddress::GetSockAddr(struct sockaddr_in* paddr) const
-    {
-        if (!IsIPv4())
-            return false;
-
-        memset(paddr, 0, sizeof(struct sockaddr_in));
-
-        if (!GetInAddr(&paddr->sin_addr))
-            return false;
-
-        paddr->sin_family = AF_INET;
-        paddr->sin_port = htons(nPort);
-
-        return true;
-    }
-
-
-    bool BaseAddress::GetSockAddr6(struct sockaddr_in6* paddr) const
-    {
-        memset(paddr, 0, sizeof(struct sockaddr_in6));
-
-        if (!GetIn6Addr(&paddr->sin6_addr))
-            return false;
-
-        paddr->sin6_family = AF_INET6;
-        paddr->sin6_port = htons(nPort);
-
-        return true;
-    }
-
-
-    bool BaseAddress::GetInAddr(struct in_addr* pipv4Addr) const
-    {
-        if (!IsIPv4())
-            return false;
-        //memcpy(pipv4Addr, ip+12, 4);
-        std::copy((uint8_t*)&ip[0] + 12, (uint8_t*)&ip[0] + 16, (uint8_t*)pipv4Addr);
-        return true;
-    }
-
-
-    bool BaseAddress::GetIn6Addr(struct in6_addr* pipv6Addr) const
-    {
-        //memcpy(pipv6Addr, ip, 16);
-        std::copy((uint8_t*)&ip[0], (uint8_t*)&ip[0] + 16, (uint8_t*)pipv6Addr);
-        return true;
-    }
-
-
-    // get canonical identifier of an address' group
-    // no two connections will be attempted to addresses with the same group
+    /*  Gets the canonical identifier of an address' group.
+     *  No two connections will be attempted to addresses within
+     *  the same group.
+     */
     std::vector<uint8_t> BaseAddress::GetGroup() const
     {
         std::vector<uint8_t> vchRet;
@@ -422,7 +392,6 @@ namespace LLP
             nClass = 1;
             nStartByte = 12;
         }
-
         // for 6to4 tunneled addresses, use the encapsulated IPv4 address
         else if (IsRFC3964())
         {
@@ -458,9 +427,56 @@ namespace LLP
     }
 
 
-    uint64_t BaseAddress::GetHash() const
+    /* Gets an IPv4 address struct. */
+    bool BaseAddress::GetInAddr(struct in_addr* pipv4Addr) const
     {
-        return LLC::SK64(&ip[0], &ip[16]);
+        if (!IsIPv4())
+            return false;
+        //memcpy(pipv4Addr, ip+12, 4);
+        std::copy((uint8_t*)&ip[0] + 12, (uint8_t*)&ip[0] + 16, (uint8_t*)pipv4Addr);
+        return true;
+    }
+
+
+    /* Gets an IPv6 address struct. */
+    bool BaseAddress::GetIn6Addr(struct in6_addr* pipv6Addr) const
+    {
+        //memcpy(pipv6Addr, ip, 16);
+        std::copy((uint8_t*)&ip[0], (uint8_t*)&ip[0] + 16, (uint8_t*)pipv6Addr);
+        return true;
+    }
+
+
+    /* Gets an IPv4 socket address struct. */
+    bool BaseAddress::GetSockAddr(struct sockaddr_in* paddr) const
+    {
+        if (!IsIPv4())
+            return false;
+
+        memset(paddr, 0, sizeof(struct sockaddr_in));
+
+        if (!GetInAddr(&paddr->sin_addr))
+            return false;
+
+        paddr->sin_family = AF_INET;
+        paddr->sin_port = htons(nPort);
+
+        return true;
+    }
+
+
+    /* Gets an IPv6 socket address struct. */
+    bool BaseAddress::GetSockAddr6(struct sockaddr_in6* paddr) const
+    {
+        memset(paddr, 0, sizeof(struct sockaddr_in6));
+
+        if (!GetIn6Addr(&paddr->sin6_addr))
+            return false;
+
+        paddr->sin6_family = AF_INET6;
+        paddr->sin6_port = htons(nPort);
+
+        return true;
     }
 
 
@@ -468,5 +484,26 @@ namespace LLP
     void BaseAddress::Print() const
     {
         debug::log(0, "BaseAddress(", ToString(), ")");
+    }
+
+
+    /* Relational operator equals */
+    bool operator==(const BaseAddress& a, const BaseAddress& b)
+    {
+        return (memcmp(a.ip, b.ip, 16) == 0);
+    }
+
+
+    /* Relational operator not equals */
+    bool operator!=(const BaseAddress& a, const BaseAddress& b)
+    {
+        return (memcmp(a.ip, b.ip, 16) != 0);
+    }
+
+
+    /* Relational operator less than */
+    bool operator<(const BaseAddress& a, const BaseAddress& b)
+    {
+        return (memcmp(a.ip, b.ip, 16) < 0);
     }
 }
