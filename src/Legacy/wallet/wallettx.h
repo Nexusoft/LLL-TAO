@@ -196,8 +196,6 @@ namespace Legacy
          *
          *  @see CWallet::AddToWallet()
          *
-         *  @deprecated Included for backward compatability
-         *
          **/
         CWalletTx(CWallet* pwalletIn) : ptransactionWallet(pwalletIn), fHaveWallet(true)
         {
@@ -296,6 +294,20 @@ namespace Legacy
         )
 
         
+        /** BindWallet
+         *
+         *  Assigns the wallet for this wallet transaction. 
+         *
+         *  This does not add the transaction to the wallet.
+         *
+         *  @param[in] walletIn The wallet to be bound
+         *
+         *  @see CWallet::AddToWallet()
+         *
+         **/
+        void BindWallet(CWallet& walletIn);
+
+
         /** BindWallet
          *
          *  Assigns the wallet for this wallet transaction. 
