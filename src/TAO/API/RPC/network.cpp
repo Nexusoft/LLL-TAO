@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <Util/include/json.h>
 #include <Util/include/hex.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/supply.h>
 #include <Legacy/include/money.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <LLD/include/global.h>
@@ -172,15 +173,15 @@ namespace TAO
         //         if(!block.ReadFromDisk(Core::mapBlockIndex[hashLastBlock], true))
         //             continue;
 
-        //         obj.push_back(Pair("address", address.ToString()));
-        //         obj.push_back(Pair("interestrate", 100.0 * trustKey.InterestRate(block, GetUnifiedTimestamp())));
-        //         obj.push_back(Pair("trustkey", trustKey.ToString()));
+        //         obj["address", address.ToString()));
+        //         obj["interestrate", 100.0 * trustKey.InterestRate(block, GetUnifiedTimestamp())));
+        //         obj["trustkey", trustKey.ToString()));
 
         //         trustkeys.push_back(obj);
         //     }
 
-        //     ret.push_back(Pair("keys", trustkeys));
-        //     ret.push_back(Pair("total", (int)trustkeys.size()));
+        //     ret["keys", trustkeys));
+        //     ret["total", (int)trustkeys.size()));
 
         //     return ret;
             json::json ret;
@@ -248,28 +249,27 @@ namespace TAO
                     " Time Frequency is in base 13 month, 28 day totalling 364 days."
                     " This is to prevent error from Gregorian Figures.");
 
-        //     Object obj;
-        //     unsigned int nMinutes = Core::GetChainAge(Core::pindexBest->GetBlockTime());
+            json::json obj;
+            unsigned int nMinutes = TAO::Ledger::GetChainAge(TAO::Ledger::ChainState::stateBest.GetBlockTime());
 
-        //     obj.push_back(Pair("chainAge",       (int)nMinutes));
+            obj["chainAge"] = (int)nMinutes;
 
-        //     int64 nSupply = Core::pindexBest->nMoneySupply;
-        //     int64 nTarget = Core::CompoundSubsidy(nMinutes);
+            int64_t nSupply = TAO::Ledger::ChainState::stateBest.nMoneySupply;
+            int64_t nTarget = TAO::Ledger::CompoundSubsidy(nMinutes);
 
-        //     obj.push_back(Pair("moneysupply",   Legacy::SatoshisToAmount(nSupply)));
-        //     obj.push_back(Pair("targetsupply",   Legacy::SatoshisToAmount(nTarget)));
-        //     obj.push_back(Pair("inflationrate",   ((nSupply * 100.0) / nTarget) - 100.0));
+            obj["moneysupply"] = Legacy::SatoshisToAmount(nSupply);
+            obj["targetsupply"] = Legacy::SatoshisToAmount(nTarget);
+            obj["inflationrate"] = ((nSupply * 100.0) / nTarget) - 100.0;
 
-        //     obj.push_back(Pair("minuteSupply",  Legacy::SatoshisToAmount(Core::SubsidyInterval(nMinutes, 1)))); //1
-        //     obj.push_back(Pair("hourSupply",    Legacy::SatoshisToAmount(Core::SubsidyInterval(nMinutes, 60)))); //60
-        //     obj.push_back(Pair("daySupply",     Legacy::SatoshisToAmount(Core::SubsidyInterval(nMinutes, 1440)))); //1440
-        //     obj.push_back(Pair("weekSupply",    Legacy::SatoshisToAmount(Core::SubsidyInterval(nMinutes, 10080)))); //10080
-        //     obj.push_back(Pair("monthSupply",   Legacy::SatoshisToAmount(Core::SubsidyInterval(nMinutes, 40320)))); //40320
-        //     obj.push_back(Pair("yearSupply",    Legacy::SatoshisToAmount(Core::SubsidyInterval(nMinutes, 524160)))); //524160
+            obj["minuteSupply"] = Legacy::SatoshisToAmount(TAO::Ledger::SubsidyInterval(nMinutes, 1)); //1
+            obj["hourSupply"] = Legacy::SatoshisToAmount(TAO::Ledger::SubsidyInterval(nMinutes, 60)); //60
+            obj["daySupply"] = Legacy::SatoshisToAmount(TAO::Ledger::SubsidyInterval(nMinutes, 1440)); //1440
+            obj["weekSupply"] = Legacy::SatoshisToAmount(TAO::Ledger::SubsidyInterval(nMinutes, 10080)); //10080
+            obj["monthSupply"] = Legacy::SatoshisToAmount(TAO::Ledger::SubsidyInterval(nMinutes, 40320)); //40320
+            obj["yearSupply"] = Legacy::SatoshisToAmount(TAO::Ledger::SubsidyInterval(nMinutes, 524160)); //524160
 
-        //     return obj;
-            json::json ret;
-            return ret;
+            return obj;
+           
         }
 
         /* getmoneysupply <timestamp>
@@ -283,17 +283,15 @@ namespace TAO
                     " - Returns the total supply of Nexus produced by miners, holdings, developers, and ambassadors."
                     " Default timestamp is the current Unified timestamp. The timestamp is recorded as a UNIX timestamp");
 
-        //     Object obj;
-        //     unsigned int nMinutes = Core::GetChainAge(Core::pindexBest->GetBlockTime());
+            json::json obj;
+            unsigned int nMinutes = TAO::Ledger::GetChainAge(TAO::Ledger::ChainState::stateBest.GetBlockTime());
 
-        //     obj.push_back(Pair("chainAge",       (int)nMinutes));
-        //     obj.push_back(Pair("miners", Legacy::SatoshisToAmount(Core::CompoundSubsidy(nMinutes, 0))));
-        //     obj.push_back(Pair("ambassadors", Legacy::SatoshisToAmount(Core::CompoundSubsidy(nMinutes, 1))));
-        //     obj.push_back(Pair("developers", Legacy::SatoshisToAmount(Core::CompoundSubsidy(nMinutes, 2))));
+            obj["chainAge"] = (int)nMinutes;
+            obj["miners"] = Legacy::SatoshisToAmount(TAO::Ledger::CompoundSubsidy(nMinutes, 0));
+            obj["ambassadors"] = Legacy::SatoshisToAmount(TAO::Ledger::CompoundSubsidy(nMinutes, 1));
+            obj["developers"] = Legacy::SatoshisToAmount(TAO::Ledger::CompoundSubsidy(nMinutes, 2));
 
-        //     return obj;
-            json::json ret;
-            return ret;
+            return obj;
         }
 
         /* getblockhash <index>"
