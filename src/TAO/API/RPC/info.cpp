@@ -73,7 +73,7 @@ namespace TAO
 
             obj["connections"] = GetTotalConnectionCount();
             obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToString() : std::string());
-            obj["ip"] = LLP::TRITIUM_SERVER->addrThisNode.ToStringIP(); //PS TODO
+            obj["ip"] = config::GetBoolArg("-legacy") ? LLP::LEGACY_SERVER->addrThisNode.ToStringIP() : LLP::TRITIUM_SERVER->addrThisNode.ToStringIP(); //PS TODO
 
             obj["testnet"] = config::fTestNet;
             obj["keypoololdest"] = (int64_t)Legacy::CWallet::GetInstance().GetKeyPool().GetOldestKeyPoolTime();
@@ -179,9 +179,9 @@ namespace TAO
                 unsigned int nPrimeTimeConstant = 2480;
                 int nTotal = 0;
                 TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest;
-                
+
                 bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
-                for(; (nTotal < 1440 && bLastStateFound); nTotal ++) 
+                for(; (nTotal < 1440 && bLastStateFound); nTotal ++)
                 {
                     uint64_t nLastBlockTime = blockState.GetBlockTime();
                     blockState = blockState.Prev();
@@ -194,19 +194,19 @@ namespace TAO
                 nPrimeAverageDifficulty /= nTotal;
                 nPrimeAverageTime /= nTotal;
                 nPrimePS = (nPrimeTimeConstant / nPrimeAverageTime) * std::pow(50.0, (nPrimeAverageDifficulty - 3.0));
-            
-            
+
+
 
                 // Hash
                 int nHTotal = 0;
                 unsigned int nHashAverageTime = 0;
                 double nHashAverageDifficulty = 0.0;
                 uint64_t nTimeConstant = 276758250000;
-                    
+
                 blockState = TAO::Ledger::ChainState::stateBest;
-                
+
                 bLastStateFound = TAO::Ledger::GetLastState(blockState, 2);
-                for(;  (nHTotal < 1440 && bLastStateFound); nHTotal ++) 
+                for(;  (nHTotal < 1440 && bLastStateFound); nHTotal ++)
                 {
                     uint64_t nLastBlockTime = blockState.GetBlockTime();
                     blockState = blockState.Prev();
