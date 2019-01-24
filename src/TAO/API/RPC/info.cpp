@@ -234,13 +234,17 @@ namespace TAO
             //obj["currentblocktx"] =(uint64_t)Core::nLastBlockTx;
 
             TAO::Ledger::BlockState lastPrimeBlockState = TAO::Ledger::ChainState::stateBest;
-            TAO::Ledger::GetLastState(lastPrimeBlockState, 1);
+            bool fHasPrime = TAO::Ledger::GetLastState(lastPrimeBlockState, 1);
 
             TAO::Ledger::BlockState lastHashBlockState = TAO::Ledger::ChainState::stateBest;
-            TAO::Ledger::GetLastState(lastHashBlockState, 2);
+            bool fHasHash = TAO::Ledger::GetLastState(lastHashBlockState, 2);
 
-            obj["primeDifficulty"] =TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastPrimeBlockState, 1, false), 1);
-            obj["hashDifficulty"] = TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastHashBlockState, 2, false), 2);
+            TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::stateBest;
+            bool fHasStake = TAO::Ledger::GetLastState(lastStakeBlockState, 3);
+
+            obj["primeDifficulty"] = fHasPrime ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastPrimeBlockState, 1, false), 1) : 0;
+            obj["hashDifficulty"] = fHasHash ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastHashBlockState, 2, false), 2) : 0;
+            obj["stakeDifficulty"] = fHasStake ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastStakeBlockState, 3, false), 3) : 0;
             obj["primeReserve"] =    Legacy::SatoshisToAmount(lastPrimeBlockState.nReleasedReserve[0]);
             obj["hashReserve"] =     Legacy::SatoshisToAmount(lastHashBlockState.nReleasedReserve[0]);
             obj["primeValue"] =        Legacy::SatoshisToAmount(TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest, 1, 0));

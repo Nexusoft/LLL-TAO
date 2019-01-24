@@ -218,19 +218,21 @@ namespace TAO
                     "getdifficulty"
                     " - Returns difficulty as a multiple of the minimum difficulty.");
 
-        //     const Core::CBlockIndex* pindexPOS = Core::GetLastChannelIndex(Core::pindexBest, 0);
-        //     const Core::CBlockIndex* pindexCPU = Core::GetLastChannelIndex(Core::pindexBest, 1);
-        //     const Core::CBlockIndex* pindexGPU = Core::GetLastChannelIndex(Core::pindexBest, 2);
+            TAO::Ledger::BlockState lastPrimeBlockState = TAO::Ledger::ChainState::stateBest;
+            bool fHasPrime = TAO::Ledger::GetLastState(lastPrimeBlockState, 1);
 
+            TAO::Ledger::BlockState lastHashBlockState = TAO::Ledger::ChainState::stateBest;
+            bool fHasHash = TAO::Ledger::GetLastState(lastHashBlockState, 2);
 
-        //     Object obj;
-        //     obj.push_back(Pair("prime",        Core::GetDifficulty(pindexCPU->nBits, 1)));
-        //     obj.push_back(Pair("hash",        Core::GetDifficulty(pindexGPU->nBits, 2)));
+            TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::stateBest;
+            bool fHasStake = TAO::Ledger::GetLastState(lastStakeBlockState, 3);
 
-        //     obj.push_back(Pair("stake",       Core::GetDifficulty(pindexPOS->nBits, 0)));
-        //     return obj;
-            json::json ret;
-            return ret;
+            json::json obj;
+            obj["prime"] = fHasPrime ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastPrimeBlockState, 1, false), 1) : 0;
+            obj["hash"] = fHasHash ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastHashBlockState, 2, false), 2) : 0;
+            obj["stake"] = fHasStake ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastStakeBlockState, 3, false), 3) : 0;
+            return obj;
+         
         }
 
         /* getsupplyrates
@@ -302,14 +304,12 @@ namespace TAO
             if (fHelp || params.size() != 1)
                 return std::string(
                     "getblockhash <index>"
-                    " - Returns hash of block in best-block-chain at <index>.");
+                    " - DEPRECATED - Returns hash of block in best-block-chain at <index>.");
 
-            int nHeight = params[0];
-            if (nHeight < 0 || nHeight > TAO::Ledger::ChainState::nBestHeight)
-                return std::string("Block number out of range.");
+            // int nHeight = params[0];
+            // if (nHeight < 0 || nHeight > TAO::Ledger::ChainState::nBestHeight)
+            //     return std::string("Block number out of range.");
 
-
-            //PS TODO
             // Core::CBlock block;
             // Core::CBlockIndex* pblockindex = Core::mapBlockIndex[Core::hashBestChain];
             // while (pblockindex->nHeight > nHeight)
@@ -317,6 +317,7 @@ namespace TAO
             // return pblockindex->phashBlock->GetHex();
 
             json::json ret;
+            ret = "This method has been deprecated.";
             return ret;
         }
 
