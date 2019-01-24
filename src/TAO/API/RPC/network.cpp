@@ -185,6 +185,7 @@ namespace TAO
 
         //     return ret;
             json::json ret;
+            ret = "NOT AVAILABLE IN THIS RELEASE";
             return ret;
         }
 

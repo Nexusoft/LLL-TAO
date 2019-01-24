@@ -73,7 +73,7 @@ namespace TAO
 
             obj["connections"] = GetTotalConnectionCount();
             obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToString() : std::string());
-            obj["ip"] = config::GetBoolArg("-legacy") ? LLP::LEGACY_SERVER->addrThisNode.ToStringIP() : LLP::TRITIUM_SERVER->addrThisNode.ToStringIP(); //PS TODO
+            obj["ip"] = config::GetBoolArg("-legacy") ? LLP::LEGACY_SERVER->addrThisNode.ToStringIP() : LLP::TRITIUM_SERVER->addrThisNode.ToStringIP(); 
 
             obj["testnet"] = config::fTestNet;
             obj["keypoololdest"] = (int64_t)Legacy::CWallet::GetInstance().GetKeyPool().GetOldestKeyPoolTime();
