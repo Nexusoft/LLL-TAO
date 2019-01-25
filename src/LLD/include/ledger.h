@@ -183,6 +183,8 @@ namespace LLD
          **/
         bool RepairIndex(const uint512_t& hashTransaction)
         {
+            debug::log(0, FUNCTION, "repairing index for ", hashTransaction.ToString().substr(0, 20));
+            
             /* Get the best block state to start from. */
             TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.Prev();
 

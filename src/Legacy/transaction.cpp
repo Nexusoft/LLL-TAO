@@ -322,8 +322,9 @@ namespace Legacy
         {
             /* Calculate the Age and Value of given output. */
             TAO::Ledger::BlockState statePrev;
-            if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev) && !LLD::legDB->RepairIndex(vin[nIndex].prevout.hash))
-                return debug::error(FUNCTION, "failed to read or repair previous block");
+            if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev))
+                if(!LLD::legDB->RepairIndex(vin[nIndex].prevout.hash))
+                    return debug::error(FUNCTION, "failed to read or repair previous block");
 
             /* Time is from current transaction to previous block time. */
             uint64_t nCoinAge = (nTime - statePrev.GetBlockTime());
@@ -377,8 +378,9 @@ namespace Legacy
         {
             /* Calculate the Age and Value of given output. */
             TAO::Ledger::BlockState statePrev;
-            if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev) && !LLD::legDB->RepairIndex(vin[nIndex].prevout.hash))
-                return debug::error(FUNCTION, "failed to read previous tx block");
+            if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev))
+                if(!LLD::legDB->RepairIndex(vin[nIndex].prevout.hash))
+                    return debug::error(FUNCTION, "failed to read previous tx block");
 
             /* Read the previous transaction. */
             Legacy::Transaction txPrev;
@@ -830,8 +832,9 @@ namespace Legacy
             if (txPrev.IsCoinBase() || txPrev.IsCoinStake())
             {
                 TAO::Ledger::BlockState statePrev;
-                if(!LLD::legDB->ReadBlock(txPrev.GetHash(), statePrev) && !LLD::legDB->RepairIndex(txPrev.GetHash()))
-                    return debug::error(FUNCTION, "failed to read previous tx block");
+                if(!LLD::legDB->ReadBlock(txPrev.GetHash(), statePrev))
+                    if(!LLD::legDB->RepairIndex(txPrev.GetHash()))
+                        return debug::error(FUNCTION, "failed to read previous tx block");
 
                 /* Check the maturity. */
                 if((state.nHeight - statePrev.nHeight) < TAO::Ledger::NEXUS_MATURITY_BLOCKS)
