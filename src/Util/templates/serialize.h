@@ -876,7 +876,7 @@ class DataStream
 
 
     /** The current reading position. **/
-    uint32_t nReadPos;
+    mutable uint32_t nReadPos;
 
 
     /** The serialization type. **/
@@ -983,11 +983,11 @@ public:
      *  Sets the position in the stream.
      *
      **/
-    void SetPos(uint32_t nNewPos)
+    void SetPos(uint32_t nNewPos) const
     {
         /* Check size constraints. */
         if(nNewPos > size())
-            throw std::runtime_error(debug::strprintf(FUNCTION, "cannot set at end of stream %u", nNewPos));
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, "cannot set at end of stream ", nNewPos));
 
         /* Set the new read pos. */
         nReadPos = nNewPos;
@@ -1022,7 +1022,7 @@ public:
      *  Resets the internal read pointer
      *
      **/
-    void Reset()
+    void Reset() const
     {
         nReadPos = 0;
     }
@@ -1048,11 +1048,11 @@ public:
      *  @param[in] nSize The total number of bytes to read
      *
      **/
-    DataStream& read(char* pch, uint32_t nSize)
+    const DataStream& read(char* pch, uint32_t nSize) const
     {
         /* Check size constraints. */
         if(nReadPos + nSize > size())
-            throw std::runtime_error(debug::strprintf(FUNCTION, "reached end of stream %u", nReadPos));
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, "reached end of stream ", nReadPos));
 
         /* Copy the bytes into tmp object. */
         std::copy((uint8_t*)&vData.at(nReadPos), (uint8_t*)&vData.at(nReadPos) + nSize, (uint8_t*)pch);
@@ -1203,7 +1203,7 @@ public:
      *  @param[out] obj The object to de-serialize from ledger data
      *
      **/
-    template<typename Type> DataStream& operator>>(Type& obj)
+    template<typename Type> const DataStream& operator>>(Type& obj) const
     {
         /* Unserialize from the stream. */
         ::Unserialize(*this, obj, nSerType, nSerVersion);

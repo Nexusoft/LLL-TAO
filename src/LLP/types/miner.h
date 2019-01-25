@@ -20,9 +20,9 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /** Miner connection class
+    /** Miner
      *
-     *  Handles requests and responses from miners.
+     *  Connection class that handles requests and responses from miners.
      *
      **/
     class Miner : public Connection

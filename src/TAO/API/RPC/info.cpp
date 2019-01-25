@@ -73,7 +73,7 @@ namespace TAO
 
             obj["connections"] = GetTotalConnectionCount();
             obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToString() : std::string());
-            obj["ip"] = config::GetBoolArg("-legacy") ? LLP::LEGACY_SERVER->addrThisNode.ToStringIP() : LLP::TRITIUM_SERVER->addrThisNode.ToStringIP(); 
+            obj["ip"] = config::GetBoolArg("-legacy") ? LLP::LEGACY_SERVER->addrThisNode.ToStringIP() : LLP::TRITIUM_SERVER->addrThisNode.ToStringIP();
 
             obj["testnet"] = config::fTestNet;
             obj["keypoololdest"] = (int64_t)Legacy::CWallet::GetInstance().GetKeyPool().GetOldestKeyPoolTime();
@@ -89,7 +89,7 @@ namespace TAO
                     obj["minting_only"] = Legacy::fWalletUnlockMintOnly;
                 }
             }
-            
+
         //    obj.push_back(std::make_pair("errors",        Core::GetWarnings("statusbar")));
 
 
@@ -116,7 +116,7 @@ namespace TAO
 
             std::sort(vLegacyInfo.begin(), vLegacyInfo.end());
 
-            for(auto &addr : vLegacyInfo)
+            for(const auto& addr : vLegacyInfo)
             {
                 json::json obj;
 
@@ -139,7 +139,7 @@ namespace TAO
 
             std::sort(vTritiumInfo.begin(), vTritiumInfo.end());
 
-            for(auto &addr : vTritiumInfo)
+            for(const auto& addr : vTritiumInfo)
             {
                 json::json obj;
 

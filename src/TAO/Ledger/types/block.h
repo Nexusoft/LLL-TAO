@@ -249,7 +249,7 @@ namespace TAO
              *    @return True if the signature was made successfully, false otherwise
              *
              **/
-            bool GenerateSignature(LLC::ECKey key);
+            bool GenerateSignature(const LLC::ECKey& key);
 
 
             /** VerifySignature
@@ -259,7 +259,7 @@ namespace TAO
              *    @return True if signature is valid, false otherwise
              *
              **/
-            bool VerifySignature(LLC::ECKey key) const;
+            bool VerifySignature(const LLC::ECKey& key) const;
 
         protected:
 

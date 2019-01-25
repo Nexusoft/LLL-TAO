@@ -231,7 +231,7 @@ namespace LLP
                     ssPacket >> vData;
 
                     /* Request the inventory. */
-                    for(auto hash : vData)
+                    for(const auto& hash : vData)
                         PushMessage(GET_INVENTORY, hash);
 
                     break;

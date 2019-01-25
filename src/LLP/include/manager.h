@@ -16,8 +16,6 @@ ________________________________________________________________________________
 
 #include <LLP/include/trustaddress.h>
 #include <Util/templates/serialize.h>
-
-
 #include <map>
 #include <vector>
 #include <cstdint>

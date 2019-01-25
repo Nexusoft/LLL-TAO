@@ -22,7 +22,9 @@ namespace LLP
 {
 
 
-    /** RPC API Server Node
+    /** RPCNode
+     *
+     *  RPC API Server Node
      *
      *  A node that can speak over HTTP protocols.
      *

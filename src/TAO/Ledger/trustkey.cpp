@@ -60,7 +60,7 @@ namespace TAO
         /* Determine if a key is expired at a given point in time. */
         bool TrustKey::Expired(const TAO::Ledger::BlockState& state) const
         {
-            if (BlockAge(state) > 60 * 60 * 24)
+            if (BlockAge(state) > (config::fTestNet ? TRUST_KEY_TIMESPAN_TESTNET : TRUST_KEY_TIMESPAN))
                 return true;
 
             return false;

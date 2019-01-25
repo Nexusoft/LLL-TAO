@@ -555,7 +555,7 @@ namespace Legacy
 
 
     /* Send this transaction to the network if not in our database, yet. */
-    void CWalletTx::RelayWalletTransaction()
+    void CWalletTx::RelayWalletTransaction() const
     {
         for(const CWalletTx& tx : vtxPrev)
         {

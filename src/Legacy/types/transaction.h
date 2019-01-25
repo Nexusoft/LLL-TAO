@@ -33,7 +33,7 @@ namespace Legacy
 	 *
 	 */
 	class Transaction
-	{	
+	{
 	public:
 
 		/** The version specifier of transaction. **/
@@ -265,6 +265,14 @@ namespace Legacy
 		 *
 		 **/
 		bool CoinstakeAge(uint64_t& nAge) const;
+
+
+		/** Verify Stake
+		 *
+		 *  Check the proof of stake calculations.
+		 *
+		 **/
+		bool VerifyStake(const TAO::Ledger::BlockState& block) const;
 
 
 		/** Coinstake Interest

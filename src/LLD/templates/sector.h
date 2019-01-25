@@ -87,15 +87,8 @@ namespace LLD
 
 
         /* The String to hold the Disk Location of Database File. */
-        std::string strBaseLocation, strName;
-
-
-        /* Destructor Flag. */
-        std::atomic<bool> fDestruct;
-
-
-        /* Initialize Flag. */
-        std::atomic<bool> fInitialized;
+        std::string strBaseLocation;
+        std::string strName;
 
 
         /* timer for Runtime Calculations. */
@@ -108,16 +101,6 @@ namespace LLD
 
         /* Sector Keys Database. */
         KeychainType* pSectorKeys;
-
-
-        /* For the Meter. */
-        std::atomic<uint32_t> nBytesRead;
-        std::atomic<uint32_t> nBytesWrote;
-        std::atomic<uint32_t> nRecordsFlushed;
-
-
-        /** Database Flags. **/
-        uint8_t nFlags;
 
 
         /* Cache Pool */
@@ -147,20 +130,30 @@ namespace LLD
         /* Disk Buffer Memory Size. */
         std::atomic<uint32_t> nBufferBytes;
 
+        /* For the Meter. */
+        std::atomic<uint32_t> nBytesRead;
+        std::atomic<uint32_t> nBytesWrote;
+        std::atomic<uint32_t> nRecordsFlushed;
+
+        /* Destructor Flag. */
+        std::atomic<bool> fDestruct;
+
+
+        /* Initialize Flag. */
+        std::atomic<bool> fInitialized;
+
+
+        /** Database Flags. **/
+        uint8_t nFlags;
+
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         SectorDatabase(std::string strNameIn, uint8_t nFlagsIn)
         : strBaseLocation(config::GetDataDir() + strNameIn + "/datachain/")
         , strName(strNameIn)
-        , fDestruct(false)
-        , fInitialized(false)
         , runtime()
         , pTransaction(nullptr)
         , pSectorKeys(nullptr)
-        , nBytesRead(0)
-        , nBytesWrote(0)
-        , nRecordsFlushed(0)
-        , nFlags(nFlagsIn)
         , cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE))
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
         , nCurrentFile(0)
@@ -169,6 +162,12 @@ namespace LLD
         , MeterThread(std::bind(&SectorDatabase::Meter, this))
         , vDiskBuffer()
         , nBufferBytes(0)
+        , nBytesRead(0)
+        , nBytesWrote(0)
+        , nRecordsFlushed(0)
+        , fDestruct(false)
+        , fInitialized(false)
+        , nFlags(nFlagsIn)
         {
             /* Set readonly flag if write or append are not specified. */
             if(!(nFlags & FLAGS::FORCE) && !(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND))
@@ -182,7 +181,6 @@ namespace LLD
                 debug::log(0, ANSI_COLOR_GREEN FUNCTION, "executed in ",
                     runtime.ElapsedMicroseconds(), " micro-seconds" ANSI_COLOR_RESET);
             }
-
         }
 
         ~SectorDatabase()
@@ -266,10 +264,9 @@ namespace LLD
             ssKey << key;
 
             /* Check that the key is not pending in a transaction for Erase. */
+            LOCK(TRANSACTION_MUTEX);
             if(pTransaction)
             {
-                LOCK(TRANSACTION_MUTEX);
-
                 if(pTransaction->mapEraseData.count(ssKey.Bytes()))
                     return false;
 
@@ -303,10 +300,9 @@ namespace LLD
             ssKey << key;
 
             /* Add transaction to erase queue. */
+            LOCK(TRANSACTION_MUTEX);
             if(pTransaction)
             {
-                LOCK(TRANSACTION_MUTEX);
-
                 pTransaction->EraseTransaction(ssKey.Bytes());
 
                 return true;
@@ -336,10 +332,9 @@ namespace LLD
             std::vector<uint8_t> vData;
 
             /* Check that the key is not pending in a transaction for Erase. */
+            LOCK(TRANSACTION_MUTEX);
             if(pTransaction)
             {
-                LOCK(TRANSACTION_MUTEX);
-
                 if(pTransaction->mapEraseData.count(ssKey.Bytes()))
                     return false;
 
@@ -371,10 +366,9 @@ namespace LLD
             ssIndex << index;
 
             /* Check that the key is not pending in a transaction for Erase. */
+            LOCK(TRANSACTION_MUTEX);
             if(pTransaction)
             {
-                LOCK(TRANSACTION_MUTEX);
-
                 /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
                 pTransaction->mapIndex[ssKey.Bytes()] = ssIndex.Bytes();
 
@@ -403,10 +397,9 @@ namespace LLD
             ssKey << key;
 
             /* Check for transaction. */
+            LOCK(TRANSACTION_MUTEX);
             if(pTransaction)
             {
-                LOCK(TRANSACTION_MUTEX);
-
                 /* Set the transaction data. */
                 pTransaction->mapKeychain[ssKey.Bytes()] = 0;
 
@@ -434,10 +427,9 @@ namespace LLD
             ssData << value;
 
             /* Check for transaction. */
+            LOCK(TRANSACTION_MUTEX);
             if(pTransaction)
             {
-                LOCK(TRANSACTION_MUTEX);
-
                 /* Set the transaction data. */
                 pTransaction->mapTransactions[ssKey.Bytes()] = ssData.Bytes();
 
@@ -817,7 +809,7 @@ namespace LLD
 
                 /* Iterate through buffer to queue disk writes. */
                 std::vector<uint8_t> vWrite;
-                for(auto & vObj : vIndexes)
+                for(const auto& vObj : vIndexes)
                 {
                     /* Force write data. */
                     Force(vObj.first, vObj.second);
@@ -880,6 +872,8 @@ namespace LLD
          **/
         void TxnBegin()
         {
+            LOCK(TRANSACTION_MUTEX);
+
             /* Delete a previous database transaction pointer if applicable. */
             if(pTransaction)
                 delete pTransaction;
@@ -896,6 +890,8 @@ namespace LLD
          **/
         void TxnAbort()
         {
+            LOCK(TRANSACTION_MUTEX);
+
             /** Delete the previous transaction pointer if applicable. **/
             if(pTransaction)
                 delete pTransaction;
@@ -928,6 +924,8 @@ namespace LLD
          **/
         bool TxnCommit()
         {
+            LOCK(TRANSACTION_MUTEX);
+
             /* Check that there is a valid transaction to apply to the database. */
             if(!pTransaction)
                 return debug::error(FUNCTION, "nothing to commit.");
@@ -940,8 +938,10 @@ namespace LLD
                 /* Erase the transaction data. */
                 if(!pSectorKeys->Erase(it->first))
                 {
+                    delete pTransaction;
+                    pTransaction = nullptr;
                     //RollbackTransactions();
-                    TxnAbort();
+                    //TxnAbort();
 
                     return debug::error(FUNCTION, "failed to erase from keychain");
                 }
@@ -953,8 +953,10 @@ namespace LLD
                 SectorKey cKey(STATE::READY, it->first, 0, 0, 0);
                 if(!pSectorKeys->Put(cKey))
                 {
+                    delete pTransaction;
+                    pTransaction = nullptr;
                     //RollbackTransactions();
-                    TxnAbort();
+                    //TxnAbort();
                 }
             }
 
@@ -963,8 +965,10 @@ namespace LLD
             {
                 if(!Force(it->first, it->second))
                 {
+                    delete pTransaction;
+                    pTransaction = nullptr;
                     //RollbackTransactions();
-                    TxnAbort();
+                    //TxnAbort();
 
                     return debug::error(FUNCTION, "failed to commit sector data");
                 }
@@ -982,7 +986,9 @@ namespace LLD
                 {
                     if(!pSectorKeys->Get(it->second, cKey))
                     {
-                        TxnAbort();
+                        delete pTransaction;
+                        pTransaction = nullptr;
+                        //TxnAbort();
 
                         return debug::error(FUNCTION, "failed to read indexing entry");
                     }
@@ -994,7 +1000,9 @@ namespace LLD
                 cKey.SetKey(it->first);
                 if(!pSectorKeys->Put(cKey))
                 {
-                    TxnAbort();
+                    delete pTransaction;
+                    pTransaction = nullptr;
+                    //TxnAbort();
 
                     return debug::error(FUNCTION, "failed to write indexing entry");
                 }

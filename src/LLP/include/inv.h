@@ -27,7 +27,11 @@ namespace LLP
     };
 
 
-    /** inv message data */
+    /** CInv
+     *
+     *  Inv message data.
+     *
+     **/
     class CInv
     {
         public:

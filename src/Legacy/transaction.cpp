@@ -86,7 +86,7 @@ namespace Legacy
 		if ((int64_t)nLockTime < ((int64_t)nLockTime < LOCKTIME_THRESHOLD ? (int64_t)nBlockHeight : nBlockTime))
 			return true;
 
-		for(auto txin : vin)
+		for(const auto& txin : vin)
 			if (!txin.IsFinal())
 				return false;
 
@@ -210,7 +210,7 @@ namespace Legacy
 	/* Check for standard transaction types */
 	bool Transaction::IsStandard() const
     {
-        for(auto txin : vin)
+        for(const auto& txin : vin)
         {
             // Biggest 'standard' txin is a 3-signature 3-of-3 CHECKMULTISIG
             // pay-to-script-hash, which is 3 ~80-byte signatures, 3
@@ -222,7 +222,7 @@ namespace Legacy
                 return false;
         }
 
-        for(auto txout : vout)
+        for(const auto& txout : vout)
             if (!Legacy::IsStandard(txout.scriptPubKey))
                 return false;
 
@@ -318,12 +318,13 @@ namespace Legacy
             return false;
 
         /* Check the coin age of each Input. */
-        for(int nIndex = 1; nIndex < vin.size(); nIndex++)
+        for(int nIndex = 1; nIndex < vin.size(); ++nIndex)
         {
             /* Calculate the Age and Value of given output. */
             TAO::Ledger::BlockState statePrev;
             if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev))
-                return debug::error(FUNCTION, "failed to read previous tx block");
+                if(!LLD::legDB->RepairIndex(vin[nIndex].prevout.hash))
+                    return debug::error(FUNCTION, "failed to read or repair previous block");
 
             /* Time is from current transaction to previous block time. */
             uint64_t nCoinAge = (nTime - statePrev.GetBlockTime());
@@ -333,6 +334,71 @@ namespace Legacy
         }
 
         nAge /= (vin.size() - 1);
+
+        return true;
+    }
+
+
+    /* Check the proof of stake calculations. */
+    bool Transaction::VerifyStake(const TAO::Ledger::BlockState& block) const
+    {
+        /* Set the Public Key Integer Key from Bytes. */
+        uint576_t cKey;
+        if(!TrustKey(cKey))
+            return debug::error(FUNCTION, "cannot extract trust key");
+
+        /* Determine Trust Age if the Trust Key Exists. */
+        uint64_t nCoinAge = 0, nTrustAge = 0, nBlockAge = 0;
+        double nTrustWeight = 0.0, nBlockWeight = 0.0;
+
+        /* Check for trust block. */
+        if(IsTrust())
+        {
+            /* Get the trust key. */
+            TAO::Ledger::TrustKey trustKey;
+            if(!LLD::legDB->ReadTrustKey(cKey, trustKey))
+                return debug::error(FUNCTION, "failed to read trust key");
+
+            /* Check the genesis and trust timestamps. */
+            TAO::Ledger::BlockState statePrev;
+            if(!LLD::legDB->ReadBlock(block.hashPrevBlock, statePrev))
+                return debug::error(FUNCTION, "failed to read previous block");
+
+            /* Check the genesis time. */
+            if(trustKey.nGenesisTime > statePrev.GetBlockTime())
+                return debug::error(FUNCTION, "genesis time cannot be after trust time");
+
+            nTrustAge = trustKey.Age(statePrev.GetBlockTime());
+            nBlockAge = trustKey.BlockAge(statePrev);
+
+            /** Trust Weight Reaches Maximum at 30 day Limit. **/
+            nTrustWeight = std::min(17.5, (((16.5 * log(((2.0 * nTrustAge) / (60 * 60 * 24 * 28)) + 1.0)) / log(3))) + 1.0);
+
+            /** Block Weight Reaches Maximum At Trust Key Expiration. **/
+            nBlockWeight = std::min(20.0, (((19.0 * log(((2.0 * nBlockAge) / (60 * 60 * 24)) + 1.0)) / log(3))) + 1.0);
+        }
+        else
+        {
+            /* Calculate the Average Coinstake Age. */
+            if(!CoinstakeAge(nCoinAge))
+                return debug::error(FUNCTION, "failed to get coinstake age");
+
+            /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */
+            nTrustWeight = std::min(17.5, (((16.5 * log(((2.0 * nCoinAge) / (60 * 60 * 24 * 28 * 3)) + 1.0)) / log(3))) + 1.0);
+        }
+
+        /* Check the nNonce Efficiency Proportion Requirements. */
+        uint32_t nThreshold = (((block.nTime - nTime) * 100.0) / block.nNonce) + 3;
+        uint32_t nRequired  = ((50.0 - nTrustWeight - nBlockWeight) * 1000) / std::min((int64_t)1000, vout[0].nValue);
+        if(nThreshold < nRequired)
+            return debug::error(FUNCTION, "energy efficiency threshold violated");
+
+
+        /* Check the Block Hash with Weighted Hash to Target. */
+        LLC::CBigNum bnTarget;
+        bnTarget.SetCompact(block.nBits);
+        if(block.GetHash() > bnTarget.getuint1024())
+            return debug::error(FUNCTION, "proof of stake not meeting target");
 
         return true;
     }
@@ -378,7 +444,8 @@ namespace Legacy
             /* Calculate the Age and Value of given output. */
             TAO::Ledger::BlockState statePrev;
             if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev))
-                return debug::error(FUNCTION, "failed to read previous tx block");
+                if(!LLD::legDB->RepairIndex(vin[nIndex].prevout.hash))
+                    return debug::error(FUNCTION, "failed to read previous tx block");
 
             /* Read the previous transaction. */
             Legacy::Transaction txPrev;
@@ -465,7 +532,7 @@ namespace Legacy
 	uint32_t Transaction::GetLegacySigOpCount() const
     {
         unsigned int nSigOps = 0;
-        for(auto txin : vin)
+        for(const auto& txin : vin)
         {
             if(txin.IsStakeSig())
                 continue;
@@ -473,7 +540,7 @@ namespace Legacy
             nSigOps += txin.scriptSig.GetSigOpCount(false);
         }
 
-        for(auto txout : vout)
+        for(const auto& txout : vout)
         {
             nSigOps += txout.scriptPubKey.GetSigOpCount(false);
         }
@@ -503,7 +570,7 @@ namespace Legacy
 	uint64_t Transaction::GetValueOut() const
 	{
 		int64_t nValueOut = 0;
-		for(auto txout : vout)
+		for(const auto& txout : vout)
 		{
 			nValueOut += txout.nValue;
 			if (!MoneyRange(txout.nValue) || !MoneyRange(nValueOut))
@@ -570,7 +637,7 @@ namespace Legacy
         /* To limit dust spam, require MIN_TX_FEE/MIN_RELAY_TX_FEE if any output is less than 0.01 */
         if (nMinFee < nBaseFee)
         {
-            for(auto txout : vout)
+            for(const auto& txout : vout)
                 if (txout.nValue < CENT)
                 {
                     nMinFee = nBaseFee;
@@ -605,7 +672,7 @@ namespace Legacy
                 txtype += "trust";
             else if(IsGenesis())
                 txtype += "genesis";
-            else 
+            else
                 txtype += "user";
         str += debug::strprintf("%s %s", GetHash().ToString().c_str(), txtype.c_str());
         return str;
@@ -625,9 +692,9 @@ namespace Legacy
             vout.size(),
             nLockTime);
 
-        for (auto txin : vin)
+        for (const auto& txin : vin)
             str += "    " + txin.ToString() + "";
-        for (auto txout : vout)
+        for (const auto& txout : vout)
             str += "    " + txout.ToString() + "";
         return str;
     }
@@ -657,7 +724,7 @@ namespace Legacy
 
         /* Check for negative or overflow output values */
         int64_t nValueOut = 0;
-        for(auto txout : vout)
+        for(const auto& txout : vout)
         {
             /* Checkout for empty outputs. */
             if (txout.IsEmpty() && (!IsCoinBase()) && (!IsCoinStake()))
@@ -679,7 +746,7 @@ namespace Legacy
 
         /* Check for duplicate inputs */
         std::set<COutPoint> vInOutPoints;
-        for(auto txin : vin)
+        for(const auto& txin : vin)
         {
             if (vInOutPoints.count(txin.prevout))
                 return false;
@@ -690,7 +757,7 @@ namespace Legacy
         /* Check for null previous outputs. */
         if (!IsCoinBase() && !IsCoinStake())
         {
-            for(auto txin : vin)
+            for(const auto& txin : vin)
                 if (txin.prevout.IsNull())
                     return debug::error(FUNCTION, "prevout is null");
         }
@@ -754,10 +821,6 @@ namespace Legacy
                 return true;
             }
 
-            /* Check that the trust score is accurate. */
-            if(state.nVersion >= 5 && !CheckTrust(state))
-                return debug::error(FUNCTION, "invalid trust score");
-
             /* Get the trust key. */
             std::vector<uint8_t> vTrustKey;
             if(!TrustKey(vTrustKey))
@@ -777,9 +840,6 @@ namespace Legacy
                 /* Check the genesis transaction. */
                 if(!trustKey.CheckGenesis(state))
                     return debug::error(FUNCTION, "invalid genesis transaction");
-
-                /* Write the trust key to indexDB */
-                LLD::legDB->WriteTrustKey(cKey, trustKey);
             }
 
             /* Handle Adding Trust Transactions. */
@@ -791,8 +851,6 @@ namespace Legacy
                     /* FindGenesis will set hashPrevBlock to genesis block. Don't want to change that here, so use temp hash */
                     if(!TAO::Ledger::FindGenesis(cKey, state.hashPrevBlock, trustKey))
                         return debug::error(FUNCTION, "no trust without genesis");
-
-                    LLD::legDB->WriteTrustKey(cKey, trustKey);
                 }
 
                 /* Check that the Trust Key and Current Block match. */
@@ -810,8 +868,18 @@ namespace Legacy
 
                 /* Write trust key changes to disk. */
                 trustKey.hashLastBlock = state.GetHash();
-                LLD::legDB->WriteTrustKey(cKey, trustKey);
             }
+
+            /* Write the trust key. */
+            LLD::legDB->WriteTrustKey(cKey, trustKey);
+
+            /* Check that the trust score is accurate. */
+            if(state.nVersion >= 5 && !CheckTrust(state))
+                return debug::error(FUNCTION, "invalid trust score");
+
+            /* Check if the stake is verified for version 4. */
+            if(state.nVersion < 5 && !VerifyStake(state))
+                return debug::error(FUNCTION, "invalid proof of stake");
         }
 
         /* Read all of the inputs. */
@@ -834,7 +902,8 @@ namespace Legacy
             {
                 TAO::Ledger::BlockState statePrev;
                 if(!LLD::legDB->ReadBlock(txPrev.GetHash(), statePrev))
-                    return debug::error(FUNCTION, "failed to read previous tx block");
+                    if(!LLD::legDB->RepairIndex(txPrev.GetHash()))
+                        return debug::error(FUNCTION, "failed to read previous tx block");
 
                 /* Check the maturity. */
                 if((state.nHeight - statePrev.nHeight) < TAO::Ledger::NEXUS_MATURITY_BLOCKS)
@@ -873,8 +942,9 @@ namespace Legacy
                 return debug::error(FUNCTION, GetHash().ToString().substr(0, 10), " failed to get coinstake interest");
 
             /* Check that the interest is within range. */
-            if (vout[0].nValue > nInterest + nValueIn)
-                return debug::error(FUNCTION, GetHash().ToString().substr(0,10), " stake reward mismatch");
+            //add tolerance to stake reward of + 1 (viz.) for stake rewards
+            if (vout[0].nValue > nInterest + nValueIn + 1)
+                return debug::error(FUNCTION, GetHash().ToString().substr(0,10), " stake reward ", vout[0].nValue, " mismatch ", nInterest + nValueIn);
         }
         else if (nValueIn < GetValueOut())
             return debug::error(FUNCTION, GetHash().ToString().substr(0,10), "value in < value out");
@@ -977,7 +1047,7 @@ namespace Legacy
         {
             /* Enforce sequence number 1 if previous block was genesis */
             if(nSequence != 1)
-                return debug::error("CBlock::CheckTrust() : first trust block and sequence is not 1 (%u)", nSequence);
+                return debug::error(FUNCTION, "first trust block and sequence is not 1: ", nSequence);
 
             /* Genesis results in a previous score of 0. */
             nScorePrev = 0;
@@ -989,13 +1059,7 @@ namespace Legacy
             /* Check the trust pool - this should only execute once transitioning from version 4 to version 5 trust keys. */
             TAO::Ledger::TrustKey trustKey;
             if(!LLD::legDB->ReadTrustKey(cKey, trustKey))
-            {
-                /* Find the genesis if it isn't found. */
-                if(!FindGenesis(cKey, state.hashPrevBlock, trustKey))
-                    return debug::error(FUNCTION, "trust key not found in database");
-
-                LLD::legDB->WriteTrustKey(cKey, trustKey);
-            }
+                return debug::error(FUNCTION, "couldn't find the genesis");
 
             /* Enforce sequence number of 1 for anything made from version 4 blocks. */
             if(nSequence != 1)
@@ -1003,7 +1067,7 @@ namespace Legacy
 
             /* Ensure that a version 4 trust key is not expired based on new timespan rules. */
             if(trustKey.Expired(TAO::Ledger::ChainState::stateBest))
-                return debug::error("version 4 key expired.");
+                return debug::error("version 4 key expired ", trustKey.BlockAge(TAO::Ledger::ChainState::stateBest));
 
             /* Score is the total age of the trust key for version 4. */
             nScorePrev = trustKey.Age(TAO::Ledger::ChainState::stateBest.GetBlockTime());
