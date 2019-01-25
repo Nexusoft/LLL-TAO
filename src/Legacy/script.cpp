@@ -44,7 +44,7 @@ namespace Legacy
     std::string StackString(const std::vector<std::vector<uint8_t> >& vStack)
     {
         std::string str;
-        for(auto vch : vStack)
+        for(const auto& vch : vStack)
         {
             if (!str.empty())
                 str += " ";
@@ -335,7 +335,7 @@ namespace Legacy
         this->clear();
 
         *this << EncodeOP_N(nRequired);
-        for(auto key : keys)
+        for(const auto& key : keys)
             *this << key.GetPubKey();
         *this << EncodeOP_N(keys.size()) << OP_CHECKMULTISIG;
     }

@@ -901,7 +901,7 @@ namespace Legacy
 
         // Scan templates
         const CScript& script1 = scriptPubKey;
-        for(auto tplate : mTemplates)
+        for(const auto& tplate : mTemplates)
         {
             const CScript& script2 = tplate.second;
             vSolutionsRet.clear();
@@ -1086,7 +1086,7 @@ namespace Legacy
     uint32_t HaveKeys(const std::vector< std::vector<uint8_t> >& pubkeys, const CKeyStore& keystore)
     {
         uint32_t nResult = 0;
-        for(auto pubkey : pubkeys)
+        for(const auto& pubkey : pubkeys)
         {
             NexusAddress address;
             address.SetPubKey(pubkey);

@@ -815,7 +815,7 @@ namespace LLD
 
                 /* Iterate through buffer to queue disk writes. */
                 std::vector<uint8_t> vWrite;
-                for(auto & vObj : vIndexes)
+                for(const auto& vObj : vIndexes)
                 {
                     /* Force write data. */
                     Force(vObj.first, vObj.second);

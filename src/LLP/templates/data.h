@@ -86,7 +86,7 @@ namespace LLP
             CONDITION.notify_all();
             DATA_THREAD.join();
 
-            for(auto & CONNECTION : CONNECTIONS)
+            for(auto& CONNECTION : CONNECTIONS)
                 if(CONNECTION)
                     delete CONNECTION;
         }
