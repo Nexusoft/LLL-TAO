@@ -655,7 +655,7 @@ namespace Legacy
          * @return true if the transactions was added/updated
          *
          */
-        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock& containingBlock,
+        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::Block& containingBlock,
                                       bool fUpdate = false, bool fFindBlock = false, bool fRescan = false);
 
 
@@ -673,7 +673,7 @@ namespace Legacy
 
         /** DisableTransaction
          *
-         *  When disconnecting a coinstake transaction, this method to marks
+         *  When disconnecting a coinstake transaction, this method marks
          *  any previous outputs from this wallet as unspent.
          *
          *  @param[in] tx The coinstake transaction to disable
@@ -687,8 +687,8 @@ namespace Legacy
          *  Scan the block chain for transactions with UTXOs from or to keys in this wallet.
          *  Add/update the current wallet transactions for anyhat found.
          *
-         *  @param[in] startBlock Block state for location in block chain to start the scan.
-         *                        If nullptr, will scan full chain
+         *  @param[in] pState Block state for location in block chain to start the scan.
+         *                    If nullptr, will scan full chain from Genesis
          *
          *  @param[in] fUpdate If true, any transaction found by scan that is already in the
          *                     wallet will be updated
@@ -696,7 +696,7 @@ namespace Legacy
          *  @return The number of transactions added/updated by the scan
          *
          **/
-        uint32_t ScanForWalletTransactions(const TAO::Ledger::BlockState* pstartBlock, const bool fUpdate = false);
+        uint32_t ScanForWalletTransactions(const TAO::Ledger::BlockState* pState, const bool fUpdate = false);
 
 
         /** ResendWalletTransactions
@@ -929,16 +929,13 @@ namespace Legacy
          *
          *  @param[out] nFeeRet Fee paid to send the created transaction
          *
-         *  @param[out] isChangeKeyUsed Set true if the change key was used to create the transaction, false otherwise
-         *                              Pass this to CommitTransaction. 
-         *
          *  @param[in] nMinDepth Minimum depth required before prior transaction output selected as input to this transaction
          *
          *  @return true if transaction successfully created
          *
          **/
         bool CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& changeKey,
-                               int64_t& nFeeRet, bool& fChangeKeyUsed, const uint32_t nMinDepth = 1);
+                               int64_t& nFeeRet, const uint32_t nMinDepth = 1);
 
 
         /** CommitTransaction
@@ -949,12 +946,10 @@ namespace Legacy
          *
          *  @param[in,out] changeKey Key reserved for use by change output, key will be kept on successful commit
          *
-         *  @param[in] isChangeKeyUsed If true, commit will keep the key. If false, commit will return the key.
-         *
          *  @return true if transaction successfully committed
          *
          **/
-        bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& changeKey, const bool fChangeKeyUsed);
+        bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& changeKey);
 
 
         /** AddCoinstakeInputs

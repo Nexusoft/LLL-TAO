@@ -973,7 +973,7 @@ namespace Legacy
     /*  Checks whether a transaction has inputs or outputs belonging to this wallet, and adds
      *  it to the wallet when it does.
      */
-    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock& containingBlock,
+    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::Block& containingBlock,
                                            bool fUpdate, bool fFindBlock, bool fRescan)
     {
         uint512_t hash = tx.GetHash();
@@ -1036,8 +1036,8 @@ namespace Legacy
     }
 
 
-    /* When disconnecting a coinstake transaction, this method to marks
-     *  any previous outputs from this wallet as unspent.
+    /* When disconnecting a coinstake transaction, this method marks
+     * any previous outputs from this wallet as unspent.
      */
     void CWallet::DisableTransaction(const Transaction& tx)
     {
@@ -1056,12 +1056,12 @@ namespace Legacy
 
                 if (mi != mapWallet.end())
                 {
-                    CWalletTx& prev = (*mi).second;
+                    CWalletTx& prevTx = (*mi).second;
 
-                    if (txin.prevout.n < prev.vout.size() && IsMine(prev.vout[txin.prevout.n]))
+                    if (txin.prevout.n < prevTx.vout.size() && IsMine(prevTx.vout[txin.prevout.n]))
                     {
-                        prev.MarkUnspent(txin.prevout.n);
-                        prev.WriteToDisk();
+                        prevTx.MarkUnspent(txin.prevout.n);
+                        prevTx.WriteToDisk();
                     }
                 }
             }
@@ -1072,23 +1072,25 @@ namespace Legacy
     /* Scan the block chain for transactions from or to keys in this wallet.
      * Add/update the current wallet transactions for any found.
      */
-    uint32_t CWallet::ScanForWalletTransactions(const TAO::Ledger::BlockState* pstartBlock, const bool fUpdate)
+    uint32_t CWallet::ScanForWalletTransactions(const TAO::Ledger::BlockState* pState, const bool fUpdate)
     {
         /* Count the number of transactions process for this wallet to use as return value */
         uint32_t nTransactionCount = 0;
-        TAO::Ledger::BlockState block;
+        TAO::Ledger::BlockState state;
 
-        if (pstartBlock == nullptr)
+        if (pState == nullptr)
         {
             /* Use start of chain */
-            if (!LLD::legDB->ReadBlock(TAO::Ledger::ChainState::hashBestChain, block))
+            if (!LLD::legDB->ReadBlock((config::fTestNet ? TAO::Ledger::hashGenesisTestnet : TAO::Ledger::hashGenesis), state))
             {
                 debug::error(0, FUNCTION, "Could not get start of chain");
                 return 0;
             }
+
+            state = state.Next(); //first block after genesis
         }
         else
-            block = *pstartBlock;
+            state = *pState;
 
         { // Begin lock scope
             LOCK(cs_wallet);
@@ -1098,8 +1100,8 @@ namespace Legacy
             while (!config::fShutdown)
             {
 
-                /* Scan each transaction in the block and process those related to this wallet */
-                for(auto item : block.vtx)
+                /* Scan each transaction in the block and process legacy transactions related to this wallet */
+                for(auto item : state.vtx)
                 {
                     uint8_t txHashType = item.first;
                     uint512_t txHash = item.second;
@@ -1113,13 +1115,13 @@ namespace Legacy
                             continue;
                         }
 
-                        //if (AddToWalletIfInvolvingMe(tx, block, fUpdate, false, true))
-                        //    nTransactionCount++;
+                        if (AddToWalletIfInvolvingMe(tx, state, fUpdate, false, true))
+                            nTransactionCount++;
                     }
                 }
 
                 /* Move to next block. Will return false when reach end of chain, ending the while loop */
-                if (!block.Next())
+                if (!state.Next())
                     break;
             }
         } // End lock scope
@@ -1237,63 +1239,60 @@ namespace Legacy
         nMismatchFound = 0;
         nBalanceInQuestion = 0;
 
+        std::vector<CWalletTx> transactionsInWallet;
+
         {
             LOCK(cs_wallet);
 
-            std::vector<CWalletTx> transactionsInWallet;
             transactionsInWallet.reserve(mapWallet.size());
 
             for (auto& item : mapWallet)
                 transactionsInWallet.push_back(item.second);
 
-            for(CWalletTx& walletTx : transactionsInWallet)
+        }
+
+        for(CWalletTx& walletTx : transactionsInWallet)
+        {
+            /* Verify transaction is in the tx db */
+            Legacy::Transaction txTemp;
+
+            /* Check all the outputs to make sure the flags are all set properly. */
+            for (uint32_t n=0; n < walletTx.vout.size(); n++)
             {
-                /* Verify transaction is in the tx db */
-//TODO this won't work. it needs txindex below....need to check that code in qt wallet to see
-//how it works. Why do we need that when wallettx is already a Transaction
-//Apparently because that is what we are attempting to fix?
-                Legacy::Transaction txTemp;
+                bool isSpentOnChain = LLD::legacyDB->IsSpent(walletTx.GetHash(), n);
 
-                if(!LLD::legacyDB->ReadTx(walletTx.GetHash(), txTemp))
-                    continue;
-
-                /* Check all the outputs to make sure the flags are all set properly. */
-                for (uint32_t n=0; n < walletTx.vout.size(); n++)
+                /* Handle when Transaction on chain records output as unspent but wallet accounting has it as spent */
+                if (IsMine(walletTx.vout[n]) && walletTx.IsSpent(n) && !isSpentOnChain)
                 {
-                    /* Handle the Index on Disk for Transaction being inconsistent from the Wallet's accounting to the UTXO. */
-//TODO - Fix txindex reference
-//                    if (IsMine(walletTx.vout[n]) && walletTx.IsSpent(n) && (txindex.vSpent.size() <= n || txindex.vSpent[n].IsNull()))
-//                    {
-                        debug::log(0, FUNCTION, "Found lost coin ", FormatMoney(walletTx.vout[n].nValue), " Nexus ", walletTx.GetHash().ToString(),
-                            "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
+                    debug::log(1, FUNCTION, "Found unspent coin ", FormatMoney(walletTx.vout[n].nValue), " Nexus ", walletTx.GetHash().ToString(),
+                        "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
 
-                        ++nMismatchFound;
+                    ++nMismatchFound;
 
-                        nBalanceInQuestion += walletTx.vout[n].nValue;
+                    nBalanceInQuestion += walletTx.vout[n].nValue;
 
-                        if (!fCheckOnly)
-                        {
-                            walletTx.MarkUnspent(n);
-                            walletTx.WriteToDisk();
-                        }
-//                    }
-//
-//                    /* Handle the wallet missing a spend that was updated in the indexes. The index is updated on connect inputs. */
-//                    else if (IsMine(walletTx.vout[n]) && !walletTx.IsSpent(n) && (txindex.vSpent.size() > n && !txindex.vSpent[n].IsNull()))
-//                    {
-                        debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(walletTx.vout[n].nValue), " Nexus ", walletTx.GetHash().ToString(),
-                            "[", n, "] ", fCheckOnly? "repair not attempted" : "repairing");
+                    if (!fCheckOnly)
+                    {
+                        walletTx.MarkUnspent(n);
+                        walletTx.WriteToDisk();
+                    }
+                }
 
-                        ++nMismatchFound;
+                /* Handle when Transaction on chain records output as spent but wallet accounting has it as unspent */
+                if (IsMine(walletTx.vout[n]) && !walletTx.IsSpent(n) && isSpentOnChain)
+                {
+                    debug::log(1, FUNCTION, "Found spent coin ", FormatMoney(walletTx.vout[n].nValue), " Nexus ", walletTx.GetHash().ToString(),
+                        "[", n, "] ", fCheckOnly? "repair not attempted" : "repairing");
 
-                        nBalanceInQuestion += walletTx.vout[n].nValue;
+                    ++nMismatchFound;
 
-                        if (!fCheckOnly)
-                        {
-                            walletTx.MarkSpent(n);
-                            walletTx.WriteToDisk();
-                        }
-//                    }
+                    nBalanceInQuestion += walletTx.vout[n].nValue;
+
+                    if (!fCheckOnly)
+                    {
+                        walletTx.MarkSpent(n);
+                        walletTx.WriteToDisk();
+                    }
                 }
             }
         }
@@ -1512,12 +1511,11 @@ namespace Legacy
         }
 
         int64_t nFeeRequired;
-        bool fChangeKeyUsed;
 
         /* Key will be reserved by CreateTransaction for any change transaction, kept/returned on commit */
         CReserveKey changeKey(*this);
 
-        if (!CreateTransaction(vecSend, wtxNew, changeKey, nFeeRequired, fChangeKeyUsed, nMinDepth))
+        if (!CreateTransaction(vecSend, wtxNew, changeKey, nFeeRequired, nMinDepth))
         {
             /* Transaction creation failed */
             std::string strError;
@@ -1545,7 +1543,7 @@ namespace Legacy
         /* In Tritium, with QT interface removed, we no longer display the fee confirmation here. 
          * Successful transaction creation will be committed automatically 
          */
-        if (!CommitTransaction(wtxNew, changeKey, fChangeKeyUsed))
+        if (!CommitTransaction(wtxNew, changeKey))
             return std::string("The transaction was rejected. This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
 
         return "";
@@ -1554,7 +1552,7 @@ namespace Legacy
 
     /* Create and populate a new transaction. */
     bool CWallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& changeKey,
-                                    int64_t& nFeeRet, bool& fChangeKeyUsed, const uint32_t nMinDepth)
+                                    int64_t& nFeeRet, const uint32_t nMinDepth)
     {
         int64_t nValue = 0;
 
@@ -1622,8 +1620,6 @@ namespace Legacy
                 /* Amount of change needed is total of inputs - (total sent + fee) */
                 int64_t nChange = nValueIn - nTotalValue;
 
-                fChangeKeyUsed = false;
-
                 /* Any change below minimum tx amount is moved to fee */
                 if (nChange > 0 && nChange < MIN_TXOUT_AMOUNT)
                 {
@@ -1638,8 +1634,6 @@ namespace Legacy
 
                     if (!config::GetBoolArg("-avatar", true)) //Avatar enabled by default
                     {
-                        fChangeKeyUsed = true; 
-
                         /* When not avatar mode, use a new key pair from key pool for change */
                         std::vector<uint8_t> vchPubKeyChange = changeKey.GetReservedKey();
 
@@ -1660,6 +1654,9 @@ namespace Legacy
                     }
                     else
                     {
+                        /* Change key not used by avatar mode */
+                        changeKey.ReturnKey();
+
                         /* For avatar mode, return change to the last address retrieved by iterating the input set */
                         for(auto item : setSelectedCoins)
                         {
@@ -1673,7 +1670,11 @@ namespace Legacy
                     /* Insert change output at random position: */
                     auto position = wtxNew.vout.begin() + LLC::GetRandInt(wtxNew.vout.size());
                     wtxNew.vout.insert(position, CTxOut(nChange, scriptChange));
-
+                }
+                else
+                {
+                    /* No change for this transaction */
+                    changeKey.ReturnKey();
                 }
 
                 /* Fill vin with selected inputs */
@@ -1718,7 +1719,7 @@ namespace Legacy
 
 
     /* Commits a transaction and broadcasts it to the network. */
-    bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& changeKey, const bool fChangeKeyUsed)
+    bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& changeKey)
     {
         debug::log(0, FUNCTION, wtxNew.ToString());
 
@@ -1735,16 +1736,10 @@ namespace Legacy
          */
         AddToWallet(wtxNew);
 
-        if (fChangeKeyUsed)
-        {
-            /* Transaction did not use the change key. Return it. */
-            changeKey.ReturnKey();
-        }
-        else
-        {
-            /* Transaction used the change key. Remove key pair from key pool so it won't be used again */
-            changeKey.KeepKey();
-        }
+        /* If transaction used the change key, this will. Remove key pair from key pool so it won't be used again 
+         * If key was previously returned, this does nothing
+         */
+        changeKey.KeepKey();
 
 
         {

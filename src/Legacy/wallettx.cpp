@@ -339,6 +339,8 @@ namespace Legacy
     {
         if (IsBound() && ptransactionWallet->IsFileBacked())
         {
+            LOCK(CWalletTx::cs_wallettx);
+
             CWalletDB walletDB(ptransactionWallet->GetWalletFile());
             bool ret = walletDB.WriteTx(GetHash(), *this);
             walletDB.Close();
