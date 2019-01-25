@@ -35,21 +35,53 @@ namespace LLP
     class CInv
     {
         public:
+
+            /** Default Constructor **/
             CInv();
+
+            /** Constructor **/
             CInv(int typeIn, const uint1024_t& hashIn);
+
+            /** Constructor **/
             CInv(const std::string& strType, const uint1024_t& hashIn);
 
+
+            /** Serialization **/
             IMPLEMENT_SERIALIZE
             (
                 READWRITE(type);
                 READWRITE(hash);
             )
 
+            /** Relational operator less than **/
             friend bool operator<(const CInv& a, const CInv& b);
 
+            /** IsKnownType
+             *
+             *  Determines if this inventory a known type.
+             *
+             **/
             bool IsKnownType() const;
+
+            /** GetCommand
+             *
+             *  Returns a command from this inventory object.
+             *
+             **/
             const char* GetCommand() const;
+
+            /** ToString
+             *
+             *  Returns data about this inventory as a string object.
+             *
+             **/
             std::string ToString() const;
+
+            /** print
+             *
+             *  Prints this inventory data to the console window.
+             *
+             **/
             void print() const;
 
         // TODO: make private (improves encapsulation)

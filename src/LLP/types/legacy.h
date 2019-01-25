@@ -34,9 +34,11 @@ namespace LLP
 
         static std::string Name() { return "Legacy"; }
 
-        /* Constructors for Message LLP Class. */
+        /** Default Constructor **/
         LegacyNode() : BaseConnection<LegacyPacket>() {}
 
+
+        /** Constructor **/
         LegacyNode(Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN) { }
 
@@ -77,12 +79,14 @@ namespace LLP
         std::map<uint32_t, uint64_t> mapSentRequests;
 
 
-        /** Virtual Functions to Determine Behavior of Message LLP.
+        /** Event
          *
-         * @param[in] EVENT The byte header of the event type
-         * @param[in[ LENGTH The size of bytes read on packet read events
+         *  Virtual Functions to Determine Behavior of Message LLP.
          *
-         **/
+         *  @param[in] EVENT The byte header of the event type.
+         *  @param[in[ LENGTH The size of bytes read on packet read events.
+         *
+         */
         void Event(uint8_t EVENT, uint32_t LENGTH = 0) final;
 
 
@@ -90,28 +94,36 @@ namespace LLP
          *
          *  Main message handler once a packet is recieved.
          *
-         *  @return True is no errors, false otherwise
+         *  @return True is no errors, false otherwise.
          *
          **/
         bool ProcessPacket() final;
 
 
-        /** Handle for version message **/
+        /** PushVersion
+         *
+         *  Handle for version message
+         *
+         **/
         void PushVersion();
 
 
-        /** Send an LegacyAddress to Node.
+        /** PushAddress
          *
-         * @param[in] addr The address to send to nodes
+         *  Send an LegacyAddress to Node.
+         *
+         *  @param[in] addr The address to send to nodes
          *
          **/
         void PushAddress(const LegacyAddress& addr);
 
 
-        /** Send the DoS Score to DDOS Filte
+        /** DoS
          *
-         * @param[in] nDoS The score to add for DoS banning
-         * @param[in] fReturn The value to return (False disconnects this node)
+         *  Send the DoS Score to DDOS Filte
+         *
+         *  @param[in] nDoS The score to add for DoS banning
+         *  @param[in] fReturn The value to return (False disconnects this node)
          *
          **/
         inline bool DoS(int nDoS, bool fReturn)
@@ -121,10 +133,6 @@ namespace LLP
 
             return fReturn;
         }
-
-
-        /** Get the current IP address of this node. **/
-        //LegacyAddress GetAddress();
 
 
         /** ReadPacket
@@ -168,6 +176,16 @@ namespace LLP
         }
 
 
+        /** NewMessage
+         *
+         *  Creates a new message with a commands and data.
+         *
+         *  @param[in] chCommand Commands to add to the legacy packet.
+         *  @param[in] ssData A datastream object with data to write.
+         *
+         *  @return Returns a filled out legacy packet.
+         *
+         **/
         LegacyPacket NewMessage(const char* chCommand, DataStream& ssData)
         {
             LegacyPacket RESPONSE(chCommand);
@@ -176,7 +194,13 @@ namespace LLP
             return RESPONSE;
         }
 
-
+        /** PushMessage
+         *
+         *  Adds a legacy packet to the queue to write to the socket.
+         *
+         *  @param[in] chCommand Commands to add to the legacy packet.
+         *
+         **/
         void PushMessage(const char* chCommand)
         {
             LegacyPacket RESPONSE(chCommand);
@@ -186,6 +210,11 @@ namespace LLP
         }
 
 
+        /** PushMessage
+         *
+         *  Adds a legacy packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1>
         void PushMessage(const char* chMessage, const T1& t1)
         {
@@ -195,6 +224,12 @@ namespace LLP
             this->WritePacket(NewMessage(chMessage, ssData));
         }
 
+
+        /** PushMessage
+         *
+         *  Adds a legacy packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1, typename T2>
         void PushMessage(const char* chMessage, const T1& t1, const T2& t2)
         {
@@ -204,6 +239,12 @@ namespace LLP
             this->WritePacket(NewMessage(chMessage, ssData));
         }
 
+
+        /** PushMessage
+         *
+         *  Adds a legacy packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1, typename T2, typename T3>
         void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3)
         {
@@ -213,6 +254,12 @@ namespace LLP
             this->WritePacket(NewMessage(chMessage, ssData));
         }
 
+
+        /** PushMessage
+         *
+         *  Adds a legacy packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1, typename T2, typename T3, typename T4>
         void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4)
         {
@@ -222,6 +269,12 @@ namespace LLP
             this->WritePacket(NewMessage(chMessage, ssData));
         }
 
+
+        /** PushMessage
+         *
+         *  Adds a legacy packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1, typename T2, typename T3, typename T4, typename T5>
         void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5)
         {
@@ -231,6 +284,12 @@ namespace LLP
             this->WritePacket(NewMessage(chMessage, ssData));
         }
 
+
+        /** PushMessage
+         *
+         *  Adds a legacy packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
         void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6)
         {
@@ -240,6 +299,12 @@ namespace LLP
             this->WritePacket(NewMessage(chMessage, ssData));
         }
 
+
+        /** PushMessage
+         *
+         *  Adds a legacy packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7>
         void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7)
         {
@@ -249,6 +314,12 @@ namespace LLP
             this->WritePacket(NewMessage(chMessage, ssData));
         }
 
+
+        /** PushMessage
+         *
+         *  Adds a legacy packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8>
         void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7, const T8& t8)
         {
@@ -258,6 +329,12 @@ namespace LLP
             this->WritePacket(NewMessage(chMessage, ssData));
         }
 
+
+        /** PushMessage
+         *
+         *  Adds a legacy packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9>
         void PushMessage(const char* chMessage, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7, const T8& t8, const T9& t9)
         {

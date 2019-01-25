@@ -68,10 +68,12 @@ namespace LLP
         : BaseConnection<HTTPPacket>( SOCKET_IN, DDOS_IN ) { }
 
 
-        /** Virtual Functions to Determine Behavior of Message LLP.
+        /** Event
          *
-         *  @param[in] EVENT The byte header of the event type
-         *  @param[in[ LENGTH The size of bytes read on packet read events
+         *  Virtual Functions to Determine Behavior of Message LLP.
+         *
+         *  @param[in] EVENT The byte header of the event type.
+         *  @param[in[ LENGTH The size of bytes read on packet read events.
          *
          */
         void Event(uint8_t EVENT, uint32_t LENGTH = 0) override = 0;

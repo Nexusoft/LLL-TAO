@@ -18,6 +18,7 @@ ________________________________________________________________________________
 namespace LLP
 {
 
+	/* table of differnt inventory type names */
 	static const char* ppszTypeName[] =
 	{
 		"ERROR",
@@ -26,10 +27,7 @@ namespace LLP
 	};
 
 
-	/* Check the Inventory to See if a given hash is found.
-		TODO: Rebuild this Inventory System. Much Better Ways to Do it.
-		*/
-
+	/* Default Constructor */
 	CInv::CInv()
 	{
 		type = 0;
@@ -37,6 +35,7 @@ namespace LLP
 	}
 
 
+	/* Constructor */
 	CInv::CInv(int typeIn, const uint1024_t& hashIn)
 	{
 		type = typeIn;
@@ -44,6 +43,7 @@ namespace LLP
 	}
 
 
+	/* Constructor */
 	CInv::CInv(const std::string& strType, const uint1024_t& hashIn)
 	{
 		uint32_t i;
@@ -61,18 +61,21 @@ namespace LLP
 	}
 
 
+	/* Relational operator less than */
 	bool operator<(const CInv& a, const CInv& b)
 	{
 		return (a.type < b.type || (a.type == b.type && a.hash < b.hash));
 	}
 
 
+	/* Determines if this inventory a known type. */
 	bool CInv::IsKnownType() const
 	{
 		return (type >= 1 && type < (int)ARRAYLEN(ppszTypeName));
 	}
 
 
+	/* Returns a command from this inventory object. */
 	const char* CInv::GetCommand() const
 	{
 		if (!IsKnownType())
@@ -82,6 +85,7 @@ namespace LLP
 	}
 
 
+	/* Returns data about this inventory as a string object. */
 	std::string CInv::ToString() const
 	{
 		if(GetCommand() == std::string("tx"))
@@ -94,6 +98,7 @@ namespace LLP
 	}
 
 
+  /* Prints this inventory data to the console window. */
 	void CInv::print() const
 	{
 		debug::log(0, "CInv(", ToString(), ")");
