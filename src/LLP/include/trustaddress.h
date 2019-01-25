@@ -40,8 +40,9 @@ namespace LLP
 
     /** TrustAddress
      *
-     *  This is a basic struct for keeping statistics on addresses and is used
-     *  for handling and tracking connections in a meaningful way
+     *  This is an Address with additional information about its connectivity
+     *  within the Nexus Network that is also extendable for building out
+     *  meaningful relationships between nodes.
      *
      **/
     class TrustAddress : public BaseAddress

@@ -97,7 +97,7 @@ namespace TAO
 
                 /* Get the previous state. */
                 state = state.Prev();
-                if(state.IsNull())
+                if(!state)
                     return debug::error(FUNCTION, "failed to find the checkpoint");
 
                 /* Check the checkpoints. */

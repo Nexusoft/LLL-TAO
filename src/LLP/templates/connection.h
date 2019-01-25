@@ -31,13 +31,17 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /* Base Template class to handle outgoing / incoming LLP data for both Client and Server. */
+    /** BaseConnection
+     *
+     *  Base Template class to handle outgoing / incoming LLP data for both Client and Server.
+     *
+     **/
     template<typename PacketType = Packet>
     class BaseConnection : public Socket
     {
     protected:
 
-        /** Recursive mutex for thread synchronization. **/
+        /** Mutex for thread synchronization. **/
         std::mutex MUTEX;
 
 
@@ -101,6 +105,7 @@ namespace LLP
         {
         }
 
+        /* Default destructor */
         virtual ~BaseConnection()
         {
             Disconnect();
@@ -119,7 +124,7 @@ namespace LLP
         }
 
 
-        /** Set Null
+        /** SetNull
          *
          *  Sets the object to an invalid state.
          *
@@ -137,7 +142,7 @@ namespace LLP
         }
 
 
-        /** Is Null
+        /** IsNull
          *
          *  Checks if is in null state.
          *
@@ -148,28 +153,46 @@ namespace LLP
         }
 
 
-        /* Checks for any flags in the Error Handle. */
+        /** Errors
+         *
+         *  Checks for any flags in the Error Handle.
+         *
+         **/
         bool Errors()
         {
             return ErrorCode() != 0;
         }
 
 
-        /* Give the message (c-string) of the error in the socket. */
+        /** Error
+         *
+         *  Give the message (c-string) of the error in the socket.
+         *
+         **/
         char* Error()
         {
             return strerror(ErrorCode());
         }
 
 
-        /* Connection flag to determine if socket should be handled if not connected. */
+        /** Connected
+         *
+         *  Connection flag to determine if socket should be handled if not connected.
+         *
+         **/
         bool Connected()
         {
             return fCONNECTED;
         }
 
 
-        /* Determines if nTime seconds have elapsed since last Read / Write. */
+        /** Timeout
+         *
+         *  Determines if nTime seconds have elapsed since last Read / Write.
+         *
+         *  @param[in] nTime The time in seconds.
+         *
+         **/
         bool Timeout(uint32_t nTime)
         {
             return (runtime::timestamp() > nLastSend + nTime &&
@@ -177,21 +200,36 @@ namespace LLP
         }
 
 
-        /* Handles two types of packets, requests which are of header >= 128, and data which are of header < 128. */
+        /** PacketComplete
+         *
+         *  Handles two types of packets, requests which are of header >= 128,
+         *  and data which are of header < 128.
+         **/
         bool PacketComplete()
         {
             return INCOMING.Complete();
         }
 
 
-        /* Used to reset the packet to Null after it has been processed. This then flags the Connection to read another packet. */
+        /** ResetPacket
+         *
+         *  Used to reset the packet to Null after it has been processed.
+         *  This then flags the Connection to read another packet.
+         *
+         **/
         void ResetPacket()
         {
             INCOMING.SetNull();
         }
 
 
-        /* Write a single packet to the TCP stream. */
+        /** WritePacket
+         *
+         *  Write a single packet to the TCP stream.
+         *
+         *  @param[in] PACKET The packet of type PacketType to write.
+         *
+         **/
         void WritePacket(PacketType PACKET)
         {
             LOCK(MUTEX);
@@ -209,12 +247,26 @@ namespace LLP
         }
 
 
-        /* Non-Blocking Packet reader to build a packet from TCP Connection.
-            This keeps thread from spending too much time for each Connection. */
+        /** ReadPacket
+         *
+         *  Non-Blocking Packet reader to build a packet from TCP Connection.
+         *  This keeps thread from spending too much time for each Connection.
+         *
+         **/
         virtual void ReadPacket() = 0;
 
 
-        /* Connect Socket to a Remote Endpoint. */
+        /** Connect
+         *
+         *  Connect Socket to a Remote Endpoint.
+         *
+         *  @param[in] strAddress The IP address string.
+         *
+         *  @param[in] nPort The port number.
+         *
+         *  @return Returns true if successful connection, false otherwise.
+         *
+         */
         bool Connect(std::string strAddress, uint16_t nPort)
         {
             BaseAddress addrConnect(strAddress, nPort);
@@ -237,14 +289,23 @@ namespace LLP
             return false;
         }
 
-        /* Get Address. Returns the address of socket. */
-        LegacyAddress GetAddress()
+        /** GetAddress
+         *
+         *  Returns the address of socket.
+         *
+         **/
+        BaseAddress GetAddress()
         {
-            return LegacyAddress(addr);
+            return addr;
         }
 
 
-        /* Disconnect Socket. Cleans up memory usage to prevent "memory runs" from poor memory management. */
+        /** Disconnect
+         *
+         *  Disconnect Socket. Cleans up memory usage to prevent "memory runs"
+         *  from poor memory management.
+         *
+         **/
         void Disconnect()
         {
             Close();
@@ -255,19 +316,29 @@ namespace LLP
     };
 
 
+    /** Connection
+     *
+     *
+     *
+     **/
     class Connection : public BaseConnection<Packet>
     {
     public:
 
-        /* Connection Constructors */
+        /** Default Constructor **/
         Connection()
         : BaseConnection() { }
 
+        /** Constructor **/
         Connection( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false)
         : BaseConnection(SOCKET_IN, DDOS_IN, isDDOS, fOutgoing) { }
 
 
-        /* Regular Connection Read Packet Method. */
+        /** ReadPacket
+         *
+         *  Regular Connection Read Packet Method.
+         *
+         **/
         void ReadPacket() final
         {
 

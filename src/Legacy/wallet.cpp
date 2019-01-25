@@ -104,7 +104,7 @@ namespace Legacy
             if (fForceLatest && nVersionToSet > nWalletMaxVersion)
                     nVersionToSet = FEATURE_LATEST;
 
-            /* Ignore new setting if current setting is higher version 
+            /* Ignore new setting if current setting is higher version
              * Will still process if they are equal, because nWalletVersion defaults to FEATURE_BASE and it needs to call WriteMinVersin for new wallet */
             if (nWalletVersion > nVersionToSet)
                 return true;
@@ -206,12 +206,12 @@ namespace Legacy
         }
         else if (nWalletVersion == FEATURE_BASE)
         {
-            /* Old wallets set min version but it never got recorded because constructor defaulted the value. 
-             * This assures older wallet files have it stored. 
+            /* Old wallets set min version but it never got recorded because constructor defaulted the value.
+             * This assures older wallet files have it stored.
              */
 
             /* Need second db declare so not in use if Rewrite required, but should just reuse already open db handle */
-            CWalletDB walletdb(strWalletFile, "cr+"); 
+            CWalletDB walletdb(strWalletFile, "cr+");
             uint32_t nStoredMinVersion = 0;
 
             if (!walletdb.ReadMinVersion(nStoredMinVersion) || nStoredMinVersion == 0)
@@ -305,7 +305,7 @@ namespace Legacy
          * Would be better to have a more intuitive way for code to handle encrypted key, but this way does work.
          * It violates encapsulation, though, because we should not have to rely on how CCryptoKeyStore implements AddKey
          */
-        
+
 
         /* Call overridden method to add key to key store */
         /* For encrypted wallet, this adds to both key store and wallet database (as described above) */
@@ -321,7 +321,7 @@ namespace Legacy
 
             return result;
         }
-        
+
 
         return true;
     }
@@ -439,7 +439,7 @@ namespace Legacy
         /* kMasterKey now contains the master key encrypted by the provided passphrase. Ready to perform wallet encryption. */
         {
             /* Lock for writing master key */
-            LOCK(cs_wallet); 
+            LOCK(cs_wallet);
 
             mapMasterKeys[++nMasterKeyMaxID] = kMasterKey;
 
@@ -536,7 +536,7 @@ namespace Legacy
              * If any one master key decryption works and unlocks the wallet, then the unlock is successful.
              * Supports a multi-user wallet, where each user has their own passphrase
              */
-            for(auto pMasterKey : mapMasterKeys)
+            for(const auto& pMasterKey : mapMasterKeys)
             {
                 /* Set the encryption context using the passphrase provided */
                 if(!crypter.SetKeyFromPassphrase(strWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
@@ -666,7 +666,7 @@ namespace Legacy
         TransactionMap mapWalletCopy;
 
         {
-            /* Lock wallet only to take a snapshot of current transaction map for calculating balance 
+            /* Lock wallet only to take a snapshot of current transaction map for calculating balance
              * After unlock, mapWallet can change but it won't affect balance calculation
              */
             LOCK(cs_wallet);
@@ -697,7 +697,7 @@ namespace Legacy
         TransactionMap mapWalletCopy;
 
         {
-            /* Lock wallet only to take a snapshot of current transaction map for calculating balance 
+            /* Lock wallet only to take a snapshot of current transaction map for calculating balance
              * After unlock, mapWallet can change but it won't affect balance calculation
              */
             LOCK(cs_wallet);
@@ -1048,7 +1048,7 @@ namespace Legacy
             {
 
                 /* Scan each transaction in the block and process those related to this wallet */
-                for(auto item : block.vtx)
+                for(const auto& item : block.vtx)
                 {
                     uint8_t txHashType = item.first;
                     uint512_t txHash = item.second;
@@ -1121,18 +1121,18 @@ namespace Legacy
 
             /* Find any sent tx not in block and sort them in chronological order */
             std::multimap<uint64_t, CWalletTx> mapSorted;
-            for(auto item : mapWallet)
+            for(const auto& item : mapWallet)
             {
-                CWalletTx& wtx = item.second;
+                const CWalletTx& wtx = item.second;
 
                 /* Don't put in sorted map for rebroadcast until it's had enough time to be added to a block */
                 if (runtime::timestamp() - wtx.nTimeReceived > 5 * 60)
                     mapSorted.insert(std::make_pair(wtx.nTimeReceived, wtx));
             }
 
-            for(auto item : mapSorted)
+            for(const auto& item : mapSorted)
             {
-                CWalletTx& wtx = item.second;
+                const CWalletTx& wtx = item.second;
 
                 /* Validate the transaction, then process rebroadcast on it */
                 if (wtx.CheckTransaction())
@@ -1473,7 +1473,7 @@ namespace Legacy
                  * if calculates an additional fee such that nFeeRequired > MIN_TX_FEE
                  */
                 strError = debug::strprintf(
-                    "SendToNexusAddress : This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  ", 
+                    "SendToNexusAddress : This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  ",
                     FormatMoney(nFeeRequired).c_str());
             }
             else
@@ -1579,7 +1579,7 @@ namespace Legacy
                     else
                     {
                         /* For avatar mode, return change to the last address in the input set */
-                        for(auto item : setSelectedCoins)
+                        for(const auto& item : setSelectedCoins)
                         {
                             const CWalletTx& selectedTransaction = *(item.first);
 
@@ -1719,7 +1719,7 @@ namespace Legacy
 
         std::random_shuffle(vCoins.begin(), vCoins.end(), LLC::GetRandInt);
 
-        for(auto walletTx : vCoins)
+        for(const auto& walletTx : vCoins)
         {
             /* Can't spend balance that is unconfirmed or not final */
             if (!walletTx.IsFinal() || !walletTx.IsConfirmed())
@@ -1949,7 +1949,7 @@ namespace Legacy
         if (config::GetBoolArg("-printselectcoin", false))
         {
             debug::log(0, FUNCTION, "Coins selected: ");
-            for(auto item : setCoinsRet)
+            for(const auto& item : setCoinsRet)
                 item.first->print();
 
             debug::log(0, FUNCTION, "Total ", FormatMoney(nValueRet));

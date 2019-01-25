@@ -27,9 +27,9 @@ namespace LLP
         EVENT_GENERIC        = 4,
         EVENT_FAILED         = 5,
 
-        EVENT_COMMAND        = 6, //For Message Pushing to Server Processors
+        EVENT_COMMAND        = 6, /* For Message Pushing to Server Processors */
 
-        //disonnect reason flags
+        /* Disonnect reason flags */
         DISCONNECT_TIMEOUT   = 7,
         DISCONNECT_ERRORS    = 8,
         DISCONNECT_DDOS      = 9,

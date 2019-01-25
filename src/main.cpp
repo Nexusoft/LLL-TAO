@@ -172,14 +172,14 @@ int main(int argc, char** argv)
     /* -connect means  try to establish a connection */
     if(config::mapMultiArgs["-connect"].size() > 0)
     {
-        for(auto node : config::mapMultiArgs["-connect"])
+        for(const auto& node : config::mapMultiArgs["-connect"])
             LLP::TRITIUM_SERVER->AddConnection(node, port);
     }
 
     /* -addnode means add to address manager */
     if(config::mapMultiArgs["-addnode"].size() > 0)
     {
-        for(auto node : config::mapMultiArgs["-addnode"])
+        for(const auto& node : config::mapMultiArgs["-addnode"])
             LLP::TRITIUM_SERVER->AddNode(node, port);
     }
 
@@ -204,14 +204,14 @@ int main(int argc, char** argv)
         /* -connect means  try to establish a connection */
         if(config::mapMultiArgs["-connect"].size() > 0)
         {
-            for(auto node : config::mapMultiArgs["-connect"])
+            for(const auto& node : config::mapMultiArgs["-connect"])
                 LLP::LEGACY_SERVER->AddConnection(node, port);
         }
 
         /* -addnode means add to address manager */
         if(config::mapMultiArgs["-addnode"].size() > 0)
         {
-            for(auto node : config::mapMultiArgs["-addnode"])
+            for(const auto& node : config::mapMultiArgs["-addnode"])
                 LLP::LEGACY_SERVER->AddNode(node, port);
         }
     }

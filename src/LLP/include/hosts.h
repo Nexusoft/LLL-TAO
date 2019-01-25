@@ -19,13 +19,15 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-
-    class LegacyAddress;
     class BaseAddress;
 
-    /** These addresses are the first point of contact on the P2P network
-    *  They are established and maintained by the owners of each domain.
-    */
+
+    /** DNS_SeedNodes
+     *
+     *  These addresses are the first point of contact on the P2P network
+     *  They are established and maintained by the owners of each domain.
+     *
+     **/
     static std::vector<std::string> DNS_SeedNodes =
     {
         "node1.nexusearth.com",
@@ -105,22 +107,100 @@ namespace LLP
     };
 
 
+    /** DNS_SeedNodes_Testnet
+     *
+     *  Testnet seed nodes.
+     *
+     **/
     static std::vector<std::string> DNS_SeedNodes_Testnet =
     {
         "test1.nexusoft.io"
     };
 
 
-    /* The DNS Lookup Routine to find the Nodes that are set as DNS seeds. */
-    std::vector<LegacyAddress> DNS_Lookup(std::vector<std::string> DNS_Seed);
+    /** DNS_Lookup
+     *
+     *  The DNS Lookup Routine to find the Nodes that are set as DNS seeds.
+     *
+     *  @param[in] DNS_Seed List of dns seed names to translate into addresses.
+     *
+     **/
+    std::vector<BaseAddress> DNS_Lookup(const std::vector<std::string> &DNS_Seed);
 
 
-    /* Standard Wrapper Function to Interact with cstdlib DNS functions. */
-    bool LookupHost(const char *pszName, std::vector<BaseAddress>& vIP, uint32_t nMaxSolutions = 0, bool fAllowLookup = true);
-    bool LookupHostNumeric(const char *pszName, std::vector<BaseAddress>& vIP, uint32_t nMaxSolutions = 0);
-    bool Lookup(const char *pszName, BaseAddress& addr, uint16_t portDefault = 0, bool fAllowLookup = true);
-    bool Lookup(const char *pszName, std::vector<BaseAddress>& vAddr, uint16_t portDefault = 0, bool fAllowLookup = true, uint32_t nMaxSolutions = 0);
-    bool LookupNumeric(const char *pszName, BaseAddress& addr, uint16_t portDefault = 0);
+    /** LookupHost
+     *
+     *   Standard Wrapper Function to Interact with cstdlib DNS functions.
+     *
+     **/
+    bool LookupHost(const char *pszName,
+                    std::vector<BaseAddress>& vAddr,
+                    uint32_t nMaxSolutions = 0,
+                    bool fAllowLookup = true);
+
+
+    /** LookupHostNumeric
+     *
+     *  Standard Wrapper Function to Interact with cstdlib DNS functions.
+     *
+     *  @param[in] pszName
+     *  @param[out] vAddr
+     *  @param[in] nMaxSolutions
+     *
+     **/
+    bool LookupHostNumeric(const char *pszName,
+                           std::vector<BaseAddress>& vAddr,
+                           uint32_t nMaxSolutions = 0);
+
+
+    /** Lookup
+     *
+     *  Standard Wrapper Function to Interact with cstdlib DNS functions.
+     *
+     *  @param[in] pszName
+     *  @param[out] addr
+     *  @param[in] portDefault
+     *  @param[in] fAllowLookup
+     *
+     *  @return
+     *
+     **/
+    bool Lookup(const char *pszName,
+                BaseAddress& addr,
+                uint16_t portDefault = 0,
+                bool fAllowLookup = true);
+
+
+    /** Lookup
+     *
+     *  Standard Wrapper Function to Interact with cstdlib DNS functions.
+     *
+     *  @param[in] pszName
+     *  @param[out] vAddr
+     *  @param[in] portDefault
+     *  @param[in] fAllowLookup
+     *  @param[in] nMaxSolutions
+     *
+     **/
+    bool Lookup(const char *pszName,
+                std::vector<BaseAddress>& vAddr,
+                uint16_t portDefault = 0,
+                bool fAllowLookup = true,
+                uint32_t nMaxSolutions = 0);
+
+
+    /** LookupNumeric
+     *
+     *  Standard Wrapper Function to Interact with cstdlib DNS functions.
+     *
+     *  @param[in] pszName
+     *  @param[out] addr
+     *  @param[in] portDefault
+     *
+     **/
+    bool LookupNumeric(const char *pszName,
+                       BaseAddress& addr,
+                       uint16_t portDefault = 0);
 }
 
 #endif

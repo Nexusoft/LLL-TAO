@@ -24,7 +24,12 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /* Base Template class to handle outgoing / incoming LLP data for both Client and Server. */
+    /** Socket
+     *
+     *  Base Template class to handle outgoing / incoming LLP data for both
+     *  Client and Server.
+     *
+     **/
     class Socket : public pollfd
     {
     protected:

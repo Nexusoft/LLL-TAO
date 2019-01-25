@@ -39,9 +39,6 @@ namespace LLD
             Key can be any Type, which is how the Database Records are Accessed. **/
         std::string strBaseLocation;
 
-        /** Caching Flag
-            TODO: Expand the Caching System. **/
-        bool fMemoryCaching = false;
 
         /** Caching Size.
             TODO: Make this a variable actually enforced. **/
@@ -49,20 +46,23 @@ namespace LLD
 
 
         /* Use these for iterating file locations. */
-        mutable uint16_t nCurrentFile;
         mutable uint32_t nCurrentFileSize;
+        mutable uint16_t nCurrentFile;
 
         /* The flags */
         uint8_t nFlags;
 
+        /** Caching Flag TODO: Expand the Caching System. **/
+        bool fMemoryCaching = false;
+
         /* Hashmap Custom Hash Using SK. */
-        struct SK_Hashmap
+        /*struct SK_Hashmap
         {
             std::size_t operator()(const std::vector<uint8_t>& k) const
             {
                 return LLC::SK32(k);
             }
-        };
+        }; */
 
     public:
         /** Map to Contain the Binary Positions of Each Key.
@@ -75,8 +75,8 @@ namespace LLD
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         BinaryFileMap(std::string strBaseLocationIn, uint8_t nFlagsIn)
         : strBaseLocation(strBaseLocationIn)
-        , nCurrentFile(0)
         , nCurrentFileSize(0)
+        , nCurrentFile(0)
         , nFlags(nFlagsIn)
         {
             Initialize();
@@ -110,8 +110,9 @@ namespace LLD
             strBaseLocation    = map.strBaseLocation;
             fMemoryCaching     = map.fMemoryCaching;
             nCacheSize         = map.nCacheSize;
-            nCurrentFile       = map.nCurrentFile;
             nCurrentFileSize   = map.nCurrentFileSize;
+            nCurrentFile       = map.nCurrentFile;
+
 
             Initialize();
         }

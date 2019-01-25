@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/args.h>
 #include <Util/templates/serialize.h>
+#include <Util/include/memory.h>
 
 
 namespace LLP
@@ -33,7 +34,11 @@ namespace LLP
     const uint8_t MESSAGE_START_MAINNET[4] = { 0x05, 0x0d, 0x59, 0xe9 };
 
 
-    /** Class to handle sending and receiving of More Complese Message LLP Packets. **/
+    /** LegacyPacket
+     *
+     *  Class to handle sending and receiving of More Complese Message LLP Packets.
+     *
+     ***/
     class LegacyPacket
     {
     public:
@@ -47,7 +52,7 @@ namespace LLP
         * BYTE 26 - X   : Data
         *
         */
-        uint8_t         HEADER[4];
+        uint8_t       HEADER[4];
         char	        MESSAGE[12];
         uint32_t	    LENGTH;
         uint32_t	    CHECKSUM;
@@ -148,7 +153,7 @@ namespace LLP
 
 
         /* Set the Packet Data. */
-        void SetData(DataStream& ssData)
+        void SetData(const DataStream& ssData)
         {
             DATA = std::vector<uint8_t>(ssData.begin(), ssData.end());
             LENGTH = DATA.size();
@@ -165,7 +170,8 @@ namespace LLP
                 return false;
 
             /* Check the Header Bytes. */
-            if(memcmp(HEADER, (config::fTestNet ? MESSAGE_START_TESTNET : MESSAGE_START_MAINNET), sizeof(HEADER)) != 0)
+            //if(memcmp(HEADER, (config::fTestNet ? MESSAGE_START_TESTNET : MESSAGE_START_MAINNET), sizeof(HEADER)) != 0)
+            if(memory::compare((uint8_t *)HEADER, (uint8_t *)(config::fTestNet ? MESSAGE_START_TESTNET : MESSAGE_START_MAINNET), sizeof(HEADER)) != 0)
                 return debug::error("Message Packet (Invalid Packet Header");
 
             /* Make sure Packet length is within bounds. (Max 512 MB Packet Size) */
@@ -194,7 +200,7 @@ namespace LLP
 
             std::vector<uint8_t> BYTES(ssHeader.begin(), ssHeader.end());
             BYTES.insert(BYTES.end(), DATA.begin(), DATA.end());
-            
+
             return BYTES;
         }
     };

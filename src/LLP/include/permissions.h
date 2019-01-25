@@ -14,11 +14,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_PERMISSIONS_H
 #define NEXUS_LLP_INCLUDE_PERMISSIONS_H
 
-#include <string>
-#include <vector>
-
 #include <Util/include/args.h>
 #include <Util/include/string.h>
+#include <string>
+#include <vector>
 
 
 /** IP Filtering Definitions
@@ -37,7 +36,7 @@ inline bool CheckPermissions(std::string strAddress, uint32_t nPort)
 
     /* Check against the commandline parameters. */
     const std::vector<std::string>& vAllow = config::mapMultiArgs["-llpallowip"];
-    for(int nIndex = 0; nIndex < vAllow.size(); nIndex++)
+    for(int nIndex = 0; nIndex < vAllow.size(); ++nIndex)
     {
         /* Detect if the port for LLP filtering is a wildcard or not. */
         bool fWildcardPort = (vAllow[nIndex].find(":") == std::string::npos);
@@ -61,7 +60,7 @@ inline bool CheckPermissions(std::string strAddress, uint32_t nPort)
         }
 
         /* Check the components of IP address. */
-        for(int nByte = 0; nByte < 4; nByte++)
+        for(int nByte = 0; nByte < 4; ++nByte)
             if(vCheck[nByte] != "*" && vCheck[nByte] != vAddress[nByte])
                 return debug::error("Check ", vCheck[nByte], " - ", vAddress[nByte]);
     }
@@ -90,8 +89,8 @@ inline bool WildcardMatch(const char* psz, const char* mask)
                 return false;
             break;
         }
-        psz++;
-        mask++;
+        ++psz;
+        ++mask;
     }
 }
 

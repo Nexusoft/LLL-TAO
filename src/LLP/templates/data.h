@@ -17,19 +17,21 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 #include <condition_variable>
 #include <functional>
-
 #include <atomic>
 
 namespace LLP
 {
 
-    /** Base Template Thread Class for Server base. Used for Core LLP Packet Functionality.
-        Not to be inherited, only for use by the LLP Server Base Class. **/
+    /** DataThread
+     *
+     *  Base Template Thread Class for Server base. Used for Core LLP Packet Functionality.
+     *  Not to be inherited, only for use by the LLP Server Base Class.
+     *
+     **/
     template <class ProtocolType>
     class DataThread
     {
         std::mutex MUTEX;
-        //Need Pointer Reference to Object in Server Class to push data from Data Thread Messages into Server Class
 
     public:
 
@@ -39,7 +41,6 @@ namespace LLP
 
         /* Destructor flag. */
         std::atomic<bool> fDestruct;
-
         std::atomic<uint32_t> nConnections;
         uint32_t ID;
         uint32_t REQUESTS;
@@ -47,19 +48,19 @@ namespace LLP
         uint32_t DDOS_rSCORE;
         uint32_t DDOS_cSCORE;
 
-
         /* Vector to store Connections. */
-        std::vector< ProtocolType* > CONNECTIONS;
-
+        std::vector<ProtocolType *> CONNECTIONS;
 
         /* The condition for thread sleeping. */
         std::condition_variable CONDITION;
-
 
         /* Data Thread. */
         std::thread DATA_THREAD;
 
 
+        /** Default Constructor
+         *
+         **/
         DataThread<ProtocolType>(uint32_t id, bool isDDOS, uint32_t rScore, uint32_t cScore,
                                  uint32_t nTimeout, bool fMeter = false)
         : fDDOS(isDDOS)
@@ -76,6 +77,9 @@ namespace LLP
         , DATA_THREAD(std::bind(&DataThread::Thread, this)) { }
 
 
+        /** Default Destructor
+         *
+         **/
         virtual ~DataThread<ProtocolType>()
         {
             fDestruct = true;
@@ -83,30 +87,25 @@ namespace LLP
             CONDITION.notify_all();
             DATA_THREAD.join();
 
-            for(auto & CONNECTION : CONNECTIONS)
+            for(auto& CONNECTION : CONNECTIONS)
                 if(CONNECTION)
                     delete CONNECTION;
         }
 
 
-        /* Returns the index of a component of the CONNECTIONS vector that has been flagged Disconnected */
-        int FindSlot()
-        {
-            int nSize = CONNECTIONS.size();
-            for(int index = 0; index < nSize; ++index)
-                if(CONNECTIONS[index]->IsNull())
-                    return index;
-
-            return nSize;
-        }
-
-
-        /* Adds a new connection to current Data Thread */
+        /** AddConnection
+         *
+         *  Adds a new connection to current Data Thread.
+         *
+         *  @param[in] SOCKET The socket for the connection.
+         *  @param[in] DDOS The pointer to the DDOS filter to add to connection.
+         *
+         **/
         void AddConnection(Socket_t SOCKET, DDOS_Filter* DDOS)
         {
             LOCK(MUTEX);
 
-            int nSlot = FindSlot();
+            int nSlot = find_slot();
             if(nSlot == CONNECTIONS.size())
             {
                 CONNECTIONS.push_back(nullptr);
@@ -132,12 +131,22 @@ namespace LLP
         }
 
 
-        /* Adds a new connection to current Data Thread */
+        /** AddConnection
+         *
+         *  Adds a new connection to current Data Thread
+         *
+         *  @param[in] strAddress The IP address for the connection.
+         *  @param[in] nPort The port number for the connection.
+         *  @param[in] DDOS The pointer to the DDOS filter to add to the connection.
+         *
+         *  @return Returns true if successfully added, false otherwise.
+         *
+         **/
         bool AddConnection(std::string strAddress, uint16_t nPort, DDOS_Filter* DDOS)
         {
             LOCK(MUTEX);
 
-            int nSlot = FindSlot();
+            int nSlot = find_slot();
             if(nSlot == CONNECTIONS.size())
             {
                 Socket SOCKET;
@@ -171,33 +180,27 @@ namespace LLP
         }
 
 
-        /* Removes given connection from current Data Thread.
-            Happens with a timeout / error, graceful close, or disconnect command. */
-        void Remove(int index)
-        {
-            CONNECTIONS[index]->Disconnect();
-            CONNECTIONS[index]->SetNull();
-
-            --nConnections;
-
-            CONDITION.notify_all();
-        }
-
-        /* Disconnects all connections by issuing a DISCONNECT_FORCE event message 
-            and then removes the connection from this data thread*/
+        /** DisconnectAll
+         *
+         *  Disconnects all connections by issuing a DISCONNECT_FORCE event message
+         *  and then removes the connection from this data thread.
+         *
+         **/
         void DisconnectAll()
         {
             uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
             for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
-            {
-                CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_FORCE);
-                Remove(nIndex);
-            }   
+                disconnect_remove_event(nIndex, DISCONNECT_FORCE);
         }
 
 
-        /* Thread that handles all the Reading / Writing of Data from Sockets.
-            Creates a Packet QUEUE on this connection to be processed by an LLP Messaging Thread. */
+        /** Thread
+         *
+         *  Thread that handles all the Reading / Writing of Data from Sockets.
+         *  Creates a Packet QUEUE on this connection to be processed by an
+         *  LLP Messaging Thread.
+         *
+         **/
         void Thread()
         {
             /* The mutex for the condition. */
@@ -231,33 +234,23 @@ namespace LLP
                 {
                     try
                     {
-
                         /* Skip over Inactive Connections. */
                         if(CONNECTIONS[nIndex]->IsNull() || !CONNECTIONS[nIndex]->Connected())
                             continue;
 
-
                         /* Remove Connection if it has Timed out or had any Errors. */
                         if(CONNECTIONS[nIndex]->Errors())
                         {
-                            CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_ERRORS);
-
-                            Remove(nIndex);
-
+                            disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                             continue;
                         }
-
 
                         /* Remove Connection if it has Timed out or had any Errors. */
                         if(CONNECTIONS[nIndex]->Timeout(TIMEOUT))
                         {
-                            CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_TIMEOUT);
-
-                            Remove(nIndex);
-
+                            disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT);
                             continue;
                         }
-
 
                         /* Handle any DDOS Filters. */
                         if(fDDOS)
@@ -270,26 +263,19 @@ namespace LLP
                             /* Remove a connection if it was banned by DDOS Protection. */
                             if(CONNECTIONS[nIndex]->DDOS->Banned())
                             {
-                                CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_DDOS);
-
-                                Remove(nIndex);
-
+                                disconnect_remove_event(nIndex, DISCONNECT_DDOS);
                                 continue;
                             }
                         }
 
-
                         /* Generic event for Connection. */
                         CONNECTIONS[nIndex]->Event(EVENT_GENERIC);
-
 
                         /* Flush the write buffer. */
                         CONNECTIONS[nIndex]->Flush();
 
-
                         /* Work on Reading a Packet. **/
                         CONNECTIONS[nIndex]->ReadPacket();
-
 
                         /* If a Packet was received successfully, increment request count [and DDOS count if enabled]. */
                         if(CONNECTIONS[nIndex]->PacketComplete())
@@ -310,10 +296,7 @@ namespace LLP
                             /* Packet Process return value of False will flag Data Thread to Disconnect. */
                             if(!CONNECTIONS[nIndex]->ProcessPacket())
                             {
-                                CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_FORCE);
-
-                                Remove(nIndex);
-
+                                disconnect_remove_event(nIndex, DISCONNECT_FORCE);
                                 continue;
                             }
 
@@ -323,14 +306,67 @@ namespace LLP
                     catch(std::exception& e)
                     {
                         debug::error(FUNCTION, "data connection: ", e.what());
-
-                        CONNECTIONS[nIndex]->Event(EVENT_DISCONNECT, DISCONNECT_ERRORS);
-
-                        Remove(nIndex);
+                        disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                     }
                 }
             }
         }
+
+      private:
+
+
+        /** disconnect_remove_event
+         *
+         *  Fires off a Disconnect event with the given disconnect reason
+         *  and also removes the data thread connection.
+         *
+         *  @param[in] index The data thread index to disconnect.
+         *
+         *  @param[in] reason The reason why the connection is to be disconnected.
+         *
+         **/
+        void disconnect_remove_event(uint32_t index, uint8_t reason)
+        {
+            CONNECTIONS[index]->Event(EVENT_DISCONNECT, reason);
+            remove(index);
+        }
+
+
+        /** remove
+         *
+         *  Removes given connection from current Data Thread.
+         *  This happens with a timeout/error, graceful close, or disconnect command.
+         *
+         *  @param[in] The index of the connection to remove.
+         *
+         **/
+        void remove(int index)
+        {
+            CONNECTIONS[index]->Disconnect();
+            CONNECTIONS[index]->SetNull();
+
+            --nConnections;
+
+            CONDITION.notify_all();
+        }
+
+
+        /** find_slot
+         *
+         *  Returns the index of a component of the CONNECTIONS vector that
+         *  has been flagged Disconnected
+         *
+         **/
+        int find_slot()
+        {
+            int nSize = CONNECTIONS.size();
+            for(int index = 0; index < nSize; ++index)
+                if(CONNECTIONS[index]->IsNull())
+                    return index;
+
+            return nSize;
+        }
+
     };
 }
 

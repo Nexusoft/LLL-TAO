@@ -86,7 +86,7 @@ namespace TAO
         {
             /* Check A: Small Prime Divisor Tests */
             LLC::CBigNum bnPrimes[11] = { 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31 };
-            for(auto bnPrime : bnPrimes)
+            for(const auto& bnPrime : bnPrimes)
                 if(bnTest % bnPrime == 0)
                     return false;
 
