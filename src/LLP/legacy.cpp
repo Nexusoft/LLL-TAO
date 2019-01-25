@@ -286,7 +286,8 @@ namespace LLP
             ssMessage >> tx;
 
             /* Accept to memory pool. */
-            TAO::Ledger::mempool.Accept(tx);
+            if (TAO::Ledger::mempool.Accept(tx))
+                Legacy::CWallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);
         }
 
 

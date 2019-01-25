@@ -31,6 +31,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/supply.h>
 
+#include <Legacy/wallet/wallet.h>
+
 
 
 /* Global TAO namespace. */
@@ -511,6 +513,9 @@ namespace TAO
                     if(!tx.Connect(inputs, *this, Legacy::FLAGS::BLOCK))
                         return debug::error(FUNCTION, "failed to connect inputs");
 
+                    /* Add legacy transactions to the wallet where appropriate */
+                    Legacy::CWallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);
+
                 }
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");
@@ -583,6 +588,9 @@ namespace TAO
                     if(!tx.Disconnect())
                         return debug::error(FUNCTION, "failed to connect inputs");
 
+                    /* Wallets need to refund inputs when disonnecting coinstake */
+                    if (tx.IsCoinStake() && Legacy::CWallet::GetInstance().IsFromMe(tx))
+                       Legacy::CWallet::GetInstance().DisableTransaction(tx);
                 }
             }
 
