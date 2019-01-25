@@ -339,6 +339,71 @@ namespace Legacy
     }
 
 
+    /* Check the proof of stake calculations. */
+    bool Transaction::VerifyStake(const TAO::Ledger::BlockState& block) const
+    {
+        /* Set the Public Key Integer Key from Bytes. */
+        uint576_t cKey;
+        if(!TrustKey(cKey))
+            return debug::error(FUNCTION, "cannot extract trust key");
+
+        /* Determine Trust Age if the Trust Key Exists. */
+        uint64_t nCoinAge = 0, nTrustAge = 0, nBlockAge = 0;
+        double nTrustWeight = 0.0, nBlockWeight = 0.0;
+
+        /* Check for trust block. */
+        if(IsTrust())
+        {
+            /* Get the trust key. */
+            TAO::Ledger::TrustKey trustKey;
+            if(!LLD::legDB->ReadTrustKey(cKey, trustKey))
+                return debug::error(FUNCTION, "failed to read trust key");
+
+            /* Check the genesis and trust timestamps. */
+            TAO::Ledger::BlockState statePrev;
+            if(!LLD::legDB->ReadBlock(block.hashPrevBlock, statePrev))
+                return debug::error(FUNCTION, "failed to read previous block");
+
+            /* Check the genesis time. */
+            if(trustKey.nGenesisTime > statePrev.GetBlockTime())
+                return debug::error(FUNCTION, "genesis time cannot be after trust time");
+
+            nTrustAge = trustKey.Age(statePrev.GetBlockTime());
+            nBlockAge = trustKey.BlockAge(statePrev);
+
+            /** Trust Weight Reaches Maximum at 30 day Limit. **/
+            nTrustWeight = std::min(17.5, (((16.5 * log(((2.0 * nTrustAge) / (60 * 60 * 24 * 28)) + 1.0)) / log(3))) + 1.0);
+
+            /** Block Weight Reaches Maximum At Trust Key Expiration. **/
+            nBlockWeight = std::min(20.0, (((19.0 * log(((2.0 * nBlockAge) / (60 * 60 * 24)) + 1.0)) / log(3))) + 1.0);
+        }
+        else
+        {
+            /* Calculate the Average Coinstake Age. */
+            if(!CoinstakeAge(nCoinAge))
+                return debug::error(FUNCTION, "failed to get coinstake age");
+
+            /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */
+            nTrustWeight = std::min(17.5, (((16.5 * log(((2.0 * nCoinAge) / (60 * 60 * 24 * 28 * 3)) + 1.0)) / log(3))) + 1.0);
+        }
+
+        /* Check the nNonce Efficiency Proportion Requirements. */
+        uint32_t nThreshold = (((block.nTime - nTime) * 100.0) / block.nNonce) + 3;
+        uint32_t nRequired  = ((50.0 - nTrustWeight - nBlockWeight) * 1000) / std::min((int64_t)1000, vout[0].nValue);
+        if(nThreshold < nRequired)
+            return debug::error(FUNCTION, "energy efficiency threshold violated");
+
+
+        /* Check the Block Hash with Weighted Hash to Target. */
+        LLC::CBigNum bnTarget;
+        bnTarget.SetCompact(block.nBits);
+        if(block.GetHash() > bnTarget.getuint1024())
+            return debug::error(FUNCTION, "proof of stake not meeting target");
+
+        return true;
+    }
+
+
     /* Get the total calculated interest of the coinstake transaction */
     bool Transaction::CoinstakeInterest(const TAO::Ledger::BlockState& block, uint64_t& nInterest) const
     {
@@ -753,10 +818,6 @@ namespace Legacy
                 return true;
             }
 
-            /* Check that the trust score is accurate. */
-            if(state.nVersion >= 5 && !CheckTrust(state))
-                return debug::error(FUNCTION, "invalid trust score");
-
             /* Get the trust key. */
             std::vector<uint8_t> vTrustKey;
             if(!TrustKey(vTrustKey))
@@ -811,6 +872,14 @@ namespace Legacy
                 trustKey.hashLastBlock = state.GetHash();
                 LLD::legDB->WriteTrustKey(cKey, trustKey);
             }
+
+            /* Check that the trust score is accurate. */
+            if(state.nVersion >= 5 && !CheckTrust(state))
+                return debug::error(FUNCTION, "invalid trust score");
+
+            /* Check if the stake is verified for version 4. */
+            if(state.nVersion < 5 && !VerifyStake(state))
+                return debug::error(FUNCTION, "invalid proof of stake");
         }
 
         /* Read all of the inputs. */
