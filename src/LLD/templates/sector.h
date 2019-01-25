@@ -264,10 +264,9 @@ namespace LLD
             ssKey << key;
 
             /* Check that the key is not pending in a transaction for Erase. */
+            LOCK(TRANSACTION_MUTEX);
             if(pTransaction)
             {
-                LOCK(TRANSACTION_MUTEX);
-
                 if(pTransaction->mapEraseData.count(ssKey.Bytes()))
                     return false;
 
@@ -301,10 +300,9 @@ namespace LLD
             ssKey << key;
 
             /* Add transaction to erase queue. */
+            LOCK(TRANSACTION_MUTEX);
             if(pTransaction)
             {
-                LOCK(TRANSACTION_MUTEX);
-
                 pTransaction->EraseTransaction(ssKey.Bytes());
 
                 return true;
@@ -334,10 +332,9 @@ namespace LLD
             std::vector<uint8_t> vData;
 
             /* Check that the key is not pending in a transaction for Erase. */
+            LOCK(TRANSACTION_MUTEX);
             if(pTransaction)
             {
-                LOCK(TRANSACTION_MUTEX);
-
                 if(pTransaction->mapEraseData.count(ssKey.Bytes()))
                     return false;
 
@@ -369,10 +366,9 @@ namespace LLD
             ssIndex << index;
 
             /* Check that the key is not pending in a transaction for Erase. */
+            LOCK(TRANSACTION_MUTEX);
             if(pTransaction)
             {
-                LOCK(TRANSACTION_MUTEX);
-
                 /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
                 pTransaction->mapIndex[ssKey.Bytes()] = ssIndex.Bytes();
 
@@ -401,10 +397,9 @@ namespace LLD
             ssKey << key;
 
             /* Check for transaction. */
+            LOCK(TRANSACTION_MUTEX);
             if(pTransaction)
             {
-                LOCK(TRANSACTION_MUTEX);
-
                 /* Set the transaction data. */
                 pTransaction->mapKeychain[ssKey.Bytes()] = 0;
 
@@ -432,10 +427,9 @@ namespace LLD
             ssData << value;
 
             /* Check for transaction. */
+            LOCK(TRANSACTION_MUTEX);
             if(pTransaction)
             {
-                LOCK(TRANSACTION_MUTEX);
-
                 /* Set the transaction data. */
                 pTransaction->mapTransactions[ssKey.Bytes()] = ssData.Bytes();
 
