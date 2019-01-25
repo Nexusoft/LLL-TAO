@@ -878,6 +878,8 @@ namespace LLD
          **/
         void TxnBegin()
         {
+            LOCK(TRANSACTION_MUTEX);
+
             /* Delete a previous database transaction pointer if applicable. */
             if(pTransaction)
                 delete pTransaction;
@@ -894,6 +896,8 @@ namespace LLD
          **/
         void TxnAbort()
         {
+            LOCK(TRANSACTION_MUTEX);
+
             /** Delete the previous transaction pointer if applicable. **/
             if(pTransaction)
                 delete pTransaction;
@@ -926,6 +930,8 @@ namespace LLD
          **/
         bool TxnCommit()
         {
+            LOCK(TRANSACTION_MUTEX);
+
             /* Check that there is a valid transaction to apply to the database. */
             if(!pTransaction)
                 return debug::error(FUNCTION, "nothing to commit.");
@@ -938,8 +944,10 @@ namespace LLD
                 /* Erase the transaction data. */
                 if(!pSectorKeys->Erase(it->first))
                 {
+                    delete pTransaction;
+                    pTransaction = nullptr;
                     //RollbackTransactions();
-                    TxnAbort();
+                    //TxnAbort();
 
                     return debug::error(FUNCTION, "failed to erase from keychain");
                 }
@@ -951,8 +959,10 @@ namespace LLD
                 SectorKey cKey(STATE::READY, it->first, 0, 0, 0);
                 if(!pSectorKeys->Put(cKey))
                 {
+                    delete pTransaction;
+                    pTransaction = nullptr;
                     //RollbackTransactions();
-                    TxnAbort();
+                    //TxnAbort();
                 }
             }
 
@@ -961,8 +971,10 @@ namespace LLD
             {
                 if(!Force(it->first, it->second))
                 {
+                    delete pTransaction;
+                    pTransaction = nullptr;
                     //RollbackTransactions();
-                    TxnAbort();
+                    //TxnAbort();
 
                     return debug::error(FUNCTION, "failed to commit sector data");
                 }
@@ -980,7 +992,9 @@ namespace LLD
                 {
                     if(!pSectorKeys->Get(it->second, cKey))
                     {
-                        TxnAbort();
+                        delete pTransaction;
+                        pTransaction = nullptr;
+                        //TxnAbort();
 
                         return debug::error(FUNCTION, "failed to read indexing entry");
                     }
@@ -992,7 +1006,9 @@ namespace LLD
                 cKey.SetKey(it->first);
                 if(!pSectorKeys->Put(cKey))
                 {
-                    TxnAbort();
+                    delete pTransaction;
+                    pTransaction = nullptr;
+                    //TxnAbort();
 
                     return debug::error(FUNCTION, "failed to write indexing entry");
                 }
