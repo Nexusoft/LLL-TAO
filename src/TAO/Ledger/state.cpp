@@ -213,7 +213,7 @@ namespace TAO
                 time.Start();
 
                 /* Watch for genesis. */
-                if (!ChainState::stateGenesis.IsNull())
+                if (!ChainState::stateGenesis)
                 {
                     /* Write the best chain pointer. */
                     if(!LLD::legDB->WriteBestChain(GetHash()))
@@ -310,7 +310,7 @@ namespace TAO
                     std::vector<uint512_t> vDelete;
 
                     /* Set the next hash from fork. */
-                    fork.hashNextBlock = vConnect[0].GetHash();
+                    //fork.hashNextBlock = vConnect[0].GetHash();
 
                     /* Reverse the blocks to connect to connect in ascending height. */
                     std::reverse(vConnect.begin(), vConnect.end());
