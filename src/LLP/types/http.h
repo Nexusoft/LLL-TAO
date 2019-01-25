@@ -27,7 +27,7 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /** HTTP Node
+    /** HTTPNode
      *
      *  A node that can speak over HTTP protocols.
      *
@@ -60,18 +60,21 @@ namespace LLP
 
     public:
 
-        /* Constructors for Message LLP Class. */
+        /** Default Constructor **/
         HTTPNode()
         : BaseConnection<HTTPPacket>() { }
 
+        /** Constructor **/
         HTTPNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<HTTPPacket>( SOCKET_IN, DDOS_IN ) { }
 
 
-        /** Virtual Functions to Determine Behavior of Message LLP.
+        /** Event
          *
-         *  @param[in] EVENT The byte header of the event type
-         *  @param[in[ LENGTH The size of bytes read on packet read events
+         *  Virtual Functions to Determine Behavior of Message LLP.
+         *
+         *  @param[in] EVENT The byte header of the event type.
+         *  @param[in[ LENGTH The size of bytes read on packet read events.
          *
          */
         void Event(uint8_t EVENT, uint32_t LENGTH = 0) override = 0;
@@ -81,7 +84,7 @@ namespace LLP
          *
          *  Main message handler once a packet is recieved.
          *
-         *  @return True is no errors, false otherwise
+         *  @return True is no errors, false otherwise.
          *
          **/
         bool ProcessPacket() override = 0;
@@ -217,7 +220,7 @@ namespace LLP
         }
 
 
-        /** Push Response
+        /** PushResponse
          *
          *  Returns an HTTP packet with response code and content.
          *
