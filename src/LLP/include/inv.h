@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_INV_H
 
 #include <Util/templates/serialize.h>
+#include <cinttypes>
 
 namespace LLP
 {
@@ -29,65 +30,109 @@ namespace LLP
 
     /** CInv
      *
-     *  Inv message data.
+     *  Inventory message data.
+     *
+     *  Check the Inventory to See if a given hash is found.
      *
      **/
     class CInv
     {
-        public:
+    public:
 
-            /** Default Constructor **/
-            CInv();
-
-            /** Constructor **/
-            CInv(int typeIn, const uint1024_t& hashIn);
-
-            /** Constructor **/
-            CInv(const std::string& strType, const uint1024_t& hashIn);
+        /** Default Constructor **/
+        CInv();
 
 
-            /** Serialization **/
-            IMPLEMENT_SERIALIZE
-            (
-                READWRITE(type);
-                READWRITE(hash);
-            )
+        /** Constructor **/
+        CInv(const uint1024_t& hashIn, const int32_t typeIn);
 
-            /** Relational operator less than **/
-            friend bool operator<(const CInv& a, const CInv& b);
 
-            /** IsKnownType
-             *
-             *  Determines if this inventory a known type.
-             *
-             **/
-            bool IsKnownType() const;
+        /** Constructor **/
+        CInv(const std::string& strType, const uint1024_t& hashIn);
 
-            /** GetCommand
-             *
-             *  Returns a command from this inventory object.
-             *
-             **/
-            const char* GetCommand() const;
 
-            /** ToString
-             *
-             *  Returns data about this inventory as a string object.
-             *
-             **/
-            std::string ToString() const;
+        /** Serialization **/
+        IMPLEMENT_SERIALIZE
+        (
+            READWRITE(type);
+            READWRITE(hash);
+        )
 
-            /** print
-             *
-             *  Prints this inventory data to the console window.
-             *
-             **/
-            void print() const;
 
-        // TODO: make private (improves encapsulation)
-        public:
-            int type;
-            uint1024_t hash;
+        /** Relational operator less than **/
+        friend bool operator<(const CInv& a, const CInv& b);
+
+
+        /** IsKnownType
+         *
+         *  Determines if this inventory a known type.
+         *
+         **/
+        bool IsKnownType() const;
+
+
+        /** GetCommand
+         *
+         *  Returns a command from this inventory object.
+         *
+         **/
+        const char* GetCommand() const;
+
+
+        /** ToString
+         *
+         *  Returns data about this inventory as a string object.
+         *
+         **/
+        std::string ToString() const;
+
+
+        /** Print
+         *
+         *  Prints this inventory data to the console window.
+         *
+         **/
+        void Print() const;
+
+
+        /** GetHash
+         *
+         *  Returns the hash associated with this inventory.
+         *
+         **/
+        uint1024_t GetHash() const;
+
+
+        /** SetHash
+         *
+         *  Sets the hash for this inventory.
+         *
+         *  @param[in] hashIn The 1024-bit hash to set.
+         *
+         **/
+        void SetHash(const uint1024_t &hashIn);
+
+
+        /** GetType
+         *
+         *  Returns the type of this inventory.
+         *
+         **/
+        int32_t GetType() const;
+
+
+        /** SetType
+         *
+         *  Sets the type for this inventory.
+         *
+         *  @param[in] typeIn The type to set.
+         *
+         **/
+         void SetType(const int32_t typeIn);
+
+    private:
+        uint1024_t hash;
+        int32_t type;
     };
 }
 

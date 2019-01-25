@@ -18,91 +18,123 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-	/* table of differnt inventory type names */
-	static const char* ppszTypeName[] =
-	{
-		"ERROR",
-		"tx",
-		"block",
-	};
-
-
-	/* Default Constructor */
-	CInv::CInv()
-	{
-		type = 0;
-		hash = 0;
-	}
-
-
-	/* Constructor */
-	CInv::CInv(int typeIn, const uint1024_t& hashIn)
-	{
-		type = typeIn;
-		hash = hashIn;
-	}
-
-
-	/* Constructor */
-	CInv::CInv(const std::string& strType, const uint1024_t& hashIn)
-	{
-		uint32_t i;
-		for (i = 1; i < ARRAYLEN(ppszTypeName); i++)
+		/* table of differnt inventory type names */
+		static const char* ppszTypeName[] =
 		{
-			if (strType == ppszTypeName[i])
-			{
-				type = i;
-				break;
-			}
-		}
-		if (i == ARRAYLEN(ppszTypeName))
-			throw std::out_of_range(debug::strprintf("CInv::CInv(string, uint1024_t) : unknown type '%s'", strType.c_str()));
-		hash = hashIn;
-	}
+			  "ERROR",
+			  "tx",
+			  "block",
+		};
+
+		static const uint32_t len = ARRAYLEN(ppszTypeName);
 
 
-	/* Relational operator less than */
-	bool operator<(const CInv& a, const CInv& b)
-	{
-		return (a.type < b.type || (a.type == b.type && a.hash < b.hash));
-	}
-
-
-	/* Determines if this inventory a known type. */
-	bool CInv::IsKnownType() const
-	{
-		return (type >= 1 && type < (int)ARRAYLEN(ppszTypeName));
-	}
-
-
-	/* Returns a command from this inventory object. */
-	const char* CInv::GetCommand() const
-	{
-		if (!IsKnownType())
-			throw std::out_of_range(debug::strprintf("CInv::GetCommand() : type=%d unknown type", type));
-
-		return ppszTypeName[type];
-	}
-
-
-	/* Returns data about this inventory as a string object. */
-	std::string CInv::ToString() const
-	{
-		if(GetCommand() == std::string("tx"))
+		/* Default Constructor */
+		CInv::CInv()
+		: hash(0)
+		, type(0)
 		{
-			std::string invHash = hash.ToString();
-			return debug::strprintf("tx %s", invHash.substr(invHash.length() - 20, invHash.length()).c_str());
 		}
 
-		return debug::strprintf("%s %s", GetCommand(), hash.ToString().substr(0,20).c_str());
-	}
+
+		/* Constructor */
+		CInv::CInv(const uint1024_t& hashIn, const int32_t typeIn)
+		: hash(hashIn)
+		, type(typeIn)
+		{
+		}
 
 
-  /* Prints this inventory data to the console window. */
-	void CInv::print() const
-	{
-		debug::log(0, "CInv(", ToString(), ")");
-	}
+		/* Constructor */
+		CInv::CInv(const std::string& strType, const uint1024_t& hashIn)
+		: hash(hashIn)
+		{
+				uint32_t i = 1;
+				for (; i < len; ++i)
+				{
+					  if (strType == ppszTypeName[i])
+					  {
+						    type = i;
+					    	break;
+					  }
+				}
+				if (i == len)
+				{
+					  throw std::out_of_range(debug::strprintf(
+						    "CInv::CInv(string, uint1024_t) : unknown type '%s'", strType.c_str()));
+				}
+		}
 
 
+		/* Relational operator less than */
+		bool operator<(const CInv& a, const CInv& b)
+		{
+			return (a.type < b.type || (a.type == b.type && a.hash < b.hash));
+		}
+
+
+		/* Determines if this inventory a known type. */
+		bool CInv::IsKnownType() const
+		{
+			return (type >= 1 && type < static_cast<int32_t>(len));
+		}
+
+
+		/* Returns a command from this inventory object. */
+		const char* CInv::GetCommand() const
+		{
+		  	if (!IsKnownType())
+				  throw std::out_of_range(
+			    		debug::strprintf("CInv::GetCommand() : type=%d unknown type", type));
+
+			  return ppszTypeName[type];
+		}
+
+
+		/* Returns data about this inventory as a string object. */
+		std::string CInv::ToString() const
+		{
+				if(GetCommand() == std::string("tx"))
+				{
+						std::string invHash = hash.ToString();
+						return debug::strprintf("tx %s", invHash.substr(invHash.length() - 20, invHash.length()).c_str());
+				}
+
+				return debug::strprintf("%s %s", GetCommand(), hash.ToString().substr(0,20).c_str());
+		}
+
+
+		/* Prints this inventory data to the console window. */
+		void CInv::Print() const
+		{
+				debug::log(0, "CInv(", ToString(), ")");
+		}
+
+
+		/* Returns the hash associated with this inventory. */
+		uint1024_t CInv::GetHash() const
+		{
+				return hash;
+		}
+
+
+		/* Sets the hash for this inventory. */
+		void CInv::SetHash(const uint1024_t &hashIn)
+		{
+				hash = hashIn;
+		}
+
+
+		/* Returns the type of this inventory. */
+		int32_t CInv::GetType() const
+		{
+				return type;
+		}
+
+
+		/* Sets the type for this inventory. */
+		void CInv::SetType(const int32_t typeIn)
+		{
+			type = typeIn;
+		}
 }

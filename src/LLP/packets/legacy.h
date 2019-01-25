@@ -52,7 +52,7 @@ namespace LLP
         * BYTE 26 - X   : Data
         *
         */
-        uint8_t         HEADER[4];
+        uint8_t       HEADER[4];
         char	        MESSAGE[12];
         uint32_t	    LENGTH;
         uint32_t	    CHECKSUM;
@@ -153,7 +153,7 @@ namespace LLP
 
 
         /* Set the Packet Data. */
-        void SetData(DataStream& ssData)
+        void SetData(const DataStream& ssData)
         {
             DATA = std::vector<uint8_t>(ssData.begin(), ssData.end());
             LENGTH = DATA.size();

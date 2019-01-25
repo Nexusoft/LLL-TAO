@@ -41,7 +41,7 @@ namespace LLP
     {
     protected:
 
-        /** Recursive mutex for thread synchronization. **/
+        /** Mutex for thread synchronization. **/
         std::mutex MUTEX;
 
 
@@ -190,6 +190,8 @@ namespace LLP
          *
          *  Determines if nTime seconds have elapsed since last Read / Write.
          *
+         *  @param[in] nTime The time in seconds.
+         *
          **/
         bool Timeout(uint32_t nTime)
         {
@@ -200,7 +202,9 @@ namespace LLP
 
         /** PacketComplete
          *
-         *  Handles two types of packets, requests which are of header >= 128, and data which are of header < 128. */
+         *  Handles two types of packets, requests which are of header >= 128,
+         *  and data which are of header < 128.
+         **/
         bool PacketComplete()
         {
             return INCOMING.Complete();
@@ -222,6 +226,8 @@ namespace LLP
         /** WritePacket
          *
          *  Write a single packet to the TCP stream.
+         *
+         *  @param[in] PACKET The packet of type PacketType to write.
          *
          **/
         void WritePacket(PacketType PACKET)
@@ -254,6 +260,12 @@ namespace LLP
          *
          *  Connect Socket to a Remote Endpoint.
          *
+         *  @param[in] strAddress The IP address string.
+         *
+         *  @param[in] nPort The port number.
+         *
+         *  @return Returns true if successful connection, false otherwise.
+         *
          */
         bool Connect(std::string strAddress, uint16_t nPort)
         {
@@ -282,9 +294,9 @@ namespace LLP
          *  Returns the address of socket.
          *
          **/
-        LegacyAddress GetAddress()
+        BaseAddress GetAddress()
         {
-            return LegacyAddress(addr);
+            return addr;
         }
 
 
@@ -313,10 +325,11 @@ namespace LLP
     {
     public:
 
-        /* Connection Constructors */
+        /** Default Constructor **/
         Connection()
         : BaseConnection() { }
 
+        /** Constructor **/
         Connection( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false)
         : BaseConnection(SOCKET_IN, DDOS_IN, isDDOS, fOutgoing) { }
 

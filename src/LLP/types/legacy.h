@@ -32,6 +32,11 @@ namespace LLP
     {
     public:
 
+      /** Name
+       *
+       *  Returns a string for the name of this type of Node.
+       *
+       **/
         static std::string Name() { return "Legacy"; }
 
         /** Default Constructor **/
@@ -186,7 +191,7 @@ namespace LLP
          *  @return Returns a filled out legacy packet.
          *
          **/
-        LegacyPacket NewMessage(const char* chCommand, DataStream& ssData)
+        LegacyPacket NewMessage(const char* chCommand, const DataStream& ssData)
         {
             LegacyPacket RESPONSE(chCommand);
             RESPONSE.SetData(ssData);

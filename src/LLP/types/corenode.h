@@ -34,11 +34,17 @@ namespace LLP
      *  {"params":[]}
      *
      *  This could also be used as the base for a HTTP-LLP server implementation.
+     *
      **/
     class CoreNode : public HTTPNode
     {
     public:
 
+        /** Name
+         *
+         *  Returns a string for the name of this type of Node.
+         *
+         **/
         static std::string Name() { return "Core"; }
 
         /** Default Constructor **/

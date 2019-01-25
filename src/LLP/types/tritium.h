@@ -41,7 +41,8 @@ namespace LLP
         /** Default Constructor **/
         TritiumNode()
         : BaseConnection<TritiumPacket>()
-        , nSessionID(0), fInbound(false)
+        , nSessionID(0)
+        , fInbound(false)
         , nNodeLatency(0)
         , nLastPing(0)
         , nLastSamples(0) {}
@@ -175,7 +176,7 @@ namespace LLP
          *  @return Returns a filled out tritium packet.
          *
          **/
-        TritiumPacket NewMessage(const uint16_t nMsg, DataStream &ssData)
+        TritiumPacket NewMessage(const uint16_t nMsg, const DataStream &ssData)
         {
             TritiumPacket RESPONSE(nMsg);
             RESPONSE.SetData(ssData);
