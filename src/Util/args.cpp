@@ -56,7 +56,7 @@ namespace config
     {
         mapArgs.clear();
         mapMultiArgs.clear();
-        for (int i = 1; i < argc; i++)
+        for (int i = 1; i < argc; ++i)
         {
             char psz[10000];
             strlcpy(psz, argv[i], sizeof(psz));

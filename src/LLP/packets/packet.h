@@ -19,7 +19,11 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /* Class to handle sending and receiving of LLP Packets. */
+    /** Packet
+     *
+     *  Class to handle sending and receiving of LLP Packets.
+     *
+     **/
     class Packet
     {
     public:

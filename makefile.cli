@@ -222,7 +222,8 @@ OBJS= \
 	build/Util_debug.o \
 	build/Util_filesystem.o \
 	build/Util_signals.o \
-	build/Util_version.o
+	build/Util_version.o \
+    build/Util_memory.o
 
 ###############################################################################
 ifeq ($(detected_OS),Windows)

@@ -26,7 +26,9 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /** Base Class to create a Custom LLP Server.
+    /** Server
+     *
+     *  Base Class to create a Custom LLP Server.
      *
      *  Protocol Type class must inherit Connection,
      *  and provide a ProcessPacket method.

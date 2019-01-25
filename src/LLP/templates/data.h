@@ -17,14 +17,17 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 #include <condition_variable>
 #include <functional>
-
 #include <atomic>
 
 namespace LLP
 {
 
-    /** Base Template Thread Class for Server base. Used for Core LLP Packet Functionality.
-        Not to be inherited, only for use by the LLP Server Base Class. **/
+    /** DataThread
+     *
+     *  Base Template Thread Class for Server base. Used for Core LLP Packet Functionality.
+     *  Not to be inherited, only for use by the LLP Server Base Class.
+     *
+     **/
     template <class ProtocolType>
     class DataThread
     {

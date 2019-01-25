@@ -10,27 +10,23 @@
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
-
-#ifndef NEXUS_UTIL_INCLUDE_MEMORY_H
-#define NEXUS_UTIL_INCLUDE_MEMORY_H
-
-#include <cinttypes>
+#include <Util/include/memory.h>
 
 namespace memory
 {
-    /** compare
-     *
-     *  Compares two byte arrays and determines their signed equivalence byte for
-     *  byte.
-     *
-     *  @param[in] a The first byte array to compare.
-     *  @param[in] b The second byte array to compare.
-     *  @param[in] size The number of bytes to compare.
-     *
-     *  @return Returns the difference of byte values if they are unequal.
-     *
-     **/
-    int32_t compare(const uint8_t *a, const uint8_t *b, const uint64_t size);
-}
 
-#endif
+    /*  Compares two byte arrays and determines their signed equivalence byte for
+    *   byte. */
+    int32_t compare(const uint8_t *a, const uint8_t *b, const uint64_t size)
+    {
+        for(uint64_t i = 0; i < size; ++i)
+        {
+            const uint8_t &ai = a[i];
+            const uint8_t &bi = b[i];
+
+            if(ai != bi)
+                return ai - bi;
+        }
+        return 0;
+    }
+}

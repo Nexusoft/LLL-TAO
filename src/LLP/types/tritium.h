@@ -22,6 +22,11 @@ ________________________________________________________________________________
 namespace LLP
 {
 
+    /** TritiumNode
+     *
+     *  A Node that processes packets and messages for the Tritium Server
+     *
+     **/
     class TritiumNode : public BaseConnection<TritiumPacket>
     {
     public:

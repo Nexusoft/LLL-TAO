@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>
+#include <Util/include/memory.h>
 
 #include <Legacy/include/enum.h>
 #include <Legacy/types/address.h>
@@ -206,7 +207,8 @@ namespace Legacy
         opcodetype opcode;
         do
         {
-            while (end() - pc >= (long)b.size() && memcmp(&pc[0], &b[0], b.size()) == 0)
+            //while (end() - pc >= (long)b.size() && memcmp(&pc[0], &b[0], b.size()) == 0)
+            while (end() - pc >= (long)b.size() && memory::compare((uint8_t *)&pc[0], (uint8_t *)&b[0], b.size()) == 0)
             {
                 erase(pc, pc + b.size());
                 ++nFound;

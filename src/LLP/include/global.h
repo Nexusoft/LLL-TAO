@@ -16,7 +16,6 @@ ________________________________________________________________________________
 
 #include <LLP/types/legacy.h>
 #include <LLP/types/tritium.h>
-
 #include <LLP/templates/server.h>
 
 namespace LLP

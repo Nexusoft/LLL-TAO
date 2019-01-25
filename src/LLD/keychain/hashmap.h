@@ -58,6 +58,18 @@ namespace LLD
         std::string strBaseLocation;
 
 
+        /** Keychain stream object. **/
+        mutable TemplateLRU<uint32_t, std::fstream *> *fileCache;
+
+
+        /** Total elements in hashmap for quick inserts. **/
+        mutable std::vector<uint32_t> hashmap;
+
+
+        /* The cache writer thread. */
+        std::thread CacheThread;
+
+
         /** The Maximum buckets allowed in the hashmap. */
         uint32_t HASHMAP_TOTAL_BUCKETS;
 
@@ -86,37 +98,28 @@ namespace LLD
         std::atomic<bool> fDestruct;
 
 
-        /** Keychain stream object. **/
-        mutable TemplateLRU<uint32_t, std::fstream *> *fileCache;
-
-
-        /** Total elements in hashmap for quick inserts. **/
-        mutable std::vector<uint32_t> hashmap;
-
-
-        /* The cache writer thread. */
-        std::thread CacheThread;
-
-
     public:
 
         BinaryHashMap()
-        : HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
+        : fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+        , hashmap(256 * 256 * 24)
+        , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
+        , HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
         , HASHMAP_MAX_CACHE_SZIE(10 * 1024)
         , HASHMAP_MAX_KEY_SIZE(32)
         , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 13)
         , nFlags(FLAGS::APPEND)
         , fCacheActive(false)
         , fDestruct(false)
-        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
-        , hashmap(HASHMAP_TOTAL_BUCKETS)
-        , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
         }
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND)
         : strBaseLocation(strBaseLocationIn)
+        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+        , hashmap(256 * 256 * 24)
+        , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         , HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
         , HASHMAP_MAX_CACHE_SZIE(10 * 1024)
         , HASHMAP_MAX_KEY_SIZE(32)
@@ -124,24 +127,22 @@ namespace LLD
         , nFlags(nFlagsIn)
         , fCacheActive(false)
         , fDestruct(false)
-        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
-        , hashmap(HASHMAP_TOTAL_BUCKETS)
-        , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
             Initialize();
         }
 
         BinaryHashMap(std::string strBaseLocationIn, uint32_t nTotalBuckets, uint32_t nMaxCacheSize, uint8_t nFlagsIn = FLAGS::APPEND)
         : strBaseLocation(strBaseLocationIn)
+        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+        , hashmap(nTotalBuckets)
+        , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         , HASHMAP_TOTAL_BUCKETS(nTotalBuckets)
         , HASHMAP_MAX_CACHE_SZIE(nMaxCacheSize)
         , HASHMAP_MAX_KEY_SIZE(32)
         , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 13)
         , nFlags(nFlagsIn)
         , fCacheActive(false)
-        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
-        , hashmap(HASHMAP_TOTAL_BUCKETS)
-        , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
+        , fDestruct(false)
         {
             Initialize();
         }

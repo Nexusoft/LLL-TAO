@@ -23,6 +23,11 @@ namespace LLP
 {
     extern LegacyAddress addrMyNode; //TODO: move this to a better location
 
+    /** LegacyNode
+     *
+     *  A Node that processes packets and messages for the Legacy Server
+     *
+     **/
     class LegacyNode : public BaseConnection<LegacyPacket>
     {
     public:
