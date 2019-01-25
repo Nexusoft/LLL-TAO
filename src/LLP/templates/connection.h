@@ -45,24 +45,32 @@ namespace LLP
         std::mutex MUTEX;
 
 
-        /*  Pure Virtual Event Function to be Overridden allowing Custom Read Events.
-            Each event fired on Header Complete, and each time data is read to fill packet.
-            Useful to check Header length to maximum size of packet type for DDOS protection,
-            sending a keep-alive ping while downloading large files, etc.
-
-            LENGTH == 0: General Events
-            LENGTH  > 0 && PACKET: Read nSize Bytes into Data Packet
-        */
+        /** Event
+         *
+         *  Pure Virtual Event Function to be Overridden allowing Custom Read Events.
+         *  Each event fired on Header Complete, and each time data is read to fill packet.
+         *  Useful to check Header length to maximum size of packet type for DDOS protection,
+         *  sending a keep-alive ping while downloading large files, etc.
+         *
+         *  LENGTH == 0: General Events
+         *  LENGTH  > 0 && PACKET: Read nSize Bytes into Data Packet
+         *
+         **/
         virtual void Event(uint8_t EVENT, uint32_t LENGTH = 0) = 0;
 
 
-        /* Pure Virtual Process Function. To be overridden with your own custom packet processing. */
+        /** ProcessPacket
+         *
+         *  Pure Virtual Process Function. To be overridden with your own custom
+         *  packet processing.
+         *
+         **/
         virtual bool ProcessPacket() = 0;
 
     public:
 
         /** Incoming Packet Being Built. **/
-        PacketType        INCOMING;
+        PacketType     INCOMING;
 
 
         /** DDOS Score for Connection. **/
@@ -104,6 +112,7 @@ namespace LLP
         , fCONNECTED(false)
         {
         }
+
 
         /* Default destructor */
         virtual ~BaseConnection()
@@ -147,7 +156,7 @@ namespace LLP
          *  Checks if is in null state.
          *
          **/
-        bool IsNull()
+        bool IsNull() const
         {
             return fd == -1;
         }
@@ -158,7 +167,7 @@ namespace LLP
          *  Checks for any flags in the Error Handle.
          *
          **/
-        bool Errors()
+        bool Errors() const
         {
             return ErrorCode() != 0;
         }
@@ -261,7 +270,6 @@ namespace LLP
          *  Connect Socket to a Remote Endpoint.
          *
          *  @param[in] strAddress The IP address string.
-         *
          *  @param[in] nPort The port number.
          *
          *  @return Returns true if successful connection, false otherwise.

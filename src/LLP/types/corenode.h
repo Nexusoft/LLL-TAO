@@ -15,10 +15,8 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TYPES_CORENODE_H
 
 #include <LLP/types/http.h>
-
-#include <functional>
-
 #include <Util/include/json.h>
+#include <functional>
 
 namespace LLP
 {

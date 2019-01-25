@@ -29,12 +29,7 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-        /** Virtual Functions to Determine Behavior of Message LLP.
-         *
-         *  @param[in] EVENT The byte header of the event type
-         *  @param[in[ LENGTH The size of bytes read on packet read events
-         *
-         */
+        /** Virtual Functions to Determine Behavior of Message LLP. **/
         void TritiumNode::Event(uint8_t EVENT, uint32_t LENGTH)
         {
             switch(EVENT)

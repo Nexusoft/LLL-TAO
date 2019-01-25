@@ -15,7 +15,6 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TEMPLATES_SOCKET_H
 
 #include <vector>
-
 #include <poll.h>
 
 #include <Util/include/runtime.h>

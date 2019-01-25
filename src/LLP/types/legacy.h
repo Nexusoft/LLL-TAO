@@ -32,11 +32,11 @@ namespace LLP
     {
     public:
 
-      /** Name
-       *
-       *  Returns a string for the name of this type of Node.
-       *
-       **/
+        /** Name
+         *
+         *  Returns a string for the name of this type of Node.
+         *
+         **/
         static std::string Name() { return "Legacy"; }
 
         /** Default Constructor **/
