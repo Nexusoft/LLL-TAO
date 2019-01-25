@@ -837,9 +837,6 @@ namespace Legacy
                 /* Check the genesis transaction. */
                 if(!trustKey.CheckGenesis(state))
                     return debug::error(FUNCTION, "invalid genesis transaction");
-
-                /* Write the trust key to indexDB */
-                LLD::legDB->WriteTrustKey(cKey, trustKey);
             }
 
             /* Handle Adding Trust Transactions. */
@@ -851,8 +848,6 @@ namespace Legacy
                     /* FindGenesis will set hashPrevBlock to genesis block. Don't want to change that here, so use temp hash */
                     if(!TAO::Ledger::FindGenesis(cKey, state.hashPrevBlock, trustKey))
                         return debug::error(FUNCTION, "no trust without genesis");
-
-                    LLD::legDB->WriteTrustKey(cKey, trustKey);
                 }
 
                 /* Check that the Trust Key and Current Block match. */
@@ -870,8 +865,10 @@ namespace Legacy
 
                 /* Write trust key changes to disk. */
                 trustKey.hashLastBlock = state.GetHash();
-                LLD::legDB->WriteTrustKey(cKey, trustKey);
             }
+
+            /* Write the trust key. */
+            LLD::legDB->WriteTrustKey(cKey, trustKey);
 
             /* Check that the trust score is accurate. */
             if(state.nVersion >= 5 && !CheckTrust(state))
@@ -1059,13 +1056,7 @@ namespace Legacy
             /* Check the trust pool - this should only execute once transitioning from version 4 to version 5 trust keys. */
             TAO::Ledger::TrustKey trustKey;
             if(!LLD::legDB->ReadTrustKey(cKey, trustKey))
-            {
-                /* Find the genesis if it isn't found. */
-                if(!FindGenesis(cKey, state.hashPrevBlock, trustKey))
-                    return debug::error(FUNCTION, "trust key not found in database");
-
-                LLD::legDB->WriteTrustKey(cKey, trustKey);
-            }
+                return debug::error(FUNCTION, "couldn't find the genesis");
 
             /* Enforce sequence number of 1 for anything made from version 4 blocks. */
             if(nSequence != 1)
