@@ -973,7 +973,7 @@ namespace Legacy
     /*  Checks whether a transaction has inputs or outputs belonging to this wallet, and adds
      *  it to the wallet when it does.
      */
-    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::Block& containingBlock,
+    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::Block* pcontainingBlock,
                                            bool fUpdate, bool fFindBlock, bool fRescan)
     {
         uint512_t hash = tx.GetHash();
@@ -1004,7 +1004,8 @@ namespace Legacy
                 wtx.nTimeReceived = tx.nTime;
             }
 
-            wtx.hashBlock = containingBlock.GetHash();
+            if (pcontainingBlock != nullptr)
+                wtx.hashBlock = pcontainingBlock->GetHash();
 
             /* AddToWallet preforms merge (update) for transactions already in wallet */
             return AddToWallet(wtx);
@@ -1115,7 +1116,7 @@ namespace Legacy
                             continue;
                         }
 
-                        if (AddToWalletIfInvolvingMe(tx, state, fUpdate, false, true))
+                        if (AddToWalletIfInvolvingMe(tx, &state, fUpdate, false, true))
                             nTransactionCount++;
                     }
                 }

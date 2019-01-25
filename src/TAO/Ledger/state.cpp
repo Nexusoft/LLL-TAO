@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <Legacy/types/legacy.h>
+#include <Legacy/wallet/wallet.h>
 
 #include <TAO/Operation/include/execute.h>
 
@@ -30,8 +31,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/supply.h>
-
-#include <Legacy/wallet/wallet.h>
 
 
 
@@ -514,7 +513,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to connect inputs");
 
                     /* Add legacy transactions to the wallet where appropriate */
-                    Legacy::CWallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);
+                    Legacy::CWallet::GetInstance().AddToWalletIfInvolvingMe(tx, this, true);
 
                 }
                 else
