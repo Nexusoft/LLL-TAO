@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/args.h>
 #include <Util/templates/serialize.h>
+#include <Util/include/memory.h>
 
 
 namespace LLP
@@ -169,7 +170,8 @@ namespace LLP
                 return false;
 
             /* Check the Header Bytes. */
-            if(memcmp(HEADER, (config::fTestNet ? MESSAGE_START_TESTNET : MESSAGE_START_MAINNET), sizeof(HEADER)) != 0)
+            //if(memcmp(HEADER, (config::fTestNet ? MESSAGE_START_TESTNET : MESSAGE_START_MAINNET), sizeof(HEADER)) != 0)
+            if(memory::compare((uint8_t *)HEADER, (uint8_t *)(config::fTestNet ? MESSAGE_START_TESTNET : MESSAGE_START_MAINNET), sizeof(HEADER)) != 0)
                 return debug::error("Message Packet (Invalid Packet Header");
 
             /* Make sure Packet length is within bounds. (Max 512 MB Packet Size) */

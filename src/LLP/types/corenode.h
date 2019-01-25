@@ -35,7 +35,7 @@ namespace LLP
      *
      *  This could also be used as the base for a HTTP-LLP server implementation.
      **/
-    class CoreNode : public LLP::HTTPNode
+    class CoreNode : public HTTPNode
     {
     public:
 
@@ -43,10 +43,10 @@ namespace LLP
 
         /* Constructors for Message LLP Class. */
         CoreNode()
-        : LLP::HTTPNode() {}
+        : HTTPNode() {}
 
         CoreNode( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false )
-        : LLP::HTTPNode( SOCKET_IN, DDOS_IN ) { }
+        : HTTPNode( SOCKET_IN, DDOS_IN ) { }
 
 
         /** Virtual Functions to Determine Behavior of Message LLP.

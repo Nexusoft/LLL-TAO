@@ -13,17 +13,20 @@ ________________________________________________________________________________
 
 #include <LLP/include/baseaddress.h>
 #include <LLP/include/network.h>
-#include <LLP/include/hosts.h>  //Lookup
-#include <LLC/hash/SK.h>        //LLC::SK64
-#include <Util/include/debug.h> //debug::log
-
-#include <cstring> //memset, memcmp, memcpy
-#include <algorithm> //std::copy
-#include <cassert>
+#include <LLP/include/hosts.h>   //Lookup
+#include <LLC/hash/SK.h>         //LLC::SK64
+#include <Util/include/debug.h>  //debug::log
+#include <Util/include/memory.h> //memory::compare
+#include <algorithm>             //std::copy
 
 namespace LLP
 {
-    static const uint8_t pchIPv4[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff };
+    static const uint8_t pchIPv4[12] =  {0,0,0,0,0,0,0,0,0,0,0xff,0xff};
+    static const uint8_t pchLocal[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
+    static const uint8_t pchRFC4862[] = {0xFE,0x80,0,0,0,0,0,0};
+    static const uint8_t pchRFC6052[] = {0,0x64,0xFF,0x9B,0,0,0,0,0,0,0,0};
+    static const uint8_t pchRFC6145[] = {0,0,0,0,0,0,0,0,0xFF,0xFF,0,0};
+
 
     /* Default constructor */
     BaseAddress::BaseAddress()
@@ -51,8 +54,6 @@ namespace LLP
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(port)
     {
-        //memcpy(ip,    pchIPv4, 12);
-        //memcpy(ip+12, &ipv4Addr, 4);
         std::copy((uint8_t*)&pchIPv4[0], (uint8_t*)&pchIPv4[0] + 12, (uint8_t*)&ip[0]);
         std::copy((uint8_t*)&ipv4Addr, (uint8_t*)&ipv4Addr + 4, (uint8_t*)&ip[0] + 12);
     }
@@ -63,7 +64,6 @@ namespace LLP
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(port)
     {
-        //memcpy(ip, &ipv6Addr, 16);
         std::copy((uint8_t*)&ipv6Addr, (uint8_t*)&ipv6Addr + 16, (uint8_t*)&ip[0]);
     }
 
@@ -71,14 +71,18 @@ namespace LLP
     /* Copy constructor */
     BaseAddress::BaseAddress(const struct sockaddr_in& addr)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-    , nPort(ntohs(addr.sin_port))
+    , nPort(0)
     {
-        assert(addr.sin_family == AF_INET);
+        if(addr.sin_family != AF_INET)
+        {
+            debug::error(FUNCTION, "improper sockaddr_in for IPv4");
+            return;
+        }
 
-        //memcpy(ip,    pchIPv4, 12);
-        //memcpy(ip+12, &addr.sin_addr, 4);
         std::copy((uint8_t*)&pchIPv4[0], (uint8_t*)&pchIPv4[0] + 12, (uint8_t*)&ip[0]);
         std::copy((uint8_t*)&addr.sin_addr, (uint8_t*)&addr.sin_addr + 4, (uint8_t*)&ip[0] + 12);
+
+        nPort = ntohs(addr.sin_port);
     }
 
 
@@ -87,7 +91,12 @@ namespace LLP
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(ntohs(addr.sin6_port))
     {
-        assert(addr.sin6_family == AF_INET6);
+        if(addr.sin6_family != AF_INET6)
+        {
+            debug::error(FUNCTION, "improper sockaddr_in6 for IPv6");
+            return;
+        }
+
 
         //memcpy(ip, &addr.sin6_addr, 16);
         std::copy((uint8_t*)&addr.sin6_addr, (uint8_t*)&addr.sin6_addr + 16, (uint8_t*)&ip[0]);
@@ -160,7 +169,8 @@ namespace LLP
     /*  Determines if address is IPv4 mapped address. (::FFFF:0:0/96, 0.0.0.0/0) */
     bool BaseAddress::IsIPv4() const
     {
-        return (memcmp(ip, pchIPv4, sizeof(pchIPv4)) == 0);
+        //return (memcmp(ip, pchIPv4, sizeof(pchIPv4)) == 0);
+        return (memory::compare(ip, pchIPv4, sizeof(pchIPv4)) == 0);
     }
 
 
@@ -221,24 +231,24 @@ namespace LLP
     /* Determines if address is IPv6 autoconfig. (FE80::/64) */
     bool BaseAddress::IsRFC4862() const
     {
-        static const uint8_t pchRFC4862[] = {0xFE,0x80,0,0,0,0,0,0};
-        return (memcmp(ip, pchRFC4862, sizeof(pchRFC4862)) == 0);
+        //return (memcmp(ip, pchRFC4862, sizeof(pchRFC4862)) == 0);
+        return (memory::compare(ip, pchRFC4862, sizeof(pchRFC4862)) == 0);
     }
 
 
     /* Determines if address is IPv6 well-known prefix. (64:FF9B::/96) */
     bool BaseAddress::IsRFC6052() const
     {
-        static const uint8_t pchRFC6052[] = {0,0x64,0xFF,0x9B,0,0,0,0,0,0,0,0};
-        return (memcmp(ip, pchRFC6052, sizeof(pchRFC6052)) == 0);
+        //return (memcmp(ip, pchRFC6052, sizeof(pchRFC6052)) == 0);
+        return (memory::compare(ip, pchRFC6052, sizeof(pchRFC6052)) == 0);
     }
 
 
     /* Determines if address is IPv6 IPv4-translated address. (::FFFF:0:0:0/96) */
     bool BaseAddress::IsRFC6145() const
     {
-        static const uint8_t pchRFC6145[] = {0,0,0,0,0,0,0,0,0xFF,0xFF,0,0};
-        return (memcmp(ip, pchRFC6145, sizeof(pchRFC6145)) == 0);
+        //return (memcmp(ip, pchRFC6145, sizeof(pchRFC6145)) == 0);
+        return (memory::compare(ip, pchRFC6145, sizeof(pchRFC6145)) == 0);
     }
 
 
@@ -250,8 +260,9 @@ namespace LLP
         return true;
 
     // IPv6 loopback (::1/128)
-    static const uint8_t pchLocal[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
-    if (memcmp(ip, pchLocal, 16) == 0)
+
+    //if (memcmp(ip, pchLocal, 16) == 0)
+    if (memory::compare(ip, pchLocal, 16) == 0)
         return true;
 
     return false;
@@ -273,12 +284,14 @@ namespace LLP
         // header20 vectorlen3 addr26 addr26 addr26 header20 vectorlen3 addr26 addr26 addr26...
         // so if the first length field is garbled, it reads the second batch
         // of addr misaligned by 3 bytes.
-        if (memcmp(ip, pchIPv4+3, sizeof(pchIPv4)-3) == 0)
+        //if (memcmp(ip, pchIPv4+3, sizeof(pchIPv4)-3) == 0)
+        if (memory::compare(ip, pchIPv4+3, sizeof(pchIPv4)-3) == 0)
             return false;
 
         // unspecified IPv6 address (::/128)
         uint8_t ipNone[16] = {};
-        if (memcmp(ip, ipNone, 16) == 0)
+        //if (memcmp(ip, ipNone, 16) == 0)
+        if (memory::compare(ip, ipNone, 16) == 0)
             return false;
 
         // documentation IPv6 address
@@ -288,13 +301,15 @@ namespace LLP
         if (IsIPv4())
         {
             // INADDR_NONE
-            uint32_t ipNone = INADDR_NONE;
-            if (memcmp(ip+12, &ipNone, 4) == 0)
+            uint32_t ip_none = INADDR_NONE;
+            //if (memcmp(ip+12, &ipNone, 4) == 0)
+            if (memory::compare(ip+12, (uint8_t *)&ip_none, 4) == 0)
                 return false;
 
             // 0
-            ipNone = 0;
-            if (memcmp(ip+12, &ipNone, 4) == 0)
+            ip_none = 0;
+            //if (memcmp(ip+12, &ipNone, 4) == 0)
+            if (memory::compare(ip+12, (uint8_t *)&ip_none, 4) == 0)
                 return false;
         }
 
@@ -450,10 +465,13 @@ namespace LLP
     /* Gets an IPv4 socket address struct. */
     bool BaseAddress::GetSockAddr(struct sockaddr_in* paddr) const
     {
-        if (!IsIPv4())
+        if (!IsIPv4() || !paddr)
             return false;
 
-        memset(paddr, 0, sizeof(struct sockaddr_in));
+        //memset(paddr, 0, sizeof(struct sockaddr_in));
+        paddr->sin_family = 0;
+        paddr->sin_port = 0;
+        paddr->sin_addr.s_addr = 0;
 
         if (!GetInAddr(&paddr->sin_addr))
             return false;
@@ -468,7 +486,18 @@ namespace LLP
     /* Gets an IPv6 socket address struct. */
     bool BaseAddress::GetSockAddr6(struct sockaddr_in6* paddr) const
     {
-        memset(paddr, 0, sizeof(struct sockaddr_in6));
+        if(!paddr)
+            return false;
+
+        //memset(paddr, 0, sizeof(struct sockaddr_in6));
+        paddr->sin6_family = 0;
+        paddr->sin6_port = 0;
+        paddr->sin6_flowinfo = 0;
+
+        for(uint8_t i = 0; i < 16; ++i)
+            paddr->sin6_addr.s6_addr[i] = 0;
+
+        paddr->sin6_scope_id = 0;
 
         if (!GetIn6Addr(&paddr->sin6_addr))
             return false;
@@ -490,20 +519,23 @@ namespace LLP
     /* Relational operator equals */
     bool operator==(const BaseAddress& a, const BaseAddress& b)
     {
-        return (memcmp(a.ip, b.ip, 16) == 0);
+        //return (memcmp(a.ip, b.ip, 16) == 0);
+        return (memory::compare(a.ip, b.ip, 16) == 0);
     }
 
 
     /* Relational operator not equals */
     bool operator!=(const BaseAddress& a, const BaseAddress& b)
     {
-        return (memcmp(a.ip, b.ip, 16) != 0);
+        //return (memcmp(a.ip, b.ip, 16) != 0);
+        return (memory::compare(a.ip, b.ip, 16) != 0);
     }
 
 
     /* Relational operator less than */
     bool operator<(const BaseAddress& a, const BaseAddress& b)
     {
-        return (memcmp(a.ip, b.ip, 16) < 0);
+        //return (memcmp(a.ip, b.ip, 16) < 0);
+        return (memory::compare(a.ip, b.ip, 16) < 0);
     }
 }

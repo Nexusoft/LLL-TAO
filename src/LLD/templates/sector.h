@@ -87,15 +87,8 @@ namespace LLD
 
 
         /* The String to hold the Disk Location of Database File. */
-        std::string strBaseLocation, strName;
-
-
-        /* Destructor Flag. */
-        std::atomic<bool> fDestruct;
-
-
-        /* Initialize Flag. */
-        std::atomic<bool> fInitialized;
+        std::string strBaseLocation;
+        std::string strName;
 
 
         /* timer for Runtime Calculations. */
@@ -108,16 +101,6 @@ namespace LLD
 
         /* Sector Keys Database. */
         KeychainType* pSectorKeys;
-
-
-        /* For the Meter. */
-        std::atomic<uint32_t> nBytesRead;
-        std::atomic<uint32_t> nBytesWrote;
-        std::atomic<uint32_t> nRecordsFlushed;
-
-
-        /** Database Flags. **/
-        uint8_t nFlags;
 
 
         /* Cache Pool */
@@ -147,20 +130,30 @@ namespace LLD
         /* Disk Buffer Memory Size. */
         std::atomic<uint32_t> nBufferBytes;
 
+        /* For the Meter. */
+        std::atomic<uint32_t> nBytesRead;
+        std::atomic<uint32_t> nBytesWrote;
+        std::atomic<uint32_t> nRecordsFlushed;
+
+        /* Destructor Flag. */
+        std::atomic<bool> fDestruct;
+
+
+        /* Initialize Flag. */
+        std::atomic<bool> fInitialized;
+
+
+        /** Database Flags. **/
+        uint8_t nFlags;
+
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         SectorDatabase(std::string strNameIn, uint8_t nFlagsIn)
         : strBaseLocation(config::GetDataDir() + strNameIn + "/datachain/")
         , strName(strNameIn)
-        , fDestruct(false)
-        , fInitialized(false)
         , runtime()
         , pTransaction(nullptr)
         , pSectorKeys(nullptr)
-        , nBytesRead(0)
-        , nBytesWrote(0)
-        , nRecordsFlushed(0)
-        , nFlags(nFlagsIn)
         , cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE))
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
         , nCurrentFile(0)
@@ -169,6 +162,12 @@ namespace LLD
         , MeterThread(std::bind(&SectorDatabase::Meter, this))
         , vDiskBuffer()
         , nBufferBytes(0)
+        , nBytesRead(0)
+        , nBytesWrote(0)
+        , nRecordsFlushed(0)
+        , fDestruct(false)
+        , fInitialized(false)
+        , nFlags(nFlagsIn)
         {
             /* Set readonly flag if write or append are not specified. */
             if(!(nFlags & FLAGS::FORCE) && !(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND))
@@ -182,7 +181,6 @@ namespace LLD
                 debug::log(0, ANSI_COLOR_GREEN FUNCTION, "executed in ",
                     runtime.ElapsedMicroseconds(), " micro-seconds" ANSI_COLOR_RESET);
             }
-
         }
 
         ~SectorDatabase()

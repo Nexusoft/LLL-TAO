@@ -304,19 +304,9 @@ int main(int argc, char** argv)
 
 
     /* Wait for shutdown. */
-    if(!config::GetBoolArg("-gdb"))
-    {
-        std::mutex SHUTDOWN_MUTEX;
-        std::unique_lock<std::mutex> SHUTDOWN_LOCK(SHUTDOWN_MUTEX);
-        SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown; });
-    }
-
-    /* GDB mode waits for keyboard input to initiate clean shutdown. */
-    else
-    {
-        getchar();
-        config::fShutdown = true;
-    }
+    std::mutex SHUTDOWN_MUTEX;
+    std::unique_lock<std::mutex> SHUTDOWN_LOCK(SHUTDOWN_MUTEX);
+    SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown; });
 
 
     /* Wait for the private condition. */
