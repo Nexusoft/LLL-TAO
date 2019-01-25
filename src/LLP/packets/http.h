@@ -31,7 +31,14 @@ namespace LLP
     class HTTPPacket
     {
     public:
-        HTTPPacket() { SetNull(); }
+
+        /** Default Constructor **/
+        HTTPPacket()
+        {
+            SetNull();
+        }
+
+        /** Constructor **/
         HTTPPacket(uint32_t nStatus)
         {
             SetNull();
@@ -67,7 +74,11 @@ namespace LLP
         bool fHeader;
 
 
-        /* Set the Packet Null Flags. */
+        /** SetNull
+         *
+         *  Set the Packet Null Flags.
+         *
+         **/
         void SetNull()
         {
             strType = "";
@@ -82,14 +93,22 @@ namespace LLP
         }
 
 
-        /* Packet Null Flag. Status of 0 */
+        /** IsNull
+         *
+         *  Packet Null Flag. Status of 0
+         *
+         **/
         bool IsNull()
         {
             return strType == "" && strRequest == "" && strVersion == "" && mapHeaders.empty() && strContent == "" && !fHeader;
         }
 
 
-        /* Determine if a packet is fully read. */
+        /** Complete
+         *
+         *  Determine if a packet is fully read.
+         *
+         **/
         bool Complete()
         {
             if(strType == "GET" && fHeader)
@@ -99,7 +118,13 @@ namespace LLP
         }
 
 
-        /* Set the response status on a HTTP Reply. */
+        /** SetStatus
+         *
+         *  Set the response status on a HTTP Reply.
+         *
+         *  @param[in] nStatus The status to set.
+         *
+         **/
         void SetStatus(uint32_t nStatus)
         {
             switch(nStatus)
@@ -130,7 +155,15 @@ namespace LLP
             }
         }
 
-        /* Serializes class into a byte buffer. Used to write Packet to Sockets. */
+
+        /** GetBytes
+         *
+         *  Serializes class into a byte buffer. Used to write Packet to
+         *  Sockets.
+         *
+         *  @return Returns a byte buffer.
+         *
+         **/
         std::vector<uint8_t> GetBytes()
         {
             //TODO: use constant format (not ...) -> ostringstream

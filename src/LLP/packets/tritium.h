@@ -50,31 +50,31 @@ namespace LLP
      *
      *  Class to handle sending and receiving of More Complese Message LLP Packets.
      *
+     *  Components of a Message LLP Packet.
+     *  BYTE 0 - 1  : Message Code
+     *  BYTE 2 - 6  : Packet Length
+     *  BYTE 7 - 10 : Packet Checksum
+     *  Byte 11 +   : Packet Data
+     *
      **/
     class TritiumPacket
     {
     public:
-
-        /** Components of a Message LLP Packet.
-         *
-         *  BYTE 0 - 1  : Message Code
-         *  BYTE 2 - 6  : Packet Length
-         *  BYTE 7 - 10 : Packet Checksum
-         *
-         *  Byte 11 +   : Packet Data
-         *
-         **/
-        uint16_t        MESSAGE;
+        uint16_t      MESSAGE;
         uint32_t	    LENGTH;
         uint32_t	    CHECKSUM;
 
         std::vector<uint8_t> DATA;
 
+
+        /** Default Constructor **/
         TritiumPacket()
         {
             SetNull();
         }
 
+
+        /** Constructor **/
         TritiumPacket(uint16_t nMessage)
         {
             SetNull();
@@ -82,6 +82,8 @@ namespace LLP
             MESSAGE = nMessage;
         }
 
+
+        /** Serialization **/
         IMPLEMENT_SERIALIZE
         (
             READWRITE(MESSAGE);
@@ -90,7 +92,11 @@ namespace LLP
         )
 
 
-        /* Set the Packet Null Flags. */
+        /** SetNull
+         *
+         *  Set the Packet Null Flags.
+         *
+         **/
         void SetNull()
         {
             MESSAGE   = DAT_NULL;
@@ -101,19 +107,46 @@ namespace LLP
         }
 
 
-        /* Packet Null Flag. Length and Checksum both 0. */
-        bool IsNull() { return (MESSAGE == DAT_NULL && LENGTH == 0 && CHECKSUM == 0 && DATA.size() == 0); }
+        /** IsNull
+         *
+         *  Packet Null Flag. Length and Checksum both 0.
+         *
+         **/
+        bool IsNull() const
+        {
+            return (MESSAGE == DAT_NULL && LENGTH == 0 && CHECKSUM == 0 && DATA.size() == 0);
+        }
 
 
-        /* Determine if a packet is fully read. */
-        bool Complete() { return (Header() && DATA.size() == LENGTH); }
+        /** Complete
+         *
+         *  Determine if a packet is fully read.
+         *
+         **/
+        bool Complete() const
+        {
+            return (Header() && DATA.size() == LENGTH);
+        }
 
 
-        /* Determine if header is fully read */
-        bool Header()   { return IsNull() ? false : (CHECKSUM > 0 && MESSAGE != DAT_NULL); }
+        /** Header
+         *
+         *  Determine if header is fully read
+         *
+         **/
+        bool Header() const
+        {
+            return IsNull() ? false : (CHECKSUM > 0 && MESSAGE != DAT_NULL);
+        }
 
 
-        /* Sets the size of the packet from Byte Vector. */
+        /** SetLength
+         *
+         * Sets the size of the packet from Byte Vector.
+         *
+         *  @param[in] BYTES the byte buffer to set the length of.
+         *
+         **/
         void SetLength(const std::vector<uint8_t> &vBytes)
         {
             DataStream ssLength(vBytes, SER_NETWORK, MIN_PROTO_VERSION);
@@ -121,14 +154,24 @@ namespace LLP
         }
 
 
-        /* Set the Packet Checksum Data. */
+        /** SetChecksum
+         *
+         *  Set the Packet Checksum Data.
+         *
+         **/
         void SetChecksum()
         {
             CHECKSUM = LLC::SK32(DATA.begin(), DATA.end());
         }
 
 
-        /* Set the Packet Data. */
+        /** SetData
+         *
+         *  Set the Packet Data.
+         *
+         *  @param[in] ssData The datastream with the data to set.
+         *
+         **/
         void SetData(const DataStream &ssData)
         {
             std::vector<uint8_t> vData(ssData.begin(), ssData.end());
@@ -140,7 +183,11 @@ namespace LLP
         }
 
 
-        /* Check the Validity of the Packet. */
+        /** IsValid
+         *
+         *  Check the Validity of the Packet.
+         *
+         **/
         bool IsValid()
         {
             /* Check that the packet isn't nullptr. */
@@ -161,7 +208,13 @@ namespace LLP
         }
 
 
-        /* Serializes class into a Byte Vector. Used to write Packet to Sockets. */
+        /** GetBytes
+         *
+         *  Serializes class into a Byte Vector. Used to write Packet to Sockets.
+         *
+         *  @return Returns the serialized byte vector.
+         *
+         **/
         std::vector<uint8_t> GetBytes()
         {
             DataStream ssHeader(SER_NETWORK, MIN_PROTO_VERSION);
