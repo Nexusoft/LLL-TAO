@@ -96,7 +96,7 @@ namespace LLP
          *  @return error code of the socket
          *
          **/
-        int32_t ErrorCode();
+        int32_t ErrorCode() const;
 
 
         /** Attempts
