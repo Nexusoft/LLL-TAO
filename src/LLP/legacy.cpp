@@ -318,14 +318,20 @@ namespace LLP
 
             /* Check for orphan. */
             static uint1024_t hashLastGetblocks = 0;
+            static uint64_t nLastGetBlocks = 0;
             if(!LLD::legDB->HasBlock(block.hashPrevBlock))
             {
                 DDOS->rSCORE += 5;
                 debug::log(3, NODE, "Block is an orphan");
 
                 /* Ask for getblocks. */
-                if(TAO::Ledger::ChainState::hashBestChain != hashLastGetblocks)
+                if(TAO::Ledger::ChainState::hashBestChain != hashLastGetblocks || nLastGetBlocks + 30 < runtime::timestamp())
+                {
                     PushMessage("getblocks", Legacy::Locator(TAO::Ledger::ChainState::hashBestChain), uint1024_t(0));
+                    nLastGetBlocks = runtime::timestamp();
+
+                    debug::log(0, NODE, "requesting getblocks from ", TAO::Ledger::ChainState::hashBestChain.ToString().substr(0, 20));
+                }
 
                 hashLastGetblocks = TAO::Ledger::ChainState::hashBestChain;
 

@@ -101,7 +101,7 @@ namespace LLD
     public:
 
         BinaryHashMap()
-        : fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+        : fileCache(new TemplateLRU<uint32_t, std::fstream*>(4))
         , hashmap(256 * 256 * 24)
         , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         , HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
@@ -117,7 +117,7 @@ namespace LLD
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND)
         : strBaseLocation(strBaseLocationIn)
-        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(4))
         , hashmap(256 * 256 * 24)
         , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         , HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
@@ -133,7 +133,7 @@ namespace LLD
 
         BinaryHashMap(std::string strBaseLocationIn, uint32_t nTotalBuckets, uint32_t nMaxCacheSize, uint8_t nFlagsIn = FLAGS::APPEND)
         : strBaseLocation(strBaseLocationIn)
-        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(4))
         , hashmap(nTotalBuckets)
         , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         , HASHMAP_TOTAL_BUCKETS(nTotalBuckets)
@@ -670,7 +670,6 @@ namespace LLD
 
                 /* Create the file handler. */
                 std::fstream stream(filename, std::ios::in | std::ios::out | std::ios::binary);
-
                 if(!stream.is_open())
                 {
                     debug::error(FUNCTION, "couldn't open file: ",

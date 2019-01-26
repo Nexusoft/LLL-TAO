@@ -39,6 +39,16 @@ namespace LLD
         std::vector<uint8_t> vData;
 
         bool fReserve;
+
+        BinaryNode(const std::vector<uint8_t>& vKeyIn, const std::vector<uint8_t>& vDataIn, bool fReserveIn)
+        : pprev(nullptr)
+        , pnext(nullptr)
+        , vKey(vKeyIn)
+        , vData(vDataIn)
+        , fReserve(fReserveIn)
+        {
+
+        }
     };
 
 
@@ -260,7 +270,7 @@ namespace LLD
 
 
         /** Add data in the Pool
-         *
+         *vData
          * @param[in] vKey The key in binary form
          * @param[in] vData The input data in binary form
          *
@@ -273,26 +283,37 @@ namespace LLD
             uint32_t nBucket = Bucket(vKey);
 
             /* Check for bucket collisions. */
-            BinaryNode* pthis = nullptr;
             if(hashmap[nBucket] != nullptr)
             {
-                /* Update the cache node. */
-                pthis = hashmap[nBucket];
-                pthis->vData    = vData;
-                pthis->vKey     = vKey;
-                pthis->fReserve = fReserve;
-            }
-            else
-            {
-                /* Create a new cache node. */
-                pthis = new BinaryNode();
-                pthis->vData    = vData;
-                pthis->vKey     = vKey;
-                pthis->fReserve = fReserve;
+                BinaryNode* pthis = hashmap[nBucket];
 
-                /* Add cache node to objects map. */
-                hashmap[nBucket] = pthis;
+                /* Check for the same key. */
+                if(pthis->vKey == vKey)
+                {
+                    pthis->vData    = vData;
+                    pthis->fReserve = fReserve;
+                    return;
+                }
+
+                RemoveNode(pthis);
+
+                hashmap[nBucket] = nullptr;
+                pthis->pprev     = nullptr;
+                pthis->pnext     = nullptr;
+                pthis->fReserve  = false;
+
+                nCurrentSize -= (pthis->vData.size() - pthis->vKey.size());
+
+                delete pthis;
+
+                debug::log(0, FUNCTION, "cleared bucket collision");
             }
+
+            /* Create a new cache node. */
+            BinaryNode* pthis = new BinaryNode(vKey, vData, fReserve);
+
+            /* Add cache node to objects map. */
+            hashmap[nBucket] = pthis;
 
             /* Set the new cache node to the front */
             if(!pthis->fReserve)

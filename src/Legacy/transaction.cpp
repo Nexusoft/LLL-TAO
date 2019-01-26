@@ -339,19 +339,6 @@ namespace Legacy
     }
 
 
-    /* Check the proof of stake calculations. */
-    bool Transaction::VerifyStake(const TAO::Ledger::BlockState& block) const
-    {
-        /* Check the Block Hash with Weighted Hash to Target. */
-        LLC::CBigNum bnTarget;
-        bnTarget.SetCompact(block.nBits);
-        if(block.GetHash() > bnTarget.getuint1024())
-            return debug::error(FUNCTION, "proof of stake not meeting target");
-
-        return true;
-    }
-
-
     /* Get the total calculated interest of the coinstake transaction */
     bool Transaction::CoinstakeInterest(const TAO::Ledger::BlockState& block, uint64_t& nInterest) const
     {
@@ -821,10 +808,6 @@ namespace Legacy
             /* Check that the trust score is accurate. */
             if(state.nVersion >= 5 && !CheckTrust(state))
                 return debug::error(FUNCTION, "invalid trust score");
-
-            /* Check if the stake is verified for version 4. */
-            if(state.nVersion < 5 && !VerifyStake(state))
-                return debug::error(FUNCTION, "invalid proof of stake");
         }
 
         /* Read all of the inputs. */
