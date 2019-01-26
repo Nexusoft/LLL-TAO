@@ -39,6 +39,7 @@ namespace LLP
          **/
         static std::string Name() { return "Legacy"; }
 
+
         /** Default Constructor **/
         LegacyNode() : BaseConnection<LegacyPacket>() {}
 
@@ -80,7 +81,7 @@ namespace LLP
         std::map<uint64_t, runtime::timer> mapLatencyTracker;
 
 
-        /** Mao to keep track of sent request ID's while witing for them to return. **/
+        /** Map to keep track of sent request ID's while witing for them to return. **/
         std::map<uint32_t, uint64_t> mapSentRequests;
 
 

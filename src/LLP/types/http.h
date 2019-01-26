@@ -60,10 +60,11 @@ namespace LLP
 
     public:
 
-        /* Constructors for Message LLP Class. */
+        /** Default Constructor **/
         HTTPNode()
         : BaseConnection<HTTPPacket>() { }
 
+        /** Constructor **/
         HTTPNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<HTTPPacket>( SOCKET_IN, DDOS_IN ) { }
 
@@ -83,7 +84,7 @@ namespace LLP
          *
          *  Main message handler once a packet is recieved.
          *
-         *  @return True is no errors, false otherwise
+         *  @return True is no errors, false otherwise.
          *
          **/
         bool ProcessPacket() override = 0;
@@ -219,7 +220,7 @@ namespace LLP
         }
 
 
-        /** Push Response
+        /** PushResponse
          *
          *  Returns an HTTP packet with response code and content.
          *
