@@ -114,7 +114,7 @@ namespace LLP
 
 
         /* Sets the size of the packet from Byte Vector. */
-        void SetLength(std::vector<uint8_t> vBytes)
+        void SetLength(const std::vector<uint8_t> &vBytes)
         {
             DataStream ssLength(vBytes, SER_NETWORK, MIN_PROTO_VERSION);
             ssLength >> LENGTH;
@@ -129,7 +129,7 @@ namespace LLP
 
 
         /* Set the Packet Data. */
-        void SetData(DataStream ssData)
+        void SetData(const DataStream &ssData)
         {
             std::vector<uint8_t> vData(ssData.begin(), ssData.end());
 

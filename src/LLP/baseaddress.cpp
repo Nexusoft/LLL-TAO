@@ -102,6 +102,7 @@ namespace LLP
         std::copy((uint8_t*)&addr.sin6_addr, (uint8_t*)&addr.sin6_addr + 16, (uint8_t*)&ip[0]);
     }
 
+
     /* Copy constructor */
     BaseAddress::BaseAddress(const char *pszIpPort, uint16_t portDefault, bool fAllowLookup)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
@@ -114,6 +115,7 @@ namespace LLP
           debug::log(0, FUNCTION, "bad lookup");
     }
 
+
     /* Copy constructor */
     BaseAddress::BaseAddress(const std::string &strIpPort, uint16_t portDefault, bool fAllowLookup)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
@@ -125,6 +127,7 @@ namespace LLP
         else
           debug::log(0, FUNCTION, "bad lookup");
     }
+
 
     /* Copy assignment operator */
     BaseAddress &BaseAddress::operator=(const BaseAddress &other)
@@ -256,17 +259,18 @@ namespace LLP
     bool BaseAddress::IsLocal() const
     {
         // IPv4 loopback
-    if (IsIPv4() && (GetByte(3) == 127 || GetByte(3) == 0))
-        return true;
+        if (IsIPv4() && (GetByte(3) == 127 || GetByte(3) == 0))
+            return true;
 
-    // IPv6 loopback (::1/128)
+        // IPv6 loopback (::1/128)
 
-    //if (memcmp(ip, pchLocal, 16) == 0)
-    if (memory::compare(ip, pchLocal, 16) == 0)
-        return true;
+        //if (memcmp(ip, pchLocal, 16) == 0)
+        if (memory::compare(ip, pchLocal, 16) == 0)
+            return true;
 
-    return false;
+        return false;
     }
+
 
     /* Determines if address is a routable address. */
     bool BaseAddress::IsRoutable() const
@@ -376,9 +380,12 @@ namespace LLP
     }
 
 
-    /*  Gets the canonical identifier of an address' group.
+    /** GetGroup
+     *
+     *  Gets the canonical identifier of an address' group.
      *  No two connections will be attempted to addresses within
      *  the same group.
+     *
      */
     std::vector<uint8_t> BaseAddress::GetGroup() const
     {

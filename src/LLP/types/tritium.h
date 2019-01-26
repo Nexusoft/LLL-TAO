@@ -31,16 +31,23 @@ namespace LLP
     {
     public:
 
+      /** Name
+       *
+       *  Returns a string for the name of this type of Node.
+       *
+       **/
         static std::string Name() { return "Tritium"; }
 
-        /* Constructors for Message LLP Class. */
+        /** Default Constructor **/
         TritiumNode()
         : BaseConnection<TritiumPacket>()
-        , nSessionID(0), fInbound(false)
+        , nSessionID(0)
+        , fInbound(false)
         , nNodeLatency(0)
         , nLastPing(0)
         , nLastSamples(0) {}
 
+        /** Constructor **/
         TritiumNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<TritiumPacket>( SOCKET_IN, DDOS_IN )
         , nSessionID(0)
@@ -78,10 +85,12 @@ namespace LLP
         std::map<uint32_t, uint64_t> mapSentRequests;
 
 
-        /** Virtual Functions to Determine Behavior of Message LLP.
+        /** Event
          *
-         *  @param[in] EVENT The byte header of the event type
-         *  @param[in[ LENGTH The size of bytes read on packet read events
+         *  Virtual Functions to Determine Behavior of Message LLP.
+         *
+         *  @param[in] EVENT The byte header of the event type.
+         *  @param[in[ LENGTH The size of bytes read on packet read events.
          *
          */
         void Event(uint8_t EVENT, uint32_t LENGTH = 0) final;
@@ -91,7 +100,7 @@ namespace LLP
          *
          *  Main message handler once a packet is recieved.
          *
-         *  @return True is no errors, false otherwise
+         *  @return True is no errors, false otherwise.
          *
          **/
         bool ProcessPacket() final;
@@ -157,7 +166,17 @@ namespace LLP
         }
 
 
-        TritiumPacket NewMessage(const uint16_t nMsg, DataStream ssData)
+        /** NewMessage
+         *
+         *  Creates a new message with a commands and data.
+         *
+         *  @param[in] nMsg The message type.
+         *  @param[in] ssData A datastream object with data to write.
+         *
+         *  @return Returns a filled out tritium packet.
+         *
+         **/
+        TritiumPacket NewMessage(const uint16_t nMsg, const DataStream &ssData)
         {
             TritiumPacket RESPONSE(nMsg);
             RESPONSE.SetData(ssData);
@@ -166,6 +185,13 @@ namespace LLP
         }
 
 
+        /** PushMessage
+         *
+         *  Adds a tritium packet to the queue to write to the socket.
+         *
+         *  @param[in] nMsg The message type.
+         *
+         **/
         void PushMessage(const uint16_t nMsg)
         {
             TritiumPacket RESPONSE(nMsg);
@@ -174,6 +200,11 @@ namespace LLP
             this->WritePacket(RESPONSE);
         }
 
+        /** PushMessage
+         *
+         *  Adds a tritium packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1>
         void PushMessage(const uint16_t nMsg, const T1& t1)
         {
@@ -183,6 +214,12 @@ namespace LLP
             this->WritePacket(NewMessage(nMsg, ssData));
         }
 
+
+        /** PushMessage
+         *
+         *  Adds a tritium packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1, typename T2>
         void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2)
         {
@@ -192,6 +229,12 @@ namespace LLP
             this->WritePacket(NewMessage(nMsg, ssData));
         }
 
+
+        /** PushMessage
+         *
+         *  Adds a tritium packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1, typename T2, typename T3>
         void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3)
         {
@@ -201,6 +244,12 @@ namespace LLP
             this->WritePacket(NewMessage(nMsg, ssData));
         }
 
+
+        /** PushMessage
+         *
+         *  Adds a tritium packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1, typename T2, typename T3, typename T4>
         void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4)
         {
@@ -210,6 +259,12 @@ namespace LLP
             this->WritePacket(NewMessage(nMsg, ssData));
         }
 
+
+        /** PushMessage
+         *
+         *  Adds a tritium packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1, typename T2, typename T3, typename T4, typename T5>
         void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5)
         {
@@ -219,6 +274,12 @@ namespace LLP
             this->WritePacket(NewMessage(nMsg, ssData));
         }
 
+
+        /** PushMessage
+         *
+         *  Adds a tritium packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
         void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6)
         {
@@ -228,6 +289,12 @@ namespace LLP
             this->WritePacket(NewMessage(nMsg, ssData));
         }
 
+
+        /** PushMessage
+         *
+         *  Adds a tritium packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7>
         void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7)
         {
@@ -237,6 +304,12 @@ namespace LLP
             this->WritePacket(NewMessage(nMsg, ssData));
         }
 
+
+        /** PushMessage
+         *
+         *  Adds a tritium packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8>
         void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7, const T8& t8)
         {
@@ -246,6 +319,12 @@ namespace LLP
             this->WritePacket(NewMessage(nMsg, ssData));
         }
 
+
+        /** PushMessage
+         *
+         *  Adds a tritium packet to the queue to write to the socket.
+         *
+         **/
         template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9>
         void PushMessage(const uint16_t nMsg, const T1& t1, const T2& t2, const T3& t3, const T4& t4, const T5& t5, const T6& t6, const T7& t7, const T8& t8, const T9& t9)
         {

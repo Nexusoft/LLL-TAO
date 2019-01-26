@@ -34,25 +34,34 @@ namespace LLP
      *  {"params":[]}
      *
      *  This could also be used as the base for a HTTP-LLP server implementation.
+     *
      **/
     class CoreNode : public HTTPNode
     {
     public:
 
+        /** Name
+         *
+         *  Returns a string for the name of this type of Node.
+         *
+         **/
         static std::string Name() { return "Core"; }
 
-        /* Constructors for Message LLP Class. */
+        /** Default Constructor **/
         CoreNode()
         : HTTPNode() {}
 
+        /** Constructor **/
         CoreNode( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : HTTPNode( SOCKET_IN, DDOS_IN ) { }
 
 
-        /** Virtual Functions to Determine Behavior of Message LLP.
+        /** Event
          *
-         *  @param[in] EVENT The byte header of the event type
-         *  @param[in[ LENGTH The size of bytes read on packet read events
+         *  Virtual Functions to Determine Behavior of Message LLP.
+         *
+         *  @param[in] EVENT The byte header of the event type.
+         *  @param[in[ LENGTH The size of bytes read on packet read events.
          *
          */
         void Event(uint8_t EVENT, uint32_t LENGTH = 0) final;
@@ -62,13 +71,13 @@ namespace LLP
          *
          *  Main message handler once a packet is recieved.
          *
-         *  @return True is no errors, false otherwise
+         *  @return True is no errors, false otherwise.
          *
          **/
         bool ProcessPacket() final;
 
 
-        /** Error Reply
+        /** ErrorReply
          *
          *  Handles a reply error code and response.
          *
