@@ -249,6 +249,24 @@ namespace LLD
          */
         void RemoveNode(TemplateNode<KeyType, DataType> *pthis)
         {
+            /* Relink last pointer. */
+            if(plast && pthis == plast)
+            {
+                plast = plast->pprev;
+
+                if(plast)
+                    plast->pnext = nullptr;
+            }
+
+            /* Relink first pointer. */
+            if(pfirst && pthis == pfirst)
+            {
+                pfirst = pfirst->pnext;
+
+                if(pfirst)
+                    pfirst->pprev = nullptr;
+            }
+
             /* Link the next pointer if not null */
             if(pthis->pnext)
                 pthis->pnext->pprev = pthis->pprev;
@@ -351,13 +369,6 @@ namespace LLD
             if(hashmap[nBucket] != nullptr)
             {
                 TemplateNode<KeyType, DataType>* pthis = hashmap[nBucket];
-
-                /* Check for the same key. */
-                if(pthis->Key == Key)
-                {
-                    pthis->Data = Data;
-                    return;
-                }
 
                 RemoveNode(pthis);
 

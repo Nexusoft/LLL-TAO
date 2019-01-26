@@ -183,6 +183,24 @@ namespace LLD
          */
         void RemoveNode(BinaryNode* pthis)
         {
+            /* Relink last pointer. */
+            if(plast && pthis == plast)
+            {
+                plast = plast->pprev;
+
+                if(plast)
+                    plast->pnext = nullptr;
+            }
+
+            /* Relink first pointer. */
+            if(pfirst && pthis == pfirst)
+            {
+                pfirst = pfirst->pnext;
+
+                if(pfirst)
+                    pfirst->pprev = nullptr;
+            }
+
             /* Link the next pointer if not null */
             if(pthis->pnext)
                 pthis->pnext->pprev = pthis->pprev;
@@ -286,14 +304,6 @@ namespace LLD
             if(hashmap[nBucket] != nullptr)
             {
                 BinaryNode* pthis = hashmap[nBucket];
-
-                /* Check for the same key. */
-                if(pthis->vKey == vKey)
-                {
-                    pthis->vData    = vData;
-                    pthis->fReserve = fReserve;
-                    return;
-                }
 
                 RemoveNode(pthis);
 
