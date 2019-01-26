@@ -92,6 +92,14 @@ namespace Legacy
         bool Accept();
 
 
+        /** Verify Stake
+         *
+         *  Check the proof of stake calculations.
+         *
+         **/
+        bool VerifyStake() const;
+
+
         /** Check Stake
          *
          *  Check the proof of stake calculations.
