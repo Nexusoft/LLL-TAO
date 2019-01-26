@@ -282,7 +282,7 @@ namespace Legacy
 
 
         /* Get the key from the producer. */
-        if(nHeight > 0)
+        if(nHeight > 0 && !TAO::Ledger::ChainState::Synchronizing())
         {
             /* Get a vector for the solver solutions. */
             std::vector<std::vector<uint8_t> > vSolutions;
