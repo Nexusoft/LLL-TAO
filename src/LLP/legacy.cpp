@@ -38,6 +38,14 @@ ________________________________________________________________________________
 namespace LLP
 {
 
+    /* Static initialization of last get blocks. */
+    uint1024_t LegacyNode::hashLastGetblocks = 0;
+
+
+    /* Static initialization of last get blocks time. */
+    uint64_t LegacyNode::nLastGetBlocks      = 0;
+
+
     /* Push a Message With Information about This Current Node. */
     void LegacyNode::PushVersion()
     {

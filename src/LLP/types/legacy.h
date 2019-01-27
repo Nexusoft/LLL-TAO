@@ -50,8 +50,6 @@ namespace LLP
         , fInbound(false)
         , nNodeLatency(0)
         , nLastPing(runtime::timestamp())
-        , hashLastGetblocks(0)
-        , nLastGetBlocks(0)
         , nConsecutiveTimeouts(0)
         , mapLatencyTracker()
         , mapSentRequests()
@@ -70,8 +68,6 @@ namespace LLP
         , fInbound(false)
         , nNodeLatency(0)
         , nLastPing(runtime::timestamp())
-        , hashLastGetblocks(0)
-        , nLastGetBlocks(0)
         , nConsecutiveTimeouts(0)
         , mapLatencyTracker()
         , mapSentRequests()
@@ -109,11 +105,11 @@ namespace LLP
 
 
         /** The last getblocks call this node has received. **/
-        uint1024_t hashLastGetblocks;
+        static uint1024_t hashLastGetblocks;
 
 
         /** The time since last getblocks call. **/
-        uint64_t nLastGetBlocks;
+        static uint64_t nLastGetBlocks;
 
 
         /** The number of times getblocks has timed out (to deal with unreliable NON-TRITIUM nodes). **/

@@ -264,20 +264,21 @@ namespace LLD
             ssKey << key;
 
             /* Check that the key is not pending in a transaction for Erase. */
-            if(pTransaction)
-            {
-                LOCK(TRANSACTION_MUTEX);
+            { LOCK(TRANSACTION_MUTEX);
+                if(pTransaction)
+                {
 
-                if(pTransaction->mapEraseData.count(ssKey.Bytes()))
-                    return false;
+                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
+                        return false;
 
-                /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-                if(pTransaction->mapTransactions.count(ssKey.Bytes()))
-                    return true;
+                    /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
+                    if(pTransaction->mapTransactions.count(ssKey.Bytes()))
+                        return true;
 
-                /* Check for keychain commits. */
-                if(pTransaction->mapKeychain.count(ssKey.Bytes()))
-                    return true;
+                    /* Check for keychain commits. */
+                    if(pTransaction->mapKeychain.count(ssKey.Bytes()))
+                        return true;
+                }
             }
 
             /* Check the cache pool. */
@@ -301,13 +302,14 @@ namespace LLD
             ssKey << key;
 
             /* Add transaction to erase queue. */
-            if(pTransaction)
-            {
-                LOCK(TRANSACTION_MUTEX);
+            { LOCK(TRANSACTION_MUTEX);
+                if(pTransaction)
+                {
 
-                pTransaction->EraseTransaction(ssKey.Bytes());
+                    pTransaction->EraseTransaction(ssKey.Bytes());
 
-                return true;
+                    return true;
+                }
             }
 
             /* Return the Key existance in the Keychain Database. */
@@ -334,16 +336,17 @@ namespace LLD
             std::vector<uint8_t> vData;
 
             /* Check that the key is not pending in a transaction for Erase. */
-            if(pTransaction)
-            {
-                LOCK(TRANSACTION_MUTEX);
+            { LOCK(TRANSACTION_MUTEX);
+                if(pTransaction)
+                {
 
-                if(pTransaction->mapEraseData.count(ssKey.Bytes()))
-                    return false;
+                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
+                        return false;
 
-                /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-                if(pTransaction->mapTransactions.count(ssKey.Bytes()))
-                    vData = pTransaction->mapTransactions[ssKey.Bytes()];
+                    /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
+                    if(pTransaction->mapTransactions.count(ssKey.Bytes()))
+                        vData = pTransaction->mapTransactions[ssKey.Bytes()];
+                }
             }
 
             if(vData.empty() && !Get(ssKey.Bytes(), vData))
@@ -369,14 +372,15 @@ namespace LLD
             ssIndex << index;
 
             /* Check that the key is not pending in a transaction for Erase. */
-            if(pTransaction)
-            {
-                LOCK(TRANSACTION_MUTEX);
+            { LOCK(TRANSACTION_MUTEX);
+                if(pTransaction)
+                {
 
-                /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-                pTransaction->mapIndex[ssKey.Bytes()] = ssIndex.Bytes();
+                    /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
+                    pTransaction->mapIndex[ssKey.Bytes()] = ssIndex.Bytes();
 
-                return true;
+                    return true;
+                }
             }
 
             /* Get the key. */
@@ -401,14 +405,15 @@ namespace LLD
             ssKey << key;
 
             /* Check for transaction. */
-            if(pTransaction)
-            {
-                LOCK(TRANSACTION_MUTEX);
+            { LOCK(TRANSACTION_MUTEX);
+                if(pTransaction)
+                {
 
-                /* Set the transaction data. */
-                pTransaction->mapKeychain[ssKey.Bytes()] = 0;
+                    /* Set the transaction data. */
+                    pTransaction->mapKeychain[ssKey.Bytes()] = 0;
 
-                return true;
+                    return true;
+                }
             }
 
             /* Return the Key existance in the Keychain Database. */
@@ -432,14 +437,14 @@ namespace LLD
             ssData << value;
 
             /* Check for transaction. */
-            if(pTransaction)
-            {
-                LOCK(TRANSACTION_MUTEX);
+            { LOCK(TRANSACTION_MUTEX);
+                if(pTransaction)
+                {
+                    /* Set the transaction data. */
+                    pTransaction->mapTransactions[ssKey.Bytes()] = ssData.Bytes();
 
-                /* Set the transaction data. */
-                pTransaction->mapTransactions[ssKey.Bytes()] = ssData.Bytes();
-
-                return true;
+                    return true;
+                }
             }
 
             return Put(ssKey.Bytes(), ssData.Bytes());
