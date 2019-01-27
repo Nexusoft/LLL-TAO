@@ -41,12 +41,43 @@ namespace LLP
 
 
         /** Default Constructor **/
-        LegacyNode() : BaseConnection<LegacyPacket>() {}
+        LegacyNode()
+        : BaseConnection<LegacyPacket>()
+        , nSessionID(0)
+        , strNodeVersion()
+        , nCurrentVersion(LLP::PROTOCOL_VERSION)
+        , nStartingHeight(0)
+        , fInbound(false)
+        , nNodeLatency(0)
+        , nLastPing(runtime::timestamp())
+        , hashLastGetblocks(0)
+        , nLastGetBlocks(0)
+        , nConsecutiveTimeouts(0)
+        , mapLatencyTracker()
+        , mapSentRequests()
+        {
+
+        }
 
 
         /** Constructor **/
         LegacyNode(Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
-        : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN) { }
+        : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN)
+        , nSessionID(0)
+        , strNodeVersion()
+        , nCurrentVersion(LLP::PROTOCOL_VERSION)
+        , nStartingHeight(0)
+        , fInbound(false)
+        , nNodeLatency(0)
+        , nLastPing(runtime::timestamp())
+        , hashLastGetblocks(0)
+        , nLastGetBlocks(0)
+        , nConsecutiveTimeouts(0)
+        , mapLatencyTracker()
+        , mapSentRequests()
+        {
+
+        }
 
 
         /** Randomly genearted session ID. **/
@@ -58,11 +89,11 @@ namespace LLP
 
 
         /** The current Protocol Version of this Node. **/
-        int nCurrentVersion;
+        uint32_t nCurrentVersion;
 
 
         /** LEGACY: The height of this ndoe given at the version message. **/
-        int nStartingHeight;
+        uint32_t nStartingHeight;
 
 
         /** Flag to determine if a connection is Inbound. **/
@@ -75,6 +106,18 @@ namespace LLP
 
         /** Counter to keep track of the last time a ping was made. **/
         uint32_t nLastPing;
+
+
+        /** The last getblocks call this node has received. **/
+        uint1024_t hashLastGetblocks;
+
+
+        /** The time since last getblocks call. **/
+        uint64_t nLastGetBlocks;
+
+
+        /** The number of times getblocks has timed out (to deal with unreliable NON-TRITIUM nodes). **/
+        uint32_t nConsecutiveTimeouts;
 
 
         /** timer object to keep track of ping latency. **/

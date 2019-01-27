@@ -171,6 +171,9 @@ namespace LLP
             }
         }
 
+        nLastRecv = runtime::timestamp();
+        nLastSend = runtime::timestamp();
+
         return true;
     }
 

@@ -202,6 +202,7 @@ OBJS= \
 	build/Legacy_keypool.o \
 	build/Legacy_keystore.o \
 	build/Legacy_legacy.o \
+	build/Legacy_locator.o \
 	build/Legacy_mempool.o \
 	build/Legacy_merkle.o \
 	build/Legacy_outpoint.o \
