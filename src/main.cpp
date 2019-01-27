@@ -61,6 +61,7 @@ namespace LLD
 
     //for legacy objects.
     LegacyDB*   legacyDB;
+    TrustDB*    trustDB;
 }
 
 
@@ -121,6 +122,7 @@ int main(int argc, char** argv)
 
 
     /* Initialize the Legacy Database. */
+    LLD::trustDB  = new LLD::TrustDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
     LLD::legacyDB = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
 
 
@@ -399,12 +401,21 @@ int main(int argc, char** argv)
     }
 
 
-    /* Cleanup the local database. */
+    /* Cleanup the legacy database. */
     if(LLD::legacyDB)
     {
         debug::log(0, FUNCTION, "Shutting down legacyDB");
 
         delete LLD::legacyDB;
+    }
+
+
+    /* Cleanup the local database. */
+    if(LLD::trustDB)
+    {
+        debug::log(0, FUNCTION, "Shutting down trustDB");
+
+        delete LLD::trustDB;
     }
 
 

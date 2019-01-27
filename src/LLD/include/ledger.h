@@ -108,38 +108,6 @@ namespace LLD
         }
 
 
-        /** Write Trust Key
-         *
-         *  Writes a trust key to the ledger DB.
-         *
-         *  @param[in] hashKey The key of trust key to write.
-         *  @param[in] key The trust key object
-         *
-         *  @return True if the trust key was successfully written.
-         *
-         **/
-        bool WriteTrustKey(const uint576_t& hashKey, const TAO::Ledger::TrustKey& key)
-        {
-            return Write(hashKey, key);
-        }
-
-
-        /** Read Trust Key
-         *
-         *  Reads a trust key from the ledger DB.
-         *
-         *  @param[in] hashKey The key of trust key to write.
-         *  @param[in] key The trust key object
-         *
-         *  @return True if the trust key was successfully written.
-         *
-         **/
-        bool ReadTrustKey(const uint576_t& hashKey, TAO::Ledger::TrustKey& key)
-        {
-            return Read(hashKey, key);
-        }
-
-
         /** Erase Tx.
          *
          *  Erases a transaction from the ledger DB.
@@ -184,7 +152,7 @@ namespace LLD
         bool RepairIndex(const uint512_t& hashTransaction)
         {
             debug::log(0, FUNCTION, "repairing index for ", hashTransaction.ToString().substr(0, 20));
-            
+
             /* Get the best block state to start from. */
             TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.Prev();
 

@@ -197,6 +197,7 @@ namespace TAO
 
             /* Start the legacy transaction. */
             LLD::legacyDB->TxnBegin();
+            LLD::trustDB->TxnBegin();
 
 
             /* Write the block to disk. */
@@ -263,6 +264,10 @@ namespace TAO
                             LLD::regDB->TxnAbort();
                             LLD::locDB->TxnAbort();
 
+                            /* Abort for legacy. */
+                            LLD::trustDB->TxnAbort();
+                            LLD::legacyDB->TxnAbort();
+
                             /* Debug errors. */
                             return debug::error(FUNCTION, "failed to find ancestor fork block");
                         }
@@ -293,7 +298,8 @@ namespace TAO
                             LLD::regDB->TxnAbort();
                             LLD::locDB->TxnAbort();
 
-                            /* Cleanup legacy Txn. */
+                            /* Abort for legacy. */
+                            LLD::trustDB->TxnAbort();
                             LLD::legacyDB->TxnAbort();
 
                             /* Debug errors. */
@@ -325,7 +331,8 @@ namespace TAO
                             LLD::regDB->TxnAbort();
                             LLD::locDB->TxnAbort();
 
-                            /* Cleanup legacy Txn. */
+                            /* Abort for legacy. */
+                            LLD::trustDB->TxnAbort();
                             LLD::legacyDB->TxnAbort();
 
                             /* Debug errors. */
@@ -406,6 +413,7 @@ namespace TAO
 
             /* Commit the legacy database. */
             LLD::legacyDB->TxnCommit();
+            LLD::trustDB->TxnCommit();
 
 
             /* Debug output. */

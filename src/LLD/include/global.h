@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLD/include/ledger.h>
 #include <LLD/include/local.h>
 #include <LLD/include/legacy.h>
+#include <LLD/include/trust.h>
 
 namespace LLD
 {
@@ -26,6 +27,7 @@ namespace LLD
     extern LocalDB*      locDB;
 
     //for legacy objects
+    extern TrustDB*      trustDB;
     extern LegacyDB*     legacyDB;
 }
 
