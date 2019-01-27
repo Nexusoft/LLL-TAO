@@ -40,7 +40,7 @@ namespace TAO
 
             /* Check the mempool. */
             if(mapLegacy.count(hash))
-                return debug::error(FUNCTION, "%s already exists", tx.GetHash().ToString().substr(0, 20).c_str());
+                return debug::error(FUNCTION, "%s already exists ", tx.GetHash().ToString().substr(0, 20).c_str());
 
             /* Add to the map. */
             mapLegacy[hash] = tx;

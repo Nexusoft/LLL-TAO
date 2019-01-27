@@ -407,10 +407,6 @@ namespace LLP
             /* Create the Block State. */
             TAO::Ledger::BlockState state(block);
 
-            /* Add the transactions to mempool for processing. */
-            for(const auto & tx : block.vtx)
-                TAO::Ledger::mempool.AddUnchecked(tx);
-
             /* Process the block state. */
             if(!state.Accept())
             {
