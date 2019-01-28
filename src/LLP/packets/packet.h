@@ -118,8 +118,10 @@ namespace LLP
 
             if(HEADER < 128) /* Handle for Data Packets. */
             {
-                BYTES.push_back((LENGTH >> 24)); BYTES.push_back((LENGTH >> 16));
-                BYTES.push_back((LENGTH >> 8));  BYTES.push_back(LENGTH);
+                BYTES.push_back((LENGTH >> 24));
+                BYTES.push_back((LENGTH >> 16));
+                BYTES.push_back((LENGTH >> 8));
+                BYTES.push_back(LENGTH);
 
                 BYTES.insert(BYTES.end(),  DATA.begin(), DATA.end());
             }

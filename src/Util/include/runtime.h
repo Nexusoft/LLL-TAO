@@ -158,7 +158,7 @@ namespace runtime
          *  @return The Total Seconds Elapsed Since timer Started.
          *
          **/
-        uint32_t Elapsed()
+        uint32_t Elapsed() const
         {
             if(fStopped)
                 return std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
@@ -174,7 +174,7 @@ namespace runtime
          *  @return The Total Milliseconds Elapsed Since timer Started.
          *
          **/
-        uint32_t ElapsedMilliseconds()
+        uint32_t ElapsedMilliseconds() const
         {
             if(fStopped)
                 return std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
@@ -190,7 +190,7 @@ namespace runtime
          *  @return The Total Microseconds Elapsed since Time Started.
          *
          **/
-        uint64_t ElapsedMicroseconds()
+        uint64_t ElapsedMicroseconds() const
         {
             if(fStopped)
                 return std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
@@ -199,7 +199,7 @@ namespace runtime
         }
 
         /* Return the Total Nanoseconds Elapsed since Time Started. */
-        uint64_t ElapsedNanoseconds()
+        uint64_t ElapsedNanoseconds() const
         {
             if(fStopped)
                 return std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();

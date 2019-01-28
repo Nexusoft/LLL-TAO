@@ -52,7 +52,7 @@ namespace LLP
 
 
      /*  Access the DDOS Score from the Moving Average. */
-    int32_t DDOS_Score::Score()
+    int32_t DDOS_Score::Score() const
     {
         LOCK(MUTEX);
 
@@ -131,7 +131,7 @@ namespace LLP
 
 
     /* Check if Connection is Still Banned. */
-    bool DDOS_Filter::Banned()
+    bool DDOS_Filter::Banned() const
     {
         LOCK(MUTEX);
 

@@ -15,7 +15,6 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TEMPLATES_SOCKET_H
 
 #include <vector>
-
 #include <poll.h>
 
 #include <Util/include/runtime.h>
@@ -97,7 +96,7 @@ namespace LLP
          *  @return error code of the socket
          *
          **/
-        int32_t ErrorCode();
+        int32_t ErrorCode() const;
 
 
         /** Attempts
