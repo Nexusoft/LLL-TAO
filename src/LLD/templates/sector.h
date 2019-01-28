@@ -116,13 +116,6 @@ namespace LLD
         mutable uint32_t nCurrentFileSize;
 
 
-        /* Cache Writer Thread. */
-        std::thread CacheWriterThread;
-
-        /* The meter thread. */
-        std::thread MeterThread;
-
-
         /* Disk Buffer Vector. */
         std::vector< std::pair< std::vector<uint8_t>, std::vector<uint8_t> > > vDiskBuffer;
 
@@ -146,6 +139,14 @@ namespace LLD
         /** Database Flags. **/
         uint8_t nFlags;
 
+
+        /* Cache Writer Thread. */
+        std::thread CacheWriterThread;
+
+
+        /* The meter thread. */
+        std::thread MeterThread;
+
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         SectorDatabase(std::string strNameIn, uint8_t nFlagsIn)
@@ -158,8 +159,6 @@ namespace LLD
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
         , nCurrentFile(0)
         , nCurrentFileSize(0)
-        , CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this))
-        , MeterThread(std::bind(&SectorDatabase::Meter, this))
         , vDiskBuffer()
         , nBufferBytes(0)
         , nBytesRead(0)
@@ -168,6 +167,8 @@ namespace LLD
         , fDestruct(false)
         , fInitialized(false)
         , nFlags(nFlagsIn)
+        , CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this))
+        , MeterThread(std::bind(&SectorDatabase::Meter, this))
         {
             /* Set readonly flag if write or append are not specified. */
             if(!(nFlags & FLAGS::FORCE) && !(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND))
@@ -522,7 +523,7 @@ namespace LLD
          *  is already read from the keychain.
          *
          *  @param[in] cKey The sector key from keychain.
-         *  @param[in] vData The binary data of the record to get.
+         *  @param[in] vData The binary data of the record to get.WRITE
          *
          *  @return True if the record was read successfully.
          *
@@ -745,7 +746,10 @@ namespace LLD
         {
             /* No cache write on force mode. */
             if(nFlags & FLAGS::FORCE)
+            {
+                debug::log(0, FUNCTION, strBaseLocation, " in FORCE mode... closing");
                 return;
+            }
 
             /* Wait for initialization. */
             while(!fInitialized)
