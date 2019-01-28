@@ -474,25 +474,23 @@ namespace LLD
             SectorKey cKey;
             if(pSectorKeys->Get(vKey, cKey))
             {
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                if(!fileCache->Get(cKey.nSectorFile, pstream))
-                {
-                    /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream->is_open())
+                { LOCK(SECTOR_MUTEX);
+
+                    /* Find the file stream for LRU cache. */
+                    std::fstream* pstream;
+                    if(!fileCache->Get(cKey.nSectorFile, pstream))
                     {
-                        delete pstream;
-                        return debug::error(FUNCTION, "couldn't create stream file");
+                        /* Set the new stream pointer. */
+                        pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                        if(!pstream->is_open())
+                        {
+                            delete pstream;
+                            return debug::error(FUNCTION, "couldn't create stream file");
+                        }
+
+                        /* If file not found add to LRU cache. */
+                        fileCache->Put(cKey.nSectorFile, pstream);
                     }
-
-                    /* If file not found add to LRU cache. */
-                    fileCache->Put(cKey.nSectorFile, pstream);
-                }
-
-                /* Read the record from disk. */
-                {
-                    LOCK(SECTOR_MUTEX);
 
                     /* Seek to the Sector Position on Disk. */
                     pstream->seekg(cKey.nSectorStart, std::ios::beg);
@@ -501,6 +499,7 @@ namespace LLD
                     /* Read the State and Size of Sector Header. */
                     if(!pstream->read((char*) &vData[0], vData.size()))
                         debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
+
                 }
 
                 /* Add to cache */
@@ -530,27 +529,25 @@ namespace LLD
          **/
         bool Get(SectorKey cKey, std::vector<uint8_t>& vData)
         {
-            nBytesRead += (cKey.vKey.size() + vData.size());
+            { LOCK(SECTOR_MUTEX);
 
-            /* Find the file stream for LRU cache. */
-            std::fstream *pstream;
-            if(!fileCache->Get(cKey.nSectorFile, pstream))
-            {
-                /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
-                if(!pstream->is_open())
+                nBytesRead += (cKey.vKey.size() + vData.size());
+
+                /* Find the file stream for LRU cache. */
+                std::fstream *pstream;
+                if(!fileCache->Get(cKey.nSectorFile, pstream))
                 {
-                    delete pstream;
-                    return false;
+                    /* Set the new stream pointer. */
+                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                    if(!pstream->is_open())
+                    {
+                        delete pstream;
+                        return false;
+                    }
+
+                    /* If file not found add to LRU cache. */
+                    fileCache->Put(cKey.nSectorFile, pstream);
                 }
-
-                /* If file not found add to LRU cache. */
-                fileCache->Put(cKey.nSectorFile, pstream);
-            }
-
-            /* Read the record from the disk. */
-            {
-                LOCK(SECTOR_MUTEX);
 
                 /* Seek to the Sector Position on Disk. */
                 pstream->seekg(cKey.nSectorStart, std::ios::beg);
@@ -559,11 +556,11 @@ namespace LLD
                 /* Read the State and Size of Sector Header. */
                 if(!pstream->read((char*) &vData[0], vData.size()))
                     debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
-            }
 
-            /* Verboe output. */
-            debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
-                " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
+                /* Verboe output. */
+                debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
+                    " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
+            }
 
             return true;
         }
@@ -593,38 +590,37 @@ namespace LLD
             /* Write the data into the memory cache. */
             cachePool->Put(vKey, vData, false);
 
-            /* Find the file stream for LRU cache. */
-            std::fstream* pstream;
-            if(!fileCache->Get(key.nSectorFile, pstream))
-            {
-                /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
-                if(!pstream->is_open())
-                {
-                    delete pstream;
-                    return false;
-                }
-
-                /* If file not found add to LRU cache. */
-                fileCache->Put(key.nSectorFile, pstream);
-            }
-
-            /* Write the data to disk. */
             { LOCK(SECTOR_MUTEX);
+
+                /* Find the file stream for LRU cache. */
+                std::fstream* pstream;
+                if(!fileCache->Get(key.nSectorFile, pstream))
+                {
+                    /* Set the new stream pointer. */
+                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                    if(!pstream->is_open())
+                    {
+                        delete pstream;
+                        return false;
+                    }
+
+                    /* If file not found add to LRU cache. */
+                    fileCache->Put(key.nSectorFile, pstream);
+                }
 
                 /* If it is a New Sector, Assign a Binary Position. */
                 pstream->seekp(key.nSectorStart, std::ios::beg);
                 pstream->write((char*) &vData[0], vData.size());
                 pstream->flush();
+
+                /* Records flushed indicator. */
+                ++nRecordsFlushed;
+                nBytesWrote += vData.size();
+
+                /* Verboe output. */
+                debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
+                    " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
             }
-
-            /* Records flushed indicator. */
-            ++nRecordsFlushed;
-            nBytesWrote += vData.size();
-
-            /* Verboe output. */
-            debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
-                " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
 
             return true;
         }
@@ -659,44 +655,42 @@ namespace LLD
                 /* Write the data into the memory cache. */
                 cachePool->Put(vKey, vData, false);
 
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                if(!fileCache->Get(nCurrentFile, pstream))
-                {
-                    /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream->is_open())
+                { LOCK(SECTOR_MUTEX);
+
+                    /* Find the file stream for LRU cache. */
+                    std::fstream* pstream;
+                    if(!fileCache->Get(nCurrentFile, pstream))
                     {
-                        delete pstream;
-                        return false;
+                        /* Set the new stream pointer. */
+                        pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
+                        if(!pstream->is_open())
+                        {
+                            delete pstream;
+                            return false;
+                        }
+
+                        /* If file not found add to LRU cache. */
+                        fileCache->Put(nCurrentFile, pstream);
                     }
-
-                    /* If file not found add to LRU cache. */
-                    fileCache->Put(nCurrentFile, pstream);
-                }
-
-                /* Write the data to disk. */
-                {
-                    LOCK(SECTOR_MUTEX);
 
                     /* If it is a New Sector, Assign a Binary Position. */
                     pstream->seekp(nCurrentFileSize, std::ios::beg);
                     pstream->write((char*) &vData[0], vData.size());
                     pstream->flush();
+
+                    /* Create a new Sector Key. */
+                    SectorKey key = SectorKey(STATE::READY, vKey, nCurrentFile, nCurrentFileSize, vData.size());
+
+                    /* Increment the current filesize */
+                    nCurrentFileSize += vData.size();
+
+                    /* Assign the Key to Keychain. */
+                    pSectorKeys->Put(key);
+
+                    /* Verboe output. */
+                    debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
+                        " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
                 }
-
-                /* Create a new Sector Key. */
-                SectorKey key = SectorKey(STATE::READY, vKey, nCurrentFile, nCurrentFileSize, vData.size());
-
-                /* Increment the current filesize */
-                nCurrentFileSize += vData.size();
-
-                /* Assign the Key to Keychain. */
-                pSectorKeys->Put(key);
-
-                /* Verboe output. */
-                debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
-                    " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
             }
 
             return true;

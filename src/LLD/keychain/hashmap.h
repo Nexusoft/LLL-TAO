@@ -341,28 +341,26 @@ namespace LLD
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
             for(int i = hashmap[nBucket] - 1; i >= 0; --i)
             {
-                /* Find the file stream for LRU cache. */
-                std::fstream *pstream;
-                if(!fileCache->Get(i, pstream))
-                {
-                    /* Set the new stream pointer. */
-                    std::string filename = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
+                { LOCK(KEY_MUTEX);
 
-                    pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream->is_open())
+                    /* Find the file stream for LRU cache. */
+                    std::fstream *pstream;
+                    if(!fileCache->Get(i, pstream))
                     {
-                        delete pstream;
-                        return debug::error(FUNCTION, "couldn't create hashmap object at: ",
-                            filename, " (", strerror(errno), ")");
+                        /* Set the new stream pointer. */
+                        std::string filename = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
+
+                        pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
+                        if(!pstream->is_open())
+                        {
+                            delete pstream;
+                            return debug::error(FUNCTION, "couldn't create hashmap object at: ",
+                                filename, " (", strerror(errno), ")");
+                        }
+
+                        /* If file not found add to LRU cache. */
+                        fileCache->Put(i, pstream);
                     }
-
-                    /* If file not found add to LRU cache. */
-                    fileCache->Put(i, pstream);
-                }
-
-                /* Handle the disk operations. */
-                {
-                    LOCK(KEY_MUTEX);
 
                     /* Seek to the hashmap index in file. */
                     pstream->seekg(nFilePos, std::ios::beg);
@@ -423,28 +421,26 @@ namespace LLD
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
             for(int i = hashmap[nBucket] - 1; i >= 0; --i)
             {
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                if(!fileCache->Get(i, pstream))
-                {
-                    std::string filename = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
+                { LOCK(KEY_MUTEX);
 
-                    /* Set the new stream pointer. */
-                    pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream->is_open())
+                    /* Find the file stream for LRU cache. */
+                    std::fstream* pstream;
+                    if(!fileCache->Get(i, pstream))
                     {
-                        delete pstream;
-                        return debug::error(FUNCTION, "couldn't create hashmap object at: ",
-                            filename, " (", strerror(errno), ")");
+                        std::string filename = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
+
+                        /* Set the new stream pointer. */
+                        pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
+                        if(!pstream->is_open())
+                        {
+                            delete pstream;
+                            return debug::error(FUNCTION, "couldn't create hashmap object at: ",
+                                filename, " (", strerror(errno), ")");
+                        }
+
+                        /* If file not found add to LRU cache. */
+                        fileCache->Put(i, pstream);
                     }
-
-                    /* If file not found add to LRU cache. */
-                    fileCache->Put(i, pstream);
-                }
-
-                /* Handle the disk operations. */
-                {
-                    LOCK(KEY_MUTEX);
 
                     /* Seek to the hashmap index in file. */
                     pstream->seekg (nFilePos, std::ios::beg);
@@ -509,72 +505,70 @@ namespace LLD
                 std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
                 for(int i = hashmap[nBucket] - 1; i >= 0; --i)
                 {
-                    /* Find the file stream for LRU cache. */
-                    std::fstream* pstream;
-                    if(!fileCache->Get(i, pstream))
-                    {
-                        std::string filename = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
+                    { LOCK(KEY_MUTEX);
 
-                        /* Set the new stream pointer. */
-                        pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
-                        if(!pstream->is_open())
+                        /* Find the file stream for LRU cache. */
+                        std::fstream* pstream;
+                        if(!fileCache->Get(i, pstream))
                         {
-                            delete pstream;
-                            return debug::error(FUNCTION, "couldn't create hashmap object at: ",
-                                filename, " (", strerror(errno), ")");
+                            std::string filename = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
+
+                            /* Set the new stream pointer. */
+                            pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
+                            if(!pstream->is_open())
+                            {
+                                delete pstream;
+                                return debug::error(FUNCTION, "couldn't create hashmap object at: ",
+                                    filename, " (", strerror(errno), ")");
+                            }
+
+                            /* If file not found add to LRU cache. */
+                            fileCache->Put(i, pstream);
                         }
-
-                        /* If file not found add to LRU cache. */
-                        fileCache->Put(i, pstream);
-                    }
-
-                    /* Handle the disk operations. */
-                    {
-                        LOCK(KEY_MUTEX);
 
                         /* Seek to the hashmap index in file. */
                         pstream->seekg (nFilePos, std::ios::beg);
 
                         /* Read the bucket binary data from file stream */
                         pstream->read((char*) &vBucket[0], vBucket.size());
-                    }
 
-                    /* Check if this bucket has the key */
-                    if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + cKey.vKey.size(), cKey.vKey.begin()))
-                    {
-                        /* Serialize the key and return if found. */
-                        DataStream ssKey(SER_LLD, DATABASE_VERSION);
-                        ssKey << cKey;
-
-                        /* Serialize the key into the end of the vector. */
-                        ssKey.write((char*)&cKey.vKey[0], cKey.vKey.size());
-
-                        /* Handle the disk writing operations. */
+                        /* Check if this bucket has the key */
+                        if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + cKey.vKey.size(), cKey.vKey.begin()))
                         {
-                            LOCK(KEY_MUTEX);
+                            /* Serialize the key and return if found. */
+                            DataStream ssKey(SER_LLD, DATABASE_VERSION);
+                            ssKey << cKey;
 
-                            /* Flush the key file to disk. */
-                            pstream->seekp (nFilePos, std::ios::beg);
-                            pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
-                            pstream->flush();
+                            /* Serialize the key into the end of the vector. */
+                            ssKey.write((char*)&cKey.vKey[0], cKey.vKey.size());
+
+                            /* Handle the disk writing operations. */
+                            {
+                                LOCK(KEY_MUTEX);
+
+                                /* Flush the key file to disk. */
+                                pstream->seekp (nFilePos, std::ios::beg);
+                                pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
+                                pstream->flush();
+                            }
+
+                            /* Debug Output of Sector Key Information. */
+                            debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                                " | Length: ", cKey.nLength,
+                                " | Bucket ", nBucket,
+                                " | Location: ", nFilePos,
+                                " | File: ", hashmap[nBucket] - 1,
+                                " | Sector File: ", cKey.nSectorFile,
+                                " | Sector Size: ", cKey.nSectorSize,
+                                " | Sector Start: ", cKey.nSectorStart, "\n",
+                                HexStr(cKey.vKey.begin(), cKey.vKey.end(), true));
+
+                            /* Signal the cache thread to wake up. */
+                            fCacheActive = true;
+                            CONDITION.notify_all();
+
+                            return true;
                         }
-
-                        /* Debug Output of Sector Key Information. */
-                        debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
-                            " | Length: ", cKey.nLength,
-                            " | Bucket ", nBucket,
-                            " | Location: ", nFilePos,
-                            " | File: ", hashmap[nBucket] - 1,
-                            " | Sector File: ", cKey.nSectorFile,
-                            " | Sector Size: ", cKey.nSectorSize,
-                            " | Sector Start: ", cKey.nSectorStart, "\n",
-                            HexStr(cKey.vKey.begin(), cKey.vKey.end(), true));
-
-                        /* Signal the cache thread to wake up. */
-                        fCacheActive = true;
-                        CONDITION.notify_all();
-
-                        return true;
                     }
                 }
             }
@@ -605,24 +599,23 @@ namespace LLD
             /* Serialize the key into the end of the vector. */
             ssKey.write((char*)&cKey.vKey[0], cKey.vKey.size());
 
-            /* Find the file stream for LRU cache. */
-            std::fstream* pstream;
-            if(!fileCache->Get(hashmap[nBucket], pstream))
-            {
-                /* Set the new stream pointer. */
-                pstream = new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary);
-                if(!pstream->is_open())
-                {
-                    delete pstream;
-                    return debug::error(FUNCTION, "Failed to generate file object");
-                }
-
-                /* If not in cache, add to the LRU. */
-                fileCache->Put(hashmap[nBucket], pstream);
-            }
-
-            /* Handle the disk writing operations. */
             { LOCK(KEY_MUTEX);
+
+                /* Find the file stream for LRU cache. */
+                std::fstream* pstream;
+                if(!fileCache->Get(hashmap[nBucket], pstream))
+                {
+                    /* Set the new stream pointer. */
+                    pstream = new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary);
+                    if(!pstream->is_open())
+                    {
+                        delete pstream;
+                        return debug::error(FUNCTION, "Failed to generate file object");
+                    }
+
+                    /* If not in cache, add to the LRU. */
+                    fileCache->Put(hashmap[nBucket], pstream);
+                }
 
                 /* Flush the key file to disk. */
                 pstream->seekp (nFilePos, std::ios::beg);
@@ -658,13 +651,18 @@ namespace LLD
             std::mutex CONDITION_MUTEX;
             while(!fDestruct.load())
             {
+
                 /* Wait for Database to Initialize. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
                 CONDITION.wait(CONDITION_LOCK, [this]{ return fCacheActive.load() || fDestruct.load(); });
 
                 /* Flush the disk hashmap. */
                 std::vector<uint8_t> vDisk;
-                vDisk.insert(vDisk.end(), (uint8_t*)&hashmap[0], (uint8_t*)&hashmap[0] + (4 * hashmap.size()));
+
+                /* Lock for hashmap object. */
+                { LOCK(KEY_MUTEX);
+                    vDisk.insert(vDisk.end(), (uint8_t*)&hashmap[0], (uint8_t*)&hashmap[0] + (4 * hashmap.size()));
+                }
 
                 std::string filename = debug::strprintf("%s_hashmap.index", strBaseLocation.c_str());
 
