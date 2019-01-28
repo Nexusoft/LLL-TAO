@@ -662,6 +662,7 @@ build/Util_%.o: src/Util/%.cpp
 	rm -f $(@:%.o=%.d)
 
 
+#build the final executable
 nexus: $(OBJS:obj/%=build/%)
 	$(CXX) $(CXXFLAGS) -rdynamic -o $@ $^ $(LDFLAGS) $(LIBS)
 	@echo ' '

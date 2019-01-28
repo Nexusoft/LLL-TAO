@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TYPES_LEGACY_H
 #define NEXUS_LLP_TYPES_LEGACY_H
 
+#include <Legacy/types/locator.h>
+
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
 #include <LLP/packets/legacy.h>
@@ -48,7 +50,7 @@ namespace LLP
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
         , nStartingHeight(0)
         , fInbound(false)
-        , nNodeLatency(0)
+        , nNodeLatency(std::numeric_limits<uint32_t>::max())
         , nLastPing(runtime::timestamp())
         , nConsecutiveTimeouts(0)
         , mapLatencyTracker()
@@ -66,7 +68,7 @@ namespace LLP
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
         , nStartingHeight(0)
         , fInbound(false)
-        , nNodeLatency(0)
+        , nNodeLatency(std::numeric_limits<uint32_t>::max())
         , nLastPing(runtime::timestamp())
         , nConsecutiveTimeouts(0)
         , mapLatencyTracker()
@@ -218,6 +220,34 @@ namespace LLP
                     }
                 }
             }
+        }
+
+
+        /** Push Get Blocks
+         *
+         *  Send a request to get recent inventory from remote node.
+         *
+         *  @param[in] hashBlockFrom The block to start from
+         *  @param[in] hashBlockTo The block to search to
+         *
+         **/
+        void PushGetBlocks(const uint1024_t& hashBlockFrom, const uint1024_t& hashBlockTo)
+        {
+            /* Filter out duplicate requests. */
+            if(hashLastGetblocks == hashBlockFrom && nLastGetBlocks + 10 > runtime::timestamp())
+                return;
+
+            /* Update the last timestamp this was called. */
+            nLastGetBlocks = runtime::timestamp();
+
+            /* Update the hash that was used for last request. */
+            hashLastGetblocks = hashBlockFrom;
+
+            /* Push the request to the node. */
+            PushMessage("getblocks", Legacy::Locator(hashBlockFrom), hashBlockTo);
+
+            /* Debug output for monitoring. */
+            debug::log(0, NODE, "requesting getblocks from ", hashBlockFrom.ToString().substr(0, 20), " to ", hashBlockTo.ToString().substr(0, 20));
         }
 
 

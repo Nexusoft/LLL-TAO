@@ -262,6 +262,43 @@ namespace LLP
         }
 
 
+        /** Get Connection
+         *
+         *  Get the best connection based on latency
+         *
+         **/
+        ProtocolType* GetConnection()
+        {
+            /* List of connections to return. */
+            ProtocolType* pBest = nullptr;
+            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            {
+                /* Get the data threads. */
+                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+                if(!dt)
+                    continue;
+
+                /* Loop through connections in data thread. */
+                int32_t nSize = dt->CONNECTIONS.size();
+                for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
+                {
+                    /* Skip over inactive connections. */
+                    if(!dt->CONNECTIONS[nIndex] ||
+                       !dt->CONNECTIONS[nIndex]->Connected())
+                        continue;
+
+                    LOCK(dt->MUTEX);
+
+                    /* Push the active connection. */
+                    if(!pBest || dt->CONNECTIONS[nIndex]->nNodeLatency < pBest->nNodeLatency)
+                        pBest = dt->CONNECTIONS[nIndex];
+                }
+            }
+
+            return pBest;
+        }
+
+
         /** Relay
          *
          *  Relays data to all nodes on the network.

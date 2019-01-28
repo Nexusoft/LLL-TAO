@@ -31,9 +31,8 @@ namespace LLP
     template <class ProtocolType>
     class DataThread
     {
-        std::mutex MUTEX;
-
     public:
+        std::mutex MUTEX;
 
         /* Variables to track Connection / Request Count. */
         bool fDDOS;
@@ -342,6 +341,8 @@ namespace LLP
          **/
         void remove(int index)
         {
+            LOCK(MUTEX);
+
             CONNECTIONS[index]->Disconnect();
             CONNECTIONS[index]->SetNull();
 
