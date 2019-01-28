@@ -545,38 +545,62 @@ namespace LLD
                         /* Read the bucket binary data from file stream */
                         pstream->read((char*) &vBucket[0], vBucket.size());
 
-                        /* Check if this bucket has the key */
-                        if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
-                        {
-                            /* Serialize the key and return if found. */
-                            DataStream ssKey(SER_LLD, DATABASE_VERSION);
-                            ssKey << cKey;
+                    }
 
-                            /* Serialize the key into the end of the vector. */
-                            ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
+                    /* Check if this bucket has the key */
+                    if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
+                    {
+                        /* Serialize the key and return if found. */
+                        DataStream ssKey(SER_LLD, DATABASE_VERSION);
+                        ssKey << cKey;
+
+                        /* Serialize the key into the end of the vector. */
+                        ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
+
+                        { LOCK(KEY_MUTEX);
+
+                            /* Find the file stream for LRU cache. */
+                            std::fstream* pstream;
+                            if(!fileCache->Get(i, pstream))
+                            {
+                                std::string filename = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
+
+                                /* Set the new stream pointer. */
+                                pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
+                                if(!pstream->is_open())
+                                {
+                                    delete pstream;
+                                    return debug::error(FUNCTION, "couldn't create hashmap object at: ",
+                                        filename, " (", strerror(errno), ")");
+                                }
+
+                                /* If file not found add to LRU cache. */
+                                fileCache->Put(i, pstream);
+                            }
 
                             /* Handle the disk writing operations. */
                             pstream->seekp (nFilePos, std::ios::beg);
                             pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
                             pstream->flush();
 
-                            /* Debug Output of Sector Key Information. */
-                            debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
-                                " | Length: ", cKey.nLength,
-                                " | Bucket ", nBucket,
-                                " | Location: ", nFilePos,
-                                " | File: ", hashmap[nBucket] - 1,
-                                " | Sector File: ", cKey.nSectorFile,
-                                " | Sector Size: ", cKey.nSectorSize,
-                                " | Sector Start: ", cKey.nSectorStart, "\n",
-                                HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
-
-                            /* Signal the cache thread to wake up. */
-                            fCacheActive = true;
-                            CONDITION.notify_all();
-
-                            return true;
                         }
+
+                        /* Debug Output of Sector Key Information. */
+                        debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                            " | Length: ", cKey.nLength,
+                            " | Bucket ", nBucket,
+                            " | Location: ", nFilePos,
+                            " | File: ", hashmap[nBucket] - 1,
+                            " | Sector File: ", cKey.nSectorFile,
+                            " | Sector Size: ", cKey.nSectorSize,
+                            " | Sector Start: ", cKey.nSectorStart, "\n",
+                            HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
+
+                        /* Signal the cache thread to wake up. */
+                        fCacheActive = true;
+                        CONDITION.notify_all();
+
+                        return true;
                     }
                 }
             }
