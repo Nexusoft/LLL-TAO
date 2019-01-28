@@ -98,7 +98,7 @@ namespace LLP
          *  Packet Null Flag. Status of 0
          *
          **/
-        bool IsNull()
+        bool IsNull() const
         {
             return strType == "" && strRequest == "" && strVersion == "" && mapHeaders.empty() && strContent == "" && !fHeader;
         }
@@ -109,7 +109,7 @@ namespace LLP
          *  Determine if a packet is fully read.
          *
          **/
-        bool Complete()
+        bool Complete() const
         {
             if(strType == "GET" && fHeader)
                 return true;
@@ -164,7 +164,7 @@ namespace LLP
          *  @return Returns a byte buffer.
          *
          **/
-        std::vector<uint8_t> GetBytes()
+        std::vector<uint8_t> GetBytes() const
         {
             //TODO: use constant format (not ...) -> ostringstream
             //TODO: add headers map to build more complex response rather than const as follows

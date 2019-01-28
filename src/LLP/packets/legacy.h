@@ -104,7 +104,7 @@ namespace LLP
          *  @return Returns a string message.
          *
          **/
-        std::string GetMessage()
+        std::string GetMessage() const
         {
             return std::string(MESSAGE, MESSAGE + strlen(MESSAGE));
         }

@@ -188,7 +188,7 @@ namespace LLP
          *  Check the Validity of the Packet.
          *
          **/
-        bool IsValid()
+        bool IsValid() const
         {
             /* Check that the packet isn't nullptr. */
             if(IsNull())
@@ -215,7 +215,7 @@ namespace LLP
          *  @return Returns the serialized byte vector.
          *
          **/
-        std::vector<uint8_t> GetBytes()
+        std::vector<uint8_t> GetBytes() const
         {
             DataStream ssHeader(SER_NETWORK, MIN_PROTO_VERSION);
             ssHeader << *this;

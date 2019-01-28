@@ -158,8 +158,8 @@ namespace LLD
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
         , nCurrentFile(0)
         , nCurrentFileSize(0)
-        , CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this))
-        , MeterThread(std::bind(&SectorDatabase::Meter, this))
+        , CacheWriterThread()
+        , MeterThread()
         , vDiskBuffer()
         , nBufferBytes(0)
         , nBytesRead(0)
@@ -181,6 +181,9 @@ namespace LLD
                 debug::log(0, ANSI_COLOR_GREEN FUNCTION, "executed in ",
                     runtime.ElapsedMicroseconds(), " micro-seconds" ANSI_COLOR_RESET);
             }
+
+            CacheWriterThread = std::thread(std::bind(&SectorDatabase::CacheWriter, this));
+            MeterThread = std::thread(std::bind(&SectorDatabase::Meter, this));
         }
 
         ~SectorDatabase()

@@ -189,7 +189,7 @@ namespace LLP
          *  Connection flag to determine if socket should be handled if not connected.
          *
          **/
-        bool Connected()
+        bool Connected() const
         {
             return fCONNECTED;
         }
@@ -202,7 +202,7 @@ namespace LLP
          *  @param[in] nTime The time in seconds.
          *
          **/
-        bool Timeout(uint32_t nTime)
+        bool Timeout(uint32_t nTime) const
         {
             return (runtime::timestamp() > nLastSend + nTime &&
                     runtime::timestamp() > nLastRecv + nTime);
@@ -214,7 +214,7 @@ namespace LLP
          *  Handles two types of packets, requests which are of header >= 128,
          *  and data which are of header < 128.
          **/
-        bool PacketComplete()
+        bool PacketComplete() const
         {
             return INCOMING.Complete();
         }
@@ -302,7 +302,7 @@ namespace LLP
          *  Returns the address of socket.
          *
          **/
-        BaseAddress GetAddress()
+        BaseAddress GetAddress() const
         {
             return addr;
         }
