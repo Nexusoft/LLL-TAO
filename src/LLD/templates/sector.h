@@ -149,7 +149,12 @@ namespace LLD
     public:
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         SectorDatabase(std::string strNameIn, uint8_t nFlagsIn)
-        : strBaseLocation(config::GetDataDir() + strNameIn + "/datachain/")
+        : CONDITION_MUTEX()
+        , CONDITION()
+        , SECTOR_MUTEX()
+        , BUFFER_MUTEX()
+        , TRANSACTION_MUTEX()
+        , strBaseLocation(config::GetDataDir() + strNameIn + "/datachain/")
         , strName(strNameIn)
         , runtime()
         , pTransaction(nullptr)
@@ -796,7 +801,8 @@ namespace LLD
 
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
-                { LOCK(SECTOR_MUTEX);
+                {
+                    LOCK(SECTOR_MUTEX);
 
                     if(!fileCache->Get(nCurrentFile, pstream))
                     {
