@@ -39,6 +39,14 @@ ________________________________________________________________________________
 namespace LLP
 {
 
+    /* Static initialization of last get blocks. */
+    uint1024_t LegacyNode::hashLastGetblocks = 0;
+
+
+    /* Static initialization of last get blocks time. */
+    uint64_t LegacyNode::nLastGetBlocks = 0;
+
+
     /* Push a Message With Information about This Current Node. */
     void LegacyNode::PushVersion()
     {
@@ -130,6 +138,7 @@ namespace LLP
 
                 mapLatencyTracker.emplace(nSessionID, runtime::timer());
                 mapLatencyTracker[nSessionID].Start();
+                            /* Reset the timeouts. */
 
                 PushMessage("ping", nSessionID);
             }
@@ -303,7 +312,7 @@ namespace LLP
             if(!block.Check())
             {
                 DDOS->rSCORE += 25;
-                debug::log(3, "Block failed checks");
+                debug::log(3, "block failed checks");
 
                 return true;
             }
@@ -311,25 +320,76 @@ namespace LLP
             /* Process the block. */
             if(LLD::legDB->HasBlock(block.GetHash()))
             {
+                            /* Reset the timeouts. */
                 DDOS->rSCORE += 25; //make a penalty for sending blocks we already have.
                 //TODO: check if blocks are sent unsolicited.
-                debug::log(3, NODE, "Already have block");
+                debug::log(3, NODE, "already have block");
 
                 return true;
             }
 
             /* Check for orphan. */
-            static uint1024_t hashLastGetblocks = 0;
             if(!LLD::legDB->HasBlock(block.hashPrevBlock))
             {
                 DDOS->rSCORE += 5;
-                debug::log(3, NODE, "Block is an orphan");
+                debug::log(3, NODE, "block is an orphan height=", block.nHeight, " hash=", block.GetHash().ToString().substr(0, 20));
 
                 /* Ask for getblocks. */
-                if(TAO::Ledger::ChainState::hashBestChain != hashLastGetblocks)
-                    PushMessage("getblocks", Legacy::Locator(TAO::Ledger::ChainState::hashBestChain), uint1024_t(0));
+                if(TAO::Ledger::ChainState::hashBestChain != hashLastGetblocks || nLastGetBlocks + 10 < runtime::timestamp())
+                {
+                    /* Special handle for unreliable leagacy nodes. */
+                    if(TAO::Ledger::ChainState::Synchronizing())
+                    {
+                        /* Check *FOR NOW* to deal with unreliable *LEGACY* seed node. */
+                        if(TAO::Ledger::ChainState::hashBestChain == hashLastGetblocks
+                            && hashLastGetblocks != 0)
+                            ++nConsecutiveTimeouts;
+                        else //reset consecutive timeouts
+                            nConsecutiveTimeouts = 0;
 
-                hashLastGetblocks = TAO::Ledger::ChainState::hashBestChain;
+                        /* Catch *FOR NOW* if seed node becomes unresponsive and gives bad data.
+                         * This happens in 3 or 4 places during synchronization if it is a
+                         * legacy node you are talking to. (height 1223722, 1226573 are some instances)
+                         */
+                        if(nConsecutiveTimeouts > 1)
+                        {
+                            /* Reset the timeouts. */
+                            nConsecutiveTimeouts = 0;
+
+                            /* Log that node is reconnecting. */
+                            debug::log(0, NODE, "node has become unresponsive during sync... reconnecting...");
+
+                            /* Disconnect and send TCP_RST. */
+                            Disconnect();
+
+                            /* Make the connection again. */
+                            if (Attempt(addr))
+                            {
+                                /* Log successful reconnect. */
+                                debug::log(1, NODE, "Connected to ", addr.ToString());
+
+                                /* Set the connected flag. */
+                                fCONNECTED = true;
+
+                                /* Push a new version message. */
+                                PushVersion();
+
+                                /* Ask for the blocks again nicely. */
+                                PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+
+                                return true;
+                            }
+                            else
+                                return false;
+                        }
+                    }
+
+                    /* Normal case of asking for a getblocks inventory message. */
+                    LegacyNode* pNode = LEGACY_SERVER->GetConnection();
+                    if(pNode)
+                        pNode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+                    
+                }
 
                 return true;
             }
@@ -338,7 +398,7 @@ namespace LLP
             if(!block.Accept())
             {
                 DDOS->rSCORE += 25;
-                debug::log(3, NODE, "Block failed to be added to chain");
+                debug::log(3, NODE, "block failed to be added to chain");
 
                 return false;
             }
@@ -346,15 +406,11 @@ namespace LLP
             /* Create the Block State. */
             TAO::Ledger::BlockState state(block);
 
-            /* Add the transactions to mempool for processing. */
-            for(const auto & tx : block.vtx)
-                TAO::Ledger::mempool.AddUnchecked(tx);
-
             /* Process the block state. */
             if(!state.Accept())
             {
                 DDOS->rSCORE += 25;
-                debug::log(3, NODE, "Block state failed processing");
+                debug::log(3, NODE, "block state failed processing");
 
                 return true;
             }
@@ -384,15 +440,15 @@ namespace LLP
             }
 
             /* Calculate the Average Latency of the Connection. */
-            uint32_t nLatency = mapLatencyTracker[nonce].ElapsedMilliseconds();
+            nNodeLatency = mapLatencyTracker[nonce].ElapsedMilliseconds();
             mapLatencyTracker.erase(nonce);
 
             /* Set the latency used for address manager within server */
             if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
-                LEGACY_SERVER->pAddressManager->SetLatency(nLatency, GetAddress());
+                LEGACY_SERVER->pAddressManager->SetLatency(nNodeLatency, GetAddress());
 
             /* Debug Level 3: output Node Latencies. */
-            debug::log(3, NODE, "Latency (Nonce ", std::hex, nonce, " - ", nLatency, " ms)");
+            debug::log(3, NODE, "Latency (Nonce ", std::hex, nonce, " - ", std::dec, nNodeLatency, " ms)");
         }
 
 
@@ -453,7 +509,7 @@ namespace LLP
             if (fOUTGOING && nAsked == 0)
             {
                 nAsked++;
-                PushMessage("getblocks", Legacy::Locator(TAO::Ledger::ChainState::hashBestChain), uint1024_t(0));
+                PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
             }
             else
                 PushVersion();

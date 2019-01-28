@@ -41,6 +41,7 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+        std::mutex BlockState::STATE_MUTEX;
 
         /* Get the block state object. */
         bool GetLastState(BlockState &state, uint32_t nChannel)
@@ -79,9 +80,14 @@ namespace TAO
         , hashNextBlock(0)
         , hashCheckpoint(0)
         {
+            LOCK(BlockState::STATE_MUTEX);
+
             /* Construct a block state from legacy block tx set. */
             for(const auto & tx : block.vtx)
+            {
                 vtx.push_back(std::make_pair(TYPE::LEGACY_TX, tx.GetHash()));
+                TAO::Ledger::mempool.AddUnchecked(tx);
+            }
         }
 
 
@@ -117,6 +123,8 @@ namespace TAO
         /* Accept a block state into chain. */
         bool BlockState::Accept()
         {
+            LOCK(BlockState::STATE_MUTEX);
+
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();
             if(!statePrev)
@@ -198,6 +206,7 @@ namespace TAO
 
             /* Start the legacy transaction. */
             LLD::legacyDB->TxnBegin();
+            LLD::trustDB->TxnBegin();
 
 
             /* Write the block to disk. */
@@ -264,6 +273,10 @@ namespace TAO
                             LLD::regDB->TxnAbort();
                             LLD::locDB->TxnAbort();
 
+                            /* Abort for legacy. */
+                            LLD::trustDB->TxnAbort();
+                            LLD::legacyDB->TxnAbort();
+
                             /* Debug errors. */
                             return debug::error(FUNCTION, "failed to find ancestor fork block");
                         }
@@ -294,7 +307,8 @@ namespace TAO
                             LLD::regDB->TxnAbort();
                             LLD::locDB->TxnAbort();
 
-                            /* Cleanup legacy Txn. */
+                            /* Abort for legacy. */
+                            LLD::trustDB->TxnAbort();
                             LLD::legacyDB->TxnAbort();
 
                             /* Debug errors. */
@@ -326,7 +340,8 @@ namespace TAO
                             LLD::regDB->TxnAbort();
                             LLD::locDB->TxnAbort();
 
-                            /* Cleanup legacy Txn. */
+                            /* Abort for legacy. */
+                            LLD::trustDB->TxnAbort();
                             LLD::legacyDB->TxnAbort();
 
                             /* Debug errors. */
@@ -407,6 +422,7 @@ namespace TAO
 
             /* Commit the legacy database. */
             LLD::legacyDB->TxnCommit();
+            LLD::trustDB->TxnCommit();
 
 
             /* Debug output. */

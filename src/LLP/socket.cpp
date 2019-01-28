@@ -45,7 +45,7 @@ namespace LLP
 
 
     /* Returns the error of socket if any */
-    int Socket::ErrorCode()
+    int Socket::ErrorCode() const
     {
         /* Check for errors with poll. */
         if(revents & POLLERR || revents & POLLHUP || revents & POLLNVAL)
@@ -170,6 +170,9 @@ namespace LLP
                 return false;
             }
         }
+
+        nLastRecv = runtime::timestamp();
+        nLastSend = runtime::timestamp();
 
         return true;
     }

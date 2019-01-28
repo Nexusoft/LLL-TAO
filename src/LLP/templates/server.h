@@ -65,14 +65,20 @@ namespace LLP
 
 
         /* Address of the server node */
-        LegacyAddress addrThisNode;
+        BaseAddress addrThisNode;
 
-        /* returns the name of the protocol type of this server */
+        /** Name
+         *
+         *  returns the name of the protocol type of this server
+         *
+         **/
         std::string Name()
         {
             return ProtocolType::Name();
         }
 
+
+        /** Constructor **/
         Server<ProtocolType>(uint16_t nPort, uint32_t nMaxThreads, uint32_t nTimeout = 30, bool isDDOS = false,
                              uint32_t cScore = 0, uint32_t rScore = 0, uint32_t nTimespan = 60, bool fListen = true,
                              bool fMeter = false, bool fManager = false)
@@ -108,7 +114,7 @@ namespace LLP
             METER_THREAD = std::thread(std::bind(&Server::Meter, this));
         }
 
-
+        /** Default Destructor **/
         virtual ~Server<ProtocolType>()
         {
             /* Set all flags back to false. */
@@ -171,7 +177,6 @@ namespace LLP
          *  Add a node address to the internal address manager
          *
          *  @param[in] strAddress	IPv4 Address of outgoing connection
-         *
          *  @param[in] strPort		Port of outgoing connection
          *
          **/
@@ -189,7 +194,6 @@ namespace LLP
          *  Public Wraper to Add a Connection Manually.
          *
          *  @param[in] strAddress	IPv4 Address of outgoing connection
-         *
          *  @param[in] strPort		Port of outgoing connection
          *
          *  @return	Returns true if the connection was established successfully
@@ -262,11 +266,80 @@ namespace LLP
         }
 
 
+        /** Get Connection
+         *
+         *  Get the best connection based on latency
+         *
+         **/
+        ProtocolType* GetConnection()
+        {
+            /* List of connections to return. */
+            ProtocolType* pBest = nullptr;
+            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            {
+                /* Get the data threads. */
+                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+                if(!dt)
+                    continue;
+
+                /* Loop through connections in data thread. */
+                int32_t nSize = dt->CONNECTIONS.size();
+                for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
+                {
+                    /* Skip over inactive connections. */
+                    if(!dt->CONNECTIONS[nIndex] ||
+                       !dt->CONNECTIONS[nIndex]->Connected())
+                        continue;
+
+                    LOCK(dt->MUTEX);
+
+                    /* Push the active connection. */
+                    if(!pBest || dt->CONNECTIONS[nIndex]->nNodeLatency < pBest->nNodeLatency)
+                        pBest = dt->CONNECTIONS[nIndex];
+                }
+            }
+
+            return pBest;
+        }
+
+
+        /** Relay
+         *
+         *  Relays data to all nodes on the network.
+         *
+         **/
+        template<typename MessageType, typename DataType>
+        void Relay(MessageType message, DataType data)
+        {
+            /* List of connections to return. */
+            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            {
+                /* Get the data threads. */
+                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+                if(!dt)
+                    continue;
+
+                /* Loop through connections in data thread. */
+                int32_t nSize = dt->CONNECTIONS.size();
+                for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
+                {
+                    /* Skip over inactive connections. */
+                    if(!dt->CONNECTIONS[nIndex] ||
+                       !dt->CONNECTIONS[nIndex]->Connected())
+                        continue;
+
+                    /* Push the active connection. */
+                    dt->CONNECTIONS[nIndex]->PushMessage(message, data);
+                }
+            }
+        }
+
+
         /** GetAddresses
          *
          *  Get the active connection pointers from data threads.
          *
-         *  @return Returns the list of active connections in a vector
+         *  @return Returns the list of active connections in a vector.
          *
          **/
         std::vector<LegacyAddress> GetAddresses()
@@ -303,7 +376,7 @@ namespace LLP
 
         /** Manager
          *
-         *  Connection Manager Thread.
+         *  Address Manager Thread.
          *
          **/
         void Manager()
@@ -356,8 +429,14 @@ namespace LLP
         std::thread          METER_THREAD;
 
 
-        /* Determine thfalsee thread with the least amount of active connections.
-            This keeps the load balanced across all server threads. */
+        /** FindThread
+         *
+         *  Determine the first thread with the least amount of active connections.
+         *  This keeps them load balanced across all server threads.
+         *
+         *  @return Returns the index of the found thread. or -1 if not found.
+         *
+         **/
         int32_t FindThread()
         {
             int32_t nIndex = -1;
@@ -381,7 +460,14 @@ namespace LLP
         }
 
 
-        /** Main Listening Thread of LLP Server. Handles new Connections and DDOS associated with Connection if enabled. **/
+        /** ListeningThread
+         *
+         *  Main Listening Thread of LLP Server. Handles new Connections and
+         *  DDOS associated with Connection if enabled.
+         *
+         *  @param[in] fIPv4
+         *
+         **/
         void ListeningThread(bool fIPv4)
         {
             int32_t hListenSocket;
@@ -476,6 +562,16 @@ namespace LLP
             }
         }
 
+        /** BindListenPort
+         *
+         *  Bind connection to a listening port.
+         *
+         *  @param[in] hListenSocket
+         *  @param[in] fIPv4
+         *
+         *  @return
+         *
+         **/
         bool BindListenPort(int32_t & hListenSocket, bool fIPv4 = true)
         {
             std::string strError = "";
@@ -566,7 +662,11 @@ namespace LLP
         }
 
 
-        /* LLP Meter Thread. Tracks the Requests / Second. */
+        /** Meter
+         *
+         * LLP Meter Thread. Tracks the Requests / Second.
+         *
+         **/
         void Meter()
         {
             if(!config::GetBoolArg("-meters", false))
@@ -607,11 +707,18 @@ namespace LLP
         }
 
 
-        /** Used for Meter. Adds up the total amount of requests from each Data Thread. **/
-        int32_t TotalRequests()
+        /** TotalRequests
+         *
+         *  Used for Meter. Adds up the total amount of requests from each
+         *  Data Thread.
+         *
+         *  @return Returns the total number of requests.
+         *
+         **/
+        uint32_t TotalRequests()
         {
-            int32_t nTotalRequests = 0;
-            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            uint32_t nTotalRequests = 0;
+            for(uint32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
             {
                 DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
                 if(!dt)
@@ -623,7 +730,11 @@ namespace LLP
             return nTotalRequests;
         }
 
-        /** Used for Meter. Resets the REQUESTS variable to 0 in each Data Thread. **/
+        /** ClearRequests
+         *
+         *  Used for Meter. Resets the REQUESTS variable to 0 in each Data Thread.
+         *
+         **/
         void ClearRequests()
         {
             for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)

@@ -267,14 +267,6 @@ namespace Legacy
 		bool CoinstakeAge(uint64_t& nAge) const;
 
 
-		/** Verify Stake
-		 *
-		 *  Check the proof of stake calculations.
-		 *
-		 **/
-		bool VerifyStake(const TAO::Ledger::BlockState& block) const;
-
-
 		/** Coinstake Interest
 		 *
 		 *  Get the total calculated interest of the coinstake transaction

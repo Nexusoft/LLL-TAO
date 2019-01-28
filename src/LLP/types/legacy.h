@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TYPES_LEGACY_H
 #define NEXUS_LLP_TYPES_LEGACY_H
 
+#include <Legacy/types/locator.h>
+
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
 #include <LLP/packets/legacy.h>
@@ -32,21 +34,48 @@ namespace LLP
     {
     public:
 
-      /** Name
-       *
-       *  Returns a string for the name of this type of Node.
-       *
-       **/
+        /** Name
+         *
+         *  Returns a string for the name of this type of Node.
+         *
+         **/
         static std::string Name() { return "Legacy"; }
 
 
         /** Default Constructor **/
-        LegacyNode() : BaseConnection<LegacyPacket>() {}
+        LegacyNode()
+        : BaseConnection<LegacyPacket>()
+        , nSessionID(0)
+        , strNodeVersion()
+        , nCurrentVersion(LLP::PROTOCOL_VERSION)
+        , nStartingHeight(0)
+        , fInbound(false)
+        , nNodeLatency(std::numeric_limits<uint32_t>::max())
+        , nLastPing(runtime::timestamp())
+        , nConsecutiveTimeouts(0)
+        , mapLatencyTracker()
+        , mapSentRequests()
+        {
+
+        }
 
 
         /** Constructor **/
         LegacyNode(Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
-        : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN) { }
+        : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN)
+        , nSessionID(0)
+        , strNodeVersion()
+        , nCurrentVersion(LLP::PROTOCOL_VERSION)
+        , nStartingHeight(0)
+        , fInbound(false)
+        , nNodeLatency(std::numeric_limits<uint32_t>::max())
+        , nLastPing(runtime::timestamp())
+        , nConsecutiveTimeouts(0)
+        , mapLatencyTracker()
+        , mapSentRequests()
+        {
+
+        }
 
 
         /** Randomly genearted session ID. **/
@@ -58,11 +87,11 @@ namespace LLP
 
 
         /** The current Protocol Version of this Node. **/
-        int nCurrentVersion;
+        uint32_t nCurrentVersion;
 
 
         /** LEGACY: The height of this ndoe given at the version message. **/
-        int nStartingHeight;
+        uint32_t nStartingHeight;
 
 
         /** Flag to determine if a connection is Inbound. **/
@@ -75,6 +104,18 @@ namespace LLP
 
         /** Counter to keep track of the last time a ping was made. **/
         uint32_t nLastPing;
+
+
+        /** The last getblocks call this node has received. **/
+        static uint1024_t hashLastGetblocks;
+
+
+        /** The time since last getblocks call. **/
+        static uint64_t nLastGetBlocks;
+
+
+        /** The number of times getblocks has timed out (to deal with unreliable NON-TRITIUM nodes). **/
+        uint32_t nConsecutiveTimeouts;
 
 
         /** timer object to keep track of ping latency. **/
@@ -179,6 +220,34 @@ namespace LLP
                     }
                 }
             }
+        }
+
+
+        /** Push Get Blocks
+         *
+         *  Send a request to get recent inventory from remote node.
+         *
+         *  @param[in] hashBlockFrom The block to start from
+         *  @param[in] hashBlockTo The block to search to
+         *
+         **/
+        void PushGetBlocks(const uint1024_t& hashBlockFrom, const uint1024_t& hashBlockTo)
+        {
+            /* Filter out duplicate requests. */
+            if(hashLastGetblocks == hashBlockFrom && nLastGetBlocks + 10 > runtime::timestamp())
+                return;
+
+            /* Update the last timestamp this was called. */
+            nLastGetBlocks = runtime::timestamp();
+
+            /* Update the hash that was used for last request. */
+            hashLastGetblocks = hashBlockFrom;
+
+            /* Push the request to the node. */
+            PushMessage("getblocks", Legacy::Locator(hashBlockFrom), hashBlockTo);
+
+            /* Debug output for monitoring. */
+            debug::log(0, NODE, "requesting getblocks from ", hashBlockFrom.ToString().substr(0, 20), " to ", hashBlockTo.ToString().substr(0, 20));
         }
 
 

@@ -225,7 +225,7 @@ inline void PrintHex(const std::vector<uint8_t>& vch, bool fSpaces=true)
  *
  *  Converts bits to a hex string.
  *
- *  @param[in] nBits The bits to convert 
+ *  @param[in] nBits The bits to convert
  *
  * @return The newly created hex string
  **/

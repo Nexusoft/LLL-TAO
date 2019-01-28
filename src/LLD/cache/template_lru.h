@@ -55,6 +55,15 @@ namespace LLD
                 delete data;
         }
 
+        TemplateNode(const KeyType& KeyIn, const DataType& DataIn)
+        : pprev(nullptr)
+        , pnext(nullptr)
+        , Key(KeyIn)
+        , Data(DataIn)
+        {
+
+        }
+
         /** Destructor. **/
         ~TemplateNode()
         {
@@ -240,6 +249,24 @@ namespace LLD
          */
         void RemoveNode(TemplateNode<KeyType, DataType> *pthis)
         {
+            /* Relink last pointer. */
+            if(plast && pthis == plast)
+            {
+                plast = plast->pprev;
+
+                if(plast)
+                    plast->pnext = nullptr;
+            }
+
+            /* Relink first pointer. */
+            if(pfirst && pthis == pfirst)
+            {
+                pfirst = pfirst->pnext;
+
+                if(pfirst)
+                    pfirst->pprev = nullptr;
+            }
+
             /* Link the next pointer if not null */
             if(pthis->pnext)
                 pthis->pnext->pprev = pthis->pprev;
@@ -339,27 +366,28 @@ namespace LLD
             uint32_t nBucket = Bucket(Key);
 
             /* Check for bucket collisions. */
-            TemplateNode<KeyType, DataType> *pthis = hashmap[nBucket];
-            if(pthis != nullptr)
+            if(hashmap[nBucket] != nullptr)
             {
-                /* Update the cache node. */
-                pthis = hashmap[nBucket];
-                pthis->Data = Data;
-                pthis->Key  = Key;
-            }
-            else
-            {
-                /* Create a new cache node. */
-                pthis = new TemplateNode<KeyType, DataType>();
-                pthis->Data = Data;
-                pthis->Key  = Key;
+                TemplateNode<KeyType, DataType>* pthis = hashmap[nBucket];
 
-                /* Add cache node to objects map. */
-                hashmap[nBucket] = pthis;
+                RemoveNode(pthis);
 
-                /* Increase the total elements. */
-                ++nTotalElements;
+                hashmap[nBucket] = nullptr;
+                pthis->pprev     = nullptr;
+                pthis->pnext     = nullptr;
+
+                delete pthis;
+                --nTotalElements;
             }
+
+            /* Create a new cache node. */
+            TemplateNode<KeyType, DataType>* pthis = new TemplateNode<KeyType, DataType>(Key, Data);
+
+            /* Add cache node to objects map. */
+            hashmap[nBucket] = pthis;
+
+            /* Increase the total elements. */
+            ++nTotalElements;
 
             /* Set the new cache node to the front */
             MoveToFront(pthis);

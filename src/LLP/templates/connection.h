@@ -45,24 +45,32 @@ namespace LLP
         std::mutex MUTEX;
 
 
-        /*  Pure Virtual Event Function to be Overridden allowing Custom Read Events.
-            Each event fired on Header Complete, and each time data is read to fill packet.
-            Useful to check Header length to maximum size of packet type for DDOS protection,
-            sending a keep-alive ping while downloading large files, etc.
-
-            LENGTH == 0: General Events
-            LENGTH  > 0 && PACKET: Read nSize Bytes into Data Packet
-        */
+        /** Event
+         *
+         *  Pure Virtual Event Function to be Overridden allowing Custom Read Events.
+         *  Each event fired on Header Complete, and each time data is read to fill packet.
+         *  Useful to check Header length to maximum size of packet type for DDOS protection,
+         *  sending a keep-alive ping while downloading large files, etc.
+         *
+         *  LENGTH == 0: General Events
+         *  LENGTH  > 0 && PACKET: Read nSize Bytes into Data Packet
+         *
+         **/
         virtual void Event(uint8_t EVENT, uint32_t LENGTH = 0) = 0;
 
 
-        /* Pure Virtual Process Function. To be overridden with your own custom packet processing. */
+        /** ProcessPacket
+         *
+         *  Pure Virtual Process Function. To be overridden with your own custom
+         *  packet processing.
+         *
+         **/
         virtual bool ProcessPacket() = 0;
 
     public:
 
         /** Incoming Packet Being Built. **/
-        PacketType        INCOMING;
+        PacketType     INCOMING;
 
 
         /** DDOS Score for Connection. **/
@@ -104,6 +112,7 @@ namespace LLP
         , fCONNECTED(false)
         {
         }
+
 
         /* Default destructor */
         virtual ~BaseConnection()
@@ -147,7 +156,7 @@ namespace LLP
          *  Checks if is in null state.
          *
          **/
-        bool IsNull()
+        bool IsNull() const
         {
             return fd == -1;
         }
@@ -158,7 +167,7 @@ namespace LLP
          *  Checks for any flags in the Error Handle.
          *
          **/
-        bool Errors()
+        bool Errors() const
         {
             return ErrorCode() != 0;
         }
@@ -180,7 +189,7 @@ namespace LLP
          *  Connection flag to determine if socket should be handled if not connected.
          *
          **/
-        bool Connected()
+        bool Connected() const
         {
             return fCONNECTED;
         }
@@ -193,7 +202,7 @@ namespace LLP
          *  @param[in] nTime The time in seconds.
          *
          **/
-        bool Timeout(uint32_t nTime)
+        bool Timeout(uint32_t nTime) const
         {
             return (runtime::timestamp() > nLastSend + nTime &&
                     runtime::timestamp() > nLastRecv + nTime);
@@ -205,7 +214,7 @@ namespace LLP
          *  Handles two types of packets, requests which are of header >= 128,
          *  and data which are of header < 128.
          **/
-        bool PacketComplete()
+        bool PacketComplete() const
         {
             return INCOMING.Complete();
         }
@@ -261,7 +270,6 @@ namespace LLP
          *  Connect Socket to a Remote Endpoint.
          *
          *  @param[in] strAddress The IP address string.
-         *
          *  @param[in] nPort The port number.
          *
          *  @return Returns true if successful connection, false otherwise.
@@ -294,7 +302,7 @@ namespace LLP
          *  Returns the address of socket.
          *
          **/
-        BaseAddress GetAddress()
+        BaseAddress GetAddress() const
         {
             return addr;
         }

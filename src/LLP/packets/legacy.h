@@ -38,20 +38,18 @@ namespace LLP
      *
      *  Class to handle sending and receiving of More Complese Message LLP Packets.
      *
+     *  Components of a Message LLP Packet.
+     *  BYTE 0 - 4    : Start
+     *  BYTE 5 - 17   : Message
+     *  BYTE 18 - 22  : Size
+     *  BYTE 23 - 26  : Checksum
+     *  BYTE 26 - X   : Data
+     *
      ***/
     class LegacyPacket
     {
     public:
 
-        /*
-        * Components of a Message LLP Packet.
-        * BYTE 0 - 4    : Start
-        * BYTE 5 - 17   : Message
-        * BYTE 18 - 22  : Size
-        * BYTE 23 - 26  : Checksum
-        * BYTE 26 - X   : Data
-        *
-        */
         uint8_t       HEADER[4];
         char	        MESSAGE[12];
         uint32_t	    LENGTH;
@@ -59,12 +57,14 @@ namespace LLP
 
         std::vector<uint8_t> DATA;
 
+        /** Default Constructor **/
         LegacyPacket()
         {
             SetNull();
             SetHeader();
         }
 
+        /** Constructor **/
         LegacyPacket(const char* chMessage)
         {
             SetNull();
@@ -72,6 +72,7 @@ namespace LLP
             SetMessage(chMessage);
         }
 
+        /** Serialization **/
         IMPLEMENT_SERIALIZE
         (
             READWRITE(FLATDATA(HEADER));
@@ -81,7 +82,11 @@ namespace LLP
         )
 
 
-        /* Set the Packet Null Flags. */
+        /** SetNull
+         *
+         *  Set the Packet Null Flags.
+         *
+         **/
         void SetNull()
         {
             LENGTH    = 0;
@@ -92,26 +97,58 @@ namespace LLP
         }
 
 
-        /* Get the Command of packet in a std::string type. */
-        std::string GetMessage()
+        /** GetMessage
+         *
+         *  Get the Command of packet in a std::string type.
+         *
+         *  @return Returns a string message.
+         *
+         **/
+        std::string GetMessage() const
         {
             return std::string(MESSAGE, MESSAGE + strlen(MESSAGE));
         }
 
 
-        /* Packet Null Flag. Length and Checksum both 0. */
-        bool IsNull() { return (std::string(MESSAGE) == "" && LENGTH == 0 && CHECKSUM == 0); }
+        /** IsNull
+         *
+         *  Packet Null Flag. Length and Checksum both 0.
+         *
+         **/
+        bool IsNull() const
+        {
+            return (std::string(MESSAGE) == "" && LENGTH == 0 && CHECKSUM == 0);
+        }
 
 
-        /* Determine if a packet is fully read. */
-        bool Complete() { return (Header() && DATA.size() == LENGTH); }
+        /** Complete
+         *
+         *  Determine if a packet is fully read.
+         *
+         **/
+        bool Complete() const
+        {
+            return (Header() && DATA.size() == LENGTH);
+        }
 
 
-        /* Determine if header is fully read */
-        bool Header()   { return IsNull() ? false : (CHECKSUM > 0 && std::string(MESSAGE) != ""); }
+        /** Header
+         *
+         *  Determine if header is fully read
+         *
+         **/
+        bool Header() const
+        {
+            return IsNull() ? false : (CHECKSUM > 0 && std::string(MESSAGE) != "");
+        }
 
 
-        /* Set the first four bytes in the packet headcer to be of the byte series selected. */
+        /** SetHeader
+         *
+         *  Set the first four bytes in the packet headcer to be of the
+         *  byte series selected.
+         *
+         **/
         void SetHeader()
         {
             if (config::fTestNet)
@@ -127,7 +164,13 @@ namespace LLP
         }
 
 
-        /* Set the message in the packet header. */
+        /** SetMessage
+         *
+         *  Set the message in the packet header.
+         *
+         *  @param[in] chMessage the message to set.
+         *
+         **/
         void SetMessage(const char* chMessage)
         {
             //std::copy((char*)chMessage, (char*)chMessage + std::min((size_t)12, sizeof(chMessage)), (char*)&MESSAGE);
@@ -135,7 +178,13 @@ namespace LLP
         }
 
 
-        /* Sets the size of the packet from Byte Vector. */
+        /** SetLength
+         *
+         * Sets the size of the packet from Byte Vector.
+         *
+         *  @param[in] BYTES the byte buffer to set the length of.
+         *
+         **/
         void SetLength(const std::vector<uint8_t>& BYTES)
         {
             DataStream ssLength(BYTES, SER_NETWORK, MIN_PROTO_VERSION);
@@ -143,7 +192,11 @@ namespace LLP
         }
 
 
-        /* Set the Packet Checksum Data. */
+        /** SetChecksum
+         *
+         *  Set the Packet Checksum Data.
+         *
+         **/
         void SetChecksum()
         {
             uint512_t hash = LLC::SK512(DATA.begin(), DATA.end());
@@ -152,7 +205,13 @@ namespace LLP
         }
 
 
-        /* Set the Packet Data. */
+        /** SetData
+         *
+         *  Set the Packet Data.
+         *
+         *  @param[in] ssData The datastream with the data to set.
+         *
+         **/
         void SetData(const DataStream& ssData)
         {
             DATA = std::vector<uint8_t>(ssData.begin(), ssData.end());
@@ -162,7 +221,11 @@ namespace LLP
         }
 
 
-        /* Check the Validity of the Packet. */
+        /** IsValid
+         *
+         *  Check the Validity of the Packet.
+         *
+         **/
         bool IsValid()
         {
             /* Check that the packet isn't nullptr. */
@@ -192,7 +255,13 @@ namespace LLP
         }
 
 
-        /* Serializes class into a Byte Vector. Used to write Packet to Sockets. */
+        /** GetBytes
+         *
+         *  Serializes class into a Byte Vector. Used to write Packet to Sockets.
+         *
+         *  @return Returns the serialized byte vector.
+         *
+         **/
         std::vector<uint8_t> GetBytes() const
         {
             DataStream ssHeader(SER_NETWORK, MIN_PROTO_VERSION);

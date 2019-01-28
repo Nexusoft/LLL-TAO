@@ -282,7 +282,7 @@ namespace Legacy
 
 
         /* Get the key from the producer. */
-        if(nHeight > 0)
+        if(nHeight > 0 && !TAO::Ledger::ChainState::Synchronizing())
         {
             /* Get a vector for the solver solutions. */
             std::vector<std::vector<uint8_t> > vSolutions;
@@ -411,12 +411,29 @@ namespace Legacy
             /* Check the claimed stake limits are met. */
             if(nVersion >= 5 && !CheckStake())
                 return debug::error(FUNCTION, "invalid proof of stake");
+
+            /* Check stake for version 4. */
+            if(nVersion < 5 && !VerifyStake())
+                return debug::error(FUNCTION, "invalid proof of stake");
         }
 
         /* Check that Transactions are Finalized. */
         for(const auto & tx : vtx)
             if (!tx.IsFinal(nHeight, GetBlockTime()))
                 return debug::error(FUNCTION, "contains a non-final transaction");
+
+        return true;
+    }
+
+
+    /* Check the proof of stake calculations. */
+    bool LegacyBlock::VerifyStake() const
+    {
+        /* Check the Block Hash with Weighted Hash to Target. */
+        LLC::CBigNum bnTarget;
+        bnTarget.SetCompact(nBits);
+        if(GetHash() > bnTarget.getuint1024())
+            return debug::error(FUNCTION, "proof of stake not meeting target");
 
         return true;
     }

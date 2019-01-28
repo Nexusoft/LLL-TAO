@@ -40,6 +40,7 @@ namespace TAO
         class BlockState : public Block
         {
         public:
+            static std::mutex STATE_MUTEX;
 
             /** The transaction history.
              *  uint8_t = TransactionType (per enum)

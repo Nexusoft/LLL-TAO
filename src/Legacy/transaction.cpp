@@ -339,19 +339,6 @@ namespace Legacy
     }
 
 
-    /* Check the proof of stake calculations. */
-    bool Transaction::VerifyStake(const TAO::Ledger::BlockState& block) const
-    {
-        /* Check the Block Hash with Weighted Hash to Target. */
-        LLC::CBigNum bnTarget;
-        bnTarget.SetCompact(block.nBits);
-        if(block.GetHash() > bnTarget.getuint1024())
-            return debug::error(FUNCTION, "proof of stake not meeting target");
-
-        return true;
-    }
-
-
     /* Get the total calculated interest of the coinstake transaction */
     bool Transaction::CoinstakeInterest(const TAO::Ledger::BlockState& block, uint64_t& nInterest) const
     {
@@ -378,7 +365,7 @@ namespace Legacy
         {
             /* Read the trust key from the disk. */
             TAO::Ledger::TrustKey trustKey;
-            if(LLD::legDB->ReadTrustKey(cKey, trustKey))
+            if(LLD::trustDB->ReadTrustKey(cKey, trustKey))
                 nInterestRate = trustKey.InterestRate(block, nTime);
 
             /* Check if it failed to read and this is genesis. */
@@ -794,7 +781,7 @@ namespace Legacy
             else if(IsTrust())
             {
                 /* No Trust Transaction without a Genesis. */
-                if(!LLD::legDB->ReadTrustKey(cKey, trustKey))
+                if(!LLD::trustDB->ReadTrustKey(cKey, trustKey))
                 {
                     /* FindGenesis will set hashPrevBlock to genesis block. Don't want to change that here, so use temp hash */
                     if(!TAO::Ledger::FindGenesis(cKey, state.hashPrevBlock, trustKey))
@@ -819,15 +806,11 @@ namespace Legacy
             }
 
             /* Write the trust key. */
-            LLD::legDB->WriteTrustKey(cKey, trustKey);
+            LLD::trustDB->WriteTrustKey(cKey, trustKey);
 
             /* Check that the trust score is accurate. */
             if(state.nVersion >= 5 && !CheckTrust(state))
                 return debug::error(FUNCTION, "invalid trust score");
-
-            /* Check if the stake is verified for version 4. */
-            if(state.nVersion < 5 && !VerifyStake(state))
-                return debug::error(FUNCTION, "invalid proof of stake");
         }
 
         /* Read all of the inputs. */
@@ -1006,7 +989,7 @@ namespace Legacy
         {
             /* Check the trust pool - this should only execute once transitioning from version 4 to version 5 trust keys. */
             TAO::Ledger::TrustKey trustKey;
-            if(!LLD::legDB->ReadTrustKey(cKey, trustKey))
+            if(!LLD::trustDB->ReadTrustKey(cKey, trustKey))
                 return debug::error(FUNCTION, "couldn't find the genesis");
 
             /* Enforce sequence number of 1 for anything made from version 4 blocks. */
