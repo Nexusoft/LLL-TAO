@@ -527,7 +527,7 @@ namespace LLD
          *  @return True if the record was read successfully.
          *
          **/
-        bool Get(SectorKey cKey, std::vector<uint8_t>& vData)
+        bool Get(const SectorKey& cKey, std::vector<uint8_t>& vData)
         {
             { LOCK(SECTOR_MUTEX);
 
@@ -755,8 +755,6 @@ namespace LLD
             if(!(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND))
                 return;
 
-
-
             while(true)
             {
                 /* Wait for buffer to empty before shutting down. */
@@ -790,30 +788,7 @@ namespace LLD
                     stream.close();
                 }
 
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                { LOCK(SECTOR_MUTEX);
-
-                    if(!fileCache->Get(nCurrentFile, pstream))
-                    {
-                        /* Set the new stream pointer. */
-                        pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
-                        if(!pstream->is_open())
-                        {
-                            delete pstream;
-                            continue;
-                        }
-
-                        /* If file not found add to LRU cache. */
-                        fileCache->Put(nCurrentFile, pstream);
-                    }
-
-                    /* Seek to the end of the file */
-                    pstream->seekp(nCurrentFileSize, std::ios::beg);
-                }
-
                 /* Iterate through buffer to queue disk writes. */
-                std::vector<uint8_t> vWrite;
                 for(const auto& vObj : vIndexes)
                 {
                     /* Force write data. */
@@ -821,9 +796,10 @@ namespace LLD
 
                     /* Set no longer reserved in cache pool. */
                     cachePool->Reserve(vObj.first, false);
-                }
 
-                nBytesWrote += (vWrite.size());
+                    /* Iterate bytes written for meter. */
+                    nBytesWrote += (vObj.first.size() + vObj.second.size());
+                }
 
                 /* Notify the condition. */
                 CONDITION.notify_all();

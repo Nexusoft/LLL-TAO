@@ -120,15 +120,15 @@ namespace TAO
             {
                 json::json obj;
 
-                obj["addr"] = addr.ToString();
-                obj["type"] = std::string("Legacy");
-                obj["latency"] = debug::strprintf("%u ms", addr.nLatency);
+                obj["addr"]     = addr.ToString();
+                obj["type"]     = std::string("Legacy");
+                obj["latency"]  = debug::strprintf("%u ms", addr.nLatency);
                 obj["lastseen"] = addr.nLastSeen;
                 obj["connects"] = addr.nConnected;
-                obj["drops"] = addr.nDropped;
-                obj["fails"] = addr.nFailed;
-                obj["score"] = addr.Score();
-                obj["version"] = addr.IsIPv4() ? std::string("IPv4") : std::string("IPv6");
+                obj["drops"]    = addr.nDropped;
+                obj["fails"]    = addr.nFailed;
+                obj["score"]    = addr.Score();
+                obj["version"]  = addr.IsIPv4() ? std::string("IPv4") : std::string("IPv6");
 
                 response.push_back(obj);
             }
@@ -143,15 +143,15 @@ namespace TAO
             {
                 json::json obj;
 
-                obj["addr"] = addr.ToString();
-                obj["type"] = std::string("Tritium");
-                obj["latency"] = debug::strprintf("%u ms", addr.nLatency);
+                obj["addr"]     = addr.ToString();
+                obj["type"]     = std::string("Tritium");
+                obj["latency"]  = debug::strprintf("%u ms", addr.nLatency);
                 obj["lastseen"] = addr.nLastSeen;
                 obj["connects"] = addr.nConnected;
-                obj["drops"] = addr.nDropped;
-                obj["fails"] = addr.nFailed;
-                obj["score"] = addr.Score();
-                obj["version"] = addr.IsIPv4() ? std::string("IPv4") : std::string("IPv6");
+                obj["drops"]    = addr.nDropped;
+                obj["fails"]    = addr.nFailed;
+                obj["score"]    = addr.Score();
+                obj["version"]  = addr.IsIPv4() ? std::string("IPv4") : std::string("IPv6");
 
                 response.push_back(obj);
             }

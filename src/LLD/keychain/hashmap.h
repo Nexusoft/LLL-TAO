@@ -323,7 +323,7 @@ namespace LLD
          *  @return true if the key was found
          *
          **/
-        bool Get(std::vector<uint8_t> vKey, SectorKey &cKey)
+        bool Get(const std::vector<uint8_t>& vKey, SectorKey &cKey)
         {
             /* Get the assigned bucket for the hashmap. */
             uint32_t nBucket = GetBucket(vKey);
@@ -335,7 +335,8 @@ namespace LLD
             cKey.vKey = vKey;
 
             /* Compress any keys larger than max size. */
-            CompressKey(vKey, HASHMAP_MAX_KEY_SIZE);
+            std::vector<uint8_t> vKeyCompressed = vKey;
+            CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
@@ -370,7 +371,7 @@ namespace LLD
                 }
 
                 /* Check if this bucket has the key */
-                if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKey.size(), vKey.begin()))
+                if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
                 {
                     /* Deserialie key and return if found. */
                     DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
@@ -385,7 +386,7 @@ namespace LLD
                         " | Sector File: ", cKey.nSectorFile,
                         " | Sector Size: ", cKey.nSectorSize,
                         " | Sector Start: ", cKey.nSectorStart, "\n",
-                        HexStr(cKey.vKey.begin(), cKey.vKey.end(), true));
+                        HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
 
                     return true;
                 }
@@ -406,7 +407,7 @@ namespace LLD
          *  @return true if the key was found
          *
          **/
-        bool Get(std::vector<uint8_t> vKey, std::vector<SectorKey>& vKeys)
+        bool Get(const std::vector<uint8_t>& vKey, std::vector<SectorKey>& vKeys)
         {
             /* Get the assigned bucket for the hashmap. */
             uint32_t nBucket = GetBucket(vKey);
@@ -415,7 +416,8 @@ namespace LLD
             uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
 
             /* Compress any keys larger than max size. */
-            CompressKey(vKey, HASHMAP_MAX_KEY_SIZE);
+            std::vector<uint8_t> vKeyCompressed = vKey;
+            CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
@@ -450,7 +452,7 @@ namespace LLD
                 }
 
                 /* Check if this bucket has the key */
-                if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKey.size(), vKey.begin()))
+                if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
                 {
                     /* Deserialize key and return if found. */
                     DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
@@ -470,7 +472,7 @@ namespace LLD
                         " | Sector File: ", cKey.nSectorFile,
                         " | Sector Size: ", cKey.nSectorSize,
                         " | Sector Start: ", cKey.nSectorStart, "\n",
-                        HexStr(vKey.begin(), vKey.end(), true));
+                        HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
                 }
             }
 
@@ -487,7 +489,7 @@ namespace LLD
          *  @return true if the key was found
          *
          **/
-        bool Put(SectorKey cKey)
+        bool Put(const SectorKey& cKey)
         {
             /* Get the assigned bucket for the hashmap. */
             uint32_t nBucket = GetBucket(cKey.vKey);
@@ -496,7 +498,8 @@ namespace LLD
             uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
 
             /* Compress any keys larger than max size. */
-            CompressKey(cKey.vKey, HASHMAP_MAX_KEY_SIZE);
+            std::vector<uint8_t> vKeyCompressed = cKey.vKey;
+            CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
             /* Handle if not in append mode which will update the key. */
             if(!(nFlags & FLAGS::APPEND))
@@ -533,24 +536,19 @@ namespace LLD
                         pstream->read((char*) &vBucket[0], vBucket.size());
 
                         /* Check if this bucket has the key */
-                        if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + cKey.vKey.size(), cKey.vKey.begin()))
+                        if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
                         {
                             /* Serialize the key and return if found. */
                             DataStream ssKey(SER_LLD, DATABASE_VERSION);
                             ssKey << cKey;
 
                             /* Serialize the key into the end of the vector. */
-                            ssKey.write((char*)&cKey.vKey[0], cKey.vKey.size());
+                            ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
 
                             /* Handle the disk writing operations. */
-                            {
-                                LOCK(KEY_MUTEX);
-
-                                /* Flush the key file to disk. */
-                                pstream->seekp (nFilePos, std::ios::beg);
-                                pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
-                                pstream->flush();
-                            }
+                            pstream->seekp (nFilePos, std::ios::beg);
+                            pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
+                            pstream->flush();
 
                             /* Debug Output of Sector Key Information. */
                             debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
@@ -561,7 +559,7 @@ namespace LLD
                                 " | Sector File: ", cKey.nSectorFile,
                                 " | Sector Size: ", cKey.nSectorSize,
                                 " | Sector Start: ", cKey.nSectorStart, "\n",
-                                HexStr(cKey.vKey.begin(), cKey.vKey.end(), true));
+                                HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
 
                             /* Signal the cache thread to wake up. */
                             fCacheActive = true;
@@ -597,7 +595,7 @@ namespace LLD
             ssKey << cKey;
 
             /* Serialize the key into the end of the vector. */
-            ssKey.write((char*)&cKey.vKey[0], cKey.vKey.size());
+            ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
 
             { LOCK(KEY_MUTEX);
 
@@ -635,7 +633,7 @@ namespace LLD
                 " | Sector File: ", cKey.nSectorFile,
                 " | Sector Size: ", cKey.nSectorSize,
                 " | Sector Start: ", cKey.nSectorStart,
-                " | Key: ",  HexStr(cKey.vKey.begin(), cKey.vKey.end()));
+                " | Key: ",  HexStr(vKeyCompressed.begin(), vKeyCompressed.end()));
 
             /* Signal the cache thread to wake up. */
             fCacheActive = true;
