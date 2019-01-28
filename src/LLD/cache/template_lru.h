@@ -378,8 +378,6 @@ namespace LLD
 
                 delete pthis;
                 --nTotalElements;
-
-                debug::log(0, FUNCTION, " removed key ", Key);
             }
 
             /* Create a new cache node. */

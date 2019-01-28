@@ -315,8 +315,6 @@ namespace LLD
                 nCurrentSize -= (pthis->vData.size() - pthis->vKey.size());
 
                 delete pthis;
-
-                debug::log(0, FUNCTION, "cleared bucket collision");
             }
 
             /* Create a new cache node. */
