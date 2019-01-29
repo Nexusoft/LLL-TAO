@@ -89,7 +89,7 @@ namespace Legacy
          *  Accept a legacy block with chain state parameters.
          *
          **/
-        bool Accept();
+        bool Accept() const;
 
 
         /** Verify Stake

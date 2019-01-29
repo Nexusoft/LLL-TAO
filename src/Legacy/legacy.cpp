@@ -314,7 +314,7 @@ namespace Legacy
 
 
     /* Accept a block into the chain. */
-    bool LegacyBlock::Accept()
+    bool LegacyBlock::Accept() const
     {
         /* Print the block on verbose 2. */
         if(config::GetArg("-verbose", 0) >= 2)

@@ -82,7 +82,7 @@ namespace TAO
         , hashNextBlock(0)
         , hashCheckpoint(0)
         {
-            LOCK(BlockState::STATE_MUTEX);
+            //LOCK(BlockState::STATE_MUTEX);
 
             /* Construct a block state from legacy block tx set. */
             for(const auto & tx : block.vtx)
@@ -125,8 +125,6 @@ namespace TAO
         /* Accept a block state into chain. */
         bool BlockState::Accept()
         {
-            LOCK(BlockState::STATE_MUTEX);
-
             /* Check if it exists first */
             if(LLD::legDB->HasBlock(GetHash()))
                 return debug::error(FUNCTION, "already have block");
