@@ -28,24 +28,30 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-
+    /** TrustDB
+     *
+     *  The database class for trust keys for both Legacy and Tritium.
+     *
+     **/
     class TrustDB : public SectorDatabase<BinaryFileMap, BinaryLRU>
     {
 
     public:
+
+
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         TrustDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE)
         : SectorDatabase("trust", nFlagsIn) { }
 
 
-        /** Write Trust Key
+        /** WriteTrustKey
          *
          *  Writes a trust key to the ledger DB.
          *
          *  @param[in] hashKey The key of trust key to write.
-         *  @param[in] key The trust key object
+         *  @param[in] key The trust key object.
          *
-         *  @return True if the trust key was successfully written.
+         *  @return True if the trust key was successfully written, false otherwise.
          *
          **/
         bool WriteTrustKey(const uint576_t& hashKey, const TAO::Ledger::TrustKey& key)
@@ -54,14 +60,14 @@ namespace LLD
         }
 
 
-        /** Read Trust Key
+        /** ReadTrustKey
          *
          *  Reads a trust key from the ledger DB.
          *
          *  @param[in] hashKey The key of trust key to write.
-         *  @param[in] key The trust key object
+         *  @param[in] key The trust key object.
          *
-         *  @return True if the trust key was successfully written.
+         *  @return True if the trust key was successfully written, false otherwise.
          *
          **/
         bool ReadTrustKey(const uint576_t& hashKey, TAO::Ledger::TrustKey& key)

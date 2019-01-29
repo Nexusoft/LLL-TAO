@@ -27,7 +27,7 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    /** @class LegacyDB
+    /** LegacyDB
      *
      *  Database class for storing legacy transactions.
      *
@@ -35,19 +35,21 @@ namespace LLD
     class LegacyDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
     public:
+
+
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         LegacyDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
         : SectorDatabase("legacy", nFlags) {}
 
 
-        /** Write Tx.
+        /** WriteTx
          *
          *  Writes a transaction to the legacy DB.
          *
          *  @param[in] hashTransaction The txid of transaction to write.
          *  @param[in] tx The transaction object to write.
          *
-         *  @return True if the transaction was successfully written.
+         *  @return True if the transaction was successfully written, false otherwise.
          *
          **/
         bool WriteTx(const uint512_t& hashTransaction, const Legacy::Transaction& tx)
@@ -56,14 +58,14 @@ namespace LLD
         }
 
 
-        /** Read Tx.
+        /** ReadTx
          *
          *  Reads a transaction from the legacy DB.
          *
          *  @param[in] hashTransaction The txid of transaction to read.
          *  @param[in] tx The transaction object to read.
          *
-         *  @return True if the transaction was successfully read.
+         *  @return True if the transaction was successfully read, false otherwise.
          *
          **/
         bool ReadTx(const uint512_t& hashTransaction, Legacy::Transaction& tx)
@@ -72,13 +74,13 @@ namespace LLD
         }
 
 
-        /** Erase Tx.
+        /** EraseTx
          *
          *  Erases a transaction from the ledger DB.
          *
          *  @param[in] hashTransaction The txid of transaction to erase.
          *
-         *  @return True if the transaction was successfully erased.
+         *  @return True if the transaction was successfully erased, false otherwise.
          *
          **/
         bool EraseTx(const uint512_t& hashTransaction)
@@ -87,13 +89,13 @@ namespace LLD
         }
 
 
-        /** Has Tx.
+        /** HasTx
          *
          *  Checks if a transaction exists.
          *
          *  @param[in] hashTransaction The txid of transaction to check.
          *
-         *  @return True if the transaction exists.
+         *  @return True if the transaction exists, false otherwise.
          *
          **/
         bool HasTx(const uint512_t& hashTransaction)
@@ -102,14 +104,14 @@ namespace LLD
         }
 
 
-        /** Write Spend
+        /** WriteSpend
          *
-         *  Writes an output as spent
+         *  Writes an output as spent.
          *
          *  @param[in] hashTransaction The txid of transaction to write.
-         *  @param[in] nOutput The output that was spent
+         *  @param[in] nOutput The output that was spent.
          *
-         *  @return True if the written.
+         *  @return True if the spend is written, false otherwise.
          *
          **/
         bool WriteSpend(const uint512_t& hashTransaction, uint32_t nOutput)
@@ -118,14 +120,14 @@ namespace LLD
         }
 
 
-        /** Erase Spend
+        /** EraseSpend
          *
-         *  Removes a spend flag on an output
+         *  Removes a spend flag on an output.
          *
          *  @param[in] hashTransaction The txid of transaction to write.
-         *  @param[in] nOutput The output that is unspent
+         *  @param[in] nOutput The output that is unspent.
          *
-         *  @return True if the erased.
+         *  @return True if the spend is erased, false otherwise.
          *
          **/
         bool EraseSpend(const uint512_t& hashTransaction, uint32_t nOutput)
@@ -134,14 +136,14 @@ namespace LLD
         }
 
 
-        /** Is Spent
+        /** IsSpent
          *
-         *  Checks if an output was spent
+         *  Checks if an output was spent.
          *
          *  @param[in] hashTransaction The txid of transaction to check.
-         *  @param[in] nOutput The output to check
+         *  @param[in] nOutput The output to check.
          *
-         *  @return True if the output is spent.
+         *  @return True if the output is spent, false otherwise.
          *
          **/
         bool IsSpent(const uint512_t& hashTransaction, uint32_t nOutput)

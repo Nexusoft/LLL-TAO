@@ -28,34 +28,95 @@ ________________________________________________________________________________
 namespace LLD
 {
 
+  /** LocalDB
+   *
+   *  Database class for storing local wallet transactions.
+   *
+   **/
     class LocalDB : public SectorDatabase<BinaryFileMap, BinaryLRU>
     {
     public:
+
+
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         LocalDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
         : SectorDatabase("local", nFlags) {}
 
-        bool WriteGenesis(uint256_t hashGenesis, TAO::Ledger::Transaction tx)
+
+        /** WriteGenesis
+         *
+         *  Writes a genesis transaction-id to disk.
+         *
+         *  @param[in] hashGenesis The genesis ID to write for.
+         *  @param[in] tx The transaction to write.
+         *
+         *  @return True if the genesis is written, false otherwise.
+         *
+         **/
+        bool WriteGenesis(const uint256_t& hashGenesis, const TAO::Ledger::Transaction& tx)
         {
             return Write(std::make_pair(std::string("genesis"), hashGenesis), tx);
         }
 
-        bool ReadGenesis(uint256_t hashGenesis, TAO::Ledger::Transaction& tx)
+
+        /** ReadGenesis
+         *
+         *  Reads a genesis transaction-id from disk.
+         *
+         *  @param[in] hashGenesis The genesis ID to read for.
+         *  @param[out] tx The transaction to read.
+         *
+         *  @return True if the genesis was read, false otherwise.
+         *
+         **/
+        bool ReadGenesis(const uint256_t& hashGenesis, TAO::Ledger::Transaction &tx)
         {
             return Read(std::make_pair(std::string("genesis"), hashGenesis), tx);
         }
 
-        bool HasGenesis(uint256_t hashGenesis)
+
+        /** HasGenesis
+         *
+         *  Checks if a genesis transaction exists.
+         *
+         *  @param[in] hashGenesis The genesis ID to check for.
+         *
+         *  @return True if the genesis exists, false otherwise.
+         *
+         **/
+        bool HasGenesis(const uint256_t& hashGenesis)
         {
             return Exists(std::make_pair(std::string("genesis"), hashGenesis));
         }
 
-        bool WriteLast(uint256_t hashGenesis, uint512_t hashLast)
+
+        /** WriteLast
+         *
+         *  Writes the last txid of sigchain to disk indexed by genesis.
+         *
+         *  @param[in] hashGenesis The genesis hash to write.
+         *  @param[in] hashLast The last hash (txid) to write.
+         *
+         *  @return True if the last was successfully written, false otherwise.
+         *
+         **/
+        bool WriteLast(const uint256_t& hashGenesis, const uint512_t& hashLast)
         {
             return Write(std::make_pair(std::string("last"), hashGenesis), hashLast);
         }
 
-        bool ReadLast(uint256_t hashGenesis, uint512_t& hashLast)
+
+        /** ReadLast
+         *
+         *  Reads the last txid of sigchain to disk indexed by genesis.
+         *
+         *  @param[in] hashGenesis The genesis hash to read.
+         *  @param[in] hashLast The last hash (txid) to read.
+         *
+         *  @return True if the last was successfully read, false otherwise.
+         *
+         **/
+        bool ReadLast(const uint256_t& hashGenesis, uint512_t &hashLast)
         {
             return Read(std::make_pair(std::string("last"), hashGenesis), hashLast);
         }

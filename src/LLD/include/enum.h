@@ -17,7 +17,11 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    /** Database flags for keychains and sector. **/
+    /** FLAGS
+     *
+     *  Database flags for keychains and sector.
+     *
+     **/
     struct FLAGS
     {
         enum
@@ -31,7 +35,11 @@ namespace LLD
     };
 
 
-    /** Database states in the keychains. **/
+    /** STATE
+     *
+     *  Database states in the keychains.
+     *
+     **/
     struct STATE
     {
         enum
