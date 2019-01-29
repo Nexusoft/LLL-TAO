@@ -36,7 +36,7 @@ namespace config
     bool fLogTimestamps = false;
 
     /* Give Opposite Argument Settings */
-    void InterpretNegativeSetting(std::string name, std::map<std::string, std::string>& mapSettingsRet)
+    void InterpretNegativeSetting(const std::string &name, std::map<std::string, std::string>& mapSettingsRet)
     {
         // interpret -nofoo as -foo=0 (and -nofoo=0 as -foo=1) as long as -foo not set
         if (name.find("-no") == 0)
@@ -88,6 +88,7 @@ namespace config
                 std::string singleDash(name.begin()+1, name.end());
                 if (mapArgs.count(singleDash) == 0)
                     mapArgs[singleDash] = entry.second;
+
                 name = singleDash;
             }
 
