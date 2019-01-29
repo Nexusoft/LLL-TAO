@@ -80,6 +80,53 @@ namespace Legacy
     }
 
 
+    /* Retrieves the current internal value for the block weight metric. */
+    double GetBlockWeight() const
+    {
+        LOCK(cs_stakeMinter);
+
+        return nBlockWeight;
+    }
+
+
+    /* Retrieves the current block weight metric as a percentage of maximum. */
+    double GetBlockWeightPercent() const
+    {
+        LOCK(cs_stakeMinter);
+
+        return (nBlockWeight / 10.0);
+    }
+
+
+    /* Retrieves the current internal value for the trust weight metric. */
+    double GetTrustWeight() const
+    {
+        LOCK(cs_stakeMinter);
+        
+        return nTrustWeight;
+    }
+
+
+    /* Retrieves the current trust weight metric as a percentage of maximum. */
+    double GetTrustWeightPercent() const
+    {
+        LOCK(cs_stakeMinter);
+        
+        return (nTrustWeight / 90.0);
+    }
+
+
+    /* Checks whether the stake minter is waiting for average coin
+     * age to reach the required minimum before staking Genesis.
+     */
+    bool IsWaitPeriod() const
+    {
+        LOCK(cs_stakeMinter);
+        
+        return fIsWaitPeriod;
+    }
+
+
     /* Start the stake minter. */
     bool StakeMinter::StartStakeMinter()
     {
@@ -351,79 +398,96 @@ namespace Legacy
 
     bool StakeMinter::CalculateWeights()
     {
-            // /* Weight for Trust transactions combine block weight and stake weight. */
-            // double nTrustWeight = 0.0, nBlockWeight = 0.0;
-            // if(block.vtx[0].IsTrust())
-            // {
-            //     /* Get the score and make sure it all checks out. */
-            //     unsigned int nTrustAge;
-            //     if(!block.TrustScore(nTrustAge))
-            //     {
-            //         error("Stake Minter : failed to get trust score");
-            //         continue;
-            //     }
+        /* Use local variables for calculations, then set instance variables with a lock scope at the end */
+        double nCurrentTrustWeight = 0.0
+        double nCurrentBlockWeight = 0.0
+        bool fNewIsWaitPeriod = false;
 
-            //     /* Get the weights with the block age. */
-            //     unsigned int nBlockAge;
-            //     if(!block.BlockAge(nBlockAge))
-            //     {
-            //         error("Stake Minter : failed to get block age");
-            //         continue;
-            //     }
-
-            //     /* Trust Weight Continues to grow the longer you have staked and higher your interest rate */
-            //     nTrustWeight = min(90.0, (((44.0 * log(((2.0 * nTrustAge) / (60 * 60 * 24 * 28 * 3)) + 1.0)) / log(3))) + 1.0);
-
-            //     /* Block Weight Reaches Maximum At Trust Key Expiration. */
-            //     nBlockWeight = min(10.0, (((9.0 * log(((2.0 * nBlockAge) / ((fTestNet ? TRUST_KEY_TIMESPAN_TESTNET : TRUST_KEY_TIMESPAN))) + 1.0)) / log(3))) + 1.0);
-
-            //     /* Set the Reporting Variables for the Qt. */
-            //     dTrustWeight = nTrustWeight;
-            //     dBlockWeight = nBlockWeight;
-            // }
-
-            // /* Weight for Gensis transactions are based on your coin age. */
-            // else
-            // {
-
-            //      Calculate the Average Coinstake Age. 
-            //     LLD::CIndexDB indexdb("cr");
-            //     uint64 nCoinAge;
-            //     if(!block.vtx[0].GetCoinstakeAge(indexdb, nCoinAge))
-            //     {
-            //         error("Stake Minter : failed to get coinstake age");
-            //         continue;
-            //     }
-
-            //     /* Genesis has to wait for one full trust key timespan. */
-            //     if(nCoinAge < (fTestNet ? TRUST_KEY_TIMESPAN_TESTNET : TRUST_KEY_TIMESPAN))
-            //     {
-            //         /* Set flag to display appropriate message in interface */
-            //         fIsWaitPeriod = true;
-
-            //         /* Increase sleep time to wait for coin age to meet requirement (5 minute check) */
-            //         nSleepTime = 300000;
-
-            //         printf("Stake Minter : genesis age is immature\n");
-            //         continue;
-            //     }
-            //     else if (nSleepTime == 300000) {
-            //         /* Reset interface flag */
-            //         fIsWaitPeriod = false;
-
-            //         /* Reset sleep time after coin age meets requirement. */
-            //         nSleepTime = 1000;
-            //     }
-
-            //     /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */
-            //     nTrustWeight = min(10.0, (((9.0 * log(((2.0 * nCoinAge) / (60 * 60 * 24 * 28 * 3)) + 1.0)) / log(3))) + 1.0);
-
-            //     /* Set the Reporting Variables for the Qt. */
-            //     dTrustWeight = nTrustWeight;
-            //     dBlockWeight = 0;
-            // }
+        /* Weight for Trust transactions combine block weight and stake weight. */
+        if(candidateBlock.producer.IsTrust())
+        {
+            uint32_t nTrustScore;
+            uint32_t nBlockAge;
+            uint32_t nMaximumBlockAge = (fTestNet ? TRUST_KEY_TIMESPAN_TESTNET : TRUST_KEY_TIMESPAN);
 
 
+            /* Retrieve the current Trust Score from the candidate block */
+            if(!candidateBlock.TrustScore(nTrustScore))
+            {
+                debug::error(FUNCTION, "Failed to get trust score");
+                return false;
+            }
+
+            /* Retrieve the current Block Age from the candidate block */
+            if(!candidateBlock.BlockAge(nBlockAge))
+            {
+                debug::error(FUNCTION, "Failed to get block age");
+                return false;
+            }
+
+            /* Trust Weight continues to grow with Trust Score until it reaches max of 90.0
+             * This formula will reach 45.0 (50%) after accumulating 84 days worth of Trust Score, while requiring close to a year to reach maximum.
+             */
+            nCurrentTrustWeight = min(90.0, (((44.0 * log(((2.0 * nTrustScore) / (60 * 60 * 24 * 28 * 3)) + 1.0)) / log(3))) + 1.0);
+
+            /* Block Weight reaches maximum of 10.0 when Block Age equals the defined timespan */
+            nCurrentBlockWeight = min(10.0, (((9.0 * log(((2.0 * nBlockAge) / nMaximumBlockAge) + 1.0)) / log(3))) + 1.0);
+
+        }
+
+        /* Weight for Gensis transactions are based on your coin age. */
+        else
+        {
+            uint64_t nCoinAge;
+            uint32_t nMinimumCoinAge = (fTestNet ? TRUST_KEY_TIMESPAN_TESTNET : TRUST_KEY_TIMESPAN);
+
+            /* Calculate the average Coin Age for coinstake inputs of candidate block. */
+//TODO - Coinstake age currently only exists on Legacy::Transaction and block producer is TAO::Ledger::Transaction
+//            if(!block.producer.CoinstakeAge(nCoinAge))
+//            {
+                debug::error(FUNCTION, "Failed to get coinstake age");
+                return false;
+//            }
+
+            /* Genesis has to wait for average coin age to reach one full trust key timespan. */
+            if(nCoinAge < nMinimumCoinAge)
+            {
+                /* Record that stake minter is in wait period */
+                fNewIsWaitPeriod = true;
+
+                /* Increase sleep time to wait for coin age to meet requirement (5 minute check) */
+                nSleepTime = 300000;
+
+                debug::log(0, FUNCTION, "Genesis average coin age is immature");
+                return false;
+            }
+            else  
+            {
+                /* Reset wait period setting */
+                fNewIsWaitPeriod = false;
+
+                /* Reset sleep time after coin age meets requirement. */
+                nSleepTime = 1000;
+            }
+
+            /* Trust Weight For Genesis is based on Coin Age, grows more slowly than post-Genesis Trust Weight,
+             * and only reaches a maximum of 10.0 after average Coin Age reaches 84 days. 
+             */
+            nCurrentTrustWeight = min(10.0, (((9.0 * log(((2.0 * nCoinAge) / (60 * 60 * 24 * 28 * 3)) + 1.0)) / log(3))) + 1.0);
+
+            /* Block Weight remains zero while staking for Genesis */
+        }
+
+        {
+            LOCK(cs_stakeMinter);
+
+            /* These are updated via lock scope because someone may be checking these values using the available methods */
+            nBlockWeight = nCurrentBlockWeight;
+            nTrustWeight = nCurrentTrustWeight;
+            fIsWaitPeriod = fNewIsWaitPeriod;
+        }
+
+        return true;
     }
 
 
@@ -582,11 +646,14 @@ namespace Legacy
             /* Set up the candidate block the minter is attempting to mine */
             pstakeMinter->CreateCandidateBlock();
 
-            /* Calculate weights and settings to mine proof of stake */
+            /* Updates weights for new candidate block */
             pstakeMinter->CalculateWeights();
 
             /* Attempt to mine the current proof of stake block */
             pstakeMinter->MineProofOfStake();
+
+            /* Reset candidate block for next iteration */
+            pstakeMinter->ResetMinter();
 
             /* Check whether the stake minter has been stopped */
             {
@@ -624,9 +691,6 @@ namespace Legacy
                     StakeMinter::fstopMinter = false;
                 }
             }
-
-            /* Reset candidate block and weights for next iteration */
-            pstakeMinter->ResetMinter();
         }
 
         /* On shutdown, delete the minter instance and wait for it to destruct before ending */ 

@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <TAO/Ledger/types/trustkey.h>
+#include <TAO/Ledger/types/tritium.h>
 
 #include <Util/include/mutex.h>
 
@@ -58,7 +59,7 @@ namespace Legacy
           * @return reference to the StakeMinter instance
           *
           **/
-        static StakeMinter& GetInstance(const CWallet& stakingWallet);
+        static StakeMinter& GetInstance();
 
 
         /** IsStarted
@@ -69,6 +70,57 @@ namespace Legacy
           *
           */
         inline bool IsStarted() const;
+
+
+        /** GetBlockWeight
+          * 
+          * Retrieves the current internal value for the block weight metric. 
+          * 
+          * @return value of current block weight
+          *
+          */
+        double GetBlockWeight() const;
+
+
+        /** GetBlockWeight
+          * 
+          * Retrieves the block weight metric as a percentage of maximum. 
+          * 
+          * @return the current block weight percentage
+          *
+          */
+        double GetBlockWeightPercent() const;
+
+
+        /** GetTrustWeight
+          * 
+          * Retrieves the current internal value for the trust weight metric. 
+          * 
+          * @return value of current trust weight
+          *
+          */
+        double GetTrustWeight() const;
+
+
+        /** GetTrustWeight
+          * 
+          * Retrieves the trust weight metric as a percentage of maximum. 
+          * 
+          * @return the current trust weight percentage
+          *
+          */
+        double GetTrustWeightPercent() const;
+
+
+        /** IsWaitPeriod
+          * 
+          * Checks whether the stake minter is waiting for average coin
+          * age to reach the required minimum before staking Genesis.
+          * 
+          * @return true if minter is waiting on coin age, false otherwise
+          *
+          */
+        bool IsWaitPeriod() const;
 
 
         /** StartStakeMinter
@@ -154,6 +206,8 @@ namespace Legacy
 
         uint64_t nSleepTime;
 
+        bool fIsWaitPeriod;
+
         double nTrustWeight;
 
         double nBlockWeight;
@@ -172,6 +226,7 @@ namespace Legacy
         , hashLastBlock(0)
         , pCandidateBlock(TritiumBlock())
         , nSleepTime(1000)
+        , fIsWaitPeriod(false)
         , nTrustWeight(0.0)
         , nBlockWeight(0.0)
         , nRequired(0.0)
