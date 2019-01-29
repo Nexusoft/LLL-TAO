@@ -40,14 +40,15 @@ namespace TAO
 
     /* Ledger Layer namespace. */
     namespace Ledger
-    {
+    { 
         std::mutex BlockState::STATE_MUTEX;
 
         /* Get the block state object. */
-        bool GetLastState(BlockState &state, uint32_t nChannel)
+        bool GetLastState(BlockState &state, uint32_t nChannel, uint32_t nMaxLookback)
         {
-            /* Loop back 10k blocks. */
-            while(!config::fShutdown)
+            /* :Limit look back to nMaxLookback blocks. */
+            uint32_t nIteration = 0;
+            while(!config::fShutdown && nIteration++ < nMaxLookback)
             {
                 /* Return false on genesis. */
                 if(state.GetHash() == hashGenesis)

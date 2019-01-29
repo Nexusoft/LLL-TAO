@@ -322,11 +322,12 @@ namespace TAO
          *
          *  @param[in] state The block to search from.
          *  @param[in] nChannel The channel to search for.
+         *  @param[in] nMaxLookback The maximum number of blocks to look back from the initial BlockState, default 10000
          *
          *  @return The block state found.
          *
          **/
-        bool GetLastState(BlockState& state, uint32_t nChannel);
+        bool GetLastState(BlockState& state, uint32_t nChannel, uint32_t nMaxLookback = 10000);
     }
 }
 
