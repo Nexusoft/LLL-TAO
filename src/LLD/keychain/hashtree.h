@@ -25,7 +25,7 @@ namespace LLD
 {
 
 
-    /** Binary Hash Tree
+    /** BinaryHashTree
      *
      *  This class is responsible for managing the keys to the sector database.
      *
@@ -80,6 +80,7 @@ namespace LLD
 
     public:
 
+        /** Default Constructor **/
         BinaryHashTree()
         : HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
         , HASHMAP_MAX_CACHE_SZIE(10 * 1024)
@@ -91,6 +92,7 @@ namespace LLD
         {
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
         }
+
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         BinaryHashTree(std::string strBaseLocationIn)
@@ -109,7 +111,7 @@ namespace LLD
         }
 
 
-        /** Clean up Memory Usage. **/
+        /** Default Destructor **/
         ~BinaryHashTree()
         {
             if(fileCache)
@@ -117,8 +119,16 @@ namespace LLD
         }
 
 
-        /** Handle the Assigning of a Map Bucket. **/
-        uint32_t GetBucket(const std::vector<uint8_t> vKey) const
+        /** GetBucket
+         *
+         *  Handle the Assigning of a Map Bucket.
+         *
+         *  @param[in] vKey The key to obtain a bucket id from.
+         *
+         *  @return Returns the bucket id.
+         *
+         **/
+        uint32_t GetBucket(const std::vector<uint8_t> &vKey) const
         {
             uint64_t nBucket = 0;
             for(uint32_t i = 0; i < vKey.size() && i < 8; ++i)
@@ -128,7 +138,11 @@ namespace LLD
         }
 
 
-        /** Read the Database Keys and File Positions. **/
+        /** Initialize
+         *
+         *  Read the Database Keys and File Positions.
+         *
+         **/
         void Initialize()
         {
             /* Create directories if they don't exist yet. */
@@ -199,7 +213,16 @@ namespace LLD
         }
 
 
-        /** Get a Record from the Database with Given Key. **/
+        /** Get
+         *
+         *  Read a key index from the disk hashmaps.
+         *
+         *  @param[in] vKey The binary data of key.
+         *  @param[out] cKey The key object to return.
+         *
+         *  @return True if the key was found, false otherwise.
+         *
+         **/
         bool Get(const std::vector<uint8_t> vKey, SectorKey& cKey)
         {
             LOCK(KEY_MUTEX);
@@ -246,8 +269,16 @@ namespace LLD
         }
 
 
-        /** Add / Update A Record in the Database **/
-        bool Put(SectorKey cKey) const
+        /** Put
+         *
+         *  Write a key to the disk hashmaps.
+         *
+         *  @param[in] cKey The key object to write.
+         *
+         *  @return True if the key was written, false otherwise.
+         *
+         **/
+        bool Put(const SectorKey &cKey) const
         {
             LOCK(KEY_MUTEX);
 
@@ -302,7 +333,11 @@ namespace LLD
         }
 
 
-        /* Helper Thread to Batch Write to Disk. */
+        /** CacheWriter
+         *
+         *  Helper Thread to Batch Write to Disk.
+         *
+         **/
         void CacheWriter()
         {
             while(!fShutdown)
@@ -332,8 +367,17 @@ namespace LLD
             }
         }
 
-        /** Simple Erase for now, not efficient in Data Usage of HD but quick to get erase function working. **/
-        bool Erase(const std::vector<uint8_t> vKey)
+        /** Erase
+         *
+         *  Simple Erase for now, not efficient in Data Usage of HD but quick to
+         *  get erase function working.
+         *
+         *  @param[in] vKey the key to erase.
+         *
+         *  @return True if the key was erased, false otherwise.
+         *
+         **/
+        bool Erase(const std::vector<uint8_t> &vKey)
         {
             LOCK(KEY_MUTEX);
 

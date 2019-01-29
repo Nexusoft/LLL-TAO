@@ -24,7 +24,7 @@ namespace LLD
 {
 
 
-    /** Template Node
+    /** TemplateNode
      *
      *  Node to hold the key/values of the double linked list.
      *
@@ -79,12 +79,13 @@ namespace LLD
     };
 
 
-    /** Holding Pool:
+    /** TemplateLRU
     *
-    * This class is responsible for holding data that is partially processed.
-    * This class has no types, all objects are in binary forms
+    *   LRU - Least Recently Used.
+    *   This class is responsible for holding data that is partially processed.
+    *   This class has no types, all objects are in binary forms.
     *
-    */
+    **/
     template<typename KeyType, typename DataType>
     class TemplateLRU
     {
@@ -126,7 +127,7 @@ namespace LLD
          *  MAX_CACHE_ELEMENTS default value is 256 objects
          *  MAX_CACHE_BUCKETS default value is number of elements
          *
-         */
+         **/
         TemplateLRU()
         : MAX_CACHE_ELEMENTS(256)
         , MAX_CACHE_BUCKETS(MAX_CACHE_ELEMENTS * 2)
@@ -145,7 +146,7 @@ namespace LLD
          *
          * @param[in] nTotalElementsIn The maximum size of this Cache Pool
          *
-         */
+         **/
         TemplateLRU(uint32_t nTotalElementsIn)
         : MAX_CACHE_ELEMENTS(nTotalElementsIn)
         , MAX_CACHE_BUCKETS(MAX_CACHE_ELEMENTS * 2)
@@ -163,7 +164,7 @@ namespace LLD
         }
 
 
-        /* Class Destructor. */
+        /** Class Destructor. **/
         ~TemplateLRU()
         {
             /* Loop through the linked list. */
@@ -174,6 +175,7 @@ namespace LLD
             }
         }
 
+        /** Copy assignment operator **/
         TemplateLRU& operator=(TemplateLRU map)
         {
             MAX_CACHE_ELEMENTS = map.MAX_CACHE_ELEMENTS;
@@ -188,6 +190,7 @@ namespace LLD
         }
 
 
+        /** Copy Constructor **/
         TemplateLRU(const TemplateLRU& map)
         {
             MAX_CACHE_ELEMENTS = map.MAX_CACHE_ELEMENTS;
@@ -224,13 +227,15 @@ namespace LLD
         }
 
 
-        /** Check if data exists
+        /** Has
          *
-         * @param[in] Key The binary data of the key
+         *  Check if data exists.
          *
-         * @return True/False whether pool contains data by index
+         *  @param[in] Key The binary data of the key.
          *
-         */
+         *  @return True/False whether pool contains data by index.
+         *
+         **/
         bool Has(const KeyType& Key) const
         {
             LOCK(MUTEX);
@@ -240,13 +245,13 @@ namespace LLD
         }
 
 
-        /** Remove Node
+        /** RemoveNode
          *
          *  Remove a node from the double linked list.
          *
          *  @param[in] pthis The node to remove from list.
          *
-         */
+         **/
         void RemoveNode(TemplateNode<KeyType, DataType> *pthis)
         {
             /* Relink last pointer. */
@@ -277,7 +282,7 @@ namespace LLD
         }
 
 
-        /** Move to Front
+        /** MoveToFront
          *
          *  Move the node in double linked list to front.
          *
@@ -323,14 +328,16 @@ namespace LLD
         }
 
 
-        /** Get the data by index
+        /** Get
          *
-         * @param[in] Key The key type
-         * @param[out] Data The data type
+         *  Get the data by index
          *
-         * @return True if object was found, false if none found by index.
+         *  @param[in] Key The key type.
+         *  @param[out] Data The data type.
          *
-         */
+         *  @return True if object was found, false if none found by index.
+         *
+         **/
         bool Get(const KeyType& Key, DataType& Data)
         {
             LOCK(MUTEX);
@@ -352,12 +359,14 @@ namespace LLD
         }
 
 
-        /** Add data in the Pool
+        /** Put
          *
-         * @param[in] Key The key type object
-         * @param[in] Data The data type object
+         *  Add data in the Pool.
          *
-         */
+         *  @param[in] Key The key type object.
+         *  @param[in] Data The data type object.
+         *
+         **/
         void Put(const KeyType& Key, const DataType& Data)
         {
             LOCK(MUTEX);
@@ -422,14 +431,15 @@ namespace LLD
         }
 
 
-
-        /** Force Remove Object by Index
+        /** Remove
          *
-         * @param[in] Key Binary Data of the Key
+         *  Force Remove an Object by Index.
          *
-         * @return True on successful removal, false if it fails
+         *  @param[in] Key The Binary Data of the Key.
          *
-         */
+         *  @return True on successful removal, false if it fails.
+         *
+         **/
         bool Remove(const KeyType& Key)
         {
             /* Check if the Record Exists. */

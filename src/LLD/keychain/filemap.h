@@ -23,13 +23,16 @@ namespace LLD
     const uint32_t FILEMAP_MAX_FILE_SIZE = 1024 * 1024 * 1024; //1 GB per File
 
 
-    /** Binary File Map Database Class.
+    /** BinaryFileMap
      *
-        Stores and Contains the Sector Keys to Access the Sector Database.
-    **/
+     *  Binary File Map Database Class.
+     *  Stores and Contains the Sector Keys to Access the Sector Database.
+     *
+     **/
     class BinaryFileMap
     {
     protected:
+
         /** Mutex for Thread Synchronization. **/
         mutable std::mutex KEY_MUTEX;
 
@@ -83,14 +86,13 @@ namespace LLD
         }
 
 
-        /** Clean up Memory Usage. **/
+        /** Default Destructor **/
         ~BinaryFileMap() {}
 
 
+        /** Copy assignment operator **/
         BinaryFileMap& operator=(BinaryFileMap map)
         {
-            //KEY_MUTEX = map.KEY_MUTEX;
-
             strBaseLocation    = map.strBaseLocation;
             fMemoryCaching     = map.fMemoryCaching;
             nCacheSize         = map.nCacheSize;
@@ -103,10 +105,9 @@ namespace LLD
         }
 
 
+        /** Copy Constructor **/
         BinaryFileMap(const BinaryFileMap& map)
         {
-            //KEY_MUTEX = map.KEY_MUTEX;
-
             strBaseLocation    = map.strBaseLocation;
             fMemoryCaching     = map.fMemoryCaching;
             nCacheSize         = map.nCacheSize;
@@ -118,25 +119,43 @@ namespace LLD
         }
 
 
-        /** Return the Keys to the Records Held in the Database. **/
-        std::vector< std::vector<uint8_t> > GetKeys()
+        /** GetKeys
+         *
+         *  Return the Keys to the Records Held in the Database.
+         *
+         **/
+        std::vector< std::vector<uint8_t> > GetKeys() const
         {
             std::vector< std::vector<uint8_t> > vKeys;
-            for(typename std::map< std::vector<uint8_t>, std::pair<uint16_t, uint32_t> >::iterator nIterator = mapKeys.begin(); nIterator != mapKeys.end(); nIterator++ )
+            auto nIterator = mapKeys.begin();
+
+            for(; nIterator != mapKeys.end(); ++nIterator)
                 vKeys.push_back(nIterator->first);
 
             return vKeys;
         }
 
 
-        /** Return Whether a Key Exists in the Database. **/
-        bool HasKey(const std::vector<uint8_t>& vKey)
+        /** HasKey
+         *
+         *  Determines if the database has the Key.
+         *
+         *  @param[in] vKey The Key to search for.
+         *
+         *  Return Whether a Key Exists in the Database.
+         *
+         **/
+        bool HasKey(const std::vector<uint8_t>& vKey) const
         {
             return mapKeys.count(vKey);
         }
 
 
-        /** Read the Database Keys and File Positions. **/
+        /** Initialize
+         *
+         *  Read the Database Keys and File Positions.
+         *
+         **/
         void Initialize()
         {
             LOCK(KEY_MUTEX);
@@ -232,7 +251,12 @@ namespace LLD
             debug::log(0, FUNCTION, "Initialized with ", nTotalKeys, " Keys | Total Size ", nKeychainSize, " | Total Files ", nCurrentFile + 1, " | Current Size ", nCurrentFileSize);
         }
 
-        /** Add / Update A Record in the Database **/
+
+        /** Put
+         *
+         *  Add / Update A Record in the Database
+         *
+         **/
         bool Put(SectorKey cKey) const
         {
             LOCK(KEY_MUTEX);
@@ -291,8 +315,18 @@ namespace LLD
             return true;
         }
 
-        /** Simple Erase for now, not efficient in Data Usage of HD but quick to get erase function working. **/
-        bool Erase(const std::vector<uint8_t>& vKey)
+
+        /** Erase
+         *
+         *  Simple Erase for now, not efficient in Data Usage of HD but quick
+         *  to get erase function working.
+         *
+         *  @param[in] vKey The key to erase.
+         *
+         *  @return Returns true if key erase was successful, false otherwise.
+         *
+         **/
+        bool Erase(const std::vector<uint8_t> &vKey)
         {
             LOCK(KEY_MUTEX);
 
@@ -322,7 +356,17 @@ namespace LLD
             return true;
         }
 
-        /** Get a Record from the Database with Given Key. **/
+
+        /** Get
+         *
+         *  Get a Record from the Database with Given Key.
+         *
+         *  @param[in] vKey The key to search for.
+         *  @param[out] cKey The Record to retrieve from the database.
+         *
+         *  @return True if successful retrieval, false otherwise.
+         *
+         **/
         bool Get(const std::vector<uint8_t>& vKey, SectorKey& cKey)
         {
             LOCK(KEY_MUTEX);
