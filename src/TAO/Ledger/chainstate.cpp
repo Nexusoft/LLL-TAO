@@ -65,6 +65,7 @@ namespace TAO
             return (stateBest.GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60);
         }
 
+
         /* Initialize the Chain State. */
         bool ChainState::Initialize()
         {

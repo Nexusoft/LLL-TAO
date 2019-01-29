@@ -26,11 +26,11 @@ namespace TAO
 
         /** Rollback
          *
-         *  Rollback the current network state to register pre-states
+         *  Rollback the current network state to register pre-states.
          *
          *  @param[in] tx The transaction to verify pre-states with.
          *
-         *  @return true if verified correctly.
+         *  @return True if verified correctly, false otherwise.
          *
          **/
         bool Rollback(TAO::Ledger::Transaction tx);

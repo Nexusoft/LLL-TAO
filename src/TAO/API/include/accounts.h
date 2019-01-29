@@ -56,7 +56,7 @@ namespace TAO
             void Initialize() final;
 
 
-            /** Get Key
+            /** GetKey
              *
              *  Returns a key from the account logged in.
              *
@@ -68,7 +68,7 @@ namespace TAO
             uint512_t GetKey(uint32_t nKey, SecureString strSecret, uint64_t nSession) const;
 
 
-             /** Get Genesis
+             /** GetGenesis
               *
               *  Returns the genesis ID from the account logged in.
               *
@@ -80,7 +80,7 @@ namespace TAO
              uint256_t GetGenesis(uint64_t nSession) const;
 
 
-             /** Get Sigchain
+             /** GetAccount
               *
               *  Returns the sigchain the account logged in.
               *
@@ -93,7 +93,7 @@ namespace TAO
              bool GetAccount(uint64_t nSession, TAO::Ledger::SignatureChain* &user) const;
 
 
-            /** Get Name
+            /** GetName
              *
              *  Returns the name of this API.
              *
@@ -130,7 +130,7 @@ namespace TAO
             json::json Logout(const json::json& params, bool fHelp);
 
 
-            /** Create Account
+            /** CreateAccount
              *
              *  Create's a user account.
              *
@@ -143,7 +143,7 @@ namespace TAO
             json::json CreateAccount(const json::json& params, bool fHelp);
 
 
-            /** Get Transactions
+            /** GetTransactions
              *
              *  Get transactions for an account
              *

@@ -30,6 +30,8 @@ const uint32_t MAX_UNIFIED_DRIFT = 1;
 
 namespace runtime
 {
+
+
     /** timestamp
      *
      *  Return the Current UNIX timestamp.
@@ -76,8 +78,13 @@ namespace runtime
                         std::this_thread::sleep_for(std::chrono::milliseconds(nTime));
     }
 
-    /* Special Specification for HTTP Protocol.
-        TODO: This could be cleaned up I'd say. */
+
+    /** rfc1123Time
+     *
+     *  Special Specification for HTTP Protocol.
+     *  TODO: This could be cleaned up I'd say.
+     *
+     **/
     inline std::string rfc1123Time()
     {
         char buffer[64];
@@ -90,6 +97,7 @@ namespace runtime
         setlocale(LC_TIME, locale.c_str());
         return std::string(buffer);
     }
+
 
     /** timer
      *
@@ -197,6 +205,7 @@ namespace runtime
 
             return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start_time).count();
         }
+
 
         /* Return the Total Nanoseconds Elapsed since Time Started. */
         uint64_t ElapsedNanoseconds() const

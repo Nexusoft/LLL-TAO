@@ -48,7 +48,6 @@ namespace config
      *  Setup PID file for Linux users.
      *
      *  @param[in] path The path to the pid file.
-     *
      *  @param[in] pid The process ID.
      *
      **/

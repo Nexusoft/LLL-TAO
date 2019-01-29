@@ -30,7 +30,7 @@ namespace TAO
          *  @param[in] regDB The register database to execute on
          *  @param[in] hashOwner The owner executing the register batch.
          *
-         *  @return True if operations executed successfully.
+         *  @return True if operations executed successfully, false otherwise.
          *
          **/
         bool Validate(std::vector<uint8_t> vchData, uint256_t hashOwner)

@@ -26,28 +26,47 @@ namespace TAO
     namespace API
     {
 
-        /** Base class for all JSON based API's.
+        /** Base
          *
-         *  Instances of JSONAPIBase derivations must be registered with the JSONAPINode processing the HTTP requests.
-         *  This class holds a map of JSONAPIMethod instances that in turn perform the processing for each API method request.
+         *  Base class for all JSON based API's.
+         *
+         *  Instances of JSONAPIBase derivations must be registered with the
+         *  JSONAPINode processing the HTTP requests. This class holds a map of
+         *  JSONAPIMethod instances that in turn perform the processing for each
+         *  API method request.
          *
          **/
         class Base
         {
         public:
+
+
+            /** Default Constructor **/
             Base() : fInitialized(false) { }
 
+
+            /** Default destructor **/
             virtual ~Base()
             {
                 mapFunctions.clear();
             }
 
 
-            /** Abstract initializor that all derived API's must implement to register their specific APICommands. **/
+            /** Initialize
+             *
+             *  Abstract initializor that all derived API's must implement to
+             *  register their specific APICommands.
+             *
+             **/
             virtual void Initialize() = 0;
 
 
-            /** Name of this API.  Derivations should implement this and return an appropriate API name */
+            /** GetName
+             *
+             *  Name of this API.  Derivations should implement this and return
+             *  an appropriate API name
+             *
+             **/
             virtual std::string GetName() const = 0;
 
 
@@ -71,6 +90,7 @@ namespace TAO
                 else
                     throw APIException(-32601, debug::strprintf("Method not found: %s", strMethod.c_str()));
             }
+
 
             /** SanitizeParams
             *

@@ -29,7 +29,9 @@ namespace TAO
     namespace Ledger
     {
 
-        /** Base Class for a Signature SignatureChain
+        /** SignatureChain
+         *
+         *  Base Class for a Signature SignatureChain
          *
          *  Similar to HD wallet systems, but integrated into the Layer 2 of the nexus software stack.
          *  Seed phrase includes at least 128 bits of entropy (8 char username, 8 char password) and pin
@@ -47,6 +49,8 @@ namespace TAO
             SecureString strPassword;
 
         public:
+
+            
             /** Constructor to generate Keychain
              *
              * @param[in] strUsernameIn The username to seed the signature chain
@@ -60,7 +64,7 @@ namespace TAO
             }
 
 
-            /** Genesis Function
+            /** Genesis
              *
              *  This function is responsible for generating the genesis ID.
              *
@@ -80,7 +84,7 @@ namespace TAO
             }
 
 
-            /** Generate Function
+            /** Generate
              *
              *  This function is responsible for genearting the private key in the keychain of a specific account.
              *  The keychain is a series of keys seeded from a secret phrase and a PIN number.

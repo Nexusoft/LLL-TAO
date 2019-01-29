@@ -57,6 +57,7 @@ namespace TAO
             }
 
 
+            /** Serialization **/
             IMPLEMENT_SERIALIZE
             (
                 READWRITE(vchData);

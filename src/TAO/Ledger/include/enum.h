@@ -22,7 +22,7 @@ namespace TAO
     namespace Ledger
     {
 
-        /** Enumeration for transaction types. */
+        /** Enumeration for transaction types. **/
         enum
         {
             TRITIUM = 0x00,

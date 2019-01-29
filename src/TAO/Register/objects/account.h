@@ -27,7 +27,7 @@ namespace TAO
     namespace Register
     {
 
-        /** Account Object.
+        /** Account
          *
          *  Holds the state of account identifier and account balance.
          *
@@ -54,7 +54,8 @@ namespace TAO
                 SetNull();
             }
 
-            //serialization functions
+
+            /** Serialization **/
             IMPLEMENT_SERIALIZE
             (
                 READWRITE(nVersion);

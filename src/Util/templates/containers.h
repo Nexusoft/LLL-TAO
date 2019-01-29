@@ -146,6 +146,7 @@ public:
         vList.push_back(value);
     }
 
+
     /**	Average
      *
      *  Return an average value of type T.

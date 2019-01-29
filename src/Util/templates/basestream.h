@@ -74,7 +74,7 @@ public:
     }
 
 
-    /** Set null method.
+    /** SetNull
      *
      *  Sets the object into null state.
      *
@@ -86,7 +86,7 @@ public:
     }
 
 
-    /** Is null method
+    /** IsNull
      *
      *  Returns if object is in null state.
      *
@@ -97,9 +97,9 @@ public:
     }
 
 
-    /** Reset
+    /** reset
      *
-     *  Resets the internal read pointer
+     *  Resets the internal read pointer.
      *
      **/
     void reset() const
@@ -108,9 +108,9 @@ public:
     }
 
 
-    /** Get
+    /** get
      *
-     *  Gets a byte without chainging read pointer
+     *  Gets a byte without chainging read pointer.
      *
      **/
     uint8_t get(uint32_t nPos) const
@@ -122,7 +122,7 @@ public:
     }
 
 
-    /** Size
+    /** size
      *
      *  Gets the size of the stream.
      *
@@ -133,7 +133,7 @@ public:
     }
 
 
-    /** Seek
+    /** seek
      *
      *  Seeks the read pointer to position.
      *
@@ -175,9 +175,9 @@ public:
     }
 
 
-    /** Begin
+    /** begin
      *
-     *  Returns if the opeartions stream is on first operation
+     *  Returns if the opeartions stream is on first operation.
      *
      **/
     bool begin() const
@@ -186,9 +186,9 @@ public:
     }
 
 
-    /** End
+    /** end
      *
-     *  Returns if end of stream is found
+     *  Returns if end of stream is found.
      *
      **/
     bool end() const
@@ -199,11 +199,12 @@ public:
 
     /** read
      *
-     *  Reads raw data from the stream
+     *  Reads raw data from the stream.
      *
-     *  @param[in] pch The pointer to beginning of memory to write
+     *  @param[in] pch The pointer to beginning of memory to write.
+     *  @param[in] nSize The total number of bytes to read.
      *
-     *  @param[in] nSize The total number of bytes to read
+     *  @return Returns a reference to the BaseStream.
      *
      **/
     const BaseStream& read(char* pch, int nSize) const
@@ -224,11 +225,10 @@ public:
 
     /** write
      *
-     *  Writes data into the stream
+     *  Writes data into the stream.
      *
-     *  @param[in] pch The pointer to beginning of memory to write
-     *
-     *  @param[in] nSize The total number of bytes to copy
+     *  @param[in] pch The pointer to beginning of memory to write.
+     *  @param[in] nSize The total number of bytes to copy.
      *
      **/
     BaseStream& write(const char* pch, int nSize)

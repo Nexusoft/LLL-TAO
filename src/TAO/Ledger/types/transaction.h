@@ -29,12 +29,15 @@ namespace TAO
     namespace Ledger
     {
 
-        /** Tritium Transaction.
+        /** Transaction
          *
-         *  State of a tritium specific transaction.
+         *  A Tritium Transaction.
+         *  Stores state of a tritium specific transaction.
+         *
+         *  transaction header size is 144 bytes
          *
          **/
-        class Transaction //transaction header size is 144 bytes
+        class Transaction
         {
         public:
 
@@ -76,7 +79,7 @@ namespace TAO
             std::vector<uint8_t> vchSig;
 
 
-            //serialization methods
+            /** Serialization **/
             IMPLEMENT_SERIALIZE
             (
                 /* Operations layer. */
@@ -139,7 +142,7 @@ namespace TAO
             bool IsValid() const;
 
 
-            /** Extract Trust
+            /** ExtractTrust
              *
              *  Extract the trust data from the input script.
              *
@@ -151,7 +154,7 @@ namespace TAO
             bool ExtractTrust(uint1024_t& hashLastBlock, uint32_t& nSequence, uint32_t& nTrustScore) const;
 
 
-            /** Extract Stake
+            /** ExtractStake
              *
              *  Extract the stake data from the input script.
              *
@@ -161,7 +164,7 @@ namespace TAO
             bool ExtractStake(uint64_t& nStake) const;
 
 
-            /** Is Coinbase
+            /** IsCoinbase
              *
              *  Determines if the transaction is a coinbase transaction.
              *
@@ -171,7 +174,7 @@ namespace TAO
             bool IsCoinbase() const;
 
 
-            /** Is Trust
+            /** IsTrust
              *
              *  Determines if the transaction is a trust transaction.
              *
@@ -231,15 +234,15 @@ namespace TAO
              bool Sign(uint512_t hashSecret);
 
 
-
-             /** Print
+             /** print
               *
-              * Prints the object to the console.
+              *  Prints the object to the console.
               *
               **/
              void print() const;
 
-             /** To String Short
+
+             /** ToStringShort
              *
              *  Short form of the debug output.
              *

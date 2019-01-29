@@ -33,7 +33,7 @@ namespace TAO
     namespace Ledger
     {
 
-        /** Block Class
+        /** Block
          *
          *  Nodes collect new transactions into a block, hash them into a hash tree,
          *  and scan through nonce values to make the block's hash satisfy validation
@@ -87,10 +87,10 @@ namespace TAO
 
             /** A base constructor.
              *
-             *    @param[in] nVersionIn The version to set block to
-             *    @param[in] hashPrevBlockIn The previous block being linked to
-             *    @param[in] nChannelIn The channel this block is being created for
-             *    @param[in] nHeightIn The height this block is being created at.
+             *  @param[in] nVersionIn The version to set block to
+             *  @param[in] hashPrevBlockIn The previous block being linked to
+             *  @param[in] nChannelIn The channel this block is being created for
+             *  @param[in] nHeightIn The height this block is being created at.
              *
             **/
             Block(uint32_t nVersionIn, uint1024_t hashPrevBlockIn, uint32_t nChannelIn, uint32_t nHeightIn)
@@ -103,15 +103,19 @@ namespace TAO
             , nTime(runtime::unifiedtimestamp()) { }
 
 
-            /** Set the block to Null state. **/
+            /** SetNull
+             *
+             *  Set the block to Null state.
+             *
+             **/
             void SetNull();
 
 
             /** SetChannel
              *
-             *    Sets the channel for the block.
+             *  Sets the channel for the block.
              *
-             *    @param[in] nNewChannel The channel to set.
+             *  @param[in] nNewChannel The channel to set.
              *
              **/
             void SetChannel(uint32_t nNewChannel);
@@ -119,9 +123,9 @@ namespace TAO
 
             /** GetChannel
              *
-             *    Gets the channel the block belongs to
+             *  Gets the channel the block belongs to.
              *
-             *    @return The channel assigned (uint32_t)
+             *  @return The channel assigned. (uint32_t)
              *
              */
             uint32_t GetChannel() const;
@@ -129,9 +133,9 @@ namespace TAO
 
             /** IsNull
              *
-             *    Checks the Null state of the block
+             *  Checks the Null state of the block.
              *
-             *    @return true if null, false otherwise
+             *  @return True if null, false otherwise.
              *
              **/
             bool IsNull() const;
@@ -139,9 +143,9 @@ namespace TAO
 
             /** GetBlockTime
              *
-             *    Returns the current UNIX timestamp of the block.
+             *  Returns the current UNIX timestamp of the block.
              *
-             *    @return 64-bit uint32_teger of timestamp
+             *  @return 64-bit uint32_teger of timestamp.
              *
              **/
             uint64_t GetBlockTime() const;
@@ -149,39 +153,39 @@ namespace TAO
 
             /** GetPrime
              *
-             *    Get the Prime number for the block (hash + nNonce)
+             *  Get the Prime number for the block (hash + nNonce).
              *
-             *    @return Prime number stored as a CBigNum (wrapper for BIGNUM in OpenSSL)
+             *  @return Prime number stored as a CBigNum. (wrapper for BIGNUM in OpenSSL)
              *
              **/
             LLC::CBigNum GetPrime() const;
 
 
-            /** Proof Hash
+            /** ProofHash
              *
-             *    Get the Proof Hash of the block. Used to verify work claims.
+             *  Get the Proof Hash of the block. Used to verify work claims.
              *
-             *    @return 1024-bit proof hash
+             *  @return 1024-bit proof hash
              *
              **/
             uint1024_t ProofHash() const;
 
 
-            /** Signature Hash
+            /** SignatureHash
              *
-             *    Get the hash for signatures.
+             *  Get the hash for signatures.
              *
-             *    @return 1024-bit proof hash
+             *  @return 1024-bit signature hash
              *
              **/
             uint1024_t SignatureHash() const;
 
 
-            /** Get Hash
+            /** GetHash
              *
-             *    Get the Hash of the block.
+             *  Get the Hash of the block.
              *
-             *    @return 1024-bit block hash
+             *  @return 1024-bit block hash
              *
              **/
             uint1024_t GetHash() const;
@@ -189,7 +193,7 @@ namespace TAO
 
             /** UpdateTime
              *
-             *    Update the blocks timestamp
+             *  Update the blocks timestamp
              *
              **/
             void UpdateTime();
@@ -197,7 +201,7 @@ namespace TAO
 
             /** IsProofOfStake
              *
-             *    @return true if the block is proof of stake.
+             *  @return True if the block is proof of stake, false otherwise.
              *
              **/
             bool IsProofOfStake() const;
@@ -205,7 +209,7 @@ namespace TAO
 
             /** IsProofOfWork
              *
-             *    @return true if the block is proof of work.
+             *  @return True if the block is proof of work, false otherwise.
              *
              **/
             bool IsProofOfWork() const;
@@ -213,18 +217,17 @@ namespace TAO
 
             /** BuildMerkleTree
              *
-             *    Build the merkle tree from the transaction list.
+             *  Build the merkle tree from the transaction list.
              *
-             *    @return The 512-bit merkle root
+             *  @return The 512-bit merkle root
              *
              **/
             uint512_t BuildMerkleTree(std::vector<uint512_t> vMerkleTree) const;
 
 
-
             /** print
              *
-             *    Dump to the log file the raw block data
+             *  Dump to the log file the raw block data
              *
              **/
             void print() const;
@@ -232,9 +235,9 @@ namespace TAO
 
             /** VerifyWork
              *
-             *    Verify the work was completed by miners as advertised
+             *  Verify the work was completed by miners as advertised.
              *
-             *    @return true if work is valid, false otherwise
+             *  @return True if work is valid, false otherwise.
              *
              **/
             bool VerifyWork() const;
@@ -242,11 +245,11 @@ namespace TAO
 
             /** GenerateSignature
              *
-             *    Generate the signature as the block finder
+             *  Generate the signature as the block finder.
              *
-             *    @param[in] key The key object containing private key to make Signature
+             *  @param[in] key The key object containing private key to make Signature.
              *
-             *    @return True if the signature was made successfully, false otherwise
+             *  @return True if the signature was made successfully, false otherwise.
              *
              **/
             bool GenerateSignature(const LLC::ECKey& key);
@@ -254,14 +257,15 @@ namespace TAO
 
             /** VerifySignature
              *
-             *    Verify that the signature included in block is valid
+             *  Verify that the signature included in block is valid.
              *
-             *    @return True if signature is valid, false otherwise
+             *  @return True if signature is valid, false otherwise.
              *
              **/
             bool VerifySignature(const LLC::ECKey& key) const;
 
         protected:
+
 
             /** StakeHash
              *
@@ -271,6 +275,7 @@ namespace TAO
              *
              **/
             uint1024_t StakeHash(bool fIsGenesis, uint256_t hashGenesis) const;
+
 
             /** StakeHash
              *

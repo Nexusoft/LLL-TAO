@@ -25,7 +25,6 @@ namespace encoding
      *	Encode into base58 returning a std::string
      *
      *  @param[in] pbegin The begin iterator
-     *
      *  @param[in] pend The end iterator
      *
      *	@return Base58 encoded string.
@@ -51,7 +50,6 @@ namespace encoding
      *	Encode into base58 returning a std::string
      *
      *  @param[in] psz The input string (c style)
-     *
      *  @param[out] vchRet The vector char to return
      *
      *	@return true if decoded successfully
@@ -65,7 +63,6 @@ namespace encoding
      *	Decode base58 string into byte vector
      *
      *  @param[in] str Input string
-     *
      *  @param[out] vchRet The byte vector return value
      *
      *	@return true if successful
@@ -91,7 +88,6 @@ namespace encoding
      *	Decode into base58 inlucding a checksum
      *
      *  @param[in] psz The c-style input string
-     *
      *  @param[out] vchRet The byte vector of return data
      *
      *	@return True if decoding was successful
@@ -105,7 +101,6 @@ namespace encoding
      *	Decode into base58 inlucding a checksum
      *
      *  @param[in] str The input string (STL)
-     *
      *  @param[out] vchRet The byte vector of return data
      *
      *	@return True if decoding was successful
@@ -140,9 +135,7 @@ namespace encoding
          *  Set arbitrary data into Base58 structure
          *
          *  @param[in] nVersionIn The input version to set.
-         *
          *  @param[in] pdata The data to set
-         *
          *  @param[in] nSize The size of input data set.
          *
          **/
@@ -154,9 +147,7 @@ namespace encoding
          *  Set arbitrary data into Base58 structure
          *
          *  @param[in] nVersionIn The input version to set.
-         *
          *  @param[in] pbegin The begin pointer iterator
-         *
          *  @param[in] pend The end pointer iterator
          *
          **/

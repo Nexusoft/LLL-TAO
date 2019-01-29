@@ -15,8 +15,9 @@ ________________________________________________________________________________
 namespace memory
 {
 
-    /*  Compares two byte arrays and determines their signed equivalence byte for
-    *   byte. */
+    /**  Compares two byte arrays and determines their signed equivalence byte for
+     *   byte.
+     **/
     int32_t compare(const uint8_t *a, const uint8_t *b, const uint64_t size)
     {
         for(uint64_t i = 0; i < size; ++i)

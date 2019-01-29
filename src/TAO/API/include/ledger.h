@@ -24,8 +24,9 @@ namespace TAO
     namespace API
     {
 
-        /** Ledger API Class
+        /** Ledger
          *
+         *  Ledger API Class.
          *  Lower level API to interact directly with registers.
          *
          **/
@@ -45,7 +46,7 @@ namespace TAO
             void Initialize() final;
 
 
-            /** Get Name
+            /** GetName
              *
              *  Returns the name of this API.
              *

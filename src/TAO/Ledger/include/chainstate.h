@@ -26,6 +26,11 @@ namespace TAO
     namespace Ledger
     {
 
+        /** ChainState
+         *
+         *
+         *
+         **/
         struct ChainState
         {
             /** The best block height in the chain. **/
@@ -44,11 +49,19 @@ namespace TAO
             static uint1024_t hashCheckpoint;
 
 
-            /** Flag to tell if initial blocks are downloading. **/
+            /** Synchronizing
+             *
+             *  Flag to tell if initial blocks are downloading.
+             *
+             **/
             static bool Synchronizing();
 
 
-            /** Initialize the Chain State. */
+            /** Initialize
+             *
+             *  Initialize the Chain State.
+             *
+             **/
             static bool Initialize();
 
 

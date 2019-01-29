@@ -14,20 +14,20 @@ ________________________________________________________________________________
 #ifndef NEXUS_UTIL_INCLUDE_MEMORY_H
 #define NEXUS_UTIL_INCLUDE_MEMORY_H
 
-#include <cinttypes>
-
 namespace memory
 {
+
+
     /** compare
      *
      *  Compares two byte arrays and determines their signed equivalence byte for
-     *  byte.
+     *   byte.
      *
      *  @param[in] a The first byte array to compare.
      *  @param[in] b The second byte array to compare.
      *  @param[in] size The number of bytes to compare.
      *
-     *  @return Returns the difference of byte values if they are unequal.
+     *  @return Returns the signed difference of the first different byte value.
      *
      **/
     int32_t compare(const uint8_t *a, const uint8_t *b, const uint64_t size);

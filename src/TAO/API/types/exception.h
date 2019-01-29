@@ -23,7 +23,7 @@ namespace TAO
     namespace API
     {
 
-        /** API Exception
+        /** APIException
          *
          *  Encapsulates an exception that can be converted into a valid JSON error object
          *
@@ -31,10 +31,13 @@ namespace TAO
         class APIException : public json::detail::exception
         {
         public:
+
+            /** Default Constructor **/
             APIException(int32_t nCode, const char* strMessage)
             : json::detail::exception(nCode, strMessage) {}
 
 
+            /** Default Constructor **/
             APIException(int32_t nCode, const std::string& strMessage)
             : json::detail::exception(nCode, strMessage.c_str()) {}
 

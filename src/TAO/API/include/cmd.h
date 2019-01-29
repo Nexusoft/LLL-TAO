@@ -18,9 +18,9 @@ namespace TAO
 {
     namespace API
     {
-        /** Command Line API
+        /** CommandLineAPI
          *
-         *  Executes an API call from the commandline
+         *  Executes an API call from the commandline.
          *
          *  @param[in] argc The total input arguments.
          *  @param[in] argv The argument characters.
@@ -29,9 +29,9 @@ namespace TAO
         int CommandLineAPI(int argc, char** argv, int argn);
 
 
-        /** Command Line RPC
+        /** CommandLineRPC
          *
-         *  Executes an RPC call from the commandline
+         *  Executes an RPC call from the commandline.
          *
          *  @param[in] argc The total input arguments.
          *  @param[in] argv The argument characters.

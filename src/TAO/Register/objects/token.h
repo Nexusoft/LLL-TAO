@@ -27,7 +27,7 @@ namespace TAO
     namespace Register
     {
 
-        /** Token Object.
+        /** Token
          *
          *  Holds the state of parameters of a given token.
          *
@@ -56,7 +56,7 @@ namespace TAO
             uint8_t  nCoinDigits;
 
 
-            //serialization functions
+            /** Serialization **/
             IMPLEMENT_SERIALIZE
             (
                 READWRITE(nVersion);
@@ -79,7 +79,7 @@ namespace TAO
             }
 
 
-            /** Consturctor
+            /** Constructor
              *
              *  Builds Token with specified parameters. Default digits is 6 significant figures.
              *

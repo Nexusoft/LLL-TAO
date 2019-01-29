@@ -36,7 +36,7 @@ namespace TAO
     {
         class BlockState;
 
-        /** @class TrustKey
+        /** TrustKey
          *
          *  Class to Store a legacy Trust Key and its Interest Rate.
          *
@@ -199,7 +199,7 @@ namespace TAO
             bool CheckGenesis(const TAO::Ledger::BlockState& block) const;
 
 
-            /** Interest Rate
+            /** InterestRate
              *
              *  Interest is Determined By Logarithmic Equation from Genesis Key.
              *

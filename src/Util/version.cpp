@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 namespace version
 {
+
     /* The version of the actual wallet client. */
     const int CLIENT_VERSION =
                     1000000 * CLIENT_MAJOR
@@ -23,12 +24,14 @@ namespace version
                   +     100 * CLIENT_PATCH
                   +       1 * CLIENT_BUILD;
 
+
     /* Client Version Outputs. */
     const std::string CLIENT_NAME("Tritium");
     const std::string CLIENT_TYPE("Alpha");
     const std::string CLIENT_DATE(__DATE__ " " __TIME__);
     /* The version number */
     const std::string CLIENT_VERSION_STRING = debug::strprintf("%d.%d.%d.%d", CLIENT_MAJOR, CLIENT_MINOR, CLIENT_PATCH, CLIENT_BUILD);
+
 
     /* The interface used Qt, CLI, or Tritium) */
     #if defined QT_GUI
@@ -39,6 +42,7 @@ namespace version
         const std::string CLIENT_INTERFACE("CLI");
     #endif
 
+
     /* The database type used (LevelDB, Berkeley DB, or Lower Level Database) */
     #if defined USE_LLD
         const std::string CLIENT_DATABASE("[LLD]");
@@ -47,6 +51,7 @@ namespace version
     #else
         const std::string CLIENT_DATABASE("[BDB]");
     #endif
+
 
     /* The Architecture (32-Bit or 64-Bit) */
     #ifdef x64

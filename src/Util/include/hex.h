@@ -140,13 +140,11 @@ inline std::vector<uint8_t> ParseHex(const std::string& str)
  *
  *  Builds a hex string from data in a container class.
  *
- *  @param[in] itbegin The iterator container begin
+ *  @param[in] itbegin The iterator container begin.
+ *  @param[in] itend The iterator container end.
+ *  @param[in] fSpaces The flag for if there should be spaces.
  *
- *  @param[in] itend The iterator container end
- *
- *  @param[in] fSpaces The flag for if there should be spaces
- *
- *  @return The newly created hex string
+ *  @return The newly created hex string.
  *
  **/
 template<typename T>
@@ -176,9 +174,8 @@ std::string HexStr(const T itbegin, const T itend, bool fSpaces=false)
  *
  *  Builds a hex string from data in a vector.
  *
- *  @param[in] vch The character vector
- *
- *  @param[in] fSpaces The flag for if there should be spaces
+ *  @param[in] vch The character vector.
+ *  @param[in] fSpaces The flag for if there should be spaces.
  *
  *  @return The newly created hex string
  *
@@ -192,11 +189,9 @@ inline std::string HexStr(const std::vector<uint8_t>& vch, bool fSpaces=false)
  *
  *  Prints a hex string from data in a container class.
  *
- *  @param[in] itbegin The iterator container begin
- *
- *  @param[in] itend The iterator container end
- *
- *  @param[in] fSpaces The flag for if there should be spaces
+ *  @param[in] itbegin The iterator container begin.
+ *  @param[in] itend The iterator container end.
+ *  @param[in] fSpaces The flag for if there should be spaces.
  *
  **/
 template<typename T>
@@ -209,11 +204,9 @@ inline void PrintHex(const T pbegin, const T pend, bool fSpaces=true)
  *
  *  Prints a hex string from data in a character vector.
  *
- *  @param[in] vch The character vector
- *
- *  @param[in] pszFormat The format specifier string for formatted output
- *
- *  @param[in] fSpaces The flag for if there should be spaces
+ *  @param[in] vch The character vector.
+ *  @param[in] pszFormat The format specifier string for formatted output.
+ *  @param[in] fSpaces The flag for if there should be spaces.
  *
  **/
 inline void PrintHex(const std::vector<uint8_t>& vch, bool fSpaces=true)

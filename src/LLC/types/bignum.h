@@ -226,9 +226,7 @@ namespace LLC
          *  construct class from unsigned integer n
          *
          *  @param[in] n number to construct bignum with
-         *setuint32’ was not declared in this scope
-             setuint32(n);
-
+         *
          **/
         explicit CBigNum(uint1024_t n);
 
@@ -602,7 +600,6 @@ namespace LLC
      *
      *
      *  @param[in] a
-     *
      *  @param[in] b
      *
      **/
@@ -624,7 +621,6 @@ namespace LLC
      *
      *
      *  @param[in] a
-     *
      *  @param[in] b
      *
      **/
@@ -636,7 +632,6 @@ namespace LLC
      *
      *
      *  @param[in] a
-     *
      *  @param[in] b
      *
      **/
@@ -648,7 +643,6 @@ namespace LLC
      *
      *
      *  @param[in] a
-     *
      *  @param[in] b
      *
      **/
@@ -660,7 +654,6 @@ namespace LLC
      *
      *
      *  @param[in] a
-     *
      *  @param[in] shift
      *
      **/
@@ -672,7 +665,6 @@ namespace LLC
      *
      *
      *  @param[in] a
-     *
      *  @param[in] shift
      *
      **/
@@ -684,7 +676,6 @@ namespace LLC
      *
      *
      *  @param[in] a
-     *
      *  @param[in] b
      *
      **/
@@ -696,7 +687,6 @@ namespace LLC
      *
      *
      *  @param[in] a
-     *
      *  @param[in] b
      *
      **/
@@ -708,7 +698,6 @@ namespace LLC
      *
      *
      *  @param[in] a
-     *
      *  @param[in] b
      *
      **/
@@ -720,7 +709,6 @@ namespace LLC
      *
      *
      *  @param[in] a
-     *
      *  @param[in] b
      *
      **/
@@ -732,7 +720,6 @@ namespace LLC
      *
      *
      *  @param[in] a
-     *
      *  @param[in] b
      *
      **/
@@ -744,7 +731,6 @@ namespace LLC
      *
      *
      *  @param[in] a
-     *
      *  @param[in] b
      *
      **/

@@ -26,8 +26,9 @@ namespace TAO
     namespace API
     {
 
-        /** Base class for all JSON based API methods
+        /** Function
          *
+         *  Base class for all JSON based API methods
          *  Encapsulates the function pointer to the method to process the API request
          *
          **/
@@ -42,6 +43,8 @@ namespace TAO
 
 
         public:
+
+            
             /** Default Constructor. **/
             Function() { };
 

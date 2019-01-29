@@ -40,10 +40,10 @@ namespace TAO
          *
          *  Executes a given operation byte sequence.
          *
-         *  @param[in] regDB The register database to execute on
+         *  @param[in] regDB The register database to execute on.
          *  @param[in] hashOwner The owner executing the register batch.
          *
-         *  @return True if operations executed successfully.
+         *  @return True if operations executed successfully, false otherwise.
          *
          **/
         inline bool Execute(TAO::Ledger::Transaction& tx, uint8_t nFlags)

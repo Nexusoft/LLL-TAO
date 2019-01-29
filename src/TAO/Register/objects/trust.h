@@ -27,7 +27,7 @@ namespace TAO
     namespace Register
     {
 
-        /** Trust Object.
+        /** Trust
          *
          *  Holds the state of a trust account.
          *
@@ -62,7 +62,7 @@ namespace TAO
                 SetNull();
             }
 
-            //serialization functions
+            /** Serialization **/
             IMPLEMENT_SERIALIZE
             (
                 READWRITE(nVersion);

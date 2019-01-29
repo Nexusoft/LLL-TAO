@@ -27,6 +27,7 @@ extern std::condition_variable SHUTDOWN;
  **/
 void Shutdown();
 
+
 /** HandleSIGTERM
  *
  *  Catch Signal Handler function
