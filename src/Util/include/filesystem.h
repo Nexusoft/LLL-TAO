@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -19,7 +19,7 @@ ________________________________________________________________________________
 namespace filesystem
 {
 
-    /** Remove
+    /** remove
      *
      *  Removes a file or folder from the specified path.
      *
@@ -31,7 +31,7 @@ namespace filesystem
     bool remove(const std::string &path);
 
 
-    /** Exists
+    /** exists
      *
      *  Determines if the file or folder from the specified path exists.
      *
@@ -48,7 +48,6 @@ namespace filesystem
      *  Copies a data file. If the destination file exists, it is overwritten.
      *
      *  @param[in] pathSource Fully qualified path name of source file
-     *
      *  @param[in] pathDest Fully qualified path name of destination file
      *
      *  @return true if the file was successfully copied

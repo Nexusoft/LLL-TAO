@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -33,7 +33,8 @@ namespace TAO
         /** Condition variable for private blocks. */
         extern std::condition_variable PRIVATE_CONDITION;
 
-        /** Create Transaction
+
+        /** CreateTransaction
          *
          *  Create a new transaction object from signature chain.
          *
@@ -45,7 +46,7 @@ namespace TAO
         bool CreateTransaction(TAO::Ledger::SignatureChain* user, SecureString pin, TAO::Ledger::Transaction& tx);
 
 
-        /** Create Block
+        /** CreateBlock
          *
          *  Create a new block object from the chain.
          *
@@ -58,7 +59,7 @@ namespace TAO
         bool CreateBlock(TAO::Ledger::SignatureChain* user, SecureString pin, uint32_t nChannel, TAO::Ledger::TritiumBlock& block);
 
 
-        /** Create Genesis
+        /** CreateGenesis
          *
          *  Creates the genesis block
          *
@@ -67,7 +68,7 @@ namespace TAO
         bool CreateGenesis();
 
 
-        /** Thread Generator
+        /** ThreadGenerator
          *
          *  Handles the creation of a private block chain.
          *  Only executes when a transaction is broadcast.

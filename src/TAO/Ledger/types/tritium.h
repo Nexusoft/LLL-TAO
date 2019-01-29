@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -36,9 +36,9 @@ namespace TAO
         };
 
 
-        /** Tritium Block
+        /** TritiumBlock
          *
-         *  A tritium block contains referecnes to the transactions in blocks.
+         *  A tritium block contains references to the transactions in blocks.
          *  These are used to build the merkle tree for checking.
          *  Transactions are processed before block is recieved, and commit
          *  When a block is recieved to break up processing requirements.
@@ -63,6 +63,7 @@ namespace TAO
             std::vector< std::pair<uint8_t, uint512_t> > vtx;
 
 
+            /** Serialization **/
             IMPLEMENT_SERIALIZE
             (
                 READWRITE(nVersion);
@@ -116,8 +117,8 @@ namespace TAO
              **/
             bool Accept();
 
-            
-            /** Check Stake
+
+            /** CheckStake
              *
              *  Check the proof of stake calculations.
              *
@@ -125,7 +126,7 @@ namespace TAO
             bool CheckStake() const;
 
 
-            /** Check Trust
+            /** CheckTrust
              *
              *  Check the calculated trust score meets published one.
              *
@@ -133,7 +134,7 @@ namespace TAO
             bool CheckTrust() const;
 
 
-            /** Block Age
+            /** BlockAge
              *
              *  Get the current block age of the trust key.
              *
@@ -141,7 +142,7 @@ namespace TAO
             bool BlockAge(uint32_t& nAge) const;
 
 
-            /** Trust Score
+            /** TrustScore
              *
              *  Get the score of the current trust block.
              *
@@ -149,7 +150,7 @@ namespace TAO
             bool TrustScore(uint32_t& nScore) const;
 
 
-            /** Stake Hash
+            /** StakeHash
              *
              *  Prove that you staked a number of seconds based on weight
              *

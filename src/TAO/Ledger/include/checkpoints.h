@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -26,7 +26,7 @@ namespace TAO
     namespace Ledger
     {
 
-        /** Is New Timespan
+        /** IsNewTimespan
          *
          *  Check if the new block triggers a new Checkpoint timespan.
          *
@@ -38,7 +38,7 @@ namespace TAO
         bool IsNewTimespan(const BlockState& state);
 
 
-        /** Is Descendant
+        /** IsDescendant
          *
          *  Check that the checkpoint is a Descendant of previous Checkpoint.
          *
@@ -50,7 +50,7 @@ namespace TAO
         bool IsDescendant(const BlockState& state);
 
 
-        /** Harden Checkpoint
+        /** HardenCheckpoint
          *
          *  Harden a checkpoint into the checkpoint chain.
          *

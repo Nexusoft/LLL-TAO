@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -41,7 +41,7 @@ namespace TAO
             };
 
 
-        /** Get Subsidy
+        /** GetSubsidy
          *
          *  Get the Total Amount to be Released at a given Minute since the NETWORK_TIMELOCK.
          *
@@ -54,7 +54,7 @@ namespace TAO
         uint64_t GetSubsidy(uint32_t nMinutes, uint32_t nType);
 
 
-        /** Subsidy Interval
+        /** SubsidyInterval
          *
          *  Calculate the Compounded amount of NXS to be released over the (nInterval) minutes.
          *
@@ -67,7 +67,7 @@ namespace TAO
         uint64_t SubsidyInterval(uint32_t nMinutes, uint32_t nInterval);
 
 
-        /** Compound Subsidy
+        /** CompoundSubsidy
          *
          *  Calculate the Compounded amount of NXS that should "ideally" have been created to this minute.
          *
@@ -80,7 +80,7 @@ namespace TAO
         uint64_t CompoundSubsidy(int32_t nMinutes, uint8_t nTypes = 3);
 
 
-        /** Get Money Supply
+        /** GetMoneySupply
          *
          *  Get the total supply of NXS in the chain from the state.
          *
@@ -93,7 +93,7 @@ namespace TAO
         uint64_t GetMoneySupply(BlockState state);
 
 
-        /** Get Chain Age
+        /** GetChainAge
          *
          *  Get the age of the Nexus blockchain in seconds.
          *
@@ -105,7 +105,7 @@ namespace TAO
         uint32_t GetChainAge(uint64_t nTime);
 
 
-        /** Get Fractional Subsidy
+        /** GetFractionalSubsidy
          *
          *  Get a fractional reward based on time.
          *
@@ -119,7 +119,7 @@ namespace TAO
         uint64_t GetFractionalSubsidy(uint32_t nMinutes, uint8_t nType, double nFraction);
 
 
-        /** Get Coinbase Reward
+        /** GetCoinbaseReward
          *
          *  Get the Coinbase Rewards based on the Reserve Balances to keep the Coinbase
          *  rewards under the Reserve Production Rates.
@@ -134,7 +134,7 @@ namespace TAO
         uint64_t GetCoinbaseReward(const BlockState& state, uint32_t nChannel, uint8_t nType);
 
 
-        /** Release Rewards
+        /** ReleaseRewards
          *
          *  Release a certain amount of Nexus into the Reserve System at a given Minute of time.
          *
@@ -148,7 +148,7 @@ namespace TAO
         uint64_t ReleaseRewards(uint32_t nTimespan, uint32_t nStart, uint8_t nType);
 
 
-        /** Get Released Reserve
+        /** GetReleasedReserve
          *
          *  Get the total amount released into this given reserve by this point in time in the block state
          *

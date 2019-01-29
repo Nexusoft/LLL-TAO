@@ -35,140 +35,146 @@ SOFTWARE.
 #endif
 #include <stdexcept>
 
-namespace mmaplib {
-
-class MemoryMappedFile
+namespace mmaplib
 {
-public:
-    MemoryMappedFile(const char* path);
-    ~MemoryMappedFile();
 
-    bool is_open() const;
-    size_t size() const;
-    const char* data() const;
+    /** MemoryMappedFile
+     *
+     *
+     *
+     **/
+    class MemoryMappedFile
+    {
+    public:
+        MemoryMappedFile(const char* path);
+        ~MemoryMappedFile();
 
-private:
-    void cleanup();
+        bool is_open() const;
+        size_t size() const;
+        const char* data() const;
 
-#if defined(_WIN32)
-    HANDLE hFile_;
-    HANDLE hMapping_;
-#else
-    int    fd_;
-#endif
-    size_t size_;
-    void*  addr_;
-};
+    private:
+        void cleanup();
 
-#if defined(_WIN32)
-#define MAP_FAILED nullptr
-#endif
+    #if defined(_WIN32)
+        HANDLE hFile_;
+        HANDLE hMapping_;
+    #else
+        int    fd_;
+    #endif
+        size_t size_;
+        void*  addr_;
+    };
 
-inline MemoryMappedFile::MemoryMappedFile(const char* path)
-#if defined(_WIN32)
-    : hFile_(nullptr)
-    , hMapping_(nullptr)
-#else
-    : fd_(-1)
-#endif
-    , size_(0)
-    , addr_(MAP_FAILED)
-{
-#if defined(_WIN32)
-    hFile_ = ::CreateFileA(
-        path,
-        GENERIC_READ,
-        FILE_SHARE_READ,
-        nullptr,
-        OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL,
-        nullptr);
+    #if defined(_WIN32)
+    #define MAP_FAILED nullptr
+    #endif
 
-    if (hFile_ == INVALID_HANDLE_VALUE) {
-        std::runtime_error("");
+    inline MemoryMappedFile::MemoryMappedFile(const char* path)
+    #if defined(_WIN32)
+        : hFile_(nullptr)
+        , hMapping_(nullptr)
+    #else
+        : fd_(-1)
+    #endif
+        , size_(0)
+        , addr_(MAP_FAILED)
+    {
+    #if defined(_WIN32)
+        hFile_ = ::CreateFileA(
+            path,
+            GENERIC_READ,
+            FILE_SHARE_READ,
+            nullptr,
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            nullptr);
+
+        if (hFile_ == INVALID_HANDLE_VALUE) {
+            std::runtime_error("");
+        }
+
+        size_ = ::GetFileSize(hFile_, nullptr);
+
+        hMapping_ = ::CreateFileMapping(hFile_, nullptr, PAGE_READONLY, 0, 0, nullptr);
+
+        if (hMapping_ == nullptr) {
+            cleanup();
+            std::runtime_error("");
+        }
+
+        addr_ = ::MapViewOfFile(hMapping_, FILE_MAP_READ, 0, 0, 0);
+    #else
+        fd_ = open(path, O_RDONLY);
+        if (fd_ == -1) {
+            std::runtime_error("");
+        }
+
+        struct stat sb;
+        if (fstat(fd_, &sb) == -1) {
+            cleanup();
+            std::runtime_error("");
+        }
+        size_ = sb.st_size;
+
+        addr_ = mmap(nullptr, size_, PROT_READ, MAP_PRIVATE, fd_, 0);
+    #endif
+
+        if (addr_ == MAP_FAILED) {
+            cleanup();
+            std::runtime_error("");
+        }
     }
 
-    size_ = ::GetFileSize(hFile_, nullptr);
-
-    hMapping_ = ::CreateFileMapping(hFile_, nullptr, PAGE_READONLY, 0, 0, nullptr);
-
-    if (hMapping_ == nullptr) {
+    inline MemoryMappedFile::~MemoryMappedFile()
+    {
         cleanup();
-        std::runtime_error("");
     }
 
-    addr_ = ::MapViewOfFile(hMapping_, FILE_MAP_READ, 0, 0, 0);
-#else
-    fd_ = open(path, O_RDONLY);
-    if (fd_ == -1) {
-        std::runtime_error("");
+    inline bool MemoryMappedFile::is_open() const
+    {
+        return addr_ != MAP_FAILED;
     }
 
-    struct stat sb;
-    if (fstat(fd_, &sb) == -1) {
-        cleanup();
-        std::runtime_error("");
-    }
-    size_ = sb.st_size;
-
-    addr_ = mmap(nullptr, size_, PROT_READ, MAP_PRIVATE, fd_, 0);
-#endif
-
-    if (addr_ == MAP_FAILED) {
-        cleanup();
-        std::runtime_error("");
-    }
-}
-
-inline MemoryMappedFile::~MemoryMappedFile()
-{
-    cleanup();
-}
-
-inline bool MemoryMappedFile::is_open() const
-{
-    return addr_ != MAP_FAILED;
-}
-
-inline size_t MemoryMappedFile::size() const
-{
-    return size_;
-}
-
-inline const char* MemoryMappedFile::data() const
-{
-    return (const char*)addr_;
-}
-
-inline void MemoryMappedFile::cleanup()
-{
-#if defined(_WIN32)
-    if (addr_) {
-        ::UnmapViewOfFile(addr_);
-        addr_ = MAP_FAILED;
+    inline size_t MemoryMappedFile::size() const
+    {
+        return size_;
     }
 
-    if (hMapping_) {
-        ::CloseHandle(hMapping_);
-        hMapping_ = nullptr;
+    inline const char* MemoryMappedFile::data() const
+    {
+        return (const char*)addr_;
     }
 
-    if (hFile_ != INVALID_HANDLE_VALUE) {
-        ::CloseHandle(hFile_);
-        hFile_ = INVALID_HANDLE_VALUE;
-    }
-#else
-    if (addr_ != MAP_FAILED) {
-        munmap(addr_, size_);
-        addr_ = MAP_FAILED;
-    }
+    inline void MemoryMappedFile::cleanup()
+    {
+    #if defined(_WIN32)
+        if (addr_) {
+            ::UnmapViewOfFile(addr_);
+            addr_ = MAP_FAILED;
+        }
 
-    if (fd_ != -1) {
-        close(fd_);
-        fd_ = -1;
+        if (hMapping_) {
+            ::CloseHandle(hMapping_);
+            hMapping_ = nullptr;
+        }
+
+        if (hFile_ != INVALID_HANDLE_VALUE) {
+            ::CloseHandle(hFile_);
+            hFile_ = INVALID_HANDLE_VALUE;
+        }
+    #else
+        if (addr_ != MAP_FAILED) {
+            munmap(addr_, size_);
+            addr_ = MAP_FAILED;
+        }
+
+        if (fd_ != -1) {
+            close(fd_);
+            fd_ = -1;
+        }
+    #endif
     }
-#endif
-}
 
 } // namespace mmaplib
 
