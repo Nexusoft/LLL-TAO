@@ -88,7 +88,8 @@ namespace TAO
             for(const auto & tx : block.vtx)
             {
                 vtx.push_back(std::make_pair(TYPE::LEGACY_TX, tx.GetHash()));
-                TAO::Ledger::mempool.AddUnchecked(tx);
+                if(!LLD::legacyDB->HasTx(tx.GetHash()))
+                    TAO::Ledger::mempool.AddUnchecked(tx);
             }
         }
 
@@ -306,17 +307,6 @@ namespace TAO
                 /* Disconnect given blocks. */
                 for(auto& state : vDisconnect)
                 {
-                    /* Connect the block. */
-                    if(!state.Disconnect())
-                    {
-                        /* Abort the Transaction. */
-                        LLD::TxnAbort();
-
-                        /* Debug errors. */
-                        return debug::error(FUNCTION, "failed to disconnect ",
-                            state.GetHash().ToString().substr(0, 20));
-                    }
-
                     /* Add transactions into memory pool. */
                     for(const auto& txAdd : state.vtx)
                     {
@@ -338,8 +328,22 @@ namespace TAO
                                 return debug::error(FUNCTION, "transaction is not on disk");
 
                             /* Add to the mempool. */
-                            mempool.Accept(tx);
+                            if(tx.IsCoinBase())
+                                mempool.AddUnchecked(tx);
+                            else
+                                mempool.Accept(tx);
                         }
+                    }
+
+                    /* Connect the block. */
+                    if(!state.Disconnect())
+                    {
+                        /* Abort the Transaction. */
+                        LLD::TxnAbort();
+
+                        /* Debug errors. */
+                        return debug::error(FUNCTION, "failed to disconnect ",
+                            state.GetHash().ToString().substr(0, 20));
                     }
                 }
 
@@ -577,6 +581,9 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to connect inputs");
 
                 }
+
+                /* Write the indexing entries. */
+                LLD::legDB->EraseIndex(tx.second);
             }
 
             /* Update the previous state's next pointer. */

@@ -344,6 +344,9 @@ namespace LLD
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
 
+            /* Remove the item from the cache pool. */
+            cachePool->Remove(ssKey.Bytes());
+
             /* Add transaction to erase queue. */
             { LOCK(TRANSACTION_MUTEX);
                 if(pTransaction)

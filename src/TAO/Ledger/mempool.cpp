@@ -188,7 +188,7 @@ namespace TAO
         /* Gets the size of the memory pool. */
         uint32_t Mempool::Size()
         {
-            return mapLedger.size();
+            return mapLedger.size() + mapLegacy.size();
         }
     }
 }

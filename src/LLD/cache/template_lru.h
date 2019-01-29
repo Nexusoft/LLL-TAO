@@ -377,15 +377,21 @@ namespace LLD
             /* Check for bucket collisions. */
             if(hashmap[nBucket] != nullptr)
             {
+                /* Get the node we are working on. */
                 TemplateNode<KeyType, DataType>* pthis = hashmap[nBucket];
 
+                /* Remove the node from the linked list. */
                 RemoveNode(pthis);
 
+                /* Clear the pointer data. */
                 hashmap[nBucket] = nullptr;
                 pthis->pprev     = nullptr;
                 pthis->pnext     = nullptr;
 
+                /* Free the memory. */
                 delete pthis;
+
+                /* Reduce the total elements. */
                 --nTotalElements;
             }
 
@@ -442,28 +448,31 @@ namespace LLD
          **/
         bool Remove(const KeyType& Key)
         {
-            /* Check if the Record Exists. */
-            uint32_t nBucket = Bucket(Key);
-
-            if(hashmap[nBucket] == nullptr || hashmap[nBucket]->Key != Key)
-                return false;
-
             LOCK(MUTEX);
 
-            /* Get the node */
-            TemplateNode<KeyType, DataType> *pnode = hashmap[Bucket(Key)];
+            /* Get the key bucket. */
+            uint32_t nBucket = Bucket(Key);
 
-            /* Reduce the current cache size. */
+            /* Get the node we are working on. */
+            TemplateNode<KeyType, DataType>* pthis = hashmap[nBucket];
+
+            /* Check that key exists. */
+            if(pthis == nullptr || pthis->Key != Key)
+                return false;
+
+            /* Remove the node from the linked list. */
+            RemoveNode(pthis);
+
+            /* Clear the pointer data. */
+            hashmap[nBucket] = nullptr;
+            pthis->pprev     = nullptr;
+            pthis->pnext     = nullptr;
+
+            /* Free the memory. */
+            delete pthis;
+
+            /* Reduce the total elements. */
             --nTotalElements;
-
-            /* Remove from linked list. */
-            RemoveNode(pnode);
-
-            /* Remove the object from the map. */
-            hashmap[Bucket(Key)] = nullptr;
-
-            /* Free memory. */
-            delete pnode;
 
             return true;
         }

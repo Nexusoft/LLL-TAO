@@ -106,6 +106,10 @@ namespace TAO
 
                 /* Set the checkpoint. */
                 hashCheckpoint = state.hashCheckpoint;
+
+                LLD::TxnBegin();
+                state.SetBest();
+                LLD::TxnCommit();
             }
 
             stateBest.print();

@@ -214,9 +214,6 @@ namespace LLP
                 mapLegacyOrphans.erase(hash);
         }
 
-        if(LLD::legDB->HasBlock(hash))
-            return true;
-
         /* Check for orphan. */
         if(!LLD::legDB->HasBlock(block.hashPrevBlock))
         {
