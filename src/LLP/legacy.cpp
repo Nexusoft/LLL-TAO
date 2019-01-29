@@ -609,6 +609,7 @@ namespace LLP
                 return true;
             }
 
+            /* Fast sync mode. */
             if(config::GetBoolArg("-fastsync"))
             {
                 if (TAO::Ledger::ChainState::Synchronizing() && vInv.back().GetType() == MSG_BLOCK)
@@ -663,7 +664,9 @@ namespace LLP
                         }
 
                         /* Normal case of asking for a getblocks inventory message. */
-                        PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+                        LegacyNode* pnode = LEGACY_SERVER->GetConnection();
+                        if(pnode)
+                            PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
                     }
 
                     /* Otherwise ask for another batch of blocks from the end of this inventory. */
