@@ -664,6 +664,7 @@ namespace LLP
                         }
 
                         /* Normal case of asking for a getblocks inventory message. */
+                        debug::log(0, NODE, "fast sync node timed out, trying a new node from best");
                         LegacyNode* pnode = LEGACY_SERVER->GetConnection();
                         if(pnode)
                             PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
@@ -678,6 +679,10 @@ namespace LLP
                 }
             }
 
+            /* Push getdata after fastsync inv (if enabled).
+             * This will ask for a new inv before blocks to
+             * always stay at least 1k blocks ahead.
+             */
             PushMessage("getdata", vInv);
         }
 
