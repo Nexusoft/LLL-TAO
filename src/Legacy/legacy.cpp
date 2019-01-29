@@ -320,11 +320,6 @@ namespace Legacy
         if(config::GetArg("-verbose", 0) >= 2)
             print();
 
-        /* Read leger DB for duplicate block. */
-        TAO::Ledger::BlockState state;
-        if(LLD::legDB->ReadBlock(GetHash(), state))
-            return debug::error(FUNCTION, "block state already exists");
-
 
         /* Read leger DB for previous block. */
         TAO::Ledger::BlockState statePrev;

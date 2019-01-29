@@ -46,7 +46,7 @@ namespace TAO
         bool GetLastState(BlockState &state, uint32_t nChannel)
         {
             /* Loop back 10k blocks. */
-            while(!config::fShutdown)
+            for(uint_t i = 0;  i < 1440; i++)
             {
                 /* Return false on genesis. */
                 if(state.GetHash() == hashGenesis)
@@ -61,6 +61,9 @@ namespace TAO
                 if(!state)
                     return false;
             }
+
+            /* If the max depth expired, return the genesis. */
+            state = ChainState::stateGenesis;
 
             return false;
         }
@@ -123,6 +126,10 @@ namespace TAO
         bool BlockState::Accept()
         {
             LOCK(BlockState::STATE_MUTEX);
+
+            /* Check if it exists first */
+            if(LLD::legDB->HasBlock(GetHash()))
+                return debug::error(FUNCTION, "already have block");
 
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();

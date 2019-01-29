@@ -386,7 +386,7 @@ namespace LLP
                     LegacyNode* pNode = LEGACY_SERVER->GetConnection();
                     if(pNode)
                         pNode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
-                    
+
                 }
 
                 return true;
