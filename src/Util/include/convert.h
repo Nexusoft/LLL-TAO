@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -281,7 +281,6 @@ inline std::vector<uint8_t> uint2bytes(uint32_t UINT)
  *  Convert a byte stream into a signed integer 32 bit
  *
  *  @param[in] BYTES The byte vector
- *
  *  @param[in] nOffset The offset into the byte vector
  *
  *  @return the converted 32-bit signed integer
@@ -320,7 +319,6 @@ inline std::vector<uint8_t> int2bytes(int INT)
  *  Convert a byte stream into a uint32_t
  *
  *  @param[in] BYTES The byte vector
- *
  *  @param[in] nOffset The offset into the byte vector
  *
  *  @return the converted unsigned integer
@@ -360,7 +358,6 @@ inline std::vector<uint8_t> uint2bytes64(uint64_t UINT)
  *  Converts a byte Vector into a uint64_t.
  *
  *  @param[in] BYTES The byte vector
- *
  *  @param[in] nOffset The offset into the byte vector
  *
  *  @return the converted uint64_t

@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -43,31 +43,34 @@ namespace LLD
     const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 4; //32 MB Max Disk Buffer
 
 
-    /** Base Template Class for a Sector Database.
-        Processes main Lower Level Disk Communications.
-        A Sector Database Is a Fixed Width Data Storage Medium.
-
-        It is ideal for data structures to be stored that do not
-        change in their size. This allows the greatest efficiency
-        in fixed data storage (structs, class, etc.).
-
-        It is not ideal for data structures that may vary in size
-        over their lifetimes. The Dynamic Database will allow that.
-
-        Key Type can be of any type. Data lengths are attributed to
-        each key type. Keys are assigned sectors and stored in the
-        key storage file. Sector files are broken into maximum of 1 GB
-        for stability on all systems, key files are determined the same.
-
-        Multiple Keys can point back to the same sector to allow multiple
-        access levels of the sector. This specific class handles the lower
-        level disk communications for the sector database.
-
-        If each sector was allowed to be varying sizes it would remove the
-        ability to use free space that becomes available upon an erase of a
-        record. Use this Database purely for fixed size structures. Overflow
-        attempts will trigger an error code.
-    **/
+    /** SectorDatabase
+     *
+     *  Base Template Class for a Sector Database.
+     *  Processes main Lower Level Disk Communications.
+     *  A Sector Database Is a Fixed Width Data Storage Medium.
+     *
+     *  It is ideal for data structures to be stored that do not
+     *  change in their size. This allows the greatest efficiency
+     *  in fixed data storage (structs, class, etc.).
+     *
+     *  It is not ideal for data structures that may vary in size
+     *  over their lifetimes. The Dynamic Database will allow that.
+     *
+     *  Key Type can be of any type. Data lengths are attributed to
+     *  each key type. Keys are assigned sectors and stored in the
+     *  key storage file. Sector files are broken into maximum of 1 GB
+     *  for stability on all systems, key files are determined the same.
+     *
+     *  Multiple Keys can point back to the same sector to allow multiple
+     *  access levels of the sector. This specific class handles the lower
+     *  level disk communications for the sector database.
+     *
+     *  If each sector was allowed to be varying sizes it would remove the
+     *  ability to use free space that becomes available upon an erase of a
+     *  record. Use this Database purely for fixed size structures. Overflow
+     *  attempts will trigger an error code.
+     *
+     **/
     template<typename KeychainType, typename CacheType>
     class SectorDatabase
     {
@@ -149,6 +152,8 @@ namespace LLD
 
 
     public:
+
+
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         SectorDatabase(std::string strNameIn, uint8_t nFlagsIn)
         : CONDITION_MUTEX()
@@ -193,6 +198,8 @@ namespace LLD
             MeterThread = std::thread(std::bind(&SectorDatabase::Meter, this));
         }
 
+
+        /** Default Destructor **/
         ~SectorDatabase()
         {
             fDestruct = true;
@@ -212,7 +219,11 @@ namespace LLD
         }
 
 
-        /** Initialize Sector Database. **/
+        /** Initialize
+         *
+         *  Initialize Sector Database.
+         *
+         **/
         void Initialize()
         {
             /* Create directories if they don't exist yet. */
@@ -259,13 +270,26 @@ namespace LLD
         }
 
 
-        /* Get the keys for this sector database from the keychain.  */
+        /** GetKeys
+         *
+         *  Get the keys for this sector database from the keychain.
+         *
+         **/
         std::vector< std::vector<uint8_t> > GetKeys()
         {
             return pSectorKeys->GetKeys();
         }
 
 
+        /** Exists
+         *
+         *  Determine if the entry identified by the given key exists.
+         *
+         *  @param[in] key The key to the database entry.
+         *
+         *  @return True if the entry exists, false otherwise.
+         *
+         **/
         template<typename Key>
         bool Exists(const Key& key)
         {
@@ -301,6 +325,15 @@ namespace LLD
         }
 
 
+        /** Erase
+         *
+         *  Erase a database entry identified by the given key.
+         *
+         *  @param[in] key The key to the database entry to erase.
+         *
+         *  @return True if the entry erased, false otherwise.
+         *
+         **/
         template<typename Key>
         bool Erase(const Key& key)
         {
@@ -335,6 +368,16 @@ namespace LLD
         }
 
 
+        /** Read
+         *
+         *  Read a database entry identified by the given key.
+         *
+         *  @param[in] key The key to the database entry to read.
+         *  @param[out] value The database entry value to read out.
+         *
+         *  @return True if the entry read, false otherwise.
+         *
+         **/
         template<typename Key, typename Type>
         bool Read(const Key& key, Type& value)
         {
@@ -370,6 +413,16 @@ namespace LLD
         }
 
 
+        /** Index
+         *
+         *  Indexes a key into memory.
+         *
+         *  @param[in] key The key to index.
+         *  @param[in] index The index of the key to write to.
+         *
+         *  @return True if successful indexing, false otherwise.
+         *
+         **/
         template<typename Key, typename Type>
         bool Index(const Key& key, const Type& index)
         {
@@ -404,6 +457,15 @@ namespace LLD
         }
 
 
+        /** Write
+         *
+         *  Writes a key to the sector database
+         *
+         *  @param[in] key The key to write.
+         *
+         *  @return True if successful write, false otherwise.
+         *
+         **/
         template<typename Key>
         bool Write(const Key& key)
         {
@@ -432,6 +494,16 @@ namespace LLD
         }
 
 
+        /** Write
+         *
+         *  Writes a key/value pair to the sector database
+         *
+         *  @param[in] key The key to write.
+         *  @param[in] value The value to write.
+         *
+         *  @return True if successful write, false otherwise.
+         *
+         **/
         template<typename Key, typename Type>
         bool Write(const Key& key, const Type& value)
         {
@@ -746,7 +818,7 @@ namespace LLD
         }
 
 
-        /** Cache Writer
+        /** CacheWriter
          *
          *  Flushes periodically data from the cache buffer to disk.
          *
@@ -830,7 +902,12 @@ namespace LLD
             }
         }
 
-        /* LLP Meter Thread. Tracks the Requests / Second. */
+
+        /** Meter
+         *
+         *  LLD Meter Thread. Tracks the Reads/Writes per second.
+         *
+         **/
         void Meter()
         {
             if(!config::GetBoolArg("-meters", false))
@@ -895,9 +972,11 @@ namespace LLD
         }
 
 
-        /** Rollback Transactions
+        /** RollbackTransactions
          *
          *  Rollback the disk to previous state.
+         *
+         *  @return True if rollback was successful, false otherwise.
          *
          **/
         bool RollbackTransactions()
@@ -911,9 +990,11 @@ namespace LLD
         }
 
 
-        /** Txn Commit
+        /** TxnCommit
          *
          *  Commit data from transaction object.
+         *
+         *  @return True, if commit is successful, false otherwise.
          *
          **/
         bool TxnCommit()

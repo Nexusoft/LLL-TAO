@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -26,6 +26,11 @@ namespace TAO
     namespace Ledger
     {
 
+        /** ChainState
+         *
+         *
+         *
+         **/
         struct ChainState
         {
             /** The best block height in the chain. **/
@@ -44,11 +49,19 @@ namespace TAO
             static uint1024_t hashCheckpoint;
 
 
-            /** Flag to tell if initial blocks are downloading. **/
+            /** Synchronizing
+             *
+             *  Flag to tell if initial blocks are downloading.
+             *
+             **/
             static bool Synchronizing();
 
 
-            /** Initialize the Chain State. */
+            /** Initialize
+             *
+             *  Initialize the Chain State.
+             *
+             **/
             static bool Initialize();
 
 

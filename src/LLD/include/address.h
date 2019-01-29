@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -24,18 +24,48 @@ ________________________________________________________________________________
 
 namespace LLD
 {
+
+    /** AddressDB
+     *
+     *  The database class for peer addresses to determine trust relationships.
+     *
+     **/
     class AddressDB : public SectorDatabase<BinaryFileMap, BinaryLRU>
     {
     public:
+
+
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         AddressDB(uint16_t port, uint8_t nFlags = FLAGS::CREATE | FLAGS::FORCE)
         : SectorDatabase("addr/" + std::to_string(port), nFlags) { }
 
+
+        /** WriteTrustAddress
+         *
+         *  Writes the Trust Address to the database.
+         *
+         *  @param[in] key The key for the data location.
+         *  @param[in] info The TrustAddress object to serialize to disk.
+         *
+         *  @return True if the write is successful, false otherwise.
+         *
+         **/
         bool WriteTrustAddress(uint64_t key, const LLP::TrustAddress &info)
         {
             return Write(std::make_pair(std::string("info"), key), info);
         }
 
+
+        /** ReadTrustAddress
+         *
+         *  Reads the Trust Address from the database.
+         *
+         *  @param[in] key The key for the data location.
+         *  @param[in] info The TrustAddress object to deserialize from disk.
+         *
+         *  @return True if the read is successful, false otherwise.
+         *
+         **/
         bool ReadTrustAddress(uint64_t key, LLP::TrustAddress &info)
         {
             return Read(std::make_pair(std::string("info"), key), info);

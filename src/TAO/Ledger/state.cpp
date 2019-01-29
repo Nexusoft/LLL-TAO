@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -44,11 +44,10 @@ namespace TAO
         std::mutex BlockState::STATE_MUTEX;
 
         /* Get the block state object. */
-        bool GetLastState(BlockState &state, uint32_t nChannel, uint32_t nMaxLookback)
+        bool GetLastState(BlockState &state, uint32_t nChannel)
         {
-            /* :Limit look back to nMaxLookback blocks. */
-            uint32_t nIteration = 0;
-            while(!config::fShutdown && nIteration++ < nMaxLookback)
+            /* Loop back 10k blocks. */
+            for(uint_t i = 0;  i < 1440; i++)
             {
                 /* Return false on genesis. */
                 if(state.GetHash() == hashGenesis)
@@ -63,6 +62,9 @@ namespace TAO
                 if(!state)
                     return false;
             }
+
+            /* If the max depth expired, return the genesis. */
+            state = ChainState::stateGenesis;
 
             return false;
         }
@@ -81,7 +83,7 @@ namespace TAO
         , hashNextBlock(0)
         , hashCheckpoint(0)
         {
-            LOCK(BlockState::STATE_MUTEX);
+            //LOCK(BlockState::STATE_MUTEX);
 
             /* Construct a block state from legacy block tx set. */
             for(const auto & tx : block.vtx)
@@ -124,7 +126,9 @@ namespace TAO
         /* Accept a block state into chain. */
         bool BlockState::Accept()
         {
-            LOCK(BlockState::STATE_MUTEX);
+            /* Check if it exists first */
+            if(LLD::legDB->HasBlock(GetHash()))
+                return debug::error(FUNCTION, "already have block");
 
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();

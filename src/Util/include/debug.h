@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -85,7 +85,7 @@ namespace debug
     };
 
 
-    /** print args
+    /** print_args
      *
      *  Overload for varadaic templates.
      *
@@ -100,7 +100,7 @@ namespace debug
     }
 
 
-    /** print args
+    /** print_args
      *
      *  Handle for variadic template pack
      *
@@ -117,7 +117,7 @@ namespace debug
     }
 
 
-    /** safe printstr
+    /** safe_printstr
      *
      *  Safe handle for writing objects into a string.
      *
@@ -165,6 +165,17 @@ namespace debug
         ssFile << debug << std::endl;
     }
 
+
+    /** error
+     *
+     *  Safe constant format debugging error logs.
+     *  Dumps to console or to log file.
+     *
+     *  @param[in] args The variadic template arguments in.
+     *
+     *  @return Returns false always. (Assumed to return an error.)
+     *
+     **/
     template<class... Args>
     bool error(Args&&... args)
     {
@@ -179,7 +190,6 @@ namespace debug
      *  Prints output into a string that is returned.
      *
      *  @param[in] format The format string specifier.
-     *
      *  @param[in] ... The variable argument list to supply to each format
      *                 specifier in the format string.
      *
@@ -205,7 +215,6 @@ namespace debug
      *  Prints and logs the exception with the named calling thread.
      *
      *  @param[in] pex The pointer to the exception that has been thrown.
-     *
      *  @param[in] pszThread The name of the calling thread that threw the exception.
      *
      **/
@@ -217,7 +226,6 @@ namespace debug
      *  Prints the exception with the named calling thread and throws it
      *
      *  @param[in] pex The pointer to the exception that has been thrown.
-     *
      *  @param[in] pszThread The name of the calling thread that threw the exception.
      *
      **/
@@ -229,7 +237,6 @@ namespace debug
      *  Prints the exception with the named calling thread but does not throw it.
      *
      *  @param[in] pex The pointer to the exception that has been thrown.
-     *
      *  @param[in] pszThread The name of the calling thread that threw the exception.
      *
      **/

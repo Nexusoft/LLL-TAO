@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -36,7 +36,7 @@ namespace TAO
     {
         class BlockState;
 
-        /** @class TrustKey
+        /** TrustKey
          *
          *  Class to Store a legacy Trust Key and its Interest Rate.
          *
@@ -199,7 +199,7 @@ namespace TAO
             bool CheckGenesis(const TAO::Ledger::BlockState& block) const;
 
 
-            /** Interest Rate
+            /** InterestRate
              *
              *  Interest is Determined By Logarithmic Equation from Genesis Key.
              *

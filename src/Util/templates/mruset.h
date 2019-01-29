@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -134,7 +134,6 @@ public:
      *  Determine if the two mru sets are equal
      *
      *  @param[in] a The first mruset to compare
-     *
      *  @param[in] b The second mruset to compare
      *
      *  @return True if the sets are equal, false otherwise
@@ -151,7 +150,6 @@ public:
      *  Determine if an mru set and a standard set are equal
      *
      *  @param[in] a The mru set to compare
-     *
      *  @param[in] b The standard set to compare
      *
      *  @return True if the sets are equal, false otherwise
@@ -168,7 +166,6 @@ public:
      *  Determine if mruset a is less than mruset b
      *
      *  @param[in] a The first mruset to compare
-     *
      *  @param[in] b The second mruset to compare
      *
      *  @return True if a is less than b, false otherwise

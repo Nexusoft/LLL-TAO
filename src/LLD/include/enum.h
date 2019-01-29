@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -17,7 +17,11 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    /** Database flags for keychains and sector. **/
+    /** FLAGS
+     *
+     *  Database flags for keychains and sector.
+     *
+     **/
     struct FLAGS
     {
         enum
@@ -31,7 +35,11 @@ namespace LLD
     };
 
 
-    /** Database states in the keychains. **/
+    /** STATE
+     *
+     *  Database states in the keychains.
+     *
+     **/
     struct STATE
     {
         enum

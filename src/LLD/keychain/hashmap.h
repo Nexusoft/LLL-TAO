@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -33,13 +33,13 @@ namespace LLD
 {
 
 
-    /** Binary Hash Map
+    /** BinaryHashMap
      *
      *  This class is responsible for managing the keys to the sector database.
      *
-     *  It contains a Binary Hash Map with a minimum complexity of O(1)
+     *  It contains a Binary Hash Map with a minimum complexity of O(1).
      *  It uses a linked file list based on index to iterate trhough files and binary Positions
-     *  when there is a collision that is found
+     *  when there is a collision that is found.
      *
      **/
     class BinaryHashMap
@@ -100,6 +100,7 @@ namespace LLD
 
     public:
 
+        /** Default Constructor **/
         BinaryHashMap()
         : KEY_MUTEX()
         , CONDITION()
@@ -117,6 +118,7 @@ namespace LLD
         {
             CacheThread = std::thread(std::bind(&BinaryHashMap::CacheWriter, this));
         }
+
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND)
@@ -138,6 +140,8 @@ namespace LLD
             CacheThread = std::thread(std::bind(&BinaryHashMap::CacheWriter, this));
         }
 
+
+        /** Default Constructor **/
         BinaryHashMap(std::string strBaseLocationIn, uint32_t nTotalBuckets, uint32_t nMaxCacheSize, uint8_t nFlagsIn = FLAGS::APPEND)
         : KEY_MUTEX()
         , CONDITION()
@@ -157,7 +161,8 @@ namespace LLD
             CacheThread = std::thread(std::bind(&BinaryHashMap::CacheWriter, this));
         }
 
-        //TODO: cleanup copy constructors
+
+        /** Copy Assignment Operator **/
         BinaryHashMap& operator=(BinaryHashMap map)
         {
             strBaseLocation       = map.strBaseLocation;
@@ -167,6 +172,7 @@ namespace LLD
         }
 
 
+        /** Copy Constructor **/
         BinaryHashMap(const BinaryHashMap& map)
         {
             strBaseLocation    = map.strBaseLocation;
@@ -174,7 +180,7 @@ namespace LLD
         }
 
 
-        /** Clean up Memory Usage. **/
+        /** Default Destructor **/
         ~BinaryHashMap()
         {
             fDestruct = true;
@@ -190,7 +196,7 @@ namespace LLD
          *  Compresses a given key until it matches size criteria.
          *  This function is one way and efficient for reducing key sizes.
          *
-         *  @param[out] vData The binary data of key to compress
+         *  @param[out] vData The binary data of key to compress.
          *  @param[in] nSize The desired size of key after compression.
          *
          **/
@@ -209,6 +215,7 @@ namespace LLD
             }
         }
 
+
         /** GetKeys
          *
          *  Placeholder.
@@ -224,11 +231,11 @@ namespace LLD
 
         /** GetBucket
          *
-         *  Calculates a bucket to be used for the hashmap allocation
+         *  Calculates a bucket to be used for the hashmap allocation.
          *
          *  @param[in] vKey The key object to calculate with.
          *
-         *  @return The bucket assigned to key
+         *  @return The bucket assigned to the key.
          *
          **/
         uint32_t GetBucket(const std::vector<uint8_t>& vKey)
@@ -247,7 +254,7 @@ namespace LLD
 
         /** Initialize
          *
-         *  Initialize the binary hash map keychain
+         *  Initialize the binary hash map keychain.
          *
          **/
         void Initialize()
@@ -325,12 +332,12 @@ namespace LLD
 
         /** Get
          *
-         *  Read a key index from the disk hashmaps
+         *  Read a key index from the disk hashmaps.
          *
-         *  @param[in] vKey The binary data of key
-         *  @param[out] cKey The key object to return\
+         *  @param[in] vKey The binary data of key.
+         *  @param[out] cKey The key object to return.
          *
-         *  @return true if the key was found
+         *  @return True if the key was found, false otherwise.
          *
          **/
         bool Get(const std::vector<uint8_t>& vKey, SectorKey &cKey)
@@ -408,13 +415,13 @@ namespace LLD
 
         /** Get
          *
-         *  Read a key index from the disk hashmaps
+         *  Read a key index from the disk hashmaps.
          *  This method iterates all maps to find all keys.
          *
-         *  @param[in] vKey The binary data of key
-         *  @param[out] vKeys The list of keys to return
+         *  @param[in] vKey The binary data of the key.
+         *  @param[out] vKeys The list of keys to return.
          *
-         *  @return true if the key was found
+         *  @return True if the key was found, false otherwise.
          *
          **/
         bool Get(const std::vector<uint8_t>& vKey, std::vector<SectorKey>& vKeys)
@@ -492,11 +499,11 @@ namespace LLD
 
         /** Put
          *
-         *  Write a key to the disk hashmaps
+         *  Write a key to the disk hashmaps.
          *
          *  @param[in] cKey The key object to write.
          *
-         *  @return true if the key was found
+         *  @return True if the key was written, false otherwise.
          *
          **/
         bool Put(const SectorKey& cKey)
@@ -677,7 +684,11 @@ namespace LLD
         }
 
 
-        /* Helper Thread to Batch Write to Disk. */
+        /** CacheWriter
+         *
+         *  Helper Thread to Batch Write to Disk.
+         *
+         **/
         void CacheWriter()
         {
             std::mutex CONDITION_MUTEX;
@@ -722,15 +733,15 @@ namespace LLD
 
         /** Erase
          *
-         *  Erase a key from the disk hashmaps
-         *  This should be optimized further.
+         *  Erase a key from the disk hashmaps.
+         *  TODO: This should be optimized further.
          *
          *  @param[in] vKey the key to erase.
          *
-         *  @return true if the key was found
+         *  @return True if the key was erased, false otherwise.
          *
          **/
-        bool Erase(std::vector<uint8_t> vKey)
+        bool Erase(const std::vector<uint8_t> &vKey)
         {
             /* Get the assigned bucket for the hashmap. */
             uint32_t nBucket = GetBucket(vKey);
@@ -739,45 +750,40 @@ namespace LLD
             uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
 
             /* Compress any keys larger than max size. */
-            CompressKey(vKey, HASHMAP_MAX_KEY_SIZE);
+            std::vector<uint8_t> vKeyCompressed = vKey;
+            CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
             for(int i = hashmap[nBucket] - 1; i >= 0; --i)
             {
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                if(!fileCache->Get(i, pstream))
-                {
-                    /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
+                { LOCK(KEY_MUTEX);
+                    /* Find the file stream for LRU cache. */
+                    std::fstream* pstream;
+                    if(!fileCache->Get(i, pstream))
+                    {
+                        /* Set the new stream pointer. */
+                        pstream = new std::fstream(
+                          debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i),
+                          std::ios::in | std::ios::out | std::ios::binary);
 
-                    /* If file not found add to LRU cache. */
-                    fileCache->Put(i, pstream);
-                }
-
-                /* Handle the disk operations. */
-                {
-                    LOCK(KEY_MUTEX);
+                        /* If file not found add to LRU cache. */
+                        fileCache->Put(i, pstream);
+                    }
 
                     /* Seek to the hashmap index in file. */
                     pstream->seekg (nFilePos, std::ios::beg);
 
                     /* Read the bucket binary data from file stream */
                     pstream->read((char*) &vBucket[0], vBucket.size());
-                }
 
-                /* Check if this bucket has the key */
-                if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKey.size(), vKey.begin()))
-                {
-                    /* Deserialize key and return if found. */
-                    DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
-                    SectorKey cKey;
-                    ssKey >> cKey;
-
-                    /* Handle the disk operations. */
+                    /* Check if this bucket has the key */
+                    if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
                     {
-                        LOCK(KEY_MUTEX);
+                        /* Deserialize key and return if found. */
+                        DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
+                        SectorKey cKey;
+                        ssKey >> cKey;
 
                         /* Seek to the hashmap index in file. */
                         pstream->seekp (nFilePos, std::ios::beg);
@@ -786,19 +792,18 @@ namespace LLD
                         std::vector<uint8_t> vBlank(HASHMAP_KEY_ALLOCATION, 0);
                         pstream->write((char*) &vBlank[0], vBlank.size());
                         pstream->flush();
+
+                        /* Debug Output of Sector Key Information. */
+                        debug::log(4, FUNCTION, "Erased State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                            " | Length: ", cKey.nLength,
+                            " | Bucket ", nBucket,
+                            " | Location: ", nFilePos,
+                            " | File: ", hashmap[nBucket] - 1,
+                            " | Sector File: ", cKey.nSectorFile,
+                            " | Sector Size: ", cKey.nSectorSize,
+                            " | Sector Start: ", cKey.nSectorStart,
+                            " | Key: ", HexStr(vKeyCompressed.begin(), vKeyCompressed.end()));
                     }
-
-
-                    /* Debug Output of Sector Key Information. */
-                    debug::log(4, FUNCTION, "Erased State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
-                        " | Length: ", cKey.nLength,
-                        " | Bucket ", nBucket,
-                        " | Location: ", nFilePos,
-                        " | File: ", hashmap[nBucket] - 1,
-                        " | Sector File: ", cKey.nSectorFile,
-                        " | Sector Size: ", cKey.nSectorSize,
-                        " | Sector Start: ", cKey.nSectorStart,
-                        " | Key: ", HexStr(vKey.begin(), vKey.end()));
                 }
             }
 

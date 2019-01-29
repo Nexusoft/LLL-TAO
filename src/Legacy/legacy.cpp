@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -314,16 +314,11 @@ namespace Legacy
 
 
     /* Accept a block into the chain. */
-    bool LegacyBlock::Accept()
+    bool LegacyBlock::Accept() const
     {
         /* Print the block on verbose 2. */
         if(config::GetArg("-verbose", 0) >= 2)
             print();
-
-        /* Read leger DB for duplicate block. */
-        TAO::Ledger::BlockState state;
-        if(LLD::legDB->ReadBlock(GetHash(), state))
-            return debug::error(FUNCTION, "block state already exists");
 
 
         /* Read leger DB for previous block. */

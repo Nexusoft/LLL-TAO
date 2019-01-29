@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -33,8 +33,12 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    /** Key Class to Hold the Location of Sectors it is referencing.
-        This Indexes the Sector Database. **/
+    /** SectorKey
+     *
+     *  Key Class to Hold the Location of Sectors it is referencing.
+     *  This Indexes the Sector Database.
+     *
+     **/
     class SectorKey
     {
     public:
@@ -44,18 +48,19 @@ namespace LLD
             Byte 1 - 3: nLength (The Size of the Sector)
             Byte 3 - 5: nSector (The Sector Number [0 - x])
         **/
-        uint8_t   		   	    nState;
+        uint8_t   		   	nState;
         uint16_t 			    nLength;
 
         /** These three hold the location of
             Sector in the Sector Database of
             Given Sector Key. **/
         uint16_t 			   nSectorFile;
-        uint32_t   		       nSectorSize;
-        uint32_t   			   nSectorStart;
+        uint32_t   		   nSectorSize;
+        uint32_t   			 nSectorStart;
 
         /* The binary data of the Sector key. */
         std::vector<uint8_t> vKey;
+
 
         /* Serialization Macro. */
         IMPLEMENT_SERIALIZE
@@ -67,7 +72,8 @@ namespace LLD
             READWRITE(nSectorStart);
         )
 
-        /* Constructors. */
+
+        /** Default Constructor. **/
         SectorKey()
         : nState(0)
         , nLength(0)
@@ -75,6 +81,8 @@ namespace LLD
         , nSectorSize(0)
         , nSectorStart(0) { }
 
+
+        /** Constructor **/
         SectorKey(uint8_t nStateIn, std::vector<uint8_t> vKeyIn,
                   uint16_t nSectorFileIn, uint32_t nSectorStartIn, uint32_t nSectorSizeIn)
         : nState(nStateIn)
@@ -84,14 +92,17 @@ namespace LLD
         , nSectorStart(nSectorStartIn)
         , vKey(vKeyIn)
         {
-
         }
 
+
+        /** Default Destructor **/
         ~SectorKey()
         {
 
         }
 
+
+        /** Copy Assignment Operator **/
         SectorKey& operator=(const SectorKey& key)
         {
             nState          = key.nState;
@@ -104,6 +115,8 @@ namespace LLD
             return *this;
         }
 
+
+        /** Default Copy Constructor **/
         SectorKey(const SectorKey& key)
         {
             nState          = key.nState;
@@ -114,22 +127,45 @@ namespace LLD
             vKey            = key.vKey;
         }
 
-        /* Set the key for this object. */
+
+        /** SetKey
+         *
+         *  Set the key for this object.
+         *
+         *  @param[in] vKeyIn The key to set.
+         *
+         **/
         void SetKey(const std::vector<uint8_t>& vKeyIn)
         {
             vKey = vKeyIn;
             nLength = vKey.size();
         }
 
-        /* Iterator to the beginning of the raw key. */
-        uint32_t Begin() const { return 13; }
+
+        /** Begin
+         *
+         *  Iterator to the beginning of the raw key.
+         *
+         **/
+        inline uint32_t Begin() const
+        {
+            return 13;
+        }
 
 
-        /* Return the Size of the Key Sector on Disk. */
-        uint32_t Size() const { return (13 + nLength); }
+        /** Size
+         *
+         *  Return the size of the key sector on disk.
+         *
+         **/
+        inline uint32_t Size() const { return (13 + nLength); }
 
 
-        /* Dump Key to Debug Console. */
+        /** Print
+         *
+         *  Dump Key to Debug Console.
+         *
+         **/
         void Print() const
         {
             debug::log(0, "SectorKey(nState=", nState,
@@ -140,10 +176,37 @@ namespace LLD
         }
 
 
-        /* Check for Key Activity on Sector. */
-        bool Empty() const { return (nState == STATE::EMPTY); }
-        bool Ready() const { return (nState == STATE::READY); }
-        bool IsTxn() const { return (nState == STATE::TRANSACTION); }
+        /** Empty
+         *
+         *  Determines if the key is in an empty state.
+         *
+         **/
+        inline bool Empty() const
+        {
+            return (nState == STATE::EMPTY);
+        }
+
+
+        /** Ready
+         *
+         *  Determines if the key is in a ready state.
+         *
+         **/
+        inline bool Ready() const
+        {
+            return (nState == STATE::READY);
+        }
+
+
+        /** IsTxn
+         *
+         *  Determines if the key is in a transaction state.
+         *
+         **/
+        inline bool IsTxn() const
+        {
+            return (nState == STATE::TRANSACTION);
+        }
 
     };
 }
