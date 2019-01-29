@@ -275,7 +275,9 @@ namespace LLP
                     }
 
                     /* Normal case of asking for a getblocks inventory message. */
-                    pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+                    LegacyNode* pBest = LEGACY_SERVER->GetConnection();
+                    if(pBest)
+                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
                 }
             }
 
@@ -535,7 +537,7 @@ namespace LLP
             }
 
 
-            /* Send the Version Response to ensure communication channel is open. */
+            /* Send the Version Response to ensure communication cTAO::Ledger::ChainState::hashBestChain == hashLastGetblockshannel is open. */
             PushMessage("verack");
 
             /* Push our version back since we just completed getting the version from the other node. */
