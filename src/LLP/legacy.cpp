@@ -227,7 +227,9 @@ namespace LLP
             debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " hash=", block.GetHash().ToString().substr(0, 20));
 
             /* Normal sync mode (slower connections). */
-            if(!config::GetBoolArg("-fastsync"))
+            if(!TAO::Ledger::ChainState::Synchronizing())
+                pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+            else if(!config::GetBoolArg("-fastsync"))
             {
                 if(TAO::Ledger::ChainState::hashBestChain != LegacyNode::hashLastGetblocks || LegacyNode::nLastGetBlocks + 10 < runtime::timestamp())
                 {
@@ -611,9 +613,9 @@ namespace LLP
             }
 
             /* Fast sync mode. */
-            if(config::GetBoolArg("-fastsync"))
+            if(config::GetBoolArg("-fastsync") && TAO::Ledger::ChainState::Synchronizing())
             {
-                if (TAO::Ledger::ChainState::Synchronizing() && vInv.back().GetType() == MSG_BLOCK)
+                if (vInv.back().GetType() == MSG_BLOCK)
                 {
                     /* Single block inventory message signals to check from best chain. (If nothing in 10 seconds) */
                     if(vInv.size() == 1 && TAO::Ledger::ChainState::hashBestChain == hashLastGetblocks && nLastGetBlocks + 10 < runtime::timestamp())
