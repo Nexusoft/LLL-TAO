@@ -393,6 +393,52 @@ namespace Legacy
     }
 
 
+    /* Stores the public key for the wallet's trust key. */
+    bool CWallet::SetTrustKey(const std::vector<uint8_t>& vchPubKey)
+    {
+        {
+            LOCK(cs_wallet);
+
+            if (fFileBacked)
+            {
+                CWalletDB walletdb(strWalletFile);
+                bool result = walletdb.WriteTrustKey(vchPubKey);
+                walletdb.Close();
+
+                if (!result)
+                    return false;
+            }
+
+            vchTrustKey = vchPubKey;
+        }
+
+        return true;
+    }
+
+
+    /* Removes a wallet transaction from the wallet, if present. */
+    bool CWallet::RemoveTrustKey()
+    {
+        {
+            LOCK(cs_wallet);
+
+            if (fFileBacked)
+            {
+                CWalletDB walletdb(strWalletFile);
+                walletdb.EraseTrustKey();
+                walletdb.Close();
+
+                if (!result)
+                    return false;
+            }
+
+            vchTrustKey.clear();
+        }
+
+        return true;
+    }
+
+
     /* Encrypts the wallet in both memory and file backing, assigning a passphrase that will be required
      * to unlock and access the wallet.
      */

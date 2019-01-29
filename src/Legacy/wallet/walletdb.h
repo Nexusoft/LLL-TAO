@@ -302,6 +302,40 @@ namespace Legacy
         bool WriteDefaultKey(const std::vector<uint8_t>& vchPubKey);
 
 
+        /** ReadTrustKey
+         *
+         *  Reads the public key for the wallet's trust key from the wallet database.
+         *
+         *  @param[out] vchPubKey The value of the trust key public key
+         *
+         *  @return true if trust key is present in the database and read successfully
+         *
+         **/
+        bool ReadTrustKey(std::vector<uint8_t>& vchPubKey);
+
+
+        /** WriteTrustKey
+         *
+         *  Stores the public key for the wallet's trust key to the wallet database.
+         *
+         *  @param[in] vchPubKey The public key to save as trust key
+         *
+         *  @return true if database entry successfully written
+         *
+         **/
+        bool WriteTrustKey(const std::vector<uint8_t>& vchPubKey);
+
+
+        /** EraseTrustKey
+         *
+         *  Removes the trust key entry.
+         *
+         *  @return true if database entry successfully removed
+         *
+         **/
+        bool EraseTrustKey();
+
+
         /** ReadKey
          *
          *  Reads the unencrypted private key associated with a public key

@@ -196,6 +196,12 @@ namespace Legacy
         std::vector<uint8_t> vchDefaultKey;
 
 
+        /** The public key for the trust key used by this wallet.
+         *  This will be saved when Proof of Stake identifies a v5+ trust key for this wallet.
+         **/
+        std::vector<uint8_t> vchTrustKey;
+
+
         /** The timestamp that this wallet will remain unlocked until **/
         uint64_t nWalletUnlockTime;
 
@@ -460,6 +466,16 @@ namespace Legacy
         inline std::vector<uint8_t> GetDefaultKey() const { return vchDefaultKey; }
 
 
+        /** GetTrustKey
+         *
+         *  Retrieves the trust key for this wallet.
+         *
+         *  @return the public key for the trust key 
+         *
+         */
+        inline std::vector<uint8_t> GetTrustKey() const { return vchTrustKey; }
+
+
         /** SetDefaultKey
          *
          *  Assigns a new default key to this wallet. The key itself
@@ -473,10 +489,38 @@ namespace Legacy
          *  @return true if setting default key successful
          *
          *  @see CKeyPool::GetKeyFromPool
-         *  @see GenerateNewKey
          *
          */
         bool SetDefaultKey(const std::vector<uint8_t>& vchPubKey);
+
+
+        /** SetTrustKey
+         *
+         *  Stores the public key for the wallet's trust key. The key itself
+         *  should be obtained from the wallet's key pool or generated new.
+         *
+         *  Wallet also writes the public key in the wallet database for file backed wallets.
+         *  This will overwrite any prior trust key value.
+         *
+         *  @param[in] vchPubKey The public key to use as the wallet's trust key
+         *
+         *  @return true if setting trust key successful
+         *
+         *  @see CKeyPool::GetKeyFromPool
+         *
+         */
+        bool SetTrustKey(const std::vector<uint8_t>& vchPubKey);
+
+
+        /** RemoveTrustKey
+         *
+         *  Removes the wallet's trust key. This only removes the saved public key. 
+         *  The key itself is not removed from the key store.
+         *
+         *  @return true if removing trust key successful
+         *
+         */
+        bool RemoveTrustKey();
 
 
         /** EncryptWallet
