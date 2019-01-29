@@ -28,6 +28,11 @@ ________________________________________________________________________________
 namespace LLD
 {
 
+    /** RegisterDB
+     *
+     *  The database class for the Register Layer.
+     *
+     **/
     class RegisterDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
         std::mutex MEMORY_MUTEX;
@@ -36,19 +41,21 @@ namespace LLD
         std::map<uint32_t, uint256_t> mapIdentifiers;
 
     public:
+
+
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         RegisterDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::APPEND)
         : SectorDatabase("registers", nFlags) {}
 
 
-        /** Write state
+        /** WriteState
          *
          *  Writes a state register to the register database.
          *
          *  @param[in] hashRegister The register address.
          *  @param[in] state The state register to write.
          *
-         *  @return true if write was successul.
+         *  @return True if write was successful, false otherwise.
          *
          **/
         bool WriteState(const uint256_t& hashRegister, const TAO::Register::State& state)
@@ -57,14 +64,14 @@ namespace LLD
         }
 
 
-        /** Read state
+        /** ReadState
          *
          *  Read a state register from the register database.
          *
          *  @param[in] hashRegister The register address.
          *  @param[out] state The state register to read.
          *
-         *  @return true if read was successul.
+         *  @return True if read was successful, false otherwise.
          *
          **/
         bool ReadState(const uint256_t& hashRegister, TAO::Register::State& state)
@@ -73,14 +80,14 @@ namespace LLD
         }
 
 
-        /** Erase state
+        /** EraseState
          *
          *  Erase a state register from the register database.
          *
          *  @param[in] hashRegister The register address.
          *  @param[out] state The state register to read.
          *
-         *  @return true if read was successul.
+         *  @return True if erase was successful, false otherwise.
          *
          **/
         bool EraseState(const uint256_t& hashRegister)
@@ -89,14 +96,14 @@ namespace LLD
         }
 
 
-        /** Write Identifier
+        /** WriteIdentifier
          *
-         *  Writes a token identifier to the register database
+         *  Writes a token identifier to the register database.
          *
          *  @param[in] nIdentifier The token identifier.
-         *  @param[in] hashRegister The register address of token.
+         *  @param[in] hashRegister The register address of the token.
          *
-         *  @return true if write was successul.
+         *  @return True if write was successful, false otherwise.
          *
          **/
         bool WriteIdentifier(uint32_t nIdentifier, const uint256_t& hashRegister, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
@@ -123,14 +130,15 @@ namespace LLD
         }
 
 
-        /** Read Identifier
+        /** ReadIdentifier
          *
-         *  Read a token identifier from the register database
+         *  Read a token identifier from the register database.
          *
          *  @param[in] nIdentifier The token identifier.
          *  @param[out] hashRegister The register address of token.
+         *  @param[in] nFlags The flags for the register database.
          *
-         *  @return true if write was successul.
+         *  @return True if read was successful, false otherwise.
          *
          **/
         bool ReadIdentifier(uint32_t nIdentifier, uint256_t& hashRegister, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
@@ -153,13 +161,14 @@ namespace LLD
         }
 
 
-        /** Has Identifier
+        /** HasIdentifier
          *
-         *  Determine if an identifier exists in the database
+         *  Determines if an identifier exists in the database.
          *
          *  @param[in] nIdentifier The token identifier.
+         *  @param[in] nFlags The flags for the register database.
          *
-         *  @return true if it exists
+         *  @return True if it exists, false otherwise.
          *
          **/
         bool HasIdentifier(uint32_t nIdentifier, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
@@ -178,13 +187,14 @@ namespace LLD
         }
 
 
-        /** Has state
+        /** HasState
          *
-         *  Check if a state exists in the register database
+         *  Determines if a state exists in the register database.
          *
          *  @param[in] hashRegister The register address.
+         *  @param[in] nFlags The flags for the register database.
          *
-         *  @return true if it exists.
+         *  @return True if it exists, false otherwise.
          *
          **/
         bool HasState(const uint256_t& hashRegister, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
@@ -193,14 +203,14 @@ namespace LLD
         }
 
 
-        /** Get States
+        /** GetStates
          *
-         *  Get the previous states of a register
+         *  Get the previous states of a register.
          *
          *  @param[in] hashRegister The register address.
          *  @param[out] states The states vector to return.
          *
-         *  @return true if any states were found.
+         *  @return True if any states were found, false otherwise.
          *
          **/
         bool GetStates(const uint256_t& hashRegister, std::vector<TAO::Register::State>& states)
