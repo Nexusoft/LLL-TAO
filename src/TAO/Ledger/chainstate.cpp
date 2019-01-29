@@ -78,8 +78,25 @@ namespace TAO
 
             /* Get the best chain stats. */
             if(!LLD::legDB->ReadBlock(hashBestChain, stateBest))
-                return debug::error(FUNCTION, "failed to read best block");
+            {
+                debug::error(FUNCTION, "failed to read best block, attempting to recover database");
 
+                /* The block for hashBestChain might not exist on disk if the process was unexpectedly terminated
+                during a block commit.  In this case we can attempt to recover by iterating forward from the genesis
+                blockState until we reach the end of the chain, which is the last written block. */
+                BlockState stateBestKnown = stateGenesis;
+                while( !stateBestKnown.IsNull() && stateBestKnown.hashNextBlock != 0)
+                {
+                    stateBest = stateBestKnown;
+                    stateBestKnown = stateBestKnown.Next();
+                }
+
+                hashBestChain = stateBest.GetHash();
+                if(!LLD::legDB->WriteBestChain(hashBestChain))
+                    return debug::error(FUNCTION, "failed to write best chain");
+                
+                debug::log(0, FUNCTION, "database successfully recovered" );
+            }
             /* Fill out the best chain stats. */
             nBestHeight     = stateBest.nHeight;
             nBestChainTrust = stateBest.nChainTrust;
