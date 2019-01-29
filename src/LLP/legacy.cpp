@@ -283,18 +283,22 @@ namespace LLP
             return true;
         }
 
-        /* Check if valid in the chain. */
-        if(!block.Accept())
-        {
-            debug::log(3, FUNCTION, "block failed to be added to chain");
-
-            return true;
-        }
-
         { LOCK(PROCESSING_MUTEX);
 
             /* Create the Block State. */
             TAO::Ledger::BlockState state(block);
+
+            /* Check if it exists first */
+            if(LLD::legDB->HasBlock(block.GetHash()))
+                return true;
+
+            /* Check if valid in the chain. */
+            if(!block.Accept())
+            {
+                debug::log(3, FUNCTION, "block failed to be added to chain");
+
+                return true;
+            }
 
             /* Process the block state. */
             if(!state.Accept())
