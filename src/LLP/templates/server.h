@@ -266,6 +266,41 @@ namespace LLP
         }
 
 
+        /** GetConnectionCount
+         *
+         *  Get the number of active connection pointers from data threads.
+         *
+         *  @return Returns the count of active connections 
+         *
+         **/
+        uint32_t GetConnectionCount()
+        {
+            uint32_t connectionCount = 0;
+
+            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            {
+                /* Get the data threads. */
+                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+                if(!dt)
+                    continue;
+
+                /* Loop through connections in data thread and add any that are connected to count. */
+                int32_t nSize = dt->CONNECTIONS.size();
+                for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
+                {
+                    /* Skip over inactive connections. */
+                    if(!dt->CONNECTIONS[nIndex] ||
+                       !dt->CONNECTIONS[nIndex]->Connected())
+                        continue;
+
+                    connectionCount += 1;
+                }
+            }
+
+            return connectionCount;
+        }
+
+
         /** Get Connection
          *
          *  Get the best connection based on latency
