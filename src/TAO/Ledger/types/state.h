@@ -243,6 +243,16 @@ namespace TAO
             bool Accept();
 
 
+            /** Set Best
+             *
+             *  Set this state as the best chain.
+             *
+             *  @return true if accepted.
+             *
+             **/
+            bool SetBest();
+
+
             /** Connect
              *
              *  Connect a block state into chain.

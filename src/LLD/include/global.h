@@ -29,6 +29,30 @@ namespace LLD
     //for legacy objects
     extern TrustDB*      trustDB;
     extern LegacyDB*     legacyDB;
+
+
+    /** Txn Begin
+     *
+     *  Global handler for all LLD instances.
+     *
+     */
+    void TxnBegin();
+
+
+    /** Txn Abort
+     *
+     *  Global handler for all LLD instances.
+     *
+     */
+    void TxnAbort();
+
+
+    /** Txn Commit
+     *
+     *  Global handler for all LLD instances.
+     *
+     */
+    void TxnCommit();
 }
 
 #endif
