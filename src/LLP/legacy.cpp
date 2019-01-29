@@ -433,6 +433,10 @@ namespace LLP
             Legacy::Transaction tx;
             ssMessage >> tx;
 
+            /* Check for sync. */
+            if(TAO::Ledger::ChainState::Synchronizing())
+                return true;
+
             /* Accept to memory pool. */
             TAO::Ledger::mempool.Accept(tx);
         }
