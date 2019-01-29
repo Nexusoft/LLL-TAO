@@ -606,7 +606,7 @@ namespace LLP
             std::vector<CInv> vInv;
             ssMessage >> vInv;
 
-            debug::log(1, NODE, "Inventory Message of ", vInv.size(), " elements");
+            debug::log(3, NODE, "Inventory Message of ", vInv.size(), " elements");
 
             /* Make sure the inventory size is not too large. */
             if (vInv.size() > 10000)
