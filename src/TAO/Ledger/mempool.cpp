@@ -108,6 +108,22 @@ namespace TAO
         }
 
 
+        /* Gets a transaction from mempool */
+        bool Mempool::Get(uint512_t hashTx, TAO::Ledger::Transaction& tx) const
+        {
+            LOCK(MUTEX);
+
+            /* Fail if not found. */
+            if(!mapLedger.count(hashTx))
+                return false;
+
+            /* Find the object. */
+            tx = mapLedger.at(hashTx);
+
+            return true;
+        }
+
+
         /* Checks if a transaction exists. */
         bool Mempool::Has(uint512_t hashTx) const
         {
@@ -134,38 +150,7 @@ namespace TAO
                 return true;
             }
 
-            /* Find out if this was a legacy transaction. */
-            if(mapLegacy.count(hashTx))
-            {
-                Legacy::Transaction tx = mapLegacy[hashTx];
-
-                /* Erase the claimed inputs */
-                uint32_t s = tx.vin.size();
-                for (uint32_t i = 0; i < s; ++i)
-                    mapInputs.erase(tx.vin[i].prevout);
-
-                mapLegacy.erase(hashTx);
-
-                return true;
-            }
-
             return false;
-        }
-
-
-        /* Gets a transaction from mempool */
-        bool Mempool::Get(uint512_t hashTx, TAO::Ledger::Transaction& tx) const
-        {
-            LOCK(MUTEX);
-
-            /* Fail if not found. */
-            if(!mapLedger.count(hashTx))
-                return false;
-
-            /* Find the object. */
-            tx = mapLedger.at(hashTx);
-
-            return true;
         }
 
 
