@@ -167,7 +167,7 @@ namespace LLD
         , pTransaction(nullptr)
         , pSectorKeys(nullptr)
         , cachePool(new CacheType((config::GetArg("-maxcache", 64) * 1024 * 1024) / 4))
-        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(4))
+        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
         , nCurrentFile(0)
         , nCurrentFileSize(0)
         , CacheWriterThread()

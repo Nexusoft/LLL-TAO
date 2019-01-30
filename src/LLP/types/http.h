@@ -229,7 +229,7 @@ namespace LLP
          *  @param[in] strContent The content to post return with.
          *
          **/
-        void PushResponse(const uint16_t nMsg, std::string strContent)
+        void PushResponse(const uint16_t nMsg, const std::string& strContent)
         {
             try
             {

@@ -118,7 +118,7 @@ namespace LLP
          *  @return the total bytes available for read
          *
          **/
-        int32_t Available();
+        int32_t Available() const;
 
 
         /** Close

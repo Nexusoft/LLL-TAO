@@ -841,82 +841,85 @@ namespace Legacy
     {
         uint512_t hash = wtxIn.GetHash();
 
+        /* Use the returned tx, not wtxIn, in case insert returned an existing transaction */
+        CWalletTx wtx;
+        bool fInsertedNew;
         {
             LOCK(cs_wallet);
 
             /* Inserts only if not already there, returns tx inserted or tx found */
             std::pair<TransactionMap::iterator, bool> ret = mapWallet.insert(std::make_pair(hash, wtxIn));
-
-            /* Use the returned tx, not wtxIn, in case insert returned an existing transaction */
-            CWalletTx& wtx = (*ret.first).second;
-            wtx.BindWallet(this);
-
-            bool fInsertedNew = ret.second;
-            if (fInsertedNew)
-            {
-                /* wtx.nTimeReceive must remain uint32_t for backward compatability */
-                wtx.nTimeReceived = (uint32_t)runtime::unifiedtimestamp();
-            }
-
-            bool fUpdated = false;
-            if (!fInsertedNew)
-            {
-                /* If found an existing transaction, merge the new one into it */
-                if (wtxIn.hashBlock != 0 && wtxIn.hashBlock != wtx.hashBlock)
-                {
-                    wtx.hashBlock = wtxIn.hashBlock;
-                    fUpdated = true;
-                }
-
-                /* nIndex and vMerkleBranch are deprecated so nIndex will be -1 for all legacy transactions created in Tritium
-                 * Code here is only relevant for processing old transactions previously stored in wallet.dat
-                 */
-                if (wtxIn.nIndex != -1 && (wtxIn.vMerkleBranch != wtx.vMerkleBranch || wtxIn.nIndex != wtx.nIndex))
-                {
-                    wtx.vMerkleBranch = wtxIn.vMerkleBranch;
-                    wtx.nIndex = wtxIn.nIndex;
-                    fUpdated = true;
-                }
-
-                if (wtxIn.fFromMe && wtxIn.fFromMe != wtx.fFromMe)
-                {
-                    wtx.fFromMe = wtxIn.fFromMe;
-                    fUpdated = true;
-                }
-
-                /* Merge spent flags */
-                fUpdated |= wtx.UpdateSpent(wtxIn.vfSpent);
-            }
-
-            /* debug print */
-            debug::log(0, FUNCTION, wtxIn.GetHash().ToString().substr(0,10), " ", (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
-
-            /* Write to disk */
-            if (fInsertedNew || fUpdated)
-                if (!wtx.WriteToDisk())
-                    return false;
-
-            /* If default receiving address gets used, replace it with a new one */
-            CScript scriptDefaultKey;
-            scriptDefaultKey.SetNexusAddress(vchDefaultKey);
-
-            for(const CTxOut& txout : wtx.vout)
-            {
-                if (txout.scriptPubKey == scriptDefaultKey)
-                {
-                    std::vector<uint8_t> newDefaultKey;
-
-                    if (keyPool.GetKeyFromPool(newDefaultKey, false))
-                    {
-                        SetDefaultKey(newDefaultKey);
-                        addressBook.SetAddressBookName(NexusAddress(vchDefaultKey), "");
-                    }
-                }
-            }
-
-            /* since AddToWallet is called directly for self-originating transactions, check for consumption of own coins */
-            WalletUpdateSpent(wtx);
+            wtx = (*ret.first).second;
+            fInsertedNew = ret.second;
         }
+
+        wtx.BindWallet(this);
+
+
+        if (fInsertedNew)
+        {
+            /* wtx.nTimeReceive must remain uint32_t for backward compatability */
+            wtx.nTimeReceived = (uint32_t)runtime::unifiedtimestamp();
+        }
+
+        bool fUpdated = false;
+        if (!fInsertedNew)
+        {
+            /* If found an existing transaction, merge the new one into it */
+            if (wtxIn.hashBlock != 0 && wtxIn.hashBlock != wtx.hashBlock)
+            {
+                wtx.hashBlock = wtxIn.hashBlock;
+                fUpdated = true;
+            }
+
+            /* nIndex and vMerkleBranch are deprecated so nIndex will be -1 for all legacy transactions created in Tritium
+             * Code here is only relevant for processing old transactions previously stored in wallet.dat
+             */
+            if (wtxIn.nIndex != -1 && (wtxIn.vMerkleBranch != wtx.vMerkleBranch || wtxIn.nIndex != wtx.nIndex))
+            {
+                wtx.vMerkleBranch = wtxIn.vMerkleBranch;
+                wtx.nIndex = wtxIn.nIndex;
+                fUpdated = true;
+            }
+
+            if (wtxIn.fFromMe && wtxIn.fFromMe != wtx.fFromMe)
+            {
+                wtx.fFromMe = wtxIn.fFromMe;
+                fUpdated = true;
+            }
+
+            /* Merge spent flags */
+            fUpdated |= wtx.UpdateSpent(wtxIn.vfSpent);
+        }
+
+        /* debug print */
+        debug::log(0, FUNCTION, wtxIn.GetHash().ToString().substr(0,10), " ", (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+
+        /* Write to disk */
+        if (fInsertedNew || fUpdated)
+            if (!wtx.WriteToDisk())
+                return false;
+
+        /* If default receiving address gets used, replace it with a new one */
+        CScript scriptDefaultKey;
+        scriptDefaultKey.SetNexusAddress(vchDefaultKey);
+
+        for(const CTxOut& txout : wtx.vout)
+        {
+            if (txout.scriptPubKey == scriptDefaultKey)
+            {
+                std::vector<uint8_t> newDefaultKey;
+
+                if (keyPool.GetKeyFromPool(newDefaultKey, false))
+                {
+                    SetDefaultKey(newDefaultKey);
+                    addressBook.SetAddressBookName(NexusAddress(vchDefaultKey), "");
+                }
+            }
+        }
+
+        /* since AddToWallet is called directly for self-originating transactions, check for consumption of own coins */
+        WalletUpdateSpent(wtx);
 
         return true;
     }
