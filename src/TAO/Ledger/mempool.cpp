@@ -62,7 +62,7 @@ namespace TAO
             /* Check the mempool. */
             uint512_t hash = tx.GetHash();
             if(mapLedger.count(hash))
-                return debug::error(FUNCTION, tx.GetHash().ToString().substr(0, 20), " already exists");
+                return false;
 
             /* The next hash that is being claimed. */
             uint256_t hashClaim = tx.PrevHash();
@@ -98,7 +98,7 @@ namespace TAO
             mapPrevHashes[hashClaim] = tx.GetHash();
 
             /* Debug output. */
-            debug::log(2, FUNCTION, "TX ", hash.ToString().substr(0, 20), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
+            debug::log(2, FUNCTION, "tx ", hash.ToString().substr(0, 20), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
             /* Notify private to produce block if valid. */
             if(config::GetBoolArg("-private"))

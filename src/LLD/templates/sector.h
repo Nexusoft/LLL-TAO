@@ -166,8 +166,8 @@ namespace LLD
         , runtime()
         , pTransaction(nullptr)
         , pSectorKeys(nullptr)
-        , cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE))
-        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+        , cachePool(new CacheType((config::GetArg("-maxcache", 4) * 1024 * 1024) / 5))
+        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(4))
         , nCurrentFile(0)
         , nCurrentFileSize(0)
         , CacheWriterThread()
@@ -301,7 +301,6 @@ namespace LLD
             { LOCK(TRANSACTION_MUTEX);
                 if(pTransaction)
                 {
-
                     if(pTransaction->mapEraseData.count(ssKey.Bytes()))
                         return false;
 
@@ -483,6 +482,9 @@ namespace LLD
             { LOCK(TRANSACTION_MUTEX);
                 if(pTransaction)
                 {
+                    /* Check if data is in erase queue, if so remove it. */
+                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
+                        pTransaction->mapEraseData.erase(ssKey.Bytes());
 
                     /* Set the transaction data. */
                     pTransaction->mapKeychain[ssKey.Bytes()] = 0;
@@ -525,6 +527,10 @@ namespace LLD
             { LOCK(TRANSACTION_MUTEX);
                 if(pTransaction)
                 {
+                    /* Check if data is in erase queue, if so remove it. */
+                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
+                        pTransaction->mapEraseData.erase(ssKey.Bytes());
+
                     /* Set the transaction data. */
                     pTransaction->mapTransactions[ssKey.Bytes()] = ssData.Bytes();
 

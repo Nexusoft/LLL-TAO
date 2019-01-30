@@ -718,12 +718,12 @@ namespace Legacy
             if(!LLD::legacyDB->ReadTx(prevout.hash, txPrev))
             {
                 //TODO: check the memory pool for previous
-                return debug::error(FUNCTION, "previous transaction not found");
+                return debug::error(FUNCTION, "previous transaction ", prevout.hash.ToString().substr(0, 20), " not found");
             }
 
             /* Check that it is valid. */
             if(prevout.n >= txPrev.vout.size())
-                return debug::error(FUNCTION, "prevout is out of range");
+                return debug::error(FUNCTION, "prevout ", prevout.n, " is out of range ", txPrev.vout.size());
 
             /* Add to the inputs. */
             inputs[prevout.hash] = txPrev;
