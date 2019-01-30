@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #include <Legacy/types/address.h>
 #include <Legacy/wallet/addressbook.h>
 
+#include <LLC/types/bignum.h>
+
 #include <LLP/include/global.h>
 
 #include <TAO/Ledger/include/chainstate.h>
@@ -192,7 +194,7 @@ namespace Legacy
             /* Retrieve all the trust key public keys from the trust db */
             std::vector< std::vector<uint8_t> > vchTrustKeyList = LLD::trustDB->GetKeys();
 
-            for (const std::vector<uint8_t>& vchHashKey : vchTrustKeyList)
+            for (const auto& vchHashKey : vchTrustKeyList)
             {
                 /* Read the full trust key from the trust db */
                 uint576_t cKey;
@@ -403,8 +405,8 @@ namespace Legacy
         double nCurrentBlockWeight = 0.0
         bool fNewIsWaitPeriod = false;
 
-        /* Weight for Trust transactions combine block weight and stake weight. */
-        if(candidateBlock.producer.IsTrust())
+        /* Weight for Trust transactions combines trust weight and block weight. */
+        if(candidateBlock.vtx[0].IsTrust())
         {
             uint32_t nTrustScore;
             uint32_t nBlockAge;
@@ -435,19 +437,18 @@ namespace Legacy
 
         }
 
-        /* Weight for Gensis transactions are based on your coin age. */
+        /* Weights for Genesis transactions only uses trust weight with its value based on average coin age. */
         else
         {
             uint64_t nCoinAge;
             uint32_t nMinimumCoinAge = (fTestNet ? TRUST_KEY_TIMESPAN_TESTNET : TRUST_KEY_TIMESPAN);
 
             /* Calculate the average Coin Age for coinstake inputs of candidate block. */
-//TODO - Coinstake age currently only exists on Legacy::Transaction and block producer is TAO::Ledger::Transaction
-//            if(!block.producer.CoinstakeAge(nCoinAge))
-//            {
+            if(!block.vtx[0].CoinstakeAge(nCoinAge))
+            {
                 debug::error(FUNCTION, "Failed to get coinstake age");
                 return false;
-//            }
+            }
 
             /* Genesis has to wait for average coin age to reach one full trust key timespan. */
             if(nCoinAge < nMinimumCoinAge)
@@ -458,7 +459,9 @@ namespace Legacy
                 /* Increase sleep time to wait for coin age to meet requirement (5 minute check) */
                 nSleepTime = 300000;
 
-                debug::log(0, FUNCTION, "Genesis average coin age is immature");
+                uint32_t nRemainingWaitTime = (nMinimumCoinAge = nCoinAge) / 60
+
+                debug::log(0, FUNCTION, "Average coin age is immature. %" PRIu32 " minutes remaining until staking available.", nRemainingWaitTime);
                 return false;
             }
             else  
@@ -493,53 +496,75 @@ namespace Legacy
 
     bool StakeMinter::MineProofOfStake()
     {
-            // /* Calculate the energy efficiency requirements. */
-            // double nRequired  = ((108.0 - nTrustWeight - nBlockWeight) * MAX_STAKE_WEIGHT) / block.vtx[0].vout[0].nValue;
+            bool fstop = false; //initialized false, will always perform at least one iteration even if miner was just stopped
 
-            // /* Calculate the target value based on difficulty. */
-            // CBigNum bnTarget;
-            // bnTarget.SetCompact(block.nBits);
-            // uint1024 hashTarget = bnTarget.getuint1024();
+            /* Calculate the minimum Required Energy Efficiency Threshold. 
+             * Minter can only mine Proof of Stake when current threshold exceeds this value. 
+             *
+             * Staking weights (trust and block) reduce the required threshold by reducing the numerator of this calculation.
+             * Weight from staking balance (based on nValue out of coinstake) reduces the required threshold by increasing the denominator.
+             */
+            uint64_t nStake = block.vtx[0].vout[0].nValue
+            double nRequired = ((108.0 - nTrustWeight - nBlockWeight) * TAO::Ledger::MAX_STAKE_WEIGHT) / nStake;
 
-            // /* Set the interest rate variable. THIS IS FOR DISPLAY IN QT ONLY */
-            // dInterestRate = trustKey.InterestRate(block, mapBlockIndex[block.hashPrevBlock]->GetBlockTime());
+            /* Calculate the target value based on difficulty. */
+            CBigNum bnTarget;
+            bnTarget.SetCompact(candidateBlock.nBits);
+            uint1024_t nHashTarget = bnTarget.getuint1024();
 
-            // /* Sign the new Proof of Stake Block. */
-            // if(GetArg("-verbose", 0) >= 0)
-            //     printf("Stake Minter : staking from block %s at weight %f and rate %f\n", hashBest.ToString().substr(0, 20).c_str(), (dTrustWeight + dBlockWeight), dInterestRate);
+            debug::log(0, FUNCTION, "Staking new block from %s at weight %f and stake rate %f", 
+                hashLastBlock.ToString().substr(0, 20).c_str(), (nTrustWeight + nBlockWeight), nInterestRate);
 
-            // /* Search for the proof of stake hash. */
-            // while(hashBest == hashBestChain)
-            // {
-            //     /* Update the block time for difficulty accuracy. */
-            //     block.UpdateTime();
-            //     if(block.nTime == block.vtx[0].nTime)
-            //         continue;
+            /* Search for the proof of stake hash solution until it mines a block, minter is stopped, 
+             * or network generates a new block (minter must start over with new candidate) 
+             */
+            while (!fstop && !config::fShutdown && hashLastBlock == TAO::Ledger::ChainState::hashBestChain)
+            {
+                /* Update the block time for difficulty accuracy. */
+                candidateBlock.UpdateTime();
+                uint32_t nCurrentBlockTime = candidateBlock.GetBlockTime() - candidateBlock.vtx[0].nTime; // How long have we been working on this block
 
-            //     /* Calculate the Efficiency Threshold. */
-            //     double nThreshold = (double)((block.nTime - block.vtx[0].nTime) * 100.0) / (block.nNonce + 1);
+                /* If just starting on block, wait */
+                if (nCurrentBlockTime)
+                {
+                    runtime::Sleep(1);
+                    continue;
+                }
 
-            //     /* Allow the Searching For Stake block if Below the Efficiency Threshold. */
-            //     if(nThreshold < nRequired)
-            //     {
-            //         runtime::Sleep(1);
-            //         continue;
-            //     }
+                /* Calculate the new Efficiency Threshold for the next nonce. */
+                double nThreshold = (nCurrentBlockTime * 100.0) / (candidateBlock.nNonce + 1);
 
-            //     /* Increment the nOnce. */
-            //     block.nNonce ++;
+                {
+                    /* Check stop flag now in case we are below required threshold (lower balance wallets may remain below it for awhile) */
+                    LOCK(cs_stakeMinter);
+                    fstop = StakeMinter::fstopMinter;
 
-            //     /* Debug output. */
-            //     if(block.nNonce % 1000 == 0 && GetArg("-verbose", 0) >= 3)
-            //         printf("Stake Minter : below threshold %f required %f incrementing nonce %" PRIu64 "\n", nThreshold, nRequired, block.nNonce);
+                    if (fstop)
+                        continue;
+                }
 
-            //     /* Handle if block is found. */
-            //     if (block.StakeHash() < hashTarget)
-            //     {
-            //         ProcessMinedBlock();
-            //         break;
-            //     }
-            // }
+                /* If energy efficiency requirement exceeds threshold, wait and keep trying with the same nonce value until it threshold increases */
+                if(nThreshold < nRequired)
+                {
+                    runtime::Sleep(1);
+                    continue;
+                }
+
+                /* Increment the nonce only after we know we can use it (threshold exceeds required). */
+                candidateBlock.nNonce++;
+
+                /* Log every 1000 attempts */
+                if (candidateBlock.nNonce % 1000 == 0)
+                    debug::log(3, FUNCTION, "Threshold %f exceeds required %f, mining Proof of Stake with nonce %" PRIu64, nThreshold, nRequired, candidateBlock.nNonce);
+
+                /* Handle if block is found. */
+                if (candidateBlock.StakeHash() < hashTarget)
+                {
+                    ProcessMinedBlock();
+                    break;
+                }
+
+            }
 
     }
 
@@ -610,7 +635,7 @@ namespace Legacy
 
 
     /* Method run on its own thread to oversee stake minter operation. */
-    void StakeMinter::StakeMinterThread(StakeMinter* pstakeMinter)
+    void StakeMinter::StakeMinterThread(StakeMinter* pStakeMinter)
     {
 
         /* Local copies of stake minter flags. These support testing conditions while only reading the shared static flags within a lock scope. */
@@ -633,27 +658,30 @@ namespace Legacy
             }
         }
 
-        pstakeMinter->FindTrustKey();
+        pStakeMinter->FindTrustKey();
 
         debug::log(0, FUNCTION, "Stake Minter Initialized");
         nSleepTime = 1000;
 
-        /* This outer loop allows us to stop the stake minter by locking the wallet */
+        /* Minting thread will continue repeating this loop until shutdown */
         while(!config::fShutdown)
         {
             runtime::Sleep(nSleepTime);
 
+            /* Save the current best block hash immediately in case it changes */
+            hashLastBlock = TAO::Ledger::ChainState::hashBestChain;
+
             /* Set up the candidate block the minter is attempting to mine */
-            pstakeMinter->CreateCandidateBlock();
+            pStakeMinter->CreateCandidateBlock();
 
             /* Updates weights for new candidate block */
-            pstakeMinter->CalculateWeights();
+            pStakeMinter->CalculateWeights();
 
             /* Attempt to mine the current proof of stake block */
-            pstakeMinter->MineProofOfStake();
+            pStakeMinter->MineProofOfStake();
 
             /* Reset candidate block for next iteration */
-            pstakeMinter->ResetMinter();
+            pStakeMinter->ResetMinter();
 
             /* Check whether the stake minter has been stopped */
             {
@@ -694,7 +722,7 @@ namespace Legacy
         }
 
         /* On shutdown, delete the minter instance and wait for it to destruct before ending */ 
-        delete pstakeMinter;
+        delete pStakeMinter;
 
         while (!fdestruct)
         {

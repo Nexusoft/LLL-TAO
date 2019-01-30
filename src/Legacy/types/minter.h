@@ -17,13 +17,13 @@ ________________________________________________________________________________
 
 #include <thread>
 
+#include <Legacy/types/legacy.h>
 #include <Legacy/wallet/reservekey.h>
 #include <Legacy/wallet/wallet.h>
 
 #include <LLC/types/uint1024.h>
 
 #include <TAO/Ledger/types/trustkey.h>
-#include <TAO/Ledger/types/tritium.h>
 
 #include <Util/include/mutex.h>
 
@@ -32,7 +32,7 @@ namespace Legacy
 {
     /** @class StakeMinter
       *
-      * This class performs all operations for mining on the Proof of Stake channel.
+      * This class performs all operations for mining legacy blocks on the Proof of Stake channel.
       * Initializing the StakeMinter by calling GetInstance() the first time will start
       * the stake minter thread, which uses the private methods of the StakeMinter to perform
       * Proof of Stake.
@@ -200,9 +200,9 @@ namespace Legacy
 
         ReserveKey* pReservedTrustKey;
 
-        uint1024_t hashLastBlock;
+        LegacyBlock candidateBlock;
 
-        TritiumBlock candidateBlock;
+        uint1024_t hashLastBlock;
 
         uint64_t nSleepTime;
 
@@ -212,9 +212,7 @@ namespace Legacy
 
         double nBlockWeight;
 
-        double nRequired;
-
-        double nThreshhold;
+        double nInterestRate;
 
 
         /** Default constructor **/
@@ -223,8 +221,8 @@ namespace Legacy
         , pStakingWallet(nullptr)
         , trustKey(TrustKey())
         , pReservedTrustKey(nullptr)
+        , pCandidateBlock(LegacyBlock())
         , hashLastBlock(0)
-        , pCandidateBlock(TritiumBlock())
         , nSleepTime(1000)
         , fIsWaitPeriod(false)
         , nTrustWeight(0.0)
@@ -278,10 +276,10 @@ namespace Legacy
           * On shutdown, the thread will cease operation and wait for the stake minter
           * destructor to tell it to exit/join.
           *
-          * @param[in] pstakeMinter - the minter thread will use this instance to perform all the stake minter work
+          * @param[in] pStakeMinter - the minter thread will use this instance to perform all the stake minter work
           * 
           **/
-        static void StakeMinterThread(StakeMinter* pstakeMinter);
+        static void StakeMinterThread(StakeMinter* pStakeMinter);
 
     }
 }
