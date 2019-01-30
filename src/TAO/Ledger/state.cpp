@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <Legacy/types/legacy.h>
+#include <Legacy/wallet/wallet.h>
 
 #include <TAO/Operation/include/execute.h>
 
@@ -39,7 +40,7 @@ namespace TAO
 
     /* Ledger Layer namespace. */
     namespace Ledger
-    {
+    { 
         std::mutex BlockState::STATE_MUTEX;
 
         /* Get the block state object. */
@@ -518,6 +519,9 @@ namespace TAO
                     if(!tx.Connect(inputs, *this, Legacy::FLAGS::BLOCK))
                         return debug::error(FUNCTION, "failed to connect inputs");
 
+                    /* Add legacy transactions to the wallet where appropriate */
+                    Legacy::CWallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);
+
                 }
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");
@@ -590,6 +594,9 @@ namespace TAO
                     if(!tx.Disconnect())
                         return debug::error(FUNCTION, "failed to connect inputs");
 
+                    /* Wallets need to refund inputs when disonnecting coinstake */
+                    if (tx.IsCoinStake() && Legacy::CWallet::GetInstance().IsFromMe(tx))
+                       Legacy::CWallet::GetInstance().DisableTransaction(tx);
                 }
 
                 /* Write the indexing entries. */

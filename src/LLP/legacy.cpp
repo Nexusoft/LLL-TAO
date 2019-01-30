@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <Legacy/types/transaction.h>
 #include <Legacy/types/legacy.h>
 #include <Legacy/types/locator.h>
+#include <Legacy/wallet/wallet.h>
 
 #include <LLP/include/hosts.h>
 #include <LLP/include/inv.h>
@@ -441,7 +442,9 @@ namespace LLP
                 return true;
 
             /* Accept to memory pool. */
-            TAO::Ledger::mempool.Accept(tx);
+            TAO::Ledger::BlockState notUsed;
+            if (TAO::Ledger::mempool.Accept(tx))
+                Legacy::CWallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
         }
 
 

@@ -49,8 +49,20 @@ namespace Legacy
     class CWalletTx : public CMerkleTx
     {
     private:
+        /* This has to be static or copy constructor/copy assignment are deleted.
+         * As we normally process transactions iteratively (not simultaneously),
+         * having it static should have little if any effect. 
+         *
+         * Should this prove a problem later, then it can be changed to mutable
+         * and copy operations defined 
+         */
+        /** Mutex for thread concurrency across transaction operations. **/
+        static std::mutex cs_wallettx;
+
+        /** Pointer to the wallet to which this transaction is bound **/
         CWallet* ptransactionWallet;
 
+        /** Flag indicating whether or not transaction bound to wallet **/
         bool fHaveWallet;
 
 
@@ -320,6 +332,16 @@ namespace Legacy
          *
          **/
         void BindWallet(CWallet* pwalletIn);
+
+
+        /** IsBound
+         *
+         *  Test whether transaction is bound to a wallet.
+         *
+         *  @return true if this transaction is bound to a wallet, false otherwise
+         *
+         **/
+        inline bool IsBound() const { return fHaveWallet; }
 
 
         /** GetDebit

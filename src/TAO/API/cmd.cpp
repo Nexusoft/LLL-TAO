@@ -257,20 +257,28 @@ namespace TAO
             /* Dump the response to the console. */
             int nRet = 0;
             std::string strPrint = "";
-            json::json ret = json::json::parse(rpcNode.INCOMING.strContent);
-
-            if(!ret["error"].is_null())
+            if( rpcNode.INCOMING.strContent.length() > 0)
             {
-                strPrint = ret["error"]["message"];
-                nRet     = ret["error"]["code"];
+                json::json ret = json::json::parse(rpcNode.INCOMING.strContent);
+
+                if(!ret["error"].is_null())
+                {
+                    strPrint = ret["error"]["message"];
+                    nRet     = ret["error"]["code"];
+                }
+                else
+                {
+
+                    if( ret["result"].is_string())
+                        strPrint = ret["result"].get<std::string>();
+                    else
+                        strPrint = ret["result"].dump(4);
+                }
             }
             else
             {
-
-                if( ret["result"].is_string())
-                    strPrint = ret["result"].get<std::string>();
-                else
-                    strPrint = ret["result"].dump(4);
+                // If the server returned no content then just output the packet header type, which will include any HTTP error code
+                strPrint = rpcNode.INCOMING.strRequest;
             }
 
             // output to console
