@@ -179,7 +179,7 @@ namespace LLP
 
 
     /* Poll the socket to check for available data */
-    int Socket::Available()
+    int Socket::Available() const
     {
         int nAvailable = 0;
         #ifdef WIN32

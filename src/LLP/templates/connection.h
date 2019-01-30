@@ -42,7 +42,7 @@ namespace LLP
     protected:
 
         /** Mutex for thread synchronization. **/
-        std::mutex MUTEX;
+        mutable std::mutex MUTEX;
 
 
         /** Event
@@ -178,7 +178,7 @@ namespace LLP
          *  Give the message (c-string) of the error in the socket.
          *
          **/
-        char* Error()
+        char* Error() const
         {
             return strerror(ErrorCode());
         }
@@ -239,7 +239,7 @@ namespace LLP
          *  @param[in] PACKET The packet of type PacketType to write.
          *
          **/
-        void WritePacket(PacketType PACKET)
+        void WritePacket(const PacketType& PACKET)
         {
             LOCK(MUTEX);
 

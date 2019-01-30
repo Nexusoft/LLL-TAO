@@ -885,29 +885,29 @@ namespace Legacy
     {
         uint512_t hash = wtxIn.GetHash();
 
-        bool fInsertedNew;
-        bool fUpdated = false;
+        /* Use the returned tx, not wtxIn, in case insert returned an existing transaction */
         CWalletTx wtx;
-
+        bool fInsertedNew;
         {
             LOCK(cs_wallet);
 
             /* Inserts only if not already there, returns tx inserted or tx found */
             std::pair<TransactionMap::iterator, bool> ret = mapWallet.insert(std::make_pair(hash, wtxIn));
-
-            /* Use the returned tx, not wtxIn, in case insert returned an existing transaction */
             wtx = (*ret.first).second;
-            wtx.BindWallet(this);
-
             fInsertedNew = ret.second;
         }
 
-        if (fInsertedNew && wtx.nTimeReceived == 0)
+        wtx.BindWallet(this);
+
+
+        if (fInsertedNew)
         {
-            /* wtx.nTimeReceived must remain uint32_t for backward compatability */
+            /* wtx.nTimeReceive must remain uint32_t for backward compatability */
             wtx.nTimeReceived = (uint32_t)runtime::unifiedtimestamp();
         }
-        else
+
+        bool fUpdated = false;
+        if (!fInsertedNew)
         {
             /* If found an existing transaction, merge the new one into it */
             if (wtxIn.hashBlock != 0 && wtxIn.hashBlock != wtx.hashBlock)
@@ -916,11 +916,12 @@ namespace Legacy
                 fUpdated = true;
             }
 
-            /* nIndex is deprecated so nIndex will be -1 for all legacy transactions created in Tritium
+            /* nIndex and vMerkleBranch are deprecated so nIndex will be -1 for all legacy transactions created in Tritium
              * Code here is only relevant for processing old transactions previously stored in wallet.dat
              */
-            if (wtxIn.nIndex != -1 && wtxIn.nIndex != wtx.nIndex)
+            if (wtxIn.nIndex != -1 && (wtxIn.vMerkleBranch != wtx.vMerkleBranch || wtxIn.nIndex != wtx.nIndex))
             {
+                wtx.vMerkleBranch = wtxIn.vMerkleBranch;
                 wtx.nIndex = wtxIn.nIndex;
                 fUpdated = true;
             }
@@ -947,7 +948,7 @@ namespace Legacy
         CScript scriptDefaultKey;
         scriptDefaultKey.SetNexusAddress(vchDefaultKey);
 
-        for (const CTxOut& txout : wtx.vout)
+        for(const CTxOut& txout : wtx.vout)
         {
             if (txout.scriptPubKey == scriptDefaultKey)
             {
@@ -956,10 +957,8 @@ namespace Legacy
                 if (keyPool.GetKeyFromPool(newDefaultKey, false))
                 {
                     SetDefaultKey(newDefaultKey);
-                    addressBook.SetAddressBookName(NexusAddress(vchDefaultKey), "default");
+                    addressBook.SetAddressBookName(NexusAddress(vchDefaultKey), "");
                 }
-
-                break;
             }
         }
 

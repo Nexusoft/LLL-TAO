@@ -71,11 +71,11 @@ namespace TAO
 
             /* To help v0.1.5 clients who would see it as a negative number */
             if ((uint64_t) tx.nLockTime > std::numeric_limits<int32_t>::max())
-                return debug::error(FUNCTION, "tx ", tx.GetHash().ToString().substr(0, 20), "not accepting nLockTime beyond 2038 yet");
+                return debug::error(FUNCTION, "tx ", tx.GetHash().ToString().substr(0, 20), " not accepting nLockTime beyond 2038 yet");
 
             /* Rather not work on nonstandard transactions (unless -testnet) */
             if (!config::fTestNet && !tx.IsStandard())
-                return debug::error(FUNCTION, "tx ", tx.GetHash().ToString().substr(0, 20), "nonstandard transaction type");
+                return debug::error(FUNCTION, "tx ", tx.GetHash().ToString().substr(0, 20), " nonstandard transaction type");
 
             /* Check previous inputs. */
             for (auto vin : tx.vin)
@@ -89,7 +89,7 @@ namespace TAO
 
             /* Fetch the inputs. */
             if(!tx.FetchInputs(inputs))
-                return debug::error(FUNCTION, "tx ", tx.GetHash().ToString().substr(0, 20), "failed to fetch the inputs");
+                return debug::error(FUNCTION, "tx ", tx.GetHash().ToString().substr(0, 20), " failed to fetch the inputs");
 
             /* Check for standard inputs. */
             if(!tx.AreInputsStandard(inputs))
