@@ -296,16 +296,18 @@ namespace TAO
                 {
                     debug::log(0, FUNCTION, "REORGANIZE: Disconnect ", vDisconnect.size(),
                         " blocks; ", fork.GetHash().ToString().substr(0,20),
-                        "..",  ChainState::stateBest.GetHash().ToString().substr(0,20), "\n");
+                        "..",  ChainState::stateBest.GetHash().ToString().substr(0,20));
 
                     debug::log(0, FUNCTION, "REORGANIZE: Connect ", vConnect.size(), " blocks; ", fork.GetHash().ToString().substr(0,20),
-                        "..", this->GetHash().ToString().substr(0,20), "\n");
+                        "..", this->GetHash().ToString().substr(0,20));
                 }
 
                 /* List of transactions to resurrect. */
                 std::vector<std::pair<uint8_t, uint512_t>> vResurrect;
 
                 /* Disconnect given blocks. */
+                std::vector<TAO::Ledger::Transaction> vTritiumResurrect;
+                std::vector<Legacy::Transaction> vLegacyResurrect;
                 for(auto& state : vDisconnect)
                 {
                     /* Add transactions into memory pool. */
@@ -318,8 +320,9 @@ namespace TAO
                             if(!LLD::legDB->ReadTx(txAdd.second, tx))
                                 return debug::error(FUNCTION, "transaction is not on disk");
 
-                            /* Add to the mempool. */
-                            mempool.Accept(tx);
+                            /* Resurrect. */
+                            if(!tx.IsCoinbase() && !tx.IsTrust())
+                                vTritiumResurrect.push_back(tx);
                         }
                         else if(txAdd.first == TYPE::LEGACY_TX)
                         {
@@ -328,11 +331,9 @@ namespace TAO
                             if(!LLD::legacyDB->ReadTx(txAdd.second, tx))
                                 return debug::error(FUNCTION, "transaction is not on disk");
 
-                            /* Add to the mempool. */
-                            if(tx.IsCoinBase())
-                                mempool.AddUnchecked(tx);
-                            else
-                                mempool.Accept(tx);
+                            /* Resurrect */
+                            if(!tx.IsCoinBase() && !tx.IsCoinStake())
+                                vLegacyResurrect.push_back(tx);
                         }
                     }
 
@@ -358,7 +359,6 @@ namespace TAO
                 std::reverse(vConnect.begin(), vConnect.end());
                 for(auto& state : vConnect)
                 {
-
                     /* Connect the block. */
                     if(!state.Connect())
                     {
@@ -377,6 +377,16 @@ namespace TAO
                     /* Harden a checkpoint if there is any. */
                     HardenCheckpoint(Prev());
                 }
+
+
+                /* Resurrect the tritium transactions. */
+                for(const auto& tx : vTritiumResurrect)
+                    mempool.Accept(tx);
+
+
+                /* Resurrect the legacy transactions. */
+                for(const auto& tx : vLegacyResurrect)
+                    mempool.Accept(tx);
 
 
                 /* Remove transactions from memory pool. */
