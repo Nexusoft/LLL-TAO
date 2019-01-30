@@ -925,41 +925,37 @@ namespace Legacy
     /*  Checks whether a transaction has inputs or outputs belonging to this wallet, and adds
      *  it to the wallet when it does.
      */
-    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock& containingBlock,
+    bool CWallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::BlockState& containingBlock,
                                            bool fUpdate, bool fFindBlock, bool fRescan)
     {
         uint512_t hash = tx.GetHash();
 
+        /* Check to see if transaction hash in this wallet */
+        bool fExisted = mapWallet.count(hash);
+
+        /* When transaction already in wallet, return unless update is specifically requested */
+        if (fExisted && !fUpdate)
+            return false;
+
+        /* Check if transaction has outputs (IsMine) or inputs (IsFromMe) belonging to this wallet */
+        if (IsMine(tx) || IsFromMe(tx))
         {
-            LOCK(cs_wallet);
+            CWalletTx wtx(this,tx);
 
-            /* Check to see if transaction hash in this wallet */
-            bool fExisted = mapWallet.count(hash);
-
-            /* When transaction already in wallet, return unless update is specifically requested */
-            if (fExisted && !fUpdate)
-                return false;
-
-            /* Check if transaction has outputs (IsMine) or inputs (IsFromMe) belonging to this wallet */
-            if (IsMine(tx) || IsFromMe(tx))
-            {
-                CWalletTx wtx(this,tx);
-
-                if (fRescan) {
-                    /* On rescan or initial download, set wtx time to transaction time instead of time tx received.
-                     * These are both uint32_t timestamps to support unserialization of legacy data.
-                     */
-                    wtx.nTimeReceived = tx.nTime;
-                }
-
-                wtx.hashBlock = containingBlock.GetHash();
-
-                /* AddToWallet preforms merge (update) for transactions already in wallet */
-                return AddToWallet(wtx);
+            if (fRescan) {
+                /* On rescan or initial download, set wtx time to transaction time instead of time tx received.
+                 * These are both uint32_t timestamps to support unserialization of legacy data.
+                 */
+                wtx.nTimeReceived = tx.nTime;
             }
-            else
-                WalletUpdateSpent(tx);
+
+            wtx.hashBlock = containingBlock.GetHash();
+
+            /* AddToWallet preforms merge (update) for transactions already in wallet */
+            return AddToWallet(wtx);
         }
+        else
+            WalletUpdateSpent(tx);
 
         return false;
     }
@@ -1026,52 +1022,41 @@ namespace Legacy
         /* Count the number of transactions process for this wallet to use as return value */
         uint32_t nTransactionCount = 0;
         TAO::Ledger::BlockState block;
-
         if (pstartBlock == nullptr)
-        {
-            /* Use start of chain */
-            if (!LLD::legDB->ReadBlock(TAO::Ledger::ChainState::hashBestChain, block))
-            {
-                debug::error(0, FUNCTION, "Could not get start of chain");
-                return 0;
-            }
-        }
+            block = TAO::Ledger::ChainState::stateGenesis;
         else
             block = *pstartBlock;
 
-        { // Begin lock scope
-            LOCK(cs_wallet);
+        runtime::timer timer;
+        timer.Start();
+        Legacy::Transaction tx;
+        while (!config::fShutdown)
+        {
+            if(block.nHeight % 10000 == 0)
+                debug::log(0, FUNCTION, block.nHeight, " blocks processed");
 
-            Legacy::Transaction tx;
-
-            while (!config::fShutdown)
+            /* Scan each transaction in the block and process those related to this wallet */
+            for(const auto& item : block.vtx)
             {
-
-                /* Scan each transaction in the block and process those related to this wallet */
-                for(const auto& item : block.vtx)
+                if (item.first == TAO::Ledger::LEGACY_TX)
                 {
-                    uint8_t txHashType = item.first;
-                    uint512_t txHash = item.second;
+                    /* Read transaction from database */
+                    if (!LLD::legacyDB->ReadTx(item.second, tx))
+                        continue;
 
-                    if (txHashType == TAO::Ledger::LEGACY_TX)
-                    {
-                        /* Read transaction from database */
-                        if (!LLD::legacyDB->ReadTx(txHash, tx))
-                        {
-                            debug::log(2, FUNCTION, "Error reading tx from legacyDB");
-                            continue;
-                        }
-
-                        //if (AddToWalletIfInvolvingMe(tx, block, fUpdate, false, true))
-                        //    nTransactionCount++;
-                    }
+                    if (AddToWalletIfInvolvingMe(tx, block, fUpdate, false, true))
+                        nTransactionCount++;
                 }
-
-                /* Move to next block. Will return false when reach end of chain, ending the while loop */
-                if (!block.Next())
-                    break;
             }
-        } // End lock scope
+
+            /* Move to next block. Will return false when reach end of chain, ending the while loop */
+            block = block.Next();
+            if(!block)
+                break;
+        }
+
+        debug::log(0, FUNCTION, "Scanned ", nTransactionCount,
+            " transactions in ", timer.Elapsed(), " seconds (", std::fixed, nTransactionCount / timer.Elapsed(), "tx/s)");
 
         return nTransactionCount;
     }

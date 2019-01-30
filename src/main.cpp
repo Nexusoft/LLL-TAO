@@ -142,6 +142,13 @@ int main(int argc, char** argv)
     /** Initialize the scripts for legacy mode. **/
     Legacy::InitializeScripts();
 
+
+    /** Handle Rescanning. **/
+    if(config::GetBoolArg("-rescan"))
+        Legacy::CWallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
+
+
+    /** Get the port for Tritium Server. **/
     port = static_cast<uint16_t>(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
 
 

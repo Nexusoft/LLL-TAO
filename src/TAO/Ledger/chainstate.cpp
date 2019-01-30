@@ -115,6 +115,10 @@ namespace TAO
 
             stateBest.print();
 
+            Legacy::Transaction tx;
+            if(!LLD::legacyDB->ReadTx(stateBest.vtx[0].second, tx))
+                return debug::error("failed to read the first tx");
+
             /* Debug logging. */
             debug::log(0, FUNCTION, config::fTestNet? "Test" : "Nexus", " Network: genesis=", hashGenesis.ToString().substr(0, 20),
             " nBitsStart=0x", std::hex, bnProofOfWorkStart[0].GetCompact(), " best=", hashBestChain.ToString().substr(0, 20),

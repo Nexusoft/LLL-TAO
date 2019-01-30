@@ -249,14 +249,6 @@ namespace TAO
                     return 0;
                 }
 
-                /* Catch if the connection timed out. */
-                if(rpcNode.Timeout(30))
-                {
-                    debug::log(0, "Socket Timeout");
-
-                    return 0;
-                }
-
                 /* Read the response packet. */
                 rpcNode.ReadPacket();
                 runtime::sleep(10);
