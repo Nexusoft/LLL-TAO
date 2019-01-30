@@ -158,9 +158,6 @@ namespace LLP
             debug::log(0, FUNCTION, "Unrecognized state");
             break;
         }
-
-        if(state != ConnectState::NEW)
-            print_stats();
     }
 
 
@@ -229,10 +226,10 @@ namespace LLP
 
 
     /* Print the current state of the address manager. */
-    void AddressManager::PrintStats()
+    std::string AddressManager::ToString()
     {
         LOCK(mut);
-        print_stats();
+        return to_string();
     }
 
 
@@ -283,9 +280,6 @@ namespace LLP
             uint64_t nHash = trust_addr.GetHash();
             mapTrustAddress[nHash] = trust_addr;
         }
-
-        /* Print the stats. */
-        print_stats();
     }
 
 
@@ -308,8 +302,6 @@ namespace LLP
             pDatabase->WriteTrustAddress(it->first, it->second);
 
         pDatabase->TxnCommit();
-
-        print_stats();
     }
 
 
@@ -356,10 +348,10 @@ namespace LLP
 
 
     /* Print the current state of the address manager. */
-    void AddressManager::print_stats()
+    std::string AddressManager::to_string()
     {
-        debug::log(3,
-            " C=", count(ConnectState::CONNECTED),
+        return debug::safe_printstr(
+             "C=", count(ConnectState::CONNECTED),
             " D=", count(ConnectState::DROPPED),
             " F=", count(ConnectState::FAILED),   " |",
             " TC=", total_count(ConnectState::CONNECTED),

@@ -17,7 +17,6 @@ ________________________________________________________________________________
 #include <vector>
 #include <stdio.h>
 
-#include <LLP/include/legacyaddress.h>
 #include <LLP/packets/packet.h>
 #include <LLP/templates/socket.h>
 #include <LLP/templates/ddos.h>
@@ -213,6 +212,7 @@ namespace LLP
          *
          *  Handles two types of packets, requests which are of header >= 128,
          *  and data which are of header < 128.
+         *
          **/
         bool PacketComplete() const
         {
@@ -296,6 +296,7 @@ namespace LLP
 
             return false;
         }
+
 
         /** GetAddress
          *

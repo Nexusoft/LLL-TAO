@@ -148,41 +148,41 @@ int main(int argc, char** argv)
         Legacy::CWallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
 
 
-    /** Get the port for Tritium Server. **/
-    port = static_cast<uint16_t>(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
-
-
-    /* Initialize the Tritium Server. */
-    LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(
-        port,
-        10,
-        30,
-        false,
-        0,
-        0,
-        60,
-        config::GetBoolArg("-listen", true),
-        config::GetBoolArg("-meters", false),
-        config::GetBoolArg("-manager", true));
-
-
-    /* -connect means  try to establish a connection */
-    if(config::mapMultiArgs["-connect"].size() > 0)
+    if(!config::GetBoolArg("-legacy"))
     {
-        for(const auto& node : config::mapMultiArgs["-connect"])
-            LLP::TRITIUM_SERVER->AddConnection(node, port);
+        /** Get the port for Tritium Server. **/
+        port = static_cast<uint16_t>(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
+
+
+        /* Initialize the Tritium Server. */
+        LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(
+            port,
+            10,
+            30,
+            false,
+            0,
+            0,
+            60,
+            config::GetBoolArg("-listen", true),
+            config::GetBoolArg("-meters", false),
+            config::GetBoolArg("-manager", true));
+
+
+        /* -connect means  try to establish a connection */
+        if(config::mapMultiArgs["-connect"].size() > 0)
+        {
+            for(const auto& node : config::mapMultiArgs["-connect"])
+                LLP::TRITIUM_SERVER->AddConnection(node, port);
+        }
+
+        /* -addnode means add to address manager */
+        if(config::mapMultiArgs["-addnode"].size() > 0)
+        {
+            for(const auto& node : config::mapMultiArgs["-addnode"])
+                LLP::TRITIUM_SERVER->AddNode(node, port);
+        }
     }
-
-    /* -addnode means add to address manager */
-    if(config::mapMultiArgs["-addnode"].size() > 0)
-    {
-        for(const auto& node : config::mapMultiArgs["-addnode"])
-            LLP::TRITIUM_SERVER->AddNode(node, port);
-    }
-
-
-    /* Initialize the Legacy Server. */
-    if(config::GetBoolArg("-legacy"))
+    else /* Initialize the Legacy Server. */
     {
         port = static_cast<uint16_t>(config::GetArg("-port", config::fTestNet ? 8323 : 9323));
 

@@ -171,12 +171,12 @@ namespace LLP
         void WriteDatabase();
 
 
-        /** PrintStats
+        /** ToString
          *
          *  Print the current state of the address manager.
          *
          **/
-        void PrintStats();
+        std::string ToString();
 
 
         /** SetPort
@@ -221,12 +221,12 @@ namespace LLP
         uint32_t total_count(const uint8_t flags);
 
 
-        /** print_stats
+        /** to_string
          *
          *  Print the current state of the address manager.
          *
          **/
-        void print_stats();
+        std::string to_string();
 
 
         LLD::AddressDB *pDatabase;

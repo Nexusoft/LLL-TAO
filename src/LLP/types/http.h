@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <algorithm>
 
+#include <LLP/include/legacyaddress.h>
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
 #include <LLP/packets/http.h>

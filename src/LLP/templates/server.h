@@ -391,7 +391,7 @@ namespace LLP
             /* Loop connections. */
             while(!fDestruct.load())
             {
-                runtime::sleep(1000);
+                runtime::sleep(100);
 
                 /* assume the connect state is in a failed state */
                 uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
@@ -417,6 +417,8 @@ namespace LLP
 
                     /* Update the address state. */
                     pAddressManager->AddAddress(addr, state);
+
+                    debug::log(3, FUNCTION, pAddressManager->ToString());
                 }
             }
         }
