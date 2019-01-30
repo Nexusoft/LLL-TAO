@@ -52,18 +52,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/constants.h>
 
-/* Declare the Global LLD Instances. */
-namespace LLD
-{
-    RegisterDB* regDB;
-    LedgerDB*   legDB;
-    LocalDB*    locDB;
-
-    //for legacy objects.
-    LegacyDB*   legacyDB;
-    TrustDB*    trustDB;
-}
-
 
 /* Declare the Global LLP Instances. */
 namespace LLP
