@@ -444,7 +444,12 @@ namespace LLP
             /* Accept to memory pool. */
             TAO::Ledger::BlockState notUsed;
             if (TAO::Ledger::mempool.Accept(tx))
+            {
                 Legacy::CWallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
+
+                std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX) };
+                LEGACY_SERVER->Relay("inv", vInv);
+            }
         }
 
 
@@ -619,6 +624,37 @@ namespace LLP
                 return true;
             }
 
+            /* If not synchronizing then check for duplicate inventory. */
+            if(!TAO::Ledger::ChainState::Synchronizing())
+            {
+                /* Filter out the inventory that this node doesn't have. */
+                std::vector<CInv> vGet;
+
+                /* Search through the list of items sent. */
+                for(const auto& inv : vInv)
+                {
+                    /* On a transaction type, check the mempool. */
+                    if(inv.GetType() == MSG_TX)
+                    {
+                        Legacy::Transaction tx;
+                        if(!TAO::Ledger::mempool.Get(inv.GetHash().getuint512(), tx))
+                            vGet.push_back(inv);
+                    }
+
+                    /* On a block type check on disk. */
+                    else if(inv.GetType() == MSG_BLOCK)
+                    {
+                        if(!LLD::legDB->HasBlock(inv.GetHash()))
+                            vGet.push_back(inv);
+                    }
+                }
+
+                /* Request the data that one doesn't have. */
+                PushMessage("getdata", vGet);
+
+                return true;
+            }
+
             /* Fast sync mode. */
             if(config::GetBoolArg("-fastsync") && TAO::Ledger::ChainState::Synchronizing())
             {
@@ -730,10 +766,9 @@ namespace LLP
         /* Handle a Request to get a list of Blocks from a Node. */
         else if (INCOMING.GetMessage() == "getblocks")
         {
-            //Core::CBlockLocator locator;
+            //Legacy::Locator locator;
             //uint1024_t hashStop;
             //ssMessage >> locator >> hashStop;
-
         }
 
 
