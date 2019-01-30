@@ -855,7 +855,6 @@ namespace Legacy
 
         wtx.BindWallet(this);
 
-
         if (fInsertedNew)
         {
             /* wtx.nTimeReceive must remain uint32_t for backward compatability */
@@ -1162,7 +1161,7 @@ namespace Legacy
                      */
                     if (!prevTx.IsSpent(txin.prevout.n) && IsMine(prevTx.vout[txin.prevout.n]))
                     {
-                        debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(prevTx.GetCredit()), " Nexus ", prevTx.GetHash().ToString());
+                        debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(prevTx.GetCredit()), " Nexus ", prevTx.GetHash().ToString().substr(0, 20));
 
                         prevTx.MarkSpent(txin.prevout.n);
                         prevTx.WriteToDisk();
@@ -1206,7 +1205,7 @@ namespace Legacy
 //TODO - Fix txindex reference
 //                    if (IsMine(walletTx.vout[n]) && walletTx.IsSpent(n) && (txindex.vSpent.size() <= n || txindex.vSpent[n].IsNull()))
 //                    {
-                        debug::log(0, FUNCTION, "Found lost coin ", FormatMoney(walletTx.vout[n].nValue), " Nexus ", walletTx.GetHash().ToString(),
+                        debug::log(0, FUNCTION, "Found lost coin ", FormatMoney(walletTx.vout[n].nValue), " Nexus ", walletTx.GetHash().ToString().substr(0, 20),
                             "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
 
                         ++nMismatchFound;
@@ -1223,7 +1222,7 @@ namespace Legacy
 //                    /* Handle the wallet missing a spend that was updated in the indexes. The index is updated on connect inputs. */
 //                    else if (IsMine(walletTx.vout[n]) && !walletTx.IsSpent(n) && (txindex.vSpent.size() > n && !txindex.vSpent[n].IsNull()))
 //                    {
-                        debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(walletTx.vout[n].nValue), " Nexus ", walletTx.GetHash().ToString(),
+                        debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(walletTx.vout[n].nValue), " Nexus ", walletTx.GetHash().ToString().substr(0, 20),
                             "[", n, "] ", fCheckOnly? "repair not attempted" : "repairing");
 
                         ++nMismatchFound;

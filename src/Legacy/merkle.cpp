@@ -51,8 +51,8 @@ namespace Legacy
         if (!(IsCoinBase() || IsCoinStake()))
             return 0;
 
-        uint32_t nMaturity = config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS;
-        return std::max((uint32_t)0, nMaturity - GetDepthInMainChain());
+        int32_t nCoinbaseMaturity = config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS;
+        return std::max((int32_t)0, (int32_t)(nCoinbaseMaturity + (config::fTestNet ? 1 : 20) - GetDepthInMainChain()));
     }
 
 

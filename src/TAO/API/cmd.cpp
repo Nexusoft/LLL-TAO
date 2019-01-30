@@ -115,7 +115,7 @@ namespace TAO
             apiNode.Write(vBuffer, vBuffer.size());
 
             /* Read the response packet. */
-            while(!apiNode.INCOMING.Complete())
+            while(!apiNode.INCOMING.Complete() && !config::fShutdown)
             {
 
                 /* Catch if the connection was closed. */
@@ -230,7 +230,7 @@ namespace TAO
             rpcNode.Write(vBuffer, vBuffer.size());
 
             /* Read the response packet. */
-            while(!rpcNode.INCOMING.Complete())
+            while(!rpcNode.INCOMING.Complete() && !config::fShutdown)
             {
 
                 /* Catch if the connection was closed. */
