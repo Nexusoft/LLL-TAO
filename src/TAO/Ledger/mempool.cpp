@@ -41,7 +41,7 @@ namespace TAO
 
             /* Check the mempool. */
             if(mapLedger.count(hash))
-                return debug::error(FUNCTION, "%s already exists", tx.GetHash().ToString().substr(0, 20).c_str());
+                return false;
 
             /* Add to the map. */
             mapLedger[hash] = tx;
