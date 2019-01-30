@@ -1558,7 +1558,7 @@ namespace Legacy
         }
 
         {
-            LOCK(cs_wallet);
+            //LOCK(cs_wallet);
 
             /* Link wallet to transaction, don't add to wallet yet (will be done when transaction committed) */
             wtxNew.BindWallet(this);
