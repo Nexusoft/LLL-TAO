@@ -351,6 +351,16 @@ namespace TAO
                     }
                 }
 
+
+                /* Resurrect the tritium transactions. */
+                for(const auto& tx : vTritiumResurrect)
+                    mempool.Accept(tx);
+
+
+                /* Resurrect the legacy transactions. */
+                for(const auto& tx : vLegacyResurrect)
+                    mempool.Accept(tx);
+
                 /* List of transactions to remove from pool. */
                 std::vector<uint512_t> vDelete;
 
@@ -379,16 +389,6 @@ namespace TAO
                     /* Harden a checkpoint if there is any. */
                     HardenCheckpoint(Prev());
                 }
-
-
-                /* Resurrect the tritium transactions. */
-                for(const auto& tx : vTritiumResurrect)
-                    mempool.Accept(tx);
-
-
-                /* Resurrect the legacy transactions. */
-                for(const auto& tx : vLegacyResurrect)
-                    mempool.Accept(tx);
 
 
                 /* Remove transactions from memory pool. */
