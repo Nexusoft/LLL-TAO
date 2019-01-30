@@ -46,7 +46,7 @@ namespace LLD
 
     public:
 
-      
+
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         LedgerDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE)
         : SectorDatabase("ledger", nFlagsIn) { }
@@ -142,6 +142,21 @@ namespace LLD
         bool IndexBlock(const uint512_t& hashTransaction, const uint1024_t& hashBlock)
         {
             return Index(std::make_pair(std::string("index"), hashTransaction), hashBlock);
+        }
+
+
+        /** EraseIndex
+         *
+         *  Erase a foreign index form the keychain
+         *
+         *  @param[in] hashTransaction The txid of transaction to write.
+         *
+         *  @return True if the transaction was successfully written, false otherwise.
+         *
+         **/
+        bool EraseIndex(const uint512_t& hashTransaction)
+        {
+            return Erase(std::make_pair(std::string("index"), hashTransaction));
         }
 
 

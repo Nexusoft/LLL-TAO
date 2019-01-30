@@ -410,7 +410,7 @@ namespace LLP
                     }
 
                     /* Attempt the connection. */
-                    debug::log(0, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
+                    debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
 
                     if(AddConnection(addr.ToStringIP(), addr.GetPort()))
                         state = static_cast<uint8_t>(ConnectState::CONNECTED);
@@ -537,7 +537,7 @@ namespace LLP
                         /* DDOS Operations: Only executed when DDOS is enabled. */
                         if((fDDOS && DDOS_MAP[addr]->Banned()))
                         {
-                            debug::log(0, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Banned.");
+                            debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Banned.");
                             close(hSocket);
 
                             continue;

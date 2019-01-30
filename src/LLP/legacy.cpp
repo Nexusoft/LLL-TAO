@@ -214,9 +214,6 @@ namespace LLP
                 mapLegacyOrphans.erase(hash);
         }
 
-        if(LLD::legDB->HasBlock(hash))
-            return true;
-
         /* Check for orphan. */
         if(!LLD::legDB->HasBlock(block.hashPrevBlock))
         {
@@ -230,7 +227,9 @@ namespace LLP
             debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " hash=", block.GetHash().ToString().substr(0, 20));
 
             /* Normal sync mode (slower connections). */
-            if(!config::GetBoolArg("-fastsync"))
+            if(!TAO::Ledger::ChainState::Synchronizing())
+                pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+            else if(!config::GetBoolArg("-fastsync"))
             {
                 if(TAO::Ledger::ChainState::hashBestChain != LegacyNode::hashLastGetblocks || LegacyNode::nLastGetBlocks + 10 < runtime::timestamp())
                 {
@@ -284,18 +283,22 @@ namespace LLP
             return true;
         }
 
-        /* Check if valid in the chain. */
-        if(!block.Accept())
-        {
-            debug::log(3, FUNCTION, "block failed to be added to chain");
-
-            return true;
-        }
-
         { LOCK(PROCESSING_MUTEX);
 
             /* Create the Block State. */
             TAO::Ledger::BlockState state(block);
+
+            /* Check if it exists first */
+            if(LLD::legDB->HasBlock(block.GetHash()))
+                return true;
+
+            /* Check if valid in the chain. */
+            if(!block.Accept())
+            {
+                debug::log(3, FUNCTION, "block failed to be added to chain");
+
+                return true;
+            }
 
             /* Process the block state. */
             if(!state.Accept())
@@ -603,7 +606,7 @@ namespace LLP
             std::vector<CInv> vInv;
             ssMessage >> vInv;
 
-            debug::log(1, NODE, "Inventory Message of ", vInv.size(), " elements");
+            debug::log(3, NODE, "Inventory Message of ", vInv.size(), " elements");
 
             /* Make sure the inventory size is not too large. */
             if (vInv.size() > 10000)
@@ -614,9 +617,9 @@ namespace LLP
             }
 
             /* Fast sync mode. */
-            if(config::GetBoolArg("-fastsync"))
+            if(config::GetBoolArg("-fastsync") && TAO::Ledger::ChainState::Synchronizing())
             {
-                if (TAO::Ledger::ChainState::Synchronizing() && vInv.back().GetType() == MSG_BLOCK)
+                if (vInv.back().GetType() == MSG_BLOCK)
                 {
                     /* Single block inventory message signals to check from best chain. (If nothing in 10 seconds) */
                     if(vInv.size() == 1 && TAO::Ledger::ChainState::hashBestChain == hashLastGetblocks && nLastGetBlocks + 10 < runtime::timestamp())

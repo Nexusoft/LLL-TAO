@@ -312,17 +312,22 @@ namespace LLD
             /* Check for bucket collisions. */
             if(hashmap[nBucket] != nullptr)
             {
+                /* Get the object we are working on. */
                 BinaryNode* pthis = hashmap[nBucket];
 
+                /* Remove from the linked list. */
                 RemoveNode(pthis);
 
+                /* Dereference the pointers. */
                 hashmap[nBucket] = nullptr;
                 pthis->pprev     = nullptr;
                 pthis->pnext     = nullptr;
                 pthis->fReserve  = false;
 
+                /* Reduce the current size. */
                 nCurrentSize -= (pthis->vData.size() - pthis->vKey.size());
 
+                /* Free the memory. */
                 delete pthis;
             }
 
@@ -389,7 +394,7 @@ namespace LLD
          *  @param[in] fReserve If this object is to be reserved for disk.
          *
          **/
-        void Reserve(std::vector<uint8_t> vKey, bool fReserve = true)
+        void Reserve(const std::vector<uint8_t>& vKey, bool fReserve = true)
         {
             LOCK(MUTEX);
 
@@ -430,27 +435,34 @@ namespace LLD
          *  @return True on successful removal, false if it fails
          *
          **/
-        bool Remove(std::vector<uint8_t> vKey)
+        bool Remove(const std::vector<uint8_t>& vKey)
         {
             LOCK(MUTEX);
 
-            /* Get the node. */
-            BinaryNode* pnode = hashmap[Bucket(vKey)];
+            /* Get the bucket. */
+            uint32_t nBucket = Bucket(vKey);
+
+            /* Get the object we are working on. */
+            BinaryNode* pthis = hashmap[nBucket];
 
             /* Check if the Record Exists. */
-            if (pnode == nullptr || pnode->vKey != vKey)
+            if (pthis == nullptr || pthis->vKey != vKey)
                 return false;
 
+            /* Remove from the linked list. */
+            RemoveNode(pthis);
 
-            /* Reduce the current cache size. */
-            nCurrentSize -= (pnode->vData.size() + vKey.size());
+            /* Dereference the pointers. */
+            hashmap[nBucket] = nullptr;
+            pthis->pprev     = nullptr;
+            pthis->pnext     = nullptr;
+            pthis->fReserve  = false;
 
-            /* Remove from linked list. */
-            RemoveNode(pnode);
+            /* Reduce the current size. */
+            nCurrentSize -= (pthis->vData.size() - pthis->vKey.size());
 
-            /* Remove the object from the map. */
-            hashmap[Bucket(vKey)] = nullptr;
-            delete pnode;
+            /* Free the memory. */
+            delete pthis;
 
             return true;
         }

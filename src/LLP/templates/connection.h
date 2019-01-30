@@ -280,7 +280,7 @@ namespace LLP
             BaseAddress addrConnect(strAddress, nPort);
 
             /// debug print
-            debug::log(1, NODE, "Connecting to ", addrConnect.ToString());
+            debug::log(3, NODE, "Connecting to ", addrConnect.ToString());
 
             // Connect
             if (Attempt(addrConnect))
