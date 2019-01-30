@@ -520,7 +520,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to connect inputs");
 
                     /* Add legacy transactions to the wallet where appropriate */
-                    Legacy::CWallet::GetInstance().AddToWalletIfInvolvingMe(tx, this, true);
+                    Legacy::CWallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);
 
                 }
                 else

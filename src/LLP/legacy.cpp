@@ -442,8 +442,9 @@ namespace LLP
                 return true;
 
             /* Accept to memory pool. */
+            TAO::Ledger::BlockState notUsed;
             if (TAO::Ledger::mempool.Accept(tx))
-                Legacy::CWallet::GetInstance().AddToWalletIfInvolvingMe(tx, nullptr, true);
+                Legacy::CWallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
         }
 
 
