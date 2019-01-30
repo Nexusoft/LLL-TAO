@@ -1021,6 +1021,7 @@ namespace Legacy
     {
         /* Count the number of transactions process for this wallet to use as return value */
         uint32_t nTransactionCount = 0;
+        uint32_t nScannedCount     = 0;
         TAO::Ledger::BlockState block;
         if (pstartBlock == nullptr)
             block = TAO::Ledger::ChainState::stateGenesis;
@@ -1044,8 +1045,12 @@ namespace Legacy
                     if (!LLD::legacyDB->ReadTx(item.second, tx))
                         continue;
 
+                    /* Add to the wallet */
                     if (AddToWalletIfInvolvingMe(tx, block, fUpdate, false, true))
-                        nTransactionCount++;
+                        ++nTransactionCount;
+
+                    /* Update the scanned count for meters. */
+                    ++nScannedCount;
                 }
             }
 
@@ -1056,7 +1061,7 @@ namespace Legacy
         }
 
         debug::log(0, FUNCTION, "Scanned ", nTransactionCount,
-            " transactions in ", timer.Elapsed(), " seconds (", std::fixed, nTransactionCount / timer.Elapsed(), "tx/s)");
+            " transactions in ", timer.Elapsed(), " seconds (", std::fixed, (double)(nScannedCount / timer.Elapsed()), " tx/s)");
 
         return nTransactionCount;
     }
