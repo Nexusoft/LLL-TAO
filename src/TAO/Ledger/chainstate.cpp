@@ -100,16 +100,16 @@ namespace TAO
                 if(!state)
                     return debug::error(FUNCTION, "failed to find the checkpoint");
 
-                /* Check the checkpoints. */
-                //if(state.hashCheckpoint == hashCheckpoint)
-                //    return debug::error(FUNCTION, "previous checkpoint is duplicate");
-
                 /* Set the checkpoint. */
                 hashCheckpoint = state.hashCheckpoint;
 
-                LLD::TxnBegin();
-                state.SetBest();
-                LLD::TxnCommit();
+                /* If rewind mode is enabled, rewind to last checkpoint. */
+                if(config::GetBoolArg("-rewind"))
+                {
+                    LLD::TxnBegin();
+                    state.SetBest();
+                    LLD::TxnCommit();
+                }
             }
 
             stateBest.print();
