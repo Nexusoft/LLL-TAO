@@ -86,6 +86,13 @@ namespace LLP
             CLOSE    = 254
         };
 
+        /** Name
+         *
+         *  Returns a string for the name of this type of Node.
+         *
+         **/
+          static std::string Name() { return "Miner"; }
+
 
         /** Default Constructor **/
         Miner()

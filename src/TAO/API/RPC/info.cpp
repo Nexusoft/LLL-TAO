@@ -181,7 +181,7 @@ namespace TAO
                 TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest;
 
                 bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
-                for(; (nTotal < 1440 && bLastStateFound); nTotal ++)
+                for(; (nTotal < 1440 && bLastStateFound); ++nTotal)
                 {
                     uint64_t nLastBlockTime = blockState.GetBlockTime();
                     blockState = blockState.Prev();
@@ -234,18 +234,27 @@ namespace TAO
             //obj["currentblocksize"] = (uint64_t)Core::nLastBlockSize;
             //obj["currentblocktx"] =(uint64_t)Core::nLastBlockTx;
 
+            TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::stateBest;
+            bool fHasStake = TAO::Ledger::GetLastState(lastStakeBlockState, 0);
+
             TAO::Ledger::BlockState lastPrimeBlockState = TAO::Ledger::ChainState::stateBest;
             bool fHasPrime = TAO::Ledger::GetLastState(lastPrimeBlockState, 1);
 
             TAO::Ledger::BlockState lastHashBlockState = TAO::Ledger::ChainState::stateBest;
             bool fHasHash = TAO::Ledger::GetLastState(lastHashBlockState, 2);
 
-            TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::stateBest;
-            bool fHasStake = TAO::Ledger::GetLastState(lastStakeBlockState, 3);
 
+            if(fHasStake == false)
+                debug::error(FUNCTION, "couldn't find last stake block state");
+            if(fHasPrime == false)
+                debug::error(FUNCTION, "couldn't find last prime block state");
+            if(fHasHash == false)
+                debug::error(FUNCTION, "couldn't find last hash block state");
+
+
+            obj["stakeDifficulty"] = fHasStake ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastStakeBlockState, 0, false), 0) : 0;
             obj["primeDifficulty"] = fHasPrime ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastPrimeBlockState, 1, false), 1) : 0;
             obj["hashDifficulty"] = fHasHash ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastHashBlockState, 2, false), 2) : 0;
-            obj["stakeDifficulty"] = fHasStake ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastStakeBlockState, 3, false), 3) : 0;
             obj["primeReserve"] =    Legacy::SatoshisToAmount(lastPrimeBlockState.nReleasedReserve[0]);
             obj["hashReserve"] =     Legacy::SatoshisToAmount(lastHashBlockState.nReleasedReserve[0]);
             obj["primeValue"] =        Legacy::SatoshisToAmount(TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest, 1, 0));

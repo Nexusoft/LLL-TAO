@@ -134,15 +134,20 @@ namespace LLP
             if(nChannel == 0)
                 return false;
 
-            if(config::GetArg("-verbose", 0) >= 2)
-                debug::log(0, FUNCTION, "Channel Set %u\n", nChannel);
+            debug::log(2, FUNCTION, "Channel Set %u\n", nChannel);
 
             return true;
         }
 
 
         /* Return a Ping if Requested. */
-        if(PACKET.HEADER == PING){ Packet PACKET; PACKET.HEADER = PING; this->WritePacket(PACKET); return true; }
+        if(PACKET.HEADER == PING)
+        {
+            Packet PACKET;
+            PACKET.HEADER = PING;
+            this->WritePacket(PACKET);
+            return true;
+        }
 
 
         /* Clear the Block Map if Requested by Client. */

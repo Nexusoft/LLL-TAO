@@ -49,7 +49,7 @@ namespace TAO
         bool GetLastState(BlockState &state, uint32_t nChannel)
         {
             /* Loop back 10k blocks. */
-            for(uint_t i = 0;  i < 1440; i++)
+            for(uint_t i = 0;  i < 1440; ++i)
             {
                 /* Return false on genesis. */
                 if(state.GetHash() == hashGenesis)
@@ -61,6 +61,7 @@ namespace TAO
 
                 /* Iterate backwards. */
                 state = state.Prev();
+
                 if(!state)
                     return false;
             }
