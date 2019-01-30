@@ -256,9 +256,22 @@ namespace Legacy
     /*  Retrieve a key from the key store. */
     bool CCryptoKeyStore::GetKey(const NexusAddress& address, LLC::ECKey& keyOut) const
     {
-        /* Cannot decrypt key if key store is encrypted and locked */
+        /* Cannot get key if key store is encrypted and locked */
         if (IsLocked())
             return false;
+
+        /* Only use LOCK to check IsCrypted() -- use internal flag so we can release before potential call to CBasicKeyStore::GetKey */
+        bool fCrypted = false;
+
+        {
+            LOCK(cs_cryptoKeyStore);
+
+            if (IsCrypted())
+                fCrypted = true;
+        }
+
+        if (!fCrypted)
+            return CBasicKeyStore::GetKey(address, keyOut);
 
         {
             LOCK(cs_cryptoKeyStore);
