@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLP/include/trustaddress.h>
 #include <Util/include/version.h>
 
+#include <Legacy/types/minter.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
 #include <Legacy/include/money.h>
@@ -59,7 +60,7 @@ namespace TAO
             obj["stake"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetStake());
 
             /* Staking metrics */
-            StakeMinter stakeMinter = StakeMinter.GetInstance();
+            Legacy::StakeMinter stakeMinter = Legacy::StakeMinter::GetInstance();
             obj["stakerate"]   = stakeMinter.GetStakeRate();
             obj["stakeweight"] = stakeMinter.GetTrustWeight() + stakeMinter.GetBlockWeight(); // 100 max so is already a %
             obj["trustweight"] = stakeMinter.GetTrustWeightPercent();

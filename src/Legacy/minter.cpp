@@ -45,6 +45,8 @@ namespace Legacy
 
     std::mutex StakeMinter::cs_stakeMinter;
 
+    std::thread StakeMinter::minterThread;
+
 
     StakeMinter& StakeMinter::GetInstance()
     {
@@ -63,7 +65,7 @@ namespace Legacy
             StakeMinter::fdestructMinter = true;
         }
 
-        minterThread.join();
+        StakeMinter::minterThread.join();
 
         if (pReservedTrustKey != nullptr)
         {
