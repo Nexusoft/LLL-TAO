@@ -425,7 +425,7 @@ namespace Legacy
             if (fFileBacked)
             {
                 WalletDB walletdb(strWalletFile);
-                walletdb.EraseTrustKey();
+                bool result = walletdb.EraseTrustKey();
                 walletdb.Close();
 
                 if (!result)

@@ -161,7 +161,7 @@ namespace Legacy
     {
         LOCK(WalletDB::cs_walletdb);
         WalletDB::nWalletDBUpdated++;
-        return Erase("trustkey");
+        return Erase(std::string("trustkey"));
     }
 
 

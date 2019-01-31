@@ -21,6 +21,24 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+    /** Dummy address for running on the Testnet. **/
+    const std::string TESTNET_DUMMY_ADDRESS             = "4jzgcyvCM6Yv8uoAPwCwe5eSikccs7ofJBnxsRWtmePGuJYnV8E";
+
+
+    /** New testnet dummy addresses. */
+    const std::string TESTNET_DUMMY_AMBASSADOR_RECYCLED = "4kRwiTAu6h3ZPTABfZ7wYjVfovHWWHJxShATUYCYYsSWVdiuCYa";
+    const std::string TESTNET_DUMMY_DEVELOPER_RECYCLED  = "4kUF9T3tCMFtRPyoFX5Kyhn6BVwxi5dgnVyDwPxUr8kZpwdr6Zy";
+
+
+    /** Signature to Check Testnet Blocks are Produced Correctly. **/
+    extern std::vector<uint8_t> TESTNET_DUMMY_SIGNATURE;
+
+
+    /** New testnet dummy signatures. **/
+    extern std::vector<uint8_t> TESTNET_DUMMY_SIGNATURE_AMBASSADOR_RECYCLED;
+    extern std::vector<uint8_t> TESTNET_DUMMY_SIGNATURE_DEVELOPER_RECYCLED;
+
+
     /** Addresses of the Exchange Channels. **/
     const std::string AMBASSADOR_ADDRESSES[] =
     {

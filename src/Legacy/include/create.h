@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <Legacy/types/legacy.h>
 #include <Legacy/wallet/reservekey.h>
+#include <Legacy/wallet/wallet.h>
 
 namespace Legacy
 {
@@ -37,7 +38,7 @@ namespace Legacy
      *  @return true if block successfully created
      *
      **/
-    bool CreateLegacyBlock(const Legacy::Wallet::CReserveKey& coinbaseKey, const uint32_t nChannel, const uint32_t nID, LegacyBlock& newBlock);
+    bool CreateLegacyBlock(Legacy::CReserveKey& coinbaseKey, const uint32_t nChannel, const uint32_t nID, LegacyBlock& newBlock);
 
 
     /** CreateCoinstakeTransaction
@@ -60,6 +61,8 @@ namespace Legacy
      *
      *  @param[in] coinbaseKey Key for receiving coinbase reward. 
      *
+     *  @param[in] nChannel The minting channel creating the block.
+     *
      *  @param[in] nID Used for coinbase input scriptsig. 
      *
      *  @param[in] nNewBlockVersion The block version being created 
@@ -69,7 +72,8 @@ namespace Legacy
      *  @return true if transaction successfully created
      *
      **/
-    bool CreateCoinbaseTransaction(const Legacy::Wallet::CReserveKey& coinbaseKey, const uint32_t nID, const uint32_t nNewBlockVersion, Transaction& coinbaseTx);
+    bool CreateCoinbaseTransaction(Legacy::CReserveKey& coinbaseKey, const uint32_t nChannel, 
+                                   const uint32_t nID, const uint32_t nNewBlockVersion, Transaction& coinbaseTx);
 
 
     /** AddTransactions
@@ -78,10 +82,8 @@ namespace Legacy
      *
      *  @param[in, out] vtx The block transactions to populate.
      *
-     *  @return true if transaction successfully added
-     *
      **/
-    bool AddTransactions(std::vector<Transaction>& vtx);
+    void AddTransactions(std::vector<Transaction>& vtx);
 
 
     /** SignBlock
@@ -113,7 +115,7 @@ namespace Legacy
      * @return true if the block checks out and is ok to submit
      *
      **/
-    bool CheckWork(const LegacyBlock& block, const Legacy::Wallet& wallet);
+    bool CheckWork(const LegacyBlock& block, Legacy::Wallet& wallet);
 
 }
 
