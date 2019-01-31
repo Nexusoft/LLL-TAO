@@ -36,6 +36,7 @@ ________________________________________________________________________________
 #include <Legacy/include/money.h>
 #include <Legacy/include/signature.h>
 #include <Legacy/include/enum.h> // For GMF_SEND
+#include <Legacy/types/minter.h>
 #include <Legacy/types/script.h>
 
 #include <Legacy/wallet/crypter.h>
@@ -229,6 +230,14 @@ namespace Legacy
         flushThread.detach();
 
         fLoaded = true;
+
+        if (!IsCrypted())
+        {
+            /* Successfully loading an unencrypted wallet will start the stake minter.
+             * As you cannot lock such a wallet, it will always be running after load.
+             */
+            StakeMinter::GetInstance().StartStakeMinter();
+        }
 
         return DB_LOAD_OK;
     }
@@ -567,6 +576,21 @@ namespace Legacy
     }
 
 
+    /*  Attempt to lock an encrypted wallet. */
+    bool Wallet::Lock()
+    {
+        /* Cannot lock unencrypted key store. This will enable encryption if not enabled already. */
+        if (IsCrypted() && CCryptoKeyStore::Lock()) {
+            /* Upon successful lock, stop the stake minter */
+            StakeMinter::GetInstance().StopStakeMinter();
+
+            return true;
+        }
+
+        return false;
+    }
+
+
     /* Attempt to unlock an encrypted wallet using the passphrase provided. */
     bool Wallet::Unlock(const SecureString& strWalletPassphrase, const uint32_t nUnlockSeconds)
     {
@@ -615,6 +639,11 @@ namespace Legacy
                         }).detach();
 
                     }
+
+                    /* Whether unlocked fully or for minting only, start the stake minter */
+                    StakeMinter::GetInstance().StartStakeMinter();
+
+
                     return true;
                 }
             }

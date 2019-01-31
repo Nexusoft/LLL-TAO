@@ -536,6 +536,16 @@ namespace Legacy
         bool EncryptWallet(const SecureString& strWalletPassphrase);
 
 
+        /** Lock
+         *
+         *  Attempt to lock the wallet. 
+         *  Can only lock the key store if it is encrypted.
+         *
+         *  @return true if the wallet was successfully locked
+         **/
+        virtual bool Lock() override;
+
+
         /** Unlock
          *
          *  Attempt to unlock an encrypted wallet using the passphrase provided.  If the UnlockSeconds parameter
