@@ -11,21 +11,25 @@
 
 ____________________________________________________________________________________________*/
 
+#include <Legacy/include/create.h>
 #include <Legacy/types/address.h>
 #include <Legacy/wallet/addressbook.h>
 
 #include <LLC/types/bignum.h>
 
 #include <LLP/include/global.h>
+#include <LLP/include/version.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/trust.h>
 #include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/types/tritium.h> //for LEGACY_TX enum
 
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
+#include <Util/templates/serialize.h>
 
 
 namespace Legacy
@@ -58,18 +62,14 @@ namespace Legacy
 
         minterThread.join();
 
-        if (pTrustKey != nullptr)
+        if (pReservedTrustKey != nullptr)
         {
-            delete pTrustKey;
-            pTrustKey = nullptr;
-        }
-
-        if (pTrustKey != nullptr)
-        {
+            pReservedTrustKey.ReturnKey();
             delete pReservedTrustKey;
             pReservedTrustKey = nullptr;
         }
 
+        /* Don't delete wallet, just null out the reference to it */
         pStakingWallet = nullptr;
     }
 
@@ -118,6 +118,15 @@ namespace Legacy
     }
 
 
+    /* Retrieves the current staking reward rate (previously, interest rate) */
+    double GetStakeRate() const
+    {
+        LOCK(cs_stakeMinter);
+        
+        return nStakeRate;
+    }
+
+
     /* Checks whether the stake minter is waiting for average coin
      * age to reach the required minimum before staking Genesis.
      */
@@ -162,17 +171,22 @@ namespace Legacy
     }
 
 
+    /*  Gets the trust key for the current wallet. If none exists, retrieves a new
+     *  key from the key pool to use as the trust key for Genesis.
+     */
     void StakeMinter::FindTrustKey()
     {
         trustKey.SetNull();
-        std::vector<uint8_t> vchTrustKey;
 
         /* Attempt to use the trust key cached in the wallet */
-        if (pStakingWallet->GetTrustKey(vchTrustKey) && !vchTrustKey.isEmpty())
+        std::vector<uint8_t> vchTrustKey = pStakingWallet->GetTrustKey();
+
+        if (!vchTrustKey.isEmpty())
         {
             uint576_t cKey;
             cKey.SetBytes(vchTrustKey);
 
+            /* Read the key cached in wallet from the trustDB */
             if (!LLD::trustDB->ReadTrustKey(cKey, trustKey))
             {
                 /* Cached wallet trust key not found in trust db, reset it */
@@ -186,8 +200,8 @@ namespace Legacy
             }
         }
 
-        /* Scan for trust key within the trust database.
-         * Only have to do this if new wallet (no trust key), or converting only wallet that doesn't have its key cached yet. 
+        /* Scan for trust key within the trust database if none found in wallet.
+         * Should only have to do this if new wallet (no trust key), or converting old wallet that doesn't have its key cached yet. 
          */
         if(trustKey.IsNull())
         {
@@ -218,7 +232,6 @@ namespace Legacy
                     {
                         /* Expired pre-v5 Trust Key. Do not use. */
                         debug::log(2, FUNCTION, "Found expired version 4 trust key in wallet. Not using.");
-
                         continue;
                     }
 
@@ -226,9 +239,9 @@ namespace Legacy
                     trustKey = trustKeyCheck;
 
                     /* Store trust key */
-                    pStakingWallet->SetTrustKey(trustKey);
+                    pStakingWallet->SetTrustKey(trustKey.vchPubKey);
 
-                    debug::log(0, FUNCTION, "Found Trust Key from wallet keys");
+                    debug::log(0, FUNCTION, "Found Trust Key matching current wallet");
                 }
 
             }
@@ -245,159 +258,190 @@ namespace Legacy
     }
 
 
-    bool StakeMinter::ResetMinter()
-    {
-
-    }
-
-
+    /* Creates a new legacy block that the stake minter will attempt to mine via the Proof of Stake process. */
     bool StakeMinter::CreateCandidateBlock()
     {
-            // /* Create the block to work on. */
-            // // Need legacy create
-            // //candidateBlock = CreateNewBlock(reservekey, pwalletMain, 0);
-            // if(block.IsNull())
-            //     continue;
+        /* Create the block to work on. 
+         * Don't just reset old block. May still have a reference to it floating around in process of relaying it.
+         */
+        candidateBlock = LegacyBlock();
 
-            // /* Write the trust key into the output script. */
-            // block.vtx[0].vout[0].scriptPubKey << vchTrustKey << Wallet::OP_CHECKSIG;
+        if (!CreateLegacyBlock(nullptr, 0, 0, candidateBlock))
+            return debug::error(FUNCTION, "Unable to create candidate block");
 
-            // /* Trust transaction. */
-            // if(!trustKey.IsNull())
-            // {
-            //     /* Set the key from bytes. */
-            //     uint576 key;
-            //     key.SetBytes(trustKey.vchPubKey);
+        if (!trustKey.IsNull())
+        {
 
-            //     /* Check that the database has key. */
-            //     LLD::CIndexDB indexdb("r+");
-            //     CTrustKey keyCheck;
-            //     if(!indexdb.ReadTrustKey(key, keyCheck))
-            //     {
-            //         error("Stake Minter : trust key was disconnected");
+            /* Looking to stake Trust for existing key */
+            std::vector<uint8_t> vchTrustKey;
+            uint576_t cKey;
 
-            //         /* Erase my key from trustdb. */
-            //         trustdb.EraseMyKey();
+            if (!pStakingWallet->GetTrustKey(vchTrustKey) || !vchTrustKey.isEmpty())
+                return debug::error(FUNCTION, "Unable to get trust key");
 
-            //         /* Set the trust key to null state. */
-            //         trustKey.SetNull();
+            /* Check that the database still has key. */
+            cKey.SetBytes(vchTrustKey);
+            TrustKey keyCheck;
+            if(!LLD::trustDB->ReadTrustKey(cKey, keyCheck))
+            {
+                debug::error(FUNCTION, "Trust key was disconnected");
 
-            //         continue;
-            //     }
+                /* Ensure it is erased */
+                LLD::trustDB->Erase(cKey);
 
-            //     /* Previous out needs to be 0 in coinstake transaction. */
-            //     block.vtx[0].vin[0].prevout.n = 0;
+                /* Remove trust key from wallet */
+                pStakingWallet->RemoveTrustKey();
 
-            //     /* Previous out hash is trust key hash */
-            //     block.vtx[0].vin[0].prevout.hash = trustKey.GetHash();
+                /* Set the trust key to null state. */
+                trustKey.SetNull();
 
-            //     /* Get the last block of this trust key. */
-            //     uint1024 hashLastBlock = hashBest;
-            //     if(!LastTrustBlock(trustKey, hashLastBlock))
-            //     {
-            //         error("Stake Minter : failed to find last block for trust key");
-            //         continue;
-            //     }
+                /* For next iteration, go back to staking for Genesis */ 
+                if (pReservedTrustKey != nullptr)
+                    delete pReservedTrustKey;  // should never happen, this is a precaution
 
-            //     /* Get the last block index from map block index. */
-            //     CBlock blockPrev;
-            //     if(!blockPrev.ReadFromDisk(mapBlockIndex[hashLastBlock], true))
-            //     {
-            //         error("Stake Minter : failed to read last block for trust key");
-            //         continue;
-            //     }
+                pReservedTrustKey = new CReserveKey(pStakingWallet);
+                pReservedTrustKey.GetReservedKey();
 
-            //     /* Enforce the minimum trust key interval of 120 blocks. */
-            //     if(block.nHeight - blockPrev.nHeight < (fTestNet ? TESTNET_MINIMUM_INTERVAL : MAINNET_MINIMUM_INTERVAL))
-            //     {
-            //         //error("Stake Minter : trust key interval below minimum interval %u", block.nHeight - blockPrev.nHeight);
-            //         continue;
-            //     }
+                return false;
+            }
 
-            //     /* Get the sequence and previous trust. */
-            //     unsigned int nTrustPrev = 0, nSequence = 0, nScore = 0;
+            /* Prevout index needs to be 0 in coinstake transaction. */
+            candidateBlock.vtx[0].vin[0].prevout.n = 0;
 
-            //     /* Handle if previous block was a genesis. */
-            //     if(blockPrev.vtx[0].IsGenesis())
-            //     {
-            //         nSequence   = 1;
-            //         nTrustPrev  = 0;
-            //     }
+            /* Prevout hash is trust key hash */
+            block.vtx[0].vin[0].prevout.hash = trustKey.GetHash();
 
-            //     /* Handle if previous block was version 4 */
-            //     else if(blockPrev.nVersion < 5)
-            //     {
-            //         nSequence   = 1;
-            //         nTrustPrev  = trustKey.Age(mapBlockIndex[block.hashPrevBlock]->GetBlockTime());
-            //     }
+            /* Get the last stake block for this trust key. */
+            TAO::Ledger::BlockState prevBlockState;
+            if (!TAO::Ledger::GetLastTrust(trustKey, prevBlockState))
+                return debug::error(FUNCTION, "Failed to get last trust for trust key");
 
-            //     /* Handle if previous block is version 5 trust block. */
-            //     else
-            //     {
-            //         /* Extract the trust from the previous block. */
-            //         uint1024 hashDummy;
-            //         if(!blockPrev.ExtractTrust(hashDummy, nSequence, nTrustPrev))
-            //         {
-            //             error("Stake Minter : failed to extract trust from previous block");
-            //             continue;
-            //         }
+            /* Enforce the minimum staking transaction interval. */
+            if ((candidateBlock.nHeight - prevBlockState.nHeight) < (fTestNet ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL : TAO::Ledger::MAINNET_MINIMUM_INTERVAL))
+            {
+                /* Below minimum interval. Previous stake block still maturing. Increase sleep time until can continue normally. */
+                nSleepTime = 30000; //30 second wait (is reset below)
+                return false;
+            }
 
-            //         /* Increment Sequence Number. */
-            //         nSequence ++;
+            /* Get the sequence and previous trust. */
+            uint32_t nSequence = 0;
+            uint32_t nScore = 0;
+            uint32_t nPrevScore = 0;
 
-            //     }
+            /* Handle if previous block was a genesis. */
+            if (prevBlockState.vtx[0].first != TAO::Ledger::TYPE::LEGACY_TX)
+            {
+                /* This should not happen with legacy stake minter, but check it just in case. It means wallet is using Tritium staking, so stop the minter */
+                {
+                    LOCK(cs_stakeMinter);
+                    fstopMinter = true;
+                }
 
-            //     /* The time it has been since the last trust block for this trust key. */
-            //     int nTimespan = (mapBlockIndex[block.hashPrevBlock]->GetBlockTime() - blockPrev.nTime);
+                return debug::error(FUNCTION, "Trust key previous block is not a legacy coinstake. Stopping stake minter.")
+            }
 
-            //     /* Timespan less than required timespan is awarded the total seconds it took to find. */
-            //     if(nTimespan < (fTestNet ? TRUST_KEY_TIMESPAN_TESTNET : TRUST_KEY_TIMESPAN))
-            //         nScore = nTrustPrev + nTimespan;
+            /* Retrieve the previous coinstake transaction */
+            uint512_t prevCoinstakeTxHash = preBlockState.vtx[0].second;
+            Transaction prevCoinstakeTx;
+            if (!legDB->ReadTx(prevCoinstakeTxHash, prevCoinstakeTx))
+                return debug::error(FUNCTION, "Failed to read previous coinstake for trust key");
 
-            //     /* Timespan more than required timespan is penalized 3 times the time it took past the required timespan. */
-            //     else
-            //     {
-            //         /* Calculate the penalty for score (3x the time). */
-            //         int nPenalty = (nTimespan - (fTestNet ? TRUST_KEY_TIMESPAN_TESTNET : TRUST_KEY_TIMESPAN)) * 3;
+            if (prevCoinstakeTx.IsGenesis())
+            {
+                nSequence   = 1;
+                nPrevScore  = 0;
+            }
+            else
+            {
+                /* Extract the trust from the previous block. */
+                uint1024_t hashDummy;
 
-            //         /* Catch overflows and zero out if penalties are greater than previous score. */
-            //         if(nPenalty < nTrustPrev)
-            //             nScore = (nTrustPrev - nPenalty);
-            //         else
-            //             nScore = 0;
-            //     }
+                if(!prevCoinstakeTx.ExtractTrust(hashDummy, nSequence, nPrevScore))
+                    return debug::error("Failed to extract trust from previous block");
 
-            //     /* Set maximum trust score to seconds passed for interest rate. */
-            //     if(nScore > (60 * 60 * 24 * 28 * 13))
-            //         nScore = (60 * 60 * 24 * 28 * 13);
+                /* Increment sequence number for next trust transaction. */
+                nSequence ++;
+            }
 
-            //     /* Serialize the sequence and last block into vin. */
-            //     CDataStream scriptPub(block.vtx[0].vin[0].scriptSig, SER_NETWORK, PROTOCOL_VERSION);
-            //     scriptPub << hashLastBlock << nSequence << nScore;
+            /* Calculate time since the last trust block for this trust key (block age = age of previous trust block). */
+            uint32_t nBlockAge = TAO::Ledger::ChainState.stateBest.GetBlockTime() - prevBlockState.GetBlockTime();
+            uint32_t maxTrustScore = (60 * 60 * 24 * 28 * 13);
 
-            //     /* Set the script sig (CScript doesn't support serializing all types needed) */
-            //     block.vtx[0].vin[0].scriptSig.clear();
-            //     block.vtx[0].vin[0].scriptSig.insert(block.vtx[0].vin[0].scriptSig.end(), scriptPub.begin(), scriptPub.end());
-            // }
-            // else
-            //     block.vtx[0].vin[0].prevout.SetNull();
+            /* Timespan less than required timespan is awarded the total seconds it took to find. */
+            if (nBlockAge < (fTestNet ? TRUST_KEY_TIMESPAN_TESTNET : TRUST_KEY_TIMESPAN))
+                nScore = std::min((nPrevScore + nBlockAge), maxTrustScore);
 
-            // /* Add the coinstake inputs */
-            // if (!pwalletMain->AddCoinstakeInputs(block))
-            // {
-            //     /* Wallet has no balance, or balance unavailable for staking. Increase sleep time to wait for balance. */
-            //     nSleepTime = 30000;
-            //     printf("Stake Minter : no spendable inputs available\n");
-            //     continue;
-            // }
-            // else if (nSleepTime == 30000) {
-            //     /* Reset sleep time after inputs become available. */
-            //     nSleepTime = 1000;
-            // }
+            /* Block age more than maximum allowed timespan is penalized 3 times the time it has exceeded the maximum. */
+            else
+            {
+                /* Calculate the penalty for score (3x the time). */
+                uint32_t nPenalty = (nBlockAge - (fTestNet ? TRUST_KEY_TIMESPAN_TESTNET : TRUST_KEY_TIMESPAN)) * 3;
 
+                /* Catch overflows and zero out if penalties are greater than previous score. */
+                if(nPenalty < nPrevScore)
+                    nScore = nPrevScore - nPenalty;
+                else
+                    nScore = 0;
+            }
+
+            /* Double check that the trust score cannot exceed the maximum */
+            if (nScore > maxTrustScore)
+                nScore = maxTrustScore;
+
+            /* Serialize previous trust block hash, new sequence, and new trust score into vin. */
+            CDataStream scriptPub(candidateBlock.vtx[0].vin[0].scriptSig, SER_NETWORK, LLP::PROTOCOL_VERSION);
+            scriptPub << prevBlockState.GetHash() << nSequence << nScore;
+
+            /* Set the script sig (CScript doesn't support serializing all types needed) */
+            candidateBlock.vtx[0].vin[0].scriptSig.clear();
+            candidateBlock.vtx[0].vin[0].scriptSig.insert(candidateBlock.vtx[0].vin[0].scriptSig.end(), scriptPub.begin(), scriptPub.end());
+
+            /* Write the trust key into the output script. */
+            candidateBlock.vtx[0].vout.resize(1);
+            candidateBlock.vtx[0].vout[0].scriptPubKey << trustkey.vchPubKey << Wallet::OP_CHECKSIG;
+
+        }
+        else
+        {
+            /* Looking to stake Genesis for new key */
+            /* Genesis prevout is null */
+            candidateBlock.vtx[0].vin[0].prevout.SetNull();
+
+            /* Write the reserved key into the output script. */
+            candidateBlock.vtx[0].vout.resize(1);
+            candidateBlock.vtx[0].vout[0].scriptPubKey << pReservedTrustKey.GetReservedKey() << Wallet::OP_CHECKSIG;
+        }
+
+        /* Add the coinstake inputs. Also generates coinstake output with staking reward */
+        if (!pStakingWallet->AddCoinstakeInputs(candidateBlock))
+        {
+            /* Wallet has no balance, or balance unavailable for staking. Increase sleep time to wait for balance. */
+            nSleepTime = 30000;
+            debug::log(0, FUNCTION, "Wallet has no balance or no spendable inputs available.");
+            return false;
+        }
+        else if (nSleepTime == 30000) {
+            /* Reset sleep time after inputs become available. */
+            nSleepTime = 1000;
+        }
+
+        /* Update the current stake rate in the minter (not used for calculations, retrievable for display) */
+        BlockState candidateBlockState(candidateBlock);
+        double nCurrentStakeRate = trustKey.InterestRate(candidateBlockState, candidateBlock.GetBlockTime());
+
+        {
+            LOCK(cs_stakeMinter);
+
+            /* Use lock scope because someone may be retrieving this value */
+            nStakeRate = nCurrentStakeRate;
+        }
+
+        return true;
     }
 
 
+    /* Calculates the Trust Weight and Block Weight values for the current trust key and candidate block. */
     bool StakeMinter::CalculateWeights()
     {
         /* Use local variables for calculations, then set instance variables with a lock scope at the end */
@@ -494,144 +538,143 @@ namespace Legacy
     }
 
 
-    bool StakeMinter::MineProofOfStake()
+    /* Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block */
+    voic StakeMinter::MineProofOfStake()
     {
-            bool fstop = false; //initialized false, will always perform at least one iteration even if miner was just stopped
+        bool fstop = false; // initialized false to assure it enters process loop
 
-            /* Calculate the minimum Required Energy Efficiency Threshold. 
-             * Minter can only mine Proof of Stake when current threshold exceeds this value. 
-             *
-             * Staking weights (trust and block) reduce the required threshold by reducing the numerator of this calculation.
-             * Weight from staking balance (based on nValue out of coinstake) reduces the required threshold by increasing the denominator.
-             */
-            uint64_t nStake = block.vtx[0].vout[0].nValue
-            double nRequired = ((108.0 - nTrustWeight - nBlockWeight) * TAO::Ledger::MAX_STAKE_WEIGHT) / nStake;
+        /* Calculate the minimum Required Energy Efficiency Threshold. 
+         * Minter can only mine Proof of Stake when current threshold exceeds this value. 
+         *
+         * Staking weights (trust and block) reduce the required threshold by reducing the numerator of this calculation.
+         * Weight from staking balance (based on nValue out of coinstake) reduces the required threshold by increasing the denominator.
+         */
+        uint64_t nStake = block.vtx[0].vout[0].nValue
+        double nRequired = ((108.0 - nTrustWeight - nBlockWeight) * TAO::Ledger::MAX_STAKE_WEIGHT) / nStake;
 
-            /* Calculate the target value based on difficulty. */
-            CBigNum bnTarget;
-            bnTarget.SetCompact(candidateBlock.nBits);
-            uint1024_t nHashTarget = bnTarget.getuint1024();
+        /* Calculate the target value based on difficulty. */
+        CBigNum bnTarget;
+        bnTarget.SetCompact(candidateBlock.nBits);
+        uint1024_t nHashTarget = bnTarget.getuint1024();
 
-            debug::log(0, FUNCTION, "Staking new block from %s at weight %f and stake rate %f", 
-                hashLastBlock.ToString().substr(0, 20).c_str(), (nTrustWeight + nBlockWeight), nInterestRate);
+        debug::log(0, FUNCTION, "Staking new block from %s at weight %f and stake rate %f", 
+            hashLastBlock.ToString().substr(0, 20).c_str(), (nTrustWeight + nBlockWeight), nStakeRate);
 
-            /* Search for the proof of stake hash solution until it mines a block, minter is stopped, 
-             * or network generates a new block (minter must start over with new candidate) 
-             */
-            while (!fstop && !config::fShutdown && hashLastBlock == TAO::Ledger::ChainState::hashBestChain)
+        /* Search for the proof of stake hash solution until it mines a block, minter is stopped, 
+         * or network generates a new block (minter must start over with new candidate) 
+         */
+        while (!fstop && !config::fShutdown && hashLastBlock == TAO::Ledger::ChainState::hashBestChain)
+        {
+            /* Update the block time for difficulty accuracy. */
+            candidateBlock.UpdateTime();
+            uint32_t nCurrentBlockTime = candidateBlock.GetBlockTime() - candidateBlock.vtx[0].nTime; // How long have we been working on this block
+
+            /* If just starting on block, wait */
+            if (nCurrentBlockTime == 0)
             {
-                /* Update the block time for difficulty accuracy. */
-                candidateBlock.UpdateTime();
-                uint32_t nCurrentBlockTime = candidateBlock.GetBlockTime() - candidateBlock.vtx[0].nTime; // How long have we been working on this block
-
-                /* If just starting on block, wait */
-                if (nCurrentBlockTime)
-                {
-                    runtime::Sleep(1);
-                    continue;
-                }
-
-                /* Calculate the new Efficiency Threshold for the next nonce. */
-                double nThreshold = (nCurrentBlockTime * 100.0) / (candidateBlock.nNonce + 1);
-
-                {
-                    /* Check stop flag now in case we are below required threshold (lower balance wallets may remain below it for awhile) */
-                    LOCK(cs_stakeMinter);
-                    fstop = StakeMinter::fstopMinter;
-
-                    if (fstop)
-                        continue;
-                }
-
-                /* If energy efficiency requirement exceeds threshold, wait and keep trying with the same nonce value until it threshold increases */
-                if(nThreshold < nRequired)
-                {
-                    runtime::Sleep(1);
-                    continue;
-                }
-
-                /* Increment the nonce only after we know we can use it (threshold exceeds required). */
-                candidateBlock.nNonce++;
-
-                /* Log every 1000 attempts */
-                if (candidateBlock.nNonce % 1000 == 0)
-                    debug::log(3, FUNCTION, "Threshold %f exceeds required %f, mining Proof of Stake with nonce %" PRIu64, nThreshold, nRequired, candidateBlock.nNonce);
-
-                /* Handle if block is found. */
-                if (candidateBlock.StakeHash() < hashTarget)
-                {
-                    ProcessMinedBlock();
-                    break;
-                }
-
+                runtime::Sleep(1);
+                continue;
             }
 
+            /* Calculate the new Efficiency Threshold for the next nonce. */
+            double nThreshold = (nCurrentBlockTime * 100.0) / (candidateBlock.nNonce + 1);
+
+            {
+                /* Check stop flag now in case we are below required threshold (lower balance wallets may remain below it for awhile) */
+                LOCK(cs_stakeMinter);
+                fstop = StakeMinter::fstopMinter;
+
+                if (fstop || config::fShutdown)
+                    continue;
+            }
+
+            /* If energy efficiency requirement exceeds threshold, wait and keep trying with the same nonce value until it threshold increases */
+            if(nThreshold < nRequired)
+            {
+                runtime::Sleep(10);
+                continue;
+            }
+
+            /* Increment the nonce only after we know we can use it (threshold exceeds required). */
+            candidateBlock.nNonce++;
+
+            /* Log every 1000 attempts */
+            if (candidateBlock.nNonce % 1000 == 0)
+                debug::log(3, FUNCTION, "Threshold %f exceeds required %f, mining Proof of Stake with nonce %" PRIu64, nThreshold, nRequired, candidateBlock.nNonce);
+
+            /* Handle if block is found. */
+            uint1024_t stakeHash = candidateBlock.StakeHash();
+            if (stakeHash < hashTarget)
+            {
+                debug::log(0, FUNCTION, "Found new stake hash %sn", stakeHash.ToString().substr(0, 20).c_str());
+
+                ProcessMinedBlock()
+                break;
+            }
+        }
     }
 
 
     bool StakeMinter::ProcessMinedBlock()
     {
-        // /* Sign the new Proof of Stake Block. */
-        // if(GetArg("-verbose", 0) >= 0)
-        //     printf("Stake Minter : found new stake hash %s\n", block.StakeHash().ToString().substr(0, 20).c_str());
+        /* Add the transactions into the block from memory pool, but only if not Genesis (Genesis block for trust key has no transactions except coinstake). */
+        if (!candidateBlock.vtx[0].IsGenesis())
+            AddTransactions(candidateBlock.vtx);
 
-        // /* Set the staking thread priorities. */
-        // SetThreadPriority(THREAD_PRIORITY_NORMAL);
+        /* Build the Merkle Root. */
+        candidateBlock.hashMerkleRoot = candidateBlock.BuildMerkleTree();
 
-        // /* Add the transactions into the block from memory pool. */
-        // if (!block.vtx[0].IsGenesis())
-        //     AddTransactions(block.vtx, pindexBest);
+        /* Sign the block. */
+        if (!SignBlock(candidateBlock, *pStakingWallet))
+            return debug::error(FUNCTION, "Failed to sign block");
 
-        // /* Build the Merkle Root. */
-        // block.hashMerkleRoot   = block.BuildMerkleTree();
+        /* Check the block. */
+        if (!candidateBlock.Check())
+            return debug::error(FUNCTION, "Check block failed");
 
-        // /* Sign the block. */
-        // if (!block.SignBlock(*pwalletMain))
-        // {
-        //     printf("Stake Minter : failed to sign block");
-        //     break;
-        // }
+        /* Check the stake. */
+        if (!candidateBlock.CheckStake())
+            return debug::error(FUNCTION, "Check state failed");
 
-        // /* Check the block. */
-        // if (!block.CheckBlock())
-        // {
-        //     error("Stake Minter : check block failed");
-        //     break;
-        // }
+        /* Check the stake. */
+        if (!candidateBlock.vtx[0].CheckTrust(TAO::Ledger::ChainState.stateBest))
+            return debug::error(FUNCTION, "Check trust failed");
 
-        // /* Check the stake. */
-        // if (!block.CheckStake())
-        // {
-        //     error("Stake Minter : check stake failed");
-        //     break;
-        // }
+        /* Check the work for the block. */
+        if(!CheckWork(&candidateBlock, *pStakingWallet))
+            return debug::error(FUNCTION, "Check work failed");
 
-        // /* Check the stake. */
-        // if (!block.CheckTrust())
-        // {
-        //     error("Stake Minter : check stake failed");
-        //     break;
-        // }
+        /** Process the Block to see if it gets Accepted into Blockchain. **/
+//TODO - Process/relay new block
+//        if (!ProcessBlock(nullptr, candidateBlock))
+//            return debug::error(FUNCTION, "ProcessBlock, block not accepted\n");
 
-        // /* Check the work for the block. */
-        // if(!CheckWork(&block, *pwalletMain, reservekey))
-        // {
-        //     error("Stake Minter : check work failed");
-        //     break;
-        // }
+        if(pReservedTrustKey != nullptr)
+        {
+            /* New block was Genesis using reserved key. Create new trust key from it. Have to call GetReservedKey before KeepKey, which resets it  */
+            uint576_t cKey;
+            cKey.SetBytes(pReservedTrustKey->GetReservedKey());
 
-        // /* Write the trust key to the key db. */
-        // if(trustKey.IsNull())
-        // {
-        //     CTrustKey trustKeyNew(vchTrustKey, block.GetHash(), block.vtx[0].GetHash(), block.nTime);
-        //     trustdb.WriteMyKey(trustKeyNew);
+            /* Create new trust key with Genesis block hash, Genesis tx hash, and Genesis time based on current block */
+            TrustKey trustKeyNew(pReservedTrustKey->GetReservedKey(), candidateBlock.GetHash(), candidateBlock.vtx[0].GetHash(), candidateBlock.GetBlockTime());
 
-        //     trustKey = trustKeyNew;
-        //     printf("Stake Minter : new trust key written\n");
-        // }
+            /* Add trust key to trust db */
+            LLD::trustdb->WriteTrustKey(cKey, trustKeyNew); 
+
+            /* Cache trust key in wallet */
+            pStakingWallet->SetTrustKey(pReservedTrustKey->GetReservedKey());
+
+            pReservedTrustKey->KeepKey();
+
+            /* Use new key for further staking */
+            trustKey = trustKeyNew;
+
+            debug::log(0, FUNCTION, "New trust key generated and stored");
+
+            delete pReservedTrustKey;
+        }
 
     }
-
 
 
     /* Method run on its own thread to oversee stake minter operation. */
@@ -667,21 +710,6 @@ namespace Legacy
         while(!config::fShutdown)
         {
             runtime::Sleep(nSleepTime);
-
-            /* Save the current best block hash immediately in case it changes */
-            hashLastBlock = TAO::Ledger::ChainState::hashBestChain;
-
-            /* Set up the candidate block the minter is attempting to mine */
-            pStakeMinter->CreateCandidateBlock();
-
-            /* Updates weights for new candidate block */
-            pStakeMinter->CalculateWeights();
-
-            /* Attempt to mine the current proof of stake block */
-            pStakeMinter->MineProofOfStake();
-
-            /* Reset candidate block for next iteration */
-            pStakeMinter->ResetMinter();
 
             /* Check whether the stake minter has been stopped */
             {
@@ -719,6 +747,25 @@ namespace Legacy
                     StakeMinter::fstopMinter = false;
                 }
             }
+
+            /* If we got a shutdown while it was sleeping or waiting to be restarted, skip the rest of this iteration */
+            if (config::fShutdown)
+                continue;
+
+            /* Save the current best block hash immediately in case it change while we do setup */
+            hashLastBlock = TAO::Ledger::ChainState.hashBestChain;
+
+            /* Set up the candidate block the minter is attempting to mine */
+            if (!pStakeMinter->CreateCandidateBlock())
+                continue;
+
+            /* Updates weights for new candidate block */
+            if (!pStakeMinter->CalculateWeights())
+                continue;
+
+            /* Attempt to mine the current proof of stake block */
+            pStakeMinter->MineProofOfStake();
+
         }
 
         /* On shutdown, delete the minter instance and wait for it to destruct before ending */ 

@@ -112,6 +112,16 @@ namespace Legacy
         double GetTrustWeightPercent() const;
 
 
+        /** GetStakeRate
+          * 
+          * Retrieves the current staking reward rate (previously, interest rate) 
+          * 
+          * @return the current stake rate
+          *
+          */
+        double GetStakeRate() const;
+
+
         /** IsWaitPeriod
           * 
           * Checks whether the stake minter is waiting for average coin
@@ -196,23 +206,42 @@ namespace Legacy
         CWallet* pStakingWallet;
 
 
+        /** Trust key for staking. IsNull() is true when staking for Genesis. **/
         TrustKey trustKey;
 
+
+        /** Reserved key to use for Genesis. nullptr when staking for Trust **/
         ReserveKey* pReservedTrustKey;
 
+
+        /** The candidate block that the stake minter is attempting to mine */
         LegacyBlock candidateBlock;
 
+
+        /** Hash of the best chain when the minter began attempting to mine its current candidate. 
+         *  If current hashBestChain changes, the minter must start over with a new candidate. 
+         **/
         uint1024_t hashLastBlock;
 
+
+        /** Time to sleep between candidate blocks. **/
         uint64_t nSleepTime;
 
+
+        /** true when the minter is waiting for coin age to reach the minimum required to begin staking for Genesis **/
         bool fIsWaitPeriod;
 
+
+        /** The current trust weight for the trust key in the minter (value ranges from 1 - 90) **/
         double nTrustWeight;
 
+
+        /** The current block weight for the trust key in the minter (value ranges from 1 - 10) **/
         double nBlockWeight;
 
-        double nInterestRate;
+
+        /** The current staking rate (previously, interest rate) for calculating staking rewards **/
+        double nStakeRate;
 
 
         /** Default constructor **/
@@ -234,51 +263,71 @@ namespace Legacy
 
 
         /** FindTrustKey
-          *
-          * Gets the trust key for the current wallet. If none exists, retrieves a new
-          * key from the key pool to use as the trust key for Genesis.
-          *
-          * @param[in,out] reservedTrustKey - ReserveKey for trust key, used to obtain a new key from key pool if needed
-          *
-          * @return true if is successfully retrieved a trust key or used a new one, false otherwise
-          * 
-          **/
+         *
+         *  Gets the trust key for the current wallet. If none exists, retrieves a new
+         *  key from the key pool to use as the trust key for Genesis.
+         *
+         *  @param[in,out] reservedTrustKey - ReserveKey for trust key, used to obtain a new key from key pool if needed
+         *
+         *  @return true if is successfully retrieved a trust key or used a new one, false otherwise
+         * 
+         **/
         bool FindTrustKey(ReserveKey& reservedTrustKey);
 
 
-        /** ResetMinter
-          *
-          * Resets the stake minter settings if the network finds a block
-          * and the minter needs to start on a new one.
-          *
-          */
-        void ResetMinter();
-
-
+        /** CreateCandidateBlock
+         *
+         *  Creates a new legacy block that the stake minter will attempt to mine via the Proof of Stake process.
+         *
+         *  @return true if the candidate block was successfully created
+         *
+         **/
         bool CreateCandidateBlock();
 
 
+        /** CalculateWeights
+         *
+         *  Calculates the Trust Weight and Block Weight values for the current trust key and candidate block.
+         *
+         *  @return true if the weights were properly calculated
+         *
+         */
         bool CalculateWeights();
 
 
-        bool MineProofOfStake();
+        /** MineProofOfStake
+         *
+         *  Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block, while
+         *  operating within the energy efficiency requirements. This process will continue to iterate until it either
+         *  mines a new block or the hashBestChain changes and the minter must start over with a new candidate block.
+         *
+         **/
+        void MineProofOfStake();
 
 
+        /** ProcessMinedBlock
+         *
+         *  Processes a newly mined Proof of Stake block, adds transactions from the mempool, and submits it
+         *  to the network
+         *
+         *  @return true if the block passed all process checks and was successfully submitted
+         *
+         **/
         bool ProcessMinedBlock();
 
 
         /** StakeMinterThread
-          *
-          * Method run on its own thread to oversee stake minter operation. The thread will
-          * continue running after initialized, but operation can be stopped/restarted by
-          * using the stake minter methods.
-          *
-          * On shutdown, the thread will cease operation and wait for the stake minter
-          * destructor to tell it to exit/join.
-          *
-          * @param[in] pStakeMinter - the minter thread will use this instance to perform all the stake minter work
-          * 
-          **/
+         *
+         *  Method run on its own thread to oversee stake minter operation using the methods in the
+         *  stake minter instance. The thread will continue running after initialized, but operation can 
+         *  be stopped/restarted by using the stake minter methods.
+         *
+         *  On shutdown, the thread will cease operation and wait for the stake minter
+         *  destructor to tell it to exit/join.
+         *
+         *  @param[in] pStakeMinter - the minter thread will use this instance to perform all the stake minter work
+         * 
+         **/
         static void StakeMinterThread(StakeMinter* pStakeMinter);
 
     }
