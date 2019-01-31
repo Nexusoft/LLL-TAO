@@ -973,6 +973,9 @@ namespace TAO
                     if(mapExclude.count(s.first))
                         continue;
 
+                    if(config::GetBoolArg("-legacy") && strSentAccount == "default")
+                        strSentAccount = "";
+
                     json::json entry;
                     entry["account"] = strSentAccount;
                     entry["address"] = s.first.ToString();
