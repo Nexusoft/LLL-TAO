@@ -58,14 +58,14 @@ namespace TAO
             obj["newmint"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetNewMint());
             obj["stake"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetStake());
 
+            /* Staking metrics */
+            StakeMinter stakeMinter = StakeMinter.GetInstance();
+            obj["stakerate"]   = stakeMinter.GetStakeRate();
+            obj["stakeweight"] = stakeMinter.GetTrustWeight() + stakeMinter.GetBlockWeight(); // 100 max so is already a %
+            obj["trustweight"] = stakeMinter.GetTrustWeightPercent();
+            obj["blockweight"] = stakeMinter.GetBlockWeightPercent();
 
-        //   double dPercent = ((double)Core::dTrustWeight + (double)Core::dBlockWeight) / 37.5;
-        //   obj.push_back(std::make_pair("interestweight", (double)Core::dInterestRate * 100.0));
-        //   obj.push_back(std::make_pair("stakeweight",    dPercent * 100.0));
-        //   obj.push_back(std::make_pair("trustweight",    (double)Core::dTrustWeight * 100.0 / 17.5));
-        //   obj.push_back(std::make_pair("blockweight",    (double)Core::dBlockWeight * 100.0  / 20.0));
             obj["txtotal"] =(int)Legacy::Wallet::GetInstance().mapWallet.size();
-
 
             obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
 
