@@ -48,7 +48,7 @@ namespace Legacy
      * It derives from the basic key store, which is used if encryption is inactive.
      *
      **/
-    class CCryptoKeyStore : public CBasicKeyStore
+    class CCryptoKeyStore : public BasicKeyStore
     {
     private:
         /** Map containing public key/encrypted private key pairs, keyed by Nexus address **/
@@ -65,7 +65,7 @@ namespace Legacy
         /** Indicates whether key store is storing private keys in encrypted or unencrypted format.
          *
          * If fUseCrypto is true, mapCryptedKeys is used and mapKeys must be empty
-         * if fUseCrypto is false, mapKeys (from CBasicKeyStore) is used and vMasterKey/mapCryptedKeys must be empty 
+         * if fUseCrypto is false, mapKeys (from BasicKeyStore) is used and vMasterKey/mapCryptedKeys must be empty 
          */
         bool fUseCrypto;
 

@@ -162,15 +162,15 @@ namespace Legacy
          *  Master key settings should be populated with encryption settings and encrypted key value
          *  before calling this method. The general process looks like this:
          *
-         *    - Create CCrypter
+         *    - Create Crypter
          *    - Create CMasterKey
          *    - Populate CMasterKey values for salt, derivation method, number of iterations
-         *    - Call CCrypter::SetKeyFromPassphrase to configure encryption context in the crypter
-         *    - Call CCrypter::Encrypt to encrypt the master key value into the CMasterKey vchCryptedKey
+         *    - Call Crypter::SetKeyFromPassphrase to configure encryption context in the crypter
+         *    - Call Crypter::Encrypt to encrypt the master key value into the CMasterKey vchCryptedKey
          *    - Call this method to write the encrypted key into the wallet database
          *
-         *  @see CCrypter::SetKeyFromPassphrase
-         *  @see CCrypter::Encrypt
+         *  @see Crypter::SetKeyFromPassphrase
+         *  @see Crypter::Encrypt
          *  @see CMasterKey
          *
          *  @param[in] nMasterKeyId The key Id to identify a particuler master key entry.

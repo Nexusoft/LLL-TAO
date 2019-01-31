@@ -36,12 +36,12 @@ namespace Legacy
     /** Map to store scripts, keyed by 256 bit script hash **/
     typedef std::map<uint256_t, CScript > ScriptMap;
 
-    /** @class CBasicKeyStore
+    /** @class BasicKeyStore
      *
      *  Basic implementation of a key store that keeps keys in an unencrypted address->secret map
      *
      **/
-    class CBasicKeyStore : public CKeyStore
+    class BasicKeyStore : public CKeyStore
     {
     protected:
         /** Mutex for thread concurrency. **/

@@ -218,7 +218,7 @@ namespace Legacy
     /*  Add a key to the key store. */
     bool CCryptoKeyStore::AddKey(const LLC::ECKey& key)
     {
-        /* Only use LOCK to check IsCrypted() -- use internal flag so we can release before potential call to CBasicKeyStore::AddKey */
+        /* Only use LOCK to check IsCrypted() -- use internal flag so we can release before potential call to BasicKeyStore::AddKey */
         bool fCrypted = false;
 
         {
@@ -230,7 +230,7 @@ namespace Legacy
 
         /* Add key to basic key store if encryption not active */
         if (!fCrypted)
-            return CBasicKeyStore::AddKey(key);
+            return BasicKeyStore::AddKey(key);
 
         /* Cannot add key if key store is encrypted and locked */
         if (IsLocked())
@@ -257,7 +257,7 @@ namespace Legacy
     bool CCryptoKeyStore::GetKey(const NexusAddress& address, LLC::ECKey& keyOut) const
     {
         if (!IsCrypted())
-            return CBasicKeyStore::GetKey(address, keyOut);
+            return BasicKeyStore::GetKey(address, keyOut);
 
 
         {
@@ -290,7 +290,7 @@ namespace Legacy
     /*  Retrieve the set of public addresses for all keys currently present in the key store. */
     void CCryptoKeyStore::GetKeys(std::set<NexusAddress>& setAddress) const
     {
-        /* Only use LOCK to check IsCrypted() -- use internal flag so we can release before potential call to CBasicKeyStore::GetKeys */
+        /* Only use LOCK to check IsCrypted() -- use internal flag so we can release before potential call to BasicKeyStore::GetKeys */
         bool fCrypted = false;
 
         {
@@ -303,7 +303,7 @@ namespace Legacy
         /* Get keys from basic key store if encryption not active */
         if (!fCrypted)
         {
-            CBasicKeyStore::GetKeys(setAddress);
+            BasicKeyStore::GetKeys(setAddress);
             return;
         }
 
@@ -322,7 +322,7 @@ namespace Legacy
     /*  Check whether a key corresponding to a given address is present in the store. */
     bool CCryptoKeyStore::HaveKey(const NexusAddress& address) const
     {
-        /* Only use LOCK to check IsCrypted() -- use internal flag so we can release before potential call to CBasicKeyStore::HaveKey */
+        /* Only use LOCK to check IsCrypted() -- use internal flag so we can release before potential call to BasicKeyStore::HaveKey */
         bool fCrypted = false;
 
         {
@@ -333,7 +333,7 @@ namespace Legacy
         }
 
         if (!fCrypted)
-            return CBasicKeyStore::HaveKey(address);
+            return BasicKeyStore::HaveKey(address);
 
         {
             /* Get the lock back if we need to check mapCryptedKeys */

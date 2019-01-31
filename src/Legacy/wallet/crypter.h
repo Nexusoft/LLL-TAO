@@ -30,12 +30,12 @@ namespace Legacy
     /** CKeyingMaterial is type alias defining a byte vector with a custom, secure allocator. **/
     using CKeyingMaterial = std::vector<uint8_t, secure_allocator<uint8_t> >;
 
-    /** @class CCrypter
+    /** @class Crypter
      *
      * Encryption/decryption context with key information 
      *
      **/
-    class CCrypter
+    class Crypter
     {
     private:
         /** Key used to perform encryption **/
@@ -54,7 +54,7 @@ namespace Legacy
          *  Initializes fKeySet = false
          *
          **/
-        CCrypter() : fKeySet(false)
+        Crypter() : fKeySet(false)
         {
         }
 
@@ -64,12 +64,12 @@ namespace Legacy
 
         /** Copy constructor
          **/
-        CCrypter(const CCrypter& c);
+        Crypter(const Crypter& c);
 
 
          /** Copy assignment operator
          **/
-        CCrypter& operator= (const CCrypter& rhs);
+        Crypter& operator= (const Crypter& rhs);
 
 
         /** Destructor
@@ -77,7 +77,7 @@ namespace Legacy
          * Clears the encryption key from memory
          *
          **/
-       ~CCrypter();
+       ~Crypter();
 
 
         /** SetKey
@@ -168,7 +168,7 @@ namespace Legacy
     /** @fn EncryptSecret
      *
      *  Function to encrypt a private key using a master key and IV pair. 
-     *  Creates a CCrypter instance and assigns the key context to perform the actual encryption.
+     *  Creates a Crypter instance and assigns the key context to perform the actual encryption.
      *
      *  @param[in] vMasterKey The encryption key to use for encryption
      *
@@ -187,7 +187,7 @@ namespace Legacy
     /** @fn DecryptSecret
      *
      *  Function to encrypt a private key using a master key and IV pair. 
-     *  Creates a CCrypter instance and assigns the key context to perform the actual decryption.
+     *  Creates a Crypter instance and assigns the key context to perform the actual decryption.
      *
      *  @param[in] vMasterKey The encryption key to use for encryption
      *

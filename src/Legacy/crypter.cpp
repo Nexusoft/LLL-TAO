@@ -30,7 +30,7 @@ namespace Legacy
 {
 
     /* Copy constructor */
-    CCrypter::CCrypter(const CCrypter& c)
+    Crypter::Crypter(const Crypter& c)
     {
         if (c.IsKeySet())
         {
@@ -51,7 +51,7 @@ namespace Legacy
 
 
     /* Copy assignment operator */
-    CCrypter& CCrypter::operator= (const CCrypter& rhs)
+    Crypter& Crypter::operator= (const Crypter& rhs)
     {
         if (this != &rhs)
         {
@@ -78,14 +78,14 @@ namespace Legacy
 
 
     /* Destructor */
-    CCrypter::~CCrypter()
+    Crypter::~Crypter()
     {
         CleanKey();
     }
 
 
     /* Assign new encryption key context (chKey and chIV). */
-    bool CCrypter::SetKey(const CKeyingMaterial& chNewKey, const std::vector<uint8_t>& chNewIV)
+    bool Crypter::SetKey(const CKeyingMaterial& chNewKey, const std::vector<uint8_t>& chNewIV)
     {
         if (chNewKey.size() != WALLET_CRYPTO_KEY_SIZE || chNewIV.size() != WALLET_CRYPTO_KEY_SIZE)
             return false;
@@ -110,7 +110,7 @@ namespace Legacy
 
 
     /* Generate new encryption key context (chKey and chIV) from a passphrase. */
-    bool CCrypter::SetKeyFromPassphrase(const SecureString& strKeyData, const std::vector<uint8_t>& chSalt, const uint32_t nRounds, const uint32_t nDerivationMethod)
+    bool Crypter::SetKeyFromPassphrase(const SecureString& strKeyData, const std::vector<uint8_t>& chSalt, const uint32_t nRounds, const uint32_t nDerivationMethod)
     {
         if (nRounds < 1 || chSalt.size() != WALLET_CRYPTO_SALT_SIZE)
             return false;
@@ -141,7 +141,7 @@ namespace Legacy
 
 
     /* Clear the current encryption key from memory. */
-    void CCrypter::CleanKey()
+    void Crypter::CleanKey()
     {
         memset(&chKey, 0, sizeof chKey);
         memset(&chIV, 0, sizeof chIV);
@@ -154,7 +154,7 @@ namespace Legacy
 
 
     /* Encrypt a plain text value using the current encryption key settings. */
-    bool CCrypter::Encrypt(const CKeyingMaterial& vchPlaintext, std::vector<uint8_t>& vchCiphertext)
+    bool Crypter::Encrypt(const CKeyingMaterial& vchPlaintext, std::vector<uint8_t>& vchCiphertext)
     {
         if (!IsKeySet())
             return false;
@@ -184,7 +184,7 @@ namespace Legacy
 
 
     /* Decrypt an encrypted text value using the current encryption key settings. */
-    bool CCrypter::Decrypt(const std::vector<uint8_t>& vchCiphertext, CKeyingMaterial& vchPlaintext)
+    bool Crypter::Decrypt(const std::vector<uint8_t>& vchCiphertext, CKeyingMaterial& vchPlaintext)
     {
         if (!IsKeySet())
             return false;
@@ -217,7 +217,7 @@ namespace Legacy
     /* Function to encrypt a private key using a master key and IV pair. */
     bool EncryptSecret(const CKeyingMaterial& vMasterKey, const LLC::CSecret& vchPlaintext, const uint576_t& nIV, std::vector<uint8_t>& vchCiphertext)
     {
-        CCrypter cKeyCrypter;
+        Crypter cKeyCrypter;
 
         std::vector<uint8_t> chIV(WALLET_CRYPTO_KEY_SIZE);
         //memcpy(&chIV[0], &nIV, WALLET_CRYPTO_KEY_SIZE);
@@ -235,7 +235,7 @@ namespace Legacy
     /* Function to encrypt a private key using a master key and IV pair. */
     bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<uint8_t>& vchCiphertext, const uint576_t& nIV, LLC::CSecret& vchPlaintext)
     {
-        CCrypter cKeyCrypter;
+        Crypter cKeyCrypter;
 
         std::vector<uint8_t> chIV(WALLET_CRYPTO_KEY_SIZE);
         //memcpy(&chIV[0], &nIV, WALLET_CRYPTO_KEY_SIZE);

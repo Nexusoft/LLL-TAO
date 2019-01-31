@@ -456,7 +456,7 @@ namespace Legacy
         if (IsCrypted())
             return false;
 
-        CCrypter crypter;
+        Crypter crypter;
         CMasterKey kMasterKey;
 
         CKeyingMaterial vMasterKey;
@@ -597,7 +597,7 @@ namespace Legacy
         if (!IsLocked())
             return false;
 
-        CCrypter crypter;
+        Crypter crypter;
         CKeyingMaterial vMasterKey;
 
         {
@@ -670,7 +670,7 @@ namespace Legacy
             /* Lock the wallet so we can use unlock to verify old passphrase */
             Lock();
 
-            CCrypter crypter;
+            Crypter crypter;
             CKeyingMaterial vMasterKey;
 
             /* If more than one master key in wallet's map (unusual), have to find the one that corresponds to old passphrase.
