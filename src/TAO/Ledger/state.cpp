@@ -528,7 +528,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to connect inputs");
 
                     /* Add legacy transactions to the wallet where appropriate */
-                    Legacy::CWallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);
+                    Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);
 
                 }
                 else
@@ -606,8 +606,8 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to connect inputs");
 
                     /* Wallets need to refund inputs when disonnecting coinstake */
-                    if (tx.IsCoinStake() && Legacy::CWallet::GetInstance().IsFromMe(tx))
-                       Legacy::CWallet::GetInstance().DisableTransaction(tx);
+                    if (tx.IsCoinStake() && Legacy::Wallet::GetInstance().IsFromMe(tx))
+                       Legacy::Wallet::GetInstance().DisableTransaction(tx);
                 }
 
                 /* Write the indexing entries. */

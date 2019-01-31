@@ -35,7 +35,7 @@ namespace Legacy
     {
     public:
         /** The wallet transaction containing this output **/
-        const CWalletTx& walletTx;
+        const WalletTx& walletTx;
 
 
         /** Index for this output in the transaction vout **/
@@ -57,7 +57,7 @@ namespace Legacy
          *  @param[in] nDepthIn The depth of the transaction at time of COutput creation
          *
          **/
-        COutput(const CWalletTx& walletTxIn, const uint32_t iIn, const uint32_t nDepthIn) :
+        COutput(const WalletTx& walletTxIn, const uint32_t iIn, const uint32_t nDepthIn) :
             walletTx(walletTxIn), 
             i(iIn),
             nDepth(nDepthIn)
