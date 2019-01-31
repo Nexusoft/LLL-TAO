@@ -21,14 +21,14 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    /** @class CMasterKey
+    /** @class MasterKey
      *
      *  Master key for wallet encryption
      *
-     *  Private key encryption is done based on a CMasterKey,
+     *  Private key encryption is done based on a MasterKey,
      *  which holds a salt and random encryption key.
      *
-     *  CMasterKeys are encrypted using AES-256-CBC using a key
+     *  MasterKeys are encrypted using AES-256-CBC using a key
      *  derived using derivation method nDerivationMethod
      *  (0 == EVP_sha512()) and derivation iterations nDeriveIterations.
      *  vchOtherDerivationParameters is provided for alternative algorithms
@@ -38,11 +38,11 @@ namespace Legacy
      *
      *  Wallet Private Keys are then encrypted using AES-256-CBC
      *  with the SK576 of the public key as the IV, and the
-     *  master key's key as the encryption key (see CCryptoKeyStore).
+     *  master key's key as the encryption key (see CryptoKeyStore).
      *
      * Database key is mkey<ID>
      **/
-    class CMasterKey
+    class MasterKey
     {
     public:
         /** Encrypted master key. Must be decrypted before use.
@@ -89,7 +89,7 @@ namespace Legacy
          *  Defaults iterations to 25000 and derivation method to 0
          *
          **/
-        CMasterKey()
+        MasterKey()
         : vchCryptedKey()
         , vchSalt()
         , nDerivationMethod(0)

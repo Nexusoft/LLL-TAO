@@ -40,7 +40,7 @@ namespace Legacy
     typedef std::map<NexusAddress, std::pair<std::vector<uint8_t>, std::vector<uint8_t> > > CryptedKeyMap;
 
 
-    /** @class CCryptoKeyStore
+    /** @class CryptoKeyStore
      *
      * Key store that keeps the private keys encrypted.
      *
@@ -48,7 +48,7 @@ namespace Legacy
      * It derives from the basic key store, which is used if encryption is inactive.
      *
      **/
-    class CCryptoKeyStore : public BasicKeyStore
+    class CryptoKeyStore : public BasicKeyStore
     {
     private:
         /** Map containing public key/encrypted private key pairs, keyed by Nexus address **/
@@ -118,7 +118,7 @@ namespace Legacy
          *  Initializes key store as unencrypted
          *
          **/
-        CCryptoKeyStore() : fUseCrypto(false)
+        CryptoKeyStore() : fUseCrypto(false)
         {
         }
 

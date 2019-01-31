@@ -33,7 +33,7 @@ namespace Legacy
     class CAccount;
     class AccountingEntry;
     class CKeyPoolEntry;
-    class CMasterKey;
+    class MasterKey;
     class Wallet;
     class WalletTx;
 
@@ -163,15 +163,15 @@ namespace Legacy
          *  before calling this method. The general process looks like this:
          *
          *    - Create Crypter
-         *    - Create CMasterKey
-         *    - Populate CMasterKey values for salt, derivation method, number of iterations
+         *    - Create MasterKey
+         *    - Populate MasterKey values for salt, derivation method, number of iterations
          *    - Call Crypter::SetKeyFromPassphrase to configure encryption context in the crypter
-         *    - Call Crypter::Encrypt to encrypt the master key value into the CMasterKey vchCryptedKey
+         *    - Call Crypter::Encrypt to encrypt the master key value into the MasterKey vchCryptedKey
          *    - Call this method to write the encrypted key into the wallet database
          *
          *  @see Crypter::SetKeyFromPassphrase
          *  @see Crypter::Encrypt
-         *  @see CMasterKey
+         *  @see MasterKey
          *
          *  @param[in] nMasterKeyId The key Id to identify a particuler master key entry.
          *
@@ -180,7 +180,7 @@ namespace Legacy
          *  @return true if master key successfully written to wallet database
          *
          **/
-        bool WriteMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey);
+        bool WriteMasterKey(const uint32_t nMasterKeyId, const MasterKey& kMasterKey);
 
 
         /** ReadMinVersion

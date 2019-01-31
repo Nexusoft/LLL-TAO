@@ -75,7 +75,7 @@ namespace Legacy
 
 
     /** MasterKeyMap is type alias defining a map for storing master keys by key Id. **/
-    using MasterKeyMap = std::map<uint32_t, CMasterKey>;
+    using MasterKeyMap = std::map<uint32_t, MasterKey>;
 
     /** TransactionMap is type alias defining a map for storing wallet transactions by hash. **/
     using TransactionMap = std::map<uint512_t, WalletTx>;
@@ -101,7 +101,7 @@ namespace Legacy
      *  //use wallet
      *
      **/
-    class Wallet : public CCryptoKeyStore
+    class Wallet : public CryptoKeyStore
     {
         /** WalletDB declared friend so it can use private Load methods within LoadWallet **/
         friend class WalletDB;
@@ -143,7 +143,7 @@ namespace Legacy
 
 
     private:
-        using CCryptoKeyStore::Unlock;
+        using CryptoKeyStore::Unlock;
 
 
         /** Flag indicating whether or not the wallet instance has been initialized **/
@@ -1052,7 +1052,7 @@ namespace Legacy
          *  @see WalletDB::LoadWallet
          *
          **/
-        bool LoadMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey);
+        bool LoadMasterKey(const uint32_t nMasterKeyId, const MasterKey& kMasterKey);
 
 
         /** LoadCryptedKey

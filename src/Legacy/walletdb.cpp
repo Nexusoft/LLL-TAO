@@ -50,7 +50,7 @@ namespace Legacy
 
 
     /* Stores an encrypted master key into the database. */
-    bool WalletDB::WriteMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey)
+    bool WalletDB::WriteMasterKey(const uint32_t nMasterKeyId, const MasterKey& kMasterKey)
     {
         LOCK(WalletDB::cs_walletdb);
         WalletDB::nWalletDBUpdated++;
@@ -475,13 +475,13 @@ namespace Legacy
                     /* Wallet master key */
                     uint32_t nMasterKeyId;
                     ssKey >> nMasterKeyId;
-                    CMasterKey kMasterKey;
+                    MasterKey kMasterKey;
                     ssValue >> kMasterKey;
 
                     /* Load the master key into the wallet */
                     if (!wallet.LoadMasterKey(nMasterKeyId, kMasterKey))
                     {
-                        debug::error(FUNCTION, "Error reading wallet database: duplicate CMasterKey id ", nMasterKeyId);
+                        debug::error(FUNCTION, "Error reading wallet database: duplicate MasterKey id ", nMasterKeyId);
                         return DB_CORRUPT;
                     }
 

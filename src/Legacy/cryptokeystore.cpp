@@ -22,7 +22,7 @@ namespace Legacy
 {
 
     /* Activate encryption for the key store. */
-    bool CCryptoKeyStore::SetCrypted()
+    bool CryptoKeyStore::SetCrypted()
     {
 
         {
@@ -54,7 +54,7 @@ namespace Legacy
 
 
     /*  Convert the key store from unencrypted to encrypted. */
-    bool CCryptoKeyStore::EncryptKeys(const CKeyingMaterial& vMasterKeyIn)
+    bool CryptoKeyStore::EncryptKeys(const CKeyingMaterial& vMasterKeyIn)
     {
 
         /* Check whether key store already encrypted */
@@ -118,7 +118,7 @@ namespace Legacy
 
 
     /*  Attempt to unlock an encrypted key store using the key provided. */
-    bool CCryptoKeyStore::Unlock(const CKeyingMaterial& vMasterKeyIn)
+    bool CryptoKeyStore::Unlock(const CKeyingMaterial& vMasterKeyIn)
     {
         /* Cannot unlock unencrypted key store (it is unlocked by default) */
         if (!SetCrypted())
@@ -161,7 +161,7 @@ namespace Legacy
 
 
     /*  Check whether or not the key store is currently locked. */
-    bool CCryptoKeyStore::IsLocked() const
+    bool CryptoKeyStore::IsLocked() const
     {
         bool result;
 
@@ -181,7 +181,7 @@ namespace Legacy
 
 
     /*  Attempt to lock the key store. */
-    bool CCryptoKeyStore::Lock()
+    bool CryptoKeyStore::Lock()
     {
         /* Cannot lock unencrypted key store. This will enable encryption if not enabled already. */
         if (!SetCrypted())
@@ -199,7 +199,7 @@ namespace Legacy
 
 
     /*  Add a public/encrypted private key pair to the key store. */
-    bool CCryptoKeyStore::AddCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret)
+    bool CryptoKeyStore::AddCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret)
     {
         /* Key store must be encrypted */
         if (!SetCrypted())
@@ -216,7 +216,7 @@ namespace Legacy
 
 
     /*  Add a key to the key store. */
-    bool CCryptoKeyStore::AddKey(const LLC::ECKey& key)
+    bool CryptoKeyStore::AddKey(const LLC::ECKey& key)
     {
         /* Only use LOCK to check IsCrypted() -- use internal flag so we can release before potential call to BasicKeyStore::AddKey */
         bool fCrypted = false;
@@ -254,7 +254,7 @@ namespace Legacy
 
 
     /*  Retrieve a key from the key store. */
-    bool CCryptoKeyStore::GetKey(const NexusAddress& address, LLC::ECKey& keyOut) const
+    bool CryptoKeyStore::GetKey(const NexusAddress& address, LLC::ECKey& keyOut) const
     {
         if (!IsCrypted())
             return BasicKeyStore::GetKey(address, keyOut);
@@ -288,7 +288,7 @@ namespace Legacy
 
 
     /*  Retrieve the set of public addresses for all keys currently present in the key store. */
-    void CCryptoKeyStore::GetKeys(std::set<NexusAddress>& setAddress) const
+    void CryptoKeyStore::GetKeys(std::set<NexusAddress>& setAddress) const
     {
         /* Only use LOCK to check IsCrypted() -- use internal flag so we can release before potential call to BasicKeyStore::GetKeys */
         bool fCrypted = false;
@@ -320,7 +320,7 @@ namespace Legacy
 
 
     /*  Check whether a key corresponding to a given address is present in the store. */
-    bool CCryptoKeyStore::HaveKey(const NexusAddress& address) const
+    bool CryptoKeyStore::HaveKey(const NexusAddress& address) const
     {
         /* Only use LOCK to check IsCrypted() -- use internal flag so we can release before potential call to BasicKeyStore::HaveKey */
         bool fCrypted = false;
@@ -347,7 +347,7 @@ namespace Legacy
 
 
     /*  Retrieve the public key for a key in the key store. */
-    bool CCryptoKeyStore::GetPubKey(const NexusAddress& address, std::vector<uint8_t>& vchPubKeyOut) const
+    bool CryptoKeyStore::GetPubKey(const NexusAddress& address, std::vector<uint8_t>& vchPubKeyOut) const
     {
         /* Only use LOCK to check IsCrypted() -- use internal flag so we can release before potential call to CKeyStore::GetPubKey */
         bool fCrypted = false;
