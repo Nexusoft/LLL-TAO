@@ -31,6 +31,14 @@ namespace LLD
     extern LegacyDB*     legacyDB;
 
 
+    /** TxnRecover
+     *
+     *  Check the transactions for recovery.
+     *
+     **/
+    void TxnRecovery();
+
+
     /** Txn Begin
      *
      *  Global handler for all LLD instances.

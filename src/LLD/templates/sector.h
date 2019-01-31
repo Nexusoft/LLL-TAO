@@ -350,7 +350,19 @@ namespace LLD
             { LOCK(TRANSACTION_MUTEX);
                 if(pTransaction)
                 {
+                    /* Create an append only stream. */
+                    std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
 
+                    /* Serialize the key. */
+                    DataStream ssJournal(SER_LLD, DATABASE_VERSION);
+                    ssJournal << std::string("erase") << ssKey.Bytes();
+
+                    /* Write to the file.  */
+                    const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
+                    stream.write((char*)&vBytes[0], vBytes.size());
+                    stream.close();
+
+                    /* Erase the transaction data. */
                     pTransaction->EraseTransaction(ssKey.Bytes());
 
                     return true;
@@ -440,6 +452,17 @@ namespace LLD
             { LOCK(TRANSACTION_MUTEX);
                 if(pTransaction)
                 {
+                    /* Create an append only stream. */
+                    std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
+
+                    /* Serialize the key. */
+                    DataStream ssJournal(SER_LLD, DATABASE_VERSION);
+                    ssJournal << std::string("index") << ssKey.Bytes() << ssIndex.Bytes();
+
+                    /* Write to the file.  */
+                    const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
+                    stream.write((char*)&vBytes[0], vBytes.size());
+                    stream.close();
 
                     /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
                     pTransaction->mapIndex[ssKey.Bytes()] = ssIndex.Bytes();
@@ -482,6 +505,18 @@ namespace LLD
             { LOCK(TRANSACTION_MUTEX);
                 if(pTransaction)
                 {
+                    /* Create an append only stream. */
+                    std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
+
+                    /* Serialize the key. */
+                    DataStream ssJournal(SER_LLD, DATABASE_VERSION);
+                    ssJournal << std::string("key") << ssKey.Bytes();
+
+                    /* Write to the file.  */
+                    const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
+                    stream.write((char*)&vBytes[0], vBytes.size());
+                    stream.close();
+
                     /* Check if data is in erase queue, if so remove it. */
                     if(pTransaction->mapEraseData.count(ssKey.Bytes()))
                         pTransaction->mapEraseData.erase(ssKey.Bytes());
@@ -527,6 +562,18 @@ namespace LLD
             { LOCK(TRANSACTION_MUTEX);
                 if(pTransaction)
                 {
+                    /* Create an append only stream. */
+                    std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
+
+                    /* Serialize the key. */
+                    DataStream ssJournal(SER_LLD, DATABASE_VERSION);
+                    ssJournal << std::string("write") << ssKey.Bytes() << ssData.Bytes();
+
+                    /* Write to the file.  */
+                    const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
+                    stream.write((char*)&vBytes[0], vBytes.size());
+                    stream.close();
+
                     /* Check if data is in erase queue, if so remove it. */
                     if(pTransaction->mapEraseData.count(ssKey.Bytes()))
                         pTransaction->mapEraseData.erase(ssKey.Bytes());
@@ -960,6 +1007,9 @@ namespace LLD
 
             /* Create the new Database Transaction Object. */
             pTransaction = new SectorTransaction();
+
+            /* Release the journal file. */
+            TxnRelease();
         }
 
 
@@ -978,6 +1028,9 @@ namespace LLD
 
             /** Set the transaction pointer to null also acting like a flag **/
             pTransaction = nullptr;
+
+            /* Release the journal file. */
+            TxnRelease();
         }
 
 
@@ -999,6 +1052,47 @@ namespace LLD
         }
 
 
+        /** TxnCheckpoint
+         *
+         *  Write the transaction commitment message.
+         *
+         **/
+        bool TxnCheckpoint()
+        {
+            LOCK(TRANSACTION_MUTEX);
+
+            /* Create an append only stream. */
+            std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
+            if(!stream.is_open())
+                return false;
+
+            /* Serialize the key. */
+            DataStream ssJournal(SER_LLD, DATABASE_VERSION);
+            ssJournal << std::string("commit");
+
+            /* Write to the file.  */
+            const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
+            stream.write((char*)&vBytes[0], vBytes.size());
+            stream.close();
+
+            return true;
+        }
+
+
+        /** TxnRelease
+         *
+         *  Release the transaction checkpoint
+         *
+         **/
+        void TxnRelease()
+        {
+            /* Delete the transaction journal file. */
+            std::string strPath = debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat");
+            if(filesystem::exists(strPath))
+                filesystem::remove(strPath);
+        }
+
+
         /** TxnCommit
          *
          *  Commit data from transaction object.
@@ -1012,9 +1106,10 @@ namespace LLD
 
             /* Check that there is a valid transaction to apply to the database. */
             if(!pTransaction)
-                return debug::error(FUNCTION, "nothing to commit.");
+                return false;
 
-            //std::ofstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
+            /* Lock the sector keys cache. */
+            pSectorKeys->Lock();
 
             /* Erase data set to be removed. */
             for(auto it = pTransaction->mapEraseData.begin(); it != pTransaction->mapEraseData.end(); ++it )
@@ -1092,12 +1187,126 @@ namespace LLD
                 }
             }
 
+            /* Flush the keychain. */
+            pSectorKeys->Flush();
+
             /* Cleanup the transaction object. */
             delete pTransaction;
             pTransaction = nullptr;
 
             return true;
         }
+
+
+        /** TxnRecovery
+         *
+         *  Recover a transaction from the journal.
+         *
+         **/
+        bool TxnRecovery()
+        {
+            /* Create an append only stream. */
+            std::ifstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::in | std::ios::out | std::ios::binary);
+            if(!stream.is_open())
+                return true;
+
+            /* Get the Binary Size. */
+            stream.ignore(std::numeric_limits<std::streamsize>::max());
+
+            /* Get the data buffer. */
+            uint32_t nSize = stream.gcount();
+            std::vector<uint8_t> vBuffer(nSize, 0);
+
+            /* Read the keychain file. */
+            stream.seekg (0, std::ios::beg);
+            stream.read((char*) &vBuffer[0], vBuffer.size());
+            stream.close();
+
+            /* Debug the journal detection. */
+            if(nSize == 0)
+                return true;
+
+            debug::log(0, FUNCTION, "transaction journal detected of ", nSize, " bytes");
+
+            /* Create the transaction object. */
+            TxnBegin();
+
+            /* Serialize the key. */
+            const DataStream ssJournal(vBuffer, SER_LLD, DATABASE_VERSION);
+            while(!ssJournal.End())
+            {
+                /* Read the data entry type. */
+                std::string strType;
+                ssJournal >> strType;
+
+                /* Check for Erase. */
+                if(strType == "erase")
+                {
+                    /* Get the key to erase. */
+                    std::vector<uint8_t> vKey;
+                    ssJournal >> vKey;
+
+                    /* Erase the key. */
+                    pTransaction->EraseTransaction(vKey);
+
+                    /* Debug output. */
+                    debug::log(0, FUNCTION, "erasing key ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
+                }
+                else if(strType == "key")
+                {
+                    /* Get the key to write. */
+                    std::vector<uint8_t> vKey;
+                    ssJournal >> vKey;
+
+                    /* Write the key. */
+                    pTransaction->mapKeychain[vKey] = 0;
+
+                    /* Debug output. */
+                    debug::log(0, FUNCTION, "writing key ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
+                }
+                else if(strType == "write")
+                {
+                    /* Get the key to write. */
+                    std::vector<uint8_t> vKey;
+                    ssJournal >> vKey;
+
+                    /* Get the data to write. */
+                    std::vector<uint8_t> vData;
+                    ssJournal >> vData;
+
+                    /* Write the sector data. */
+                    pTransaction->mapTransactions[vKey] = vData;
+
+                    /* Debug output. */
+                    debug::log(0, FUNCTION, "writing data ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
+                }
+                else if(strType == "index")
+                {
+                    /* Get the key to index. */
+                    std::vector<uint8_t> vKey;
+                    ssJournal >> vKey;
+
+                    /* Get the data to index to. */
+                    std::vector<uint8_t> vIndex;
+                    ssJournal >> vIndex;
+
+                    /* Set the indexing key. */
+                    pTransaction->mapIndex[vKey] = vIndex;
+
+                    /* Debug output. */
+                    debug::log(0, FUNCTION, "indexing key ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
+                }
+                if(strType == "commit")
+                {
+                    debug::log(0, FUNCTION, "transaction journal ready to be restored");
+
+                    return true;
+                }
+            }
+
+            return debug::error(FUNCTION, "transaction journal never reached commit");
+        }
+
     };
 }
 

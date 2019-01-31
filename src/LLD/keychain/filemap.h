@@ -422,6 +422,21 @@ namespace LLD
 
             return false;
         }
+
+        /** FlushIndex
+         *
+         *  Flush the disk index.
+         *
+         **/
+        void Flush()
+        {
+            //this method is empty because there is no background cache to flush
+        }
+
+        void Lock()
+        {
+            //this method is empty because there is no background cache to flush
+        }
     };
 }
 
