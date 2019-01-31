@@ -1237,7 +1237,7 @@ namespace Legacy
 
         }
 
-        for(const CWalletTx& walletTx : transactionsInWallet)
+        for(CWalletTx& walletTx : transactionsInWallet)
         {
             /* Verify transaction is in the tx db */
             Legacy::Transaction txTemp;
