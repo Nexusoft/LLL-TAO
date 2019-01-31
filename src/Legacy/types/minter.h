@@ -211,7 +211,7 @@ namespace Legacy
 
 
         /** Reserved key to use for Genesis. nullptr when staking for Trust **/
-        CReserveKey* pReservedTrustKey;
+        ReserveKey* pReservedTrustKey;
 
 
         /** The candidate block that the stake minter is attempting to mine */

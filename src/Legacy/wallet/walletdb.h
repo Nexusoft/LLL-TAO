@@ -30,7 +30,7 @@ namespace Legacy
 
     /* forward declarations */
     class CScript;
-    class CAccount;
+    class Account;
     class AccountingEntry;
     class KeyPoolEntry;
     class MasterKey;
@@ -221,7 +221,7 @@ namespace Legacy
          *  @return true if account is present in the database and read successfully
          *
          **/
-        bool ReadAccount(const std::string& strAccount, CAccount& account);
+        bool ReadAccount(const std::string& strAccount, Account& account);
 
 
         /** WriteAccount
@@ -235,7 +235,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteAccount(const std::string& strAccount, const CAccount& account);
+        bool WriteAccount(const std::string& strAccount, const Account& account);
 
 
         /** ReadName

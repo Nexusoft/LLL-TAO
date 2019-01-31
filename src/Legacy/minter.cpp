@@ -256,7 +256,7 @@ namespace Legacy
         {
             /* No trust key found. Reserve a new key to use as the trust key for Genesis */
             debug::log(0, FUNCTION, "Staking for Genesis with new trust key");
-            pReservedTrustKey = new CReserveKey(pStakingWallet);
+            pReservedTrustKey = new ReserveKey(pStakingWallet);
             pReservedTrustKey->GetReservedKey();
         }
 
@@ -272,7 +272,7 @@ namespace Legacy
          */
         candidateBlock = LegacyBlock();
 
-        CReserveKey dummyReserveKey(pStakingWallet); //Reserve key not used by CreateLegacyBlock for nChannel=0
+        ReserveKey dummyReserveKey(pStakingWallet); //Reserve key not used by CreateLegacyBlock for nChannel=0
 
         if (!CreateLegacyBlock(dummyReserveKey, 0, 0, candidateBlock))
             return debug::error(FUNCTION, "Unable to create candidate block");
@@ -303,7 +303,7 @@ namespace Legacy
                 if (pReservedTrustKey != nullptr)
                     delete pReservedTrustKey;  // should never happen, this is a precaution
 
-                pReservedTrustKey = new CReserveKey(pStakingWallet);
+                pReservedTrustKey = new ReserveKey(pStakingWallet);
                 pReservedTrustKey->GetReservedKey();
 
                 return false;

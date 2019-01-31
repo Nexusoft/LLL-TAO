@@ -636,7 +636,7 @@ namespace TAO
                 throw APIException(-6, "Account has insufficient funds");
 
             // Send
-            Legacy::CReserveKey keyChange(Legacy::Wallet::GetInstance());
+            Legacy::ReserveKey keyChange(Legacy::Wallet::GetInstance());
             int64_t nFeeRequired = 0;
             bool fCreated = Legacy::Wallet::GetInstance().CreateTransaction(vecSend, wtx, keyChange, nFeeRequired);
             if (!fCreated)

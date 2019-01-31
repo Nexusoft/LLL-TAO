@@ -38,7 +38,7 @@ namespace Legacy
      *  @return true if block successfully created
      *
      **/
-    bool CreateLegacyBlock(Legacy::CReserveKey& coinbaseKey, const uint32_t nChannel, const uint32_t nID, LegacyBlock& newBlock);
+    bool CreateLegacyBlock(Legacy::ReserveKey& coinbaseKey, const uint32_t nChannel, const uint32_t nID, LegacyBlock& newBlock);
 
 
     /** CreateCoinstakeTransaction
@@ -72,7 +72,7 @@ namespace Legacy
      *  @return true if transaction successfully created
      *
      **/
-    bool CreateCoinbaseTransaction(Legacy::CReserveKey& coinbaseKey, const uint32_t nChannel, 
+    bool CreateCoinbaseTransaction(Legacy::ReserveKey& coinbaseKey, const uint32_t nChannel, 
                                    const uint32_t nID, const uint32_t nNewBlockVersion, Transaction& coinbaseTx);
 
 

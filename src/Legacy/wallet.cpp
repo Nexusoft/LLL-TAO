@@ -1568,7 +1568,7 @@ namespace Legacy
         int64_t nFeeRequired;
 
         /* Key will be reserved by CreateTransaction for any change transaction, kept/returned on commit */
-        CReserveKey changeKey(*this);
+        ReserveKey changeKey(*this);
 
         if (!CreateTransaction(vecSend, wtxNew, changeKey, nFeeRequired, nMinDepth))
         {
@@ -1606,7 +1606,7 @@ namespace Legacy
 
 
     /* Create and populate a new transaction. */
-    bool Wallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, WalletTx& wtxNew, CReserveKey& changeKey,
+    bool Wallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, WalletTx& wtxNew, ReserveKey& changeKey,
                                     int64_t& nFeeRet, const uint32_t nMinDepth)
     {
         int64_t nValue = 0;
@@ -1774,7 +1774,7 @@ namespace Legacy
 
 
     /* Commits a transaction and broadcasts it to the network. */
-    bool Wallet::CommitTransaction(WalletTx& wtxNew, CReserveKey& changeKey)
+    bool Wallet::CommitTransaction(WalletTx& wtxNew, ReserveKey& changeKey)
     {
         debug::log(0, FUNCTION, wtxNew.ToString());
 

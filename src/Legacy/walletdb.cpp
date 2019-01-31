@@ -76,7 +76,7 @@ namespace Legacy
 
 
     /* Reads the wallet account data associated with an account (Nexus address). */
-    bool WalletDB::ReadAccount(const std::string& strAccount, CAccount& account)
+    bool WalletDB::ReadAccount(const std::string& strAccount, Account& account)
     {
         LOCK(WalletDB::cs_walletdb);
         account.SetNull();
@@ -85,7 +85,7 @@ namespace Legacy
 
 
     /* Stores the wallet account data for an address in the database. */
-    bool WalletDB::WriteAccount(const std::string& strAccount, const CAccount& account)
+    bool WalletDB::WriteAccount(const std::string& strAccount, const Account& account)
     {
         LOCK(WalletDB::cs_walletdb);
         WalletDB::nWalletDBUpdated++;

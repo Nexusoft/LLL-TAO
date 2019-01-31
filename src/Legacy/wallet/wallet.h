@@ -58,7 +58,7 @@ namespace Legacy
     class NexusAddress;
 
     class Output;
-    class CReserveKey;
+    class ReserveKey;
     class WalletTx;
 
 
@@ -988,7 +988,7 @@ namespace Legacy
          *  @return true if transaction successfully created
          *
          **/
-        bool CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, WalletTx& wtxNew, CReserveKey& changeKey,
+        bool CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, WalletTx& wtxNew, ReserveKey& changeKey,
                                int64_t& nFeeRet, const uint32_t nMinDepth = 1);
 
 
@@ -1003,7 +1003,7 @@ namespace Legacy
          *  @return true if transaction successfully committed
          *
          **/
-        bool CommitTransaction(WalletTx& wtxNew, CReserveKey& changeKey);
+        bool CommitTransaction(WalletTx& wtxNew, ReserveKey& changeKey);
 
 
         /** AddCoinstakeInputs
