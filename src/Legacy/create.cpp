@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <Legacy/types/txin.h>
 
 #include <LLC/include/key.h>
+#include <LLC/types/bignum.h>
 
 #include <LLD/include/global.h>
 
@@ -33,6 +34,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/state.h>
 
+#include <Util/include/convert.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 #include <Util/templates/serialize.h>
@@ -379,7 +381,7 @@ namespace Legacy
 
 
     /* Sign the block with the key that found the block. */
-    bool SignBlock(const LegacyBlock& block, const CKeyStore& keystore)
+    bool SignBlock(LegacyBlock& block, const CKeyStore& keystore)
     {
         vector<std::vector<uint8_t>> vSolutions;
         Legacy::TransactionType whichType;
@@ -418,6 +420,70 @@ namespace Legacy
         debug::error(FUNCTION, "Wrong key type attempting to sign new block")
 
         return false;
+    }
+
+
+    /* Work Check Before Submit. 
+     *
+     * This method does NOT submit the block to the network (it used to in original system). A
+     * separate call to ProcessBlock is needed to submit it. This change allows the stake minter
+     * issue the call, then to decide whether or not it needs to call KeepKey on its CReserveKey. 
+     * The old CheckWork always called it, using up keys from key pool unnecessarily.
+     *
+     * Prime and hash mining code should also call ProcessBlock separately when the minin server is 
+     * implemented to use this method. They would, of course, also need to call KeepKey after every
+     * mined block, using a separate key for each new block as before.
+     */
+    bool CheckWork(const LegacyBlock& block, const Legacy::CWallet& wallet)
+    {
+        uint32_t nChannel = block.GetChannel();
+        uint1024_t blockHash = (block.nVersion < 5 ? block.GetHash() : nChannel == 0 ? block.StakeHash() : block.ProofHash());
+        uint1024_t hashTarget = CBigNum().SetCompact(block.nBits).getuint1024();
+
+        if(nChannel > 0 && !block.VerifyWork())
+            return debug::error(FUNCTION, "Nexus Miner : Proof of work not meeting target.");
+
+        if(nChannel == 0)
+        {
+            CBigNum bnTarget;
+            bnTarget.SetCompact(block.nBits);
+
+            if((block.nVersion < 5 ? block.GetHash() : block.StakeHash()) > bnTarget.getuint1024())
+                return debug::error(FUNCTION, "Nexus Stake Minter : Proof of stake not meeting target");
+        }
+
+        std::string timestampString(DateTimeStrFormat(runtime::unifiedtimestamp()));
+        if (nChannel == 0)
+        {
+            debug::log(1, FUNCTION, "Nexus Miner: new nPoS channel block found at unified time %s", timestampString.c_str());
+            debug::log(1, " blockHash: %s block height: ", blockHash.ToString().substr(0, 30).c_str(), block.nHeight);
+        }
+        else if (nChannel == 1)
+        {
+            debug::log(1, FUNCTION, "Nexus Miner: new Prime channel block found at unified time %s", timestampString.c_str());
+            debug::log(1, "  blockHash: %s block height: ", blockHash.ToString().substr(0, 30).c_str(), block.nHeight);
+            debug::log(1, "  prime cluster verified of size %f\n", GetDifficulty(block.nBits, 1));
+        }
+        else if (nChannel == 2)
+        {
+            debug::log(1, FUNCTION, "Nexus Miner: new Hashing channel block found at unified time %s", timestampString.c_str());
+            debug::log(1, "  blockHash: %s block height: ", blockHash.ToString().substr(0, 30).c_str(), block.nHeight);
+            debug::log(1, "  target: %s\n", hashTarget.ToString().substr(0, 30).c_str());
+        }
+
+        if (block.hashPrevBlock != TAO::Ledger::ChainState.stateBest)
+            return error(FUNCTION, "Generated block is stale");
+
+        /* Add new block to request tracking in wallet */
+        {
+            LOCK(wallet.cs_wallet);
+            wallet.mapRequestCount[block.GetHash()] = 0;
+        }
+
+        /* Print the newly found block. */
+        block.print();
+
+        return true;
     }
 
 }
