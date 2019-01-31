@@ -139,28 +139,28 @@ namespace Legacy
 
 
     /* Reads the public key for the wallet's trust key from the wallet database. */
-    bool CWalletDB::ReadTrustKey(std::vector<uint8_t>& vchPubKey)
+    bool WalletDB::ReadTrustKey(std::vector<uint8_t>& vchPubKey)
     {
-        LOCK(CWalletDB::cs_walletdb);
+        LOCK(WalletDB::cs_walletdb);
         vchPubKey.clear();
         return Read(std::string("trustkey"), vchPubKey);
     }
 
 
     /* Stores the public key for the wallet's trust key to the wallet database. */
-    bool CWalletDB::WriteTrustKey(const std::vector<uint8_t>& vchPubKey)
+    bool WalletDB::WriteTrustKey(const std::vector<uint8_t>& vchPubKey)
     {
-        LOCK(CWalletDB::cs_walletdb);
-        CWalletDB::nWalletDBUpdated++;
+        LOCK(WalletDB::cs_walletdb);
+        WalletDB::nWalletDBUpdated++;
         return Write(std::string("trustkey"), vchPubKey);
     }
 
 
     /* Removes the trust key entry. */
-    bool CWalletDB::EraseTrustKey()
+    bool WalletDB::EraseTrustKey()
     {
-        LOCK(CWalletDB::cs_walletdb);
-        CWalletDB::nWalletDBUpdated++;
+        LOCK(WalletDB::cs_walletdb);
+        WalletDB::nWalletDBUpdated++;
         return Erase("trustkey");
     }
 

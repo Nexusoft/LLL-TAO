@@ -113,7 +113,7 @@ namespace Legacy
      * @return true if the block checks out and is ok to submit
      *
      **/
-    bool CheckWork(const LegacyBlock& block, const Legacy::CWallet& wallet);
+    bool CheckWork(const LegacyBlock& block, const Legacy::Wallet& wallet);
 
 }
 

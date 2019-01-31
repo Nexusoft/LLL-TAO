@@ -434,7 +434,7 @@ namespace Legacy
      * implemented to use this method. They would, of course, also need to call KeepKey after every
      * mined block, using a separate key for each new block as before.
      */
-    bool CheckWork(const LegacyBlock& block, const Legacy::CWallet& wallet)
+    bool CheckWork(const LegacyBlock& block, const Legacy::Wallet& wallet)
     {
         uint32_t nChannel = block.GetChannel();
         uint1024_t blockHash = (block.nVersion < 5 ? block.GetHash() : nChannel == 0 ? block.StakeHash() : block.ProofHash());

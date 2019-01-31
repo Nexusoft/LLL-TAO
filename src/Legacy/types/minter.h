@@ -141,7 +141,7 @@ namespace Legacy
           * to restart it after it was stopped.
           *
           * The first time this method is called, it will retrieve a reference to the wallet 
-          * by calling CWallet::GetInstance(), so the wallet should be initialized before
+          * by calling Wallet::GetInstance(), so the wallet should be initialized before
           * starting the stake minter.
           *
           * In general, this method should be called when the wallet is unlocked.
@@ -203,7 +203,7 @@ namespace Legacy
 
 
         /** The wallet where the stake minter will operate. **/
-        CWallet* pStakingWallet;
+        Wallet* pStakingWallet;
 
 
         /** Trust key for staking. IsNull() is true when staking for Genesis. **/

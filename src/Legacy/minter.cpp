@@ -146,7 +146,7 @@ namespace Legacy
         if (!fisStarted)
         {
             if (pStakingWallet == nullptr)
-                pStakingWallet = &(CWallet::GetInstance());
+                pStakingWallet = &(Wallet::GetInstance());
 
             fisStarted = true;
             return true;
