@@ -998,7 +998,8 @@ namespace Legacy
 
         /** AddCoinstakeInputs
          *
-         *  Add inputs to the coinstake txin for a coinstake block
+         *  Add inputs to the coinstake txin for a coinstake block.
+         *  Also calculates and adds output amount with added staking reward.
          *
          *  @param[in,out] block Target block to add coinstake inputs
          *

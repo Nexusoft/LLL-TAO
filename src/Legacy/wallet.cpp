@@ -1806,29 +1806,27 @@ namespace Legacy
     }
 
 
-/*TODO - Investigate moving this entire method OUT of Wallet and into Trust.cpp */
-/* It doesn't really belong in wallet */
+    /* Add inputs (and output amount with reward) to the coinstake txin for a coinstake block */
     bool Wallet::AddCoinstakeInputs(LegacyBlock& block)
     {
         /* Add Each Input to Transaction. */
-        std::vector<WalletTx> vInputs;
-        std::vector<WalletTx> vCoins;
+        std::vector<WalletTx> vAllWalletTx;
+        std::vector<WalletTx> vInputWalletTx;
 
-//TODO Tritium block vtx = vector of pairs so this requires update (vtx[0] is coinstake here, Tritium transaction?)
-//        block.vtx[0].vout[0].nValue = 0;
+        block.vtx[0].vout[0].nValue = 0;
 
         {
             LOCK(cs_wallet);
 
-            vCoins.reserve(mapWallet.size());
+            vAllWalletTx.reserve(mapWallet.size());
 
             for (const auto item : mapWallet)
-                vCoins.push_back(item.second);
+                vAllWalletTx.push_back(item.second);
         }
 
-        std::random_shuffle(vCoins.begin(), vCoins.end(), LLC::GetRandInt);
+        std::random_shuffle(vAllWalletTx.begin(), vAllWalletTx.end(), LLC::GetRandInt);
 
-        for(const auto& walletTx : vCoins)
+        for(const auto& walletTx : vAllWalletTx)
         {
             /* Can't spend balance that is unconfirmed or not final */
             if (!walletTx.IsFinal() || !walletTx.IsConfirmed())
@@ -1839,13 +1837,15 @@ namespace Legacy
                 continue;
 
             /* Do not add coins to Genesis block if age less than trust timestamp */
-//            if (block.vtx[0].IsGenesis() && (block.vtx[0].nTime - walletTx.nTime) < (config::fTestNet ? Core::TRUST_KEY_TIMESPAN_TESTNET : Core::TRUST_KEY_TIMESPAN))
-//                continue;
+            uint32_t nMinimumCoinAge = (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN);
+            if (block.vtx[0].IsGenesis() && (block.vtx[0].nTime - walletTx.nTime) < nMinimumCoinAge)
+                continue;
 
-            /* Can't spend transaction from after block time */
-//            if (walletTx.nTime > block.vtx[0].nTime)
-//                continue;
+            /* Do not add transaction from after Coinstake time */
+            if (walletTx.nTime > block.vtx[0].nTime)
+                continue;
 
+            /* Transaction is ok to use. Now determine which transaction outputs to include in coinstake input */
             for (uint32_t i = 0; i < walletTx.vout.size(); i++)
             {
                 /* Can't spend outputs that are already spent or not belonging to this wallet */
@@ -1853,33 +1853,36 @@ namespace Legacy
                     continue;
 
                 /* Stop adding Inputs if has reached Maximum Transaction Size. */
-//                unsigned int nBytes = ::GetSerializeSize(block.vtx[0], SER_NETWORK, LLP::PROTOCOL_VERSION);
-//                if (nBytes >= TAO::Ledger::MAX_BLOCK_SIZE_GEN / 5)
-//                    break;
+                unsigned int nBytes = ::GetSerializeSize(block.vtx[0], SER_NETWORK, LLP::PROTOCOL_VERSION);
+                if (nBytes >= TAO::Ledger::MAX_BLOCK_SIZE_GEN / 5)
+                    break;
 
-//                block.vtx[0].vin.push_back(CTxIn(walletTx.GetHash(), i));
-                vInputs.push_back(walletTx);
+                block.vtx[0].vin.push_back(CTxIn(walletTx.GetHash(), i));
+                vInputWalletTx.push_back(walletTx);
 
-                /** Add the value to the first Output for Coinstake. **/
-//                block.vtx[0].vout[0].nValue += walletTx.vout[i].nValue;
+                /** Add the input value to the Coinstake output. **/
+                block.vtx[0].vout[0].nValue += walletTx.vout[i].nValue;
             }
         }
 
-//        if(block.vtx[0].vin.size() == 1)
-//            return false; // No transactions added
+        if(block.vtx[0].vin.size() == 1)
+            return false; // No transactions added
 
-        /* Calculate the Interest for the Coinstake Transaction. */
-        //int64_t nInterest;
-//        if(!block.vtx[0].GetCoinstakeInterest(block, nInterest))
-//            return debug::error(FUNCTION, "Failed to Get Interest");
+        /* Calculate the staking reward for the Coinstake Transaction. */
+        uint64_t nStakeReward;
+        TAO::Ledger::BlockState blockState(block);
 
-//        block.vtx[0].vout[0].nValue += nInterest;
+        if(!block.vtx[0].CoinstakeInterest(blockState, nStakeReward))
+            return debug::error(FUNCTION, "Failed to calculate staking reward");
+
+        /* Add the staking reward to the Coinstake output */
+        block.vtx[0].vout[0].nValue += nStakeReward;
 
         /* Sign Each Input to Transaction. */
-        for(uint32_t nIndex = 0; nIndex < vInputs.size(); nIndex++)
+        for(uint32_t nIndex = 0; nIndex < vInputWalletTx.size(); nIndex++)
         {
-//            if (!SignSignature(*this, vInputs[nIndex], block.vtx[0], nIndex + 1))
-//                return debug::error(FUNCTION, "Unable to sign Coinstake Transaction Input.");
+            if (!SignSignature(*this, vInputWalletTx[nIndex], block.vtx[0], nIndex + 1))
+                return debug::error(FUNCTION, "Unable to sign Coinstake Transaction Input.");
 
         }
 

@@ -90,6 +90,7 @@ namespace Legacy
 		 **/
 		CTxIn(uint512_t hashPrevTx, uint32_t nOut, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max());
 
+
 		/** Comparison Operator overload
 		 *
 		 *	Compares two CTxIn objects to one another
@@ -104,6 +105,7 @@ namespace Legacy
 					a.nSequence == b.nSequence);
 		}
 
+
 		/** Not Operator overload
 		 *
 		 *	Compares two CTxIn objects to one another
@@ -115,6 +117,7 @@ namespace Legacy
 		{
 			return !(a == b);
 		}
+
 
 		/** IsFinal
 		 *
