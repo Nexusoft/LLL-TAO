@@ -33,7 +33,7 @@ namespace Legacy
         if (nPoolIndex == -1)
         {
             /* Don't have a reserved key in this instance, yet, so need to reserve one */
-            CKeyPoolEntry keypoolEntry;
+            KeyPoolEntry keypoolEntry;
             wallet.GetKeyPool().ReserveKeyFromPool(nPoolIndex, keypoolEntry);
 
             if (nPoolIndex != -1)

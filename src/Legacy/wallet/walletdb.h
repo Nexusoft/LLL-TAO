@@ -32,7 +32,7 @@ namespace Legacy
     class CScript;
     class CAccount;
     class AccountingEntry;
-    class CKeyPoolEntry;
+    class KeyPoolEntry;
     class MasterKey;
     class Wallet;
     class WalletTx;
@@ -462,7 +462,7 @@ namespace Legacy
          *  @return true if the key pool entry is present in the database and read successfully
          *
          **/
-        bool ReadPool(const uint64_t nPool, CKeyPoolEntry& keypoolEntry);
+        bool ReadPool(const uint64_t nPool, KeyPoolEntry& keypoolEntry);
 
 
         /** WritePool
@@ -476,7 +476,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WritePool(const uint64_t nPool, const CKeyPoolEntry& keypoolEntry);
+        bool WritePool(const uint64_t nPool, const KeyPoolEntry& keypoolEntry);
 
 
         /** ErasePool

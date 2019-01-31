@@ -186,7 +186,7 @@ namespace Legacy
 
 
         /** The key pool contained by this wallet **/
-        CKeyPool keyPool;
+        KeyPool keyPool;
 
 
         /** The default public key value for this wallet.
@@ -230,7 +230,7 @@ namespace Legacy
         , mapMasterKeys()
         , nMasterKeyMaxID(0)
         , addressBook(AddressBook(*this))
-        , keyPool(CKeyPool(*this))
+        , keyPool(KeyPool(*this))
         , vchDefaultKey()
         , nWalletUnlockTime(0)
         , pWalletDbEncryption(nullptr)
@@ -443,7 +443,7 @@ namespace Legacy
          *  @return this wallet's key pool
          *
          */
-        inline CKeyPool& GetKeyPool() { return keyPool; }
+        inline KeyPool& GetKeyPool() { return keyPool; }
 
 
         /** GenerateNewKey
@@ -488,7 +488,7 @@ namespace Legacy
          *
          *  @return true if setting default key successful
          *
-         *  @see CKeyPool::GetKeyFromPool
+         *  @see KeyPool::GetKeyFromPool
          *
          */
         bool SetDefaultKey(const std::vector<uint8_t>& vchPubKey);
@@ -506,7 +506,7 @@ namespace Legacy
          *
          *  @return true if setting trust key successful
          *
-         *  @see CKeyPool::GetKeyFromPool
+         *  @see KeyPool::GetKeyFromPool
          *
          */
         bool SetTrustKey(const std::vector<uint8_t>& vchPubKey);

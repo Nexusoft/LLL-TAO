@@ -245,7 +245,7 @@ namespace Legacy
 
 
     /* Reads a key pool entry from the database. */
-    bool WalletDB::ReadPool(const uint64_t nPool, CKeyPoolEntry& keypoolEntry)
+    bool WalletDB::ReadPool(const uint64_t nPool, KeyPoolEntry& keypoolEntry)
     {
         LOCK(WalletDB::cs_walletdb);
         return Read(std::make_pair(std::string("pool"), nPool), keypoolEntry);
@@ -253,7 +253,7 @@ namespace Legacy
 
 
     /* Stores a key pool entry using its pool entry number (ID value). */
-    bool WalletDB::WritePool(const uint64_t nPool, const CKeyPoolEntry& keypoolEntry)
+    bool WalletDB::WritePool(const uint64_t nPool, const KeyPoolEntry& keypoolEntry)
     {
         LOCK(WalletDB::cs_walletdb);
         WalletDB::nWalletDBUpdated++;
