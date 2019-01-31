@@ -195,18 +195,6 @@ namespace TAO
             bool RemoveLegacy(uint512_t hashTx);
 
 
-            /** Get
-             *
-             *  Gets a legacy transaction from mempool
-             *
-             *  @param[in] tx The transaction to add.
-             *
-             *  @return true if added.
-             *
-             **/
-            bool Get(uint512_t hashTx, Legacy::Transaction& tx) const;
-
-
             /** List
              *
              *  List transactions in memory pool.
