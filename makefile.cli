@@ -6,6 +6,17 @@ else
 	detected_OS:= Linux
 endif
 
+#static building
+ifndef STATIC
+	override STATIC=0
+endif
+ifeq (${STATIC}, 1)
+	DEFS+= -DSTATIC
+	ifeq (${detected_OS},Linux)
+		LIBS+=-Wl,-Bstatic -lz -lpthread_nonshared
+	endif
+endif
+
 #Configure for 32/64 Bit
 ifndef 32BIT
 	override 32BIT= 0
