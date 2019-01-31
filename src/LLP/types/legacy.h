@@ -43,6 +43,16 @@ namespace LLP
         static std::string Name() { return "Legacy"; }
 
 
+        /** Process
+         *
+         *  Verify a block and accept it into the block chain
+         *
+         *  @return True is no errors, false otherwise.
+         *
+         **/
+        static bool Process(const Legacy::LegacyBlock& block, LegacyNode* pnode);
+
+
         /** Default Constructor **/
         LegacyNode()
         : BaseConnection<LegacyPacket>()

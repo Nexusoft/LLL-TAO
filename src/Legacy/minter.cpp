@@ -648,14 +648,15 @@ namespace Legacy
         if (!candidateBlock.vtx[0].CheckTrust(TAO::Ledger::ChainState::stateBest))
             return debug::error(FUNCTION, "Check trust failed");
 
-        /* Check the work for the block. */
+        /* Check the work for the block. 
+         * After a successful check, CheckWork() calls LLP::Process() for the new block.
+         * That method will call LegacyBlock::Accept() and BlockState::Accept()
+         * After all is accepted, BlockState::Accept() will call BlockState::SetBest() 
+         * to set the new best chain. This final method relays the new block to the
+         * network.
+         */
         if(!CheckWork(candidateBlock, *pStakingWallet))
             return debug::error(FUNCTION, "Check work failed");
-
-        /** Process the Block to see if it gets Accepted into Blockchain. **/
-//TODO - Process/relay new block
-//        if (!ProcessBlock(nullptr, candidateBlock))
-//            return debug::error(FUNCTION, "ProcessBlock, block not accepted\n");
 
         if(pReservedTrustKey != nullptr)
         {

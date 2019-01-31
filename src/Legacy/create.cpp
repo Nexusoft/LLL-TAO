@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <LLP/include/version.h>
+#include <LLP/types/legacy.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
@@ -450,12 +451,11 @@ namespace Legacy
 
     /* Work Check Before Submit. 
      *
-     * This method does NOT submit the block to the network (it used to in original system). A
-     * separate call to ProcessBlock is needed to submit it. This change allows the stake minter
-     * issue the call, then to decide whether or not it needs to call KeepKey on its CReserveKey. 
+     * This method no longer takes a ReserveKey or calls KeepKey. This change allows the stake minter
+     * issue the call, then only call KeepKey on its ReserveKey when it is using a new key. 
      * The old CheckWork always called it, using up keys from key pool unnecessarily.
      *
-     * Prime and hash mining code should also call ProcessBlock separately when the minin server is 
+     * Prime and hash mining code should also call ProcessBlock when the mining server is 
      * implemented to use this method. They would, of course, also need to call KeepKey after every
      * mined block, using a separate key for each new block as before.
      */
@@ -466,7 +466,7 @@ namespace Legacy
         uint1024_t hashTarget = LLC::CBigNum().SetCompact(block.nBits).getuint1024();
 
         if(nChannel > 0 && !block.VerifyWork())
-            return debug::error(FUNCTION, "Nexus Miner : Proof of work not meeting target.");
+            return debug::error(FUNCTION, "Nexus Miner: Proof of work not meeting target.");
 
         if(nChannel == 0)
         {
@@ -474,26 +474,26 @@ namespace Legacy
             bnTarget.SetCompact(block.nBits);
 
             if((block.nVersion < 5 ? block.GetHash() : block.StakeHash()) > bnTarget.getuint1024())
-                return debug::error(FUNCTION, "Nexus Stake Minter : Proof of stake not meeting target");
+                return debug::error(FUNCTION, "Nexus Stake Minter: Proof of stake not meeting target");
         }
 
         std::string timestampString(DateTimeStrFormat(runtime::unifiedtimestamp()));
         if (nChannel == 0)
         {
-            debug::log(1, FUNCTION, "Nexus Miner: new nPoS channel block found at unified time %s", timestampString.c_str());
+            debug::log(1, FUNCTION, "Nexus Stake Minter: new nPoS channel block found at unified time %s", timestampString.c_str());
             debug::log(1, " blockHash: %s block height: ", blockHash.ToString().substr(0, 30).c_str(), block.nHeight);
         }
         else if (nChannel == 1)
         {
             debug::log(1, FUNCTION, "Nexus Miner: new Prime channel block found at unified time %s", timestampString.c_str());
             debug::log(1, "  blockHash: %s block height: ", blockHash.ToString().substr(0, 30).c_str(), block.nHeight);
-            debug::log(1, "  prime cluster verified of size %f\n", TAO::Ledger::GetDifficulty(block.nBits, 1));
+            debug::log(1, "  prime cluster verified of size %f", TAO::Ledger::GetDifficulty(block.nBits, 1));
         }
         else if (nChannel == 2)
         {
             debug::log(1, FUNCTION, "Nexus Miner: new Hashing channel block found at unified time %s", timestampString.c_str());
             debug::log(1, "  blockHash: %s block height: ", blockHash.ToString().substr(0, 30).c_str(), block.nHeight);
-            debug::log(1, "  target: %s\n", hashTarget.ToString().substr(0, 30).c_str());
+            debug::log(1, "  target: %s", hashTarget.ToString().substr(0, 30).c_str());
         }
 
         if (block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain)
@@ -507,6 +507,10 @@ namespace Legacy
 
         /* Print the newly found block. */
         block.print();
+
+        /* Process the Block and relay to network if it gets Accepted into Blockchain. */
+        if (!LLP::LegacyNode::Process(block, nullptr))
+            return debug::error(FUNCTION, "Generated block not accepted");
 
         return true;
     }
