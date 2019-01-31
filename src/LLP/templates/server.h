@@ -393,10 +393,10 @@ namespace LLP
             {
                 runtime::sleep(100);
 
-                /* assume the connect state is in a failed state */
+                /* Assume the connect state is in a failed state. */
                 uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
 
-                /* Pick a weighted random priority from a sorted list of addresses */
+                /* Pick a weighted random priority from a sorted list of addresses. */
                 if(pAddressManager == nullptr)
                     continue;
 
@@ -563,6 +563,7 @@ namespace LLP
                 }
             }
         }
+
 
         /** BindListenPort
          *
@@ -731,6 +732,7 @@ namespace LLP
 
             return nTotalRequests;
         }
+
 
         /** ClearRequests
          *

@@ -118,11 +118,7 @@ namespace LLP
 
         /* No mining when synchronizing. */
         if(TAO::Ledger::ChainState::Synchronizing())
-        {
-            debug::error(FUNCTION, "cannot mine while synchronizing");
-
-            return false;
-        }
+            return debug::error(FUNCTION, "cannot mine while synchronizing");
 
 
         /* Set the Mining Channel this Connection will Serve Blocks for. */
@@ -131,10 +127,10 @@ namespace LLP
             nChannel = bytes2uint(PACKET.DATA);
 
             /** Don't allow Mining LLP Requests for Proof of Stake Channel. **/
-            if(nChannel == 0)
+            if(nChannel == 0 || nChannel > 2)
                 return false;
 
-            debug::log(2, FUNCTION, "Channel Set %u\n", nChannel);
+            debug::log(2, FUNCTION, "Channel Set ", nChannel);
 
             return true;
         }
@@ -154,7 +150,6 @@ namespace LLP
         if(PACKET.HEADER == CLEAR_MAP)
         {
             Clear();
-
             return true;
         }
 
@@ -175,7 +170,6 @@ namespace LLP
             if(hashBestChain != TAO::Ledger::ChainState::hashBestChain)
             {
                 Clear();
-
                 hashBestChain = TAO::Ledger::ChainState::hashBestChain;
             }
 
@@ -193,7 +187,6 @@ namespace LLP
             if(hashBestChain != TAO::Ledger::ChainState::hashBestChain)
             {
                 Clear();
-
                 hashBestChain = TAO::Ledger::ChainState::hashBestChain;
             }
 
@@ -231,7 +224,7 @@ namespace LLP
         {
             /* Get the merkle root. */
             uint512_t hashMerkleRoot;
-            hashMerkleRoot.SetBytes(std::vector<unsigned char>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
+            hashMerkleRoot.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
 
             /* Check that the block exists. */
             if(!mapBlocks.count(hashMerkleRoot))
@@ -251,7 +244,7 @@ namespace LLP
 
             /* Create the pointer on the heap. */
             TAO::Ledger::TritiumBlock block = mapBlocks[hashMerkleRoot];
-            block.nNonce = bytes2uint64(std::vector<unsigned char>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
+            block.nNonce = bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
             block.UpdateTime();
             block.print();
 
