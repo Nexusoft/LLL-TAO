@@ -42,7 +42,7 @@ namespace filesystem
         if(exists(path) == false)
             return false;
 
-        if(remove(path.c_str()) == 0)
+        if(std::remove(path.c_str()) == 0)
             return true;
 
         return false;
@@ -68,7 +68,7 @@ namespace filesystem
 
             /* If destination file exists, remove it (ie, we overwrite the file) */
             if (exists(pathDest))
-                remove(pathDest);
+                filesystem::remove(pathDest);
 
             /* Get the input stream of source file. */
             std::ifstream sourceFile(pathSource, std::ios::binary);

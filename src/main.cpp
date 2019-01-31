@@ -60,6 +60,7 @@ namespace LLP
     Server<LegacyNode> * LEGACY_SERVER;
 }
 
+
 int main(int argc, char** argv)
 {
     LLP::Server<LLP::CoreNode>* CORE_SERVER = nullptr;
@@ -112,6 +113,10 @@ int main(int argc, char** argv)
     /* Initialize the Legacy Database. */
     LLD::trustDB  = new LLD::TrustDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
     LLD::legacyDB = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+
+
+    /* Handle database recovery mode. */
+    LLD::TxnRecovery();
 
 
     /** Load the Wallet Database. **/
