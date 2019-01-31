@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -27,7 +27,7 @@ ________________________________________________________________________________
 #endif
 
 #ifndef TESTNET_PORT
-#define TESTNET_PORT 8313
+#define TESTNET_PORT 8323
 #endif
 
 #ifndef MAINNET_CORE_LLP_PORT

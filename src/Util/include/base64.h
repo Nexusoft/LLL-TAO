@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -25,7 +25,6 @@ namespace encoding
      *  Take a raw byte buffer and a encode it into base 64
      *
      *  @param[in] pch Pointer to the character buffer
-     *
      *  @param[in] len size of the buffer in bytes
      *
      *  @return The string of the base 64 encoded buffer
@@ -51,7 +50,6 @@ namespace encoding
      *  Take an encoded base 64 buffer and decode it into it's original message.
      *
      *  @param[in] p Pointer to the encoded buffer
-     *
      *  @param[in] pfInvalid Pointer to invalid flag
      *
      *  @return The vector containing the decoded base 64 message.

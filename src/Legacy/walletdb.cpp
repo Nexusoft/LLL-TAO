@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -40,100 +40,100 @@ namespace Legacy
 {
 
     /* Initialize static values */
-    const std::string CWalletDB::DEFAULT_WALLET_DB("wallet.dat");
+    const std::string WalletDB::DEFAULT_WALLET_DB("wallet.dat");
 
-    uint32_t CWalletDB::nWalletDBUpdated = 0;
+    uint32_t WalletDB::nWalletDBUpdated = 0;
 
-    uint64_t CWalletDB::nAccountingEntryNumber = 0;
+    uint64_t WalletDB::nAccountingEntryNumber = 0;
 
-    std::mutex CWalletDB::cs_walletdb;
+    std::mutex WalletDB::cs_walletdb;
 
 
     /* Stores an encrypted master key into the database. */
-    bool CWalletDB::WriteMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey)
+    bool WalletDB::WriteMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey)
     {
-        LOCK(CWalletDB::cs_walletdb);
-        CWalletDB::nWalletDBUpdated++;
+        LOCK(WalletDB::cs_walletdb);
+        WalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("mkey"), nMasterKeyId), kMasterKey, true);
     }
 
 
     /* Reads the minimum database version supported by this wallet database. */
-    bool CWalletDB::ReadMinVersion(uint32_t& nVersion)
+    bool WalletDB::ReadMinVersion(uint32_t& nVersion)
     {
-        LOCK(CWalletDB::cs_walletdb);
+        LOCK(WalletDB::cs_walletdb);
         return Read(std::string("minversion"), nVersion);
     }
 
 
     /* Stores the minimum database version supported by this wallet database. */
-    bool CWalletDB::WriteMinVersion(const uint32_t nVersion)
+    bool WalletDB::WriteMinVersion(const uint32_t nVersion)
     {
-        LOCK(CWalletDB::cs_walletdb);
-        CWalletDB::nWalletDBUpdated++;
+        LOCK(WalletDB::cs_walletdb);
+        WalletDB::nWalletDBUpdated++;
         return Write(std::string("minversion"), nVersion, true);
     }
 
 
     /* Reads the wallet account data associated with an account (Nexus address). */
-    bool CWalletDB::ReadAccount(const std::string& strAccount, CAccount& account)
+    bool WalletDB::ReadAccount(const std::string& strAccount, CAccount& account)
     {
-        LOCK(CWalletDB::cs_walletdb);
+        LOCK(WalletDB::cs_walletdb);
         account.SetNull();
         return Read(std::make_pair(std::string("acc"), strAccount), account);
     }
 
 
     /* Stores the wallet account data for an address in the database. */
-    bool CWalletDB::WriteAccount(const std::string& strAccount, const CAccount& account)
+    bool WalletDB::WriteAccount(const std::string& strAccount, const CAccount& account)
     {
-        LOCK(CWalletDB::cs_walletdb);
-        CWalletDB::nWalletDBUpdated++;
+        LOCK(WalletDB::cs_walletdb);
+        WalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("acc"), strAccount), account);
     }
 
 
     /* Reads a logical name (label) for an address into the database. */
-    bool CWalletDB::ReadName(const std::string& strAddress, std::string& strName)
+    bool WalletDB::ReadName(const std::string& strAddress, std::string& strName)
     {
-        LOCK(CWalletDB::cs_walletdb);
+        LOCK(WalletDB::cs_walletdb);
         strName = "";
         return Read(std::make_pair(std::string("name"), strAddress), strName);
     }
 
 
     /* Stores a logical name (label) for an address in the database. */
-    bool CWalletDB::WriteName(const std::string& strAddress, const std::string& strName)
+    bool WalletDB::WriteName(const std::string& strAddress, const std::string& strName)
     {
-        LOCK(CWalletDB::cs_walletdb);
-        CWalletDB::nWalletDBUpdated++;
+        LOCK(WalletDB::cs_walletdb);
+        WalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("name"), strAddress), strName);
     }
 
 
     /* Removes the name entry associated with an address. */
-    bool CWalletDB::EraseName(const std::string& strAddress)
+    bool WalletDB::EraseName(const std::string& strAddress)
     {
-        LOCK(CWalletDB::cs_walletdb);
-        CWalletDB::nWalletDBUpdated++;
+        LOCK(WalletDB::cs_walletdb);
+        WalletDB::nWalletDBUpdated++;
         return Erase(std::make_pair(std::string("name"), strAddress));
     }
 
 
     /* Reads the default public key from the wallet database. */
-    bool CWalletDB::ReadDefaultKey(std::vector<uint8_t>& vchPubKey)
+    bool WalletDB::ReadDefaultKey(std::vector<uint8_t>& vchPubKey)
     {
-        LOCK(CWalletDB::cs_walletdb);
+        LOCK(WalletDB::cs_walletdb);
         vchPubKey.clear();
         return Read(std::string("defaultkey"), vchPubKey);
     }
 
 
     /* Stores the default public key to the wallet database. */
-    bool CWalletDB::WriteDefaultKey(const std::vector<uint8_t>& vchPubKey)
+    bool WalletDB::WriteDefaultKey(const std::vector<uint8_t>& vchPubKey)
     {
-        LOCK(CWalletDB::cs_walletdb);
-        CWalletDB::nWalletDBUpdated++;
+        LOCK(WalletDB::cs_walletdb);
+        WalletDB::nWalletDBUpdated++;
         return Write(std::string("defaultkey"), vchPubKey);
     }
 
@@ -166,28 +166,28 @@ namespace Legacy
 
 
     /* Reads the unencrypted private key associated with a public key */
-    bool CWalletDB::ReadKey(const std::vector<uint8_t>& vchPubKey, LLC::CPrivKey& vchPrivKey)
+    bool WalletDB::ReadKey(const std::vector<uint8_t>& vchPubKey, LLC::CPrivKey& vchPrivKey)
     {
-        LOCK(CWalletDB::cs_walletdb);
+        LOCK(WalletDB::cs_walletdb);
         vchPrivKey.clear();
         return Read(std::make_pair(std::string("key"), vchPubKey), vchPrivKey);
     }
 
 
     /* Stores an unencrypted private key using the corresponding public key. */
-    bool CWalletDB::WriteKey(const std::vector<uint8_t>& vchPubKey, const LLC::CPrivKey& vchPrivKey)
+    bool WalletDB::WriteKey(const std::vector<uint8_t>& vchPubKey, const LLC::CPrivKey& vchPrivKey)
     {
-        LOCK(CWalletDB::cs_walletdb);
-        CWalletDB::nWalletDBUpdated++;
+        LOCK(WalletDB::cs_walletdb);
+        WalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("key"), vchPubKey), vchPrivKey, false);
     }
 
 
     /* Stores an encrypted private key using the corresponding public key. */
-    bool CWalletDB::WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret, bool fEraseUnencryptedKey)
+    bool WalletDB::WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret, bool fEraseUnencryptedKey)
     {
-        LOCK(CWalletDB::cs_walletdb);
-        CWalletDB::nWalletDBUpdated++;
+        LOCK(WalletDB::cs_walletdb);
+        WalletDB::nWalletDBUpdated++;
         if (!Write(std::make_pair(std::string("ckey"), vchPubKey), vchCryptedSecret, false))
             return false;
 
@@ -201,85 +201,85 @@ namespace Legacy
 
 
     /* Reads the wallet transaction for a given transaction hash. */
-    bool CWalletDB::ReadTx(const uint512_t& hash, CWalletTx& wtx)
+    bool WalletDB::ReadTx(const uint512_t& hash, WalletTx& wtx)
     {
-        LOCK(CWalletDB::cs_walletdb);
+        LOCK(WalletDB::cs_walletdb);
         return Read(std::make_pair(std::string("tx"), hash), wtx);
     }
 
 
     /* Stores a wallet transaction using its transaction hash. */
-    bool CWalletDB::WriteTx(const uint512_t& hash, const CWalletTx& wtx)
+    bool WalletDB::WriteTx(const uint512_t& hash, const WalletTx& wtx)
     {
-        LOCK(CWalletDB::cs_walletdb);
-        CWalletDB::nWalletDBUpdated++;
+        LOCK(WalletDB::cs_walletdb);
+        WalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("tx"), hash), wtx);
     }
 
 
     /* Removes the wallet transaction associated with a transaction hash. */
-    bool CWalletDB::EraseTx(const uint512_t& hash)
+    bool WalletDB::EraseTx(const uint512_t& hash)
     {
-        LOCK(CWalletDB::cs_walletdb);
-        CWalletDB::nWalletDBUpdated++;
+        LOCK(WalletDB::cs_walletdb);
+        WalletDB::nWalletDBUpdated++;
         return Erase(std::make_pair(std::string("tx"), hash));
     }
 
 
     /* Reads the script for a given script hash. */
-    bool CWalletDB::ReadCScript(const uint256_t& hash, CScript& redeemScript)
+    bool WalletDB::ReadCScript(const uint256_t& hash, CScript& redeemScript)
     {
-        LOCK(CWalletDB::cs_walletdb);
+        LOCK(WalletDB::cs_walletdb);
         redeemScript.clear();
         return Read(std::make_pair(std::string("cscript"), hash), redeemScript);
     }
 
 
     /* Stores a redeem script using its script hash. */
-    bool CWalletDB::WriteCScript(const uint256_t& hash, const CScript& redeemScript)
+    bool WalletDB::WriteCScript(const uint256_t& hash, const CScript& redeemScript)
     {
-        LOCK(CWalletDB::cs_walletdb);
-        CWalletDB::nWalletDBUpdated++;
+        LOCK(WalletDB::cs_walletdb);
+        WalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("cscript"), hash), redeemScript, false);
     }
 
 
     /* Reads a key pool entry from the database. */
-    bool CWalletDB::ReadPool(const uint64_t nPool, CKeyPoolEntry& keypoolEntry)
+    bool WalletDB::ReadPool(const uint64_t nPool, CKeyPoolEntry& keypoolEntry)
     {
-        LOCK(CWalletDB::cs_walletdb);
+        LOCK(WalletDB::cs_walletdb);
         return Read(std::make_pair(std::string("pool"), nPool), keypoolEntry);
     }
 
 
     /* Stores a key pool entry using its pool entry number (ID value). */
-    bool CWalletDB::WritePool(const uint64_t nPool, const CKeyPoolEntry& keypoolEntry)
+    bool WalletDB::WritePool(const uint64_t nPool, const CKeyPoolEntry& keypoolEntry)
     {
-        LOCK(CWalletDB::cs_walletdb);
-        CWalletDB::nWalletDBUpdated++;
+        LOCK(WalletDB::cs_walletdb);
+        WalletDB::nWalletDBUpdated++;
         return Write(std::make_pair(std::string("pool"), nPool), keypoolEntry);
     }
 
 
     /* Removes a key pool entry associated with a pool entry number. */
-    bool CWalletDB::ErasePool(const uint64_t nPool)
+    bool WalletDB::ErasePool(const uint64_t nPool)
     {
-        LOCK(CWalletDB::cs_walletdb);
-        CWalletDB::nWalletDBUpdated++;
+        LOCK(WalletDB::cs_walletdb);
+        WalletDB::nWalletDBUpdated++;
         return Erase(std::make_pair(std::string("pool"), nPool));
     }
 
 
     /* Stores an accounting entry in the wallet database. */
-    bool CWalletDB::WriteAccountingEntry(const CAccountingEntry& acentry)
+    bool WalletDB::WriteAccountingEntry(const CAccountingEntry& acentry)
     {
-        LOCK(CWalletDB::cs_walletdb);
-        return Write(std::make_tuple(std::string("acentry"), acentry.strAccount, ++CWalletDB::nAccountingEntryNumber), acentry);
+        LOCK(WalletDB::cs_walletdb);
+        return Write(std::make_tuple(std::string("acentry"), acentry.strAccount, ++WalletDB::nAccountingEntryNumber), acentry);
     }
 
 
     /* Retrieves the net total of all accounting entries for an account (Nexus address). */
-    int64_t CWalletDB::GetAccountCreditDebit(const std::string& strAccount)
+    int64_t WalletDB::GetAccountCreditDebit(const std::string& strAccount)
     {
         std::list<CAccountingEntry> entries;
         ListAccountCreditDebit(strAccount, entries);
@@ -293,15 +293,15 @@ namespace Legacy
 
 
     /* Retrieves a list of individual accounting entries for an account (Nexus address) */
-    void CWalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& entries)
+    void WalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& entries)
     {
-        LOCK(CWalletDB::cs_walletdb);
+        LOCK(WalletDB::cs_walletdb);
         bool fAllAccounts = (strAccount == "*");
 
         auto pcursor = GetCursor();
 
         if (pcursor == nullptr)
-            throw std::runtime_error("CWalletDB::ListAccountCreditDebit : Cannot create DB cursor");
+            throw std::runtime_error("WalletDB::ListAccountCreditDebit : Cannot create DB cursor");
 
         uint32_t fFlags = DB_SET_RANGE;
 
@@ -331,7 +331,7 @@ namespace Legacy
             {
                 /* Error retrieving accounting entries */
                 pcursor->close();
-                throw std::runtime_error("CWalletDB::ListAccountCreditDebit : Error scanning DB");
+                throw std::runtime_error("WalletDB::ListAccountCreditDebit : Error scanning DB");
             }
 
             /* Unserialize */
@@ -355,7 +355,7 @@ namespace Legacy
 
 
     /* Initializes a wallet instance from the data in this wallet database. */
-    uint32_t CWalletDB::LoadWallet(CWallet& wallet)
+    uint32_t WalletDB::LoadWallet(Wallet& wallet)
     {
         uint32_t nFileVersion = 0;
         std::vector<uint512_t> vWalletRemove;
@@ -437,7 +437,7 @@ namespace Legacy
                     /* Wallet transaction */
                     uint512_t hash;
                     ssKey >> hash;
-                    CWalletTx& wtx = wallet.mapWallet[hash];
+                    WalletTx& wtx = wallet.mapWallet[hash];
                     ssValue >> wtx;
 
                     if(config::GetBoolArg("-walletclean", false)) {
@@ -517,11 +517,11 @@ namespace Legacy
                     }
                     else
                     {
-                        /* wkey entry stores CWalletKey
+                        /* wkey entry stores WalletKey
                          * These are no longer written to database, but support to read them is included for backward compatability
                          * Loaded into wallet key, same as key entry
                          */
-                        CWalletKey wkey;
+                        WalletKey wkey;
                         ssValue >> wkey;
                         key.SetPubKey(vchPubKey);
                         key.SetPrivKey(wkey.vchPrivKey);
@@ -529,13 +529,13 @@ namespace Legacy
                         /* Validate the key data  */
                         if (key.GetPubKey() != vchPubKey)
                         {
-                            debug::error(FUNCTION, "Error reading wallet database: CWalletKey pubkey inconsistency");
+                            debug::error(FUNCTION, "Error reading wallet database: WalletKey pubkey inconsistency");
                             return DB_CORRUPT;
                         }
 
                         if (!key.IsValid())
                         {
-                            debug::error(FUNCTION, "Error reading wallet database: invalid CWalletKey");
+                            debug::error(FUNCTION, "Error reading wallet database: invalid WalletKey");
                             return DB_CORRUPT;
                         }
                     }
@@ -612,8 +612,8 @@ namespace Legacy
                     ssKey >> nNumber;
 
                     /* After load, nAccountingEntryNumber will contain the maximum accounting entry number currently stored in the database */
-                    if (nNumber > CWalletDB::nAccountingEntryNumber)
-                        CWalletDB::nAccountingEntryNumber = nNumber;
+                    if (nNumber > WalletDB::nAccountingEntryNumber)
+                        WalletDB::nAccountingEntryNumber = nNumber;
 
                 }
 
@@ -655,21 +655,21 @@ namespace Legacy
 
 
     /* Function that loops until shutdown and periodically flushes a wallet db */
-    void CWalletDB::ThreadFlushWalletDB(const std::string& strWalletFile)
+    void WalletDB::ThreadFlushWalletDB(const std::string& strWalletFile)
     {
         if (!config::GetBoolArg("-flushwallet", true))
             return;
 
-        /* CWalletDB::nWalletDBUpdated is incremented each time wallet database data is updated
+        /* WalletDB::nWalletDBUpdated is incremented each time wallet database data is updated
          * Generally, we want to flush the database any time this value has changed since the last iteration
          * However, we don't want to do that if it is too soon after the update (to allow for possible series of multiple updates)
-         * Therefore, each time the CWalletDB::nWalletDBUpdated has been updated, we record that in nLastSeen along with an updated timestamp
-         * Then, whenever CWalletDB::nWalletDBUpdated no longer equals nLastFlushed AND enough time has passed since seeing the change, flush is performed
+         * Therefore, each time the WalletDB::nWalletDBUpdated has been updated, we record that in nLastSeen along with an updated timestamp
+         * Then, whenever WalletDB::nWalletDBUpdated no longer equals nLastFlushed AND enough time has passed since seeing the change, flush is performed
          * In this manner, if there is a series of (possibly related) updates in a short timespan, they will all be flushed together
          */
         const int64_t minTimeSinceLastUpdate = 2;
-        uint32_t nLastSeen = CWalletDB::nWalletDBUpdated;
-        uint32_t nLastFlushed = CWalletDB::nWalletDBUpdated;
+        uint32_t nLastSeen = WalletDB::nWalletDBUpdated;
+        uint32_t nLastFlushed = WalletDB::nWalletDBUpdated;
         uint64_t nLastWalletUpdate = runtime::unifiedtimestamp();
 
         debug::log(1, FUNCTION, "Wallet flush thread started");
@@ -678,15 +678,15 @@ namespace Legacy
         {
             runtime::sleep(1000);
 
-            if (nLastSeen != CWalletDB::nWalletDBUpdated)
+            if (nLastSeen != WalletDB::nWalletDBUpdated)
             {
                 /* Database is updated. Record time update recognized */
-                nLastSeen = CWalletDB::nWalletDBUpdated;
+                nLastSeen = WalletDB::nWalletDBUpdated;
                 nLastWalletUpdate = runtime::unifiedtimestamp();
             }
 
             /* Perform flush if any wallet database updated, and the minimum required time has passed since recognizing the update */
-            if (nLastFlushed != CWalletDB::nWalletDBUpdated && (runtime::unifiedtimestamp() - nLastWalletUpdate) >= minTimeSinceLastUpdate)
+            if (nLastFlushed != WalletDB::nWalletDBUpdated && (runtime::unifiedtimestamp() - nLastWalletUpdate) >= minTimeSinceLastUpdate)
             {
                 /* Try to lock but don't wait for it. Skip this iteration if fail to get lock. */
                 if (CDB::cs_db.try_lock())
@@ -712,7 +712,7 @@ namespace Legacy
                         if (CDB::fDbEnvInit && mi != CDB::mapFileUseCount.end())
                         {
                             debug::log(0, FUNCTION, DateTimeStrFormat(runtime::unifiedtimestamp()), " Flushing ", strWalletFile);
-                            nLastFlushed = CWalletDB::nWalletDBUpdated;
+                            nLastFlushed = WalletDB::nWalletDBUpdated;
                             int64_t nStart = runtime::timestamp(true);
 
                             /* Flush wallet file so it's self contained */
@@ -739,7 +739,7 @@ namespace Legacy
 
 
     /* Writes a backup copy of a wallet to a designated backup file */
-    bool CWalletDB::BackupWallet(const CWallet& wallet, const std::string& strDest)
+    bool WalletDB::BackupWallet(const Wallet& wallet, const std::string& strDest)
     {
         if (!wallet.IsFileBacked())
             return false;

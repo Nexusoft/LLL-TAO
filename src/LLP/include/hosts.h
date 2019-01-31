@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -28,7 +28,7 @@ namespace LLP
      *  They are established and maintained by the owners of each domain.
      *
      **/
-    static std::vector<std::string> DNS_SeedNodes =
+    static const std::vector<std::string> DNS_SeedNodes =
     {
         "node1.nexusearth.com",
         "node1.mercuryminer.com",
@@ -112,9 +112,15 @@ namespace LLP
      *  Testnet seed nodes.
      *
      **/
-    static std::vector<std::string> DNS_SeedNodes_Testnet =
+    static const std::vector<std::string> DNS_SeedNodes_Testnet =
     {
-        "test1.nexusoft.io"
+        "test1.nexusoft.io",
+        "test1.mercuryminer.com",
+        "test2.mercuryminer.com",
+        "test3.mercuryminer.com",
+        "test4.mercuryminer.com",
+        "test5.mercuryminer.com",
+        "nexus-lisp-seed.lispers.net"
     };
 
 

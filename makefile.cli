@@ -139,6 +139,7 @@ OBJS= \
 	build/LLC_random.o \
 	build/LLC_key.o \
     build/LLC_bignum.o \
+	build/LLD_global.o \
 	build/LLP_baseaddress.o \
 	build/LLP_legacyaddress.o \
 	build/LLP_trustaddress.o \

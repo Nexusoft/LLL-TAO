@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -386,21 +386,18 @@ public:
         return pn[2*n] | (uint64_t)pn[2*n+1] << 32;
     }
 
-//    uint32_t GetSerializeSize(int nSerType=0, int nVersion=LLP::PROTOCOL_VERSION) const
     uint32_t GetSerializeSize(int nSerType, int nVersion) const
     {
         return sizeof(pn);
     }
 
     template<typename Stream>
-//    void Serialize(Stream& s, int nSerType=0, int nVersion=LLP::PROTOCOL_VERSION) const
     void Serialize(Stream& s, int nSerType, int nVersion) const
     {
         s.write((char*)pn, sizeof(pn));
     }
 
     template<typename Stream>
-//    void Unserialize(Stream& s, int nSerType=0, int nVersion=LLP::PROTOCOL_VERSION)
     void Unserialize(Stream& s, int nSerType, int nVersion)
     {
         s.read((char*)pn, sizeof(pn));

@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -29,7 +29,7 @@ namespace TAO
     namespace Ledger
     {
 
-        /** Block State Class
+        /** BlockState
          *
          *  This class is responsible for storing state variables
          *  that are chain specific for a specified block. These
@@ -104,6 +104,7 @@ namespace TAO
             )
 
 
+            /** Default Constructor. **/
             BlockState()
             : Block()
             , vtx()
@@ -119,6 +120,7 @@ namespace TAO
             }
 
 
+            /** Default Constructor. **/
             BlockState(TritiumBlock block)
             : Block(block)
             , vtx()
@@ -135,6 +137,7 @@ namespace TAO
             }
 
 
+            /** Default Constructor. **/
             BlockState(Legacy::LegacyBlock block);
 
 
@@ -163,7 +166,7 @@ namespace TAO
             }
 
 
-            /** Equals Constructor. **/
+            /** Copy Assignment Operator. **/
             BlockState operator=(const BlockState& state)
             {
                 nVersion            = state.nVersion;
@@ -198,6 +201,7 @@ namespace TAO
             {
                 return GetHash() == state.GetHash();
             }
+
 
             /** Equivilence checking **/
             bool operator!=(const BlockState& state) const
@@ -243,6 +247,16 @@ namespace TAO
             bool Accept();
 
 
+            /** Set Best
+             *
+             *  Set this state as the best chain.
+             *
+             *  @return true if accepted.
+             *
+             **/
+            bool SetBest();
+
+
             /** Connect
              *
              *  Connect a block state into chain.
@@ -263,7 +277,7 @@ namespace TAO
             bool Disconnect();
 
 
-            /** Get Block Trust
+            /** GetBlockTrust
              *
              *  Get the trust of this block.
              *
@@ -273,7 +287,7 @@ namespace TAO
             uint64_t GetBlockTrust() const;
 
 
-            /** Is In Main Chain
+            /** IsInMainChain
              *
              *  Function to determine if this block has been connected into the main chain.
              *
@@ -283,9 +297,9 @@ namespace TAO
             bool IsInMainChain() const;
 
 
-            /** To String
+            /** ToString
              *
-             *  For debugging Purposes seeing block state data dump
+             *  For debugging Purposes seeing block state data dump.
              *
              *  @param[in] nState The states to output.
              *
@@ -304,11 +318,12 @@ namespace TAO
              **/
             virtual void print() const;
 
-            /** Stake Hash
+
+            /** StakeHash
              *
-             *  Prove that you staked a number of seconds based on weight
+             *  Prove that you staked a number of seconds based on weight.
              *
-             *  @return 1024-bit stake hash
+             *  @return 1024-bit stake hash.
              *
              **/
             uint1024_t StakeHash() const;
@@ -316,7 +331,7 @@ namespace TAO
         };
 
 
-        /** Get Last State
+        /** GetLastState
          *
          *  Gets a block state by channel from hash.
          *

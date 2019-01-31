@@ -38,10 +38,10 @@ draft-ietf-lisp-predictive-rlocs - LISP Predictive RLOCs
 draft-ietf-lisp-te - LISP Traffic Engineering Use-Cases
 draft-ietf-lisp-vpn - LISP Virtual Private Networks (VPNs)
 draft-ietf-lisp-pubsub - Publish/Subscribe Functionality for LISP
+draft-ietf-lisp-ecdsa-auth - LISP Control-Plane ECDSA Authentication and Authorization
 draft-ermagan-lisp-nat-traversal - NAT traversal for LISP
 draft-farinacci-lisp-geo - LISP Geo-Coordinate Use-Cases
 draft-farinacci-lisp-name-encoding - LISP Distinguished Name Encoding
-draft-farinacci-lisp-ecdsa-auth - LISP Control-Plane ECDSA Authentication and Authorization
 draft-farinacci-lisp-mobile-network - LISP for the Mobile Network
 draft-farinacci-lisp-decent - A Decent LISP Mapping System (LISP-Decent)
 

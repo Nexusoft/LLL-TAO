@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -33,8 +33,8 @@ namespace Legacy
                 return true;
 
             {
-                /* Need basic keystore lock to check mapKeys. 
-                 * This is a nested lock. 
+                /* Need basic keystore lock to check mapKeys.
+                 * This is a nested lock.
                  * Have to ensure any others that might nest them also get them in the same order to avoid deadlock potential.
                  * Good part is we only actually need this when first activating encryption. After that, above returns true.
                  */
@@ -64,8 +64,8 @@ namespace Legacy
         /* Set key store as encrypted */
         fUseCrypto = true;
 
-        /* Need basic keystore lock for iterating mapKeys, but will also need it within AddCryptedKey. 
-         * Thus, can't keep it. To ensure a good mapKeys, make a copy while have hold of lock 
+        /* Need basic keystore lock for iterating mapKeys, but will also need it within AddCryptedKey.
+         * Thus, can't keep it. To ensure a good mapKeys, make a copy while have hold of lock
          */
         KeyMap mapKeysToEncrypt;
         {
@@ -101,7 +101,7 @@ namespace Legacy
                 return false;
 
             /* Also need crypto keystore lock to add key. AddCryptedKey() obtains this */
-            /* During wallet encryption, this will call this->AddCryptedKey() which is actually CWallet::AddCryptedKey() */
+            /* During wallet encryption, this will call this->AddCryptedKey() which is actually Wallet::AddCryptedKey() */
             if (!AddCryptedKey(vchPubKey, vchCryptedSecret))
                 return false;
         }
@@ -256,22 +256,9 @@ namespace Legacy
     /*  Retrieve a key from the key store. */
     bool CCryptoKeyStore::GetKey(const NexusAddress& address, LLC::ECKey& keyOut) const
     {
-        /* Cannot get key if key store is encrypted and locked */
-        if (IsLocked())
-            return false;
-
-        /* Only use LOCK to check IsCrypted() -- use internal flag so we can release before potential call to CBasicKeyStore::GetKey */
-        bool fCrypted = false;
-
-        {
-            LOCK(cs_cryptoKeyStore);
-
-            if (IsCrypted())
-                fCrypted = true;
-        }
-
-        if (!fCrypted)
+        if (!IsCrypted())
             return CBasicKeyStore::GetKey(address, keyOut);
+
 
         {
             LOCK(cs_cryptoKeyStore);

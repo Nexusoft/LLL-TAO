@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -24,7 +24,11 @@ namespace TAO
     namespace Register
     {
 
-        //TODO: this needs some work
+        /** Escrow
+         *
+         *  TODO: this needs some work
+         *
+         **/
         class Escrow
         {
         public:
@@ -54,7 +58,7 @@ namespace TAO
                 READWRITE(vValidationScript);
             )
 
-
+            /** Default Constructor **/
             Escrow()
             : nSignatories(0)
             , nRequired(0)
@@ -64,6 +68,11 @@ namespace TAO
 
             }
 
+            /** print
+             *
+             *  Output the state of this object.
+             *
+             **/
             void print() const;
         };
     }

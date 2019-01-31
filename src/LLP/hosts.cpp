@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -208,12 +208,12 @@ namespace LLP
                 uint16_t portDefault,
                 bool fAllowLookup)
     {
-        std::vector<BaseAddress> vService;
+        std::vector<BaseAddress> vAddr;
 
-        if(!Lookup(pszName, vService, portDefault, fAllowLookup, 1))
+        if(!Lookup(pszName, vAddr, portDefault, fAllowLookup, 1))
             return false;
 
-        addr = vService[0];
+        addr = vAddr[0];
         return true;
     }
 

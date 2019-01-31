@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -619,7 +619,7 @@ namespace Legacy
     {
         std::string str;
         str += IsCoinBase() ? "Coinbase" : (IsGenesis() ? "Genesis" : (IsTrust() ? "Trust" : "Transaction"));
-        str += debug::strprintf("(hash=%s, nTime=%d, ver=%d, vin.size=%d, vout.size=%d, nLockTime=%d)",
+        str += debug::strprintf("(hash=%s, nTime=%d, ver=%d, vin.size=%d, vout.size=%d, nLockTime=%d)\n",
             GetHash().ToString().substr(0,10).c_str(),
             nTime,
             nVersion,
@@ -628,9 +628,9 @@ namespace Legacy
             nLockTime);
 
         for (const auto& txin : vin)
-            str += "    " + txin.ToString() + "";
+            str += "    " + txin.ToString() + "\n";
         for (const auto& txout : vout)
-            str += "    " + txout.ToString() + "";
+            str += "    " + txout.ToString() + "\n";
         return str;
     }
 
@@ -721,12 +721,12 @@ namespace Legacy
             if(!LLD::legacyDB->ReadTx(prevout.hash, txPrev))
             {
                 //TODO: check the memory pool for previous
-                return debug::error(FUNCTION, "previous transaction not found");
+                return debug::error(FUNCTION, "previous transaction ", prevout.hash.ToString().substr(0, 20), " not found");
             }
 
             /* Check that it is valid. */
             if(prevout.n >= txPrev.vout.size())
-                return debug::error(FUNCTION, "prevout is out of range");
+                return debug::error(FUNCTION, "prevout ", prevout.n, " is out of range ", txPrev.vout.size());
 
             /* Add to the inputs. */
             inputs[prevout.hash] = txPrev;

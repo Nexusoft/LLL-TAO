@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/include/manager.h>
 #include <LLP/include/legacyaddress.h>
 #include <LLP/include/trustaddress.h>
+#include <Util/include/args.h>
 
 #include <functional>
 #include <numeric>
@@ -103,7 +104,14 @@ namespace LLP
             if(fManager)
             {
                 pAddressManager = new AddressManager(nPort);
+
+                if(!pAddressManager)
+                    debug::error(FUNCTION, "Failed to allocate memory for address manager on port ", nPort);
+
+
                 pAddressManager->ReadDatabase();
+
+                pAddressManager->AddSeedAddresses(config::fTestNet);
 
 
                 MANAGER_THREAD = std::thread((std::bind(&Server::Manager, this)));
@@ -426,12 +434,12 @@ namespace LLP
             /* Loop connections. */
             while(!fDestruct.load())
             {
-                runtime::sleep(1000);
+                runtime::sleep(100);
 
-                /* assume the connect state is in a failed state */
+                /* Assume the connect state is in a failed state. */
                 uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
 
-                /* Pick a weighted random priority from a sorted list of addresses */
+                /* Pick a weighted random priority from a sorted list of addresses. */
                 if(pAddressManager == nullptr)
                     continue;
 
@@ -445,13 +453,15 @@ namespace LLP
                     }
 
                     /* Attempt the connection. */
-                    debug::log(0, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
+                    debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
 
                     if(AddConnection(addr.ToStringIP(), addr.GetPort()))
                         state = static_cast<uint8_t>(ConnectState::CONNECTED);
 
                     /* Update the address state. */
                     pAddressManager->AddAddress(addr, state);
+
+                    debug::log(3, FUNCTION, pAddressManager->ToString());
                 }
             }
         }
@@ -572,7 +582,7 @@ namespace LLP
                         /* DDOS Operations: Only executed when DDOS is enabled. */
                         if((fDDOS && DDOS_MAP[addr]->Banned()))
                         {
-                            debug::log(0, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Banned.");
+                            debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Banned.");
                             close(hSocket);
 
                             continue;
@@ -596,6 +606,7 @@ namespace LLP
                 }
             }
         }
+
 
         /** BindListenPort
          *
@@ -764,6 +775,7 @@ namespace LLP
 
             return nTotalRequests;
         }
+
 
         /** ClearRequests
          *

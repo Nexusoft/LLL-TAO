@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -22,7 +22,7 @@ ________________________________________________________________________________
 namespace Legacy
 {
     
-    /** @class CWalletKey
+    /** @class WalletKey
      *
      *  Class to hold unencrypted private key binary data. 
      *
@@ -32,7 +32,7 @@ namespace Legacy
      *
      *  Database key is wkey<publickey>
      **/
-    class CWalletKey
+    class WalletKey
     {
     public:
         /** Unencrypted private key data **/
@@ -53,7 +53,7 @@ namespace Legacy
          *  Sets nTimeCreated to current time if nExpires has a value. 
          *
          **/
-        CWalletKey(const uint64_t nExpires=0)
+        WalletKey(const uint64_t nExpires=0)
         {
             nTimeCreated = (nExpires ? runtime::unifiedtimestamp() : 0);
             nTimeExpires = nExpires;

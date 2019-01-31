@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -108,11 +108,17 @@ namespace LLP
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(portDefault)
     {
-        BaseAddress ip;
-        if (Lookup(pszIpPort, ip, portDefault, fAllowLookup))
-            *this = ip;
+        BaseAddress addr;
+        if (Lookup(pszIpPort, addr, portDefault, fAllowLookup))
+        {
+            *this = addr;
+
+            if(fAllowLookup)
+                debug::log(3, FUNCTION, pszIpPort, " resolved to ", ToStringIP());
+        }
+
         else
-          debug::log(0, FUNCTION, "bad lookup");
+          debug::log(3, FUNCTION, pszIpPort, " bad lookup");
     }
 
 
@@ -121,11 +127,16 @@ namespace LLP
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(portDefault)
     {
-        BaseAddress ip;
-        if (Lookup(strIpPort.c_str(), ip, portDefault, fAllowLookup))
-            *this = ip;
+        BaseAddress addr;
+        if (Lookup(strIpPort.c_str(), addr, portDefault, fAllowLookup))
+        {
+            *this = addr;
+
+            if(fAllowLookup)
+                debug::log(3, FUNCTION, strIpPort, " resolved to ", ToStringIP());
+        }
         else
-          debug::log(0, FUNCTION, "bad lookup");
+          debug::log(3, FUNCTION, strIpPort, " bad lookup");
     }
 
 
@@ -275,7 +286,12 @@ namespace LLP
     /* Determines if address is a routable address. */
     bool BaseAddress::IsRoutable() const
     {
-        return IsValid() && !(IsRFC1918() || IsRFC3927() || IsRFC4862() || IsRFC4193() || IsRFC4843() || IsLocal());
+        return IsValid() && !(IsRFC3927() ||
+                              IsRFC4862() ||
+                              IsRFC4193() ||
+                              IsRFC4843() ||
+                              IsLocal());
+
     }
 
 

@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -51,8 +51,8 @@ namespace Legacy
         if (!(IsCoinBase() || IsCoinStake()))
             return 0;
 
-        uint32_t nBlocksForMaturity = TAO::Ledger::NEXUS_MATURITY_BLOCKS + (config::fTestNet ? 1 : 20);
-        return std::max((uint32_t)0, nBlocksForMaturity - GetDepthInMainChain());
+        int32_t nCoinbaseMaturity = config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS;
+        return std::max((int32_t)0, (int32_t)(nCoinbaseMaturity + (config::fTestNet ? 1 : 20) - GetDepthInMainChain()));
     }
 
 }

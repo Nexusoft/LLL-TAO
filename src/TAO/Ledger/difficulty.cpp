@@ -2,7 +2,7 @@
 
 (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-(c) Copyright The Nexus Developers 2014 - 2018
+(c) Copyright The Nexus Developers 2014 - 2019
 
 Distributed under the MIT software license, see the accompanying
 file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -210,7 +210,7 @@ namespace TAO
                 " actual time =", std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1),
                 "[", ((100.0 * nLowerBound) / nUpperBound), "%]\n",
                 "\tchain time: [", nBlockTarget, " / ", nBlockTime, "]\n",
-                "\tdifficulty: [", GetDifficulty(first.nBits, 0), " to ", GetDifficulty(bnNew.GetCompact(), 0), "]\n",
+                "\tdifficulty: [", std::fixed, GetDifficulty(first.nBits, 0), " to ", std::fixed, GetDifficulty(bnNew.GetCompact(), 0), "]\n",
                 "\ttrust height: ", first.nChannelHeight,
                 " [AGE ", nDays, " days, ", nHours, " hours, ", nMinutes, " minutes]\n");
             }
@@ -354,7 +354,7 @@ namespace TAO
                 "\tchain time: [", nBlockTarget, " / ", nBlockTime, "]\n",
                 "\treleased reward: ", first.nReleasedReserve[0] / Legacy::COIN,
                 " [", 100.0 * nChainMod, " %]\n",
-                "\tdifficulty: [", GetDifficulty(first.nBits, 1), " to ", GetDifficulty(nBits, 1), "]\n"
+                "\tdifficulty: [", std::fixed, GetDifficulty(first.nBits, 1), " to ", std::fixed, GetDifficulty(nBits, 1), "]\n"
                 "\tprime height: ", first.nChannelHeight,
                 " [AGE ", nDays, " days, ", nHours, " hours, ", nMinutes, " minutes]\n");
             }
@@ -494,7 +494,7 @@ namespace TAO
                     "\tchain time: [", nBlockTarget, " / ", nBlockTime, "]\n",
                     "\treleased reward: ", first.nReleasedReserve[0] / Legacy::COIN,
                     " [", 100.0 * nChainMod, " %]\n",
-                    "\tdifficulty: [", GetDifficulty(first.nBits, 2), " to ", GetDifficulty(bnNew.GetCompact(), 2), "]\n",
+                    "\tdifficulty: [", std::fixed, GetDifficulty(first.nBits, 2), " to ", std::fixed, GetDifficulty(bnNew.GetCompact(), 2), "]\n",
                     "\thash height: ", first.nChannelHeight,
                     " [AGE ", nDays, " days, ", nHours, " hours, ", nMinutes, " minutes]\n"
                 );

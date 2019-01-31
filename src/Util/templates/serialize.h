@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -233,6 +233,7 @@ template<typename Stream> inline void Unserialize(Stream& s, bool& a, uint32_t, 
 
 static const uint32_t MAX_SIZE = 0x02000000;
 
+
 /** GetSizeOfCompactSize
  *
  * Compact size
@@ -258,13 +259,13 @@ inline uint32_t GetSizeOfCompactSize(uint64_t nSize)
         return sizeof(uint8_t) + sizeof(uint64_t);
 }
 
+
 /** WriteCompactSize
  *
- *  Write the compact size
+ *  Write the compact size.
  *
- *  @param[in] os The output stream
- *
- *  @param[in] nSize The compact size to write
+ *  @param[in] os The output stream.
+ *  @param[in] nSize The compact size to write.
  *
  **/
 template<typename Stream>
@@ -299,13 +300,14 @@ void WriteCompactSize(Stream& os, uint64_t nSize)
     return;
 }
 
+
 /** ReadCompactSize
  *
- *  Read the compact size
+ *  Read the compact size.
  *
- *  @param[in] is The input Stream
+ *  @param[in] is The input Stream.
  *
- *  @return The compact size
+ *  @return The compact size.
  *
  **/
 template<typename Stream>
@@ -360,11 +362,10 @@ public:
 
     /** CFlatData
      *
-     *  Default constructor, initializes begin and end pointers
+     *  Default constructor, initializes begin and end pointers.
      *
-     *  @param[in] pbeginIn begin pointer
-     *
-     * @param[in] pendIn end pointer
+     *  @param[in] pbeginIn begin pointer.
+     *  @param[in] pendIn end pointer.
      *
      **/
     CFlatData(void* pbeginIn, void* pendIn)
@@ -374,9 +375,9 @@ public:
 
     /** begin
      *
-     *  Get the begin pointer
+     *  Get the begin pointer.
      *
-     * return The begin pointer
+     * return The begin pointer.
      *
      **/
     char* begin() { return pbegin; }
@@ -384,9 +385,9 @@ public:
 
     /** begin
      *
-     *  Get the begin pointer
+     *  Get the begin pointer.
      *
-     * return The constant begin pointer
+     * return The constant begin pointer.
      *
      **/
     const char* begin() const { return pbegin; }
@@ -394,9 +395,9 @@ public:
 
     /** end
      *
-     *  Get the end pointer
+     *  Get the end pointer.
      *
-     * return The end pointer
+     * return The end pointer.
      *
      **/
     char* end() { return pend; }
@@ -404,9 +405,9 @@ public:
 
     /** end
      *
-     *  Get the end pointer
+     *  Get the end pointer.
      *
-     * return The constant end pointer
+     * return The constant end pointer.
      *
      **/
     const char* end() const { return pend; }
@@ -414,9 +415,9 @@ public:
 
     /** GetSerializeSize
      *
-     *  The the size, in bytes, of the serialize object
+     *  The the size, in bytes, of the serialize object.
      *
-     *  @return Number of bytes
+     *  @return The number of bytes.
      *
      **/
     uint32_t GetSerializeSize(uint32_t, uint32_t=0) const
@@ -901,13 +902,11 @@ public:
 
     /** DataStream
      *
-     *  Constructs the DataStream object
+     *  Constructs the DataStream object.
      *
-     *  @param[in] vchDataIn The byte vector to insert
-     *
-     *  @param[in] nSerTypeIn The serialize type
-     *
-     *  @param[in] nSerVersionIn The serialize version
+     *  @param[in] vchDataIn The byte vector to insert.
+     *  @param[in] nSerTypeIn The serialize type.
+     *  @param[in] nSerVersionIn The serialize version.
      *
      **/
     DataStream(const std::vector<uint8_t>& vchDataIn, const uint32_t nSerTypeIn, const uint32_t nSerVersionIn)
@@ -967,9 +966,11 @@ public:
     }
 
 
-    /** Set Type
+    /** SetType
      *
      *  Sets the type of stream.
+     *
+     *  @param[in] nSerTypeIn The serialize type to set.
      *
      **/
     void SetType(uint8_t nSerTypeIn)
@@ -978,9 +979,11 @@ public:
     }
 
 
-    /** Set Pos
+    /** SetPos
      *
      *  Sets the position in the stream.
+     *
+     *  @param[in] nNewPos The position to set to in the stream.
      *
      **/
     void SetPos(uint32_t nNewPos) const
@@ -1019,7 +1022,7 @@ public:
 
     /** Reset
      *
-     *  Resets the internal read pointer
+     *  Resets the internal read pointer.
      *
      **/
     void Reset() const
@@ -1030,7 +1033,7 @@ public:
 
     /** End
      *
-     *  Returns if end of stream is found
+     *  Returns if end of stream is found.
      *
      **/
     bool End() const
@@ -1041,11 +1044,12 @@ public:
 
     /** read
      *
-     *  Reads raw data from the stream
+     *  Reads raw data from the stream.
      *
-     *  @param[in] pch The pointer to beginning of memory to write
+     *  @param[in] pch The pointer to beginning of memory to write.
+     *  @param[in] nSize The total number of bytes to read.
      *
-     *  @param[in] nSize The total number of bytes to read
+     *  @return Returns a reference to the DataStream object.
      *
      **/
     const DataStream& read(char* pch, uint32_t nSize) const
@@ -1064,7 +1068,7 @@ public:
     }
 
 
-    /** Get
+    /** Bytes
      *
      *  Get the data stream from the object.
      *
@@ -1075,7 +1079,7 @@ public:
     }
 
 
-    /** Reserve
+    /** reserve
      *
      *  Implement the same reserve functionality to vector.
      *
@@ -1086,7 +1090,7 @@ public:
     }
 
 
-    /** Begin
+    /** begin
      *
      *  Wrapper around the vector iterator.
      *
@@ -1097,7 +1101,7 @@ public:
     }
 
 
-    /** End
+    /** end
      *
      *  Wrapper around the vector iterator.
      *
@@ -1108,7 +1112,7 @@ public:
     }
 
 
-    /** Begin
+    /** begin
      *
      *  Wrapper around the vector iterator.
      *
@@ -1119,7 +1123,7 @@ public:
     }
 
 
-    /** End
+    /** end
      *
      *  Wrapper around the vector iterator.
      *
@@ -1129,7 +1133,8 @@ public:
         return vData.end();
     }
 
-    /** Data
+
+    /** data
      *
      *  Wrapper around data to get the start of vector.
      *
@@ -1140,7 +1145,7 @@ public:
      }
 
 
-    /** Clear
+    /** clear
      *
      *  Wrapper around the vector clear.
      *
@@ -1151,7 +1156,7 @@ public:
     }
 
 
-    /** Size
+    /** size
      *
      *  Get the size of the data stream.
      *
@@ -1164,11 +1169,10 @@ public:
 
     /** write
      *
-     *  Writes data into the stream
+     *  Writes data into the stream.
      *
-     *  @param[in] pch The pointer to beginning of memory to write
-     *
-     *  @param[in] nSize The total number of bytes to copy
+     *  @param[in] pch The pointer to beginning of memory to write.
+     *  @param[in] nSize The total number of bytes to copy.
      *
      **/
     DataStream& write(const char* pch, uint32_t nSize)
@@ -1184,7 +1188,7 @@ public:
      *
      *  Serializes data into vchOperations
      *
-     *  @param[in] obj The object to serialize into ledger data
+     *  @param[in] obj The object to serialize into ledger data.
      *
      **/
     template<typename Type> DataStream& operator<<(const Type& obj)
@@ -1198,9 +1202,9 @@ public:
 
     /** Operator Overload >>
      *
-     *  Serializes data into vchOperations
+     *  Serializes data into vchOperations.
      *
-     *  @param[out] obj The object to de-serialize from ledger data
+     *  @param[out] obj The object to de-serialize from ledger data.
      *
      **/
     template<typename Type> const DataStream& operator>>(Type& obj) const
@@ -1237,9 +1241,7 @@ public:
      *  Default construtor
      *
      *  @param[in] filenew The new file pointer to associate with
-     *
      *  @param[in] nTypeIn The serialize type
-     *
      *  @param[in] nVersionIn The serialize version
      *
      **/
@@ -1327,13 +1329,12 @@ public:
 
     /** read
      *
-     *  Reads from file into the raw data pointer
+     *  Reads from file into the raw data pointer.
      *
-     *  @param[in] pch The pointer to beginning of memory to read into
+     *  @param[in] pch The pointer to beginning of memory to read into.
+     *  @param[in] nSize The total number of bytes to read.
      *
-     *  @param[in] nSize The total number of bytes to read
-     *
-     *  @return Reference to the CAutoFile
+     *  @return Reference to the CAutoFile.
      *
      **/
     CAutoFile& read(char* pch, size_t nSize)
@@ -1348,13 +1349,12 @@ public:
 
     /** write
      *
-     *  Writes data into the file from the raw data pointer
+     *  Writes data into the file from the raw data pointer.
      *
-     *  @param[in] pch The pointer to beginning of memory to write from
+     *  @param[in] pch The pointer to beginning of memory to write from.
+     *  @param[in] nSize The total number of bytes to write.
      *
-     *  @param[in] nSize The total number of bytes to write
-     *
-     *  @return Reference to the CAutoFile
+     *  @return Reference to the CAutoFile.
      *
      **/
     CAutoFile& write(const char* pch, size_t nSize)
@@ -1369,11 +1369,11 @@ public:
 
     /** GetSerializeSize
      *
-     *  The the size, in bytes, of the serialize object
+     *  The the size, in bytes, of the serialize object.
      *
-     *  @param[in] reference to the object to get the size of
+     *  @param[in] obj A reference to the object to get the size of.
      *
-     *  @return Number of bytes
+     *  @return Number of bytes.
      *
      **/
     template<typename T>

@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -115,7 +115,7 @@ namespace TAO
             apiNode.Write(vBuffer, vBuffer.size());
 
             /* Read the response packet. */
-            while(!apiNode.INCOMING.Complete())
+            while(!apiNode.INCOMING.Complete() && !config::fShutdown)
             {
 
                 /* Catch if the connection was closed. */
@@ -230,7 +230,7 @@ namespace TAO
             rpcNode.Write(vBuffer, vBuffer.size());
 
             /* Read the response packet. */
-            while(!rpcNode.INCOMING.Complete())
+            while(!rpcNode.INCOMING.Complete() && !config::fShutdown)
             {
 
                 /* Catch if the connection was closed. */
@@ -245,14 +245,6 @@ namespace TAO
                 if(rpcNode.Errors())
                 {
                     debug::log(0, "Socket Error");
-
-                    return 0;
-                }
-
-                /* Catch if the connection timed out. */
-                if(rpcNode.Timeout(30))
-                {
-                    debug::log(0, "Socket Timeout");
 
                     return 0;
                 }

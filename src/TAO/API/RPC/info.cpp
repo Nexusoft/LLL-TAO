@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -51,12 +51,12 @@ namespace TAO
             json::json obj;
             obj["version"] = version::CLIENT_VERSION_BUILD_STRING;
             obj["protocolversion"] = LLP::PROTOCOL_VERSION;
-            obj["walletversion"] = Legacy::CWallet::GetInstance().GetVersion();
+            obj["walletversion"] = Legacy::Wallet::GetInstance().GetVersion();
             obj["testnet"] = config::fTestNet;
-            obj["balance"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetBalance());
-            obj["unconfirmedbalance"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetUnconfirmedBalance());
-            obj["newmint"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetNewMint());
-            obj["stake"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetStake());
+            obj["balance"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetBalance());
+            obj["unconfirmedbalance"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetUnconfirmedBalance());
+            obj["newmint"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetNewMint());
+            obj["stake"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetStake());
 
 
         //   double dPercent = ((double)Core::dTrustWeight + (double)Core::dBlockWeight) / 37.5;
@@ -64,7 +64,7 @@ namespace TAO
         //   obj.push_back(std::make_pair("stakeweight",    dPercent * 100.0));
         //   obj.push_back(std::make_pair("trustweight",    (double)Core::dTrustWeight * 100.0 / 17.5));
         //   obj.push_back(std::make_pair("blockweight",    (double)Core::dBlockWeight * 100.0  / 20.0));
-            obj["txtotal"] =(int)Legacy::CWallet::GetInstance().mapWallet.size();
+            obj["txtotal"] =(int)Legacy::Wallet::GetInstance().mapWallet.size();
 
 
             obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
@@ -76,15 +76,15 @@ namespace TAO
             obj["ip"] = config::GetBoolArg("-legacy") ? LLP::LEGACY_SERVER->addrThisNode.ToStringIP() : LLP::TRITIUM_SERVER->addrThisNode.ToStringIP();
 
             obj["testnet"] = config::fTestNet;
-            obj["keypoololdest"] = (int64_t)Legacy::CWallet::GetInstance().GetKeyPool().GetOldestKeyPoolTime();
-            obj["keypoolsize"] = Legacy::CWallet::GetInstance().GetKeyPool().GetKeyPoolSize();
-            if (Legacy::CWallet::GetInstance().IsCrypted())
+            obj["keypoololdest"] = (int64_t)Legacy::Wallet::GetInstance().GetKeyPool().GetOldestKeyPoolTime();
+            obj["keypoolsize"] = Legacy::Wallet::GetInstance().GetKeyPool().GetKeyPoolSize();
+            if (Legacy::Wallet::GetInstance().IsCrypted())
             {
-                obj["locked"] = Legacy::CWallet::GetInstance().IsLocked();
-                if( !Legacy::CWallet::GetInstance().IsLocked())
+                obj["locked"] = Legacy::Wallet::GetInstance().IsLocked();
+                if( !Legacy::Wallet::GetInstance().IsLocked())
                 {
-                    if( (uint64_t) Legacy::CWallet::GetInstance().GetWalletUnlockTime() > 0 )
-                        obj["unlocked_until"] = (uint64_t) Legacy::CWallet::GetInstance().GetWalletUnlockTime() ;
+                    if( (uint64_t) Legacy::Wallet::GetInstance().GetWalletUnlockTime() > 0 )
+                        obj["unlocked_until"] = (uint64_t) Legacy::Wallet::GetInstance().GetWalletUnlockTime() ;
 
                     obj["minting_only"] = Legacy::fWalletUnlockMintOnly;
                 }
@@ -181,7 +181,7 @@ namespace TAO
                 TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest;
 
                 bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
-                for(; (nTotal < 1440 && bLastStateFound); nTotal ++)
+                for(; (nTotal < 1440 && bLastStateFound); ++nTotal)
                 {
                     uint64_t nLastBlockTime = blockState.GetBlockTime();
                     blockState = blockState.Prev();
@@ -234,18 +234,27 @@ namespace TAO
             //obj["currentblocksize"] = (uint64_t)Core::nLastBlockSize;
             //obj["currentblocktx"] =(uint64_t)Core::nLastBlockTx;
 
+            TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::stateBest;
+            bool fHasStake = TAO::Ledger::GetLastState(lastStakeBlockState, 0);
+
             TAO::Ledger::BlockState lastPrimeBlockState = TAO::Ledger::ChainState::stateBest;
             bool fHasPrime = TAO::Ledger::GetLastState(lastPrimeBlockState, 1);
 
             TAO::Ledger::BlockState lastHashBlockState = TAO::Ledger::ChainState::stateBest;
             bool fHasHash = TAO::Ledger::GetLastState(lastHashBlockState, 2);
 
-            TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::stateBest;
-            bool fHasStake = TAO::Ledger::GetLastState(lastStakeBlockState, 3);
 
+            if(fHasStake == false)
+                debug::error(FUNCTION, "couldn't find last stake block state");
+            if(fHasPrime == false)
+                debug::error(FUNCTION, "couldn't find last prime block state");
+            if(fHasHash == false)
+                debug::error(FUNCTION, "couldn't find last hash block state");
+
+
+            obj["stakeDifficulty"] = fHasStake ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastStakeBlockState, 0, false), 0) : 0;
             obj["primeDifficulty"] = fHasPrime ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastPrimeBlockState, 1, false), 1) : 0;
             obj["hashDifficulty"] = fHasHash ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastHashBlockState, 2, false), 2) : 0;
-            obj["stakeDifficulty"] = fHasStake ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastStakeBlockState, 3, false), 3) : 0;
             obj["primeReserve"] =    Legacy::SatoshisToAmount(lastPrimeBlockState.nReleasedReserve[0]);
             obj["hashReserve"] =     Legacy::SatoshisToAmount(lastHashBlockState.nReleasedReserve[0]);
             obj["primeValue"] =        Legacy::SatoshisToAmount(TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest, 1, 0));
@@ -260,8 +269,8 @@ namespace TAO
                 //obj["totalConnections"] = LLP::MINING_LLP->TotalConnections();
             }
 
-            obj["genesisblockhash"] = TAO::Ledger::ChainState::stateGenesis.GetHash().GetHex();
-            obj["currentblockhash"] = TAO::Ledger::ChainState::stateBest.GetHash().GetHex();
+            //obj["genesisblockhash"] = TAO::Ledger::ChainState::stateGenesis.GetHash().GetHex();
+            //obj["currentblockhash"] = TAO::Ledger::ChainState::stateBest.GetHash().GetHex();
 
             return obj;
         }

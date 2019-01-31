@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -118,7 +118,7 @@ namespace LLP
                 /* If the connection attempt timed out with select. */
                 if (nRet == 0)
                 {
-                    debug::log(0, FUNCTION, "connection timeout ", addrDest.ToString(), "...");
+                    debug::log(3, FUNCTION, "connection timeout ", addrDest.ToString(), "...");
 
                     close(fd);
 
@@ -128,7 +128,7 @@ namespace LLP
                 /* If the select failed. */
                 if (nRet == SOCKET_ERROR)
                 {
-                    debug::log(0, FUNCTION, "select failed ", addrDest.ToString(), " (",  GetLastError(), ")");
+                    debug::log(3, FUNCTION, "select failed ", addrDest.ToString(), " (",  GetLastError(), ")");
 
                     close(fd);
 
@@ -143,7 +143,7 @@ namespace LLP
                 if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
     #endif
                 {
-                    debug::log(0, FUNCTION, "get options failed ", addrDest.ToString(), " (", GetLastError(), ")");
+                    debug::log(3, FUNCTION, "get options failed ", addrDest.ToString(), " (", GetLastError(), ")");
                     close(fd);
 
                     return false;
@@ -152,7 +152,7 @@ namespace LLP
                 /* If there are no socket options set. TODO: Remove preprocessors for cross platform sockets. */
                 if (nRet != 0)
                 {
-                    debug::log(0, FUNCTION, "failed after select ", addrDest.ToString(), " (", nRet, ")");
+                    debug::log(3, FUNCTION, "failed after select ", addrDest.ToString(), " (", nRet, ")");
                     close(fd);
 
                     return false;
@@ -164,7 +164,7 @@ namespace LLP
             else
     #endif
             {
-                debug::log(0, FUNCTION, "connect failed ", addrDest.ToString(), " (", GetLastError(), ")");
+                debug::log(3, FUNCTION, "connect failed ", addrDest.ToString(), " (", GetLastError(), ")");
                 close(fd);
 
                 return false;
@@ -179,7 +179,7 @@ namespace LLP
 
 
     /* Poll the socket to check for available data */
-    int Socket::Available()
+    int Socket::Available() const
     {
         int nAvailable = 0;
         #ifdef WIN32

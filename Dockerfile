@@ -79,6 +79,7 @@ COPY config/curl-nexus /nexus/curl-nexus
 # Copy LISP startup config.
 #
 COPY lisp/RL /lispers.net/RL
+COPY lisp/RL-seed /lispers.net/RL-seed
 COPY lisp/lisp.config.xtr /lispers.net/lisp.config.xtr
 COPY lisp/lisp-join.py /lispers.net/lisp-join.py
 COPY lisp/make-crypto-eid.py /lispers.net/make-crypto-eid.py
@@ -93,6 +94,7 @@ COPY config/.cshrc /root/.cshrc
 # Startup lispers.net and nexus. Output some useful data and drop into tcsh.
 #
 ENV RUN_LISP    /lispers.net/RL
+#ENV RUN_LISP    /lispers.net/RL-seed
 ENV RUN_NEXUS   /nexus/run-nexus
 ENV RUN_GETINFO /nexus/nexus -test getinfo
 ENV RUN_PSLISP  /lispers.net/pslisp

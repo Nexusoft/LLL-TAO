@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -166,7 +166,7 @@ namespace LLD
         , runtime()
         , pTransaction(nullptr)
         , pSectorKeys(nullptr)
-        , cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE))
+        , cachePool(new CacheType((config::GetArg("-maxcache", 64) * 1024 * 1024) / 4))
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
         , nCurrentFile(0)
         , nCurrentFileSize(0)
@@ -301,7 +301,6 @@ namespace LLD
             { LOCK(TRANSACTION_MUTEX);
                 if(pTransaction)
                 {
-
                     if(pTransaction->mapEraseData.count(ssKey.Bytes()))
                         return false;
 
@@ -343,6 +342,9 @@ namespace LLD
             /* Serialize Key into Bytes. */
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
+
+            /* Remove the item from the cache pool. */
+            cachePool->Remove(ssKey.Bytes());
 
             /* Add transaction to erase queue. */
             { LOCK(TRANSACTION_MUTEX);
@@ -480,6 +482,9 @@ namespace LLD
             { LOCK(TRANSACTION_MUTEX);
                 if(pTransaction)
                 {
+                    /* Check if data is in erase queue, if so remove it. */
+                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
+                        pTransaction->mapEraseData.erase(ssKey.Bytes());
 
                     /* Set the transaction data. */
                     pTransaction->mapKeychain[ssKey.Bytes()] = 0;
@@ -522,6 +527,10 @@ namespace LLD
             { LOCK(TRANSACTION_MUTEX);
                 if(pTransaction)
                 {
+                    /* Check if data is in erase queue, if so remove it. */
+                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
+                        pTransaction->mapEraseData.erase(ssKey.Bytes());
+
                     /* Set the transaction data. */
                     pTransaction->mapTransactions[ssKey.Bytes()] = ssData.Bytes();
 

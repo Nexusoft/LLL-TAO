@@ -73,6 +73,10 @@ print "Create 10 supply-chain items for sdk-test-user1 ...",
 address = []
 for i in range(10):
     j = user1.nexus_supply_createitem("data" + str(i))
+    if (j.has_key("error")):
+        print "failed"
+        exit(1)
+    #endif
     address.append(j["result"]["address"])
 #endfor
 print "done"

@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -43,7 +43,7 @@ namespace Legacy
             if (poolWallet.IsLocked())
                 return false;
 
-            CWalletDB walletdb(poolWallet.GetWalletFile());
+            WalletDB walletdb(poolWallet.GetWalletFile());
 
             LOCK(CKeyPool::cs_keyPool);
 
@@ -103,7 +103,7 @@ namespace Legacy
 
             debug::log(2, FUNCTION, "Topping up Keypool, current size = ", nStartingSize, " target size = ",  nTargetSize);
 
-            CWalletDB walletdb(poolWallet.GetWalletFile());
+            WalletDB walletdb(poolWallet.GetWalletFile());
 
             /* Current max pool index in the pool */
             uint64_t nCurrentMaxPoolIndex = 0;
@@ -147,7 +147,7 @@ namespace Legacy
         {
             LOCK(CKeyPool::cs_keyPool);
 
-            CWalletDB walletdb(poolWallet.GetWalletFile());
+            WalletDB walletdb(poolWallet.GetWalletFile());
 
             uint64_t nPoolIndex = 1;
             if (!setKeyPool.empty())
@@ -223,7 +223,7 @@ namespace Legacy
 
             LOCK(CKeyPool::cs_keyPool);
 
-            CWalletDB walletdb(poolWallet.GetWalletFile());
+            WalletDB walletdb(poolWallet.GetWalletFile());
 
             /* Get the oldest key (smallest key pool index) */
             auto si = setKeyPool.begin();
@@ -259,7 +259,7 @@ namespace Legacy
             LOCK(CKeyPool::cs_keyPool);
 
             /* Remove from key pool */
-            CWalletDB walletdb(poolWallet.GetWalletFile());
+            WalletDB walletdb(poolWallet.GetWalletFile());
             walletdb.ErasePool(nPoolIndex);
 
             debug::log(3, FUNCTION, "Keypool keep ", nPoolIndex);

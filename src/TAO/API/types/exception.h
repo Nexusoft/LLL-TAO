@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -23,7 +23,7 @@ namespace TAO
     namespace API
     {
 
-        /** API Exception
+        /** APIException
          *
          *  Encapsulates an exception that can be converted into a valid JSON error object
          *
@@ -31,10 +31,13 @@ namespace TAO
         class APIException : public json::detail::exception
         {
         public:
+
+            /** Default Constructor **/
             APIException(int32_t nCode, const char* strMessage)
             : json::detail::exception(nCode, strMessage) {}
 
 
+            /** Default Constructor **/
             APIException(int32_t nCode, const std::string& strMessage)
             : json::detail::exception(nCode, strMessage.c_str()) {}
 

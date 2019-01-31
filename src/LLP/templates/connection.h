@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -17,7 +17,6 @@ ________________________________________________________________________________
 #include <vector>
 #include <stdio.h>
 
-#include <LLP/include/legacyaddress.h>
 #include <LLP/packets/packet.h>
 #include <LLP/templates/socket.h>
 #include <LLP/templates/ddos.h>
@@ -42,7 +41,7 @@ namespace LLP
     protected:
 
         /** Mutex for thread synchronization. **/
-        std::mutex MUTEX;
+        mutable std::mutex MUTEX;
 
 
         /** Event
@@ -178,7 +177,7 @@ namespace LLP
          *  Give the message (c-string) of the error in the socket.
          *
          **/
-        char* Error()
+        char* Error() const
         {
             return strerror(ErrorCode());
         }
@@ -213,6 +212,7 @@ namespace LLP
          *
          *  Handles two types of packets, requests which are of header >= 128,
          *  and data which are of header < 128.
+         *
          **/
         bool PacketComplete() const
         {
@@ -239,7 +239,7 @@ namespace LLP
          *  @param[in] PACKET The packet of type PacketType to write.
          *
          **/
-        void WritePacket(PacketType PACKET)
+        void WritePacket(const PacketType& PACKET)
         {
             LOCK(MUTEX);
 
@@ -280,7 +280,7 @@ namespace LLP
             BaseAddress addrConnect(strAddress, nPort);
 
             /// debug print
-            debug::log(1, NODE, "Connecting to ", addrConnect.ToString());
+            debug::log(3, NODE, "Connecting to ", addrConnect.ToString());
 
             // Connect
             if (Attempt(addrConnect))
@@ -296,6 +296,7 @@ namespace LLP
 
             return false;
         }
+
 
         /** GetAddress
          *

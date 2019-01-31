@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -24,20 +24,20 @@ namespace TAO
     namespace Ledger
     {
 
-        /** Get Last Trust
+        /** GetLastTrust
          *
          *  Find the last trust block of given key.
          *
          *  @param[in] trustKey The trust key to search for
          *  @param[out] state The trust key block found.
          *
-         *  @return true if the trust block was found.
+         *  @return True if the trust block was found, false otherwise.
          *
          **/
         bool GetLastTrust(const TrustKey& trustKey, TAO::Ledger::BlockState& state);
 
 
-        /** Find Genesis
+        /** FindGenesis
          *
          *  Find the genesis block of given trust key.
          *
@@ -45,7 +45,7 @@ namespace TAO
          *  @param[out] trustKey The trust that was found
          *  @param[out] hashTrustBlock The trust key block found.
          *
-         *  @return true if the trust block was found.
+         *  @return True if the trust block was found, false otherwise.
          *
          **/
         bool FindGenesis(const uint576_t& cKey, const uint1024_t& hashTrustBlock, TrustKey& trustKey);

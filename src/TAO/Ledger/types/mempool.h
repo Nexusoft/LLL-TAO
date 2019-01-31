@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -34,6 +34,12 @@ namespace TAO
     namespace Ledger
     {
 
+        /** Mempool
+         *
+         *  The memory pool class where transactions are stored until they are validated
+         *  and added to the ledger.
+         *
+         **/
         class Mempool
         {
             mutable std::mutex MUTEX;
@@ -65,7 +71,7 @@ namespace TAO
 
             }
 
-            /** Add Unchecked.
+            /** AddUnchecked.
              *
              *  Add a transaction to the memory pool without validation checks.
              *
@@ -77,7 +83,7 @@ namespace TAO
             bool AddUnchecked(TAO::Ledger::Transaction tx);
 
 
-            /** Add Unchecked.
+            /** AddUnchecked
              *
              *  Add a legacy transaction to the memory pool without validation checks.
              *
@@ -89,7 +95,7 @@ namespace TAO
             bool AddUnchecked(Legacy::Transaction tx);
 
 
-            /** Accept.
+            /** Accept
              *
              *  Accepts a transaction with validation rules.
              *
@@ -101,7 +107,7 @@ namespace TAO
             bool Accept(TAO::Ledger::Transaction tx);
 
 
-            /** Accept.
+            /** Accept
              *
              *  Accepts a legacy transaction with validation rules.
              *
@@ -113,7 +119,7 @@ namespace TAO
             bool Accept(Legacy::Transaction tx);
 
 
-             /** Get.
+            /** Get
              *
              *  Gets a transaction from mempool
              *
@@ -127,7 +133,7 @@ namespace TAO
             bool Get(uint512_t hashTx, TAO::Ledger::Transaction& tx) const;
 
 
-            /** Get.
+            /** Get
              *
              *  Gets a legacy transaction from mempool
              *
@@ -141,7 +147,7 @@ namespace TAO
             bool Get(uint512_t hashTx, Legacy::Transaction& tx) const;
 
 
-           /** Has.
+            /** Has
              *
              *  Checks if a transaction exists.
              *
@@ -153,7 +159,7 @@ namespace TAO
             bool Has(uint512_t hashTx) const;
 
 
-            /** HasLegacy.
+            /** HasLegacy
              *
              *  Checks if a legacy transaction exists.
              *
@@ -165,7 +171,7 @@ namespace TAO
             bool HasLegacy(uint512_t hashTx) const;
 
 
-            /** Remove.
+            /** Remove
              *
              *  Remove a transaction from pool.
              *
@@ -177,7 +183,7 @@ namespace TAO
             bool Remove(uint512_t hashTx);
 
 
-            /** RemoveLegacy.
+            /** RemoveLegacy
              *
              *  Remove a legacy transaction from pool.
              *
@@ -189,7 +195,19 @@ namespace TAO
             bool RemoveLegacy(uint512_t hashTx);
 
 
-            /** List.
+            /** Get
+             *
+             *  Gets a legacy transaction from mempool
+             *
+             *  @param[in] tx The transaction to add.
+             *
+             *  @return true if added.
+             *
+             **/
+            bool Get(uint512_t hashTx, Legacy::Transaction& tx) const;
+
+
+            /** List
              *
              *  List transactions in memory pool.
              *
@@ -202,7 +220,7 @@ namespace TAO
             bool List(std::vector<uint512_t> &vHashes, uint32_t nCount = std::numeric_limits<uint32_t>::max()) const;
 
 
-            /** ListLegacy.
+            /** ListLegacy
              *
              *  List legacy transactions in memory pool.
              *

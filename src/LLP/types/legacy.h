@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <Legacy/types/locator.h>
 
+#include <LLP/include/legacyaddress.h>
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
 #include <LLP/packets/legacy.h>
@@ -53,6 +54,7 @@ namespace LLP
         , nNodeLatency(std::numeric_limits<uint32_t>::max())
         , nLastPing(runtime::timestamp())
         , nConsecutiveTimeouts(0)
+        , hashContinue(0)
         , mapLatencyTracker()
         , mapSentRequests()
         {
@@ -71,6 +73,7 @@ namespace LLP
         , nNodeLatency(std::numeric_limits<uint32_t>::max())
         , nLastPing(runtime::timestamp())
         , nConsecutiveTimeouts(0)
+        , hashContinue(0)
         , mapLatencyTracker()
         , mapSentRequests()
         {
@@ -116,6 +119,10 @@ namespace LLP
 
         /** The number of times getblocks has timed out (to deal with unreliable NON-TRITIUM nodes). **/
         uint32_t nConsecutiveTimeouts;
+
+
+        /** The trigger hash to send a continue inv message to remote node. **/
+        uint1024_t hashContinue;
 
 
         /** timer object to keep track of ping latency. **/

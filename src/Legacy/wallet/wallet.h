@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -59,7 +59,7 @@ namespace Legacy
 
     class COutput;
     class CReserveKey;
-    class CWalletTx;
+    class WalletTx;
 
 
     /** Nexus: Setting to unlock wallet for block minting only **/
@@ -78,12 +78,12 @@ namespace Legacy
     using MasterKeyMap = std::map<uint32_t, CMasterKey>;
 
     /** TransactionMap is type alias defining a map for storing wallet transactions by hash. **/
-    using TransactionMap = std::map<uint512_t, CWalletTx>;
+    using TransactionMap = std::map<uint512_t, WalletTx>;
 
 
-    /** @class CWallet
+    /** @class Wallet
      *
-     *  A CWallet is an extension of a keystore, which also maintains a set of transactions and balances,
+     *  A Wallet is an extension of a keystore, which also maintains a set of transactions and balances,
      *  and provides the ability to create new transactions.
      *
      *  Implemented as a Singleton where GetInstance is used wherever the wallet instance is needed.
@@ -91,20 +91,20 @@ namespace Legacy
      *  To use the wallet, first call InitializeWallet followed by LoadWallet. The following
      *  example will use the default wallet database file name:
      *
-     *  if (!CWallet::InitializeWallet())
+     *  if (!Wallet::InitializeWallet())
      *      //initialization not successful
      *
-     *  if (CWallet::GetInstance().LoadWallet() != Legacy::DB_LOAD_OK)
+     *  if (Wallet::GetInstance().LoadWallet() != Legacy::DB_LOAD_OK)
      *      //load not successful
      *
-     *  CWallet& wallet = CWallet::GetInstance();
+     *  Wallet& wallet = Wallet::GetInstance();
      *  //use wallet
      *
      **/
-    class CWallet : public CCryptoKeyStore
+    class Wallet : public CCryptoKeyStore
     {
-        /** CWalletDB declared friend so it can use private Load methods within LoadWallet **/
-        friend class CWalletDB;
+        /** WalletDB declared friend so it can use private Load methods within LoadWallet **/
+        friend class WalletDB;
 
     public:
         /** InitializeWallet
@@ -119,11 +119,11 @@ namespace Legacy
          *
          *  @return true if wallet intance initialized, false otherwise
          *
-         *  @see CWallet::GetInstance
+         *  @see Wallet::GetInstance
          *  @see LoadWallet
          *
          **/
-        static bool InitializeWallet(const std::string& strWalletFileIn = Legacy::CWalletDB::DEFAULT_WALLET_DB);
+        static bool InitializeWallet(const std::string& strWalletFileIn = Legacy::WalletDB::DEFAULT_WALLET_DB);
 
 
         /** GetInstance
@@ -133,13 +133,13 @@ namespace Legacy
          *  If the wallet is not yet initialized, this will call InitializeWallet using the
          *  default setting.
          *
-         *  @return reference to the CWallet instance
+         *  @return reference to the Wallet instance
          *
          *  @see InitializeWallet
          *  @see LoadWallet
          *
          **/
-        static CWallet& GetInstance();
+        static Wallet& GetInstance();
 
 
     private:
@@ -163,7 +163,7 @@ namespace Legacy
 
 
         /** Flag indicating whether or not a file backed wallet has been loaded.
-         *  Set true after successful call to CWallet::LoadWallet().
+         *  Set true after successful call to Wallet::LoadWallet().
          *  Prevents LoadWallet() from executing more than once.
          **/
         bool fLoaded;
@@ -213,7 +213,7 @@ namespace Legacy
          *  for assigning it when used. If we move to C++14 or higher standard that function
          *  is added and this can be changed.
          **/
-        std::shared_ptr<CWalletDB> pWalletDbEncryption;
+        std::shared_ptr<WalletDB> pWalletDbEncryption;
 
 
         /** Constructor
@@ -221,7 +221,7 @@ namespace Legacy
          *  Initializes a wallet instance for FEATURE_BASE that is not file backed.
          *
          **/
-        CWallet()
+        Wallet()
         : nWalletVersion(FEATURE_BASE)
         , nWalletMaxVersion(FEATURE_BASE)
         , fFileBacked(false)
@@ -646,7 +646,7 @@ namespace Legacy
          *  @return true if transaction found
          *
          **/
-        bool GetTransaction(const uint512_t& hashTx, CWalletTx& wtx);
+        bool GetTransaction(const uint512_t& hashTx, WalletTx& wtx);
 
 
         /** GetRequestCount
@@ -661,7 +661,7 @@ namespace Legacy
          *  @return The request count as recorded by request tracking, -1 if not tracked
          *
          **/
-        int32_t GetRequestCount(const CWalletTx& wtx) const;
+        int32_t GetRequestCount(const WalletTx& wtx) const;
 
 
         /** AddToWallet
@@ -674,7 +674,7 @@ namespace Legacy
          *  @return true if transaction found
          *
          **/
-        bool AddToWallet(const CWalletTx& wtxIn);
+        bool AddToWallet(const WalletTx& wtxIn);
 
 
         /** AddToWalletIfInvolvingMe
@@ -694,12 +694,12 @@ namespace Legacy
          *  @param[in] fFindBlock No longer used
          *
          *  @param[in] fRescan Set true if processing as part of wallet rescan
-         *                     This will set CWalletTx time to tx time if it is added (otherwise uses current timestamp)
+         *                     This will set WalletTx time to tx time if it is added (otherwise uses current timestamp)
          *
          * @return true if the transactions was added/updated
          *
          */
-        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::Block* pcontainingBlock,
+        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::BlockState& containingBlock,
                                       bool fUpdate = false, bool fFindBlock = false, bool fRescan = false);
 
 
@@ -955,7 +955,7 @@ namespace Legacy
          *  @return empty string if successful, otherwise contains a displayable error message
          *
          **/
-        std::string SendToNexusAddress(const NexusAddress& address, const int64_t nValue, CWalletTx& wtxNew,
+        std::string SendToNexusAddress(const NexusAddress& address, const int64_t nValue, WalletTx& wtxNew,
                                        const bool fAskFee = false, const uint32_t nMinDepth = 1);
 
 
@@ -978,7 +978,7 @@ namespace Legacy
          *  @return true if transaction successfully created
          *
          **/
-        bool CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& changeKey,
+        bool CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, WalletTx& wtxNew, CReserveKey& changeKey,
                                int64_t& nFeeRet, const uint32_t nMinDepth = 1);
 
 
@@ -993,7 +993,7 @@ namespace Legacy
          *  @return true if transaction successfully committed
          *
          **/
-        bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& changeKey);
+        bool CommitTransaction(WalletTx& wtxNew, CReserveKey& changeKey);
 
 
         /** AddCoinstakeInputs
@@ -1010,7 +1010,7 @@ namespace Legacy
 
     private:
     /*----------------------------------------------------------------------------------------*/
-    /*  Load Wallet operations - require CWalletDB declared friend                            */
+    /*  Load Wallet operations - require WalletDB declared friend                            */
     /*----------------------------------------------------------------------------------------*/
         /** LoadMinVersion
          *
@@ -1021,7 +1021,7 @@ namespace Legacy
          *
          *  @return true if version assigned successfully
          *
-         *  @see CWalletDB::LoadWallet
+         *  @see WalletDB::LoadWallet
          *
          **/
         bool LoadMinVersion(const uint32_t nVersion);
@@ -1038,7 +1038,7 @@ namespace Legacy
          *
          *  @return true if master key was successfully added
          *
-         *  @see CWalletDB::LoadWallet
+         *  @see WalletDB::LoadWallet
          *
          **/
         bool LoadMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey);
@@ -1055,7 +1055,7 @@ namespace Legacy
          *
          *  @return true if key successfully added
          *
-         *  @see CWalletDB::LoadWallet
+         *  @see WalletDB::LoadWallet
          *
          **/
         bool LoadCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret);
@@ -1070,7 +1070,7 @@ namespace Legacy
          *
          *  @return true if key successfully added
          *
-         *  @see CWalletDB::LoadWallet
+         *  @see WalletDB::LoadWallet
          *
          **/
         bool LoadKey(const LLC::ECKey& key);
@@ -1085,7 +1085,7 @@ namespace Legacy
          *
          *  @return true if script was successfully added
          *
-         *  @see CWalletDB::LoadWallet
+         *  @see WalletDB::LoadWallet
          *
          **/
         bool LoadCScript(const CScript& redeemScript);
@@ -1116,7 +1116,7 @@ namespace Legacy
          *  @return true if result set was successfully populated
          *
          **/
-        bool SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::set<std::pair<const CWalletTx*, uint32_t> >& setCoinsRet,
+        bool SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::set<std::pair<const WalletTx*, uint32_t> >& setCoinsRet,
                         int64_t& nValueRet, const std::string& strAccount = "*", const uint32_t nMinDepth = 1);
 
 
@@ -1144,7 +1144,7 @@ namespace Legacy
          *
          **/
         bool SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const uint32_t nConfMine, const uint32_t nConfTheirs,
-                                std::set<std::pair<const CWalletTx*, uint32_t> >& setCoinsRet,
+                                std::set<std::pair<const WalletTx*, uint32_t> >& setCoinsRet,
                                 int64_t& nValueRet, const std::string& strAccount = "*");
 
     };

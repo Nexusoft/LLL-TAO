@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -51,7 +51,7 @@ namespace Legacy
      *  @return the maximum value out
      *
      **/
-    inline uint64_t MaxTxOut()
+    inline int64_t MaxTxOut()
     {
         if(runtime::unifiedtimestamp() > (config::fTestNet ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[3] : TAO::Ledger::NETWORK_VERSION_TIMELOCK[3]))
             return 50000000 * COIN;
@@ -69,9 +69,9 @@ namespace Legacy
      *  @return true if value is within range.
      *
      **/
-    inline bool MoneyRange(uint64_t nValue)
+    inline bool MoneyRange(int64_t nValue)
     {
-        return (nValue <= MaxTxOut());
+        return (nValue >= 0 && nValue <= MaxTxOut());
     }
 
     /** SatoshisToAmount
@@ -83,7 +83,7 @@ namespace Legacy
     *  @return satoshis value converted to coin Amount.
     *
     **/
-    inline double SatoshisToAmount(uint64_t viz)
+    inline double SatoshisToAmount(int64_t viz)
     {
         return (double)viz / (double)Legacy::COIN;
     }

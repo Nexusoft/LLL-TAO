@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -13,9 +13,25 @@ ________________________________________________________________________________
 
 #include <LLC/include/random.h>
 
+
+
+#include <LLP/include/global.h>
+#include <LLP/types/corenode.h>
+#include <LLP/types/rpcnode.h>
+#include <LLP/types/miner.h>
+
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/rpc.h>
+#include <TAO/API/include/cmd.h>
+#include <TAO/API/include/supply.h>
+#include <TAO/API/include/accounts.h>
+#include <TAO/Ledger/include/create.h>
+#include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/mempool.h>
+#include <TAO/Operation/include/execute.h>
 
 #include <Util/include/args.h>
 #include <Util/include/config.h>
@@ -24,45 +40,12 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/filesystem.h>
 
-#include <TAO/API/include/cmd.h>
-#include <LLP/types/corenode.h>
-#include <LLP/types/rpcnode.h>
-#include <TAO/API/include/rpc.h>
-
-#include <LLP/include/global.h>
-#include <LLP/include/baseaddress.h>
-
-#include <TAO/Ledger/types/mempool.h>
-#include <TAO/Ledger/include/chainstate.h>
-
-#include <TAO/API/include/supply.h>
-#include <TAO/API/include/accounts.h>
-
+#include <Legacy/include/ambassador.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
-#include <Legacy/include/ambassador.h>
-
-#include <TAO/Operation/include/execute.h>
-
-#include <LLP/types/miner.h>
 
 #include <iostream>
 #include <sstream>
-
-#include <TAO/Ledger/include/create.h>
-#include <TAO/Ledger/include/constants.h>
-
-/* Declare the Global LLD Instances. */
-namespace LLD
-{
-    RegisterDB* regDB;
-    LedgerDB*   legDB;
-    LocalDB*    locDB;
-
-    //for legacy objects.
-    LegacyDB*   legacyDB;
-    TrustDB*    trustDB;
-}
 
 
 /* Declare the Global LLP Instances. */
@@ -76,6 +59,7 @@ int main(int argc, char** argv)
 {
     LLP::Server<LLP::CoreNode>* CORE_SERVER = nullptr;
     LLP::Server<LLP::RPCNode>* RPC_SERVER = nullptr;
+    LLP::Server<LLP::Miner>* MINING_SERVER = nullptr;
     uint16_t port = 0;
 
     /* Setup the timer timer. */
@@ -128,12 +112,12 @@ int main(int argc, char** argv)
 
     /** Load the Wallet Database. **/
     bool fFirstRun;
-    if (!Legacy::CWallet::InitializeWallet(config::GetArg("-wallet", Legacy::CWalletDB::DEFAULT_WALLET_DB)))
+    if (!Legacy::Wallet::InitializeWallet(config::GetArg("-wallet", Legacy::WalletDB::DEFAULT_WALLET_DB)))
         return debug::error("failed initializing wallet");
 
 
     /** Check the wallet loading for errors. **/
-    uint32_t nLoadWalletRet = Legacy::CWallet::GetInstance().LoadWallet(fFirstRun);
+    uint32_t nLoadWalletRet = Legacy::Wallet::GetInstance().LoadWallet(fFirstRun);
     if (nLoadWalletRet != Legacy::DB_LOAD_OK)
     {
         if (nLoadWalletRet == Legacy::DB_CORRUPT)
@@ -146,6 +130,9 @@ int main(int argc, char** argv)
             return debug::error("failed loading wallet.dat");
     }
 
+    /** Rebroadcast transactions. **/
+    Legacy::Wallet::GetInstance().ResendWalletTransactions();
+
 
     /** Initialize ChainState. */
     TAO::Ledger::ChainState::Initialize();
@@ -154,40 +141,51 @@ int main(int argc, char** argv)
     /** Initialize the scripts for legacy mode. **/
     Legacy::InitializeScripts();
 
-    port = static_cast<uint16_t>(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
+
+    /** Handle Rescanning. **/
+    if(config::GetBoolArg("-rescan"))
+        Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
 
 
-    /* Initialize the Tritium Server. */
-    LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(
-        port,
-        10,
-        30,
-        false,
-        0,
-        0,
-        60,
-        config::GetBoolArg("-listen", true),
-        config::GetBoolArg("-meters", false),
-        config::GetBoolArg("-manager", true));
 
 
-    /* -connect means  try to establish a connection */
-    if(config::mapMultiArgs["-connect"].size() > 0)
+    if(!config::GetBoolArg("-legacy"))
     {
-        for(const auto& node : config::mapMultiArgs["-connect"])
-            LLP::TRITIUM_SERVER->AddConnection(node, port);
+        /** Get the port for Tritium Server. **/
+        port = static_cast<uint16_t>(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
+
+
+        /* Initialize the Tritium Server. */
+        LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(
+            port,
+            10,
+            30,
+            false,
+            0,
+            0,
+            60,
+            config::GetBoolArg("-listen", true),
+            config::GetBoolArg("-meters", false),
+            config::GetBoolArg("-manager", true));
+
+
+        /* -connect means  try to establish a connection */
+        if(config::mapMultiArgs["-connect"].size() > 0)
+        {
+            for(const auto& node : config::mapMultiArgs["-connect"])
+                LLP::TRITIUM_SERVER->AddConnection(node, port);
+        }
+
+        /* -addnode means add to address manager */
+        if(config::mapMultiArgs["-addnode"].size() > 0)
+        {
+            for(const auto& node : config::mapMultiArgs["-addnode"])
+                LLP::TRITIUM_SERVER->AddNode(node, port);
+        }
+
     }
-
-    /* -addnode means add to address manager */
-    if(config::mapMultiArgs["-addnode"].size() > 0)
-    {
-        for(const auto& node : config::mapMultiArgs["-addnode"])
-            LLP::TRITIUM_SERVER->AddNode(node, port);
-    }
-
-
     /* Initialize the Legacy Server. */
-    if(config::GetBoolArg("-legacy"))
+    else
     {
         port = static_cast<uint16_t>(config::GetArg("-port", config::fTestNet ? 8323 : 9323));
 
@@ -246,6 +244,22 @@ int main(int argc, char** argv)
         false,
         false);
 
+
+    /* Set up Mining Server */
+    if(config::GetBoolArg("-mining"))
+    {
+        MINING_SERVER = new LLP::Server<LLP::Miner>(
+            config::GetArg("-miningport", config::fTestNet ? 8325 : 9325),
+            10,
+            30,
+            false,
+            0,
+            0,
+            60,
+            config::GetBoolArg("-listen", true),
+            false,
+            false);
+    }
 
 
     /* Elapsed Milliseconds from timer. */
@@ -353,7 +367,6 @@ int main(int argc, char** argv)
     }
 
 
-    //checkout these guys for memory leaks
     /* Shutdown the core API server and its subsystems */
     if(CORE_SERVER)
     {
@@ -371,6 +384,16 @@ int main(int argc, char** argv)
 
         RPC_SERVER->Shutdown();
         delete RPC_SERVER;
+    }
+
+
+    /* Shutdown the mining server and its subsystems */
+    if(MINING_SERVER)
+    {
+        debug::log(0, FUNCTION, "Shutting down Mining Server");
+
+        MINING_SERVER->Shutdown();
+        delete MINING_SERVER;
     }
 
 

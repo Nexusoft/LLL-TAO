@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -47,11 +47,11 @@ namespace TAO
             if( TAO::Ledger::ChainState::nBestHeight && TAO::Ledger::ChainState::stateBest != TAO::Ledger::ChainState::stateGenesis)
             {
                 uint64_t nTimeConstant = 276758250000;
-                    
+
                 TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest;
-                
+
                 bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 2);
-                for(;  (nHTotal < 1440 && bLastStateFound); nHTotal ++) 
+                for(;  (nHTotal < 1440 && bLastStateFound); nHTotal ++)
                 {
                     uint64_t nLastBlockTime = blockState.GetBlockTime();
                     blockState = blockState.Prev();
@@ -97,13 +97,13 @@ namespace TAO
             unsigned int nPrimeAverageTime = 0;
             if( TAO::Ledger::ChainState::nBestHeight && TAO::Ledger::ChainState::stateBest != TAO::Ledger::ChainState::stateGenesis)
             {
-                
+
                 unsigned int nPrimeTimeConstant = 2480;
                 int nTotal = 0;
                 TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest;
-                
+
                 bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
-                for(; (nTotal < 1440 && bLastStateFound); nTotal ++) 
+                for(; (nTotal < 1440 && bLastStateFound); nTotal ++)
                 {
                     uint64_t nLastBlockTime = blockState.GetBlockTime();
                     blockState = blockState.Prev();
@@ -123,7 +123,7 @@ namespace TAO
 
 
 
-            
+
             json::json obj;
             obj["averagetime"] = (int) nPrimeAverageTime;
             obj["averagedifficulty"] = nPrimeAverageDifficulty;
@@ -220,21 +220,30 @@ namespace TAO
                     "getdifficulty"
                     " - Returns difficulty as a multiple of the minimum difficulty.");
 
+            TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::stateBest;
+            bool fHasStake = TAO::Ledger::GetLastState(lastStakeBlockState, 0);
+
             TAO::Ledger::BlockState lastPrimeBlockState = TAO::Ledger::ChainState::stateBest;
             bool fHasPrime = TAO::Ledger::GetLastState(lastPrimeBlockState, 1);
 
             TAO::Ledger::BlockState lastHashBlockState = TAO::Ledger::ChainState::stateBest;
             bool fHasHash = TAO::Ledger::GetLastState(lastHashBlockState, 2);
 
-            TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::stateBest;
-            bool fHasStake = TAO::Ledger::GetLastState(lastStakeBlockState, 3);
+
+            if(fHasStake == false)
+                debug::error(FUNCTION, "couldn't find last stake block state");
+            if(fHasPrime == false)
+                debug::error(FUNCTION, "couldn't find last prime block state");
+            if(fHasHash == false)
+                debug::error(FUNCTION, "couldn't find last hash block state");
 
             json::json obj;
+            obj["stake"] = fHasStake ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastStakeBlockState, 0, false), 0) : 0;
             obj["prime"] = fHasPrime ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastPrimeBlockState, 1, false), 1) : 0;
             obj["hash"] = fHasHash ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastHashBlockState, 2, false), 2) : 0;
-            obj["stake"] = fHasStake ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastStakeBlockState, 3, false), 3) : 0;
+
             return obj;
-         
+
         }
 
         /* getsupplyrates
@@ -270,7 +279,7 @@ namespace TAO
             obj["yearSupply"] = Legacy::SatoshisToAmount(TAO::Ledger::SubsidyInterval(nMinutes, 524160)); //524160
 
             return obj;
-           
+
         }
 
         /* getmoneysupply <timestamp>
@@ -303,22 +312,22 @@ namespace TAO
             if (fHelp || params.size() != 1)
                 return std::string(
                     "getblockhash <index>"
-                    " - DEPRECATED - Returns hash of block in best-block-chain at <index>.");
+                    " - Returns hash of block in best-block-chain at <index>.");
+            
+            if(!config::GetBoolArg("-indexheight"))
+            {
+                return std::string("getblockhash requires the wallet to be started with the -indexheight flag.");
+            }
+            int nHeight = params[0];
+            if (nHeight < 0 || nHeight > TAO::Ledger::ChainState::nBestHeight)
+                return std::string("Block number out of range.");
 
-            // int nHeight = params[0];
-            // if (nHeight < 0 || nHeight > TAO::Ledger::ChainState::nBestHeight)
-            //     return std::string("Block number out of range.");
+            TAO::Ledger::BlockState blockState;
+            if(!LLD::legDB->ReadBlock(nHeight, blockState))
+                return std::string("Block not found");
+            
+            return blockState.GetHash().GetHex();
 
-            // Core::CBlock block;
-            // Core::CBlockIndex* pblockindex = Core::mapBlockIndex[Core::hashBestChain];
-            // while (pblockindex->nHeight > nHeight)
-            //     pblockindex = pblockindex->pprev;
-            // return pblockindex->phashBlock->GetHex();
-
-            json::json ret;
-            ret = "This method has been deprecated. Please use the current block hash from getmininginfo\n"
-                    "in conjunction with the previousblockhash in getblock to traverse the chain to your desired block height";
-            return ret;
         }
 
         /* isorphan <hash>"
@@ -334,7 +343,7 @@ namespace TAO
             TAO::Ledger::BlockState block;
             uint1024_t blockId = 0;
             blockId.SetHex(params[0].get<std::string>());
-            
+
             if (!LLD::legDB->ReadBlock(blockId, block))
             {
                 throw APIException(-5, "Block not found");
@@ -342,7 +351,7 @@ namespace TAO
             }
 
             return !block.IsInMainChain();
-            
+
         }
 
         json::json blockToJSON(const TAO::Ledger::BlockState& block,  bool fPrintTransactionDetail)
@@ -363,7 +372,7 @@ namespace TAO
             result["nonce"] = (uint64_t)block.nNonce;
             result["bits"] = HexBits(block.nBits);
             result["difficulty"] = TAO::Ledger::GetDifficulty(block.nBits, block.nChannel);
-            result["mint"] = Legacy::SatoshisToAmount(block.nMint); 
+            result["mint"] = Legacy::SatoshisToAmount(block.nMint);
             if (block.hashPrevBlock != 0)
                 result["previousblockhash"] = block.hashPrevBlock.GetHex();
             if (block.hashNextBlock != 0)
@@ -375,7 +384,7 @@ namespace TAO
             {
                 if(vtx.first == TAO::Ledger::TYPE::TRITIUM_TX)
                 {
-                    
+
                     /* Get the tritium transaction  from the database*/
                     TAO::Ledger::Transaction tx;
                     if(LLD::legDB->ReadTx(vtx.second, tx))
@@ -390,11 +399,11 @@ namespace TAO
                     }
                 }
                 else if(vtx.first == TAO::Ledger::TYPE::LEGACY_TX)
-                { 
+                {
                     /* Get the legacy transaction from the database. */
                     Legacy::Transaction tx;
                     if(LLD::legacyDB->ReadTx(vtx.second, tx))
-                    {    
+                    {
                         if (fPrintTransactionDetail)
                         {
                             txinfo.push_back(tx.ToStringShort());
@@ -409,7 +418,7 @@ namespace TAO
                     }
                 }
             }
-            
+
             result["tx"] = txinfo;
             return result;
         }
@@ -428,7 +437,7 @@ namespace TAO
             TAO::Ledger::BlockState block;
             uint1024_t blockId = 0;
             blockId.SetHex(params[0].get<std::string>());
-            
+
             if (!LLD::legDB->ReadBlock(blockId, block))
             {
                 throw APIException(-5, "Block not found");

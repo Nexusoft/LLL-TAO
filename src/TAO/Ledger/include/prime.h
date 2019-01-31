@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -24,7 +24,7 @@ namespace TAO
     namespace Ledger
     {
 
-        /** Set Bits
+        /** SetBits
          *
          *  Convert Double to unsigned int Representative.
          *  Used for encoding / decoding prime difficulty from nBits.
@@ -37,7 +37,7 @@ namespace TAO
         uint32_t SetBits(double nDiff);
 
 
-        /** Get Prime Difficulty.
+        /** GetPrimeDifficulty
          *
          *  Determines the difficulty of the Given Prime Number.
          *  Difficulty is represented as so V.X
@@ -53,7 +53,7 @@ namespace TAO
         double GetPrimeDifficulty(const LLC::CBigNum& bnPrime, int32_t nChecks);
 
 
-        /** Get Prime Bits
+        /** GetPrimeBits
          *
          *  Gets the unsigned int representative of a decimal prime difficulty.
          *
@@ -65,7 +65,7 @@ namespace TAO
         uint32_t GetPrimeBits(const LLC::CBigNum& bnPrime);
 
 
-        /** Get Fractional Difficulty
+        /** GetFractionalDifficulty
          *
          *  Breaks the remainder of last composite in Prime Cluster into an integer.
          *
@@ -77,7 +77,7 @@ namespace TAO
         uint32_t GetFractionalDifficulty(const LLC::CBigNum& bnComposite);
 
 
-        /** Prime Check
+        /** PrimeCheck
          *
          *  Determines if given number is Prime.
          *
@@ -90,7 +90,7 @@ namespace TAO
         bool PrimeCheck(const LLC::CBigNum& bnTest, uint32_t nChecks);
 
 
-        /** Fermat Test
+        /** FermatTest
          *
          *  Used after Miller-Rabin and Divisor tests to verify primality.
          *
@@ -102,7 +102,8 @@ namespace TAO
          **/
         LLC::CBigNum FermatTest(const LLC::CBigNum& bnPrime, const LLC::CBigNum& bnBase);
 
-        /** Miller Rabin
+
+        /** MillerRabin
          *
          *  Wrapper for is_prime from OpenSSL
          *

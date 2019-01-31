@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -43,7 +43,7 @@ namespace LLP
     uint1024_t LegacyNode::hashLastGetblocks = 0;
 
 
-    /* Static initialization of last get blocks time. */
+    /* The time since last getblocks. */
     uint64_t LegacyNode::nLastGetBlocks = 0;
 
 
@@ -75,19 +75,22 @@ namespace LLP
         /** Handle any DDOS Packet Filters. **/
         if(EVENT == EVENT_HEADER)
         {
-            debug::log(3, NODE, "recieved Message (", INCOMING.GetMessage(), ", ", INCOMING.LENGTH, ")");
+            const std::string message = INCOMING.GetMessage();
+            uint32_t length = INCOMING.LENGTH;
+
+            debug::log(3, NODE, "recieved Message (", message, ", ", length, ")");
 
             if(fDDOS)
             {
 
                 /* Give higher DDOS score if the Node happens to try to send multiple version messages. */
-                if (INCOMING.GetMessage() == "version" && nCurrentVersion != 0)
+                if (message == "version" && nCurrentVersion != 0)
                     DDOS->rSCORE += 25;
 
 
                 /* Check the Packet Sizes to Unified Time Commands. */
-                if((INCOMING.GetMessage() == "getoffset" || INCOMING.GetMessage() == "offset") && INCOMING.LENGTH != 16)
-                    DDOS->Ban(debug::strprintf("INVALID PACKET SIZE | OFFSET/GETOFFSET | LENGTH %u", INCOMING.LENGTH));
+                if((message == "getoffset" || message == "offset") && length != 16)
+                    DDOS->Ban(debug::strprintf("INVALID PACKET SIZE | OFFSET/GETOFFSET | LENGTH %u", length));
             }
 
             return;
@@ -141,6 +144,9 @@ namespace LLP
                             /* Reset the timeouts. */
 
                 PushMessage("ping", nSessionID);
+
+                /* Rebroadcast transactions. */
+                Legacy::Wallet::GetInstance().ResendWalletTransactions();
             }
 
             //TODO: mapRequests data, if no response given retry the request at given times
@@ -196,6 +202,145 @@ namespace LLP
 
     }
 
+    static std::map<uint1024_t, Legacy::LegacyBlock> mapLegacyOrphans;
+    static std::mutex PROCESSING_MUTEX;
+    bool Process(const Legacy::LegacyBlock& block, LegacyNode* pnode)
+    {
+        /* Check if the block is valid. */
+        uint1024_t hash = block.GetHash();
+        if(!block.Check())
+        {
+            debug::log(3, FUNCTION, "block failed checks");
+
+            return true;
+        }
+
+        /* Erase from orphan queue. */
+        { LOCK(PROCESSING_MUTEX);
+            if(mapLegacyOrphans.count(hash))
+                mapLegacyOrphans.erase(hash);
+        }
+
+        if(LLD::legDB->HasBlock(hash))
+            return true;
+
+        /* Check for orphan. */
+        if(!LLD::legDB->HasBlock(block.hashPrevBlock))
+        {
+            LOCK(PROCESSING_MUTEX);
+
+            /* Skip if already in orphan queue. */
+            if(!mapLegacyOrphans.count(block.hashPrevBlock))
+                mapLegacyOrphans[block.hashPrevBlock] = block;
+
+            /* Debug output. */
+            debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " hash=", block.GetHash().ToString().substr(0, 20));
+
+            /* Normal sync mode (slower connections). */
+            if(!config::GetBoolArg("-fastsync"))
+            {
+                if(!TAO::Ledger::ChainState::Synchronizing() || TAO::Ledger::ChainState::hashBestChain != LegacyNode::hashLastGetblocks || LegacyNode::nLastGetBlocks + 10 < runtime::timestamp())
+                {
+                    /* Special handle for unreliable leagacy nodes. */
+                    if(TAO::Ledger::ChainState::Synchronizing())
+                    {
+                        /* Check *FOR NOW* to deal with unreliable *LEGACY* seed node. */
+                        if(TAO::Ledger::ChainState::hashBestChain == LegacyNode::hashLastGetblocks && LegacyNode::hashLastGetblocks != 0)
+                            ++pnode->nConsecutiveTimeouts;
+                        else //reset consecutive timeouts
+                            pnode->nConsecutiveTimeouts = 0;
+
+                        /* Catch *FOR NOW* if seed node becomes unresponsive and gives bad data.
+                         * This happens in 3 or 4 places during synchronization if it is a
+                         * legacy node you are talking to. (height 1223722, 1226573 are some instances)
+                         */
+                        if(pnode->nConsecutiveTimeouts > 1)
+                        {
+                            /* Reset the timeouts. */
+                            pnode->nConsecutiveTimeouts = 0;
+
+                            /* Disconnect and send TCP_RST. */
+                            pnode->Disconnect();
+
+                            /* Make the connection again. */
+                            if (pnode->Attempt(pnode->addr))
+                            {
+                                /* Set the connected flag. */
+                                pnode->fCONNECTED = true;
+
+                                /* Push a new version message. */
+                                pnode->PushVersion();
+
+                                /* Ask for the blocks again nicely. */
+                                pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+
+                                return true;
+                            }
+                            else
+                                return false;
+                        }
+                    }
+
+                    /* Normal case of asking for a getblocks inventory message. */
+                    LegacyNode* pBest = LEGACY_SERVER->GetConnection();
+                    if(pBest)
+                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+                }
+            }
+
+            return true;
+        }
+
+        /* Check if valid in the chain. */
+        if(!block.Accept())
+        {
+            debug::log(3, FUNCTION, "block failed to be added to chain");
+
+            return true;
+        }
+
+        { LOCK(PROCESSING_MUTEX);
+
+            /* Create the Block State. */
+            TAO::Ledger::BlockState state(block);
+
+            /* Process the block state. */
+            if(!state.Accept())
+            {
+                debug::log(3, FUNCTION, "block state failed processing");
+
+                return true;
+            }
+
+            /* Process orphan if found. */
+            uint32_t nOrphans = 0;
+            while(mapLegacyOrphans.count(hash))
+            {
+                Legacy::LegacyBlock& orphan = mapLegacyOrphans[hash];
+
+                debug::log(0, FUNCTION, "processing ORPHAN prev=", orphan.GetHash().ToString().substr(0, 20), " size=",mapLegacyOrphans.size());
+                TAO::Ledger::BlockState stateOrphan(orphan);
+                if(!stateOrphan.Accept())
+                    return true;
+
+                mapLegacyOrphans.erase(hash);
+                hash = stateOrphan.GetHash();
+
+                ++nOrphans;
+            }
+
+            /* Handle for orphans. */
+            if(nOrphans > 0)
+            {
+                debug::log(0, FUNCTION, "processed ", nOrphans, " ORPHANS");
+            }
+
+
+        }
+
+        return true;
+    }
+
 
     /** This function is necessary for a template LLP server. It handles your
         custom messaging system, and how to interpret it from raw packets. **/
@@ -203,7 +348,10 @@ namespace LLP
     {
 
         DataStream ssMessage(INCOMING.DATA, SER_NETWORK, MIN_PROTO_VERSION);
-        if(INCOMING.GetMessage() == "getoffset")
+
+        const std::string message = INCOMING.GetMessage();
+
+        if(message == "getoffset")
         {
             /* Don't service unified seeds unless time is unified. */
             //if(!Core::fTimeUnified)
@@ -230,7 +378,7 @@ namespace LLP
         }
 
         /* Recieve a Time Offset from this Node. */
-        else if(INCOMING.GetMessage() == "offset")
+        else if(message == "offset")
         {
 
             /* De-Serialize the Request ID. */
@@ -289,136 +437,45 @@ namespace LLP
 
 
         /* Push a transaction into the Node's Recieved Transaction Queue. */
-        else if (INCOMING.GetMessage() == "tx")
+        else if (message == "tx")
         {
             /* Deserialize the Transaction. */
             Legacy::Transaction tx;
             ssMessage >> tx;
 
+            /* Check for sync. */
+            if(TAO::Ledger::ChainState::Synchronizing())
+                return true;
+
             /* Accept to memory pool. */
+            TAO::Ledger::BlockState notUsed;
             if (TAO::Ledger::mempool.Accept(tx))
-                Legacy::CWallet::GetInstance().AddToWalletIfInvolvingMe(tx, nullptr, true);
+            {
+                Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
+
+                std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX) };
+                LEGACY_SERVER->Relay("inv", vInv);
+            }
         }
 
 
         /* Push a block into the Node's Recieved Blocks Queue. */
-        else if (INCOMING.GetMessage() == "block")
+        else if (message == "block")
         {
             /* Deserialize the block. */
             Legacy::LegacyBlock block;
             ssMessage >> block;
 
-            /* Check if the block is valid. */
-            if(!block.Check())
-            {
-                DDOS->rSCORE += 25;
-                debug::log(3, "block failed checks");
-
-                return true;
-            }
-
             /* Process the block. */
-            if(LLD::legDB->HasBlock(block.GetHash()))
-            {
-                            /* Reset the timeouts. */
-                DDOS->rSCORE += 25; //make a penalty for sending blocks we already have.
-                //TODO: check if blocks are sent unsolicited.
-                debug::log(3, NODE, "already have block");
-
-                return true;
-            }
-
-            /* Check for orphan. */
-            if(!LLD::legDB->HasBlock(block.hashPrevBlock))
-            {
-                DDOS->rSCORE += 5;
-                debug::log(3, NODE, "block is an orphan height=", block.nHeight, " hash=", block.GetHash().ToString().substr(0, 20));
-
-                /* Ask for getblocks. */
-                if(TAO::Ledger::ChainState::hashBestChain != hashLastGetblocks || nLastGetBlocks + 10 < runtime::timestamp())
-                {
-                    /* Special handle for unreliable leagacy nodes. */
-                    if(TAO::Ledger::ChainState::Synchronizing())
-                    {
-                        /* Check *FOR NOW* to deal with unreliable *LEGACY* seed node. */
-                        if(TAO::Ledger::ChainState::hashBestChain == hashLastGetblocks
-                            && hashLastGetblocks != 0)
-                            ++nConsecutiveTimeouts;
-                        else //reset consecutive timeouts
-                            nConsecutiveTimeouts = 0;
-
-                        /* Catch *FOR NOW* if seed node becomes unresponsive and gives bad data.
-                         * This happens in 3 or 4 places during synchronization if it is a
-                         * legacy node you are talking to. (height 1223722, 1226573 are some instances)
-                         */
-                        if(nConsecutiveTimeouts > 1)
-                        {
-                            /* Reset the timeouts. */
-                            nConsecutiveTimeouts = 0;
-
-                            /* Log that node is reconnecting. */
-                            debug::log(0, NODE, "node has become unresponsive during sync... reconnecting...");
-
-                            /* Disconnect and send TCP_RST. */
-                            Disconnect();
-
-                            /* Make the connection again. */
-                            if (Attempt(addr))
-                            {
-                                /* Log successful reconnect. */
-                                debug::log(1, NODE, "Connected to ", addr.ToString());
-
-                                /* Set the connected flag. */
-                                fCONNECTED = true;
-
-                                /* Push a new version message. */
-                                PushVersion();
-
-                                /* Ask for the blocks again nicely. */
-                                PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
-
-                                return true;
-                            }
-                            else
-                                return false;
-                        }
-                    }
-
-                    /* Normal case of asking for a getblocks inventory message. */
-                    LegacyNode* pNode = LEGACY_SERVER->GetConnection();
-                    if(pNode)
-                        pNode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
-                    
-                }
-
-                return true;
-            }
-
-            /* Check if valid in the chain. */
-            if(!block.Accept())
-            {
-                DDOS->rSCORE += 25;
-                debug::log(3, NODE, "block failed to be added to chain");
-
+            if(!Process(block, this))
                 return false;
-            }
 
-            /* Create the Block State. */
-            TAO::Ledger::BlockState state(block);
-
-            /* Process the block state. */
-            if(!state.Accept())
-            {
-                DDOS->rSCORE += 25;
-                debug::log(3, NODE, "block state failed processing");
-
-                return true;
-            }
+            return true;
         }
 
 
         /* Send a Ping with a nNonce to get Latency Calculations. */
-        else if (INCOMING.GetMessage() == "ping")
+        else if (message == "ping")
         {
             uint64_t nonce = 0;
             ssMessage >> nonce;
@@ -427,7 +484,7 @@ namespace LLP
         }
 
 
-        else if(INCOMING.GetMessage() == "pong")
+        else if(message == "pong")
         {
             uint64_t nonce = 0;
             ssMessage >> nonce;
@@ -465,7 +522,7 @@ namespace LLP
         * It gives you basic stats about the node to know how to
         * communicate with it.
         */
-        else if (INCOMING.GetMessage() == "version")
+        else if (message == "version")
         {
 
             int64_t nTime;
@@ -501,7 +558,7 @@ namespace LLP
             }
 
 
-            /* Send the Version Response to ensure communication channel is open. */
+            /* Send the Version Response to ensure communication cTAO::Ledger::ChainState::hashBestChain == hashLastGetblockshannel is open. */
             PushMessage("verack");
 
             /* Push our version back since we just completed getting the version from the other node. */
@@ -521,7 +578,7 @@ namespace LLP
         /* Handle a new Address Message.
         * This allows the exchanging of addresses on the network.
         */
-        else if (INCOMING.GetMessage() == "addr")
+        else if (message == "addr")
         {
             std::vector<LegacyAddress> vLegacyAddr;
             std::vector<BaseAddress> vAddr;
@@ -558,7 +615,7 @@ namespace LLP
         /* Handle new Inventory Messages.
         * This is used to know what other nodes have in their inventory to compare to our own.
         */
-        else if (INCOMING.GetMessage() == "inv")
+        else if (message == "inv")
         {
             std::vector<CInv> vInv;
             ssMessage >> vInv;
@@ -573,6 +630,80 @@ namespace LLP
                 return true;
             }
 
+            /* Fast sync mode. */
+            if(config::GetBoolArg("-fastsync"))
+            {
+                if (TAO::Ledger::ChainState::Synchronizing() && vInv.back().GetType() == MSG_BLOCK)
+                {
+                    /* Single block inventory message signals to check from best chain. (If nothing in 10 seconds) */
+                    if(vInv.size() == 1 && TAO::Ledger::ChainState::hashBestChain == hashLastGetblocks && nLastGetBlocks + 10 < runtime::timestamp())
+                    {
+                        /* Special handle for unreliable leagacy nodes. */
+                        if(TAO::Ledger::ChainState::Synchronizing())
+                        {
+                            /* Check *FOR NOW* to deal with unreliable *LEGACY* seed node. */
+                            if(TAO::Ledger::ChainState::hashBestChain == hashLastGetblocks && hashLastGetblocks != 0)
+                                ++nConsecutiveTimeouts;
+                            else //reset consecutive timeouts
+                                nConsecutiveTimeouts = 0;
+
+                            /* Catch *FOR NOW* if seed node becomes unresponsive and gives bad data.
+                             * This happens in 3 or 4 places during synchronization if it is a
+                             * legacy node you are talking to. (height 1223722, 1226573 are some instances)
+                             */
+                            if(nConsecutiveTimeouts > 1)
+                            {
+                                /* Reset the timeouts. */
+                                nConsecutiveTimeouts = 0;
+
+                                /* Log that node is reconnecting. */
+                                debug::log(0, NODE, "node has become unresponsive during sync... reconnecting...");
+
+                                /* Disconnect and send TCP_RST. */
+                                Disconnect();
+
+                                /* Make the connection again. */
+                                if (Attempt(addr))
+                                {
+                                    /* Log successful reconnect. */
+                                    debug::log(1, NODE, "Connected to ", addr.ToString());
+
+                                    /* Set the connected flag. */
+                                    fCONNECTED = true;
+
+                                    /* Push a new version message. */
+                                    PushVersion();
+
+                                    /* Ask for the blocks again nicely. */
+                                    PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+
+                                    return true;
+                                }
+                                else
+                                    return false;
+                            }
+                        }
+
+                        /* Normal case of asking for a getblocks inventory message. */
+                        debug::log(0, NODE, "fast sync node timed out, trying a new node from best");
+                        LegacyNode* pnode = LEGACY_SERVER->GetConnection();
+                        if(pnode)
+                            PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+                    }
+
+                    /* Otherwise ask for another batch of blocks from the end of this inventory. */
+                    else
+                    {
+                        /* Normal case of asking for a getblocks inventory message. */
+                        PushGetBlocks(vInv.back().GetHash(), uint1024_t(0));
+                    }
+                }
+            }
+
+            /* Push getdata after fastsync inv (if enabled).
+             * This will ask for a new inv before blocks to
+             * always stay at least 1k blocks ahead.
+             */
             PushMessage("getdata", vInv);
         }
 
@@ -582,7 +713,7 @@ namespace LLP
         * This is just block data without transactions.
         *
         */
-        else if (INCOMING.GetMessage() == "headers")
+        else if (message == "headers")
         {
             //std::vector<Core::CBlock> vBlocks;
             //ssMessage >> vBlocks;
@@ -592,7 +723,7 @@ namespace LLP
         /* Get the Data for a Specific Command.
         TODO: Expand this for the data types.
         */
-        else if (INCOMING.GetMessage() == "getdata")
+        else if (message == "getdata")
         {
             std::vector<CInv> vInv;
             ssMessage >> vInv;
@@ -604,11 +735,51 @@ namespace LLP
                 return true;
             }
 
+            /* Loop the inventory and deliver messages. */
+            for(const auto& inv : vInv)
+            {
+                if (config::fShutdown)
+                    return true;
+
+                /* Log the inventory message receive. */
+                debug::log(3, FUNCTION, "received getdata ", inv.ToString());
+
+                /* Handle the block message. */
+                if (inv.GetType() == LLP::MSG_BLOCK)
+                {
+                    /* Read the block from disk. */
+                    TAO::Ledger::BlockState state;
+                    if(!LLD::legDB->ReadBlock(inv.GetHash(), state))
+                        continue;
+
+                    /* Scan each transaction in the block and process those related to this wallet */
+                    Legacy::LegacyBlock block(state);
+
+                    /* Push the response message. */
+                    PushMessage("block", block);
+
+                    /* Trigger a new getblocks if hash continue is set. */
+                    if (inv.GetHash() == hashContinue)
+                    {
+                        std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain, LLP::MSG_BLOCK) };
+                        PushMessage("inv", vInv);
+                        hashContinue = 0;
+                    }
+                }
+                else if (inv.GetType() == LLP::MSG_TX)
+                {
+                    Legacy::Transaction tx;
+                    if(!TAO::Ledger::mempool.Get(inv.GetHash().getuint512(), tx) && !LLD::legacyDB->ReadTx(inv.GetHash().getuint512(), tx))
+                        continue;
+
+                    PushMessage("tx", tx);
+                }
+            }
         }
 
 
         /* Handle a Request to get a list of Blocks from a Node. */
-        else if (INCOMING.GetMessage() == "getblocks")
+        else if (message == "getblocks")
         {
             //Core::CBlockLocator locator;
             //uint1024_t hashStop;
@@ -618,7 +789,7 @@ namespace LLP
 
 
         /* Handle a Request to get a list of Blocks from a Node. */
-        else if (INCOMING.GetMessage() == "getheaders")
+        else if (message == "getheaders")
         {
             //Core::CBlockLocator locator;
             //uint1024_t hashStop;
@@ -628,7 +799,7 @@ namespace LLP
 
 
         /* TODO: Change this Algorithm. */
-        else if (INCOMING.GetMessage() == "getaddr")
+        else if (message == "getaddr")
         {
             //std::vector<LLP::LegacyAddress> vAddr = Core::pManager->GetAddresses();
 

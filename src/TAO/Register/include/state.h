@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -27,8 +27,9 @@ namespace TAO
     namespace Register
     {
 
-        /** State Register
+        /** State
          *
+         *  A State Register.
          *  Handles the holding of state of a register.
          *
          **/
@@ -63,6 +64,7 @@ namespace TAO
             mutable uint32_t nReadPos;
 
 
+            /** Serialization **/
             IMPLEMENT_SERIALIZE
             (
                 READWRITE(nVersion);
@@ -77,6 +79,7 @@ namespace TAO
             )
 
 
+            /** Default Constructor **/
             State()
             : nVersion(1)
             , nType(0)
@@ -90,6 +93,7 @@ namespace TAO
             }
 
 
+            /** Default Constructor **/
             State(std::vector<uint8_t> vchData)
             : nVersion(1)
             , nType(0)
@@ -101,6 +105,7 @@ namespace TAO
                 SetChecksum();
             }
 
+            /** Default Constructor **/
             State(uint8_t nTypeIn, uint256_t hashAddressIn, uint256_t hashOwnerIn)
             : nVersion(1)
             , nType(nTypeIn)
@@ -113,6 +118,8 @@ namespace TAO
 
             }
 
+
+            /** Default Constructor **/
             State(std::vector<uint8_t> vchData, uint8_t nTypeIn, uint256_t hashAddressIn, uint256_t hashOwnerIn)
             : nVersion(1)
             , nType(nTypeIn)
@@ -125,6 +132,7 @@ namespace TAO
             }
 
 
+            /** Default Constructor **/
             State(uint64_t hashChecksumIn)
             : nVersion(1)
             , nType(0)
@@ -152,7 +160,11 @@ namespace TAO
             }
 
 
-            /** Set the State Register into a nullptr state. **/
+            /** SetNull
+             *
+             *  Set the State Register into a nullptr state.
+             *
+             **/
             void SetNull()
             {
                 nVersion     = 0;
@@ -166,21 +178,33 @@ namespace TAO
             }
 
 
-            /** nullptr Checking flag for a State Register. **/
+            /** IsNull
+             *
+             *  nullptr Checking flag for a State Register.
+             *
+             **/
             bool IsNull() const
             {
                 return (nVersion == 0 && vchState.size() == 0 && hashChecksum == 0);
             }
 
 
-            /** Flag to determine if the state register has been pruned. **/
+            /** IsPruned
+             *
+             *  Flag to determine if the state register has been pruned.
+             *
+             **/
             bool IsPruned() const
             {
                 return (nVersion == 0 && vchState.size() == 0 && hashChecksum != 0);
             }
 
 
-            /** Get the hash of the current state. **/
+            /** GetHash
+             *
+             *  Get the hash of the current state.
+             *
+             **/
             uint64_t GetHash() const
             {
                 DataStream ss(SER_GETHASH, nVersion);
@@ -190,14 +214,22 @@ namespace TAO
             }
 
 
-            /** Set the Checksum of this Register. **/
+            /** SetChecksum
+             *
+             *  Set the Checksum of this Register.
+             *
+             **/
             void SetChecksum()
             {
                 hashChecksum = GetHash();
             }
 
 
-            /** Check if the register is valid. */
+            /** IsValid
+             *
+             *  Check if the register is valid.
+             *
+             **/
             bool IsValid() const
             {
                 /* Check for null state. */
@@ -216,14 +248,22 @@ namespace TAO
             }
 
 
-            /** Get the State from the Register. **/
+            /** GetState
+             *
+             *  Get the State from the Register.
+             *
+             **/
             const std::vector<uint8_t>& GetState() const
             {
                 return vchState;
             }
 
 
-            /** Set the State from Byte Vector. **/
+            /** SetState
+             *
+             *  Set the State from Byte Vector.
+             *
+             **/
             void SetState(const std::vector<uint8_t>& vchStateIn)
             {
                 vchState = vchStateIn;
@@ -232,7 +272,11 @@ namespace TAO
             }
 
 
-            /** Clear a register's state. */
+            /** ClearState
+             *
+             *  Clear a register's state.
+             *
+             **/
             void ClearState()
             {
                 vchState.clear();
@@ -240,7 +284,11 @@ namespace TAO
             }
 
 
-            /** Detect end of register stream. */
+            /** end
+             *
+             *  Detect end of register stream.
+             *
+             **/
             bool end() const
             {
                 return nReadPos >= vchState.size();
@@ -249,11 +297,10 @@ namespace TAO
 
             /** read
              *
-             *  Reads raw data from the stream
+             *  Reads raw data from the stream.
              *
-             *  @param[in] pch The pointer to beginning of memory to write
-             *
-             *  @param[in] nSize The total number of bytes to read
+             *  @param[in] pch The pointer to beginning of memory to write.
+             *  @param[in] nSize The total number of bytes to read.
              *
              **/
             const State& read(char* pch, int nSize) const
@@ -274,11 +321,10 @@ namespace TAO
 
             /** write
              *
-             *  Writes data into the stream
+             *  Writes data into the stream.
              *
-             *  @param[in] pch The pointer to beginning of memory to write
-             *
-             *  @param[in] nSize The total number of bytes to copy
+             *  @param[in] pch The pointer to beginning of memory to write.
+             *  @param[in] nSize The total number of bytes to copy.
              *
              **/
             State& write(const char* pch, int nSize)
@@ -324,6 +370,11 @@ namespace TAO
             }
 
 
+            /** print
+             *
+             *  Print debug information to the console and log file.
+             *
+             **/
             void print() const
             {
                 debug::log(0,

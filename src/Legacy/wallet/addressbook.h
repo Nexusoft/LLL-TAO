@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -24,7 +24,7 @@ namespace Legacy
     
     /* forward declarations */    
     class NexusAddress;
-    class CWallet;
+    class Wallet;
 
 
     /** AddressBookMap is type alias defining a map for storing address book labels by Nexus address. **/
@@ -42,13 +42,13 @@ namespace Legacy
      **/
     class CAddressBook
     {
-        friend class CWalletDB;
+        friend class WalletDB;
 
 
     private:
         /** Mutex for thread concurrency. 
          *
-         *  Static because having instance-specific mutex causes move constructor (used in CWallet initialization) to be deleted.
+         *  Static because having instance-specific mutex causes move constructor (used in Wallet initialization) to be deleted.
          *  We really only use one CAddressBook so no problem simply sharing one mutex within the class.
          *  
          **/
@@ -60,7 +60,7 @@ namespace Legacy
 
 
         /** The wallet containing this address book **/
-        CWallet& addressBookWallet;
+        Wallet& addressBookWallet;
 
 
         /** LoadAddressBookName
@@ -72,7 +72,7 @@ namespace Legacy
          *
          *  @param[in] strName The address label to store
          *
-         *  @see CWalletDB::LoadWallet
+         *  @see WalletDB::LoadWallet
          *
          **/
         inline void LoadAddressBookName(const NexusAddress& address, const std::string& strName) { mapAddressBook[address] = strName; }
@@ -86,7 +86,7 @@ namespace Legacy
          *  @param[in] walletIn The wallet containing this address book
          *
          **/
-        CAddressBook(CWallet& walletIn) : addressBookWallet(walletIn) {}
+        CAddressBook(Wallet& walletIn) : addressBookWallet(walletIn) {}
 
 
         /** HasAddress

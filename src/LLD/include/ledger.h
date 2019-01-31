@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -46,7 +46,7 @@ namespace LLD
 
     public:
 
-      
+
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         LedgerDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE)
         : SectorDatabase("ledger", nFlagsIn) { }
@@ -144,6 +144,50 @@ namespace LLD
             return Index(std::make_pair(std::string("index"), hashTransaction), hashBlock);
         }
 
+        /** IndexBlock
+         *
+         *  Index a block height to a block in keychain.
+         *
+         *  @param[in] hashTransaction The txid of transaction to write.
+         *  @param[in] nBlockHeight The block height to index to.
+         *
+         *  @return True if the transaction was successfully written, false otherwise.
+         *
+         **/
+        bool IndexBlock(const uint32_t& nBlockHeight, const uint1024_t& hashBlock)
+        {
+            return Index(std::make_pair(std::string("indexheight"), nBlockHeight), hashBlock);
+        }
+
+
+        /** EraseIndex
+         *
+         *  Erase a foreign index form the keychain
+         *
+         *  @param[in] hashTransaction The txid of the index to erase.
+         *
+         *  @return True if the index was erased, false otherwise.
+         *
+         **/
+        bool EraseIndex(const uint512_t& hashTransaction)
+        {
+            return Erase(std::make_pair(std::string("index"), hashTransaction));
+        }
+
+        /** EraseIndex
+         *
+         *  Erase a foreign index form the keychain
+         *
+         *  @param[in] nBlockHeight The block height of the index to erase.
+         *
+         *  @return True if the index was erased, false otherwise.
+         *
+         **/
+        bool EraseIndex(const uint32_t& nBlockHeight)
+        {
+            return Erase(std::make_pair(std::string("indexheight"), nBlockHeight));
+        }
+
 
         /** RepairIndex
          *
@@ -190,6 +234,43 @@ namespace LLD
             return false;
         }
 
+        /** RepairIndexHeight
+         *
+         *  Recover the block height index.
+         *  Adds or fixes th block height index by iterating forward from the genesis block
+         *
+         *  @return True if the index was successfully written, false otherwise.
+         *
+         **/
+        bool RepairIndexHeight()
+        {
+            runtime::timer timer;
+            timer.Start();
+            debug::log(0, FUNCTION, "block height index missing or incomplete");
+
+            /* Get the best block state to start from. */
+            TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateGenesis;
+
+            /* Loop until it is found. */
+            while(!config::fShutdown && !state.IsNull())
+            {
+                /* Give debug output of status. */
+                if(state.nHeight % 100000 == 0)
+                    debug::log(0, FUNCTION, "repairing block height index..... ", state.nHeight);
+
+                if(!IndexBlock(state.nHeight, state.GetHash()))
+                    return false;
+
+                state = state.Next();
+            }
+
+            uint32_t nElapsed = timer.Elapsed();
+            timer.Stop();
+            debug::log(0, FUNCTION, "Block height indexing complete in ", nElapsed, "s");
+
+            return true;
+        }
+
 
         /** ReadBlock
          *
@@ -204,6 +285,21 @@ namespace LLD
         bool ReadBlock(const uint512_t& hashTransaction, TAO::Ledger::BlockState& state)
         {
             return Read(std::make_pair(std::string("index"), hashTransaction), state);
+        }
+
+        /** ReadBlock
+         *
+         *  Reads a block state from disk from a tx index.
+         *
+         *  @param[in] nBlockHeight The block height to read.
+         *  @param[in] state The block state object to read.
+         *
+         *  @return True if the read was successful, false otherwise.
+         *
+         **/
+        bool ReadBlock(const uint32_t& nBlockHeight, TAO::Ledger::BlockState& state)
+        {
+            return Read(std::make_pair(std::string("indexheight"), nBlockHeight), state);
         }
 
 

@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -24,7 +24,12 @@ namespace LLC
 
 	static uint8_t pblank[1];
 
-    /* Hashing template for Checksums */
+
+    /** SK32
+     *
+     * 32-bit hashing template for Checksums.
+     *
+     **/
 	inline uint32_t SK32(const std::vector<uint8_t> vch)
 	{
 		uint32_t skein;
@@ -42,7 +47,12 @@ namespace LLC
 		return keccak;
 	}
 
-	/* Hashing template for Checksums */
+
+	/** SK32
+     *
+     *  32-bit hashing template for Checksums.
+     *
+     **/
 	template<typename T1>
 	inline uint32_t SK32(const T1 pbegin, const T1 pend)
 	{
@@ -62,7 +72,11 @@ namespace LLC
 	}
 
 
-	/* Hashing template for Checksums */
+	/** SK64
+     *
+     *  64-bit hashing template for Checksums.
+     *
+     **/
 	template<typename T1>
 	inline uint64_t SK64(const T1 pbegin, const T1 pend)
 	{
@@ -82,7 +96,11 @@ namespace LLC
 	}
 
 
-	/* Hashing template for Address Generation */
+	/** SK64
+     *
+     *  64-bit hashing template for Address Generation.
+     *
+     **/
 	inline uint64_t SK64(const std::vector<uint8_t>& vch)
 	{
 		uint64_t skein;
@@ -101,7 +119,11 @@ namespace LLC
 	}
 
 
-	/* Hashing template for Address Generation */
+	/** SK256
+     *
+     *  256-bit hashing template for Address Generation .
+     *
+     **/
 	inline uint256_t SK256(const std::vector<uint8_t>& vch)
 	{
 		uint256_t skein;
@@ -120,7 +142,11 @@ namespace LLC
 	}
 
 
-	/* Hashing template for Address Generation */
+	/** SK256
+     *
+     *  256-bit hashing template for Address Generation.
+     *
+     **/
 	template<typename T1>
 	inline uint256_t SK256(const T1 pbegin, const T1 pend)
 	{
@@ -140,7 +166,11 @@ namespace LLC
 	}
 
 
-    /* Hashing template for Next Hash */
+    /** SK512
+     *
+     *  512-bit hashing template for Next Hash.
+     *
+     **/
     inline uint512_t SK512(const std::vector<uint8_t>& vch)
 	{
 		uint512_t skein;
@@ -159,7 +189,11 @@ namespace LLC
 	}
 
 
-	/* Hashing template for Trust Key Hash */
+	/** SK512
+     *
+     *  512-bit hashing template for Trust Key Hash.
+     *
+     **/
 	template<typename T1>
 	inline uint512_t SK512(const std::vector<uint8_t>& vch, const T1 pbegin, const T1 pend)
 	{
@@ -180,7 +214,11 @@ namespace LLC
 	}
 
 
-	/* Hashing template for TX hash */
+	/** SK512
+     *
+     *  512-bit hashing template for TX hash.
+     *
+     **/
 	template<typename T1>
 	inline uint512_t SK512(const T1 pbegin, const T1 pend)
 	{
@@ -200,7 +238,11 @@ namespace LLC
 	}
 
 
-	/* Hashing template for TX hash */
+	/** SK512
+     *
+     * 512-bit hashing template for TX hash.
+     *
+     **/
 	template<typename T1, typename T2>
 	inline uint512_t SK512(const T1 p1begin, const T1 p1end,
 						const T2 p2begin, const T2 p2end)
@@ -222,7 +264,11 @@ namespace LLC
 	}
 
 
-	/* Hashing template for TX hash */
+	/** SK512
+     *
+     *  512-bit hashing template for TX hash.
+     *
+     **/
 	template<typename T1, typename T2, typename T3>
 	inline uint512_t SK512(const T1 p1begin, const T1 p1end,
 						const T2 p2begin, const T2 p2end,
@@ -246,7 +292,11 @@ namespace LLC
 	}
 
 
-	/* Hashing template used for Private Keys */
+	/** SK576
+     *
+     * 576-bit hashing template used for Private Keys.
+     *
+     **/
 	template<typename T1>
 	inline uint576_t SK576(const T1 pbegin, const T1 pend)
 	{
@@ -265,7 +315,12 @@ namespace LLC
 		return keccak;
 	}
 
-    /* Hashing template used to Build Sig Chains */
+
+    /** SK1024
+     *
+     *  1024-bit hashing template used to build Sig-Chains.
+     *
+     **/
     inline uint1024_t SK1024(const std::vector<uint8_t>& vch)
 	{
 		uint1024_t skein;
@@ -284,7 +339,11 @@ namespace LLC
 	}
 
 
-	/* Hashing template used to build Block Hashes */
+	/** SK1024
+     *
+     *  1024-bit hashing template used to build Block Hashes.
+     *
+     **/
 	template<typename T1>
 	inline uint1024_t SK1024(const T1 pbegin, const T1 pend)
 	{
