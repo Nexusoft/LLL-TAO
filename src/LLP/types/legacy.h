@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TYPES_LEGACY_H
 #define NEXUS_LLP_TYPES_LEGACY_H
 
+#include <Legacy/types/legacy.h>
 #include <Legacy/types/locator.h>
 
 #include <LLP/include/legacyaddress.h>

@@ -17,7 +17,6 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <Legacy/types/transaction.h>
-#include <Legacy/types/legacy.h>
 #include <Legacy/types/locator.h>
 #include <Legacy/wallet/wallet.h>
 
