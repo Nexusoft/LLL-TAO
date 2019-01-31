@@ -886,17 +886,16 @@ namespace Legacy
         uint512_t hash = wtxIn.GetHash();
 
         /* Use the returned tx, not wtxIn, in case insert returned an existing transaction */
-        CWalletTx wtx;
-        bool fInsertedNew;
+        std::pair<TransactionMap::iterator, bool> ret;
         {
             LOCK(cs_wallet);
 
             /* Inserts only if not already there, returns tx inserted or tx found */
-            std::pair<TransactionMap::iterator, bool> ret = mapWallet.insert(std::make_pair(hash, wtxIn));
-            wtx = (*ret.first).second;
-            fInsertedNew = ret.second;
+            ret = mapWallet.insert(std::make_pair(hash, wtxIn));
         }
 
+        CWalletTx& wtx = (*ret.first).second;
+        bool fInsertedNew = ret.second;
         wtx.BindWallet(this);
 
         if (fInsertedNew)
@@ -1669,8 +1668,6 @@ namespace Legacy
                     changeKey.ReturnKey();
                 }
 
-                debug::log(0, FUNCTION, "coin set size ", setSelectedCoins.size());
-
                 /* Fill vin with selected inputs */
                 for(const auto coin : setSelectedCoins)
                     wtxNew.vin.push_back(CTxIn(coin.first->GetHash(), coin.second));
@@ -1933,9 +1930,7 @@ namespace Legacy
         nValueRet = 0;
 
         if (config::GetBoolArg("-printselectcoin", false))
-        {
             debug::log(0, FUNCTION, "Selecting coins for account ", strAccount);
-        }
 
         /* Build a set of wallet transactions from all transaction in the wallet map */
         vCoins.reserve(mapWallet.size());
@@ -1944,8 +1939,6 @@ namespace Legacy
 
         /* Randomly order the transactions as potential inputs */
         std::random_shuffle(vCoins.begin(), vCoins.end(), LLC::GetRandInt);
-
-        debug::log(0, FUNCTION, "Total outputs selected ", vCoins.size());
 
         /* Loop through all transactions, finding and adding available unspent balance to the list of outputs until reach nTargetValue */
         for(const CWalletTx* walletTx : vCoins)

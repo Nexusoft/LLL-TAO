@@ -619,7 +619,7 @@ namespace Legacy
     {
         std::string str;
         str += IsCoinBase() ? "Coinbase" : (IsGenesis() ? "Genesis" : (IsTrust() ? "Trust" : "Transaction"));
-        str += debug::strprintf("(hash=%s, nTime=%d, ver=%d, vin.size=%d, vout.size=%d, nLockTime=%d)",
+        str += debug::strprintf("(hash=%s, nTime=%d, ver=%d, vin.size=%d, vout.size=%d, nLockTime=%d)\n",
             GetHash().ToString().substr(0,10).c_str(),
             nTime,
             nVersion,
@@ -628,9 +628,9 @@ namespace Legacy
             nLockTime);
 
         for (const auto& txin : vin)
-            str += "    " + txin.ToString() + "";
+            str += "    " + txin.ToString() + "\n";
         for (const auto& txout : vout)
-            str += "    " + txout.ToString() + "";
+            str += "    " + txout.ToString() + "\n";
         return str;
     }
 
