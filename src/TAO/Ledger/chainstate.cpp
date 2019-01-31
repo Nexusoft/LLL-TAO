@@ -108,25 +108,29 @@ namespace TAO
             /* Find the last checkpoint. */
             if(stateBest != stateGenesis)
             {
-                /* Search back until fail or different checkpoint. */
-                BlockState state;
-                if(!LLD::legDB->ReadBlock(hashCheckpoint, state))
-                    return debug::error(FUNCTION, "failed to read pending checkpoint");
-
-                /* Get the previous state. */
-                state = state.Prev();
-                if(!state)
-                    return debug::error(FUNCTION, "failed to find the checkpoint");
-
-                /* Set the checkpoint. */
-                hashCheckpoint = state.hashCheckpoint;
-
-                /* If rewind mode is enabled, rewind to last checkpoint. */
-                if(config::GetBoolArg("-rewind"))
+                int32_t nNumRewinds = config::GetArg("-rewind", 0);
+                for(int32_t i = 0; i<=nNumRewinds; i++)
                 {
-                    LLD::TxnBegin();
-                    state.SetBest();
-                    LLD::TxnCommit();
+                    /* Search back until fail or different checkpoint. */
+                    BlockState state;
+                    if(!LLD::legDB->ReadBlock(hashCheckpoint, state))
+                        return debug::error(FUNCTION, "failed to read pending checkpoint");
+
+                    /* Get the previous state. */
+                    state = state.Prev();
+                    if(!state)
+                        return debug::error(FUNCTION, "failed to find the checkpoint");
+
+                    /* Set the checkpoint. */
+                    hashCheckpoint = state.hashCheckpoint;
+
+                    /* If rewind mode is enabled, rewind to last checkpoint. */
+                    if(nNumRewinds > 0)
+                    {
+                        LLD::TxnBegin();
+                        state.SetBest();
+                        LLD::TxnCommit();
+                    }
                 }
             }
 
