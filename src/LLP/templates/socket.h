@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -15,17 +15,20 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TEMPLATES_SOCKET_H
 
 #include <vector>
-
 #include <poll.h>
 
 #include <Util/include/runtime.h>
+#include <LLP/include/baseaddress.h>
 
 namespace LLP
 {
-    class Service;
-    class Address;
 
-    /* Base Template class to handle outgoing / incoming LLP data for both Client and Server. */
+    /** Socket
+     *
+     *  Base Template class to handle outgoing / incoming LLP data for both
+     *  Client and Server.
+     *
+     **/
     class Socket : public pollfd
     {
     protected:
@@ -48,7 +51,7 @@ namespace LLP
     public:
 
         /** The address of this connection. */
-        Address addr;
+        BaseAddress addr;
 
 
         /** The default constructor. **/
@@ -56,6 +59,7 @@ namespace LLP
         : nError(0)
         , nLastSend(runtime::timestamp())
         , nLastRecv(runtime::timestamp())
+        , vBuffer()
         , addr()
         {
             fd = -1;
@@ -64,10 +68,11 @@ namespace LLP
 
 
         /** The socket constructor. **/
-        Socket(int32_t nSocketIn, Address addrIn)
+        Socket(int32_t nSocketIn, const BaseAddress &addrIn)
         : nError(0)
         , nLastSend(runtime::timestamp())
         , nLastRecv(runtime::timestamp())
+        , vBuffer()
         , addr(addrIn)
         {
             fd = nSocketIn;
@@ -75,12 +80,12 @@ namespace LLP
         }
 
 
-        /** Constructor for Address
+        /** Constructor for Socket
          *
-         *  @param[in] addrConnect The address to connect socket to
+         *  @param[in] addrDest The address to connect socket to
          *
          **/
-        Socket(Service addrDest);
+        Socket(BaseAddress addrDest);
 
 
 
@@ -91,7 +96,7 @@ namespace LLP
          *  @return error code of the socket
          *
          **/
-        int32_t ErrorCode();
+        int32_t ErrorCode() const;
 
 
         /** Attempts
@@ -103,7 +108,7 @@ namespace LLP
          *  @return true if the socket is in a valid state.
          *
          **/
-        bool Attempt(Service addrDest, int32_t nTimeout = 5000);
+        bool Attempt(const BaseAddress &addrDest, uint32_t nTimeout = 5000);
 
 
         /** Available
@@ -113,7 +118,7 @@ namespace LLP
          *  @return the total bytes available for read
          *
          **/
-        int32_t Available();
+        int32_t Available() const;
 
 
         /** Close
@@ -160,7 +165,7 @@ namespace LLP
          *  @return the total bytes that were written
          *
          **/
-        int32_t Write(std::vector<uint8_t> vData, size_t nBytes);
+        int32_t Write(const std::vector<uint8_t>& vData, size_t nBytes);
 
 
         /** Flush

@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLC/types/bignum.h>
 #include <LLC/hash/SK.h>
 #include <Util/include/base58.h>
+#include <Util/include/memory.h>
 #include <openssl/bn.h>
 #include <algorithm>
 #include <cstring>
@@ -148,7 +149,8 @@ namespace encoding
             return false;
         }
         uint256_t hash = LLC::SK256(vchRet.begin(), vchRet.end()-4);
-        if (memcmp(&hash, &vchRet.end()[-4], 4) != 0)
+        //if (memcmp(&hash, &vchRet.end()[-4], 4) != 0)
+        if (memory::compare((uint8_t *)&hash, (uint8_t *)&vchRet.end()[-4], 4) != 0)
         {
             vchRet.clear();
             return false;

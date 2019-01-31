@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -115,7 +115,7 @@ namespace TAO
             apiNode.Write(vBuffer, vBuffer.size());
 
             /* Read the response packet. */
-            while(!apiNode.INCOMING.Complete())
+            while(!apiNode.INCOMING.Complete() && !config::fShutdown)
             {
 
                 /* Catch if the connection was closed. */
@@ -188,8 +188,14 @@ namespace TAO
             /* Build the JSON request object. */
             json::json parameters = json::json::array();
             for(int i = argn + 1; i < argc; i++)
-                parameters.push_back(argv[i]);
-
+            {
+                std::string strArg = argv[i];
+                // if the paramter is a JSON list or array then we need to parse it
+                if( strArg.compare(0,1,"{") == 0 || strArg.compare(0,1,"[") == 0)
+                    parameters.push_back(json::json::parse(argv[i]));
+                else
+                    parameters.push_back(argv[i]);
+            }
             /* Build the HTTP Header. */
             json::json body = { {"method", argv[argn]}, {"params", parameters}, {"id", 1} };
             std::string strContent = body.dump();
@@ -224,7 +230,7 @@ namespace TAO
             rpcNode.Write(vBuffer, vBuffer.size());
 
             /* Read the response packet. */
-            while(!rpcNode.INCOMING.Complete())
+            while(!rpcNode.INCOMING.Complete() && !config::fShutdown)
             {
 
                 /* Catch if the connection was closed. */
@@ -243,14 +249,6 @@ namespace TAO
                     return 0;
                 }
 
-                /* Catch if the connection timed out. */
-                if(rpcNode.Timeout(30))
-                {
-                    debug::log(0, "Socket Timeout");
-
-                    return 0;
-                }
-
                 /* Read the response packet. */
                 rpcNode.ReadPacket();
                 runtime::sleep(10);
@@ -259,20 +257,28 @@ namespace TAO
             /* Dump the response to the console. */
             int nRet = 0;
             std::string strPrint = "";
-            json::json ret = json::json::parse(rpcNode.INCOMING.strContent);
-
-            if(!ret["error"].is_null())
+            if( rpcNode.INCOMING.strContent.length() > 0)
             {
-                strPrint = ret["error"]["message"];
-                nRet     = ret["error"]["code"];
+                json::json ret = json::json::parse(rpcNode.INCOMING.strContent);
+
+                if(!ret["error"].is_null())
+                {
+                    strPrint = ret["error"]["message"];
+                    nRet     = ret["error"]["code"];
+                }
+                else
+                {
+
+                    if( ret["result"].is_string())
+                        strPrint = ret["result"].get<std::string>();
+                    else
+                        strPrint = ret["result"].dump(4);
+                }
             }
             else
             {
-
-                if( ret["result"].is_string())
-                    strPrint = ret["result"].get<std::string>();
-                else
-                    strPrint = ret["result"].dump(4);
+                // If the server returned no content then just output the packet header type, which will include any HTTP error code
+                strPrint = rpcNode.INCOMING.strRequest;
             }
 
             // output to console

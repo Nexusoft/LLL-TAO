@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -25,11 +25,15 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+    /* Initialize static variables */
+    std::mutex CAddressBook::cs_addressBook;
+
+
     /* Adds an address book entry for a given Nexus address and address label. */
     bool CAddressBook::SetAddressBookName(const NexusAddress& address, const std::string& strName)
     {
         {
-            LOCK(addressBookWallet.cs_wallet);
+            LOCK(CAddressBook::cs_addressBook);
 
             mapAddressBook[address] = strName;
 
@@ -38,7 +42,7 @@ namespace Legacy
                 CWalletDB walletdb(addressBookWallet.GetWalletFile());
 
                 if (!walletdb.WriteName(address.ToString(), strName))
-                    throw std::runtime_error("CAddressBook::AddAddressBookName() : writing added address book entry failed");
+                    return debug::error(FUNCTION, "Failed writing address book entry");
 
                 walletdb.Close();
             }
@@ -52,7 +56,7 @@ namespace Legacy
     bool CAddressBook::DelAddressBookName(const NexusAddress& address)
     {
         {
-            LOCK(addressBookWallet.cs_wallet);
+            LOCK(CAddressBook::cs_addressBook);
 
             mapAddressBook.erase(address);
 
@@ -76,9 +80,9 @@ namespace Legacy
                                           const bool fOnlyConfirmed, const uint32_t nMinDepth) const
     {
         { //Begin lock scope
-            LOCK(addressBookWallet.cs_wallet);
+            LOCK(CAddressBook::cs_addressBook);
 
-            for (auto& item : addressBookWallet.mapWallet)
+            for (const auto& item : addressBookWallet.mapWallet)
             {
                 const CWalletTx& walletTx = item.second;
 
@@ -110,7 +114,7 @@ namespace Legacy
                         NexusAddress address;
 
                         if(!ExtractAddress(walletTx.vout[i].scriptPubKey, address) || !address.IsValid())
-                            return false; // Unable to extract valid address from mapWallet. Should it really eat that error?
+                            return debug::error(FUNCTION, "Unable to extract valid Nexus address from walletTx key");
 
                         /* Add txout value to result */
                         if(mapAddressBalances.count(address) > 0)
@@ -128,14 +132,14 @@ namespace Legacy
 
 
     /*  Get the current balance for a given account */
-    bool CAddressBook::BalanceByAccount(const std::string strAccount, int64_t& nBalance, const uint32_t nMinDepth) const
+    bool CAddressBook::BalanceByAccount(const std::string& strAccount, int64_t& nBalance, const uint32_t nMinDepth) const
     {
         { //Begin lock scope
-            LOCK(addressBookWallet.cs_wallet);
+            LOCK(CAddressBook::CAddressBook::cs_addressBook);
 
             nBalance = 0;
 
-            for (auto& item : addressBookWallet.mapWallet)
+            for (const auto& item : addressBookWallet.mapWallet)
             {
                 const CWalletTx& walletTx = item.second;
 
@@ -183,6 +187,58 @@ namespace Legacy
         } //End lock scope
 
         return true;
+    }
+
+    /* returns the address for the given account, adding a new address if one has not already been assigned*/
+    Legacy::NexusAddress CAddressBook::GetAccountAddress(const std::string& strAccount, bool fForceNew )
+    {
+        Legacy::NexusAddress address;
+        bool fKeyUsed = false;
+        
+        if( !fForceNew )
+        {
+            // first look up the address currently assigned to the account
+            AddressBookMap::iterator it = std::find_if(std::begin(mapAddressBook), std::end(mapAddressBook),
+                            [=](AddressBookMap::value_type& entry) { return entry.second == strAccount; });
+
+            if (it != std::end(mapAddressBook))
+                address = it->first;
+
+            
+
+            // Check if the current key has been used
+            if( address.IsValid() )
+            {
+                Legacy::CScript scriptPubKey;
+                scriptPubKey.SetNexusAddress(address);
+                for (std::map<uint512_t, Legacy::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin();
+                        it != Legacy::CWallet::GetInstance().mapWallet.end() && !fKeyUsed;
+                        ++it)
+                {
+                    const Legacy::CWalletTx& wtx = (*it).second;
+                    for(const Legacy::CTxOut& txout : wtx.vout)
+                        if (txout.scriptPubKey == scriptPubKey)
+                        {
+                            fKeyUsed = true;
+                            break;
+                        }
+                }
+            }
+        }
+
+        // Generate a new key
+        if (!address.IsValid() || fForceNew || fKeyUsed)
+        {
+            std::vector<uint8_t> vchPubKey;
+
+            if (!Legacy::CWallet::GetInstance().GetKeyPool().GetKeyFromPool(vchPubKey, false))
+                throw std::runtime_error("Error: Keypool ran out, please call keypoolrefill first");
+
+            address = Legacy::NexusAddress(vchPubKey);
+            SetAddressBookName(address, strAccount);
+        }
+
+        return address;
     }
 
 }

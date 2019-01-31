@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -19,9 +19,6 @@ ________________________________________________________________________________
 #include <chrono>
 #include <locale>
 
-/* This is needed because the foreach macro can't get over the comma in pair<t1, t2> */
-#define PAIRTYPE(t1, t2)    std::pair<t1, t2>
-
 #define ARRAYLEN(array)     (sizeof(array)/sizeof((array)[0]))
 
 /** The location of the unified time seed. To enable a Unified Time System push data to this variable. **/
@@ -33,6 +30,8 @@ const uint32_t MAX_UNIFIED_DRIFT = 1;
 
 namespace runtime
 {
+
+
     /** timestamp
      *
      *  Return the Current UNIX timestamp.
@@ -79,8 +78,13 @@ namespace runtime
                         std::this_thread::sleep_for(std::chrono::milliseconds(nTime));
     }
 
-    /* Special Specification for HTTP Protocol.
-        TODO: This could be cleaned up I'd say. */
+
+    /** rfc1123Time
+     *
+     *  Special Specification for HTTP Protocol.
+     *  TODO: This could be cleaned up I'd say.
+     *
+     **/
     inline std::string rfc1123Time()
     {
         char buffer[64];
@@ -93,6 +97,7 @@ namespace runtime
         setlocale(LC_TIME, locale.c_str());
         return std::string(buffer);
     }
+
 
     /** timer
      *
@@ -161,7 +166,7 @@ namespace runtime
          *  @return The Total Seconds Elapsed Since timer Started.
          *
          **/
-        uint32_t Elapsed()
+        uint32_t Elapsed() const
         {
             if(fStopped)
                 return std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
@@ -177,7 +182,7 @@ namespace runtime
          *  @return The Total Milliseconds Elapsed Since timer Started.
          *
          **/
-        uint32_t ElapsedMilliseconds()
+        uint32_t ElapsedMilliseconds() const
         {
             if(fStopped)
                 return std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
@@ -193,7 +198,7 @@ namespace runtime
          *  @return The Total Microseconds Elapsed since Time Started.
          *
          **/
-        uint64_t ElapsedMicroseconds()
+        uint64_t ElapsedMicroseconds() const
         {
             if(fStopped)
                 return std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
@@ -201,8 +206,9 @@ namespace runtime
             return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start_time).count();
         }
 
+
         /* Return the Total Nanoseconds Elapsed since Time Started. */
-        uint64_t ElapsedNanoseconds()
+        uint64_t ElapsedNanoseconds() const
         {
             if(fStopped)
                 return std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();

@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -230,6 +230,18 @@ namespace Legacy
 		bool TrustKey(uint576_t& cKey) const;
 
 
+		/** Trust Score
+		 *
+		 *  Extract the trust score out of the coinstake transaction.
+		 *
+		 *  @param[out] nScore The trust score to return.
+		 *
+		 *  @return true if the trust score was found.
+		 *
+		 **/
+		bool TrustScore(uint32_t& nScore) const;
+
+
 
         /** Extract Trust
          *
@@ -253,6 +265,19 @@ namespace Legacy
 		 *
 		 **/
 		bool CoinstakeAge(uint64_t& nAge) const;
+
+
+		/** Coinstake Interest
+		 *
+		 *  Get the total calculated interest of the coinstake transaction
+		 *
+		 *  @param[in] block The block to check from
+		 *  @param[out] nAge The age to return.
+		 *
+		 *  @return true if succeeded.
+		 *
+		 **/
+		bool CoinstakeInterest(const TAO::Ledger::BlockState& block, uint64_t& nInterest) const;
 
 
 		/** Are Inputs Standard
@@ -400,7 +425,7 @@ namespace Legacy
 	     *  @return true if the inputs were found
 	     *
 	     **/
-		bool Connect(const std::map<uint512_t, Transaction>& inputs, const TAO::Ledger::BlockState* state, uint8_t nFlags = FLAGS::MEMPOOL) const;
+		bool Connect(const std::map<uint512_t, Transaction>& inputs, TAO::Ledger::BlockState& state, uint8_t nFlags = FLAGS::MEMPOOL) const;
 
 
 		/** Disconnect
@@ -411,6 +436,18 @@ namespace Legacy
 		 *
 		 **/
 		bool Disconnect() const;
+
+
+		/** Check Trust
+		 *
+		 *  Check the calculated trust score meets published one.
+		 *
+		 *  @param[in] state The block state to check from.
+		 *
+		 *  @return true if the trust score was satisfied.
+		 *
+		 **/
+		bool CheckTrust(const TAO::Ledger::BlockState& state) const;
 
 
 	protected:

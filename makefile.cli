@@ -105,7 +105,7 @@ DEFS+=  -D$(BUILD_ARCH)
 
 #Display Warnings while compiling
 ifdef ENABLE_WARNINGS
-	CXXFLAGS+= -Wall -Wextra -Wno-sign-compare -Wno-invalid-offsetof -Wno-unused-parameter -Wformat -Wformat-security
+	CXXFLAGS+= -Wall -Wextra -Wno-sign-compare -Wno-invalid-offsetof -Wno-unused-parameter -Wformat -Wformat-security -pedantic
 else
 	CXXFLAGS+= -w
 endif
@@ -118,7 +118,7 @@ endif
 #Enable / Disable debug symbols and set appropriate optimization level
 ifdef ENABLE_DEBUG
 	DEBUG+=-g
-	OPTIMIZATION+=-O0
+	OPTIMIZATION+=-Og
 else
 	DEBUG+=-s
 	OPTIMIZATION+=-O3
@@ -139,10 +139,10 @@ OBJS= \
 	build/LLC_random.o \
 	build/LLC_key.o \
     build/LLC_bignum.o \
-	build/LLP_netaddr.o \
-	build/LLP_service.o \
-	build/LLP_address.o \
-	build/LLP_addressinfo.o \
+	build/LLD_global.o \
+	build/LLP_baseaddress.o \
+	build/LLP_legacyaddress.o \
+	build/LLP_trustaddress.o \
 	build/LLP_hosts.o \
 	build/LLP_socket.o \
 	build/LLP_inv.o\
@@ -164,6 +164,7 @@ OBJS= \
 	build/Ledger_chainstate.o \
 	build/Ledger_transaction.o \
 	build/Ledger_tritium.o \
+	build/Ledger_trust.o \
 	build/Ledger_trustkey.o \
 	build/Register_verify.o \
 	build/Register_rollback.o \
@@ -202,6 +203,7 @@ OBJS= \
 	build/Legacy_keypool.o \
 	build/Legacy_keystore.o \
 	build/Legacy_legacy.o \
+	build/Legacy_locator.o \
 	build/Legacy_mempool.o \
 	build/Legacy_merkle.o \
 	build/Legacy_outpoint.o \
@@ -221,7 +223,9 @@ OBJS= \
 	build/Util_config.o \
 	build/Util_debug.o \
 	build/Util_filesystem.o \
-	build/Util_version.o
+	build/Util_signals.o \
+	build/Util_version.o \
+    build/Util_memory.o
 
 ###############################################################################
 ifeq ($(detected_OS),Windows)
@@ -522,13 +526,13 @@ ifeq ($(shell uname -r | grep -o ....$), ARCH)
 endif
 
 #OS Specific Compiler Flags
-CXXFLAGS+= -O3 \
-	-pthread \
+CXXFLAGS+= -pthread \
 	-fstack-protector \
 	-D_FORTIFY_SOURCE=2 \
 	-Wl,-z,relro \
 	-Wl,-z,now \
 	$(DEBUG) \
+    $(OPTIMIZATION) \
 	$(DEFS) \
 	$(INCLUDEPATHS)
 
@@ -659,6 +663,7 @@ build/Util_%.o: src/Util/%.cpp
 	rm -f $(@:%.o=%.d)
 
 
+#build the final executable
 nexus: $(OBJS:obj/%=build/%)
 	$(CXX) $(CXXFLAGS) -rdynamic -o $@ $^ $(LDFLAGS) $(LIBS)
 	@echo ' '

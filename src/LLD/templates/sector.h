@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -36,38 +36,41 @@ namespace LLD
 
 
     /* Maximum cache buckets for sectors. */
-    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 256; //256 MB Max Cache
+    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 4; //256 MB Max Cache
 
 
     /* The maximum amount of bytes allowed in the memory buffer for disk flushes. **/
-    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 32; //32 MB Max Disk Buffer
+    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 4; //32 MB Max Disk Buffer
 
 
-    /** Base Template Class for a Sector Database.
-        Processes main Lower Level Disk Communications.
-        A Sector Database Is a Fixed Width Data Storage Medium.
-
-        It is ideal for data structures to be stored that do not
-        change in their size. This allows the greatest efficiency
-        in fixed data storage (structs, class, etc.).
-
-        It is not ideal for data structures that may vary in size
-        over their lifetimes. The Dynamic Database will allow that.
-
-        Key Type can be of any type. Data lengths are attributed to
-        each key type. Keys are assigned sectors and stored in the
-        key storage file. Sector files are broken into maximum of 1 GB
-        for stability on all systems, key files are determined the same.
-
-        Multiple Keys can point back to the same sector to allow multiple
-        access levels of the sector. This specific class handles the lower
-        level disk communications for the sector database.
-
-        If each sector was allowed to be varying sizes it would remove the
-        ability to use free space that becomes available upon an erase of a
-        record. Use this Database purely for fixed size structures. Overflow
-        attempts will trigger an error code.
-    **/
+    /** SectorDatabase
+     *
+     *  Base Template Class for a Sector Database.
+     *  Processes main Lower Level Disk Communications.
+     *  A Sector Database Is a Fixed Width Data Storage Medium.
+     *
+     *  It is ideal for data structures to be stored that do not
+     *  change in their size. This allows the greatest efficiency
+     *  in fixed data storage (structs, class, etc.).
+     *
+     *  It is not ideal for data structures that may vary in size
+     *  over their lifetimes. The Dynamic Database will allow that.
+     *
+     *  Key Type can be of any type. Data lengths are attributed to
+     *  each key type. Keys are assigned sectors and stored in the
+     *  key storage file. Sector files are broken into maximum of 1 GB
+     *  for stability on all systems, key files are determined the same.
+     *
+     *  Multiple Keys can point back to the same sector to allow multiple
+     *  access levels of the sector. This specific class handles the lower
+     *  level disk communications for the sector database.
+     *
+     *  If each sector was allowed to be varying sizes it would remove the
+     *  ability to use free space that becomes available upon an erase of a
+     *  record. Use this Database purely for fixed size structures. Overflow
+     *  attempts will trigger an error code.
+     *
+     **/
     template<typename KeychainType, typename CacheType>
     class SectorDatabase
     {
@@ -87,15 +90,8 @@ namespace LLD
 
 
         /* The String to hold the Disk Location of Database File. */
-        std::string strBaseLocation, strName;
-
-
-        /* Destructor Flag. */
-        std::atomic<bool> fDestruct;
-
-
-        /* Initialize Flag. */
-        std::atomic<bool> fInitialized;
+        std::string strBaseLocation;
+        std::string strName;
 
 
         /* timer for Runtime Calculations. */
@@ -108,16 +104,6 @@ namespace LLD
 
         /* Sector Keys Database. */
         KeychainType* pSectorKeys;
-
-
-        /* For the Meter. */
-        std::atomic<uint32_t> nBytesRead;
-        std::atomic<uint32_t> nBytesWrote;
-        std::atomic<uint32_t> nRecordsFlushed;
-
-
-        /** Database Flags. **/
-        uint8_t nFlags;
 
 
         /* Cache Pool */
@@ -136,6 +122,7 @@ namespace LLD
         /* Cache Writer Thread. */
         std::thread CacheWriterThread;
 
+
         /* The meter thread. */
         std::thread MeterThread;
 
@@ -147,28 +134,52 @@ namespace LLD
         /* Disk Buffer Memory Size. */
         std::atomic<uint32_t> nBufferBytes;
 
+        /* For the Meter. */
+        std::atomic<uint32_t> nBytesRead;
+        std::atomic<uint32_t> nBytesWrote;
+        std::atomic<uint32_t> nRecordsFlushed;
+
+        /* Destructor Flag. */
+        std::atomic<bool> fDestruct;
+
+
+        /* Initialize Flag. */
+        std::atomic<bool> fInitialized;
+
+
+        /** Database Flags. **/
+        uint8_t nFlags;
+
+
     public:
+
+
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         SectorDatabase(std::string strNameIn, uint8_t nFlagsIn)
-        : strBaseLocation(config::GetDataDir() + strNameIn + "/datachain/")
+        : CONDITION_MUTEX()
+        , CONDITION()
+        , SECTOR_MUTEX()
+        , BUFFER_MUTEX()
+        , TRANSACTION_MUTEX()
+        , strBaseLocation(config::GetDataDir() + strNameIn + "/datachain/")
         , strName(strNameIn)
-        , fDestruct(false)
-        , fInitialized(false)
         , runtime()
         , pTransaction(nullptr)
         , pSectorKeys(nullptr)
-        , nBytesRead(0)
-        , nBytesWrote(0)
-        , nRecordsFlushed(0)
-        , nFlags(nFlagsIn)
-        , cachePool(new CacheType(MAX_SECTOR_CACHE_SIZE))
+        , cachePool(new CacheType((config::GetArg("-maxcache", 64) * 1024 * 1024) / 4))
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
         , nCurrentFile(0)
         , nCurrentFileSize(0)
-        , CacheWriterThread(std::bind(&SectorDatabase::CacheWriter, this))
-        , MeterThread(std::bind(&SectorDatabase::Meter, this))
+        , CacheWriterThread()
+        , MeterThread()
         , vDiskBuffer()
         , nBufferBytes(0)
+        , nBytesRead(0)
+        , nBytesWrote(0)
+        , nRecordsFlushed(0)
+        , fDestruct(false)
+        , fInitialized(false)
+        , nFlags(nFlagsIn)
         {
             /* Set readonly flag if write or append are not specified. */
             if(!(nFlags & FLAGS::FORCE) && !(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND))
@@ -183,8 +194,12 @@ namespace LLD
                     runtime.ElapsedMicroseconds(), " micro-seconds" ANSI_COLOR_RESET);
             }
 
+            CacheWriterThread = std::thread(std::bind(&SectorDatabase::CacheWriter, this));
+            MeterThread = std::thread(std::bind(&SectorDatabase::Meter, this));
         }
 
+
+        /** Default Destructor **/
         ~SectorDatabase()
         {
             fDestruct = true;
@@ -198,11 +213,17 @@ namespace LLD
 
             delete cachePool;
             delete fileCache;
-            delete pSectorKeys;
+
+            if(pSectorKeys)
+                delete pSectorKeys;
         }
 
 
-        /** Initialize Sector Database. **/
+        /** Initialize
+         *
+         *  Initialize Sector Database.
+         *
+         **/
         void Initialize()
         {
             /* Create directories if they don't exist yet. */
@@ -249,13 +270,26 @@ namespace LLD
         }
 
 
-        /* Get the keys for this sector database from the keychain.  */
+        /** GetKeys
+         *
+         *  Get the keys for this sector database from the keychain.
+         *
+         **/
         std::vector< std::vector<uint8_t> > GetKeys()
         {
             return pSectorKeys->GetKeys();
         }
 
 
+        /** Exists
+         *
+         *  Determine if the entry identified by the given key exists.
+         *
+         *  @param[in] key The key to the database entry.
+         *
+         *  @return True if the entry exists, false otherwise.
+         *
+         **/
         template<typename Key>
         bool Exists(const Key& key)
         {
@@ -264,28 +298,41 @@ namespace LLD
             ssKey << key;
 
             /* Check that the key is not pending in a transaction for Erase. */
-            if(pTransaction)
-            {
-                LOCK(TRANSACTION_MUTEX);
+            { LOCK(TRANSACTION_MUTEX);
+                if(pTransaction)
+                {
+                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
+                        return false;
 
-                if(pTransaction->mapEraseData.count(static_cast<std::vector<uint8_t>>(ssKey)))
-                    return false;
+                    /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
+                    if(pTransaction->mapTransactions.count(ssKey.Bytes()))
+                        return true;
 
-                /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-                if(pTransaction->mapTransactions.count(static_cast<std::vector<uint8_t>>(ssKey)))
-                    return true;
-
-                /* Check for keychain commits. */
-                if(pTransaction->mapKeychain.count(static_cast<std::vector<uint8_t>>(ssKey)))
-                    return true;
+                    /* Check for keychain commits. */
+                    if(pTransaction->mapKeychain.count(ssKey.Bytes()))
+                        return true;
+                }
             }
+
+            /* Check the cache pool. */
+            if(cachePool->Has(ssKey.Bytes()))
+                return true;
 
             /* Return the Key existance in the Keychain Database. */
             SectorKey cKey;
-            return pSectorKeys->Get(static_cast<std::vector<uint8_t>>(ssKey), cKey);
+            return pSectorKeys->Get(ssKey.Bytes(), cKey);
         }
 
 
+        /** Erase
+         *
+         *  Erase a database entry identified by the given key.
+         *
+         *  @param[in] key The key to the database entry to erase.
+         *
+         *  @return True if the entry erased, false otherwise.
+         *
+         **/
         template<typename Key>
         bool Erase(const Key& key)
         {
@@ -296,18 +343,22 @@ namespace LLD
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
 
+            /* Remove the item from the cache pool. */
+            cachePool->Remove(ssKey.Bytes());
+
             /* Add transaction to erase queue. */
-            if(pTransaction)
-            {
-                LOCK(TRANSACTION_MUTEX);
+            { LOCK(TRANSACTION_MUTEX);
+                if(pTransaction)
+                {
 
-                pTransaction->EraseTransaction(static_cast<std::vector<uint8_t>>(ssKey));
+                    pTransaction->EraseTransaction(ssKey.Bytes());
 
-                return true;
+                    return true;
+                }
             }
 
             /* Return the Key existance in the Keychain Database. */
-            bool fErased = pSectorKeys->Erase(static_cast<std::vector<uint8_t>>(ssKey));
+            bool fErased = pSectorKeys->Erase(ssKey.Bytes());
 
             if(config::GetBoolArg("-runtime", false))
             {
@@ -319,6 +370,16 @@ namespace LLD
         }
 
 
+        /** Read
+         *
+         *  Read a database entry identified by the given key.
+         *
+         *  @param[in] key The key to the database entry to read.
+         *  @param[out] value The database entry value to read out.
+         *
+         *  @return True if the entry read, false otherwise.
+         *
+         **/
         template<typename Key, typename Type>
         bool Read(const Key& key, Type& value)
         {
@@ -330,19 +391,20 @@ namespace LLD
             std::vector<uint8_t> vData;
 
             /* Check that the key is not pending in a transaction for Erase. */
-            if(pTransaction)
-            {
-                LOCK(TRANSACTION_MUTEX);
+            { LOCK(TRANSACTION_MUTEX);
+                if(pTransaction)
+                {
 
-                if(pTransaction->mapEraseData.count(static_cast<std::vector<uint8_t>>(ssKey)))
-                    return false;
+                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
+                        return false;
 
-                /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-                if(pTransaction->mapTransactions.count(static_cast<std::vector<uint8_t>>(ssKey)))
-                    vData = pTransaction->mapTransactions[static_cast<std::vector<uint8_t>>(ssKey)];
+                    /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
+                    if(pTransaction->mapTransactions.count(ssKey.Bytes()))
+                        vData = pTransaction->mapTransactions[ssKey.Bytes()];
+                }
             }
 
-            if(vData.empty() && !Get(static_cast<std::vector<uint8_t>>(ssKey), vData))
+            if(vData.empty() && !Get(ssKey.Bytes(), vData))
                 return false;
 
             /* Deserialize Value. */
@@ -353,6 +415,59 @@ namespace LLD
         }
 
 
+        /** Index
+         *
+         *  Indexes a key into memory.
+         *
+         *  @param[in] key The key to index.
+         *  @param[in] index The index of the key to write to.
+         *
+         *  @return True if successful indexing, false otherwise.
+         *
+         **/
+        template<typename Key, typename Type>
+        bool Index(const Key& key, const Type& index)
+        {
+            /* Serialize Key into Bytes. */
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
+            ssKey << key;
+
+            /* Serialize the index into bytes. */
+            DataStream ssIndex(SER_LLD, DATABASE_VERSION);
+            ssIndex << index;
+
+            /* Check that the key is not pending in a transaction for Erase. */
+            { LOCK(TRANSACTION_MUTEX);
+                if(pTransaction)
+                {
+
+                    /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
+                    pTransaction->mapIndex[ssKey.Bytes()] = ssIndex.Bytes();
+
+                    return true;
+                }
+            }
+
+            /* Get the key. */
+            SectorKey cKey;
+            if(!pSectorKeys->Get(ssIndex.Bytes(), cKey))
+                return false;
+
+            /* Write the new sector key. */
+            cKey.SetKey(ssKey.Bytes());
+            return pSectorKeys->Put(cKey);
+        }
+
+
+        /** Write
+         *
+         *  Writes a key to the sector database
+         *
+         *  @param[in] key The key to write.
+         *
+         *  @return True if successful write, false otherwise.
+         *
+         **/
         template<typename Key>
         bool Write(const Key& key)
         {
@@ -364,22 +479,36 @@ namespace LLD
             ssKey << key;
 
             /* Check for transaction. */
-            if(pTransaction)
-            {
-                LOCK(TRANSACTION_MUTEX);
+            { LOCK(TRANSACTION_MUTEX);
+                if(pTransaction)
+                {
+                    /* Check if data is in erase queue, if so remove it. */
+                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
+                        pTransaction->mapEraseData.erase(ssKey.Bytes());
 
-                /* Set the transaction data. */
-                pTransaction->mapKeychain[static_cast<std::vector<uint8_t>>(ssKey)] = 0;
+                    /* Set the transaction data. */
+                    pTransaction->mapKeychain[ssKey.Bytes()] = 0;
 
-                return true;
+                    return true;
+                }
             }
 
             /* Return the Key existance in the Keychain Database. */
-            SectorKey cKey(STATE::READY, static_cast<std::vector<uint8_t>>(ssKey), 0, 0, 0);
+            SectorKey cKey(STATE::READY, ssKey.Bytes(), 0, 0, 0);
             return pSectorKeys->Put(cKey);
         }
 
 
+        /** Write
+         *
+         *  Writes a key/value pair to the sector database
+         *
+         *  @param[in] key The key to write.
+         *  @param[in] value The value to write.
+         *
+         *  @return True if successful write, false otherwise.
+         *
+         **/
         template<typename Key, typename Type>
         bool Write(const Key& key, const Type& value)
         {
@@ -395,17 +524,21 @@ namespace LLD
             ssData << value;
 
             /* Check for transaction. */
-            if(pTransaction)
-            {
-                LOCK(TRANSACTION_MUTEX);
+            { LOCK(TRANSACTION_MUTEX);
+                if(pTransaction)
+                {
+                    /* Check if data is in erase queue, if so remove it. */
+                    if(pTransaction->mapEraseData.count(ssKey.Bytes()))
+                        pTransaction->mapEraseData.erase(ssKey.Bytes());
 
-                /* Set the transaction data. */
-                pTransaction->mapTransactions[static_cast<std::vector<uint8_t>>(ssKey)] = static_cast<std::vector<uint8_t>>(ssData);
+                    /* Set the transaction data. */
+                    pTransaction->mapTransactions[ssKey.Bytes()] = ssData.Bytes();
 
-                return true;
+                    return true;
+                }
             }
 
-            return Put(static_cast<std::vector<uint8_t>>(ssKey), static_cast<std::vector<uint8_t>>(ssData));
+            return Put(ssKey.Bytes(), ssData.Bytes());
         }
 
 
@@ -419,7 +552,7 @@ namespace LLD
          *  @return True if the record was read successfully.
          *
          **/
-        bool Get(std::vector<uint8_t> vKey, std::vector<uint8_t>& vData)
+        bool Get(const std::vector<uint8_t>& vKey, std::vector<uint8_t>& vData)
         {
             /* Iterate if meters are enabled. */
             nBytesRead += (vKey.size() + vData.size());
@@ -432,25 +565,23 @@ namespace LLD
             SectorKey cKey;
             if(pSectorKeys->Get(vKey, cKey))
             {
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                if(!fileCache->Get(cKey.nSectorFile, pstream))
-                {
-                    /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream->is_open())
+                { LOCK(SECTOR_MUTEX);
+
+                    /* Find the file stream for LRU cache. */
+                    std::fstream* pstream;
+                    if(!fileCache->Get(cKey.nSectorFile, pstream))
                     {
-                        delete pstream;
-                        return debug::error(FUNCTION, "couldn't create stream file");
+                        /* Set the new stream pointer. */
+                        pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                        if(!pstream->is_open())
+                        {
+                            delete pstream;
+                            return debug::error(FUNCTION, "couldn't create stream file");
+                        }
+
+                        /* If file not found add to LRU cache. */
+                        fileCache->Put(cKey.nSectorFile, pstream);
                     }
-
-                    /* If file not found add to LRU cache. */
-                    fileCache->Put(cKey.nSectorFile, pstream);
-                }
-
-                /* Read the record from disk. */
-                {
-                    LOCK(SECTOR_MUTEX);
 
                     /* Seek to the Sector Position on Disk. */
                     pstream->seekg(cKey.nSectorStart, std::ios::beg);
@@ -459,6 +590,7 @@ namespace LLD
                     /* Read the State and Size of Sector Header. */
                     if(!pstream->read((char*) &vData[0], vData.size()))
                         debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
+
                 }
 
                 /* Add to cache */
@@ -481,34 +613,32 @@ namespace LLD
          *  is already read from the keychain.
          *
          *  @param[in] cKey The sector key from keychain.
-         *  @param[in] vData The binary data of the record to get.
+         *  @param[in] vData The binary data of the record to get.WRITE
          *
          *  @return True if the record was read successfully.
          *
          **/
-        bool Get(SectorKey cKey, std::vector<uint8_t>& vData)
+        bool Get(const SectorKey& cKey, std::vector<uint8_t>& vData)
         {
-            nBytesRead += (cKey.vKey.size() + vData.size());
+            { LOCK(SECTOR_MUTEX);
 
-            /* Find the file stream for LRU cache. */
-            std::fstream *pstream;
-            if(!fileCache->Get(cKey.nSectorFile, pstream))
-            {
-                /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
-                if(!pstream->is_open())
+                nBytesRead += (cKey.vKey.size() + vData.size());
+
+                /* Find the file stream for LRU cache. */
+                std::fstream *pstream;
+                if(!fileCache->Get(cKey.nSectorFile, pstream))
                 {
-                    delete pstream;
-                    return false;
+                    /* Set the new stream pointer. */
+                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                    if(!pstream->is_open())
+                    {
+                        delete pstream;
+                        return false;
+                    }
+
+                    /* If file not found add to LRU cache. */
+                    fileCache->Put(cKey.nSectorFile, pstream);
                 }
-
-                /* If file not found add to LRU cache. */
-                fileCache->Put(cKey.nSectorFile, pstream);
-            }
-
-            /* Read the record from the disk. */
-            {
-                LOCK(SECTOR_MUTEX);
 
                 /* Seek to the Sector Position on Disk. */
                 pstream->seekg(cKey.nSectorStart, std::ios::beg);
@@ -517,11 +647,11 @@ namespace LLD
                 /* Read the State and Size of Sector Header. */
                 if(!pstream->read((char*) &vData[0], vData.size()))
                     debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
-            }
 
-            /* Verboe output. */
-            debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
-                " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
+                /* Verboe output. */
+                debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
+                    " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
+            }
 
             return true;
         }
@@ -537,7 +667,7 @@ namespace LLD
          *  @return True if the flush was successful.
          *
          **/
-        bool Update(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
+        bool Update(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
         {
             /* Check the keychain for key. */
             SectorKey key;
@@ -551,38 +681,37 @@ namespace LLD
             /* Write the data into the memory cache. */
             cachePool->Put(vKey, vData, false);
 
-            /* Find the file stream for LRU cache. */
-            std::fstream* pstream;
-            if(!fileCache->Get(key.nSectorFile, pstream))
-            {
-                /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
-                if(!pstream->is_open())
-                {
-                    delete pstream;
-                    return false;
-                }
-
-                /* If file not found add to LRU cache. */
-                fileCache->Put(key.nSectorFile, pstream);
-            }
-
-            /* Write the data to disk. */
             { LOCK(SECTOR_MUTEX);
+
+                /* Find the file stream for LRU cache. */
+                std::fstream* pstream;
+                if(!fileCache->Get(key.nSectorFile, pstream))
+                {
+                    /* Set the new stream pointer. */
+                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                    if(!pstream->is_open())
+                    {
+                        delete pstream;
+                        return false;
+                    }
+
+                    /* If file not found add to LRU cache. */
+                    fileCache->Put(key.nSectorFile, pstream);
+                }
 
                 /* If it is a New Sector, Assign a Binary Position. */
                 pstream->seekp(key.nSectorStart, std::ios::beg);
                 pstream->write((char*) &vData[0], vData.size());
                 pstream->flush();
+
+                /* Records flushed indicator. */
+                ++nRecordsFlushed;
+                nBytesWrote += vData.size();
+
+                /* Verboe output. */
+                debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
+                    " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
             }
-
-            /* Records flushed indicator. */
-            ++nRecordsFlushed;
-            nBytesWrote += vData.size();
-
-            /* Verboe output. */
-            debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
-                " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
 
             return true;
         }
@@ -598,7 +727,7 @@ namespace LLD
          *  @return True if the flush was successful.
          *
          **/
-        bool Force(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
+        bool Force(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
         {
             if(nFlags & FLAGS::APPEND || !Update(vKey, vData))
             {
@@ -617,44 +746,42 @@ namespace LLD
                 /* Write the data into the memory cache. */
                 cachePool->Put(vKey, vData, false);
 
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                if(!fileCache->Get(nCurrentFile, pstream))
-                {
-                    /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream->is_open())
+                { LOCK(SECTOR_MUTEX);
+
+                    /* Find the file stream for LRU cache. */
+                    std::fstream* pstream;
+                    if(!fileCache->Get(nCurrentFile, pstream))
                     {
-                        delete pstream;
-                        return false;
+                        /* Set the new stream pointer. */
+                        pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
+                        if(!pstream->is_open())
+                        {
+                            delete pstream;
+                            return false;
+                        }
+
+                        /* If file not found add to LRU cache. */
+                        fileCache->Put(nCurrentFile, pstream);
                     }
-
-                    /* If file not found add to LRU cache. */
-                    fileCache->Put(nCurrentFile, pstream);
-                }
-
-                /* Write the data to disk. */
-                {
-                    LOCK(SECTOR_MUTEX);
 
                     /* If it is a New Sector, Assign a Binary Position. */
                     pstream->seekp(nCurrentFileSize, std::ios::beg);
                     pstream->write((char*) &vData[0], vData.size());
                     pstream->flush();
+
+                    /* Create a new Sector Key. */
+                    SectorKey key = SectorKey(STATE::READY, vKey, nCurrentFile, nCurrentFileSize, vData.size());
+
+                    /* Increment the current filesize */
+                    nCurrentFileSize += vData.size();
+
+                    /* Assign the Key to Keychain. */
+                    pSectorKeys->Put(key);
+
+                    /* Verboe output. */
+                    debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
+                        " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
                 }
-
-                /* Create a new Sector Key. */
-                SectorKey key = SectorKey(STATE::READY, vKey, nCurrentFile, nCurrentFileSize, vData.size());
-
-                /* Increment the current filesize */
-                nCurrentFileSize += vData.size();
-
-                /* Assign the Key to Keychain. */
-                pSectorKeys->Put(key);
-
-                /* Verboe output. */
-                debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
-                    " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
             }
 
             return true;
@@ -671,7 +798,7 @@ namespace LLD
          *  @return True if the record was written successfully.
          *
          **/
-        bool Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData)
+        bool Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
         {
             /* Write the data into the memory cache. */
             cachePool->Put(vKey, vData, !(nFlags & FLAGS::FORCE));
@@ -700,7 +827,7 @@ namespace LLD
         }
 
 
-        /** Cache Writer
+        /** CacheWriter
          *
          *  Flushes periodically data from the cache buffer to disk.
          *
@@ -709,7 +836,10 @@ namespace LLD
         {
             /* No cache write on force mode. */
             if(nFlags & FLAGS::FORCE)
+            {
+                debug::log(0, FUNCTION, strBaseLocation, " in FORCE mode... closing");
                 return;
+            }
 
             /* Wait for initialization. */
             while(!fInitialized)
@@ -718,8 +848,6 @@ namespace LLD
             /* Check if writing is enabled. */
             if(!(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND))
                 return;
-
-
 
             while(true)
             {
@@ -754,40 +882,18 @@ namespace LLD
                     stream.close();
                 }
 
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                { LOCK(SECTOR_MUTEX);
-
-                    if(!fileCache->Get(nCurrentFile, pstream))
-                    {
-                        /* Set the new stream pointer. */
-                        pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
-                        if(!pstream->is_open())
-                        {
-                            delete pstream;
-                            continue;
-                        }
-
-                        /* If file not found add to LRU cache. */
-                        fileCache->Put(nCurrentFile, pstream);
-                    }
-
-                    /* Seek to the end of the file */
-                    pstream->seekp(nCurrentFileSize, std::ios::beg);
-                }
-
                 /* Iterate through buffer to queue disk writes. */
-                std::vector<uint8_t> vWrite;
-                for(auto & vObj : vIndexes)
+                for(const auto& vObj : vIndexes)
                 {
                     /* Force write data. */
                     Force(vObj.first, vObj.second);
 
                     /* Set no longer reserved in cache pool. */
                     cachePool->Reserve(vObj.first, false);
-                }
 
-                nBytesWrote += (vWrite.size());
+                    /* Iterate bytes written for meter. */
+                    nBytesWrote += (vObj.first.size() + vObj.second.size());
+                }
 
                 /* Notify the condition. */
                 CONDITION.notify_all();
@@ -805,7 +911,12 @@ namespace LLD
             }
         }
 
-        /* LLP Meter Thread. Tracks the Requests / Second. */
+
+        /** Meter
+         *
+         *  LLD Meter Thread. Tracks the Reads/Writes per second.
+         *
+         **/
         void Meter()
         {
             if(!config::GetBoolArg("-meters", false))
@@ -841,6 +952,8 @@ namespace LLD
          **/
         void TxnBegin()
         {
+            LOCK(TRANSACTION_MUTEX);
+
             /* Delete a previous database transaction pointer if applicable. */
             if(pTransaction)
                 delete pTransaction;
@@ -857,6 +970,8 @@ namespace LLD
          **/
         void TxnAbort()
         {
+            LOCK(TRANSACTION_MUTEX);
+
             /** Delete the previous transaction pointer if applicable. **/
             if(pTransaction)
                 delete pTransaction;
@@ -866,9 +981,11 @@ namespace LLD
         }
 
 
-        /** Rollback Transactions
+        /** RollbackTransactions
          *
          *  Rollback the disk to previous state.
+         *
+         *  @return True if rollback was successful, false otherwise.
          *
          **/
         bool RollbackTransactions()
@@ -882,13 +999,17 @@ namespace LLD
         }
 
 
-        /** Txn Commit
+        /** TxnCommit
          *
          *  Commit data from transaction object.
+         *
+         *  @return True, if commit is successful, false otherwise.
          *
          **/
         bool TxnCommit()
         {
+            LOCK(TRANSACTION_MUTEX);
+
             /* Check that there is a valid transaction to apply to the database. */
             if(!pTransaction)
                 return debug::error(FUNCTION, "nothing to commit.");
@@ -901,8 +1022,10 @@ namespace LLD
                 /* Erase the transaction data. */
                 if(!pSectorKeys->Erase(it->first))
                 {
+                    delete pTransaction;
+                    pTransaction = nullptr;
                     //RollbackTransactions();
-                    TxnAbort();
+                    //TxnAbort();
 
                     return debug::error(FUNCTION, "failed to erase from keychain");
                 }
@@ -914,8 +1037,10 @@ namespace LLD
                 SectorKey cKey(STATE::READY, it->first, 0, 0, 0);
                 if(!pSectorKeys->Put(cKey))
                 {
+                    delete pTransaction;
+                    pTransaction = nullptr;
                     //RollbackTransactions();
-                    TxnAbort();
+                    //TxnAbort();
                 }
             }
 
@@ -924,10 +1049,46 @@ namespace LLD
             {
                 if(!Force(it->first, it->second))
                 {
+                    delete pTransaction;
+                    pTransaction = nullptr;
                     //RollbackTransactions();
-                    TxnAbort();
+                    //TxnAbort();
 
                     return debug::error(FUNCTION, "failed to commit sector data");
+                }
+            }
+
+            /* Commit the index data. */
+            std::map<std::vector<uint8_t>, SectorKey> mapIndex;
+            for(auto it = pTransaction->mapIndex.begin(); it != pTransaction->mapIndex.end(); ++it )
+            {
+                /* Get the key. */
+                SectorKey cKey;
+                if(mapIndex.count(it->second))
+                    cKey = mapIndex[it->second];
+                else
+                {
+                    if(!pSectorKeys->Get(it->second, cKey))
+                    {
+                        delete pTransaction;
+                        pTransaction = nullptr;
+                        //TxnAbort();
+
+                        return debug::error(FUNCTION, "failed to read indexing entry");
+                    }
+
+                    mapIndex[it->second] = cKey;
+                }
+
+                /* Write the new sector key. */
+                cKey.SetKey(it->first);
+                if(!pSectorKeys->Put(cKey))
+                {
+                    delete pTransaction;
+                    pTransaction = nullptr;
+                    //TxnAbort();
+
+                    return debug::error(FUNCTION, "failed to write indexing entry");
                 }
             }
 

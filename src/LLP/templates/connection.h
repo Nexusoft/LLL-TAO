@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <vector>
 #include <stdio.h>
 
-#include <LLP/include/address.h>
+#include <LLP/include/legacyaddress.h>
 #include <LLP/packets/packet.h>
 #include <LLP/templates/socket.h>
 #include <LLP/templates/ddos.h>
@@ -31,34 +31,46 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /* Base Template class to handle outgoing / incoming LLP data for both Client and Server. */
+    /** BaseConnection
+     *
+     *  Base Template class to handle outgoing / incoming LLP data for both Client and Server.
+     *
+     **/
     template<typename PacketType = Packet>
     class BaseConnection : public Socket
     {
     protected:
 
-        /** Recursive mutex for thread synchronization. **/
-        std::mutex MUTEX;
+        /** Mutex for thread synchronization. **/
+        mutable std::mutex MUTEX;
 
 
-        /*  Pure Virtual Event Function to be Overridden allowing Custom Read Events.
-            Each event fired on Header Complete, and each time data is read to fill packet.
-            Useful to check Header length to maximum size of packet type for DDOS protection,
-            sending a keep-alive ping while downloading large files, etc.
-
-            LENGTH == 0: General Events
-            LENGTH  > 0 && PACKET: Read nSize Bytes into Data Packet
-        */
+        /** Event
+         *
+         *  Pure Virtual Event Function to be Overridden allowing Custom Read Events.
+         *  Each event fired on Header Complete, and each time data is read to fill packet.
+         *  Useful to check Header length to maximum size of packet type for DDOS protection,
+         *  sending a keep-alive ping while downloading large files, etc.
+         *
+         *  LENGTH == 0: General Events
+         *  LENGTH  > 0 && PACKET: Read nSize Bytes into Data Packet
+         *
+         **/
         virtual void Event(uint8_t EVENT, uint32_t LENGTH = 0) = 0;
 
 
-        /* Pure Virtual Process Function. To be overridden with your own custom packet processing. */
+        /** ProcessPacket
+         *
+         *  Pure Virtual Process Function. To be overridden with your own custom
+         *  packet processing.
+         *
+         **/
         virtual bool ProcessPacket() = 0;
 
     public:
 
         /** Incoming Packet Being Built. **/
-        PacketType        INCOMING;
+        PacketType     INCOMING;
 
 
         /** DDOS Score for Connection. **/
@@ -101,6 +113,8 @@ namespace LLP
         {
         }
 
+
+        /* Default destructor */
         virtual ~BaseConnection()
         {
             Disconnect();
@@ -119,7 +133,7 @@ namespace LLP
         }
 
 
-        /** Set Null
+        /** SetNull
          *
          *  Sets the object to an invalid state.
          *
@@ -137,62 +151,95 @@ namespace LLP
         }
 
 
-        /** Is Null
+        /** IsNull
          *
          *  Checks if is in null state.
          *
          **/
-        bool IsNull()
+        bool IsNull() const
         {
             return fd == -1;
         }
 
 
-        /* Checks for any flags in the Error Handle. */
-        bool Errors()
+        /** Errors
+         *
+         *  Checks for any flags in the Error Handle.
+         *
+         **/
+        bool Errors() const
         {
             return ErrorCode() != 0;
         }
 
 
-        /* Give the message (c-string) of the error in the socket. */
-        char* Error()
+        /** Error
+         *
+         *  Give the message (c-string) of the error in the socket.
+         *
+         **/
+        char* Error() const
         {
             return strerror(ErrorCode());
         }
 
 
-        /* Connection flag to determine if socket should be handled if not connected. */
-        bool Connected()
+        /** Connected
+         *
+         *  Connection flag to determine if socket should be handled if not connected.
+         *
+         **/
+        bool Connected() const
         {
             return fCONNECTED;
         }
 
 
-        /* Determines if nTime seconds have elapsed since last Read / Write. */
-        bool Timeout(uint32_t nTime)
+        /** Timeout
+         *
+         *  Determines if nTime seconds have elapsed since last Read / Write.
+         *
+         *  @param[in] nTime The time in seconds.
+         *
+         **/
+        bool Timeout(uint32_t nTime) const
         {
             return (runtime::timestamp() > nLastSend + nTime &&
                     runtime::timestamp() > nLastRecv + nTime);
         }
 
 
-        /* Handles two types of packets, requests which are of header >= 128, and data which are of header < 128. */
-        bool PacketComplete()
+        /** PacketComplete
+         *
+         *  Handles two types of packets, requests which are of header >= 128,
+         *  and data which are of header < 128.
+         **/
+        bool PacketComplete() const
         {
             return INCOMING.Complete();
         }
 
 
-        /* Used to reset the packet to Null after it has been processed. This then flags the Connection to read another packet. */
+        /** ResetPacket
+         *
+         *  Used to reset the packet to Null after it has been processed.
+         *  This then flags the Connection to read another packet.
+         *
+         **/
         void ResetPacket()
         {
             INCOMING.SetNull();
         }
 
 
-        /* Write a single packet to the TCP stream. */
-        void WritePacket(PacketType PACKET)
+        /** WritePacket
+         *
+         *  Write a single packet to the TCP stream.
+         *
+         *  @param[in] PACKET The packet of type PacketType to write.
+         *
+         **/
+        void WritePacket(const PacketType& PACKET)
         {
             LOCK(MUTEX);
 
@@ -209,24 +256,37 @@ namespace LLP
         }
 
 
-        /* Non-Blocking Packet reader to build a packet from TCP Connection.
-            This keeps thread from spending too much time for each Connection. */
+        /** ReadPacket
+         *
+         *  Non-Blocking Packet reader to build a packet from TCP Connection.
+         *  This keeps thread from spending too much time for each Connection.
+         *
+         **/
         virtual void ReadPacket() = 0;
 
 
-        /* Connect Socket to a Remote Endpoint. */
-        bool Connect(std::string strAddress, int nPort)
+        /** Connect
+         *
+         *  Connect Socket to a Remote Endpoint.
+         *
+         *  @param[in] strAddress The IP address string.
+         *  @param[in] nPort The port number.
+         *
+         *  @return Returns true if successful connection, false otherwise.
+         *
+         */
+        bool Connect(std::string strAddress, uint16_t nPort)
         {
-            Service addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), nPort);
+            BaseAddress addrConnect(strAddress, nPort);
 
             /// debug print
-            debug::log(1, NODE "Connecting to ", addrConnect.ToString());
+            debug::log(3, NODE, "Connecting to ", addrConnect.ToString());
 
             // Connect
             if (Attempt(addrConnect))
             {
                 /// debug print
-                debug::log(1, NODE "Connected to ", addrConnect.ToString());
+                debug::log(1, NODE, "Connected to ", addrConnect.ToString());
 
                 fCONNECTED = true;
                 fOUTGOING  = true;
@@ -237,14 +297,23 @@ namespace LLP
             return false;
         }
 
-        /* Get Address. Returns the address of socket. */
-        Address GetAddress()
+        /** GetAddress
+         *
+         *  Returns the address of socket.
+         *
+         **/
+        BaseAddress GetAddress() const
         {
-            return Address(Service(addr));
+            return addr;
         }
 
 
-        /* Disconnect Socket. Cleans up memory usage to prevent "memory runs" from poor memory management. */
+        /** Disconnect
+         *
+         *  Disconnect Socket. Cleans up memory usage to prevent "memory runs"
+         *  from poor memory management.
+         *
+         **/
         void Disconnect()
         {
             Close();
@@ -255,19 +324,29 @@ namespace LLP
     };
 
 
+    /** Connection
+     *
+     *
+     *
+     **/
     class Connection : public BaseConnection<Packet>
     {
     public:
 
-        /* Connection Constructors */
+        /** Default Constructor **/
         Connection()
         : BaseConnection() { }
 
+        /** Constructor **/
         Connection( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false)
         : BaseConnection(SOCKET_IN, DDOS_IN, isDDOS, fOutgoing) { }
 
 
-        /* Regular Connection Read Packet Method. */
+        /** ReadPacket
+         *
+         *  Regular Connection Read Packet Method.
+         *
+         **/
         void ReadPacket() final
         {
 

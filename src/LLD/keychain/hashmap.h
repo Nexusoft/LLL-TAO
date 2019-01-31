@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -33,13 +33,13 @@ namespace LLD
 {
 
 
-    /** Binary Hash Map
+    /** BinaryHashMap
      *
      *  This class is responsible for managing the keys to the sector database.
      *
-     *  It contains a Binary Hash Map with a minimum complexity of O(1)
+     *  It contains a Binary Hash Map with a minimum complexity of O(1).
      *  It uses a linked file list based on index to iterate trhough files and binary Positions
-     *  when there is a collision that is found
+     *  when there is a collision that is found.
      *
      **/
     class BinaryHashMap
@@ -56,6 +56,18 @@ namespace LLD
 
         /** The string to hold the database location. **/
         std::string strBaseLocation;
+
+
+        /** Keychain stream object. **/
+        mutable TemplateLRU<uint32_t, std::fstream *> *fileCache;
+
+
+        /** Total elements in hashmap for quick inserts. **/
+        mutable std::vector<uint32_t> hashmap;
+
+
+        /* The cache writer thread. */
+        std::thread CacheThread;
 
 
         /** The Maximum buckets allowed in the hashmap. */
@@ -86,37 +98,36 @@ namespace LLD
         std::atomic<bool> fDestruct;
 
 
-        /** Keychain stream object. **/
-        mutable TemplateLRU<uint32_t, std::fstream*>* fileCache;
-
-
-        /** Total elements in hashmap for quick inserts. **/
-        mutable std::vector<uint32_t> hashmap;
-
-
-        /* The cache writer thread. */
-        std::thread CacheThread;
-
-
     public:
 
+        /** Default Constructor **/
         BinaryHashMap()
-        : HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
+        : KEY_MUTEX()
+        , CONDITION()
+        , strBaseLocation()
+        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+        , hashmap(256 * 256 * 24)
+        , CacheThread()
+        , HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
         , HASHMAP_MAX_CACHE_SZIE(10 * 1024)
         , HASHMAP_MAX_KEY_SIZE(32)
         , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 13)
         , nFlags(FLAGS::APPEND)
         , fCacheActive(false)
         , fDestruct(false)
-        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
-        , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
-            hashmap.resize(HASHMAP_TOTAL_BUCKETS);
+            CacheThread = std::thread(std::bind(&BinaryHashMap::CacheWriter, this));
         }
+
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND)
-        : strBaseLocation(strBaseLocationIn)
+        : KEY_MUTEX()
+        , CONDITION()
+        , strBaseLocation(strBaseLocationIn)
+        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+        , hashmap(256 * 256 * 24)
+        , CacheThread()
         , HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
         , HASHMAP_MAX_CACHE_SZIE(10 * 1024)
         , HASHMAP_MAX_KEY_SIZE(32)
@@ -124,31 +135,34 @@ namespace LLD
         , nFlags(nFlagsIn)
         , fCacheActive(false)
         , fDestruct(false)
-        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
-        , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
-            hashmap.resize(HASHMAP_TOTAL_BUCKETS);
-
             Initialize();
+            CacheThread = std::thread(std::bind(&BinaryHashMap::CacheWriter, this));
         }
 
+
+        /** Default Constructor **/
         BinaryHashMap(std::string strBaseLocationIn, uint32_t nTotalBuckets, uint32_t nMaxCacheSize, uint8_t nFlagsIn = FLAGS::APPEND)
-        : strBaseLocation(strBaseLocationIn)
+        : KEY_MUTEX()
+        , CONDITION()
+        , strBaseLocation(strBaseLocationIn)
+        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+        , hashmap(nTotalBuckets)
+        , CacheThread()
         , HASHMAP_TOTAL_BUCKETS(nTotalBuckets)
         , HASHMAP_MAX_CACHE_SZIE(nMaxCacheSize)
         , HASHMAP_MAX_KEY_SIZE(32)
         , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 13)
         , nFlags(nFlagsIn)
         , fCacheActive(false)
-        , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
-        , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
+        , fDestruct(false)
         {
-            hashmap.resize(HASHMAP_TOTAL_BUCKETS);
-
             Initialize();
+            CacheThread = std::thread(std::bind(&BinaryHashMap::CacheWriter, this));
         }
 
-        //TODO: cleanup copy constructors
+
+        /** Copy Assignment Operator **/
         BinaryHashMap& operator=(BinaryHashMap map)
         {
             strBaseLocation       = map.strBaseLocation;
@@ -158,6 +172,7 @@ namespace LLD
         }
 
 
+        /** Copy Constructor **/
         BinaryHashMap(const BinaryHashMap& map)
         {
             strBaseLocation    = map.strBaseLocation;
@@ -165,7 +180,7 @@ namespace LLD
         }
 
 
-        /** Clean up Memory Usage. **/
+        /** Default Destructor **/
         ~BinaryHashMap()
         {
             fDestruct = true;
@@ -181,7 +196,7 @@ namespace LLD
          *  Compresses a given key until it matches size criteria.
          *  This function is one way and efficient for reducing key sizes.
          *
-         *  @param[out] vData The binary data of key to compress
+         *  @param[out] vData The binary data of key to compress.
          *  @param[in] nSize The desired size of key after compression.
          *
          **/
@@ -191,7 +206,7 @@ namespace LLD
             while(vData.size() > nSize)
             {
                 /* Loop half of the key to XOR elements. */
-                for(int i = 0; i < vData.size() / 2; i ++)
+                for(uint64_t i = 0; i < vData.size() / 2; ++i)
                     if(i * 2 < vData.size())
                         vData[i] ^= vData[i * 2];
 
@@ -199,6 +214,7 @@ namespace LLD
                 vData.resize(vData.size() / 2);
             }
         }
+
 
         /** GetKeys
          *
@@ -215,22 +231,22 @@ namespace LLD
 
         /** GetBucket
          *
-         *  Calculates a bucket to be used for the hashmap allocation
+         *  Calculates a bucket to be used for the hashmap allocation.
          *
          *  @param[in] vKey The key object to calculate with.
          *
-         *  @return The bucket assigned to key
+         *  @return The bucket assigned to the key.
          *
          **/
-        uint32_t GetBucket(std::vector<uint8_t> vKey)
+        uint32_t GetBucket(const std::vector<uint8_t>& vKey)
         {
             /* Get an MD5 digest. */
             uint8_t digest[MD5_DIGEST_LENGTH];
-            MD5((uint8_t*)&vKey[0], vKey.size(), (uint8_t*)&digest);
+            MD5((uint8_t *)&vKey[0], vKey.size(), (uint8_t *)&digest);
 
             /* Copy bytes into the bucket. */
             uint64_t nBucket;
-            std::copy((uint8_t*)&digest[0], (uint8_t*)&digest[0] + 8, (uint8_t*)&nBucket);
+            std::copy((uint8_t *)&digest[0], (uint8_t *)&digest[0] + 8, (uint8_t *)&nBucket);
 
             return nBucket % HASHMAP_TOTAL_BUCKETS;
         }
@@ -238,7 +254,7 @@ namespace LLD
 
         /** Initialize
          *
-         *  Initialize the binary hash map keychain
+         *  Initialize the binary hash map keychain.
          *
          **/
         void Initialize()
@@ -276,9 +292,9 @@ namespace LLD
 
                 /* Deserialize the values into memory index. */
                 uint32_t nTotalKeys = 0;
-                for(int nBucket = 0; nBucket < HASHMAP_TOTAL_BUCKETS; ++nBucket)
+                for(uint32_t nBucket = 0; nBucket < HASHMAP_TOTAL_BUCKETS; ++nBucket)
                 {
-                    std::copy((uint8_t*)&vIndex[nBucket * 4], (uint8_t*)&vIndex[nBucket * 4] + 4, (uint8_t*)&hashmap[nBucket]);
+                    std::copy((uint8_t *)&vIndex[nBucket * 4], (uint8_t *)&vIndex[nBucket * 4] + 4, (uint8_t *)&hashmap[nBucket]);
 
                     nTotalKeys += hashmap[nBucket];
                 }
@@ -316,15 +332,15 @@ namespace LLD
 
         /** Get
          *
-         *  Read a key index from the disk hashmaps
+         *  Read a key index from the disk hashmaps.
          *
-         *  @param[in] vKey The binary data of key
-         *  @param[out] cKey The key object to return\
+         *  @param[in] vKey The binary data of key.
+         *  @param[out] cKey The key object to return.
          *
-         *  @return true if the key was found
+         *  @return True if the key was found, false otherwise.
          *
          **/
-        bool Get(std::vector<uint8_t> vKey, SectorKey& cKey)
+        bool Get(const std::vector<uint8_t>& vKey, SectorKey &cKey)
         {
             /* Get the assigned bucket for the hashmap. */
             uint32_t nBucket = GetBucket(vKey);
@@ -336,40 +352,43 @@ namespace LLD
             cKey.vKey = vKey;
 
             /* Compress any keys larger than max size. */
-            CompressKey(vKey, HASHMAP_MAX_KEY_SIZE);
+            std::vector<uint8_t> vKeyCompressed = vKey;
+            CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
             for(int i = hashmap[nBucket] - 1; i >= 0; --i)
             {
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                if(!fileCache->Get(i, pstream))
-                {
-                    /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream->is_open())
-                    {
-                        delete pstream;
-                        return debug::error(FUNCTION, "couldn't create hashmap object");
-                    }
-
-                    /* If file not found add to LRU cache. */
-                    fileCache->Put(i, pstream);
-                }
-
-                /* Handle the disk operations. */
                 { LOCK(KEY_MUTEX);
 
+                    /* Find the file stream for LRU cache. */
+                    std::fstream *pstream;
+                    if(!fileCache->Get(i, pstream))
+                    {
+                        /* Set the new stream pointer. */
+                        std::string filename = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
+
+                        pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
+                        if(!pstream->is_open())
+                        {
+                            delete pstream;
+                            return debug::error(FUNCTION, "couldn't create hashmap object at: ",
+                                filename, " (", strerror(errno), ")");
+                        }
+
+                        /* If file not found add to LRU cache. */
+                        fileCache->Put(i, pstream);
+                    }
+
                     /* Seek to the hashmap index in file. */
-                    pstream->seekg (nFilePos, std::ios::beg);
+                    pstream->seekg(nFilePos, std::ios::beg);
 
                     /* Read the bucket binary data from file stream */
                     pstream->read((char*) &vBucket[0], vBucket.size());
                 }
 
                 /* Check if this bucket has the key */
-                if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKey.size(), vKey.begin()))
+                if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
                 {
                     /* Deserialie key and return if found. */
                     DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
@@ -384,7 +403,7 @@ namespace LLD
                         " | Sector File: ", cKey.nSectorFile,
                         " | Sector Size: ", cKey.nSectorSize,
                         " | Sector Start: ", cKey.nSectorStart, "\n",
-                        HexStr(cKey.vKey.begin(), cKey.vKey.end(), true));
+                        HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
 
                     return true;
                 }
@@ -396,16 +415,16 @@ namespace LLD
 
         /** Get
          *
-         *  Read a key index from the disk hashmaps
+         *  Read a key index from the disk hashmaps.
          *  This method iterates all maps to find all keys.
          *
-         *  @param[in] vKey The binary data of key
-         *  @param[out] vKeys The list of keys to return
+         *  @param[in] vKey The binary data of the key.
+         *  @param[out] vKeys The list of keys to return.
          *
-         *  @return true if the key was found
+         *  @return True if the key was found, false otherwise.
          *
          **/
-        bool Get(std::vector<uint8_t> vKey, std::vector<SectorKey>& vKeys)
+        bool Get(const std::vector<uint8_t>& vKey, std::vector<SectorKey>& vKeys)
         {
             /* Get the assigned bucket for the hashmap. */
             uint32_t nBucket = GetBucket(vKey);
@@ -414,25 +433,33 @@ namespace LLD
             uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
 
             /* Compress any keys larger than max size. */
-            CompressKey(vKey, HASHMAP_MAX_KEY_SIZE);
+            std::vector<uint8_t> vKeyCompressed = vKey;
+            CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-            for(int i = hashmap[nBucket] - 1; i >= 0; -- i)
+            for(int i = hashmap[nBucket] - 1; i >= 0; --i)
             {
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                if(!fileCache->Get(i, pstream))
-                {
-                    /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
-
-                    /* If file not found add to LRU cache. */
-                    fileCache->Put(i, pstream);
-                }
-
-                /* Handle the disk operations. */
                 { LOCK(KEY_MUTEX);
+
+                    /* Find the file stream for LRU cache. */
+                    std::fstream* pstream;
+                    if(!fileCache->Get(i, pstream))
+                    {
+                        std::string filename = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
+
+                        /* Set the new stream pointer. */
+                        pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
+                        if(!pstream->is_open())
+                        {
+                            delete pstream;
+                            return debug::error(FUNCTION, "couldn't create hashmap object at: ",
+                                filename, " (", strerror(errno), ")");
+                        }
+
+                        /* If file not found add to LRU cache. */
+                        fileCache->Put(i, pstream);
+                    }
 
                     /* Seek to the hashmap index in file. */
                     pstream->seekg (nFilePos, std::ios::beg);
@@ -442,7 +469,7 @@ namespace LLD
                 }
 
                 /* Check if this bucket has the key */
-                if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKey.size(), vKey.begin()))
+                if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
                 {
                     /* Deserialize key and return if found. */
                     DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
@@ -462,7 +489,7 @@ namespace LLD
                         " | Sector File: ", cKey.nSectorFile,
                         " | Sector Size: ", cKey.nSectorSize,
                         " | Sector Start: ", cKey.nSectorStart, "\n",
-                        HexStr(vKey.begin(), vKey.end(), true));
+                        HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
                 }
             }
 
@@ -472,14 +499,14 @@ namespace LLD
 
         /** Put
          *
-         *  Write a key to the disk hashmaps
+         *  Write a key to the disk hashmaps.
          *
          *  @param[in] cKey The key object to write.
          *
-         *  @return true if the key was found
+         *  @return True if the key was written, false otherwise.
          *
          **/
-        bool Put(SectorKey cKey)
+        bool Put(const SectorKey& cKey)
         {
             /* Get the assigned bucket for the hashmap. */
             uint32_t nBucket = GetBucket(cKey.vKey);
@@ -488,53 +515,81 @@ namespace LLD
             uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
 
             /* Compress any keys larger than max size. */
-            CompressKey(cKey.vKey, HASHMAP_MAX_KEY_SIZE);
+            std::vector<uint8_t> vKeyCompressed = cKey.vKey;
+            CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
             /* Handle if not in append mode which will update the key. */
             if(!(nFlags & FLAGS::APPEND))
             {
                 /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
                 std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-                for(int i = hashmap[nBucket] - 1; i >= 0; i--)
+                for(int i = hashmap[nBucket] - 1; i >= 0; --i)
                 {
-                    /* Find the file stream for LRU cache. */
-                    std::fstream* pstream;
-                    if(!fileCache->Get(i, pstream))
-                    {
-                        /* Set the new stream pointer. */
-                        pstream = new std::fstream(debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
-
-                        /* If file not found add to LRU cache. */
-                        fileCache->Put(i, pstream);
-                    }
-
-                    /* Handle the disk operations. */
                     { LOCK(KEY_MUTEX);
+
+                        /* Find the file stream for LRU cache. */
+                        std::fstream* pstream;
+                        if(!fileCache->Get(i, pstream))
+                        {
+                            std::string filename = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
+
+                            /* Set the new stream pointer. */
+                            pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
+                            if(!pstream->is_open())
+                            {
+                                delete pstream;
+                                return debug::error(FUNCTION, "couldn't create hashmap object at: ",
+                                    filename, " (", strerror(errno), ")");
+                            }
+
+                            /* If file not found add to LRU cache. */
+                            fileCache->Put(i, pstream);
+                        }
 
                         /* Seek to the hashmap index in file. */
                         pstream->seekg (nFilePos, std::ios::beg);
 
                         /* Read the bucket binary data from file stream */
                         pstream->read((char*) &vBucket[0], vBucket.size());
+
                     }
 
                     /* Check if this bucket has the key */
-                    if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + cKey.vKey.size(), cKey.vKey.begin()))
+                    if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
                     {
                         /* Serialize the key and return if found. */
                         DataStream ssKey(SER_LLD, DATABASE_VERSION);
                         ssKey << cKey;
 
                         /* Serialize the key into the end of the vector. */
-                        ssKey.write((char*)&cKey.vKey[0], cKey.vKey.size());
+                        ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
 
-                        /* Handle the disk writing operations. */
                         { LOCK(KEY_MUTEX);
 
-                            /* Flush the key file to disk. */
+                            /* Find the file stream for LRU cache. */
+                            std::fstream* pstream;
+                            if(!fileCache->Get(i, pstream))
+                            {
+                                std::string filename = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
+
+                                /* Set the new stream pointer. */
+                                pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
+                                if(!pstream->is_open())
+                                {
+                                    delete pstream;
+                                    return debug::error(FUNCTION, "couldn't create hashmap object at: ",
+                                        filename, " (", strerror(errno), ")");
+                                }
+
+                                /* If file not found add to LRU cache. */
+                                fileCache->Put(i, pstream);
+                            }
+
+                            /* Handle the disk writing operations. */
                             pstream->seekp (nFilePos, std::ios::beg);
-                            pstream->write((char*)&ssKey[0], ssKey.size());
+                            pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
                             pstream->flush();
+
                         }
 
                         /* Debug Output of Sector Key Information. */
@@ -546,7 +601,7 @@ namespace LLD
                             " | Sector File: ", cKey.nSectorFile,
                             " | Sector Size: ", cKey.nSectorSize,
                             " | Sector Start: ", cKey.nSectorStart, "\n",
-                            HexStr(cKey.vKey.begin(), cKey.vKey.end(), true));
+                            HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
 
                         /* Signal the cache thread to wake up. */
                         fCacheActive = true;
@@ -581,34 +636,33 @@ namespace LLD
             ssKey << cKey;
 
             /* Serialize the key into the end of the vector. */
-            ssKey.write((char*)&cKey.vKey[0], cKey.vKey.size());
+            ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
 
-            /* Find the file stream for LRU cache. */
-            std::fstream* pstream;
-            if(!fileCache->Get(hashmap[nBucket], pstream))
-            {
-                /* Set the new stream pointer. */
-                pstream = new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary);
-                if(!pstream->is_open())
-                {
-                    delete pstream;
-                    return debug::error(FUNCTION, "Failed to generate file object");
-                }
-
-                /* If not in cache, add to the LRU. */
-                fileCache->Put(hashmap[nBucket], pstream);
-            }
-
-            /* Handle the disk writing operations. */
             { LOCK(KEY_MUTEX);
+
+                /* Find the file stream for LRU cache. */
+                std::fstream* pstream;
+                if(!fileCache->Get(hashmap[nBucket], pstream))
+                {
+                    /* Set the new stream pointer. */
+                    pstream = new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary);
+                    if(!pstream->is_open())
+                    {
+                        delete pstream;
+                        return debug::error(FUNCTION, "Failed to generate file object");
+                    }
+
+                    /* If not in cache, add to the LRU. */
+                    fileCache->Put(hashmap[nBucket], pstream);
+                }
 
                 /* Flush the key file to disk. */
                 pstream->seekp (nFilePos, std::ios::beg);
-                pstream->write((char*)&ssKey[0], ssKey.size());
+                pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
                 pstream->flush();
 
                 /* Iterate the linked list value in the hashmap. */
-                hashmap[nBucket]++;
+                ++hashmap[nBucket];
             }
 
             /* Debug Output of Sector Key Information. */
@@ -620,7 +674,7 @@ namespace LLD
                 " | Sector File: ", cKey.nSectorFile,
                 " | Sector Size: ", cKey.nSectorSize,
                 " | Sector Start: ", cKey.nSectorStart,
-                " | Key: ",  HexStr(cKey.vKey.begin(), cKey.vKey.end()));
+                " | Key: ",  HexStr(vKeyCompressed.begin(), vKeyCompressed.end()));
 
             /* Signal the cache thread to wake up. */
             fCacheActive = true;
@@ -630,22 +684,41 @@ namespace LLD
         }
 
 
-        /* Helper Thread to Batch Write to Disk. */
+        /** CacheWriter
+         *
+         *  Helper Thread to Batch Write to Disk.
+         *
+         **/
         void CacheWriter()
         {
             std::mutex CONDITION_MUTEX;
             while(!fDestruct.load())
             {
+
                 /* Wait for Database to Initialize. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
                 CONDITION.wait(CONDITION_LOCK, [this]{ return fCacheActive.load() || fDestruct.load(); });
 
                 /* Flush the disk hashmap. */
                 std::vector<uint8_t> vDisk;
-                vDisk.insert(vDisk.end(), (uint8_t*)&hashmap[0], (uint8_t*)&hashmap[0] + (4 * hashmap.size()));
+
+                /* Lock for hashmap object. */
+                { LOCK(KEY_MUTEX);
+                    vDisk.insert(vDisk.end(), (uint8_t*)&hashmap[0], (uint8_t*)&hashmap[0] + (4 * hashmap.size()));
+                }
+
+                std::string filename = debug::strprintf("%s_hashmap.index", strBaseLocation.c_str());
 
                 /* Create the file handler. */
-                std::fstream stream(debug::strprintf("%s_hashmap.index", strBaseLocation.c_str()), std::ios::in | std::ios::out | std::ios::binary);
+                std::fstream stream(filename, std::ios::in | std::ios::out | std::ios::binary);
+                if(!stream.is_open())
+                {
+                    debug::error(FUNCTION, "couldn't open file: ",
+                        filename, " (", strerror(errno), ")");
+
+                    return;
+                }
+
                 stream.seekp(0, std::ios::beg);
                 stream.write((char*)&vDisk[0], vDisk.size());
                 stream.close();
@@ -660,15 +733,15 @@ namespace LLD
 
         /** Erase
          *
-         *  Erase a key from the disk hashmaps
-         *  This should be optimized further.
+         *  Erase a key from the disk hashmaps.
+         *  TODO: This should be optimized further.
          *
          *  @param[in] vKey the key to erase.
          *
-         *  @return true if the key was found
+         *  @return True if the key was erased, false otherwise.
          *
          **/
-        bool Erase(std::vector<uint8_t> vKey)
+        bool Erase(const std::vector<uint8_t> &vKey)
         {
             /* Get the assigned bucket for the hashmap. */
             uint32_t nBucket = GetBucket(vKey);
@@ -677,43 +750,40 @@ namespace LLD
             uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
 
             /* Compress any keys larger than max size. */
-            CompressKey(vKey, HASHMAP_MAX_KEY_SIZE);
+            std::vector<uint8_t> vKeyCompressed = vKey;
+            CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-            for(int i = hashmap[nBucket] - 1; i >= 0; -- i)
+            for(int i = hashmap[nBucket] - 1; i >= 0; --i)
             {
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                if(!fileCache->Get(i, pstream))
-                {
-                    /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i), std::ios::in | std::ios::out | std::ios::binary);
-
-                    /* If file not found add to LRU cache. */
-                    fileCache->Put(i, pstream);
-                }
-
-                /* Handle the disk operations. */
                 { LOCK(KEY_MUTEX);
+                    /* Find the file stream for LRU cache. */
+                    std::fstream* pstream;
+                    if(!fileCache->Get(i, pstream))
+                    {
+                        /* Set the new stream pointer. */
+                        pstream = new std::fstream(
+                          debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i),
+                          std::ios::in | std::ios::out | std::ios::binary);
+
+                        /* If file not found add to LRU cache. */
+                        fileCache->Put(i, pstream);
+                    }
 
                     /* Seek to the hashmap index in file. */
                     pstream->seekg (nFilePos, std::ios::beg);
 
                     /* Read the bucket binary data from file stream */
                     pstream->read((char*) &vBucket[0], vBucket.size());
-                }
 
-                /* Check if this bucket has the key */
-                if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKey.size(), vKey.begin()))
-                {
-                    /* Deserialize key and return if found. */
-                    DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
-                    SectorKey cKey;
-                    ssKey >> cKey;
-
-                    /* Handle the disk operations. */
-                    { LOCK(KEY_MUTEX);
+                    /* Check if this bucket has the key */
+                    if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
+                    {
+                        /* Deserialize key and return if found. */
+                        DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
+                        SectorKey cKey;
+                        ssKey >> cKey;
 
                         /* Seek to the hashmap index in file. */
                         pstream->seekp (nFilePos, std::ios::beg);
@@ -722,19 +792,18 @@ namespace LLD
                         std::vector<uint8_t> vBlank(HASHMAP_KEY_ALLOCATION, 0);
                         pstream->write((char*) &vBlank[0], vBlank.size());
                         pstream->flush();
+
+                        /* Debug Output of Sector Key Information. */
+                        debug::log(4, FUNCTION, "Erased State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
+                            " | Length: ", cKey.nLength,
+                            " | Bucket ", nBucket,
+                            " | Location: ", nFilePos,
+                            " | File: ", hashmap[nBucket] - 1,
+                            " | Sector File: ", cKey.nSectorFile,
+                            " | Sector Size: ", cKey.nSectorSize,
+                            " | Sector Start: ", cKey.nSectorStart,
+                            " | Key: ", HexStr(vKeyCompressed.begin(), vKeyCompressed.end()));
                     }
-
-
-                    /* Debug Output of Sector Key Information. */
-                    debug::log(4, FUNCTION, "Erased State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
-                        " | Length: ", cKey.nLength,
-                        " | Bucket ", nBucket,
-                        " | Location: ", nFilePos,
-                        " | File: ", hashmap[nBucket] - 1,
-                        " | Sector File: ", cKey.nSectorFile,
-                        " | Sector Size: ", cKey.nSectorSize,
-                        " | Sector Start: ", cKey.nSectorStart,
-                        " | Key: ", HexStr(vKey.begin(), vKey.end()));
                 }
             }
 

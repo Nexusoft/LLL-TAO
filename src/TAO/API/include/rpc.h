@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -24,8 +24,9 @@ namespace TAO
     namespace API
     {
 
-        /** RPC API Class
+        /** RPC
          *
+         *  RPC API Class.
          *  Manages the function pointers for all RPC commands.
          *
          **/
@@ -52,7 +53,7 @@ namespace TAO
             void Initialize() final;
 
 
-            /** Get Name
+            /** GetName
              *
              *  Returns the name of this API.
              *
@@ -61,6 +62,7 @@ namespace TAO
             {
                 return "RPC";
             }
+
 
             /** SanitizeParams
             *
@@ -75,6 +77,7 @@ namespace TAO
             *
             **/
             virtual json::json SanitizeParams( const std::string& strMethod, const json::json& jsonParams );
+
 
             /** Echo
              *
@@ -92,7 +95,7 @@ namespace TAO
             /** Help
              *
              *  help
-             *  Returns help list.  Iterates through all functions in mapFunctions
+             *  Returns help list. Iterates through all functions in mapFunctions
              *  and calls each one with fHelp=true
              *
              *  @param[in] params Parameters array passed by the caller
@@ -101,6 +104,19 @@ namespace TAO
              *
              **/
             json::json Help( const json::json& params, bool fHelp);
+
+
+            /** Stop
+             *
+             *  stop
+             *  Stop Nexus server
+             *
+             *  @param[in] params Parameters array passed by the caller
+             *
+             *  @return JSON containing the help list
+             *
+             **/
+            json::json Stop(const json::json& params, bool fHelp);
 
 
             /** GetInfo
@@ -207,6 +223,20 @@ namespace TAO
             json::json GetAddressesByAccount(const json::json& params, bool fHelp);
 
 
+            /** SendToAddress
+             *
+             *  sendtoaddress <Nexusaddress> <amount> [comment] [comment-to]
+             *  - <amount> is a real and is rounded to the nearest 0.000001
+             *  requires wallet passphrase to be set with walletpassphrase first.
+             *
+             *  @param[in] params Parameters array passed by the caller.
+             *
+             *  @return JSON containing the information.
+             *
+             **/
+            json::json SendToAddress(const json::json& params, bool fHelp);
+
+
             /** SignMessage
              *
              *  signmessage <Nexusaddress> <message>
@@ -218,6 +248,7 @@ namespace TAO
              *
              **/
             json::json SignMessage(const json::json& params, bool fHelp);
+
 
             /** VerifyMessage
             *
@@ -231,6 +262,7 @@ namespace TAO
             **/
             json::json VerifyMessage(const json::json& params, bool fHelp);
 
+
             /** GetReceivedByAddress
             *
             *  getreceivedbyaddress <Nexusaddress> [minconf=1]
@@ -243,6 +275,7 @@ namespace TAO
             **/
             json::json GetReceivedByAddress(const json::json& params, bool fHelp);
 
+
             /** GetReceivedByAccount
             *
             *  getreceivedbyaccount <account> [minconf=1]
@@ -254,6 +287,7 @@ namespace TAO
             *
             **/
             json::json GetReceivedByAccount(const json::json& params, bool fHelp);
+
 
             /** GetBalance
             *
@@ -268,6 +302,7 @@ namespace TAO
             **/
             json::json GetBalance(const json::json& params, bool fHelp);
 
+
             /** MoveCmd
             *
             *  move <fromaccount> <toaccount> <amount> [minconf=1] [comment]
@@ -279,6 +314,35 @@ namespace TAO
             *
             **/
             json::json MoveCmd(const json::json& params, bool fHelp);
+
+
+            /** SendFrom
+            *
+            *  sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]
+            *  <amount> is a real and is rounded to the nearest 0.000001
+            *  requires wallet passphrase to be set with walletpassphrase firsther
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json SendFrom(const json::json& params, bool fHelp);
+
+
+            /** SendMany
+            *
+            *  sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]
+            *  - amounts are double-precision floating point numbers
+            *  requires wallet passphrase to be set with walletpassphrase first
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json SendMany(const json::json& params, bool fHelp);
+
 
             /** AddMultisigAddress
             *
@@ -293,6 +357,7 @@ namespace TAO
             *
             **/
             json::json AddMultisigAddress(const json::json& params, bool fHelp);
+
 
             /** ListReceivedByAddress
             *
@@ -312,6 +377,7 @@ namespace TAO
             **/
             json::json ListReceivedByAddress(const json::json& params, bool fHelp);
 
+
             /** ListReceivedByAccount
             *
             *  listreceivedbyaccount [minconf=1] [includeempty=false]
@@ -330,6 +396,7 @@ namespace TAO
             **/
             json::json ListReceivedByAccount(const json::json& params, bool fHelp);
 
+
             /** ListTransactions
             *
             *  listtransactions [account] [count=10] [from=0]
@@ -341,6 +408,7 @@ namespace TAO
             *
             **/
             json::json ListTransactions(const json::json& params, bool fHelp);
+
 
             /** ListAddresses
             *
@@ -354,6 +422,7 @@ namespace TAO
             **/
             json::json ListAddresses(const json::json& params, bool fHelp);
 
+
             /** ListAccounts
             *
             *  listaccounts
@@ -365,6 +434,7 @@ namespace TAO
             *
             **/
             json::json ListAccounts(const json::json& params, bool fHelp);
+
 
             /** ListSinceBlock
             *
@@ -378,6 +448,7 @@ namespace TAO
             **/
             json::json ListSinceBlock(const json::json& params, bool fHelp);
 
+
             /** GetTransaction
             *
             *  gettransaction <txid>
@@ -390,6 +461,7 @@ namespace TAO
             **/
             json::json GetTransaction(const json::json& params, bool fHelp);
 
+
             /** GetRawTransaction
             *
             *  getrawtransaction <txid>
@@ -401,6 +473,7 @@ namespace TAO
             *
             **/
             json::json GetRawTransaction(const json::json& params, bool fHelp);
+
 
             /** SendRawTransaction
             *
@@ -415,6 +488,7 @@ namespace TAO
             **/
             json::json SendRawTransaction(const json::json& params, bool fHelp);
 
+
             /** ValidateAddress
             *
             *  validateaddress <Nexusaddress>
@@ -426,6 +500,7 @@ namespace TAO
             *
             **/
             json::json ValidateAddress(const json::json& params, bool fHelp);
+
 
             /** MakeKeyPair
             *
@@ -439,6 +514,7 @@ namespace TAO
             **/
             json::json MakeKeyPair(const json::json& params, bool fHelp);
 
+
             /** UnspentBalance
             *
             *  unspentbalance [\"address\",...]
@@ -450,6 +526,7 @@ namespace TAO
             *
             **/
             json::json UnspentBalance(const json::json& params, bool fHelp);
+
 
             /** ListUnspent
             *
@@ -466,6 +543,7 @@ namespace TAO
             **/
             json::json ListUnspent(const json::json& params, bool fHelp);
 
+
             /** Reset
             *
             *  reset
@@ -477,6 +555,7 @@ namespace TAO
             *
             **/
             json::json Reset(const json::json& params, bool fHelp);
+
 
             /** GetPeerInfo
             *
@@ -490,6 +569,7 @@ namespace TAO
             **/
             json::json GetPeerInfo(const json::json& params, bool fHelp);
 
+
             /** GetNetworkHashps
             *
             *  getnetworkhashps
@@ -501,6 +581,7 @@ namespace TAO
             *
             **/
             json::json GetNetworkHashps(const json::json& params, bool fHelp);
+
 
             /** GetNetworkPps
             *
@@ -514,6 +595,7 @@ namespace TAO
             **/
             json::json GetNetworkPps(const json::json& params, bool fHelp);
 
+
             /** GetNetworkTrustKeys
             *
             *  getnetworktrustkeys
@@ -525,6 +607,7 @@ namespace TAO
             *
             **/
             json::json GetNetworkTrustKeys(const json::json& params, bool fHelp);
+
 
             /** GetBlockCount
             *
@@ -538,6 +621,7 @@ namespace TAO
             **/
             json::json GetBlockCount(const json::json& params, bool fHelp);
 
+
             /** GetBlockNumber
             *
             *  getblocknumber
@@ -550,6 +634,7 @@ namespace TAO
             **/
             json::json GetBlockNumber(const json::json& params, bool fHelp);
 
+
             /** GetDifficulty
             *
             *  getdifficulty
@@ -561,6 +646,7 @@ namespace TAO
             *
             **/
             json::json GetDifficulty(const json::json& params, bool fHelp);
+
 
             /** GetSupplyRates
             *
@@ -576,6 +662,7 @@ namespace TAO
             **/
             json::json GetSupplyRates(const json::json& params, bool fHelp);
 
+
             /** GetMoneySupply
             *
             *  getmoneysupply <timestamp>
@@ -589,6 +676,47 @@ namespace TAO
             **/
             json::json GetMoneySupply(const json::json& params, bool fHelp);
 
+
+            /** GetBlockHash
+            *
+            *  getblockhash <index>"
+            *  Returns hash of block in best-block-chain at <index>
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json GetBlockHash(const json::json& params, bool fHelp);
+
+
+            /** IsOrphan
+            *
+            *  isorphan <hash>"
+            *  Returns whether a block is an orphan or not
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json IsOrphan(const json::json& params, bool fHelp);
+
+
+            /** GetBlock
+            *
+            *  getblock <hash> [txinfo]"
+            *  txinfo optional to print more detailed tx info."
+            *  Returns details of a block with given block-hash
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json GetBlock(const json::json& params, bool fHelp);
+
+
             /** BackupWallet
             *
             *  backupwallet <destination>
@@ -600,6 +728,22 @@ namespace TAO
             *
             **/
             json::json BackupWallet(const json::json& params, bool fHelp);
+
+
+            /** KeypoolRefill
+            *
+            *  keypoolrefill
+            *  Fills the keypool, requires wallet passphrase to be set
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            /*  keypoolrefill
+            *   Fills the keypool, requires wallet passphrase to be set */
+            json::json KeypoolRefill(const json::json& params, bool fHelp);
+
 
             /** WalletPassphrase
             *
@@ -615,6 +759,7 @@ namespace TAO
             **/
             json::json WalletPassphrase(const json::json& params, bool fHelp);
 
+
             /** EncryptWallet
             *
             *  encryptwallet <passphrase>
@@ -627,6 +772,7 @@ namespace TAO
             **/
             json::json EncryptWallet(const json::json& params, bool fHelp);
 
+
             /** WalletPassphraseChange
             *
             *  walletpassphrasechange <oldpassphrase> <newpassphrase>
@@ -638,6 +784,7 @@ namespace TAO
             *
             **/
             json::json WalletPassphraseChange(const json::json& params, bool fHelp);
+
 
             /** WalletLock
             *
@@ -666,6 +813,7 @@ namespace TAO
             **/
             json::json CheckWallet(const json::json& params, bool fHelp);
 
+
             /** ListTrustKeys
             *
             *  listtrustkeys
@@ -677,6 +825,7 @@ namespace TAO
             *
             **/
             json::json ListTrustKeys(const json::json& params, bool fHelp);
+
 
             /** RepairWallet
             *
@@ -690,6 +839,7 @@ namespace TAO
             **/
             json::json RepairWallet(const json::json& params, bool fHelp);
 
+
             /** Rescan
             *
             *  rescan
@@ -701,6 +851,7 @@ namespace TAO
             *
             **/
             json::json Rescan(const json::json& params, bool fHelp);
+
 
             /** ImportPrivKey
             *
@@ -714,6 +865,7 @@ namespace TAO
             **/
             json::json ImportPrivKey(const json::json& params, bool fHelp);
 
+
             /** DumpPrivKey
             *
             *  dumpprivkey <NexusAddress>
@@ -725,6 +877,7 @@ namespace TAO
             *
             **/
             json::json DumpPrivKey(const json::json& params, bool fHelp);
+
 
             /** ImportKeys
             *
@@ -738,6 +891,7 @@ namespace TAO
             *
             **/
             json::json ImportKeys(const json::json& params, bool fHelp);
+
 
             /** ExportKeys
             *
@@ -753,6 +907,12 @@ namespace TAO
             json::json ExportKeys(const json::json& params, bool fHelp);
 
         private:
+
+            /** GetTotalConnectionCount
+             *
+             *  Returns the total number of connections for this node
+             *
+             **/
             uint32_t GetTotalConnectionCount();
         };
 

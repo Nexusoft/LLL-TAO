@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -30,6 +30,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/rpc.h>
 
 #include <LLP/include/global.h>
+#include <LLP/include/baseaddress.h>
 
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -52,19 +53,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 
 
-
-/* Declare the Global LLD Instances. */
-namespace LLD
-{
-    RegisterDB* regDB;
-    LedgerDB*   legDB;
-    LocalDB*    locDB;
-
-    //for legacy objects.
-    LegacyDB*   legacyDB;
-}
-
-
 /* Declare the Global LLP Instances. */
 namespace LLP
 {
@@ -72,15 +60,11 @@ namespace LLP
     Server<LegacyNode> * LEGACY_SERVER;
 }
 
-void Thread()
-{
-
-}
-
 int main(int argc, char** argv)
 {
     LLP::Server<LLP::CoreNode>* CORE_SERVER = nullptr;
     LLP::Server<LLP::RPCNode>* RPC_SERVER = nullptr;
+    uint16_t port = 0;
 
     /* Setup the timer timer. */
     runtime::timer timer;
@@ -119,7 +103,6 @@ int main(int argc, char** argv)
     }
 
 
-
     /* Create the database instances. */
     LLD::regDB = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::APPEND | LLD::FLAGS::FORCE);
     LLD::locDB = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
@@ -127,6 +110,7 @@ int main(int argc, char** argv)
 
 
     /* Initialize the Legacy Database. */
+    LLD::trustDB  = new LLD::TrustDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
     LLD::legacyDB = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
 
 
@@ -159,9 +143,18 @@ int main(int argc, char** argv)
     Legacy::InitializeScripts();
 
 
+    /** Handle Rescanning. **/
+    if(config::GetBoolArg("-rescan"))
+        Legacy::CWallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
+
+
+    /** Get the port for Tritium Server. **/
+    port = static_cast<uint16_t>(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
+
+
     /* Initialize the Tritium Server. */
     LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(
-        config::GetArg("-port", config::fTestNet ? 8888 : 9888),
+        port,
         10,
         30,
         false,
@@ -170,28 +163,31 @@ int main(int argc, char** argv)
         60,
         config::GetBoolArg("-listen", true),
         config::GetBoolArg("-meters", false),
-        true);
+        config::GetBoolArg("-manager", true));
 
 
-    //-addnode means add to address manager for this specific Server
-    //-connect means follow the logic below this and try to establish a connection
-    /* Add node to Tritium server */
+    /* -connect means  try to establish a connection */
+    if(config::mapMultiArgs["-connect"].size() > 0)
+    {
+        for(const auto& node : config::mapMultiArgs["-connect"])
+            LLP::TRITIUM_SERVER->AddConnection(node, port);
+    }
+
+    /* -addnode means add to address manager */
     if(config::mapMultiArgs["-addnode"].size() > 0)
     {
-        for(auto node : config::mapMultiArgs["-addnode"])
-        {
-            LLP::TRITIUM_SERVER->AddConnection(
-                node,
-                config::GetArg("-port", config::fTestNet ? 8888 : 9888));
-        }
+        for(const auto& node : config::mapMultiArgs["-addnode"])
+            LLP::TRITIUM_SERVER->AddNode(node, port);
     }
 
 
     /* Initialize the Legacy Server. */
     if(config::GetBoolArg("-legacy"))
     {
+        port = static_cast<uint16_t>(config::GetArg("-port", config::fTestNet ? 8323 : 9323));
+
         LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(
-            config::GetArg("-port", config::fTestNet ? 8323 : 9323),
+            port,
             10,
             30,
             false,
@@ -200,16 +196,20 @@ int main(int argc, char** argv)
             60,
             config::GetBoolArg("-listen", true),
             config::GetBoolArg("-meters", false),
-            true);
+            config::GetBoolArg("-manager", true));
 
+        /* -connect means  try to establish a connection */
+        if(config::mapMultiArgs["-connect"].size() > 0)
+        {
+            for(const auto& node : config::mapMultiArgs["-connect"])
+                LLP::LEGACY_SERVER->AddConnection(node, port);
+        }
+
+        /* -addnode means add to address manager */
         if(config::mapMultiArgs["-addnode"].size() > 0)
         {
-            for(auto node : config::mapMultiArgs["-addnode"])
-            {
-                LLP::LEGACY_SERVER->AddConnection(
-                    node,
-                    config::GetArg("-port", config::fTestNet ? 8323 : 9323));
-            }
+            for(const auto& node : config::mapMultiArgs["-addnode"])
+                LLP::LEGACY_SERVER->AddNode(node, port);
         }
     }
 
@@ -273,7 +273,7 @@ int main(int argc, char** argv)
         ssData << std::string("this is test data");
 
         /* Submit the payload object. */
-        tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::APPEND << static_cast<std::vector<uint8_t>>(ssData);
+        tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::APPEND << ssData.Bytes();
 
         /* Execute the operations layer. */
         if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
@@ -283,6 +283,8 @@ int main(int argc, char** argv)
         if(!tx.Sign(user->Generate(tx.nSequence, "1234")))
             debug::error(0, FUNCTION, "Failed to sign");
 
+        tx.print();
+
         /* Execute the operations layer. */
         if(!TAO::Ledger::mempool.Accept(tx))
             debug::error(0, FUNCTION, "Failed to accept");
@@ -291,15 +293,28 @@ int main(int argc, char** argv)
     }
     delete user;
 
+
     /* Initialize generator thread. */
     std::thread thread;
     if(config::GetBoolArg("-private"))
         thread = std::thread(TAO::Ledger::ThreadGenerator);
 
+
     /* Wait for shutdown. */
-    std::mutex SHUTDOWN_MUTEX;
-    std::unique_lock<std::mutex> SHUTDOWN_LOCK(SHUTDOWN_MUTEX);
-    SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown; });
+    if(!config::GetBoolArg("-gdb"))
+    {
+        std::mutex SHUTDOWN_MUTEX;
+        std::unique_lock<std::mutex> SHUTDOWN_LOCK(SHUTDOWN_MUTEX);
+        SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown; });
+    }
+
+    /* GDB mode waits for keyboard input to initiate clean shutdown. */
+    else
+    {
+        getchar();
+        config::fShutdown = true;
+    }
+
 
     /* Wait for the private condition. */
     if(config::GetBoolArg("-private"))
@@ -311,33 +326,6 @@ int main(int argc, char** argv)
 
     /* Shutdown metrics. */
     timer.Reset();
-
-
-    /* Cleanup the ledger database. */
-    if(LLD::legDB)
-    {
-        debug::log(0, FUNCTION, "Shutting down ledgerDB");
-
-        delete LLD::legDB;
-    }
-
-
-    /* Cleanup the register database. */
-    if(LLD::regDB)
-    {
-        debug::log(0, FUNCTION, "Shutting down registerDB");
-
-        delete LLD::regDB;
-    }
-
-
-    /* Cleanup the local database. */
-    if(LLD::locDB)
-    {
-        debug::log(0, FUNCTION, "Shutting down localDB");
-
-        delete LLD::locDB;
-    }
 
 
     /* Shutdown the tritium server and its subsystems */
@@ -381,6 +369,51 @@ int main(int argc, char** argv)
     }
 
 
+    /* Cleanup the ledger database. */
+    if(LLD::legDB)
+    {
+        debug::log(0, FUNCTION, "Shutting down ledgerDB");
+
+        delete LLD::legDB;
+    }
+
+
+    /* Cleanup the register database. */
+    if(LLD::regDB)
+    {
+        debug::log(0, FUNCTION, "Shutting down registerDB");
+
+        delete LLD::regDB;
+    }
+
+
+    /* Cleanup the local database. */
+    if(LLD::locDB)
+    {
+        debug::log(0, FUNCTION, "Shutting down localDB");
+
+        delete LLD::locDB;
+    }
+
+
+    /* Cleanup the legacy database. */
+    if(LLD::legacyDB)
+    {
+        debug::log(0, FUNCTION, "Shutting down legacyDB");
+
+        delete LLD::legacyDB;
+    }
+
+
+    /* Cleanup the local database. */
+    if(LLD::trustDB)
+    {
+        debug::log(0, FUNCTION, "Shutting down trustDB");
+
+        delete LLD::trustDB;
+    }
+
+
 
     /* Elapsed Milliseconds from timer. */
     nElapsed = timer.ElapsedMilliseconds();
@@ -388,7 +421,6 @@ int main(int argc, char** argv)
 
     /* Startup performance metric. */
     debug::log(0, FUNCTION, "Closed in ", nElapsed, "ms");
-
 
     return 0;
 }

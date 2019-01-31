@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -180,7 +180,7 @@ namespace TAO
 
 
             /* Check all the transactions. */
-            for(auto & tx : vtx)
+            for(const auto& tx : vtx)
             {
 
                 /* Insert txid into set to check for duplicates. */
@@ -649,26 +649,7 @@ namespace TAO
         /* Prove that you staked a number of seconds based on weight */
         uint1024_t TritiumBlock::StakeHash() const
         {
-            /* Create a data stream to get the hash. */
-            DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
-            ss.reserve(10000);
-
-            /* Trust Key is part of stake hash if not genesis. */
-            if(nHeight > 2392970 && producer.IsGenesis())
-            {
-                /* Genesis must hash a prvout of 0. */
-                uint512_t hashPrevout = 0;
-
-                /* Serialize the data to hash into a stream. */
-                ss << nVersion << hashPrevBlock << nChannel << nHeight << nBits << hashPrevout << nNonce;
-
-                return LLC::SK1024(ss.begin(), ss.end());
-            }
-
-            /* Serialize the data to hash into a stream. */
-            ss << nVersion << hashPrevBlock << nChannel << nHeight << nBits << producer.hashGenesis << nNonce;
-
-            return LLC::SK1024(ss.begin(), ss.end());
+            return Block::StakeHash( producer.IsGenesis(), producer.hashGenesis);
         }
     }
 }

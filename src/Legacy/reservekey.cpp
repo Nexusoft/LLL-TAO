@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -40,7 +40,7 @@ namespace Legacy
                 vchPubKey = keypoolEntry.vchPubKey;
             else
             {
-                debug::log(0, "CReserveKey::GetReservedKey(): Warning: using default key instead of a new key, top up your keypool.");
+                debug::log(0, FUNCTION, "Warning: Using default key instead of a new key, top up your keypool.");
                 vchPubKey = wallet.GetDefaultKey();
             }
         }

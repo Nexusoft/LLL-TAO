@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -30,7 +30,7 @@ namespace Legacy
 {
 
     /* Copy constructor */
-    CCrypter::CCrypter(const CCrypter &c)
+    CCrypter::CCrypter(const CCrypter& c)
     {
         if (c.IsKeySet())
         {
@@ -51,7 +51,7 @@ namespace Legacy
 
 
     /* Copy assignment operator */
-    CCrypter& CCrypter::operator= (const CCrypter &rhs)
+    CCrypter& CCrypter::operator= (const CCrypter& rhs)
     {
         if (this != &rhs)
         {
@@ -154,7 +154,7 @@ namespace Legacy
 
 
     /* Encrypt a plain text value using the current encryption key settings. */
-    bool CCrypter::Encrypt(const CKeyingMaterial& vchPlaintext, std::vector<uint8_t> &vchCiphertext)
+    bool CCrypter::Encrypt(const CKeyingMaterial& vchPlaintext, std::vector<uint8_t>& vchCiphertext)
     {
         if (!IsKeySet())
             return false;
@@ -215,7 +215,7 @@ namespace Legacy
 
 
     /* Function to encrypt a private key using a master key and IV pair. */
-    bool EncryptSecret(const CKeyingMaterial& vMasterKey, const LLC::CSecret &vchPlaintext, const uint576_t& nIV, std::vector<uint8_t> &vchCiphertext)
+    bool EncryptSecret(const CKeyingMaterial& vMasterKey, const LLC::CSecret& vchPlaintext, const uint576_t& nIV, std::vector<uint8_t>& vchCiphertext)
     {
         CCrypter cKeyCrypter;
 

@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -57,7 +57,7 @@ namespace Legacy
          *  @param[in] nDepthIn The depth of the transaction at time of COutput creation
          *
          **/
-        COutput(const CWalletTx& walletTxIn, uint32_t iIn, uint32_t nDepthIn) :
+        COutput(const CWalletTx& walletTxIn, const uint32_t iIn, const uint32_t nDepthIn) :
             walletTx(walletTxIn), 
             i(iIn),
             nDepth(nDepthIn)

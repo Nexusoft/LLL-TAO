@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -46,7 +46,11 @@ namespace Legacy
 
     /* Constructor */
     /* Initializes database environment on first use */
-    CDB::CDB(const char *pszFileIn, const char* pszMode) : pdb(nullptr)
+    CDB::CDB(const char *pszFileIn, const char* pszMode)
+    : pdb(nullptr)
+    , strFile()
+    , vTxn()
+    , fReadOnly(true)
     {
         /* Passing a null string will initialize a null instance */
         if (pszFileIn == nullptr)
@@ -62,7 +66,11 @@ namespace Legacy
 
     /* Constructor */
     /* Initializes database environment on first use */
-    CDB::CDB(const std::string strFileIn, const char* pszMode) : pdb(nullptr)
+    CDB::CDB(const std::string& strFileIn, const char* pszMode)
+    : pdb(nullptr)
+    , strFile()
+    , vTxn()
+    , fReadOnly(true)
     {
         /* Passing an empty string will initialize a null instance */
         if (strFileIn.empty())
@@ -82,7 +90,7 @@ namespace Legacy
 
 
     /* Performs work of initialization for constructors. */
-    void CDB::Init(const std::string strFileIn, const char* pszMode)
+    void CDB::Init(const std::string& strFileIn, const char* pszMode)
     {
         int32_t ret;
 
@@ -95,10 +103,10 @@ namespace Legacy
                 return;
 
             std::string pathDataDir(config::GetDataDir());
-            std::string pathLogDir(pathDataDir + "/database");
+            std::string pathLogDir(pathDataDir + "database");
             filesystem::create_directory(pathLogDir);
 
-            std::string pathErrorFile(pathDataDir + "/db.log");
+            std::string pathErrorFile(pathDataDir + "db.log");
             //debug::log(0, FUNCTION, "dbenv.open LogDir=", pathLogDir, " ErrorFile=",  pathErrorFile);
 
             uint32_t nDbCache = config::GetArg("-dbcache", 25);
@@ -149,9 +157,11 @@ namespace Legacy
             ret = CDB::dbenv.open(pathDataDir.c_str(), dbFlags, dbMode);
 
             if (ret > 0)
-                throw std::runtime_error(debug::strprintf("CDB() : error %d opening database environment", ret));
+                throw std::runtime_error(debug::strprintf(FUNCTION, "Error %d initializing Berkeley database environment", ret));
 
             CDB::fDbEnvInit = true;
+
+            debug::log(0, FUNCTION, "Initialized Legacy Berkeley database environment");
         }
 
         /* Initialize current CDB instance */
@@ -182,16 +192,16 @@ namespace Legacy
             pdb = new Db(&CDB::dbenv, 0);
 
             /* Opened database will support multi-threaded access */
-            uint32_t fWrite = DB_THREAD;
+            uint32_t fOpenFlags = DB_THREAD;
 
             if (fCreate)
-                fWrite |= DB_CREATE; // Add flag to create database file if does not exist
+                fOpenFlags |= DB_CREATE; // Add flag to create database file if does not exist
 
             ret = pdb->open(nullptr,         // Txn pointer
                             strFile.c_str(), // Filename
                             "main",          // Logical db name
                             DB_BTREE,        // Database type
-                            fWrite,          // Flags
+                            fOpenFlags,      // Flags
                             0);
 
             if (ret == 0)
@@ -219,7 +229,7 @@ namespace Legacy
 
                 --CDB::mapFileUseCount[strFile];
 
-                throw std::runtime_error(debug::strprintf("CDB() : can't open database file %s, error %d", strFile.c_str(), ret));
+                throw std::runtime_error(debug::strprintf(FUNCTION, "Cannot open database file %s, error %d", strFile.c_str(), ret));
             }
         }
     }
@@ -250,7 +260,7 @@ namespace Legacy
         Dbt datKey;
         if (fFlags == DB_SET || fFlags == DB_SET_RANGE || fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE)
         {
-            datKey.set_data((char*)&ssKey[0]);
+            datKey.set_data((char*)ssKey.data());
             datKey.set_size(ssKey.size());
         }
 
@@ -258,7 +268,7 @@ namespace Legacy
         Dbt datValue;
         if (fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE)
         {
-            datValue.set_data((char*)&ssValue[0]);
+            datValue.set_data((char*)ssValue.data());
             datValue.set_size(ssValue.size());
         }
 
@@ -386,7 +396,7 @@ namespace Legacy
 
 
     /* Writes a number into the database using the key "version". */
-    bool CDB::WriteVersion(uint32_t nVersion)
+    bool CDB::WriteVersion(const uint32_t nVersion)
     {
         return Write(std::string("version"), nVersion);
     }
@@ -419,7 +429,7 @@ namespace Legacy
             --CDB::mapFileUseCount[strFile];
         }
 
-        delete pdb;
+        //delete pdb; //Don't delete here, pointer is stored in mapDb so handle can be reused. It is deleted in CloseDb()
         pdb = nullptr;
         strFile = "";
 
@@ -429,18 +439,16 @@ namespace Legacy
     /* Closes down the open database handle for a database and removes it from CDB::mapDb */
     void CDB::CloseDb(const std::string& strFile)
     {
+        /* Does not LOCK(CDB::cd_db) -- this lock must be previously obtained before calling this methods */
+
+        if (CDB::mapDb.count(strFile) > 0 && CDB::mapDb[strFile] != nullptr)
         {
-            LOCK(CDB::cs_db);
+            /* Close the database handle */
+            auto pdb = CDB::mapDb[strFile];
+            pdb->close(0);
+            delete pdb;
 
-            if (CDB::mapDb.count(strFile) > 0 && CDB::mapDb[strFile] != nullptr)
-            {
-                /* Close the database handle */
-                auto pdb = CDB::mapDb[strFile];
-                pdb->close(0);
-                delete pdb;
-
-                CDB::mapDb.erase(strFile);
-            }
+            CDB::mapDb.erase(strFile);
         }
     }
 
@@ -451,51 +459,54 @@ namespace Legacy
     void CDB::DBFlush(bool fShutdown)
     {
         /* Flush log data to the actual data file on all files that are not in use */
-        debug::log(0, "DBFlush(", fShutdown ? "true" : "false", ")",  CDB::fDbEnvInit ? "" : " db not started");
-
-        if (!CDB::fDbEnvInit)
-            return;
+        debug::log(0, FUNCTION, "Shutdown ", fShutdown ? "true" : "false", ")",  CDB::fDbEnvInit ? "" : " db not started");
 
         {
             LOCK(CDB::cs_db);
 
-            for (auto mi = CDB::mapFileUseCount.cbegin(); mi != CDB::mapFileUseCount.cend(); /*no increment */)
+            if (!CDB::fDbEnvInit)
+                return;
+
+            /* Copy mapFileUseCount so can erase without invalidating iterator */
+            std::map<std::string, uint32_t> mapTempUseCount = CDB::mapFileUseCount;
+
+            for (auto mi = mapTempUseCount.cbegin(); mi != mapTempUseCount.cend(); mi++)
             {
                 const std::string strFile = (*mi).first;
                 const uint32_t nRefCount = (*mi).second;
 
-                debug::log(0, strFile, " refcount=", nRefCount);
+                debug::log(2, FUNCTION, strFile, " refcount=", nRefCount);
 
                 if (nRefCount == 0)
                 {
-                    /* Move log data to the dat file */
+                    /* We have lock on CDB::cs_db so can call CloseDb safely */
                     CloseDb(strFile);
 
-                    debug::log(0, strFile, " checkpoint");
+                    /* Flush log data to the dat file and detach the file */
+                    debug::log(2, FUNCTION, strFile, " checkpoint");
                     CDB::dbenv.txn_checkpoint(0, 0, 0);
 
-                    if (strFile != "addr.dat" || fDetachDB)
-                    {
-                        debug::log(0, strFile, " detach");
-                        CDB::dbenv.lsn_reset(strFile.c_str(), 0);
-                    }
+                    debug::log(2, FUNCTION, strFile, " detach");
+                    CDB::dbenv.lsn_reset(strFile.c_str(), 0);
 
-                    debug::log(0, strFile, " closed");
-                    CDB::mapFileUseCount.erase(mi++);
+                    debug::log(2, FUNCTION, strFile, " closed");
+                    CDB::mapFileUseCount.erase(strFile);
                 }
-                else
-                    mi++;
             }
 
-            if (config::fShutdown)
+            if (fShutdown)
             {
                 char** listp;
+
                 if (CDB::mapFileUseCount.empty())
-                {
                     CDB::dbenv.log_archive(&listp, DB_ARCH_REMOVE);
-                    EnvShutdown();
-                }
             }
+        }
+
+        if (fShutdown)
+        {
+            /* Need to call this outside of lock scope */
+            EnvShutdown();
         }
     }
 
@@ -503,148 +514,250 @@ namespace Legacy
     /* Rewrites a database file by copying all contents */
     bool CDB::DBRewrite(const std::string& strFile, const char* pszSkip)
     {
-        if (!config::fShutdown)
+        if (config::fShutdown)
+            return false;
+
+        bool fProcessSuccess = true;
+        int32_t dbReturn = 0;
+
+        /* Define temporary file name where copy will be written */
+        std::string strFileRewrite = strFile + ".rewrite";
+
         {
+            /* Lock database access for full rewrite process.
+             * This process does not use a CDB instance and manually calls Berkeley methods
+             * to avoid use of locks within CDB itself. Adds work to do ReadAtCursor(), but
+             * allows a proper lock scope.
+             */
             LOCK(CDB::cs_db);
 
-            if (CDB::mapFileUseCount.count(strFile) == 0 || CDB::mapFileUseCount[strFile] == 0)
+            if (CDB::mapFileUseCount.count(strFile) != 0 && CDB::mapFileUseCount[strFile] != 0)
             {
-                /* Flush log data to the dat file and detach the file */
+                /* Database file in use. Cannot rewrite */
+                return false;
+            }
+            else
+            {
+                /* We have lock on CDB::cs_db so can call CloseDb safely */
                 CloseDb(strFile);
+
+                /* Flush log data to the dat file and detach the file */
                 CDB::dbenv.txn_checkpoint(0, 0, 0);
                 CDB::dbenv.lsn_reset(strFile.c_str(), 0);
                 CDB::mapFileUseCount.erase(strFile);
-
-                bool fOpenSuccess = true;
-                bool fProcessSuccess = true;
-                debug::log(0, "Rewriting ", strFile.c_str(), "...");
-
-                /* Define temporary file name where copy will be written */
-                std::string strFileRes = strFile + ".rewrite";
-
-                /* Surround usage of db with extra {} */
-                {
-                    CDB dbToRewrite(strFile.c_str(), "r");
-                    Db* pdbCopy = new Db(&CDB::dbenv, 0);
-
-                    /* Open database handle to temp file */
-                    int32_t ret = pdbCopy->open(nullptr,            // Txn pointer
-                                                strFileRes.c_str(), // Filename
-                                                "main",             // Logical db name
-                                                DB_BTREE,           // Database type
-                                                DB_CREATE,          // Flags
-                                                0);
-                    if (ret > 0)
-                    {
-                        debug::log(0, "Cannot create database file ", strFileRes.c_str());
-                        fOpenSuccess = false;
-                    }
-
-                    auto pcursor = dbToRewrite.GetCursor();
-
-                    if (pcursor != nullptr)
-                        while (fProcessSuccess)
-                        {
-                            DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
-                            DataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
-
-                            /* Read next key-value pair to copy */
-                            int32_t ret = dbToRewrite.ReadAtCursor(pcursor, ssKey, ssValue, DB_NEXT);
-
-                            if (ret == DB_NOTFOUND)
-                            {
-                                /* No more data */
-                                pcursor->close();
-                                break;
-                            }
-                            else if (ret != 0)
-                            {
-                                /* Error reading cursor */
-                                pcursor->close();
-                                fProcessSuccess = false;
-                                break;
-                            }
-
-                            /* Skip any key value defined by pszSkip argument */
-                            if (pszSkip != nullptr && strncmp((char*)&ssKey[0], pszSkip, std::min(ssKey.size(), strlen(pszSkip))) == 0)
-                                continue;
-
-                            /* Don't copy the version, instead use latest version */
-                            if (strncmp((char*)&ssKey[0], "version", 7) == 0)
-                            {
-                                /* Update version */
-                                ssValue.clear();
-                                ssValue << LLD::DATABASE_VERSION;
-                            }
-
-                            Dbt datKey((char*)&ssKey[0], ssKey.size());
-                            Dbt datValue((char*)&ssValue[0], ssValue.size());
-
-                            /* Write the data to temp file */
-                            int32_t ret2 = pdbCopy->put(nullptr, &datKey, &datValue, DB_NOOVERWRITE);
-
-                            if (ret2 > 0)
-                                fProcessSuccess = false;
-                        }
-
-                    if (fOpenSuccess)
-                    {
-                        dbToRewrite.Close();
-                        CloseDb(strFile);
-
-                        if (pdbCopy->close(0) != 0)
-                            fProcessSuccess = false;
-
-                        delete pdbCopy;
-                    }
-                }
-
-                if (fProcessSuccess)
-                {
-                    /* Remove original database file */
-                    Db dbA(&CDB::dbenv, 0);
-                    if (dbA.remove(strFile.c_str(), nullptr, 0) != 0)
-                        fProcessSuccess = false;
-                }
-
-                if (fProcessSuccess)
-                {
-                    /* Rename temp file to original file name */
-                    Db dbB(&CDB::dbenv, 0);
-                    if (dbB.rename(strFileRes.c_str(), nullptr, strFile.c_str(), 0) != 0)
-                        fProcessSuccess = false;
-                }
-
-                if (!fProcessSuccess)
-                    debug::log(0, "Rewriting of ", strFile.c_str(), " FAILED!");
-
-                return fProcessSuccess;
             }
-        }
 
-        /* Return false if fShutdown */
-        return false;
+            debug::log(0, FUNCTION, "Rewriting ", strFile.c_str(), "...");
+
+            Db* pdbSource = new Db(&CDB::dbenv, 0);
+            Db* pdbCopy = new Db(&CDB::dbenv, 0);
+
+            /* Open database handle to temp file */
+            dbReturn = pdbSource->open(nullptr,              // Txn pointer
+                                       strFile.c_str(),      // Filename
+                                       "main",               // Logical db name
+                                       DB_BTREE,             // Database type
+                                       DB_RDONLY,            // Flags
+                                       0);
+
+            if (dbReturn != 0)
+            {
+                debug::log(0, FUNCTION, "Cannot open source database file ", strFile.c_str());
+                return false;
+            }
+
+            /* Open database handle to temp file */
+            dbReturn = pdbCopy->open(nullptr,                // Txn pointer
+                                     strFileRewrite.c_str(), // Filename
+                                     "main",                 // Logical db name
+                                     DB_BTREE,               // Database type
+                                     DB_CREATE,              // Flags
+                                     0);
+
+            if (dbReturn != 0)
+            {
+                debug::log(0, FUNCTION, "Cannot create target database file ", strFileRewrite.c_str());
+                return false;
+            }
+
+            /* Get cursor to read source file */
+            Dbc* pcursor = nullptr;
+            dbReturn = pdbSource->cursor(nullptr, &pcursor, 0);
+
+            if (dbReturn != 0 || pcursor == nullptr)
+            {
+                debug::log(0, FUNCTION, "Failure opening cursor on source database file ", strFile.c_str());
+                return false;
+            }
+
+            while (fProcessSuccess)
+            {
+                /* This section duplicates the process in CDB::ReadAtCursor without the need for a CDB instance
+                 * Code logic from CDB::ReadAtCursor that is not needed for this specific process is left out.
+                 */
+                DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
+                DataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
+                Dbt datKey;
+                Dbt datValue;
+
+                /* Berkeley will allocate memory for returned data, will need to free before return */
+                datKey.set_flags(DB_DBT_MALLOC);
+                datValue.set_flags(DB_DBT_MALLOC);
+
+                /* Execute cursor operation */
+                dbReturn = pcursor->get(&datKey, &datValue, DB_NEXT);
+
+                if (dbReturn == DB_NOTFOUND)
+                {
+                    /* No more data */
+                    pcursor->close();
+                    fProcessSuccess = true;
+                    break;
+                }
+                else if (datKey.get_data() == nullptr || datValue.get_data() == nullptr)
+                {
+                    /* No data reading cursor */
+                    pcursor->close();
+                    fProcessSuccess = false;
+                    debug::log(0, FUNCTION, "No data reading cursor on database file ", strFile.c_str());
+                    break;
+                }
+                else if (dbReturn == 0)
+                {
+                    /* Convert to streams */
+                    ssKey.SetType(SER_DISK);
+                    ssKey.clear();
+                    ssKey.write((char*)datKey.get_data(), datKey.get_size());
+
+                    ssValue.SetType(SER_DISK);
+                    ssValue.clear();
+                    ssValue.write((char*)datValue.get_data(), datValue.get_size());
+
+                    /* Clear and free memory */
+                    memset(datKey.get_data(), 0, datKey.get_size());
+                    memset(datValue.get_data(), 0, datValue.get_size());
+
+                    free(datKey.get_data());
+                    free(datValue.get_data());
+                }
+                else if (dbReturn != 0)
+                {
+                    /* Error reading cursor */
+                    pcursor->close();
+                    fProcessSuccess = false;
+                    debug::log(0, FUNCTION, "Failure reading cursor on database file ", strFile.c_str());
+                    break;
+                }
+
+                /* Skip any key value defined by pszSkip argument */
+                if (pszSkip != nullptr && strncmp((char*)ssKey.data(), pszSkip, std::min(ssKey.size(), strlen(pszSkip))) == 0)
+                    continue;
+
+                /* Don't copy the version, instead use latest version */
+                if (strncmp((char*)ssKey.data(), "version", 7) == 0)
+                {
+                    /* Update version */
+                    ssValue.clear();
+                    ssValue << LLD::DATABASE_VERSION;
+                }
+
+                Dbt writeDatKey((char*)ssKey.data(), ssKey.size());
+                Dbt writeDatValue((char*)ssValue.data(), ssValue.size());
+
+                /* Write the data to temp file */
+                dbReturn = pdbCopy->put(nullptr, &writeDatKey, &writeDatValue, DB_NOOVERWRITE);
+
+                if (dbReturn != 0)
+                {
+                    pcursor->close();
+                    fProcessSuccess = false;
+                    debug::log(0, FUNCTION, "Failure writing target database file ", strFile.c_str());
+                    break;
+                }
+            }
+
+            /* Rewrite complete. Close the databases */
+            pdbSource->close(0);
+            delete pdbSource;
+
+            pdbCopy->close(0);
+            delete pdbCopy;
+
+            /* Flush log data to the dat files */
+            CDB::dbenv.txn_checkpoint(0, 0, 0);
+            CDB::dbenv.lsn_reset(strFile.c_str(), 0);
+            CDB::dbenv.lsn_reset(strFileRewrite.c_str(), 0);
+
+            if (fProcessSuccess)
+            {
+                /* Remove original database file */
+                Db dbOld(&CDB::dbenv, 0);
+                if (dbOld.remove(strFile.c_str(), nullptr, 0) != 0)
+                {
+                    debug::log(0, FUNCTION, "Unable to remove old database file ", strFile.c_str());
+                    fProcessSuccess = false;
+                }
+            }
+
+            if (fProcessSuccess)
+            {
+                /* Rename temp file to original file name */
+                Db dbNew(&CDB::dbenv, 0);
+                if (dbNew.rename(strFileRewrite.c_str(), nullptr, strFile.c_str(), 0) != 0)
+                {
+                    debug::log(0, FUNCTION, "Unable to rename database file ", strFileRewrite.c_str(), " to ", strFile.c_str());
+                    fProcessSuccess = false;
+                }
+            }
+
+            if (!fProcessSuccess)
+                debug::log(0, FUNCTION, "Rewriting of ", strFile.c_str(), " FAILED!");
+
+        } //End lock scope
+
+        return fProcessSuccess;
     }
 
 
     /* Called to shut down the Berkeley database environment in CDB:dbenv */
     void CDB::EnvShutdown()
     {
-        if (!CDB::fDbEnvInit)
-            return;
-
-        CDB::fDbEnvInit = false;
-        try
         {
-            CDB::dbenv.close(0);
-        }
-        catch (const DbException& e)
-        {
-            debug::log(0, "EnvShutdown exception: ", e.what(), "(", e.get_errno(), ")");
-        }
+            /* Lock database access before closing databases and shutting down environment */
+            LOCK(CDB::cs_db);
 
-        /* Use of DB_FORCE should not be necessary after calling dbenv.close() but included in case there is an exception */
-        CDB::dbenv.remove(config::GetDataDir().c_str(), DB_FORCE);
+            if (!CDB::fDbEnvInit)
+                return;
+
+            debug::log(0, FUNCTION, "Shutting down Legacy Berkeley database environment");
+
+            /* Ensure all open db handles are closed and pointers deleted.
+             * CloseDb calls erase() on mapDb so build list of open files first
+             * thus avoiding any problems with erase invalidating iterators.
+             */
+            std::vector<std::string> dbFilesToClose;
+            for (auto& mapEntry : mapDb)
+            {
+                if (mapEntry.second != nullptr)
+                    dbFilesToClose.push_back(mapEntry.first);
+            }
+
+            for (auto& dbFile : dbFilesToClose)
+                CDB::CloseDb(dbFile);
+
+            /* Shut down the database environment */
+            CDB::fDbEnvInit = false;
+
+            try
+            {
+                CDB::dbenv.close(0);
+            }
+            catch (const DbException& e)
+            {
+                debug::log(0, FUNCTION, "Exception: ", e.what(), "(", e.get_errno(), ")");
+            }
+
+        } //End lock scope
     }
 
 }

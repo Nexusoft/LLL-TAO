@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -41,7 +41,7 @@ namespace TAO
 
             /* Check the mempool. */
             if(mapLedger.count(hash))
-                return debug::error(FUNCTION, "%s already exists", tx.GetHash().ToString().substr(0, 20).c_str());
+                return false;
 
             /* Add to the map. */
             mapLedger[hash] = tx;
@@ -62,7 +62,7 @@ namespace TAO
             /* Check the mempool. */
             uint512_t hash = tx.GetHash();
             if(mapLedger.count(hash))
-                return debug::error(FUNCTION, tx.GetHash().ToString().substr(0, 20), " already exists");
+                return false;
 
             /* The next hash that is being claimed. */
             uint256_t hashClaim = tx.PrevHash();
@@ -98,7 +98,7 @@ namespace TAO
             mapPrevHashes[hashClaim] = tx.GetHash();
 
             /* Debug output. */
-            debug::log(2, FUNCTION, "TX ", hash.ToString().substr(0, 20), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
+            debug::log(2, FUNCTION, "tx ", hash.ToString().substr(0, 20), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
             /* Notify private to produce block if valid. */
             if(config::GetBoolArg("-private"))
@@ -188,7 +188,7 @@ namespace TAO
         /* Gets the size of the memory pool. */
         uint32_t Mempool::Size()
         {
-            return mapLedger.size();
+            return mapLedger.size() + mapLegacy.size();
         }
     }
 }

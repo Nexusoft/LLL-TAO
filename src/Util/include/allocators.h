@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -50,7 +50,8 @@ munlock(((void *)(((size_t)(a)) & (~((PAGESIZE)-1)))),\
 (((((size_t)(a)) + (b) - 1) | ((PAGESIZE) - 1)) + 1) - (((size_t)(a)) & (~((PAGESIZE) - 1))))
 #endif
 
-/**
+
+/** secure_allocator
  *
  * Allocator that locks its contents from being paged
  * out of memory and clears its contents before deletion.
@@ -75,6 +76,7 @@ struct secure_allocator : public std::allocator<T>
     ~secure_allocator() throw() {}
     template<typename _Other> struct rebind
     { typedef secure_allocator<_Other> other; };
+
 
     /** allocate
      *
@@ -133,9 +135,10 @@ struct zero_after_free_allocator : public std::allocator<T>
     template<typename _Other> struct rebind
     { typedef zero_after_free_allocator<_Other> other; };
 
+
     /** deallocate
      *
-     *  frees n elements of type T from pointer p. clears contents before deletion
+     *  frees n elements of type T from pointer p. Clears contents before deletion.
      *
      **/
     void deallocate(T* p, std::size_t n)

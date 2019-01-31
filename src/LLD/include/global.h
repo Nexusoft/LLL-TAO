@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLD/include/ledger.h>
 #include <LLD/include/local.h>
 #include <LLD/include/legacy.h>
+#include <LLD/include/trust.h>
 
 namespace LLD
 {
@@ -26,7 +27,32 @@ namespace LLD
     extern LocalDB*      locDB;
 
     //for legacy objects
+    extern TrustDB*      trustDB;
     extern LegacyDB*     legacyDB;
+
+
+    /** Txn Begin
+     *
+     *  Global handler for all LLD instances.
+     *
+     */
+    void TxnBegin();
+
+
+    /** Txn Abort
+     *
+     *  Global handler for all LLD instances.
+     *
+     */
+    void TxnAbort();
+
+
+    /** Txn Commit
+     *
+     *  Global handler for all LLD instances.
+     *
+     */
+    void TxnCommit();
 }
 
 #endif

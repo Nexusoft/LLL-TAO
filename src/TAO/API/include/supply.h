@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -24,8 +24,9 @@ namespace TAO
     namespace API
     {
 
-        /** Supply API Class
+        /** Supply
          *
+         *  Supply API Class.
          *  Manages the function pointers for all Supply commands.
          *
          **/
@@ -45,7 +46,7 @@ namespace TAO
             void Initialize() final;
 
 
-            /** Get Name
+            /** GetName
              *
              *  Returns the name of this API.
              *
@@ -56,9 +57,9 @@ namespace TAO
             }
 
 
-            /** Get Item
+            /** GetItem
              *
-             *  Get's the description of an item.
+             *  Gets the description of an item.
              *
              *  @param[in] params The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
@@ -82,7 +83,7 @@ namespace TAO
             json::json Transfer(const json::json& params, bool fHelp);
 
 
-            /** Create Item
+            /** CreateItem
              *
              *  Creates an item.
              *
@@ -95,7 +96,7 @@ namespace TAO
             json::json CreateItem(const json::json& params, bool fHelp);
 
 
-            /** Update Item
+            /** UpdateItem
              *
              *  Updates data to an item.
              *

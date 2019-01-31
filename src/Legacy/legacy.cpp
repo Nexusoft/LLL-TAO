@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/trust.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/chainstate.h>
 
@@ -243,7 +244,7 @@ namespace Legacy
 
 
         /* Check all the transactions. */
-        for(auto & tx : vtx)
+        for(const auto& tx : vtx)
         {
             /* Insert txid into set to check for duplicates. */
             uniqueTx.insert(tx.GetHash());
@@ -281,7 +282,7 @@ namespace Legacy
 
 
         /* Get the key from the producer. */
-        if(nHeight > 0)
+        if(nHeight > 0 && !TAO::Ledger::ChainState::Synchronizing())
         {
             /* Get a vector for the solver solutions. */
             std::vector<std::vector<uint8_t> > vSolutions;
@@ -313,14 +314,11 @@ namespace Legacy
 
 
     /* Accept a block into the chain. */
-    bool LegacyBlock::Accept()
+    bool LegacyBlock::Accept() const
     {
-        print();
-
-        /* Read leger DB for duplicate block. */
-        TAO::Ledger::BlockState state;
-        if(LLD::legDB->ReadBlock(GetHash(), state))
-            return debug::error(FUNCTION, "block state already exists");
+        /* Print the block on verbose 2. */
+        if(config::GetArg("-verbose", 0) >= 2)
+            print();
 
 
         /* Read leger DB for previous block. */
@@ -369,9 +367,12 @@ namespace Legacy
 
 
         /* Check the block proof of work rewards. */
-        if(IsProofOfWork() && nVersion != 2)
+        if(IsProofOfWork() && nVersion != 2 && nHeight != 2061881 && nHeight != 2191756)
         {
             //This is skipped in version 2 blocks due to the disk coinbase bug from early 2014.
+            //height of 2061881 is an exclusion height due to mutation attack 06/2018
+            //height of 2191756 is an exclusion height due to mutation attack 09/2018
+
             //Reward checks were re-enabled in version 3 blocks
             uint32_t nSize = vtx[0].vout.size();
 
@@ -405,12 +406,29 @@ namespace Legacy
             /* Check the claimed stake limits are met. */
             if(nVersion >= 5 && !CheckStake())
                 return debug::error(FUNCTION, "invalid proof of stake");
+
+            /* Check stake for version 4. */
+            if(nVersion < 5 && !VerifyStake())
+                return debug::error(FUNCTION, "invalid proof of stake");
         }
 
         /* Check that Transactions are Finalized. */
         for(const auto & tx : vtx)
             if (!tx.IsFinal(nHeight, GetBlockTime()))
                 return debug::error(FUNCTION, "contains a non-final transaction");
+
+        return true;
+    }
+
+
+    /* Check the proof of stake calculations. */
+    bool LegacyBlock::VerifyStake() const
+    {
+        /* Check the Block Hash with Weighted Hash to Target. */
+        LLC::CBigNum bnTarget;
+        bnTarget.SetCompact(nBits);
+        if(GetHash() > bnTarget.getuint1024())
+            return debug::error(FUNCTION, "proof of stake not meeting target");
 
         return true;
     }
@@ -491,144 +509,6 @@ namespace Legacy
     }
 
 
-    /* Check the calculated trust score meets published one. */
-    bool LegacyBlock::CheckTrust() const
-    {
-        /* No trust score for non proof of stake (for now). */
-        if(!IsProofOfStake())
-            return debug::error(FUNCTION, "not proof of stake");
-
-        /* Extract the trust key from the coinstake. */
-        uint576_t cKey;
-        if(!vtx[0].TrustKey(cKey))
-            return debug::error(FUNCTION, "trust key not found in script");
-
-        /* Genesis has a trust score of 0. */
-        if(vtx[0].IsGenesis())
-        {
-            if(vtx[0].vin[0].scriptSig.size() != 8)
-                return debug::error(FUNCTION, "genesis unexpected size ", vtx[0].vin[0].scriptSig.size());
-
-            return true;
-        }
-
-        /* Version 5 - last trust block. */
-        uint1024_t hashLastBlock;
-        uint32_t   nSequence;
-        uint32_t   nTrustScore;
-
-        /* Extract values from coinstake vin. */
-        if(!vtx[0].ExtractTrust(hashLastBlock, nSequence, nTrustScore))
-            return debug::error(FUNCTION, "failed to extract values from script");
-
-        /* Check that the last trust block is in the block database. */
-        TAO::Ledger::BlockState stateLast;
-        if(!LLD::legDB->ReadBlock(hashLastBlock, stateLast))
-            return debug::error(FUNCTION, "last block not in database");
-
-        /* Check that the previous block is in the block database. */
-        TAO::Ledger::BlockState statePrev;
-        if(!LLD::legDB->ReadBlock(hashPrevBlock, statePrev))
-            return debug::error(FUNCTION, "prev block not in database");
-
-        /* Get the last coinstake transaction. */
-        Transaction txLast;
-        if(!LLD::legacyDB->ReadTx(stateLast.vtx[0].second, txLast))
-            return debug::error(FUNCTION, "last state coinstake tx not found");
-
-        /* Enforce the minimum trust key interval of 120 blocks. */
-        if(nHeight - stateLast.nHeight < (config::fTestNet ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL : TAO::Ledger::MAINNET_MINIMUM_INTERVAL))
-            return debug::error(FUNCTION, "trust key interval below minimum interval ", nHeight - stateLast.nHeight);
-
-        /* Extract the last trust key */
-        uint576_t keyLast;
-        if(!txLast.TrustKey(keyLast))
-            return debug::error(FUNCTION, "couldn't extract trust key from previous tx");
-
-        /* Ensure the last block being checked is the same trust key. */
-        if(keyLast != cKey)
-            return debug::error(FUNCTION,
-                "trust key in previous block ", cKey.ToString().substr(0, 20),
-                " to this one ", keyLast.ToString().substr(0, 20));
-
-        /* Placeholder in case previous block is a version 4 block. */
-        uint32_t nScorePrev = 0;
-        uint32_t nScore     = 0;
-
-        /* If previous block is genesis, set previous score to 0. */
-        if(txLast.IsGenesis())
-        {
-            /* Enforce sequence number 1 if previous block was genesis */
-            if(nSequence != 1)
-                return debug::error("CBlock::CheckTrust() : first trust block and sequence is not 1 (%u)", nSequence);
-
-            /* Genesis results in a previous score of 0. */
-            nScorePrev = 0;
-        }
-
-        /* Version 4 blocks need to get score from previous blocks calculated score from the trust pool. */
-        else if(stateLast.nVersion < 5)
-        {
-            //TODO: handle version 4 trust keys here
-        }
-
-        /* Version 5 blocks that are trust must pass sequence checks. */
-        else
-        {
-            /* The last block of previous. */
-            uint1024_t hashBlockPrev = 0; //dummy variable unless we want to do recursive checking of scores all the way back to genesis
-
-            /* Extract the value from the previous block. */
-            uint32_t nSequencePrev;
-            if(!txLast.ExtractTrust(hashBlockPrev, nSequencePrev, nScorePrev))
-                return debug::error(FUNCTION, "failed to extract trust");
-
-            /* Enforce Sequence numbering, must be +1 always. */
-            if(nSequence != nSequencePrev + 1)
-                return debug::error(FUNCTION, "previous sequence broken");
-        }
-
-        /* The time it has been since the last trust block for this trust key. */
-        uint32_t nTimespan = (statePrev.GetBlockTime() - stateLast.GetBlockTime());
-
-        /* Timespan less than required timespan is awarded the total seconds it took to find. */
-        if(nTimespan < (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
-            nScore = nScorePrev + nTimespan;
-
-        /* Timespan more than required timespan is penalized 3 times the time it took past the required timespan. */
-        else
-        {
-            /* Calculate the penalty for score (3x the time). */
-            uint32_t nPenalty = (nTimespan - (config::fTestNet ?
-                TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN)) * 3;
-
-            /* Catch overflows and zero out if penalties are greater than previous score. */
-            if(nPenalty > nScorePrev)
-                nScore = 0;
-            else
-                nScore = (nScorePrev - nPenalty);
-        }
-
-        /* Set maximum trust score to seconds passed for interest rate. */
-        if(nScore > (60 * 60 * 24 * 28 * 13))
-            nScore = (60 * 60 * 24 * 28 * 13);
-
-        /* Debug output. */
-        debug::log(2, FUNCTION,
-            "score=", nScore, ", ",
-            "prev=", nScorePrev, ", ",
-            "timespan=", nTimespan, ", ",
-            "change=", (int32_t)(nScore - nScorePrev), ")"
-        );
-
-        /* Check that published score in this block is equivilent to calculated score. */
-        if(nTrustScore != nScore)
-            return debug::error(FUNCTION, "published trust score ", nTrustScore, " not meeting calculated score ", nScore);
-
-        return true;
-    }
-
-
     /* Get the current block age of the trust key. */
     bool LegacyBlock::BlockAge(uint32_t& nAge) const
     {
@@ -698,29 +578,10 @@ namespace Legacy
     /* Prove that you staked a number of seconds based on weight */
     uint1024_t LegacyBlock::StakeHash() const
     {
-        /* Create a data stream to get the hash. */
-        DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
-        ss.reserve(10000);
-
-        /* Trust Key is part of stake hash if not genesis. */
-        if(nHeight > 2392970 && vtx[0].IsGenesis())
-        {
-            /* Genesis must hash a prvout of 0. */
-            uint512_t hashPrevout = 0;
-
-            /* Serialize the data to hash into a stream. */
-            ss << nVersion << hashPrevBlock << nChannel << nHeight << nBits << hashPrevout << nNonce;
-
-            return LLC::SK1024(ss.begin(), ss.end());
-        }
-
         /* Get the trust key. */
         uint576_t keyTrust;
         vtx[0].TrustKey(keyTrust);
 
-        /* Serialize the data to hash into a stream. */
-        ss << nVersion << hashPrevBlock << nChannel << nHeight << nBits << keyTrust << nNonce;
-
-        return LLC::SK1024(ss.begin(), ss.end());
+        return Block::StakeHash(vtx[0].IsGenesis(), keyTrust);
     }
 }

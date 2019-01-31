@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -28,6 +28,10 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+    /* Initialize static variables */
+    std::mutex CKeyPool::cs_keyPool;
+
+
     /*  Clears any existing keys in the pool and the wallet database
      *  and generates a completely new key set.
      */
@@ -36,14 +40,17 @@ namespace Legacy
 
         if (poolWallet.IsFileBacked())
         {
-            LOCK(poolWallet.cs_wallet);
-
             if (poolWallet.IsLocked())
                 return false;
 
             CWalletDB walletdb(poolWallet.GetWalletFile());
 
+            LOCK(CKeyPool::cs_keyPool);
+
             /* Remove all entries for old key pool from database */
+            if (setKeyPool.size() > 0)
+                debug::log(2, FUNCTION, "Erasing previous key pool entries");
+
             for(uint64_t nPoolIndex : setKeyPool)
                 walletdb.ErasePool(nPoolIndex);
 
@@ -63,8 +70,7 @@ namespace Legacy
                 setKeyPool.insert(nPoolIndex);
             }
 
-            if (config::GetBoolArg("-printkeypool"))
-                debug::log(0, "CKeyPool::NewKeyPool wrote ", nKeys, " new keys");
+            debug::log(2, FUNCTION, "Added ", nKeys, " new keys to key pool");
 
             walletdb.Close();
         }
@@ -76,12 +82,11 @@ namespace Legacy
     /* Adds keys to key pool to top up the number of entries. */
     bool CKeyPool::TopUpKeyPool()
     {
-    	bool fPrintKeyPool = config::GetBoolArg("-printkeypool"); // avoids having to call arg function repeatedly
     	bool fKeysAdded = false;
 
         if (poolWallet.IsFileBacked())
         {
-            LOCK(poolWallet.cs_wallet);
+            LOCK(CKeyPool::cs_keyPool);
 
             /* Current key pool size */
             uint64_t nStartingSize = setKeyPool.size();
@@ -95,6 +100,8 @@ namespace Legacy
 
             if (poolWallet.IsLocked())
                 return false;
+
+            debug::log(2, FUNCTION, "Topping up Keypool, current size = ", nStartingSize, " target size = ",  nTargetSize);
 
             CWalletDB walletdb(poolWallet.GetWalletFile());
 
@@ -118,14 +125,13 @@ namespace Legacy
                 /* Store the pool index for the new key in the key pool */
                 setKeyPool.insert(nNewPoolIndex);
 
-                if (fPrintKeyPool)
-                    debug::log(0, "Keypool added key ", nNewPoolIndex);
+                debug::log(2, FUNCTION, "Keypool added key ", nNewPoolIndex);
 
                 fKeysAdded = true;
             }
 
-            if (fPrintKeyPool && fKeysAdded)
-                debug::log(0, "Keypool topped up, ", (nTargetSize - nStartingSize), " keys added, new size=",  nTargetSize);
+            if (fKeysAdded)
+                debug::log(2, FUNCTION, "Keypool topped up, ", (nTargetSize - nStartingSize), " keys added, new size = ",  nTargetSize);
 
             walletdb.Close();
         }
@@ -139,7 +145,7 @@ namespace Legacy
     {
         if (poolWallet.IsFileBacked())
         {
-            LOCK(poolWallet.cs_wallet);
+            LOCK(CKeyPool::cs_keyPool);
 
             CWalletDB walletdb(poolWallet.GetWalletFile());
 
@@ -168,15 +174,13 @@ namespace Legacy
     {
         uint64_t nPoolIndex = 0;
         CKeyPoolEntry keypoolEntry;
-
+            
         /* Attempt to reserve a key from the key pool */
         ReserveKeyFromPool(nPoolIndex, keypoolEntry);
 
         if (nPoolIndex == -1)
         {
-            LOCK(poolWallet.cs_wallet);
-
-        	/* Key pool is empty, attempt to use default key when requested */
+            /* Key pool is empty, attempt to use default key when requested */
             auto vchPoolWalletDefaultKey = poolWallet.GetDefaultKey();
 
             if (fUseDefaultWhenEmpty && !vchPoolWalletDefaultKey.empty())
@@ -196,7 +200,7 @@ namespace Legacy
         KeepKey(nPoolIndex);
 
         key = keypoolEntry.vchPubKey;
-
+        
         return true;
     }
 
@@ -211,15 +215,15 @@ namespace Legacy
 
         if (poolWallet.IsFileBacked())
         {
-            /* Top up the keypool if not locked. */
             if (!poolWallet.IsLocked())
                 TopUpKeyPool();
 
-            CWalletDB walletdb(poolWallet.GetWalletFile());
-
-            LOCK(poolWallet.cs_wallet);
             if(setKeyPool.empty())
                 return;
+
+            LOCK(CKeyPool::cs_keyPool);
+
+            CWalletDB walletdb(poolWallet.GetWalletFile());
 
             /* Get the oldest key (smallest key pool index) */
             auto si = setKeyPool.begin();
@@ -240,8 +244,7 @@ namespace Legacy
                 throw std::runtime_error("CKeyPool::ReserveKeyFromPool() : unknown key in key pool");
 
             assert(!keypoolEntry.vchPubKey.empty());
-            if (config::GetBoolArg("-printkeypool"))
-                debug::log(0, "Keypool reserve ", nPoolIndex);
+            debug::log(3, FUNCTION, "Keypool reserve ", nPoolIndex);
 
             walletdb.Close();
         }
@@ -253,14 +256,13 @@ namespace Legacy
     {
         if (poolWallet.IsFileBacked())
         {
-            LOCK(poolWallet.cs_wallet);
+            LOCK(CKeyPool::cs_keyPool);
 
             /* Remove from key pool */
             CWalletDB walletdb(poolWallet.GetWalletFile());
             walletdb.ErasePool(nPoolIndex);
 
-            if (config::GetBoolArg("-printkeypool"))
-	            debug::log(0, "Keypool keep ", nPoolIndex);
+            debug::log(3, FUNCTION, "Keypool keep ", nPoolIndex);
 
 	        walletdb.Close();
         }
@@ -273,13 +275,12 @@ namespace Legacy
     {
         if (poolWallet.IsFileBacked())
         {
-            LOCK(poolWallet.cs_wallet);
+            LOCK(CKeyPool::cs_keyPool);
 
             setKeyPool.insert(nPoolIndex);
         }
 
-        if (config::GetBoolArg("-printkeypool"))
-            debug::log(0, "Keypool return ", nPoolIndex);
+        debug::log(3, FUNCTION, "Keypool return ", nPoolIndex);
     }
 
 

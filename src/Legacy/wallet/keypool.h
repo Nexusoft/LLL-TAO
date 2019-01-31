@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -16,6 +16,8 @@ ________________________________________________________________________________
 
 #include <set>
 #include <vector>
+
+#include <Util/include/mutex.h>
 
 namespace Legacy
 {
@@ -51,14 +53,26 @@ namespace Legacy
     {
         friend class CWalletDB;
         
+
     public:
         /** Defines the default number of keys contained by a key pool **/
         static const uint64_t DEFAULT_KEY_POOL_SIZE = 100;
 
+
         /** Defines the minimum key pool size **/
         static const uint64_t MINIMUM_KEY_POOL_SIZE = 0;
 
+
     private:
+        /** Mutex for thread concurrency. 
+         *
+         *  Static because having instance-specific mutex causes move constructor (used in CWallet initialization) to be deleted.
+         *  We really only use one CKeyPool so no problem simply sharing one mutex within the class.
+         *  
+         **/
+        static std::mutex cs_keyPool;
+
+
         /** 
          *  A set containing the key pool index values for all the keys in the pool. 
          *  The actual keys pool entries are stored in the wallet database and

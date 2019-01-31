@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -29,12 +29,7 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-        /** Virtual Functions to Determine Behavior of Message LLP.
-         *
-         *  @param[in] EVENT The byte header of the event type
-         *  @param[in[ LENGTH The size of bytes read on packet read events
-         *
-         */
+        /** Virtual Functions to Determine Behavior of Message LLP. **/
         void TritiumNode::Event(uint8_t EVENT, uint32_t LENGTH)
         {
             switch(EVENT)
@@ -45,7 +40,7 @@ namespace LLP
                     nLastPing    = runtime::timestamp();
 
                     /* Debut output. */
-                    debug::log(0, NODE, GetAddress().ToString(), " Connected at timestamp ", runtime::unifiedtimestamp());
+                    debug::log(1, NODE, GetAddress().ToString(), " Connected at timestamp ", runtime::unifiedtimestamp());
 
                     /* Send version if making the connection. */
                     if(fOUTGOING)
@@ -106,6 +101,10 @@ namespace LLP
 
                 case EVENT_DISCONNECT:
                 {
+                    /* Debut output. */
+                    debug::log(1, NODE, GetAddress().ToString(),
+                        " Disconnected at timestamp ", runtime::unifiedtimestamp());
+
                     if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
                         TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
@@ -129,7 +128,7 @@ namespace LLP
                     ssPacket >> nSessionID;
 
                     /* Get your address. */
-                    Address addr;
+                    LegacyAddress addr;
                     ssPacket >> addr;
 
                     /* Check the server if it is set. */
@@ -227,7 +226,7 @@ namespace LLP
                     ssPacket >> vData;
 
                     /* Request the inventory. */
-                    for(auto hash : vData)
+                    for(const auto& hash : vData)
                         PushMessage(GET_INVENTORY, hash);
 
                     break;
@@ -284,10 +283,14 @@ namespace LLP
                     /* Grab the connections. */
                     if(TRITIUM_SERVER)
                     {
-                        std::vector<Address> vAddr = TRITIUM_SERVER->GetAddresses();
+                        std::vector<LegacyAddress> vAddr = TRITIUM_SERVER->GetAddresses();
+                        std::vector<LegacyAddress> vLegacyAddr;
+
+                        for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
+                            vLegacyAddr.push_back(*it);
 
                         /* Push the response addresses. */
-                        PushMessage(DAT_ADDRESSES, vAddr);
+                        PushMessage(DAT_ADDRESSES, vLegacyAddr);
                     }
 
                     break;
@@ -297,18 +300,22 @@ namespace LLP
                 case DAT_ADDRESSES:
                 {
                     /* De-Serialize the Addresses. */
-                    std::vector<Address> vAddr;
-                    ssPacket >> vAddr;
+                    std::vector<LegacyAddress> vLegacyAddr;
+                    std::vector<BaseAddress> vAddr;
+                    ssPacket >> vLegacyAddr;
 
                     if(TRITIUM_SERVER)
                     {
                         /* try to establish the connection on the port the server is listening to */
-                        for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
+                        for(auto it = vLegacyAddr.begin(); it != vLegacyAddr.end(); ++it)
                         {
                             if(config::mapArgs.find("-port") != config::mapArgs.end())
                                 it->SetPort(atoi(config::mapArgs["-port"].c_str()));
                             else
                                 it->SetPort(TRITIUM_SERVER->PORT);
+
+                            /* Create a base address vector from legacy addresses */
+                            vAddr.push_back(*it);
                         }
 
 

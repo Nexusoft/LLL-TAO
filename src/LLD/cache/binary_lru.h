@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -25,7 +25,7 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    /** Binary Node
+    /** BinaryNode
      *
      *  Node to hold the binary data of the double linked list.
      *
@@ -39,15 +39,27 @@ namespace LLD
         std::vector<uint8_t> vData;
 
         bool fReserve;
+
+        /** Default constructor **/
+        BinaryNode(const std::vector<uint8_t>& vKeyIn, const std::vector<uint8_t>& vDataIn, bool fReserveIn)
+        : pprev(nullptr)
+        , pnext(nullptr)
+        , vKey(vKeyIn)
+        , vData(vDataIn)
+        , fReserve(fReserveIn)
+        {
+
+        }
     };
 
 
-    /** Holding Pool:
+    /** BinaryLRU
     *
-    * This class is responsible for holding data that is partially processed.
-    * This class has no types, all objects are in binary forms
+    *   LRU - Least Recently Used.
+    *   This class is responsible for holding data that is partially processed.
+    *   This class has no types, all objects are in binary forms.
     *
-    */
+    **/
     class BinaryLRU
     {
 
@@ -70,7 +82,7 @@ namespace LLD
 
 
         /* Map of the current holding data. */
-        std::vector<BinaryNode*> hashmap;
+        std::vector<BinaryNode *> hashmap;
 
 
         /* Keep track of the first object in linked list. */
@@ -86,42 +98,42 @@ namespace LLD
 
         /** Base Constructor.
          *
-         * MAX_CACHE_SIZE default value is 32 MB
-         * MAX_CACHE_BUCKETS default value is 65,539 (2 bytes)
+         *  MAX_CACHE_SIZE default value is 32 MB
+         *  MAX_CACHE_BUCKETS default value is 65,539 (2 bytes)
          *
-         */
-        BinaryLRU() : MAX_CACHE_SIZE(1024 * 1024), MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 32), nCurrentSize(MAX_CACHE_BUCKETS * 8), pfirst(0), plast(0)
+         **/
+        BinaryLRU()
+        : MAX_CACHE_SIZE(1024 * 1024)
+        , MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 32)
+        , nCurrentSize(MAX_CACHE_BUCKETS * 8)
+        , hashmap(MAX_CACHE_BUCKETS)
+        , pfirst(nullptr)
+        , plast(nullptr)
         {
-            /* Resize the hashmap vector. */
-            hashmap.resize(MAX_CACHE_BUCKETS);
-
-            /* Set the start and end pointers. */
-            pfirst = nullptr;
-            plast  = nullptr;
         }
 
 
         /** Cache Size Constructor
          *
-         * @param[in] nCacheSizeIn The maximum size of this Cache Pool
+         *  @param[in] nCacheSizeIn The maximum size of this Cache Pool
          *
-         */
-        BinaryLRU(uint32_t nCacheSizeIn) : MAX_CACHE_SIZE(nCacheSizeIn), MAX_CACHE_BUCKETS(nCacheSizeIn / 32), nCurrentSize(MAX_CACHE_BUCKETS * 8)
+         **/
+        BinaryLRU(uint32_t nCacheSizeIn)
+        : MAX_CACHE_SIZE(nCacheSizeIn)
+        , MAX_CACHE_BUCKETS(nCacheSizeIn / 32)
+        , nCurrentSize(MAX_CACHE_BUCKETS * 8)
+        , hashmap(MAX_CACHE_BUCKETS)
+        , pfirst(nullptr)
+        , plast(nullptr)
         {
-            /* Resize the hashmap vector. */
-            hashmap.resize(MAX_CACHE_BUCKETS);
-
-            /* Set the start and end pointers. */
-            pfirst = nullptr;
-            plast  = nullptr;
         }
 
 
-        /* Class Destructor. */
+        /** Class Destructor. **/
         ~BinaryLRU()
         {
             /* Loop through the linked list. */
-            for(auto & item : hashmap)
+            for(auto& item : hashmap)
                 if(item)
                     delete item;
         }
@@ -148,14 +160,16 @@ namespace LLD
         }
 
 
-        /** Check if data exists
+        /** Has
          *
-         * @param[in] vKey The binary data of the key
+         *  Check if data exists.
          *
-         * @return True/False whether pool contains data by index
+         *  @param[in] vKey The binary data of the key.
          *
-         */
-        bool Has(std::vector<uint8_t> vKey) const
+         *  @return True/False whether pool contains data by index.
+         *
+         **/
+        bool Has(const std::vector<uint8_t>& vKey) const
         {
             LOCK(MUTEX);
 
@@ -164,15 +178,32 @@ namespace LLD
         }
 
 
-        /** Remove Node
+        /** RemoveNode
          *
          *  Remove a node from the double linked list.
          *
          *  @param[in] pthis The node to remove from list.
          *
-         */
+         **/
         void RemoveNode(BinaryNode* pthis)
         {
+            /* Relink last pointer. */
+            if(plast && pthis == plast)
+            {
+                plast = plast->pprev;
+
+                if(plast)
+                    plast->pnext = nullptr;
+            }
+
+            /* Relink first pointer. */
+            if(pfirst && pthis == pfirst)
+            {
+                pfirst = pfirst->pnext;
+
+                if(pfirst)
+                    pfirst->pprev = nullptr;
+            }
 
             /* Link the next pointer if not null */
             if(pthis->pnext)
@@ -184,7 +215,7 @@ namespace LLD
         }
 
 
-        /** Move to Front
+        /** MoveToFront
          *
          *  Move the node in double linked list to front.
          *
@@ -193,7 +224,6 @@ namespace LLD
          **/
         void MoveToFront(BinaryNode* pthis)
         {
-
             /* Don't move to front if already in the front. */
             if(pthis == pfirst)
                 return;
@@ -231,15 +261,17 @@ namespace LLD
         }
 
 
-        /** Get the data by index
+        /** Get
          *
-         * @param[in] vKey The binary data of the key
-         * @param[out] vData The binary data of the cached record
+         *  Get the data by index
          *
-         * @return True if object was found, false if none found by index.
+         *  @param[in] vKey The binary data of the key.
+         *  @param[out] vData The binary data of the cached record.
          *
-         */
-        bool Get(std::vector<uint8_t> vKey, std::vector<uint8_t>& vData)
+         *  @return True if object was found, false if none found by index.
+         *
+         **/
+        bool Get(const std::vector<uint8_t>& vKey, std::vector<uint8_t>& vData)
         {
             LOCK(MUTEX);
 
@@ -261,13 +293,16 @@ namespace LLD
         }
 
 
-        /** Add data in the Pool
+        /** Put
          *
-         * @param[in] vKey The key in binary form
-         * @param[in] vData The input data in binary form
+         *  Add data in the Pool
          *
-         */
-        void Put(std::vector<uint8_t> vKey, std::vector<uint8_t> vData, bool fReserve = false)
+         *  @param[in] vKey The key in binary form.
+         *  @param[in] vData The input data in binary form.
+         *  @param[in] fReserve Flag for if item should be saved from cache eviction.
+         *
+         **/
+        void Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData, bool fReserve = false)
         {
             LOCK(MUTEX);
 
@@ -275,26 +310,32 @@ namespace LLD
             uint32_t nBucket = Bucket(vKey);
 
             /* Check for bucket collisions. */
-            BinaryNode* pthis = nullptr;
             if(hashmap[nBucket] != nullptr)
             {
-                /* Update the cache node. */
-                pthis = hashmap[nBucket];
-                pthis->vData    = vData;
-                pthis->vKey     = vKey;
-                pthis->fReserve = fReserve;
-            }
-            else
-            {
-                /* Create a new cache node. */
-                pthis = new BinaryNode();
-                pthis->vData    = vData;
-                pthis->vKey     = vKey;
-                pthis->fReserve = fReserve;
+                /* Get the object we are working on. */
+                BinaryNode* pthis = hashmap[nBucket];
 
-                /* Add cache node to objects map. */
-                hashmap[nBucket] = pthis;
+                /* Remove from the linked list. */
+                RemoveNode(pthis);
+
+                /* Dereference the pointers. */
+                hashmap[nBucket] = nullptr;
+                pthis->pprev     = nullptr;
+                pthis->pnext     = nullptr;
+                pthis->fReserve  = false;
+
+                /* Reduce the current size. */
+                nCurrentSize -= (pthis->vData.size() - pthis->vKey.size());
+
+                /* Free the memory. */
+                delete pthis;
             }
+
+            /* Create a new cache node. */
+            BinaryNode* pthis = new BinaryNode(vKey, vData, fReserve);
+
+            /* Add cache node to objects map. */
+            hashmap[nBucket] = pthis;
 
             /* Set the new cache node to the front */
             if(!pthis->fReserve)
@@ -309,7 +350,7 @@ namespace LLD
                 /* Get the last key. */
                 if(plast && plast->pprev)
                 {
-                    BinaryNode* pnode = plast;
+                    BinaryNode *pnode = plast;
 
                     /* Relink in memory. */
                     plast = plast->pprev;
@@ -317,7 +358,7 @@ namespace LLD
                     if(plast && plast->pnext)
                         plast->pnext = nullptr;
                     else
-                        printf("plast is nulll\n");
+                        printf("plast is null\n");
 
                     /* Reduce the current cache size. */
                     if(pnode)
@@ -350,10 +391,10 @@ namespace LLD
          *  Reserve this item in the cache permanently if true, unreserve if false
          *
          *  @param[in] vKey The key to flag as reserved true/false
-         *  @param[in] fDisk If this object is to be reserved for disk.
+         *  @param[in] fReserve If this object is to be reserved for disk.
          *
-         */
-        void Reserve(std::vector<uint8_t> vKey, bool fReserve = true)
+         **/
+        void Reserve(const std::vector<uint8_t>& vKey, bool fReserve = true)
         {
             LOCK(MUTEX);
 
@@ -385,33 +426,43 @@ namespace LLD
         }
 
 
-        /** Force Remove Object by Index
+        /** Remove
          *
-         * @param[in] vKey Binary Data of the Key
+         *  Force Remove Object by Index
          *
-         * @return True on successful removal, false if it fails
+         *  @param[in] vKey Binary Data of the Key
          *
-         */
-        bool Remove(std::vector<uint8_t> vKey)
+         *  @return True on successful removal, false if it fails
+         *
+         **/
+        bool Remove(const std::vector<uint8_t>& vKey)
         {
             LOCK(MUTEX);
 
+            /* Get the bucket. */
+            uint32_t nBucket = Bucket(vKey);
+
+            /* Get the object we are working on. */
+            BinaryNode* pthis = hashmap[nBucket];
+
             /* Check if the Record Exists. */
-            if(!Has(vKey))
+            if (pthis == nullptr || pthis->vKey != vKey)
                 return false;
 
-            /* Get the node */
-            BinaryNode* pnode = hashmap[Bucket(vKey)];
+            /* Remove from the linked list. */
+            RemoveNode(pthis);
 
-            /* Reduce the current cache size. */
-            nCurrentSize -= (pnode->vData.size() + vKey.size());
+            /* Dereference the pointers. */
+            hashmap[nBucket] = nullptr;
+            pthis->pprev     = nullptr;
+            pthis->pnext     = nullptr;
+            pthis->fReserve  = false;
 
-            /* Remove from linked list. */
-            RemoveNode(pnode);
+            /* Reduce the current size. */
+            nCurrentSize -= (pthis->vData.size() - pthis->vKey.size());
 
-            /* Remove the object from the map. */
-            hashmap[Bucket(vKey)] = nullptr;
-            delete pnode;
+            /* Free the memory. */
+            delete pthis;
 
             return true;
         }

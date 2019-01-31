@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -48,10 +48,12 @@ namespace LLP
      **/
     class DDOS_Score
     {
+
+    private:
         std::vector< std::pair<bool, uint32_t> > SCORE;
         runtime::timer TIMER;
         uint32_t nIterator;
-        std::mutex MUTEX;
+        mutable std::mutex MUTEX;
 
     public:
 
@@ -89,7 +91,7 @@ namespace LLP
          *  @return the DDOS score
          *
          **/
-        int32_t Score();
+        int32_t Score() const;
 
 
         /** operator+=
@@ -112,13 +114,19 @@ namespace LLP
      **/
     class DDOS_Filter
     {
+    private:
+
+        mutable std::mutex MUTEX;
         runtime::timer TIMER;
-        uint32_t BANTIME, TOTALBANS;
+        uint32_t BANTIME;
+        uint32_t TOTALBANS;
 
     public:
 
-        DDOS_Score rSCORE, cSCORE;
-        std::mutex MUTEX;
+        DDOS_Score rSCORE;
+        DDOS_Score cSCORE;
+
+
 
         /** DDOS_Filter
          *
@@ -147,7 +155,7 @@ namespace LLP
          *  @return True if elapsed time is less than bantime, false otherwise
          *
          **/
-        bool Banned();
+        bool Banned() const;
     };
 }
 

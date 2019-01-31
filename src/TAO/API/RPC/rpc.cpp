@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -31,6 +31,7 @@ namespace TAO
         {
             mapFunctions["echo"] = Function(std::bind(&RPC::Echo, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["help"] = Function(std::bind(&RPC::Help, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["stop"] = Function(std::bind(&RPC::Stop, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getinfo"] = Function(std::bind(&RPC::GetInfo, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getmininginfo"] = Function(std::bind(&RPC::GetMiningInfo, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getconnectioncount"] = Function(std::bind(&RPC::GetConnectionCount, this, std::placeholders::_1, std::placeholders::_2));
@@ -39,13 +40,16 @@ namespace TAO
             mapFunctions["setaccount"] = Function(std::bind(&RPC::SetAccount, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getaccount"] = Function(std::bind(&RPC::GetAccount, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getaddressesbyaccount"] = Function(std::bind(&RPC::GetAddressesByAccount, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["sendtoaddress"] = Function(std::bind(&RPC::SendToAddress, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["signmessage"] = Function(std::bind(&RPC::SignMessage, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["verifymessage"] = Function(std::bind(&RPC::VerifyMessage, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getreceivedbyaddress"] = Function(std::bind(&RPC::GetReceivedByAddress, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getreceivedbyaccount"] = Function(std::bind(&RPC::GetReceivedByAccount, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getbalance"] = Function(std::bind(&RPC::GetBalance, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["movecmd"] = Function(std::bind(&RPC::MoveCmd, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["move"] = Function(std::bind(&RPC::MoveCmd, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["addmultisigaddress"] = Function(std::bind(&RPC::AddMultisigAddress, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["sendfrom"] = Function(std::bind(&RPC::SendFrom, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["sendmany"] = Function(std::bind(&RPC::SendMany, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["listreceivedbyaddress"] = Function(std::bind(&RPC::ListReceivedByAddress, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["listreceivedbyaccount"] = Function(std::bind(&RPC::ListReceivedByAccount, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["listtransactions"] = Function(std::bind(&RPC::ListTransactions, this, std::placeholders::_1, std::placeholders::_2));
@@ -69,7 +73,11 @@ namespace TAO
             mapFunctions["getdifficulty"] = Function(std::bind(&RPC::GetDifficulty, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getsupplyrates"] = Function(std::bind(&RPC::GetSupplyRates, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getmoneysupply"] = Function(std::bind(&RPC::GetMoneySupply, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["getblockhash"] = Function(std::bind(&RPC::GetBlockHash, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["isorphan"] = Function(std::bind(&RPC::IsOrphan, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["getblock"] = Function(std::bind(&RPC::GetBlock, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["backupwallet"] = Function(std::bind(&RPC::BackupWallet, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["keypoolrefill"] = Function(std::bind(&RPC::KeypoolRefill, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["walletpassphrase"] = Function(std::bind(&RPC::WalletPassphrase, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["encryptwallet"] = Function(std::bind(&RPC::EncryptWallet, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["walletpassphrasechange"] = Function(std::bind(&RPC::WalletPassphraseChange, this, std::placeholders::_1, std::placeholders::_2));
@@ -80,8 +88,9 @@ namespace TAO
             mapFunctions["rescan"] = Function(std::bind(&RPC::Rescan, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["importprivkey"] = Function(std::bind(&RPC::ImportPrivKey, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["dumpprivkey"] = Function(std::bind(&RPC::DumpPrivKey, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["importkeys"] = Function(std::bind(&RPC::ImportKeys, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["exportkeys"] = Function(std::bind(&RPC::ExportKeys, this, std::placeholders::_1, std::placeholders::_2));
+            //mapFunctions["importkeys"] = Function(std::bind(&RPC::ImportKeys, this, std::placeholders::_1, std::placeholders::_2));
+            //mapFunctions["exportkeys"] = Function(std::bind(&RPC::ExportKeys, this, std::placeholders::_1, std::placeholders::_2));
+
         }
 
 
@@ -102,7 +111,6 @@ namespace TAO
             if (strMethod == "dumprichlist"           && n > 0) ConvertStringValueTo<int>(jsonSanitizedParams[0]);
             if (strMethod == "setgenerate"            && n > 1) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[1]);
             if (strMethod == "sendtoaddress"          && n > 1) ConvertStringValueTo<double>(jsonSanitizedParams[1]);
-            if (strMethod == "settxfee"               && n > 0) ConvertStringValueTo<double>(jsonSanitizedParams[0]);
             if (strMethod == "getreceivedbyaddress"   && n > 1) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[1]);
             if (strMethod == "getreceivedbyaccount"   && n > 1) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[1]);
             if (strMethod == "listreceivedbyaddress"  && n > 0) ConvertStringValueTo<uint64_t>(jsonSanitizedParams[0]);
@@ -198,10 +206,10 @@ namespace TAO
             uint32_t nConnections = 0;
 
             if(LLP::TRITIUM_SERVER  && LLP::TRITIUM_SERVER->pAddressManager)
-                nConnections += LLP::TRITIUM_SERVER->pAddressManager->GetInfoCount(LLP::ConnectState::CONNECTED);
+                nConnections += LLP::TRITIUM_SERVER->pAddressManager->Count(LLP::ConnectState::CONNECTED);
 
             if(LLP::LEGACY_SERVER && LLP::LEGACY_SERVER->pAddressManager)
-                nConnections += LLP::LEGACY_SERVER->pAddressManager->GetInfoCount(LLP::ConnectState::CONNECTED);
+                nConnections += LLP::LEGACY_SERVER->pAddressManager->Count(LLP::ConnectState::CONNECTED);
 
             return nConnections;
         }

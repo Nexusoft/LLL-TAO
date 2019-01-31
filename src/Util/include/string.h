@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -33,7 +33,6 @@ ________________________________________________________________________________
  *  delemiter.
  *
  *  @param[in] str The string to parse.
- *
  *  @param[in] c The character delimiter.
  *
  *  @param[out] v The vector to store the tokens into.
@@ -66,12 +65,10 @@ inline void ParseString(const std::string& str, char c, std::vector<std::string>
  *
  *  Take as input an encoded money amount and format it into an output string.
  *
- *  @param[in] n The encoded money amount
- *
+ *  @param[in] n The encoded money amount.
  *  @param[in] fPlus Flag for if plus sign should be output for positive values.
- *
  *  @param[in] COIN_SIZE The magnitude of the coin amount used for decoding
- *                       decimal value from integer
+ *                       decimal value from integer.
  *
  *  @return The formatted money string.
  *
@@ -108,12 +105,9 @@ inline std::string FormatMoney(int64_t n, bool fPlus = false, int64_t COIN_SIZE 
  *  Return if there were errors or not.
  *
  *  @param[in] pszIn The input string to parse money amount from.
- *
- *  @param[out] nRet The amount encoded from the parsed money string
- *
- *  @param[in] COIN_SIZE max amount of units of coins to encode
- *
- *  @param[in] CENT_SIZE max amount of units of cents to encode
+ *  @param[out] nRet The amount encoded from the parsed money string.
+ *  @param[in] COIN_SIZE max amount of units of coins to encode.
+ *  @param[in] CENT_SIZE max amount of units of cents to encode.
  *
  *  @return True if no errors, false otherwise.
  *
@@ -171,8 +165,7 @@ inline bool ParseMoney(const char* pszIn, int64_t& nRet, int64_t COIN_SIZE = 100
  *  Return if there were errors or not.
  *
  *  @param[in] str The input string to parse money amount from.
- *
- *  @param[out] nRet The amount encoded from the parsed money string
+ *  @param[out] nRet The amount encoded from the parsed money string.
  *
  *  @return True if no errors, false otherwise.
  *
@@ -188,7 +181,6 @@ inline bool ParseMoney(const std::string& str, int64_t& nRet)
  *  Split a string into it's components by delimiter.
  *
  *  @param[in] strInput The input string.
- *
  *  @param[in] strDelimiter The delimeter to seperate at.
  *
  *  @return The vector of the tokenized strings.
@@ -213,13 +205,14 @@ inline std::vector<std::string> Split(const std::string& strInput, char strDelim
     return vData;
 }
 
+
 /** ltrim
 *
-*  Trims spaces from the left of a std::string
+*  Trims spaces from the left of a std::string.
 *
-*  @param[in] s The string to be trimmed
+*  @param[in] s The string to be trimmed.
 *
-*  @return The string with all leading spaces removed
+*  @return The string with all leading spaces removed.
 *
 **/
 static inline std::string &ltrim(std::string &s)
@@ -229,13 +222,14 @@ static inline std::string &ltrim(std::string &s)
     return s;
 }
 
+
 /** rtrim
 *
-*  Trims spaces from the right of a std::string
+*  Trims spaces from the right of a std::string.
 *
-*  @param[in] s The string to be trimmed
+*  @param[in] s The string to be trimmed.
 *
-*  @return The string with all trailing spaces removed
+*  @return The string with all trailing spaces removed.
 *
 **/
 static inline std::string &rtrim(std::string &s)
@@ -245,19 +239,21 @@ static inline std::string &rtrim(std::string &s)
     return s;
 }
 
+
 /** trim
 *
-*  Trims spaces from both ends of a std::string
+*  Trims spaces from both ends of a std::string.
 *
-*  @param[in] s The string to be trimmed
+*  @param[in] s The string to be trimmed.
 *
-*  @return The string with all leading and trailing spaces removed
+*  @return The string with all leading and trailing spaces removed.
 *
 **/
 static inline std::string &trim(std::string &s)
 {
     return ltrim(rtrim(s));
 }
+
 
 /** EqualsNoCase
 *
@@ -278,13 +274,14 @@ static inline bool EqualsNoCase(const std::string& str1, const std::string& str2
 								}));
 }
 
+
 /** ToLower
 *
-*  Converts the string parameter to lowercase.  Does not modify the string parameter
+*  Converts the string parameter to lowercase.  Does not modify the string parameter.
 *
-*  @param[in] strIn The string to be converted
+*  @param[in] strIn The string to be converted.
 *
-*  @return A string representing the the lowercase version of the parameter string
+*  @return A string representing the the lowercase version of the parameter string.
 *
 **/
 static inline std::string ToLower(const std::string& strIn)

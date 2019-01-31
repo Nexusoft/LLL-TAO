@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -14,11 +14,9 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_MANAGER_H
 #define NEXUS_LLP_INCLUDE_MANAGER_H
 
-#include <LLP/include/addressinfo.h>
+#include <LLP/include/trustaddress.h>
 #include <Util/templates/serialize.h>
-
-
-#include <unordered_map>
+#include <map>
 #include <vector>
 #include <cstdint>
 #include <mutex>
@@ -42,6 +40,8 @@ namespace LLP
     class AddressManager
     {
     public:
+
+        AddressManager() = delete;
 
         /** AddressManager
          *
@@ -71,28 +71,28 @@ namespace LLP
 
         /** GetAddresses
          *
-         *  Gets a list of addresses in the manager
+         *  Get a list of addresses in the manager that have the flagged state.
          *
          *  @param[in] flags the types of connect state
          *
          *  @return A list of addresses in the manager
          *
          **/
-        std::vector<Address> GetAddresses(const uint8_t flags = CONNECT_FLAGS_ALL);
+        void GetAddresses(std::vector<BaseAddress> &vAddr, const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
-        /** GetInfo
+        /** GetAddresses
          *
          *  Gets a list of address info in the manager
          *
+         *  @param[out] vAddrInfo The vector of address info output
+         *
          *  @param[in] flags the types of connect state
          *
-         *  @return A list of address info in the manager
-         *
          **/
-        std::vector<AddressInfo> GetInfo(const uint8_t flags = CONNECT_FLAGS_ALL);
+        void GetAddresses(std::vector<TrustAddress> &vAddrInfo, const uint8_t flags = CONNECT_FLAGS_ALL);
 
-        /** GetInfoCount
+        /** Count
          *
          *  Gets the count of addresses info in the manager
          *
@@ -101,7 +101,7 @@ namespace LLP
          *  @return Count of addresss info with connect state flags
          *
          **/
-        uint32_t GetInfoCount(const uint8_t flags = CONNECT_FLAGS_ALL);
+        uint32_t Count(const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
         /** AddAddress
@@ -114,7 +114,7 @@ namespace LLP
          *  @param[in] state The state of the connection for the address
          *
          **/
-        void AddAddress(const Address &addr, const uint8_t state = ConnectState::NEW);
+        void AddAddress(const BaseAddress &addr, const uint8_t state = ConnectState::NEW);
 
 
         /** AddAddresses
@@ -127,7 +127,7 @@ namespace LLP
          *  @param[in] state The state of the connection for the address
          *
          **/
-        void AddAddresses(const std::vector<Address> &addrs, const uint8_t state = ConnectState::NEW);
+        void AddAddresses(const std::vector<BaseAddress> &addrs, const uint8_t state = ConnectState::NEW);
 
 
         /** SetLatency
@@ -138,9 +138,9 @@ namespace LLP
          *  @param[in] lat The latency, in milliseconds
          *
          *  @param[in] addr The address in reference to
-         *
+         *unordered_map
          **/
-        void SetLatency(uint32_t lat, const Address &addr);
+        void SetLatency(uint32_t lat, const BaseAddress &addr);
 
 
         /** StochasticSelect
@@ -152,7 +152,7 @@ namespace LLP
          *  @return True is successful, false otherwise
          *
          **/
-        bool StochasticSelect(Address &addr);
+        bool StochasticSelect(BaseAddress &addr);
 
 
         /** ReadDatabase
@@ -173,15 +173,22 @@ namespace LLP
 
         /** PrintStats
          *
-         *  print the current state of the address manager
+         *  Print the current state of the address manager.
          *
          **/
         void PrintStats();
 
+
+        /** SetPort
+         *
+         *  Set the port number for all addresses in the manager.
+         *
+         **/
+        void SetPort(uint16_t port);
+
     private:
 
-
-        /** get_info
+        /** get_addresses
          *
          *  Helper function to get an array of info on the connected states specified
          *  by flags
@@ -191,32 +198,39 @@ namespace LLP
          *  @param[in] flags Specify which types of connections to get the info from.
          *
          **/
-        void get_info(std::vector<AddressInfo> &info, const uint8_t flags = CONNECT_FLAGS_ALL);
+        void get_addresses(std::vector<TrustAddress> &vInfo, const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
-        /** get_count
+        /** count
          *
          *  Helper function to get the number of addresses of the connect type
          *
          *  *  @param[in] flags Specify which types of connections to get the info from.
          *
          **/
-        uint32_t get_current_count(const uint8_t flags = CONNECT_FLAGS_ALL);
+        uint32_t count(const uint8_t flags = CONNECT_FLAGS_ALL);
 
 
-        /** get_total_count
+        /** total_count
          *
-         *  Helper function to get the total connected, dropped, or failed attempts
-         *  from the entire data set
+         *  Gets the cumulative count of each address state flags.
          *
          *  @param[in] flags Specify which types of connections to get the info from.
          *
          **/
-        uint32_t get_total_count(const uint8_t flags);
+        uint32_t total_count(const uint8_t flags);
+
+
+        /** print_stats
+         *
+         *  Print the current state of the address manager.
+         *
+         **/
+        void print_stats();
 
 
         LLD::AddressDB *pDatabase;
-        std::unordered_map<uint64_t, AddressInfo> mapAddrInfo;
+        std::map<uint64_t, TrustAddress> mapTrustAddress;
 
         mutable std::mutex mut;
     };

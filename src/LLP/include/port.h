@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 
 #ifdef WIN32
-// In MSVC, this is defined as a macro, undefine it to prevent a compile and link error
+/* In MSVC, this is defined as a macro, undefine it to prevent a compile and link error */
 #undef SetPort
 #endif
 
@@ -48,21 +48,47 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    /* Get the Main Core LLP Port for Nexus. */
+    /*  */
+
+    /** GetCorePort
+     *
+     *  Get the Main Core LLP Port for Nexus.
+     *
+     *  @param[in] testnet Flag for if port is a testnet port
+     *
+     *  @return Returns a 16-bit port number for core mainnet or testnet.
+     *
+     **/
     inline uint16_t GetCorePort(const bool testnet = config::fTestNet)
     {
         return testnet ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT;
     }
 
 
-    /* Get the Main Mining LLP Port for Nexus. */
+    /** GetMiningPort
+     *
+     *  Get the Main Mining LLP Port for Nexus.
+     *
+     *  @param[in] testnet Flag for if port is a testnet port
+     *
+     *  @return Returns a 16-bit port number for mining mainnet or testnet.
+     *
+     **/
     inline uint16_t GetMiningPort(const bool testnet = config::fTestNet)
     {
         return testnet ? TESTNET_MINING_LLP_PORT : MAINNET_MINING_LLP_PORT;
     }
 
 
-    /* Get the Main Message LLP Port for Nexus. */
+    /** GetDefaultPort
+     *
+     *  Get the Main Message LLP Port for Nexus.
+     *
+     *  @param[in] testnet Flag for if port is a testnet port
+     *
+     *  @return Returns a 16-bit port number for mining mainnet or testnet.
+     *
+     **/
     inline uint16_t GetDefaultPort(const bool testnet = config::fTestNet)
     {
         return testnet ? TESTNET_PORT : MAINNET_PORT;

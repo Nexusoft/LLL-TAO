@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -77,7 +77,7 @@ namespace Legacy
          *  Performs work of initialization for constructors.
          *
          **/
-        void Init(const std::string strFileIn, const char* pszMode);
+        void Init(const std::string& strFileIn, const char* pszMode);
 
 
     protected:
@@ -133,7 +133,7 @@ namespace Legacy
          *  @param[in] pszMode A string containing one or more access mode characters
          *
          **/
-        explicit CDB(const std::string strFileIn, const char* pszMode="r+");
+        explicit CDB(const std::string& strFileIn, const char* pszMode="r+");
 
 
         /** Destructor
@@ -166,7 +166,7 @@ namespace Legacy
             DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             ssKey.reserve(1000);
             ssKey << key;
-            Dbt datKey(&ssKey[0], ssKey.size());
+            Dbt datKey(ssKey.data(), ssKey.size());
 
             /* Value */
             Dbt datValue;
@@ -232,13 +232,13 @@ namespace Legacy
             DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             ssKey.reserve(1000);
             ssKey << key;
-            Dbt datKey(&ssKey[0], ssKey.size());
+            Dbt datKey(ssKey.data(), ssKey.size());
 
             /* Value */
             DataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
             ssValue.reserve(10000);
             ssValue << value;
-            Dbt datValue(&ssValue[0], ssValue.size());
+            Dbt datValue(ssValue.data(), ssValue.size());
 
             /* Write */
             int32_t ret = pdb->put(GetTxn(), &datKey, &datValue, (fOverwrite ? 0 : DB_NOOVERWRITE));
@@ -275,7 +275,7 @@ namespace Legacy
             DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             ssKey.reserve(1000);
             ssKey << key;
-            Dbt datKey(&ssKey[0], ssKey.size());
+            Dbt datKey(ssKey.data(), ssKey.size());
 
             /* Erase */
             int32_t ret = pdb->del(GetTxn(), &datKey, 0);
@@ -306,7 +306,7 @@ namespace Legacy
             DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
             ssKey.reserve(1000);
             ssKey << key;
-            Dbt datKey(&ssKey[0], ssKey.size());
+            Dbt datKey(ssKey.data(), ssKey.size());
 
             /* Exists */
             int32_t ret = pdb->exists(GetTxn(), &datKey, 0);
@@ -345,7 +345,7 @@ namespace Legacy
          *     DB_CURRENT - Read the current entry in the database. Allows same entry to be read multiple times without moving cursor.
          *     DB_LAST    - Move to and read the last entry in the database.
          *
-         *  @param[in] pcursor The cursor used to read from the database
+         *  @param[in,out] pcursor The cursor used to read from the database
          *
          *  @param[in,out] ssKey A stream containing the serialized key read. May also contain input to cursor
          *                       operation for certain flag settings
@@ -365,7 +365,7 @@ namespace Legacy
          *
          *  Closes and discards a cursor. After calling this method, the cursor is no longer valid for use.
          *
-         *  @param[in] pcursor The cursor to close
+         *  @param[in,out] pcursor The cursor to close
          *
          **/
         void CloseCursor(Dbc* pcursor);
@@ -443,7 +443,7 @@ namespace Legacy
          *  @return true if the value was successfully written
          *
          **/
-        bool WriteVersion(uint32_t nVersion);
+        bool WriteVersion(const uint32_t nVersion);
 
 
         /** Close
@@ -468,6 +468,10 @@ namespace Legacy
          *  Should only be called when CDB::mapFileUseCount is 0 (after Close() called on any in-use
          *  instances) or the pdb copy in active instances will become invalid and results of continued
          *  use are undefined.
+         *
+         *  This method does not obtain a lock on CDB::cs_db, thus any methods calling it must first 
+         *  obtain that lock. This supports usage within methods that also require obtaining a CDB::cs_db 
+         *  lock for other purposes.
          *
          *  @param[in] strFile Database to close
          *

@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -24,14 +24,20 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/state.h>
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/trustkey.h>
 #include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Register/include/enum.h>
 
 
 namespace LLD
 {
 
-
+    /** LedgerDB
+     *
+     *  The database class for the Ledger Layer.
+     *
+     **/
     class LedgerDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
         std::mutex MEMORY_MUTEX;
@@ -39,33 +45,35 @@ namespace LLD
         std::map< std::pair<uint256_t, uint512_t>, uint32_t > mapProofs;
 
     public:
+
+
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         LedgerDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE)
         : SectorDatabase("ledger", nFlagsIn) { }
 
 
-        /** Write Best Chain.
+        /** WriteBestChain
          *
          *  Writes the best chain pointer to the ledger DB.
          *
          *  @param[in] hashBest The best chain hash to write.
          *
-         *  @return True if the write was successful.
+         *  @return True if the write was successful, false otherwise.
          *
          **/
-        bool WriteBestChain(uint1024_t hashBest)
+        bool WriteBestChain(const uint1024_t& hashBest)
         {
             return Write(std::string("hashbestchain"), hashBest);
         }
 
 
-        /** Read Best Chain.
+        /** ReadBestChain
          *
          *  Reads the best chain pointer from the ledger DB.
          *
          *  @param[out] hashBest The best chain hash to read.
          *
-         *  @return True if the read was successful.
+         *  @return True if the read was successful, false otherwise.
          *
          **/
         bool ReadBestChain(uint1024_t& hashBest)
@@ -74,112 +82,205 @@ namespace LLD
         }
 
 
-        /** Write Tx.
+        /** WriteTx
          *
          *  Writes a transaction to the ledger DB.
          *
          *  @param[in] hashTransaction The txid of transaction to write.
          *  @param[in] tx The transaction object to write.
          *
-         *  @return True if the transaction was successfully written.
+         *  @return True if the transaction was successfully written, false otherwise.
          *
          **/
-        bool WriteTx(uint512_t hashTransaction, TAO::Ledger::Transaction tx)
+        bool WriteTx(const uint512_t& hashTransaction, const TAO::Ledger::Transaction& tx)
         {
             return Write(hashTransaction, tx);
         }
 
 
-        /** Read Tx.
+        /** ReadTx
          *
          *  Reads a transaction from the ledger DB.
          *
          *  @param[in] hashTransaction The txid of transaction to read.
          *  @param[in] tx The transaction object to read.
          *
-         *  @return True if the transaction was successfully read.
+         *  @return True if the transaction was successfully read, false otherwise.
          *
          **/
-        bool ReadTx(uint512_t hashTransaction, TAO::Ledger::Transaction& tx)
+        bool ReadTx(const uint512_t& hashTransaction, TAO::Ledger::Transaction& tx)
         {
             return Read(hashTransaction, tx);
         }
 
 
-        /** Erase Tx.
+        /** EraseTx
          *
          *  Erases a transaction from the ledger DB.
          *
          *  @param[in] hashTransaction The txid of transaction to erase.
          *
-         *  @return True if the transaction was successfully erased.
+         *  @return True if the transaction was successfully erased, false otherwise.
          *
          **/
-        bool EraseTx(uint512_t hashTransaction)
+        bool EraseTx(const uint512_t& hashTransaction)
         {
             return Erase(hashTransaction);
         }
 
 
-        /** Has Tx.
+        /** IndexBlock
+         *
+         *  Index a transaction hash to a block in keychain.
+         *
+         *  @param[in] hashTransaction The txid of transaction to write.
+         *  @param[in] hashBlock The block hash to index to.
+         *
+         *  @return True if the transaction was successfully written, false otherwise.
+         *
+         **/
+        bool IndexBlock(const uint512_t& hashTransaction, const uint1024_t& hashBlock)
+        {
+            return Index(std::make_pair(std::string("index"), hashTransaction), hashBlock);
+        }
+
+
+        /** EraseIndex
+         *
+         *  Erase a foreign index form the keychain
+         *
+         *  @param[in] hashTransaction The txid of transaction to write.
+         *
+         *  @return True if the transaction was successfully written, false otherwise.
+         *
+         **/
+        bool EraseIndex(const uint512_t& hashTransaction)
+        {
+            return Erase(std::make_pair(std::string("index"), hashTransaction));
+        }
+
+
+        /** RepairIndex
+         *
+         *  Recover if an index is not found.
+         *  Fixes a corrupted database with a linear search for the hash tx up
+         *  to the chain height.
+         *
+         *  @param[in] hashTransaction The txid of transaction to write.
+         *
+         *  @return True if the transaction was successfully written, false otherwise.
+         *
+         **/
+        bool RepairIndex(const uint512_t& hashTransaction)
+        {
+            debug::log(0, FUNCTION, "repairing index for ", hashTransaction.ToString().substr(0, 20));
+
+            /* Get the best block state to start from. */
+            TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.Prev();
+
+            /* Loop until it is found. */
+            while(!config::fShutdown && !state.IsNull())
+            {
+                /* Give debug output of status. */
+                if(state.nHeight % 100000 == 0)
+                    debug::log(0, FUNCTION, "repairing index..... ", state.nHeight);
+
+                /* Check for the transaction. */
+                for(const auto& tx : state.vtx)
+                {
+                    /* If the transaction is found, write the index. */
+                    if(tx.second == hashTransaction)
+                    {
+                        /* Repair the index once it is found. */
+                        if(!IndexBlock(hashTransaction, state.GetHash()))
+                            return false;
+
+                        return true;
+                    }
+                }
+
+                state = state.Prev();
+            }
+
+            return false;
+        }
+
+
+        /** ReadBlock
+         *
+         *  Reads a block state from disk from a tx index.
+         *
+         *  @param[in] hashBlock The block hash to read.
+         *  @param[in] state The block state object to read.
+         *
+         *  @return True if the read was successful, false otherwise.
+         *
+         **/
+        bool ReadBlock(const uint512_t& hashTransaction, TAO::Ledger::BlockState& state)
+        {
+            return Read(std::make_pair(std::string("index"), hashTransaction), state);
+        }
+
+
+        /** HasTx
          *
          *  Checks LedgerDB if a transaction exists.
          *
          *  @param[in] hashTransaction The txid of transaction to check.
          *
-         *  @return True if the transaction exists.
+         *  @return True if the transaction exists, false otherwise.
          *
          **/
-        bool HasTx(uint512_t hashTransaction)
+        bool HasTx(const uint512_t& hashTransaction)
         {
             return Exists(hashTransaction);
         }
 
 
-        /** Write Last.
+        /** WriteLast
          *
          *  Writes the last txid of sigchain to disk indexed by genesis.
          *
          *  @param[in] hashGenesis The genesis hash to write.
-         *  @param[in] hashLast The last hash (txid) to write
+         *  @param[in] hashLast The last hash (txid) to write.
          *
-         *  @return True if the last was successfully written.
+         *  @return True if the last was successfully written, false otherwise.
          *
          **/
-        bool WriteLast(uint256_t hashGenesis, uint512_t hashLast)
+        bool WriteLast(const uint256_t& hashGenesis, const uint512_t& hashLast)
         {
             return Write(std::make_pair(std::string("last"), hashGenesis), hashLast);
         }
 
 
-        /** Read Last.
+        /** ReadLast
          *
          *  Reads the last txid of sigchain to disk indexed by genesis.
          *
          *  @param[in] hashGenesis The genesis hash to read.
-         *  @param[in] hashLast The last hash (txid) to read
+         *  @param[in] hashLast The last hash (txid) to read.
          *
-         *  @return True if the last was successfully read.
+         *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool ReadLast(uint256_t hashGenesis, uint512_t& hashLast)
+        bool ReadLast(const uint256_t& hashGenesis, uint512_t& hashLast)
         {
             return Read(std::make_pair(std::string("last"), hashGenesis), hashLast);
         }
 
 
-        /** Write Proof.
+        /** WriteProof
          *
          *  Writes a proof to disk. Proofs are used to keep track of spent temporal proofs.
          *
          *  @param[in] hashProof The proof that is being spent.
          *  @param[in] hashTransaction The transaction hash that proof is being spent for.
-         *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE)
+         *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE).
          *
-         *  @return True if the last was successfully written.
+         *  @return True if the last was successfully written, false otherwise.
          *
          **/
-        bool WriteProof(uint256_t hashProof, uint512_t hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
+        bool WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             /* Memory mode for pre-database commits. */
             if(nFlags & TAO::Register::FLAGS::MEMPOOL)
@@ -203,7 +304,7 @@ namespace LLD
         }
 
 
-        /** Has Proof.
+        /** HasProof
          *
          *  Checks if a proof exists. Proofs are used to keep track of spent temporal proofs.
          *
@@ -211,10 +312,10 @@ namespace LLD
          *  @param[in] hashTransaction The transaction hash that proof is being spent for.
          *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE)
          *
-         *  @return True if the last was successfully read.
+         *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool HasProof(uint256_t hashProof, uint512_t hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
+        bool HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             /* Memory mode for pre-database commits. */
             if(nFlags & TAO::Register::FLAGS::MEMPOOL)
@@ -230,95 +331,95 @@ namespace LLD
         }
 
 
-        /** Write Block
+        /** WriteBlock
          *
          *  Writes a block state object to disk.
          *
          *  @param[in] hashBlock The block hash to write as.
          *  @param[in] state The block state object to write.
          *
-         *  @return True if the write was successful.
+         *  @return True if the write was successful, false otherwise.
          *
          **/
-        bool WriteBlock(uint1024_t hashBlock, TAO::Ledger::BlockState state)
+        bool WriteBlock(const uint1024_t& hashBlock, const TAO::Ledger::BlockState& state)
         {
             return Write(hashBlock, state);
         }
 
 
-        /** Read Block
+        /** ReadBlock
          *
          *  Reads a block state object from disk.
          *
          *  @param[in] hashBlock The block hash to read.
          *  @param[in] state The block state object to read.
          *
-         *  @return True if the read was successful.
+         *  @return True if the read was successful, false otherwise.
          *
          **/
-        bool ReadBlock(uint1024_t hashBlock, TAO::Ledger::BlockState& state)
+        bool ReadBlock(const uint1024_t& hashBlock, TAO::Ledger::BlockState& state)
         {
             return Read(hashBlock, state);
         }
 
 
-        /** Has Block
+        /** HasBlock
          *
          *  Checks if there is a block state object on disk.
          *
-         *  @param[in] hashBlock The block hash to check
+         *  @param[in] hashBlock The block hash to check.
          *
-         *  @return True if it exists.
+         *  @return True if it exists, false otherwise.
          *
          **/
-        bool HasBlock(uint1024_t hashBlock)
+        bool HasBlock(const uint1024_t& hashBlock)
         {
             return Exists(hashBlock);
         }
 
 
-        /** Has Genesis.
+        /** HasGenesis
          *
          *  Checks if a genesis transaction exists.
          *
          *  @param[in] hashGenesis The genesis ID to check for.
          *
-         *  @return True if the genesis exists.
+         *  @return True if the genesis exists, false otherwise.
          *
          **/
-        bool HasGenesis(uint256_t hashGenesis)
+        bool HasGenesis(const uint256_t& hashGenesis)
         {
             return Exists(std::make_pair(std::string("genesis"), hashGenesis));
         }
 
 
-        /** Write Genesis.
+        /** WriteGenesis
          *
          *  Writes a genesis transaction-id to disk.
          *
          *  @param[in] hashGenesis The genesis ID to write for.
          *  @param[in] hashTransaction The transaction-id to write for.
          *
-         *  @return True if the genesis exists.
+         *  @return True if the genesis is written, false otherwise.
          *
          **/
-        bool WriteGenesis(uint256_t hashGenesis, uint512_t hashTransaction)
+        bool WriteGenesis(const uint256_t& hashGenesis, const uint512_t& hashTransaction)
         {
             return Write(std::make_pair(std::string("genesis"), hashGenesis), hashTransaction);
         }
 
 
-        /** Read Genesis.
+        /** ReadGenesis
          *
          *  Reads a genesis transaction-id from disk.
          *
          *  @param[in] hashGenesis The genesis ID to read for.
          *  @param[out] hashTransaction The transaction-id to read for.
          *
-         *  @return True if the genesis was read..
+         *  @return True if the genesis was read, false otherwise.
          *
          **/
-        bool ReadGenesis(uint256_t hashGenesis, uint512_t& hashTransaction)
+        bool ReadGenesis(const uint256_t& hashGenesis, uint512_t& hashTransaction)
         {
             return Read(std::make_pair(std::string("genesis"), hashGenesis), hashTransaction);
         }

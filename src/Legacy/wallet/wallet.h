@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -103,6 +103,7 @@ namespace Legacy
      **/
     class CWallet : public CCryptoKeyStore
     {
+        /** CWalletDB declared friend so it can use private Load methods within LoadWallet **/
         friend class CWalletDB;
 
     public:
@@ -122,7 +123,7 @@ namespace Legacy
          *  @see LoadWallet
          *
          **/
-        static bool InitializeWallet(std::string strWalletFileIn = Legacy::CWalletDB::DEFAULT_WALLET_DB);
+        static bool InitializeWallet(const std::string& strWalletFileIn = Legacy::CWalletDB::DEFAULT_WALLET_DB);
 
 
         /** GetInstance
@@ -227,45 +228,12 @@ namespace Legacy
         , vchDefaultKey()
         , nWalletUnlockTime(0)
         , pWalletDbEncryption(nullptr)
+        , cs_wallet()
         , mapWallet()
         , mapRequestCount()
         {
 
         }
-
-
-        /** Constructor
-         *
-         *  Initializes a wallet instance for FEATURE_BASE that is file backed.
-         *
-         *  This constructor only initializes the wallet and does not load it from the
-         *  data store.
-         *
-         *  @param[in] strWalletFileIn The wallet database file name that backs this wallet.
-         *
-         *  @see LoadWallet()
-         *
-         **/
-/*TODO - test singleton design and on test success remove this constructor (not used with that design)
-        CWallet(std::string strWalletFileIn)
-        : nWalletVersion(FEATURE_BASE)
-        , nWalletMaxVersion(FEATURE_BASE)
-        , fFileBacked(true)
-        , fLoaded(false)
-        , strWalletFile(strWalletFileIn)
-        , mapMasterKeys()
-        , nMasterKeyMaxID(0)
-        , addressBook(CAddressBook(*this))
-        , keyPool(CKeyPool(*this))
-        , vchDefaultKey()
-        , nWalletUnlockTime(0)
-        , pWalletDbEncryption(nullptr)
-        , mapWallet()
-        , mapRequestCount()
-        {
-
-        }
-*/
 
 
     public:
@@ -371,12 +339,13 @@ namespace Legacy
          *  Loads all data for a file backed wallet from the database.
          *
          *  The first time LoadWallet is called the wallet file will not exist and
-         *  will be created. It is new, so there is no data to retrieve. The
-         *  wallet will not have a default key (vchDefaultKey is empty) and one
-         *  must be assigned. It also will not have values for min version or max version.
-         *  In this case fFirstRunRet will be set true to indicate a new wallet.
+         *  will be created. It is new, so there is no data to retrieve.
+         *  fFirstRunRet will be set true to indicate a new wallet.
          *
-         *  @param[out] fFirstRunRet true if new wallet that needs a default key
+         *  When fFirstRunRet is true, LoadWallet() will also set the wallet min/max
+         *  versions to the latest, fill the key pool, and assign a default key
+         *
+         *  @param[out] fFirstRunRet true if new wallet
          *
          *  @return Value from Legacy::DBErrors, DB_LOAD_OK on success
          *
@@ -394,7 +363,7 @@ namespace Legacy
          *  @param[in] hash Block hash to track
          *
          */
-        void Inventory(const uint1024_t &hash);  //Not really a very intuitive method name
+        void Inventory(const uint1024_t& hash);  //Not really a very intuitive method name
 
 
         /** GetWalletUnlockTime
@@ -426,7 +395,7 @@ namespace Legacy
          *  @return true if key successfully added
          *
          **/
-        bool AddCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret) override;
+        bool AddCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret) override;
 
 
         /** AddKey
@@ -461,6 +430,16 @@ namespace Legacy
     /*----------------------------------------------------------------------------------------*/
     /*  Key, Encryption, and Passphrase                                                       */
     /*----------------------------------------------------------------------------------------*/
+        /** GetKeyPool
+         *
+         *  Retrieve a reference to the key pool for this wallet.
+         *
+         *  @return this wallet's key pool
+         *
+         */
+        inline CKeyPool& GetKeyPool() { return keyPool; }
+
+
         /** GenerateNewKey
          *
          *  Generates a new key and adds it to the key store.
@@ -478,17 +457,26 @@ namespace Legacy
          *  @return the default key value
          *
          */
-        inline std::vector<uint8_t> GetDefaultKey() { return vchDefaultKey; }
+        inline std::vector<uint8_t> GetDefaultKey() const { return vchDefaultKey; }
 
 
-        /** GetKeyPool
+        /** SetDefaultKey
          *
-         *  Retrieve a reference to the key pool for this wallet.
+         *  Assigns a new default key to this wallet. The key itself
+         *  should be obtained from the wallet's key pool or generated new.
          *
-         *  @return this wallet's key pool
+         *  Wallet also writes the key in the wallet database for file backed wallets.
+         *  This will overwrite any prior default key value.
+         *
+         *  @param[in] vchPubKey The key to make default
+         *
+         *  @return true if setting default key successful
+         *
+         *  @see CKeyPool::GetKeyFromPool
+         *  @see GenerateNewKey
          *
          */
-        inline CKeyPool& GetKeyPool() { return keyPool; }
+        bool SetDefaultKey(const std::vector<uint8_t>& vchPubKey);
 
 
         /** EncryptWallet
@@ -584,7 +572,7 @@ namespace Legacy
          *
          *  @param[in] nSpendTime Cutoff timestamp for result. Any transactions after this time are filtered
          *
-         *  @param[in] vCoins Vector of COutput listing spendable outputs
+         *  @param[out] vCoins Vector of COutput listing spendable outputs
          *
          *  @param[in] fOnlyConfirmed Set false to include unconfirmed transactions in output
          *
@@ -614,7 +602,22 @@ namespace Legacy
          *  @return true if transaction found
          *
          **/
-        bool GetTransaction(const uint512_t &hashTx, CWalletTx& wtx);
+        bool GetTransaction(const uint512_t& hashTx, CWalletTx& wtx);
+
+
+        /** GetRequestCount
+         *
+         *  Get the number of remote requests recorded for a transaction. 
+         *
+         *  Coinbase and Coinstake transactions are tracked at the block level,
+         *  so count records requests for the block containing them.
+         *
+         *  @param[in] wtx The wallet transaction to check
+         *
+         *  @return The request count as recorded by request tracking, -1 if not tracked
+         *
+         **/
+        int32_t GetRequestCount(const CWalletTx& wtx) const;
 
 
         /** AddToWallet
@@ -652,7 +655,7 @@ namespace Legacy
          * @return true if the transactions was added/updated
          *
          */
-        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::TritiumBlock& containingBlock,
+        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::BlockState& containingBlock,
                                       bool fUpdate = false, bool fFindBlock = false, bool fRescan = false);
 
 
@@ -665,18 +668,18 @@ namespace Legacy
          *  @return true if the transaction was erased
          *
          **/
-        bool EraseFromWallet(const uint512_t hash);
+        bool EraseFromWallet(const uint512_t& hash);
 
 
         /** DisableTransaction
          *
-         *  When disconnecting a coinstake transaction, this method to marks
+         *  When disconnecting a coinstake transaction, this method marks
          *  any previous outputs from this wallet as unspent.
          *
          *  @param[in] tx The coinstake transaction to disable
          *
          **/
-        void DisableTransaction(const Transaction &tx);
+        void DisableTransaction(const Transaction& tx);
 
 
         /** ScanForWalletTransactions
@@ -684,8 +687,8 @@ namespace Legacy
          *  Scan the block chain for transactions with UTXOs from or to keys in this wallet.
          *  Add/update the current wallet transactions for anyhat found.
          *
-         *  @param[in] startBlock Block state for location in block chain to start the scan.
-         *                        If nullptr, will scan full chain
+         *  @param[in] pState Block state for location in block chain to start the scan.
+         *                    If nullptr, will scan full chain from Genesis
          *
          *  @param[in] fUpdate If true, any transaction found by scan that is already in the
          *                     wallet will be updated
@@ -693,7 +696,7 @@ namespace Legacy
          *  @return The number of transactions added/updated by the scan
          *
          **/
-        uint32_t ScanForWalletTransactions(TAO::Ledger::BlockState* pstartBlock, const bool fUpdate = false);
+        uint32_t ScanForWalletTransactions(const TAO::Ledger::BlockState* pState, const bool fUpdate = false);
 
 
         /** ResendWalletTransactions
@@ -908,7 +911,7 @@ namespace Legacy
          *  @return empty string if successful, otherwise contains a displayable error message
          *
          **/
-        std::string SendToNexusAddress(const NexusAddress& address, int64_t nValue, CWalletTx& wtxNew,
+        std::string SendToNexusAddress(const NexusAddress& address, const int64_t nValue, CWalletTx& wtxNew,
                                        const bool fAskFee = false, const uint32_t nMinDepth = 1);
 
 
@@ -922,7 +925,7 @@ namespace Legacy
          *  @param[in,out] wtxNew Wallet transaction, create will populate with transaction data
          *                        Should have strFromAccount populated with account transaction is sent from. If not, uses "default"
          *
-         *  @param[in,out] reservekey Key reserved for use by change output, key will be returned if no change output
+         *  @param[in,out] changeKey Key reserved for use by change output, key will be returned if no change output
          *
          *  @param[out] nFeeRet Fee paid to send the created transaction
          *
@@ -931,7 +934,7 @@ namespace Legacy
          *  @return true if transaction successfully created
          *
          **/
-        bool CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey,
+        bool CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, CWalletTx& wtxNew, CReserveKey& changeKey,
                                int64_t& nFeeRet, const uint32_t nMinDepth = 1);
 
 
@@ -939,14 +942,14 @@ namespace Legacy
          *
          *  Commits a transaction and broadcasts it to the network.
          *
-         *  @param[in,out] wtxNew Wallet transaction, create will populate with transaction data
+         *  @param[in,out] wtxNew Wallet transaction, commit will relay transaction
          *
-         *  @param[in,out] reservekey Key reserved for use by change output, key will be kept on successful commit
+         *  @param[in,out] changeKey Key reserved for use by change output, key will be kept on successful commit
          *
          *  @return true if transaction successfully committed
          *
          **/
-        bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey);
+        bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& changeKey);
 
 
         /** AddCoinstakeInputs
@@ -962,21 +965,6 @@ namespace Legacy
 
 
     private:
-        /** SetDefaultKey
-         *
-         *  Assigns a new default key to this wallet. The key itself
-         *  should already have been added to the wallet.
-         *
-         *  Wallet also stores the key in the wallet database for file backed wallets.
-         *
-         *  @param[in] vchPubKey The key to make default
-         *
-         *  @return true if setting default key successful
-         *
-         */
-        bool SetDefaultKey(const std::vector<uint8_t> &vchPubKey);
-
-
     /*----------------------------------------------------------------------------------------*/
     /*  Load Wallet operations - require CWalletDB declared friend                            */
     /*----------------------------------------------------------------------------------------*/
@@ -1026,7 +1014,7 @@ namespace Legacy
          *  @see CWalletDB::LoadWallet
          *
          **/
-        bool LoadCryptedKey(const std::vector<uint8_t> &vchPubKey, const std::vector<uint8_t> &vchCryptedSecret);
+        bool LoadCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret);
 
 
         /** LoadKey
@@ -1085,7 +1073,7 @@ namespace Legacy
          *
          **/
         bool SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::set<std::pair<const CWalletTx*, uint32_t> >& setCoinsRet,
-                        int64_t& nValueRet, const std::string strAccount = "*", const uint32_t nMinDepth = 1);
+                        int64_t& nValueRet, const std::string& strAccount = "*", const uint32_t nMinDepth = 1);
 
 
         /** SelectCoinsMinConf
@@ -1113,7 +1101,7 @@ namespace Legacy
          **/
         bool SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const uint32_t nConfMine, const uint32_t nConfTheirs,
                                 std::set<std::pair<const CWalletTx*, uint32_t> >& setCoinsRet,
-                                int64_t& nValueRet, const std::string strAccount = "*");
+                                int64_t& nValueRet, const std::string& strAccount = "*");
 
     };
 

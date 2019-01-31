@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -51,32 +51,8 @@ namespace Legacy
         if (!(IsCoinBase() || IsCoinStake()))
             return 0;
 
-        uint32_t nMaturity = config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS;
-        return std::max((uint32_t)0, nMaturity - GetDepthInMainChain());
+        int32_t nCoinbaseMaturity = config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS;
+        return std::max((int32_t)0, (int32_t)(nCoinbaseMaturity + (config::fTestNet ? 1 : 20) - GetDepthInMainChain()));
     }
-
-
-//TODO - These were taken out, added old code back in as reference, need to figure out replacement for usage in wallet.cpp
-//    bool CMerkleTx::AcceptToMemoryPool(LLD::CIndexDB& indexdb, bool fCheckInputs)
-//    {
-//        if (config::fClient)
-//        {
-//            if (!IsInMainChain() && !ClientConnectInputs())
-//                return false;
-//
-//            return CTransaction::AcceptToMemoryPool(indexdb, false);
-//        }
-//        else
-//        {
-//            return CTransaction::AcceptToMemoryPool(indexdb, fCheckInputs);
-//        }
-//    }
-//
-//    bool CMerkleTx::AcceptToMemoryPool()
-//    {
-//        LLD::CIndexDB indexdb("r");
-//
-//        return AcceptToMemoryPool(indexdb);
-//    }
 
 }

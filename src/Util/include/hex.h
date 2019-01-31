@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <vector>
 
 #include <Util/include/debug.h>
+#include <LLC/hash/macro.h>
+#include <LLP/include/network.h>
 
 /* buffer for determing hex value of ASCII table */
 const signed char phexdigit[256] =
@@ -138,13 +140,11 @@ inline std::vector<uint8_t> ParseHex(const std::string& str)
  *
  *  Builds a hex string from data in a container class.
  *
- *  @param[in] itbegin The iterator container begin
+ *  @param[in] itbegin The iterator container begin.
+ *  @param[in] itend The iterator container end.
+ *  @param[in] fSpaces The flag for if there should be spaces.
  *
- *  @param[in] itend The iterator container end
- *
- *  @param[in] fSpaces The flag for if there should be spaces
- *
- *  @return The newly created hex string
+ *  @return The newly created hex string.
  *
  **/
 template<typename T>
@@ -174,9 +174,8 @@ std::string HexStr(const T itbegin, const T itend, bool fSpaces=false)
  *
  *  Builds a hex string from data in a vector.
  *
- *  @param[in] vch The character vector
- *
- *  @param[in] fSpaces The flag for if there should be spaces
+ *  @param[in] vch The character vector.
+ *  @param[in] fSpaces The flag for if there should be spaces.
  *
  *  @return The newly created hex string
  *
@@ -190,11 +189,9 @@ inline std::string HexStr(const std::vector<uint8_t>& vch, bool fSpaces=false)
  *
  *  Prints a hex string from data in a container class.
  *
- *  @param[in] itbegin The iterator container begin
- *
- *  @param[in] itend The iterator container end
- *
- *  @param[in] fSpaces The flag for if there should be spaces
+ *  @param[in] itbegin The iterator container begin.
+ *  @param[in] itend The iterator container end.
+ *  @param[in] fSpaces The flag for if there should be spaces.
  *
  **/
 template<typename T>
@@ -207,16 +204,32 @@ inline void PrintHex(const T pbegin, const T pend, bool fSpaces=true)
  *
  *  Prints a hex string from data in a character vector.
  *
- *  @param[in] vch The character vector
- *
- *  @param[in] pszFormat The format specifier string for formatted output
- *
- *  @param[in] fSpaces The flag for if there should be spaces
+ *  @param[in] vch The character vector.
+ *  @param[in] pszFormat The format specifier string for formatted output.
+ *  @param[in] fSpaces The flag for if there should be spaces.
  *
  **/
 inline void PrintHex(const std::vector<uint8_t>& vch, bool fSpaces=true)
 {
     debug::log(0, HexStr(vch, fSpaces));
+}
+
+/** HexBits
+ *
+ *  Converts bits to a hex string.
+ *
+ *  @param[in] nBits The bits to convert
+ *
+ * @return The newly created hex string
+ **/
+inline std::string HexBits(unsigned int nBits)
+{
+    union {
+        int32_t nBits;
+        char cBits[4];
+    } uBits;
+    uBits.nBits = htonl((int32_t)nBits);
+    return HexStr(BEGIN(uBits.cBits), END(uBits.cBits));
 }
 
 #endif

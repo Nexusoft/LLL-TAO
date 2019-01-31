@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -17,7 +17,7 @@ namespace Legacy
 {
     
     /*  Retrieve the public key for a key in the key store. */
-    bool CKeyStore::GetPubKey(const NexusAddress &address, std::vector<uint8_t> &vchPubKeyOut) const
+    bool CKeyStore::GetPubKey(const NexusAddress& address, std::vector<uint8_t>& vchPubKeyOut) const
     {
         LLC::ECKey key;
         if (!GetKey(address, key))
@@ -28,7 +28,7 @@ namespace Legacy
 
 
     /*  Retrieve the private key associated with an address. */
-    bool CKeyStore::GetSecret(const NexusAddress &address, LLC::CSecret& vchSecret, bool &fCompressed) const
+    bool CKeyStore::GetSecret(const NexusAddress& address, LLC::CSecret& vchSecret, bool& fCompressed) const
     {
         LLC::ECKey key;
         if (!GetKey(address, key))

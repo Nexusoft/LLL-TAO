@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -29,7 +29,7 @@ namespace TAO
     namespace Ledger
     {
 
-        /** Block State Class
+        /** BlockState
          *
          *  This class is responsible for storing state variables
          *  that are chain specific for a specified block. These
@@ -40,6 +40,7 @@ namespace TAO
         class BlockState : public Block
         {
         public:
+            static std::mutex STATE_MUTEX;
 
             /** The transaction history.
              *  uint8_t = TransactionType (per enum)
@@ -54,6 +55,10 @@ namespace TAO
 
             /** The Total NXS released to date */
             uint64_t nMoneySupply;
+
+
+            /** The Total NXS mint. **/
+            int32_t nMint;
 
 
             /** The height of this channel. */
@@ -87,6 +92,7 @@ namespace TAO
 
                 READWRITE(nChainTrust);
                 READWRITE(nMoneySupply);
+                READWRITE(nMint);
                 READWRITE(nChannelHeight);
                 READWRITE(nReleasedReserve[0]);
                 READWRITE(nReleasedReserve[1]);
@@ -98,11 +104,13 @@ namespace TAO
             )
 
 
+            /** Default Constructor. **/
             BlockState()
             : Block()
             , vtx()
             , nChainTrust(0)
             , nMoneySupply(0)
+            , nMint(0)
             , nChannelHeight(0)
             , nReleasedReserve{0, 0, 0}
             , hashNextBlock(0)
@@ -112,11 +120,13 @@ namespace TAO
             }
 
 
+            /** Default Constructor. **/
             BlockState(TritiumBlock block)
             : Block(block)
             , vtx()
             , nChainTrust(0)
             , nMoneySupply(0)
+            , nMint(0)
             , nChannelHeight(0)
             , nReleasedReserve{0, 0, 0}
             , hashNextBlock(0)
@@ -127,6 +137,7 @@ namespace TAO
             }
 
 
+            /** Default Constructor. **/
             BlockState(Legacy::LegacyBlock block);
 
 
@@ -143,6 +154,7 @@ namespace TAO
 
                 nChainTrust         = state.nChainTrust;
                 nMoneySupply        = state.nMoneySupply;
+                nMint               = state.nMint;
                 nChannelHeight      = state.nChannelHeight;
 
                 nReleasedReserve[0] = state.nReleasedReserve[0];
@@ -154,7 +166,7 @@ namespace TAO
             }
 
 
-            /** Equals Constructor. **/
+            /** Copy Assignment Operator. **/
             BlockState operator=(const BlockState& state)
             {
                 nVersion            = state.nVersion;
@@ -170,6 +182,7 @@ namespace TAO
 
                 nChainTrust         = state.nChainTrust;
                 nMoneySupply        = state.nMoneySupply;
+                nMoneySupply        = state.nMint;
                 nChannelHeight      = state.nChannelHeight;
 
                 nReleasedReserve[0] = state.nReleasedReserve[0];
@@ -189,6 +202,7 @@ namespace TAO
                 return GetHash() == state.GetHash();
             }
 
+
             /** Equivilence checking **/
             bool operator!=(const BlockState& state) const
             {
@@ -199,7 +213,7 @@ namespace TAO
             /** Not operator overloading. **/
             bool operator !(void)
             {
-                return !IsNull();
+                return IsNull();
             }
 
 
@@ -233,6 +247,16 @@ namespace TAO
             bool Accept();
 
 
+            /** Set Best
+             *
+             *  Set this state as the best chain.
+             *
+             *  @return true if accepted.
+             *
+             **/
+            bool SetBest();
+
+
             /** Connect
              *
              *  Connect a block state into chain.
@@ -253,7 +277,7 @@ namespace TAO
             bool Disconnect();
 
 
-            /** Get Block Trust
+            /** GetBlockTrust
              *
              *  Get the trust of this block.
              *
@@ -263,7 +287,7 @@ namespace TAO
             uint64_t GetBlockTrust() const;
 
 
-            /** Is In Main Chain
+            /** IsInMainChain
              *
              *  Function to determine if this block has been connected into the main chain.
              *
@@ -273,9 +297,9 @@ namespace TAO
             bool IsInMainChain() const;
 
 
-            /** To String
+            /** ToString
              *
-             *  For debugging Purposes seeing block state data dump
+             *  For debugging Purposes seeing block state data dump.
              *
              *  @param[in] nState The states to output.
              *
@@ -293,10 +317,21 @@ namespace TAO
              *
              **/
             virtual void print() const;
+
+
+            /** StakeHash
+             *
+             *  Prove that you staked a number of seconds based on weight.
+             *
+             *  @return 1024-bit stake hash.
+             *
+             **/
+            uint1024_t StakeHash() const;
+
         };
 
 
-        /** Get Last State
+        /** GetLastState
          *
          *  Gets a block state by channel from hash.
          *

@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -42,7 +42,11 @@ namespace LLC
     typedef std::vector<uint8_t, secure_allocator<uint8_t> > CSecret;
 
 
-    /** An encapsulated OpenSSL Elliptic Curve key (public and/or private) **/
+    /** ECKey
+     *
+     *  An encapsulated OpenSSL Elliptic Curve key (public and/or private)
+     *
+     **/
     class ECKey
     {
     protected:
@@ -89,97 +93,108 @@ namespace LLC
         void Reset();
 
 
-        /** Is Null
+        /** IsNull
          *
-         *  @return True if the key is in nullptr state
+         *  @return True if the key is in nullptr state, false otherwise.
+         *
          **/
         bool IsNull() const;
 
 
-        /** Is Compressed
+        /** IsCompressed
          *
-         *  Flag to determine if the key is in compressed form
+         *  Flag to determine if the key is in compressed form.
          *
-         *  @return True if the key is compressed
+         *  @return True if the key is compressed, false otherwise.
+         *
          **/
         bool IsCompressed() const;
 
 
-        /** Make New Key
+        /** MakeNewKey
          *
-         *  Create a new key from OpenSSL Library Pseudo-Random Generator
+         *  Create a new key from OpenSSL Library Pseudo-Random Generator.
          *
-         *  @param[in] fCompressed Flag whether to make key in compressed form
+         *  @param[in] fCompressed Flag whether to make key in compressed form.
+         *
          **/
         void MakeNewKey(bool fCompressed);
 
 
-        /** Set Priv Key
+        /** SetPrivKey
          *
-         *  Set the key from full private key (including secret)
+         *  Set the key from full private key. (including secret)
          *
-         *  @param[in] vchPrivKey The key data in byte code in secure allocator
+         *  @param[in] vchPrivKey The key data in byte code in secure allocator.
          *
-         *  @return True if was set correctly
+         *  @return True if was set correctly, false otherwise.
+         *
          **/
         bool SetPrivKey(const CPrivKey& vchPrivKey);
 
 
-        /** Set Secret
+        /** SetSecret
          *
          *  Set the secret phrase / key used in the private key.
          *
-         *  @param[in] vchSecret the secret phrase in byte code in secure allocator
-         *  @param[in] fCompressed flag whether key is compressed or not
+         *  @param[in] vchSecret the secret phrase in byte code in secure allocator.
+         *  @param[in] fCompressed flag whether key is compressed or not.
          *
          *  @return True if the key was successfully created
+         *
          **/
         bool SetSecret(const CSecret& vchSecret, bool fCompressed = false);
 
 
-        /** Get Secret
+        /** GetSecret
          *
          *  Obtain the secret key used in the private key.
          *
-         *  @param[in] fCompressed Flag if the key is in compressed from
+         *  @param[in] fCompressed Flag if the key is in compressed form.
          *
          *  @return the secret phrase in the secure allocator.
+         *
          **/
         CSecret GetSecret(bool &fCompressed) const;
 
 
-        /** Get Private Key
+        /** GetPrivKey
          *
-         *  Obtain the private key and all associated data
+         *  Obtain the private key and all associated data.
          *
-         *  @param[in] fCompressed Flag if the key is in compressed from
+         *  @param[in] fCompressed Flag if the key is in compressed form.
          *
          *  @return the secret phrase in the secure allocator.
+         *
          **/
         CPrivKey GetPrivKey() const;
 
 
-        /** Set Public Key
+        /** SetPubKey
          *
-         *  Returns true on the setting of a public key
+         *  Returns true on the setting of a public key.
          *
-         *  @param[in] vchPubKey The public key to set
+         *  @param[in] vchPubKey The public key to set.
          *
          *  @return True if the key was set properly.
+         *
          **/
         bool SetPubKey(const std::vector<uint8_t>& vchPubKey);
 
 
-        /** Get Public Key
+        /** GetPubKey
          *
          *  Returns the Public key in a byte vector
          *
          *  @return The bytes of the public key in this keypair
+         *
          **/
         std::vector<uint8_t> GetPubKey() const;
 
 
-        /** Nexus sepcific strict DER rules.
+        /** Encoding
+         *
+         *  Nexus sepcific strict DER rules.
          *
          *  Fixed length 135 bytes.
          *  Byte 0         - 0x30 - Header Byte
@@ -202,10 +217,12 @@ namespace LLC
          *  @return true if encoding check passed.
          *
          **/
-        bool Encoding(const std::vector<uint8_t> vchSig);
+        bool Encoding(const std::vector<uint8_t>& vchSig) const;
 
 
-        /** Tritium Signing Function.
+        /** Sign
+         *
+         *  Tritium Signing Function.
          *
          *  Based on standard set of byte data as input of any length. Checks for DER encoding
          *
@@ -213,11 +230,14 @@ namespace LLC
          *  @param[out] vchSig The output data of the signature
          *
          *  @return True if the Signature was created successfully
+         *
          **/
-        bool Sign(const std::vector<uint8_t> vchData, std::vector<uint8_t>& vchSig);
+        bool Sign(const std::vector<uint8_t>& vchData, std::vector<uint8_t>& vchSig) const;
 
 
-        /** Tritium Signature Verification Function
+        /** Verify
+         *
+         *  Tritium Signature Verification Function
          *
          *  Based on standard set of byte data as input of any length. Checks for DER encoding
          *
@@ -225,11 +245,14 @@ namespace LLC
          *  @param[in] vchSig The signature to check
          *
          *  @return True if the Signature was Verified as Valid
+         *
          **/
-        bool Verify(const std::vector<uint8_t> vchData, const std::vector<uint8_t>& vchSig);
+        bool Verify(const std::vector<uint8_t>& vchData, const std::vector<uint8_t>& vchSig) const;
 
 
-        /** Legacy Signing Function
+        /** Sign
+         *
+         *  Legacy Signing Function
          *
          *  Based on a 1024 bit hash and internal output length passed through type
          *
@@ -238,11 +261,47 @@ namespace LLC
          *  @param[in] nBits The total bits to use from param hash
          *
          *  @return True if the Signature was created successfully
+         *
          **/
-        bool Sign(uint1024_t hash, std::vector<uint8_t>& vchSig, int nBits);
+        bool Sign(const uint1024_t& hash, std::vector<uint8_t>& vchSig, const uint32_t nBits) const;
 
 
-        /** Legacy Verifying Function.
+        /** SignCompact
+         *
+         *  Legacy Signing Function
+         *  create a compact signature (65 bytes), which allows reconstructing the used public key
+         *  The format is one header byte, followed by two times 32 bytes for the serialized r and s values.
+         *  The header byte: 0x1B = first key with even y, 0x1C = first key with odd y,
+         *                   0x1D = second key with even y, 0x1E = second key with odd
+         *
+         *  @param[in] hash The input hash to be signed.
+         *  @param[out] vchSig The output signature data
+         *
+         *  @return True if the Signature was created successfully.
+         *
+         **/
+        bool SignCompact(uint256_t hash, std::vector<unsigned char>& vchSig);
+
+
+        /** SetCompactSignature
+         *
+         *  reconstruct public key from a compact signature
+         *  This is only slightly more CPU intensive than just verifying it.
+         *  If this function succeeds, the recovered public key is guaranteed to be valid
+         *  (the signature is a valid signature of the given data for that key).
+         *
+         *  @param[in] hash The input compact signature hash
+         *  @param[out] vchSig The output public key data
+         *
+         *  @return True if the Signature was set.
+         *
+         **/
+        bool SetCompactSignature(uint256_t hash, const std::vector<unsigned char>& vchSig);
+
+
+        /** Verify
+         *
+         *  Legacy Verifying Function.
          *
          *  Based on a 1024 bit hash and internal output length passed through type
          *
@@ -251,15 +310,19 @@ namespace LLC
          *  @param[in] nBits The total bits to use from param hash
          *
          *  @return True if the Signature was verified successfully
+         *
          **/
-        bool Verify(uint1024_t hash, const std::vector<uint8_t>& vchSig, int nBits);
+        bool Verify(const uint1024_t& hash, const std::vector<uint8_t>& vchSig, const uint32_t nBits) const;
 
 
-        /** Check if a Key is valid based on a few parameters
+        /** IsValid
+         *
+         *  Check if a Key is valid based on a few parameters
          *
          *  @return True if the Key is in a valid state
+         *
          **/
-        bool IsValid();
+        bool IsValid() const;
 
     };
 }

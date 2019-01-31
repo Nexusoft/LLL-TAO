@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -25,7 +25,7 @@ namespace LLD
 {
 
 
-    /** Binary Hash Tree
+    /** BinaryHashTree
      *
      *  This class is responsible for managing the keys to the sector database.
      *
@@ -67,7 +67,7 @@ namespace LLD
 
 
         /** Keychain stream object. **/
-        mutable TemplateLRU<uint32_t, std::fstream*>* fileCache;
+        mutable TemplateLRU<uint32_t, std::fstream *> *fileCache;
 
 
         /** Total elements in hashmap for quick inserts. **/
@@ -80,6 +80,7 @@ namespace LLD
 
     public:
 
+        /** Default Constructor **/
         BinaryHashTree()
         : HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
         , HASHMAP_MAX_CACHE_SZIE(10 * 1024)
@@ -92,6 +93,7 @@ namespace LLD
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
         }
 
+
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         BinaryHashTree(std::string strBaseLocationIn)
         : strBaseLocation(strBaseLocationIn)
@@ -100,7 +102,7 @@ namespace LLD
         , HASHMAP_MAX_KEY_SIZE(128)
         , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11)
         , fInitialized(false)
-        , fileCache(new TemplateLRU<uint32_t, std::fstream*>())
+        , fileCache(new TemplateLRU<uint32_t, std::fstream *>())
         , CacheThread(std::bind(&BinaryHashMap::CacheWriter, this))
         {
             hashmap.resize(HASHMAP_TOTAL_BUCKETS);
@@ -109,25 +111,38 @@ namespace LLD
         }
 
 
-        /** Clean up Memory Usage. **/
+        /** Default Destructor **/
         ~BinaryHashTree()
         {
-            delete fileCache;
+            if(fileCache)
+                delete fileCache;
         }
 
 
-        /** Handle the Assigning of a Map Bucket. **/
-        uint32_t GetBucket(const std::vector<uint8_t> vKey) const
+        /** GetBucket
+         *
+         *  Handle the Assigning of a Map Bucket.
+         *
+         *  @param[in] vKey The key to obtain a bucket id from.
+         *
+         *  @return Returns the bucket id.
+         *
+         **/
+        uint32_t GetBucket(const std::vector<uint8_t> &vKey) const
         {
             uint64_t nBucket = 0;
-            for(int i = 0; i < vKey.size() && i < 8; i++)
+            for(uint32_t i = 0; i < vKey.size() && i < 8; ++i)
                 nBucket += vKey[i] << (8 * i);
 
             return nBucket % HASHMAP_TOTAL_BUCKETS;
         }
 
 
-        /** Read the Database Keys and File Positions. **/
+        /** Initialize
+         *
+         *  Read the Database Keys and File Positions.
+         *
+         **/
         void Initialize()
         {
             /* Create directories if they don't exist yet. */
@@ -198,7 +213,16 @@ namespace LLD
         }
 
 
-        /** Get a Record from the Database with Given Key. **/
+        /** Get
+         *
+         *  Read a key index from the disk hashmaps.
+         *
+         *  @param[in] vKey The binary data of key.
+         *  @param[out] cKey The key object to return.
+         *
+         *  @return True if the key was found, false otherwise.
+         *
+         **/
         bool Get(const std::vector<uint8_t> vKey, SectorKey& cKey)
         {
             LOCK(KEY_MUTEX);
@@ -210,7 +234,7 @@ namespace LLD
             uint32_t nFilePos = nBucket * HASHMAP_KEY_ALLOCATION;
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
-            for(int i = hashmap[nBucket]; i >= 0; i--)
+            for(uint32_t i = hashmap[nBucket]; i >= 0; --i)
             {
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
@@ -245,8 +269,16 @@ namespace LLD
         }
 
 
-        /** Add / Update A Record in the Database **/
-        bool Put(SectorKey cKey) const
+        /** Put
+         *
+         *  Write a key to the disk hashmaps.
+         *
+         *  @param[in] cKey The key object to write.
+         *
+         *  @return True if the key was written, false otherwise.
+         *
+         **/
+        bool Put(const SectorKey &cKey) const
         {
             LOCK(KEY_MUTEX);
 
@@ -284,7 +316,7 @@ namespace LLD
             }
 
             /* Iterate the linked list value in the hashmap. */
-            hashmap[nBucket]++;
+            ++hashmap[nBucket];
 
             /* Read the State and Size of Sector Header. */
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
@@ -301,7 +333,11 @@ namespace LLD
         }
 
 
-        /* Helper Thread to Batch Write to Disk. */
+        /** CacheWriter
+         *
+         *  Helper Thread to Batch Write to Disk.
+         *
+         **/
         void CacheWriter()
         {
             while(!fShutdown)
@@ -331,8 +367,17 @@ namespace LLD
             }
         }
 
-        /** Simple Erase for now, not efficient in Data Usage of HD but quick to get erase function working. **/
-        bool Erase(const std::vector<uint8_t> vKey)
+        /** Erase
+         *
+         *  Simple Erase for now, not efficient in Data Usage of HD but quick to
+         *  get erase function working.
+         *
+         *  @param[in] vKey the key to erase.
+         *
+         *  @return True if the key was erased, false otherwise.
+         *
+         **/
+        bool Erase(const std::vector<uint8_t> &vKey)
         {
             LOCK(KEY_MUTEX);
 

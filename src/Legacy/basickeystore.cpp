@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -24,7 +24,7 @@ namespace Legacy
         bool fCompressed = false;
         LLC::CSecret secret = key.GetSecret(fCompressed);
         {
-            LOCK(cs_KeyStore);
+            LOCK(cs_basicKeyStore);
             mapKeys[NexusAddress(key.GetPubKey())] = make_pair(secret, fCompressed);
         }
         return true;
@@ -32,10 +32,10 @@ namespace Legacy
 
 
     /*  Retrieve a key from the key store. */
-    bool CBasicKeyStore::GetKey(const NexusAddress &address, LLC::ECKey &keyOut) const
+    bool CBasicKeyStore::GetKey(const NexusAddress& address, LLC::ECKey &keyOut) const
     {
         {
-            LOCK(cs_KeyStore);
+            LOCK(cs_basicKeyStore);
             auto mi = mapKeys.find(address);
             if (mi != mapKeys.end())
             {
@@ -49,11 +49,11 @@ namespace Legacy
 
 
     /*  Retrieve the set of public addresses for all keys currently present in the key store. */
-    void CBasicKeyStore::GetKeys(std::set<NexusAddress> &setAddress) const
+    void CBasicKeyStore::GetKeys(std::set<NexusAddress>& setAddress) const
     {
         setAddress.clear();
         {
-            LOCK(cs_KeyStore);
+            LOCK(cs_basicKeyStore);
 
             setAddress.clear();
 
@@ -65,11 +65,11 @@ namespace Legacy
 
 
     /*  Check whether a key corresponding to a given address is present in the store. */
-    bool CBasicKeyStore::HaveKey(const NexusAddress &address) const
+    bool CBasicKeyStore::HaveKey(const NexusAddress& address) const
     {
         bool result;
         {
-            LOCK(cs_KeyStore);
+            LOCK(cs_basicKeyStore);
             result = (mapKeys.count(address) > 0);
         }
         return result;
@@ -80,7 +80,7 @@ namespace Legacy
     bool CBasicKeyStore::AddCScript(const CScript& redeemScript)
     {
         {
-            LOCK(cs_KeyStore);
+            LOCK(cs_basicKeyStore);
             mapScripts[LLC::SK256(redeemScript)] = redeemScript;
         }
         return true;
@@ -88,10 +88,10 @@ namespace Legacy
 
 
     /*  Retrieve a script from the key store. */
-    bool CBasicKeyStore::GetCScript(const uint256_t &hash, CScript& redeemScriptOut) const
+    bool CBasicKeyStore::GetCScript(const uint256_t& hash, CScript& redeemScriptOut) const
     {
         {
-            LOCK(cs_KeyStore);
+            LOCK(cs_basicKeyStore);
             ScriptMap::const_iterator mi = mapScripts.find(hash);
             if (mi != mapScripts.end())
             {
@@ -108,7 +108,7 @@ namespace Legacy
     {
         bool result;
         {
-            LOCK(cs_KeyStore);
+            LOCK(cs_basicKeyStore);
             result = (mapScripts.count(hash) > 0);
         }
         return result;

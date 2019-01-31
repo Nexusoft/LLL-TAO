@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -20,9 +20,9 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /** Miner connection class
+    /** Miner
      *
-     *  Handles requests and responses from miners.
+     *  Connection class that handles requests and responses from miners.
      *
      **/
     class Miner : public Connection
@@ -86,7 +86,8 @@ namespace LLP
             CLOSE    = 254
         };
 
-    //public:
+
+        /** Default Constructor **/
         Miner()
         : Connection()
         , mapBlocks()
@@ -96,6 +97,8 @@ namespace LLP
 
         }
 
+
+        /** Constructor **/
         Miner( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : Connection( SOCKET_IN, DDOS_IN )
         , mapBlocks()
@@ -105,9 +108,9 @@ namespace LLP
 
         }
 
+        /** Default Destructor **/
         ~Miner()
         {
-
         }
 
 
@@ -126,18 +129,33 @@ namespace LLP
 
         /** Event
          *
-         *  Handle custom message events.
+         *  Virtual Functions to Determine Behavior of Message LLP.
          *
-         **/
+         *  @param[in] EVENT The byte header of the event type.
+         *  @param[in[ LENGTH The size of bytes read on packet read events.
+         *
+         */
         void Event(uint8_t EVENT, uint32_t LENGTH = 0) final;
 
 
-        /** This function is necessary for a template LLP server. It handles your
-            custom messaging system, and how to interpret it from raw packets. **/
+        /** ProcessPacket
+         *
+         *  Main message handler once a packet is recieved.
+         *
+         *  @return True is no errors, false otherwise.
+         *
+         **/
         bool ProcessPacket() final;
 
 
-        /** Convert the Header of a Block into a Byte Stream for Reading and Writing Across Sockets. **/
+        /** SerializeBlock
+         *
+         *  Convert the Header of a Block into a Byte Stream for
+         *  Reading and Writing Across Sockets.
+         *
+         *  @param[in] BLOCK A Tritium block to serialize.
+         *
+         **/
         std::vector<uint8_t> SerializeBlock(TAO::Ledger::TritiumBlock BLOCK);
     };
 }

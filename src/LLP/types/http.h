@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -27,7 +27,7 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /** HTTP Node
+    /** HTTPNode
      *
      *  A node that can speak over HTTP protocols.
      *
@@ -55,23 +55,26 @@ namespace LLP
     protected:
 
         /* The local address of this node. */
-        Address addrThisNode;
+        LegacyAddress addrThisNode;
 
 
     public:
 
-        /* Constructors for Message LLP Class. */
+        /** Default Constructor **/
         HTTPNode()
         : BaseConnection<HTTPPacket>() { }
 
+        /** Constructor **/
         HTTPNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<HTTPPacket>( SOCKET_IN, DDOS_IN ) { }
 
 
-        /** Virtual Functions to Determine Behavior of Message LLP.
+        /** Event
          *
-         *  @param[in] EVENT The byte header of the event type
-         *  @param[in[ LENGTH The size of bytes read on packet read events
+         *  Virtual Functions to Determine Behavior of Message LLP.
+         *
+         *  @param[in] EVENT The byte header of the event type.
+         *  @param[in[ LENGTH The size of bytes read on packet read events.
          *
          */
         void Event(uint8_t EVENT, uint32_t LENGTH = 0) override = 0;
@@ -81,7 +84,7 @@ namespace LLP
          *
          *  Main message handler once a packet is recieved.
          *
-         *  @return True is no errors, false otherwise
+         *  @return True is no errors, false otherwise.
          *
          **/
         bool ProcessPacket() override = 0;
@@ -111,7 +114,7 @@ namespace LLP
          *  @return The address of this node
          *
          **/
-        Address GetAddress() const
+        LegacyAddress GetAddress() const
         {
             return addrThisNode;
         }
@@ -217,7 +220,7 @@ namespace LLP
         }
 
 
-        /** Push Response
+        /** PushResponse
          *
          *  Returns an HTTP packet with response code and content.
          *
@@ -226,7 +229,7 @@ namespace LLP
          *  @param[in] strContent The content to post return with.
          *
          **/
-        void PushResponse(const uint16_t nMsg, std::string strContent)
+        void PushResponse(const uint16_t nMsg, const std::string& strContent)
         {
             try
             {

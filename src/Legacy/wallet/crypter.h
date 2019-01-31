@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -64,12 +64,12 @@ namespace Legacy
 
         /** Copy constructor
          **/
-        CCrypter(const CCrypter &c);
+        CCrypter(const CCrypter& c);
 
 
          /** Copy assignment operator
          **/
-        CCrypter& operator= (const CCrypter &rhs);
+        CCrypter& operator= (const CCrypter& rhs);
 
 
         /** Destructor
@@ -109,7 +109,7 @@ namespace Legacy
          *  @return true if new key context successfully assigned
          *
          **/
-        bool SetKeyFromPassphrase(const SecureString &strKeyData, const std::vector<uint8_t>& chSalt, const uint32_t nRounds, const uint32_t nDerivationMethod);
+        bool SetKeyFromPassphrase(const SecureString& strKeyData, const std::vector<uint8_t>& chSalt, const uint32_t nRounds, const uint32_t nDerivationMethod);
 
 
         /** IsKeySet
@@ -181,7 +181,7 @@ namespace Legacy
      *  @return true if the private key was successfully encrypted
      *
      **/
-    bool EncryptSecret(const CKeyingMaterial& vMasterKey, const LLC::CSecret &vchPlaintext, const uint576_t& nIV, std::vector<uint8_t> &vchCiphertext);
+    bool EncryptSecret(const CKeyingMaterial& vMasterKey, const LLC::CSecret& vchPlaintext, const uint576_t& nIV, std::vector<uint8_t>& vchCiphertext);
 
 
     /** @fn DecryptSecret
@@ -200,7 +200,7 @@ namespace Legacy
      *  @return true if the private key was successfully decrypted
      *
      **/
-    bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<uint8_t> &vchCiphertext, const uint576_t& nIV, LLC::CSecret &vchPlaintext);
+    bool DecryptSecret(const CKeyingMaterial& vMasterKey, const std::vector<uint8_t>& vchCiphertext, const uint576_t& nIV, LLC::CSecret& vchPlaintext);
 
 }
 

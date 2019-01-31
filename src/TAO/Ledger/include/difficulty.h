@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -35,7 +35,7 @@ namespace TAO
         const uint32_t STAKE_TARGET_SPACING = 150;
 
 
-        /** Get Difficulty
+        /** GetDifficulty
          *
          *  Determines the Decimal of nBits per Channel for a decent "Frame of Reference".
          *  Has no functionality in Network Operation.
@@ -49,7 +49,7 @@ namespace TAO
         double GetDifficulty(uint32_t nBits, int nChannel);
 
 
-        /** Get Chain Times
+        /** GetChainTimes
          *
          *  Break the Chain Age in Minutes into Days, Hours, and Minutes.
          *
@@ -62,7 +62,7 @@ namespace TAO
         void GetChainTimes(uint32_t nAge, uint32_t& nDays, uint32_t& nHours, uint32_t& nMinutes);
 
 
-        /** Get Weighted Times
+        /** GetWeightedTimes
          *
          *  Gets a block time from a weighted average at given depth.
          *
@@ -75,7 +75,7 @@ namespace TAO
         uint64_t GetWeightedTimes(const BlockState state, uint32_t nDepth);
 
 
-        /** Get Next Target Required
+        /** GetNextTargetRequired
          *
          *  Switching function for each channel difficulty adjustments.
          *
@@ -88,7 +88,7 @@ namespace TAO
         uint32_t GetNextTargetRequired(const BlockState& state, int nChannel, bool fDebug = true);
 
 
-        /** Retarget Trust
+        /** RetargetTrust
          *
          *  Retarget a trust block based on seperate specifications
          *
@@ -100,7 +100,7 @@ namespace TAO
         uint32_t RetargetTrust(const BlockState& state, bool fDebug = true);
 
 
-        /** Retarget Trust
+        /** RetargetPrime
          *
          *  Scales the maximum increase or decrease by network difficulty.
          *
@@ -112,7 +112,7 @@ namespace TAO
         uint32_t RetargetPrime(const BlockState& state, bool fDebug = true);
 
 
-        /** Retarget Trust
+        /** RetargetHash
          *
          *  Retarget the hashing channel by seperate specifications.
          *

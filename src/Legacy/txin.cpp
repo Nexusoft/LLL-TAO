@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -33,7 +33,7 @@ namespace Legacy
 	/* Flag to tell if this input is the flag for proof of stake Transactions */
 	bool CTxIn::IsStakeSig() const
 	{
-		if( scriptSig.size() != 8)
+		if( scriptSig.size() < 8)
 			return false;
 
 		if( scriptSig[0] != 1 || scriptSig[1] != 2 || scriptSig[2] != 3 || scriptSig[3] != 5 ||

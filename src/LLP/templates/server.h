@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -17,8 +17,8 @@ ________________________________________________________________________________
 #include <LLP/templates/data.h>
 #include <LLP/include/permissions.h>
 #include <LLP/include/manager.h>
-#include <LLP/include/address.h>
-#include <LLP/include/addressinfo.h>
+#include <LLP/include/legacyaddress.h>
+#include <LLP/include/trustaddress.h>
 
 #include <functional>
 #include <numeric>
@@ -26,7 +26,9 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /** Base Class to create a Custom LLP Server.
+    /** Server
+     *
+     *  Base Class to create a Custom LLP Server.
      *
      *  Protocol Type class must inherit Connection,
      *  and provide a ProcessPacket method.
@@ -38,7 +40,7 @@ namespace LLP
     {
     private:
         /* The DDOS variables. */
-        std::map<Service, DDOS_Filter *> DDOS_MAP;
+        std::map<BaseAddress, DDOS_Filter *> DDOS_MAP;
         bool fDDOS;
         bool fLISTEN;
         bool fMETER;
@@ -46,7 +48,7 @@ namespace LLP
         std::atomic<bool> fDestruct;
 
     public:
-        uint32_t PORT;
+        uint16_t PORT;
         uint32_t MAX_THREADS;
         uint32_t DDOS_TIMESPAN;
 
@@ -63,16 +65,22 @@ namespace LLP
 
 
         /* Address of the server node */
-        Address addrThisNode;
+        BaseAddress addrThisNode;
 
-        /* returns the name of the protocol type of this server */
+        /** Name
+         *
+         *  returns the name of the protocol type of this server
+         *
+         **/
         std::string Name()
         {
             return ProtocolType::Name();
         }
 
-        Server<ProtocolType>(int32_t nPort, int32_t nMaxThreads, int32_t nTimeout = 30, bool isDDOS = false,
-                             int32_t cScore = 0, int32_t rScore = 0, int32_t nTimespan = 60, bool fListen = true,
+
+        /** Constructor **/
+        Server<ProtocolType>(uint16_t nPort, uint32_t nMaxThreads, uint32_t nTimeout = 30, bool isDDOS = false,
+                             uint32_t cScore = 0, uint32_t rScore = 0, uint32_t nTimespan = 60, bool fListen = true,
                              bool fMeter = false, bool fManager = false)
         : fDDOS(isDDOS)
         , fLISTEN(fListen)
@@ -86,13 +94,17 @@ namespace LLP
         , addrThisNode()
         {
             for(int32_t index = 0; index < MAX_THREADS; ++index)
+            {
                 DATA_THREADS.push_back(new DataThread<ProtocolType>(
                     index, fDDOS, rScore, cScore, nTimeout, fMeter));
+            }
+
 
             if(fManager)
             {
                 pAddressManager = new AddressManager(nPort);
                 pAddressManager->ReadDatabase();
+
 
                 MANAGER_THREAD = std::thread((std::bind(&Server::Manager, this)));
             }
@@ -102,7 +114,7 @@ namespace LLP
             METER_THREAD = std::thread(std::bind(&Server::Meter, this));
         }
 
-
+        /** Default Destructor **/
         virtual ~Server<ProtocolType>()
         {
             /* Set all flags back to false. */
@@ -165,14 +177,12 @@ namespace LLP
          *  Add a node address to the internal address manager
          *
          *  @param[in] strAddress	IPv4 Address of outgoing connection
-         *
          *  @param[in] strPort		Port of outgoing connection
          *
          **/
         void AddNode(std::string strAddress, uint16_t nPort)
         {
-            Service service(debug::strprintf("%s:%u", strAddress.c_str(), nPort).c_str(), false);
-            Address addr = Address(service);
+            BaseAddress addr(strAddress, nPort, false);
 
             if(pAddressManager)
                 pAddressManager->AddAddress(addr, ConnectState::NEW);
@@ -184,16 +194,15 @@ namespace LLP
          *  Public Wraper to Add a Connection Manually.
          *
          *  @param[in] strAddress	IPv4 Address of outgoing connection
-         *
          *  @param[in] strPort		Port of outgoing connection
          *
          *  @return	Returns true if the connection was established successfully
          *
          **/
-        bool AddConnection(std::string strAddress, int32_t nPort)
+        bool AddConnection(std::string strAddress, uint16_t nPort)
         {
             /* Initialize DDOS Protection for Incoming IP Address. */
-            Service addrConnect(debug::strprintf("%s:%i", strAddress.c_str(), nPort).c_str(), false);
+            BaseAddress addrConnect(strAddress, nPort);
 
             /* Create new DDOS Filter if Needed. */
             if(!DDOS_MAP.count(addrConnect))
@@ -228,7 +237,7 @@ namespace LLP
          *  @return Returns the list of active connections in a vector
          *
          **/
-        std::vector<ProtocolType*> GetConnections()
+        std::vector<ProtocolType *> GetConnections()
         {
             /* List of connections to return. */
             std::vector<ProtocolType *> vConnections;
@@ -257,35 +266,127 @@ namespace LLP
         }
 
 
+        /** Get Connection
+         *
+         *  Get the best connection based on latency
+         *
+         **/
+        ProtocolType* GetConnection()
+        {
+            /* List of connections to return. */
+            ProtocolType* pBest = nullptr;
+            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            {
+                /* Get the data threads. */
+                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+                if(!dt)
+                    continue;
+
+                /* Loop through connections in data thread. */
+                int32_t nSize = dt->CONNECTIONS.size();
+                for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
+                {
+                    /* Skip over inactive connections. */
+                    if(!dt->CONNECTIONS[nIndex] ||
+                       !dt->CONNECTIONS[nIndex]->Connected())
+                        continue;
+
+                    LOCK(dt->MUTEX);
+
+                    /* Push the active connection. */
+                    if(!pBest || dt->CONNECTIONS[nIndex]->nNodeLatency < pBest->nNodeLatency)
+                        pBest = dt->CONNECTIONS[nIndex];
+                }
+            }
+
+            return pBest;
+        }
+
+
+        /** Relay
+         *
+         *  Relays data to all nodes on the network.
+         *
+         **/
+        template<typename MessageType, typename DataType>
+        void Relay(MessageType message, DataType data)
+        {
+            /* List of connections to return. */
+            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            {
+                /* Get the data threads. */
+                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+                if(!dt)
+                    continue;
+
+                /* Loop through connections in data thread. */
+                int32_t nSize = dt->CONNECTIONS.size();
+                for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
+                {
+                    /* Skip over inactive connections. */
+                    if(!dt->CONNECTIONS[nIndex] ||
+                       !dt->CONNECTIONS[nIndex]->Connected())
+                        continue;
+
+                    /* Push the active connection. */
+                    dt->CONNECTIONS[nIndex]->PushMessage(message, data);
+                }
+            }
+        }
+
+
         /** GetAddresses
          *
          *  Get the active connection pointers from data threads.
          *
-         *  @return Returns the list of active connections in a vector
+         *  @return Returns the list of active connections in a vector.
          *
          **/
-        std::vector<Address> GetAddresses()
+        std::vector<LegacyAddress> GetAddresses()
         {
-            std::vector<Address> vAddr;
+            std::vector<BaseAddress> vAddr;
+            std::vector<LegacyAddress> vLegacyAddr;
 
             if(pAddressManager)
-                vAddr = pAddressManager->GetAddresses();
+            {
+                /* Get the base addresses from address manager and convert
+                   into legacy addresses */
+                pAddressManager->GetAddresses(vAddr);
 
-            return vAddr;
+                for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
+                    vLegacyAddr.push_back((LegacyAddress)*it);
+            }
+
+            return vLegacyAddr;
+        }
+
+        /** DisconnectAll
+        *
+        *  Notifies all data threads to disconnect their connections
+        *
+        **/
+        void DisconnectAll()
+        {
+            for(int32_t index = 0; index < MAX_THREADS; ++index)
+            {
+                DATA_THREADS[index]->DisconnectAll();
+            }
         }
 
 
         /** Manager
          *
-         *  Connection Manager Thread.
+         *  Address Manager Thread.
          *
          **/
         void Manager()
         {
-            return;
-            
+            /* Wait for data threads to startup. */
+            while(DATA_THREADS.size() < MAX_THREADS)
+                runtime::sleep(1000);
+
             /* Address to select. */
-            Address addr;
+            BaseAddress addr;
 
             /* Loop connections. */
             while(!fDestruct.load())
@@ -296,26 +397,22 @@ namespace LLP
                 uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
 
                 /* Pick a weighted random priority from a sorted list of addresses */
-                if(pAddressManager && pAddressManager->StochasticSelect(addr))
-                {
+                if(pAddressManager == nullptr)
+                    continue;
 
+                if(pAddressManager->StochasticSelect(addr))
+                {
                     /* Check for connect to self. */
                     if(addr.ToStringIP() == addrThisNode.ToStringIP())
                     {
                         runtime::sleep(1000);
-
                         continue;
                     }
 
-                    /* Get the IP in proper type. */
-                    std::string ip = addr.ToStringIP();
-                    uint16_t port = addr.GetPort();
-
                     /* Attempt the connection. */
-                    debug::log(0, FUNCTION, ProtocolType::Name(), " Attempting Connection ", ip, ":", port);
-                    pAddressManager->PrintStats();
+                    debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
 
-                    if(AddConnection(ip, port))
+                    if(AddConnection(addr.ToStringIP(), addr.GetPort()))
                         state = static_cast<uint8_t>(ConnectState::CONNECTED);
 
                     /* Update the address state. */
@@ -323,7 +420,6 @@ namespace LLP
                 }
             }
         }
-
 
     private:
 
@@ -333,8 +429,14 @@ namespace LLP
         std::thread          METER_THREAD;
 
 
-        /* Determine thfalsee thread with the least amount of active connections.
-            This keeps the load balanced across all server threads. */
+        /** FindThread
+         *
+         *  Determine the first thread with the least amount of active connections.
+         *  This keeps them load balanced across all server threads.
+         *
+         *  @return Returns the index of the found thread. or -1 if not found.
+         *
+         **/
         int32_t FindThread()
         {
             int32_t nIndex = -1;
@@ -358,12 +460,19 @@ namespace LLP
         }
 
 
-        /** Main Listening Thread of LLP Server. Handles new Connections and DDOS associated with Connection if enabled. **/
+        /** ListeningThread
+         *
+         *  Main Listening Thread of LLP Server. Handles new Connections and
+         *  DDOS associated with Connection if enabled.
+         *
+         *  @param[in] fIPv4
+         *
+         **/
         void ListeningThread(bool fIPv4)
         {
             int32_t hListenSocket;
             SOCKET hSocket;
-            Address addr;
+            BaseAddress addr;
             socklen_t len_v4 = sizeof(struct sockaddr_in);
             socklen_t len_v6 = sizeof(struct sockaddr_in6);
 
@@ -403,7 +512,7 @@ namespace LLP
 
                         hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v4);
                         if (hSocket != INVALID_SOCKET)
-                            addr = Address(sockaddr);
+                            addr = BaseAddress(sockaddr);
                     }
                     else
                     {
@@ -411,7 +520,7 @@ namespace LLP
 
                         hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v6);
                         if (hSocket != INVALID_SOCKET)
-                            addr = Address(sockaddr);
+                            addr = BaseAddress(sockaddr);
                     }
 
                     if (hSocket == INVALID_SOCKET)
@@ -422,13 +531,13 @@ namespace LLP
                     else
                     {
                         /* Create new DDOS Filter if Needed. */
-                        if(!DDOS_MAP.count((Service)addr))
+                        if(!DDOS_MAP.count(addr))
                             DDOS_MAP[addr] = new DDOS_Filter(DDOS_TIMESPAN);
 
                         /* DDOS Operations: Only executed when DDOS is enabled. */
-                        if((fDDOS && DDOS_MAP[(Service)addr]->Banned()))
+                        if((fDDOS && DDOS_MAP[addr]->Banned()))
                         {
-                            debug::log(0, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Banned.");
+                            debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Banned.");
                             close(hSocket);
 
                             continue;
@@ -446,13 +555,23 @@ namespace LLP
                         if(!dt)
                             continue;
 
-                        dt->AddConnection(sockNew, DDOS_MAP[(Service)addr]);
+                        dt->AddConnection(sockNew, DDOS_MAP[addr]);
                         debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ",  PORT);
                     }
                 }
             }
         }
 
+        /** BindListenPort
+         *
+         *  Bind connection to a listening port.
+         *
+         *  @param[in] hListenSocket
+         *  @param[in] fIPv4
+         *
+         *  @return
+         *
+         **/
         bool BindListenPort(int32_t & hListenSocket, bool fIPv4 = true)
         {
             std::string strError = "";
@@ -543,7 +662,11 @@ namespace LLP
         }
 
 
-        /* LLP Meter Thread. Tracks the Requests / Second. */
+        /** Meter
+         *
+         * LLP Meter Thread. Tracks the Requests / Second.
+         *
+         **/
         void Meter()
         {
             if(!config::GetBoolArg("-meters", false))
@@ -584,11 +707,18 @@ namespace LLP
         }
 
 
-        /** Used for Meter. Adds up the total amount of requests from each Data Thread. **/
-        int32_t TotalRequests()
+        /** TotalRequests
+         *
+         *  Used for Meter. Adds up the total amount of requests from each
+         *  Data Thread.
+         *
+         *  @return Returns the total number of requests.
+         *
+         **/
+        uint32_t TotalRequests()
         {
-            int32_t nTotalRequests = 0;
-            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            uint32_t nTotalRequests = 0;
+            for(uint32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
             {
                 DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
                 if(!dt)
@@ -600,7 +730,11 @@ namespace LLP
             return nTotalRequests;
         }
 
-        /** Used for Meter. Resets the REQUESTS variable to 0 in each Data Thread. **/
+        /** ClearRequests
+         *
+         *  Used for Meter. Resets the REQUESTS variable to 0 in each Data Thread.
+         *
+         **/
         void ClearRequests()
         {
             for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)

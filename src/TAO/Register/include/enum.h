@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -22,7 +22,11 @@ namespace TAO
     namespace Register
     {
 
-        /** Object registers that are available for use. **/
+        /** OBJECT
+         *
+         *  Object registers that are available for use.
+         *
+         **/
         struct OBJECT
         {
             enum
@@ -48,7 +52,11 @@ namespace TAO
         };
 
 
-        /** The states for the register script in transaction. **/
+        /** STATES
+         *
+         *  The states for the register script in transaction.
+         *
+         **/
         struct STATES
         {
             enum
@@ -68,7 +76,11 @@ namespace TAO
         };
 
 
-        /** The flags on what to do to registers when executing operations. **/
+        /** FLAGS
+         *
+         *  The flags on what to do to registers when executing operations.
+         *
+         **/
         struct FLAGS
         {
             enum

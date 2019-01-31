@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2018
+			(c) Copyright The Nexus Developers 2014 - 2019
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -36,7 +36,7 @@ namespace config
     bool fLogTimestamps = false;
 
     /* Give Opposite Argument Settings */
-    void InterpretNegativeSetting(std::string name, std::map<std::string, std::string>& mapSettingsRet)
+    void InterpretNegativeSetting(const std::string &name, std::map<std::string, std::string>& mapSettingsRet)
     {
         // interpret -nofoo as -foo=0 (and -nofoo=0 as -foo=1) as long as -foo not set
         if (name.find("-no") == 0)
@@ -56,7 +56,7 @@ namespace config
     {
         mapArgs.clear();
         mapMultiArgs.clear();
-        for (int i = 1; i < argc; i++)
+        for (int i = 1; i < argc; ++i)
         {
             char psz[10000];
             strlcpy(psz, argv[i], sizeof(psz));
@@ -78,7 +78,7 @@ namespace config
             mapMultiArgs[psz].push_back(pszValue);
         }
 
-        for(auto entry : mapArgs)
+        for(const auto& entry : mapArgs)
         {
             std::string name = entry.first;
 
@@ -88,6 +88,7 @@ namespace config
                 std::string singleDash(name.begin()+1, name.end());
                 if (mapArgs.count(singleDash) == 0)
                     mapArgs[singleDash] = entry.second;
+
                 name = singleDash;
             }
 

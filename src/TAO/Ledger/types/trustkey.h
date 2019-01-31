@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_TAO_LEDGER_INCLUDE_TRUST_H
-#define NEXUS_TAO_LEDGER_INCLUDE_TRUST_H
+#ifndef NEXUS_TAO_LEDGER_INCLUDE_TRUSTKEY_H
+#define NEXUS_TAO_LEDGER_INCLUDE_TRUSTKEY_H
 
 #include <vector>
 
@@ -34,9 +34,9 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+        class BlockState;
 
-
-        /** @class TrustKey
+        /** TrustKey
          *
          *  Class to Store a legacy Trust Key and its Interest Rate.
          *
@@ -64,12 +64,25 @@ namespace TAO
             uint32_t nGenesisTime;
 
 
+            /** The last block that was found by this key. */
+            uint1024_t hashLastBlock;
+
+
             /** Constructor
              *
              *  Initializes a null Trust Key.
              *
              **/
-            TrustKey();
+            TrustKey()
+            : vchPubKey()
+            , nVersion(1)
+            , hashGenesisBlock(0)
+            , hashGenesisTx(0)
+            , nGenesisTime(0)
+            , hashLastBlock(0)
+            {
+
+            }
 
 
             /** Constructor
@@ -82,7 +95,16 @@ namespace TAO
              *  @param[in] nTimeIn The nGenesisTime value for this Trust Key
              *
              **/
-            TrustKey(const std::vector<uint8_t> vchPubKeyIn, const uint1024_t hashBlockIn, const uint512_t hashTxIn, const int32_t nTimeIn);
+            TrustKey(const std::vector<uint8_t> vchPubKeyIn, const uint1024_t hashBlockIn, const uint512_t hashTxIn, const int32_t nTimeIn)
+            : vchPubKey(vchPubKeyIn)
+            , nVersion(1)
+            , hashGenesisBlock(hashBlockIn)
+            , hashGenesisTx(hashTxIn)
+            , nGenesisTime(nTimeIn)
+            , hashLastBlock(0)
+            {
+
+            }
 
 
             /* Define Serialization/Deserialization for Trust Key */
@@ -93,6 +115,7 @@ namespace TAO
                 READWRITE(hashGenesisBlock);
                 READWRITE(hashGenesisTx);
                 READWRITE(nGenesisTime);
+                READWRITE(hashLastBlock);
             )
 
 
@@ -104,7 +127,7 @@ namespace TAO
             void SetNull();
 
 
-            /** GetAge
+            /** Age
              *
              *  Retrieve how old the Trust Key is at a given point in time.
              *
@@ -113,19 +136,19 @@ namespace TAO
              *  @return Elapsed time between Trust Key Genesis timestamp and the requested nTime, or 0 if nTime < nGenesisTime
              *
              **/
-            uint64_t GetAge(const uint32_t nTime) const;
+            uint64_t Age(const uint64_t nTime) const;
 
 
-            /** GetBlockAge
+            /** BlockAge
              *
              *  Retrieve the time since this Trust Key last generated a Proof of Stake block.
              *
-             *  @param[in] nTime The timestamp of the end time for determining age
+             *  @param[in] state The block state to search from
              *
              *  @return Elapsed time between last block genereated and the requested nTime
              *
              **/
-            uint64_t GetBlockAge(const uint32_t nTime) const;
+            uint64_t BlockAge(const TAO::Ledger::BlockState& state) const;
 
 
             /** GetHash
@@ -138,17 +161,17 @@ namespace TAO
             inline uint512_t GetHash() const { return LLC::SK512(vchPubKey, BEGIN(hashGenesisBlock), END(nGenesisTime)); }
 
 
-            /** IsExpired
+            /** Expired
              *
              *  Determine if a key is expired at a given point in time.
              *  Expiration only applies to nVersion=4 or earlier trust keys, though this method may be called for any.
              *
-             *  @param[in] nTime The timestamp of the point in time to check for expiration
+             *  @param[in] state The block state to search from
              *
              *  @return true if Trust Key expired, false otherwise
              *
              */
-            bool IsExpired(uint32_t nTime) const;
+            bool Expired(const TAO::Ledger::BlockState& state) const;
 
 
             /** IsNull
@@ -173,10 +196,10 @@ namespace TAO
              *  @return true if block contains valid Genesis transaction for this Trust Key, false otherwise
              *
              */
-            bool CheckGenesis(const Legacy::LegacyBlock& block) const;
+            bool CheckGenesis(const TAO::Ledger::BlockState& block) const;
 
 
-            /** Interest Rate
+            /** InterestRate
              *
              *  Interest is Determined By Logarithmic Equation from Genesis Key.
              *
@@ -186,7 +209,7 @@ namespace TAO
              *  @return the total interest rate of trust key.
              *
              **/
-            double InterestRate(const Legacy::LegacyBlock& block, uint32_t nTime) const;
+            double InterestRate(const TAO::Ledger::BlockState& block, uint32_t nTime) const;
 
 
             /** ToString

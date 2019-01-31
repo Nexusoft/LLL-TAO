@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2018] ++
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -189,7 +189,7 @@ namespace TAO
             ssData << params["data"].get<std::string>();
 
             /* Submit the payload object. */
-            tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::APPEND << static_cast<std::vector<uint8_t>>(ssData);
+            tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::APPEND << ssData.Bytes();
 
             /* Execute the operations layer. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
@@ -254,7 +254,7 @@ namespace TAO
             ssData << params["data"].get<std::string>();
 
             /* Submit the payload object. */
-            tx << (uint8_t)TAO::Operation::OP::APPEND << hashRegister << static_cast<std::vector<uint8_t>>(ssData);
+            tx << (uint8_t)TAO::Operation::OP::APPEND << hashRegister << ssData.Bytes();
 
             /* Execute the operations layer. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
@@ -295,7 +295,7 @@ namespace TAO
                 throw APIException(-24, "No states found");
 
             /* Build the response JSON. */
-            for(auto & state : states)
+            for(const auto& state : states)
             {
                 json::json obj;
                 obj["version"]  = state.nVersion;

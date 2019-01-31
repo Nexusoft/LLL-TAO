@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -11,15 +11,20 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LLP_INCLUDE_ADDRESSINFO_H
-#define NEXUS_LLP_INCLUDE_ADDRESSINFO_H
+#ifndef NEXUS_LLP_INCLUDE_TRUSTADDRESS_H
+#define NEXUS_LLP_INCLUDE_TRUSTADDRESS_H
 
 #include <cstdint>
 #include <Util/templates/serialize.h>
-#include <LLP/include/address.h>
+#include <LLP/include/baseaddress.h>
 
 namespace LLP
 {
+    /** ConnectState
+     *
+     *  The different states an address can be in.
+     *
+     **/
     enum ConnectState
     {
         NEW        = (1 << 0),
@@ -33,40 +38,57 @@ namespace LLP
                               ConnectState::DROPPED   | \
                               ConnectState::CONNECTED
 
-
-    /** AddressInfo
+    /** TrustAddress
      *
-     *  This is a basic struct for keeping statistics on addresses and is used
-     *  for handling and tracking connections in a meaningful way
+     *  This is an Address with additional information about its connectivity
+     *  within the Nexus Network that is also extendable for building out
+     *  meaningful relationships between nodes.
      *
      **/
-    class AddressInfo : public Address
+    class TrustAddress : public BaseAddress
     {
     public:
-        /** AddressInfo
+
+
+        /** TrustAddress
          *
          *  Default constructor
          *
-         *  @param[in] addr The address to initalize associated hash
+         **/
+        TrustAddress();
+
+
+        /** TrustAddress
+         *
+         *  Copy constructors
          *
          **/
-        AddressInfo(const Address &addr);
-        AddressInfo();
+        TrustAddress(const TrustAddress &other);
+        TrustAddress(const BaseAddress &other);
 
 
-        /** ~AddressInfo
+        /** operator=
+         *
+         *  Copy assignment operators
+         *
+         **/
+        TrustAddress &operator=(const BaseAddress &other);
+        TrustAddress &operator=(const TrustAddress &other);
+
+
+        /** ~TrustAddress
          *
          *  Default destructor
          *
          **/
-        ~AddressInfo();
+        virtual ~TrustAddress();
 
 
         /* Serialization */
         IMPLEMENT_SERIALIZE
         (
-            AddressInfo *pthis = const_cast<AddressInfo *>(this);
-            Address *pAddr = (Address *)pthis;
+            TrustAddress *pthis = const_cast<TrustAddress *>(this);
+            BaseAddress *pAddr =  static_cast<BaseAddress *>(pthis);
 
             READWRITE(nSession);
             READWRITE(nConnected);
@@ -78,22 +100,23 @@ namespace LLP
         )
 
 
-        /** Init
-         *
-         *  Initalizes stats to zero.
-         *
-         **/
-        void Init();
-
-
         /** Score
          *
-         *  Calculates a score based on stats. Lower is better
+         *  Calculates a score based on stats. A higher score is better.
          *
          **/
         double Score() const;
 
 
+        /** Print
+         *
+         *  Prints information about this address.
+         *
+         **/
+        virtual void Print() const;
+
+
+    public:
         uint64_t nSession;    //total time since connected
         uint64_t nLastSeen;   //unified time last seen
         uint32_t nConnected;  //total number of successful connections
@@ -102,8 +125,11 @@ namespace LLP
         uint32_t nFails;      //consecutive number of failed connections
         uint32_t nLatency;    //the latency experienced by the connection
         uint8_t  nState;      //the flag for the state of connection
+        uint8_t  nType;       //TODO: the type for serialization
 
-        friend bool operator<(const AddressInfo &info1, const AddressInfo &info2);
+
+        /* Comparison less than operator used for sorting */
+        friend bool operator<(const TrustAddress &info1, const TrustAddress &info2);
     };
 
 }
