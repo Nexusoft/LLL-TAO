@@ -34,6 +34,24 @@ namespace TAO
     {
 
 
+        /* Set the Trust Key data to Null (uninitialized) values. */
+        void TrustKey::SetNull()
+        {
+            vchPubKey.clear();
+
+            nVersion = 1;
+
+            hashGenesisBlock = 0;
+
+            hashGenesisTx = 0;
+
+            nGenesisTime = 0;
+
+            hashLastBlock = 0;
+
+            return;
+        }
+
         /* Retrieve how old the Trust Key is at a given point in time. */
         uint64_t TrustKey::Age(const uint64_t nTime) const
         {

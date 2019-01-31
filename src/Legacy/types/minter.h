@@ -207,11 +207,11 @@ namespace Legacy
 
 
         /** Trust key for staking. IsNull() is true when staking for Genesis. **/
-        TrustKey trustKey;
+        TAO::Ledger::TrustKey trustKey;
 
 
         /** Reserved key to use for Genesis. nullptr when staking for Trust **/
-        ReserveKey* pReservedTrustKey;
+        CReserveKey* pReservedTrustKey;
 
 
         /** The candidate block that the stake minter is attempting to mine */
@@ -248,16 +248,15 @@ namespace Legacy
         StakeMinter() 
         : minterThread(StakeMinter::StakeMinterThread, this)
         , pStakingWallet(nullptr)
-        , trustKey(TrustKey())
+        , trustKey(TAO::Ledger::TrustKey())
         , pReservedTrustKey(nullptr)
-        , pCandidateBlock(LegacyBlock())
+        , candidateBlock(LegacyBlock())
         , hashLastBlock(0)
         , nSleepTime(1000)
         , fIsWaitPeriod(false)
         , nTrustWeight(0.0)
         , nBlockWeight(0.0)
-        , nRequired(0.0)
-        , nThreshhold(0.0)
+        , nStakeRate(0.0)
         {
         }
 
@@ -267,12 +266,8 @@ namespace Legacy
          *  Gets the trust key for the current wallet. If none exists, retrieves a new
          *  key from the key pool to use as the trust key for Genesis.
          *
-         *  @param[in,out] reservedTrustKey - ReserveKey for trust key, used to obtain a new key from key pool if needed
-         *
-         *  @return true if is successfully retrieved a trust key or used a new one, false otherwise
-         * 
          **/
-        bool FindTrustKey(ReserveKey& reservedTrustKey);
+        void FindTrustKey();
 
 
         /** CreateCandidateBlock
@@ -330,7 +325,7 @@ namespace Legacy
          **/
         static void StakeMinterThread(StakeMinter* pStakeMinter);
 
-    }
+    };
 }
 
 #endif

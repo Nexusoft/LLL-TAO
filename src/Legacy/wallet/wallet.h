@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <LLC/include/key.h>
 #include <LLC/types/uint1024.h>
 
+#include <Legacy/types/legacy.h>
 #include <Legacy/wallet/addressbook.h>
 #include <Legacy/wallet/cryptokeystore.h>
 #include <Legacy/wallet/keypool.h>
@@ -42,7 +43,6 @@ namespace TAO
     namespace Ledger
     {
         /* forward declarations */
-        class TritiumBlock;
         class BlockState;
     }
 }
@@ -1005,7 +1005,7 @@ namespace Legacy
          *  @return true if coinstake inputs successfully added
          *
          **/
-        bool AddCoinstakeInputs(TAO::Ledger::TritiumBlock& block);
+        bool AddCoinstakeInputs(LegacyBlock& block);
 
 
     private:

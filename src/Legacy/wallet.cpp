@@ -1808,7 +1808,7 @@ namespace Legacy
 
 /*TODO - Investigate moving this entire method OUT of Wallet and into Trust.cpp */
 /* It doesn't really belong in wallet */
-    bool Wallet::AddCoinstakeInputs(TAO::Ledger::TritiumBlock& block)
+    bool Wallet::AddCoinstakeInputs(LegacyBlock& block)
     {
         /* Add Each Input to Transaction. */
         std::vector<WalletTx> vInputs;

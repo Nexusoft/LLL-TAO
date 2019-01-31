@@ -207,6 +207,7 @@ OBJS= \
 	build/Legacy_locator.o \
 	build/Legacy_mempool.o \
 	build/Legacy_merkle.o \
+	build/Legacy_minter.o \
 	build/Legacy_outpoint.o \
 	build/Legacy_reservekey.o \
 	build/Legacy_script.o \
