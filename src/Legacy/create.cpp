@@ -407,7 +407,7 @@ namespace Legacy
 
 
     /* Sign the block with the key that found the block. */
-    bool SignBlock(LegacyBlock& block, const CKeyStore& keystore)
+    bool SignBlock(LegacyBlock& block, const KeyStore& keystore)
     {
         std::vector<std::vector<uint8_t>> vSolutions;
         Legacy::TransactionType whichType;

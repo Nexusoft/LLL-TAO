@@ -24,14 +24,14 @@ ________________________________________________________________________________
 namespace Legacy
 {
     
-     /** @class COutput
+     /** @class Output
       *
       *  Class to determine the value and depth of a specific transaction output.
       *
       *  Used for the Available Coins Method located in Wallet.cpp mainly.
       *  To be used for further purpose in the future. 
       **/
-    class COutput
+    class Output
     {
     public:
         /** The wallet transaction containing this output **/
@@ -42,22 +42,22 @@ namespace Legacy
         uint32_t i;
 
 
-        /** Depth of transaction in chain at the time this COutput created **/
+        /** Depth of transaction in chain at the time this Output created **/
         uint32_t nDepth;
 
 
         /** Constructor
          *
-         *  Initializes this COutput with the provided parameter values
+         *  Initializes this Output with the provided parameter values
          *
          *  @param[in] walletTxIn The transaction containing the corresponding output
          *
          *  @param[in] iIn The index of the output within the transactions's vout
          * 
-         *  @param[in] nDepthIn The depth of the transaction at time of COutput creation
+         *  @param[in] nDepthIn The depth of the transaction at time of Output creation
          *
          **/
-        COutput(const WalletTx& walletTxIn, const uint32_t iIn, const uint32_t nDepthIn) :
+        Output(const WalletTx& walletTxIn, const uint32_t iIn, const uint32_t nDepthIn) :
             walletTx(walletTxIn), 
             i(iIn),
             nDepth(nDepthIn)
@@ -73,7 +73,7 @@ namespace Legacy
          **/
         std::string ToString() const
         {
-            return debug::strprintf("COutput(%s, %d, %d) [%s]", walletTx.GetHash().ToString().substr(0,10).c_str(), i, nDepth, FormatMoney(walletTx.vout[i].nValue).c_str());
+            return debug::strprintf("Output(%s, %d, %d) [%s]", walletTx.GetHash().ToString().substr(0,10).c_str(), i, nDepth, FormatMoney(walletTx.vout[i].nValue).c_str());
         }
 
 

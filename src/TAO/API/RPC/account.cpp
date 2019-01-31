@@ -1489,11 +1489,11 @@ namespace TAO
                 }
             }
 
-            std::vector<Legacy::COutput> vecOutputs;
+            std::vector<Legacy::Output> vecOutputs;
             Legacy::Wallet::GetInstance().AvailableCoins((unsigned int)runtime::unifiedtimestamp(), vecOutputs, false);
 
             int64_t nCredit = 0;
-            for(const Legacy::COutput& out : vecOutputs)
+            for(const Legacy::Output& out : vecOutputs)
             {
                 if(setAddresses.size())
                 {
@@ -1570,9 +1570,9 @@ namespace TAO
             }
 
             json::json results = json::json::array();
-            std::vector<Legacy::COutput> vecOutputs;
+            std::vector<Legacy::Output> vecOutputs;
             Legacy::Wallet::GetInstance().AvailableCoins((unsigned int)runtime::unifiedtimestamp(), vecOutputs, false);
-            for(const Legacy::COutput& out : vecOutputs)
+            for(const Legacy::Output& out : vecOutputs)
             {
                 if (out.nDepth < nMinDepth || out.nDepth > nMaxDepth)
                     continue;

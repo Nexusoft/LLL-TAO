@@ -838,7 +838,7 @@ namespace Legacy
 
 
     /* Populate vCoins with vector identifying spendable outputs. */
-    void Wallet::AvailableCoins(const uint32_t nSpendTime, std::vector<COutput>& vCoins, const bool fOnlyConfirmed)
+    void Wallet::AvailableCoins(const uint32_t nSpendTime, std::vector<Output>& vCoins, const bool fOnlyConfirmed)
     {
         {
             LOCK(cs_wallet);
@@ -871,7 +871,7 @@ namespace Legacy
                     if (!(walletTx.IsSpent(i)) && IsMine(walletTx.vout[i]) && walletTx.vout[i].nValue > 0)
                     {
                         /* Create output from the current vout and add to result */
-                        COutput txOutput(walletTx, i, walletTx.GetDepthInMainChain());
+                        Output txOutput(walletTx, i, walletTx.GetDepthInMainChain());
                         vCoins.push_back(txOutput);
                     }
                 }

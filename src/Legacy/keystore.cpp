@@ -17,7 +17,7 @@ namespace Legacy
 {
     
     /*  Retrieve the public key for a key in the key store. */
-    bool CKeyStore::GetPubKey(const NexusAddress& address, std::vector<uint8_t>& vchPubKeyOut) const
+    bool KeyStore::GetPubKey(const NexusAddress& address, std::vector<uint8_t>& vchPubKeyOut) const
     {
         LLC::ECKey key;
         if (!GetKey(address, key))
@@ -28,7 +28,7 @@ namespace Legacy
 
 
     /*  Retrieve the private key associated with an address. */
-    bool CKeyStore::GetSecret(const NexusAddress& address, LLC::CSecret& vchSecret, bool& fCompressed) const
+    bool KeyStore::GetSecret(const NexusAddress& address, LLC::CSecret& vchSecret, bool& fCompressed) const
     {
         LLC::ECKey key;
         if (!GetKey(address, key))

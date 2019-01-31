@@ -41,7 +41,7 @@ namespace Legacy
      *  Basic implementation of a key store that keeps keys in an unencrypted address->secret map
      *
      **/
-    class BasicKeyStore : public CKeyStore
+    class BasicKeyStore : public KeyStore
     {
     protected:
         /** Mutex for thread concurrency. **/

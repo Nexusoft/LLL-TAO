@@ -989,7 +989,7 @@ namespace Legacy
 
 
     /* Sign scriptPubKey with private keys, given transaction hash and hash type. */
-    bool Solver(const CKeyStore& keystore, const CScript& scriptPubKey, uint256_t hash, int32_t nHashType, CScript& scriptSigRet, TransactionType& whichTypeRet)
+    bool Solver(const KeyStore& keystore, const CScript& scriptPubKey, uint256_t hash, int32_t nHashType, CScript& scriptSigRet, TransactionType& whichTypeRet)
     {
         scriptSigRet.clear();
 
@@ -1083,7 +1083,7 @@ namespace Legacy
 
 
     /* Determines if given list of public keys exist in the keystore object. */
-    uint32_t HaveKeys(const std::vector< std::vector<uint8_t> >& pubkeys, const CKeyStore& keystore)
+    uint32_t HaveKeys(const std::vector< std::vector<uint8_t> >& pubkeys, const KeyStore& keystore)
     {
         uint32_t nResult = 0;
         for(const auto& pubkey : pubkeys)
@@ -1099,7 +1099,7 @@ namespace Legacy
 
 
     /* Checks an output to your keystore to detect if you have a key that is involed in the output or transaction. */
-    bool IsMine(const CKeyStore& keystore, const CScript& scriptPubKey)
+    bool IsMine(const KeyStore& keystore, const CScript& scriptPubKey)
     {
         std::vector< std::vector<uint8_t> > vSolutions;
         TransactionType whichType;

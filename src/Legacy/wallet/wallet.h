@@ -57,7 +57,7 @@ namespace Legacy
     class CTxOut;
     class NexusAddress;
 
-    class COutput;
+    class Output;
     class CReserveKey;
     class WalletTx;
 
@@ -626,12 +626,12 @@ namespace Legacy
          *
          *  @param[in] nSpendTime Cutoff timestamp for result. Any transactions after this time are filtered
          *
-         *  @param[out] vCoins Vector of COutput listing spendable outputs
+         *  @param[out] vCoins Vector of Output listing spendable outputs
          *
          *  @param[in] fOnlyConfirmed Set false to include unconfirmed transactions in output
          *
          **/
-        void AvailableCoins(const uint32_t nSpendTime, std::vector<COutput>& vCoins, const bool fOnlyConfirmed = true);
+        void AvailableCoins(const uint32_t nSpendTime, std::vector<Output>& vCoins, const bool fOnlyConfirmed = true);
 
 
     /*----------------------------------------------------------------------------------------*/

@@ -69,7 +69,7 @@ namespace Legacy
      *  @return returns true if this was solved.
      *
      **/
-    bool Solver(const CKeyStore& keystore, const CScript& scriptPubKey, uint256_t hash, int32_t nHashType, CScript& scriptSigRet, TransactionType& whichTypeRet);
+    bool Solver(const KeyStore& keystore, const CScript& scriptPubKey, uint256_t hash, int32_t nHashType, CScript& scriptSigRet, TransactionType& whichTypeRet);
 
 
     /** Script Sig Args Expected
@@ -107,7 +107,7 @@ namespace Legacy
      *  @return Return the total number of keys that have been found.
      *
      **/
-    uint32_t HaveKeys(const std::vector< std::vector<uint8_t> >& pubkeys, const CKeyStore& keystore);
+    uint32_t HaveKeys(const std::vector< std::vector<uint8_t> >& pubkeys, const KeyStore& keystore);
 
 
     /** Is Mine
@@ -121,7 +121,7 @@ namespace Legacy
      *  @return true if script object involes a key in keystore.
      *
      **/
-    bool IsMine(const CKeyStore& keystore, const CScript& scriptPubKey);
+    bool IsMine(const KeyStore& keystore, const CScript& scriptPubKey);
 
 
 

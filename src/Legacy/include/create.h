@@ -97,7 +97,7 @@ namespace Legacy
      *  @return true if the block was successfully signed
      *
      **/
-    bool SignBlock(LegacyBlock& block, const CKeyStore& keystore);
+    bool SignBlock(LegacyBlock& block, const KeyStore& keystore);
 
 
     /** CheckWork
