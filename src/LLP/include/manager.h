@@ -123,11 +123,42 @@ namespace LLP
          *  address
          *
          *  @param[in] addrs The addresses to add
-         *
          *  @param[in] state The state of the connection for the address
          *
          **/
         void AddAddresses(const std::vector<BaseAddress> &addrs, const uint8_t state = ConnectState::NEW);
+        void AddAddresses(const std::vector<std::string> &addrs, const uint8_t state = ConnectState::NEW);
+
+
+        /** RemoveAddress
+         *
+         *  Removes an address from the manager if it exists.
+         *
+         *  @param[in] addr The address to remove.
+         *
+         **/
+        void RemoveAddress(const BaseAddress &addr);
+
+
+        /** AddSeedAddresses
+         *
+         *  Adds the seed node addresses to the addressmanager if they aren't
+         *  already in there.
+         *
+         *  @param[in] testnet Flag for if testnet seed nodes should be added.
+         *
+         **/
+        void AddSeedAddresses(bool testnet = false);
+
+
+        /** Has
+         *
+         *  Determines if the address manager has the address or not.
+         *
+         *  @param[in] addr The address to find.
+         *
+         **/
+        bool Has(const BaseAddress &addr);
 
 
         /** SetLatency
@@ -136,9 +167,8 @@ namespace LLP
          *  that address.
          *
          *  @param[in] lat The latency, in milliseconds
-         *
          *  @param[in] addr The address in reference to
-         *unordered_map
+         *
          **/
         void SetLatency(uint32_t lat, const BaseAddress &addr);
 
@@ -205,7 +235,7 @@ namespace LLP
          *
          *  Helper function to get the number of addresses of the connect type
          *
-         *  *  @param[in] flags Specify which types of connections to get the info from.
+         *  @param[in] flags Specify which types of connections to get the info from.
          *
          **/
         uint32_t count(const uint8_t flags = CONNECT_FLAGS_ALL);
@@ -231,8 +261,8 @@ namespace LLP
 
         LLD::AddressDB *pDatabase;
         std::map<uint64_t, TrustAddress> mapTrustAddress;
-
         mutable std::mutex mut;
+        uint16_t nPort;
     };
 }
 

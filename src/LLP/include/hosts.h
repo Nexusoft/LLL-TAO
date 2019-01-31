@@ -28,7 +28,7 @@ namespace LLP
      *  They are established and maintained by the owners of each domain.
      *
      **/
-    static std::vector<std::string> DNS_SeedNodes =
+    static const std::vector<std::string> DNS_SeedNodes =
     {
         "node1.nexusearth.com",
         "node1.mercuryminer.com",
@@ -112,7 +112,7 @@ namespace LLP
      *  Testnet seed nodes.
      *
      **/
-    static std::vector<std::string> DNS_SeedNodes_Testnet =
+    static const std::vector<std::string> DNS_SeedNodes_Testnet =
     {
         "test1.nexusoft.io",
         "test1.mercuryminer.com",

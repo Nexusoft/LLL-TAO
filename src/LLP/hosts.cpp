@@ -208,12 +208,12 @@ namespace LLP
                 uint16_t portDefault,
                 bool fAllowLookup)
     {
-        std::vector<BaseAddress> vService;
+        std::vector<BaseAddress> vAddr;
 
-        if(!Lookup(pszName, vService, portDefault, fAllowLookup, 1))
+        if(!Lookup(pszName, vAddr, portDefault, fAllowLookup, 1))
             return false;
 
-        addr = vService[0];
+        addr = vAddr[0];
         return true;
     }
 

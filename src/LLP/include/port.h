@@ -27,7 +27,7 @@ ________________________________________________________________________________
 #endif
 
 #ifndef TESTNET_PORT
-#define TESTNET_PORT 8313
+#define TESTNET_PORT 8323
 #endif
 
 #ifndef MAINNET_CORE_LLP_PORT

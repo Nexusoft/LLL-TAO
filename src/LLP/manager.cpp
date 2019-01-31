@@ -11,12 +11,14 @@
 
 ____________________________________________________________________________________________*/
 
+
 #include <LLC/hash/macro.h>
 #include <LLC/hash/SK.h>
 #include <LLC/include/random.h>
 #include <LLD/include/address.h>
 #include <LLD/include/version.h>
 #include <LLP/include/manager.h>
+#include <LLP/include/hosts.h>
 #include <Util/include/debug.h>
 #include <Util/templates/serialize.h>
 #include <algorithm>
@@ -26,10 +28,11 @@ ________________________________________________________________________________
 namespace LLP
 {
     /* Default constructor */
-    AddressManager::AddressManager(uint16_t nPort)
+    AddressManager::AddressManager(uint16_t port)
     : mapTrustAddress()
+    , nPort(port)
     {
-        pDatabase = new LLD::AddressDB(nPort, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+        pDatabase = new LLD::AddressDB(port, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
         if(pDatabase)
             return;
@@ -102,6 +105,13 @@ namespace LLP
     void AddressManager::AddAddress(const BaseAddress &addr,
                                     const uint8_t state)
     {
+        /* Reject adding invalid addresses. */
+        if(!addr.IsValid())
+        {
+            debug::log(3, FUNCTION, "Invalid Address ", addr.ToString());
+            return;
+        }
+
         uint64_t hash = addr.GetHash();
         uint64_t ms = runtime::unifiedtimestamp(true);
 
@@ -167,6 +177,65 @@ namespace LLP
     {
         for(uint32_t i = 0; i < addrs.size(); ++i)
             AddAddress(addrs[i], state);
+    }
+
+
+    /*  Adds the addresses to the manager and sets their state. */
+    void AddressManager::AddAddresses(const std::vector<std::string> &addrs,
+                                      const uint8_t state)
+    {
+        for(uint32_t i = 0; i < addrs.size(); ++i)
+        {
+            /* Create a DNS lookup address to resolve to IP address. */
+            BaseAddress lookup_address = BaseAddress(addrs[i], nPort, true);
+
+            AddAddress(lookup_address, state);
+        }
+    }
+
+
+    /*  Removes an address from the manager if it exists. */
+    void AddressManager::RemoveAddress(const BaseAddress &addr)
+    {
+        uint64_t hash = addr.GetHash();
+        std::unique_lock<std::mutex> lk(mut);
+
+        auto it = mapTrustAddress.find(hash);
+
+        /* Erase from the map if the address was found. */
+        if(it != mapTrustAddress.end())
+            mapTrustAddress.erase(hash);
+    }
+
+
+    /*  Adds the seed node addresses to the addressmanager if they aren't
+     *  already in there. */
+    void AddressManager::AddSeedAddresses(bool testnet)
+    {
+        std::vector<std::string> seeds;
+
+        /* Add the testnet seed nodes if testnet flag is enabled. */
+        if(testnet)
+            seeds = DNS_SeedNodes_Testnet;
+        else
+            seeds = DNS_SeedNodes;
+
+        AddAddresses(seeds);
+        debug::log(3, seeds.size(), " seed nodes added");
+    }
+
+
+    /*  Determines if the address manager has the address or not. */
+    bool AddressManager::Has(const BaseAddress &addr)
+    {
+        uint64_t hash = addr.GetHash();
+        std::unique_lock<std::mutex> lk(mut);
+
+        auto it = mapTrustAddress.find(hash);
+        if(it != mapTrustAddress.end())
+            return true;
+
+        return false;
     }
 
 
@@ -237,6 +306,8 @@ namespace LLP
     void AddressManager::SetPort(uint16_t port)
     {
         LOCK(mut);
+
+        nPort = port;
 
         for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
             it->second.SetPort(port);

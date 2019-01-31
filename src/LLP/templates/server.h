@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/include/manager.h>
 #include <LLP/include/legacyaddress.h>
 #include <LLP/include/trustaddress.h>
+#include <Util/include/args.h>
 
 #include <functional>
 #include <numeric>
@@ -103,7 +104,14 @@ namespace LLP
             if(fManager)
             {
                 pAddressManager = new AddressManager(nPort);
+
+                if(!pAddressManager)
+                    debug::error(FUNCTION, "Failed to allocate memory for address manager on port ", nPort);
+
+
                 pAddressManager->ReadDatabase();
+
+                pAddressManager->AddSeedAddresses(config::fTestNet);
 
 
                 MANAGER_THREAD = std::thread((std::bind(&Server::Manager, this)));

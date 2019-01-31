@@ -110,9 +110,15 @@ namespace LLP
     {
         BaseAddress ip;
         if (Lookup(pszIpPort, ip, portDefault, fAllowLookup))
+        {
             *this = ip;
+
+            if(fAllowLookup)
+                debug::log(3, FUNCTION, pszIpPort, " resolved to ", ToStringIP());
+        }
+
         else
-          debug::log(0, FUNCTION, "bad lookup");
+          debug::log(3, FUNCTION, pszIpPort, " bad lookup");
     }
 
 
@@ -123,9 +129,14 @@ namespace LLP
     {
         BaseAddress ip;
         if (Lookup(strIpPort.c_str(), ip, portDefault, fAllowLookup))
+        {
             *this = ip;
+
+            if(fAllowLookup)
+                debug::log(3, FUNCTION, strIpPort, " resolved to ", ToStringIP());
+        }
         else
-          debug::log(0, FUNCTION, "bad lookup");
+          debug::log(3, FUNCTION, strIpPort, " bad lookup");
     }
 
 
@@ -275,7 +286,12 @@ namespace LLP
     /* Determines if address is a routable address. */
     bool BaseAddress::IsRoutable() const
     {
-        return IsValid() && !(IsRFC1918() || IsRFC3927() || IsRFC4862() || IsRFC4193() || IsRFC4843() || IsLocal());
+        return IsValid() && !(IsRFC3927() ||
+                              IsRFC4862() ||
+                              IsRFC4193() ||
+                              IsRFC4843() ||
+                              IsLocal());
+
     }
 
 
