@@ -95,7 +95,7 @@ namespace TAO
                 hashBestChain = stateBest.GetHash();
                 if(!LLD::legDB->WriteBestChain(hashBestChain))
                     return debug::error(FUNCTION, "failed to write best chain");
-                
+
                 debug::log(0, FUNCTION, "database successfully recovered" );
             }
             /* Fill out the best chain stats. */
@@ -134,11 +134,17 @@ namespace TAO
                 }
             }
 
-            stateBest.print();
+            /* Ensure the block height index is intact */
+            if(config::GetBoolArg("-indexheight"))
+            {
+                /* Try and retrieve the block state for the current block height via the height index.
+                    If this fails then we know the block height index is not fully intact so we repair it*/
+                TAO::Ledger::BlockState state;
+                if(!LLD::legDB->ReadBlock(TAO::Ledger::ChainState::stateBest.nHeight, state))
+                     LLD::legDB->RepairIndexHeight();
+            }
 
-            Legacy::Transaction tx;
-            if(!LLD::legacyDB->ReadTx(stateBest.vtx[0].second, tx))
-                return debug::error("failed to read the first tx");
+            stateBest.print();
 
             /* Debug logging. */
             debug::log(0, FUNCTION, config::fTestNet? "Test" : "Nexus", " Network: genesis=", hashGenesis.ToString().substr(0, 20),

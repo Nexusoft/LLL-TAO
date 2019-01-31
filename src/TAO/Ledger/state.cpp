@@ -536,9 +536,6 @@ namespace TAO
 
                 /* Write the indexing entries. */
                 LLD::legDB->IndexBlock(tx.second, GetHash());
-
-                if(config::GetBoolArg("-indexheight"))
-                    LLD::legDB->IndexBlock(nHeight, GetHash());
             }
 
             /* Update the previous state's next pointer. */
@@ -553,6 +550,10 @@ namespace TAO
             /* Write the updated block state to disk. */
             if(!LLD::legDB->WriteBlock(GetHash(), *this))
                 return debug::error(FUNCTION, "failed to update block state");
+
+            /* Index the block by height if enabled. */
+            if(config::GetBoolArg("-indexheight"))
+                LLD::legDB->IndexBlock(nHeight, GetHash());
 
             /* Update chain pointer for previous block. */
             if(!prev.IsNull())
@@ -612,10 +613,11 @@ namespace TAO
 
                 /* Write the indexing entries. */
                 LLD::legDB->EraseIndex(tx.second);
-                
-                if(config::GetBoolArg("-indexheight"))
-                    LLD::legDB->EraseIndex(nHeight);
             }
+
+            /* Erase the index for block by height. */
+            if(config::GetBoolArg("-indexheight"))
+                LLD::legDB->EraseIndex(nHeight);
 
             /* Update the previous state's next pointer. */
             BlockState prev = Prev();
