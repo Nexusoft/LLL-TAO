@@ -21,7 +21,7 @@ ________________________________________________________________________________
 namespace Legacy 
 {
 
-    /** @class CAccountingEntry
+    /** @class AccountingEntry
      * 
      * Supports accounting entries that internally transfer balance between wallet accounts
      * without a corresponding blockchain transaction.
@@ -47,7 +47,7 @@ namespace Legacy
      *
      * Database key is acentry<account><counter>
      */
-    class CAccountingEntry
+    class AccountingEntry
     {
     public:
         /** Accounting entry is for this account **/
@@ -79,7 +79,7 @@ namespace Legacy
          *  Calls SetNull() to initialize a null accounting entry 
          *
          **/
-        CAccountingEntry()
+        AccountingEntry()
         {
             SetNull();
         }

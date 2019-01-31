@@ -182,7 +182,7 @@ namespace Legacy
 
 
         /** The address book contained by this wallet **/
-        CAddressBook addressBook;
+        AddressBook addressBook;
 
 
         /** The key pool contained by this wallet **/
@@ -229,7 +229,7 @@ namespace Legacy
         , strWalletFile("")
         , mapMasterKeys()
         , nMasterKeyMaxID(0)
-        , addressBook(CAddressBook(*this))
+        , addressBook(AddressBook(*this))
         , keyPool(CKeyPool(*this))
         , vchDefaultKey()
         , nWalletUnlockTime(0)
@@ -327,7 +327,7 @@ namespace Legacy
          *  @return this wallet's address book
          *
          */
-        inline CAddressBook& GetAddressBook() { return addressBook; }
+        inline AddressBook& GetAddressBook() { return addressBook; }
 
 
         /** GetWalletFile

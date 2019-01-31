@@ -271,7 +271,7 @@ namespace Legacy
 
 
     /* Stores an accounting entry in the wallet database. */
-    bool WalletDB::WriteAccountingEntry(const CAccountingEntry& acentry)
+    bool WalletDB::WriteAccountingEntry(const AccountingEntry& acentry)
     {
         LOCK(WalletDB::cs_walletdb);
         return Write(std::make_tuple(std::string("acentry"), acentry.strAccount, ++WalletDB::nAccountingEntryNumber), acentry);
@@ -281,11 +281,11 @@ namespace Legacy
     /* Retrieves the net total of all accounting entries for an account (Nexus address). */
     int64_t WalletDB::GetAccountCreditDebit(const std::string& strAccount)
     {
-        std::list<CAccountingEntry> entries;
+        std::list<AccountingEntry> entries;
         ListAccountCreditDebit(strAccount, entries);
 
         int64_t nCreditDebitTotal = 0;
-        for(CAccountingEntry& entry : entries)
+        for(AccountingEntry& entry : entries)
             nCreditDebitTotal += entry.nCreditDebit;
 
         return nCreditDebitTotal;
@@ -293,7 +293,7 @@ namespace Legacy
 
 
     /* Retrieves a list of individual accounting entries for an account (Nexus address) */
-    void WalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& entries)
+    void WalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<AccountingEntry>& entries)
     {
         LOCK(WalletDB::cs_walletdb);
         bool fAllAccounts = (strAccount == "*");
@@ -340,7 +340,7 @@ namespace Legacy
             if (strType != "acentry")
                 break; // Read an entry with a different key type (finished with read)
 
-            CAccountingEntry acentry;
+            AccountingEntry acentry;
             ssKey >> acentry.strAccount;
             if (!fAllAccounts && acentry.strAccount != strAccount)
                 break; // Read an entry for a different account (finished with read)

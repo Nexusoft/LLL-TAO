@@ -31,7 +31,7 @@ namespace Legacy
     /* forward declarations */
     class CScript;
     class CAccount;
-    class CAccountingEntry;
+    class AccountingEntry;
     class CKeyPoolEntry;
     class CMasterKey;
     class Wallet;
@@ -502,7 +502,7 @@ namespace Legacy
          *  @deprecated - accounting entries will no longer be used
          *
          **/
-        bool WriteAccountingEntry(const CAccountingEntry& acentry);
+        bool WriteAccountingEntry(const AccountingEntry& acentry);
 
 
         /** GetAccountCreditDebit
@@ -535,7 +535,7 @@ namespace Legacy
          *  @deprecated - accounting entries will no longer be used
          *
          **/
-        void ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& acentries);
+        void ListAccountCreditDebit(const std::string& strAccount, std::list<AccountingEntry>& acentries);
 
 
         /** LoadWallet

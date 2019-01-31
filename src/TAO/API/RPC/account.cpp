@@ -499,7 +499,7 @@ namespace TAO
             int64_t nNow = runtime::unifiedtimestamp();
 
             // Debit
-            Legacy::CAccountingEntry debit;
+            Legacy::AccountingEntry debit;
             debit.strAccount = strFrom;
             debit.nCreditDebit = -nAmount;
             debit.nTime = nNow;
@@ -508,7 +508,7 @@ namespace TAO
             walletdb.WriteAccountingEntry(debit);
 
             // Credit
-            Legacy::CAccountingEntry credit;
+            Legacy::AccountingEntry credit;
             credit.strAccount = strTo;
             credit.nCreditDebit = nAmount;
             credit.nTime = nNow;
@@ -1024,7 +1024,7 @@ namespace TAO
             }
         }
 
-        void AcentryToJSON(const Legacy::CAccountingEntry& acentry, const std::string& strAccount, json::json& ret)
+        void AcentryToJSON(const Legacy::AccountingEntry& acentry, const std::string& strAccount, json::json& ret)
         {
             bool fAllAccounts = (strAccount == std::string("*"));
 
@@ -1068,8 +1068,8 @@ namespace TAO
             json::json ret = json::json::array();
             Legacy::WalletDB walletdb(Legacy::Wallet::GetInstance().GetWalletFile());
 
-            // First: get all Legacy::WalletTx and Wallet::CAccountingEntry into a sorted-by-time multimap.
-            typedef std::pair<const Legacy::WalletTx*, const Legacy::CAccountingEntry*> TxPair;
+            // First: get all Legacy::WalletTx and Wallet::AccountingEntry into a sorted-by-time multimap.
+            typedef std::pair<const Legacy::WalletTx*, const Legacy::AccountingEntry*> TxPair;
             typedef std::multimap<int64_t, TxPair > TxItems;
             TxItems txByTime;
 
@@ -1078,11 +1078,11 @@ namespace TAO
             for (const auto& entry : Legacy::Wallet::GetInstance().mapWallet)
             {
                 const Legacy::WalletTx* wtx = &(entry.second);
-                txByTime.insert(make_pair(wtx->GetTxTime(), TxPair(wtx, (Legacy::CAccountingEntry*)0)));
+                txByTime.insert(make_pair(wtx->GetTxTime(), TxPair(wtx, (Legacy::AccountingEntry*)0)));
             }
-            std::list<Legacy::CAccountingEntry> acentries;
+            std::list<Legacy::AccountingEntry> acentries;
             walletdb.ListAccountCreditDebit(strAccount, acentries);
-            for(const Legacy::CAccountingEntry& entry : acentries)
+            for(const Legacy::AccountingEntry& entry : acentries)
             {
                 txByTime.insert(make_pair(entry.nTime, TxPair((Legacy::WalletTx*)0, &entry)));
             }
@@ -1093,7 +1093,7 @@ namespace TAO
                 const Legacy::WalletTx* pwtx = (*it).second.first;
                 if (pwtx != 0)
                     ListTransactionsJSON(*pwtx, strAccount, 0, true, ret);
-                const Legacy::CAccountingEntry * pacentry = (*it).second.second;
+                const Legacy::AccountingEntry * pacentry = (*it).second.second;
                 if (pacentry != 0)
                     AcentryToJSON(*pacentry, strAccount, ret);
 
