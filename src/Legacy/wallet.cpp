@@ -1140,7 +1140,7 @@ namespace Legacy
             return;
 
         /* Set a random time until resend is processed */
-        snNextTime = runtime::unifiedtimestamp() + LLC::GetRand(30);
+        snNextTime = runtime::unifiedtimestamp() + LLC::GetRand(30 * 5);
 
         /* On first iteration, just return. All it does is set snNextTime */
         if (fFirst)
@@ -1152,10 +1152,6 @@ namespace Legacy
 
         /* Record that it is processing resend now */
         snLastHeight = TAO::Ledger::ChainState::nBestHeight;
-
-        /* Rebroadcast any of our tx that aren't in a block yet */
-        debug::log(0, FUNCTION, "Resending wallet transactions");
-
         {
             LOCK(cs_wallet);
 
