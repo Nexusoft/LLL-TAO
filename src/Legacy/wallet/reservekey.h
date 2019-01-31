@@ -35,7 +35,7 @@ namespace Legacy
     {
     protected:
         /** Wallet containing the key pool where we want to reserve keys **/
-        CWallet& wallet;
+        Wallet& wallet;
 
         /** The key pool index of a reserved key in the key pool, or -1 if no key reserved **/
         uint64_t nPoolIndex;
@@ -54,7 +54,7 @@ namespace Legacy
          *  @deprecated supported for backward compatability
          *
          **/
-        CReserveKey(CWallet* pWalletIn)
+        CReserveKey(Wallet* pWalletIn)
         : wallet(*pWalletIn)
         , nPoolIndex(-1)
         , vchPubKey()
@@ -69,7 +69,7 @@ namespace Legacy
          *  @param[in] walletIn The wallet where keys will be reserved
          *
          **/
-        CReserveKey(CWallet& walletIn)
+        CReserveKey(Wallet& walletIn)
         : wallet(walletIn)
         , nPoolIndex(-1)
         , vchPubKey()

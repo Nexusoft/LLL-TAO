@@ -34,8 +34,8 @@ namespace Legacy
     class CAccountingEntry;
     class CKeyPoolEntry;
     class CMasterKey;
-    class CWallet;
-    class CWalletTx;
+    class Wallet;
+    class WalletTx;
 
     /** Error statuses for the wallet database **/
     enum DBErrors
@@ -48,7 +48,7 @@ namespace Legacy
     };
 
 
-    /** @class CWalletDB
+    /** @class WalletDB
      *
      *  Access to the wallet database (wallet.dat).
      *
@@ -71,7 +71,7 @@ namespace Legacy
      *    - "acentry"<account><counter> = accounting entry (credit/debit) associated with an account/Nexus address
      *
      **/
-    class CWalletDB : public CDB
+    class WalletDB : public CDB
     {
     public:
         /** Defines default name of wallet database file **/
@@ -80,7 +80,7 @@ namespace Legacy
 
         /**
          *  Value indicating how many updates have been written to any wallet database since startup.
-         *  There may be multiple instances of CWalletDB accessing a database, so this
+         *  There may be multiple instances of WalletDB accessing a database, so this
          *  is a static value stored across instances.
          *
          *  Used by the flush wallet thread to track if there have been updates since
@@ -104,7 +104,7 @@ namespace Legacy
 
         /** Constructor
          *
-         *  Initializes database access to wallet database using CWalletDB::DEFAULT_WALLET_DB
+         *  Initializes database access to wallet database using WalletDB::DEFAULT_WALLET_DB
          *  for the file name.
          *
          *
@@ -115,8 +115,8 @@ namespace Legacy
          *  @see CDB for modes
          *
          **/
-        CWalletDB(const char* pszMode="r+")
-        : CDB(CWalletDB::DEFAULT_WALLET_DB, pszMode)
+        WalletDB(const char* pszMode="r+")
+        : CDB(WalletDB::DEFAULT_WALLET_DB, pszMode)
         { }
 
 
@@ -134,17 +134,17 @@ namespace Legacy
          *  @see CDB for modes
          *
          **/
-        CWalletDB(const std::string& strFileName, const char* pszMode="r+")
+        WalletDB(const std::string& strFileName, const char* pszMode="r+")
         : CDB(strFileName, pszMode)
         { }
 
 
         /** Copy constructor deleted. No copy allowed **/
-        CWalletDB(const CWalletDB&) = delete;
+        WalletDB(const WalletDB&) = delete;
 
 
         /** Copy assignment operator deleted. No assignment allowed **/
-        CWalletDB& operator=(const CWalletDB&) = delete;
+        WalletDB& operator=(const WalletDB&) = delete;
 
 
         /** WriteMasterKey
@@ -152,7 +152,7 @@ namespace Legacy
          *  Stores an encrypted master key into the database. Used to lock/unlock access when
          *  wallet database content has been encrypted. Any old entry for the same key Id is overwritten.
          *
-         *  CWalletDB supports multiple master key entries, identified by nID. This supports
+         *  WalletDB supports multiple master key entries, identified by nID. This supports
          *  the potential for the wallet database to have multiple passphrases.
          *
          *  After wallet database content is encrypted, this encryption cannot be reversed. Therefore,
@@ -334,7 +334,7 @@ namespace Legacy
          *
          *  Stores an encrypted private key using the corresponding public key. There is no
          *  complementary read operation for encrypted keys. They are read at startup using
-         *  CWalletDB::LoadWallet
+         *  WalletDB::LoadWallet
          *
          *  @param[in] vchPubKey The public key value of the private key to write
          *
@@ -360,7 +360,7 @@ namespace Legacy
          *  @return true if the transaction is present in the database and read successfully
          *
          **/
-        bool ReadTx(const uint512_t& hash, CWalletTx& wtx);
+        bool ReadTx(const uint512_t& hash, WalletTx& wtx);
 
 
         /** WriteTx
@@ -374,7 +374,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteTx(const uint512_t& hash, const CWalletTx& wtx);
+        bool WriteTx(const uint512_t& hash, const WalletTx& wtx);
 
 
         /** EraseTx
@@ -513,7 +513,7 @@ namespace Legacy
          *  @return Value from Legacy::DBErrors, DB_LOAD_OK on success
          *
          **/
-        uint32_t LoadWallet(CWallet& wallet);
+        uint32_t LoadWallet(Wallet& wallet);
 
 
          /** @fn ThreadFlushWalletDB
@@ -545,7 +545,7 @@ namespace Legacy
          *  @return true if backup file successfully written
          *
          **/
-        static bool BackupWallet(const CWallet& wallet, const std::string& strDest);
+        static bool BackupWallet(const Wallet& wallet, const std::string& strDest);
 
     private:
         /** mutex to provide synchronized access on mutable methods **/

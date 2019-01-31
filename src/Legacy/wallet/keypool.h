@@ -24,8 +24,8 @@ namespace Legacy
 
     /* forward declarations */    
     class CKeyPoolEntry;
-    class CWallet;
-    class CWalletDB;
+    class Wallet;
+    class WalletDB;
 
 
     /** @class CKeyPool
@@ -51,7 +51,7 @@ namespace Legacy
      **/
     class CKeyPool
     {
-        friend class CWalletDB;
+        friend class WalletDB;
         
 
     public:
@@ -66,7 +66,7 @@ namespace Legacy
     private:
         /** Mutex for thread concurrency. 
          *
-         *  Static because having instance-specific mutex causes move constructor (used in CWallet initialization) to be deleted.
+         *  Static because having instance-specific mutex causes move constructor (used in Wallet initialization) to be deleted.
          *  We really only use one CKeyPool so no problem simply sharing one mutex within the class.
          *  
          **/
@@ -82,7 +82,7 @@ namespace Legacy
 
 
         /** The wallet containing this key pool **/
-        CWallet& poolWallet;
+        Wallet& poolWallet;
 
 
     public:
@@ -93,7 +93,7 @@ namespace Legacy
          *  @param[in] walletIn The wallet containing this key pool
          *
          **/
-        CKeyPool(CWallet& walletIn)
+        CKeyPool(Wallet& walletIn)
         : setKeyPool()
         , poolWallet(walletIn)
         {
@@ -142,7 +142,7 @@ namespace Legacy
         /** AddKey
          *
          *  Manually adds a key pool entry. This only adds the entry to the pool.
-         *  If used, a separate call to CWallet::GenerateNewKey is required to
+         *  If used, a separate call to Wallet::GenerateNewKey is required to
          *  create the key and record the private key in the wallet database. 
          *  Otherwise the key pool entry added here is useless.
          *

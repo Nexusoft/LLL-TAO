@@ -112,12 +112,12 @@ int main(int argc, char** argv)
 
     /** Load the Wallet Database. **/
     bool fFirstRun;
-    if (!Legacy::CWallet::InitializeWallet(config::GetArg("-wallet", Legacy::CWalletDB::DEFAULT_WALLET_DB)))
+    if (!Legacy::Wallet::InitializeWallet(config::GetArg("-wallet", Legacy::WalletDB::DEFAULT_WALLET_DB)))
         return debug::error("failed initializing wallet");
 
 
     /** Check the wallet loading for errors. **/
-    uint32_t nLoadWalletRet = Legacy::CWallet::GetInstance().LoadWallet(fFirstRun);
+    uint32_t nLoadWalletRet = Legacy::Wallet::GetInstance().LoadWallet(fFirstRun);
     if (nLoadWalletRet != Legacy::DB_LOAD_OK)
     {
         if (nLoadWalletRet == Legacy::DB_CORRUPT)
@@ -131,7 +131,7 @@ int main(int argc, char** argv)
     }
 
     /** Rebroadcast transactions. **/
-    Legacy::CWallet::GetInstance().ResendWalletTransactions();
+    Legacy::Wallet::GetInstance().ResendWalletTransactions();
 
 
     /** Initialize ChainState. */
@@ -144,7 +144,7 @@ int main(int argc, char** argv)
 
     /** Handle Rescanning. **/
     if(config::GetBoolArg("-rescan"))
-        Legacy::CWallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
+        Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
 
     /** Ensure the block height index is intact **/
     if(config::GetBoolArg("-indexheight"))
@@ -155,6 +155,7 @@ int main(int argc, char** argv)
         if(!LLD::legDB->ReadBlock(TAO::Ledger::ChainState::stateBest.nHeight, state))
              LLD::legDB->RepairIndexHeight();
     }
+
 
 
     if(!config::GetBoolArg("-legacy"))

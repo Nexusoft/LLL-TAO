@@ -146,7 +146,7 @@ namespace LLP
                 PushMessage("ping", nSessionID);
 
                 /* Rebroadcast transactions. */
-                Legacy::CWallet::GetInstance().ResendWalletTransactions();
+                Legacy::Wallet::GetInstance().ResendWalletTransactions();
             }
 
             //TODO: mapRequests data, if no response given retry the request at given times
@@ -448,7 +448,14 @@ namespace LLP
                 return true;
 
             /* Accept to memory pool. */
-            TAO::Ledger::mempool.Accept(tx);
+            TAO::Ledger::BlockState notUsed;
+            if (TAO::Ledger::mempool.Accept(tx))
+            {
+                Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
+
+                std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX) };
+                LEGACY_SERVER->Relay("inv", vInv);
+            }
         }
 
 

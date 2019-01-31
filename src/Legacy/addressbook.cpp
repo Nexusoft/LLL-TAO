@@ -39,7 +39,7 @@ namespace Legacy
 
             if (addressBookWallet.IsFileBacked())
             {
-                CWalletDB walletdb(addressBookWallet.GetWalletFile());
+                WalletDB walletdb(addressBookWallet.GetWalletFile());
 
                 if (!walletdb.WriteName(address.ToString(), strName))
                     return debug::error(FUNCTION, "Failed writing address book entry");
@@ -62,7 +62,7 @@ namespace Legacy
 
             if (addressBookWallet.IsFileBacked())
             {
-                CWalletDB walletdb(addressBookWallet.GetWalletFile());
+                WalletDB walletdb(addressBookWallet.GetWalletFile());
 
                 if (!walletdb.EraseName(address.ToString()))
                     throw std::runtime_error("CAddressBook::DelAddressBookName() : removing address book entry failed");
@@ -84,7 +84,7 @@ namespace Legacy
 
             for (const auto& item : addressBookWallet.mapWallet)
             {
-                const CWalletTx& walletTx = item.second;
+                const WalletTx& walletTx = item.second;
 
                 /* Filter any transaction output with timestamp exceeding requested spend time */
                 if (walletTx.nTime > nSpendTime)
@@ -141,7 +141,7 @@ namespace Legacy
 
             for (const auto& item : addressBookWallet.mapWallet)
             {
-                const CWalletTx& walletTx = item.second;
+                const WalletTx& walletTx = item.second;
 
                 if (!walletTx.IsFinal())
                     continue;
@@ -211,11 +211,11 @@ namespace Legacy
             {
                 Legacy::CScript scriptPubKey;
                 scriptPubKey.SetNexusAddress(address);
-                for (std::map<uint512_t, Legacy::CWalletTx>::iterator it = Legacy::CWallet::GetInstance().mapWallet.begin();
-                        it != Legacy::CWallet::GetInstance().mapWallet.end() && !fKeyUsed;
+                for (std::map<uint512_t, Legacy::WalletTx>::iterator it = Legacy::Wallet::GetInstance().mapWallet.begin();
+                        it != Legacy::Wallet::GetInstance().mapWallet.end() && !fKeyUsed;
                         ++it)
                 {
-                    const Legacy::CWalletTx& wtx = (*it).second;
+                    const Legacy::WalletTx& wtx = (*it).second;
                     for(const Legacy::CTxOut& txout : wtx.vout)
                         if (txout.scriptPubKey == scriptPubKey)
                         {
@@ -231,7 +231,7 @@ namespace Legacy
         {
             std::vector<uint8_t> vchPubKey;
 
-            if (!Legacy::CWallet::GetInstance().GetKeyPool().GetKeyFromPool(vchPubKey, false))
+            if (!Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vchPubKey, false))
                 throw std::runtime_error("Error: Keypool ran out, please call keypoolrefill first");
 
             address = Legacy::NexusAddress(vchPubKey);
