@@ -78,6 +78,9 @@ int main(int argc, char** argv)
     /* Read the configuration file. */
     config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
 
+    /* Once we have read in the CLI paramters and config file, cache the args into global variables*/
+    config::CacheArgs();
+
 
     /* Handle Commandline switch */
     for (int i = 1; i < argc; ++i)
