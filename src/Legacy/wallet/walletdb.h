@@ -30,10 +30,10 @@ namespace Legacy
 
     /* forward declarations */
     class CScript;
-    class CAccount;
-    class CAccountingEntry;
-    class CKeyPoolEntry;
-    class CMasterKey;
+    class Account;
+    class AccountingEntry;
+    class KeyPoolEntry;
+    class MasterKey;
     class Wallet;
     class WalletTx;
 
@@ -71,7 +71,7 @@ namespace Legacy
      *    - "acentry"<account><counter> = accounting entry (credit/debit) associated with an account/Nexus address
      *
      **/
-    class WalletDB : public CDB
+    class WalletDB : public BerkeleyDB
     {
     public:
         /** Defines default name of wallet database file **/
@@ -112,11 +112,11 @@ namespace Legacy
          *                     defaults to r+ (read and append). An empty or null string is
          *                     equivalent to read only.
          *
-         *  @see CDB for modes
+         *  @see BerkeleyDB for modes
          *
          **/
         WalletDB(const char* pszMode="r+")
-        : CDB(WalletDB::DEFAULT_WALLET_DB, pszMode)
+        : BerkeleyDB(WalletDB::DEFAULT_WALLET_DB, pszMode)
         { }
 
 
@@ -131,11 +131,11 @@ namespace Legacy
          *                     defaults to r+ (read and append). An empty or null string is
          *                     equivalent to read only.
          *
-         *  @see CDB for modes
+         *  @see BerkeleyDB for modes
          *
          **/
         WalletDB(const std::string& strFileName, const char* pszMode="r+")
-        : CDB(strFileName, pszMode)
+        : BerkeleyDB(strFileName, pszMode)
         { }
 
 
@@ -162,16 +162,16 @@ namespace Legacy
          *  Master key settings should be populated with encryption settings and encrypted key value
          *  before calling this method. The general process looks like this:
          *
-         *    - Create CCrypter
-         *    - Create CMasterKey
-         *    - Populate CMasterKey values for salt, derivation method, number of iterations
-         *    - Call CCrypter::SetKeyFromPassphrase to configure encryption context in the crypter
-         *    - Call CCrypter::Encrypt to encrypt the master key value into the CMasterKey vchCryptedKey
+         *    - Create Crypter
+         *    - Create MasterKey
+         *    - Populate MasterKey values for salt, derivation method, number of iterations
+         *    - Call Crypter::SetKeyFromPassphrase to configure encryption context in the crypter
+         *    - Call Crypter::Encrypt to encrypt the master key value into the MasterKey vchCryptedKey
          *    - Call this method to write the encrypted key into the wallet database
          *
-         *  @see CCrypter::SetKeyFromPassphrase
-         *  @see CCrypter::Encrypt
-         *  @see CMasterKey
+         *  @see Crypter::SetKeyFromPassphrase
+         *  @see Crypter::Encrypt
+         *  @see MasterKey
          *
          *  @param[in] nMasterKeyId The key Id to identify a particuler master key entry.
          *
@@ -180,7 +180,7 @@ namespace Legacy
          *  @return true if master key successfully written to wallet database
          *
          **/
-        bool WriteMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey);
+        bool WriteMasterKey(const uint32_t nMasterKeyId, const MasterKey& kMasterKey);
 
 
         /** ReadMinVersion
@@ -221,7 +221,7 @@ namespace Legacy
          *  @return true if account is present in the database and read successfully
          *
          **/
-        bool ReadAccount(const std::string& strAccount, CAccount& account);
+        bool ReadAccount(const std::string& strAccount, Account& account);
 
 
         /** WriteAccount
@@ -235,7 +235,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteAccount(const std::string& strAccount, const CAccount& account);
+        bool WriteAccount(const std::string& strAccount, const Account& account);
 
 
         /** ReadName
@@ -462,7 +462,7 @@ namespace Legacy
          *  @return true if the key pool entry is present in the database and read successfully
          *
          **/
-        bool ReadPool(const uint64_t nPool, CKeyPoolEntry& keypoolEntry);
+        bool ReadPool(const uint64_t nPool, KeyPoolEntry& keypoolEntry);
 
 
         /** WritePool
@@ -476,7 +476,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WritePool(const uint64_t nPool, const CKeyPoolEntry& keypoolEntry);
+        bool WritePool(const uint64_t nPool, const KeyPoolEntry& keypoolEntry);
 
 
         /** ErasePool
@@ -502,7 +502,7 @@ namespace Legacy
          *  @deprecated - accounting entries will no longer be used
          *
          **/
-        bool WriteAccountingEntry(const CAccountingEntry& acentry);
+        bool WriteAccountingEntry(const AccountingEntry& acentry);
 
 
         /** GetAccountCreditDebit
@@ -535,7 +535,7 @@ namespace Legacy
          *  @deprecated - accounting entries will no longer be used
          *
          **/
-        void ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& acentries);
+        void ListAccountCreditDebit(const std::string& strAccount, std::list<AccountingEntry>& acentries);
 
 
         /** LoadWallet

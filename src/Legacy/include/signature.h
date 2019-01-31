@@ -38,7 +38,7 @@ namespace Legacy
      *  @return true if the signature was created successfully.
      *
      **/
-    bool Sign1(const NexusAddress& address, const CKeyStore& keystore, uint256_t hash, int32_t nHashType, CScript& scriptSigRet);
+    bool Sign1(const NexusAddress& address, const KeyStore& keystore, uint256_t hash, int32_t nHashType, CScript& scriptSigRet);
 
 
     /** Sign N
@@ -54,7 +54,7 @@ namespace Legacy
      *  @return true if the signatures were created successfully.
      *
      **/
-    bool SignN(const std::vector< std::vector<uint8_t> >& multisigdata, const CKeyStore& keystore, uint256_t hash, int32_t nHashType, CScript& scriptSigRet);
+    bool SignN(const std::vector< std::vector<uint8_t> >& multisigdata, const KeyStore& keystore, uint256_t hash, int32_t nHashType, CScript& scriptSigRet);
 
 
     /** Signature Hash
@@ -102,7 +102,7 @@ namespace Legacy
      *  @return true if signature was generated successfully.
      *
      **/
-    bool SignSignature(const CKeyStore& keystore, const Transaction& txFrom, Transaction& txTo, uint32_t nIn, int32_t nHashType=SIGHASH_ALL);
+    bool SignSignature(const KeyStore& keystore, const Transaction& txFrom, Transaction& txTo, uint32_t nIn, int32_t nHashType=SIGHASH_ALL);
 
 
     /** Verify Signature

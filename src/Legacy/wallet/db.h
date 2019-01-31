@@ -30,17 +30,17 @@ namespace Legacy
 
     extern bool fDetachDB;
 
-    /** @class CDB
+    /** @class BerkeleyDB
      *
      *  Provides support for accessing Berkeley databases
      *
      **/
-    class CDB
+    class BerkeleyDB
     {
     public:
         /** Mutex for thread concurrency.
          *
-         *  Used to manage concurrency across CDB databases.
+         *  Used to manage concurrency across BerkeleyDB databases.
          */
         static std::mutex cs_db;
 
@@ -62,7 +62,7 @@ namespace Legacy
          *  string = file name
          *  uint32_t = usage count, value > 0 indicates database in use
          *
-         * A usage count >1 indicates that there are multiple CDB instances using the same pdb pointer from mapDb
+         * A usage count >1 indicates that there are multiple BerkeleyDB instances using the same pdb pointer from mapDb
          */
         static std::map<std::string, uint32_t> mapFileUseCount;
 
@@ -83,7 +83,7 @@ namespace Legacy
     protected:
         /* Instance data members */
 
-        /** Pointer to handle for a Berkeley database, for opening/accessing database underlying this CDB instance **/
+        /** Pointer to handle for a Berkeley database, for opening/accessing database underlying this BerkeleyDB instance **/
         Db* pdb;
 
 
@@ -121,7 +121,7 @@ namespace Legacy
          *                     equivalent to read only.
          *
          **/
-        explicit CDB(const char* pszFileIn, const char* pszMode="r+");
+        explicit BerkeleyDB(const char* pszFileIn, const char* pszMode="r+");
 
 
         /** Constructor
@@ -133,7 +133,7 @@ namespace Legacy
          *  @param[in] pszMode A string containing one or more access mode characters
          *
          **/
-        explicit CDB(const std::string& strFileIn, const char* pszMode="r+");
+        explicit BerkeleyDB(const std::string& strFileIn, const char* pszMode="r+");
 
 
         /** Destructor
@@ -141,7 +141,7 @@ namespace Legacy
          *  Calls Close() on the database
          *
          **/
-        virtual ~CDB();
+        virtual ~BerkeleyDB();
 
 
         /** Read
@@ -383,11 +383,11 @@ namespace Legacy
 
     public:
         /** Copy constructor deleted. No copy allowed **/
-        CDB(const CDB&) = delete;
+        BerkeleyDB(const BerkeleyDB&) = delete;
 
 
         /** Copy assignment operator deleted. No assignment allowed **/
-        CDB& operator= (const CDB&) = delete;
+        BerkeleyDB& operator= (const BerkeleyDB&) = delete;
 
 
         /** TxnBegin
@@ -450,10 +450,10 @@ namespace Legacy
          *
          *  Close this instance for database access.
          *  Aborts any open transactions, flushes memory to log file, sets pdb to nullptr,
-         *  and sets strFile to an empty string. At this point, the CDB instance can be safely destroyed.
+         *  and sets strFile to an empty string. At this point, the BerkeleyDB instance can be safely destroyed.
          *
-         *  This decrements CDB::mapFileUseCount but does not close the database handle,
-         *  which remains stored in CDB::mapDb. The handle will remain open until a call to CloseDb()
+         *  This decrements BerkeleyDB::mapFileUseCount but does not close the database handle,
+         *  which remains stored in BerkeleyDB::mapDb. The handle will remain open until a call to CloseDb()
          *  during DBFlush() or shutdown.  Until then, any new instances created for the same data file
          *  will re-use the open handle.
          *
@@ -463,14 +463,14 @@ namespace Legacy
 
         /** @fn CloseDb
          *
-         *  Closes down the open database handle for a database and removes it from CDB::mapDb
+         *  Closes down the open database handle for a database and removes it from BerkeleyDB::mapDb
          *
-         *  Should only be called when CDB::mapFileUseCount is 0 (after Close() called on any in-use
+         *  Should only be called when BerkeleyDB::mapFileUseCount is 0 (after Close() called on any in-use
          *  instances) or the pdb copy in active instances will become invalid and results of continued
          *  use are undefined.
          *
-         *  This method does not obtain a lock on CDB::cs_db, thus any methods calling it must first 
-         *  obtain that lock. This supports usage within methods that also require obtaining a CDB::cs_db 
+         *  This method does not obtain a lock on BerkeleyDB::cs_db, thus any methods calling it must first 
+         *  obtain that lock. This supports usage within methods that also require obtaining a BerkeleyDB::cs_db 
          *  lock for other purposes.
          *
          *  @param[in] strFile Database to close
@@ -481,7 +481,7 @@ namespace Legacy
 
         /** @fn DBFlush
          *
-         *  Flushes log file to data file for any database handles with CDB::mapFileUseCount = 0
+         *  Flushes log file to data file for any database handles with BerkeleyDB::mapFileUseCount = 0
          *  then calls CloseDb on that database.
          *
          *  @param[in] fShutdown Set true if shutdown in progress, calls EnvShutdown()
@@ -494,7 +494,7 @@ namespace Legacy
          *
          *  Rewrites a database file by copying all contents to an new file, then
          *  replacing the old file with the new one. Does nothing if
-         *  CDB::mapFileUseCount indicates the source file is in use.
+         *  BerkeleyDB::mapFileUseCount indicates the source file is in use.
          *
          *  @param[in] strFile The database file to rewrite
          *
@@ -508,12 +508,12 @@ namespace Legacy
 
         /** @fn EnvShutdown
          *
-         *  Called to shut down the Berkeley database environment in CDB:dbenv
+         *  Called to shut down the Berkeley database environment in BerkeleyDB:dbenv
          *
          *  Should be called on system shutdown. If called at any other time, invalidates
          *  any active database handles resulting in undefined behavior if they are used.
          *  Assuming there are no active database handles, shutting down the environment
-         *  when there is no system shutdown requires it to be re-initialized if a new CDB
+         *  when there is no system shutdown requires it to be re-initialized if a new BerkeleyDB
          *  instance is later constructed. This is costly and should be avoided.
          *
          **/

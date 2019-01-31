@@ -33,20 +33,20 @@ namespace Legacy
     bool fDetachDB = false;
 
     /* Initialization for class static variables */
-    DbEnv CDB::dbenv((uint32_t)0);
+    DbEnv BerkeleyDB::dbenv((uint32_t)0);
 
-    bool CDB::fDbEnvInit = false;
+    bool BerkeleyDB::fDbEnvInit = false;
 
-    std::map<std::string, uint32_t> CDB::mapFileUseCount; //initializes empty map
+    std::map<std::string, uint32_t> BerkeleyDB::mapFileUseCount; //initializes empty map
 
-    std::map<std::string, Db*> CDB::mapDb;  //initializes empty map
+    std::map<std::string, Db*> BerkeleyDB::mapDb;  //initializes empty map
 
-    std::mutex CDB::cs_db; //initializes the mutex
+    std::mutex BerkeleyDB::cs_db; //initializes the mutex
 
 
     /* Constructor */
     /* Initializes database environment on first use */
-    CDB::CDB(const char *pszFileIn, const char* pszMode)
+    BerkeleyDB::BerkeleyDB(const char *pszFileIn, const char* pszMode)
     : pdb(nullptr)
     , strFile()
     , vTxn()
@@ -66,7 +66,7 @@ namespace Legacy
 
     /* Constructor */
     /* Initializes database environment on first use */
-    CDB::CDB(const std::string& strFileIn, const char* pszMode)
+    BerkeleyDB::BerkeleyDB(const std::string& strFileIn, const char* pszMode)
     : pdb(nullptr)
     , strFile()
     , vTxn()
@@ -83,22 +83,22 @@ namespace Legacy
 
 
     /* Destructor */
-    CDB::~CDB()
+    BerkeleyDB::~BerkeleyDB()
     {
         Close();
     }
 
 
     /* Performs work of initialization for constructors. */
-    void CDB::Init(const std::string& strFileIn, const char* pszMode)
+    void BerkeleyDB::Init(const std::string& strFileIn, const char* pszMode)
     {
         int32_t ret;
 
-        LOCK(CDB::cs_db); // Need to lock before test fDbEnvInit
+        LOCK(BerkeleyDB::cs_db); // Need to lock before test fDbEnvInit
 
-        if (!CDB::fDbEnvInit)
+        if (!BerkeleyDB::fDbEnvInit)
         {
-            /* Need to initialize database environment. This is only done once upon construction of the first CDB instance */
+            /* Need to initialize database environment. This is only done once upon construction of the first BerkeleyDB instance */
             if (config::fShutdown)
                 return;
 
@@ -111,16 +111,16 @@ namespace Legacy
 
             uint32_t nDbCache = config::GetArg("-dbcache", 25);
 
-            CDB::dbenv.set_lg_dir(pathLogDir.c_str());
-            CDB::dbenv.set_cachesize(nDbCache / 1024, (nDbCache % 1024)*1048576, 1);
-            CDB::dbenv.set_lg_bsize(1048576);
-            CDB::dbenv.set_lg_max(10485760);
-            CDB::dbenv.set_lk_max_locks(10000);
-            CDB::dbenv.set_lk_max_objects(10000);
-            //CDB::dbenv.set_errfile(fopen(pathErrorFile.c_str(), "a")); /// debug
-            CDB::dbenv.set_flags(DB_TXN_WRITE_NOSYNC, 1);
-            CDB::dbenv.set_flags(DB_AUTO_COMMIT, 1);
-            CDB::dbenv.log_set_config(DB_LOG_AUTO_REMOVE, 1);
+            BerkeleyDB::dbenv.set_lg_dir(pathLogDir.c_str());
+            BerkeleyDB::dbenv.set_cachesize(nDbCache / 1024, (nDbCache % 1024)*1048576, 1);
+            BerkeleyDB::dbenv.set_lg_bsize(1048576);
+            BerkeleyDB::dbenv.set_lg_max(10485760);
+            BerkeleyDB::dbenv.set_lk_max_locks(10000);
+            BerkeleyDB::dbenv.set_lk_max_objects(10000);
+            //BerkeleyDB::dbenv.set_errfile(fopen(pathErrorFile.c_str(), "a")); /// debug
+            BerkeleyDB::dbenv.set_flags(DB_TXN_WRITE_NOSYNC, 1);
+            BerkeleyDB::dbenv.set_flags(DB_AUTO_COMMIT, 1);
+            BerkeleyDB::dbenv.log_set_config(DB_LOG_AUTO_REMOVE, 1);
 
             /* Flags to enable dbenv subsystems
              * DB_CREATE     - Create underlying files, as needed (required when DB_RECOVER present)
@@ -154,24 +154,24 @@ namespace Legacy
 #endif
 
             /* Open the Berkely DB environment */
-            ret = CDB::dbenv.open(pathDataDir.c_str(), dbFlags, dbMode);
+            ret = BerkeleyDB::dbenv.open(pathDataDir.c_str(), dbFlags, dbMode);
 
             if (ret > 0)
                 throw std::runtime_error(debug::strprintf(FUNCTION, "Error %d initializing Berkeley database environment", ret));
 
-            CDB::fDbEnvInit = true;
+            BerkeleyDB::fDbEnvInit = true;
 
             debug::log(0, FUNCTION, "Initialized Legacy Berkeley database environment");
         }
 
-        /* Initialize current CDB instance */
+        /* Initialize current BerkeleyDB instance */
         strFile = strFileIn;
 
         /* Usage count will be incremented whether we use pdb from mapDb or open a new one */
-        if (CDB::mapFileUseCount.count(strFile) == 0)
-            CDB::mapFileUseCount[strFile] = 1;
+        if (BerkeleyDB::mapFileUseCount.count(strFile) == 0)
+            BerkeleyDB::mapFileUseCount[strFile] = 1;
         else
-            ++CDB::mapFileUseCount[strFile];
+            ++BerkeleyDB::mapFileUseCount[strFile];
 
         /* Extract mode settings */
         bool fCreate = (strchr(pszMode, 'c') != nullptr);
@@ -181,15 +181,15 @@ namespace Legacy
         /* Set database read-only if not write or append mode */
         fReadOnly = !(fWrite || fAppend);
 
-        if (CDB::mapDb.count(strFile) > 0)
+        if (BerkeleyDB::mapDb.count(strFile) > 0)
         {
             /* mapDb contains entry for strFile, so database is already open */
-            pdb = CDB::mapDb[strFile];
+            pdb = BerkeleyDB::mapDb[strFile];
         }
         else
         {
             /* Database not already open, so open it now */
-            pdb = new Db(&CDB::dbenv, 0);
+            pdb = new Db(&BerkeleyDB::dbenv, 0);
 
             /* Opened database will support multi-threaded access */
             uint32_t fOpenFlags = DB_THREAD;
@@ -207,7 +207,7 @@ namespace Legacy
             if (ret == 0)
             {
                 /* Database opened successfully. Add database to open database map */
-                CDB::mapDb[strFile] = pdb;
+                BerkeleyDB::mapDb[strFile] = pdb;
 
                 if (fCreate && !Exists(std::string("version")))
                 {
@@ -227,7 +227,7 @@ namespace Legacy
                 pdb = nullptr;
                 strFile = "";
 
-                --CDB::mapFileUseCount[strFile];
+                --BerkeleyDB::mapFileUseCount[strFile];
 
                 throw std::runtime_error(debug::strprintf(FUNCTION, "Cannot open database file %s, error %d", strFile.c_str(), ret));
             }
@@ -237,7 +237,7 @@ namespace Legacy
 
 
     /* Open a cursor at the beginning of the database. */
-    Dbc* CDB::GetCursor()
+    Dbc* BerkeleyDB::GetCursor()
     {
         if (pdb == nullptr)
             return nullptr;
@@ -254,7 +254,7 @@ namespace Legacy
 
 
     /* Read a database key-value pair from the current cursor location. */
-    int32_t CDB::ReadAtCursor(Dbc* pcursor, DataStream& ssKey, DataStream& ssValue, uint32_t fFlags)
+    int32_t BerkeleyDB::ReadAtCursor(Dbc* pcursor, DataStream& ssKey, DataStream& ssValue, uint32_t fFlags)
     {
         /* Key - Initialize with argument data for flag settings that need it */
         Dbt datKey;
@@ -306,7 +306,7 @@ namespace Legacy
 
 
     /* Closes and discards a cursor. After calling this method, the cursor is no longer valid for use. */
-    void CDB::CloseCursor(Dbc* pcursor)
+    void BerkeleyDB::CloseCursor(Dbc* pcursor)
     {
         if (pdb == nullptr)
             return;
@@ -318,7 +318,7 @@ namespace Legacy
 
 
     /*  Retrieves the most recently started database transaction. */
-    DbTxn* CDB::GetTxn()
+    DbTxn* BerkeleyDB::GetTxn()
     {
         if (!vTxn.empty())
             return vTxn.back();
@@ -328,7 +328,7 @@ namespace Legacy
 
 
     /* Start a new database transaction and add it to vTxn */
-    bool CDB::TxnBegin()
+    bool BerkeleyDB::TxnBegin()
     {
         if (pdb == nullptr)
             return false;
@@ -337,7 +337,7 @@ namespace Legacy
         DbTxn* pTxn = nullptr;
 
         /* Begin new transaction */
-        int32_t ret = CDB::dbenv.txn_begin(GetTxn(), &pTxn, DB_TXN_WRITE_NOSYNC);
+        int32_t ret = BerkeleyDB::dbenv.txn_begin(GetTxn(), &pTxn, DB_TXN_WRITE_NOSYNC);
 
         if (pTxn == nullptr || ret != 0)
             return false;
@@ -350,7 +350,7 @@ namespace Legacy
 
 
     /* Commit the transaction most recently added to vTxn */
-    bool CDB::TxnCommit()
+    bool BerkeleyDB::TxnCommit()
     {
         if (pdb == nullptr)
             return false;
@@ -369,7 +369,7 @@ namespace Legacy
 
 
     /* Abort the transaction most recently added to vTxn, reversing any updates performed. */
-    bool CDB::TxnAbort()
+    bool BerkeleyDB::TxnAbort()
     {
         if (pdb == nullptr)
             return false;
@@ -388,7 +388,7 @@ namespace Legacy
 
 
     /* Read the current value for key "version" from the database */
-    bool CDB::ReadVersion(uint32_t& nVersion)
+    bool BerkeleyDB::ReadVersion(uint32_t& nVersion)
     {
         nVersion = 0;
         return Read(std::string("version"), nVersion);
@@ -396,14 +396,14 @@ namespace Legacy
 
 
     /* Writes a number into the database using the key "version". */
-    bool CDB::WriteVersion(const uint32_t nVersion)
+    bool BerkeleyDB::WriteVersion(const uint32_t nVersion)
     {
         return Write(std::string("version"), nVersion);
     }
 
 
     /* Close this instance for database access. */
-    void CDB::Close()
+    void BerkeleyDB::Close()
     {
         if (pdb == nullptr)
             return;
@@ -422,11 +422,11 @@ namespace Legacy
         if (strFile == "addr.dat")
             nMinutes = 2;
 
-        CDB::dbenv.txn_checkpoint(nMinutes ? config::GetArg("-dblogsize", 100)*1024 : 0, nMinutes, 0);
+        BerkeleyDB::dbenv.txn_checkpoint(nMinutes ? config::GetArg("-dblogsize", 100)*1024 : 0, nMinutes, 0);
 
         {
-            LOCK(CDB::cs_db);
-            --CDB::mapFileUseCount[strFile];
+            LOCK(BerkeleyDB::cs_db);
+            --BerkeleyDB::mapFileUseCount[strFile];
         }
 
         //delete pdb; //Don't delete here, pointer is stored in mapDb so handle can be reused. It is deleted in CloseDb()
@@ -436,39 +436,39 @@ namespace Legacy
     }
 
 
-    /* Closes down the open database handle for a database and removes it from CDB::mapDb */
-    void CDB::CloseDb(const std::string& strFile)
+    /* Closes down the open database handle for a database and removes it from BerkeleyDB::mapDb */
+    void BerkeleyDB::CloseDb(const std::string& strFile)
     {
-        /* Does not LOCK(CDB::cd_db) -- this lock must be previously obtained before calling this methods */
+        /* Does not LOCK(BerkeleyDB::cd_db) -- this lock must be previously obtained before calling this methods */
 
-        if (CDB::mapDb.count(strFile) > 0 && CDB::mapDb[strFile] != nullptr)
+        if (BerkeleyDB::mapDb.count(strFile) > 0 && BerkeleyDB::mapDb[strFile] != nullptr)
         {
             /* Close the database handle */
-            auto pdb = CDB::mapDb[strFile];
+            auto pdb = BerkeleyDB::mapDb[strFile];
             pdb->close(0);
             delete pdb;
 
-            CDB::mapDb.erase(strFile);
+            BerkeleyDB::mapDb.erase(strFile);
         }
     }
 
 
-    /* Flushes log file to data file for any database handles with CDB::mapFileUseCount = 0
+    /* Flushes log file to data file for any database handles with BerkeleyDB::mapFileUseCount = 0
      * then calls CloseDb on that database.
      */
-    void CDB::DBFlush(bool fShutdown)
+    void BerkeleyDB::DBFlush(bool fShutdown)
     {
         /* Flush log data to the actual data file on all files that are not in use */
-        debug::log(0, FUNCTION, "Shutdown ", fShutdown ? "true" : "false", ")",  CDB::fDbEnvInit ? "" : " db not started");
+        debug::log(0, FUNCTION, "Shutdown ", fShutdown ? "true" : "false", ")",  BerkeleyDB::fDbEnvInit ? "" : " db not started");
 
         {
-            LOCK(CDB::cs_db);
+            LOCK(BerkeleyDB::cs_db);
 
-            if (!CDB::fDbEnvInit)
+            if (!BerkeleyDB::fDbEnvInit)
                 return;
 
             /* Copy mapFileUseCount so can erase without invalidating iterator */
-            std::map<std::string, uint32_t> mapTempUseCount = CDB::mapFileUseCount;
+            std::map<std::string, uint32_t> mapTempUseCount = BerkeleyDB::mapFileUseCount;
 
             for (auto mi = mapTempUseCount.cbegin(); mi != mapTempUseCount.cend(); mi++)
             {
@@ -479,18 +479,18 @@ namespace Legacy
 
                 if (nRefCount == 0)
                 {
-                    /* We have lock on CDB::cs_db so can call CloseDb safely */
+                    /* We have lock on BerkeleyDB::cs_db so can call CloseDb safely */
                     CloseDb(strFile);
 
                     /* Flush log data to the dat file and detach the file */
                     debug::log(2, FUNCTION, strFile, " checkpoint");
-                    CDB::dbenv.txn_checkpoint(0, 0, 0);
+                    BerkeleyDB::dbenv.txn_checkpoint(0, 0, 0);
 
                     debug::log(2, FUNCTION, strFile, " detach");
-                    CDB::dbenv.lsn_reset(strFile.c_str(), 0);
+                    BerkeleyDB::dbenv.lsn_reset(strFile.c_str(), 0);
 
                     debug::log(2, FUNCTION, strFile, " closed");
-                    CDB::mapFileUseCount.erase(strFile);
+                    BerkeleyDB::mapFileUseCount.erase(strFile);
                 }
             }
 
@@ -498,8 +498,8 @@ namespace Legacy
             {
                 char** listp;
 
-                if (CDB::mapFileUseCount.empty())
-                    CDB::dbenv.log_archive(&listp, DB_ARCH_REMOVE);
+                if (BerkeleyDB::mapFileUseCount.empty())
+                    BerkeleyDB::dbenv.log_archive(&listp, DB_ARCH_REMOVE);
             }
         }
 
@@ -512,7 +512,7 @@ namespace Legacy
 
 
     /* Rewrites a database file by copying all contents */
-    bool CDB::DBRewrite(const std::string& strFile, const char* pszSkip)
+    bool BerkeleyDB::DBRewrite(const std::string& strFile, const char* pszSkip)
     {
         if (config::fShutdown)
             return false;
@@ -525,32 +525,32 @@ namespace Legacy
 
         {
             /* Lock database access for full rewrite process.
-             * This process does not use a CDB instance and manually calls Berkeley methods
-             * to avoid use of locks within CDB itself. Adds work to do ReadAtCursor(), but
+             * This process does not use a BerkeleyDB instance and manually calls Berkeley methods
+             * to avoid use of locks within BerkeleyDB itself. Adds work to do ReadAtCursor(), but
              * allows a proper lock scope.
              */
-            LOCK(CDB::cs_db);
+            LOCK(BerkeleyDB::cs_db);
 
-            if (CDB::mapFileUseCount.count(strFile) != 0 && CDB::mapFileUseCount[strFile] != 0)
+            if (BerkeleyDB::mapFileUseCount.count(strFile) != 0 && BerkeleyDB::mapFileUseCount[strFile] != 0)
             {
                 /* Database file in use. Cannot rewrite */
                 return false;
             }
             else
             {
-                /* We have lock on CDB::cs_db so can call CloseDb safely */
+                /* We have lock on BerkeleyDB::cs_db so can call CloseDb safely */
                 CloseDb(strFile);
 
                 /* Flush log data to the dat file and detach the file */
-                CDB::dbenv.txn_checkpoint(0, 0, 0);
-                CDB::dbenv.lsn_reset(strFile.c_str(), 0);
-                CDB::mapFileUseCount.erase(strFile);
+                BerkeleyDB::dbenv.txn_checkpoint(0, 0, 0);
+                BerkeleyDB::dbenv.lsn_reset(strFile.c_str(), 0);
+                BerkeleyDB::mapFileUseCount.erase(strFile);
             }
 
             debug::log(0, FUNCTION, "Rewriting ", strFile.c_str(), "...");
 
-            Db* pdbSource = new Db(&CDB::dbenv, 0);
-            Db* pdbCopy = new Db(&CDB::dbenv, 0);
+            Db* pdbSource = new Db(&BerkeleyDB::dbenv, 0);
+            Db* pdbCopy = new Db(&BerkeleyDB::dbenv, 0);
 
             /* Open database handle to temp file */
             dbReturn = pdbSource->open(nullptr,              // Txn pointer
@@ -592,8 +592,8 @@ namespace Legacy
 
             while (fProcessSuccess)
             {
-                /* This section duplicates the process in CDB::ReadAtCursor without the need for a CDB instance
-                 * Code logic from CDB::ReadAtCursor that is not needed for this specific process is left out.
+                /* This section duplicates the process in BerkeleyDB::ReadAtCursor without the need for a BerkeleyDB instance
+                 * Code logic from BerkeleyDB::ReadAtCursor that is not needed for this specific process is left out.
                  */
                 DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
                 DataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
@@ -684,14 +684,14 @@ namespace Legacy
             delete pdbCopy;
 
             /* Flush log data to the dat files */
-            CDB::dbenv.txn_checkpoint(0, 0, 0);
-            CDB::dbenv.lsn_reset(strFile.c_str(), 0);
-            CDB::dbenv.lsn_reset(strFileRewrite.c_str(), 0);
+            BerkeleyDB::dbenv.txn_checkpoint(0, 0, 0);
+            BerkeleyDB::dbenv.lsn_reset(strFile.c_str(), 0);
+            BerkeleyDB::dbenv.lsn_reset(strFileRewrite.c_str(), 0);
 
             if (fProcessSuccess)
             {
                 /* Remove original database file */
-                Db dbOld(&CDB::dbenv, 0);
+                Db dbOld(&BerkeleyDB::dbenv, 0);
                 if (dbOld.remove(strFile.c_str(), nullptr, 0) != 0)
                 {
                     debug::log(0, FUNCTION, "Unable to remove old database file ", strFile.c_str());
@@ -702,7 +702,7 @@ namespace Legacy
             if (fProcessSuccess)
             {
                 /* Rename temp file to original file name */
-                Db dbNew(&CDB::dbenv, 0);
+                Db dbNew(&BerkeleyDB::dbenv, 0);
                 if (dbNew.rename(strFileRewrite.c_str(), nullptr, strFile.c_str(), 0) != 0)
                 {
                     debug::log(0, FUNCTION, "Unable to rename database file ", strFileRewrite.c_str(), " to ", strFile.c_str());
@@ -719,14 +719,14 @@ namespace Legacy
     }
 
 
-    /* Called to shut down the Berkeley database environment in CDB:dbenv */
-    void CDB::EnvShutdown()
+    /* Called to shut down the Berkeley database environment in BerkeleyDB:dbenv */
+    void BerkeleyDB::EnvShutdown()
     {
         {
             /* Lock database access before closing databases and shutting down environment */
-            LOCK(CDB::cs_db);
+            LOCK(BerkeleyDB::cs_db);
 
-            if (!CDB::fDbEnvInit)
+            if (!BerkeleyDB::fDbEnvInit)
                 return;
 
             debug::log(0, FUNCTION, "Shutting down Legacy Berkeley database environment");
@@ -743,14 +743,14 @@ namespace Legacy
             }
 
             for (auto& dbFile : dbFilesToClose)
-                CDB::CloseDb(dbFile);
+                BerkeleyDB::CloseDb(dbFile);
 
             /* Shut down the database environment */
-            CDB::fDbEnvInit = false;
+            BerkeleyDB::fDbEnvInit = false;
 
             try
             {
-                CDB::dbenv.close(0);
+                BerkeleyDB::dbenv.close(0);
             }
             catch (const DbException& e)
             {

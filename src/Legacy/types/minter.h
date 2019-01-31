@@ -199,7 +199,7 @@ namespace Legacy
 
 
         /** Thread for operating the stake minter **/
-        std::thread minterThread;
+        static std::thread minterThread; // Needs static or cannot copy instance returned from GetInstance()
 
 
         /** The wallet where the stake minter will operate. **/
@@ -211,7 +211,7 @@ namespace Legacy
 
 
         /** Reserved key to use for Genesis. nullptr when staking for Trust **/
-        CReserveKey* pReservedTrustKey;
+        ReserveKey* pReservedTrustKey;
 
 
         /** The candidate block that the stake minter is attempting to mine */
@@ -246,8 +246,7 @@ namespace Legacy
 
         /** Default constructor **/
         StakeMinter() 
-        : minterThread(StakeMinter::StakeMinterThread, this)
-        , pStakingWallet(nullptr)
+        : pStakingWallet(nullptr)
         , trustKey(TAO::Ledger::TrustKey())
         , pReservedTrustKey(nullptr)
         , candidateBlock(LegacyBlock())
@@ -258,6 +257,8 @@ namespace Legacy
         , nBlockWeight(0.0)
         , nStakeRate(0.0)
         {
+          StakeMinter::minterThread = std::thread(StakeMinter::StakeMinterThread, this);
+          StakeMinter::minterThread.detach();
         }
 
 

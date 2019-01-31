@@ -21,10 +21,10 @@ ________________________________________________________________________________
 
 namespace Legacy 
 {
-    /** @class CKeyPoolEntry
+    /** @class KeyPoolEntry
      *
      *  Defines the public key of a key pool entry.
-     *  The CKeyPoolEntry is written to the wallet database to store a pre-generated pool of 
+     *  The KeyPoolEntry is written to the wallet database to store a pre-generated pool of 
      *  available public keys for use by the wallet. The private keys corresponding to
      *  public keys in the key pool are not included. 
      *
@@ -33,7 +33,7 @@ namespace Legacy
      *
      *  Database key is pool<nPool> where nPool is the pool entry ID number
      **/
-    class CKeyPoolEntry
+    class KeyPoolEntry
     {
     public:
         /** timestamp when key pool entry created **/
@@ -48,7 +48,7 @@ namespace Legacy
          *  Initializes a key pool entry with an empty public key. 
          *
          **/
-        CKeyPoolEntry()
+        KeyPoolEntry()
         {
             nTime = runtime::unifiedtimestamp();
         }
@@ -61,7 +61,7 @@ namespace Legacy
          *  @param[in] vchPubKeyIn The public key to use for initialization
          *
          **/
-        CKeyPoolEntry(const std::vector<uint8_t>& vchPubKeyIn)
+        KeyPoolEntry(const std::vector<uint8_t>& vchPubKeyIn)
         {
             nTime = runtime::unifiedtimestamp();
             vchPubKey = vchPubKeyIn;

@@ -19,7 +19,7 @@ namespace Legacy
 {
 
     /*  Add a key to the key store. */
-    bool CBasicKeyStore::AddKey(const LLC::ECKey& key)
+    bool BasicKeyStore::AddKey(const LLC::ECKey& key)
     {
         bool fCompressed = false;
         LLC::CSecret secret = key.GetSecret(fCompressed);
@@ -32,7 +32,7 @@ namespace Legacy
 
 
     /*  Retrieve a key from the key store. */
-    bool CBasicKeyStore::GetKey(const NexusAddress& address, LLC::ECKey &keyOut) const
+    bool BasicKeyStore::GetKey(const NexusAddress& address, LLC::ECKey &keyOut) const
     {
         {
             LOCK(cs_basicKeyStore);
@@ -49,7 +49,7 @@ namespace Legacy
 
 
     /*  Retrieve the set of public addresses for all keys currently present in the key store. */
-    void CBasicKeyStore::GetKeys(std::set<NexusAddress>& setAddress) const
+    void BasicKeyStore::GetKeys(std::set<NexusAddress>& setAddress) const
     {
         setAddress.clear();
         {
@@ -65,7 +65,7 @@ namespace Legacy
 
 
     /*  Check whether a key corresponding to a given address is present in the store. */
-    bool CBasicKeyStore::HaveKey(const NexusAddress& address) const
+    bool BasicKeyStore::HaveKey(const NexusAddress& address) const
     {
         bool result;
         {
@@ -77,7 +77,7 @@ namespace Legacy
 
 
     /*  Add a script to the key store. */
-    bool CBasicKeyStore::AddCScript(const CScript& redeemScript)
+    bool BasicKeyStore::AddCScript(const CScript& redeemScript)
     {
         {
             LOCK(cs_basicKeyStore);
@@ -88,7 +88,7 @@ namespace Legacy
 
 
     /*  Retrieve a script from the key store. */
-    bool CBasicKeyStore::GetCScript(const uint256_t& hash, CScript& redeemScriptOut) const
+    bool BasicKeyStore::GetCScript(const uint256_t& hash, CScript& redeemScriptOut) const
     {
         {
             LOCK(cs_basicKeyStore);
@@ -104,7 +104,7 @@ namespace Legacy
 
 
     /*  Check whether a script is present in the store. */
-    bool CBasicKeyStore::HaveCScript(const uint256_t& hash) const
+    bool BasicKeyStore::HaveCScript(const uint256_t& hash) const
     {
         bool result;
         {

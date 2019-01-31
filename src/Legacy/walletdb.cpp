@@ -50,7 +50,7 @@ namespace Legacy
 
 
     /* Stores an encrypted master key into the database. */
-    bool WalletDB::WriteMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey)
+    bool WalletDB::WriteMasterKey(const uint32_t nMasterKeyId, const MasterKey& kMasterKey)
     {
         LOCK(WalletDB::cs_walletdb);
         WalletDB::nWalletDBUpdated++;
@@ -76,7 +76,7 @@ namespace Legacy
 
 
     /* Reads the wallet account data associated with an account (Nexus address). */
-    bool WalletDB::ReadAccount(const std::string& strAccount, CAccount& account)
+    bool WalletDB::ReadAccount(const std::string& strAccount, Account& account)
     {
         LOCK(WalletDB::cs_walletdb);
         account.SetNull();
@@ -85,7 +85,7 @@ namespace Legacy
 
 
     /* Stores the wallet account data for an address in the database. */
-    bool WalletDB::WriteAccount(const std::string& strAccount, const CAccount& account)
+    bool WalletDB::WriteAccount(const std::string& strAccount, const Account& account)
     {
         LOCK(WalletDB::cs_walletdb);
         WalletDB::nWalletDBUpdated++;
@@ -245,7 +245,7 @@ namespace Legacy
 
 
     /* Reads a key pool entry from the database. */
-    bool WalletDB::ReadPool(const uint64_t nPool, CKeyPoolEntry& keypoolEntry)
+    bool WalletDB::ReadPool(const uint64_t nPool, KeyPoolEntry& keypoolEntry)
     {
         LOCK(WalletDB::cs_walletdb);
         return Read(std::make_pair(std::string("pool"), nPool), keypoolEntry);
@@ -253,7 +253,7 @@ namespace Legacy
 
 
     /* Stores a key pool entry using its pool entry number (ID value). */
-    bool WalletDB::WritePool(const uint64_t nPool, const CKeyPoolEntry& keypoolEntry)
+    bool WalletDB::WritePool(const uint64_t nPool, const KeyPoolEntry& keypoolEntry)
     {
         LOCK(WalletDB::cs_walletdb);
         WalletDB::nWalletDBUpdated++;
@@ -271,7 +271,7 @@ namespace Legacy
 
 
     /* Stores an accounting entry in the wallet database. */
-    bool WalletDB::WriteAccountingEntry(const CAccountingEntry& acentry)
+    bool WalletDB::WriteAccountingEntry(const AccountingEntry& acentry)
     {
         LOCK(WalletDB::cs_walletdb);
         return Write(std::make_tuple(std::string("acentry"), acentry.strAccount, ++WalletDB::nAccountingEntryNumber), acentry);
@@ -281,11 +281,11 @@ namespace Legacy
     /* Retrieves the net total of all accounting entries for an account (Nexus address). */
     int64_t WalletDB::GetAccountCreditDebit(const std::string& strAccount)
     {
-        std::list<CAccountingEntry> entries;
+        std::list<AccountingEntry> entries;
         ListAccountCreditDebit(strAccount, entries);
 
         int64_t nCreditDebitTotal = 0;
-        for(CAccountingEntry& entry : entries)
+        for(AccountingEntry& entry : entries)
             nCreditDebitTotal += entry.nCreditDebit;
 
         return nCreditDebitTotal;
@@ -293,7 +293,7 @@ namespace Legacy
 
 
     /* Retrieves a list of individual accounting entries for an account (Nexus address) */
-    void WalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& entries)
+    void WalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<AccountingEntry>& entries)
     {
         LOCK(WalletDB::cs_walletdb);
         bool fAllAccounts = (strAccount == "*");
@@ -340,7 +340,7 @@ namespace Legacy
             if (strType != "acentry")
                 break; // Read an entry with a different key type (finished with read)
 
-            CAccountingEntry acentry;
+            AccountingEntry acentry;
             ssKey >> acentry.strAccount;
             if (!fAllAccounts && acentry.strAccount != strAccount)
                 break; // Read an entry for a different account (finished with read)
@@ -475,13 +475,13 @@ namespace Legacy
                     /* Wallet master key */
                     uint32_t nMasterKeyId;
                     ssKey >> nMasterKeyId;
-                    CMasterKey kMasterKey;
+                    MasterKey kMasterKey;
                     ssValue >> kMasterKey;
 
                     /* Load the master key into the wallet */
                     if (!wallet.LoadMasterKey(nMasterKeyId, kMasterKey))
                     {
-                        debug::error(FUNCTION, "Error reading wallet database: duplicate CMasterKey id ", nMasterKeyId);
+                        debug::error(FUNCTION, "Error reading wallet database: duplicate MasterKey id ", nMasterKeyId);
                         return DB_CORRUPT;
                     }
 
@@ -689,13 +689,13 @@ namespace Legacy
             if (nLastFlushed != WalletDB::nWalletDBUpdated && (runtime::unifiedtimestamp() - nLastWalletUpdate) >= minTimeSinceLastUpdate)
             {
                 /* Try to lock but don't wait for it. Skip this iteration if fail to get lock. */
-                if (CDB::cs_db.try_lock())
+                if (BerkeleyDB::cs_db.try_lock())
                 {
                     /* Check ref count and skip flush attempt if any databases are in use (have an open file handle indicated by usage map count > 0) */
                     uint32_t nRefCount = 0;
-                    auto mi = CDB::mapFileUseCount.cbegin();
+                    auto mi = BerkeleyDB::mapFileUseCount.cbegin();
 
-                    while (mi != CDB::mapFileUseCount.cend())
+                    while (mi != BerkeleyDB::mapFileUseCount.cend())
                     {
                         /* Calculate total of all ref counts in map. This will be zero if no databases in use, non-zero if any are. */
                         nRefCount += (*mi).second;
@@ -708,24 +708,24 @@ namespace Legacy
                          * An entry in mapFileUseCount verifies that this particular wallet file has been used at some point, so it will be flushed.
                          * Should also never have an entry in mapFileUseCount if dbenv is not initialized, but it is checked to be sure.
                          */
-                        auto mi = CDB::mapFileUseCount.find(strWalletFile);
-                        if (CDB::fDbEnvInit && mi != CDB::mapFileUseCount.end())
+                        auto mi = BerkeleyDB::mapFileUseCount.find(strWalletFile);
+                        if (BerkeleyDB::fDbEnvInit && mi != BerkeleyDB::mapFileUseCount.end())
                         {
                             debug::log(0, FUNCTION, DateTimeStrFormat(runtime::unifiedtimestamp()), " Flushing ", strWalletFile);
                             nLastFlushed = WalletDB::nWalletDBUpdated;
                             int64_t nStart = runtime::timestamp(true);
 
                             /* Flush wallet file so it's self contained */
-                            CDB::CloseDb(strWalletFile);
-                            CDB::dbenv.txn_checkpoint(0, 0, 0);
-                            CDB::dbenv.lsn_reset(strWalletFile.c_str(), 0);
+                            BerkeleyDB::CloseDb(strWalletFile);
+                            BerkeleyDB::dbenv.txn_checkpoint(0, 0, 0);
+                            BerkeleyDB::dbenv.lsn_reset(strWalletFile.c_str(), 0);
 
-                            CDB::mapFileUseCount.erase(mi++);
+                            BerkeleyDB::mapFileUseCount.erase(mi++);
                             debug::log(0, FUNCTION, "Flushed ", strWalletFile, " in ", runtime::timestamp(true) - nStart, " ms");
                         }
                     }
 
-                    CDB::cs_db.unlock();
+                    BerkeleyDB::cs_db.unlock();
                 }
             }
         }
@@ -734,7 +734,7 @@ namespace Legacy
 
         /* Should be shutdown if get here, so this thread can shutdown database environment */
         if (config::fShutdown)
-            CDB::EnvShutdown();
+            BerkeleyDB::EnvShutdown();
     }
 
 
@@ -760,18 +760,18 @@ namespace Legacy
         while (!config::fShutdown)
         {
             {
-                LOCK(CDB::cs_db);
+                LOCK(BerkeleyDB::cs_db);
 
                 std::string strSource = wallet.GetWalletFile();
 
                 /* If wallet database is in use, will wait and repeat loop until it becomes available */
-                if (CDB::mapFileUseCount.count(strSource) == 0 || CDB::mapFileUseCount[strSource] == 0)
+                if (BerkeleyDB::mapFileUseCount.count(strSource) == 0 || BerkeleyDB::mapFileUseCount[strSource] == 0)
                 {
                     /* Flush log data to the dat file */
-                    CDB::CloseDb(strSource);
-                    CDB::dbenv.txn_checkpoint(0, 0, 0);
-                    CDB::dbenv.lsn_reset(strSource.c_str(), 0);
-                    CDB::mapFileUseCount.erase(strSource);
+                    BerkeleyDB::CloseDb(strSource);
+                    BerkeleyDB::dbenv.txn_checkpoint(0, 0, 0);
+                    BerkeleyDB::dbenv.lsn_reset(strSource.c_str(), 0);
+                    BerkeleyDB::mapFileUseCount.erase(strSource);
 
                     std::string pathSource(config::GetDataDir() + strSource);
                     std::string pathDest(strDest);

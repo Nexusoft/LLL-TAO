@@ -24,14 +24,14 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    /** @class CReserveKey
+    /** @class ReserveKey
      *
      *  Holds the public key value of a key reserved in the key pool but not
      *  yet used.  Supports either returning the key to the pool or keeping it
      *  for use.
      *
      **/
-    class CReserveKey
+    class ReserveKey
     {
     protected:
         /** Wallet containing the key pool where we want to reserve keys **/
@@ -54,7 +54,7 @@ namespace Legacy
          *  @deprecated supported for backward compatability
          *
          **/
-        CReserveKey(Wallet* pWalletIn)
+        ReserveKey(Wallet* pWalletIn)
         : wallet(*pWalletIn)
         , nPoolIndex(-1)
         , vchPubKey()
@@ -69,7 +69,7 @@ namespace Legacy
          *  @param[in] walletIn The wallet where keys will be reserved
          *
          **/
-        CReserveKey(Wallet& walletIn)
+        ReserveKey(Wallet& walletIn)
         : wallet(walletIn)
         , nPoolIndex(-1)
         , vchPubKey()
@@ -81,25 +81,25 @@ namespace Legacy
          *  Returns any reserved key to the key pool.
          *
          **/
-        ~CReserveKey()
+        ~ReserveKey()
         {
             if (!config::fShutdown)
                 ReturnKey();
         }
 
 
-        /* If you copy a CReserveKey that has a key reserved, then keep/return it in one copy, the other
+        /* If you copy a ReserveKey that has a key reserved, then keep/return it in one copy, the other
          * copy becomes invalid but could still be used. For example, it would be a problem if KeepKey()
          * were called on one copy, then ReturnKey() called on the other. The key would be put back into
          * the key pool even though it had been used. All of this is why copy disallowed.
          */
 
         /** Copy constructor deleted. No copy allowed **/
-        CReserveKey(const CReserveKey&) = delete;
+        ReserveKey(const ReserveKey&) = delete;
 
 
         /** Copy assignment operator deleted. No copy allowed **/
-        CReserveKey& operator= (const CReserveKey& rhs) = delete;
+        ReserveKey& operator= (const ReserveKey& rhs) = delete;
 
 
         /** GetReservedKey

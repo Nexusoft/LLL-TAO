@@ -28,12 +28,12 @@ namespace Legacy
 {
 
     /* Retrieves the public key value for the currently reserved key. */
-    std::vector<uint8_t> CReserveKey::GetReservedKey()
+    std::vector<uint8_t> ReserveKey::GetReservedKey()
     {
         if (nPoolIndex == -1)
         {
             /* Don't have a reserved key in this instance, yet, so need to reserve one */
-            CKeyPoolEntry keypoolEntry;
+            KeyPoolEntry keypoolEntry;
             wallet.GetKeyPool().ReserveKeyFromPool(nPoolIndex, keypoolEntry);
 
             if (nPoolIndex != -1)
@@ -51,7 +51,7 @@ namespace Legacy
 
 
     /* Marks the reserved key as used, removing it from the key pool. */
-    void CReserveKey::KeepKey()
+    void ReserveKey::KeepKey()
     {
         if (nPoolIndex != -1)
             wallet.GetKeyPool().KeepKey(nPoolIndex);
@@ -62,7 +62,7 @@ namespace Legacy
 
 
     /* Returns a reserved key to the key pool. After call, it is no longer reserved. */
-    void CReserveKey::ReturnKey()
+    void ReserveKey::ReturnKey()
     {
         if (nPoolIndex != -1)
             wallet.GetKeyPool().ReturnKey(nPoolIndex);

@@ -31,7 +31,7 @@ namespace Legacy
     using AddressBookMap = std::map<NexusAddress, std::string>;
 
 
-    /** @class CAddressBook
+    /** @class AddressBook
      *
      *  Implements an address book mapping Nexus addresses (accounts) to address labels.
      * 
@@ -40,7 +40,7 @@ namespace Legacy
      *
      *  Database key for address book entries is name<address> where address is string representation of Nexus address.
      **/
-    class CAddressBook
+    class AddressBook
     {
         friend class WalletDB;
 
@@ -49,7 +49,7 @@ namespace Legacy
         /** Mutex for thread concurrency. 
          *
          *  Static because having instance-specific mutex causes move constructor (used in Wallet initialization) to be deleted.
-         *  We really only use one CAddressBook so no problem simply sharing one mutex within the class.
+         *  We really only use one AddressBook so no problem simply sharing one mutex within the class.
          *  
          **/
         static std::mutex cs_addressBook;
@@ -86,7 +86,7 @@ namespace Legacy
          *  @param[in] walletIn The wallet containing this address book
          *
          **/
-        CAddressBook(Wallet& walletIn) : addressBookWallet(walletIn) {}
+        AddressBook(Wallet& walletIn) : addressBookWallet(walletIn) {}
 
 
         /** HasAddress

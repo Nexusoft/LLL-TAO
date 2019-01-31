@@ -57,8 +57,8 @@ namespace Legacy
     class CTxOut;
     class NexusAddress;
 
-    class COutput;
-    class CReserveKey;
+    class Output;
+    class ReserveKey;
     class WalletTx;
 
 
@@ -75,7 +75,7 @@ namespace Legacy
 
 
     /** MasterKeyMap is type alias defining a map for storing master keys by key Id. **/
-    using MasterKeyMap = std::map<uint32_t, CMasterKey>;
+    using MasterKeyMap = std::map<uint32_t, MasterKey>;
 
     /** TransactionMap is type alias defining a map for storing wallet transactions by hash. **/
     using TransactionMap = std::map<uint512_t, WalletTx>;
@@ -101,7 +101,7 @@ namespace Legacy
      *  //use wallet
      *
      **/
-    class Wallet : public CCryptoKeyStore
+    class Wallet : public CryptoKeyStore
     {
         /** WalletDB declared friend so it can use private Load methods within LoadWallet **/
         friend class WalletDB;
@@ -143,7 +143,7 @@ namespace Legacy
 
 
     private:
-        using CCryptoKeyStore::Unlock;
+        using CryptoKeyStore::Unlock;
 
 
         /** Flag indicating whether or not the wallet instance has been initialized **/
@@ -182,11 +182,11 @@ namespace Legacy
 
 
         /** The address book contained by this wallet **/
-        CAddressBook addressBook;
+        AddressBook addressBook;
 
 
         /** The key pool contained by this wallet **/
-        CKeyPool keyPool;
+        KeyPool keyPool;
 
 
         /** The default public key value for this wallet.
@@ -229,8 +229,8 @@ namespace Legacy
         , strWalletFile("")
         , mapMasterKeys()
         , nMasterKeyMaxID(0)
-        , addressBook(CAddressBook(*this))
-        , keyPool(CKeyPool(*this))
+        , addressBook(AddressBook(*this))
+        , keyPool(KeyPool(*this))
         , vchDefaultKey()
         , nWalletUnlockTime(0)
         , pWalletDbEncryption(nullptr)
@@ -327,7 +327,7 @@ namespace Legacy
          *  @return this wallet's address book
          *
          */
-        inline CAddressBook& GetAddressBook() { return addressBook; }
+        inline AddressBook& GetAddressBook() { return addressBook; }
 
 
         /** GetWalletFile
@@ -443,7 +443,7 @@ namespace Legacy
          *  @return this wallet's key pool
          *
          */
-        inline CKeyPool& GetKeyPool() { return keyPool; }
+        inline KeyPool& GetKeyPool() { return keyPool; }
 
 
         /** GenerateNewKey
@@ -488,7 +488,7 @@ namespace Legacy
          *
          *  @return true if setting default key successful
          *
-         *  @see CKeyPool::GetKeyFromPool
+         *  @see KeyPool::GetKeyFromPool
          *
          */
         bool SetDefaultKey(const std::vector<uint8_t>& vchPubKey);
@@ -506,7 +506,7 @@ namespace Legacy
          *
          *  @return true if setting trust key successful
          *
-         *  @see CKeyPool::GetKeyFromPool
+         *  @see KeyPool::GetKeyFromPool
          *
          */
         bool SetTrustKey(const std::vector<uint8_t>& vchPubKey);
@@ -626,12 +626,12 @@ namespace Legacy
          *
          *  @param[in] nSpendTime Cutoff timestamp for result. Any transactions after this time are filtered
          *
-         *  @param[out] vCoins Vector of COutput listing spendable outputs
+         *  @param[out] vCoins Vector of Output listing spendable outputs
          *
          *  @param[in] fOnlyConfirmed Set false to include unconfirmed transactions in output
          *
          **/
-        void AvailableCoins(const uint32_t nSpendTime, std::vector<COutput>& vCoins, const bool fOnlyConfirmed = true);
+        void AvailableCoins(const uint32_t nSpendTime, std::vector<Output>& vCoins, const bool fOnlyConfirmed = true);
 
 
     /*----------------------------------------------------------------------------------------*/
@@ -988,7 +988,7 @@ namespace Legacy
          *  @return true if transaction successfully created
          *
          **/
-        bool CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, WalletTx& wtxNew, CReserveKey& changeKey,
+        bool CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, WalletTx& wtxNew, ReserveKey& changeKey,
                                int64_t& nFeeRet, const uint32_t nMinDepth = 1);
 
 
@@ -1003,7 +1003,7 @@ namespace Legacy
          *  @return true if transaction successfully committed
          *
          **/
-        bool CommitTransaction(WalletTx& wtxNew, CReserveKey& changeKey);
+        bool CommitTransaction(WalletTx& wtxNew, ReserveKey& changeKey);
 
 
         /** AddCoinstakeInputs
@@ -1052,7 +1052,7 @@ namespace Legacy
          *  @see WalletDB::LoadWallet
          *
          **/
-        bool LoadMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey);
+        bool LoadMasterKey(const uint32_t nMasterKeyId, const MasterKey& kMasterKey);
 
 
         /** LoadCryptedKey

@@ -23,17 +23,17 @@ namespace Legacy
 {
 
     /* forward declarations */    
-    class CKeyPoolEntry;
+    class KeyPoolEntry;
     class Wallet;
     class WalletDB;
 
 
-    /** @class CKeyPool
+    /** @class KeyPool
      *
      *  Implementation for managing a key pool, backed by the wallet database
      *  of the wallet containing the pool.
      *
-     *  A CKeyPool instance contains the pool indexes of the CKeyPoolEntry values
+     *  A KeyPool instance contains the pool indexes of the KeyPoolEntry values
      *  (public keys) stored in the wallet database, and supports adding/retrieving 
      *  them as needed.
      *
@@ -49,7 +49,7 @@ namespace Legacy
      *  into an empty pool of limited use.
      *
      **/
-    class CKeyPool
+    class KeyPool
     {
         friend class WalletDB;
         
@@ -67,7 +67,7 @@ namespace Legacy
         /** Mutex for thread concurrency. 
          *
          *  Static because having instance-specific mutex causes move constructor (used in Wallet initialization) to be deleted.
-         *  We really only use one CKeyPool so no problem simply sharing one mutex within the class.
+         *  We really only use one KeyPool so no problem simply sharing one mutex within the class.
          *  
          **/
         static std::mutex cs_keyPool;
@@ -93,7 +93,7 @@ namespace Legacy
          *  @param[in] walletIn The wallet containing this key pool
          *
          **/
-        CKeyPool(Wallet& walletIn)
+        KeyPool(Wallet& walletIn)
         : setKeyPool()
         , poolWallet(walletIn)
         {
@@ -151,7 +151,7 @@ namespace Legacy
          *  @return pool index of the added entry (1 or more), or 0 if not added
          *
          **/
-        uint64_t AddKey(const CKeyPoolEntry& keypoolEntry);
+        uint64_t AddKey(const KeyPoolEntry& keypoolEntry);
 
 
         /** GetKeyPoolSize
@@ -199,7 +199,7 @@ namespace Legacy
          *  @see KeepKey() ReturnKey()
          *
          **/
-        void ReserveKeyFromPool(uint64_t& nPoolIndex, CKeyPoolEntry& keypoolEntry);
+        void ReserveKeyFromPool(uint64_t& nPoolIndex, KeyPoolEntry& keypoolEntry);
 
 
         /** KeepKey

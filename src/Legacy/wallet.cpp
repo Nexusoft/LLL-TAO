@@ -164,7 +164,7 @@ namespace Legacy
         walletdb.Close();
 
         if (nLoadWalletRet == DB_NEED_REWRITE)
-            CDB::DBRewrite(strWalletFile);
+            BerkeleyDB::DBRewrite(strWalletFile);
 
         if (nLoadWalletRet != DB_LOAD_OK)
             return nLoadWalletRet;
@@ -264,7 +264,7 @@ namespace Legacy
     bool Wallet::AddCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret)
     {
         /* Call overridden inherited method to add key to key store */
-        if (!CCryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret))
+        if (!CryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret))
             return false;
 
         if (fFileBacked)
@@ -300,26 +300,26 @@ namespace Legacy
     {
         /*
          * This works in a convoluted manner for encrypted wallets.
-         *   1. This method calls CCryptoKeyStore::AddKey()
+         *   1. This method calls CryptoKeyStore::AddKey()
          *   2. If wallet is not encrypted, that method adds key to key store, but not to database (as expected)
-         *   3. If wallet is encrypted (and unlocked), CCryptoKeyStore::AddKey encrypts the key and calls AddCryptedKey()
+         *   3. If wallet is encrypted (and unlocked), CryptoKeyStore::AddKey encrypts the key and calls AddCryptedKey()
          *   4. Because this is a Wallet instance, that call will actually call Wallet::AddCryptedKey() and
-         *      not the more obvious CCryptoKeyStore::AddCryptedKey()
+         *      not the more obvious CryptoKeyStore::AddCryptedKey()
          *
-         * In other words, the call to AddCryptedKey() within CCryptoKeyStore::AddKey is actually performing a
+         * In other words, the call to AddCryptedKey() within CryptoKeyStore::AddKey is actually performing a
          * polymorphic call to this->AddCryptedKey() to execute the method in the derived Wallet class.
          *
          * The Wallet version of AddCryptedKey() handles adding the encrypted key to both key store and database.
          * The result: only need to write to database here if wallet is not encrypted
          *
          * Would be better to have a more intuitive way for code to handle encrypted key, but this way does work.
-         * It violates encapsulation, though, because we should not have to rely on how CCryptoKeyStore implements AddKey
+         * It violates encapsulation, though, because we should not have to rely on how CryptoKeyStore implements AddKey
          */
 
 
         /* Call overridden method to add key to key store */
         /* For encrypted wallet, this adds to both key store and wallet database (as described above) */
-        if (!CCryptoKeyStore::AddKey(key))
+        if (!CryptoKeyStore::AddKey(key))
             return false;
 
         if (fFileBacked && !IsCrypted())
@@ -344,7 +344,7 @@ namespace Legacy
             LOCK(cs_wallet);
 
             /* Call overridden inherited method to add key to key store */
-            if (!CCryptoKeyStore::AddCScript(redeemScript))
+            if (!CryptoKeyStore::AddCScript(redeemScript))
                 return false;
 
             if (fFileBacked)
@@ -456,8 +456,8 @@ namespace Legacy
         if (IsCrypted())
             return false;
 
-        CCrypter crypter;
-        CMasterKey kMasterKey;
+        Crypter crypter;
+        MasterKey kMasterKey;
 
         CKeyingMaterial vMasterKey;
         LLC::RandAddSeedPerfmon();
@@ -512,8 +512,8 @@ namespace Legacy
             }
         } //Lock must be released before call to EncryptKeys()
 
-        /* EncryptKeys() in CCryptoKeyStore will encrypt every public key/private key pair in the key store, including those that
-         * are part of the key pool. It calls CCryptoKeyStore::AddCryptedKey() to add each to the key store, which will polymorphically
+        /* EncryptKeys() in CryptoKeyStore will encrypt every public key/private key pair in the key store, including those that
+         * are part of the key pool. It calls CryptoKeyStore::AddCryptedKey() to add each to the key store, which will polymorphically
          * call Wallet::AddCryptedKey and also write them to the database.
          *
          * See Wallet::AddKey() for more discussion on how this works
@@ -546,8 +546,8 @@ namespace Legacy
 
             {
                 /* Need lock on database access before close db */
-                LOCK(CDB::cs_db);
-                CDB::CloseDb(strWalletFile);
+                LOCK(BerkeleyDB::cs_db);
+                BerkeleyDB::CloseDb(strWalletFile);
             }
 
             /* Reset the encryption database pointer (WalletDB it pointed to before will be destroyed) */
@@ -567,7 +567,7 @@ namespace Legacy
         /* Need to completely rewrite the wallet file; if we don't, bdb might keep
          * bits of the unencrypted private key in slack space in the database file.
          */
-        bool rewriteResult = CDB::DBRewrite(strWalletFile);
+        bool rewriteResult = BerkeleyDB::DBRewrite(strWalletFile);
 
         if (rewriteResult)
             debug::log(0, FUNCTION, "Wallet encryption completed successfully");
@@ -580,7 +580,7 @@ namespace Legacy
     bool Wallet::Lock()
     {
         /* Cannot lock unencrypted key store. This will enable encryption if not enabled already. */
-        if (IsCrypted() && CCryptoKeyStore::Lock()) {
+        if (IsCrypted() && CryptoKeyStore::Lock()) {
             /* Upon successful lock, stop the stake minter */
             StakeMinter::GetInstance().StopStakeMinter();
 
@@ -597,7 +597,7 @@ namespace Legacy
         if (!IsLocked())
             return false;
 
-        CCrypter crypter;
+        Crypter crypter;
         CKeyingMaterial vMasterKey;
 
         {
@@ -618,7 +618,7 @@ namespace Legacy
                     return false;
 
                 /* Attempt to unlock the wallet using the decrypted value for the master key */
-                if (CCryptoKeyStore::Unlock(vMasterKey))
+                if (CryptoKeyStore::Unlock(vMasterKey))
                 {
                     /* If the caller has provided an nUnlockSeconds value then initiate a thread to lock
                      * the wallet once this time has expired.  NOTE: the fWalletUnlockMintOnly flag overrides this timeout
@@ -670,7 +670,7 @@ namespace Legacy
             /* Lock the wallet so we can use unlock to verify old passphrase */
             Lock();
 
-            CCrypter crypter;
+            Crypter crypter;
             CKeyingMaterial vMasterKey;
 
             /* If more than one master key in wallet's map (unusual), have to find the one that corresponds to old passphrase.
@@ -685,7 +685,7 @@ namespace Legacy
                 if (!crypter.Decrypt(pMasterKey.second.vchCryptedKey, vMasterKey))
                     return false;
 
-                if (CCryptoKeyStore::Unlock(vMasterKey))
+                if (CryptoKeyStore::Unlock(vMasterKey))
                 {
                     /* Successfully unlocked, so pMasterKey is the map entry that corresponds to the old passphrase
                      * Now change that passphrase by re-encrypting master key with new one.
@@ -838,7 +838,7 @@ namespace Legacy
 
 
     /* Populate vCoins with vector identifying spendable outputs. */
-    void Wallet::AvailableCoins(const uint32_t nSpendTime, std::vector<COutput>& vCoins, const bool fOnlyConfirmed)
+    void Wallet::AvailableCoins(const uint32_t nSpendTime, std::vector<Output>& vCoins, const bool fOnlyConfirmed)
     {
         {
             LOCK(cs_wallet);
@@ -871,7 +871,7 @@ namespace Legacy
                     if (!(walletTx.IsSpent(i)) && IsMine(walletTx.vout[i]) && walletTx.vout[i].nValue > 0)
                     {
                         /* Create output from the current vout and add to result */
-                        COutput txOutput(walletTx, i, walletTx.GetDepthInMainChain());
+                        Output txOutput(walletTx, i, walletTx.GetDepthInMainChain());
                         vCoins.push_back(txOutput);
                     }
                 }
@@ -1568,7 +1568,7 @@ namespace Legacy
         int64_t nFeeRequired;
 
         /* Key will be reserved by CreateTransaction for any change transaction, kept/returned on commit */
-        CReserveKey changeKey(*this);
+        ReserveKey changeKey(*this);
 
         if (!CreateTransaction(vecSend, wtxNew, changeKey, nFeeRequired, nMinDepth))
         {
@@ -1606,7 +1606,7 @@ namespace Legacy
 
 
     /* Create and populate a new transaction. */
-    bool Wallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, WalletTx& wtxNew, CReserveKey& changeKey,
+    bool Wallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, WalletTx& wtxNew, ReserveKey& changeKey,
                                     int64_t& nFeeRet, const uint32_t nMinDepth)
     {
         int64_t nValue = 0;
@@ -1774,7 +1774,7 @@ namespace Legacy
 
 
     /* Commits a transaction and broadcasts it to the network. */
-    bool Wallet::CommitTransaction(WalletTx& wtxNew, CReserveKey& changeKey)
+    bool Wallet::CommitTransaction(WalletTx& wtxNew, ReserveKey& changeKey)
     {
         debug::log(0, FUNCTION, wtxNew.ToString());
 
@@ -1934,7 +1934,7 @@ namespace Legacy
 
 
     /* Loads a master key into the wallet, identified by its key Id. */
-    bool Wallet::LoadMasterKey(const uint32_t nMasterKeyId, const CMasterKey& kMasterKey)
+    bool Wallet::LoadMasterKey(const uint32_t nMasterKeyId, const MasterKey& kMasterKey)
     {
         if (mapMasterKeys.count(nMasterKeyId) != 0)
             return false;
@@ -1952,21 +1952,21 @@ namespace Legacy
     /* Load a public/encrypted private key pair to the key store without updating the database. */
     bool Wallet::LoadCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret)
     {
-        return CCryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret);
+        return CryptoKeyStore::AddCryptedKey(vchPubKey, vchCryptedSecret);
     }
 
 
     /* Load a key to the key store without updating the database. */
     bool Wallet::LoadKey(const LLC::ECKey& key)
     {
-        return CCryptoKeyStore::AddKey(key);
+        return CryptoKeyStore::AddKey(key);
     }
 
 
     /* Load a script to the key store without updating the database. */
     bool Wallet::LoadCScript(const CScript& redeemScript)
     {
-        return CCryptoKeyStore::AddCScript(redeemScript);
+        return CryptoKeyStore::AddCScript(redeemScript);
     }
 
 

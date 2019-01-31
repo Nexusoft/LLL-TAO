@@ -21,7 +21,7 @@ ________________________________________________________________________________
 namespace Legacy
 {
     
-    /** @class CAccount
+    /** @class Account
      *
      *  Account information.
      *
@@ -30,7 +30,7 @@ namespace Legacy
      *  
      *  Database key is acc<account> 
      **/
-    class CAccount
+    class Account
     {
     public:
         /** Public key for the account **/
@@ -42,7 +42,7 @@ namespace Legacy
          *  Calls SetNull() to initialize the account. 
          *
          **/
-        CAccount()
+        Account()
         {
             SetNull();
         }

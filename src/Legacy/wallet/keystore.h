@@ -34,7 +34,7 @@ namespace Legacy
      *  Can store ECKey or CScript (or both).
      *
      **/
-    class CKeyStore
+    class KeyStore
     {
     public:
         /** Virtual destructor
@@ -42,7 +42,7 @@ namespace Legacy
          *  Supports dynamic allocation of objects in inheritance hierarchy.
          *
          **/
-        virtual ~CKeyStore() = default;
+        virtual ~KeyStore() = default;
 
 
         /** AddKey

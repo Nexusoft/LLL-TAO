@@ -30,7 +30,7 @@ namespace Legacy
 {
 
     /* Signs for a single signature transaction. */
-    bool Sign1(const NexusAddress& address, const CKeyStore& keystore, uint256_t hash, int32_t nHashType, CScript& scriptSigRet)
+    bool Sign1(const NexusAddress& address, const KeyStore& keystore, uint256_t hash, int32_t nHashType, CScript& scriptSigRet)
     {
         LLC::ECKey key;
         if (!keystore.GetKey(address, key))
@@ -48,7 +48,7 @@ namespace Legacy
 
 
     /* Sign for a multi-signature transaction. */
-    bool SignN(const std::vector< std::vector<uint8_t> >& multisigdata, const CKeyStore& keystore, uint256_t hash, int32_t nHashType, CScript& scriptSigRet)
+    bool SignN(const std::vector< std::vector<uint8_t> >& multisigdata, const KeyStore& keystore, uint256_t hash, int32_t nHashType, CScript& scriptSigRet)
     {
         int32_t nSigned = 0;
         int32_t nRequired = multisigdata.front()[0];
@@ -160,7 +160,7 @@ namespace Legacy
 
 
     /* Sign an input to a transaction from keystore */
-    bool SignSignature(const CKeyStore& keystore, const Transaction& txFrom, Transaction& txTo, uint32_t nIn, int32_t nHashType)
+    bool SignSignature(const KeyStore& keystore, const Transaction& txFrom, Transaction& txTo, uint32_t nIn, int32_t nHashType)
     {
         assert(nIn < txTo.vin.size());
         CTxIn& txin = txTo.vin[nIn];

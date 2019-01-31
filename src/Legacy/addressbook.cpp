@@ -26,14 +26,14 @@ namespace Legacy
 {
 
     /* Initialize static variables */
-    std::mutex CAddressBook::cs_addressBook;
+    std::mutex AddressBook::cs_addressBook;
 
 
     /* Adds an address book entry for a given Nexus address and address label. */
-    bool CAddressBook::SetAddressBookName(const NexusAddress& address, const std::string& strName)
+    bool AddressBook::SetAddressBookName(const NexusAddress& address, const std::string& strName)
     {
         {
-            LOCK(CAddressBook::cs_addressBook);
+            LOCK(AddressBook::cs_addressBook);
 
             mapAddressBook[address] = strName;
 
@@ -53,10 +53,10 @@ namespace Legacy
 
 
     /* Removes the address book entry for a given Nexus address. */
-    bool CAddressBook::DelAddressBookName(const NexusAddress& address)
+    bool AddressBook::DelAddressBookName(const NexusAddress& address)
     {
         {
-            LOCK(CAddressBook::cs_addressBook);
+            LOCK(AddressBook::cs_addressBook);
 
             mapAddressBook.erase(address);
 
@@ -65,7 +65,7 @@ namespace Legacy
                 WalletDB walletdb(addressBookWallet.GetWalletFile());
 
                 if (!walletdb.EraseName(address.ToString()))
-                    throw std::runtime_error("CAddressBook::DelAddressBookName() : removing address book entry failed");
+                    throw std::runtime_error("AddressBook::DelAddressBookName() : removing address book entry failed");
 
                 walletdb.Close();
             }
@@ -76,11 +76,11 @@ namespace Legacy
 
 
     /* Get Nexus addresses that have a balance associated with the wallet for this address book */
-    bool CAddressBook::AvailableAddresses(const uint32_t nSpendTime, std::map<NexusAddress, int64_t>& mapAddressBalances,
+    bool AddressBook::AvailableAddresses(const uint32_t nSpendTime, std::map<NexusAddress, int64_t>& mapAddressBalances,
                                           const bool fOnlyConfirmed, const uint32_t nMinDepth) const
     {
         { //Begin lock scope
-            LOCK(CAddressBook::cs_addressBook);
+            LOCK(AddressBook::cs_addressBook);
 
             for (const auto& item : addressBookWallet.mapWallet)
             {
@@ -132,10 +132,10 @@ namespace Legacy
 
 
     /*  Get the current balance for a given account */
-    bool CAddressBook::BalanceByAccount(const std::string& strAccount, int64_t& nBalance, const uint32_t nMinDepth) const
+    bool AddressBook::BalanceByAccount(const std::string& strAccount, int64_t& nBalance, const uint32_t nMinDepth) const
     {
         { //Begin lock scope
-            LOCK(CAddressBook::CAddressBook::cs_addressBook);
+            LOCK(AddressBook::AddressBook::cs_addressBook);
 
             nBalance = 0;
 
@@ -190,7 +190,7 @@ namespace Legacy
     }
 
     /* returns the address for the given account, adding a new address if one has not already been assigned*/
-    Legacy::NexusAddress CAddressBook::GetAccountAddress(const std::string& strAccount, bool fForceNew )
+    Legacy::NexusAddress AddressBook::GetAccountAddress(const std::string& strAccount, bool fForceNew )
     {
         Legacy::NexusAddress address;
         bool fKeyUsed = false;
