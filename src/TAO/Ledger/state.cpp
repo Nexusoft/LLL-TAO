@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #include <string>
 
 #include <LLD/include/global.h>
+#include <LLP/include/global.h>
+#include <LLP/include/inv.h>
 
 #include <Legacy/types/legacy.h>
 #include <Legacy/wallet/wallet.h>
@@ -40,7 +42,7 @@ namespace TAO
 
     /* Ledger Layer namespace. */
     namespace Ledger
-    { 
+    {
         std::mutex BlockState::STATE_MUTEX;
 
         /* Get the block state object. */
@@ -349,6 +351,16 @@ namespace TAO
                     }
                 }
 
+
+                /* Resurrect the tritium transactions. */
+                for(const auto& tx : vTritiumResurrect)
+                    mempool.Accept(tx);
+
+
+                /* Resurrect the legacy transactions. */
+                for(const auto& tx : vLegacyResurrect)
+                    mempool.Accept(tx);
+
                 /* List of transactions to remove from pool. */
                 std::vector<uint512_t> vDelete;
 
@@ -379,16 +391,6 @@ namespace TAO
                 }
 
 
-                /* Resurrect the tritium transactions. */
-                for(const auto& tx : vTritiumResurrect)
-                    mempool.Accept(tx);
-
-
-                /* Resurrect the legacy transactions. */
-                for(const auto& tx : vLegacyResurrect)
-                    mempool.Accept(tx);
-
-
                 /* Remove transactions from memory pool. */
                 for(const auto& hashTx : vDelete)
                     mempool.Remove(hashTx);
@@ -416,7 +418,13 @@ namespace TAO
 
 
                 //TODO: blocknotify
-                //TODO: broadcast to nodes
+
+                /* Broadcast the block to nodes if not synchronizing. */
+                if(!ChainState::Synchronizing())
+                {
+                    std::vector<LLP::CInv> vInv = { LLP::CInv(ChainState::hashBestChain, LLP::MSG_BLOCK) };
+                    LLP::LEGACY_SERVER->Relay("inv", vInv);
+                }
             }
 
             return true;

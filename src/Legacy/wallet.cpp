@@ -995,7 +995,7 @@ namespace Legacy
                 wtx.nTimeReceived = tx.nTime;
             }
 
-            if( !containingBlock.IsNull())
+            if(!containingBlock.IsNull())
                 wtx.hashBlock = containingBlock.GetHash();
 
             /* AddToWallet preforms merge (update) for transactions already in wallet */
@@ -1069,6 +1069,7 @@ namespace Legacy
         /* Count the number of transactions process for this wallet to use as return value */
         uint32_t nTransactionCount = 0;
         uint32_t nScannedCount     = 0;
+        uint32_t nScannedBlocks    = 0;
         TAO::Ledger::BlockState block;
         if (pstartBlock == nullptr)
             block = TAO::Ledger::ChainState::stateGenesis;
@@ -1080,8 +1081,12 @@ namespace Legacy
         Legacy::Transaction tx;
         while (!config::fShutdown)
         {
-            if(block.nHeight % 10000 == 0)
-                debug::log(0, FUNCTION, block.nHeight, " blocks processed");
+            /* Output for the debugger. */
+            ++nScannedBlocks;
+
+            /* Meter to know the progress. */
+            if(nScannedBlocks % 10000 == 0)
+                debug::log(0, FUNCTION, nScannedBlocks, " blocks processed");
 
             /* Scan each transaction in the block and process those related to this wallet */
             for(const auto& item : block.vtx)
@@ -1108,7 +1113,7 @@ namespace Legacy
         }
 
         debug::log(0, FUNCTION, "Scanned ", nTransactionCount,
-            " transactions in ", timer.Elapsed(), " seconds (", std::fixed, (double)(nScannedCount / timer.Elapsed()), " tx/s)");
+            " transactions, ", nScannedBlocks, " blocks  in ", timer.Elapsed(), " seconds (", std::fixed, (double)(nScannedCount / timer.Elapsed()), " tx/s)");
 
         return nTransactionCount;
     }
@@ -1252,7 +1257,7 @@ namespace Legacy
 //TODO - Fix txindex reference
 //                    if (IsMine(walletTx.vout[n]) && walletTx.IsSpent(n) && (txindex.vSpent.size() <= n || txindex.vSpent[n].IsNull()))
 //                    {
-                        debug::log(0, FUNCTION, "Found unspent coin ", FormatMoney(walletTx.vout[n].nValue), " Nexus ", walletTx.GetHash().ToString().substr(0, 20),
+                        debug::log(0, FUNCTION, "Found unspent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().ToString().substr(0, 20),
                             "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
 
                     ++nMismatchFound;
@@ -1269,7 +1274,7 @@ namespace Legacy
                 /* Handle when Transaction on chain records output as spent but wallet accounting has it as unspent */
                 if (IsMine(walletTx.vout[n]) && !walletTx.IsSpent(n) && isSpentOnChain)
                 {
-                    debug::log(1, FUNCTION, "Found spent coin ", FormatMoney(walletTx.vout[n].nValue), " Nexus ", walletTx.GetHash().ToString().substr(0, 20),
+                    debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().ToString().substr(0, 20),
                         "[", n, "] ", fCheckOnly? "repair not attempted" : "repairing");
 
                     ++nMismatchFound;
