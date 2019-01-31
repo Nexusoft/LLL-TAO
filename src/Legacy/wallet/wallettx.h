@@ -39,14 +39,14 @@ namespace Legacy
     class CTxIn;
     class CTxOut;
 
-    /** @class CWalletTx
+    /** @class WalletTx
      *
      * A transaction with additional information relevant to the owner and the owner's wallet which owns it.
      * It includes any unrecorded previoius transactions needed to link it back to the block chain.
      *
      *  Database key is tx<hash> where hash is the transaction hash
      **/
-    class CWalletTx : public CMerkleTx
+    class WalletTx : public CMerkleTx
     {
     private:
         /* This has to be static or copy constructor/copy assignment are deleted.
@@ -60,7 +60,7 @@ namespace Legacy
         static std::mutex cs_wallettx;
 
         /** Pointer to the wallet to which this transaction is bound **/
-        CWallet* ptransactionWallet;
+        Wallet* ptransactionWallet;
 
         /** Flag indicating whether or not transaction bound to wallet **/
         bool fHaveWallet;
@@ -95,7 +95,7 @@ namespace Legacy
 
     public:
         /** Previous transactions that contain outputs spent by inputs to this transaction **/
-        std::vector<CWalletTx> vtxPrev;
+        std::vector<WalletTx> vtxPrev;
 
 
         /** Used by serialization to store/retrieve vfSpent and other settings.
@@ -175,7 +175,7 @@ namespace Legacy
          *  Initializes an empty wallet transaction
          *
          **/
-        CWalletTx() : ptransactionWallet(nullptr), fHaveWallet(false)
+        WalletTx() : ptransactionWallet(nullptr), fHaveWallet(false)
         {
             InitWalletTx();
         }
@@ -189,10 +189,10 @@ namespace Legacy
          *
          *  @param[in] walletIn The wallet for this wallet transaction
          *
-         *  @see CWallet::AddToWallet()
+         *  @see Wallet::AddToWallet()
          *
          **/
-        CWalletTx(CWallet& walletIn) : ptransactionWallet(&walletIn), fHaveWallet(true)
+        WalletTx(Wallet& walletIn) : ptransactionWallet(&walletIn), fHaveWallet(true)
         {
             InitWalletTx();
         }
@@ -206,10 +206,10 @@ namespace Legacy
          *
          *  @param[in] pwalletIn Pointer to the wallet for this wallet transaction
          *
-         *  @see CWallet::AddToWallet()
+         *  @see Wallet::AddToWallet()
          *
          **/
-        CWalletTx(CWallet* pwalletIn) : ptransactionWallet(pwalletIn), fHaveWallet(true)
+        WalletTx(Wallet* pwalletIn) : ptransactionWallet(pwalletIn), fHaveWallet(true)
         {
             InitWalletTx();
         }
@@ -225,10 +225,10 @@ namespace Legacy
          *
          *  @param[in] txIn Transaction data to copy into this wallet transaction
          *
-         *  @see CWallet::AddToWallet()
+         *  @see Wallet::AddToWallet()
          *
          **/
-        CWalletTx(CWallet* pwalletIn, const CMerkleTx& txIn) : CMerkleTx(txIn), ptransactionWallet(pwalletIn), fHaveWallet(true)
+        WalletTx(Wallet* pwalletIn, const CMerkleTx& txIn) : CMerkleTx(txIn), ptransactionWallet(pwalletIn), fHaveWallet(true)
         {
             InitWalletTx();
         }
@@ -244,10 +244,10 @@ namespace Legacy
          *
          *  @param[in] txIn Transaction data to copy into this wallet transaction
          *
-         *  @see CWallet::AddToWallet()
+         *  @see Wallet::AddToWallet()
          *
          **/
-        CWalletTx(CWallet* pwalletIn, const Transaction& txIn) : CMerkleTx(txIn), ptransactionWallet(pwalletIn), fHaveWallet(true)
+        WalletTx(Wallet* pwalletIn, const Transaction& txIn) : CMerkleTx(txIn), ptransactionWallet(pwalletIn), fHaveWallet(true)
         {
             InitWalletTx();
         }
@@ -256,7 +256,7 @@ namespace Legacy
         /* Wallet transaction serialize/unserialize needs some customization to set up data*/
         IMPLEMENT_SERIALIZE
         (
-            CWalletTx* pthis = const_cast<CWalletTx*>(this);
+            WalletTx* pthis = const_cast<WalletTx*>(this);
             if (fRead)
             {
                 pthis->fHaveWallet = false;
@@ -314,10 +314,10 @@ namespace Legacy
          *
          *  @param[in] walletIn The wallet to be bound
          *
-         *  @see CWallet::AddToWallet()
+         *  @see Wallet::AddToWallet()
          *
          **/
-        void BindWallet(CWallet& walletIn);
+        void BindWallet(Wallet& walletIn);
 
 
         /** BindWallet
@@ -328,10 +328,10 @@ namespace Legacy
          *
          *  @param[in] pwalletIn Pointer to the wallet to be bound
          *
-         *  @see CWallet::AddToWallet()
+         *  @see Wallet::AddToWallet()
          *
          **/
-        void BindWallet(CWallet* pwalletIn);
+        void BindWallet(Wallet* pwalletIn);
 
 
         /** IsBound

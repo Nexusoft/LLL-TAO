@@ -51,12 +51,12 @@ namespace TAO
             json::json obj;
             obj["version"] = version::CLIENT_VERSION_BUILD_STRING;
             obj["protocolversion"] = LLP::PROTOCOL_VERSION;
-            obj["walletversion"] = Legacy::CWallet::GetInstance().GetVersion();
+            obj["walletversion"] = Legacy::Wallet::GetInstance().GetVersion();
             obj["testnet"] = config::fTestNet;
-            obj["balance"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetBalance());
-            obj["unconfirmedbalance"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetUnconfirmedBalance());
-            obj["newmint"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetNewMint());
-            obj["stake"] = Legacy::SatoshisToAmount(Legacy::CWallet::GetInstance().GetStake());
+            obj["balance"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetBalance());
+            obj["unconfirmedbalance"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetUnconfirmedBalance());
+            obj["newmint"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetNewMint());
+            obj["stake"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetStake());
 
 
         //   double dPercent = ((double)Core::dTrustWeight + (double)Core::dBlockWeight) / 37.5;
@@ -64,7 +64,7 @@ namespace TAO
         //   obj.push_back(std::make_pair("stakeweight",    dPercent * 100.0));
         //   obj.push_back(std::make_pair("trustweight",    (double)Core::dTrustWeight * 100.0 / 17.5));
         //   obj.push_back(std::make_pair("blockweight",    (double)Core::dBlockWeight * 100.0  / 20.0));
-            obj["txtotal"] =(int)Legacy::CWallet::GetInstance().mapWallet.size();
+            obj["txtotal"] =(int)Legacy::Wallet::GetInstance().mapWallet.size();
 
 
             obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
@@ -76,15 +76,15 @@ namespace TAO
             obj["ip"] = config::GetBoolArg("-legacy") ? LLP::LEGACY_SERVER->addrThisNode.ToStringIP() : LLP::TRITIUM_SERVER->addrThisNode.ToStringIP();
 
             obj["testnet"] = config::fTestNet;
-            obj["keypoololdest"] = (int64_t)Legacy::CWallet::GetInstance().GetKeyPool().GetOldestKeyPoolTime();
-            obj["keypoolsize"] = Legacy::CWallet::GetInstance().GetKeyPool().GetKeyPoolSize();
-            if (Legacy::CWallet::GetInstance().IsCrypted())
+            obj["keypoololdest"] = (int64_t)Legacy::Wallet::GetInstance().GetKeyPool().GetOldestKeyPoolTime();
+            obj["keypoolsize"] = Legacy::Wallet::GetInstance().GetKeyPool().GetKeyPoolSize();
+            if (Legacy::Wallet::GetInstance().IsCrypted())
             {
-                obj["locked"] = Legacy::CWallet::GetInstance().IsLocked();
-                if( !Legacy::CWallet::GetInstance().IsLocked())
+                obj["locked"] = Legacy::Wallet::GetInstance().IsLocked();
+                if( !Legacy::Wallet::GetInstance().IsLocked())
                 {
-                    if( (uint64_t) Legacy::CWallet::GetInstance().GetWalletUnlockTime() > 0 )
-                        obj["unlocked_until"] = (uint64_t) Legacy::CWallet::GetInstance().GetWalletUnlockTime() ;
+                    if( (uint64_t) Legacy::Wallet::GetInstance().GetWalletUnlockTime() > 0 )
+                        obj["unlocked_until"] = (uint64_t) Legacy::Wallet::GetInstance().GetWalletUnlockTime() ;
 
                     obj["minting_only"] = Legacy::fWalletUnlockMintOnly;
                 }
