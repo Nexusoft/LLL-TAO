@@ -76,6 +76,10 @@ namespace Legacy
         }
 
 
+        /** Copy Constructor. **/
+        LegacyBlock(const TAO::Ledger::BlockState& state);
+
+
         /** Check
          *
          *  Check a legacy block for consistency.

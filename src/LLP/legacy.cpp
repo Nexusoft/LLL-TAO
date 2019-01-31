@@ -141,6 +141,9 @@ namespace LLP
                             /* Reset the timeouts. */
 
                 PushMessage("ping", nSessionID);
+
+                /* Rebroadcast transactions. */
+                Legacy::CWallet::GetInstance().ResendWalletTransactions();
             }
 
             //TODO: mapRequests data, if no response given retry the request at given times
@@ -232,7 +235,7 @@ namespace LLP
                 pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
             else if(!config::GetBoolArg("-fastsync"))
             {
-                if(TAO::Ledger::ChainState::hashBestChain != LegacyNode::hashLastGetblocks || LegacyNode::nLastGetBlocks + 10 < runtime::timestamp())
+                if(!TAO::Ledger::ChainState::Synchronizing() || TAO::Ledger::ChainState::hashBestChain != LegacyNode::hashLastGetblocks || LegacyNode::nLastGetBlocks + 10 < runtime::timestamp())
                 {
                     /* Special handle for unreliable leagacy nodes. */
                     if(TAO::Ledger::ChainState::Synchronizing())
@@ -760,6 +763,46 @@ namespace LLP
                 return true;
             }
 
+            /* Loop the inventory and deliver messages. */
+            for(const auto& inv : vInv)
+            {
+                if (config::fShutdown)
+                    return true;
+
+                /* Log the inventory message receive. */
+                debug::log(3, FUNCTION, "received getdata ", inv.ToString());
+
+                /* Handle the block message. */
+                if (inv.GetType() == LLP::MSG_BLOCK)
+                {
+                    /* Read the block from disk. */
+                    TAO::Ledger::BlockState state;
+                    if(!LLD::legDB->ReadBlock(inv.GetHash(), state))
+                        continue;
+
+                    /* Scan each transaction in the block and process those related to this wallet */
+                    Legacy::LegacyBlock block(state);
+
+                    /* Push the response message. */
+                    PushMessage("block", block);
+
+                    /* Trigger a new getblocks if hash continue is set. */
+                    if (inv.GetHash() == hashContinue)
+                    {
+                        std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain, LLP::MSG_BLOCK) };
+                        PushMessage("inv", vInv);
+                        hashContinue = 0;
+                    }
+                }
+                else if (inv.GetType() == LLP::MSG_TX)
+                {
+                    Legacy::Transaction tx;
+                    if(!TAO::Ledger::mempool.Get(inv.GetHash().getuint512(), tx) && !LLD::legacyDB->ReadTx(inv.GetHash().getuint512(), tx))
+                        continue;
+
+                    PushMessage("tx", tx);
+                }
+            }
         }
 
 

@@ -134,6 +134,9 @@ int main(int argc, char** argv)
             return debug::error("failed loading wallet.dat");
     }
 
+    /** Rebroadcast transactions. **/
+    Legacy::CWallet::GetInstance().ResendWalletTransactions();
+
 
     /** Initialize ChainState. */
     TAO::Ledger::ChainState::Initialize();

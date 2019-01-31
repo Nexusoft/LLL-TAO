@@ -62,6 +62,26 @@ namespace Legacy
         return false;
     }
 
+    /** Copy Constructor. **/
+    LegacyBlock::LegacyBlock(const TAO::Ledger::BlockState& state)
+    : Block(state)
+    , vtx()
+    {
+        /* Push back all the transactions from the state object. */
+        for(const auto& item : state.vtx)
+        {
+            if (item.first == TAO::Ledger::LEGACY_TX)
+            {
+                /* Read transaction from database */
+                Transaction tx;
+                if (!LLD::legacyDB->ReadTx(item.second, tx))
+                    continue;
+
+                vtx.push_back(tx);
+            }
+        }
+    }
+
     /* For debugging Purposes seeing block state data dump */
     std::string LegacyBlock::ToString() const
     {
