@@ -536,6 +536,9 @@ namespace TAO
 
                 /* Write the indexing entries. */
                 LLD::legDB->IndexBlock(tx.second, GetHash());
+
+                if(config::GetBoolArg("-indexheight"))
+                    LLD::legDB->IndexBlock(nHeight, GetHash());
             }
 
             /* Update the previous state's next pointer. */
@@ -609,6 +612,9 @@ namespace TAO
 
                 /* Write the indexing entries. */
                 LLD::legDB->EraseIndex(tx.second);
+                
+                if(config::GetBoolArg("-indexheight"))
+                    LLD::legDB->EraseIndex(nHeight);
             }
 
             /* Update the previous state's next pointer. */

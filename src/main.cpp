@@ -150,6 +150,17 @@ int main(int argc, char** argv)
     if(config::GetBoolArg("-rescan"))
         Legacy::CWallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
 
+    /** Ensure the block height index is intact **/
+    if(config::GetBoolArg("-indexheight"))
+    {
+        /* Try and retrieve the block state for the current block height via the height index. 
+            If this fails then we know the block height index is not fully intact so we repair it*/ 
+        TAO::Ledger::BlockState state;
+        if(!LLD::legDB->ReadBlock(TAO::Ledger::ChainState::stateBest.nHeight, state))
+             LLD::legDB->RepairIndexHeight();
+    }
+
+    
 
     /** Get the port for Tritium Server. **/
     port = static_cast<uint16_t>(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
