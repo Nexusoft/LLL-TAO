@@ -108,10 +108,10 @@ namespace LLP
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(portDefault)
     {
-        BaseAddress ip;
-        if (Lookup(pszIpPort, ip, portDefault, fAllowLookup))
+        BaseAddress addr;
+        if (Lookup(pszIpPort, addr, portDefault, fAllowLookup))
         {
-            *this = ip;
+            *this = addr;
 
             if(fAllowLookup)
                 debug::log(3, FUNCTION, pszIpPort, " resolved to ", ToStringIP());
@@ -127,10 +127,10 @@ namespace LLP
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(portDefault)
     {
-        BaseAddress ip;
-        if (Lookup(strIpPort.c_str(), ip, portDefault, fAllowLookup))
+        BaseAddress addr;
+        if (Lookup(strIpPort.c_str(), addr, portDefault, fAllowLookup))
         {
-            *this = ip;
+            *this = addr;
 
             if(fAllowLookup)
                 debug::log(3, FUNCTION, strIpPort, " resolved to ", ToStringIP());

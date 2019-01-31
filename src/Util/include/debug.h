@@ -57,7 +57,7 @@ ________________________________________________________________________________
 #define ANSI_COLOR_BRIGHT_CYAN    "\u001b[36;1m"
 #define ANSI_COLOR_BRIGHT_WHITE   "\u001b[37;1m"
 
-#define ANSI_COLOR_FUNCTION ANSI_COLOR_BRIGHT_BLUE
+#define ANSI_COLOR_FUNCTION "\u001b[1m"
 
 #define VALUE(data) data
 //#define FUNCTION ANSI_COLOR_FUNCTION "%s" ANSI_COLOR_RESET " : "

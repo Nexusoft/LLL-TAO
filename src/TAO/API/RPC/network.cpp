@@ -312,22 +312,22 @@ namespace TAO
             if (fHelp || params.size() != 1)
                 return std::string(
                     "getblockhash <index>"
-                    " - DEPRECATED - Returns hash of block in best-block-chain at <index>.");
+                    " - Returns hash of block in best-block-chain at <index>.");
+            
+            if(!config::GetBoolArg("-indexheight"))
+            {
+                return std::string("getblockhash requires the wallet to be started with the -indexheight flag.");
+            }
+            int nHeight = params[0];
+            if (nHeight < 0 || nHeight > TAO::Ledger::ChainState::nBestHeight)
+                return std::string("Block number out of range.");
 
-            // int nHeight = params[0];
-            // if (nHeight < 0 || nHeight > TAO::Ledger::ChainState::nBestHeight)
-            //     return std::string("Block number out of range.");
+            TAO::Ledger::BlockState blockState;
+            if(!LLD::legDB->ReadBlock(nHeight, blockState))
+                return std::string("Block not found");
+            
+            return blockState.GetHash().GetHex();
 
-            // Core::CBlock block;
-            // Core::CBlockIndex* pblockindex = Core::mapBlockIndex[Core::hashBestChain];
-            // while (pblockindex->nHeight > nHeight)
-            //     pblockindex = pblockindex->pprev;
-            // return pblockindex->phashBlock->GetHex();
-
-            json::json ret;
-            ret = "This method has been deprecated. Please use the current block hash from getmininginfo\n"
-                    "in conjunction with the previousblockhash in getblock to traverse the chain to your desired block height";
-            return ret;
         }
 
         /* isorphan <hash>"

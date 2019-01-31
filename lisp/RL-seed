@@ -4,21 +4,31 @@
 #
 # Nexus/LISP wrapper script to start the lispers.net LISP subsystem. The
 # lisp.config configuration file will be provisioned with parameters in
-# variables at the top of this file. The intention of this script is to be
-# used in a docker container for a client Nexus node (not a seed node).
+# variables at the top of this file. The intention of this script is to not
+# be used inside a docker container and is for seed node use only.
 #
-# Use script LLL-TAO/RL-seed to start lispers.net on a seed node.
+# This script requires the file lisp.conifg.xtr to be present in the 
+# lispers.net directory this script executes in.
 #
 #------------------------------------------------------------------------------
 
 #
-# Use eth0 by default unless an alternative has been passed to RL
+# The seed node deployer needs to uniquely configure these parameters. The
+# parameters are the instance-ID, the IPv4 and IPv6 EIDs and the RLOC
+# interface. The convention for a seed-node is to use IPv4 EID 240.0.x.x where
+# the deployer chooses a unique x.x. That value is then used as the IPv6 EID
+# as well.
 #
+set iid    = 200
+set v4_eid = 240.0.x.x
+set v6_eid = fe::x:x
 set device = "eth0"
-if ($1 != "") then
-  set device = "$1"
-endif
 set hostname = `hostname`
+
+if ($v4_eid == "240.0.x.x") then
+    echo "This RL file needs modification for seed node configuration"
+    exit
+endif
 
 #
 # If the lisp.config file already provisioned, then just start the lispers.net
@@ -43,19 +53,12 @@ endif
 #
 # Provision instance-ID, EIDs, and RLOCs.
 #
-set iid = 200
-set rand = `python -c "import random; print random.randint(0, 0xffffff)"`
-set byte2 = `python -c "print ($rand >> 16) & 0xff"`
-set byte1 = `python -c "print ($rand >> 8) & 0xff"`
-set byte0 = `python -c "print $rand & 0xff"`
-set v4_eid = 240.$byte2.$byte1.$byte0
-set v6_eid = fe::${byte2}:${byte1}:${byte0}
-
 set v4_rloc = `ifconfig $device | egrep "inet "`
 set v4_rloc = `echo $v4_rloc | cut -d " " -f 2`
 
 echo "Provisioning lisp.config file with EIDs [$iid]$v4_eid & [$iid]$v6_eid"
-cat lisp.config.xtr | sed "s/<sample>/$hostname/; s/eth0/$device/" > lisp.config.bak
+cat lisp.config.xtr | \
+    sed "s/<sample>/$hostname/; s/eth0/$device/" > lisp.config.bak
 cat lisp.config.bak | sed "s/<iid>/$iid/" > lisp.config
 cat lisp.config | sed "s/<v4-eid>/$v4_eid/" > lisp.config.bak
 cat lisp.config.bak | sed "s/<v6-eid>/$v6_eid/" > lisp.config

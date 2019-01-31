@@ -269,8 +269,8 @@ namespace TAO
                 //obj["totalConnections"] = LLP::MINING_LLP->TotalConnections();
             }
 
-            obj["genesisblockhash"] = TAO::Ledger::ChainState::stateGenesis.GetHash().GetHex();
-            obj["currentblockhash"] = TAO::Ledger::ChainState::stateBest.GetHash().GetHex();
+            //obj["genesisblockhash"] = TAO::Ledger::ChainState::stateGenesis.GetHash().GetHex();
+            //obj["currentblockhash"] = TAO::Ledger::ChainState::stateBest.GetHash().GetHex();
 
             return obj;
         }

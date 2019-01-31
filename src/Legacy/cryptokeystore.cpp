@@ -33,8 +33,8 @@ namespace Legacy
                 return true;
 
             {
-                /* Need basic keystore lock to check mapKeys. 
-                 * This is a nested lock. 
+                /* Need basic keystore lock to check mapKeys.
+                 * This is a nested lock.
                  * Have to ensure any others that might nest them also get them in the same order to avoid deadlock potential.
                  * Good part is we only actually need this when first activating encryption. After that, above returns true.
                  */
@@ -64,8 +64,8 @@ namespace Legacy
         /* Set key store as encrypted */
         fUseCrypto = true;
 
-        /* Need basic keystore lock for iterating mapKeys, but will also need it within AddCryptedKey. 
-         * Thus, can't keep it. To ensure a good mapKeys, make a copy while have hold of lock 
+        /* Need basic keystore lock for iterating mapKeys, but will also need it within AddCryptedKey.
+         * Thus, can't keep it. To ensure a good mapKeys, make a copy while have hold of lock
          */
         KeyMap mapKeysToEncrypt;
         {
@@ -257,8 +257,8 @@ namespace Legacy
     bool CCryptoKeyStore::GetKey(const NexusAddress& address, LLC::ECKey& keyOut) const
     {
         /* Cannot decrypt key if key store is encrypted and locked */
-        if (IsLocked())
-            return false;
+        if (!IsCrypted())
+            return CBasicKeyStore::GetKey(address, keyOut);
 
         {
             LOCK(cs_cryptoKeyStore);

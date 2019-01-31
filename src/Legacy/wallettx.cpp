@@ -20,12 +20,17 @@ ________________________________________________________________________________
 #include <LLD/include/legacy.h>
 #include <LLD/include/global.h>
 
+#include <LLP/include/global.h>
+#include <LLP/include/inv.h>
+
 #include <Legacy/include/evaluate.h>
 #include <Legacy/include/money.h>
 #include <Legacy/types/txout.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
 #include <Legacy/wallet/wallettx.h>
+
+#include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/args.h>
 
@@ -208,7 +213,7 @@ namespace Legacy
         if (!IsFromMe())
             return false;
 
-        /* If no confirmations but it is a transaction we sent (vtxPrev populated by AddSupportingTransactions()), 
+        /* If no confirmations but it is a transaction we sent (vtxPrev populated by AddSupportingTransactions()),
          * we can still consider it confirmed if all supporting transactions are confirmed.
          *
          * When every tx in vtxPrev for this transaction is Final with Depth > 0 and IsFromMe()
@@ -463,7 +468,7 @@ namespace Legacy
     void CWalletTx::AddSupportingTransactions()
     {
         /* ptransactionWallet->cs_wallet should already be locked before calling this method
-         * Locking removed from within the method itself 
+         * Locking removed from within the method itself
          */
         vtxPrev.clear();
 
@@ -506,7 +511,7 @@ namespace Legacy
                         prevTx = (*mi).second;
 
                         /* Copy vtxPrev (inputs) from previous transaction into mapWalletPrev.
-                         * This saves them so we can get prevTx from mapWalletPrev if it isn't in mapWallet 
+                         * This saves them so we can get prevTx from mapWalletPrev if it isn't in mapWallet
                          * and need to process deeper because tx depth is less than copy depth (unlikely, see below)
                          */
                         for(const CWalletTx& txWalletPrev : prevTx.vtxPrev)
@@ -563,11 +568,13 @@ namespace Legacy
             if (!(tx.IsCoinBase() || tx.IsCoinStake()))
             {
                 uint512_t hash = tx.GetHash();
-
-// TODO: Need implementation to support RelayMessage()
                 if (!LLD::legacyDB->HasTx(hash))
                 {
-                    //RelayMessage(LLP::CInv(LLP::MSG_TX, hash), (Transaction)tx);
+                    std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX) };
+                    LLP::LEGACY_SERVER->Relay("inv", vInv);
+
+                    //Add to the memory pool
+                    TAO::Ledger::mempool.Accept((Transaction)tx);
                 }
             }
         }
@@ -580,8 +587,12 @@ namespace Legacy
             if (!LLD::legacyDB->HasTx(hash))
             {
                 debug::log(0, FUNCTION, "Relaying wtx ", hash.ToString().substr(0,10));
-// TODO: Need implementation to support RelayMessage()
-                //RelayMessage(LLP::CInv(LLP::MSG_TX, hash), (Transaction)*this);
+
+                std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX) };
+                LLP::LEGACY_SERVER->Relay("inv", vInv);
+
+                //Add to the memory pool
+                TAO::Ledger::mempool.Accept((Transaction)*this);
             }
         }
     }

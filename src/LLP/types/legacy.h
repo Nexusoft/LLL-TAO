@@ -54,6 +54,7 @@ namespace LLP
         , nNodeLatency(std::numeric_limits<uint32_t>::max())
         , nLastPing(runtime::timestamp())
         , nConsecutiveTimeouts(0)
+        , hashContinue(0)
         , mapLatencyTracker()
         , mapSentRequests()
         {
@@ -72,6 +73,7 @@ namespace LLP
         , nNodeLatency(std::numeric_limits<uint32_t>::max())
         , nLastPing(runtime::timestamp())
         , nConsecutiveTimeouts(0)
+        , hashContinue(0)
         , mapLatencyTracker()
         , mapSentRequests()
         {
@@ -117,6 +119,10 @@ namespace LLP
 
         /** The number of times getblocks has timed out (to deal with unreliable NON-TRITIUM nodes). **/
         uint32_t nConsecutiveTimeouts;
+
+
+        /** The trigger hash to send a continue inv message to remote node. **/
+        uint1024_t hashContinue;
 
 
         /** timer object to keep track of ping latency. **/

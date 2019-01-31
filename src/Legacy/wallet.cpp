@@ -886,17 +886,16 @@ namespace Legacy
         uint512_t hash = wtxIn.GetHash();
 
         /* Use the returned tx, not wtxIn, in case insert returned an existing transaction */
-        CWalletTx wtx;
-        bool fInsertedNew;
+        std::pair<TransactionMap::iterator, bool> ret;
         {
             LOCK(cs_wallet);
 
             /* Inserts only if not already there, returns tx inserted or tx found */
-            std::pair<TransactionMap::iterator, bool> ret = mapWallet.insert(std::make_pair(hash, wtxIn));
-            wtx = (*ret.first).second;
-            fInsertedNew = ret.second;
+            ret = mapWallet.insert(std::make_pair(hash, wtxIn));
         }
 
+        CWalletTx& wtx = (*ret.first).second;
+        bool fInsertedNew = ret.second;
         wtx.BindWallet(this);
 
         if (fInsertedNew)
@@ -986,8 +985,7 @@ namespace Legacy
         /* Check if transaction has outputs (IsMine) or inputs (IsFromMe) belonging to this wallet */
         if (IsMine(tx) || IsFromMe(tx))
         {
-            CWalletTx wtx(this,tx);
-
+            CWalletTx wtx(this, tx);
             if (fRescan) {
                 /* On rescan or initial download, set wtx time to transaction time instead of time tx received.
                  * These are both uint32_t timestamps to support unserialization of legacy data.
@@ -1130,10 +1128,10 @@ namespace Legacy
          * and returns. Any subsequent calls will only process resend if at least that much time
          * has passed.
          */
-        static int64_t snNextTime;
+        static int64_t snNextTime = 0;
 
         /* Also keep track of best height on last resend, because no need to process again if has not changed */
-        static int32_t snLastHeight;
+        static int32_t snLastHeight = 0;
 
         bool fFirst = (snNextTime == 0);
 
@@ -1142,7 +1140,7 @@ namespace Legacy
             return;
 
         /* Set a random time until resend is processed */
-        snNextTime = runtime::unifiedtimestamp() + LLC::GetRand(30 * 60);
+        snNextTime = runtime::unifiedtimestamp() + LLC::GetRand(30);
 
         /* On first iteration, just return. All it does is set snNextTime */
         if (fFirst)
@@ -1168,7 +1166,7 @@ namespace Legacy
                 const CWalletTx& wtx = item.second;
 
                 /* Don't put in sorted map for rebroadcast until it's had enough time to be added to a block */
-                if (runtime::timestamp() - wtx.nTimeReceived > 5 * 60)
+                if (runtime::timestamp() - wtx.nTimeReceived > 1 * 60)
                     mapSorted.insert(std::make_pair(wtx.nTimeReceived, wtx));
             }
 
@@ -1563,7 +1561,7 @@ namespace Legacy
         }
 
         {
-            LOCK(cs_wallet);
+            //LOCK(cs_wallet);
 
             /* Link wallet to transaction, don't add to wallet yet (will be done when transaction committed) */
             wtxNew.BindWallet(this);
@@ -1926,58 +1924,53 @@ namespace Legacy
                                 std::set<std::pair<const CWalletTx*, uint32_t> >& setCoinsRet, int64_t& nValueRet, const std::string& strAccount)
     {
         /* cs_wallet should already be locked when this is called (CreateTransaction) */
-
         setCoinsRet.clear();
-        std::vector<CWalletTx> vallWalletTx;
+        std::vector<const CWalletTx*> vCoins;
 
         nValueRet = 0;
 
         if (config::GetBoolArg("-printselectcoin", false))
-        {
             debug::log(0, FUNCTION, "Selecting coins for account ", strAccount);
-        }
 
         /* Build a set of wallet transactions from all transaction in the wallet map */
-        vallWalletTx.reserve(mapWallet.size());
-
-        for (auto item : mapWallet)
-            vallWalletTx.push_back(item.second);
-
+        vCoins.reserve(mapWallet.size());
+        for (const auto& item : mapWallet)
+            vCoins.push_back(&item.second);
 
         /* Randomly order the transactions as potential inputs */
-        std::random_shuffle(vallWalletTx.begin(), vallWalletTx.end(), LLC::GetRandInt);
+        std::random_shuffle(vCoins.begin(), vCoins.end(), LLC::GetRandInt);
 
         /* Loop through all transactions, finding and adding available unspent balance to the list of outputs until reach nTargetValue */
-        for(const CWalletTx& walletTx : vallWalletTx)
+        for(const CWalletTx* walletTx : vCoins)
         {
             /* Can't spend transaction from after spend time */
-            if (walletTx.nTime > nSpendTime)
+            if (walletTx->nTime > nSpendTime)
                 continue;
 
             /* Can't spend balance that is unconfirmed or not final */
-            if (!walletTx.IsFinal() || !walletTx.IsConfirmed())
+            if (!walletTx->IsFinal() || !walletTx->IsConfirmed())
                 continue;
 
             /* Can't spend transaction that has not reached minimum depth setting for mine/theirs */
-            if (walletTx.GetDepthInMainChain() < (walletTx.IsFromMe() ? nConfMine : nConfTheirs))
+            if (walletTx->GetDepthInMainChain() < (walletTx->IsFromMe() ? nConfMine : nConfTheirs))
                 continue;
 
             /* Can't spend coinbase or coinstake transactions that are immature */
-            if ((walletTx.IsCoinBase() || walletTx.IsCoinStake()) && walletTx.GetBlocksToMaturity() > 0)
+            if ((walletTx->IsCoinBase() || walletTx->IsCoinStake()) && walletTx->GetBlocksToMaturity() > 0)
                 continue;
 
             /* So far, the transaction itself is available, now have to check each output to see if there are any we can use */
-            for (uint32_t i = 0; i < walletTx.vout.size(); i++)
+            for (uint32_t i = 0; i < walletTx->vout.size(); i++)
             {
                 /* Can't spend outputs that are already spent or not belonging to this wallet */
-                if (walletTx.IsSpent(i) || !IsMine(walletTx.vout[i]))
+                if (walletTx->IsSpent(i) || !IsMine(walletTx->vout[i]))
                     continue;
 
                 /* Handle account selection here. */
                 if(strAccount != "*")
                 {
                     NexusAddress address;
-                    if(!ExtractAddress(walletTx.vout[i].scriptPubKey, address) || !address.IsValid())
+                    if(!ExtractAddress(walletTx->vout[i].scriptPubKey, address) || !address.IsValid())
                         continue;
 
                     if(addressBook.HasAddress(address))
@@ -1989,15 +1982,15 @@ namespace Legacy
                         if(strEntry == strAccount)
                         {
                             /* Account label for transaction address matches request, include in result */
-                            setCoinsRet.insert(std::make_pair(&walletTx, i));
-                            nValueRet += walletTx.vout[i].nValue;
+                            setCoinsRet.insert(std::make_pair(walletTx, i));
+                            nValueRet += walletTx->vout[i].nValue;
                         }
                     }
                     else if(strAccount == "default")
                     {
                         /* Not in address book (no label), include if default requested */
-                        setCoinsRet.insert(std::make_pair(&walletTx, i));
-                        nValueRet += walletTx.vout[i].nValue;
+                        setCoinsRet.insert(std::make_pair(walletTx, i));
+                        nValueRet += walletTx->vout[i].nValue;
                     }
                 }
 
@@ -2005,10 +1998,10 @@ namespace Legacy
                 else
                 {
                     /* Add transaction with selected vout index to result set */
-                    setCoinsRet.insert(std::make_pair(&walletTx, i));
+                    setCoinsRet.insert(std::make_pair(walletTx, i));
 
                     /* Accumulate total value available to spend in result set */
-                    nValueRet += walletTx.vout[i].nValue;
+                    nValueRet += walletTx->vout[i].nValue;
                 }
 
                 /* If value available to spend in result set exceeds target value, we are done */
