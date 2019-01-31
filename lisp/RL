@@ -12,12 +12,9 @@
 #------------------------------------------------------------------------------
 
 #
-# Use eth0 by default unless an alternative has been passed to RL
+# Use eth0 by default
 #
 set device = "eth0"
-if ($1 != "") then
-  set device = "$1"
-endif
 set hostname = `hostname`
 
 #
