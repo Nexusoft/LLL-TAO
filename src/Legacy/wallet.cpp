@@ -1232,7 +1232,6 @@ namespace Legacy
             LOCK(cs_wallet);
 
             transactionsInWallet.reserve(mapWallet.size());
-
             for (auto& item : mapWallet)
                 transactionsInWallet.push_back(item.second);
 
@@ -1251,15 +1250,9 @@ namespace Legacy
                 /* Handle when Transaction on chain records output as unspent but wallet accounting has it as spent */
                 if (IsMine(walletTx.vout[n]) && walletTx.IsSpent(n) && !isSpentOnChain)
                 {
-                    /* Handle the Index on Disk for Transaction being inconsistent from the Wallet's accounting to the UTXO. */
-//TODO - Fix txindex reference
-//                    if (IsMine(walletTx.vout[n]) && walletTx.IsSpent(n) && (txindex.vSpent.size() <= n || txindex.vSpent[n].IsNull()))
-//                    {
-                        debug::log(0, FUNCTION, "Found unspent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().ToString().substr(0, 20),
-                            "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
+                    debug::log(0, FUNCTION, "Found unspent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().ToString().substr(0, 20), "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
 
                     ++nMismatchFound;
-
                     nBalanceInQuestion += walletTx.vout[n].nValue;
 
                     if (!fCheckOnly)
@@ -1270,7 +1263,7 @@ namespace Legacy
                 }
 
                 /* Handle when Transaction on chain records output as spent but wallet accounting has it as unspent */
-                if (IsMine(walletTx.vout[n]) && !walletTx.IsSpent(n) && isSpentOnChain)
+                else if (IsMine(walletTx.vout[n]) && !walletTx.IsSpent(n) && isSpentOnChain)
                 {
                     debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().ToString().substr(0, 20),
                         "[", n, "] ", fCheckOnly? "repair not attempted" : "repairing");
