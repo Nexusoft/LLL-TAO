@@ -689,13 +689,13 @@ namespace Legacy
             if (nLastFlushed != WalletDB::nWalletDBUpdated && (runtime::unifiedtimestamp() - nLastWalletUpdate) >= minTimeSinceLastUpdate)
             {
                 /* Try to lock but don't wait for it. Skip this iteration if fail to get lock. */
-                if (CDB::cs_db.try_lock())
+                if (BerkeleyDB::cs_db.try_lock())
                 {
                     /* Check ref count and skip flush attempt if any databases are in use (have an open file handle indicated by usage map count > 0) */
                     uint32_t nRefCount = 0;
-                    auto mi = CDB::mapFileUseCount.cbegin();
+                    auto mi = BerkeleyDB::mapFileUseCount.cbegin();
 
-                    while (mi != CDB::mapFileUseCount.cend())
+                    while (mi != BerkeleyDB::mapFileUseCount.cend())
                     {
                         /* Calculate total of all ref counts in map. This will be zero if no databases in use, non-zero if any are. */
                         nRefCount += (*mi).second;
@@ -708,24 +708,24 @@ namespace Legacy
                          * An entry in mapFileUseCount verifies that this particular wallet file has been used at some point, so it will be flushed.
                          * Should also never have an entry in mapFileUseCount if dbenv is not initialized, but it is checked to be sure.
                          */
-                        auto mi = CDB::mapFileUseCount.find(strWalletFile);
-                        if (CDB::fDbEnvInit && mi != CDB::mapFileUseCount.end())
+                        auto mi = BerkeleyDB::mapFileUseCount.find(strWalletFile);
+                        if (BerkeleyDB::fDbEnvInit && mi != BerkeleyDB::mapFileUseCount.end())
                         {
                             debug::log(0, FUNCTION, DateTimeStrFormat(runtime::unifiedtimestamp()), " Flushing ", strWalletFile);
                             nLastFlushed = WalletDB::nWalletDBUpdated;
                             int64_t nStart = runtime::timestamp(true);
 
                             /* Flush wallet file so it's self contained */
-                            CDB::CloseDb(strWalletFile);
-                            CDB::dbenv.txn_checkpoint(0, 0, 0);
-                            CDB::dbenv.lsn_reset(strWalletFile.c_str(), 0);
+                            BerkeleyDB::CloseDb(strWalletFile);
+                            BerkeleyDB::dbenv.txn_checkpoint(0, 0, 0);
+                            BerkeleyDB::dbenv.lsn_reset(strWalletFile.c_str(), 0);
 
-                            CDB::mapFileUseCount.erase(mi++);
+                            BerkeleyDB::mapFileUseCount.erase(mi++);
                             debug::log(0, FUNCTION, "Flushed ", strWalletFile, " in ", runtime::timestamp(true) - nStart, " ms");
                         }
                     }
 
-                    CDB::cs_db.unlock();
+                    BerkeleyDB::cs_db.unlock();
                 }
             }
         }
@@ -734,7 +734,7 @@ namespace Legacy
 
         /* Should be shutdown if get here, so this thread can shutdown database environment */
         if (config::fShutdown)
-            CDB::EnvShutdown();
+            BerkeleyDB::EnvShutdown();
     }
 
 
@@ -760,18 +760,18 @@ namespace Legacy
         while (!config::fShutdown)
         {
             {
-                LOCK(CDB::cs_db);
+                LOCK(BerkeleyDB::cs_db);
 
                 std::string strSource = wallet.GetWalletFile();
 
                 /* If wallet database is in use, will wait and repeat loop until it becomes available */
-                if (CDB::mapFileUseCount.count(strSource) == 0 || CDB::mapFileUseCount[strSource] == 0)
+                if (BerkeleyDB::mapFileUseCount.count(strSource) == 0 || BerkeleyDB::mapFileUseCount[strSource] == 0)
                 {
                     /* Flush log data to the dat file */
-                    CDB::CloseDb(strSource);
-                    CDB::dbenv.txn_checkpoint(0, 0, 0);
-                    CDB::dbenv.lsn_reset(strSource.c_str(), 0);
-                    CDB::mapFileUseCount.erase(strSource);
+                    BerkeleyDB::CloseDb(strSource);
+                    BerkeleyDB::dbenv.txn_checkpoint(0, 0, 0);
+                    BerkeleyDB::dbenv.lsn_reset(strSource.c_str(), 0);
+                    BerkeleyDB::mapFileUseCount.erase(strSource);
 
                     std::string pathSource(config::GetDataDir() + strSource);
                     std::string pathDest(strDest);

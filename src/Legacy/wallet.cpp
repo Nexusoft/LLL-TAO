@@ -164,7 +164,7 @@ namespace Legacy
         walletdb.Close();
 
         if (nLoadWalletRet == DB_NEED_REWRITE)
-            CDB::DBRewrite(strWalletFile);
+            BerkeleyDB::DBRewrite(strWalletFile);
 
         if (nLoadWalletRet != DB_LOAD_OK)
             return nLoadWalletRet;
@@ -546,8 +546,8 @@ namespace Legacy
 
             {
                 /* Need lock on database access before close db */
-                LOCK(CDB::cs_db);
-                CDB::CloseDb(strWalletFile);
+                LOCK(BerkeleyDB::cs_db);
+                BerkeleyDB::CloseDb(strWalletFile);
             }
 
             /* Reset the encryption database pointer (WalletDB it pointed to before will be destroyed) */
@@ -567,7 +567,7 @@ namespace Legacy
         /* Need to completely rewrite the wallet file; if we don't, bdb might keep
          * bits of the unencrypted private key in slack space in the database file.
          */
-        bool rewriteResult = CDB::DBRewrite(strWalletFile);
+        bool rewriteResult = BerkeleyDB::DBRewrite(strWalletFile);
 
         if (rewriteResult)
             debug::log(0, FUNCTION, "Wallet encryption completed successfully");

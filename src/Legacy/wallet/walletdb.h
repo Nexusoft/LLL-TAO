@@ -71,7 +71,7 @@ namespace Legacy
      *    - "acentry"<account><counter> = accounting entry (credit/debit) associated with an account/Nexus address
      *
      **/
-    class WalletDB : public CDB
+    class WalletDB : public BerkeleyDB
     {
     public:
         /** Defines default name of wallet database file **/
@@ -112,11 +112,11 @@ namespace Legacy
          *                     defaults to r+ (read and append). An empty or null string is
          *                     equivalent to read only.
          *
-         *  @see CDB for modes
+         *  @see BerkeleyDB for modes
          *
          **/
         WalletDB(const char* pszMode="r+")
-        : CDB(WalletDB::DEFAULT_WALLET_DB, pszMode)
+        : BerkeleyDB(WalletDB::DEFAULT_WALLET_DB, pszMode)
         { }
 
 
@@ -131,11 +131,11 @@ namespace Legacy
          *                     defaults to r+ (read and append). An empty or null string is
          *                     equivalent to read only.
          *
-         *  @see CDB for modes
+         *  @see BerkeleyDB for modes
          *
          **/
         WalletDB(const std::string& strFileName, const char* pszMode="r+")
-        : CDB(strFileName, pszMode)
+        : BerkeleyDB(strFileName, pszMode)
         { }
 
 
