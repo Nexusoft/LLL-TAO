@@ -1,5 +1,0 @@
-var structjson_1_1detail_1_1is__compatible__integer__type__impl_3_01_real_integer_type_00_01_compati908712cd511e2703eba30204e3699a8e =
-[
-    [ "CompatibleLimits", "structjson_1_1detail_1_1is__compatible__integer__type__impl_3_01_real_integer_type_00_01_compati908712cd511e2703eba30204e3699a8e.html#aa1dcff33cf5608bb04096b28344cb42d", null ],
-    [ "RealLimits", "structjson_1_1detail_1_1is__compatible__integer__type__impl_3_01_real_integer_type_00_01_compati908712cd511e2703eba30204e3699a8e.html#a577deaf2e5f61acf02b72a5316438505", null ]
-];
