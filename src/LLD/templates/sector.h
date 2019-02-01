@@ -1208,7 +1208,7 @@ namespace LLD
             /* Create an append only stream. */
             std::ifstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::in | std::ios::out | std::ios::binary);
             if(!stream.is_open())
-                return true;
+                return false;
 
             /* Get the Binary Size. */
             stream.ignore(std::numeric_limits<std::streamsize>::max());
@@ -1221,10 +1221,6 @@ namespace LLD
             stream.seekg (0, std::ios::beg);
             stream.read((char*) &vBuffer[0], vBuffer.size());
             stream.close();
-
-            /* Debug the journal detection. */
-            if(nSize == 0)
-                return true;
 
             debug::log(0, FUNCTION, "transaction journal detected of ", nSize, " bytes");
 

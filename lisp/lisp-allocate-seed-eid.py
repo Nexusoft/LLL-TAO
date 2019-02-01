@@ -47,7 +47,12 @@ for i in range(5):
     print "Checking for duplicates ... "
     for seed in dns_seeds:
         print "Lookup {}:".format(seed).ljust(40),
-        addr = socket.gethostbyname(seed)
+        try:
+            addr = socket.gethostbyname(seed)
+        except:
+            print "not found"
+            continue
+        #endtry    
         print addr
         if (addr == v4 or addr == v6):
             print "Found duplicate"

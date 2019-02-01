@@ -27,7 +27,7 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    uint32_t CMerkleTx::GetDepthInMainChain() const
+    uint32_t MerkleTx::GetDepthInMainChain() const
     {
         if (hashBlock == 0)
             return 0;
@@ -46,7 +46,7 @@ namespace Legacy
 
 
     /* Retrieve the number of blocks remaining until transaction outputs are spendable. */
-    uint32_t CMerkleTx::GetBlocksToMaturity() const
+    uint32_t MerkleTx::GetBlocksToMaturity() const
     {
         if (!(IsCoinBase() || IsCoinStake()))
             return 0;

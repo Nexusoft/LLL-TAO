@@ -71,12 +71,16 @@ int main(int argc, char** argv)
     SetupSignals();
 
 
+    /* Read the configuration file. */
+    config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
+
+
     /* Parse out the parameters */
     config::ParseParameters(argc, argv);
 
 
-    /* Read the configuration file. */
-    config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
+    /* Once we have read in the CLI paramters and config file, cache the args into global variables*/
+    config::CacheArgs();
 
 
     /* Handle Commandline switch */
@@ -154,7 +158,7 @@ int main(int argc, char** argv)
 
 
 
-    if(!config::GetBoolArg("-legacy"))
+    if(!config::GetBoolArg("-beta"))
     {
         /** Get the port for Tritium Server. **/
         port = static_cast<uint16_t>(config::GetArg("-port", config::fTestNet ? 8888 : 9888));

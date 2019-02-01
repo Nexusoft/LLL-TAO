@@ -25,13 +25,13 @@ namespace Legacy
 
     /* forward declarations */
     class NexusAddress;
-    class CScript;
+    class Script;
 
-    /** @class CKeyStrore
+    /** @class KeyStore
      *
      *  An abstract base class for key stores.
      *
-     *  Can store ECKey or CScript (or both).
+     *  Can store ECKey or Script (or both).
      *
      **/
     class KeyStore
@@ -97,7 +97,7 @@ namespace Legacy
         virtual bool HaveKey(const NexusAddress& address) const = 0;
 
 
-        /** AddCScript
+        /** AddScript
          *
          *  Add a script to the key store.
          *  Pure virtual method for implementation by derived class.
@@ -107,10 +107,10 @@ namespace Legacy
          *  @return true if script was successfully added
          *
          **/
-        virtual bool AddCScript(const CScript& redeemScript) = 0;
+        virtual bool AddScript(const Script& redeemScript) = 0;
 
 
-        /** GetCScript
+        /** GetScript
          *
          *  Retrieve a script from the key store.
          *  Pure virtual method for implementation by derived class.
@@ -122,10 +122,10 @@ namespace Legacy
          *  @return true if script successfully retrieved
          *
          **/
-        virtual bool GetCScript(const uint256_t& hash, CScript& redeemScriptOut) const = 0;
+        virtual bool GetScript(const uint256_t& hash, Script& redeemScriptOut) const = 0;
 
 
-        /** HaveCScript
+        /** HaveScript
          *
          *  Check whether a script is present in the store.
          *  Pure virtual method for implementation by derived class.
@@ -135,7 +135,7 @@ namespace Legacy
          *  @return true if script is present in the key store
          *
          **/
-        virtual bool HaveCScript(const uint256_t& hash) const = 0;
+        virtual bool HaveScript(const uint256_t& hash) const = 0;
 
 
         /** GetPubKey

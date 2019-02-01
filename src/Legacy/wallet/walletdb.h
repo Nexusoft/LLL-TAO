@@ -29,7 +29,7 @@ namespace Legacy
 {
 
     /* forward declarations */
-    class CScript;
+    class Script;
     class Account;
     class AccountingEntry;
     class KeyPoolEntry;
@@ -429,7 +429,7 @@ namespace Legacy
         bool EraseTx(const uint512_t& hash);
 
 
-        /** ReadCScript
+        /** ReadScript
          *
          *  Reads the script for a given script hash.
          *
@@ -440,10 +440,10 @@ namespace Legacy
          *  @return true if the script is present in the database and read successfully
          *
          **/
-        bool ReadCScript(const uint256_t& hash, CScript& redeemScript);
+        bool ReadScript(const uint256_t& hash, Script& redeemScript);
 
 
-        /** WriteCScript
+        /** WriteScript
          *
          *  Stores a redeem script using its script hash.
          *
@@ -454,7 +454,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteCScript(const uint256_t& hash, const CScript& redeemScript);
+        bool WriteScript(const uint256_t& hash, const Script& redeemScript);
 
 
         /** ReadPool
@@ -505,8 +505,6 @@ namespace Legacy
          *
          *  @return true if database entry successfully written
          *
-         *  @deprecated - accounting entries will no longer be used
-         *
          **/
         bool WriteAccountingEntry(const AccountingEntry& acentry);
 
@@ -524,8 +522,6 @@ namespace Legacy
          *
          *  @return net credit or debit of all accounting entries for the provided account
          *
-         *  @deprecated - accounting entries will no longer be used
-         *
          **/
         int64_t GetAccountCreditDebit(const std::string& strAccount);
 
@@ -537,8 +533,6 @@ namespace Legacy
          *  @param[in] strAccount Nexus address in string form of accounting entries to read, * lists entries for all accounts
          *
          *  @param[out] acentries Accounting entries for the given account will be appended to this list
-         *
-         *  @deprecated - accounting entries will no longer be used
          *
          **/
         void ListAccountCreditDebit(const std::string& strAccount, std::list<AccountingEntry>& acentries);

@@ -139,7 +139,7 @@ namespace Legacy
 
             for (uint32_t i = 0; i < vout.size(); i++)
             {
-                const CTxOut &txout = vout[i];
+                const TxOut &txout = vout[i];
 
                 /* Calculate credit value only including unspent outputs */
                 if (!IsSpent(i) && vout[i].nValue > 0)
@@ -389,7 +389,7 @@ namespace Legacy
         }
 
         /* Sent/received. */
-        for(const CTxOut& txout : vout)
+        for(const TxOut& txout : vout)
         {
             NexusAddress address;
             std::vector<uint8_t> vchPubKey;
@@ -479,7 +479,7 @@ namespace Legacy
         {
             /* Create list of tx hashes for previous transactions referenced by this transaction's inputs */
             std::vector<uint512_t> vWorkQueue;
-            for(const CTxIn& txin : vin)
+            for(const TxIn& txin : vin)
                 vWorkQueue.push_back(txin.prevout.hash);
 
             { // Begin lock scope
@@ -548,7 +548,7 @@ namespace Legacy
                          * within the copy depth because we'd be spending balance that probably is not confirmed,
                          * so this really should never be processed. Code is from legacy and left here intact just in case.
                          */
-                        for(const CTxIn& txin : prevTx.vin)
+                        for(const TxIn& txin : prevTx.vin)
                             vWorkQueue.push_back(txin.prevout.hash);
                     }
                 }

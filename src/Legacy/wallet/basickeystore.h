@@ -34,7 +34,7 @@ namespace Legacy
     typedef std::map<NexusAddress, std::pair<LLC::CSecret, bool> > KeyMap;
 
     /** Map to store scripts, keyed by 256 bit script hash **/
-    typedef std::map<uint256_t, CScript > ScriptMap;
+    typedef std::map<uint256_t, Script > ScriptMap;
 
     /** @class BasicKeyStore
      *
@@ -52,7 +52,7 @@ namespace Legacy
         KeyMap mapKeys;
 
 
-        /** Map containing ScriptMap of script hash/CScript **/
+        /** Map containing ScriptMap of script hash/Script **/
         ScriptMap mapScripts;
 
 
@@ -119,7 +119,7 @@ namespace Legacy
         virtual bool HaveKey(const NexusAddress& address) const override;
 
 
-        /** AddCScript
+        /** AddScript
          *
          *  Add a script to the key store.
          *
@@ -128,10 +128,10 @@ namespace Legacy
          *  @return true if script was successfully added
          *
          **/
-        virtual bool AddCScript(const CScript& redeemScript) override;
+        virtual bool AddScript(const Script& redeemScript) override;
 
 
-        /** GetCScript
+        /** GetScript
          *
          *  Retrieve a script from the key store.
          *
@@ -142,10 +142,10 @@ namespace Legacy
          *  @return true if script successfully retrieved
          *
          **/
-        virtual bool GetCScript(const uint256_t& hash, CScript& redeemScriptOut) const override;
+        virtual bool GetScript(const uint256_t& hash, Script& redeemScriptOut) const override;
 
 
-        /** HaveCScript
+        /** HaveScript
          *
          *  Check whether a script is present in the store.
          *
@@ -154,7 +154,7 @@ namespace Legacy
          *  @return true if script is present in the key store
          *
          **/
-        virtual bool HaveCScript(const uint256_t& hash) const override;
+        virtual bool HaveScript(const uint256_t& hash) const override;
 
     };
 

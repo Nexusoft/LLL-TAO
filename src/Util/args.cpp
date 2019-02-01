@@ -54,8 +54,8 @@ namespace config
     /* Parse the Argument Parameters */
     void ParseParameters(int argc, const char*const argv[])
     {
-        mapArgs.clear();
-        mapMultiArgs.clear();
+        //mapArgs.clear();
+        //mapMultiArgs.clear();
         for (int i = 1; i < argc; ++i)
         {
             char psz[10000];
@@ -95,17 +95,6 @@ namespace config
             // interpret -nofoo as -foo=0 (and -nofoo=0 as -foo=1) as long as -foo not set
             InterpretNegativeSetting(name, mapArgs);
         }
-
-        fDebug                  = GetBoolArg("-debug", false);
-        fPrintToConsole         = GetBoolArg("-printtoconsole", false);
-        fDaemon                 = GetBoolArg("-daemon", false);
-        fServer                 = GetBoolArg("-server", false);
-        fTestNet                = GetBoolArg("-testnet", false) ||
-                                  GetBoolArg("-lispnet", false);
-        fListen                 = GetBoolArg("-listen", true);
-        //fUseProxy               = GetBoolArg("-proxy")
-        fAllowDNS               = GetBoolArg("-allowdns", true);
-        fLogTimestamps          = GetBoolArg("-logtimestamps", false);
     }
 
     /* Return string argument or default value */
@@ -152,5 +141,20 @@ namespace config
             return SoftSetArg(strArg, std::string("1"));
         else
             return SoftSetArg(strArg, std::string("0"));
+    }
+
+    /* Caches some of the common arguments into global variables for quick/easy access */
+    void CacheArgs()
+    {
+        fDebug                  = GetBoolArg("-debug", false);
+        fPrintToConsole         = GetBoolArg("-printtoconsole", false);
+        fDaemon                 = GetBoolArg("-daemon", false);
+        fServer                 = GetBoolArg("-server", false);
+        fTestNet                = GetBoolArg("-testnet", false) ||
+                                  GetBoolArg("-lispnet", false);
+        fListen                 = GetBoolArg("-listen", true);
+        //fUseProxy               = GetBoolArg("-proxy")
+        fAllowDNS               = GetBoolArg("-allowdns", true);
+        fLogTimestamps          = GetBoolArg("-logtimestamps", false);
     }
 }

@@ -33,12 +33,12 @@ namespace TAO
 
 namespace Legacy
 {
-    /** @class CMerkleTx
+    /** @class MerkleTx
      *
      * A transaction with a merkle branch linking it to the block chain.
      *
      **/
-	class CMerkleTx : public Transaction
+	class MerkleTx : public Transaction
 	{
 	private:
         /** Init
@@ -77,7 +77,7 @@ namespace Legacy
          *  Initializes an empty merkle transaction
          *
          **/
-		CMerkleTx()
+		MerkleTx()
 		{
 			Init();
 		}
@@ -92,13 +92,13 @@ namespace Legacy
          *  @param[in] txIn Transaction data to copy into this merkle transaction
          *
          **/
-		CMerkleTx(const Transaction& txIn) : Transaction(txIn)
+		MerkleTx(const Transaction& txIn) : Transaction(txIn)
 		{
 			Init();
 		}
 
 
-		/* Implement serialization/deserializaiton for CMerkleTx, first by serializing/deserializing 
+		/* Implement serialization/deserializaiton for MerkleTx, first by serializing/deserializing 
 		 * base class data then processing local data 
 		 */
 		IMPLEMENT_SERIALIZE

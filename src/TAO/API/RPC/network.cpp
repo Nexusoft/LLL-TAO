@@ -408,9 +408,9 @@ namespace TAO
                         {
                             txinfo.push_back(tx.ToStringShort());
                             txinfo.push_back(DateTimeStrFormat(tx.nTime));
-                            for(const Legacy::CTxIn& txin : tx.vin)
+                            for(const Legacy::TxIn& txin : tx.vin)
                                 txinfo.push_back(txin.ToStringShort());
-                            for(const Legacy::CTxOut& txout : tx.vout)
+                            for(const Legacy::TxOut& txout : tx.vout)
                                 txinfo.push_back(txout.ToStringShort());
                         }
                         else

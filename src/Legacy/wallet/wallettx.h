@@ -36,8 +36,8 @@ namespace Legacy
 
     /* forward declarations */
     class NexusAddress;
-    class CTxIn;
-    class CTxOut;
+    class TxIn;
+    class TxOut;
 
     /** @class WalletTx
      *
@@ -46,7 +46,7 @@ namespace Legacy
      *
      *  Database key is tx<hash> where hash is the transaction hash
      **/
-    class WalletTx : public CMerkleTx
+    class WalletTx : public MerkleTx
     {
     private:
         /* This has to be static or copy constructor/copy assignment are deleted.
@@ -217,7 +217,7 @@ namespace Legacy
 
         /** Constructor
          *
-         *  Initializes a wallet transaction bound to a given wallet with data copied from a CMerkleTx.
+         *  Initializes a wallet transaction bound to a given wallet with data copied from a MerkleTx.
          *
          *  This does not add the transaction to the wallet.
          *
@@ -228,7 +228,7 @@ namespace Legacy
          *  @see Wallet::AddToWallet()
          *
          **/
-        WalletTx(Wallet* pwalletIn, const CMerkleTx& txIn) : CMerkleTx(txIn), ptransactionWallet(pwalletIn), fHaveWallet(true)
+        WalletTx(Wallet* pwalletIn, const MerkleTx& txIn) : MerkleTx(txIn), ptransactionWallet(pwalletIn), fHaveWallet(true)
         {
             InitWalletTx();
         }
@@ -247,7 +247,7 @@ namespace Legacy
          *  @see Wallet::AddToWallet()
          *
          **/
-        WalletTx(Wallet* pwalletIn, const Transaction& txIn) : CMerkleTx(txIn), ptransactionWallet(pwalletIn), fHaveWallet(true)
+        WalletTx(Wallet* pwalletIn, const Transaction& txIn) : MerkleTx(txIn), ptransactionWallet(pwalletIn), fHaveWallet(true)
         {
             InitWalletTx();
         }
@@ -279,7 +279,7 @@ namespace Legacy
                 pthis->mapValue["spent"] = str;
             }
 
-            nSerSize += SerReadWrite(s, *(CMerkleTx *)this, nSerType, nSerVersion, ser_action);
+            nSerSize += SerReadWrite(s, *(MerkleTx *)this, nSerType, nSerVersion, ser_action);
 
             READWRITE(vtxPrev);
             READWRITE(mapValue);

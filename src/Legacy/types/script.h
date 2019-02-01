@@ -55,7 +55,7 @@ namespace Legacy
 
 
     /** Serialized script, used inside transaction inputs and outputs */
-    class CScript : public std::vector<uint8_t>
+    class Script : public std::vector<uint8_t>
     {
     protected:
 
@@ -66,7 +66,7 @@ namespace Legacy
          *  @param[in] n The Integer to push into the script.
          *
          **/
-        CScript& push_int64(int64_t n);
+        Script& push_int64(int64_t n);
 
         /** push_uint64
          *
@@ -75,22 +75,22 @@ namespace Legacy
          *  @param[in] n The Integer to push into the script.
          *
          **/
-        CScript& push_uint64(uint64_t n);
+        Script& push_uint64(uint64_t n);
 
     public:
 
         /** Default Constructors **/
-        CScript() { }
+        Script() { }
 
 
-        /** Construct from another CScript
+        /** Construct from another Script
          *
-         *  Initialize with a copy of the CScript
+         *  Initialize with a copy of the Script
          *
          *  @param[in] b The object to copy into the vector.
          *
          **/
-        CScript(const CScript& b) : std::vector<uint8_t>(b.begin(), b.end()) { }
+        Script(const Script& b) : std::vector<uint8_t>(b.begin(), b.end()) { }
 
 
         /** Construct from iterators
@@ -101,7 +101,7 @@ namespace Legacy
          *  @param[in] pend The end iterator of object
          *
          **/
-        CScript(const_iterator pbegin, const_iterator pend) : std::vector<uint8_t>(pbegin, pend) { }
+        Script(const_iterator pbegin, const_iterator pend) : std::vector<uint8_t>(pbegin, pend) { }
 
 
     #ifndef _MSC_VER
@@ -114,7 +114,7 @@ namespace Legacy
          *  @param[in] pend The end iterator of object
          *
          **/
-        CScript(const uint8_t* pbegin, const uint8_t* pend) : std::vector<uint8_t>(pbegin, pend) { }
+        Script(const uint8_t* pbegin, const uint8_t* pend) : std::vector<uint8_t>(pbegin, pend) { }
     #endif
 
 
@@ -219,7 +219,7 @@ namespace Legacy
          *  @return the place in which was overwritten.
          *
          **/
-        int32_t FindAndDelete(const CScript& b);
+        int32_t FindAndDelete(const Script& b);
 
 
         /** Find
@@ -255,7 +255,7 @@ namespace Legacy
          *  @return the total number of signature operations
          *
          **/
-        uint32_t GetSigOpCount(const CScript& scriptSig) const;
+        uint32_t GetSigOpCount(const Script& scriptSig) const;
 
 
         /** IsPayToScriptHash
@@ -316,7 +316,7 @@ namespace Legacy
          *  @param[in] subscript The input script
          *
          **/
-        void SetPayToScriptHash(const CScript& subscript);
+        void SetPayToScriptHash(const Script& subscript);
 
 
         /** PrintHex
@@ -352,7 +352,7 @@ namespace Legacy
          *  Concatenate Script Objects
          *
          **/
-        CScript& operator+=(const CScript& b)
+        Script& operator+=(const Script& b)
         {
             insert(end(), b.begin(), b.end());
             return *this;
@@ -364,59 +364,59 @@ namespace Legacy
          *  Concatenate two Script Objects
          *
          **/
-        friend CScript operator+(const CScript& a, const CScript& b)
+        friend Script operator+(const Script& a, const Script& b)
         {
-            CScript ret = a;
+            Script ret = a;
             ret += b;
             return ret;
         }
 
 
-        //explicit CScript(char b) is not portable.  Use 'signed char' or 'uint8_t'.
-        explicit CScript(int8_t b)                      { operator<<(b); }
-        explicit CScript(int16_t b)                     { operator<<(b); }
-        explicit CScript(int32_t b)                     { operator<<(b); }
-        explicit CScript(int64_t b)                     { operator<<(b); }
-        explicit CScript(uint8_t b)                     { operator<<(b); }
-        explicit CScript(uint16_t b)                    { operator<<(b); }
-        explicit CScript(uint32_t b)                    { operator<<(b); }
-        explicit CScript(uint64_t b)                    { operator<<(b); }
-        explicit CScript(opcodetype b)                  { operator<<(b); }
-        explicit CScript(const uint256_t& b)            { operator<<(b); }
-        explicit CScript(const LLC::CBigNum& b)         { operator<<(b); }
-        explicit CScript(const std::vector<uint8_t>& b) { operator<<(b); }
+        //explicit Script(char b) is not portable.  Use 'signed char' or 'uint8_t'.
+        explicit Script(int8_t b)                      { operator<<(b); }
+        explicit Script(int16_t b)                     { operator<<(b); }
+        explicit Script(int32_t b)                     { operator<<(b); }
+        explicit Script(int64_t b)                     { operator<<(b); }
+        explicit Script(uint8_t b)                     { operator<<(b); }
+        explicit Script(uint16_t b)                    { operator<<(b); }
+        explicit Script(uint32_t b)                    { operator<<(b); }
+        explicit Script(uint64_t b)                    { operator<<(b); }
+        explicit Script(opcodetype b)                  { operator<<(b); }
+        explicit Script(const uint256_t& b)            { operator<<(b); }
+        explicit Script(const LLC::CBigNum& b)         { operator<<(b); }
+        explicit Script(const std::vector<uint8_t>& b) { operator<<(b); }
 
-        CScript& operator<<(int8_t b)                   { return push_int64(b); }
-        CScript& operator<<(int16_t b)                  { return push_int64(b); }
-        CScript& operator<<(int32_t b)                  { return push_int64(b); }
-        CScript& operator<<(int64_t b)                  { return push_int64(b); }
-        CScript& operator<<(uint8_t b)                  { return push_uint64(b); }
-        CScript& operator<<(uint16_t b)                 { return push_uint64(b); }
-        CScript& operator<<(uint32_t b)                 { return push_uint64(b); }
-        CScript& operator<<(uint64_t b)                 { return push_uint64(b); }
+        Script& operator<<(int8_t b)                   { return push_int64(b); }
+        Script& operator<<(int16_t b)                  { return push_int64(b); }
+        Script& operator<<(int32_t b)                  { return push_int64(b); }
+        Script& operator<<(int64_t b)                  { return push_int64(b); }
+        Script& operator<<(uint8_t b)                  { return push_uint64(b); }
+        Script& operator<<(uint16_t b)                 { return push_uint64(b); }
+        Script& operator<<(uint32_t b)                 { return push_uint64(b); }
+        Script& operator<<(uint64_t b)                 { return push_uint64(b); }
 
-        CScript& operator<<(opcodetype opcode)
+        Script& operator<<(opcodetype opcode)
         {
             if (opcode < 0 || opcode > 0xff)
-                throw std::runtime_error("CScript::operator<<() : invalid opcode");
+                throw std::runtime_error("Script::operator<<() : invalid opcode");
             insert(end(), (uint8_t)opcode);
             return *this;
         }
 
-        CScript& operator<<(const uint256_t& b)
+        Script& operator<<(const uint256_t& b)
         {
             insert(end(), sizeof(b));
             insert(end(), (uint8_t*)&b, (uint8_t*)&b + sizeof(b));
             return *this;
         }
 
-        CScript& operator<<(const LLC::CBigNum& b)
+        Script& operator<<(const LLC::CBigNum& b)
         {
             *this << b.getvch();
             return *this;
         }
 
-        CScript& operator<<(const std::vector<uint8_t>& b)
+        Script& operator<<(const std::vector<uint8_t>& b)
         {
             if (b.size() < OP_PUSHDATA1)
             {
@@ -443,11 +443,11 @@ namespace Legacy
             return *this;
         }
 
-        CScript& operator<<(const CScript& b)
+        Script& operator<<(const Script& b)
         {
             // I'm not sure if this should push the script or concatenate scripts.
             // If there's ever a use for pushing a script onto a script, delete this member fn
-            assert(!"warning: pushing a CScript onto a CScript with << is probably not intended, use + to concatenate");
+            assert(!"warning: pushing a Script onto a Script with << is probably not intended, use + to concatenate");
             return *this;
         }
     };

@@ -49,7 +49,7 @@ namespace TAO
         bool GetLastState(BlockState &state, uint32_t nChannel)
         {
             /* Loop back 10k blocks. */
-            for(uint_t i = 0;  i < 1440; ++i)
+            for(uint_t i = 0;  i < 1440 && !config::fShutdown; ++i)
             {
                 /* Return false on genesis. */
                 if(state.GetHash() == hashGenesis)
@@ -424,7 +424,9 @@ namespace TAO
                 if(!ChainState::Synchronizing())
                 {
                     std::vector<LLP::CInv> vInv = { LLP::CInv(ChainState::hashBestChain, LLP::MSG_BLOCK) };
-                    LLP::LEGACY_SERVER->Relay("inv", vInv);
+
+                    if(LLP::LEGACY_SERVER)
+                        LLP::LEGACY_SERVER->Relay("inv", vInv);
                 }
             }
 

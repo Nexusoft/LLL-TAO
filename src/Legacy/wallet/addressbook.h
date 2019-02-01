@@ -21,8 +21,8 @@ ________________________________________________________________________________
 
 namespace Legacy
 {
-    
-    /* forward declarations */    
+
+    /* forward declarations */
     class NexusAddress;
     class Wallet;
 
@@ -34,9 +34,9 @@ namespace Legacy
     /** @class AddressBook
      *
      *  Implements an address book mapping Nexus addresses (accounts) to address labels.
-     * 
+     *
      *  For a file backed wallet, adding or removing address book entries will also update
-     *  the wallet database. 
+     *  the wallet database.
      *
      *  Database key for address book entries is name<address> where address is string representation of Nexus address.
      **/
@@ -46,11 +46,11 @@ namespace Legacy
 
 
     private:
-        /** Mutex for thread concurrency. 
+        /** Mutex for thread concurrency.
          *
          *  Static because having instance-specific mutex causes move constructor (used in Wallet initialization) to be deleted.
          *  We really only use one AddressBook so no problem simply sharing one mutex within the class.
-         *  
+         *
          **/
         static std::mutex cs_addressBook;
 
@@ -65,7 +65,7 @@ namespace Legacy
 
         /** LoadAddressBookName
          *
-         *  Loads an address book entry without updating the database (for file backed wallet). 
+         *  Loads an address book entry without updating the database (for file backed wallet).
          *  For use by LoadWallet.
          *
          *  @param[in] address The Nexus address of the label to store
@@ -141,7 +141,7 @@ namespace Legacy
 
         /** AvailableAddresses
          *
-         *  Get Nexus addresses that have a balance associated with the wallet for this address book. 
+         *  Get Nexus addresses that have a balance associated with the wallet for this address book.
          *
          *  @param[in] nSpendTime Target time for balance totals. Any transaction with a later timestamp is filtered from balance calculation
          *
@@ -154,13 +154,13 @@ namespace Legacy
          *  @return true if addresses retrieved successfully
          *
          **/
-        bool AvailableAddresses(const uint32_t nSpendTime, std::map<NexusAddress, int64_t>& mapAddressBalances, 
+        bool AvailableAddresses(const uint32_t nSpendTime, std::map<NexusAddress, int64_t>& mapAddressBalances,
                                 const bool fOnlyConfirmed = false, const uint32_t nMinDepth = 1) const;
 
 
         /** BalanceByAccount
          *
-         *  Get the current balance for a given account 
+         *  Get the current balance for a given account
          *
          *  @param[in] strAccount The account to retrieve balance for, * for all
          *
@@ -173,7 +173,7 @@ namespace Legacy
          **/
         bool BalanceByAccount(const std::string& strAccount, int64_t& nBalance, const uint32_t nMinDepth = 3) const;
 
-        
+
         /** GetAccountAddress
         *
         *  Get the address for the given account, adding a new address if one has not already been assigned
@@ -189,7 +189,7 @@ namespace Legacy
         /** GetAddressBookMap
         *
         *  Gets const access to the internal AddressBookMap (NexusAddress to account name)
-        * 
+        *
         *  @return The AddressBookMap
         *
         **/

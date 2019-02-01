@@ -126,5 +126,12 @@ namespace config
      **/
     bool SoftSetBoolArg(const std::string& strArg, bool fValue);
 
+    /** CacheArgs
+    *
+    *  Caches some of the common arguments into global variables for quick/easy access
+    *
+    **/
+    void CacheArgs();
+
 }
 #endif

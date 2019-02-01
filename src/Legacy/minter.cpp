@@ -65,7 +65,7 @@ namespace Legacy
             StakeMinter::fdestructMinter = true;
         }
 
-        StakeMinter::minterThread.join();
+        //StakeMinter::minterThread.join();
 
         if (pReservedTrustKey != nullptr)
         {
@@ -109,7 +109,7 @@ namespace Legacy
     double StakeMinter::GetTrustWeight() const
     {
         LOCK(StakeMinter::cs_stakeMinter);
-        
+
         return nTrustWeight;
     }
 
@@ -118,7 +118,7 @@ namespace Legacy
     double StakeMinter::GetTrustWeightPercent() const
     {
         LOCK(StakeMinter::cs_stakeMinter);
-        
+
         return (nTrustWeight / 90.0);
     }
 
@@ -127,7 +127,7 @@ namespace Legacy
     double StakeMinter::GetStakeRate() const
     {
         LOCK(StakeMinter::cs_stakeMinter);
-        
+
         return nStakeRate;
     }
 
@@ -138,7 +138,7 @@ namespace Legacy
     bool StakeMinter::IsWaitPeriod() const
     {
         LOCK(StakeMinter::cs_stakeMinter);
-        
+
         return fIsWaitPeriod;
     }
 
@@ -206,7 +206,7 @@ namespace Legacy
         }
 
         /* Scan for trust key within the trust database if none found in wallet.
-         * Should only have to do this if new wallet (no trust key), or converting old wallet that doesn't have its key cached yet. 
+         * Should only have to do this if new wallet (no trust key), or converting old wallet that doesn't have its key cached yet.
          */
         if(trustKey.IsNull())
         {
@@ -252,7 +252,7 @@ namespace Legacy
             }
         }
 
-        if (trustKey.IsNull())
+        if (trustKey.IsNull() && !config::fShutdown)
         {
             /* No trust key found. Reserve a new key to use as the trust key for Genesis */
             debug::log(0, FUNCTION, "Staking for Genesis with new trust key");
@@ -267,7 +267,7 @@ namespace Legacy
     /* Creates a new legacy block that the stake minter will attempt to mine via the Proof of Stake process. */
     bool StakeMinter::CreateCandidateBlock()
     {
-        /* Create the block to work on. 
+        /* Create the block to work on.
          * Don't just reset old block. May still have a reference to it floating around in process of relaying it.
          */
         candidateBlock = LegacyBlock();
@@ -299,7 +299,7 @@ namespace Legacy
                 /* Set the trust key to null state. */
                 trustKey.SetNull();
 
-                /* For next iteration, go back to staking for Genesis */ 
+                /* For next iteration, go back to staking for Genesis */
                 if (pReservedTrustKey != nullptr)
                     delete pReservedTrustKey;  // should never happen, this is a precaution
 
@@ -321,8 +321,8 @@ namespace Legacy
                 return debug::error(FUNCTION, "Failed to get last trust for trust key");
 
             /* Enforce the minimum staking transaction interval. */
-            if ((candidateBlock.nHeight - prevBlockState.nHeight) < (config::fTestNet 
-                                                                    ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL 
+            if ((candidateBlock.nHeight - prevBlockState.nHeight) < (config::fTestNet
+                                                                    ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
                                                                     : TAO::Ledger::MAINNET_MINIMUM_INTERVAL))
             {
                 /* Below minimum interval. Previous stake block still maturing. Increase sleep time until can continue normally. */
@@ -400,7 +400,7 @@ namespace Legacy
             DataStream scriptPub(candidateBlock.vtx[0].vin[0].scriptSig, SER_NETWORK, LLP::PROTOCOL_VERSION);
             scriptPub << prevBlockState.GetHash() << nSequence << nScore;
 
-            /* Set the script sig (CScript doesn't support serializing all types needed) */
+            /* Set the script sig (Script doesn't support serializing all types needed) */
             candidateBlock.vtx[0].vin[0].scriptSig.clear();
             candidateBlock.vtx[0].vin[0].scriptSig.insert(candidateBlock.vtx[0].vin[0].scriptSig.end(), scriptPub.begin(), scriptPub.end());
 
@@ -515,7 +515,7 @@ namespace Legacy
                 debug::log(0, FUNCTION, "Average coin age is immature. %" PRIu32 " minutes remaining until staking available.", nRemainingWaitTime);
                 return false;
             }
-            else  
+            else
             {
                 /* Reset wait period setting */
                 fNewIsWaitPeriod = false;
@@ -525,7 +525,7 @@ namespace Legacy
             }
 
             /* Trust Weight For Genesis is based on Coin Age, grows more slowly than post-Genesis Trust Weight,
-             * and only reaches a maximum of 10.0 after average Coin Age reaches 84 days. 
+             * and only reaches a maximum of 10.0 after average Coin Age reaches 84 days.
              */
             nCurrentTrustWeight = std::min(10.0, (((9.0 * log(((2.0 * nCoinAge) / (60 * 60 * 24 * 28 * 3)) + 1.0)) / log(3))) + 1.0);
 
@@ -550,8 +550,8 @@ namespace Legacy
     {
         bool fstop = false; // initialized false to assure it enters process loop
 
-        /* Calculate the minimum Required Energy Efficiency Threshold. 
-         * Minter can only mine Proof of Stake when current threshold exceeds this value. 
+        /* Calculate the minimum Required Energy Efficiency Threshold.
+         * Minter can only mine Proof of Stake when current threshold exceeds this value.
          *
          * Staking weights (trust and block) reduce the required threshold by reducing the numerator of this calculation.
          * Weight from staking balance (based on nValue out of coinstake) reduces the required threshold by increasing the denominator.
@@ -564,11 +564,11 @@ namespace Legacy
         bnTarget.SetCompact(candidateBlock.nBits);
         uint1024_t nHashTarget = bnTarget.getuint1024();
 
-        debug::log(0, FUNCTION, "Staking new block from %s at weight %f and stake rate %f", 
+        debug::log(0, FUNCTION, "Staking new block from %s at weight %f and stake rate %f",
             hashLastBlock.ToString().substr(0, 20).c_str(), (nTrustWeight + nBlockWeight), nStakeRate);
 
-        /* Search for the proof of stake hash solution until it mines a block, minter is stopped, 
-         * or network generates a new block (minter must start over with new candidate) 
+        /* Search for the proof of stake hash solution until it mines a block, minter is stopped,
+         * or network generates a new block (minter must start over with new candidate)
          */
         while (!fstop && !config::fShutdown && hashLastBlock == TAO::Ledger::ChainState::hashBestChain)
         {
@@ -650,10 +650,10 @@ namespace Legacy
         if (!candidateBlock.vtx[0].CheckTrust(TAO::Ledger::ChainState::stateBest))
             return debug::error(FUNCTION, "Check trust failed");
 
-        /* Check the work for the block. 
+        /* Check the work for the block.
          * After a successful check, CheckWork() calls LLP::Process() for the new block.
          * That method will call LegacyBlock::Accept() and BlockState::Accept()
-         * After all is accepted, BlockState::Accept() will call BlockState::SetBest() 
+         * After all is accepted, BlockState::Accept() will call BlockState::SetBest()
          * to set the new best chain. This final method relays the new block to the
          * network.
          */
@@ -667,11 +667,11 @@ namespace Legacy
             cKey.SetBytes(pReservedTrustKey->GetReservedKey());
 
             /* Create new trust key with Genesis block hash, Genesis tx hash, and Genesis time based on current block */
-            TAO::Ledger::TrustKey trustKeyNew(pReservedTrustKey->GetReservedKey(), candidateBlock.GetHash(), 
+            TAO::Ledger::TrustKey trustKeyNew(pReservedTrustKey->GetReservedKey(), candidateBlock.GetHash(),
                                               candidateBlock.vtx[0].GetHash(), candidateBlock.GetBlockTime());
 
             /* Add trust key to trust db */
-            LLD::trustDB->WriteTrustKey(cKey, trustKeyNew); 
+            LLD::trustDB->WriteTrustKey(cKey, trustKeyNew);
 
             /* Cache trust key in wallet */
             pStakingWallet->SetTrustKey(pReservedTrustKey->GetReservedKey());
@@ -714,6 +714,9 @@ namespace Legacy
             }
         }
 
+        if(!config::fShutdown)
+            return;
+
         pStakeMinter->FindTrustKey();
 
         debug::log(0, FUNCTION, "Stake Minter Initialized");
@@ -749,7 +752,7 @@ namespace Legacy
                 }
             }
 
-            if (fstop and !config::fShutdown)
+            if (fstop && !config::fShutdown)
             {
                 /* When minter is restarted after a stop, reset for normal running */
                 fstop = false;
@@ -763,7 +766,7 @@ namespace Legacy
 
             /* If we got a shutdown while it was sleeping or waiting to be restarted, skip the rest of this iteration */
             if (config::fShutdown)
-                continue;
+                return;
 
             /* Save the current best block hash immediately in case it change while we do setup */
             pStakeMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain;
@@ -781,9 +784,7 @@ namespace Legacy
 
         }
 
-        /* On shutdown, delete the minter instance and wait for it to destruct before ending */ 
-        delete pStakeMinter;
-
+        /* On shutdown, delete the minter instance and wait for it to destruct before ending */
         while (!fdestruct)
         {
             runtime::sleep(1);
