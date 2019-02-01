@@ -27,7 +27,7 @@ namespace version
 
     /* Client Version Outputs. */
     const std::string CLIENT_NAME("Tritium");
-    const std::string CLIENT_TYPE("Alpha");
+    const std::string CLIENT_TYPE("Beta");
     const std::string CLIENT_DATE(__DATE__ " " __TIME__);
     /* The version number */
     const std::string CLIENT_VERSION_STRING = debug::strprintf("%d.%d.%d.%d", CLIENT_MAJOR, CLIENT_MINOR, CLIENT_PATCH, CLIENT_BUILD);

@@ -690,9 +690,6 @@ namespace LLP
                 mapLegacyOrphans.erase(hash);
         }
 
-        if(LLD::legDB->HasBlock(hash))
-            return true;
-
         /* Check for orphan. */
         if(!LLD::legDB->HasBlock(block.hashPrevBlock))
         {
@@ -706,7 +703,9 @@ namespace LLP
             debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " hash=", block.GetHash().ToString().substr(0, 20));
 
             /* Normal sync mode (slower connections). */
-            if(!config::GetBoolArg("-fastsync"))
+            if(!TAO::Ledger::ChainState::Synchronizing())
+                pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+            else if(!config::GetBoolArg("-fastsync"))
             {
                 if(!TAO::Ledger::ChainState::Synchronizing() || TAO::Ledger::ChainState::hashBestChain != LegacyNode::hashLastGetblocks || LegacyNode::nLastGetBlocks + 10 < runtime::timestamp())
                 {
@@ -760,18 +759,22 @@ namespace LLP
             return true;
         }
 
-        /* Check if valid in the chain. */
-        if(!block.Accept())
-        {
-            debug::log(3, FUNCTION, "block failed to be added to chain");
-
-            return true;
-        }
-
         { LOCK(PROCESSING_MUTEX);
 
             /* Create the Block State. */
             TAO::Ledger::BlockState state(block);
+
+            /* Check if it exists first */
+            if(LLD::legDB->HasBlock(block.GetHash()))
+                return true;
+
+            /* Check if valid in the chain. */
+            if(!block.Accept())
+            {
+                debug::log(3, FUNCTION, "block failed to be added to chain");
+
+                return true;
+            }
 
             /* Process the block state. */
             if(!state.Accept())

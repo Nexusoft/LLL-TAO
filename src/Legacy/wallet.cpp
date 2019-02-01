@@ -765,6 +765,65 @@ namespace Legacy
     }
 
 
+
+    /* Get the available addresses that have a balance associated with a wallet. */
+    bool Wallet::BalanceByAccount(std::string strAccount, int64_t& nBalance, int32_t nMinDepth)
+    {
+        {
+            LOCK(cs_wallet);
+            nBalance = 0;
+            for (auto it = mapWallet.begin(); it != mapWallet.end(); ++it)
+            {
+                const WalletTx* pcoin = &(*it).second;
+                if (!pcoin->IsFinal())
+                    continue;
+
+                if (pcoin->GetDepthInMainChain() < nMinDepth)
+                    continue;
+
+                if ((pcoin->IsCoinBase() || pcoin->IsCoinStake()) && pcoin->GetBlocksToMaturity() > 0)
+                    continue;
+
+                for (int i = 0; i < pcoin->vout.size(); i++)
+                {
+
+                    if (!pcoin->IsSpent(i) && IsMine(pcoin->vout[i]) && pcoin->vout[i].nValue > 0)
+                    {
+                        if(strAccount == "*")
+                        {
+                            nBalance += pcoin->vout[i].nValue;
+
+                            continue;
+                        }
+
+                        NexusAddress address;
+                        if(!ExtractAddress(pcoin->vout[i].scriptPubKey, address) || !address.IsValid())
+                            return false;
+
+                        if(GetAddressBook().GetAddressBookMap().count(address))
+                        {
+                            std::string strEntry = GetAddressBook().GetAddressBookMap().at(address);
+                            if(strEntry == "" && strAccount == "default")
+                                strEntry = "default";
+
+                            if(strEntry == "default" && strAccount == "")
+                                strAccount = "default";
+
+                            if(strEntry == strAccount)
+                                nBalance += pcoin->vout[i].nValue;
+                        }
+                        else if(strAccount == "default" || strAccount == "")
+                            nBalance += pcoin->vout[i].nValue;
+
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+
     /* Retrieves the current wallet balance for unconfirmed transactions. */
     int64_t Wallet::GetUnconfirmedBalance()
     {

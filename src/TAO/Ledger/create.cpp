@@ -247,9 +247,10 @@ namespace TAO
                 assert(genesis.nTime == block.nTime);
 
                 /* Check that the genesis hash is correct. */
+                uint1024_t genesisHash = config::fTestNet ? hashGenesisTestnet : hashGenesis;
                 LLC::CBigNum target;
                 target.SetCompact(block.nBits);
-                if(block.GetHash() != hashGenesis)
+                if(block.GetHash() != genesisHash)
                     return debug::error(FUNCTION, "genesis hash does not match");
 
                 /* Check that the block passes basic validation. */
@@ -259,19 +260,19 @@ namespace TAO
                 /* Set the proper chain state variables. */
                 ChainState::stateGenesis = BlockState(block);
                 ChainState::stateGenesis.nChannelHeight = 1;
-                ChainState::stateGenesis.hashCheckpoint = hashGenesis;
+                ChainState::stateGenesis.hashCheckpoint = genesisHash;
                 ChainState::stateGenesis.print();
 
                 /* Set the best block. */
                 ChainState::stateBest = ChainState::stateGenesis;
 
                 /* Write the block to disk. */
-                if(!LLD::legDB->WriteBlock(hashGenesis, ChainState::stateGenesis))
+                if(!LLD::legDB->WriteBlock(genesisHash, ChainState::stateGenesis))
                     return debug::error(FUNCTION, "genesis didn't commit to disk");
 
                 /* Write the best chain to the database. */
-                ChainState::hashBestChain = hashGenesis;
-                if(!LLD::legDB->WriteBestChain(hashGenesis))
+                ChainState::hashBestChain = genesisHash;
+                if(!LLD::legDB->WriteBestChain(genesisHash))
                     return debug::error(FUNCTION, "couldn't write best chain.");
             }
 
