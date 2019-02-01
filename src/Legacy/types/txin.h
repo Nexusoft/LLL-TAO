@@ -29,16 +29,16 @@ namespace Legacy
 	 * transaction's output that it claims and a signature that matches the
 	 * output's public key.
 	 */
-	class CTxIn
+	class TxIn
 	{
 	public:
 
 		/** The outpoint that contains the transaction previous output. **/
-		COutPoint prevout;
+		OutPoint prevout;
 
 
 		/** The Script that is inputed into this transaction. **/
-		CScript scriptSig; //need to forward declare
+		Script scriptSig; //need to forward declare
 
 
 		/** The sequence number (to be deprecated). **/
@@ -59,7 +59,7 @@ namespace Legacy
 		 *	Sets the sequence to numeric limits of 32 bit uint32_t
 		 *
 		 **/
-		CTxIn()
+		TxIn()
 		{
 			nSequence = std::numeric_limits<uint32_t>::max();
 		}
@@ -72,7 +72,7 @@ namespace Legacy
 		 *	@param[in] nSequenceIn The sequence number (default uint32_t numeric limits)
 		 *
 		 **/
-		explicit CTxIn(COutPoint prevoutIn, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max())
+		explicit TxIn(OutPoint prevoutIn, Script scriptSigIn=Script(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max())
 		{
 			prevout = prevoutIn;
 			scriptSig = scriptSigIn;
@@ -88,17 +88,17 @@ namespace Legacy
 		 *	@param[in] nSequenceIn The sequence number (default uint32_t numeric limits)
 		 *
 		 **/
-		CTxIn(uint512_t hashPrevTx, uint32_t nOut, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max());
+		TxIn(uint512_t hashPrevTx, uint32_t nOut, Script scriptSigIn=Script(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max());
 
 
 		/** Comparison Operator overload
 		 *
-		 *	Compares two CTxIn objects to one another
+		 *	Compares two TxIn objects to one another
 		 *
 		 *	@return true if the objects are equal
 		 *
 		 **/
-		friend bool operator==(const CTxIn& a, const CTxIn& b)
+		friend bool operator==(const TxIn& a, const TxIn& b)
 		{
 			return (a.prevout   == b.prevout &&
 					a.scriptSig == b.scriptSig &&
@@ -108,12 +108,12 @@ namespace Legacy
 
 		/** Not Operator overload
 		 *
-		 *	Compares two CTxIn objects to one another
+		 *	Compares two TxIn objects to one another
 		 *
 		 *	@return true if the objects are not equal
 		 *
 		 **/
-		friend bool operator!=(const CTxIn& a, const CTxIn& b)
+		friend bool operator!=(const TxIn& a, const TxIn& b)
 		{
 			return !(a == b);
 		}

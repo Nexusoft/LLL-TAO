@@ -36,7 +36,7 @@ ________________________________________________________________________________
 /* forward declaration */
 namespace Legacy
 {
-    class CScript;
+    class Script;
 }
 
 
@@ -475,9 +475,9 @@ template<typename Stream, typename T, typename A> void Unserialize_impl(Stream& 
 template<typename Stream, typename T, typename A> inline void Unserialize(Stream& is, std::vector<T, A>& v, uint32_t nSerType, uint32_t nSerVersion);
 
 /** others derived from vector **/
-extern inline uint32_t GetSerializeSize(const Legacy::CScript& v, uint32_t nSerType, uint32_t nSerVersion);
-template<typename Stream> void Serialize(Stream& os, const Legacy::CScript& v, uint32_t nSerType, uint32_t nSerVersion);
-template<typename Stream> void Unserialize(Stream& is, Legacy::CScript& v, uint32_t nSerType, uint32_t nSerVersion);
+extern inline uint32_t GetSerializeSize(const Legacy::Script& v, uint32_t nSerType, uint32_t nSerVersion);
+template<typename Stream> void Serialize(Stream& os, const Legacy::Script& v, uint32_t nSerType, uint32_t nSerVersion);
+template<typename Stream> void Unserialize(Stream& is, Legacy::Script& v, uint32_t nSerType, uint32_t nSerVersion);
 
 /** pair **/
 template<typename K, typename T> uint32_t GetSerializeSize(const std::pair<K, T>& item, uint32_t nSerType, uint32_t nSerVersion);
@@ -648,19 +648,19 @@ inline void Unserialize(Stream& is, std::vector<T, A>& v, uint32_t nSerType, uin
 /*
  * others derived from vector
  **/
-inline uint32_t GetSerializeSize(const Legacy::CScript& v, uint32_t nSerType, uint32_t nSerVersion)
+inline uint32_t GetSerializeSize(const Legacy::Script& v, uint32_t nSerType, uint32_t nSerVersion)
 {
     return GetSerializeSize((const std::vector<uint8_t>&)v, nSerType, nSerVersion);
 }
 
 template<typename Stream>
-void Serialize(Stream& os, const Legacy::CScript& v, uint32_t nSerType, uint32_t nSerVersion)
+void Serialize(Stream& os, const Legacy::Script& v, uint32_t nSerType, uint32_t nSerVersion)
 {
     Serialize(os, (const std::vector<uint8_t>&)v, nSerType, nSerVersion);
 }
 
 template<typename Stream>
-void Unserialize(Stream& is, Legacy::CScript& v, uint32_t nSerType, uint32_t nSerVersion)
+void Unserialize(Stream& is, Legacy::Script& v, uint32_t nSerType, uint32_t nSerVersion)
 {
     Unserialize(is, (std::vector<uint8_t>&)v, nSerType, nSerVersion);
 }

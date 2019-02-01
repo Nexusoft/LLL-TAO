@@ -84,7 +84,7 @@ namespace Legacy
                 fExpectTestNet = false;
                 break;
             case SCRIPT_ADDRESS:
-                nExpectedSize = 32; // Hash of CScript
+                nExpectedSize = 32; // Hash of Script
                 fExpectTestNet = false;
                 break;
 

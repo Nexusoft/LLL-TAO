@@ -20,7 +20,7 @@ namespace Legacy
 {
 
 	/** An inpoint - a combination of a transaction and an index n into its vin */
-	class CInPoint
+	class InPoint
 	{
 	public:
 
@@ -37,7 +37,7 @@ namespace Legacy
 		 *	Sets object to null state.
 		 *
 		 **/
-		CInPoint() { SetNull(); }
+		InPoint() { SetNull(); }
 
 
 		/** Constructor
@@ -46,7 +46,7 @@ namespace Legacy
 		 *	@param[in] nIn The index input
 		 *
 		 **/
-		CInPoint(Transaction* ptxIn, uint32_t nIn)
+		InPoint(Transaction* ptxIn, uint32_t nIn)
 		{
 			ptx = ptxIn;
 			n = nIn;

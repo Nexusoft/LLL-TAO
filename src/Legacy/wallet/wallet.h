@@ -51,10 +51,10 @@ namespace Legacy
 {
 
     /* forward declarations */
-    class CScript;
+    class Script;
     class Transaction;
-    class CTxIn;
-    class CTxOut;
+    class TxIn;
+    class TxOut;
     class NexusAddress;
 
     class Output;
@@ -419,7 +419,7 @@ namespace Legacy
         bool AddKey(const LLC::ECKey& key) override;
 
 
-        /** AddCScript
+        /** AddScript
          *
          *  Add a script to the key store.
          *
@@ -430,7 +430,7 @@ namespace Legacy
          *  @return true if script was successfully added
          *
          **/
-        bool AddCScript(const CScript& redeemScript) override;
+        bool AddScript(const Script& redeemScript) override;
 
 
     /*----------------------------------------------------------------------------------------*/
@@ -830,7 +830,7 @@ namespace Legacy
          *  @return true if the txin sends balance from this wallet
          *
          **/
-        bool IsMine(const CTxIn& txin);
+        bool IsMine(const TxIn& txin);
 
 
         /** IsMine
@@ -843,7 +843,7 @@ namespace Legacy
          *  @return true if this wallet receives balance via this txout
          *
          **/
-        bool IsMine(const CTxOut& txout);
+        bool IsMine(const TxOut& txout);
 
 
         /** IsFromMe
@@ -913,7 +913,7 @@ namespace Legacy
          *  @return debit amount to this wallet from the given tx input
          *
          **/
-        int64_t GetDebit(const CTxIn& txin);
+        int64_t GetDebit(const TxIn& txin);
 
 
         /** GetCredit
@@ -928,7 +928,7 @@ namespace Legacy
          *  @return credit amount to this wallet from the given tx output
          *
          **/
-        int64_t GetCredit(const CTxOut& txout);
+        int64_t GetCredit(const TxOut& txout);
 
 
         /** GetChange
@@ -943,7 +943,7 @@ namespace Legacy
          *  @return change amount to this wallet from the given tx output
          *
          **/
-        int64_t GetChange(const CTxOut& txout);
+        int64_t GetChange(const TxOut& txout);
 
 
         /** IsChange
@@ -956,7 +956,7 @@ namespace Legacy
          *  @return true if this is a change output
          *
          **/
-        bool IsChange(const CTxOut& txout);
+        bool IsChange(const TxOut& txout);
 
 
     /*----------------------------------------------------------------------------------------*/
@@ -1002,7 +1002,7 @@ namespace Legacy
          *  @return true if transaction successfully created
          *
          **/
-        bool CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, WalletTx& wtxNew, ReserveKey& changeKey,
+        bool CreateTransaction(const std::vector<std::pair<Script, int64_t> >& vecSend, WalletTx& wtxNew, ReserveKey& changeKey,
                                int64_t& nFeeRet, const uint32_t nMinDepth = 1);
 
 
@@ -1101,7 +1101,7 @@ namespace Legacy
         bool LoadKey(const LLC::ECKey& key);
 
 
-        /** LoadCScript
+        /** LoadScript
          *
          *  Add a script to the key store without updating the database (for file backed wallet).
          *  For use by LoadWallet.
@@ -1113,7 +1113,7 @@ namespace Legacy
          *  @see WalletDB::LoadWallet
          *
          **/
-        bool LoadCScript(const CScript& redeemScript);
+        bool LoadScript(const Script& redeemScript);
 
 
     /*----------------------------------------------------------------------------------------*/

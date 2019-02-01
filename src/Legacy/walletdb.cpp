@@ -227,7 +227,7 @@ namespace Legacy
 
 
     /* Reads the script for a given script hash. */
-    bool WalletDB::ReadCScript(const uint256_t& hash, CScript& redeemScript)
+    bool WalletDB::ReadScript(const uint256_t& hash, Script& redeemScript)
     {
         LOCK(WalletDB::cs_walletdb);
         redeemScript.clear();
@@ -236,7 +236,7 @@ namespace Legacy
 
 
     /* Stores a redeem script using its script hash. */
-    bool WalletDB::WriteCScript(const uint256_t& hash, const CScript& redeemScript)
+    bool WalletDB::WriteScript(const uint256_t& hash, const Script& redeemScript)
     {
         LOCK(WalletDB::cs_walletdb);
         WalletDB::nWalletDBUpdated++;
@@ -592,12 +592,12 @@ namespace Legacy
                     /* Script */
                     uint256_t hash;
                     ssKey >> hash;
-                    CScript script;
+                    Script script;
                     ssValue >> script;
 
-                    if (!wallet.LoadCScript(script))
+                    if (!wallet.LoadScript(script))
                     {
-                        debug::error(FUNCTION, "Error reading wallet database: LoadCScript failed");
+                        debug::error(FUNCTION, "Error reading wallet database: LoadScript failed");
                         return DB_CORRUPT;
                     }
 

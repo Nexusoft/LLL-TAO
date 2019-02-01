@@ -71,12 +71,13 @@ int main(int argc, char** argv)
     SetupSignals();
 
 
+    /* Read the configuration file. */
+    config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
+
+
     /* Parse out the parameters */
     config::ParseParameters(argc, argv);
 
-
-    /* Read the configuration file. */
-    config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
 
     /* Once we have read in the CLI paramters and config file, cache the args into global variables*/
     config::CacheArgs();

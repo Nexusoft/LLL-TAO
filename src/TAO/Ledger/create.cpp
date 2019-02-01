@@ -220,7 +220,7 @@ namespace TAO
                 genesis.nTime = 1409456199;
                 genesis.vin.resize(1);
                 genesis.vout.resize(1);
-                genesis.vin[0].scriptSig = Legacy::CScript() << std::vector<uint8_t>((const uint8_t*)pszTimestamp,
+                genesis.vin[0].scriptSig = Legacy::Script() << std::vector<uint8_t>((const uint8_t*)pszTimestamp,
                     (const uint8_t*)pszTimestamp + strlen(pszTimestamp));
                 genesis.vout[0].SetEmpty();
 

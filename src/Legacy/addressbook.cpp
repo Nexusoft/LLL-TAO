@@ -209,14 +209,14 @@ namespace Legacy
             // Check if the current key has been used
             if( address.IsValid() )
             {
-                Legacy::CScript scriptPubKey;
+                Legacy::Script scriptPubKey;
                 scriptPubKey.SetNexusAddress(address);
                 for (std::map<uint512_t, Legacy::WalletTx>::iterator it = Legacy::Wallet::GetInstance().mapWallet.begin();
                         it != Legacy::Wallet::GetInstance().mapWallet.end() && !fKeyUsed;
                         ++it)
                 {
                     const Legacy::WalletTx& wtx = (*it).second;
-                    for(const Legacy::CTxOut& txout : wtx.vout)
+                    for(const Legacy::TxOut& txout : wtx.vout)
                         if (txout.scriptPubKey == scriptPubKey)
                         {
                             fKeyUsed = true;
