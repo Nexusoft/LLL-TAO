@@ -1,0 +1,26 @@
+var class_legacy_1_1_berkeley_d_b =
+[
+    [ "BerkeleyDB", "class_legacy_1_1_berkeley_d_b.html#a03cea4cb7713348b5c8e5113d2b68f41", null ],
+    [ "BerkeleyDB", "class_legacy_1_1_berkeley_d_b.html#ad5b12dd6a1c7a898bb7cd6b26a39e7ab", null ],
+    [ "~BerkeleyDB", "class_legacy_1_1_berkeley_d_b.html#ad1aacc1792d96c1c7ece0b88e0115e80", null ],
+    [ "BerkeleyDB", "class_legacy_1_1_berkeley_d_b.html#a379d02a1a7675822ce43d4ac57bb46a8", null ],
+    [ "Close", "class_legacy_1_1_berkeley_d_b.html#a67cf35f3896279249934c190d21d369c", null ],
+    [ "CloseCursor", "class_legacy_1_1_berkeley_d_b.html#a2dcf6737501a680287c5b3ffd1262e59", null ],
+    [ "Erase", "class_legacy_1_1_berkeley_d_b.html#a574bf24a244612efa47e11c6ab3b637c", null ],
+    [ "Exists", "class_legacy_1_1_berkeley_d_b.html#af33a2e8e788b8c557f88a7bc70655c9f", null ],
+    [ "GetCursor", "class_legacy_1_1_berkeley_d_b.html#adc4a0f7ba6349aa2b881b3eeefd21782", null ],
+    [ "GetTxn", "class_legacy_1_1_berkeley_d_b.html#a7f03fe54ddb9e93f5f2bd7740b70b467", null ],
+    [ "operator=", "class_legacy_1_1_berkeley_d_b.html#a13fb59e3619d2d7a8203d0c623225360", null ],
+    [ "Read", "class_legacy_1_1_berkeley_d_b.html#a62c7cccb4e73b1ea319f67a57ce8c37e", null ],
+    [ "ReadAtCursor", "class_legacy_1_1_berkeley_d_b.html#a2b3e042fe13822756881517856eb2df2", null ],
+    [ "ReadVersion", "class_legacy_1_1_berkeley_d_b.html#ad4595c594939f3c76482122525f12db0", null ],
+    [ "TxnAbort", "class_legacy_1_1_berkeley_d_b.html#ab002a5460905c4c9bb8fff42344d4e88", null ],
+    [ "TxnBegin", "class_legacy_1_1_berkeley_d_b.html#a9ccb25936d1a0f68cdcbd8dc1e357f73", null ],
+    [ "TxnCommit", "class_legacy_1_1_berkeley_d_b.html#a6693b4d4243442a717da1de6006c8988", null ],
+    [ "Write", "class_legacy_1_1_berkeley_d_b.html#aebd6d78112de931387be759b488a5ee4", null ],
+    [ "WriteVersion", "class_legacy_1_1_berkeley_d_b.html#ab04f7ba03f591a018a63c578e62397da", null ],
+    [ "fReadOnly", "class_legacy_1_1_berkeley_d_b.html#a4e2bffc42bafac7accec9a119ddaab3b", null ],
+    [ "pdb", "class_legacy_1_1_berkeley_d_b.html#ad5d089b22f4aa6ccfe6a074bd76060f0", null ],
+    [ "strFile", "class_legacy_1_1_berkeley_d_b.html#a1bd610a13a6ae7aa5b85d1a40f8e777d", null ],
+    [ "vTxn", "class_legacy_1_1_berkeley_d_b.html#a2acd2afb6b6d84fbfd5b3ebda52fc45c", null ]
+];

@@ -1,0 +1,4 @@
+var structjson_1_1detail_1_1is__constructible__object__type__impl_3_01_basic_json_type_00_01_construd64baa9df8ea9fc3e6fbcdb0724980b8 =
+[
+    [ "object_t", "structjson_1_1detail_1_1is__constructible__object__type__impl_3_01_basic_json_type_00_01_construd64baa9df8ea9fc3e6fbcdb0724980b8.html#aea065dcab3c5332846c0a9115a69e0ac", null ]
+];

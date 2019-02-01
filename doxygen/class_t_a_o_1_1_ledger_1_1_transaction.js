@@ -1,0 +1,27 @@
+var class_t_a_o_1_1_ledger_1_1_transaction =
+[
+    [ "ExtractStake", "class_t_a_o_1_1_ledger_1_1_transaction.html#a9f5b28e776f8b86be923e39bf124cd75", null ],
+    [ "ExtractTrust", "class_t_a_o_1_1_ledger_1_1_transaction.html#a27754794633134add2526b3bf6f68dfc", null ],
+    [ "GetHash", "class_t_a_o_1_1_ledger_1_1_transaction.html#a50f500192fdb009a75633ddede40906a", null ],
+    [ "IMPLEMENT_SERIALIZE", "class_t_a_o_1_1_ledger_1_1_transaction.html#aae7508e135160e0c06173aeb7be4460d", null ],
+    [ "IsCoinbase", "class_t_a_o_1_1_ledger_1_1_transaction.html#a1e3db199aec56ee1fdb7208e1ec5f191", null ],
+    [ "IsGenesis", "class_t_a_o_1_1_ledger_1_1_transaction.html#a3eb5cefef9d24b5196bfa7f4d00479a5", null ],
+    [ "IsTrust", "class_t_a_o_1_1_ledger_1_1_transaction.html#abcd6adeb6fd75774226cde3a1fa5dc54", null ],
+    [ "IsValid", "class_t_a_o_1_1_ledger_1_1_transaction.html#a151e7febe64941b21fe3e568bb93bb94", null ],
+    [ "NextHash", "class_t_a_o_1_1_ledger_1_1_transaction.html#a7b49582ead87baa911633585e02d6da7", null ],
+    [ "operator<<", "class_t_a_o_1_1_ledger_1_1_transaction.html#ada8d2742595e9ab18697427d1958fdbd", null ],
+    [ "PrevHash", "class_t_a_o_1_1_ledger_1_1_transaction.html#ab69673882457d8896a7b9e3a376b8ed8", null ],
+    [ "print", "class_t_a_o_1_1_ledger_1_1_transaction.html#a985f4ec2ebbf717133292d236a7f0099", null ],
+    [ "Sign", "class_t_a_o_1_1_ledger_1_1_transaction.html#a19d59309082f51c9b54080a44bfc9bcc", null ],
+    [ "ToStringShort", "class_t_a_o_1_1_ledger_1_1_transaction.html#a7d7645eea09313944fe0891ec1c860e1", null ],
+    [ "hashGenesis", "class_t_a_o_1_1_ledger_1_1_transaction.html#ae471386a963fc8659230ab7ec3207140", null ],
+    [ "hashNext", "class_t_a_o_1_1_ledger_1_1_transaction.html#aa69dc77d0f955bf2953f4ca951352cb9", null ],
+    [ "hashPrevTx", "class_t_a_o_1_1_ledger_1_1_transaction.html#a0584e6ea83c330fccdf7d4b31deb9fc1", null ],
+    [ "nSequence", "class_t_a_o_1_1_ledger_1_1_transaction.html#aa971203af25c66b263cb5bd77a687a73", null ],
+    [ "nTimestamp", "class_t_a_o_1_1_ledger_1_1_transaction.html#acb1e055cea8dc6a26dcbab5089e87c4e", null ],
+    [ "nVersion", "class_t_a_o_1_1_ledger_1_1_transaction.html#aa5b4d9b9ff7d651dffa75e2a5db57223", null ],
+    [ "ssOperation", "class_t_a_o_1_1_ledger_1_1_transaction.html#a374726c6e8a841c9fc2c34b7c79aea47", null ],
+    [ "ssRegister", "class_t_a_o_1_1_ledger_1_1_transaction.html#abc9cf4213b2b0f909621880c3f785a6a", null ],
+    [ "vchPubKey", "class_t_a_o_1_1_ledger_1_1_transaction.html#a0eeb7861142f86bb52da0f9dc4260b2a", null ],
+    [ "vchSig", "class_t_a_o_1_1_ledger_1_1_transaction.html#acbe9a669ba68283f946a20c4c0c90a98", null ]
+];

@@ -1,0 +1,4 @@
+var structjson_1_1detail_1_1has__from__json_3_01_basic_json_type_00_01_t_00_01enable__if__t_3_01not_021582337a6e36b3082433a6841f9580 =
+[
+    [ "serializer", "structjson_1_1detail_1_1has__from__json_3_01_basic_json_type_00_01_t_00_01enable__if__t_3_01not_021582337a6e36b3082433a6841f9580.html#a26884d67e60efe711bb93593ed23e290", null ]
+];
