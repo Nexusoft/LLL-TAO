@@ -95,17 +95,6 @@ namespace config
             // interpret -nofoo as -foo=0 (and -nofoo=0 as -foo=1) as long as -foo not set
             InterpretNegativeSetting(name, mapArgs);
         }
-
-        fDebug                  = GetBoolArg("-debug", false);
-        fPrintToConsole         = GetBoolArg("-printtoconsole", false);
-        fDaemon                 = GetBoolArg("-daemon", false);
-        fServer                 = GetBoolArg("-server", false);
-        fTestNet                = GetBoolArg("-testnet", false) ||
-                                  GetBoolArg("-lispnet", false);
-        fListen                 = GetBoolArg("-listen", true);
-        //fUseProxy               = GetBoolArg("-proxy")
-        fAllowDNS               = GetBoolArg("-allowdns", true);
-        fLogTimestamps          = GetBoolArg("-logtimestamps", false);
     }
 
     /* Return string argument or default value */
@@ -152,5 +141,20 @@ namespace config
             return SoftSetArg(strArg, std::string("1"));
         else
             return SoftSetArg(strArg, std::string("0"));
+    }
+
+    /* Caches some of the common arguments into global variables for quick/easy access */
+    void CacheArgs()
+    {
+        fDebug                  = GetBoolArg("-debug", false);
+        fPrintToConsole         = GetBoolArg("-printtoconsole", false);
+        fDaemon                 = GetBoolArg("-daemon", false);
+        fServer                 = GetBoolArg("-server", false);
+        fTestNet                = GetBoolArg("-testnet", false) ||
+                                  GetBoolArg("-lispnet", false);
+        fListen                 = GetBoolArg("-listen", true);
+        //fUseProxy               = GetBoolArg("-proxy")
+        fAllowDNS               = GetBoolArg("-allowdns", true);
+        fLogTimestamps          = GetBoolArg("-logtimestamps", false);
     }
 }
