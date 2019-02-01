@@ -65,7 +65,8 @@ RUN mkdir /nexus/build
 COPY ./makefile.cli /nexus
 COPY ./src /nexus/src/
 RUN cd /nexus; make -f makefile.cli clean;
-RUN cd /nexus; make -j 8 -f makefile.cli STATIC=1;
+#RUN cd /nexus; make -j 8 -f makefile.cli STATIC=1;
+RUN cd /nexus; make -j 8 -f makefile.cli
 
 #
 # Copy Nexus startup files.
