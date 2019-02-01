@@ -169,14 +169,8 @@ int main(int argc, char** argv)
         10,
         config::GetBoolArg("-listen", true),
         config::GetBoolArg("-meters", false),
-        config::GetBoolArg("-manager", true));
-
-    /* -addnode means add to address manager */
-    if(config::mapMultiArgs["-addnode"].size() > 0)
-    {
-        for(const auto& node : config::mapMultiArgs["-addnode"])
-            LLP::TIME_SERVER->AddNode(node, port);
-    }
+        config::GetBoolArg("-manager", true),
+        30000);
 
 
     /** Handle the beta server. */
