@@ -29,7 +29,7 @@ alias tail-nexus        'tail -f /nexus/nexus.log'
 # a restful HTTP/JSON interface.    
 #
 alias nexus-api          '/nexus/nexus -api'
-alias nexus-rpc          '/nexus/nexus'
+alias nexus-rpc          '/nexus/nexus -testnet'
 alias curl-nexus         '/nexus/curl-nexus'
 alias getinfo            'nexus-rpc getinfo'
 alias getpeerinfo        'nexus-rpc getpeerinfo'
