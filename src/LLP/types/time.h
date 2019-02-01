@@ -15,8 +15,12 @@ ________________________________________________________________________________
 
 #include <LLP/templates/connection.h>
 
+#include <Util/templates/containers.h>
+
 namespace LLP
 {
+    std::map<std::string, int32_t> MAP_TIME_DATA;
+
     class TimeNode : public Connection
     {
         enum
@@ -40,11 +44,16 @@ namespace LLP
             CLOSE         = 254
         };
 
+
+        /** Store the samples in a majority object. */
+        CMajority<int32_t> nSamples;
+
     public:
 
         /** Constructor **/
         TimeNode()
         : Connection()
+        , nSamples()
         {
         }
 
@@ -52,6 +61,7 @@ namespace LLP
         /** Constructor **/
         TimeNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : Connection( SOCKET_IN, DDOS_IN )
+        , nSamples()
         {
         }
 
