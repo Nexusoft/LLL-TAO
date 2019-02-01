@@ -223,87 +223,87 @@ namespace LLP
                     int nPoll = poll((pollfd*)CONNECTIONS[0], CONNECTIONS.size(), 100);
                     if(nPoll < 0)
                         continue;
+                }
 
-                    /* Check all connections for data and packets. */
-                    uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
-                    for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+                /* Check all connections for data and packets. */
+                uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
+                for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+                {
+                    try
                     {
-                        try
+                        /* Skip over Inactive Connections. */
+                        if(CONNECTIONS[nIndex]->IsNull() || !CONNECTIONS[nIndex]->Connected())
+                            continue;
+
+                        /* Remove Connection if it has Timed out or had any Errors. */
+                        if(CONNECTIONS[nIndex]->Errors())
                         {
-                            /* Skip over Inactive Connections. */
-                            if(CONNECTIONS[nIndex]->IsNull() || !CONNECTIONS[nIndex]->Connected())
-                                continue;
-
-                            /* Remove Connection if it has Timed out or had any Errors. */
-                            if(CONNECTIONS[nIndex]->Errors())
-                            {
-                                disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
-                                continue;
-                            }
-
-                            /* Remove Connection if it has Timed out or had any Errors. */
-                            if(CONNECTIONS[nIndex]->Timeout(TIMEOUT))
-                            {
-                                disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT);
-                                continue;
-                            }
-
-                            /* Handle any DDOS Filters. */
-                            if(fDDOS)
-                            {
-                                /* Ban a node if it has too many Requests per Second. **/
-                                if(CONNECTIONS[nIndex]->DDOS->rSCORE.Score() > DDOS_rSCORE ||
-                                   CONNECTIONS[nIndex]->DDOS->cSCORE.Score() > DDOS_cSCORE)
-                                    CONNECTIONS[nIndex]->DDOS->Ban();
-
-                                /* Remove a connection if it was banned by DDOS Protection. */
-                                if(CONNECTIONS[nIndex]->DDOS->Banned())
-                                {
-                                    disconnect_remove_event(nIndex, DISCONNECT_DDOS);
-                                    continue;
-                                }
-                            }
-
-                            /* Generic event for Connection. */
-                            CONNECTIONS[nIndex]->Event(EVENT_GENERIC);
-
-                            /* Flush the write buffer. */
-                            CONNECTIONS[nIndex]->Flush();
-
-                            /* Work on Reading a Packet. **/
-                            CONNECTIONS[nIndex]->ReadPacket();
-
-                            /* If a Packet was received successfully, increment request count [and DDOS count if enabled]. */
-                            if(CONNECTIONS[nIndex]->PacketComplete())
-                            {
-                                /* Debug dump of message type. */
-                                debug::log(4, FUNCTION, "Recieved Message (", CONNECTIONS[nIndex]->INCOMING.GetBytes().size(), " bytes)");
-
-                                /* Debug dump of packet data. */
-                                if(config::GetArg("-verbose", 0) >= 5)
-                                    PrintHex(CONNECTIONS[nIndex]->INCOMING.GetBytes());
-
-                                /* Handle Meters and DDOS. */
-                                if(fMETER)
-                                    ++REQUESTS;
-                                if(fDDOS)
-                                    CONNECTIONS[nIndex]->DDOS->rSCORE += 1;
-
-                                /* Packet Process return value of False will flag Data Thread to Disconnect. */
-                                if(!CONNECTIONS[nIndex]->ProcessPacket())
-                                {
-                                    disconnect_remove_event(nIndex, DISCONNECT_FORCE);
-                                    continue;
-                                }
-
-                                CONNECTIONS[nIndex]->ResetPacket();
-                            }
-                        }
-                        catch(std::exception& e)
-                        {
-                            debug::error(FUNCTION, "data connection: ", e.what());
                             disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
+                            continue;
                         }
+
+                        /* Remove Connection if it has Timed out or had any Errors. */
+                        if(CONNECTIONS[nIndex]->Timeout(TIMEOUT))
+                        {
+                            disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT);
+                            continue;
+                        }
+
+                        /* Handle any DDOS Filters. */
+                        if(fDDOS)
+                        {
+                            /* Ban a node if it has too many Requests per Second. **/
+                            if(CONNECTIONS[nIndex]->DDOS->rSCORE.Score() > DDOS_rSCORE ||
+                               CONNECTIONS[nIndex]->DDOS->cSCORE.Score() > DDOS_cSCORE)
+                                CONNECTIONS[nIndex]->DDOS->Ban();
+
+                            /* Remove a connection if it was banned by DDOS Protection. */
+                            if(CONNECTIONS[nIndex]->DDOS->Banned())
+                            {
+                                disconnect_remove_event(nIndex, DISCONNECT_DDOS);
+                                continue;
+                            }
+                        }
+
+                        /* Generic event for Connection. */
+                        CONNECTIONS[nIndex]->Event(EVENT_GENERIC);
+
+                        /* Flush the write buffer. */
+                        CONNECTIONS[nIndex]->Flush();
+
+                        /* Work on Reading a Packet. **/
+                        CONNECTIONS[nIndex]->ReadPacket();
+
+                        /* If a Packet was received successfully, increment request count [and DDOS count if enabled]. */
+                        if(CONNECTIONS[nIndex]->PacketComplete())
+                        {
+                            /* Debug dump of message type. */
+                            debug::log(4, FUNCTION, "Recieved Message (", CONNECTIONS[nIndex]->INCOMING.GetBytes().size(), " bytes)");
+
+                            /* Debug dump of packet data. */
+                            if(config::GetArg("-verbose", 0) >= 5)
+                                PrintHex(CONNECTIONS[nIndex]->INCOMING.GetBytes());
+
+                            /* Handle Meters and DDOS. */
+                            if(fMETER)
+                                ++REQUESTS;
+                            if(fDDOS)
+                                CONNECTIONS[nIndex]->DDOS->rSCORE += 1;
+
+                            /* Packet Process return value of False will flag Data Thread to Disconnect. */
+                            if(!CONNECTIONS[nIndex]->ProcessPacket())
+                            {
+                                disconnect_remove_event(nIndex, DISCONNECT_FORCE);
+                                continue;
+                            }
+
+                            CONNECTIONS[nIndex]->ResetPacket();
+                        }
+                    }
+                    catch(std::exception& e)
+                    {
+                        debug::error(FUNCTION, "data connection: ", e.what());
+                        disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                     }
                 }
             }
