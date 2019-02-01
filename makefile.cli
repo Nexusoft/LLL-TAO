@@ -156,6 +156,7 @@ OBJS= \
 	build/LLP_trustaddress.o \
 	build/LLP_hosts.o \
 	build/LLP_socket.o \
+	build/LLP_time.o \
 	build/LLP_inv.o\
 	build/LLP_legacy.o \
 	build/LLP_miner.o \
