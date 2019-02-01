@@ -27,7 +27,7 @@ namespace Legacy
     class NexusAddress;
     class Script;
 
-    /** @class CKeyStrore
+    /** @class KeyStore
      *
      *  An abstract base class for key stores.
      *

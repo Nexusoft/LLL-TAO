@@ -54,8 +54,8 @@ namespace config
     /* Parse the Argument Parameters */
     void ParseParameters(int argc, const char*const argv[])
     {
-        mapArgs.clear();
-        mapMultiArgs.clear();
+        //mapArgs.clear();
+        //mapMultiArgs.clear();
         for (int i = 1; i < argc; ++i)
         {
             char psz[10000];
