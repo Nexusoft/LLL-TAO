@@ -21,14 +21,14 @@ namespace Legacy
 {
 
 	/* Full object debug output */
-	std::string COutPoint::ToString() const
+	std::string OutPoint::ToString() const
 	{
-		return debug::strprintf("COutPoint(%s, %d)", hash.ToString().substr(0,10).c_str(), n);
+		return debug::strprintf("OutPoint(%s, %d)", hash.ToString().substr(0,10).c_str(), n);
 	}
 
 
 	/* Dump the full object to the console (stdout) */
-	void COutPoint::print() const
+	void OutPoint::print() const
 	{
 		debug::log(0, ToString());
 	}

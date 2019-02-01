@@ -30,7 +30,7 @@ namespace Legacy
 {
 
     /* Signs for a single signature transaction. */
-    bool Sign1(const NexusAddress& address, const KeyStore& keystore, uint256_t hash, int32_t nHashType, CScript& scriptSigRet)
+    bool Sign1(const NexusAddress& address, const KeyStore& keystore, uint256_t hash, int32_t nHashType, Script& scriptSigRet)
     {
         LLC::ECKey key;
         if (!keystore.GetKey(address, key))
@@ -48,7 +48,7 @@ namespace Legacy
 
 
     /* Sign for a multi-signature transaction. */
-    bool SignN(const std::vector< std::vector<uint8_t> >& multisigdata, const KeyStore& keystore, uint256_t hash, int32_t nHashType, CScript& scriptSigRet)
+    bool SignN(const std::vector< std::vector<uint8_t> >& multisigdata, const KeyStore& keystore, uint256_t hash, int32_t nHashType, Script& scriptSigRet)
     {
         int32_t nSigned = 0;
         int32_t nRequired = multisigdata.front()[0];
@@ -69,7 +69,7 @@ namespace Legacy
 
 
     /* Returns a hash that is used to sign inputs or verify the signature is a valid signature of this hash. */
-    uint256_t SignatureHash(CScript scriptCode, const Transaction& txTo, uint32_t nIn, int32_t nHashType)
+    uint256_t SignatureHash(Script scriptCode, const Transaction& txTo, uint32_t nIn, int32_t nHashType)
     {
         if (nIn >= txTo.vin.size())
         {
@@ -81,11 +81,11 @@ namespace Legacy
 
         // In case concatenating two scripts ends up with two codeseparators,
         // or an extra one at the end, this prevents all those possible incompatibilities.
-        scriptCode.FindAndDelete(CScript(OP_CODESEPARATOR));
+        scriptCode.FindAndDelete(Script(OP_CODESEPARATOR));
 
         // Blank out other inputs' signatures
         for (uint32_t i = 0; i < txTmp.vin.size(); i++)
-            txTmp.vin[i].scriptSig = CScript();
+            txTmp.vin[i].scriptSig = Script();
 
         txTmp.vin[nIn].scriptSig = scriptCode;
 
@@ -136,7 +136,7 @@ namespace Legacy
 
 
     /* Checks that the signature supplied is a valid one. */
-    bool CheckSig(std::vector<uint8_t> vchSig, std::vector<uint8_t> vchPubKey, CScript scriptCode, const Transaction& txTo, uint32_t nIn, int32_t nHashType)
+    bool CheckSig(std::vector<uint8_t> vchSig, std::vector<uint8_t> vchPubKey, Script scriptCode, const Transaction& txTo, uint32_t nIn, int32_t nHashType)
     {
         // Hash type is one byte tacked on to the end of the signature
         if (vchSig.empty())
@@ -163,11 +163,11 @@ namespace Legacy
     bool SignSignature(const KeyStore& keystore, const Transaction& txFrom, Transaction& txTo, uint32_t nIn, int32_t nHashType)
     {
         assert(nIn < txTo.vin.size());
-        CTxIn& txin = txTo.vin[nIn];
+        TxIn& txin = txTo.vin[nIn];
 
         assert(txin.prevout.n < txFrom.vout.size());
         assert(txin.prevout.hash == txFrom.GetHash());
-        const CTxOut& txout = txFrom.vout[txin.prevout.n];
+        const TxOut& txout = txFrom.vout[txin.prevout.n];
 
         // Leave out the signature from the hash, since a signature can't sign itself.
         // The checksig op will also drop the signatures from its hash.
@@ -182,7 +182,7 @@ namespace Legacy
             // Solver returns the subscript that need to be evaluated;
             // the final scriptSig is the signatures from that
             // and then the serialized subscript:
-            CScript subscript = txin.scriptSig;
+            Script subscript = txin.scriptSig;
 
             // Recompute txn hash using subscript in place of scriptPubKey:
             uint256_t hash2 = SignatureHash(subscript, txTo, nIn, nHashType);
@@ -208,11 +208,11 @@ namespace Legacy
     bool VerifySignature(const Transaction& txFrom, const Transaction& txTo, uint32_t nIn, int nHashType)
     {
         assert(nIn < txTo.vin.size());
-        const CTxIn& txin = txTo.vin[nIn];
+        const TxIn& txin = txTo.vin[nIn];
         if (txin.prevout.n >= txFrom.vout.size())
             return false;
 
-        const CTxOut& txout = txFrom.vout[txin.prevout.n];
+        const TxOut& txout = txFrom.vout[txin.prevout.n];
         if (txin.prevout.hash != txFrom.GetHash())
             return false;
 

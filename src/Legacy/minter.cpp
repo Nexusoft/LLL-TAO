@@ -400,7 +400,7 @@ namespace Legacy
             DataStream scriptPub(candidateBlock.vtx[0].vin[0].scriptSig, SER_NETWORK, LLP::PROTOCOL_VERSION);
             scriptPub << prevBlockState.GetHash() << nSequence << nScore;
 
-            /* Set the script sig (CScript doesn't support serializing all types needed) */
+            /* Set the script sig (Script doesn't support serializing all types needed) */
             candidateBlock.vtx[0].vin[0].scriptSig.clear();
             candidateBlock.vtx[0].vin[0].scriptSig.insert(candidateBlock.vtx[0].vin[0].scriptSig.end(), scriptPub.begin(), scriptPub.end());
 

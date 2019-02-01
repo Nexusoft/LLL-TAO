@@ -413,12 +413,12 @@ namespace Legacy
 
         for (uint32_t i = (int) IsCoinStake(); i < vin.size(); i++)
         {
-            const CTxOut& prev = GetOutputFor(vin[i], mapInputs);
+            const TxOut& prev = GetOutputFor(vin[i], mapInputs);
 
             std::vector< std::vector<uint8_t> > vSolutions;
             TransactionType whichType;
             // get the scriptPubKey corresponding to this input:
-            const CScript& prevScript = prev.scriptPubKey;
+            const Script& prevScript = prev.scriptPubKey;
             if (!Solver(prevScript, whichType, vSolutions))
                 return false;
 
@@ -440,7 +440,7 @@ namespace Legacy
                 if (stack.empty())
                     return false;
 
-                CScript subscript(stack.back().begin(), stack.back().end());
+                Script subscript(stack.back().begin(), stack.back().end());
                 std::vector< std::vector<uint8_t> > vSolutions2;
                 TransactionType whichType2;
                 if (!Solver(subscript, whichType2, vSolutions2))
@@ -493,7 +493,7 @@ namespace Legacy
         uint32_t nSigOps = 0;
         for (uint32_t i = (uint32_t) IsCoinStake(); i < vin.size(); i++)
         {
-            const CTxOut& prevout = GetOutputFor(vin[i], mapInputs);
+            const TxOut& prevout = GetOutputFor(vin[i], mapInputs);
             nSigOps += prevout.scriptPubKey.GetSigOpCount(vin[i].scriptSig);
         }
 
@@ -680,7 +680,7 @@ namespace Legacy
         }
 
         /* Check for duplicate inputs */
-        std::set<COutPoint> vInOutPoints;
+        std::set<OutPoint> vInOutPoints;
         for(const auto& txin : vin)
         {
             if (vInOutPoints.count(txin.prevout))
@@ -712,7 +712,7 @@ namespace Legacy
         for (uint32_t i = IsCoinStake() ? 1 : 0; i < vin.size(); i++)
         {
             /* Skip inputs that are already found. */
-            COutPoint prevout = vin[i].prevout;
+            OutPoint prevout = vin[i].prevout;
             if (inputs.count(prevout.hash))
                 continue;
 
@@ -818,7 +818,7 @@ namespace Legacy
         for (uint32_t i = IsCoinStake() ? 1 : 0; i < vin.size(); i++)
         {
             /* Check the inputs map to tx inputs. */
-            COutPoint prevout = vin[i].prevout;
+            OutPoint prevout = vin[i].prevout;
             assert(inputs.count(prevout.hash) > 0);
 
             /* Get the previous transaction. */
@@ -1062,7 +1062,7 @@ namespace Legacy
 
 
     /* Get the corresponding output from input. */
-    const CTxOut& Transaction::GetOutputFor(const CTxIn& input, const std::map<uint512_t, Transaction>& inputs) const
+    const TxOut& Transaction::GetOutputFor(const TxIn& input, const std::map<uint512_t, Transaction>& inputs) const
     {
         auto mi = inputs.find(input.prevout.hash);
 

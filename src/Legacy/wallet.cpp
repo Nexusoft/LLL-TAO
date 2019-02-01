@@ -338,19 +338,19 @@ namespace Legacy
 
 
     /* Add a script to the key store.  */
-    bool Wallet::AddCScript(const CScript& redeemScript)
+    bool Wallet::AddScript(const Script& redeemScript)
     {
         {
             LOCK(cs_wallet);
 
             /* Call overridden inherited method to add key to key store */
-            if (!CryptoKeyStore::AddCScript(redeemScript))
+            if (!CryptoKeyStore::AddScript(redeemScript))
                 return false;
 
             if (fFileBacked)
             {
                 WalletDB walletdb(strWalletFile);
-                bool result = walletdb.WriteCScript(LLC::SK256(redeemScript), redeemScript);
+                bool result = walletdb.WriteScript(LLC::SK256(redeemScript), redeemScript);
                 walletdb.Close();
 
                 return result;
@@ -1018,10 +1018,10 @@ namespace Legacy
                 return false;
 
         /* If default receiving address gets used, replace it with a new one */
-        CScript scriptDefaultKey;
+        Script scriptDefaultKey;
         scriptDefaultKey.SetNexusAddress(vchDefaultKey);
 
-        for(const CTxOut& txout : wtx.vout)
+        for(const TxOut& txout : wtx.vout)
         {
             if (txout.scriptPubKey == scriptDefaultKey)
             {
@@ -1114,7 +1114,7 @@ namespace Legacy
             /* Disconnecting coinstake requires marking input unspent */
             LOCK(cs_wallet);
 
-            for(const CTxIn& txin : tx.vin)
+            for(const TxIn& txin : tx.vin)
             {
                 /* Find the previous transaction and mark as unspent the output that corresponds to current txin */
                 TransactionMap::iterator mi = mapWallet.find(txin.prevout.hash);
@@ -1357,7 +1357,7 @@ namespace Legacy
     /* Checks whether a transaction contains any outputs belonging to this wallet. */
     bool Wallet::IsMine(const Transaction& tx)
     {
-        for(const CTxOut& txout : tx.vout)
+        for(const TxOut& txout : tx.vout)
         {
             if (IsMine(txout))
                 return true;
@@ -1368,7 +1368,7 @@ namespace Legacy
 
 
      /* Checks whether a specific transaction input represents a send from this wallet. */
-    bool Wallet::IsMine(const CTxIn &txin)
+    bool Wallet::IsMine(const TxIn &txin)
     {
         {
             LOCK(cs_wallet);
@@ -1397,7 +1397,7 @@ namespace Legacy
 
 
     /* Checks whether a specific transaction output represents balance received by this wallet. */
-    bool Wallet::IsMine(const CTxOut& txout)
+    bool Wallet::IsMine(const TxOut& txout)
     {
         /* Output belongs to this wallet if it has a key matching the output script */
         return Legacy::IsMine(*this, txout.scriptPubKey);
@@ -1443,7 +1443,7 @@ namespace Legacy
     {
         int64_t nChange = 0;
 
-        for(const CTxOut& txout : tx.vout)
+        for(const TxOut& txout : tx.vout)
         {
             nChange += GetChange(txout);
 
@@ -1456,7 +1456,7 @@ namespace Legacy
 
 
     /* Returns the debit amount for this wallet represented by a transaction input. */
-    int64_t Wallet::GetDebit(const CTxIn &txin)
+    int64_t Wallet::GetDebit(const TxIn &txin)
     {
         if(txin.prevout.IsNull())
             return 0;
@@ -1487,7 +1487,7 @@ namespace Legacy
 
 
     /* Returns the credit amount for this wallet represented by a transaction output. */
-    int64_t Wallet::GetCredit(const CTxOut& txout)
+    int64_t Wallet::GetCredit(const TxOut& txout)
     {
         if (!MoneyRange(txout.nValue))
             throw std::runtime_error("Wallet::GetCredit() : value out of range");
@@ -1497,7 +1497,7 @@ namespace Legacy
 
 
     /* Returns the change amount for this wallet represented by a transaction output. */
-    int64_t Wallet::GetChange(const CTxOut& txout)
+    int64_t Wallet::GetChange(const TxOut& txout)
     {
         if (!MoneyRange(txout.nValue))
             throw std::runtime_error("Wallet::GetChange() : value out of range");
@@ -1509,7 +1509,7 @@ namespace Legacy
     /* Checks whether a transaction output belongs to this wallet and
      *  represents change returned to it.
      */
-    bool Wallet::IsChange(const CTxOut& txout)
+    bool Wallet::IsChange(const TxOut& txout)
     {
         NexusAddress address;
 
@@ -1542,11 +1542,11 @@ namespace Legacy
             return std::string("Insufficient funds");
 
         /* Parse Nexus address */
-        CScript scriptPubKey;
+        Script scriptPubKey;
         scriptPubKey.SetNexusAddress(address);
 
         /* Place the script and amount into sending vector */
-        std::vector< std::pair<CScript, int64_t> > vecSend;
+        std::vector< std::pair<Script, int64_t> > vecSend;
         vecSend.push_back(make_pair(scriptPubKey, nValue));
 
         if (IsLocked())
@@ -1606,7 +1606,7 @@ namespace Legacy
 
 
     /* Create and populate a new transaction. */
-    bool Wallet::CreateTransaction(const std::vector<std::pair<CScript, int64_t> >& vecSend, WalletTx& wtxNew, ReserveKey& changeKey,
+    bool Wallet::CreateTransaction(const std::vector<std::pair<Script, int64_t> >& vecSend, WalletTx& wtxNew, ReserveKey& changeKey,
                                     int64_t& nFeeRet, const uint32_t nMinDepth)
     {
         int64_t nValue = 0;
@@ -1647,7 +1647,7 @@ namespace Legacy
 
                 /* Add transactions outputs to vout */
                 for (const auto& s : vecSend)
-                    wtxNew.vout.push_back(CTxOut(s.second, s.first));
+                    wtxNew.vout.push_back(TxOut(s.second, s.first));
 
                 /* This set will hold txouts (UTXOs) to use as input for this transaction as transaction/vout index pairs */
                 std::set<std::pair<const WalletTx*,uint32_t> > setSelectedCoins;
@@ -1685,7 +1685,7 @@ namespace Legacy
                 /* When change needed, create a txOut for it and insert into transaction outputs */
                 if (nChange > 0)
                 {
-                    CScript scriptChange;
+                    Script scriptChange;
 
                     if (!config::GetBoolArg("-avatar", true)) //Avatar enabled by default
                     {
@@ -1724,7 +1724,7 @@ namespace Legacy
 
                     /* Insert change output at random position: */
                     auto position = wtxNew.vout.begin() + LLC::GetRandInt(wtxNew.vout.size());
-                    wtxNew.vout.insert(position, CTxOut(nChange, scriptChange));
+                    wtxNew.vout.insert(position, TxOut(nChange, scriptChange));
                 }
                 else
                 {
@@ -1734,7 +1734,7 @@ namespace Legacy
 
                 /* Fill vin with selected inputs */
                 for(const auto coin : setSelectedCoins)
-                    wtxNew.vin.push_back(CTxIn(coin.first->GetHash(), coin.second));
+                    wtxNew.vin.push_back(TxIn(coin.first->GetHash(), coin.second));
 
                 /* Sign inputs to unlock previously unspent outputs */
                 uint32_t nIn = 0;
@@ -1802,7 +1802,7 @@ namespace Legacy
 
             /* Mark old coins as spent */
             std::set<WalletTx*> setCoins;
-            for (const CTxIn& txin : wtxNew.vin)
+            for (const TxIn& txin : wtxNew.vin)
             {
                 WalletTx& prevTx = mapWallet[txin.prevout.hash];
                 prevTx.BindWallet(this);
@@ -1886,7 +1886,7 @@ namespace Legacy
                 if (nBytes >= TAO::Ledger::MAX_BLOCK_SIZE_GEN / 5)
                     break;
 
-                block.vtx[0].vin.push_back(CTxIn(walletTx.GetHash(), i));
+                block.vtx[0].vin.push_back(TxIn(walletTx.GetHash(), i));
                 vInputWalletTx.push_back(walletTx);
 
                 /** Add the input value to the Coinstake output. **/
@@ -1964,9 +1964,9 @@ namespace Legacy
 
 
     /* Load a script to the key store without updating the database. */
-    bool Wallet::LoadCScript(const CScript& redeemScript)
+    bool Wallet::LoadScript(const Script& redeemScript)
     {
-        return CryptoKeyStore::AddCScript(redeemScript);
+        return CryptoKeyStore::AddScript(redeemScript);
     }
 
 

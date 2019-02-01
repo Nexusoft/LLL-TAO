@@ -55,7 +55,7 @@ namespace Legacy
 
 
     /* Push a 64 bit signed int onto the stack. */
-    CScript& CScript::push_int64(int64_t n)
+    Script& Script::push_int64(int64_t n)
     {
         if (n == -1 || (n >= 1 && n <= 16))
         {
@@ -70,7 +70,7 @@ namespace Legacy
     }
 
     /* Push a 64 bit unsigned int onto the stack. */
-    CScript& CScript::push_uint64(uint64_t n)
+    Script& Script::push_uint64(uint64_t n)
     {
         if (n >= 1 && n <= 16)
         {
@@ -86,7 +86,7 @@ namespace Legacy
 
 
     /* Get the op codes from stack */
-    bool CScript::GetOp(iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>& vchRet)
+    bool Script::GetOp(iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>& vchRet)
     {
         // Wrapper so it can be called with either iterator or const_iterator
         const_iterator pc2 = pc;
@@ -97,7 +97,7 @@ namespace Legacy
 
 
     /* Get the op codes from stack */
-    bool CScript::GetOp(iterator& pc, opcodetype& opcodeRet)
+    bool Script::GetOp(iterator& pc, opcodetype& opcodeRet)
     {
         const_iterator pc2 = pc;
         bool fRet = GetOp2(pc2, opcodeRet, nullptr);
@@ -107,21 +107,21 @@ namespace Legacy
 
 
     /* Get the op codes from stack */
-    bool CScript::GetOp(const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>& vchRet) const
+    bool Script::GetOp(const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>& vchRet) const
     {
         return GetOp2(pc, opcodeRet, &vchRet);
     }
 
 
     /* Get the op codes from stack */
-    bool CScript::GetOp(const_iterator& pc, opcodetype& opcodeRet) const
+    bool Script::GetOp(const_iterator& pc, opcodetype& opcodeRet) const
     {
         return GetOp2(pc, opcodeRet, nullptr);
     }
 
 
     /* Get the op codes from stack */
-    bool CScript::GetOp2(const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>* pvchRet) const
+    bool Script::GetOp2(const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>* pvchRet) const
     {
         opcodeRet = OP_INVALIDOPCODE;
         if (pvchRet)
@@ -178,7 +178,7 @@ namespace Legacy
 
 
     /* Decodes the operation code. */
-    int32_t CScript::DecodeOP_N(opcodetype opcode) const
+    int32_t Script::DecodeOP_N(opcodetype opcode) const
     {
         if (opcode == OP_0)
             return 0;
@@ -188,7 +188,7 @@ namespace Legacy
 
 
     /* Encodes the operation code. */
-    opcodetype CScript::EncodeOP_N(int n)
+    opcodetype Script::EncodeOP_N(int n)
     {
         assert(n >= 0 && n <= 16);
         if (n == 0)
@@ -198,7 +198,7 @@ namespace Legacy
 
 
     /* Removes a script from a script */
-    int CScript::FindAndDelete(const CScript& b)
+    int Script::FindAndDelete(const Script& b)
     {
         int nFound = 0;
         if (b.empty())
@@ -220,7 +220,7 @@ namespace Legacy
 
 
     /* Find the location of an opcode in the script. */
-    int CScript::Find(opcodetype op) const
+    int Script::Find(opcodetype op) const
     {
         int nFound = 0;
         opcodetype opcode;
@@ -232,7 +232,7 @@ namespace Legacy
 
 
     /* Get the total number of signature operations */
-    uint32_t CScript::GetSigOpCount(bool fAccurate) const
+    uint32_t Script::GetSigOpCount(bool fAccurate) const
     {
         uint32_t n = 0;
         const_iterator pc = begin();
@@ -259,7 +259,7 @@ namespace Legacy
 
 
     /* Get the total number of signature operations */
-    uint32_t CScript::GetSigOpCount(const CScript& scriptSig) const
+    uint32_t Script::GetSigOpCount(const Script& scriptSig) const
     {
         if (!IsPayToScriptHash())
             return GetSigOpCount(true);
@@ -279,15 +279,15 @@ namespace Legacy
         }
 
         /// ... and return it's opcount:
-        CScript subscript(data.begin(), data.end());
+        Script subscript(data.begin(), data.end());
         return subscript.GetSigOpCount(true);
     }
 
 
     /* Determine if script fits P2SH template */
-    bool CScript::IsPayToScriptHash() const
+    bool Script::IsPayToScriptHash() const
     {
-        // Extra-fast test for pay-to-script-hash CScripts:
+        // Extra-fast test for pay-to-script-hash Scripts:
         return (this->size() == 23 &&
                 this->at(0) == OP_HASH256 &&
                 this->at(1) == 0x14 &&
@@ -296,7 +296,7 @@ namespace Legacy
 
 
     /* Determine if script is a pushdata only script */
-    bool CScript::IsPushOnly() const
+    bool Script::IsPushOnly() const
     {
         const_iterator pc = begin();
         while (pc < end())
@@ -312,7 +312,7 @@ namespace Legacy
 
 
     /* Set the nexus address into script */
-    void CScript::SetNexusAddress(const NexusAddress& address)
+    void Script::SetNexusAddress(const NexusAddress& address)
     {
         this->clear();
         if (address.IsScript())
@@ -323,14 +323,14 @@ namespace Legacy
 
 
     /* Set the nexus address from public key */
-    void CScript::SetNexusAddress(const std::vector<uint8_t>& vchPubKey)
+    void Script::SetNexusAddress(const std::vector<uint8_t>& vchPubKey)
     {
         SetNexusAddress(NexusAddress(vchPubKey));
     }
 
 
     /* Set script based on multi-sig data */
-    void CScript::SetMultisig(int nRequired, const std::vector<LLC::ECKey>& keys)
+    void Script::SetMultisig(int nRequired, const std::vector<LLC::ECKey>& keys)
     {
         this->clear();
 
@@ -342,7 +342,7 @@ namespace Legacy
 
 
     /* Set the script based on a P2SH script input */
-    void CScript::SetPayToScriptHash(const CScript& subscript)
+    void Script::SetPayToScriptHash(const Script& subscript)
     {
         assert(!subscript.empty());
         uint256_t subscriptHash = LLC::SK256(subscript);
@@ -352,14 +352,14 @@ namespace Legacy
 
 
     /* Print the Hex output of the script */
-    void CScript::PrintHex() const
+    void Script::PrintHex() const
     {
-        debug::log(0, "CScript(", HexStr(begin(), end(), true), ")");
+        debug::log(0, "Script(", HexStr(begin(), end(), true), ")");
     }
 
 
     /* Print the Hex output of the script into a std::string */
-    std::string CScript::ToString(bool fShort) const
+    std::string Script::ToString(bool fShort) const
     {
         std::string str;
         opcodetype opcode;
@@ -384,7 +384,7 @@ namespace Legacy
 
 
     /* Dump the Hex data into std::out or console */
-    void CScript::print() const
+    void Script::print() const
     {
         printf("%s", ToString().c_str());
     }

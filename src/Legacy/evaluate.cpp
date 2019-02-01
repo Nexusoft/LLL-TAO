@@ -92,12 +92,12 @@ namespace Legacy
 
 
     /* Evaluate a script to true or false based on operation codes. */
-    bool EvalScript(std::vector<std::vector<uint8_t> >& stack, const CScript& script, const Transaction& txTo, uint32_t nIn, int32_t nHashType)
+    bool EvalScript(std::vector<std::vector<uint8_t> >& stack, const Script& script, const Transaction& txTo, uint32_t nIn, int32_t nHashType)
     {
         LLC::CAutoBN_CTX pctx;
-        CScript::const_iterator pc = script.begin();
-        CScript::const_iterator pend = script.end();
-        CScript::const_iterator pbegincodehash = script.begin();
+        Script::const_iterator pc = script.begin();
+        Script::const_iterator pend = script.end();
+        Script::const_iterator pbegincodehash = script.begin();
         opcodetype opcode;
         std::vector<uint8_t> vchPushValue;
         std::vector<bool> vfExec;
@@ -758,10 +758,10 @@ namespace Legacy
                         //PrintHex(vchPubKey.begin(), vchPubKey.end(), "pubkey: %s");
 
                         // Subset of script starting at the most recent codeseparator
-                        CScript scriptCode(pbegincodehash, pend);
+                        Script scriptCode(pbegincodehash, pend);
 
                         // Drop the signature, since there's no way for a signature to sign itself
-                        scriptCode.FindAndDelete(CScript(vchSig));
+                        scriptCode.FindAndDelete(Script(vchSig));
 
                         bool fSuccess = CheckSig(vchSig, vchPubKey, scriptCode, txTo, nIn, nHashType);
                         popstack(stack);
@@ -806,13 +806,13 @@ namespace Legacy
                             return false;
 
                         // Subset of script starting at the most recent codeseparator
-                        CScript scriptCode(pbegincodehash, pend);
+                        Script scriptCode(pbegincodehash, pend);
 
                         // Drop the signatures, since there's no way for a signature to sign itself
                         for (int k = 0; k < nSigsCount; k++)
                         {
                             std::vector<uint8_t>& vchSig = stacktop(-isig-k);
-                            scriptCode.FindAndDelete(CScript(vchSig));
+                            scriptCode.FindAndDelete(Script(vchSig));
                         }
 
                         bool fSuccess = true;
@@ -873,20 +873,20 @@ namespace Legacy
 
 
     /* Extract data from a script object. */
-    bool Solver(const CScript& scriptPubKey, TransactionType& typeRet, std::vector< std::vector<uint8_t> >& vSolutionsRet)
+    bool Solver(const Script& scriptPubKey, TransactionType& typeRet, std::vector< std::vector<uint8_t> >& vSolutionsRet)
     {
         // Templates
-        static std::map<TransactionType, CScript> mTemplates;
+        static std::map<TransactionType, Script> mTemplates;
         if (mTemplates.empty())
         {
             // Standard tx, sender provides pubkey, receiver adds signature
-            mTemplates.insert(make_pair(TX_PUBKEY, CScript() << OP_PUBKEY << OP_CHECKSIG));
+            mTemplates.insert(make_pair(TX_PUBKEY, Script() << OP_PUBKEY << OP_CHECKSIG));
 
             // Nexus address tx, sender provides hash of pubkey, receiver provides signature and pubkey
-            mTemplates.insert(make_pair(TX_PUBKEYHASH, CScript() << OP_DUP << OP_HASH256 << OP_PUBKEYHASH << OP_EQUALVERIFY << OP_CHECKSIG));
+            mTemplates.insert(make_pair(TX_PUBKEYHASH, Script() << OP_DUP << OP_HASH256 << OP_PUBKEYHASH << OP_EQUALVERIFY << OP_CHECKSIG));
 
             // Sender provides N pubkeys, receivers provides M signatures
-            mTemplates.insert(make_pair(TX_MULTISIG, CScript() << OP_SMALLINTEGER << OP_PUBKEYS << OP_SMALLINTEGER << OP_CHECKMULTISIG));
+            mTemplates.insert(make_pair(TX_MULTISIG, Script() << OP_SMALLINTEGER << OP_PUBKEYS << OP_SMALLINTEGER << OP_CHECKMULTISIG));
         }
 
         // Shortcut for pay-to-script-hash, which are more constrained than the other types:
@@ -900,18 +900,18 @@ namespace Legacy
         }
 
         // Scan templates
-        const CScript& script1 = scriptPubKey;
+        const Script& script1 = scriptPubKey;
         for(const auto& tplate : mTemplates)
         {
-            const CScript& script2 = tplate.second;
+            const Script& script2 = tplate.second;
             vSolutionsRet.clear();
 
             opcodetype opcode1, opcode2;
             std::vector<uint8_t> vch1, vch2;
 
             // Compare
-            CScript::const_iterator pc1 = script1.begin();
-            CScript::const_iterator pc2 = script2.begin();
+            Script::const_iterator pc1 = script1.begin();
+            Script::const_iterator pc2 = script2.begin();
             while(true)
             {
                 if (pc1 == script1.end() && pc2 == script2.end())
@@ -989,7 +989,7 @@ namespace Legacy
 
 
     /* Sign scriptPubKey with private keys, given transaction hash and hash type. */
-    bool Solver(const KeyStore& keystore, const CScript& scriptPubKey, uint256_t hash, int32_t nHashType, CScript& scriptSigRet, TransactionType& whichTypeRet)
+    bool Solver(const KeyStore& keystore, const Script& scriptPubKey, uint256_t hash, int32_t nHashType, Script& scriptSigRet, TransactionType& whichTypeRet)
     {
         scriptSigRet.clear();
 
@@ -1020,7 +1020,7 @@ namespace Legacy
                 return true;
 
             case TX_SCRIPTHASH:
-                return keystore.GetCScript(uint256_t(vSolutions[0]), scriptSigRet);
+                return keystore.GetScript(uint256_t(vSolutions[0]), scriptSigRet);
 
             case TX_MULTISIG:
                 scriptSigRet << OP_0; // workaround CHECKMULTISIG bug
@@ -1059,7 +1059,7 @@ namespace Legacy
 
 
     /* Detects if a script object is of a standard type. */
-    bool IsStandard(const CScript& scriptPubKey)
+    bool IsStandard(const Script& scriptPubKey)
     {
         std::vector< std::vector<uint8_t> > vSolutions;
         TransactionType whichType;
@@ -1099,7 +1099,7 @@ namespace Legacy
 
 
     /* Checks an output to your keystore to detect if you have a key that is involed in the output or transaction. */
-    bool IsMine(const KeyStore& keystore, const CScript& scriptPubKey)
+    bool IsMine(const KeyStore& keystore, const Script& scriptPubKey)
     {
         std::vector< std::vector<uint8_t> > vSolutions;
         TransactionType whichType;
@@ -1122,8 +1122,8 @@ namespace Legacy
 
             case TX_SCRIPTHASH:
             {
-                CScript subscript;
-                if (!keystore.GetCScript(uint256_t(vSolutions[0]), subscript))
+                Script subscript;
+                if (!keystore.GetScript(uint256_t(vSolutions[0]), subscript))
                     return false;
 
                 return IsMine(keystore, subscript);
@@ -1146,7 +1146,7 @@ namespace Legacy
 
 
     /* Extract a Nexus Address from a public key script. */
-    bool ExtractAddress(const CScript& scriptPubKey, NexusAddress& addressRet)
+    bool ExtractAddress(const Script& scriptPubKey, NexusAddress& addressRet)
     {
         std::vector< std::vector<uint8_t> > vSolutions;
         TransactionType whichType;
@@ -1175,7 +1175,7 @@ namespace Legacy
 
 
     /* Extract a list of Nexus Addresses from a public key script. */
-    bool ExtractAddresses(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<NexusAddress>& addressRet, int32_t& nRequiredRet)
+    bool ExtractAddresses(const Script& scriptPubKey, TransactionType& typeRet, std::vector<NexusAddress>& addressRet, int32_t& nRequiredRet)
     {
         addressRet.clear();
         typeRet = TX_NONSTANDARD;
@@ -1212,7 +1212,7 @@ namespace Legacy
 
 
     /* Verify a script is a valid */
-    bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const Transaction& txTo, uint32_t nIn, int32_t nHashType)
+    bool VerifyScript(const Script& scriptSig, const Script& scriptPubKey, const Transaction& txTo, uint32_t nIn, int32_t nHashType)
     {
         std::vector< std::vector<uint8_t> > stack, stackCopy;
         if (!EvalScript(stack, scriptSig, txTo, nIn, nHashType))
@@ -1235,7 +1235,7 @@ namespace Legacy
                 return false;
 
             const std::vector<uint8_t>& pubKeySerialized = stackCopy.back();
-            CScript pubKey2(pubKeySerialized.begin(), pubKeySerialized.end());
+            Script pubKey2(pubKeySerialized.begin(), pubKeySerialized.end());
             popstack(stackCopy);
 
             if (!EvalScript(stackCopy, pubKey2, txTo, nIn, nHashType))

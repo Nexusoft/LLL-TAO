@@ -39,7 +39,7 @@ namespace Legacy
      *  @return true if the script evaluates to true.
      *
      **/
-    bool EvalScript(std::vector< std::vector<uint8_t> >& stack, const CScript& script, const Transaction& txTo, uint32_t nIn, int32_t nHashType);
+    bool EvalScript(std::vector< std::vector<uint8_t> >& stack, const Script& script, const Transaction& txTo, uint32_t nIn, int32_t nHashType);
 
 
     /** Solver
@@ -53,7 +53,7 @@ namespace Legacy
      *  @return true if the script was solved successfully.
      *
      **/
-    bool Solver(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<std::vector<uint8_t> >& vSolutionsRet);
+    bool Solver(const Script& scriptPubKey, TransactionType& typeRet, std::vector<std::vector<uint8_t> >& vSolutionsRet);
 
 
     /** Solver
@@ -69,7 +69,7 @@ namespace Legacy
      *  @return returns true if this was solved.
      *
      **/
-    bool Solver(const KeyStore& keystore, const CScript& scriptPubKey, uint256_t hash, int32_t nHashType, CScript& scriptSigRet, TransactionType& whichTypeRet);
+    bool Solver(const KeyStore& keystore, const Script& scriptPubKey, uint256_t hash, int32_t nHashType, Script& scriptSigRet, TransactionType& whichTypeRet);
 
 
     /** Script Sig Args Expected
@@ -94,7 +94,7 @@ namespace Legacy
      *  @return true if the output is standard.
      *
      **/
-    bool IsStandard(const CScript& scriptPubKey);
+    bool IsStandard(const Script& scriptPubKey);
 
 
     /** Have Keys
@@ -121,7 +121,7 @@ namespace Legacy
      *  @return true if script object involes a key in keystore.
      *
      **/
-    bool IsMine(const KeyStore& keystore, const CScript& scriptPubKey);
+    bool IsMine(const KeyStore& keystore, const Script& scriptPubKey);
 
 
 
@@ -135,7 +135,7 @@ namespace Legacy
      *  @return true if address was extracted successfully.
      *
      **/
-    bool ExtractAddress(const CScript& scriptPubKey, NexusAddress& addressRet);
+    bool ExtractAddress(const Script& scriptPubKey, NexusAddress& addressRet);
 
 
     /** Extract Addresses
@@ -150,7 +150,7 @@ namespace Legacy
      *  @return true if addresses were extracted successfully.
      *
      **/
-    bool ExtractAddresses(const CScript& scriptPubKey, TransactionType& typeRet, std::vector<NexusAddress>& addressRet, int32_t& nRequiredRet);
+    bool ExtractAddresses(const Script& scriptPubKey, TransactionType& typeRet, std::vector<NexusAddress>& addressRet, int32_t& nRequiredRet);
 
 
     /** Verify Script
@@ -166,7 +166,7 @@ namespace Legacy
      *  @return true if the script was verified valid.
      *
      **/
-    bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const Transaction& txTo, uint32_t nIn, int32_t nHashType);
+    bool VerifyScript(const Script& scriptSig, const Script& scriptPubKey, const Transaction& txTo, uint32_t nIn, int32_t nHashType);
 
 }
 

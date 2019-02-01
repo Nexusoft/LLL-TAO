@@ -22,16 +22,16 @@ namespace Legacy
 {
 
 	/* Basic Constructor. */
-	CTxIn::CTxIn(uint512_t hashPrevTx, uint32_t nOut, CScript scriptSigIn, uint32_t nSequenceIn)
+	TxIn::TxIn(uint512_t hashPrevTx, uint32_t nOut, Script scriptSigIn, uint32_t nSequenceIn)
 	{
-		prevout = COutPoint(hashPrevTx, nOut);
+		prevout = OutPoint(hashPrevTx, nOut);
 		scriptSig = scriptSigIn;
 		nSequence = nSequenceIn;
 	}
 
 
 	/* Flag to tell if this input is the flag for proof of stake Transactions */
-	bool CTxIn::IsStakeSig() const
+	bool TxIn::IsStakeSig() const
 	{
 		if( scriptSig.size() < 8)
 			return false;
@@ -45,17 +45,17 @@ namespace Legacy
 
 
 	/* Short Hand debug output of the object (hash, n) */
-	std::string CTxIn::ToStringShort() const
+	std::string TxIn::ToStringShort() const
     {
         return debug::strprintf(" %s %d", prevout.hash.ToString().c_str(), prevout.n);
     }
 
 
 	/* Full object debug output as std::string. */
-    std::string CTxIn::ToString() const
+    std::string TxIn::ToString() const
     {
         std::string str;
-        str += "CTxIn(";
+        str += "TxIn(";
         str += prevout.ToString();
         if (prevout.IsNull())
         {
@@ -76,7 +76,7 @@ namespace Legacy
 
 
 	/* Dump the full object to the console (stdout) */
-    void CTxIn::print() const
+    void TxIn::print() const
     {
         debug::log(0, ToString());
     }
