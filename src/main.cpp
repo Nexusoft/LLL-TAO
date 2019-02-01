@@ -154,7 +154,7 @@ int main(int argc, char** argv)
 
 
 
-    if(!config::GetBoolArg("-legacy"))
+    if(!config::GetBoolArg("-beta"))
     {
         /** Get the port for Tritium Server. **/
         port = static_cast<uint16_t>(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
