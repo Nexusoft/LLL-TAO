@@ -694,6 +694,12 @@ namespace Legacy
     void StakeMinter::StakeMinterThread(StakeMinter* pStakeMinter)
     {
 
+        if( !config::GetBoolArg("-legacy"))
+        {
+            debug::log(0, FUNCTION, "Staking Disabled - staking only available in legacy mode");
+            return;
+        }
+
         /* Local copies of stake minter flags. These support testing conditions while only reading the shared static flags within a lock scope. */
         bool fstarted = false;
         bool fstop = false;
