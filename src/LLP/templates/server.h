@@ -278,7 +278,7 @@ namespace LLP
          *
          *  Get the number of active connection pointers from data threads.
          *
-         *  @return Returns the count of active connections 
+         *  @return Returns the count of active connections
          *
          **/
         uint32_t GetConnectionCount()
@@ -494,7 +494,8 @@ namespace LLP
                 if(!dt)
                     continue;
 
-                if(dt->nConnections < nConnections)
+                /* Limit data threads to 32 connections per thread. */
+                if(dt->nConnections < nConnections && dt->nConnections < 32)
                 {
                     nIndex = index;
                     nConnections = dt->nConnections;
@@ -591,12 +592,15 @@ namespace LLP
                         Socket_t sockNew(hSocket, addr);
 
                         int32_t nThread = FindThread();
-
                         if(nThread < 0)
+                        {
+                            debug::error(FUNCTION, "Server has no spare connection capacity... dropping");
+                            sockNew.Close();
+
                             continue;
+                        }
 
                         DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-
                         if(!dt)
                             continue;
 

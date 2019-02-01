@@ -100,7 +100,7 @@ namespace LLP
          *  @param[in] DDOS The pointer to the DDOS filter to add to connection.
          *
          **/
-        void AddConnection(Socket_t SOCKET, DDOS_Filter* DDOS)
+        void AddConnection(const Socket_t& SOCKET, DDOS_Filter* DDOS)
         {
             LOCK(MUTEX);
 
