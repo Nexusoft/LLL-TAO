@@ -107,8 +107,7 @@ namespace LLP
             int nSlot = find_slot();
             if(nSlot == CONNECTIONS.size())
             {
-                CONNECTIONS.push_back(nullptr);
-                CONNECTIONS[nSlot] = new ProtocolType(SOCKET, DDOS, fDDOS);
+                CONNECTIONS.push_back(new ProtocolType(SOCKET, DDOS, fDDOS));
             }
             else
             {
@@ -149,8 +148,7 @@ namespace LLP
             if(nSlot == CONNECTIONS.size())
             {
                 Socket SOCKET;
-                CONNECTIONS.push_back(nullptr);
-                CONNECTIONS[nSlot] = new ProtocolType(SOCKET, DDOS, fDDOS);
+                CONNECTIONS.push_back(new ProtocolType(SOCKET, DDOS, fDDOS));
             }
             else
             {
@@ -228,7 +226,10 @@ namespace LLP
                 }
 
                 /* Check all connections for data and packets. */
-                uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
+                uint32_t nSize = 0;
+                { LOCK(MUTEX);
+                    nSize = static_cast<uint32_t>(CONNECTIONS.size());
+                }
                 for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
                 {
                     try
