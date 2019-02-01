@@ -50,11 +50,11 @@ namespace Legacy
 
 
 		/** The inputs for the transaction. **/
-		std::vector<CTxIn> vin;
+		std::vector<TxIn> vin;
 
 
 		/** The outputs for the transaction. **/
-		std::vector<CTxOut> vout;
+		std::vector<TxOut> vout;
 
 
 		/** The time this transaction is locked to. **/
@@ -462,7 +462,7 @@ namespace Legacy
 		 *  @return the output that was found.
 		 *
 		 **/
-		const CTxOut& GetOutputFor(const CTxIn& input, const std::map<uint512_t, Transaction>& inputs) const;
+		const TxOut& GetOutputFor(const TxIn& input, const std::map<uint512_t, Transaction>& inputs) const;
 	};
 }
 

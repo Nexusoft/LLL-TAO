@@ -43,8 +43,6 @@ namespace Legacy
      *   - credit/debit amount = 10 
      *   - strOtherAccount = account A
      * 
-     * @deprecated - this class should no longer be used, accounting entry support to be removed
-     *
      * Database key is acentry<account><counter>
      */
     class AccountingEntry

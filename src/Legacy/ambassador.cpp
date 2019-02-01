@@ -41,7 +41,7 @@ namespace Legacy
     /** Initialize the scripts. **/
     void InitializeScripts()
     {
-        CScript scriptSig;
+        Script scriptSig;
 
         if(config::fTestNet)
         {

@@ -157,7 +157,7 @@ namespace Legacy
         coinbaseTx.vin[0].prevout.SetNull();
 
         /* Set the Proof of Work Script Signature. */
-        coinbaseTx.vin[0].scriptSig = (Legacy::CScript() << ((uint64_t)nID * 513513512151));
+        coinbaseTx.vin[0].scriptSig = (Legacy::Script() << ((uint64_t)nID * 513513512151));
 
         /* Set the first output to pay to the coinbaseKey. */
         coinbaseTx.vout.resize(1);
@@ -271,7 +271,7 @@ namespace Legacy
 
             /* Calculate priority using transaction inputs */
             double dPriority = 0;
-            for (const CTxIn& txin : tx.vin)
+            for (const TxIn& txin : tx.vin)
             {
                 /* Check if we have previous transaction */
                 Transaction txPrev;
@@ -413,7 +413,7 @@ namespace Legacy
         Legacy::TransactionType whichType;
 
         /* Retrieve the Coinbase/Coinstake transaction from the block */
-        const CTxOut& txout = block.vtx[0].vout[0];
+        const TxOut& txout = block.vtx[0].vout[0];
 
         /* Extract the public key from the Coinbase/Coinstake script */
         if (!Solver(txout.scriptPubKey, whichType, vSolutions))

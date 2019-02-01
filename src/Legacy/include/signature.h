@@ -38,7 +38,7 @@ namespace Legacy
      *  @return true if the signature was created successfully.
      *
      **/
-    bool Sign1(const NexusAddress& address, const KeyStore& keystore, uint256_t hash, int32_t nHashType, CScript& scriptSigRet);
+    bool Sign1(const NexusAddress& address, const KeyStore& keystore, uint256_t hash, int32_t nHashType, Script& scriptSigRet);
 
 
     /** Sign N
@@ -54,7 +54,7 @@ namespace Legacy
      *  @return true if the signatures were created successfully.
      *
      **/
-    bool SignN(const std::vector< std::vector<uint8_t> >& multisigdata, const KeyStore& keystore, uint256_t hash, int32_t nHashType, CScript& scriptSigRet);
+    bool SignN(const std::vector< std::vector<uint8_t> >& multisigdata, const KeyStore& keystore, uint256_t hash, int32_t nHashType, Script& scriptSigRet);
 
 
     /** Signature Hash
@@ -69,7 +69,7 @@ namespace Legacy
      *  @return The hash for use in signing.
      *
      **/
-    uint256_t SignatureHash(CScript scriptCode, const Transaction& txTo, uint32_t nIn, int32_t nHashType);
+    uint256_t SignatureHash(Script scriptCode, const Transaction& txTo, uint32_t nIn, int32_t nHashType);
 
 
     /** Check Sig
@@ -86,7 +86,7 @@ namespace Legacy
      *  @return true if the signature is valid.
      *
      **/
-    bool CheckSig(std::vector<uint8_t> vchSig, std::vector<uint8_t> vchPubKey, CScript scriptCode, const Transaction& txTo, uint32_t nIn, int32_t nHashType);
+    bool CheckSig(std::vector<uint8_t> vchSig, std::vector<uint8_t> vchPubKey, Script scriptCode, const Transaction& txTo, uint32_t nIn, int32_t nHashType);
 
 
     /** Sign Signature

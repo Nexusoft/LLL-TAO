@@ -303,7 +303,7 @@ namespace TAO
 
             // Nexus address
             Legacy::NexusAddress address = Legacy::NexusAddress(params[0].get<std::string>());
-            Legacy::CScript scriptPubKey;
+            Legacy::Script scriptPubKey;
             if (!address.IsValid())
                 throw APIException(-5, "Invalid Nexus address");
             scriptPubKey.SetNexusAddress(address);
@@ -323,7 +323,7 @@ namespace TAO
                 if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
                     continue;
 
-                for(const Legacy::CTxOut& txout : wtx.vout)
+                for(const Legacy::TxOut& txout : wtx.vout)
                     if (txout.scriptPubKey == scriptPubKey)
                         if (wtx.GetDepthInMainChain() >= nMinDepth)
                             nAmount += txout.nValue;
@@ -372,7 +372,7 @@ namespace TAO
                 if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
                     continue;
 
-                for(const Legacy::CTxOut& txout : wtx.vout)
+                for(const Legacy::TxOut& txout : wtx.vout)
                 {
                     Legacy::NexusAddress address;
                     if (ExtractAddress(txout.scriptPubKey, address) && Legacy::Wallet::GetInstance().HaveKey(address) && setAddress.count(address))
@@ -595,7 +595,7 @@ namespace TAO
                 wtx.mapValue["comment"] = params[3].get<std::string>();
 
             std::set<Legacy::NexusAddress> setAddress;
-            std::vector<std::pair<Legacy::CScript, int64_t> > vecSend;
+            std::vector<std::pair<Legacy::Script, int64_t> > vecSend;
 
             int64_t totalAmount = 0;
             for (json::json::iterator it = sendTo.begin(); it != sendTo.end(); ++it)
@@ -608,7 +608,7 @@ namespace TAO
                     throw APIException(-8, std::string("Invalid parameter, duplicated address: ")+it.key());
                 setAddress.insert(address);
 
-                Legacy::CScript scriptPubKey;
+                Legacy::Script scriptPubKey;
                 scriptPubKey.SetNexusAddress(address);
                 int64_t nAmount = Legacy::AmountToSatoshis(it.value());
                 if (nAmount < Legacy::MIN_TXOUT_AMOUNT)
@@ -711,13 +711,13 @@ namespace TAO
            }
 
             // Construct using pay-to-script-hash:
-            Legacy::CScript inner;
+            Legacy::Script inner;
             inner.SetMultisig(nRequired, pubkeys);
 
             uint256_t scriptHash = LLC::SK256(inner);
-            Legacy::CScript scriptPubKey;
+            Legacy::Script scriptPubKey;
             scriptPubKey.SetPayToScriptHash(inner);
-            Legacy::Wallet::GetInstance().AddCScript(inner);
+            Legacy::Wallet::GetInstance().AddScript(inner);
             Legacy::NexusAddress address;
             address.SetScriptHash256(scriptHash);
 
@@ -762,7 +762,7 @@ namespace TAO
                 if (nDepth < nMinDepth)
                     continue;
 
-                for(const Legacy::CTxOut& txout : wtx.vout)
+                for(const Legacy::TxOut& txout : wtx.vout)
                 {
                     Legacy::NexusAddress address;
                     if (!ExtractAddress(txout.scriptPubKey, address) || !Legacy::Wallet::GetInstance().HaveKey(address) || !address.IsValid())
@@ -1375,11 +1375,11 @@ namespace TAO
                     key.SetPubKey(vchPubKey);
                     ret["iscompressed"] = key.IsCompressed();
                 }
-                else if (Legacy::Wallet::GetInstance().HaveCScript(address.GetHash256()))
+                else if (Legacy::Wallet::GetInstance().HaveScript(address.GetHash256()))
                 {
                     ret["isscript"] = true;
-                    Legacy::CScript subscript;
-                    Legacy::Wallet::GetInstance().GetCScript(address.GetHash256(), subscript);
+                    Legacy::Script subscript;
+                    Legacy::Wallet::GetInstance().GetScript(address.GetHash256(), subscript);
                     ret["ismine"] = Legacy::IsMine(Legacy::Wallet::GetInstance(), subscript);
                     std::vector<Legacy::NexusAddress> addresses;
                     Legacy::TransactionType whichType;
@@ -1484,7 +1484,7 @@ namespace TAO
                 }
 
                 int64_t nValue = out.walletTx.vout[out.i].nValue;
-                const Legacy::CScript& pk = out.walletTx.vout[out.i].scriptPubKey;
+                const Legacy::Script& pk = out.walletTx.vout[out.i].scriptPubKey;
                 Legacy::NexusAddress address;
 
                 debug::strprintf("txid %s | ", out.walletTx.GetHash().GetHex().c_str());
@@ -1566,7 +1566,7 @@ namespace TAO
                 }
 
                 int64_t nValue = out.walletTx.vout[out.i].nValue;
-                const Legacy::CScript& pk = out.walletTx.vout[out.i].scriptPubKey;
+                const Legacy::Script& pk = out.walletTx.vout[out.i].scriptPubKey;
                 Legacy::NexusAddress address;
                 json::json entry;
                 entry["txid"] = out.walletTx.GetHash().GetHex();

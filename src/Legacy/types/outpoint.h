@@ -21,7 +21,7 @@ namespace Legacy
 {
 
 	/** An outpoint - a combination of a transaction hash and an index n into its vout */
-	class COutPoint
+	class OutPoint
 	{
 	public:
 
@@ -45,7 +45,7 @@ namespace Legacy
 		 *	Set state to Null.
 		 *
 		 **/
-		COutPoint() { SetNull(); }
+		OutPoint() { SetNull(); }
 
 
 		/** Constructor
@@ -54,7 +54,7 @@ namespace Legacy
 		 *	@param[in] nIn The output number of previous transaction.
 		 *
 		 **/
-		COutPoint(uint512_t hashIn, uint32_t nIn) { hash = hashIn; n = nIn; }
+		OutPoint(uint512_t hashIn, uint32_t nIn) { hash = hashIn; n = nIn; }
 
 
 		/** SetNull
@@ -90,7 +90,7 @@ namespace Legacy
 		 *	@return true if a < b
 		 *
 		 **/
-		friend bool operator<(const COutPoint& a, const COutPoint& b)
+		friend bool operator<(const OutPoint& a, const OutPoint& b)
 		{
 			return (a.hash < b.hash || (a.hash == b.hash && a.n < b.n));
 		}
@@ -104,7 +104,7 @@ namespace Legacy
 		 *	@return true if a == b
 		 *
 		 **/
-		friend bool operator==(const COutPoint& a, const COutPoint& b)
+		friend bool operator==(const OutPoint& a, const OutPoint& b)
 		{
 			return (a.hash == b.hash && a.n == b.n);
 		}
@@ -118,7 +118,7 @@ namespace Legacy
 		 *	@return true if a != b
 		 *
 		 **/
-		friend bool operator!=(const COutPoint& a, const COutPoint& b)
+		friend bool operator!=(const OutPoint& a, const OutPoint& b)
 		{
 			return !(a == b);
 		}

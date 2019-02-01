@@ -24,7 +24,7 @@ namespace Legacy
 {
 
 	/* Set the object to null state. */
-	void CTxOut::SetNull()
+	void TxOut::SetNull()
 	{
 		nValue = -1;
 		scriptPubKey.clear();
@@ -32,14 +32,14 @@ namespace Legacy
 
 
 	/* Determine if the object is in a null state. */
-	bool CTxOut::IsNull()
+	bool TxOut::IsNull()
 	{
 		return (nValue == -1);
 	}
 
 
 	/* Clear the object and reset value to 0. */
-	void CTxOut::SetEmpty()
+	void TxOut::SetEmpty()
 	{
 		nValue = 0;
 		scriptPubKey.clear();
@@ -47,14 +47,14 @@ namespace Legacy
 
 
 	/* Determine if the object is in an empty state. */
-	bool CTxOut::IsEmpty() const
+	bool TxOut::IsEmpty() const
 	{
 		return (nValue == 0 && scriptPubKey.empty());
 	}
 
 
 	/* Get the hash of the object. */
-	uint512_t CTxOut::GetHash() const
+	uint512_t TxOut::GetHash() const
 	{
 		// Most of the time is spent allocating and deallocating DataStream's
 	    // buffer.  If this ever needs to be optimized further, make a CStaticStream
@@ -67,24 +67,24 @@ namespace Legacy
 
 
 	/* Short Hand debug output of the object */
-	std::string CTxOut::ToStringShort() const
+	std::string TxOut::ToStringShort() const
 	{
 		return debug::strprintf(" out %s %s", FormatMoney(nValue).c_str(), scriptPubKey.ToString(true).c_str());
 	}
 
 
 	/* Full object debug output */
-	std::string CTxOut::ToString() const
+	std::string TxOut::ToString() const
 	{
-		if (IsEmpty()) return "CTxOut(empty)";
+		if (IsEmpty()) return "TxOut(empty)";
 		if (scriptPubKey.size() < 6)
-			return "CTxOut(error)";
-		return debug::strprintf("CTxOut(nValue=%s, scriptPubKey=%s)", FormatMoney(nValue).c_str(), scriptPubKey.ToString().c_str());
+			return "TxOut(error)";
+		return debug::strprintf("TxOut(nValue=%s, scriptPubKey=%s)", FormatMoney(nValue).c_str(), scriptPubKey.ToString().c_str());
 	}
 
 
 	/* Dump the full object to the console (stdout) */
-	void CTxOut::print() const
+	void TxOut::print() const
 	{
 		debug::log(0, ToString());
 	}

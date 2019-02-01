@@ -26,7 +26,7 @@ namespace Legacy
     /** An output of a transaction.  It contains the public key that the next input
 	 * must be able to sign with to claim it.
 	 */
-	class CTxOut
+	class TxOut
 	{
 	public:
 
@@ -35,7 +35,7 @@ namespace Legacy
 
 
 		/** The output script required to evaluate to true to be spent. **/
-		CScript scriptPubKey;
+		Script scriptPubKey;
 
 
 		//the serialization methods
@@ -51,7 +51,7 @@ namespace Legacy
 		 *	Sets object to null state.
 		 *
 		 **/
-		CTxOut()
+		TxOut()
 		{
 			SetNull();
 		}
@@ -63,7 +63,7 @@ namespace Legacy
 		 *	@param[in] scriptPubKeyIn The script to be evaluated on spend.
 		 *
 		 **/
-		CTxOut(int64_t nValueIn, CScript scriptPubKeyIn)
+		TxOut(int64_t nValueIn, Script scriptPubKeyIn)
 		{
 			nValue = nValueIn;
 			scriptPubKey = scriptPubKeyIn;
@@ -118,7 +118,7 @@ namespace Legacy
 		 *	@return true if the objects are equivilent.
 		 *
 		 **/
-		friend bool operator==(const CTxOut& a, const CTxOut& b)
+		friend bool operator==(const TxOut& a, const TxOut& b)
 		{
 			return (a.nValue       == b.nValue &&
 					a.scriptPubKey == b.scriptPubKey);
@@ -133,7 +133,7 @@ namespace Legacy
 		 *	@return true if the objects are not equivilent.
 		 *
 		 **/
-		friend bool operator!=(const CTxOut& a, const CTxOut& b)
+		friend bool operator!=(const TxOut& a, const TxOut& b)
 		{
 			return !(a == b);
 		}

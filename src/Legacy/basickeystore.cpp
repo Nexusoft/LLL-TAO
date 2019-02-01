@@ -77,7 +77,7 @@ namespace Legacy
 
 
     /*  Add a script to the key store. */
-    bool BasicKeyStore::AddCScript(const CScript& redeemScript)
+    bool BasicKeyStore::AddScript(const Script& redeemScript)
     {
         {
             LOCK(cs_basicKeyStore);
@@ -88,7 +88,7 @@ namespace Legacy
 
 
     /*  Retrieve a script from the key store. */
-    bool BasicKeyStore::GetCScript(const uint256_t& hash, CScript& redeemScriptOut) const
+    bool BasicKeyStore::GetScript(const uint256_t& hash, Script& redeemScriptOut) const
     {
         {
             LOCK(cs_basicKeyStore);
@@ -104,7 +104,7 @@ namespace Legacy
 
 
     /*  Check whether a script is present in the store. */
-    bool BasicKeyStore::HaveCScript(const uint256_t& hash) const
+    bool BasicKeyStore::HaveScript(const uint256_t& hash) const
     {
         bool result;
         {

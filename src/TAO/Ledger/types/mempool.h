@@ -57,7 +57,7 @@ namespace TAO
 
 
             /** Record of legacy inputs in the mempool. **/
-            std::map<Legacy::COutPoint, uint512_t> mapInputs;
+            std::map<Legacy::OutPoint, uint512_t> mapInputs;
 
         public:
 
