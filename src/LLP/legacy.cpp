@@ -567,15 +567,10 @@ namespace LLP
         }
 
 
-        /* Handle block header inventory message
-        *
-        * This is just block data without transactions.
-        *
-        */
+        //DEPRECATED
         else if (message == "headers")
         {
-            //std::vector<Core::CBlock> vBlocks;
-            //ssMessage >> vBlocks;
+            return true; //DEPRECATED
         }
 
 
@@ -640,29 +635,80 @@ namespace LLP
         /* Handle a Request to get a list of Blocks from a Node. */
         else if (message == "getblocks")
         {
-            //Core::CBlockLocator locator;
-            //uint1024_t hashStop;
-            //ssMessage >> locator >> hashStop;
+            Legacy::Locator locator;
+            uint1024_t hashStop;
+            ssMessage >> locator >> hashStop;
 
+            /* Return if nothing in locator. */
+            if(locator.vHave.size() == 0)
+                return false;
+
+            /* Get the block state from. */
+            TAO::Ledger::BlockState state;
+            if(!LLD::legDB->ReadBlock(locator.vHave[0], state))
+                return true;
+
+            int32_t nLimit = 1000;
+            debug::log(3, "getblocks ", state.nHeight, " to ", hashStop.ToString().substr(0, 20), " limit ", nLimit);
+
+            /* Iterate forward the blocks required. */
+            std::vector<CInv> vInv;
+            while(!config::fShutdown)
+            {
+                if (state.GetHash() == hashStop)
+                {
+                    debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", state.GetHash().ToString().substr(0, 20));
+
+                    /* Tell about latest block if hash stop is found. */
+                    if (hashStop != TAO::Ledger::ChainState::hashBestChain)
+                        vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain, MSG_BLOCK));
+
+                    break;
+                }
+
+                vInv.push_back(CInv(state.GetHash(), MSG_BLOCK));
+                if (--nLimit <= 0)
+                {
+                    // When this block is requested, we'll send an inv that'll make them
+                    // getblocks the next batch of inventory.
+                    debug::log(3, "  getblocks stopping at limit ", state.nHeight, " to ", state.GetHash().ToString().substr(0,20));
+
+                    hashContinue = state.GetHash();
+                    break;
+                }
+
+                state = state.Next();
+            }
+
+            /* Push the inventory. */
+            if(vInv.size() > 0)
+                PushMessage("inv", vInv);
         }
 
 
-        /* Handle a Request to get a list of Blocks from a Node. */
+        //DEPRECATED
         else if (message == "getheaders")
         {
-            //Core::CBlockLocator locator;
-            //uint1024_t hashStop;
-            //ssMessage >> locator >> hashStop;
-
+            return true; //DEPRECATED
         }
 
 
         /* TODO: Change this Algorithm. */
         else if (message == "getaddr")
         {
-            //std::vector<LLP::LegacyAddress> vAddr = Core::pManager->GetAddresses();
+            /* Get addresses from manager. */
+            std::vector<BaseAddress> vAddr;
+            if(LEGACY_SERVER->pAddressManager)
+                LEGACY_SERVER->pAddressManager->GetAddresses(vAddr);
 
-            //PushMessage("addr", vAddr);
+            /* Add the best 1000 addresses. */
+            std::vector<LegacyAddress> vSend;
+            for(uint32_t n = 0; n < vAddr.size() && n < 1000; n++)
+                vSend.push_back(vAddr[n]);
+
+            /* Send the addresses off. */
+            if(vSend.size() > 0)
+                PushMessage("addr", vSend);
         }
 
 
