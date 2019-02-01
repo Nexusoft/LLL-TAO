@@ -53,6 +53,7 @@ namespace LLP
 {
     Server<TritiumNode>* TRITIUM_SERVER;
     Server<LegacyNode> * LEGACY_SERVER;
+    Server<TimeNode>*    TIME_SERVER;
 }
 
 
@@ -61,6 +62,7 @@ int main(int argc, char** argv)
     LLP::Server<LLP::CoreNode>* CORE_SERVER = nullptr;
     LLP::Server<LLP::RPCNode>* RPC_SERVER = nullptr;
     LLP::Server<LLP::Miner>* MINING_SERVER = nullptr;
+
     uint16_t port = 0;
 
     /* Setup the timer timer. */
@@ -156,8 +158,28 @@ int main(int argc, char** argv)
         Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
 
 
+    /** Startup the time server. **/
+    LLP::TIME_SERVER = new LLP::Server<LLP::TimeNode>(
+        9324,
+        10,
+        30,
+        false,
+        0,
+        0,
+        10,
+        config::GetBoolArg("-listen", true),
+        config::GetBoolArg("-meters", false),
+        config::GetBoolArg("-manager", true));
+
+    /* -addnode means add to address manager */
+    if(config::mapMultiArgs["-addnode"].size() > 0)
+    {
+        for(const auto& node : config::mapMultiArgs["-addnode"])
+            LLP::TIME_SERVER->AddNode(node, port);
+    }
 
 
+    /** Handle the beta server. */
     if(!config::GetBoolArg("-beta"))
     {
         /** Get the port for Tritium Server. **/
@@ -354,6 +376,16 @@ int main(int argc, char** argv)
 
     /* Shutdown metrics. */
     timer.Reset();
+
+
+    /* Shutdown the tritium server and its subsystems */
+    if(LLP::TIME_SERVER)
+    {
+        debug::log(0, FUNCTION, "Shutting down Time Server");
+
+        LLP::TIME_SERVER->Shutdown();
+        delete LLP::TIME_SERVER;
+    }
 
 
     /* Shutdown the tritium server and its subsystems */

@@ -17,6 +17,8 @@ ________________________________________________________________________________
 namespace LLP
 {
 
+    std::map<std::string, int32_t> MAP_TIME_DATA;
+
     /* Virtual Functions to Determine Behavior of Message LLP. */
     void TimeNode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
@@ -124,6 +126,9 @@ namespace LLP
             REQUEST.LENGTH = 4;
             REQUEST.DATA = uint2bytes(runtime::timestamp());
 
+            /* Verbose debug output. */
+            debug::log(2, NODE, "Added Sample ", nOffset, " | Seed ", GetAddress().ToStringIP());
+
             /* Close the Connection Gracefully if Received all Packets. */
             if(nSamples.Samples() >= 11)
             {
@@ -132,12 +137,11 @@ namespace LLP
                 /* Update Iterators and Flags. */
                 if((MAP_TIME_DATA.size() > 0))
                 {
-
                     /* Majority Object to check for consensus on time samples. */
                     CMajority<int32_t> UNIFIED_MAJORITY;
 
                     /* Info tracker to see the total samples. */
-                    std::map<int, unsigned int> TOTAL_SAMPLES;
+                    std::map<int32_t, uint32_t> TOTAL_SAMPLES;
 
                     /* Iterate the Time Data map to find the majority time seed. */
                     for(auto it=MAP_TIME_DATA.begin(); it != MAP_TIME_DATA.end(); ++it)
@@ -155,15 +159,14 @@ namespace LLP
                     /* Set the Unified Average to the Majority Seed. */
                     UNIFIED_AVERAGE_OFFSET = UNIFIED_MAJORITY.Majority();
 
-                    //if(GetArg("-verbose", 0) >= 1)
-                    //    printf("***** %i Total Samples | %i Offset (%u) | %i Majority (%u) | %" PRId64 "\n", MAP_TIME_DATA.size(), nSamples.Majority(), TOTAL_SAMPLES[nSamples.Majority()], UNIFIED_AVERAGE_OFFSET, TOTAL_SAMPLES[UNIFIED_AVERAGE_OFFSET], GetUnifiedTimestamp());
+                    /* Log the debug output. */
+                    debug::log(0, NODE, MAP_TIME_DATA.size(), " Total Samples | ", nSamples.Majority(), " Offset (", TOTAL_SAMPLES[nSamples.Majority()], ") | ", UNIFIED_AVERAGE_OFFSET, " Majority (", TOTAL_SAMPLES[UNIFIED_AVERAGE_OFFSET], ") | ", runtime::unifiedtimestamp());
                 }
 
                 return false;
             }
 
             WritePacket(REQUEST);
-            debug::log(0, NODE, "Received time sample ", nOffset);
 
             return true;
         }

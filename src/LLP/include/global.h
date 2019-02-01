@@ -16,12 +16,14 @@ ________________________________________________________________________________
 
 #include <LLP/types/legacy.h>
 #include <LLP/types/tritium.h>
+#include <LLP/types/time.h>
 #include <LLP/templates/server.h>
 
 namespace LLP
 {
     extern Server<LegacyNode>*   LEGACY_SERVER;
     extern Server<TritiumNode>* TRITIUM_SERVER;
+    extern Server<TimeNode>*     TIME_SERVER;
 }
 
 #endif

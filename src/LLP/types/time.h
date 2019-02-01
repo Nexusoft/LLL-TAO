@@ -19,7 +19,7 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    std::map<std::string, int32_t> MAP_TIME_DATA;
+    extern std::map<std::string, int32_t> MAP_TIME_DATA;
 
     class TimeNode : public Connection
     {
@@ -49,6 +49,14 @@ namespace LLP
         CMajority<int32_t> nSamples;
 
     public:
+
+
+        /** Name
+         *
+         *  Returns a string for the name of this type of Node.
+         *
+         **/
+         static std::string Name() { return "Time"; }
 
         /** Constructor **/
         TimeNode()
