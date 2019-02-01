@@ -424,7 +424,9 @@ namespace TAO
                 if(!ChainState::Synchronizing())
                 {
                     std::vector<LLP::CInv> vInv = { LLP::CInv(ChainState::hashBestChain, LLP::MSG_BLOCK) };
-                    LLP::LEGACY_SERVER->Relay("inv", vInv);
+
+                    if(LLP::LEGACY_SERVER)
+                        LLP::LEGACY_SERVER->Relay("inv", vInv);
                 }
             }
 
