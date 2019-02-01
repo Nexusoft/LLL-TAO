@@ -163,6 +163,8 @@ namespace LLP
                     debug::log(0, NODE, MAP_TIME_DATA.size(), " Total Samples | ", nSamples.Majority(), " Offset (", TOTAL_SAMPLES[nSamples.Majority()], ") | ", UNIFIED_AVERAGE_OFFSET, " Majority (", TOTAL_SAMPLES[UNIFIED_AVERAGE_OFFSET], ") | ", runtime::unifiedtimestamp());
                 }
 
+                nSamples.clear();
+
                 return false;
             }
 
