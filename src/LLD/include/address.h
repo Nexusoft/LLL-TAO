@@ -45,14 +45,14 @@ namespace LLD
          *  Writes the Trust Address to the database.
          *
          *  @param[in] key The key for the data location.
-         *  @param[in] info The TrustAddress object to serialize to disk.
+         *  @param[in] addr The TrustAddress object to serialize to disk.
          *
          *  @return True if the write is successful, false otherwise.
          *
          **/
-        bool WriteTrustAddress(uint64_t key, const LLP::TrustAddress &info)
+        bool WriteTrustAddress(uint64_t key, const LLP::TrustAddress &addr)
         {
-            return Write(std::make_pair(std::string("info"), key), info);
+            return Write(std::make_pair(std::string("addr"), key), addr);
         }
 
 
@@ -61,14 +61,46 @@ namespace LLD
          *  Reads the Trust Address from the database.
          *
          *  @param[in] key The key for the data location.
-         *  @param[in] info The TrustAddress object to deserialize from disk.
+         *  @param[in] addr The TrustAddress object to deserialize from disk.
          *
          *  @return True if the read is successful, false otherwise.
          *
          **/
-        bool ReadTrustAddress(uint64_t key, LLP::TrustAddress &info)
+        bool ReadTrustAddress(uint64_t key, LLP::TrustAddress &addr)
         {
-            return Read(std::make_pair(std::string("info"), key), info);
+            return Read(std::make_pair(std::string("addr"), key), addr);
+        }
+
+
+        /** WriteThisAddress
+         *
+         *  Writes this address to the database.
+         *
+         *  @param[in] key The key for the data location.
+         *  @param[in] this The TrustAddress object to serialize to disk.
+         *
+         *  @return True if the write is successful, false otherwise.
+         *
+         **/
+        bool WriteThisAddress(uint64_t key, const LLP::BaseAddress &this_addr)
+        {
+            return Write(std::make_pair(std::string("this"), key), this_addr);
+        }
+
+
+        /** ReadThisAddress
+         *
+         *  Reads the this address from the database.
+         *
+         *  @param[in] key The key for the data location.
+         *  @param[in] this_addr The TrustAddress object to deserialize from disk.
+         *
+         *  @return True if the read is successful, false otherwise.
+         *
+         **/
+        bool ReadTrustAddress(uint64_t key, LLP::BaseAddress &this_addr)
+        {
+            return Read(std::make_pair(std::string("this"), key), this_addr);
         }
     };
 }

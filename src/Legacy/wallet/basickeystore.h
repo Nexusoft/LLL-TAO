@@ -57,6 +57,20 @@ namespace Legacy
 
 
     public:
+
+        /* Default Constructor */
+        BasicKeyStore()
+        : cs_basicKeyStore()
+        , mapKeys()
+        , mapScripts()
+        {
+        }
+
+        /* Default Destructor */
+        virtual ~BasicKeyStore()
+        {
+        }
+
         /** AddKey
          *
          *  Add a key to the key store.

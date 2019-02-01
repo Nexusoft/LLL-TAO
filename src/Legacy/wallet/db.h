@@ -72,6 +72,8 @@ namespace Legacy
 
 
     private:
+
+
         /** Init
          *
          *  Performs work of initialization for constructors.
@@ -97,51 +99,6 @@ namespace Legacy
 
         /** Indicates whether or not this database is in read-only mode **/
         bool fReadOnly;
-
-
-        /** Constructor
-         *
-         *  Initializes database access for a given file name and access mode.
-         *
-         *  Access modes: r=read, w=write, +=append, c=create
-         *
-         *  For modes, read is superfluous, as can always read any open database.
-         *  Write and append modes are the same, as append only is not enforced.
-         *  Essentially, a database can be opened in read-only mode or read/write mode
-         *  using the mode settings.
-         *
-         *  The c (create) mode indicates whether or not to create the database file
-         *  if not present. If initialize without using the c mode, and the database file
-         *  does not exist, object instantiation will fail with a runtime error.
-         *
-         *  @param[in] pszFile The database file name
-         *
-         *  @param[in] pszMode A string containing one or more access mode characters
-         *                     defaults to r+ (read and append). An empty or null string is
-         *                     equivalent to read only.
-         *
-         **/
-        explicit BerkeleyDB(const char* pszFileIn, const char* pszMode="r+");
-
-
-        /** Constructor
-         *
-         *  Alternative version that takes filename as std::string
-         *
-         *  @param[in] strFile The database file name
-         *
-         *  @param[in] pszMode A string containing one or more access mode characters
-         *
-         **/
-        explicit BerkeleyDB(const std::string& strFileIn, const char* pszMode="r+");
-
-
-        /** Destructor
-         *
-         *  Calls Close() on the database
-         *
-         **/
-        virtual ~BerkeleyDB();
 
 
         /** Read
@@ -382,6 +339,51 @@ namespace Legacy
 
 
     public:
+
+        /** Constructor
+         *
+         *  Initializes database access for a given file name and access mode.
+         *
+         *  Access modes: r=read, w=write, +=append, c=create
+         *
+         *  For modes, read is superfluous, as can always read any open database.
+         *  Write and append modes are the same, as append only is not enforced.
+         *  Essentially, a database can be opened in read-only mode or read/write mode
+         *  using the mode settings.
+         *
+         *  The c (create) mode indicates whether or not to create the database file
+         *  if not present. If initialize without using the c mode, and the database file
+         *  does not exist, object instantiation will fail with a runtime error.
+         *
+         *  @param[in] pszFile The database file name
+         *
+         *  @param[in] pszMode A string containing one or more access mode characters
+         *                     defaults to r+ (read and append). An empty or null string is
+         *                     equivalent to read only.
+         *
+         **/
+        explicit BerkeleyDB(const char* pszFileIn, const char* pszMode="r+");
+
+
+        /** Constructor
+         *
+         *  Alternative version that takes filename as std::string
+         *
+         *  @param[in] strFile The database file name
+         *
+         *  @param[in] pszMode A string containing one or more access mode characters
+         *
+         **/
+        explicit BerkeleyDB(const std::string& strFileIn, const char* pszMode="r+");
+
+
+        /** Destructor
+         *
+         *  Calls Close() on the database
+         *
+         **/
+        virtual ~BerkeleyDB();
+
         /** Copy constructor deleted. No copy allowed **/
         BerkeleyDB(const BerkeleyDB&) = delete;
 
@@ -469,8 +471,8 @@ namespace Legacy
          *  instances) or the pdb copy in active instances will become invalid and results of continued
          *  use are undefined.
          *
-         *  This method does not obtain a lock on BerkeleyDB::cs_db, thus any methods calling it must first 
-         *  obtain that lock. This supports usage within methods that also require obtaining a BerkeleyDB::cs_db 
+         *  This method does not obtain a lock on BerkeleyDB::cs_db, thus any methods calling it must first
+         *  obtain that lock. This supports usage within methods that also require obtaining a BerkeleyDB::cs_db
          *  lock for other purposes.
          *
          *  @param[in] strFile Database to close

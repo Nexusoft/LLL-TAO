@@ -279,14 +279,16 @@ namespace LLP
         {
             BaseAddress addrConnect(strAddress, nPort);
 
-            /// debug print
-            debug::log(3, NODE, "Connecting to ", addrConnect.ToString());
+            /* Check for connect to self */
+            if(addr.ToStringIP() == addrConnect.ToStringIP())
+                return debug::error(NODE, "cannot self-connect");
+
+            debug::log(1, NODE, "Connecting to ", addrConnect.ToStringIP());
 
             // Connect
             if (Attempt(addrConnect))
             {
-                /// debug print
-                debug::log(1, NODE, "Connected to ", addrConnect.ToString());
+                debug::log(1, NODE, "Connected to ", addrConnect.ToStringIP());
 
                 fCONNECTED = true;
                 fOUTGOING  = true;

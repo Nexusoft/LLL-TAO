@@ -107,6 +107,39 @@ namespace Legacy
         friend class WalletDB;
 
     public:
+
+
+        /** Constructor
+         *
+         *  Initializes a wallet instance for FEATURE_BASE that is not file backed.
+         *
+         **/
+        Wallet()
+        : CryptoKeyStore()
+        , nWalletVersion(FEATURE_BASE)
+        , nWalletMaxVersion(FEATURE_BASE)
+        , fFileBacked(false)
+        , fLoaded(false)
+        , strWalletFile("")
+        , mapMasterKeys()
+        , nMasterKeyMaxID(0)
+        , addressBook(AddressBook(*this))
+        , keyPool(KeyPool(*this))
+        , vchDefaultKey()
+        , vchTrustKey()
+        , nWalletUnlockTime(0)
+        , pWalletDbEncryption(nullptr)
+        , cs_wallet()
+        , mapWallet()
+        , mapRequestCount()
+        {
+        }
+
+        virtual ~Wallet()
+        {
+        }
+
+
         /** InitializeWallet
          *
          *  Initializes the wallet instance backed by a wallet database file with the provided
@@ -215,31 +248,6 @@ namespace Legacy
          **/
         std::shared_ptr<WalletDB> pWalletDbEncryption;
 
-
-        /** Constructor
-         *
-         *  Initializes a wallet instance for FEATURE_BASE that is not file backed.
-         *
-         **/
-        Wallet()
-        : nWalletVersion(FEATURE_BASE)
-        , nWalletMaxVersion(FEATURE_BASE)
-        , fFileBacked(false)
-        , fLoaded(false)
-        , strWalletFile("")
-        , mapMasterKeys()
-        , nMasterKeyMaxID(0)
-        , addressBook(AddressBook(*this))
-        , keyPool(KeyPool(*this))
-        , vchDefaultKey()
-        , nWalletUnlockTime(0)
-        , pWalletDbEncryption(nullptr)
-        , cs_wallet()
-        , mapWallet()
-        , mapRequestCount()
-        {
-
-        }
 
 
     public:
@@ -470,7 +478,7 @@ namespace Legacy
          *
          *  Retrieves the trust key for this wallet.
          *
-         *  @return the public key for the trust key 
+         *  @return the public key for the trust key
          *
          */
         inline std::vector<uint8_t> GetTrustKey() const { return vchTrustKey; }
@@ -514,7 +522,7 @@ namespace Legacy
 
         /** RemoveTrustKey
          *
-         *  Removes the wallet's trust key. This only removes the saved public key. 
+         *  Removes the wallet's trust key. This only removes the saved public key.
          *  The key itself is not removed from the key store.
          *
          *  @return true if removing trust key successful
@@ -538,7 +546,7 @@ namespace Legacy
 
         /** Lock
          *
-         *  Attempt to lock the wallet. 
+         *  Attempt to lock the wallet.
          *  Can only lock the key store if it is encrypted.
          *
          *  @return true if the wallet was successfully locked
@@ -661,7 +669,7 @@ namespace Legacy
 
         /** GetRequestCount
          *
-         *  Get the number of remote requests recorded for a transaction. 
+         *  Get the number of remote requests recorded for a transaction.
          *
          *  Coinbase and Coinstake transactions are tracked at the block level,
          *  so count records requests for the block containing them.

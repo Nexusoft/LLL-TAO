@@ -24,16 +24,16 @@ ________________________________________________________________________________
 
 #include <Util/include/mutex.h>
 
-/* forward declaration */    
-namespace LLC 
+/* forward declaration */
+namespace LLC
 {
     class ECKey;
 }
 
-namespace Legacy 
+namespace Legacy
 {
-    
-    /* forward declaration */    
+
+    /* forward declaration */
     class NexusAddress;
 
     /** Map to store public key/encrypted private key pairs, mapped by Base 58-encoded address **/
@@ -55,8 +55,8 @@ namespace Legacy
         CryptedKeyMap mapCryptedKeys;
 
 
-        /** Key used for mapCryptedKeys encryption and decryption. 
-         *  When present, key store is unlocked and keys can be decrypted and retrieved 
+        /** Key used for mapCryptedKeys encryption and decryption.
+         *  When present, key store is unlocked and keys can be decrypted and retrieved
          *  All keys in a single encrypted key store must be encrypted using the same master key.
          **/
         CKeyingMaterial vMasterKey;
@@ -65,7 +65,7 @@ namespace Legacy
         /** Indicates whether key store is storing private keys in encrypted or unencrypted format.
          *
          * If fUseCrypto is true, mapCryptedKeys is used and mapKeys must be empty
-         * if fUseCrypto is false, mapKeys (from BasicKeyStore) is used and vMasterKey/mapCryptedKeys must be empty 
+         * if fUseCrypto is false, mapKeys (from BasicKeyStore) is used and vMasterKey/mapCryptedKeys must be empty
          */
         bool fUseCrypto;
 
@@ -88,7 +88,7 @@ namespace Legacy
 
         /** EncryptKeys
          *
-         *  Convert the key store from unencrypted to encrypted. 
+         *  Convert the key store from unencrypted to encrypted.
          *  Activates encryption for the key store and encrypts any previously unencrypted keys.
          *
          *  @param[in] vMasterKeyIn Encryption key used to perform encryption. Value is not stored in vMasterKey
@@ -102,7 +102,7 @@ namespace Legacy
 
         /** Unlock
          *
-         *  Attempt to unlock an encrypted key store using the key provided. 
+         *  Attempt to unlock an encrypted key store using the key provided.
          *  Encrypted key store cannot be accessed until unlocked by providing the key used to encrypt it.
          *
          *  @param[in] vMasterKeyIn Encryption key originally used to perform encryption.
@@ -118,12 +118,23 @@ namespace Legacy
          *  Initializes key store as unencrypted
          *
          **/
-        CryptoKeyStore() : fUseCrypto(false)
+        CryptoKeyStore()
+        : BasicKeyStore()
+        , mapCryptedKeys()
+        , vMasterKey()
+        , fUseCrypto(false)
+        , cs_cryptoKeyStore()
         {
         }
 
 
-        /** isCrypted
+        /** Default Destructor **/
+        virtual ~CryptoKeyStore()
+        {
+        }
+
+
+        /** IsCrypted
          *
          *  Check if key store is encrypted
          *
@@ -146,7 +157,7 @@ namespace Legacy
 
         /** Lock
          *
-         *  Attempt to lock the key store. 
+         *  Attempt to lock the key store.
          *  Can only lock the key store if it is encrypted.
          *
          *  @return true if the key store was successfully locked
@@ -156,7 +167,7 @@ namespace Legacy
 
         /** AddCryptedKey
          *
-         *  Add a public/encrypted private key pair to the key store. 
+         *  Add a public/encrypted private key pair to the key store.
          *  Key pair must be created from the same master key used to create any other key pairs in the store.
          *  Key store must have encryption active.
          *
@@ -172,8 +183,8 @@ namespace Legacy
 
         /** AddKey
          *
-         *  Add a key to the key store. 
-         *  Encrypts the key if encryption is active and key store unlocked. 
+         *  Add a key to the key store.
+         *  Encrypts the key if encryption is active and key store unlocked.
          *  Adds to basic keystore if encryption not active.
          *
          *  @param[in] key The key to add
@@ -186,9 +197,9 @@ namespace Legacy
 
         /** GetKey
          *
-         *  Retrieve a key from the key store. 
+         *  Retrieve a key from the key store.
          *  Encrypted key store must be unlocked.
-         *  Decrypts the key if encryption is active. 
+         *  Decrypts the key if encryption is active.
          *
          *  @param[in] address The Base 58-encoded address of the key to retrieve
          *
@@ -202,7 +213,7 @@ namespace Legacy
 
         /** GetKeys
          *
-         *  Retrieve the set of public addresses for all keys currently present in the key store. 
+         *  Retrieve the set of public addresses for all keys currently present in the key store.
          *  Encrypted key store does not require unlock to retrieve public addresses.
          *
          *  @param[out] setAddress A Set containing the Base 58-encoded addresses of the all keys currently in the key store
@@ -213,7 +224,7 @@ namespace Legacy
 
         /** HaveKey
          *
-         *  Check whether a key corresponding to a given address is present in the store. 
+         *  Check whether a key corresponding to a given address is present in the store.
          *
          *  @param[in] address The Base 58-encoded address of the key to check
          *
@@ -225,7 +236,7 @@ namespace Legacy
 
         /** GetPubKey
          *
-         *  Retrieve the public key for a key in the key store. 
+         *  Retrieve the public key for a key in the key store.
          *
          *  @param[in] address The Base 58-encoded address of the key to retrieve
          *

@@ -278,7 +278,7 @@ namespace LLP
          *
          *  Get the number of active connection pointers from data threads.
          *
-         *  @return Returns the count of active connections 
+         *  @return Returns the count of active connections
          *
          **/
         uint32_t GetConnectionCount()
@@ -424,12 +424,15 @@ namespace LLP
          **/
         void Manager()
         {
+            /* Address to select. */
+            BaseAddress addr;
+
+            /* Connect state. */
+            uint8_t state = 0;
+
             /* Wait for data threads to startup. */
             while(DATA_THREADS.size() < MAX_THREADS)
                 runtime::sleep(1000);
-
-            /* Address to select. */
-            BaseAddress addr;
 
             /* Loop connections. */
             while(!fDestruct.load())
@@ -437,7 +440,7 @@ namespace LLP
                 runtime::sleep(100);
 
                 /* Assume the connect state is in a failed state. */
-                uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
+                state = static_cast<uint8_t>(ConnectState::FAILED);
 
                 /* Pick a weighted random priority from a sorted list of addresses. */
                 if(pAddressManager == nullptr)
@@ -449,6 +452,8 @@ namespace LLP
                     if(addr.ToStringIP() == addrThisNode.ToStringIP())
                     {
                         runtime::sleep(1000);
+                        debug::log(3, FUNCTION, "Cannot self-connect, removing address ", addrThisNode.ToStringIP());
+                        pAddressManager->RemoveAddress(addrThisNode);
                         continue;
                     }
 

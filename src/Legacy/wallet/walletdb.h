@@ -139,6 +139,12 @@ namespace Legacy
         { }
 
 
+        /** Default Destructor **/
+        virtual ~WalletDB()
+        {
+        }
+
+
         /** Copy constructor deleted. No copy allowed **/
         WalletDB(const WalletDB&) = delete;
 
