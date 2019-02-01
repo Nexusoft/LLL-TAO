@@ -56,7 +56,7 @@ endif
 set v4_rloc = `ifconfig $device | egrep "inet "`
 set v4_rloc = `echo $v4_rloc | cut -d " " -f 2`
 
-echo "Provisioning lisp.config file with EIDs [$iid]$v4_eid & [$iid]$v6_eid"
+echo "Provisioning lisp.config file for nexus seed node, EIDs [$iid]$v4_eid & [$iid]$v6_eid"
 cat lisp.config.xtr | \
     sed "s/<sample>/$hostname/; s/eth0/$device/" > lisp.config.bak
 cat lisp.config.bak | sed "s/<iid>/$iid/" > lisp.config

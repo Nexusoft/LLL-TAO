@@ -58,17 +58,17 @@ namespace Legacy
 
         /* Modulate the Block Versions if they correspond to their proper time stamp */
         if (runtime::unifiedtimestamp() >= (config::fTestNet
-                                            ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2] 
+                                            ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2]
                                             : TAO::Ledger::NETWORK_VERSION_TIMELOCK[TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 2]))
         {
-            newBlock.nVersion = config::fTestNet 
-                                ? TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION 
+            newBlock.nVersion = config::fTestNet
+                                ? TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION
                                 : TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION; // --> New Block Version Activation Switch
         }
         else
         {
-            newBlock.nVersion = config::fTestNet 
-                                ? TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 1 
+            newBlock.nVersion = config::fTestNet
+                                ? TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 1
                                 : TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 1;
         }
 
@@ -146,7 +146,7 @@ namespace Legacy
 
 
     /* Create the Coinbase transaction for a legacy block. */
-    bool CreateCoinbaseTransaction(Legacy::ReserveKey& coinbaseKey, const uint32_t nChannel, 
+    bool CreateCoinbaseTransaction(Legacy::ReserveKey& coinbaseKey, const uint32_t nChannel,
                                    const uint32_t nID, const uint32_t nNewBlockVersion, Transaction& coinbaseTx)
     {
         /* Previous block state is current best state on chain */
@@ -157,7 +157,7 @@ namespace Legacy
         coinbaseTx.vin[0].prevout.SetNull();
 
         /* Set the Proof of Work Script Signature. */
-        coinbaseTx.vin[0].scriptSig = (Legacy::Script() << nID * 513513512151);
+        coinbaseTx.vin[0].scriptSig = (Legacy::Script() << ((uint64_t)nID * 513513512151));
 
         /* Set the first output to pay to the coinbaseKey. */
         coinbaseTx.vout.resize(1);
@@ -202,16 +202,16 @@ namespace Legacy
 
         /* Create the ambassador and developer outputs for Coinbase transaction */
         coinbaseTx.vout.resize(coinbaseTx.vout.size() + 2);
-        NexusAddress ambassadorKeyAddress(config::fTestNet 
-                                            ? (nNewBlockVersion < 5 ? TESTNET_DUMMY_ADDRESS 
-                                                                    : TESTNET_DUMMY_AMBASSADOR_RECYCLED) 
-                                            : (nNewBlockVersion < 5 ? AMBASSADOR_ADDRESSES[nCoinbaseCounter] 
+        NexusAddress ambassadorKeyAddress(config::fTestNet
+                                            ? (nNewBlockVersion < 5 ? TESTNET_DUMMY_ADDRESS
+                                                                    : TESTNET_DUMMY_AMBASSADOR_RECYCLED)
+                                            : (nNewBlockVersion < 5 ? AMBASSADOR_ADDRESSES[nCoinbaseCounter]
                                                                     : AMBASSADOR_ADDRESSES_RECYCLED[nCoinbaseCounter]));
 
-        NexusAddress devKeyAddress(config::fTestNet 
-                                    ? (nNewBlockVersion < 5 ? TESTNET_DUMMY_ADDRESS 
-                                                            : TESTNET_DUMMY_DEVELOPER_RECYCLED) 
-                                    : (nNewBlockVersion < 5 ? DEVELOPER_ADDRESSES[nCoinbaseCounter] 
+        NexusAddress devKeyAddress(config::fTestNet
+                                    ? (nNewBlockVersion < 5 ? TESTNET_DUMMY_ADDRESS
+                                                            : TESTNET_DUMMY_DEVELOPER_RECYCLED)
+                                    : (nNewBlockVersion < 5 ? DEVELOPER_ADDRESSES[nCoinbaseCounter]
                                                             : DEVELOPER_ADDRESSES_RECYCLED[nCoinbaseCounter]));
 
         coinbaseTx.vout[coinbaseTx.vout.size() - 2].scriptPubKey.SetNexusAddress(ambassadorKeyAddress);
@@ -356,7 +356,7 @@ namespace Legacy
                 continue;
             }
 
-            /* Check tx fee meetes minimum fee requirement */ 
+            /* Check tx fee meetes minimum fee requirement */
             nTxFees = tx.GetValueIn(mapInputs) - tx.GetValueOut();
             if (nTxFees < nMinFee)
             {
@@ -402,7 +402,7 @@ namespace Legacy
             debug::log(0, FUNCTION, "Removed invalid tx %s from mempool\n", txHashToRemove.ToString().substr(0, 10).c_str());
             TAO::Ledger::mempool.RemoveLegacy(txHashToRemove);
         }
- 
+
     }
 
 
@@ -449,13 +449,13 @@ namespace Legacy
     }
 
 
-    /* Work Check Before Submit. 
+    /* Work Check Before Submit.
      *
      * This method no longer takes a ReserveKey or calls KeepKey. This change allows the stake minter
-     * issue the call, then only call KeepKey on its ReserveKey when it is using a new key. 
+     * issue the call, then only call KeepKey on its ReserveKey when it is using a new key.
      * The old CheckWork always called it, using up keys from key pool unnecessarily.
      *
-     * Prime and hash mining code should also call ProcessBlock when the mining server is 
+     * Prime and hash mining code should also call ProcessBlock when the mining server is
      * implemented to use this method. They would, of course, also need to call KeepKey after every
      * mined block, using a separate key for each new block as before.
      */
