@@ -470,7 +470,7 @@ namespace Legacy
          *
          *  Retrieves the trust key for this wallet.
          *
-         *  @return the public key for the trust key 
+         *  @return the public key for the trust key
          *
          */
         inline std::vector<uint8_t> GetTrustKey() const { return vchTrustKey; }
@@ -514,7 +514,7 @@ namespace Legacy
 
         /** RemoveTrustKey
          *
-         *  Removes the wallet's trust key. This only removes the saved public key. 
+         *  Removes the wallet's trust key. This only removes the saved public key.
          *  The key itself is not removed from the key store.
          *
          *  @return true if removing trust key successful
@@ -538,7 +538,7 @@ namespace Legacy
 
         /** Lock
          *
-         *  Attempt to lock the wallet. 
+         *  Attempt to lock the wallet.
          *  Can only lock the key store if it is encrypted.
          *
          *  @return true if the wallet was successfully locked
@@ -588,6 +588,20 @@ namespace Legacy
          *
          */
         int64_t GetBalance();
+
+
+        /** BalanceByAccount
+         *
+         *  Get the available addresses that have a balance associated with a wallet.
+         *
+         *  @param[in] strAccount The account to get balance for
+         *  @param[out] nBalance The total account balance
+         *  @param[in] nMinDepth The depth to search by.
+         *
+         *  @return true if executed properly.
+         *
+         **/
+        bool BalanceByAccount(std::string strAccount, int64_t& nBalance, int32_t nMinDepth);
 
 
         /** GetUnconfirmedBalance
@@ -661,7 +675,7 @@ namespace Legacy
 
         /** GetRequestCount
          *
-         *  Get the number of remote requests recorded for a transaction. 
+         *  Get the number of remote requests recorded for a transaction.
          *
          *  Coinbase and Coinstake transactions are tracked at the block level,
          *  so count records requests for the block containing them.

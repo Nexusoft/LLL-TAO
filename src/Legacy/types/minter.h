@@ -28,7 +28,7 @@ ________________________________________________________________________________
 #include <Util/include/mutex.h>
 
 
-namespace Legacy 
+namespace Legacy
 {
     /** @class StakeMinter
       *
@@ -41,8 +41,8 @@ namespace Legacy
       * This retrieves a wallet reference and begins staking for the wallet.
       *
       * The trust key and balance from the wallet will be used for Proof of Stake.
-      * Mined PoS blocks will add coinstake transactions to this wallet and move balance 
-      * to the wallet's trust key. If the wallet does not have a trust key to start, one will be 
+      * Mined PoS blocks will add coinstake transactions to this wallet and move balance
+      * to the wallet's trust key. If the wallet does not have a trust key to start, one will be
       * created from its key pool and the minter will mine for its Genesis transaction.
       *
       * Staking operations can be suspended by calling StopStakeMinter (for example, if the wallet is locked)
@@ -63,9 +63,9 @@ namespace Legacy
 
 
         /** IsStarted
-          * 
+          *
           * Tests whether or not the stake minter is currently running.
-          * 
+          *
           * @return true if the stake minter is started, false otherwise
           *
           */
@@ -73,9 +73,9 @@ namespace Legacy
 
 
         /** GetBlockWeight
-          * 
-          * Retrieves the current internal value for the block weight metric. 
-          * 
+          *
+          * Retrieves the current internal value for the block weight metric.
+          *
           * @return value of current block weight
           *
           */
@@ -83,9 +83,9 @@ namespace Legacy
 
 
         /** GetBlockWeight
-          * 
-          * Retrieves the block weight metric as a percentage of maximum. 
-          * 
+          *
+          * Retrieves the block weight metric as a percentage of maximum.
+          *
           * @return the current block weight percentage
           *
           */
@@ -93,9 +93,9 @@ namespace Legacy
 
 
         /** GetTrustWeight
-          * 
-          * Retrieves the current internal value for the trust weight metric. 
-          * 
+          *
+          * Retrieves the current internal value for the trust weight metric.
+          *
           * @return value of current trust weight
           *
           */
@@ -103,9 +103,9 @@ namespace Legacy
 
 
         /** GetTrustWeight
-          * 
-          * Retrieves the trust weight metric as a percentage of maximum. 
-          * 
+          *
+          * Retrieves the trust weight metric as a percentage of maximum.
+          *
           * @return the current trust weight percentage
           *
           */
@@ -113,9 +113,9 @@ namespace Legacy
 
 
         /** GetStakeRate
-          * 
-          * Retrieves the current staking reward rate (previously, interest rate) 
-          * 
+          *
+          * Retrieves the current staking reward rate (previously, interest rate)
+          *
           * @return the current stake rate
           *
           */
@@ -123,10 +123,10 @@ namespace Legacy
 
 
         /** IsWaitPeriod
-          * 
+          *
           * Checks whether the stake minter is waiting for average coin
           * age to reach the required minimum before staking Genesis.
-          * 
+          *
           * @return true if minter is waiting on coin age, false otherwise
           *
           */
@@ -134,13 +134,13 @@ namespace Legacy
 
 
         /** StartStakeMinter
-          * 
+          *
           * Start the stake minter.
           *
-          * Call this method to start the stake minter and begin mining Proof of Statke, or 
+          * Call this method to start the stake minter and begin mining Proof of Statke, or
           * to restart it after it was stopped.
           *
-          * The first time this method is called, it will retrieve a reference to the wallet 
+          * The first time this method is called, it will retrieve a reference to the wallet
           * by calling Wallet::GetInstance(), so the wallet should be initialized before
           * starting the stake minter.
           *
@@ -148,9 +148,9 @@ namespace Legacy
           *
           * After calling this method, the StakeMinter may stay in suspended state if
           * the local node is synchronizing, or if it does not have any connections, yet.
-          * In that case, it will automatically begin when sync is complete and connections 
+          * In that case, it will automatically begin when sync is complete and connections
           * are available.
-          * 
+          *
           * @return true if the stake minter was started, false if it was already running
           *
           */
@@ -158,22 +158,22 @@ namespace Legacy
 
 
         /** StopStakeMinter
-          * 
-          * Stops the stake minter. 
           *
-          * Call this method to suspend the stake minter. This suspends Proof of Stake mining, 
+          * Stops the stake minter.
+          *
+          * Call this method to suspend the stake minter. This suspends Proof of Stake mining,
           * though the stake minter thread remains operational, so mining and can be restarted
-          * via a subsequent call to StartStakeMinter(). 
+          * via a subsequent call to StartStakeMinter().
           *
           * Should be called whenever the wallet is locked.
-          * 
+          *
           * @return true if the stake minter was stopped, false if it was already stopped
           *
           */
         bool StopStakeMinter();
 
 
-        /** Destructor 
+        /** Destructor
           *
           * Signals the stake minter thread to shut down and waits for it to join
           *
@@ -218,8 +218,8 @@ namespace Legacy
         LegacyBlock candidateBlock;
 
 
-        /** Hash of the best chain when the minter began attempting to mine its current candidate. 
-         *  If current hashBestChain changes, the minter must start over with a new candidate. 
+        /** Hash of the best chain when the minter began attempting to mine its current candidate.
+         *  If current hashBestChain changes, the minter must start over with a new candidate.
          **/
         uint1024_t hashLastBlock;
 
@@ -245,7 +245,7 @@ namespace Legacy
 
 
         /** Default constructor **/
-        StakeMinter() 
+        StakeMinter()
         : pStakingWallet(nullptr)
         , trustKey(TAO::Ledger::TrustKey())
         , pReservedTrustKey(nullptr)
@@ -315,14 +315,14 @@ namespace Legacy
         /** StakeMinterThread
          *
          *  Method run on its own thread to oversee stake minter operation using the methods in the
-         *  stake minter instance. The thread will continue running after initialized, but operation can 
+         *  stake minter instance. The thread will continue running after initialized, but operation can
          *  be stopped/restarted by using the stake minter methods.
          *
          *  On shutdown, the thread will cease operation and wait for the stake minter
          *  destructor to tell it to exit/join.
          *
          *  @param[in] pStakeMinter - the minter thread will use this instance to perform all the stake minter work
-         * 
+         *
          **/
         static void StakeMinterThread(StakeMinter* pStakeMinter);
 
