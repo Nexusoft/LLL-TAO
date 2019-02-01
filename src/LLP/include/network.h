@@ -36,6 +36,8 @@ ________________________________________________________________________________
 #include <errno.h>
 #endif
 
+#include <string>
+
 typedef u_int SOCKET;
 
 #ifdef WIN32
@@ -55,5 +57,6 @@ typedef int socklen_t;
 #define INVALID_SOCKET      (SOCKET)(~0)
 #define SOCKET_ERROR        -1
 #endif
+
 
 #endif

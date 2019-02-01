@@ -30,8 +30,10 @@ namespace LLP
     /* Default constructor */
     AddressManager::AddressManager(uint16_t port)
     : mapTrustAddress()
-    , nPort(port)
+    , this_addr()
     {
+        this_addr.SetPort(port);
+
         pDatabase = new LLD::AddressDB(port, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
         if(pDatabase)
@@ -122,6 +124,9 @@ namespace LLP
 
         TrustAddress &trust_addr = mapTrustAddress[hash];
 
+        /* Set the port number to match this server */
+        trust_addr.SetPort(this_addr.GetPort());
+
         switch(state)
         {
         /* New State */
@@ -187,7 +192,7 @@ namespace LLP
         for(uint32_t i = 0; i < addrs.size(); ++i)
         {
             /* Create a DNS lookup address to resolve to IP address. */
-            BaseAddress lookup_address = BaseAddress(addrs[i], nPort, true);
+            BaseAddress lookup_address = BaseAddress(addrs[i], this_addr.GetPort(), true);
 
             AddAddress(lookup_address, state);
         }
@@ -307,10 +312,28 @@ namespace LLP
     {
         LOCK(mut);
 
-        nPort = port;
+        this_addr.SetPort(port);
 
         for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
             it->second.SetPort(port);
+    }
+
+
+    /*  Returns the address for this node. */
+    BaseAddress AddressManager::GetThisAddress() const
+    {
+        LOCK(mut);
+
+        return this_addr;
+    }
+
+
+    /* Sets the address for this node. */
+    void AddressManager::SetThisAddress(const BaseAddress &addr)
+    {
+        LOCK(mut);
+
+        this_addr = addr;
     }
 
 
@@ -345,7 +368,10 @@ namespace LLP
             ssKey >> str;
             ssKey >> nKey;
 
-            pDatabase->ReadTrustAddress(nKey, trust_addr);
+            if(str == "addr")
+                pDatabase->ReadTrustAddress(nKey, trust_addr);
+            else if(str == "this")
+                pDatabase->ReadThisAddress(nKey, this_addr);
 
             /* Get the hash and load it into the map. */
             uint64_t nHash = trust_addr.GetHash();
@@ -371,6 +397,9 @@ namespace LLP
         /* Write the keys and addresses. */
         for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
             pDatabase->WriteTrustAddress(it->first, it->second);
+
+        /* Write the address of the server node */
+        pDatabase->WriteThisAddress(0, this_addr);
 
         pDatabase->TxnCommit();
     }

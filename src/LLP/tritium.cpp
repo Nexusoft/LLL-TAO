@@ -40,7 +40,7 @@ namespace LLP
                     nLastPing    = runtime::timestamp();
 
                     /* Debut output. */
-                    debug::log(1, NODE, GetAddress().ToString(), " Connected at timestamp ", runtime::unifiedtimestamp());
+                    debug::log(1, NODE, " Connected at timestamp ", runtime::unifiedtimestamp());
 
                     /* Send version if making the connection. */
                     if(fOUTGOING)
@@ -102,8 +102,31 @@ namespace LLP
                 case EVENT_DISCONNECT:
                 {
                     /* Debut output. */
-                    debug::log(1, NODE, GetAddress().ToString(),
-                        " Disconnected at timestamp ", runtime::unifiedtimestamp());
+                    uint8_t reason = LENGTH;
+                    std::string strReason;
+
+                    switch(reason)
+                    {
+                        case DISCONNECT_TIMEOUT:
+                            strReason = "DISCONNECT_TIMEOUT";
+                            break;
+                        case DISCONNECT_ERRORS:
+                            strReason = "DISCONNECT_ERRORS";
+                            break;
+                        case DISCONNECT_DDOS:
+                            strReason = "DISCONNECT_DDOS";
+                            break;
+                        case DISCONNECT_FORCE:
+                            strReason = "DISCONNECT_FORCE";
+                            break;
+                        default:
+                            strReason = "UNKNOWN";
+                            break;
+                    }
+
+                    /* Print disconnect and reason message */
+                    debug::log(1, NODE, " Disconnected at timestamp ", runtime::unifiedtimestamp(),
+                        " (", strReason, ")");
 
                     if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
                         TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);

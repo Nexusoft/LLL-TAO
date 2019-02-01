@@ -32,7 +32,8 @@ namespace LLC
         BN_CTX *ctx = nullptr;
         EC_POINT *pub_key = nullptr;
 
-        if (!eckey) return 0;
+        if (!eckey)
+            return 0;
 
         const EC_GROUP *group = EC_KEY_get0_group(eckey);
 
@@ -503,6 +504,7 @@ namespace LLC
             throw key_error("ECKey::GetPubKey() : i2o_ECPublicKey failed");
 
         std::vector<uint8_t> vchPubKey(nSize, 0);
+
         uint8_t* pbegin = &vchPubKey[0];
         if (i2o_ECPublicKey(pkey, &pbegin) != nSize)
             throw key_error("ECKey::GetPubKey() : i2o_ECPublicKey returned unexpected size");

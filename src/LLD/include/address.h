@@ -98,7 +98,7 @@ namespace LLD
          *  @return True if the read is successful, false otherwise.
          *
          **/
-        bool ReadTrustAddress(uint64_t key, LLP::BaseAddress &this_addr)
+        bool ReadThisAddress(uint64_t key, LLP::BaseAddress &this_addr)
         {
             return Read(std::make_pair(std::string("this"), key), this_addr);
         }

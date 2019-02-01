@@ -100,6 +100,17 @@ namespace LLP
                     index, fDDOS, rScore, cScore, nTimeout, fMeter));
             }
 
+            /* Set the IP for this address */
+            if(!BaseAddress::GetThisIP(addrThisNode))
+                debug::error(FUNCTION, "Failed to get the IP address for this computer");
+
+            /* Set the port for this address */
+            addrThisNode.SetPort(nPort);
+
+            /* Check to see if this address is valid */
+            if(!addrThisNode.IsValid())
+                debug::error(FUNCTION, "This address in invalid: ", addrThisNode.ToString());
+
 
             if(fManager)
             {
@@ -108,14 +119,23 @@ namespace LLP
                 if(!pAddressManager)
                     debug::error(FUNCTION, "Failed to allocate memory for address manager on port ", nPort);
 
-
+                /* read the database (clears the internal map) */
                 pAddressManager->ReadDatabase();
 
+                /* add the seed addresses */
                 pAddressManager->AddSeedAddresses(config::fTestNet);
+
+                /* set the port */
+                pAddressManager->SetPort(nPort);
+
+                if(!pAddressManager->GetThisAddress().IsValid())
+                    pAddressManager->SetThisAddress(addrThisNode);
 
 
                 MANAGER_THREAD = std::thread((std::bind(&Server::Manager, this)));
             }
+
+
 
             LISTEN_THREAD_V4 = std::thread(std::bind(&Server::ListeningThread, this, true));  //IPv4 Listener
             LISTEN_THREAD_V6 = std::thread(std::bind(&Server::ListeningThread, this, false)); //IPv6 Listener
@@ -437,7 +457,7 @@ namespace LLP
             /* Loop connections. */
             while(!fDestruct.load())
             {
-                runtime::sleep(100);
+                runtime::sleep(1000);
 
                 /* Assume the connect state is in a failed state. */
                 state = static_cast<uint8_t>(ConnectState::FAILED);
@@ -452,8 +472,17 @@ namespace LLP
                     if(addr.ToStringIP() == addrThisNode.ToStringIP())
                     {
                         runtime::sleep(1000);
-                        debug::log(3, FUNCTION, "Cannot self-connect, removing address ", addrThisNode.ToStringIP());
-                        pAddressManager->RemoveAddress(addrThisNode);
+                        debug::log(3, FUNCTION, "Cannot self-connect, removing address ", addr.ToString());
+                        pAddressManager->RemoveAddress(addr);
+                        continue;
+                    }
+
+                    /* Check for invalid addresses */
+                    if(!addr.IsValid())
+                    {
+                        runtime::sleep(1000);
+                        debug::log(3, FUNCTION, "Invalid address, removing address", addr.ToString());
+                        pAddressManager->RemoveAddress(addr);
                         continue;
                     }
 

@@ -73,11 +73,11 @@ namespace LLP
 
         struct addrinfo *aiRes = nullptr;
         std::unique_lock<std::mutex> lk(::LOOKUP_MUTEX);
-        {
+        //{
           if(getaddrinfo(pszName, nullptr, &aiHint, &aiRes) != 0)
               return false;
-        }
-        lk.unlock();
+        //}
+        //lk.unlock();
 
         struct addrinfo *aiTrav = aiRes;
 
@@ -111,11 +111,11 @@ namespace LLP
             aiTrav = aiTrav->ai_next;
         }
 
-        lk.lock();
-        {
+        //lk.lock();
+        //{
             freeaddrinfo(aiRes);
-        }
-        lk.unlock();
+        //}
+        //lk.unlock();
 
         return (vAddr.size() > 0);
     }
