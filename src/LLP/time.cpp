@@ -130,7 +130,7 @@ namespace LLP
             debug::log(2, NODE, "Added Sample ", nOffset, " | Seed ", GetAddress().ToStringIP());
 
             /* Close the Connection Gracefully if Received all Packets. */
-            if(nSamples.Samples() >= 11)
+            if(nSamples.Samples() >= 5)
             {
                 MAP_TIME_DATA[GetAddress().ToStringIP()] = nSamples.Majority();
 
