@@ -19,6 +19,10 @@ ________________________________________________________________________________
 #include <fstream>
 #include <cstring> /* strlen */
 
+#ifdef WIN32
+#include <shlobj.h>
+#endif
+
 namespace config
 {
 
@@ -79,8 +83,9 @@ namespace config
         char pszPath[MAX_PATH] = "";
         std::string p;
 
-        if(SHGetSpecialFolderPathA(nullptr, pszPath, nFolder, fCreate))
+        if (SHGetSpecialFolderPathA(nullptr, pszPath, nFolder, fCreate))
             p = pszPath;
+
         else if (nFolder == CSIDL_STARTUP)
         {
             p = getenv("USERPROFILE");
@@ -102,12 +107,12 @@ namespace config
         /* Windows: C:\Documents and Settings\username\Application Data\Nexus
          * Mac: ~/Library/Application Support/Nexus
          * Unix: ~/.Nexus */
+    std::string pathRet;
     #ifdef WIN32
         // Windows
         pathRet = MyGetSpecialFolderPath(CSIDL_APPDATA, true);
         pathRet.append("\\" + strName + "\\");
     #else
-        std::string pathRet;
         char* pszHome = getenv("HOME");
         if (pszHome == nullptr || strlen(pszHome) == 0)
             pathRet = "/";

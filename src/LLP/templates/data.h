@@ -14,7 +14,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_DATA_H
 #define NEXUS_LLP_TEMPLATES_DATA_H
 
+#include <LLP/include/network.h>
+
 #include <LLP/templates/events.h>
+
 #include <condition_variable>
 #include <functional>
 #include <atomic>
@@ -220,7 +223,12 @@ namespace LLP
                 { LOCK(MUTEX);
 
                     /* Poll the sockets. */
+#ifdef WIN32
+                    int nPoll = WSAPoll((pollfd*)CONNECTIONS[0], CONNECTIONS.size(), 100);
+#else
                     int nPoll = poll((pollfd*)CONNECTIONS[0], CONNECTIONS.size(), 100);
+#endif
+
                     if(nPoll < 0)
                         continue;
                 }

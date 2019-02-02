@@ -28,8 +28,12 @@ void Shutdown()
 /** Catch Signal Handler function **/
 void HandleSIGTERM(int signum)
 {
+#ifndef WIN32
     if(signum != SIGPIPE)
         Shutdown();
+#else
+    Shutdown();
+#endif
 }
 
 
@@ -57,7 +61,8 @@ void SetupSignals()
         signal(SIGILL, HandleSIGTERM);
         signal(SIGINT, HandleSIGTERM);
         signal(SIGTERM, HandleSIGTERM);
-        signal(SIGPIPE, HandleSIGTERM);
+        /* UNIX signal, not applicable to Windows */
+        //signal(SIGPIPE, HandleSIGTERM);
 
     #ifdef SIGBREAK
         signal(SIGBREAK, HandleSIGTERM);

@@ -78,7 +78,7 @@ namespace LLP
          *  Prints information about this address.
          *
          **/
-        virtual void Print() const;
+        virtual void Print();
 
     protected:
 
