@@ -71,6 +71,7 @@ namespace TAO
             obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
 
             obj["timestamp"] =  (int)runtime::unifiedtimestamp();
+            obj["synchronizing"] = (bool)TAO::Ledger::ChainState::Synchronizing();
 
             obj["connections"] = GetTotalConnectionCount();
             obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToString() : std::string());
