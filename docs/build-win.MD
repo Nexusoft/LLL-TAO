@@ -39,13 +39,13 @@ In the already open MinGW64 window, enter:
 *	cd /c/
 *	git clone --depth 1 https://github.com/Nexusoft/LLL-TAO
 	
-This will download the Nexus source code to C:\LLL-TAO
+This will download the Nexus LLL-TAO source code to C:\LLL-TAO
 
 ##### Compiling Dependencies #####
 
 Run win_build.sh to download and compile dependencies by entering:
 
-*	/c/Nexus/win_build.sh install
+*	/c/LLL-TAO/win_build.sh install
 	
 Wait for process to complete. This can take a awhile depending on your computer and internet connection.
 Please be patient while it completes the building process. This only needs to be successfully completed once.
@@ -77,5 +77,5 @@ In the MinGW64 window, enter:
 *	make -f makefile.cli clean
 *	make -f makefile.cli
 	
-This will create Nexus.exe in the release folder.
+This will create nexus.exe in the release folder.
 	
