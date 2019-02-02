@@ -74,7 +74,7 @@ namespace LLP
 
 
     /* Prints information about this address. */
-    void LegacyAddress::Print() const
+    void LegacyAddress::Print()
     {
         debug::log(0, "LegacyAddress(", ToString(), ")");
         debug::log(0, ":\t", "nLastTry=", nLastTry);

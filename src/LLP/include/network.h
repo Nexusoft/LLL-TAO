@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_NETWORK_H
 
 #ifdef WIN32
-#define _WIN32_WINNT 0x0501
+#define _WIN32_WINNT 0x0600   // targeting minimum Windows Vista version for winsock2, etc.
 #define WIN32_LEAN_AND_MEAN 1
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -32,6 +32,7 @@ ________________________________________________________________________________
 #include <netdb.h>
 #include <net/if.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <ifaddrs.h>
 #include <errno.h>
 #endif
