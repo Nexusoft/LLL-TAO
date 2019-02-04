@@ -69,7 +69,7 @@ namespace config
         FILE* file = fopen(path.c_str(), "w");
         if (file)
         {
-            fprintf(file, "%d", pid);
+            fprintf(file, "%llu", pid);
             fclose(file);
         }
     }
@@ -127,9 +127,9 @@ namespace config
         // Unix
         pathRet.append("/." + strName + "/");
     #endif
+    #endif
 
         return pathRet;
-    #endif
     }
 
 

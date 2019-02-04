@@ -197,7 +197,7 @@ namespace filesystem
         FILE* file = fopen(path.c_str(), "w");
         if (file)
         {
-            fprintf(file, "%d\n", pid);
+            fprintf(file, "%llu", pid);
             fclose(file);
         }
     }

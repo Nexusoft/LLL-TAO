@@ -206,7 +206,13 @@ namespace debug
         {
             /* Restart the file with some of the end */
             char pch[200000];
-            fseek(file, -sizeof(pch), SEEK_END);
+
+            /* define pchSize instead of passing -sizeof() directly to fseek
+               fseek size parameter is long int, which on Windows is 32-bit and throws compile warning for conversion overflow 
+               if you pass -sizeof() which is type size_t, or 64 bit on Windows. So we convert the positive, then pass negative of it */
+            uint32_t pchSize = sizeof(pch);
+            fseek(file, -pchSize, SEEK_END);
+            
             int nBytes = fread(pch, 1, sizeof(pch), file);
             fclose(file);
 
