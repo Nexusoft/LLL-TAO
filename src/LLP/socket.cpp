@@ -49,12 +49,21 @@ namespace LLP
     {
         /* Check for errors with poll. */
         if(revents & POLLERR || revents & POLLHUP)
+        {
+            debug::error(revents & POLLERR ? "ERROR" : "POLHUP");
             return -1;
+        }
 
         /* Check for errors from reads or writes. */
-        if (nError == WSAEWOULDBLOCK || nError == WSAEMSGSIZE || nError == WSAEINTR || nError == WSAEINPROGRESS)
+        if (nError == WSAEWOULDBLOCK ||
+            nError == WSAEMSGSIZE ||
+            nError == WSAEINTR ||
+            nError == WSAEINPROGRESS)
             return 0;
 
+        if(nError != 0)
+            debug::error("ERROR ", nError);
+            
         return nError;
     }
 
