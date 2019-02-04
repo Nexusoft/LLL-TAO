@@ -49,8 +49,8 @@ namespace LLP
         /* Check for errors with poll. */
         if(revents & POLLHUP)
         {
-            //debug::error("Socket Hangup");
-            //return -1;
+            debug::error("Socket Hangup");
+            return -1;
         }
 
         /* Check for errors from reads or writes. */

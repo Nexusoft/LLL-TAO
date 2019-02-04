@@ -427,7 +427,9 @@ namespace LLP
                 nAsked++;
                 PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
             }
-            else
+
+            /* Push version in response. */
+            if(!fOUTGOING)
                 PushVersion();
 
             PushMessage("getaddr");
@@ -710,7 +712,6 @@ namespace LLP
             if(vSend.size() > 0)
                 PushMessage("addr", vSend);
         }
-
 
         return true;
     }
