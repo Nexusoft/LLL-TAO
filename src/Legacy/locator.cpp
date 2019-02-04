@@ -44,8 +44,9 @@ namespace Legacy
         vHave.clear();
 
         // Exponentially larger steps back
-        for (int i = 0; !state.IsNull() && i < 500; i++)
-            state = state.Prev();
+        for (int i = 0; !state.IsNull() && i < 50; i++)
+            if(!TAO::Ledger::GetLastState(state, state.GetChannel()))
+                break;
 
         vHave.push_back(state.GetHash());
         vHave.push_back(TAO::Ledger::hashGenesis);

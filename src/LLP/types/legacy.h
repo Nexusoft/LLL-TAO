@@ -262,7 +262,11 @@ namespace LLP
             hashLastGetblocks = hashBlockFrom;
 
             /* Push the request to the node. */
-            PushMessage("getblocks", Legacy::Locator(hashBlockFrom), hashBlockTo);
+            TAO::Ledger::BlockState state;
+            if(!LLD::legDB->ReadBlock(hashBlockFrom, state))
+                return;
+
+            PushMessage("getblocks", Legacy::Locator(state), hashBlockTo);
 
             /* Debug output for monitoring. */
             debug::log(0, NODE, "requesting getblocks from ", hashBlockFrom.ToString().substr(0, 20), " to ", hashBlockTo.ToString().substr(0, 20));
