@@ -37,7 +37,7 @@ namespace LLP
     , addr()
     {
         fd = -1;
-        events = POLLIN; //consider using POLLOUT
+        events = POLLIN | POLLHUP; //consider using POLLOUT
 
         Attempt(addrConnect);
     }
