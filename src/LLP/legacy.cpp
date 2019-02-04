@@ -415,8 +415,11 @@ namespace LLP
                 }
             }
 
+            /* Push version in response. */
+            if(!fOUTGOING)
+                PushVersion();
 
-            /* Send the Version Response to ensure communication cTAO::Ledger::ChainState::hashBestChain == hashLastGetblockshannel is open. */
+            /* Send the Version Response to ensure communication is open. */
             PushMessage("verack");
 
             /* Push our version back since we just completed getting the version from the other node. */
@@ -426,10 +429,6 @@ namespace LLP
                 nAsked++;
                 PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
             }
-
-            /* Push version in response. */
-            if(!fOUTGOING)
-                PushVersion();
 
             PushMessage("getaddr");
         }
