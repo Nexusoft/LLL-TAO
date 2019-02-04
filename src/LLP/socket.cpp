@@ -48,7 +48,7 @@ namespace LLP
     int Socket::ErrorCode() const
     {
         /* Check for errors with poll. */
-        if(revents & POLLERR || revents & POLLHUP || revents & POLLNVAL)
+        if(revents & POLLERR || revents & POLLHUP)
             return -1;
 
         /* Check for errors from reads or writes. */

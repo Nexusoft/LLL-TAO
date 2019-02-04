@@ -693,6 +693,13 @@ namespace Legacy
     /* Method run on its own thread to oversee stake minter operation. */
     void StakeMinter::StakeMinterThread(StakeMinter* pStakeMinter)
     {
+        /* Disable stake minter if not in beta mode. */
+        if(!config::GetBoolArg("-beta"))
+        {
+            debug::error(FUNCTION, "Stake minter disabled if not in -beta mode");
+
+            return;
+        }
 
         /* Local copies of stake minter flags. These support testing conditions while only reading the shared static flags within a lock scope. */
         bool fstarted = false;
@@ -782,18 +789,6 @@ namespace Legacy
             /* Attempt to mine the current proof of stake block */
             pStakeMinter->MineProofOfStake();
 
-        }
-
-        /* On shutdown, delete the minter instance and wait for it to destruct before ending */
-        while (!fdestruct)
-        {
-            runtime::sleep(1);
-
-            {
-                LOCK(StakeMinter::cs_stakeMinter);
-
-                fdestruct = StakeMinter::fdestructMinter;
-            }
         }
 
         /* Thread ends. Join is issued in StakeMinter destructor */
