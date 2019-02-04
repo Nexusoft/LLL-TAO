@@ -23,6 +23,8 @@ ________________________________________________________________________________
 #include <LLP/packets/legacy.h>
 #include <LLP/templates/connection.h>
 
+#include <LLD/include/global.h>
+
 namespace LLP
 {
     extern LegacyAddress addrMyNode; //TODO: move this to a better location
