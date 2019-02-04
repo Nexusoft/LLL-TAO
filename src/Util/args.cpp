@@ -149,7 +149,7 @@ namespace config
         fDebug                  = GetBoolArg("-debug", false);
         fPrintToConsole         = GetBoolArg("-printtoconsole", false);
         fDaemon                 = GetBoolArg("-daemon", false);
-        fServer                 = GetBoolArg("-server", false);
+        fServer                 = fDaemon || GetBoolArg("-server", false);
         fTestNet                = GetBoolArg("-testnet", false) ||
                                   GetBoolArg("-lispnet", false);
         fListen                 = GetBoolArg("-listen", true);

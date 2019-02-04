@@ -183,4 +183,23 @@ namespace filesystem
         return abs_path + rel_path;
     }
 
+    /* Returns the full pathname of the PID file */
+    std::string GetPidFile()
+    {
+        
+        std::string pathPidFile(config::GetArg("-pid", "Nexus.pid"));
+        return config::GetDataDir() + "/" +pathPidFile;
+    }
+
+    /* Creates a PID file on disk for the provided PID */
+    void CreatePidFile(const std::string &path, pid_t pid)
+    {
+        FILE* file = fopen(path.c_str(), "w");
+        if (file)
+        {
+            fprintf(file, "%d\n", pid);
+            fclose(file);
+        }
+    }
+
 }

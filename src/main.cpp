@@ -47,6 +47,10 @@ ________________________________________________________________________________
 #include <iostream>
 #include <sstream>
 
+#if !defined(WIN32) && !defined(QT_GUI) && !defined(NO_DAEMON)
+#include <sys/types.h>
+#include <sys/stat.h>
+#endif
 
 /* Declare the Global LLP Instances. */
 namespace LLP
@@ -56,6 +60,54 @@ namespace LLP
     Server<TimeNode>*    TIME_SERVER;
 }
 
+/* Daemonize by forking the parent process*/
+void Daemonize()
+{
+ #if !defined(WIN32) && !defined(QT_GUI) && !defined(NO_DAEMON)
+
+    
+    pid_t pid = fork();
+    if (pid < 0)
+    {
+        debug::error("Error: fork() returned ", pid, " errno ", errno);
+        exit(EXIT_FAILURE);
+    }
+    if (pid > 0)
+    {
+        /* generate a pid file so that we can keep track of the forked process */ 
+        filesystem::CreatePidFile(filesystem::GetPidFile(), pid);
+
+        /* Success: Let the parent terminate */
+        exit(EXIT_SUCCESS);
+    }
+
+    pid_t sid = setsid();
+    if (sid < 0)
+    {
+        debug::error("Error: setsid() returned ", sid, " errno %d", errno);
+        exit(EXIT_FAILURE);
+    }
+
+    debug::log(0, "Nexus server starting");
+
+    /* Set new file permissions */
+    umask(0);
+
+    /* close stdin, stderr, stdout so that the tty no longer receives output */
+    if (int fdnull = open("/dev/null", O_RDWR))
+    {   
+        dup2 (fdnull, STDIN_FILENO);
+        dup2 (fdnull, STDOUT_FILENO);
+        dup2 (fdnull, STDERR_FILENO);
+        close(fdnull);
+    }   
+    else
+    {   
+        debug::error(FUNCTION, "Failed to open /dev/null");
+        exit(EXIT_FAILURE);
+    }
+#endif
+}
 
 int main(int argc, char** argv)
 {
@@ -96,6 +148,13 @@ int main(int argc, char** argv)
             return TAO::API::CommandLineRPC(argc, argv, i);
         }
     }
+
+    /** Run the process as Daemon RPC/LLP Server if Flagged. **/
+    if (config::fDaemon)
+    {
+        Daemonize();
+    }
+   
 
 
     /* Create directories if they don't exist yet. */
