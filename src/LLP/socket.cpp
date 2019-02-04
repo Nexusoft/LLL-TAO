@@ -22,9 +22,8 @@ ________________________________________________________________________________
 
 #ifndef WIN32
 #include <arpa/inet.h>
-#endif
-
 #include <sys/ioctl.h>
+#endif
 
 namespace LLP
 {
@@ -71,6 +70,8 @@ namespace LLP
     /* Connects the socket to an external address */
     bool Socket::Attempt(const BaseAddress &addrDest, uint32_t nTimeout)
     {
+        BaseAddress addrDestCopy = addrDest; //non-const copy to use with ToString (which is non-const)
+
         /* Create the Socket Object (Streaming TCP/IP). */
         if(addrDest.IsIPv4())
             fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -82,7 +83,12 @@ namespace LLP
             return false;
 
         /* Set the socket to non blocking. */
+    #ifdef WIN32
+        long unsigned int nonBlocking = 1; //any non-zero is nonblocking
+        ioctlsocket(fd, FIONBIO, &nonBlocking);
+    #else
         fcntl(fd, F_SETFL, O_NONBLOCK);
+    #endif
 
         /* Open the socket connection for IPv4 / IPv6. */
         bool fConnected = false;
@@ -127,9 +133,12 @@ namespace LLP
                 /* If the connection attempt timed out with select. */
                 if (nRet == 0)
                 {
-                    debug::log(3, FUNCTION, "connection timeout ", addrDest.ToString(), "...");
-
+                    debug::log(3, FUNCTION, "connection timeout ", addrDestCopy.ToString(), "...");
+    #ifdef WIN32
+                    closesocket(fd);
+    #else
                     close(fd);
+    #endif
 
                     return false;
                 }
@@ -137,9 +146,12 @@ namespace LLP
                 /* If the select failed. */
                 if (nRet == SOCKET_ERROR)
                 {
-                    debug::log(3, FUNCTION, "select failed ", addrDest.ToString(), " (",  GetLastError(), ")");
-
+                    debug::log(3, FUNCTION, "select failed ", addrDestCopy.ToString(), " (",  GetLastError(), ")");
+    #ifdef WIN32
+                    closesocket(fd);
+    #else
                     close(fd);
+    #endif
 
                     return false;
                 }
@@ -152,8 +164,12 @@ namespace LLP
                 if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
     #endif
                 {
-                    debug::log(3, FUNCTION, "get options failed ", addrDest.ToString(), " (", GetLastError(), ")");
+                    debug::log(3, FUNCTION, "get options failed ", addrDestCopy.ToString(), " (", GetLastError(), ")");
+    #ifdef WIN32
+                    closesocket(fd);
+    #else
                     close(fd);
+    #endif
 
                     return false;
                 }
@@ -161,8 +177,12 @@ namespace LLP
                 /* If there are no socket options set. TODO: Remove preprocessors for cross platform sockets. */
                 if (nRet != 0)
                 {
-                    debug::log(3, FUNCTION, "failed after select ", addrDest.ToString(), " (", nRet, ")");
+                    debug::log(3, FUNCTION, "failed after select ", addrDestCopy.ToString(), " (", nRet, ")");
+    #ifdef WIN32
+                    closesocket(fd);
+    #else
                     close(fd);
+    #endif
 
                     return false;
                 }
@@ -173,8 +193,12 @@ namespace LLP
             else
     #endif
             {
-                debug::log(3, FUNCTION, "connect failed ", addrDest.ToString(), " (", GetLastError(), ")");
+                debug::log(3, FUNCTION, "connect failed ", addrDestCopy.ToString(), " (", GetLastError(), ")");
+    #ifdef WIN32
+                closesocket(fd);
+    #else
                 close(fd);
+    #endif
 
                 return false;
             }
@@ -190,12 +214,13 @@ namespace LLP
     /* Poll the socket to check for available data */
     int Socket::Available() const
     {
-        int nAvailable = 0;
-        #ifdef WIN32
-            ioctlsocket(fd, FIONREAD, &nAvailable)
-        #else
-            ioctl(fd, FIONREAD, &nAvailable);
-        #endif
+    #ifdef WIN32
+        long unsigned int nAvailable = 0;
+        ioctlsocket(fd, FIONREAD, &nAvailable);
+    #else
+        uint32_t nAvailable = 0;
+        ioctl(fd, FIONREAD, &nAvailable);
+    #endif
 
         return nAvailable;
     }
@@ -204,7 +229,12 @@ namespace LLP
     /* Clear resources associated with socket and return to invalid state. */
     void Socket::Close()
     {
+    #ifdef WIN32
+        closesocket(fd);
+    #else
         close(fd);
+    #endif
+
         fd = INVALID_SOCKET;
     }
 
@@ -212,7 +242,12 @@ namespace LLP
     /* Read data from the socket buffer non-blocking */
     int Socket::Read(std::vector<uint8_t> &vData, size_t nBytes)
     {
+    #ifdef WIN32
+        int nRead = recv(fd, (char*)&vData[0], nBytes, MSG_DONTWAIT);
+    #else
         int nRead = recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT);
+    #endif
+
         if (nRead < 0)
         {
             nError = GetLastError();
@@ -229,7 +264,11 @@ namespace LLP
     /* Read data from the socket buffer non-blocking */
     int Socket::Read(std::vector<int8_t> &vchData, size_t nBytes)
     {
+    #ifdef WIN32
+        int nRead = recv(fd, (char*)&vchData[0], nBytes, MSG_DONTWAIT);
+    #else
         int nRead = recv(fd, (int8_t*)&vchData[0], nBytes, MSG_DONTWAIT);
+    #endif
         if (nRead < 0)
         {
             nError = GetLastError();
@@ -260,7 +299,11 @@ namespace LLP
         }
 
         /* If there were any errors, handle them gracefully. */
+    #ifdef WIN32
+        int nSent = send(fd, (char*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT );
+    #else
         int nSent = send(fd, (int8_t*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT );
+    #endif
         if(nSent < 0)
         {
             nError = GetLastError();
@@ -291,14 +334,15 @@ namespace LLP
         uint32_t nBytes = std::min((uint32_t)vBuffer.size(), 65535u);
 
         /* If there were any errors, handle them gracefully. */
+    #ifdef WIN32
+        int nSent = send(fd, (char*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT );
+    #else
         int nSent = send(fd, (int8_t*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT );
-        if(nSent < 0)
-        {
-            nError = GetLastError();
-            debug::log(2, FUNCTION, "flush failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
+    #endif
 
-            return nError;
-        }
+        /* Handle errors on flush. */
+        if(nSent < 0)
+            return GetLastError();
 
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent > 0)

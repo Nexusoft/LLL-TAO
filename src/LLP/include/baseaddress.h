@@ -224,7 +224,7 @@ namespace LLP
          *  Returns the IP and Port in string format. (IP:Port)
          *
          **/
-        std::string ToString() const;
+        std::string ToString(); //can't be const, for Windows compile, because calls ToStringIP()
 
 
         /** ToStringIP
@@ -232,7 +232,7 @@ namespace LLP
          *  Returns the IP in string format.
          *
          **/
-        std::string ToStringIP() const;
+        std::string ToStringIP(); //can't be const, for Windows compile, which defines inet_ntop using void* and not const void*
 
 
         /** ToStringPort
@@ -321,7 +321,7 @@ namespace LLP
          *  Prints information about this address.
          *
          **/
-        virtual void Print() const;
+        virtual void Print(); //can't be const, for Windows compile,  because calls ToString which calls ToStringIP
 
 
         /**

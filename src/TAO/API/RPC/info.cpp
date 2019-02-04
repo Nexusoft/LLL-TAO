@@ -71,6 +71,7 @@ namespace TAO
             obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
 
             obj["timestamp"] =  (int)runtime::unifiedtimestamp();
+            obj["synchronizing"] = (bool)TAO::Ledger::ChainState::Synchronizing();
 
             obj["connections"] = GetTotalConnectionCount();
             obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToString() : std::string());
@@ -117,7 +118,7 @@ namespace TAO
 
             std::sort(vLegacyInfo.begin(), vLegacyInfo.end());
 
-            for(const auto& addr : vLegacyInfo)
+            for(auto& addr : vLegacyInfo)
             {
                 json::json obj;
 
@@ -140,7 +141,7 @@ namespace TAO
 
             std::sort(vTritiumInfo.begin(), vTritiumInfo.end());
 
-            for(const auto& addr : vTritiumInfo)
+            for(auto& addr : vTritiumInfo)
             {
                 json::json obj;
 

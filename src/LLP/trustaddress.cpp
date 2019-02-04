@@ -152,7 +152,7 @@ namespace LLP
     }
 
     /* Prints information about this address. */
-    void TrustAddress::Print() const
+    void TrustAddress::Print()
     {
         debug::log(0, "TrustAddress(", ToString(), ")");
         debug::log(0, ":\t", "nSession=", nSession);

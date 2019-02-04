@@ -15,10 +15,12 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TEMPLATES_SOCKET_H
 
 #include <vector>
-#include <poll.h>
+
+#include <LLP/include/network.h>
+
+#include <LLP/include/baseaddress.h>
 
 #include <Util/include/runtime.h>
-#include <LLP/include/baseaddress.h>
 
 namespace LLP
 {
@@ -63,6 +65,7 @@ namespace LLP
         , addr()
         {
             fd = -1;
+
             events = POLLIN;// | POLLOUT;
         }
 
@@ -76,6 +79,7 @@ namespace LLP
         , addr(addrIn)
         {
             fd = nSocketIn;
+
             events = POLLIN;// | POLLOUT;
         }
 

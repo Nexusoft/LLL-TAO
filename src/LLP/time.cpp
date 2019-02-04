@@ -130,7 +130,7 @@ namespace LLP
             debug::log(2, NODE, "Added Sample ", nOffset, " | Seed ", GetAddress().ToStringIP());
 
             /* Close the Connection Gracefully if Received all Packets. */
-            if(nSamples.Samples() >= 11)
+            if(nSamples.Samples() >= 5)
             {
                 MAP_TIME_DATA[GetAddress().ToStringIP()] = nSamples.Majority();
 
@@ -162,6 +162,8 @@ namespace LLP
                     /* Log the debug output. */
                     debug::log(0, NODE, MAP_TIME_DATA.size(), " Total Samples | ", nSamples.Majority(), " Offset (", TOTAL_SAMPLES[nSamples.Majority()], ") | ", UNIFIED_AVERAGE_OFFSET, " Majority (", TOTAL_SAMPLES[UNIFIED_AVERAGE_OFFSET], ") | ", runtime::unifiedtimestamp());
                 }
+
+                nSamples.clear();
 
                 return false;
             }

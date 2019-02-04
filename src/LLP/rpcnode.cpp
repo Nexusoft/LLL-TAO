@@ -125,6 +125,7 @@ namespace LLP
         return false;
     }
 
+
     /* JSON Spec 1.0 Reply including error messages. */
     json::json RPCNode::JSONReply(const json::json& jsonResponse, const json::json& jsonError, const json::json& jsonID)
     {

@@ -169,14 +169,8 @@ int main(int argc, char** argv)
         10,
         config::GetBoolArg("-listen", true),
         config::GetBoolArg("-meters", false),
-        config::GetBoolArg("-manager", true));
-
-    /* -addnode means add to address manager */
-    if(config::mapMultiArgs["-addnode"].size() > 0)
-    {
-        for(const auto& node : config::mapMultiArgs["-addnode"])
-            LLP::TIME_SERVER->AddNode(node, port);
-    }
+        config::GetBoolArg("-manager", true),
+        30000);
 
 
     /** Handle the beta server. */
@@ -189,8 +183,8 @@ int main(int argc, char** argv)
         /* Initialize the Tritium Server. */
         LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(
             port,
-            10,
-            30,
+            config::GetArg("-threads", 10),
+            config::GetArg("-timeout", 30),
             false,
             0,
             0,
@@ -246,6 +240,7 @@ int main(int argc, char** argv)
                 LLP::LEGACY_SERVER->AddNode(node, port);
         }
     }
+
 
     /* Create the Core API Server. */
     CORE_SERVER = new LLP::Server<LLP::CoreNode>(
@@ -304,44 +299,6 @@ int main(int argc, char** argv)
 
     /* Startup performance metric. */
     debug::log(0, FUNCTION, "Started up in ", nElapsed, "ms");
-
-
-    /* Get the account. */
-    TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("colin", "pass");
-    for(uint32_t n = 0; n < config::GetArg("-test", 0); n++)
-    {
-        /* Create the transaction. */
-        TAO::Ledger::Transaction tx;
-        if(!TAO::Ledger::CreateTransaction(user, "1234", tx))
-            debug::error(0, FUNCTION, "failed to create");
-
-        /* Submit the transaction payload. */
-        uint256_t hashRegister = LLC::GetRand256();
-
-        /* Test the payload feature. */
-        DataStream ssData(SER_REGISTER, 1);
-        ssData << std::string("this is test data");
-
-        /* Submit the payload object. */
-        tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::APPEND << ssData.Bytes();
-
-        /* Execute the operations layer. */
-        if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
-            debug::error(0, FUNCTION, "Operations failed to execute");
-
-        /* Sign the transaction. */
-        if(!tx.Sign(user->Generate(tx.nSequence, "1234")))
-            debug::error(0, FUNCTION, "Failed to sign");
-
-        tx.print();
-
-        /* Execute the operations layer. */
-        if(!TAO::Ledger::mempool.Accept(tx))
-            debug::error(0, FUNCTION, "Failed to accept");
-
-        LLD::locDB->WriteLast(tx.hashGenesis, tx.GetHash());
-    }
-    delete user;
 
 
     /* Initialize generator thread. */
