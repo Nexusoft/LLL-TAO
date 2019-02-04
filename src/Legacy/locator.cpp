@@ -52,7 +52,7 @@ namespace Legacy
 
         while (!state.IsNull())
         {
-            if (vHave.size() > 50)
+            if (vHave.size() > 20)
                 break;
 
             for (int i = 0; !state.IsNull() && i < nStep; i++)
