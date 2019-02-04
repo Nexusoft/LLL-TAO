@@ -185,10 +185,10 @@ int main(int argc, char** argv)
             port,
             config::GetArg("-threads", 10),
             config::GetArg("-timeout", 30),
-            false,
-            0,
-            0,
-            60,
+            config::GetBoolArg("-ddos", false),
+            config::GetArg("-cscore", 1),
+            config::GetArg("-rscore", 50),
+            config::GetArg("-timespan", 60),
             config::GetBoolArg("-listen", true),
             config::GetBoolArg("-meters", false),
             config::GetBoolArg("-manager", true));
@@ -216,12 +216,12 @@ int main(int argc, char** argv)
 
         LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(
             port,
-            10,
-            30,
-            false,
-            0,
-            0,
-            60,
+            config::GetArg("-threads", 10),
+            config::GetArg("-timeout", 30),
+            config::GetBoolArg("-ddos", false),
+            config::GetArg("-cscore", 1),
+            config::GetArg("-rscore", 50),
+            config::GetArg("-timespan", 60),
             config::GetBoolArg("-listen", true),
             config::GetBoolArg("-meters", false),
             config::GetBoolArg("-manager", true));

@@ -209,7 +209,67 @@ namespace LLP
 
         const std::string message = INCOMING.GetMessage();
 
-        if(message == "getoffset")
+        /* Message Version is the first message received.
+        * It gives you basic stats about the node to know how to
+        * communicate with it.
+        */
+        if (message == "version")
+        {
+
+            int64_t nTime;
+            LegacyAddress addrMe;
+            LegacyAddress addrFrom;
+            uint64_t nServices = 0;
+
+            /* Check the Protocol Versions */
+            ssMessage >> nCurrentVersion;
+
+            /* Deserialize the rest of the data. */
+            ssMessage >> nServices >> nTime >> addrMe >> addrFrom >> nSessionID >> strNodeVersion >> nStartingHeight;
+            debug::log(1, NODE, "version message: version ", nCurrentVersion, ", blocks=",  nStartingHeight);
+
+            /* Check the server if it is set. */
+            if(!LEGACY_SERVER->addrThisNode.IsValid())
+            {
+                addrMe.SetPort(config::GetArg("-port", config::fTestNet ? 8323 : 9323));
+                debug::log(0, NODE, "recieved external address ", addrMe.ToString());
+
+                LEGACY_SERVER->addrThisNode = addrMe;
+            }
+
+            /* Send version message if connection is inbound. */
+            if(!fOUTGOING)
+            {
+                if(addr.ToStringIP() == LEGACY_SERVER->addrThisNode.ToStringIP())
+                {
+                    debug::log(0, NODE, "connected to self ", addr.ToString());
+
+                    return false;
+                }
+            }
+
+            /* Push version in response. */
+            if(!fOUTGOING)
+                PushVersion();
+
+            /* Send the Version Response to ensure communication is open. */
+            PushMessage("verack");
+
+            /* Push our version back since we just completed getting the version from the other node. */
+            static uint32_t nAsked = 0;
+            if (fOUTGOING && nAsked == 0)
+            {
+                nAsked++;
+                PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+            }
+
+            PushMessage("getaddr");
+        }
+        else if(nCurrentVersion == 0)
+        {
+            return false;
+        }
+        else if(message == "getoffset")
         {
             /* Don't service unified seeds unless time is unified. */
             //if(!Core::fTimeUnified)
@@ -364,73 +424,6 @@ namespace LLP
 
             /* Debug Level 3: output Node Latencies. */
             debug::log(3, NODE, "Latency (Nonce ", std::hex, nonce, " - ", std::dec, nNodeLatency, " ms)");
-        }
-
-
-        /* ______________________________________________________________
-        *
-        *
-        * NOTE: These following methods will be deprecated post Tritium.
-        *
-        * ______________________________________________________________
-        */
-
-
-        /* Message Version is the first message received.
-        * It gives you basic stats about the node to know how to
-        * communicate with it.
-        */
-        else if (message == "version")
-        {
-
-            int64_t nTime;
-            LegacyAddress addrMe;
-            LegacyAddress addrFrom;
-            uint64_t nServices = 0;
-
-            /* Check the Protocol Versions */
-            ssMessage >> nCurrentVersion;
-
-            /* Deserialize the rest of the data. */
-            ssMessage >> nServices >> nTime >> addrMe >> addrFrom >> nSessionID >> strNodeVersion >> nStartingHeight;
-            debug::log(1, NODE, "version message: version ", nCurrentVersion, ", blocks=",  nStartingHeight);
-
-            /* Check the server if it is set. */
-            if(!LEGACY_SERVER->addrThisNode.IsValid())
-            {
-                addrMe.SetPort(config::GetArg("-port", config::fTestNet ? 8323 : 9323));
-                debug::log(0, NODE, "recieved external address ", addrMe.ToString());
-
-                LEGACY_SERVER->addrThisNode = addrMe;
-            }
-
-            /* Send version message if connection is inbound. */
-            if(!fOUTGOING)
-            {
-                if(addr.ToStringIP() == LEGACY_SERVER->addrThisNode.ToStringIP())
-                {
-                    debug::log(0, NODE, "connected to self ", addr.ToString());
-
-                    return false;
-                }
-            }
-
-            /* Push version in response. */
-            if(!fOUTGOING)
-                PushVersion();
-
-            /* Send the Version Response to ensure communication is open. */
-            PushMessage("verack");
-
-            /* Push our version back since we just completed getting the version from the other node. */
-            static uint32_t nAsked = 0;
-            if (fOUTGOING && nAsked == 0)
-            {
-                nAsked++;
-                PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
-            }
-
-            PushMessage("getaddr");
         }
 
 

@@ -35,6 +35,8 @@ namespace Legacy
     : vHave()
     {
         vHave.push_back(hashBlock);
+        if(hashBlock == TAO::Ledger::hashGenesis)
+            return;
 
         TAO::Ledger::BlockState state;
         if(!LLD::legDB->ReadBlock(hashBlock, state))
