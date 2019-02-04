@@ -23,8 +23,6 @@ ________________________________________________________________________________
 #include <LLP/packets/legacy.h>
 #include <LLP/templates/connection.h>
 
-#include <LLD/include/global.h>
-
 namespace LLP
 {
     extern LegacyAddress addrMyNode; //TODO: move this to a better location
@@ -264,11 +262,7 @@ namespace LLP
             hashLastGetblocks = hashBlockFrom;
 
             /* Push the request to the node. */
-            TAO::Ledger::BlockState state;
-            if(!LLD::legDB->ReadBlock(hashBlockFrom, state))
-                return;
-
-            PushMessage("getblocks", Legacy::Locator(state), hashBlockTo);
+            PushMessage("getblocks", Legacy::Locator(hashBlockFrom), hashBlockTo);
 
             /* Debug output for monitoring. */
             debug::log(0, NODE, "requesting getblocks from ", hashBlockFrom.ToString().substr(0, 20), " to ", hashBlockTo.ToString().substr(0, 20));
