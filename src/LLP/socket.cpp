@@ -54,9 +54,6 @@ namespace LLP
             nError == WSAEINPROGRESS)
             return 0;
 
-        if(nError != 0)
-            debug::log(0, "ERROR ", nError, " CODE");
-
         return nError;
     }
 
