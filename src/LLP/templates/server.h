@@ -607,7 +607,6 @@ namespace LLP
 #else
                             close(hSocket);
 #endif
-
                             continue;
                         }
 

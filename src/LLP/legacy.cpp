@@ -86,7 +86,6 @@ namespace LLP
                 if (message == "version" && nCurrentVersion != 0)
                     DDOS->rSCORE += 25;
 
-
                 /* Check the Packet Sizes to Unified Time Commands. */
                 if((message == "getoffset" || message == "offset") && length != 16)
                     DDOS->Ban(debug::strprintf("INVALID PACKET SIZE | OFFSET/GETOFFSET | LENGTH %u", length));

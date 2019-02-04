@@ -107,18 +107,16 @@ namespace LLP
         {
             LOCK(MUTEX);
 
+            /* Create a new pointer on the heap. */
+            ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
+
+            /* Find a slot that is empty. */
             int nSlot = find_slot();
             if(nSlot == CONNECTIONS.size())
-            {
-                CONNECTIONS.push_back(new ProtocolType(SOCKET, DDOS, fDDOS));
-            }
-            else
-            {
-                CONNECTIONS[nSlot]->fd = SOCKET.fd;
-                CONNECTIONS[nSlot]->fDDOS = fDDOS;
-                CONNECTIONS[nSlot]->DDOS  = DDOS;
-            }
+                CONNECTIONS.push_back(nullptr);
 
+            /* Assign the slot to the connection. */
+            CONNECTIONS[nSlot] = node;
             if(fDDOS)
                 DDOS -> cSCORE += 1;
 
@@ -147,23 +145,23 @@ namespace LLP
         {
             LOCK(MUTEX);
 
+            /* Create a new pointer on the heap. */
+            Socket SOCKET;
+            ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
+
+            /* Find a slot that is empty. */
             int nSlot = find_slot();
             if(nSlot == CONNECTIONS.size())
-            {
-                Socket SOCKET;
-                CONNECTIONS.push_back(new ProtocolType(SOCKET, DDOS, fDDOS));
-            }
-            else
-            {
-                CONNECTIONS[nSlot]->fDDOS = fDDOS;
-                CONNECTIONS[nSlot]->DDOS  = DDOS;
-            }
+                CONNECTIONS.push_back(nullptr);
+
+            CONNECTIONS[nSlot] = node;
 
             /* Set the outgoing flag. */
             CONNECTIONS[nSlot]->fOUTGOING = true;
             if(!CONNECTIONS[nSlot]->Connect(strAddress, nPort))
             {
-                CONNECTIONS[nSlot]->SetNull();
+                CONNECTIONS[nSlot] = nullptr;
+                delete node;
 
                 return false;
             }
@@ -240,7 +238,7 @@ namespace LLP
                     try
                     {
                         /* Skip over Inactive Connections. */
-                        if(CONNECTIONS[nIndex]->IsNull() || !CONNECTIONS[nIndex]->Connected())
+                        if(!CONNECTIONS[nIndex] || !CONNECTIONS[nIndex]->Connected())
                             continue;
 
                         /* Remove Connection if it has Timed out or had any Errors. */
@@ -347,8 +345,14 @@ namespace LLP
          **/
         void remove(int index)
         {
+            LOCK(MUTEX);
+
             CONNECTIONS[index]->Disconnect();
-            CONNECTIONS[index]->SetNull();
+
+            ProtocolType* node = CONNECTIONS[index];
+            CONNECTIONS[index] = nullptr;
+
+            delete node;
 
             --nConnections;
 
@@ -366,7 +370,7 @@ namespace LLP
         {
             int nSize = CONNECTIONS.size();
             for(int index = 0; index < nSize; ++index)
-                if(CONNECTIONS[index]->IsNull())
+                if(!CONNECTIONS[index])
                     return index;
 
             return nSize;
