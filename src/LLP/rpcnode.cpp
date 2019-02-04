@@ -49,7 +49,7 @@ namespace LLP
         /* Check HTTP authorization */
         if (!Authorized(INCOMING.mapHeaders))
         {
-            debug::log(0, "RPC incorrect password attempt from ", this->addr.ToString()); 
+            debug::log(0, "RPC incorrect password attempt from ", this->addr.ToString());
 
             /* Deter brute-forcing short passwords.
              * If this results in a DOS the user really
@@ -122,11 +122,9 @@ namespace LLP
         }
 
         /* Handle a connection close header. */
-        if(INCOMING.mapHeaders.count("connection") && INCOMING.mapHeaders["connection"] == "close")
-            return false;
-
-        return true;
+        return false;
     }
+
 
     /* JSON Spec 1.0 Reply including error messages. */
     json::json RPCNode::JSONReply(const json::json& jsonResponse, const json::json& jsonError, const json::json& jsonID)

@@ -14,11 +14,14 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_SERVER_H
 #define NEXUS_LLP_TEMPLATES_SERVER_H
 
+#include <LLP/include/network.h>
+
 #include <LLP/templates/data.h>
-#include <LLP/include/permissions.h>
-#include <LLP/include/manager.h>
 #include <LLP/include/legacyaddress.h>
+#include <LLP/include/manager.h>
+#include <LLP/include/permissions.h>
 #include <LLP/include/trustaddress.h>
+
 #include <Util/include/args.h>
 
 #include <functional>
@@ -50,7 +53,7 @@ namespace LLP
 
     public:
         uint16_t PORT;
-        uint32_t MAX_THREADS;
+        uint16_t MAX_THREADS;
         uint32_t DDOS_TIMESPAN;
 
         /* The data type to keep track of current running threads. */
@@ -68,6 +71,10 @@ namespace LLP
         /* Address of the server node */
         BaseAddress addrThisNode;
 
+
+        /* The sleep time of address manager. */
+        uint32_t nSleepTime;
+
         /** Name
          *
          *  returns the name of the protocol type of this server
@@ -80,9 +87,9 @@ namespace LLP
 
 
         /** Constructor **/
-        Server<ProtocolType>(uint16_t nPort, uint32_t nMaxThreads, uint32_t nTimeout = 30, bool isDDOS = false,
+        Server<ProtocolType>(uint16_t nPort, uint16_t nMaxThreads, uint32_t nTimeout = 30, bool isDDOS = false,
                              uint32_t cScore = 0, uint32_t rScore = 0, uint32_t nTimespan = 60, bool fListen = true,
-                             bool fMeter = false, bool fManager = false)
+                             bool fMeter = false, bool fManager = false, uint32_t nSleepTimeIn = 1000)
         : fDDOS(isDDOS)
         , fLISTEN(fListen)
         , fMETER(fMeter)
@@ -93,8 +100,9 @@ namespace LLP
         , DATA_THREADS(0)
         , pAddressManager(0)
         , addrThisNode()
+        , nSleepTime(nSleepTimeIn)
         {
-            for(int32_t index = 0; index < MAX_THREADS; ++index)
+            for(uint16_t index = 0; index < MAX_THREADS; ++index)
             {
                 DATA_THREADS.push_back(new DataThread<ProtocolType>(
                     index, fDDOS, rScore, cScore, nTimeout, fMeter));
@@ -165,7 +173,7 @@ namespace LLP
             LISTEN_THREAD_V6.join();
 
             /* Delete the data threads. */
-            for(int32_t index = 0; index < MAX_THREADS; ++index)
+            for(uint16_t index = 0; index < MAX_THREADS; ++index)
             {
                 delete DATA_THREADS[index];
                 DATA_THREADS[index] = 0;
@@ -195,6 +203,8 @@ namespace LLP
          **/
         void Shutdown()
         {
+            DisconnectAll();
+
             if(pAddressManager)
                 pAddressManager->WriteDatabase();
         }
@@ -269,7 +279,7 @@ namespace LLP
         {
             /* List of connections to return. */
             std::vector<ProtocolType *> vConnections;
-            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
             {
                 /* Get the data threads. */
                 DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
@@ -305,7 +315,7 @@ namespace LLP
         {
             uint32_t connectionCount = 0;
 
-            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
             {
                 /* Get the data threads. */
                 DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
@@ -338,7 +348,7 @@ namespace LLP
         {
             /* List of connections to return. */
             ProtocolType* pBest = nullptr;
-            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
             {
                 /* Get the data threads. */
                 DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
@@ -375,7 +385,7 @@ namespace LLP
         void Relay(MessageType message, DataType data)
         {
             /* List of connections to return. */
-            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
             {
                 /* Get the data threads. */
                 DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
@@ -430,7 +440,7 @@ namespace LLP
         **/
         void DisconnectAll()
         {
-            for(int32_t index = 0; index < MAX_THREADS; ++index)
+            for(uint16_t index = 0; index < MAX_THREADS; ++index)
             {
                 DATA_THREADS[index]->DisconnectAll();
             }
@@ -480,7 +490,7 @@ namespace LLP
                     /* Check for invalid addresses */
                     if(!addr.IsValid())
                     {
-                        runtime::sleep(1000);
+                        runtime::sleep(nSleepTime);
                         debug::log(3, FUNCTION, "Invalid address, removing address", addr.ToString());
                         pAddressManager->RemoveAddress(addr);
                         continue;
@@ -489,8 +499,13 @@ namespace LLP
                     /* Attempt the connection. */
                     debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
 
+                    /* Attempt the connection. */
                     if(AddConnection(addr.ToStringIP(), addr.GetPort()))
+                    {
                         state = static_cast<uint8_t>(ConnectState::CONNECTED);
+
+                        runtime::sleep(nSleepTime);
+                    }
 
                     /* Update the address state. */
                     pAddressManager->AddAddress(addr, state);
@@ -521,14 +536,15 @@ namespace LLP
             int32_t nIndex = -1;
             int32_t nConnections = std::numeric_limits<int32_t>::max();
 
-            for(int32_t index = 0; index < MAX_THREADS; ++index)
+            for(uint16_t index = 0; index < MAX_THREADS; ++index)
             {
                 DataThread<ProtocolType> *dt = DATA_THREADS[index];
 
                 if(!dt)
                     continue;
 
-                if(dt->nConnections < nConnections)
+                /* Limit data threads to 32 connections per thread. */
+                if(dt->nConnections < nConnections && dt->nConnections < 32)
                 {
                     nIndex = index;
                     nConnections = dt->nConnections;
@@ -578,7 +594,12 @@ namespace LLP
                 if (hListenSocket != INVALID_SOCKET)
                 {
                     /* Poll the sockets. */
+#ifdef WIN32
+                    int nPoll = WSAPoll(&fds[0], 1, 100);
+#else
                     int nPoll = poll(&fds[0], 1, 100);
+#endif
+
                     if(nPoll < 0)
                         continue;
 
@@ -617,7 +638,11 @@ namespace LLP
                         if((fDDOS && DDOS_MAP[addr]->Banned()))
                         {
                             debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Banned.");
+#ifdef WIN32
+                            closesocket(hSocket);
+#else
                             close(hSocket);
+#endif
 
                             continue;
                         }
@@ -625,12 +650,15 @@ namespace LLP
                         Socket_t sockNew(hSocket, addr);
 
                         int32_t nThread = FindThread();
-
                         if(nThread < 0)
+                        {
+                            debug::error(FUNCTION, "Server has no spare connection capacity... dropping");
+                            sockNew.Close();
+
                             continue;
+                        }
 
                         DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-
                         if(!dt)
                             continue;
 
@@ -765,7 +793,7 @@ namespace LLP
                     continue;
 
                 uint32_t nGlobalConnections = 0;
-                for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+                for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
                 {
                     DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
@@ -798,7 +826,7 @@ namespace LLP
         uint32_t TotalRequests()
         {
             uint32_t nTotalRequests = 0;
-            for(uint32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
             {
                 DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
                 if(!dt)
@@ -818,7 +846,7 @@ namespace LLP
          **/
         void ClearRequests()
         {
-            for(int32_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
             {
                 DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 

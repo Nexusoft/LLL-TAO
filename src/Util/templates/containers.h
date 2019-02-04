@@ -75,6 +75,18 @@ public:
     }
 
 
+    /** Clear
+     *
+     *  Remove all contents from majority.
+     *
+     **/
+     void clear()
+     {
+         mapList.clear();
+         nSamples = 0;
+     }
+
+
     /**	Majority
      *
      *  Return the Element of CType with the highest Majority.

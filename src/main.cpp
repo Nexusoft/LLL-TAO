@@ -47,20 +47,74 @@ ________________________________________________________________________________
 #include <iostream>
 #include <sstream>
 
+#if !defined(WIN32) && !defined(QT_GUI) && !defined(NO_DAEMON)
+#include <sys/types.h>
+#include <sys/stat.h>
+#endif
 
 /* Declare the Global LLP Instances. */
 namespace LLP
 {
     Server<TritiumNode>* TRITIUM_SERVER;
     Server<LegacyNode> * LEGACY_SERVER;
+    Server<TimeNode>*    TIME_SERVER;
 }
 
+/* Daemonize by forking the parent process*/
+void Daemonize()
+{
+ #if !defined(WIN32) && !defined(QT_GUI) && !defined(NO_DAEMON)
+
+    
+    pid_t pid = fork();
+    if (pid < 0)
+    {
+        debug::error("Error: fork() returned ", pid, " errno ", errno);
+        exit(EXIT_FAILURE);
+    }
+    if (pid > 0)
+    {
+        /* generate a pid file so that we can keep track of the forked process */ 
+        filesystem::CreatePidFile(filesystem::GetPidFile(), pid);
+
+        /* Success: Let the parent terminate */
+        exit(EXIT_SUCCESS);
+    }
+
+    pid_t sid = setsid();
+    if (sid < 0)
+    {
+        debug::error("Error: setsid() returned ", sid, " errno %d", errno);
+        exit(EXIT_FAILURE);
+    }
+
+    debug::log(0, "Nexus server starting");
+
+    /* Set new file permissions */
+    umask(0);
+
+    /* close stdin, stderr, stdout so that the tty no longer receives output */
+    if (int fdnull = open("/dev/null", O_RDWR))
+    {   
+        dup2 (fdnull, STDIN_FILENO);
+        dup2 (fdnull, STDOUT_FILENO);
+        dup2 (fdnull, STDERR_FILENO);
+        close(fdnull);
+    }   
+    else
+    {   
+        debug::error(FUNCTION, "Failed to open /dev/null");
+        exit(EXIT_FAILURE);
+    }
+#endif
+}
 
 int main(int argc, char** argv)
 {
     LLP::Server<LLP::CoreNode>* CORE_SERVER = nullptr;
     LLP::Server<LLP::RPCNode>* RPC_SERVER = nullptr;
     LLP::Server<LLP::Miner>* MINING_SERVER = nullptr;
+
     uint16_t port = 0;
 
     /* Setup the timer timer. */
@@ -94,6 +148,13 @@ int main(int argc, char** argv)
             return TAO::API::CommandLineRPC(argc, argv, i);
         }
     }
+
+    /** Run the process as Daemon RPC/LLP Server if Flagged. **/
+    if (config::fDaemon)
+    {
+        Daemonize();
+    }
+   
 
 
     /* Create directories if they don't exist yet. */
@@ -156,8 +217,22 @@ int main(int argc, char** argv)
         Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
 
 
+    /** Startup the time server. **/
+    LLP::TIME_SERVER = new LLP::Server<LLP::TimeNode>(
+        9324,
+        10,
+        30,
+        false,
+        0,
+        0,
+        10,
+        config::GetBoolArg("-listen", true),
+        config::GetBoolArg("-meters", false),
+        config::GetBoolArg("-manager", true),
+        30000);
 
 
+    /** Handle the beta server. */
     if(!config::GetBoolArg("-beta"))
     {
         /** Get the port for Tritium Server. **/
@@ -167,8 +242,8 @@ int main(int argc, char** argv)
         /* Initialize the Tritium Server. */
         LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(
             port,
-            10,
-            30,
+            config::GetArg("-threads", 10),
+            config::GetArg("-timeout", 30),
             false,
             0,
             0,
@@ -224,6 +299,7 @@ int main(int argc, char** argv)
                 LLP::LEGACY_SERVER->AddNode(node, port);
         }
     }
+
 
     /* Create the Core API Server. */
     CORE_SERVER = new LLP::Server<LLP::CoreNode>(
@@ -284,44 +360,6 @@ int main(int argc, char** argv)
     debug::log(0, FUNCTION, "Started up in ", nElapsed, "ms");
 
 
-    /* Get the account. */
-    TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("colin", "pass");
-    for(uint32_t n = 0; n < config::GetArg("-test", 0); n++)
-    {
-        /* Create the transaction. */
-        TAO::Ledger::Transaction tx;
-        if(!TAO::Ledger::CreateTransaction(user, "1234", tx))
-            debug::error(0, FUNCTION, "failed to create");
-
-        /* Submit the transaction payload. */
-        uint256_t hashRegister = LLC::GetRand256();
-
-        /* Test the payload feature. */
-        DataStream ssData(SER_REGISTER, 1);
-        ssData << std::string("this is test data");
-
-        /* Submit the payload object. */
-        tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::APPEND << ssData.Bytes();
-
-        /* Execute the operations layer. */
-        if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
-            debug::error(0, FUNCTION, "Operations failed to execute");
-
-        /* Sign the transaction. */
-        if(!tx.Sign(user->Generate(tx.nSequence, "1234")))
-            debug::error(0, FUNCTION, "Failed to sign");
-
-        tx.print();
-
-        /* Execute the operations layer. */
-        if(!TAO::Ledger::mempool.Accept(tx))
-            debug::error(0, FUNCTION, "Failed to accept");
-
-        LLD::locDB->WriteLast(tx.hashGenesis, tx.GetHash());
-    }
-    delete user;
-
-
     /* Initialize generator thread. */
     std::thread thread;
     if(config::GetBoolArg("-private"))
@@ -354,6 +392,16 @@ int main(int argc, char** argv)
 
     /* Shutdown metrics. */
     timer.Reset();
+
+
+    /* Shutdown the tritium server and its subsystems */
+    if(LLP::TIME_SERVER)
+    {
+        debug::log(0, FUNCTION, "Shutting down Time Server");
+
+        LLP::TIME_SERVER->Shutdown();
+        delete LLP::TIME_SERVER;
+    }
 
 
     /* Shutdown the tritium server and its subsystems */

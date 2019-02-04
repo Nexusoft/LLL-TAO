@@ -14,7 +14,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_DATA_H
 #define NEXUS_LLP_TEMPLATES_DATA_H
 
+#include <LLP/include/network.h>
+
 #include <LLP/templates/events.h>
+
 #include <condition_variable>
 #include <functional>
 #include <atomic>
@@ -100,15 +103,14 @@ namespace LLP
          *  @param[in] DDOS The pointer to the DDOS filter to add to connection.
          *
          **/
-        void AddConnection(Socket_t SOCKET, DDOS_Filter* DDOS)
+        void AddConnection(const Socket_t& SOCKET, DDOS_Filter* DDOS)
         {
             LOCK(MUTEX);
 
             int nSlot = find_slot();
             if(nSlot == CONNECTIONS.size())
             {
-                CONNECTIONS.push_back(nullptr);
-                CONNECTIONS[nSlot] = new ProtocolType(SOCKET, DDOS, fDDOS);
+                CONNECTIONS.push_back(new ProtocolType(SOCKET, DDOS, fDDOS));
             }
             else
             {
@@ -149,8 +151,7 @@ namespace LLP
             if(nSlot == CONNECTIONS.size())
             {
                 Socket SOCKET;
-                CONNECTIONS.push_back(nullptr);
-                CONNECTIONS[nSlot] = new ProtocolType(SOCKET, DDOS, fDDOS);
+                CONNECTIONS.push_back(new ProtocolType(SOCKET, DDOS, fDDOS));
             }
             else
             {
@@ -222,7 +223,12 @@ namespace LLP
                 { LOCK(MUTEX);
 
                     /* Poll the sockets. */
+#ifdef WIN32
+                    int nPoll = WSAPoll((pollfd*)CONNECTIONS[0], CONNECTIONS.size(), 100);
+#else
                     int nPoll = poll((pollfd*)CONNECTIONS[0], CONNECTIONS.size(), 100);
+#endif
+
                     if(nPoll < 0)
                         continue;
                 }
@@ -341,8 +347,6 @@ namespace LLP
          **/
         void remove(int index)
         {
-            LOCK(MUTEX);
-
             CONNECTIONS[index]->Disconnect();
             CONNECTIONS[index]->SetNull();
 

@@ -97,3 +97,14 @@ The Supply API can be found in the following repo path:
 
 NOTE: some of the commands in this API require LOGIN. Make sure to use the
 accounts API to login before using LOGIN required commands.
+
+
+## Lisp API
+
+The lisp API provides information on the lisp configuration and status for this node.
+The purpose of this API is to offer a summarized and simplified wrapper around the lispers.net API,
+which itself must be running on the local node at localhost:9090/lisp 
+
+The Lisp API can be found in the following repo path:
+
+[LLL-TAO/docs/API/LISP.MD](API/SUPPLY.MD)

@@ -28,9 +28,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/filesystem.h>
 
-#ifndef MAX_PATH
-#define MAX_PATH 256
-#endif
+#include <sys/stat.h>
 
 extern int errno;
 
@@ -140,8 +138,12 @@ namespace filesystem
             return true;
 
         /* Set directory with read/write/search permissions for owner/group/other */
+    #ifdef WIN32
+        int status = mkdir(path.c_str());
+    #else
         mode_t m = S_IRWXU | S_IRWXG | S_IRWXO;
         int status = mkdir(path.c_str(), m);
+    #endif
 
         /* Handle failures. */
         if(status < 0)
@@ -179,6 +181,25 @@ namespace filesystem
     #endif
 
         return abs_path + rel_path;
+    }
+
+    /* Returns the full pathname of the PID file */
+    std::string GetPidFile()
+    {
+        
+        std::string pathPidFile(config::GetArg("-pid", "Nexus.pid"));
+        return config::GetDataDir() + "/" +pathPidFile;
+    }
+
+    /* Creates a PID file on disk for the provided PID */
+    void CreatePidFile(const std::string &path, pid_t pid)
+    {
+        FILE* file = fopen(path.c_str(), "w");
+        if (file)
+        {
+            fprintf(file, "%d\n", pid);
+            fclose(file);
+        }
     }
 
 }

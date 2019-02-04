@@ -98,6 +98,7 @@ namespace TAO
 
                 debug::log(0, FUNCTION, "database successfully recovered" );
             }
+            
             /* Fill out the best chain stats. */
             nBestHeight     = stateBest.nHeight;
             nBestChainTrust = stateBest.nChainTrust;

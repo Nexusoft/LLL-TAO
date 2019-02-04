@@ -110,7 +110,8 @@ namespace LLP
         /* Reject adding invalid addresses. */
         if(!addr.IsValid())
         {
-            debug::log(3, FUNCTION, "Invalid Address ", addr.ToString());
+            BaseAddress addrCopy = addr; //non-const copy for ToString
+            debug::log(3, FUNCTION, "Invalid Address ", addrCopy.ToString());
             return;
         }
 

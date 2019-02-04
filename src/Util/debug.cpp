@@ -29,6 +29,16 @@ ________________________________________________________________________________
 #define _vsnprintf(a,b,c,d) vsnprintf(a,b,c,d)
 #define strlwr(psz)         to_lower(psz)
 #define _strlwr(psz)        to_lower(psz)
+
+#else
+
+#define _WIN32_WINNT 0x0600    //targeting minimum Windows Vista version for winsock2, etc.
+#define WIN32_LEAN_AND_MEAN 1  //prevents windows.h from including winsock.h and messing up winsock2.h definitions we use
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+
 #endif
 
 namespace debug
@@ -127,6 +137,7 @@ namespace debug
     #else
         const char* pszModule = "Nexus";
     #endif
+
         if (pex)
             snprintf(pszMessage, 1000,
                 "EXCEPTION: %s       \n%s       \n%s in %s       \n", typeid(*pex).name(), pex->what(), pszModule, pszThread);

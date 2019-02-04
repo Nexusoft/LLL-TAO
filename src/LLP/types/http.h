@@ -179,6 +179,10 @@ namespace LLP
                         /* Extract the line from the buffer. */
                         std::string strLine = std::string(vchBuffer.begin(), it - 1);
 
+                        /* Dump the header if requested on read. */
+                        if(config::GetBoolArg("-httpheader"))
+                            debug::log(0, strLine);
+
                         /* Find the delimiter to split. */
                         std::string::size_type pos = strLine.find(':', 0);
 

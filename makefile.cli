@@ -156,6 +156,7 @@ OBJS= \
 	build/LLP_trustaddress.o \
 	build/LLP_hosts.o \
 	build/LLP_socket.o \
+	build/LLP_time.o \
 	build/LLP_inv.o\
 	build/LLP_legacy.o \
 	build/LLP_miner.o \
@@ -200,6 +201,7 @@ OBJS= \
 	build/API_accounts_login.o \
 	build/API_supply_supply.o \
 	build/API_ledger_create.o \
+	build/API_lisp_lisp.o \
 	build/Legacy_evaluate.o \
 	build/Legacy_address.o \
 	build/Legacy_addressbook.o \
@@ -317,6 +319,9 @@ build/API_supply_%.o: ./src/TAO/API/supply/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_ledger_%.o: ./src/TAO/API/ledger/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_lisp_%.o: ./src/TAO/API/lisp/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_RPC_%.o: ./src/TAO/API/RPC/%.cpp $(HEADERS)
@@ -454,6 +459,13 @@ build/API_supply_%.o: src/TAO/API/supply/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_ledger_%.o: src/TAO/API/ledger/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_lisp_%.o: src/TAO/API/lisp/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -627,6 +639,13 @@ build/API_supply_%.o: src/TAO/API/supply/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/API_ledger_%.o: src/TAO/API/ledger/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_lisp_%.o: src/TAO/API/lisp/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

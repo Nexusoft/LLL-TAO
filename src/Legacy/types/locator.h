@@ -45,6 +45,14 @@ namespace Legacy
             READWRITE(vHave);
         )
 
+
+        /** Default constructor. **/
+        Locator()
+        : vHave()
+        {
+
+        }
+
         /** Constructor
          *
          *  Set a locator from block state.
