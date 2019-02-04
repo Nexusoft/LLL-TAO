@@ -83,12 +83,6 @@ namespace LLP
             events = POLLIN;// | POLLOUT;
         }
 
-        /* Destroy the socket object. */
-        ~Socket()
-        {
-            vBuffer.clear();
-        }
-
 
         /** Constructor for Socket
          *
