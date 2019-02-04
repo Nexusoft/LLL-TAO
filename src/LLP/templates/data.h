@@ -347,12 +347,19 @@ namespace LLP
         {
             LOCK(MUTEX);
 
-            CONNECTIONS[index]->Disconnect();
-
+            /* Remove the node. */
             ProtocolType* node = CONNECTIONS[index];
+
+            /* Derefrence the pointer. */
             CONNECTIONS[index] = nullptr;
 
-            delete node;
+            /* Free the memory. */
+            if(node)
+            {
+                node->Disconnect();
+
+                delete node;
+            }
 
             --nConnections;
 
