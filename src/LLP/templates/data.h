@@ -84,6 +84,8 @@ namespace LLP
          **/
         virtual ~DataThread<ProtocolType>()
         {
+            DisconnectAll();
+            
             fDestruct = true;
 
             CONDITION.notify_all();
@@ -105,22 +107,21 @@ namespace LLP
          **/
         void AddConnection(const Socket_t& SOCKET, DDOS_Filter* DDOS)
         {
+            LOCK(MUTEX);
+
             int nSlot = find_slot();
-            
-            { LOCK(MUTEX);
 
-                /* Create a new pointer on the heap. */
-                ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
+            /* Create a new pointer on the heap. */
+            ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
 
-                /* Find a slot that is empty. */
-                if(nSlot == CONNECTIONS.size())
-                    CONNECTIONS.push_back(nullptr);
+            /* Find a slot that is empty. */
+            if(nSlot == CONNECTIONS.size())
+                CONNECTIONS.push_back(nullptr);
 
-                /* Assign the slot to the connection. */
-                CONNECTIONS[nSlot] = node;
-                if(fDDOS)
-                    DDOS -> cSCORE += 1;
-            }
+            /* Assign the slot to the connection. */
+            CONNECTIONS[nSlot] = node;
+            if(fDDOS)
+                DDOS -> cSCORE += 1;
 
             CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
             CONNECTIONS[nSlot]->fCONNECTED = true;
@@ -144,15 +145,21 @@ namespace LLP
          **/
         bool AddConnection(std::string strAddress, uint16_t nPort, DDOS_Filter* DDOS)
         {
-            int nSlot = find_slot();
+            /* Create a new pointer on the heap. */
+            Socket SOCKET;
+            ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
+            if(!node->Connect(strAddress, nPort))
+            {
+                node->Disconnect();
+                delete node;
+
+                return false;
+            }
 
             { LOCK(MUTEX);
 
-                /* Create a new pointer on the heap. */
-                Socket SOCKET;
-                ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
-
                 /* Find a slot that is empty. */
+                int nSlot = find_slot();
                 if(nSlot == CONNECTIONS.size())
                     CONNECTIONS.push_back(nullptr);
 
@@ -160,23 +167,15 @@ namespace LLP
 
                 /* Set the outgoing flag. */
                 CONNECTIONS[nSlot]->fOUTGOING = true;
+
+                if(fDDOS)
+                    DDOS -> cSCORE += 1;
+
+                CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
+                ++nConnections;
+
+                CONDITION.notify_all();
             }
-
-            /* Attempt to make the outgoing connection. */
-            if(!CONNECTIONS[nSlot]->Connect(strAddress, nPort))
-            {
-                remove(nSlot);
-
-                return false;
-            }
-
-            if(fDDOS)
-                DDOS -> cSCORE += 1;
-
-            CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
-            ++nConnections;
-
-            CONDITION.notify_all();
 
             return true;
         }
@@ -190,6 +189,8 @@ namespace LLP
          **/
         void DisconnectAll()
         {
+            LOCK(MUTEX);
+
             uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
             for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
                 disconnect_remove_event(nIndex, DISCONNECT_FORCE);
