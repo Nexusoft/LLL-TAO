@@ -47,7 +47,7 @@ namespace LLP
     int Socket::ErrorCode() const
     {
         /* Check for errors with poll. */
-        if(revents & POLLERR || revents & POLLHUP)
+        if(revents & POLLERR)// || revents & POLLHUP)
         {
             debug::error(revents & POLLERR ? "ERROR" : "POLHUP");
             return -1;
@@ -61,8 +61,8 @@ namespace LLP
             return 0;
 
         if(nError != 0)
-            debug::error("ERROR ", nError);
-            
+            debug::log(0, "ERROR ", nError, " CODE");
+
         return nError;
     }
 
