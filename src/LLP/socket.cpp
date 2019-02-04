@@ -49,7 +49,7 @@ namespace LLP
         /* Check for errors with poll. */
         if(revents & POLLHUP)
         {
-            debug::error("Socket Hangup");
+            //debug::error("Socket Hangup");
             //return -1;
         }
 
