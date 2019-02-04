@@ -47,7 +47,7 @@ namespace LLP
     int Socket::ErrorCode() const
     {
         /* Check for errors with poll. */
-        if(revents & POLLERR || revents & POLLHUP || revents & POLLNVAL)
+        if(revents & POLLERR || revents & POLLHUP)
             return -1;
 
         /* Check for errors from reads or writes. */
@@ -331,13 +331,9 @@ namespace LLP
         int nSent = send(fd, (int8_t*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT );
     #endif
 
+        /* Handle errors on flush. */
         if(nSent < 0)
-        {
-            nError = GetLastError();
-            debug::log(2, FUNCTION, "flush failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
-
-            return nError;
-        }
+            return GetLastError();
 
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent > 0)
