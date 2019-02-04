@@ -70,7 +70,7 @@ namespace Legacy
          *  @param[in] hashBlock The block hash to work from.
          *
          **/
-        explicit Locator(const uint1024_t& hashBlock);
+        explicit Locator(const uint1024_t hashBlock);
 
 
         /** Constructor

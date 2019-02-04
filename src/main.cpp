@@ -167,7 +167,7 @@ int main(int argc, char** argv)
         0,
         0,
         10,
-        config::GetBoolArg("-listen", true),
+        config::GetBoolArg("-unified", false),
         config::GetBoolArg("-meters", false),
         config::GetBoolArg("-manager", true),
         30000);

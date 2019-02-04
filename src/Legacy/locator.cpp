@@ -31,9 +31,11 @@ namespace Legacy
 
 
     /* Set a locator from block hash. */
-    Locator::Locator(const uint1024_t& hashBlock)
+    Locator::Locator(const uint1024_t hashBlock)
     : vHave()
     {
+        vHave.push_back(hashBlock);
+
         TAO::Ledger::BlockState state;
         if(!LLD::legDB->ReadBlock(hashBlock, state))
             return;
@@ -50,17 +52,15 @@ namespace Legacy
 
         while (!state.IsNull())
         {
-            vHave.push_back(state.GetHash());
-
-            // Exponentially larger steps back
-            for (int32_t i = 0; !state.IsNull() && i < nStep; i++)
-                state = state.Prev();
-
-            if (vHave.size() > 10)
-                nStep *= 2;
-
-            if (vHave.size() > 100)
+            if (vHave.size() > 50)
                 break;
+
+            for (int i = 0; !state.IsNull() && i < nStep; i++)
+                state = state.Prev();
+            if(vHave.size() > 10)
+                nStep = nStep * 2;
+
+            vHave.push_back(state.GetHash());
         }
         vHave.push_back(TAO::Ledger::hashGenesis);
     }
