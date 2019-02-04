@@ -28,9 +28,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/filesystem.h>
 
-#ifndef MAX_PATH
-#define MAX_PATH 256
-#endif
+#include <sys/stat.h>
 
 extern int errno;
 
@@ -140,8 +138,12 @@ namespace filesystem
             return true;
 
         /* Set directory with read/write/search permissions for owner/group/other */
+    #ifdef WIN32
+        int status = mkdir(path.c_str());
+    #else
         mode_t m = S_IRWXU | S_IRWXG | S_IRWXO;
         int status = mkdir(path.c_str(), m);
+    #endif
 
         /* Handle failures. */
         if(status < 0)

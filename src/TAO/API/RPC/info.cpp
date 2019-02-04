@@ -118,7 +118,7 @@ namespace TAO
 
             std::sort(vLegacyInfo.begin(), vLegacyInfo.end());
 
-            for(const auto& addr : vLegacyInfo)
+            for(auto& addr : vLegacyInfo)
             {
                 json::json obj;
 
@@ -141,7 +141,7 @@ namespace TAO
 
             std::sort(vTritiumInfo.begin(), vTritiumInfo.end());
 
-            for(const auto& addr : vTritiumInfo)
+            for(auto& addr : vTritiumInfo)
             {
                 json::json obj;
 

@@ -14,11 +14,14 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_SERVER_H
 #define NEXUS_LLP_TEMPLATES_SERVER_H
 
+#include <LLP/include/network.h>
+
 #include <LLP/templates/data.h>
-#include <LLP/include/permissions.h>
-#include <LLP/include/manager.h>
 #include <LLP/include/legacyaddress.h>
+#include <LLP/include/manager.h>
+#include <LLP/include/permissions.h>
 #include <LLP/include/trustaddress.h>
+
 #include <Util/include/args.h>
 
 #include <functional>
@@ -555,7 +558,12 @@ namespace LLP
                 if (hListenSocket != INVALID_SOCKET)
                 {
                     /* Poll the sockets. */
+#ifdef WIN32
+                    int nPoll = WSAPoll(&fds[0], 1, 100);
+#else
                     int nPoll = poll(&fds[0], 1, 100);
+#endif
+
                     if(nPoll < 0)
                         continue;
 
@@ -594,7 +602,11 @@ namespace LLP
                         if((fDDOS && DDOS_MAP[addr]->Banned()))
                         {
                             debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Banned.");
+#ifdef WIN32
+                            closesocket(hSocket);
+#else
                             close(hSocket);
+#endif
 
                             continue;
                         }

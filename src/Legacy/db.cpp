@@ -21,9 +21,7 @@ ________________________________________________________________________________
 #include <Util/include/filesystem.h>
 #include <Util/templates/serialize.h>
 
-#ifndef WIN32
-#include "sys/stat.h"
-#endif
+#include <sys/stat.h>
 
 
 namespace Legacy

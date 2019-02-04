@@ -18,11 +18,8 @@ ________________________________________________________________________________
 #include <string>
 
 #ifdef WIN32
-#ifdef _WIN32_WINNT
-#undef _WIN32_WINNT
-#endif
-#define _WIN32_WINNT 0x0501
-#define WIN32_LEAN_AND_MEAN 1
+#define _WIN32_WINNT 0x0600    //targeting minimum Windows Vista version for winsock2, etc.
+#define WIN32_LEAN_AND_MEAN 1  //prevents windows.h from including winsock.h and messing up winsock2.h definitions we use
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
