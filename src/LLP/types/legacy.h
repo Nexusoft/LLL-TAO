@@ -252,7 +252,7 @@ namespace LLP
         void PushGetBlocks(const uint1024_t& hashBlockFrom, const uint1024_t& hashBlockTo)
         {
             /* Filter out duplicate requests. */
-            if(hashLastGetblocks == hashBlockFrom && nLastGetBlocks + 10 > runtime::timestamp())
+            if(hashLastGetblocks == hashBlockFrom && nLastGetBlocks + 1 > runtime::timestamp())
                 return;
 
             /* Update the last timestamp this was called. */

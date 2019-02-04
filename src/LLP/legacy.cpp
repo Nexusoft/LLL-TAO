@@ -749,10 +749,16 @@ namespace LLP
 
             /* Normal sync mode (slower connections). */
             if(!TAO::Ledger::ChainState::Synchronizing())
-                pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+            {
+                /* Normal case of asking for a getblocks inventory message. */
+                LegacyNode* pBest = LEGACY_SERVER->GetConnection();
+                if(pBest)
+                    pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+            }
             else if(!config::GetBoolArg("-fastsync"))
             {
-                if(!TAO::Ledger::ChainState::Synchronizing() || TAO::Ledger::ChainState::hashBestChain != LegacyNode::hashLastGetblocks || LegacyNode::nLastGetBlocks + 10 < runtime::timestamp())
+                if(!TAO::Ledger::ChainState::Synchronizing() ||
+                    TAO::Ledger::ChainState::hashBestChain != LegacyNode::hashLastGetblocks || LegacyNode::nLastGetBlocks + 10 < runtime::timestamp())
                 {
                     /* Special handle for unreliable leagacy nodes. */
                     if(TAO::Ledger::ChainState::Synchronizing())
