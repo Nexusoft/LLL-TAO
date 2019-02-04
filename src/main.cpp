@@ -183,8 +183,8 @@ int main(int argc, char** argv)
         /* Initialize the Tritium Server. */
         LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(
             port,
-            10,
-            30,
+            config::GetArg("-threads", 10),
+            config::GetArg("-timeout", 30),
             false,
             0,
             0,
