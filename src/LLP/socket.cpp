@@ -46,6 +46,10 @@ namespace LLP
     /* Returns the error of socket if any */
     int Socket::ErrorCode() const
     {
+        /* Only check errors if it has been 5 seconds since receive. */
+        if(nLastRecv + 5 > runtime::timestamp())
+            return 0;
+
         /* Check for errors with poll. */
         if(revents & POLLHUP)
         {
