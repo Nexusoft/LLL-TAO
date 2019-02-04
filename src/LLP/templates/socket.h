@@ -66,7 +66,7 @@ namespace LLP
         {
             fd = -1;
 
-            events = POLLIN | POLLHUP;// | POLLOUT;
+            events = POLLIN;// | POLLOUT;
         }
 
 
@@ -80,7 +80,7 @@ namespace LLP
         {
             fd = nSocketIn;
 
-            events = POLLIN | POLLHUP;// | POLLOUT;
+            events = POLLIN;// | POLLOUT;
         }
 
 

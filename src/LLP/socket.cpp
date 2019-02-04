@@ -37,7 +37,7 @@ namespace LLP
     , addr()
     {
         fd = -1;
-        events = POLLIN | POLLHUP; //consider using POLLOUT
+        events = POLLIN; //consider using POLLOUT
 
         Attempt(addrConnect);
     }
@@ -50,7 +50,7 @@ namespace LLP
         if(revents & POLLHUP)
         {
             debug::error("Socket Hangup");
-            return -1;
+            //return -1;
         }
 
         /* Check for errors from reads or writes. */
