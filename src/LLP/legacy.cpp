@@ -408,7 +408,7 @@ namespace LLP
             /* Send version message if connection is inbound. */
             if(!fOUTGOING)
             {
-                if(addrMe.ToStringIP() == LEGACY_SERVER->addrThisNode.ToStringIP())
+                if(addr.ToStringIP() == LEGACY_SERVER->addrThisNode.ToStringIP())
                 {
                     debug::log(0, NODE, "connected to self ", addr.ToString());
 
