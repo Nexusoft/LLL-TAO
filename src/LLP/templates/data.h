@@ -105,24 +105,25 @@ namespace LLP
          **/
         void AddConnection(const Socket_t& SOCKET, DDOS_Filter* DDOS)
         {
-            LOCK(MUTEX);
-
-            /* Create a new pointer on the heap. */
-            ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
-
-            /* Find a slot that is empty. */
             int nSlot = find_slot();
-            if(nSlot == CONNECTIONS.size())
-                CONNECTIONS.push_back(nullptr);
+            
+            { LOCK(MUTEX);
 
-            /* Assign the slot to the connection. */
-            CONNECTIONS[nSlot] = node;
-            if(fDDOS)
-                DDOS -> cSCORE += 1;
+                /* Create a new pointer on the heap. */
+                ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
+
+                /* Find a slot that is empty. */
+                if(nSlot == CONNECTIONS.size())
+                    CONNECTIONS.push_back(nullptr);
+
+                /* Assign the slot to the connection. */
+                CONNECTIONS[nSlot] = node;
+                if(fDDOS)
+                    DDOS -> cSCORE += 1;
+            }
 
             CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
             CONNECTIONS[nSlot]->fCONNECTED = true;
-            CONNECTIONS[nSlot]->Reset();
 
             ++nConnections;
 
@@ -143,25 +144,28 @@ namespace LLP
          **/
         bool AddConnection(std::string strAddress, uint16_t nPort, DDOS_Filter* DDOS)
         {
-            LOCK(MUTEX);
-
-            /* Create a new pointer on the heap. */
-            Socket SOCKET;
-            ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
-
-            /* Find a slot that is empty. */
             int nSlot = find_slot();
-            if(nSlot == CONNECTIONS.size())
-                CONNECTIONS.push_back(nullptr);
 
-            CONNECTIONS[nSlot] = node;
+            { LOCK(MUTEX);
 
-            /* Set the outgoing flag. */
-            CONNECTIONS[nSlot]->fOUTGOING = true;
+                /* Create a new pointer on the heap. */
+                Socket SOCKET;
+                ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
+
+                /* Find a slot that is empty. */
+                if(nSlot == CONNECTIONS.size())
+                    CONNECTIONS.push_back(nullptr);
+
+                CONNECTIONS[nSlot] = node;
+
+                /* Set the outgoing flag. */
+                CONNECTIONS[nSlot]->fOUTGOING = true;
+            }
+
+            /* Attempt to make the outgoing connection. */
             if(!CONNECTIONS[nSlot]->Connect(strAddress, nPort))
             {
-                CONNECTIONS[nSlot] = nullptr;
-                delete node;
+                remove(nSlot);
 
                 return false;
             }
@@ -345,7 +349,6 @@ namespace LLP
          **/
         void remove(int index)
         {
-
             /* Remove the node. */
             ProtocolType* node = CONNECTIONS[index];
 
