@@ -318,39 +318,69 @@ namespace LLP
     /*  Read the address database into the manager. */
     void AddressManager::ReadDatabase()
     {
-        LOCK(mut);
+        { LOCK(mut);
 
-        /* Make sure the map is empty. */
-        mapTrustAddress.clear();
+            /* Make sure the map is empty. */
+            mapTrustAddress.clear();
 
-        /* Make sure the database exists. */
-        if(!pDatabase)
-        {
-            debug::error(FUNCTION, "database null");
-            return;
+            /* Make sure the database exists. */
+            if(!pDatabase)
+            {
+                debug::error(FUNCTION, "database null");
+                return;
+            }
+
+            /* Get the database keys. */
+            std::vector<std::vector<uint8_t> > keys = pDatabase->GetKeys();
+            uint32_t s = static_cast<uint32_t>(keys.size());
+
+            /* Load a trust address from each key. */
+            for(uint32_t i = 0; i < s; ++i)
+            {
+                std::string str;
+                uint64_t nKey;
+                TrustAddress trust_addr;
+
+                /* Create a datastream and deserialize the key/address pair. */
+                DataStream ssKey(keys[i], SER_LLD, LLD::DATABASE_VERSION);
+                ssKey >> str;
+
+                /* Check for the info string. */
+                if(str == "info")
+                {
+                    /* Deserialize the key if it is an info type. */
+                    ssKey >> nKey;
+
+                    /* Read the trust address. */
+                    pDatabase->ReadTrustAddress(nKey, trust_addr);
+
+                    /* Get the hash and load it into the map. */
+                    uint64_t nHash = trust_addr.GetHash();
+                    mapTrustAddress[nHash] = trust_addr;
+                }
+            }
         }
 
-        /* Get the database keys. */
-        std::vector<std::vector<uint8_t> > keys = pDatabase->GetKeys();
-        uint32_t s = static_cast<uint32_t>(keys.size());
-
-        /* Load a trust address from each key. */
-        for(uint32_t i = 0; i < s; ++i)
+        /* Check if the DNS needs update. */
+        uint64_t nLastUpdate = 0;
+        if(!pDatabase->ReadLastUpdate(nLastUpdate)
+        || nLastUpdate + config::GetArg("-dnsupdate", 86400) <= runtime::unifiedtimestamp())
         {
-            std::string str;
-            uint64_t nKey;
-            TrustAddress trust_addr;
+            /* Log out that DNS is updating. */
+            debug::log(0, "DNS cache is out of date by ", (runtime::unifiedtimestamp() - (nLastUpdate + config::GetArg("-dnsupdate", 86400))), " seconds... refreshing");
 
-            /* Create a datastream and deserialize the key/address pair. */
-            DataStream ssKey(keys[i], SER_LLD, LLD::DATABASE_VERSION);
-            ssKey >> str;
-            ssKey >> nKey;
+            /* Add the DNS seeds for this server. */
+            runtime::timer timer;
+            timer.Start();
 
-            pDatabase->ReadTrustAddress(nKey, trust_addr);
+            /* Update the Seed addresses. */
+            AddSeedAddresses(config::fTestNet);
 
-            /* Get the hash and load it into the map. */
-            uint64_t nHash = trust_addr.GetHash();
-            mapTrustAddress[nHash] = trust_addr;
+            /* Write that DNS was updated. */
+            pDatabase->WriteLastUpdate();
+
+            /* Log the time it took to resolve DNS items. */
+            debug::log(0, "DNS cache updated in ", timer.ElapsedMilliseconds(), " ms");
         }
     }
 

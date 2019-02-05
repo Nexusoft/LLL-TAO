@@ -119,12 +119,6 @@ namespace LLP
                 if(!pAddressManager)
                     debug::error(FUNCTION, "Failed to allocate memory for address manager on port ", nPort);
 
-
-                pAddressManager->ReadDatabase();
-
-                pAddressManager->AddSeedAddresses(config::fTestNet);
-
-
                 MANAGER_THREAD = std::thread((std::bind(&Server::Manager, this)));
             }
 
@@ -436,6 +430,9 @@ namespace LLP
          **/
         void Manager()
         {
+            /* Read the addresses into memory. */
+            pAddressManager->ReadDatabase();
+
             /* Wait for data threads to startup. */
             while(DATA_THREADS.size() < MAX_THREADS)
                 runtime::sleep(1000);
