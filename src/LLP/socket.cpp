@@ -37,7 +37,7 @@ namespace LLP
     , addr()
     {
         fd = -1;
-        events = POLLIN; //consider using POLLOUT
+        events = POLLIN;
 
         Attempt(addrConnect);
     }
@@ -46,12 +46,11 @@ namespace LLP
     /* Returns the error of socket if any */
     int Socket::ErrorCode() const
     {
-        /* Check for errors with poll. */
-        if(revents & POLLERR || revents & POLLHUP)
-            return -1;
-
         /* Check for errors from reads or writes. */
-        if (nError == WSAEWOULDBLOCK || nError == WSAEMSGSIZE || nError == WSAEINTR || nError == WSAEINPROGRESS)
+        if (nError == WSAEWOULDBLOCK ||
+            nError == WSAEMSGSIZE ||
+            nError == WSAEINTR ||
+            nError == WSAEINPROGRESS)
             return 0;
 
         return nError;

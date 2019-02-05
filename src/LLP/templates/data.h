@@ -89,9 +89,7 @@ namespace LLP
             CONDITION.notify_all();
             DATA_THREAD.join();
 
-            for(auto& CONNECTION : CONNECTIONS)
-                if(CONNECTION)
-                    delete CONNECTION;
+            DisconnectAll();
         }
 
 
@@ -105,30 +103,28 @@ namespace LLP
          **/
         void AddConnection(const Socket_t& SOCKET, DDOS_Filter* DDOS)
         {
-            LOCK(MUTEX);
+            /* Create a new pointer on the heap. */
+            ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
+            node->Event(EVENT_CONNECT);
+            node->fCONNECTED = true;
 
-            int nSlot = find_slot();
-            if(nSlot == CONNECTIONS.size())
-            {
-                CONNECTIONS.push_back(new ProtocolType(SOCKET, DDOS, fDDOS));
+            { LOCK(MUTEX);
+
+                int nSlot = find_slot();
+
+                /* Find a slot that is empty. */
+                if(nSlot == CONNECTIONS.size())
+                    CONNECTIONS.push_back(nullptr);
+
+                /* Assign the slot to the connection. */
+                CONNECTIONS[nSlot] = node;
+                if(fDDOS)
+                    DDOS -> cSCORE += 1;
+
+                ++nConnections;
+
+                CONDITION.notify_all();
             }
-            else
-            {
-                CONNECTIONS[nSlot]->fd = SOCKET.fd;
-                CONNECTIONS[nSlot]->fDDOS = fDDOS;
-                CONNECTIONS[nSlot]->DDOS  = DDOS;
-            }
-
-            if(fDDOS)
-                DDOS -> cSCORE += 1;
-
-            CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
-            CONNECTIONS[nSlot]->fCONNECTED = true;
-            CONNECTIONS[nSlot]->Reset();
-
-            ++nConnections;
-
-            CONDITION.notify_all();
         }
 
 
@@ -145,36 +141,37 @@ namespace LLP
          **/
         bool AddConnection(std::string strAddress, uint16_t nPort, DDOS_Filter* DDOS)
         {
-            LOCK(MUTEX);
-
-            int nSlot = find_slot();
-            if(nSlot == CONNECTIONS.size())
+            /* Create a new pointer on the heap. */
+            Socket SOCKET;
+            ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
+            if(!node->Connect(strAddress, nPort))
             {
-                Socket SOCKET;
-                CONNECTIONS.push_back(new ProtocolType(SOCKET, DDOS, fDDOS));
-            }
-            else
-            {
-                CONNECTIONS[nSlot]->fDDOS = fDDOS;
-                CONNECTIONS[nSlot]->DDOS  = DDOS;
-            }
-
-            /* Set the outgoing flag. */
-            CONNECTIONS[nSlot]->fOUTGOING = true;
-            if(!CONNECTIONS[nSlot]->Connect(strAddress, nPort))
-            {
-                CONNECTIONS[nSlot]->SetNull();
+                node->Disconnect();
+                delete node;
 
                 return false;
             }
 
-            if(fDDOS)
-                DDOS -> cSCORE += 1;
+            { LOCK(MUTEX);
 
-            CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
-            ++nConnections;
+                /* Find a slot that is empty. */
+                int nSlot = find_slot();
+                if(nSlot == CONNECTIONS.size())
+                    CONNECTIONS.push_back(nullptr);
 
-            CONDITION.notify_all();
+                CONNECTIONS[nSlot] = node;
+
+                /* Set the outgoing flag. */
+                CONNECTIONS[nSlot]->fOUTGOING = true;
+
+                if(fDDOS)
+                    DDOS -> cSCORE += 1;
+
+                CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
+                ++nConnections;
+
+                CONDITION.notify_all();
+            }
 
             return true;
         }
@@ -190,7 +187,7 @@ namespace LLP
         {
             uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
             for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
-                disconnect_remove_event(nIndex, DISCONNECT_FORCE);
+                remove(nIndex);
         }
 
 
@@ -207,40 +204,42 @@ namespace LLP
             std::mutex CONDITION_MUTEX;
 
             /* The main connection handler loop. */
-            while(!fDestruct.load())
+            while(!fDestruct.load() && !config::fShutdown)
             {
                 /* Keep thread from consuming too many resources. */
                 runtime::sleep(1);
 
                 /* Keep data threads waiting for work. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-                CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || nConnections.load() > 0; });
+                CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown || nConnections.load() > 0; });
 
                 /* Check for close. */
-                if(fDestruct.load())
+                if(fDestruct.load() || config::fShutdown)
                     return;
 
+                uint32_t nSize = 0;
                 { LOCK(MUTEX);
+
+                    nSize = static_cast<uint32_t>(CONNECTIONS.size());
 
                     /* Poll the sockets. */
 #ifdef WIN32
-                    int nPoll = WSAPoll((pollfd*)CONNECTIONS[0], CONNECTIONS.size(), 100);
+                    int nPoll = WSAPoll((pollfd*)CONNECTIONS[0], nSize, 100);
 #else
-                    int nPoll = poll((pollfd*)CONNECTIONS[0], CONNECTIONS.size(), 100);
+                    int nPoll = poll((pollfd*)CONNECTIONS[0], nSize, 100);
 #endif
-
                     if(nPoll < 0)
                         continue;
+
                 }
 
                 /* Check all connections for data and packets. */
-                uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
                 for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
                 {
                     try
                     {
                         /* Skip over Inactive Connections. */
-                        if(CONNECTIONS[nIndex]->IsNull() || !CONNECTIONS[nIndex]->Connected())
+                        if(!CONNECTIONS[nIndex] || !CONNECTIONS[nIndex]->Connected())
                             continue;
 
                         /* Remove Connection if it has Timed out or had any Errors. */
@@ -347,8 +346,17 @@ namespace LLP
          **/
         void remove(int index)
         {
-            CONNECTIONS[index]->Disconnect();
-            CONNECTIONS[index]->SetNull();
+            LOCK(MUTEX);
+            
+            /* Remove the node. */
+            ProtocolType* node = CONNECTIONS[index];
+
+            /* Derefrence the pointer. */
+            CONNECTIONS[index] = nullptr;
+
+            /* Free the memory. */
+            if(node)
+                delete node;
 
             --nConnections;
 
@@ -366,7 +374,7 @@ namespace LLP
         {
             int nSize = CONNECTIONS.size();
             for(int index = 0; index < nSize; ++index)
-                if(CONNECTIONS[index]->IsNull())
+                if(!CONNECTIONS[index])
                     return index;
 
             return nSize;

@@ -15,14 +15,23 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_NETWORK_H
 
 #ifdef WIN32
-#define _WIN32_WINNT 0x0600   // targeting minimum Windows Vista version for winsock2, etc.
-#define WIN32_LEAN_AND_MEAN 1
-#ifndef NOMINMAX
-#define NOMINMAX
+
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0600    //targeting minimum Windows Vista version for winsock2, etc.
 #endif
+
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN 1  //prevents windows.h from including winsock.h and messing up winsock2.h definitions we use
+#endif
+
+#ifndef NOMINMAX
+#define NOMINMAX //prevents windows.h from including min/max and potentially interfering with std::min/std::max
+#endif
+
 #include <winsock2.h>
 #include <mswsock.h>
 #include <ws2tcpip.h>
+
 #else
 #include <sys/types.h>
 #include <sys/socket.h>

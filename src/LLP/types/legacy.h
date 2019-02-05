@@ -128,6 +128,10 @@ namespace LLP
         static uint64_t nLastGetBlocks;
 
 
+        /** The current node that is being used for fast sync.l **/
+        static BaseAddress addrFastSync;
+
+
         /** The number of times getblocks has timed out (to deal with unreliable NON-TRITIUM nodes). **/
         uint32_t nConsecutiveTimeouts;
 
@@ -252,7 +256,7 @@ namespace LLP
         void PushGetBlocks(const uint1024_t& hashBlockFrom, const uint1024_t& hashBlockTo)
         {
             /* Filter out duplicate requests. */
-            if(hashLastGetblocks == hashBlockFrom && nLastGetBlocks + 10 > runtime::timestamp())
+            if(hashLastGetblocks == hashBlockFrom && nLastGetBlocks + 1 > runtime::timestamp())
                 return;
 
             /* Update the last timestamp this was called. */

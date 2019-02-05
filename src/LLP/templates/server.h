@@ -51,6 +51,13 @@ namespace LLP
 
         std::atomic<bool> fDestruct;
 
+        std::condition_variable MANAGER;
+
+        /* Basic Socket Handle Variables. */
+        std::thread          LISTEN_THREAD_V4;
+        std::thread          LISTEN_THREAD_V6;
+        std::thread          METER_THREAD;
+
     public:
         uint16_t PORT;
         uint16_t MAX_THREADS;
@@ -94,6 +101,7 @@ namespace LLP
         , fLISTEN(fListen)
         , fMETER(fMeter)
         , fDestruct(false)
+        , MANAGER()
         , PORT(nPort)
         , MAX_THREADS(nMaxThreads)
         , DDOS_TIMESPAN(nTimespan)
@@ -144,10 +152,17 @@ namespace LLP
             }
 
 
+            if(fListen)
+            {
+                LISTEN_THREAD_V4 = std::thread(std::bind(&Server::ListeningThread, this, true));  //IPv4 Listener
+                LISTEN_THREAD_V6 = std::thread(std::bind(&Server::ListeningThread, this, false)); //IPv6 Listener
+            }
 
-            LISTEN_THREAD_V4 = std::thread(std::bind(&Server::ListeningThread, this, true));  //IPv4 Listener
-            LISTEN_THREAD_V6 = std::thread(std::bind(&Server::ListeningThread, this, false)); //IPv6 Listener
-            METER_THREAD = std::thread(std::bind(&Server::Meter, this));
+            if(fMeter)
+            {
+                METER_THREAD = std::thread(std::bind(&Server::Meter, this));
+            }
+
         }
 
         /** Default Destructor **/
@@ -163,7 +178,10 @@ namespace LLP
 
             /* Wait for address manager. */
             if(pAddressManager)
+            {
+                MANAGER.notify_all();
                 MANAGER_THREAD.join();
+            }
 
             /* Wait for meter thread. */
             METER_THREAD.join();
@@ -176,7 +194,7 @@ namespace LLP
             for(uint16_t index = 0; index < MAX_THREADS; ++index)
             {
                 delete DATA_THREADS[index];
-                DATA_THREADS[index] = 0;
+                DATA_THREADS[index] = nullptr;
             }
 
             /* Delete the DDOS entries. */
@@ -203,7 +221,7 @@ namespace LLP
          **/
         void Shutdown()
         {
-            DisconnectAll();
+            //DisconnectAll();
 
             if(pAddressManager)
                 pAddressManager->WriteDatabase();
@@ -364,8 +382,6 @@ namespace LLP
                        !dt->CONNECTIONS[nIndex]->Connected())
                         continue;
 
-                    LOCK(dt->MUTEX);
-
                     /* Push the active connection. */
                     if(!pBest || dt->CONNECTIONS[nIndex]->nNodeLatency < pBest->nNodeLatency)
                         pBest = dt->CONNECTIONS[nIndex];
@@ -447,6 +463,9 @@ namespace LLP
         }
 
 
+    private:
+
+
         /** Manager
          *
          *  Address Manager Thread.
@@ -460,6 +479,9 @@ namespace LLP
             /* Connect state. */
             uint8_t state = 0;
 
+            if(pAddressManager == nullptr)
+                return;
+
             /* Wait for data threads to startup. */
             while(DATA_THREADS.size() < MAX_THREADS)
                 runtime::sleep(1000);
@@ -467,15 +489,12 @@ namespace LLP
             /* Loop connections. */
             while(!fDestruct.load())
             {
-                runtime::sleep(1000);
+                runtime::sleep(100);
 
                 /* Assume the connect state is in a failed state. */
                 state = static_cast<uint8_t>(ConnectState::FAILED);
 
                 /* Pick a weighted random priority from a sorted list of addresses. */
-                if(pAddressManager == nullptr)
-                    continue;
-
                 if(pAddressManager->StochasticSelect(addr))
                 {
                     /* Check for connect to self. */
@@ -504,7 +523,9 @@ namespace LLP
                     {
                         state = static_cast<uint8_t>(ConnectState::CONNECTED);
 
-                        runtime::sleep(nSleepTime);
+                        /* Sleep in 1 second intervals for easy break on shutdown. */
+                        for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown; ++i)
+                            runtime::sleep(1000);
                     }
 
                     /* Update the address state. */
@@ -514,13 +535,6 @@ namespace LLP
                 }
             }
         }
-
-    private:
-
-        /* Basic Socket Handle Variables. */
-        std::thread          LISTEN_THREAD_V4;
-        std::thread          LISTEN_THREAD_V6;
-        std::thread          METER_THREAD;
 
 
         /** FindThread
@@ -565,7 +579,7 @@ namespace LLP
          **/
         void ListeningThread(bool fIPv4)
         {
-            int32_t hListenSocket;
+            int32_t hListenSocket = 0;
             SOCKET hSocket;
             BaseAddress addr;
             socklen_t len_v4 = sizeof(struct sockaddr_in);
@@ -643,7 +657,6 @@ namespace LLP
 #else
                             close(hSocket);
 #endif
-
                             continue;
                         }
 
@@ -683,7 +696,10 @@ namespace LLP
         bool BindListenPort(int32_t & hListenSocket, bool fIPv4 = true)
         {
             std::string strError = "";
+            /* Conditional declaration to avoid "unused variable" */
+            #if !defined WIN32 || defined SO_NOSIGPIPE
             int32_t nOne = 1;
+            #endif
 
             #ifdef WIN32
                 // Initialize Windows Sockets

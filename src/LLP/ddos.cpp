@@ -71,6 +71,9 @@ namespace LLP
     {
         LOCK(MUTEX);
 
+        if(nScore > 1)
+            debug::log(3, FUNCTION, "DDOS Penalty of +", nScore);
+
         int nTime = TIMER.Elapsed();
 
         /** If the Time has been greater than Moving Average Timespan, Set to Add Score on Time Overlap. **/
