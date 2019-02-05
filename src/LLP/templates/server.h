@@ -630,6 +630,15 @@ namespace LLP
                             continue;
 
                         dt->AddConnection(sockNew, DDOS_MAP[addr]);
+
+                        /* Update state in address manager. */
+                        uint8_t state = static_cast<uint8_t>(ConnectState::CONNECTED);
+
+                        /* Update the address state. */
+                        if(pAddressManager)
+                            pAddressManager->AddAddress(addr, state);
+
+                        /* Verbose output. */
                         debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ",  PORT);
                     }
                 }
