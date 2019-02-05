@@ -447,8 +447,7 @@ namespace LLP
             std::mutex CONDITION_MUTEX;
             while(!fDestruct.load())
             {
-                /* Sleep between attempts. */
-                runtime::sleep(1000);
+                runtime::sleep(100);
 
                 /* Assume the connect state is in a failed state. */
                 uint8_t state = static_cast<uint8_t>(ConnectState::FAILED);
@@ -471,7 +470,8 @@ namespace LLP
                     {
                         state = static_cast<uint8_t>(ConnectState::CONNECTED);
 
-                        for(int i = 0; i < nSleepTime / 1000 && !config::fShutdown; ++nSleepTime)
+                        /* Sleep in 1 second intervals for easy break on shutdown. */
+                        for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown; ++i)
                             runtime::sleep(1000);
                     }
 

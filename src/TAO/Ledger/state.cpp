@@ -43,7 +43,6 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-        std::mutex BlockState::STATE_MUTEX;
 
         /* Get the block state object. */
         bool GetLastState(BlockState &state, uint32_t nChannel)
@@ -61,7 +60,6 @@ namespace TAO
 
                 /* Iterate backwards. */
                 state = state.Prev();
-
                 if(!state)
                     return false;
             }
@@ -86,8 +84,6 @@ namespace TAO
         , hashNextBlock(0)
         , hashCheckpoint(0)
         {
-            //LOCK(BlockState::STATE_MUTEX);
-
             /* Construct a block state from legacy block tx set. */
             for(const auto & tx : block.vtx)
             {
