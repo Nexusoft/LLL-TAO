@@ -128,6 +128,10 @@ namespace LLP
         static uint64_t nLastGetBlocks;
 
 
+        /** The current node that is being used for fast sync.l **/
+        static BaseAddress addrFastSync;
+
+
         /** The number of times getblocks has timed out (to deal with unreliable NON-TRITIUM nodes). **/
         uint32_t nConsecutiveTimeouts;
 

@@ -46,6 +46,10 @@ namespace LLP
     uint64_t LegacyNode::nLastGetBlocks = 0;
 
 
+    /* The current node that is being used for fast sync */
+    BaseAddress LegacyNode::addrFastSync;
+
+
     /* Push a Message With Information about This Current Node. */
     void LegacyNode::PushVersion()
     {
@@ -259,6 +263,14 @@ namespace LLP
             static uint32_t nAsked = 0;
             if (fOUTGOING && nAsked == 0)
             {
+                /* Set the fast sync address. */
+                if(config::GetBoolArg("-fastsync"))
+                {
+                    addrFastSync = GetAddress();
+
+                    debug::log(0, NODE, "Fast sync address set");
+                }
+
                 nAsked++;
                 PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
             }
@@ -483,64 +495,25 @@ namespace LLP
             }
 
             /* Fast sync mode. */
-            if(config::GetBoolArg("-fastsync"))
+            if(config::GetBoolArg("-fastsync") && GetAddress() == addrFastSync)
             {
-                if (TAO::Ledger::ChainState::Synchronizing() && vInv.back().GetType() == MSG_BLOCK)
+                /* Handle if the chain is synchronizing and the last inventory is a block. */
+                if (TAO::Ledger::ChainState::Synchronizing() && vInv.back().GetType() == MSG_BLOCK && vInv.size() > 1)
                 {
-                    /* Single block inventory message signals to check from best chain. (If nothing in 10 seconds) */
-                    if(vInv.size() == 1 && TAO::Ledger::ChainState::hashBestChain == hashLastGetblocks && nLastGetBlocks + 10 < runtime::timestamp())
+                    /* Fast sync should switch to new node if time since request is over 10 seconds */
+                    if(nLastGetBlocks + 5 < runtime::timestamp())
                     {
-                        /* Special handle for unreliable leagacy nodes. */
-                        if(TAO::Ledger::ChainState::Synchronizing())
-                        {
-                            /* Check *FOR NOW* to deal with unreliable *LEGACY* seed node. */
-                            if(TAO::Ledger::ChainState::hashBestChain == hashLastGetblocks && hashLastGetblocks != 0)
-                                ++nConsecutiveTimeouts;
-                            else //reset consecutive timeouts
-                                nConsecutiveTimeouts = 0;
-
-                            /* Catch *FOR NOW* if seed node becomes unresponsive and gives bad data.
-                             * This happens in 3 or 4 places during synchronization if it is a
-                             * legacy node you are talking to. (height 1223722, 1226573 are some instances)
-                             */
-                            if(nConsecutiveTimeouts > 1)
-                            {
-                                /* Reset the timeouts. */
-                                nConsecutiveTimeouts = 0;
-
-                                /* Log that node is reconnecting. */
-                                debug::log(0, NODE, "node has become unresponsive during sync... reconnecting...");
-
-                                /* Disconnect and send TCP_RST. */
-                                Disconnect();
-
-                                /* Make the connection again. */
-                                if (Attempt(addr))
-                                {
-                                    /* Log successful reconnect. */
-                                    debug::log(1, NODE, "Connected to ", addr.ToString());
-
-                                    /* Set the connected flag. */
-                                    fCONNECTED = true;
-
-                                    /* Push a new version message. */
-                                    PushVersion();
-
-                                    /* Ask for the blocks again nicely. */
-                                    PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
-
-                                    return true;
-                                }
-                                else
-                                    return false;
-                            }
-                        }
-
                         /* Normal case of asking for a getblocks inventory message. */
-                        debug::log(0, NODE, "fast sync node timed out, trying a new node from best");
                         LegacyNode* pnode = LEGACY_SERVER->GetConnection();
                         if(pnode)
-                            PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+                        {
+                            /* Switch to a new node for fast sync. */
+                            addrFastSync = pnode->GetAddress();
+                            pnode->PushGetBlocks(vInv.back().GetHash(), uint1024_t(0));
+
+                            /* Debug output. */
+                            debug::log(0, NODE, "fast sync node timed out, switching to ", addrFastSync.ToStringIP());
+                        }
                     }
 
                     /* Otherwise ask for another batch of blocks from the end of this inventory. */
