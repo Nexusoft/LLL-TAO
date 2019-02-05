@@ -367,7 +367,9 @@ namespace LLP
         || nLastUpdate + config::GetArg("-dnsupdate", 86400) <= runtime::unifiedtimestamp())
         {
             /* Log out that DNS is updating. */
-            debug::log(0, "DNS cache is out of date by ", (runtime::unifiedtimestamp() - (nLastUpdate + config::GetArg("-dnsupdate", 86400))), " seconds... refreshing");
+            debug::log(0, "DNS cache is out of date by ",
+                (runtime::unifiedtimestamp() - (nLastUpdate + config::GetArg("-dnsupdate", 86400))),
+                " seconds... refreshing");
 
             /* Add the DNS seeds for this server. */
             runtime::timer timer;
@@ -380,7 +382,8 @@ namespace LLP
             pDatabase->WriteLastUpdate();
 
             /* Log the time it took to resolve DNS items. */
-            debug::log(0, "DNS cache updated in ", timer.ElapsedMilliseconds(), " ms");
+            debug::log(0, "DNS cache updated in ",
+                timer.ElapsedMilliseconds(), " ms");
         }
     }
 
