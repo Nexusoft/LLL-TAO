@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/walletdb.h>
 #include <Legacy/include/money.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/API/include/lisp.h>
 
 #include <vector>
 //#include <TAO/Ledger/include/global.h>
@@ -76,6 +77,20 @@ namespace TAO
             obj["connections"] = GetTotalConnectionCount();
             obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToString() : std::string());
             obj["ip"] = config::GetBoolArg("-beta") ? LLP::LEGACY_SERVER->addrThisNode.ToStringIP() : LLP::TRITIUM_SERVER->addrThisNode.ToStringIP();
+
+            // get the EID's if using LISP
+            try
+            {
+                json::json jsonEIDs = TAO::API::lisp.MyEIDs(json::json(), false);
+                if( jsonEIDs.is_object() && jsonEIDs["eids"].is_array())
+                    obj["eids"] = jsonEIDs["eids"];
+            }
+            catch(const APIException& e)
+            {
+                /* This is a no-op because the MyEIDs API call will throw an exception if lisp is not running */
+            }
+            
+            
 
             obj["testnet"] = config::fTestNet;
             obj["keypoololdest"] = (int64_t)Legacy::Wallet::GetInstance().GetKeyPool().GetOldestKeyPoolTime();

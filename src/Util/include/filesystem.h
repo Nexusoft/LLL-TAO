@@ -119,5 +119,24 @@ namespace filesystem
      **/
     std::string system_complete(const std::string &path);
 
+    /** GetPidFile
+    *
+    *  Returns the full pathname of the PID file 
+    * 
+    *  @return The complete path name of the PID file
+    *
+    **/
+    std::string GetPidFile();
+
+    /** CreatePidFile
+    *
+    *  Creates a PID file on disk for the provided PID
+    *
+    *  @param[in] path The path of the PID file
+    *  @param[in] pid The PID to create the PID file for
+    *
+    **/
+    void CreatePidFile(const std::string &path, pid_t pid);
+
 }
 #endif
