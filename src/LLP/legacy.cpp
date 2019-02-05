@@ -713,6 +713,8 @@ namespace LLP
     /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
     bool LegacyNode::Process(const Legacy::LegacyBlock& block, LegacyNode* pnode)
     {
+        LOCK(PROCESSING_MUTEX);
+
         /* Check if the block is valid. */
         uint1024_t hash = block.GetHash();
         if(!block.Check())
@@ -723,16 +725,12 @@ namespace LLP
         }
 
         /* Erase from orphan queue. */
-        { LOCK(PROCESSING_MUTEX);
-            if(mapLegacyOrphans.count(hash))
-                mapLegacyOrphans.erase(hash);
-        }
+        if(mapLegacyOrphans.count(hash))
+            mapLegacyOrphans.erase(hash);
 
         /* Check for orphan. */
         if(!LLD::legDB->HasBlock(block.hashPrevBlock))
         {
-            LOCK(PROCESSING_MUTEX);
-
             /* Skip if already in orphan queue. */
             if(!mapLegacyOrphans.count(block.hashPrevBlock))
                 mapLegacyOrphans[block.hashPrevBlock] = block;
@@ -803,55 +801,50 @@ namespace LLP
             return true;
         }
 
-        { LOCK(PROCESSING_MUTEX);
+        /* Create the Block State. */
+        TAO::Ledger::BlockState state(block);
 
-            /* Create the Block State. */
-            TAO::Ledger::BlockState state(block);
+        /* Check if it exists first */
+        if(LLD::legDB->HasBlock(block.GetHash()))
+            return true;
 
-            /* Check if it exists first */
-            if(LLD::legDB->HasBlock(block.GetHash()))
+        /* Check if valid in the chain. */
+        if(!block.Accept())
+        {
+            debug::log(3, FUNCTION, "block failed to be added to chain");
+
+            return true;
+        }
+
+        /* Process the block state. */
+        if(!state.Accept())
+        {
+            debug::log(3, FUNCTION, "block state failed processing");
+
+            return true;
+        }
+
+        /* Process orphan if found. */
+        uint32_t nOrphans = 0;
+        while(mapLegacyOrphans.count(hash))
+        {
+            Legacy::LegacyBlock& orphan = mapLegacyOrphans[hash];
+
+            debug::log(0, FUNCTION, "processing ORPHAN prev=", orphan.GetHash().ToString().substr(0, 20), " size=",mapLegacyOrphans.size());
+            TAO::Ledger::BlockState stateOrphan(orphan);
+            if(!stateOrphan.Accept())
                 return true;
 
-            /* Check if valid in the chain. */
-            if(!block.Accept())
-            {
-                debug::log(3, FUNCTION, "block failed to be added to chain");
+            mapLegacyOrphans.erase(hash);
+            hash = stateOrphan.GetHash();
 
-                return true;
-            }
+            ++nOrphans;
+        }
 
-            /* Process the block state. */
-            if(!state.Accept())
-            {
-                debug::log(3, FUNCTION, "block state failed processing");
-
-                return true;
-            }
-
-            /* Process orphan if found. */
-            uint32_t nOrphans = 0;
-            while(mapLegacyOrphans.count(hash))
-            {
-                Legacy::LegacyBlock& orphan = mapLegacyOrphans[hash];
-
-                debug::log(0, FUNCTION, "processing ORPHAN prev=", orphan.GetHash().ToString().substr(0, 20), " size=",mapLegacyOrphans.size());
-                TAO::Ledger::BlockState stateOrphan(orphan);
-                if(!stateOrphan.Accept())
-                    return true;
-
-                mapLegacyOrphans.erase(hash);
-                hash = stateOrphan.GetHash();
-
-                ++nOrphans;
-            }
-
-            /* Handle for orphans. */
-            if(nOrphans > 0)
-            {
-                debug::log(0, FUNCTION, "processed ", nOrphans, " ORPHANS");
-            }
-
-
+        /* Handle for orphans. */
+        if(nOrphans > 0)
+        {
+            debug::log(0, FUNCTION, "processed ", nOrphans, " ORPHANS");
         }
 
         return true;

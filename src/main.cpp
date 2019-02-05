@@ -341,6 +341,7 @@ int main(int argc, char** argv)
         debug::log(0, FUNCTION, "Shutting down Time Server");
 
         LLP::TIME_SERVER->Shutdown();
+
         delete LLP::TIME_SERVER;
     }
 

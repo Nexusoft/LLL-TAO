@@ -84,16 +84,12 @@ namespace LLP
          **/
         virtual ~DataThread<ProtocolType>()
         {
-            DisconnectAll();
-            
             fDestruct = true;
 
             CONDITION.notify_all();
             DATA_THREAD.join();
 
-            for(auto& CONNECTION : CONNECTIONS)
-                if(CONNECTION)
-                    delete CONNECTION;
+            DisconnectAll();
         }
 
 
@@ -193,7 +189,7 @@ namespace LLP
 
             uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
             for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
-                disconnect_remove_event(nIndex, DISCONNECT_FORCE);
+                remove(nIndex);
         }
 
 
@@ -210,14 +206,14 @@ namespace LLP
             std::mutex CONDITION_MUTEX;
 
             /* The main connection handler loop. */
-            while(!fDestruct.load())
+            while(!fDestruct.load() && !config::fShutdown)
             {
                 /* Keep thread from consuming too many resources. */
                 runtime::sleep(1);
 
                 /* Keep data threads waiting for work. */
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-                CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || nConnections.load() > 0; });
+                CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown || nConnections.load() > 0; });
 
                 /* Check for close. */
                 if(fDestruct.load())
@@ -358,11 +354,7 @@ namespace LLP
 
             /* Free the memory. */
             if(node)
-            {
-                node->Disconnect();
-
                 delete node;
-            }
 
             --nConnections;
 

@@ -51,6 +51,8 @@ namespace LLP
 
         std::atomic<bool> fDestruct;
 
+        std::condition_variable MANAGER;
+
     public:
         uint16_t PORT;
         uint32_t MAX_THREADS;
@@ -94,6 +96,7 @@ namespace LLP
         , fLISTEN(fListen)
         , fMETER(fMeter)
         , fDestruct(false)
+        , MANAGER()
         , PORT(nPort)
         , MAX_THREADS(nMaxThreads)
         , DDOS_TIMESPAN(nTimespan)
@@ -143,7 +146,10 @@ namespace LLP
 
             /* Wait for address manager. */
             if(pAddressManager)
+            {
+                MANAGER.notify_all();
                 MANAGER_THREAD.join();
+            }
 
             /* Wait for meter thread. */
             METER_THREAD.join();
@@ -156,7 +162,7 @@ namespace LLP
             for(int32_t index = 0; index < MAX_THREADS; ++index)
             {
                 delete DATA_THREADS[index];
-                DATA_THREADS[index] = 0;
+                DATA_THREADS[index] = nullptr;
             }
 
             /* Delete the DDOS entries. */
@@ -440,8 +446,10 @@ namespace LLP
             BaseAddress addr;
 
             /* Loop connections. */
+            std::mutex CONDITION_MUTEX;
             while(!fDestruct.load())
             {
+                /* Sleep between attempts. */
                 runtime::sleep(1000);
 
                 /* Assume the connect state is in a failed state. */
@@ -455,10 +463,7 @@ namespace LLP
                 {
                     /* Check for connect to self. */
                     if(addr.ToStringIP() == addrThisNode.ToStringIP())
-                    {
-                        runtime::sleep(1000);
                         continue;
-                    }
 
                     /* Attempt the connection. */
                     debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
@@ -468,7 +473,8 @@ namespace LLP
                     {
                         state = static_cast<uint8_t>(ConnectState::CONNECTED);
 
-                        runtime::sleep(nSleepTime);
+                        for(int i = 0; i < nSleepTime / 1000 && !config::fShutdown; ++nSleepTime)
+                            runtime::sleep(1000);
                     }
 
                     /* Update the address state. */
