@@ -31,6 +31,10 @@ if ($v4_eid == "240.0.x.x") then
 endif
 
 #
+# Go into directory where RL-seed resides.
+#
+cd `dirname $0`
+#
 # If the lisp.config file already provisioned, then just start the lispers.net
 # LISP subsystem.
 #

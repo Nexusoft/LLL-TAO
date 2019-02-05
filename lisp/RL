@@ -18,6 +18,11 @@ set device = "eth0"
 set hostname = `hostname`
 
 #
+# Go into directory where RL resides.
+#
+cd `dirname $0`
+e
+#
 # If the lisp.config file already provisioned, then just start the lispers.net
 # LISP subsystem.
 #
