@@ -26,13 +26,21 @@ SOFTWARE.
 #define _CPPMMAPLIB_MMAPLIB_H_
 
 #if defined(_WIN32)
+
 /* Begin Nexus update */
+#ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0600    //targeting minimum Windows Vista version for winsock2, etc.
+#endif
+
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN 1  //prevents windows.h from including winsock.h and messing up winsock2.h definitions we use
+#endif
+
 #ifndef NOMINMAX
-#define NOMINMAX
+#define NOMINMAX //prevents windows.h from including min/max and potentially interfering with std::min/std::max
 #endif
 /* End Nexus update */
+
 #include <windows.h>
 #else
 #include <fcntl.h>

@@ -32,11 +32,19 @@ ________________________________________________________________________________
 
 #else
 
+
+#ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0600    //targeting minimum Windows Vista version for winsock2, etc.
-#define WIN32_LEAN_AND_MEAN 1  //prevents windows.h from including winsock.h and messing up winsock2.h definitions we use
-#ifndef NOMINMAX
-#define NOMINMAX
 #endif
+
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN 1  //prevents windows.h from including winsock.h and messing up winsock2.h definitions we use
+#endif
+
+#ifndef NOMINMAX
+#define NOMINMAX //prevents windows.h from including min/max and potentially interfering with std::min/std::max
+#endif
+
 #include <windows.h>
 
 #endif
@@ -198,7 +206,13 @@ namespace debug
         {
             /* Restart the file with some of the end */
             char pch[200000];
-            fseek(file, -sizeof(pch), SEEK_END);
+
+            /* define pchSize instead of passing -sizeof() directly to fseek
+               fseek size parameter is long int, which on Windows is 32-bit and throws compile warning for conversion overflow 
+               if you pass -sizeof() which is type size_t, or 64 bit on Windows. So we convert the positive, then pass negative of it */
+            uint32_t pchSize = sizeof(pch);
+            fseek(file, -pchSize, SEEK_END);
+            
             int nBytes = fread(pch, 1, sizeof(pch), file);
             fclose(file);
 

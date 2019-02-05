@@ -529,7 +529,7 @@ namespace LLP
          **/
         void ListeningThread(bool fIPv4)
         {
-            int32_t hListenSocket;
+            int32_t hListenSocket = 0;
             SOCKET hSocket;
             BaseAddress addr;
             socklen_t len_v4 = sizeof(struct sockaddr_in);
@@ -647,7 +647,10 @@ namespace LLP
         bool BindListenPort(int32_t & hListenSocket, bool fIPv4 = true)
         {
             std::string strError = "";
+            /* Conditional declaration to avoid "unused variable" */
+            #if !defined WIN32 || defined SO_NOSIGPIPE
             int32_t nOne = 1;
+            #endif
 
             #ifdef WIN32
                 // Initialize Windows Sockets

@@ -18,11 +18,19 @@ ________________________________________________________________________________
 #include <string>
 
 #ifdef WIN32
+
+#ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0600    //targeting minimum Windows Vista version for winsock2, etc.
-#define WIN32_LEAN_AND_MEAN 1  //prevents windows.h from including winsock.h and messing up winsock2.h definitions we use
-#ifndef NOMINMAX
-#define NOMINMAX
 #endif
+
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN 1  //prevents windows.h from including winsock.h and messing up winsock2.h definitions we use
+#endif
+
+#ifndef NOMINMAX
+#define NOMINMAX //prevents windows.h from including min/max and potentially interfering with std::min/std::max
+#endif
+
 #include <windows.h>
 /** This is used to attempt to keep keying material out of swap
  *  Note that VirtualLock does not provide this as a guarantee on Windows,
