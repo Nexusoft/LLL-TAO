@@ -40,7 +40,12 @@ namespace Legacy
 
         TAO::Ledger::BlockState state;
         if(!LLD::legDB->ReadBlock(hashBlock, state))
+        {
+            if(hashBlock != TAO::Ledger::ChainState::hashBestChain)
+                vHave.push_back(TAO::Ledger::ChainState::hashBestChain);
+
             return;
+        }
 
         Set(state);
     }
