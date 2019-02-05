@@ -504,12 +504,12 @@ namespace LLP
                     if(nLastGetBlocks + 5 < runtime::timestamp())
                     {
                         /* Normal case of asking for a getblocks inventory message. */
-                        LegacyNode* pnode = LEGACY_SERVER->GetConnection();
-                        if(pnode)
+                        //LegacyNode* pnode = LEGACY_SERVER->GetConnection();
+                        //if(pnode)
                         {
                             /* Switch to a new node for fast sync. */
-                            addrFastSync = pnode->GetAddress();
-                            pnode->PushGetBlocks(vInv.back().GetHash(), uint1024_t(0));
+                            addrFastSync = GetAddress();
+                            PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
 
                             /* Debug output. */
                             debug::log(0, NODE, "fast sync node timed out, switching to ", addrFastSync.ToStringIP());
@@ -755,7 +755,7 @@ namespace LLP
         }
 
         /* Detect large orphan chains and ask for new blocks from origin again. */
-        if(mapLegacyOrphans.size() > 500)
+        if(mapLegacyOrphans.size() > 1000)
         {
             /* Normal case of asking for a getblocks inventory message. */
             LegacyNode* pBest = LEGACY_SERVER->GetConnection();
