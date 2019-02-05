@@ -746,7 +746,9 @@ namespace LLP
                 if(pBest)
                     pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
             }
-            else if(!config::GetBoolArg("-fastsync"))
+
+            /* Fast sync block requests. */
+            if(!config::GetBoolArg("-fastsync"))
             {
                 if(!TAO::Ledger::ChainState::Synchronizing() ||
                     TAO::Ledger::ChainState::hashBestChain != LegacyNode::hashLastGetblocks || LegacyNode::nLastGetBlocks + 10 < runtime::timestamp())
@@ -841,10 +843,18 @@ namespace LLP
             ++nOrphans;
         }
 
-        /* Handle for orphans. */
-        if(nOrphans > 0)
+        /* Detect large orphan chains and ask for new blocks from origin again. */
+        if(mapLegacyOrphans.size() > 500)
         {
             debug::log(0, FUNCTION, "processed ", nOrphans, " ORPHANS");
+
+            /* Normal case of asking for a getblocks inventory message. */
+            LegacyNode* pBest = LEGACY_SERVER->GetConnection();
+            if(pBest)
+                pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+
+            /* Clear the memory to prevent DoS attacks. */
+            mapLegacyOrphans.clear();
         }
 
         return true;
