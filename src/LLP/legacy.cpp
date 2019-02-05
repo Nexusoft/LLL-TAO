@@ -498,10 +498,10 @@ namespace LLP
             if(config::GetBoolArg("-fastsync") && GetAddress() == addrFastSync)
             {
                 /* Handle if the chain is synchronizing and the last inventory is a block. */
-                if (TAO::Ledger::ChainState::Synchronizing() && vInv.back().GetType() == MSG_BLOCK && vInv.size() > 1)
+                if (TAO::Ledger::ChainState::Synchronizing() && vInv.back().GetType() == MSG_BLOCK)
                 {
                     /* Fast sync should switch to new node if time since request is over 10 seconds */
-                    if(nLastGetBlocks + 5 < runtime::timestamp())
+                    if(nLastGetBlocks + 10 < runtime::timestamp())
                     {
                         /* Normal case of asking for a getblocks inventory message. */
                         //LegacyNode* pnode = LEGACY_SERVER->GetConnection();
