@@ -60,7 +60,7 @@ namespace TAO
                 return std::string(
                     "keypoolrefill"
                     " - Fills the keypool, requires wallet passphrase to be set.");
-            
+
             if (Legacy::Wallet::GetInstance().IsLocked())
                 throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
@@ -86,11 +86,11 @@ namespace TAO
                     " - Stores the wallet decryption key in memory for [timeout] seconds."
                     " mintonly is optional true/false allowing only block minting. timeout is ignored if mintonly is true / 1");
 
-            if (!Legacy::Wallet::GetInstance().IsCrypted())
-                throw APIException(-15, "Error: running with an unencrypted wallet, but walletpassphrase was called.");
-
             if (!Legacy::Wallet::GetInstance().IsLocked())
                 throw APIException(-17, "Error: Wallet is already unlocked, use walletlock first if need to change unlock settings.");
+
+            if (!Legacy::Wallet::GetInstance().IsCrypted())
+                throw APIException(-15, "Error: running with an unencrypted wallet, but walletpassphrase was called.");
 
             // Note that the walletpassphrase is stored in params[0]
             SecureString strWalletPass;
@@ -123,7 +123,6 @@ namespace TAO
                 return std::string(
                     "walletpassphrase <passphrase> [timeout]"
                     " - Stores the wallet decryption key in memory for [timeout] seconds.");
-
 
 
             return "";

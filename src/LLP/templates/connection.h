@@ -345,6 +345,10 @@ namespace LLP
         : BaseConnection(SOCKET_IN, DDOS_IN, isDDOS, fOutgoing) { }
 
 
+        /** Default destructor **/
+        virtual ~Connection() { }
+
+
         /** ReadPacket
          *
          *  Regular Connection Read Packet Method.

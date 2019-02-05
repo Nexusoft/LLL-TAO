@@ -103,6 +103,9 @@ namespace Legacy
 
         /* Populate the Block Data. */
         std::vector<uint512_t> vMerkleTree;
+        for(const auto& tx : newBlock.vtx)
+            vMerkleTree.push_back(tx.GetHash());
+
         newBlock.hashPrevBlock  = prevBlockState.GetHash();
         newBlock.hashMerkleRoot = newBlock.BuildMerkleTree(vMerkleTree);
         newBlock.nChannel       = nChannel;

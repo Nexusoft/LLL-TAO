@@ -14,8 +14,15 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TYPES_MINER_H
 
 #include <LLP/templates/connection.h>
+#include <TAO/Ledger/types/block.h>
 
-#include <TAO/Ledger/types/tritium.h>
+
+
+namespace Legacy
+{
+    class ReserveKey;
+    class LegacyBlock;
+}
 
 namespace LLP
 {
@@ -27,17 +34,24 @@ namespace LLP
      **/
     class Miner : public Connection
     {
-    public:
+    private:
         /** The map to hold the list of blocks that are being mined. */
-        std::map<uint512_t, TAO::Ledger::TritiumBlock> mapBlocks;
+        std::map<uint512_t, Legacy::LegacyBlock> mapBlocks;
 
+        /** the mining key for block rewards to send **/
+        Legacy::ReserveKey *pMiningKey;
 
-        /** The current channel mining for. */
-        uint32_t nChannel;
-
+        /** block to get and iterate if requesting more than one block **/
+        Legacy::LegacyBlock *pBaseBlock;
 
         /** The current best block. **/
-        uint1024_t hashBestChain;
+        uint32_t nBestHeight;
+
+        /** Subscribe to display how many blocks connection subscribed to **/
+        uint16_t nSubscribed;
+
+        /** The current channel mining for. */
+        uint8_t nChannel;
 
         enum
         {
@@ -86,6 +100,9 @@ namespace LLP
             CLOSE    = 254
         };
 
+
+    public:
+
         /** Name
          *
          *  Returns a string for the name of this type of Node.
@@ -95,43 +112,15 @@ namespace LLP
 
 
         /** Default Constructor **/
-        Miner()
-        : Connection()
-        , mapBlocks()
-        , nChannel(0)
-        , hashBestChain(0)
-        {
-
-        }
+        Miner();
 
 
         /** Constructor **/
-        Miner( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
-        : Connection( SOCKET_IN, DDOS_IN )
-        , mapBlocks()
-        , nChannel(0)
-        , hashBestChain(0)
-        {
+        Miner( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false );
 
-        }
 
         /** Default Destructor **/
-        ~Miner()
-        {
-        }
-
-
-        /** Clear
-         *
-         *  Clear the blocks map.
-         *
-         **/
-        void Clear()
-        {
-            mapBlocks.clear();
-
-            debug::log(2, FUNCTION, "new block, clearing maps.");
-        }
+        virtual ~Miner();
 
 
         /** Event
@@ -160,10 +149,43 @@ namespace LLP
          *  Convert the Header of a Block into a Byte Stream for
          *  Reading and Writing Across Sockets.
          *
-         *  @param[in] BLOCK A Tritium block to serialize.
+         *  @param[in] BLOCK A block to serialize.
          *
          **/
-        std::vector<uint8_t> SerializeBlock(TAO::Ledger::TritiumBlock BLOCK);
+        std::vector<uint8_t> SerializeBlock(const TAO::Ledger::Block &BLOCK);
+
+    private:
+
+        /** respond
+         *
+         *  Sends a packet response.
+         *
+         *  @param[in] header_response The header message to send.
+         *  @param[in] length The number of bytes for packet data.
+         *  @param[in] data The packet data to send.
+         *
+         **/
+        void respond(uint8_t header, uint32_t length = 0, const std::vector<uint8_t> &data = std::vector<uint8_t>());
+
+
+        /** check_best_height
+         *
+         *  Checks the current height index and updates best height. It will clear
+         *  the block map if the height is outdated.
+         *
+         *  @return Returns true if best height was outdated, false otherwise.
+         *
+         **/
+         bool check_best_height();
+
+
+         /** clear_map
+          *
+          *  Clear the blocks map.
+          *
+          **/
+         void clear_map();
+
     };
 }
 

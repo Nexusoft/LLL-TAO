@@ -332,7 +332,7 @@ public:
 
     /** Converts the corresponding uint32_teger into bytes.
         Used for serializing in Miner LLP **/
-    const std::vector<uint8_t> GetBytes()
+    const std::vector<uint8_t> GetBytes() const
     {
         std::vector<uint8_t> DATA;
 
@@ -401,6 +401,11 @@ public:
     void Unserialize(Stream& s, int nSerType, int nVersion)
     {
         s.read((char*)pn, sizeof(pn));
+    }
+
+    uint32_t high_bits(uint32_t mask)
+    {
+      return pn[WIDTH-1] & mask;
     }
 
 

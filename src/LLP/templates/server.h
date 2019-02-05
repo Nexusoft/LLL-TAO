@@ -482,7 +482,7 @@ namespace LLP
                     if(addr.ToStringIP() == addrThisNode.ToStringIP())
                     {
                         runtime::sleep(1000);
-                        debug::log(3, FUNCTION, "Cannot self-connect, removing address ", addr.ToString());
+                        debug::log(3, FUNCTION, ProtocolType::Name(), " Cannot self-connect, removing address ", addr.ToString());
                         pAddressManager->RemoveAddress(addr);
                         continue;
                     }
@@ -491,7 +491,7 @@ namespace LLP
                     if(!addr.IsValid())
                     {
                         runtime::sleep(nSleepTime);
-                        debug::log(3, FUNCTION, "Invalid address, removing address", addr.ToString());
+                        debug::log(3, FUNCTION, ProtocolType::Name(), " Invalid address, removing address", addr.ToString());
                         pAddressManager->RemoveAddress(addr);
                         continue;
                     }
@@ -510,7 +510,7 @@ namespace LLP
                     /* Update the address state. */
                     pAddressManager->AddAddress(addr, state);
 
-                    debug::log(3, FUNCTION, pAddressManager->ToString());
+                    debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
                 }
             }
         }

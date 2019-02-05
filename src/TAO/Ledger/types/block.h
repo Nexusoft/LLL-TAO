@@ -103,6 +103,12 @@ namespace TAO
             , nTime(runtime::unifiedtimestamp()) { }
 
 
+            /** Default Destructor **/
+            virtual ~Block()
+            {
+            }
+
+
             /** SetNull
              *
              *  Set the block to Null state.

@@ -101,6 +101,11 @@ namespace TAO
 
             }
 
+            /** Default Destructor **/
+            virtual ~TritiumBlock()
+            {
+            }
+
 
             /** Check
              *
