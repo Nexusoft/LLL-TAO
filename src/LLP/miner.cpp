@@ -78,136 +78,136 @@ namespace LLP
      **/
     void Miner::Event(uint8_t EVENT, uint32_t LENGTH)
     {
+
         /* Handle any DDOS Packet Filters. */
-        if(EVENT == EVENT_HEADER)
+        switch(EVENT)
         {
-            if(fDDOS)
+            case EVENT_HEADER:
             {
-                Packet PACKET   = this->INCOMING;
-                if(PACKET.HEADER == BLOCK_DATA)
-                    DDOS->Ban();
+                if(fDDOS)
+                {
+                    Packet PACKET   = this->INCOMING;
+                    if(PACKET.HEADER == BLOCK_DATA)
+                        DDOS->Ban();
 
-                if(PACKET.HEADER == SUBMIT_BLOCK && PACKET.LENGTH > 72)
-                    DDOS->Ban();
+                    if(PACKET.HEADER == SUBMIT_BLOCK && PACKET.LENGTH > 72)
+                        DDOS->Ban();
 
-                if(PACKET.HEADER == BLOCK_HEIGHT)
-                    DDOS->Ban();
+                    if(PACKET.HEADER == BLOCK_HEIGHT)
+                        DDOS->Ban();
 
-                if(PACKET.HEADER == SET_CHANNEL && PACKET.LENGTH > 4)
-                    DDOS->Ban();
+                    if(PACKET.HEADER == SET_CHANNEL && PACKET.LENGTH > 4)
+                        DDOS->Ban();
 
-                if(PACKET.HEADER == BLOCK_REWARD)
-                    DDOS->Ban();
+                    if(PACKET.HEADER == BLOCK_REWARD)
+                        DDOS->Ban();
 
-                if(PACKET.HEADER == SET_COINBASE && PACKET.LENGTH > 20 * 1024)
-                    DDOS->Ban();
+                    if(PACKET.HEADER == SET_COINBASE && PACKET.LENGTH > 20 * 1024)
+                        DDOS->Ban();
 
-                if(PACKET.HEADER == GOOD_BLOCK)
-                    DDOS->Ban();
+                    if(PACKET.HEADER == GOOD_BLOCK)
+                        DDOS->Ban();
 
-                if(PACKET.HEADER == ORPHAN_BLOCK)
-                    DDOS->Ban();
+                    if(PACKET.HEADER == ORPHAN_BLOCK)
+                        DDOS->Ban();
 
-                if(PACKET.HEADER == CHECK_BLOCK && PACKET.LENGTH > 128)
-                    DDOS->Ban();
+                    if(PACKET.HEADER == CHECK_BLOCK && PACKET.LENGTH > 128)
+                        DDOS->Ban();
 
-                if(PACKET.HEADER == SUBSCRIBE && PACKET.LENGTH > 4)
-                    DDOS->Ban();
+                    if(PACKET.HEADER == SUBSCRIBE && PACKET.LENGTH > 4)
+                        DDOS->Ban();
 
-                if(PACKET.HEADER == BLOCK_ACCEPTED)
-                    DDOS->Ban();
+                    if(PACKET.HEADER == BLOCK_ACCEPTED)
+                        DDOS->Ban();
 
-                if(PACKET.HEADER == BLOCK_REJECTED)
-                    DDOS->Ban();
+                    if(PACKET.HEADER == BLOCK_REJECTED)
+                        DDOS->Ban();
 
-                if(PACKET.HEADER == COINBASE_SET)
-                    DDOS->Ban();
+                    if(PACKET.HEADER == COINBASE_SET)
+                        DDOS->Ban();
 
-                if(PACKET.HEADER == COINBASE_FAIL)
-                    DDOS->Ban();
+                    if(PACKET.HEADER == COINBASE_FAIL)
+                        DDOS->Ban();
 
-                if(PACKET.HEADER == NEW_ROUND)
-                    DDOS->Ban();
+                    if(PACKET.HEADER == NEW_ROUND)
+                        DDOS->Ban();
 
-                if(PACKET.HEADER == OLD_ROUND)
-                    DDOS->Ban();
+                    if(PACKET.HEADER == OLD_ROUND)
+                        DDOS->Ban();
 
+                }
             }
-        }
 
-
-        /* Handle for a Packet Data Read. */
-        if(EVENT == EVENT_PACKET)
-            return;
-
-
-        /* On Generic Event, Broadcast new block if flagged. */
-        if(EVENT == EVENT_GENERIC)
-        {
-            if(nSubscribed == 0)
+            /* Handle for a Packet Data Read. */
+            case EVENT_PACKET:
                 return;
 
-            if(!check_best_height())
+            /* On Generic Event, Broadcast new block if flagged. */
+            case EVENT_GENERIC:
             {
-                respond(NEW_ROUND);
-
-                uint32_t s = static_cast<uint32_t>(mapBlocks.size());
-
-                //TODO: hook up blocks to legacy coinbase for pool server
-
-                /*create a new base block */
-                if(!Legacy::CreateLegacyBlock(*pMiningKey, nChannel, s + 1, *pBaseBlock))
-                {
-                    debug::error(FUNCTION, "EVENT_GENERIC: failed to create a new block.");
-                    return;
-                }
-
-                if(pBaseBlock->IsNull())
+                if(nSubscribed == 0)
                     return;
 
-                for(uint32_t i = 0; i < nSubscribed; ++i)
+                if(!check_best_height())
                 {
-                    Legacy::LegacyBlock new_block = *pBaseBlock;
+                    respond(NEW_ROUND);
 
-                    new_block.vtx[0].vin[0].scriptSig = (Legacy::Script() <<  s * 513513512151);
+                    uint32_t s = static_cast<uint32_t>(mapBlocks.size());
 
-                    /* Rebuild the merkle tree. */
-                    std::vector<uint512_t> vMerkleTree;
-                    for(const auto& tx : new_block.vtx)
-                        vMerkleTree.push_back(tx.GetHash());
-                    new_block.hashMerkleRoot = new_block.BuildMerkleTree(vMerkleTree);
+                    //TODO: hook up blocks to legacy coinbase for pool server
 
-                    /* Update the time. */
-                    new_block.UpdateTime();
+                    /*create a new base block */
+                    if(!Legacy::CreateLegacyBlock(*pMiningKey, nChannel, s + 1, *pBaseBlock))
+                    {
+                        debug::error(FUNCTION, "EVENT_GENERIC: failed to create a new block.");
+                        return;
+                    }
 
-                    /* Store the new block in the map */
-                    mapBlocks[new_block.hashMerkleRoot] = new_block;
+                    if(pBaseBlock->IsNull())
+                        return;
 
-                    /* Serialize the block data */
-                    std::vector<uint8_t> data = SerializeBlock(new_block);
-                    uint32_t len = static_cast<uint32_t>(data.size());
+                    for(uint32_t i = 0; i < nSubscribed; ++i)
+                    {
+                        Legacy::LegacyBlock new_block = *pBaseBlock;
 
-                    /* Create and send a packet response */
-                    respond(BLOCK_DATA, len, data);
+                        new_block.vtx[0].vin[0].scriptSig = (Legacy::Script() <<  s * 513513512151);
 
-                    debug::log(2, FUNCTION, "***** Mining LLP: Sent Block ",
-                        new_block.GetHash().ToString().substr(0, 20), " to Worker.");
+                        /* Rebuild the merkle tree. */
+                        std::vector<uint512_t> vMerkleTree;
+                        for(const auto& tx : new_block.vtx)
+                            vMerkleTree.push_back(tx.GetHash());
+                        new_block.hashMerkleRoot = new_block.BuildMerkleTree(vMerkleTree);
+
+                        /* Update the time. */
+                        new_block.UpdateTime();
+
+                        /* Store the new block in the map */
+                        mapBlocks[new_block.hashMerkleRoot] = new_block;
+
+                        /* Serialize the block data */
+                        std::vector<uint8_t> data = SerializeBlock(new_block);
+                        uint32_t len = static_cast<uint32_t>(data.size());
+
+                        /* Create and send a packet response */
+                        respond(BLOCK_DATA, len, data);
+
+                        debug::log(2, FUNCTION, "***** Mining LLP: Sent Block ",
+                            new_block.GetHash().ToString().substr(0, 20), " to Worker.");
+                    }
+
+
                 }
-
-
+                return;
             }
-            return;
+
+            /* On Connect Event, Assign the Proper Daemon Handle. */
+            case EVENT_CONNECT:
+                return;
+
+            /* On Disconnect Event, Reduce the Connection Count for Daemon */
+            case EVENT_DISCONNECT:
+                return;
         }
-
-
-
-        /* On Connect Event, Assign the Proper Daemon Handle. */
-        if(EVENT == EVENT_CONNECT)
-            return;
-
-        /* On Disconnect Event, Reduce the Connection Count for Daemon */
-        if(EVENT == EVENT_DISCONNECT)
-            return;
 
     }
 
@@ -222,260 +222,251 @@ namespace LLP
         /* TODO: add a check for the number of connections and return false if there
             are no connections */
 
-
         /* No mining when synchronizing. */
         if(TAO::Ledger::ChainState::Synchronizing())
-            return debug::error(FUNCTION, "Cannot mine while ledger is synchronizing.");
+            return debug::error(FUNCTION, Name(), " Cannot mine while ledger is synchronizing.");
 
         /* No mining when wallet is locked */
         if(!Legacy::Wallet::GetInstance().IsLocked())
-            return debug::error(FUNCTION, "Cannot mine while wallet is locked.");
+            return debug::error(FUNCTION, Name(), " Cannot mine while wallet is locked.");
 
 
         /* Set the Mining Channel this Connection will Serve Blocks for. */
-        if(PACKET.HEADER == SET_CHANNEL)
+        switch(PACKET.HEADER)
         {
-            nChannel = static_cast<uint8_t>(bytes2uint(PACKET.DATA));
-
-            switch (nChannel)
+            case SET_CHANNEL:
             {
-                case 1:
-                debug::log(2, FUNCTION, "Prime Channel Set.");
-                break;
+                nChannel = static_cast<uint8_t>(bytes2uint(PACKET.DATA));
 
-                case 2:
-                debug::log(2, FUNCTION, "Hash Channel Set.");
-                break;
-
-                /** Don't allow Mining LLP Requests for Proof of Stake Channel. **/
-                default:
-                return debug::error(2, FUNCTION, "Invalid PoW Channel (", nChannel, ")");
-            }
-
-            return true;
-        }
-
-
-        /* Return a Ping if Requested. */
-        if(PACKET.HEADER == PING)
-        {
-            respond(PING);
-            return true;
-        }
-
-        if(PACKET.HEADER == SET_COINBASE)
-        {
-            //TODO: INTEGRATE THIS
-            return true;
-        }
-
-
-        /* Clear the Block Map if Requested by Client. */
-        if(PACKET.HEADER == CLEAR_MAP)
-        {
-            clear_map();
-            return true;
-        }
-
-
-        /* Respond to the miner with the new height. */
-        if(PACKET.HEADER == GET_HEIGHT)
-        {
-
-            /* Clear the Maps if Requested Height that is a New Best Block. */
-            check_best_height();
-
-            /* Create the response packet and write. */
-            respond(BLOCK_HEIGHT, 4, uint2bytes(nBestHeight + 1));
-
-
-            return true;
-        }
-
-        /* Respond to a miner if it is a new round. */
-        if(PACKET.HEADER == GET_ROUND)
-        {
-            /* If height was outdated, respond with old round, otherwise
-             * respond with a new round */
-            if(check_best_height() == false)
-            {
-                respond(OLD_ROUND);
-
-                /*create a new base block */
-                if(!Legacy::CreateLegacyBlock(*pMiningKey, nChannel, 1, *pBaseBlock))
-                    return debug::error(FUNCTION, "GET_ROUND: failed to create a new block.");
-            }
-            else
-                respond(NEW_ROUND);
-
-            return true;
-        }
-
-        if(PACKET.HEADER == GET_REWARD)
-        {
-            uint64_t nCoinbaseReward = 0;
-
-            //TODO: get the coinbase reward and return it here.
-
-            respond(BLOCK_REWARD, 8, uint2bytes64(nCoinbaseReward));
-
-            debug::log(2, "***** Mining LLP: Sent Coinbase Reward of ", nCoinbaseReward);
-
-            return true;
-        }
-
-        if(PACKET.HEADER == SUBSCRIBE)
-        {
-            nSubscribed = bytes2uint(PACKET.DATA);
-
-            /** Don't allow mining llp requests for proof of stake channel **/
-            if(nSubscribed == 0 || nChannel == 0)
-                return false;
-
-            debug::log(2, FUNCTION, "***** Mining LLP: Subscribed to ", nSubscribed, " Blocks");
-
-            return true;
-        }
-
-
-        /* Get a new block for the miner. */
-        if(PACKET.HEADER == GET_BLOCK)
-        {
-            if(pBaseBlock->IsNull())
-            {
-                if(!Legacy::CreateLegacyBlock(*pMiningKey, nChannel, 1, *pBaseBlock))
-                    return debug::error(FUNCTION, "GET_BLOCK: failed to create a new block.");
-            }
-
-            Legacy::LegacyBlock new_block = *pBaseBlock;
-            uint1024_t proof_hash = uint1024_t(0);
-
-
-            uint32_t s = static_cast<uint32_t>(mapBlocks.size());
-            for(uint32_t i = 0; i < s; ++i)
-            {
-                new_block.vtx[0].vin[0].scriptSig = (Legacy::Script() << (1024 * (s + 1)) << (i * 510));
-
-                /* Rebuild the merkle tree. */
-                std::vector<uint512_t> vMerkleTree;
-                for(const auto& tx : new_block.vtx)
-                    vMerkleTree.push_back(tx.GetHash());
-                new_block.hashMerkleRoot = new_block.BuildMerkleTree(vMerkleTree);
-
-                /* Update the time. */
-                new_block.UpdateTime();
-
-                /* skip if not prime channel or version less than 5 */
-                if(nChannel != 1 || new_block.nVersion < 5)
+                switch (nChannel)
+                {
+                    case 1:
+                    debug::log(2, FUNCTION, Name(), " Prime Channel Set.");
                     break;
 
-                /* don't deliver blocks that are below the minimum prime origins or
-                 * greater than 1023-bit */
-                proof_hash = new_block.ProofHash();
+                    case 2:
+                    debug::log(2, FUNCTION, Name(), " Hash Channel Set.");
+                    break;
 
-                if(proof_hash > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !proof_hash.high_bits(0x80000000))
-                   break;
-            }
-
-            debug::log(5, FUNCTION, "***** Mining LLP: Created new Block ",
-                new_block.hashMerkleRoot.ToString().substr(0, 20));
-
-            /* Store the new block in the memory map of recent blocks being worked on. */
-            mapBlocks[new_block.hashMerkleRoot] = new_block;
-
-
-            /* Serialize the block data */
-            std::vector<uint8_t> data = SerializeBlock(new_block);
-            uint32_t len = static_cast<uint32_t>(data.size());
-
-            /* Create and write the response packet. */
-            respond(BLOCK_DATA, len, data);
-
-            return true;
-        }
-
-
-        /* Submit a block using the merkle root as the key. */
-        if(PACKET.HEADER == SUBMIT_BLOCK)
-        {
-            /* Get the merkle root. */
-            uint512_t hashMerkleRoot;
-            hashMerkleRoot.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
-
-            /* Check that the block exists. */
-            if(!mapBlocks.count(hashMerkleRoot))
-            {
-                /* If not found, send rejected message. */
-                respond(BLOCK_REJECTED);
-
-                debug::log(2, FUNCTION, "***** Mining LLP: Block Not Found ", hashMerkleRoot.ToString().substr(0, 20));
+                    /** Don't allow Mining LLP Requests for Proof of Stake Channel. **/
+                    default:
+                    return debug::error(2, FUNCTION, Name(), " Invalid PoW Channel (", nChannel, ")");
+                }
 
                 return true;
             }
 
-            /* Create the pointer to the heap. */
-            Legacy::LegacyBlock *pBlock = &mapBlocks[hashMerkleRoot];
-            pBlock->nNonce = bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
-            pBlock->UpdateTime();
-            pBlock->print();
-
-            /* Sign the submitted block */
-            if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
+            /* Return a Ping if Requested. */
+            case PING:
             {
-                respond(BLOCK_REJECTED);
+                respond(PING);
+                return true;
+            }
 
-                debug::log(2, "***** Mining LLP: Unable to Sign block ", hashMerkleRoot.ToString().substr(0, 20));
+            case SET_COINBASE:
+            {
+                //TODO: INTEGRATE THIS
+                return true;
+            }
+
+            /* Clear the Block Map if Requested by Client. */
+            case CLEAR_MAP:
+            {
+                clear_map();
+                return true;
+            }
+
+
+            /* Respond to the miner with the new height. */
+            case GET_HEIGHT:
+            {
+
+                /* Clear the Maps if Requested Height that is a New Best Block. */
+                check_best_height();
+
+                /* Create the response packet and write. */
+                respond(BLOCK_HEIGHT, 4, uint2bytes(nBestHeight + 1));
+
 
                 return true;
             }
 
-            /* Check the Proof of Work for submitted block. */
-            if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::GetInstance()))
+            /* Respond to a miner if it is a new round. */
+            case GET_ROUND:
             {
-                respond(BLOCK_REJECTED);
-
-                debug::log(2, "***** Mining LLP: Invalid Work for block ", hashMerkleRoot.ToString().substr(0, 20));
-
-                return true;
-            }
-
-            /* Clear map on new block found. */
-            clear_map();
-
-            /* Tell the wallet to keep this key */
-            pMiningKey->KeepKey();
-
-            /* Generate a response message. */
-            respond(BLOCK_ACCEPTED);
-
-            return true;
-        }
-
-
-        /** Check Block Command: Allows Client to Check if a Block is part of the Main Chain. **/
-        if(PACKET.HEADER == CHECK_BLOCK)
-        {
-
-            uint1024_t hashBlock;
-            TAO::Ledger::BlockState state;
-
-            /* Extract the block hash. */
-            hashBlock.SetBytes(PACKET.DATA);
-
-            /* Read the block state from disk. */
-            if(LLD::legDB->ReadBlock(hashBlock, state))
-            {
-                /*If the block state is in the main chain send a good response. */
-                if(state.IsInMainChain())
+                /* If height was outdated, respond with old round, otherwise
+                 * respond with a new round */
+                if(check_best_height() == false)
                 {
-                    respond(GOOD_BLOCK, PACKET.LENGTH, PACKET.DATA);
+                    respond(OLD_ROUND);
+
+                    /*create a new base block */
+                    if(!Legacy::CreateLegacyBlock(*pMiningKey, nChannel, 1, *pBaseBlock))
+                        return debug::error(FUNCTION, Name(), " GET_ROUND: failed to create a new block.");
+                }
+                else
+                    respond(NEW_ROUND);
+
+                return true;
+            }
+
+            case GET_REWARD:
+            {
+                uint64_t nCoinbaseReward = 0;
+
+                //TODO: get the coinbase reward and return it here.
+
+                respond(BLOCK_REWARD, 8, uint2bytes64(nCoinbaseReward));
+
+                debug::log(2, "***** Mining LLP: Sent Coinbase Reward of ", nCoinbaseReward);
+
+                return true;
+            }
+
+            case SUBSCRIBE:
+            {
+                nSubscribed = bytes2uint(PACKET.DATA);
+
+                /** Don't allow mining llp requests for proof of stake channel **/
+                if(nSubscribed == 0 || nChannel == 0)
+                    return false;
+
+                debug::log(2, FUNCTION, "***** Mining LLP: Subscribed to ", nSubscribed, " Blocks");
+
+                return true;
+            }
+            /* Get a new block for the miner. */
+            case GET_BLOCK:
+            {
+                Legacy::LegacyBlock new_block;
+                uint1024_t proof_hash;
+                uint32_t s = static_cast<uint32_t>(mapBlocks.size());
+
+                if(pBaseBlock->IsNull())
+                {
+                    if(!Legacy::CreateLegacyBlock(*pMiningKey, nChannel, 1, *pBaseBlock))
+                        return debug::error(FUNCTION, "GET_BLOCK: failed to create a new block.");
+                }
+
+
+                if(!Legacy::CreateLegacyBlock(*pMiningKey, nChannel, s, new_block))
+                    return debug::error(FUNCTION, "GET_BLOCK: failed to create a new block.");
+
+
+                /* skip if not prime channel or version less than 5 */
+                if(nChannel == 1 && new_block.nVersion >= 5)
+                {
+                    for(uint32_t i = s; ; ++i)
+                    {
+                        proof_hash = new_block.ProofHash();
+
+                        /* exit loop when the block is above minimum prime origins and less than
+                           1024-bit hashes */
+                        if(proof_hash > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !proof_hash.high_bits(0x80000000))
+                           break;
+
+                        if(!Legacy::CreateLegacyBlock(*pMiningKey, nChannel, i, new_block))
+                            return debug::error(FUNCTION, "GET_BLOCK: failed to create a new block.");
+                    }
+                }
+
+                debug::log(2, FUNCTION, "***** Mining LLP: Created new Block ",
+                    new_block.hashMerkleRoot.ToString().substr(0, 20));
+
+                /* Store the new block in the memory map of recent blocks being worked on. */
+                mapBlocks[new_block.hashMerkleRoot] = new_block;
+
+
+                /* Serialize the block data */
+                std::vector<uint8_t> data = SerializeBlock(new_block);
+                uint32_t len = static_cast<uint32_t>(data.size());
+
+                /* Create and write the response packet. */
+                respond(BLOCK_DATA, len, data);
+
+                return true;
+            }
+
+            /* Submit a block using the merkle root as the key. */
+            case SUBMIT_BLOCK:
+            {
+                /* Get the merkle root. */
+                uint512_t hashMerkleRoot;
+                hashMerkleRoot.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
+
+                /* Check that the block exists. */
+                if(!mapBlocks.count(hashMerkleRoot))
+                {
+                    /* If not found, send rejected message. */
+                    respond(BLOCK_REJECTED);
+
+                    debug::log(2, FUNCTION, "***** Mining LLP: Block Not Found ", hashMerkleRoot.ToString().substr(0, 20));
+
                     return true;
                 }
+
+                /* Create the pointer to the heap. */
+                Legacy::LegacyBlock *pBlock = &mapBlocks[hashMerkleRoot];
+                pBlock->nNonce = bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
+                pBlock->UpdateTime();
+                pBlock->print();
+
+                /* Sign the submitted block */
+                if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
+                {
+                    respond(BLOCK_REJECTED);
+
+                    debug::log(2, "***** Mining LLP: Unable to Sign block ", hashMerkleRoot.ToString().substr(0, 20));
+
+                    return true;
+                }
+
+                /* Check the Proof of Work for submitted block. */
+                if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::GetInstance()))
+                {
+                    respond(BLOCK_REJECTED);
+
+                    debug::log(2, "***** Mining LLP: Invalid Work for block ", hashMerkleRoot.ToString().substr(0, 20));
+
+                    return true;
+                }
+
+                /* Clear map on new block found. */
+                clear_map();
+
+                /* Tell the wallet to keep this key */
+                pMiningKey->KeepKey();
+
+                /* Generate a response message. */
+                respond(BLOCK_ACCEPTED);
+
+                return true;
             }
 
-            /* Block state is not in the main chain, send an orphan response */
-            respond(ORPHAN_BLOCK, PACKET.LENGTH, PACKET.DATA);
-            return true;
+            /** Check Block Command: Allows Client to Check if a Block is part of the Main Chain. **/
+            case CHECK_BLOCK:
+            {
+                uint1024_t hashBlock;
+                TAO::Ledger::BlockState state;
+
+                /* Extract the block hash. */
+                hashBlock.SetBytes(PACKET.DATA);
+
+                /* Read the block state from disk. */
+                if(LLD::legDB->ReadBlock(hashBlock, state))
+                {
+                    /*If the block state is in the main chain send a good response. */
+                    if(state.IsInMainChain())
+                    {
+                        respond(GOOD_BLOCK, PACKET.LENGTH, PACKET.DATA);
+                        return true;
+                    }
+                }
+
+                /* Block state is not in the main chain, send an orphan response */
+                respond(ORPHAN_BLOCK, PACKET.LENGTH, PACKET.DATA);
+                return true;
+            }
         }
 
         return false;
