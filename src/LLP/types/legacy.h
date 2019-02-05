@@ -259,6 +259,15 @@ namespace LLP
             if(hashLastGetblocks == hashBlockFrom && nLastGetBlocks + 1 > runtime::timestamp())
                 return;
 
+            /* Set the fast sync address. */
+            if(config::GetBoolArg("-fastsync")
+            && addrFastSync.ToStringIP() != GetAddress().ToStringIP())
+            {
+                addrFastSync = GetAddress();
+
+                debug::log(0, NODE, "Fast sync address set");
+            }
+
             /* Update the last timestamp this was called. */
             nLastGetBlocks = runtime::timestamp();
 

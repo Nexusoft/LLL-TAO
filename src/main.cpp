@@ -65,7 +65,7 @@ void Daemonize()
 {
  #if !defined(WIN32) && !defined(QT_GUI) && !defined(NO_DAEMON)
 
-    
+
     pid_t pid = fork();
     if (pid < 0)
     {
@@ -74,7 +74,7 @@ void Daemonize()
     }
     if (pid > 0)
     {
-        /* generate a pid file so that we can keep track of the forked process */ 
+        /* generate a pid file so that we can keep track of the forked process */
         filesystem::CreatePidFile(filesystem::GetPidFile(), pid);
 
         /* Success: Let the parent terminate */
@@ -95,19 +95,20 @@ void Daemonize()
 
     /* close stdin, stderr, stdout so that the tty no longer receives output */
     if (int fdnull = open("/dev/null", O_RDWR))
-    {   
+    {
         dup2 (fdnull, STDIN_FILENO);
         dup2 (fdnull, STDOUT_FILENO);
         dup2 (fdnull, STDERR_FILENO);
         close(fdnull);
-    }   
+    }
     else
-    {   
+    {
         debug::error(FUNCTION, "Failed to open /dev/null");
         exit(EXIT_FAILURE);
     }
 #endif
 }
+
 
 int main(int argc, char** argv)
 {
@@ -154,7 +155,7 @@ int main(int argc, char** argv)
     {
         Daemonize();
     }
-   
+
 
 
     /* Create directories if they don't exist yet. */
