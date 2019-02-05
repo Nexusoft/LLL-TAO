@@ -348,8 +348,6 @@ namespace LLP
                        !dt->CONNECTIONS[nIndex]->Connected())
                         continue;
 
-                    LOCK(dt->MUTEX);
-
                     /* Push the active connection. */
                     if(!pBest || dt->CONNECTIONS[nIndex]->nNodeLatency < pBest->nNodeLatency)
                         pBest = dt->CONNECTIONS[nIndex];

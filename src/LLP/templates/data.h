@@ -216,7 +216,7 @@ namespace LLP
                 CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown || nConnections.load() > 0; });
 
                 /* Check for close. */
-                if(fDestruct.load())
+                if(fDestruct.load() || config::fShutdown)
                     return;
 
                 { LOCK(MUTEX);
