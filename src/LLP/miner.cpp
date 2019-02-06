@@ -170,7 +170,7 @@ namespace LLP
                     {
                         Legacy::LegacyBlock new_block = *pBaseBlock;
 
-                        new_block.vtx[0].vin[0].scriptSig = (Legacy::Script() <<  s * 513513512151);
+                        new_block.vtx[0].vin[0].scriptSig = (Legacy::Script() <<  (uint64_t)(s * 513513512151));
 
                         /* Rebuild the merkle tree. */
                         std::vector<uint512_t> vMerkleTree;
