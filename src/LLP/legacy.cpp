@@ -580,6 +580,16 @@ namespace LLP
                     /* Scan each transaction in the block and process those related to this wallet */
                     Legacy::LegacyBlock block(state);
 
+                    /* Check that all transactions were included. */
+                    if(block.vtx.size() != state.vtx.size())
+                    {
+                        std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain, LLP::MSG_BLOCK) };
+                        PushMessage("inv", vInv);
+                        hashContinue = 0;
+                        
+                        return true;
+                    }
+
                     /* Push the response message. */
                     PushMessage("block", block);
 
@@ -731,12 +741,16 @@ namespace LLP
         if(!block.Accept())
             return true;
 
+        /* Check if it exists first */
+        if(LLD::legDB->HasBlock(block.GetHash()))
+            return true;
+
         /* Process the block state. */
         TAO::Ledger::BlockState state(block);
 
         /* Accept the block state. */
         if(!state.Accept())
-            return true;
+            return false;
 
         /* Process orphan if found. */
         while(mapLegacyOrphans.count(hash))
