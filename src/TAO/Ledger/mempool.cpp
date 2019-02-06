@@ -150,6 +150,19 @@ namespace TAO
                 return true;
             }
 
+            /* Find the legacy transaction in pool. */
+            if(mapLegacy.count(hashTx))
+            {
+                Legacy::Transaction tx = mapLegacy[hashTx];
+
+                /* Erase the claimed inputs */
+                uint32_t s = tx.vin.size();
+                for (uint32_t i = 0; i < s; ++i)
+                    mapInputs.erase(tx.vin[i].prevout);
+
+                mapLegacy.erase(hashTx);
+            }
+
             return false;
         }
 

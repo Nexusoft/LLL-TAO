@@ -98,13 +98,27 @@ namespace TAO
 
                 debug::log(0, FUNCTION, "database successfully recovered" );
             }
-            
+
             /* Fill out the best chain stats. */
             nBestHeight     = stateBest.nHeight;
             nBestChainTrust = stateBest.nChainTrust;
 
             /* Set the checkpoint. */
             hashCheckpoint = stateBest.hashCheckpoint;
+
+            /* Rewind the chain a total number of blocks. */
+            if(config::GetArg("-forkblocks", 0) > 0)
+            {
+                TAO::Ledger::BlockState state = stateBest;
+                for(int i = 0; i < config::GetArg("-forkblocks", 0); i++)
+                {
+                    state = state.Prev();
+                };
+
+                LLD::TxnBegin();
+                state.SetBest();
+                LLD::TxnCommit();
+            }
 
             /* Find the last checkpoint. */
             if(stateBest != stateGenesis)
@@ -122,6 +136,8 @@ namespace TAO
                 /* Set the checkpoint. */
                 hashCheckpoint = state.hashCheckpoint;
             }
+
+
 
             /* Ensure the block height index is intact */
             if(config::GetBoolArg("-indexheight"))

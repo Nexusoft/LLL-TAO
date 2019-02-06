@@ -73,7 +73,7 @@ namespace TAO
 
 
         /* Construct a block state from a legacy block. */
-        BlockState::BlockState(Legacy::LegacyBlock block)
+        BlockState::BlockState(const Legacy::LegacyBlock& block)
         : Block(block)
         , vtx()
         , nChainTrust(0)
@@ -88,8 +88,7 @@ namespace TAO
             for(const auto & tx : block.vtx)
             {
                 vtx.push_back(std::make_pair(TYPE::LEGACY_TX, tx.GetHash()));
-                if(!LLD::legacyDB->HasTx(tx.GetHash()))
-                    TAO::Ledger::mempool.AddUnchecked(tx);
+                TAO::Ledger::mempool.AddUnchecked(tx);
             }
         }
 
@@ -128,7 +127,7 @@ namespace TAO
         {
             /* Check if it exists first */
             if(LLD::legDB->HasBlock(GetHash()))
-                return debug::error(FUNCTION, "already have block");
+                return false;
 
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();
@@ -310,29 +309,32 @@ namespace TAO
                 for(auto& state : vDisconnect)
                 {
                     /* Add transactions into memory pool. */
-                    for(const auto& txAdd : state.vtx)
+                    if(vConnect.size() > 0)
                     {
-                        if(txAdd.first == TYPE::TRITIUM_TX)
+                        for(const auto& txAdd : state.vtx)
                         {
-                            /* Check if in memory pool. */
-                            TAO::Ledger::Transaction tx;
-                            if(!LLD::legDB->ReadTx(txAdd.second, tx))
-                                return debug::error(FUNCTION, "transaction is not on disk");
+                            if(txAdd.first == TYPE::TRITIUM_TX)
+                            {
+                                /* Check if in memory pool. */
+                                TAO::Ledger::Transaction tx;
+                                if(!LLD::legDB->ReadTx(txAdd.second, tx))
+                                    return debug::error(FUNCTION, "transaction is not on disk");
 
-                            /* Resurrect. */
-                            if(!tx.IsCoinbase() && !tx.IsTrust())
-                                vTritiumResurrect.push_back(tx);
-                        }
-                        else if(txAdd.first == TYPE::LEGACY_TX)
-                        {
-                            /* Check if in memory pool. */
-                            Legacy::Transaction tx;
-                            if(!LLD::legacyDB->ReadTx(txAdd.second, tx))
-                                return debug::error(FUNCTION, "transaction is not on disk");
+                                /* Resurrect. */
+                                if(!tx.IsCoinbase() && !tx.IsTrust())
+                                    vTritiumResurrect.push_back(tx);
+                            }
+                            else if(txAdd.first == TYPE::LEGACY_TX)
+                            {
+                                /* Check if in memory pool. */
+                                Legacy::Transaction tx;
+                                if(!LLD::legacyDB->ReadTx(txAdd.second, tx))
+                                    return debug::error(FUNCTION, "transaction is not on disk");
 
-                            /* Resurrect */
-                            if(!tx.IsCoinBase() && !tx.IsCoinStake())
-                                vLegacyResurrect.push_back(tx);
+                                /* Resurrect */
+                                if(!tx.IsCoinBase() && !tx.IsCoinStake())
+                                    vLegacyResurrect.push_back(tx);
+                            }
                         }
                     }
 
@@ -433,6 +435,9 @@ namespace TAO
         /** Connect a block state into chain. **/
         bool BlockState::Connect()
         {
+            /* Check that there are transactions. */
+            if(vtx.size() == 0)
+                return debug::error(FUNCTION, "block state with no transactions");
 
             /* Check through all the transactions. */
             for(const auto& tx : vtx)

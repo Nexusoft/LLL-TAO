@@ -121,7 +121,7 @@ namespace TAO
 
 
             /** Default Constructor. **/
-            BlockState(TritiumBlock block)
+            BlockState(const TritiumBlock& block)
             : Block(block)
             , vtx()
             , nChainTrust(0)
@@ -138,7 +138,7 @@ namespace TAO
 
 
             /** Default Constructor. **/
-            BlockState(Legacy::LegacyBlock block);
+            BlockState(const Legacy::LegacyBlock& block);
 
 
             /** Virtual Destructor. **/

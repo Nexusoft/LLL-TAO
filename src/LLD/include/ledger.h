@@ -200,12 +200,9 @@ namespace LLD
          *  @return True if the transaction was successfully written, false otherwise.
          *
          **/
-        bool RepairIndex(const uint512_t& hashTransaction)
+        bool RepairIndex(const uint512_t& hashTransaction, TAO::Ledger::BlockState state)
         {
             debug::log(0, FUNCTION, "repairing index for ", hashTransaction.ToString().substr(0, 20));
-
-            /* Get the best block state to start from. */
-            TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.Prev();
 
             /* Loop until it is found. */
             while(!config::fShutdown && !state.IsNull())
@@ -213,6 +210,10 @@ namespace LLD
                 /* Give debug output of status. */
                 if(state.nHeight % 100000 == 0)
                     debug::log(0, FUNCTION, "repairing index..... ", state.nHeight);
+
+                /* Check the state vtx size. */
+                if(state.vtx.size() == 0)
+                    debug::error(FUNCTION, "block ", state.GetHash().ToString().substr(0, 20), " has no transactions");
 
                 /* Check for the transaction. */
                 for(const auto& tx : state.vtx)

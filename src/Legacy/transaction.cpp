@@ -323,8 +323,7 @@ namespace Legacy
             /* Calculate the Age and Value of given output. */
             TAO::Ledger::BlockState statePrev;
             if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev))
-                if(!LLD::legDB->RepairIndex(vin[nIndex].prevout.hash))
-                    return debug::error(FUNCTION, "failed to read or repair previous block");
+                return debug::error(FUNCTION, "no block for previous transaction");
 
             /* Time is from current transaction to previous block time. */
             uint64_t nCoinAge = (nTime - statePrev.GetBlockTime());
@@ -379,7 +378,7 @@ namespace Legacy
             /* Calculate the Age and Value of given output. */
             TAO::Ledger::BlockState statePrev;
             if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev))
-                if(!LLD::legDB->RepairIndex(vin[nIndex].prevout.hash))
+                if(!LLD::legDB->RepairIndex(vin[nIndex].prevout.hash, block))
                     return debug::error(FUNCTION, "failed to read previous tx block");
 
             /* Read the previous transaction. */
@@ -721,7 +720,7 @@ namespace Legacy
             if(!LLD::legacyDB->ReadTx(prevout.hash, txPrev))
             {
                 //TODO: check the memory pool for previous
-                return debug::error(FUNCTION, "previous transaction ", prevout.hash.ToString().substr(0, 20), " not found");
+                return debug::error(FUNCTION, "previous transaction ", prevout.hash.ToString(), " not found");
             }
 
             /* Check that it is valid. */
@@ -833,7 +832,7 @@ namespace Legacy
             {
                 TAO::Ledger::BlockState statePrev;
                 if(!LLD::legDB->ReadBlock(txPrev.GetHash(), statePrev))
-                    if(!LLD::legDB->RepairIndex(txPrev.GetHash()))
+                    if(!LLD::legDB->RepairIndex(txPrev.GetHash(), state))
                         return debug::error(FUNCTION, "failed to read previous tx block");
 
                 /* Check the maturity. */
