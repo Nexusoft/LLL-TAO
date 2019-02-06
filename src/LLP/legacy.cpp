@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/types/legacy.h>
 #include <LLP/templates/events.h>
+#include <LLP/include/manager.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
@@ -338,7 +339,7 @@ namespace LLP
             {
                 DDOS->rSCORE += 5;
 
-                debug::log(3, NODE, "Invalid Request : Message Not Requested [", nRequestID, "][", nNodeLatency, " ms]");
+                debug::log(3, NODE, "Invalid Request : Message Not Requested [", nRequestID, "][", nLatency, " ms]");
 
                 return true;
             }
@@ -349,7 +350,7 @@ namespace LLP
             {
                 mapSentRequests.erase(nRequestID);
 
-                debug::log(3, NODE, "Invalid Request : Message Stale [", nRequestID, "][", nNodeLatency, " ms]");
+                debug::log(3, NODE, "Invalid Request : Message Stale [", nRequestID, "][", nLatency, " ms]");
 
                 DDOS->rSCORE += 15;
 
@@ -362,7 +363,7 @@ namespace LLP
             ssMessage >> nOffset;
 
             /* Adjust the Offset for Latency. */
-            nOffset -= nNodeLatency;
+            nOffset -= nLatency;
 
             /* Add the Samples. */
             //setTimeSamples.insert(nOffset);
@@ -371,7 +372,7 @@ namespace LLP
             mapSentRequests.erase(nRequestID);
 
             /* Verbose Logging. */
-            debug::log(3, NODE, "Received Unified Offset ", nOffset, " [", nRequestID, "][", nNodeLatency, " ms]");
+            debug::log(3, NODE, "Received Unified Offset ", nOffset, " [", nRequestID, "][", nLatency, " ms]");
         }
 
 
@@ -436,15 +437,15 @@ namespace LLP
             }
 
             /* Calculate the Average Latency of the Connection. */
-            nNodeLatency = mapLatencyTracker[nonce].ElapsedMilliseconds();
+            nLatency = mapLatencyTracker[nonce].ElapsedMilliseconds();
             mapLatencyTracker.erase(nonce);
 
             /* Set the latency used for address manager within server */
             if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
-                LEGACY_SERVER->pAddressManager->SetLatency(nNodeLatency, GetAddress());
+                LEGACY_SERVER->pAddressManager->SetLatency(nLatency, GetAddress());
 
             /* Debug Level 3: output Node Latencies. */
-            debug::log(3, NODE, "Latency (Nonce ", std::hex, nonce, " - ", std::dec, nNodeLatency, " ms)");
+            debug::log(3, NODE, "Latency (Nonce ", std::hex, nonce, " - ", std::dec, nLatency, " ms)");
         }
 
 

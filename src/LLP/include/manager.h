@@ -15,7 +15,6 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_MANAGER_H
 
 #include <LLP/include/trustaddress.h>
-#include <Util/templates/serialize.h>
 #include <map>
 #include <vector>
 #include <cstdint>

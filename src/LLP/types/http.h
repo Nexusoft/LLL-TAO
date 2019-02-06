@@ -66,7 +66,7 @@ namespace LLP
         : BaseConnection<HTTPPacket>() { }
 
         /** Constructor **/
-        HTTPNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
+        HTTPNode( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<HTTPPacket>( SOCKET_IN, DDOS_IN ) { }
 
 

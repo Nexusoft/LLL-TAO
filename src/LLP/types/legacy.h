@@ -62,7 +62,6 @@ namespace LLP
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
         , nStartingHeight(0)
         , fInbound(false)
-        , nNodeLatency(std::numeric_limits<uint32_t>::max())
         , nLastPing(runtime::timestamp())
         , nConsecutiveTimeouts(0)
         , hashContinue(0)
@@ -74,14 +73,13 @@ namespace LLP
 
 
         /** Constructor **/
-        LegacyNode(Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
+        LegacyNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN)
         , nSessionID(0)
         , strNodeVersion()
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
         , nStartingHeight(0)
         , fInbound(false)
-        , nNodeLatency(std::numeric_limits<uint32_t>::max())
         , nLastPing(runtime::timestamp())
         , nConsecutiveTimeouts(0)
         , hashContinue(0)
@@ -117,10 +115,6 @@ namespace LLP
 
         /** Flag to determine if a connection is Inbound. **/
         bool fInbound;
-
-
-        /** Latency in Milliseconds to determine a node's reliability. **/
-        uint32_t nNodeLatency; //milli-seconds
 
 
         /** Counter to keep track of the last time a ping was made. **/

@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <LLP/include/global.h>
+#include <LLP/include/manager.h>
 #include <LLP/types/tritium.h>
 
 #include <Util/include/runtime.h>

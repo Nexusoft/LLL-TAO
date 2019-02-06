@@ -183,9 +183,6 @@ namespace LLP
 
     };
 
-    /** Type Definitions for LLP Functions **/
-    typedef Socket Socket_t;
-
 }
 
 #endif

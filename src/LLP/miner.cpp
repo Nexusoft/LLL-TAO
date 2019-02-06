@@ -47,7 +47,7 @@ namespace LLP
 
 
     /** Constructor **/
-    Miner::Miner( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
+    Miner::Miner( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : Connection(SOCKET_IN, DDOS_IN, isDDOS)
     , mapBlocks()
     , pMiningKey(nullptr)

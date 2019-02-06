@@ -12,8 +12,12 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/include/rpc.h>
-#include <Util/include/json.h>
+
 #include <LLP/include/global.h>
+#include <LLP/include/manager.h>
+
+#include <Util/include/json.h>
+#include <Util/include/convert.h>
 
 /* Global TAO namespace. */
 namespace TAO

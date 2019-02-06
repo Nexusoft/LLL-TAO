@@ -45,7 +45,7 @@ namespace LLP
         : HTTPNode() {}
 
         /** Constructor **/
-        RPCNode( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false )
+        RPCNode( LLP::Socket SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : HTTPNode(SOCKET_IN, DDOS_IN, isDDOS) {}
 
 

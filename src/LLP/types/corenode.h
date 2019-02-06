@@ -50,7 +50,7 @@ namespace LLP
         : HTTPNode() {}
 
         /** Constructor **/
-        CoreNode( LLP::Socket_t SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false )
+        CoreNode( LLP::Socket SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : HTTPNode( SOCKET_IN, DDOS_IN ) { }
 
 

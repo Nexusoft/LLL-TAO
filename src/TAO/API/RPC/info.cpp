@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/include/baseaddress.h>
 #include <LLP/include/trustaddress.h>
+#include <LLP/include/manager.h>
 #include <Util/include/version.h>
 
 #include <Legacy/types/minter.h>
@@ -89,8 +90,8 @@ namespace TAO
             {
                 /* This is a no-op because the MyEIDs API call will throw an exception if lisp is not running */
             }
-            
-            
+
+
 
             obj["testnet"] = config::fTestNet;
             obj["keypoololdest"] = (int64_t)Legacy::Wallet::GetInstance().GetKeyPool().GetOldestKeyPoolTime();

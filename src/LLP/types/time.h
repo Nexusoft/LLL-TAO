@@ -67,7 +67,7 @@ namespace LLP
 
 
         /** Constructor **/
-        TimeNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
+        TimeNode( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : Connection( SOCKET_IN, DDOS_IN )
         , nSamples()
         {

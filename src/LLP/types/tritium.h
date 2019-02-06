@@ -43,16 +43,14 @@ namespace LLP
         : BaseConnection<TritiumPacket>()
         , nSessionID(0)
         , fInbound(false)
-        , nNodeLatency(0)
         , nLastPing(0)
         , nLastSamples(0) {}
 
         /** Constructor **/
-        TritiumNode( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
+        TritiumNode( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<TritiumPacket>( SOCKET_IN, DDOS_IN )
         , nSessionID(0)
         , fInbound(false)
-        , nNodeLatency(0)
         , nLastPing(0)
         , nLastSamples(0) { }
 
@@ -63,10 +61,6 @@ namespace LLP
 
         /** Flag to determine if a connection is Inbound. **/
         bool fInbound;
-
-
-        /** Latency in Milliseconds to determine a node's reliability. **/
-        uint32_t nNodeLatency; //milli-seconds
 
 
         /** Counter to keep track of the last time a ping was made. **/

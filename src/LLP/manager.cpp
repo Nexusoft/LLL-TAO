@@ -20,7 +20,6 @@ ________________________________________________________________________________
 #include <LLP/include/manager.h>
 #include <LLP/include/hosts.h>
 #include <Util/include/debug.h>
-#include <Util/templates/serialize.h>
 #include <algorithm>
 #include <numeric>
 #include <cmath>

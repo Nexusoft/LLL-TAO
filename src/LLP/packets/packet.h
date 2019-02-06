@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_LLP_PACKETS_PACKET_H
 
 #include <vector>
-#include <cinttypes>
+#include <cstdint>
 
 namespace LLP
 {

@@ -76,6 +76,10 @@ namespace LLP
         DDOS_Filter*   DDOS;
 
 
+        /** Latency in Milliseconds to determine a node's reliability. **/
+        uint32_t nLatency; //milli-seconds
+
+
         /** Flag to Determine if DDOS is Enabled. **/
         bool fDDOS;
 
@@ -93,6 +97,7 @@ namespace LLP
         : Socket()
         , INCOMING()
         , DDOS(nullptr)
+        , nLatency(std::numeric_limits<uint32_t>::max())
         , fDDOS(false)
         , fOUTGOING(false)
         , fCONNECTED(false)
@@ -106,6 +111,7 @@ namespace LLP
         : Socket(SOCKET_IN)
         , INCOMING()
         , DDOS(DDOS_IN)
+        , nLatency(std::numeric_limits<uint32_t>::max())
         , fDDOS(isDDOS)
         , fOUTGOING(fOutgoing)
         , fCONNECTED(false)
@@ -344,7 +350,7 @@ namespace LLP
         : BaseConnection() { }
 
         /** Constructor **/
-        Connection( Socket_t SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false)
+        Connection( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false)
         : BaseConnection(SOCKET_IN, DDOS_IN, isDDOS, fOutgoing) { }
 
 
