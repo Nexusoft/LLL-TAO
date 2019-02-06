@@ -586,7 +586,7 @@ namespace LLP
                         std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain, LLP::MSG_BLOCK) };
                         PushMessage("inv", vInv);
                         hashContinue = 0;
-                        
+
                         return true;
                     }
 
@@ -741,16 +741,12 @@ namespace LLP
         if(!block.Accept())
             return true;
 
-        /* Check if it exists first */
-        if(LLD::legDB->HasBlock(block.GetHash()))
-            return true;
-
         /* Process the block state. */
         TAO::Ledger::BlockState state(block);
 
         /* Accept the block state. */
         if(!state.Accept())
-            return false;
+            return true;
 
         /* Process orphan if found. */
         while(mapLegacyOrphans.count(hash))
