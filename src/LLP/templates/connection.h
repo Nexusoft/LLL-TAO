@@ -117,6 +117,9 @@ namespace LLP
         virtual ~BaseConnection()
         {
             Disconnect();
+
+            /* Clean up the buffer usage. */
+            std::vector<uint8_t>().swap(vBuffer);
         }
 
 

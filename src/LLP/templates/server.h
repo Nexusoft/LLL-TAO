@@ -127,7 +127,7 @@ namespace LLP
             if(!addrThisNode.IsValid())
                 debug::error(FUNCTION, "This address in invalid: ", addrThisNode.ToString());
 
-
+            /* Initialize the address manager. */
             if(fManager)
             {
                 pAddressManager = new AddressManager(nPort);
@@ -135,29 +135,17 @@ namespace LLP
                 if(!pAddressManager)
                     debug::error(FUNCTION, "Failed to allocate memory for address manager on port ", nPort);
 
-                /* read the database (clears the internal map) */
-                pAddressManager->ReadDatabase();
-
-                /* add the seed addresses */
-                pAddressManager->AddSeedAddresses(config::fTestNet);
-
-                /* set the port */
-                pAddressManager->SetPort(nPort);
-
-                if(!pAddressManager->GetThisAddress().IsValid())
-                    pAddressManager->SetThisAddress(addrThisNode);
-
-
                 MANAGER_THREAD = std::thread((std::bind(&Server::Manager, this)));
             }
 
-
+            /* Initialize the listeners. */
             if(fListen)
             {
                 LISTEN_THREAD_V4 = std::thread(std::bind(&Server::ListeningThread, this, true));  //IPv4 Listener
                 LISTEN_THREAD_V6 = std::thread(std::bind(&Server::ListeningThread, this, false)); //IPv6 Listener
             }
 
+            /* Initialize the meter. */
             if(fMeter)
             {
                 METER_THREAD = std::thread(std::bind(&Server::Meter, this));
@@ -180,15 +168,21 @@ namespace LLP
             if(pAddressManager)
             {
                 MANAGER.notify_all();
-                MANAGER_THREAD.join();
+
+                if(MANAGER_THREAD.joinable())
+                    MANAGER_THREAD.join();
             }
 
             /* Wait for meter thread. */
-            METER_THREAD.join();
+            if(METER_THREAD.joinable())
+                METER_THREAD.join();
 
             /* Wait for listeners. */
-            LISTEN_THREAD_V4.join();
-            LISTEN_THREAD_V6.join();
+            if(LISTEN_THREAD_V4.joinable())
+                LISTEN_THREAD_V4.join();
+
+            if(LISTEN_THREAD_V6.joinable())
+                LISTEN_THREAD_V6.join();
 
             /* Delete the data threads. */
             for(uint16_t index = 0; index < MAX_THREADS; ++index)
@@ -473,14 +467,25 @@ namespace LLP
          **/
         void Manager()
         {
+            /* If manager is disabled, close down manager thread. */
+            if(!pAddressManager)
+                return;
+
             /* Address to select. */
             BaseAddress addr;
 
             /* Connect state. */
             uint8_t state = 0;
 
-            if(pAddressManager == nullptr)
-                return;
+            /* Read the address database. */
+            pAddressManager->ReadDatabase();
+
+            /* Set the port. */
+            pAddressManager->SetPort(PORT);
+
+            /* Set this node's current address. */
+            if(!pAddressManager->GetThisAddress().IsValid())
+                pAddressManager->SetThisAddress(addrThisNode);
 
             /* Wait for data threads to startup. */
             while(DATA_THREADS.size() < MAX_THREADS)
@@ -676,6 +681,15 @@ namespace LLP
                             continue;
 
                         dt->AddConnection(sockNew, DDOS_MAP[addr]);
+
+                        /* Update state in address manager. */
+                        uint8_t state = static_cast<uint8_t>(ConnectState::CONNECTED);
+
+                        /* Update the address state. */
+                        if(pAddressManager)
+                            pAddressManager->AddAddress(addr, state);
+
+                        /* Verbose output. */
                         debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ",  PORT);
                     }
                 }

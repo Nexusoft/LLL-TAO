@@ -102,6 +102,35 @@ namespace LLD
         {
             return Read(std::make_pair(std::string("this"), key), this_addr);
         }
+
+
+        /** WriteLastUpdate
+         *
+         *  Writes the last time DNS was updated.
+         *
+         *  @return True if the read is successful, false otherwise.
+         *
+         **/
+        bool WriteLastUpdate()
+        {
+            uint64_t nUpdated = runtime::timestamp();
+            return Write(std::string("updated"), nUpdated);
+        }
+
+
+        /** WriteLastUpdate
+         *
+         *  Reads the last time DNS was updated.
+         *
+         *  @param[out] nUpdate The las time that DNS was updated.
+         *
+         *  @return True if the read is successful, false otherwise.
+         *
+         **/
+        bool ReadLastUpdate(uint64_t& nUpdated)
+        {
+            return Read(std::string("updated"), nUpdated);
+        }
     };
 }
 

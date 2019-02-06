@@ -50,13 +50,13 @@ namespace LLP
 
     public:
 
-
         /** Name
          *
          *  Returns a string for the name of this type of Node.
          *
          **/
-         static std::string Name() { return "Time"; }
+        static std::string Name() { return "Time"; }
+
 
         /** Constructor **/
         TimeNode()
@@ -71,6 +71,13 @@ namespace LLP
         : Connection( SOCKET_IN, DDOS_IN )
         , nSamples()
         {
+        }
+
+
+        /* Virtual destructor. */
+        virtual ~TimeNode()
+        {
+            nSamples.clear();
         }
 
         /** Event
