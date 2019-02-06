@@ -73,6 +73,13 @@ namespace LLP
         {
         }
 
+
+        /* Virtual destructor. */
+        virtual ~TimeNode()
+        {
+            nSamples.clear();
+        }
+
         /** Event
          *
          *  Virtual Functions to Determine Behavior of Message LLP.

@@ -91,6 +91,13 @@ namespace LLP
 
         }
 
+        /* Virtual destructor. */
+        virtual ~LegacyNode()
+        {
+            mapLatencyTracker.clear();
+            mapSentRequests.clear();
+        }
+
 
         /** Randomly genearted session ID. **/
         uint64_t nSessionID;

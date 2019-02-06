@@ -185,6 +185,8 @@ namespace LLP
          **/
         void DisconnectAll()
         {
+            LOCK(MUTEX);
+
             uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
             for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
                 remove(nIndex);
@@ -346,17 +348,12 @@ namespace LLP
          **/
         void remove(int index)
         {
-            LOCK(MUTEX);
-            
-            /* Remove the node. */
-            ProtocolType* node = CONNECTIONS[index];
+
+            /* Free the memory. */
+            delete CONNECTIONS[index];
 
             /* Derefrence the pointer. */
             CONNECTIONS[index] = nullptr;
-
-            /* Free the memory. */
-            if(node)
-                delete node;
 
             --nConnections;
 
