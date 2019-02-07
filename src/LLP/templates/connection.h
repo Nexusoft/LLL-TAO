@@ -34,6 +34,7 @@ namespace LLP
         /** Default Constructor **/
         Connection();
 
+
         /** Constructor **/
         Connection(const Socket &SOCKET_IN,
                    DDOS_Filter* DDOS_IN,

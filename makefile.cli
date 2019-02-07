@@ -153,9 +153,9 @@ OBJS= \
 	build/LLD_global.o \
     build/LLP_server.o \
     build/LLP_data.o \
-	build/LLP_baseaddress.o \
-	build/LLP_legacyaddress.o \
-	build/LLP_trustaddress.o \
+	build/LLP_base_address.o \
+	build/LLP_legacy_address.o \
+	build/LLP_trust_address.o \
 	build/LLP_hosts.o \
 	build/LLP_socket.o \
 	build/LLP_time.o \

@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TEMPLATES_SOCKET_H
 
 
-#include <LLP/include/baseaddress.h>
+#include <LLP/include/base_address.h>
 
 #include <poll.h>
 #include <vector>

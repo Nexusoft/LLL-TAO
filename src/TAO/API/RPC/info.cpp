@@ -19,8 +19,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/supply.h>
 #include <LLP/include/global.h>
-#include <LLP/include/baseaddress.h>
-#include <LLP/include/trustaddress.h>
+#include <LLP/include/base_address.h>
+#include <LLP/include/trust_address.h>
 #include <LLP/include/manager.h>
 #include <Util/include/version.h>
 

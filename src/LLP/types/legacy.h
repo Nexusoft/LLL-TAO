@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <Legacy/types/legacy.h>
 #include <Legacy/types/locator.h>
 
-#include <LLP/include/legacyaddress.h>
+#include <LLP/include/legacy_address.h>
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
 #include <LLP/packets/legacy.h>

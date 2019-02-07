@@ -25,7 +25,7 @@ ________________________________________________________________________________
 #include <LLP/types/miner.h>
 
 #include <LLP/include/manager.h>
-#include <LLP/include/trustaddress.h>
+#include <LLP/include/trust_address.h>
 
 #include <Util/include/args.h>
 #include <functional>

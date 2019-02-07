@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 
 #include <LLP/templates/data.h>
-#include <LLP/include/legacyaddress.h>
+#include <LLP/include/legacy_address.h>
 
 #include <map>
 #include <condition_variable>
