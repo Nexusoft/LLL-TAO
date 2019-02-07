@@ -371,7 +371,7 @@ namespace LLD
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-            for(int i = hashmap[nBucket] - 1; i >= 0; --i)
+            for(int i = hashmap[nBucket]; i >= 0; --i)
             {
                 { LOCK(KEY_MUTEX);
 
@@ -386,8 +386,7 @@ namespace LLD
                         if(!pstream->is_open())
                         {
                             delete pstream;
-                            return debug::error(FUNCTION, "couldn't create hashmap object at: ",
-                                filename, " (", strerror(errno), ")");
+                            continue;
                         }
 
                         /* If file not found add to LRU cache. */
@@ -452,7 +451,7 @@ namespace LLD
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-            for(int i = hashmap[nBucket] - 1; i >= 0; --i)
+            for(int i = hashmap[nBucket]; i >= 0; --i)
             {
                 { LOCK(KEY_MUTEX);
 
@@ -467,8 +466,7 @@ namespace LLD
                         if(!pstream->is_open())
                         {
                             delete pstream;
-                            return debug::error(FUNCTION, "couldn't create hashmap object at: ",
-                                filename, " (", strerror(errno), ")");
+                            continue;
                         }
 
                         /* If file not found add to LRU cache. */
@@ -539,7 +537,7 @@ namespace LLD
 
                 /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
                 std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-                for(int i = hashmap[nBucket] - 1; i >= 0; --i)
+                for(int i = hashmap[nBucket]; i >= 0; --i)
                 {
                     /* Find the file stream for LRU cache. */
                     std::fstream* pstream;
@@ -552,8 +550,7 @@ namespace LLD
                         if(!pstream->is_open())
                         {
                             delete pstream;
-                            return debug::error(FUNCTION, "couldn't create hashmap object at: ",
-                                filename, " (", strerror(errno), ")");
+                            continue;
                         }
 
                         /* If file not found add to LRU cache. */
@@ -743,6 +740,7 @@ namespace LLD
                 {
                     stream.seekp(item * 4, std::ios::beg);
                     stream.write((char*)&hashmap[0] + (item * 4), 4);
+                    stream.flush();
                 }
                 //vDisk.insert(vDisk.end(), (uint8_t*)&hashmap[0], (uint8_t*)&hashmap[0] + (4 * hashmap.size()));
             }

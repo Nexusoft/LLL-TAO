@@ -59,7 +59,6 @@ namespace LLP
         /** Default Constructor **/
         LegacyNode()
         : BaseConnection<LegacyPacket>()
-        , nSessionID(0)
         , strNodeVersion()
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
         , nStartingHeight(0)
@@ -77,7 +76,6 @@ namespace LLP
         /** Constructor **/
         LegacyNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN)
-        , nSessionID(0)
         , strNodeVersion()
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
         , nStartingHeight(0)
@@ -100,7 +98,7 @@ namespace LLP
 
 
         /** Randomly genearted session ID. **/
-        uint64_t nSessionID;
+        static uint64_t nSessionID;
 
 
         /** String version of this Node's Version. **/
