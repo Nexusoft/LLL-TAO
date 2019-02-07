@@ -74,6 +74,7 @@ To Implement:
 Set of Templates for designing high efficiency database systems. Core templates can be expanded into higher level database types.
 
 * Keychain Database
+* ACID Transactions
 * Sector Database
 
 Keychains Included:

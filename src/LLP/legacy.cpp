@@ -152,26 +152,6 @@ namespace LLP
                 Legacy::Wallet::GetInstance().ResendWalletTransactions();
             }
 
-            /* Fast sync should switch to new node if time since request is over 10 seconds */
-            if(config::GetBoolArg("-fastsync")
-            && TAO::Ledger::ChainState::Synchronizing()
-            && nLastGetBlocks + 10 < runtime::timestamp())
-            {
-                /* Normal case of asking for a getblocks inventory message. */
-                LegacyNode* pnode = LEGACY_SERVER->GetConnection();
-                if(pnode)
-                {
-                    /* Reset the timestamp. */
-                    nLastGetBlocks = runtime::timestamp();
-
-                    /* Switch to a new node for fast sync. */
-                    PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
-
-                    /* Debug output. */
-                    debug::log(0, NODE, "fast sync node timed out, switching to ", addrFastSync.ToStringIP());
-                }
-            }
-
             //TODO: mapRequests data, if no response given retry the request at given times
         }
 
