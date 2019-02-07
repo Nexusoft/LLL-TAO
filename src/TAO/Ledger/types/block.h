@@ -37,6 +37,8 @@ namespace TAO
     namespace Ledger
     {
 
+        class BlockState;
+
         /** Block
          *
          *  Nodes collect new transactions into a block, hash them into a hash tree,
@@ -112,6 +114,10 @@ namespace TAO
 
             /** Copy constructor. */
             Block(const Legacy::LegacyBlock& block);
+
+
+            /** Copy constructor. */
+            Block(const BlockState& block);
 
 
             /** Default Destructor **/

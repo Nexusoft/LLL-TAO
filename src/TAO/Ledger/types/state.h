@@ -147,17 +147,8 @@ namespace TAO
 
             /** Copy Constructor. **/
             BlockState(const BlockState& state)
+            : Block(state)
             {
-                nVersion            = state.nVersion;
-                hashPrevBlock       = state.hashPrevBlock;
-                hashMerkleRoot      = state.hashMerkleRoot;
-                nChannel            = state.nChannel;
-                nHeight             = state.nHeight;
-                nBits               = state.nBits;
-                nNonce              = state.nNonce;
-                nTime               = state.nTime;
-                vchBlockSig         = state.vchBlockSig;
-
                 vtx                 = state.vtx;
 
                 nChainTrust         = state.nChainTrust;
@@ -186,7 +177,7 @@ namespace TAO
                 nNonce              = state.nNonce;
                 nTime               = state.nTime;
                 vchBlockSig         = state.vchBlockSig;
-                
+
                 vtx                 = state.vtx;
 
                 nChainTrust         = state.nChainTrust;

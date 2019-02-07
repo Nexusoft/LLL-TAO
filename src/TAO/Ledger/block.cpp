@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 
 #include <TAO/Ledger/types/block.h>
+#include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
@@ -41,6 +42,21 @@ namespace TAO
 
         /** Copy constructor. */
         Block::Block(const Legacy::LegacyBlock& block)
+        : nVersion(block.nVersion)
+        , hashPrevBlock(block.hashPrevBlock)
+        , hashMerkleRoot(block.hashMerkleRoot)
+        , nChannel(block.nChannel)
+        , nHeight(block.nHeight)
+        , nBits(block.nBits)
+        , nNonce(block.nNonce)
+        , nTime(block.nTime)
+        , vchBlockSig(block.vchBlockSig)
+        {
+        }
+
+
+        /** Copy constructor. */
+        Block::Block(const BlockState& block)
         : nVersion(block.nVersion)
         , hashPrevBlock(block.hashPrevBlock)
         , hashMerkleRoot(block.hashMerkleRoot)
