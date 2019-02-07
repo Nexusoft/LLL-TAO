@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/filemap.h>
 
-#include <LLP/include/trustaddress.h>
+#include <LLP/include/trust_address.h>
 
 namespace LLD
 {

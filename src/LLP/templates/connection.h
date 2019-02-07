@@ -14,348 +14,36 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_CONNECTION_H
 #define NEXUS_LLP_TEMPLATES_CONNECTION_H
 
-#include <vector>
-#include <stdio.h>
 
+#include <LLP/templates/base_connection.h>
 #include <LLP/packets/packet.h>
-#include <LLP/templates/socket.h>
-#include <LLP/templates/ddos.h>
-#include <LLP/templates/events.h>
-
-#include <Util/include/mutex.h>
-#include <Util/include/debug.h>
-#include <Util/include/hex.h>
-#include <Util/include/args.h>
 
 namespace LLP
 {
 
-    /** BaseConnection
-     *
-     *  Base Template class to handle outgoing / incoming LLP data for both Client and Server.
-     *
-     **/
-    template<typename PacketType = Packet>
-    class BaseConnection : public Socket
-    {
-    protected:
-
-        /** Mutex for thread synchronization. **/
-        mutable std::mutex MUTEX;
-
-
-        /** Event
-         *
-         *  Pure Virtual Event Function to be Overridden allowing Custom Read Events.
-         *  Each event fired on Header Complete, and each time data is read to fill packet.
-         *  Useful to check Header length to maximum size of packet type for DDOS protection,
-         *  sending a keep-alive ping while downloading large files, etc.
-         *
-         *  LENGTH == 0: General Events
-         *  LENGTH  > 0 && PACKET: Read nSize Bytes into Data Packet
-         *
-         **/
-        virtual void Event(uint8_t EVENT, uint32_t LENGTH = 0) = 0;
-
-
-        /** ProcessPacket
-         *
-         *  Pure Virtual Process Function. To be overridden with your own custom
-         *  packet processing.
-         *
-         **/
-        virtual bool ProcessPacket() = 0;
-
-    public:
-
-        /** Incoming Packet Being Built. **/
-        PacketType     INCOMING;
-
-
-        /** DDOS Score for Connection. **/
-        DDOS_Filter*   DDOS;
-
-
-        /** Latency in Milliseconds to determine a node's reliability. **/
-        uint32_t nLatency; //milli-seconds
-
-
-        /** Flag to Determine if DDOS is Enabled. **/
-        bool fDDOS;
-
-
-        /** Flag to Determine if the connection was made by this Node. **/
-        bool fOUTGOING;
-
-
-        /** Flag to determine if the connection is active. **/
-        bool fCONNECTED;
-
-
-        /** Build Base Connection with no parameters **/
-        BaseConnection()
-        : Socket()
-        , INCOMING()
-        , DDOS(nullptr)
-        , nLatency(std::numeric_limits<uint32_t>::max())
-        , fDDOS(false)
-        , fOUTGOING(false)
-        , fCONNECTED(false)
-        {
-            INCOMING.SetNull();
-        }
-
-
-        /** Build Base Connection with all Parameters. **/
-        BaseConnection(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false)
-        : Socket(SOCKET_IN)
-        , INCOMING()
-        , DDOS(DDOS_IN)
-        , nLatency(std::numeric_limits<uint32_t>::max())
-        , fDDOS(isDDOS)
-        , fOUTGOING(fOutgoing)
-        , fCONNECTED(false)
-        {
-        }
-
-
-        /* Default destructor */
-        virtual ~BaseConnection()
-        {
-            Disconnect();
-
-            /* Clean up the buffer usage. */
-            std::vector<uint8_t>().swap(vBuffer);
-        }
-
-
-        /** Reset
-         *
-         *  Resets the internal timers.
-         *
-         **/
-        void Reset()
-        {
-            nLastRecv = runtime::timestamp();
-            nLastSend = runtime::timestamp();
-        }
-
-
-        /** SetNull
-         *
-         *  Sets the object to an invalid state.
-         *
-         **/
-        void SetNull()
-        {
-            fd = -1;
-            nError = 0;
-
-            INCOMING.SetNull();
-            DDOS  = nullptr;
-            fDDOS = false;
-            fOUTGOING = false;
-            fCONNECTED = false;
-        }
-
-
-        /** IsNull
-         *
-         *  Checks if is in null state.
-         *
-         **/
-        bool IsNull() const
-        {
-            return fd == -1;
-        }
-
-
-        /** Errors
-         *
-         *  Checks for any flags in the Error Handle.
-         *
-         **/
-        bool Errors() const
-        {
-            return ErrorCode() != 0;
-        }
-
-
-        /** Error
-         *
-         *  Give the message (c-string) of the error in the socket.
-         *
-         **/
-        char* Error() const
-        {
-            return strerror(ErrorCode());
-        }
-
-
-        /** Connected
-         *
-         *  Connection flag to determine if socket should be handled if not connected.
-         *
-         **/
-        bool Connected() const
-        {
-            return fCONNECTED;
-        }
-
-
-        /** Timeout
-         *
-         *  Determines if nTime seconds have elapsed since last Read / Write.
-         *
-         *  @param[in] nTime The time in seconds.
-         *
-         **/
-        bool Timeout(uint32_t nTime) const
-        {
-            return (runtime::timestamp() > nLastSend + nTime &&
-                    runtime::timestamp() > nLastRecv + nTime);
-        }
-
-
-        /** PacketComplete
-         *
-         *  Handles two types of packets, requests which are of header >= 128,
-         *  and data which are of header < 128.
-         *
-         **/
-        bool PacketComplete() const
-        {
-            return INCOMING.Complete();
-        }
-
-
-        /** ResetPacket
-         *
-         *  Used to reset the packet to Null after it has been processed.
-         *  This then flags the Connection to read another packet.
-         *
-         **/
-        void ResetPacket()
-        {
-            INCOMING.SetNull();
-        }
-
-
-        /** WritePacket
-         *
-         *  Write a single packet to the TCP stream.
-         *
-         *  @param[in] PACKET The packet of type PacketType to write.
-         *
-         **/
-        void WritePacket(const PacketType& PACKET)
-        {
-            LOCK(MUTEX);
-
-            /* Debug dump of message type. */
-            debug::log(3, NODE "Sent Message (", PACKET.GetBytes().size(), " bytes)");
-
-            /* Debug dump of packet data. */
-            if(config::GetArg("-verbose", 0) >= 5)
-                PrintHex(PACKET.GetBytes());
-
-            /* Write the packet to socket buffer. */
-            std::vector<uint8_t> vBytes = PACKET.GetBytes();
-            Write(vBytes, vBytes.size());
-        }
-
-
-        /** ReadPacket
-         *
-         *  Non-Blocking Packet reader to build a packet from TCP Connection.
-         *  This keeps thread from spending too much time for each Connection.
-         *
-         **/
-        virtual void ReadPacket() = 0;
-
-
-        /** Connect
-         *
-         *  Connect Socket to a Remote Endpoint.
-         *
-         *  @param[in] strAddress The IP address string.
-         *  @param[in] nPort The port number.
-         *
-         *  @return Returns true if successful connection, false otherwise.
-         *
-         */
-        bool Connect(std::string strAddress, uint16_t nPort)
-        {
-            BaseAddress addrConnect(strAddress, nPort);
-
-            /* Check for connect to self */
-            if(addr.ToStringIP() == addrConnect.ToStringIP())
-                return debug::error(NODE, "cannot self-connect");
-
-            debug::log(1, NODE, "Connecting to ", addrConnect.ToStringIP());
-
-            // Connect
-            if (Attempt(addrConnect))
-            {
-                debug::log(1, NODE, "Connected to ", addrConnect.ToStringIP());
-
-                fCONNECTED = true;
-                fOUTGOING  = true;
-
-                return true;
-            }
-
-            return false;
-        }
-
-
-        /** GetAddress
-         *
-         *  Returns the address of socket.
-         *
-         **/
-        BaseAddress GetAddress() const
-        {
-            return addr;
-        }
-
-
-        /** Disconnect
-         *
-         *  Disconnect Socket. Cleans up memory usage to prevent "memory runs"
-         *  from poor memory management.
-         *
-         **/
-        void Disconnect()
-        {
-            Close();
-
-            fCONNECTED = false;
-        }
-
-    };
-
-
     /** Connection
      *
-     *
+     *  A Default Connection class that handles the Reading of a default Packet Type.
      *
      **/
     class Connection : public BaseConnection<Packet>
     {
     public:
 
+
         /** Default Constructor **/
-        Connection()
-        : BaseConnection() { }
+        Connection();
+
 
         /** Constructor **/
-        Connection( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false)
-        : BaseConnection(SOCKET_IN, DDOS_IN, isDDOS, fOutgoing) { }
+        Connection(const Socket &SOCKET_IN,
+                   DDOS_Filter* DDOS_IN,
+                   bool isDDOS = false,
+                   bool fOutgoing = false);
 
 
         /** Default destructor **/
-        virtual ~Connection() { }
+        virtual ~Connection();
 
 
         /** ReadPacket
@@ -363,44 +51,8 @@ namespace LLP
          *  Regular Connection Read Packet Method.
          *
          **/
-        void ReadPacket() final
-        {
+        void ReadPacket() final;
 
-            /* Handle Reading Packet Type Header. */
-            if(Available() >= 1 && INCOMING.IsNull())
-            {
-                std::vector<uint8_t> HEADER(1, 255);
-                if(Read(HEADER, 1) == 1)
-                    INCOMING.HEADER = HEADER[0];
-            }
-
-            /* Read the packet length. */
-            if(Available() >= 4 && INCOMING.LENGTH == 0)
-            {
-                /* Handle Reading Packet Length Header. */
-                std::vector<uint8_t> BYTES(4, 0);
-                if(Read(BYTES, 4) == 4)
-                {
-                    INCOMING.SetLength(BYTES);
-                    Event(EVENT_HEADER);
-                }
-            }
-
-            /* Handle Reading Packet Data. */
-            uint32_t nAvailable = Available();
-            if(nAvailable > 0 && INCOMING.LENGTH > 0 && INCOMING.DATA.size() < INCOMING.LENGTH)
-            {
-                /* Read the data in the packet */
-                std::vector<uint8_t> DATA( std::min(nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
-
-                /* On successful read, fire event and add data to packet. */
-                if(Read(DATA, DATA.size()) == DATA.size())
-                {
-                    INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
-                    Event(EVENT_PACKET, DATA.size());
-                }
-            }
-        }
     };
 }
 

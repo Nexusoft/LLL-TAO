@@ -24,7 +24,7 @@ ________________________________________________________________________________
 #include <LLP/types/miner.h>
 
 #include <LLP/include/manager.h>
-#include <LLP/include/trustaddress.h>
+#include <LLP/include/trust_address.h>
 
 #include <Util/include/args.h>
 #include <functional>
@@ -32,6 +32,15 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+
+    /* Explicity instantiate all template instances needed for compiler. */
+    template class Server<TritiumNode>;
+    template class Server<LegacyNode>;
+    template class Server<TimeNode>;
+    template class Server<CoreNode>;
+    template class Server<RPCNode>;
+    template class Server<Miner>;
+
 
     /*  Returns the name of the protocol type of this server. */
     template <class ProtocolType>
@@ -731,15 +740,6 @@ namespace LLP
            dt->REQUESTS = 0;
         }
     }
-
-
-    /* Explicity instantiate all template instances needed for compiler. */
-    template class Server<TritiumNode>;
-    template class Server<LegacyNode>;
-    template class Server<TimeNode>;
-    template class Server<CoreNode>;
-    template class Server<RPCNode>;
-    template class Server<Miner>;
 
 
 }

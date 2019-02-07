@@ -320,5 +320,4 @@ namespace LLP
     template class DataThread<RPCNode>;
     template class DataThread<Miner>;
 
-
 }

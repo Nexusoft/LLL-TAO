@@ -12,14 +12,12 @@ ________________________________________________________________________________
 
 
 #include <LLP/types/miner.h>
+#include <LLP/templates/events.h>
+#include <LLP/templates/ddos.h>
 
 #include <LLD/include/global.h>
 
-
 #include <TAO/Ledger/include/constants.h>
-//#include <TAO/Ledger/include/chainstate.h>
-//#include <TAO/Ledger/types/state.h>
-
 
 #include <Legacy/include/create.h>
 #include <Legacy/types/legacy.h>

@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLP/include/legacyaddress.h>
+#include <LLP/include/legacy_address.h>
 #include <Util/include/debug.h>
 #include <algorithm>
 
