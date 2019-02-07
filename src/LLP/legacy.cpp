@@ -47,6 +47,10 @@ namespace LLP
     uint64_t LegacyNode::nLastGetBlocks = 0;
 
 
+    /* the session identifier. */
+    uint64_t LegacyNode::nSessionID = LLC::GetRand();
+
+
     /* The current node that is being used for fast sync */
     BaseAddress LegacyNode::addrFastSync;
 
@@ -242,32 +246,20 @@ namespace LLP
             LegacyAddress addrMe;
             LegacyAddress addrFrom;
             uint64_t nServices = 0;
+            uint64_t nSession  = 0;
 
             /* Check the Protocol Versions */
             ssMessage >> nCurrentVersion;
 
             /* Deserialize the rest of the data. */
-            ssMessage >> nServices >> nTime >> addrMe >> addrFrom >> nSessionID >> strNodeVersion >> nStartingHeight;
+            ssMessage >> nServices >> nTime >> addrMe >> addrFrom >> nSession >> strNodeVersion >> nStartingHeight;
             debug::log(1, NODE, "version message: version ", nCurrentVersion, ", blocks=",  nStartingHeight);
 
-            /* Check the server if it is set. */
-            if(!LEGACY_SERVER->addrThisNode.IsValid())
+            /* Check for a connect to self. */
+            if(nSession == LegacyNode::nSessionID)
             {
-                addrMe.SetPort(config::GetArg("-port", config::fTestNet ? 8323 : 9323));
-                debug::log(0, NODE, "recieved external address ", addrMe.ToString());
-
-                LEGACY_SERVER->addrThisNode = addrMe;
-            }
-
-            /* Send version message if connection is inbound. */
-            if(!fOUTGOING)
-            {
-                if(addr.ToStringIP() == LEGACY_SERVER->addrThisNode.ToStringIP())
-                {
-                    debug::log(0, NODE, "connected to self ", addr.ToString());
-
-                    return false;
-                }
+                debug::log(0, FUNCTION, "connected to self");
+                return false;
             }
 
             /* Push version in response. */

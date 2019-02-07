@@ -42,22 +42,26 @@ namespace LLP
         /** Default Constructor **/
         TritiumNode()
         : BaseConnection<TritiumPacket>()
-        , nSessionID(0)
         , fInbound(false)
         , nLastPing(0)
-        , nLastSamples(0) {}
+        , nLastSamples(0)
+        , mapLatencyTracker()
+        , mapSentRequests()
+        {}
 
         /** Constructor **/
         TritiumNode( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<TritiumPacket>( SOCKET_IN, DDOS_IN )
-        , nSessionID(0)
         , fInbound(false)
         , nLastPing(0)
-        , nLastSamples(0) { }
+        , nLastSamples(0)
+        , mapLatencyTracker()
+        , mapSentRequests()
+        { }
 
 
         /** Randomly genearted session ID. **/
-        uint64_t nSessionID;
+        static uint64_t nSessionID;
 
 
         /** Flag to determine if a connection is Inbound. **/
