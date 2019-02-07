@@ -159,7 +159,9 @@ OBJS= \
 	build/LLP_hosts.o \
 	build/LLP_socket.o \
 	build/LLP_time.o \
-	build/LLP_inv.o\
+	build/LLP_inv.o \
+    build/LLP_base_connection.o \
+    build/LLP_connection.o \
 	build/LLP_legacy.o \
 	build/LLP_miner.o \
 	build/LLP_tritium.o \

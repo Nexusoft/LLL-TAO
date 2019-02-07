@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLP/templates/server.h>
 #include <LLP/templates/data.h>
 #include <LLP/templates/ddos.h>
+#include <LLP/templates/events.h>
 #include <LLP/include/network.h>
 
 #include <LLP/types/tritium.h>
@@ -32,15 +33,6 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-
-    /* Explicity instantiate all template instances needed for compiler. */
-    template class Server<TritiumNode>;
-    template class Server<LegacyNode>;
-    template class Server<TimeNode>;
-    template class Server<CoreNode>;
-    template class Server<RPCNode>;
-    template class Server<Miner>;
-
 
     /*  Returns the name of the protocol type of this server. */
     template <class ProtocolType>
@@ -741,5 +733,13 @@ namespace LLP
         }
     }
 
+
+    /* Explicity instantiate all template instances needed for compiler. */
+    template class Server<TritiumNode>;
+    template class Server<LegacyNode>;
+    template class Server<TimeNode>;
+    template class Server<CoreNode>;
+    template class Server<RPCNode>;
+    template class Server<Miner>;
 
 }

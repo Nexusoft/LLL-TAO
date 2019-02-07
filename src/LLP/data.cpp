@@ -28,14 +28,6 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    /* Explicity instantiate all template instances needed for compiler. */
-    template class DataThread<TritiumNode>;
-    template class DataThread<LegacyNode>;
-    template class DataThread<TimeNode>;
-    template class DataThread<CoreNode>;
-    template class DataThread<RPCNode>;
-    template class DataThread<Miner>;
-
 
     /** Default Constructor **/
     template <class ProtocolType>
@@ -319,5 +311,13 @@ namespace LLP
        return nSize;
     }
 
+
+    /* Explicity instantiate all template instances needed for compiler. */
+    template class DataThread<TritiumNode>;
+    template class DataThread<LegacyNode>;
+    template class DataThread<TimeNode>;
+    template class DataThread<CoreNode>;
+    template class DataThread<RPCNode>;
+    template class DataThread<Miner>;
 
 }

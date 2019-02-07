@@ -13,6 +13,8 @@ ________________________________________________________________________________
 #include <LLP/types/time.h>
 
 #include <Util/include/convert.h>
+#include <LLP/templates/events.h>
+#include <LLP/templates/ddos.h>
 
 namespace LLP
 {

@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
 #include <LLP/packets/tritium.h>
-#include <LLP/templates/connection.h>
+#include <LLP/templates/base_connection.h>
 
 namespace LLP
 {

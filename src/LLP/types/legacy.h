@@ -21,7 +21,9 @@ ________________________________________________________________________________
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
 #include <LLP/packets/legacy.h>
-#include <LLP/templates/connection.h>
+#include <LLP/templates/base_connection.h>
+#include <LLP/templates/ddos.h>
+#include <LLP/templates/events.h>
 
 namespace LLP
 {
