@@ -15,9 +15,9 @@ ________________________________________________________________________________
 #include <vector>
 #include <stdio.h>
 
-#include <LLP/include/network.h>
 #include <LLP/templates/socket.h>
 
+#include <Util/include/runtime.h>
 #include <Util/include/debug.h>
 
 #ifndef WIN32
@@ -28,8 +28,36 @@ ________________________________________________________________________________
 namespace LLP
 {
 
+    /** The default constructor. **/
+    Socket::Socket()
+    : nError(0)
+    , nLastSend(runtime::timestamp())
+    , nLastRecv(runtime::timestamp())
+    , vBuffer()
+    , addr()
+    {
+        fd = -1;
+
+        events = POLLIN;
+    }
+
+
+    /** The socket constructor. **/
+    Socket::Socket(int32_t nSocketIn, const BaseAddress &addrIn)
+    : nError(0)
+    , nLastSend(runtime::timestamp())
+    , nLastRecv(runtime::timestamp())
+    , vBuffer()
+    , addr(addrIn)
+    {
+        fd = nSocketIn;
+
+        events = POLLIN;
+    }
+
+
     /* Constructor for Socket */
-    Socket::Socket(BaseAddress addrConnect)
+    Socket::Socket(const BaseAddress &addrConnect)
     : nError(0)
     , nLastSend(runtime::timestamp())
     , nLastRecv(runtime::timestamp())

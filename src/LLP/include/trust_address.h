@@ -11,12 +11,12 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LLP_INCLUDE_TRUSTADDRESS_H
-#define NEXUS_LLP_INCLUDE_TRUSTADDRESS_H
+#ifndef NEXUS_LLP_INCLUDE_TRUST_ADDRESS_H
+#define NEXUS_LLP_INCLUDE_TRUST_ADDRESS_H
 
 #include <cstdint>
 #include <Util/templates/serialize.h>
-#include <LLP/include/baseaddress.h>
+#include <LLP/include/base_address.h>
 
 namespace LLP
 {

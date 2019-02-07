@@ -14,13 +14,13 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_SOCKET_H
 #define NEXUS_LLP_TEMPLATES_SOCKET_H
 
+
+#include <LLP/include/base_address.h>
+
+#include <poll.h>
 #include <vector>
+#include <cstdint>
 
-#include <LLP/include/network.h>
-
-#include <LLP/include/baseaddress.h>
-
-#include <Util/include/runtime.h>
 
 namespace LLP
 {
@@ -57,31 +57,11 @@ namespace LLP
 
 
         /** The default constructor. **/
-        Socket()
-        : nError(0)
-        , nLastSend(runtime::timestamp())
-        , nLastRecv(runtime::timestamp())
-        , vBuffer()
-        , addr()
-        {
-            fd = -1;
-
-            events = POLLIN;
-        }
+        Socket();
 
 
         /** The socket constructor. **/
-        Socket(int32_t nSocketIn, const BaseAddress &addrIn)
-        : nError(0)
-        , nLastSend(runtime::timestamp())
-        , nLastRecv(runtime::timestamp())
-        , vBuffer()
-        , addr(addrIn)
-        {
-            fd = nSocketIn;
-
-            events = POLLIN;
-        }
+        Socket(int32_t nSocketIn, const BaseAddress &addrIn);
 
 
         /** Constructor for Socket
@@ -89,7 +69,7 @@ namespace LLP
          *  @param[in] addrDest The address to connect socket to
          *
          **/
-        Socket(BaseAddress addrDest);
+        Socket(const BaseAddress &addrDest);
 
 
 

@@ -11,10 +11,10 @@
 
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LLP_INCLUDE_ADDRESS_H
-#define NEXUS_LLP_INCLUDE_ADDRESS_H
+#ifndef NEXUS_LLP_INCLUDE_LEGACY_ADDRESS_H
+#define NEXUS_LLP_INCLUDE_LEGACY_ADDRESS_H
 
-#include <LLP/include/baseaddress.h>
+#include <LLP/include/base_address.h>
 #include <Util/templates/serialize.h>
 #include <cstdint>
 
