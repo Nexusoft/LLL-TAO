@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLP/include/trustaddress.h>
+#include <LLP/include/trust_address.h>
 
 namespace
 {

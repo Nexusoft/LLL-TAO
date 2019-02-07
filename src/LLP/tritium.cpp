@@ -152,7 +152,7 @@ namespace LLP
                     ssPacket >> nSessionID;
 
                     /* Get your address. */
-                    LegacyAddress addr;
+                    BaseAddress addr;
                     ssPacket >> addr;
 
                     /* Check the server if it is set. */

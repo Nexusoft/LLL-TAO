@@ -17,11 +17,13 @@ ________________________________________________________________________________
 #include <Legacy/types/legacy.h>
 #include <Legacy/types/locator.h>
 
-#include <LLP/include/legacyaddress.h>
+#include <LLP/include/legacy_address.h>
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
 #include <LLP/packets/legacy.h>
-#include <LLP/templates/connection.h>
+#include <LLP/templates/base_connection.h>
+#include <LLP/templates/ddos.h>
+#include <LLP/templates/events.h>
 
 namespace LLP
 {

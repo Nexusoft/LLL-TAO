@@ -24,7 +24,7 @@ ________________________________________________________________________________
 #include <LLP/types/miner.h>
 
 #include <LLP/include/manager.h>
-#include <LLP/include/trustaddress.h>
+#include <LLP/include/trust_address.h>
 
 #include <Util/include/args.h>
 #include <functional>
@@ -32,6 +32,7 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+
 
     /*  Returns the name of the protocol type of this server. */
     template <class ProtocolType>
@@ -740,6 +741,5 @@ namespace LLP
     template class Server<CoreNode>;
     template class Server<RPCNode>;
     template class Server<Miner>;
-
 
 }
