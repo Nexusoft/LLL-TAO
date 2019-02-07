@@ -161,6 +161,9 @@ namespace LLP
                 LegacyNode* pnode = LEGACY_SERVER->GetConnection();
                 if(pnode)
                 {
+                    /* Reset the timestamp. */
+                    nLastGetBlocks = runtime::timestamp();
+
                     /* Switch to a new node for fast sync. */
                     PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
 
@@ -798,12 +801,16 @@ namespace LLP
         if(!block.Accept())
             return true;
 
+        /* Check if it exists first */
+        if(LLD::legDB->HasBlock(block.GetHash()))
+            return true;
+
         /* Process the block state. */
         TAO::Ledger::BlockState state(block);
 
         /* Accept the block state. */
         if(!state.Accept())
-            return true;
+            return false;
 
         /* Process orphan if found. */
         while(mapLegacyOrphans.count(hash))

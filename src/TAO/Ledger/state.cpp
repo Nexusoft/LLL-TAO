@@ -103,7 +103,7 @@ namespace TAO
             if(LLD::legDB->ReadBlock(hashPrevBlock, state))
                 return state;
             else
-                debug::error("failed to read previous block state");
+                debug::error("failed to read previous block state ", hashPrevBlock.ToString());
 
             return state;
         }
@@ -125,9 +125,6 @@ namespace TAO
         /* Accept a block state into chain. */
         bool BlockState::Accept()
         {
-            /* Check if it exists first */
-            if(LLD::legDB->HasBlock(GetHash()))
-                return false;
 
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();
@@ -390,6 +387,9 @@ namespace TAO
                     /* Harden a checkpoint if there is any. */
                     HardenCheckpoint(Prev());
 
+                    /* Output the block state if flagged. */
+                    if(config::GetBoolArg("-printstate"))
+                        debug::log(0, state.ToString(debug::flags::header | debug::flags::tx));
                 }
 
 
