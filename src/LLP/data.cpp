@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <LLP/types/miner.h>
 
 #include <Util/include/hex.h>
+#include <new> //std::bad_alloc
 
 namespace LLP
 {
@@ -260,7 +261,12 @@ namespace LLP
                         CONNECTIONS[nIndex]->ResetPacket();
                     }
                 }
-                catch(std::exception& e)
+                catch(const std::bad_alloc &e)
+                {
+                    debug::error(FUNCTION, "Memory allocation failed ", e.what());
+                    disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
+                }
+                catch(const std::exception& e)
                 {
                     debug::error(FUNCTION, "data connection: ", e.what());
                     disconnect_remove_event(nIndex, DISCONNECT_ERRORS);

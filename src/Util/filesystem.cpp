@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <cstring>
 #include <iostream>
 #include <fstream>
+#include <new> //std::bad_alloc
 
 #include <Util/include/debug.h>
 #include <Util/include/filesystem.h>
@@ -92,6 +93,10 @@ namespace filesystem
             fchmod(file_des, m);
 #endif
 
+        }
+        catch(const std::bad_alloc &e)
+        {
+            return debug::error(FUNCTION, "Memory allocation failed ", e.what());
         }
         catch(const std::ios_base::failure &e)
         {
@@ -184,7 +189,7 @@ namespace filesystem
     /* Returns the full pathname of the PID file */
     std::string GetPidFile()
     {
-        
+
         std::string pathPidFile(config::GetArg("-pid", "Nexus.pid"));
         return config::GetDataDir() + "/" +pathPidFile;
     }
@@ -198,7 +203,7 @@ namespace filesystem
         #ifndef WIN32
             fprintf(file, "%d", pid);
         #else
-            /* For some reason, PRI64d fails with warning here because %I non-ANSI compliant, 
+            /* For some reason, PRI64d fails with warning here because %I non-ANSI compliant,
                but it doesn't give this warning in other places except for config.cpp
                perhaps because this is fprintf (debug::log for example does not use printf).
 

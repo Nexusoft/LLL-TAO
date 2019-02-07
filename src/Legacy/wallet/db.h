@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <mutex>
 #include <string>
 #include <vector>
+#include <new> //std::bad_alloc
 
 #include <db_cxx.h> /* Berkeley DB header */
 
@@ -139,12 +140,19 @@ namespace Legacy
                 return false; // Key not found or no value present, can safely return without free() because there is nothing to free
 
             /* Unserialize value */
-            try {
+            try
+            {
                 /* get_data returns a void* and currently uses a C-style cast to load into DataStream */
                 DataStream ssValue((char*)datValue.get_data(), (char*)datValue.get_data() + datValue.get_size(), SER_DISK, LLD::DATABASE_VERSION);
                 ssValue >> value;
             }
-            catch (std::exception &e) {
+            catch(const std::bad_alloc &e)
+            {
+                debug::error(FUNCTION, "Memory allocation failed ", e.what());
+                ret = -1;
+            }
+            catch(std::exception &e)
+            {
                 /* Still need to free any memory allocated for datValue, so do not return here. Just set ret so it returns false */
                 ret = -1;
             }

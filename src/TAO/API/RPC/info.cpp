@@ -32,6 +32,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/lisp.h>
 
 #include <vector>
+#include <new> //std::bad_alloc
+
 //#include <TAO/Ledger/include/global.h>
 
 /* Global TAO namespace. */
@@ -85,6 +87,10 @@ namespace TAO
                 json::json jsonEIDs = TAO::API::lisp.MyEIDs(json::json(), false);
                 if( jsonEIDs.is_object() && jsonEIDs["eids"].is_array())
                     obj["eids"] = jsonEIDs["eids"];
+            }
+            catch(const std::bad_alloc &e)
+            {
+                debug::error(FUNCTION, "Memory allocation failed ", e.what());
             }
             catch(const APIException& e)
             {

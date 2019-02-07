@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Register/include/verify.h>
 
+#include <new> //std::bad_alloc
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -33,7 +35,7 @@ namespace TAO
 
             /* Start the register stream at the beginning. */
             tx.ssRegister.seek(0, STREAM::BEGIN);
-            
+
             /* Make sure no exceptions are thrown. */
             try
             {
@@ -244,7 +246,11 @@ namespace TAO
                     }
                 }
             }
-            catch(std::runtime_error& e)
+            catch(const std::bad_alloc &e)
+            {
+                return debug::error(FUNCTION, "Memory allocation failed ", e.what());
+            }
+            catch(const std::runtime_error& e)
             {
                 return debug::error(FUNCTION, "exception encountered ", e.what());
             }

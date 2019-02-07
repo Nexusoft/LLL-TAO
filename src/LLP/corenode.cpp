@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/lisp.h>
 
 #include <Util/include/urlencode.h>
+#include <new> //std::bad_alloc
 
 namespace LLP
 {
@@ -130,6 +131,10 @@ namespace LLP
             ErrorReply(e.ToJSON());
 
             return false;
+        }
+        catch(const std::bad_alloc &e)
+        {
+            return debug::error(FUNCTION, "Memory allocation failed ", e.what());
         }
 
         /* Push a response. */

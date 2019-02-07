@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <Util/include/base64.h>
 #include <Util/include/string.h>
 #include <TAO/API/types/exception.h>
+#include <new> //std::bad_alloc
 
 // using alias to simplify using APIException liberally without having to reference the TAO:API namespace
 using APIException = TAO::API::APIException ;
@@ -96,6 +97,11 @@ namespace LLP
             /* Push the response data with json payload. */
             PushResponse(200, JSONReply(jsonResult, nullptr, jsonID).dump());
         }
+        /* Handle for memory allocation fail. */
+        catch(const std::bad_alloc &e)
+        {
+            return debug::error(FUNCTION, "Memory allocation failed ", e.what());
+        }
 
         /* Handle for custom API exceptions. */
         catch(APIException& e)
@@ -106,7 +112,7 @@ namespace LLP
         }
 
         /* Handle for JSON exceptions. */
-        catch (json::detail::exception& e)
+        catch(const json::detail::exception& e)
         {
             ErrorReply(APIException(e.id, e.what()).ToJSON(), jsonID);
 
@@ -114,7 +120,7 @@ namespace LLP
         }
 
         /* Handle for STD exceptions. */
-        catch (std::exception& e)
+        catch(const std::exception& e)
         {
             ErrorReply(APIException(-32700, e.what()).ToJSON(), jsonID);
 
