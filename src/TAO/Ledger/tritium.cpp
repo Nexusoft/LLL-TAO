@@ -39,6 +39,19 @@ namespace TAO
     namespace Ledger
     {
 
+        /** Copy Constructor. **/
+        TritiumBlock::TritiumBlock(const BlockState& state)
+        : Block(state)
+        , producer()
+        , vtx(state.vtx)
+        {
+            vtx.erase(vtx.begin());
+
+            /* Read the producer transaction from disk. */
+            if(!LLD::legDB->ReadTx(state.vtx[0].second, producer))
+                debug::error(FUNCTION, "failed to read producer");
+        }
+
         /* For debugging Purposes seeing block state data dump */
         std::string TritiumBlock::ToString() const
         {

@@ -21,6 +21,8 @@ ________________________________________________________________________________
 #include <LLP/include/manager.h>
 #include <LLP/types/tritium.h>
 
+#include <TAO/Ledger/types/mempool.h>
+
 #include <Util/include/runtime.h>
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
@@ -243,7 +245,7 @@ namespace LLP
                 }
 
 
-                case DAT_INVENTORY:
+                case DAT_HAS_TX:
                 {
                     /* Deserialize the data received. */
                     std::vector<uint512_t> vData;
@@ -251,13 +253,13 @@ namespace LLP
 
                     /* Request the inventory. */
                     for(const auto& hash : vData)
-                        PushMessage(GET_INVENTORY, hash);
+                        PushMessage(GET_TRANSACTION, hash);
 
                     break;
                 }
 
 
-                case GET_INVENTORY:
+                case GET_TRANSACTION:
                 {
                     /* Deserialize the inventory. */
                     uint512_t hash;
@@ -265,8 +267,40 @@ namespace LLP
 
                     /* Check if you have it. */
                     TAO::Ledger::Transaction tx;
-                    if(LLD::legDB->ReadTx(hash, tx))
+                    if(LLD::legDB->ReadTx(hash, tx) || TAO::Ledger::mempool.Get(hash, tx))
                         PushMessage(DAT_TRANSACTION, tx);
+
+                    break;
+                }
+
+
+                case DAT_HAS_BLOCK:
+                {
+                    /* Deserialize the data received. */
+                    std::vector<uint1024_t> vData;
+                    ssPacket >> vData;
+
+                    /* Request the inventory. */
+                    for(const auto& hash : vData)
+                        PushMessage(GET_BLOCK, hash);
+
+                    break;
+                }
+
+
+                case GET_BLOCK:
+                {
+                    /* Deserialize the inventory. */
+                    uint1024_t hash;
+                    ssPacket >> hash;
+
+                    /* Check if you have it. */
+                    TAO::Ledger::BlockState state;
+                    if(LLD::legDB->ReadBlock(hash, state))
+                    {
+                        TAO::Ledger::TritiumBlock block(state);
+                        PushMessage(DAT_BLOCK, block);
+                    }
 
                     break;
                 }
@@ -293,6 +327,7 @@ namespace LLP
                         }
 
                         /* Add the transaction to the memory pool. */
+                        TAO::Ledger::mempool.Accept(tx);
                     }
 
                     /* Debug output for offsets. */
