@@ -30,7 +30,7 @@ ________________________________________________________________________________
 
 #include <sys/stat.h>
 
-extern int errno;
+int errno;
 
 namespace filesystem
 {
