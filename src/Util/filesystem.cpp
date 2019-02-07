@@ -30,8 +30,6 @@ ________________________________________________________________________________
 
 #include <sys/stat.h>
 
-extern int errno;
-
 namespace filesystem
 {
     /* Removes a file or folder from the specified path. */
