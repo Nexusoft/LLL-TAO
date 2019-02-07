@@ -26,6 +26,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
 
+#include <Legacy/types/legacy.h>
+
 #include <ios>
 #include <iomanip>
 
@@ -36,6 +38,20 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+
+        /** Copy constructor. */
+        Block::Block(const Legacy::LegacyBlock& block)
+        : nVersion(block.nVersion)
+        , hashPrevBlock(block.hashPrevBlock)
+        , hashMerkleRoot(block.hashMerkleRoot)
+        , nChannel(block.nChannel)
+        , nHeight(block.nHeight)
+        , nBits(block.nBits)
+        , nNonce(block.nNonce)
+        , nTime(block.nTime)
+        , vchBlockSig(block.vchBlockSig)
+        {
+        }
 
         /* Set the block state to null. */
         void Block::SetNull()

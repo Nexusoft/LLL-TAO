@@ -15,7 +15,6 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_TYPES_BLOCK_H
 
 #include <LLC/types/uint1024.h>
-
 #include <Util/include/runtime.h>
 
 //forward declerations for BigNum
@@ -23,6 +22,11 @@ namespace LLC
 {
     class CBigNum;
     class ECKey;
+}
+
+namespace Legacy
+{
+    class LegacyBlock;
 }
 
 /* Global TAO namespace. */
@@ -100,7 +104,14 @@ namespace TAO
             , nHeight(nHeightIn)
             , nBits(0)
             , nNonce(0)
-            , nTime(runtime::unifiedtimestamp()) { }
+            , nTime(runtime::unifiedtimestamp())
+            , vchBlockSig()
+            {
+            }
+
+
+            /** Copy constructor. */
+            Block(const Legacy::LegacyBlock& block);
 
 
             /** Default Destructor **/

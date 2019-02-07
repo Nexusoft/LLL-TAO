@@ -85,7 +85,7 @@ namespace TAO
         , hashCheckpoint(0)
         {
             /* Construct a block state from legacy block tx set. */
-            for(const auto & tx : block.vtx)
+            for(const auto& tx : block.vtx)
             {
                 vtx.push_back(std::make_pair(TYPE::LEGACY_TX, tx.GetHash()));
                 TAO::Ledger::mempool.AddUnchecked(tx);
@@ -351,20 +351,21 @@ namespace TAO
                 }
 
 
-                /* Resurrect the tritium transactions. */
-                for(const auto& tx : vTritiumResurrect)
-                    mempool.Accept(tx);
+                /* Only add transactions to memory pool if there are blocks to connect. */
+                if(vConnect.size() > 0)
+                {
+                    /* Resurrect the tritium transactions. */
+                    for(const auto& tx : vTritiumResurrect)
+                        mempool.Accept(tx);
 
+                    /* Resurrect the legacy transactions. */
+                    for(const auto& tx : vLegacyResurrect)
+                        mempool.Accept(tx);
+                }
 
-                /* Resurrect the legacy transactions. */
-                for(const auto& tx : vLegacyResurrect)
-                    mempool.Accept(tx);
 
                 /* List of transactions to remove from pool. */
                 std::vector<uint512_t> vDelete;
-
-                /* Set the next hash from fork. */
-                //fork.hashNextBlock = vConnect[0].GetHash();
 
                 /* Reverse the blocks to connect to connect in ascending height. */
                 std::reverse(vConnect.begin(), vConnect.end());
@@ -373,6 +374,7 @@ namespace TAO
                     /* Connect the block. */
                     if(!state.Connect())
                     {
+
                         /* Abort the Transaction. */
                         LLD::TxnAbort();
 
@@ -387,6 +389,7 @@ namespace TAO
 
                     /* Harden a checkpoint if there is any. */
                     HardenCheckpoint(Prev());
+
                 }
 
 
@@ -700,7 +703,7 @@ namespace TAO
             if(nState & debug::flags::tx)
             {
                 for(const auto& tx : vtx)
-                    strDebug += debug::strprintf("Proof(nType = %u, hash = %s)\n", tx.first, tx.second);
+                    strDebug += debug::safe_printstr("\nProof(nType = ", (uint32_t)tx.first, ", hash = ", tx.second.ToString().substr(0, 20), ")");
             }
 
             return strDebug;
