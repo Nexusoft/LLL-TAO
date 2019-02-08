@@ -218,6 +218,19 @@ namespace runtime
     };
 
 
+    /** Command
+     *
+     *  Runs a command to the commandline.
+     *
+     **/
+    inline void command(std::string strCommand)
+    {
+        int nErr = ::system(strCommand.c_str());
+        //if (nErr) NOTE: suppress errors for now
+        //    debug::error(FUNCTION, "system ", strCommand, " returned ", nErr);
+    }
+
+
     /** ByteReverse
      *
      *  Take a 4 byte value and return it with the bytes reversed.

@@ -21,6 +21,8 @@ ________________________________________________________________________________
 #include <LLP/include/manager.h>
 #include <LLP/types/tritium.h>
 
+#include <TAO/Ledger/types/mempool.h>
+
 #include <Util/include/runtime.h>
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
@@ -29,6 +31,9 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+
+        /* The session identifier. */
+        uint64_t TritiumNode::nSessionID = LLC::GetRand();
 
         /** Virtual Functions to Determine Behavior of Message LLP. **/
         void TritiumNode::Event(uint8_t EVENT, uint32_t LENGTH)
@@ -45,10 +50,7 @@ namespace LLP
 
                     /* Send version if making the connection. */
                     if(fOUTGOING)
-                    {
-                        uint64_t nSession = LLC::GetRand(std::numeric_limits<uint64_t>::max());
-                        PushMessage(DAT_VERSION, nSession, GetAddress());
-                    }
+                        PushMessage(DAT_VERSION, TritiumNode::nSessionID, GetAddress());
 
                     break;
                 }
@@ -85,7 +87,7 @@ namespace LLP
                     if(runtime::timestamp() - nLastSamples > 30)
                     {
                         /* Generate the request identification. */
-                        uint32_t nRequestID = LLC::GetRand(std::numeric_limits<int32_t>::max());
+                        uint32_t nRequestID = LLC::GetRand(std::numeric_limits<uint32_t>::max());
 
                         /* Add sent requests. */
                         mapSentRequests[nRequestID] = runtime::timestamp();
@@ -149,34 +151,23 @@ namespace LLP
                 case DAT_VERSION:
                 {
                     /* Deserialize the session identifier. */
-                    ssPacket >> nSessionID;
+                    uint64_t nSession;
+                    ssPacket >> nSession;
+
+                    /* Check for a connect to self. */
+                    if(nSession == TritiumNode::nSessionID)
+                    {
+                        debug::log(0, FUNCTION, "connected to self");
+                        return false;
+                    }
 
                     /* Get your address. */
                     BaseAddress addr;
                     ssPacket >> addr;
 
-                    /* Check the server if it is set. */
-                    if(!TRITIUM_SERVER->addrThisNode.IsValid())
-                    {
-                        addr.SetPort(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
-                        debug::log(0, NODE, "recieved external address ", addr.ToString());
-
-                        TRITIUM_SERVER->addrThisNode = addr;
-                    }
-
                     /* Send version message if connection is inbound. */
                     if(!fOUTGOING)
-                    {
-                        if(addr.ToStringIP() == TRITIUM_SERVER->addrThisNode.ToStringIP())
-                        {
-                            debug::log(0, NODE, "connected to self ", addr.ToString());
-
-                            return false;
-                        }
-
-                        uint64_t nSession = LLC::GetRand(std::numeric_limits<uint64_t>::max());
-                        PushMessage(DAT_VERSION, nSession, GetAddress());
-                    }
+                        PushMessage(DAT_VERSION, TritiumNode::nSessionID, GetAddress());
                     else
                         PushMessage(GET_ADDRESSES);
 
@@ -243,7 +234,7 @@ namespace LLP
                 }
 
 
-                case DAT_INVENTORY:
+                case DAT_HAS_TX:
                 {
                     /* Deserialize the data received. */
                     std::vector<uint512_t> vData;
@@ -251,13 +242,13 @@ namespace LLP
 
                     /* Request the inventory. */
                     for(const auto& hash : vData)
-                        PushMessage(GET_INVENTORY, hash);
+                        PushMessage(GET_TRANSACTION, hash);
 
                     break;
                 }
 
 
-                case GET_INVENTORY:
+                case GET_TRANSACTION:
                 {
                     /* Deserialize the inventory. */
                     uint512_t hash;
@@ -265,8 +256,40 @@ namespace LLP
 
                     /* Check if you have it. */
                     TAO::Ledger::Transaction tx;
-                    if(LLD::legDB->ReadTx(hash, tx))
+                    if(LLD::legDB->ReadTx(hash, tx) || TAO::Ledger::mempool.Get(hash, tx))
                         PushMessage(DAT_TRANSACTION, tx);
+
+                    break;
+                }
+
+
+                case DAT_HAS_BLOCK:
+                {
+                    /* Deserialize the data received. */
+                    std::vector<uint1024_t> vData;
+                    ssPacket >> vData;
+
+                    /* Request the inventory. */
+                    for(const auto& hash : vData)
+                        PushMessage(GET_BLOCK, hash);
+
+                    break;
+                }
+
+
+                case GET_BLOCK:
+                {
+                    /* Deserialize the inventory. */
+                    uint1024_t hash;
+                    ssPacket >> hash;
+
+                    /* Check if you have it. */
+                    TAO::Ledger::BlockState state;
+                    if(LLD::legDB->ReadBlock(hash, state))
+                    {
+                        TAO::Ledger::TritiumBlock block(state);
+                        PushMessage(DAT_BLOCK, block);
+                    }
 
                     break;
                 }
@@ -293,6 +316,7 @@ namespace LLP
                         }
 
                         /* Add the transaction to the memory pool. */
+                        TAO::Ledger::mempool.Accept(tx);
                     }
 
                     /* Debug output for offsets. */

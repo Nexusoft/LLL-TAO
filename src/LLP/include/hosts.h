@@ -136,10 +136,15 @@ namespace LLP
 
     /** LookupHost
      *
-     *   Standard Wrapper Function to Interact with cstdlib DNS functions.
+     *  Standard Wrapper Function to Interact with cstdlib DNS functions.
+     *
+     *  @param[in] strName
+     *  @param[out] vAddr
+     *  @param[in] nMaxSolutions
+     *  @param[in] fAllowLookup
      *
      **/
-    bool LookupHost(const char *pszName,
+    bool LookupHost(const std::string &strName,
                     std::vector<BaseAddress>& vAddr,
                     uint32_t nMaxSolutions = 0,
                     bool fAllowLookup = true);
@@ -149,12 +154,12 @@ namespace LLP
      *
      *  Standard Wrapper Function to Interact with cstdlib DNS functions.
      *
-     *  @param[in] pszName
+     *  @param[in] strName
      *  @param[out] vAddr
      *  @param[in] nMaxSolutions
      *
      **/
-    bool LookupHostNumeric(const char *pszName,
+    bool LookupHostNumeric(const std::string &strName,
                            std::vector<BaseAddress>& vAddr,
                            uint32_t nMaxSolutions = 0);
 
@@ -163,7 +168,7 @@ namespace LLP
      *
      *  Standard Wrapper Function to Interact with cstdlib DNS functions.
      *
-     *  @param[in] pszName
+     *  @param[in] strName
      *  @param[out] addr
      *  @param[in] portDefault
      *  @param[in] fAllowLookup
@@ -171,7 +176,7 @@ namespace LLP
      *  @return
      *
      **/
-    bool Lookup(const char *pszName,
+    bool Lookup(const std::string &strName,
                 BaseAddress& addr,
                 uint16_t portDefault = 0,
                 bool fAllowLookup = true);
@@ -181,14 +186,14 @@ namespace LLP
      *
      *  Standard Wrapper Function to Interact with cstdlib DNS functions.
      *
-     *  @param[in] pszName
+     *  @param[in] strName
      *  @param[out] vAddr
      *  @param[in] portDefault
      *  @param[in] fAllowLookup
      *  @param[in] nMaxSolutions
      *
      **/
-    bool Lookup(const char *pszName,
+    bool Lookup(const std::string &strName,
                 std::vector<BaseAddress>& vAddr,
                 uint16_t portDefault = 0,
                 bool fAllowLookup = true,
@@ -199,12 +204,12 @@ namespace LLP
      *
      *  Standard Wrapper Function to Interact with cstdlib DNS functions.
      *
-     *  @param[in] pszName
+     *  @param[in] strName
      *  @param[out] addr
      *  @param[in] portDefault
      *
      **/
-    bool LookupNumeric(const char *pszName,
+    bool LookupNumeric(const std::string &strName,
                        BaseAddress& addr,
                        uint16_t portDefault = 0);
 }

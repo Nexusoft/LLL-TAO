@@ -39,6 +39,19 @@ namespace TAO
     namespace Ledger
     {
 
+        /** Copy Constructor. **/
+        TritiumBlock::TritiumBlock(const BlockState& state)
+        : Block(state)
+        , producer()
+        , vtx(state.vtx)
+        {
+            vtx.erase(vtx.begin());
+
+            /* Read the producer transaction from disk. */
+            if(!LLD::legDB->ReadTx(state.vtx[0].second, producer))
+                debug::error(FUNCTION, "failed to read producer");
+        }
+
         /* For debugging Purposes seeing block state data dump */
         std::string TritiumBlock::ToString() const
         {
@@ -271,9 +284,8 @@ namespace TAO
         bool TritiumBlock::Accept()
         {
             /* Read leger DB for duplicate block. */
-            BlockState state;
-            if(LLD::legDB->ReadBlock(GetHash(), state))
-                return debug::error(FUNCTION, "block state already exists");
+            if(LLD::legDB->HasBlock(GetHash()))
+                return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20));
 
 
             /* Read leger DB for previous block. */
@@ -364,6 +376,13 @@ namespace TAO
                         return debug::error(FUNCTION, "contains a non-final transaction");
                 }
             }
+
+            /* Process the block state. */
+            TAO::Ledger::BlockState state(*this);
+
+            /* Accept the block state. */
+            if(!state.Index())
+                return false;
 
             return true;
         }

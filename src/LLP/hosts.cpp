@@ -19,8 +19,6 @@ ________________________________________________________________________________
 #include <vector>
 #include <mutex>
 
-#include <Util/include/strlcpy.h>
-
 namespace
 {
     std::mutex LOOKUP_MUTEX;
@@ -52,29 +50,33 @@ namespace LLP
 
 
     /* Standard Wrapper Function to Interact with cstdlib DNS functions. */
-    bool static LookupIntern(const char *pszName,
+    bool static LookupIntern(const std::string &strName,
                              std::vector<BaseAddress> &vAddr,
                              uint32_t nMaxSolutions,
                              bool fAllowLookup)
     {
+        size_t s = strName.size();
+        if (s == 0 || s > 255)
+            return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
+
         vAddr.clear();
         struct addrinfo aiHint;
         memset(&aiHint, 0, sizeof(struct addrinfo));
 
         aiHint.ai_socktype = SOCK_STREAM;
         aiHint.ai_protocol = IPPROTO_TCP;
-    #ifdef WIN32
+#ifdef WIN32
         aiHint.ai_family = AF_UNSPEC;
         aiHint.ai_flags = fAllowLookup ? 0 : AI_NUMERICHOST;
-    #else
+#else
         aiHint.ai_family = AF_UNSPEC;
         aiHint.ai_flags = AI_ADDRCONFIG | (fAllowLookup ? 0 : AI_NUMERICHOST);
-    #endif
+#endif
 
         struct addrinfo *aiRes = nullptr;
         std::unique_lock<std::mutex> lk(::LOOKUP_MUTEX);
         //{
-          if(getaddrinfo(pszName, nullptr, &aiHint, &aiRes) != 0)
+          if(getaddrinfo(strName.c_str(), nullptr, &aiHint, &aiRes) != 0)
               return false;
         //}
         //lk.unlock();
@@ -122,14 +124,16 @@ namespace LLP
 
 
     /* Standard Wrapper Function to Interact with cstdlib DNS functions. */
-    bool LookupHost(const char *pszName,
+    bool LookupHost(const std::string &strName,
                     std::vector<BaseAddress>& vAddr,
                     uint32_t nMaxSolutions,
                     bool fAllowLookup)
     {
-        if (pszName[0] == 0)
-            return false;
+        size_t s = strName.size();
+        if (s == 0 || s > 255)
+            return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
 
+        /* deprecated!
         char psz[256];
         char *pszHost = psz;
         strlcpy(psz, pszName, sizeof(psz));
@@ -137,31 +141,40 @@ namespace LLP
         {
             pszHost = psz+1;
             psz[strlen(psz)-1] = 0;
-        }
+        } */
 
-        return LookupIntern(pszHost, vAddr, nMaxSolutions, fAllowLookup);
+        return LookupIntern(strName, vAddr, nMaxSolutions, fAllowLookup);
     }
 
 
     /* Standard Wrapper Function to Interact with cstdlib DNS functions. */
-    bool LookupHostNumeric(const char *pszName,
+    bool LookupHostNumeric(const std::string &strName,
                            std::vector<BaseAddress>& vAddr,
                            uint32_t nMaxSolutions)
     {
-        return LookupHost(pszName, vAddr, nMaxSolutions, false);
+        size_t s = strName.size();
+        if (s == 0 || s > 255)
+            return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
+
+
+        return LookupHost(strName, vAddr, nMaxSolutions, false);
     }
 
 
     /* Standard Wrapper Function to Interact with cstdlib DNS functions. */
-    bool Lookup(const char *pszName,
+    bool Lookup(const std::string &strName,
                 std::vector<BaseAddress>& vAddr,
                 uint16_t portDefault,
                 bool fAllowLookup,
                 uint32_t nMaxSolutions)
     {
-        if (pszName[0] == 0)
-            return false;
 
+        size_t s = strName.size();
+        if (s == 0 || s > 255)
+            return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
+
+        /* deprecated (no need for string names such as 192.168.0.1:9325, or [192.168.0.1]:9325,
+                       just plain old ip address will work 192.168.0.1 and pass in port # to set)
         uint16_t port = portDefault;
         char psz[256] = { 0 };
         char *pszHost = psz;
@@ -190,27 +203,32 @@ namespace LLP
             }
 
         }
+        */
 
-        if(!LookupIntern(pszHost, vAddr, nMaxSolutions, fAllowLookup))
+        if(!LookupIntern(strName, vAddr, nMaxSolutions, fAllowLookup))
             return false;
 
         /* Set the ports to the lookup port or default port. */
         for (uint32_t i = 0; i < vAddr.size(); ++i)
-            vAddr[i].SetPort(port);
+            vAddr[i].SetPort(portDefault);
 
         return true;
     }
 
 
     /* Standard Wrapper Function to Interact with cstdlib DNS functions. */
-    bool Lookup(const char *pszName,
+    bool Lookup(const std::string &strName,
                 BaseAddress &addr,
                 uint16_t portDefault,
                 bool fAllowLookup)
     {
+        size_t s = strName.size();
+        if (s == 0 || s > 255)
+            return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
+
         std::vector<BaseAddress> vAddr;
 
-        if(!Lookup(pszName, vAddr, portDefault, fAllowLookup, 1))
+        if(!Lookup(strName, vAddr, portDefault, fAllowLookup, 1))
             return false;
 
         addr = vAddr[0];
@@ -219,10 +237,14 @@ namespace LLP
 
 
     /* Standard Wrapper Function to Interact with cstdlib DNS functions. */
-    bool LookupNumeric(const char *pszName,
+    bool LookupNumeric(const std::string &strName,
                        BaseAddress& addr,
                        uint16_t portDefault)
     {
-        return Lookup(pszName, addr, portDefault, false);
+        size_t s = strName.size();
+        if (s == 0 || s > 255)
+            return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
+
+        return Lookup(strName, addr, portDefault, false);
     }
 }

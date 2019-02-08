@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/trust.h>
@@ -336,10 +337,10 @@ namespace Legacy
     /* Accept a block into the chain. */
     bool LegacyBlock::Accept() const
     {
+
         /* Print the block on verbose 2. */
         if(config::GetArg("-verbose", 0) >= 2)
             print();
-
 
         /* Read leger DB for previous block. */
         TAO::Ledger::BlockState statePrev;
@@ -436,6 +437,23 @@ namespace Legacy
         for(const auto & tx : vtx)
             if (!tx.IsFinal(nHeight, GetBlockTime()))
                 return debug::error(FUNCTION, "contains a non-final transaction");
+
+        /* Process the block state. */
+        TAO::Ledger::BlockState state(*this);
+
+        /* Add to the memory pool. */
+        for(const auto& tx : vtx)
+            TAO::Ledger::mempool.AddUnchecked(tx);
+
+        /* Accept the block state. */
+        if(!state.Index())
+        {
+            /* Remove from the memory pool. */
+            for(const auto& tx : vtx)
+                TAO::Ledger::mempool.Remove(tx.GetHash());
+
+            return false;
+        }
 
         return true;
     }

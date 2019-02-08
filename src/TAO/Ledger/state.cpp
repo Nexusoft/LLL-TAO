@@ -84,12 +84,10 @@ namespace TAO
         , hashNextBlock(0)
         , hashCheckpoint(0)
         {
-            /* Construct a block state from legacy block tx set. */
             for(const auto& tx : block.vtx)
-            {
                 vtx.push_back(std::make_pair(TYPE::LEGACY_TX, tx.GetHash()));
-                TAO::Ledger::mempool.AddUnchecked(tx);
-            }
+
+            assert(vtx.size() == block.vtx.size());
         }
 
 
@@ -103,7 +101,7 @@ namespace TAO
             if(LLD::legDB->ReadBlock(hashPrevBlock, state))
                 return state;
             else
-                debug::error("failed to read previous block state");
+                debug::error("failed to read previous block state ", hashPrevBlock.ToString());
 
             return state;
         }
@@ -123,11 +121,11 @@ namespace TAO
         }
 
         /* Accept a block state into chain. */
-        bool BlockState::Accept()
+        bool BlockState::Index()
         {
-            /* Check if it exists first */
+            /* Read leger DB for duplicate block. */
             if(LLD::legDB->HasBlock(GetHash()))
-                return false;
+                return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20));
 
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();
@@ -309,7 +307,7 @@ namespace TAO
                 for(auto& state : vDisconnect)
                 {
                     /* Add transactions into memory pool. */
-                    if(vConnect.size() > 0)
+                    if(!vConnect.empty())
                     {
                         for(const auto& txAdd : state.vtx)
                         {
@@ -348,11 +346,18 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to disconnect ",
                             state.GetHash().ToString().substr(0, 20));
                     }
+
+                    /* Erase block if not connecting anything. */
+                    if(vConnect.empty())
+                    {
+                        LLD::legDB->EraseBlock(state.GetHash());
+                        LLD::legDB->EraseIndex(state.nHeight);
+                    }
                 }
 
 
                 /* Only add transactions to memory pool if there are blocks to connect. */
-                if(vConnect.size() > 0)
+                if(!vConnect.empty())
                 {
                     /* Resurrect the tritium transactions. */
                     for(const auto& tx : vTritiumResurrect)
@@ -367,6 +372,7 @@ namespace TAO
                 /* List of transactions to remove from pool. */
                 std::vector<uint512_t> vDelete;
 
+
                 /* Reverse the blocks to connect to connect in ascending height. */
                 std::reverse(vConnect.begin(), vConnect.end());
                 for(auto& state : vConnect)
@@ -374,7 +380,6 @@ namespace TAO
                     /* Connect the block. */
                     if(!state.Connect())
                     {
-
                         /* Abort the Transaction. */
                         LLD::TxnAbort();
 
@@ -390,6 +395,9 @@ namespace TAO
                     /* Harden a checkpoint if there is any. */
                     HardenCheckpoint(Prev());
 
+                    /* Output the block state if flagged. */
+                    if(config::GetBoolArg("-printstate"))
+                        debug::log(0, state.ToString(debug::flags::header | debug::flags::tx));
                 }
 
 
@@ -419,13 +427,22 @@ namespace TAO
                     " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
 
 
-                //TODO: blocknotify
 
                 /* Broadcast the block to nodes if not synchronizing. */
                 if(!ChainState::Synchronizing())
                 {
+                    /* Block notify. */
+                    std::string strCmd = config::GetArg("-blocknotify", "");
+                    if (!strCmd.empty())
+                    {
+                        //std::replace_all(strCmd, "%s", ChainState::hashBestChain.GetHex());
+                        std::thread t(runtime::command, strCmd);
+                    }
+
+                    /* Create the inventory object. */
                     std::vector<LLP::CInv> vInv = { LLP::CInv(ChainState::hashBestChain, LLP::MSG_BLOCK) };
 
+                    /* Relay the new block to all connected nodes. */
                     if(LLP::LEGACY_SERVER)
                         LLP::LEGACY_SERVER->Relay("inv", vInv);
                 }
@@ -438,9 +455,6 @@ namespace TAO
         /** Connect a block state into chain. **/
         bool BlockState::Connect()
         {
-            /* Check that there are transactions. */
-            if(vtx.size() == 0)
-                return debug::error(FUNCTION, "block state with no transactions");
 
             /* Check through all the transactions. */
             for(const auto& tx : vtx)
@@ -519,7 +533,11 @@ namespace TAO
 
                     /* Check the memory pool. */
                     if(!mempool.Get(hash, tx))
-                        return debug::error(FUNCTION, "transaction is not in memory pool"); //TODO: recover from this and ask sending node.
+                        return debug::error(FUNCTION, "transaction is not in memory pool");
+
+                    /* Check for coinbase or coinstake. */
+                    if(hash == vtx[0].second && !tx.IsCoinBase() && !tx.IsCoinStake())
+                        return debug::error(FUNCTION, "first transction not coinbase/coinstake");
 
                     /* Fetch the inputs. */
                     std::map<uint512_t, Legacy::Transaction> inputs;
