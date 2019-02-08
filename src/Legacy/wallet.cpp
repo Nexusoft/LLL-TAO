@@ -1244,8 +1244,9 @@ namespace Legacy
                 break;
         }
 
+        int32_t nElapsedSeconds = timer.Elapsed();
         debug::log(0, FUNCTION, "Scanned ", nTransactionCount,
-            " transactions, ", nScannedBlocks, " blocks  in ", timer.Elapsed(), " seconds (", std::fixed, (double)(nScannedCount / timer.Elapsed()), " tx/s)");
+            " transactions, ", nScannedBlocks, " blocks  in ", nElapsedSeconds, " seconds (", std::fixed, nScannedCount > 0 ? (double)(nScannedCount / nElapsedSeconds > 0 ? nElapsedSeconds : 1 ) : 1, " tx/s)");
 
         return nTransactionCount;
     }

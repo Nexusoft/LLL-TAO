@@ -332,14 +332,6 @@ namespace LLP
         friend bool operator<(const BaseAddress& a,  const BaseAddress& b);
 
 
-        /** GetThisIP
-         *
-         *  Finds the address for this computer.
-         *
-         **/
-        static bool GetThisIP(BaseAddress &addr);
-
-
 
         /**
          *  Serialization

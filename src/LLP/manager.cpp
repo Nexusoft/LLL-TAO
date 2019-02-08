@@ -29,10 +29,8 @@ namespace LLP
     /* Default constructor */
     AddressManager::AddressManager(uint16_t port)
     : mapTrustAddress()
-    , this_addr()
+    , nPort(port)
     {
-        this_addr.SetPort(port);
-
         pDatabase = new LLD::AddressDB(port, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
         if(pDatabase)
@@ -125,7 +123,7 @@ namespace LLP
         TrustAddress &trust_addr = mapTrustAddress[hash];
 
         /* Set the port number to match this server */
-        trust_addr.SetPort(this_addr.GetPort());
+        trust_addr.SetPort(nPort);
 
         switch(state)
         {
@@ -192,7 +190,7 @@ namespace LLP
         for(uint32_t i = 0; i < addrs.size(); ++i)
         {
             /* Create a DNS lookup address to resolve to IP address. */
-            BaseAddress lookup_address = BaseAddress(addrs[i], this_addr.GetPort(), true);
+            BaseAddress lookup_address = BaseAddress(addrs[i], nPort, true);
 
             AddAddress(lookup_address, state);
         }
@@ -328,28 +326,10 @@ namespace LLP
     {
         LOCK(mut);
 
-        this_addr.SetPort(port);
-
+        nPort = port;
+        
         for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
             it->second.SetPort(port);
-    }
-
-
-    /*  Returns the address for this node. */
-    BaseAddress AddressManager::GetThisAddress() const
-    {
-        LOCK(mut);
-
-        return this_addr;
-    }
-
-
-    /* Sets the address for this node. */
-    void AddressManager::SetThisAddress(const BaseAddress &addr)
-    {
-        LOCK(mut);
-
-        this_addr = addr;
     }
 
 
@@ -411,8 +391,8 @@ namespace LLP
 
         /* Check if the DNS needs update. */
         uint64_t nLastUpdate = 0;
-        if(!pDatabase->ReadLastUpdate(nLastUpdate)
-        || nLastUpdate + config::GetArg("-dnsupdate", 86400) <= runtime::unifiedtimestamp())
+        if(!config::GetBoolArg("-nodns") && 
+            (!pDatabase->ReadLastUpdate(nLastUpdate) || nLastUpdate + config::GetArg("-dnsupdate", 86400) <= runtime::unifiedtimestamp()))
         {
             /* Log out that DNS is updating. */
             debug::log(0, "DNS cache is out of date by ",
@@ -454,8 +434,6 @@ namespace LLP
         for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
             pDatabase->WriteTrustAddress(it->first, it->second);
 
-        /* Write the address of the server node */
-        pDatabase->WriteThisAddress(0, this_addr);
         pDatabase->TxnCommit();
     }
 

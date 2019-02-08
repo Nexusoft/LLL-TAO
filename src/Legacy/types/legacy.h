@@ -85,6 +85,19 @@ namespace Legacy
         LegacyBlock(const TAO::Ledger::BlockState& state);
 
 
+        /** SetNull
+         *
+         *  Set the block to Null state.
+         *
+         **/
+        void SetNull() override
+        {
+            Block::SetNull();
+
+            vtx.clear();
+        }
+
+
         /** Check
          *
          *  Check a legacy block for consistency.

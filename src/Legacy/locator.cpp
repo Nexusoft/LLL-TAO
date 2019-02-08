@@ -35,7 +35,7 @@ namespace Legacy
     : vHave()
     {
         vHave.push_back(hashBlock);
-        if(hashBlock == TAO::Ledger::hashGenesis)
+        if(hashBlock == (config::fTestNet ? TAO::Ledger::hashGenesisTestnet : TAO::Ledger::hashGenesis))
             return;
 
         TAO::Ledger::BlockState state;
@@ -69,6 +69,6 @@ namespace Legacy
 
             vHave.push_back(state.GetHash());
         }
-        vHave.push_back(TAO::Ledger::hashGenesis);
+        vHave.push_back(config::fTestNet ? TAO::Ledger::hashGenesisTestnet :TAO::Ledger::hashGenesis);
     }
 }

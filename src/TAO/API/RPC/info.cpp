@@ -79,7 +79,6 @@ namespace TAO
 
             obj["connections"] = GetTotalConnectionCount();
             obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToString() : std::string());
-            obj["ip"] = config::GetBoolArg("-beta") ? LLP::LEGACY_SERVER->addrThisNode.ToStringIP() : LLP::TRITIUM_SERVER->addrThisNode.ToStringIP();
 
             // get the EID's if using LISP
             try

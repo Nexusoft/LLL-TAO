@@ -484,12 +484,12 @@ namespace Legacy
         if (nChannel == 0)
         {
             debug::log(1, FUNCTION, "Nexus Stake Minter: new nPoS channel block found at unified time %s", timestampString.c_str());
-            debug::log(1, " blockHash: %s block height: ", blockHash.ToString().substr(0, 30).c_str(), block.nHeight);
+            debug::log(1, " blockHash: %s block height: %d", blockHash.ToString().substr(0, 30).c_str(), block.nHeight);
         }
         else if (nChannel == 1)
         {
             debug::log(1, FUNCTION, "Nexus Miner: new Prime channel block found at unified time %s", timestampString.c_str());
-            debug::log(1, "  blockHash: %s block height: ", blockHash.ToString().substr(0, 30).c_str(), block.nHeight);
+            debug::log(1, "  blockHash: %s block height: %d", blockHash.ToString().substr(0, 30).c_str(), block.nHeight);
             debug::log(1, "  prime cluster verified of size %f", TAO::Ledger::GetDifficulty(block.nBits, 1));
         }
         else if (nChannel == 2)

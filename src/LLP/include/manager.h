@@ -227,22 +227,6 @@ namespace LLP
          **/
         void SetPort(uint16_t port);
 
-
-        /** GetThisAddress
-         *
-         *  Returns the address for this node.
-         *
-         **/
-        BaseAddress GetThisAddress() const;
-
-
-        /** SetThisAddress
-         *
-         *  Sets the address for this node.
-         *
-         **/
-         void SetThisAddress(const BaseAddress &addr);
-
     private:
 
         /** get_addresses
@@ -289,7 +273,7 @@ namespace LLP
         LLD::AddressDB *pDatabase;
         std::map<uint64_t, TrustAddress> mapTrustAddress;
         mutable std::mutex mut;
-        BaseAddress this_addr;
+        uint16_t nPort;
     };
 }
 

@@ -57,9 +57,10 @@ namespace TAO
                 nLastTime = runtime::unifiedtimestamp();
             }
 
+
             /* Special testnet rule. */
             if(config::fTestNet)
-                return (runtime::unifiedtimestamp() - nLastTime < 60);
+                return (stateBest.GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60) && (runtime::unifiedtimestamp() - nLastTime < 30);
 
             /* Check if block has been created within 20 minutes. */
             return (stateBest.GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60);
@@ -190,7 +191,8 @@ namespace TAO
             stateBest.print();
 
             /* Debug logging. */
-            debug::log(0, FUNCTION, config::fTestNet? "Test" : "Nexus", " Network: genesis=", hashGenesis.ToString().substr(0, 20),
+            uint1024_t genesisHash = config::fTestNet ? hashGenesisTestnet : hashGenesis;
+            debug::log(0, FUNCTION, config::fTestNet? "Test" : "Nexus", " Network: genesis=", genesisHash.ToString().substr(0, 20),
             " nBitsStart=0x", std::hex, bnProofOfWorkStart[0].GetCompact(), " best=", hashBestChain.ToString().substr(0, 20),
             " checkpoint=", hashCheckpoint.ToString().substr(0, 20).c_str()," height=", std::dec, stateBest.nHeight);
 

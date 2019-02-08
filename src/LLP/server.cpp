@@ -57,7 +57,6 @@ namespace LLP
     , DDOS_TIMESPAN(nTimespan)
     , DATA_THREADS(0)
     , pAddressManager(0)
-    , addrThisNode()
     , nSleepTime(nSleepTimeIn)
     {
         for(uint16_t index = 0; index < MAX_THREADS; ++index)
@@ -65,17 +64,6 @@ namespace LLP
             DATA_THREADS.push_back(new DataThread<ProtocolType>(
                 index, fDDOS, rScore, cScore, nTimeout, fMeter));
         }
-
-        /* Set the IP for this address */
-        if(!BaseAddress::GetThisIP(addrThisNode))
-            debug::error(FUNCTION, "Failed to get the IP address for this computer");
-
-        /* Set the port for this address */
-        addrThisNode.SetPort(nPort);
-
-        /* Check to see if this address is valid */
-        if(!addrThisNode.IsValid())
-            debug::error(FUNCTION, "This address in invalid: ", addrThisNode.ToString());
 
         /* Initialize the address manager. */
         if(fManager)

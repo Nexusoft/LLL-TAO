@@ -212,7 +212,9 @@ namespace TAO
          **/
         bool CreateGenesis()
         {
-            if(!LLD::legDB->ReadBlock(hashGenesis, ChainState::stateGenesis))
+            uint1024_t genesisHash = config::fTestNet ? hashGenesisTestnet : hashGenesis;
+
+            if(!LLD::legDB->ReadBlock(genesisHash, ChainState::stateGenesis))
             {
                 /* Build the first transaction for genesis. */
                 const char* pszTimestamp = "Silver Doctors [2-19-2014] BANKER CLEAN-UP: WE ARE AT THE PRECIPICE OF SOMETHING BIG";
@@ -247,7 +249,7 @@ namespace TAO
                 assert(genesis.nTime == block.nTime);
 
                 /* Check that the genesis hash is correct. */
-                uint1024_t genesisHash = config::fTestNet ? hashGenesisTestnet : hashGenesis;
+                
                 LLC::CBigNum target;
                 target.SetCompact(block.nBits);
                 if(block.GetHash() != genesisHash)
