@@ -756,7 +756,6 @@ namespace LLD
                     stream.write((char*)&hashmap[0] + (item * 4), 4);
                     stream.flush();
                 }
-                //vDisk.insert(vDisk.end(), (uint8_t*)&hashmap[0], (uint8_t*)&hashmap[0] + (4 * hashmap.size()));
             }
 
             stream.close();
@@ -794,8 +793,36 @@ namespace LLD
                 std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
                 CONDITION.wait(CONDITION_LOCK, [this]{ return fCacheActive.load() || fDestruct.load(); });
 
+                /* Get the filename. */
+                std::string filename = debug::strprintf("%s_hashmap.index", strBaseLocation.c_str());
+
                 /* Flush the disk indexes. */
-                Flush();
+                std::fstream stream(filename, std::ios::in | std::ios::out | std::ios::binary);
+                if(!stream.is_open())
+                {
+                    debug::error(FUNCTION, "couldn't open file: ",
+                        filename, " (", strerror(errno), ")");
+
+                    return;
+                }
+
+                /* Lock for hashmap object. */
+                { LOCK(KEY_MUTEX);
+
+                    /* Create an object on the stack to swap memory with. */
+                    std::vector<uint32_t> vQueue;
+                    vQueue.swap(queue);
+
+                    /* Write the disk hashmap. */
+                    std::vector<uint8_t> vDisk((uint8_t*)&hashmap[0], (uint8_t*)&hashmap[0] + (4 * hashmap.size()));
+
+                    /* Write the data to the stream. */
+                    stream.seekp(0, std::ios::beg);
+                    stream.write((char*)&vDisk[0], vDisk.size());
+                    stream.flush();
+                }
+
+                stream.close();
 
                 /* Set the cache flag to be inactive. */
                 fCacheActive.store(false);

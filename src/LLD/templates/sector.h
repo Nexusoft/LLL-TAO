@@ -1109,7 +1109,7 @@ namespace LLD
                 return false;
 
             /* Lock the sector keys cache. */
-            pSectorKeys->Lock();
+            //pSectorKeys->Lock();
 
             /* Erase data set to be removed. */
             for(auto it = pTransaction->mapEraseData.begin(); it != pTransaction->mapEraseData.end(); ++it )
@@ -1188,7 +1188,7 @@ namespace LLD
             }
 
             /* Flush the keychain. */
-            pSectorKeys->Flush();
+            //pSectorKeys->Flush();
 
             /* Cleanup the transaction object. */
             delete pTransaction;

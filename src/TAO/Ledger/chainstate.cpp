@@ -119,8 +119,13 @@ namespace TAO
                 /* Rollback the chain a given number of blocks. */
                 TAO::Ledger::BlockState state = stateBest;
                 Legacy::Transaction tx;
-                for(int i = 0; i < config::GetArg("-checkblocks", 0) && !config::fShutdown; i++)
+
+                bool fFailed = false;
+                for(int i = 0; i < config::GetArg("-checkblocks", 0) && !fFailed && !config::fShutdown; i++)
                 {
+                    if(state == stateGenesis)
+                        break;
+                        
                     /* Scan each transaction in the block and process those related to this wallet */
                     std::vector<uint512_t> vHashes;
                     for(const auto& item : state.vtx)
@@ -130,7 +135,14 @@ namespace TAO
                         {
                             /* Read transaction from database */
                             if (!LLD::legacyDB->ReadTx(item.second, tx))
-                                return debug::error(FUNCTION, "tx ", item.second.ToString().substr(0, 20), " not found");
+                            {
+                                debug::log(0, state.ToString(debug::flags::tx | debug::flags::header));
+
+                                debug::error(FUNCTION, "tx ", item.second.ToString().substr(0, 20), " not found");
+
+                                fFailed = true;
+                                break;
+                            }
 
                             /* Check for coinbase or coinstake. */
                             if(item.second == state.vtx[0].second && !tx.IsCoinBase() && !tx.IsCoinStake())
@@ -140,7 +152,13 @@ namespace TAO
 
                     /* Check the merkle root. */
                     if(state.hashMerkleRoot != state.BuildMerkleTree(vHashes))
-                        return debug::error(FUNCTION, "merkle tree mismatch");
+                    {
+                        debug::log(0, state.ToString(debug::flags::tx | debug::flags::header));
+
+                        debug::error(FUNCTION, "merkle tree mismatch");
+
+                        fFailed = true;
+                    }
 
                     /* Iterate backwards. */
                     state = state.Prev();
@@ -150,6 +168,14 @@ namespace TAO
                     /* Debug Output. */
                     if(i % 100000 == 0)
                         debug::log(0, "Checked ", i, " Blocks...");
+                }
+
+                if(fFailed)
+                {
+                    /* Set the best to older block. */
+                    LLD::TxnBegin();
+                    state.SetBest();
+                    LLD::TxnCommit();
                 }
             }
 

@@ -163,7 +163,7 @@ namespace LLP
          *  Get the best connection based on latency
          *
          **/
-        ProtocolType* GetConnection();
+        ProtocolType* GetConnection(const BaseAddress& addrExclude);
 
 
         /** Relay
