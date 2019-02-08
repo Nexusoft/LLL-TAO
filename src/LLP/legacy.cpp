@@ -542,7 +542,7 @@ namespace LLP
                         /* Debug output. */
                         debug::log(0, NODE, "fast sync node timed out, switching to ", addrFastSync.ToStringIP());
 
-                        return false;
+                        return true;
                     }
                 }
 
@@ -715,8 +715,14 @@ namespace LLP
         return true;
     }
 
+
+    /* Static instantiation of orphan blocks in queue to process. */
     static std::map<uint1024_t, Legacy::LegacyBlock> mapLegacyOrphans;
+
+
+    /* Mutex to protect checking more than one block at a time. */
     static std::mutex PROCESSING_MUTEX;
+
 
     /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
     bool LegacyNode::Process(const Legacy::LegacyBlock& block, LegacyNode* pnode)
@@ -764,10 +770,6 @@ namespace LLP
                 LegacyNode* pBest = LEGACY_SERVER->GetConnection();
                 if(pBest)
                     pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
-
-                /* If fast sync node switched, drop the connection. */
-                if(config::GetBoolArg("-fastsync") && nLastGetBlocks + 10 < runtime::timestamp())
-                    return false;
             }
 
             return true;

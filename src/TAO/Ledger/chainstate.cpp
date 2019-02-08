@@ -113,6 +113,46 @@ namespace TAO
                 LLD::TxnCommit();
             }
 
+            /* Check blocks and check transactions for consistency. */
+            if(config::GetArg("-checkblocks", 0) > 0)
+            {
+                /* Rollback the chain a given number of blocks. */
+                TAO::Ledger::BlockState state = stateBest;
+                Legacy::Transaction tx;
+                for(int i = 0; i < config::GetArg("-checkblocks", 0) && !config::fShutdown; i++)
+                {
+                    /* Scan each transaction in the block and process those related to this wallet */
+                    std::vector<uint512_t> vHashes;
+                    for(const auto& item : state.vtx)
+                    {
+                        vHashes.push_back(item.second);
+                        if (item.first == TAO::Ledger::LEGACY_TX)
+                        {
+                            /* Read transaction from database */
+                            if (!LLD::legacyDB->ReadTx(item.second, tx))
+                                return debug::error(FUNCTION, "tx ", item.second.ToString().substr(0, 20), " not found");
+
+                            /* Check for coinbase or coinstake. */
+                            if(item.second == state.vtx[0].second && !tx.IsCoinBase() && !tx.IsCoinStake())
+                                return debug::error(FUNCTION, "first transction not coinbase/coinstake");
+                        }
+                    }
+
+                    /* Check the merkle root. */
+                    if(state.hashMerkleRoot != state.BuildMerkleTree(vHashes))
+                        return debug::error(FUNCTION, "merkle tree mismatch");
+
+                    /* Iterate backwards. */
+                    state = state.Prev();
+                    if(!state)
+                        break;
+
+                    /* Debug Output. */
+                    if(i % 100000 == 0)
+                        debug::log(0, "Checked ", i, " Blocks...");
+                }
+            }
+
             /* Fill out the best chain stats. */
             nBestHeight     = stateBest.nHeight;
             nBestChainTrust = stateBest.nChainTrust;

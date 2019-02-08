@@ -371,7 +371,7 @@ namespace LLD
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-            for(int i = hashmap[nBucket]; i >= 0; --i)
+            for(int i = hashmap[nBucket] - 1; i >= 0; --i)
             {
                 { LOCK(KEY_MUTEX);
 
@@ -455,7 +455,7 @@ namespace LLD
 
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-            for(int i = hashmap[nBucket]; i >= 0; --i)
+            for(int i = hashmap[nBucket] - 1; i >= 0; --i)
             {
                 { LOCK(KEY_MUTEX);
 
@@ -547,7 +547,7 @@ namespace LLD
 
                 /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
                 std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-                for(int i = hashmap[nBucket]; i >= 0; --i)
+                for(int i = hashmap[nBucket] - 1; i >= 0; --i)
                 {
                     /* Find the file stream for LRU cache. */
                     std::fstream* pstream;

@@ -455,9 +455,6 @@ namespace TAO
         /** Connect a block state into chain. **/
         bool BlockState::Connect()
         {
-            /* Check that there are transactions. */
-            if(vtx.size() == 0)
-                return debug::error(FUNCTION, "block state with no transactions");
 
             /* Check through all the transactions. */
             for(const auto& tx : vtx)
@@ -536,7 +533,11 @@ namespace TAO
 
                     /* Check the memory pool. */
                     if(!mempool.Get(hash, tx))
-                        return debug::error(FUNCTION, "transaction is not in memory pool"); //TODO: recover from this and ask sending node.
+                        return debug::error(FUNCTION, "transaction is not in memory pool");
+
+                    /* Check for coinbase or coinstake. */
+                    if(hash == vtx[0].second && !tx.IsCoinBase() && !tx.IsCoinStake())
+                        return debug::error(FUNCTION, "first transction not coinbase/coinstake");
 
                     /* Fetch the inputs. */
                     std::map<uint512_t, Legacy::Transaction> inputs;
