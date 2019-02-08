@@ -181,37 +181,37 @@ namespace LLP
    }
 
 
-    /*  Public Wraper to Add a Connection Manually. */
-    template <class ProtocolType>
-    bool Server<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort)
-    {
-        /* Initialize DDOS Protection for Incoming IP Address. */
-        BaseAddress addrConnect(strAddress, nPort);
+   /*  Public Wraper to Add a Connection Manually. */
+   template <class ProtocolType>
+   int8_t Server<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort)
+   {
+       /* Initialize DDOS Protection for Incoming IP Address. */
+       BaseAddress addrConnect(strAddress, nPort);
 
-        /* Create new DDOS Filter if Needed. */
-        if(!DDOS_MAP.count(addrConnect))
-            DDOS_MAP[addrConnect] = new DDOS_Filter(DDOS_TIMESPAN);
+       /* Create new DDOS Filter if Needed. */
+       if(!DDOS_MAP.count(addrConnect))
+           DDOS_MAP[addrConnect] = new DDOS_Filter(DDOS_TIMESPAN);
 
-        /* DDOS Operations: Only executed when DDOS is enabled. */
-        if((fDDOS && DDOS_MAP[addrConnect]->Banned()))
-            return false;
+       /* DDOS Operations: Only executed when DDOS is enabled. */
+       if((fDDOS && DDOS_MAP[addrConnect]->Banned()))
+           return 0;
 
-        /* Find a balanced Data Thread to Add Connection to. */
-        int32_t nThread = FindThread();
-        if(nThread < 0)
-            return false;
+       /* Find a balanced Data Thread to Add Connection to. */
+       int32_t nThread = FindThread();
+       if(nThread < 0)
+           return -1;
 
-        /* Select the proper data thread. */
-        DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-        if(!dt)
-            return false;
+       /* Select the proper data thread. */
+       DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+       if(!dt)
+           return -1;
 
-        /* Attempt the connection. */
-        if(!dt->AddConnection(strAddress, nPort, DDOS_MAP[addrConnect]))
-            return false;
+       /* Attempt the connection. */
+       if(!dt->AddConnection(strAddress, nPort, DDOS_MAP[addrConnect]))
+           return 0;
 
-        return true;
-    }
+       return 1;
+   }
 
 
     /*  Get the active connection pointers from data threads. */
@@ -351,6 +351,7 @@ namespace LLP
 
         /* Connect state. */
         uint8_t state = 0;
+        int8_t status = 0;
 
         /* Read the address database. */
         pAddressManager->ReadDatabase();
@@ -371,12 +372,14 @@ namespace LLP
         {
             runtime::sleep(100);
 
-            /* Assume the connect state is in a failed state. */
-            state = static_cast<uint8_t>(ConnectState::FAILED);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
             if(pAddressManager->StochasticSelect(addr))
             {
+
+                /* Get the state of the selected address. */
+                state = pAddressManager->GetState(addr);
+
                 /* Check for connect to self. */
                 if(addr.ToStringIP() == addrThisNode.ToStringIP())
                 {
@@ -399,7 +402,9 @@ namespace LLP
                 debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
 
                 /* Attempt the connection. */
-                if(AddConnection(addr.ToStringIP(), addr.GetPort()))
+                status = AddConnection(addr.ToStringIP(), addr.GetPort());
+
+                if(status > 0)
                 {
                     state = static_cast<uint8_t>(ConnectState::CONNECTED);
 
@@ -407,6 +412,14 @@ namespace LLP
                     for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown; ++i)
                         runtime::sleep(1000);
                 }
+                else if(status < 0)
+                {
+                    debug::error(FUNCTION, ProtocolType::Name(), " There was an issue selecting data thread...");
+                    continue;
+                }
+                else
+                    state = static_cast<uint8_t>(ConnectState::FAILED);
+
 
                 /* Update the address state. */
                 pAddressManager->AddAddress(addr, state);

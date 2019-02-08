@@ -73,7 +73,8 @@ namespace LLP
        node->Event(EVENT_CONNECT);
        node->fCONNECTED = true;
 
-       { LOCK(MUTEX);
+       {
+           LOCK(MUTEX);
 
            int nSlot = find_slot();
 

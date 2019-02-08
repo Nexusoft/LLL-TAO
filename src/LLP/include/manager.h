@@ -157,7 +157,19 @@ namespace LLP
          *  @param[in] addr The address to find.
          *
          **/
-        bool Has(const BaseAddress &addr);
+        bool Has(const BaseAddress &addr) const;
+
+
+        /** GetState
+         *
+         *  Gets the Connect State of the address in the manager if it exists.
+         *
+         *  @param[in] addr The address to get the state from.
+         *
+         *  @return Returns the connect state of the address.
+         *
+         **/
+        uint8_t GetState(const BaseAddress &addr) const;
 
 
         /** SetLatency

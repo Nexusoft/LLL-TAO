@@ -231,7 +231,7 @@ namespace LLP
 
 
     /*  Determines if the address manager has the address or not. */
-    bool AddressManager::Has(const BaseAddress &addr)
+    bool AddressManager::Has(const BaseAddress &addr) const
     {
         uint64_t hash = addr.GetHash();
         std::unique_lock<std::mutex> lk(mut);
@@ -241,6 +241,22 @@ namespace LLP
             return true;
 
         return false;
+    }
+
+
+    /*  Gets the Connect State of the address in the manager if it exists. */
+    uint8_t AddressManager::GetState(const BaseAddress &addr) const
+    {
+        uint8_t state = static_cast<uint8_t>(ConnectState::NEW);
+
+        uint64_t hash = addr.GetHash();
+        std::unique_lock<std::mutex> lk(mut);
+
+        auto it = mapTrustAddress.find(hash);
+        if(it != mapTrustAddress.end())
+            state = it->second.nState;
+
+        return state;
     }
 
 

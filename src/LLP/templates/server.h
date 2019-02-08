@@ -132,10 +132,11 @@ namespace LLP
          *  @param[in] strAddress	IPv4 Address of outgoing connection
          *  @param[in] strPort		Port of outgoing connection
          *
-         *  @return	Returns true if the connection was established successfully
+         *  @return	Returns 1 If successful, 0 if unsuccessful, -1 on errors.
          *
          **/
-        bool AddConnection(std::string strAddress, uint16_t nPort);
+        int8_t AddConnection(std::string strAddress, uint16_t nPort);
+
 
 
         /** GetConnections
