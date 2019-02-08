@@ -261,9 +261,13 @@ namespace LLP
             {
                 debug::log(0, FUNCTION, "connected to self");
 
-                /* Remove self-address from the Address Manager. */
+                /* Cache self-address in the Address Manager and remove it from
+                   Select candidates. */
                 if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
+                {
+                    LEGACY_SERVER->pAddressManager->Ban(addrMe);
                     LEGACY_SERVER->pAddressManager->RemoveAddress(addrMe);
+                }
 
                 return false;
             }

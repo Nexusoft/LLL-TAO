@@ -143,7 +143,11 @@ namespace LLP
 
         /* Clear the address manager. */
         if(pAddressManager)
+        {
             delete pAddressManager;
+            pAddressManager = nullptr;
+        }
+
     }
 
 
@@ -153,8 +157,7 @@ namespace LLP
     {
         //DisconnectAll();
 
-        if(pAddressManager)
-            pAddressManager->WriteDatabase();
+        pAddressManager->WriteDatabase();
     }
 
 
@@ -164,8 +167,11 @@ namespace LLP
    {
        BaseAddress addr(strAddress, nPort, false);
 
-       if(pAddressManager)
-           pAddressManager->AddAddress(addr, ConnectState::NEW);
+       /* Make sure manager is enabled. */
+       if(!pAddressManager)
+            return;
+
+       pAddressManager->AddAddress(addr, ConnectState::NEW);
    }
 
 
@@ -191,8 +197,6 @@ namespace LLP
 
        /* Select the proper data thread. */
        DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-       if(!dt)
-           return false;
 
        /* Attempt the connection. */
        if(!dt->AddConnection(strAddress, nPort, DDOS_MAP[addrConnect]))
@@ -212,8 +216,6 @@ namespace LLP
        {
            /* Get the data threads. */
            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-           if(!dt)
-               continue;
 
            /* Loop through connections in data thread. */
            int32_t nSize = dt->CONNECTIONS.size();
@@ -243,8 +245,6 @@ namespace LLP
         {
             /* Get the data threads. */
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-            if(!dt)
-                continue;
 
             /* Loop through connections in data thread and add any that are connected to count. */
             int32_t nSize = dt->CONNECTIONS.size();
@@ -273,8 +273,6 @@ namespace LLP
         {
             /* Get the data threads. */
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-            if(!dt)
-                continue;
 
             /* Loop through connections in data thread. */
             int32_t nSize = dt->CONNECTIONS.size();
@@ -320,9 +318,7 @@ namespace LLP
     void Server<ProtocolType>::DisconnectAll()
     {
         for(uint16_t index = 0; index < MAX_THREADS; ++index)
-        {
             DATA_THREADS[index]->DisconnectAll();
-        }
     }
 
 
@@ -343,11 +339,6 @@ namespace LLP
         /* Set the port. */
         pAddressManager->SetPort(PORT);
 
-
-        //TODO: move this logic inside AddAddress and legacy.cpp
-        /* Set this node's current address. */
-        if(!pAddressManager->GetThisAddress().IsValid())
-            pAddressManager->SetThisAddress(addrThisNode);
 
         /* Wait for data threads to startup. */
         while(DATA_THREADS.size() < MAX_THREADS)
@@ -390,14 +381,11 @@ namespace LLP
     int32_t Server<ProtocolType>::FindThread()
     {
         int32_t nIndex = -1;
-        int32_t nConnections = std::numeric_limits<int32_t>::max();
+        uint32_t nConnections = std::numeric_limits<uint32_t>::max();
 
         for(uint16_t index = 0; index < MAX_THREADS; ++index)
         {
             DataThread<ProtocolType> *dt = DATA_THREADS[index];
-
-            if(!dt)
-                continue;
 
             /* Limit data threads to 32 connections per thread. */
             if(dt->nConnections < nConnections && dt->nConnections < 32)
@@ -508,21 +496,18 @@ namespace LLP
                         continue;
                     }
 
+                    /* Get the data thread. */
                     DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-                    if(!dt)
-                        continue;
 
                     dt->AddConnection(sockNew, DDOS_MAP[addr]);
 
-                    /* Update state in address manager. */
-                    uint8_t state = static_cast<uint8_t>(ConnectState::CONNECTED);
-
-                    /* Update the address state. */
-                    if(pAddressManager)
-                        pAddressManager->AddAddress(addr, state);
 
                     /* Verbose output. */
                     debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ",  PORT);
+
+
+                    /* Update the address state. */
+                    pAddressManager->AddAddress(addr, ConnectState::CONNECTED);
                 }
             }
         }

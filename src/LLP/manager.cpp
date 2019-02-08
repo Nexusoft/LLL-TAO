@@ -200,14 +200,9 @@ namespace LLP
     /*  Removes an address from the manager if it exists. */
     void AddressManager::RemoveAddress(const BaseAddress &addr)
     {
-        uint64_t hash = addr.GetHash();
+        /* Ensure thread safety while removing address. */
         std::unique_lock<std::mutex> lk(mut);
-
-        auto it = mapTrustAddress.find(hash);
-
-        /* Erase from the map if the address was found. */
-        if(it != mapTrustAddress.end())
-            mapTrustAddress.erase(hash);
+        remove_address(addr);
     }
 
 
@@ -327,16 +322,28 @@ namespace LLP
         LOCK(mut);
 
         nPort = port;
-        
+
         for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
             it->second.SetPort(port);
+    }
+
+
+    /*  Blacklists the given address so it won't get selected. The default
+     *  behavior is to ban indefinitely.*/
+    void AddressManager::Ban(const BaseAddress &addr, uint32_t banTime)
+    {
+        uint64_t hash = addr.GetHash();
+        LOCK(mut);
+
+        mapBanned[hash] = banTime;
     }
 
 
     /*  Read the address database into the manager. */
     void AddressManager::ReadDatabase()
     {
-        { LOCK(mut);
+        {
+            LOCK(mut);
 
             /* Make sure the map is empty. */
             mapTrustAddress.clear();
@@ -391,7 +398,7 @@ namespace LLP
 
         /* Check if the DNS needs update. */
         uint64_t nLastUpdate = 0;
-        if(!config::GetBoolArg("-nodns") && 
+        if(!config::GetBoolArg("-nodns") &&
             (!pDatabase->ReadLastUpdate(nLastUpdate) || nLastUpdate + config::GetArg("-dnsupdate", 86400) <= runtime::unifiedtimestamp()))
         {
             /* Log out that DNS is updating. */
@@ -444,10 +451,16 @@ namespace LLP
         vInfo.clear();
         for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
         {
+            /* If the address is on the ban list, skip it. */
+            if(mapBanned.find(it->first) != mapBanned.end())
+                continue;
+
+            /* If the address matches the flag, add it to the vector. */
             if(it->second.nState & flags)
                 vInfo.push_back(it->second);
         }
     }
+
 
     /*  Gets the number of addresses specified by the state flags. */
     uint32_t AddressManager::count(const uint8_t flags)
@@ -455,11 +468,29 @@ namespace LLP
         uint32_t c = 0;
         for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
         {
+            /* If the address is on the ban list, skip it. */
+            if(mapBanned.find(it->first) != mapBanned.end())
+                continue;
+
+            /* If the address matches the flag, increment the count */
             if(it->second.nState & flags)
                 ++c;
         }
         return c;
     }
+
+
+    /*  Helper function that removes the given address from the map. */
+    void AddressManager::remove_address(const BaseAddress &addr)
+    {
+        uint64_t hash = addr.GetHash();
+        auto it = mapTrustAddress.find(hash);
+
+        /* Erase from the map if the address was found. */
+        if(it != mapTrustAddress.end())
+            mapTrustAddress.erase(hash);
+    }
+
 
     /* Gets the cumulative count of each address state flags. */
     uint32_t AddressManager::total_count(const uint8_t flags)
@@ -468,6 +499,10 @@ namespace LLP
 
         for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
         {
+            /* If the address is on the ban list, skip it. */
+            if(mapBanned.find(it->first) != mapBanned.end())
+                continue;
+
             if(flags & ConnectState::CONNECTED)
                 total += it->second.nConnected;
             if(flags & ConnectState::DROPPED)
