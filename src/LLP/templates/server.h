@@ -97,9 +97,17 @@ namespace LLP
 
 
         /** Constructor **/
-        Server<ProtocolType>(uint16_t nPort, uint16_t nMaxThreads, uint32_t nTimeout = 30, bool isDDOS = false,
-                             uint32_t cScore = 0, uint32_t rScore = 0, uint32_t nTimespan = 60, bool fListen = true,
-                             bool fMeter = false, bool fManager = false, uint32_t nSleepTimeIn = 1000);
+        Server<ProtocolType>(uint16_t nPort,
+                             uint16_t nMaxThreads,
+                             uint32_t nTimeout = 30,
+                             bool isDDOS = false,
+                             uint32_t cScore = 0,
+                             uint32_t rScore = 0,
+                             uint32_t nTimespan = 60,
+                             bool fListen = true,
+                             bool fMeter = false,
+                             bool fManager = false,
+                             uint32_t nSleepTimeIn = 1000);
 
 
         /** Default Destructor **/

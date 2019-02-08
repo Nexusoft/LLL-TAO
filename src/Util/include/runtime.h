@@ -14,10 +14,12 @@ ________________________________________________________________________________
 #ifndef NEXUS_UTIL_INCLUDE_RUNTIME_H
 #define NEXUS_UTIL_INCLUDE_RUNTIME_H
 
-#include <cinttypes>
+#include <cstdint>
 #include <thread>
 #include <chrono>
 #include <locale>
+
+#include <Util/include/debug.h>
 
 #define ARRAYLEN(array)     (sizeof(array)/sizeof((array)[0]))
 
@@ -226,8 +228,8 @@ namespace runtime
     inline void command(std::string strCommand)
     {
         int nErr = ::system(strCommand.c_str());
-        //if (nErr) NOTE: suppress errors for now
-        //    debug::error(FUNCTION, "system ", strCommand, " returned ", nErr);
+        if (nErr) //NOTE: suppress errors for now
+            debug::error(FUNCTION, "system ", strCommand, " returned ", nErr);
     }
 
 

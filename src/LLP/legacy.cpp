@@ -217,6 +217,7 @@ namespace LLP
             if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
                 LEGACY_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
+
             /* Debug output for node disconnect. */
             debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming",
                 " Disconnected (", strReason, ") at timestamp ", runtime::unifiedtimestamp());
@@ -259,6 +260,11 @@ namespace LLP
             if(nSession == LegacyNode::nSessionID)
             {
                 debug::log(0, FUNCTION, "connected to self");
+
+                /* Remove self-address from the Address Manager. */
+                if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
+                    LEGACY_SERVER->pAddressManager->RemoveAddress(addrMe);
+
                 return false;
             }
 
@@ -273,7 +279,7 @@ namespace LLP
             static uint32_t nAsked = 0;
             if (fOUTGOING && nAsked == 0)
             {
-                nAsked++;
+                ++nAsked;
                 PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
             }
 
@@ -470,9 +476,10 @@ namespace LLP
                     vAddr.push_back(*it);
                 }
 
-                /* Add the connections to Legacy Server. */
+                /* Add new addresses to Legacy Server. */
                 if(LEGACY_SERVER->pAddressManager)
                     LEGACY_SERVER->pAddressManager->AddAddresses(vAddr);
+
             }
 
         }
@@ -704,7 +711,7 @@ namespace LLP
 
             /* Add the best 1000 addresses. */
             std::vector<LegacyAddress> vSend;
-            for(uint32_t n = 0; n < vAddr.size() && n < 1000; n++)
+            for(uint32_t n = 0; n < vAddr.size() && n < 1000; ++n)
                 vSend.push_back(vAddr[n]);
 
             /* Send the addresses off. */
