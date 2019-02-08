@@ -39,6 +39,10 @@ namespace TAO
             if(ChainState::hashCheckpoint == 0)
                 return true;
 
+            /* Catch if genesis. */
+            if(ChainState::stateGenesis == state)
+                return true;
+
             /* Get previous block state. */
             BlockState statePrev;
             if(!LLD::legDB->ReadBlock(state.hashPrevBlock, statePrev))

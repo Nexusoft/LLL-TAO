@@ -530,7 +530,7 @@ namespace LLP
             && vInv.back().GetType() == MSG_BLOCK)
             {
                 /* Fast sync should switch to new node if time since request is over 10 seconds */
-                if(nLastGetBlocks + 10 < runtime::timestamp())
+                if(nLastGetBlocks + 20 < runtime::timestamp())
                 {
                     /* Normal case of asking for a getblocks inventory message. */
                     LegacyNode* pnode = LEGACY_SERVER->GetConnection();
@@ -541,6 +541,8 @@ namespace LLP
 
                         /* Debug output. */
                         debug::log(0, NODE, "fast sync node timed out, switching to ", addrFastSync.ToStringIP());
+
+                        return false;
                     }
                 }
 
@@ -583,8 +585,6 @@ namespace LLP
             /* Loop the inventory and deliver messages. */
             for(const auto& inv : vInv)
             {
-                if (config::fShutdown)
-                    return true;
 
                 /* Log the inventory message receive. */
                 debug::log(3, FUNCTION, "received getdata ", inv.ToString());
@@ -758,12 +758,16 @@ namespace LLP
             if(!TAO::Ledger::ChainState::Synchronizing())
                 pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
             else if(!config::GetBoolArg("-fastsync")
-                 || nLastGetBlocks + 10 < runtime::timestamp())
+                 || nLastGetBlocks + 20 < runtime::timestamp())
             {
                 /* Normal case of asking for a getblocks inventory message. */
                 LegacyNode* pBest = LEGACY_SERVER->GetConnection();
                 if(pBest)
                     pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+
+                /* If fast sync node switched, drop the connection. */
+                if(config::GetBoolArg("-fastsync") && nLastGetBlocks + 10 < runtime::timestamp())
+                    return false;
             }
 
             return true;
@@ -773,29 +777,18 @@ namespace LLP
         if(!block.Accept())
             return true;
 
-        /* Check if it exists first */
-        if(LLD::legDB->HasBlock(block.GetHash()))
-            return true;
-
-        /* Process the block state. */
-        TAO::Ledger::BlockState state(block);
-
-        /* Accept the block state. */
-        if(!state.Accept())
-            return false;
-
         /* Process orphan if found. */
         while(mapLegacyOrphans.count(hash))
         {
             Legacy::LegacyBlock& orphan = mapLegacyOrphans[hash];
 
             debug::log(0, FUNCTION, "processing ORPHAN prev=", orphan.GetHash().ToString().substr(0, 20), " size=", mapLegacyOrphans.size());
-            TAO::Ledger::BlockState stateOrphan(orphan);
-            if(!stateOrphan.Accept())
+
+            if(!orphan.Accept())
                 return true;
 
             mapLegacyOrphans.erase(hash);
-            hash = stateOrphan.GetHash();
+            hash = orphan.GetHash();
         }
 
         return true;

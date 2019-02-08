@@ -329,8 +329,7 @@ namespace TAO
                     continue;
 
                 /* Create the state object. */
-                TAO::Ledger::BlockState state = TAO::Ledger::BlockState(block);
-                if(!state.Accept())
+                if(!block.Accept())
                     continue;
 
                 /* Debug output. */

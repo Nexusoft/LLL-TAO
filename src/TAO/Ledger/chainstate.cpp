@@ -99,6 +99,20 @@ namespace TAO
                 debug::log(0, FUNCTION, "database successfully recovered" );
             }
 
+            /* Rewind the chain a total number of blocks. */
+            if(config::GetArg("-forkblocks", 0) > 0)
+            {
+                /* Rollback the chain a given number of blocks. */
+                TAO::Ledger::BlockState state = stateBest;
+                for(int i = 0; i < config::GetArg("-forkblocks", 0); i++)
+                    state = state.Prev();
+
+                /* Set the best to older block. */
+                LLD::TxnBegin();
+                state.SetBest();
+                LLD::TxnCommit();
+            }
+
             /* Fill out the best chain stats. */
             nBestHeight     = stateBest.nHeight;
             nBestChainTrust = stateBest.nChainTrust;
@@ -106,27 +120,13 @@ namespace TAO
             /* Set the checkpoint. */
             hashCheckpoint = stateBest.hashCheckpoint;
 
-            /* Rewind the chain a total number of blocks. */
-            if(config::GetArg("-forkblocks", 0) > 0)
-            {
-                TAO::Ledger::BlockState state = stateBest;
-                for(int i = 0; i < config::GetArg("-forkblocks", 0); i++)
-                {
-                    state = state.Prev();
-                };
-
-                LLD::TxnBegin();
-                state.SetBest();
-                LLD::TxnCommit();
-            }
-
             /* Find the last checkpoint. */
             if(stateBest != stateGenesis)
             {
                 /* Search back until fail or different checkpoint. */
                 BlockState state;
-                if(!LLD::legDB->ReadBlock(hashCheckpoint, state))
-                    return debug::error(FUNCTION, "failed to read pending checkpoint");
+                if(!LLD::legDB->HasBlock(hashCheckpoint))
+                    return debug::error(FUNCTION, "no pending checkpoint");
 
                 /* Get the previous state. */
                 state = state.Prev();
@@ -136,8 +136,6 @@ namespace TAO
                 /* Set the checkpoint. */
                 hashCheckpoint = state.hashCheckpoint;
             }
-
-
 
             /* Ensure the block height index is intact */
             if(config::GetBoolArg("-indexheight"))

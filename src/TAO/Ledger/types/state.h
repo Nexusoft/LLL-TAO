@@ -237,14 +237,14 @@ namespace TAO
             BlockState Next() const;
 
 
-            /** Accept
+            /** Index
              *
-             *  Accept a block state into chain.
+             *  Index a block state into chain.
              *
              *  @return true if accepted.
              *
              **/
-            bool Accept();
+            bool Index();
 
 
             /** Set Best
