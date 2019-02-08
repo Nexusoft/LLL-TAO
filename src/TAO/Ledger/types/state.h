@@ -149,7 +149,6 @@ namespace TAO
             BlockState(const BlockState& state)
             : Block(state)
             {
-                vchBlockSig         = state.vchBlockSig;
                 vtx                 = state.vtx;
 
                 nChainTrust         = state.nChainTrust;
@@ -167,7 +166,7 @@ namespace TAO
 
 
             /** Copy Assignment Operator. **/
-            BlockState operator=(const BlockState& state)
+            BlockState operator=(const BlockState state)
             {
                 nVersion            = state.nVersion;
                 hashPrevBlock       = state.hashPrevBlock;
@@ -178,6 +177,7 @@ namespace TAO
                 nNonce              = state.nNonce;
                 nTime               = state.nTime;
                 vchBlockSig         = state.vchBlockSig;
+
                 vtx                 = state.vtx;
 
                 nChainTrust         = state.nChainTrust;
@@ -237,14 +237,14 @@ namespace TAO
             BlockState Next() const;
 
 
-            /** Accept
+            /** Index
              *
-             *  Accept a block state into chain.
+             *  Index a block state into chain.
              *
              *  @return true if accepted.
              *
              **/
-            bool Accept();
+            bool Index();
 
 
             /** Set Best

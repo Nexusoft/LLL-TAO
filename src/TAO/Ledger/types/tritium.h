@@ -93,17 +93,35 @@ namespace TAO
 
 
             /** Copy Constructor. **/
-            TritiumBlock(const TritiumBlock& state)
-            : Block(state)
-            , producer(state.producer)
-            , vtx(state.vtx)
+            TritiumBlock(const TritiumBlock& block)
+            : Block(block)
+            , producer(block.producer)
+            , vtx(block.vtx)
             {
 
             }
 
+
+            /** Copy Constructor. **/
+            TritiumBlock(const BlockState& state);
+
             /** Default Destructor **/
             virtual ~TritiumBlock()
             {
+            }
+
+
+            /** SetNull
+             *
+             *  Set the block to Null state.
+             *
+             **/
+            void SetNull() override
+            {
+                Block::SetNull();
+
+                vtx.clear();
+                producer = Transaction();
             }
 
 

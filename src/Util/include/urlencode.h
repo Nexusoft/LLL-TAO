@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_UTIL_INCLUDE_ENCODING_H
 
 #include <cstring>
+#include <Util/include/hex.h>
 
 namespace encoding
 {

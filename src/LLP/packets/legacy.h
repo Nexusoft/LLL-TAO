@@ -20,6 +20,8 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 
+#include <LLP/include/version.h>
+
 #include <Util/include/debug.h>
 #include <Util/include/args.h>
 #include <Util/templates/serialize.h>

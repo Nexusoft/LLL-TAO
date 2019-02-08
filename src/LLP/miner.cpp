@@ -12,14 +12,12 @@ ________________________________________________________________________________
 
 
 #include <LLP/types/miner.h>
+#include <LLP/templates/events.h>
+#include <LLP/templates/ddos.h>
 
 #include <LLD/include/global.h>
 
-
 #include <TAO/Ledger/include/constants.h>
-//#include <TAO/Ledger/include/chainstate.h>
-//#include <TAO/Ledger/types/state.h>
-
 
 #include <Legacy/include/create.h>
 #include <Legacy/types/legacy.h>
@@ -152,34 +150,50 @@ namespace LLP
                 {
                     respond(NEW_ROUND);
 
-                    uint32_t s = static_cast<uint32_t>(mapBlocks.size());
-
-                    //TODO: hook up blocks to legacy coinbase for pool server
-
-                    /*create a new base block */
-                    if(!Legacy::CreateLegacyBlock(*pMiningKey, nChannel, s + 1, *pBaseBlock))
-                    {
-                        debug::error(FUNCTION, "EVENT_GENERIC: failed to create a new block.");
-                        return;
-                    }
-
                     if(pBaseBlock->IsNull())
                         return;
 
-                    for(uint32_t i = 0; i < nSubscribed; ++i)
+                    uint1024_t proof_hash;
+
+                    for(uint32_t nSubscribedLoop = 0; nSubscribedLoop < nSubscribed; ++nSubscribedLoop)
                     {
+                        uint32_t s = static_cast<uint32_t>(mapBlocks.size());
+
+                        /*  make a copy of the base block before making the hash  unique for this requst*/ 
                         Legacy::LegacyBlock new_block = *pBaseBlock;
 
-                        new_block.vtx[0].vin[0].scriptSig = (Legacy::Script() <<  (uint64_t)(s * 513513512151));
 
-                        /* Rebuild the merkle tree. */
-                        std::vector<uint512_t> vMerkleTree;
-                        for(const auto& tx : new_block.vtx)
-                            vMerkleTree.push_back(tx.GetHash());
-                        new_block.hashMerkleRoot = new_block.BuildMerkleTree(vMerkleTree);
+                        /* We need to make the block hash unique for each subscribed miner so that they are not
+                            duplicating their work.  To achieve this we take a copy of pBaseblock and then modify
+                            the scriptSig to be unique for each subscriber, before rebuilding the merkle tree. 
+                                
+                            We need to drop into this for loop at least once to set the unique hash, but we will iterate
+                            indefinitely for the prime channel until the generated hash meets the min prime origins 
+                            and is less than 1024 bits*/ 
+                        for(uint32_t i = s; ; ++i)
+                        {
+                            new_block.vtx[0].vin[0].scriptSig = (Legacy::Script() <<  (uint64_t)((nSubscribedLoop + i + 1) * 513513512151));
 
-                        /* Update the time. */
-                        new_block.UpdateTime();
+                            /* Rebuild the merkle tree. */
+                            std::vector<uint512_t> vMerkleTree;
+                            for(const auto& tx : new_block.vtx)
+                                vMerkleTree.push_back(tx.GetHash());
+                            new_block.hashMerkleRoot = new_block.BuildMerkleTree(vMerkleTree);
+
+                            /* Update the time. */
+                            new_block.UpdateTime();
+
+                            /* skip if not prime channel or version less than 5 */
+                            if(nChannel != 1 || new_block.nVersion >= 5)
+                                break;
+
+                            proof_hash = new_block.ProofHash();
+
+                            /* exit loop when the block is above minimum prime origins and less than
+                                1024-bit hashes */
+                            if(proof_hash > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !proof_hash.high_bits(0x80000000))
+                                break;
+                        }
 
                         /* Store the new block in the map */
                         mapBlocks[new_block.hashMerkleRoot] = new_block;
@@ -227,7 +241,7 @@ namespace LLP
             return debug::error(FUNCTION, Name(), " Cannot mine while ledger is synchronizing.");
 
         /* No mining when wallet is locked */
-        if(!Legacy::Wallet::GetInstance().IsLocked())
+        if(Legacy::Wallet::GetInstance().IsLocked())
             return debug::error(FUNCTION, Name(), " Cannot mine while wallet is locked.");
 
 
@@ -296,14 +310,8 @@ namespace LLP
             {
                 /* If height was outdated, respond with old round, otherwise
                  * respond with a new round */
-                if(check_best_height() == false)
-                {
+                if(!check_best_height())
                     respond(OLD_ROUND);
-
-                    /*create a new base block */
-                    if(!Legacy::CreateLegacyBlock(*pMiningKey, nChannel, 1, *pBaseBlock))
-                        return debug::error(FUNCTION, Name(), " GET_ROUND: failed to create a new block.");
-                }
                 else
                     respond(NEW_ROUND);
 
@@ -338,36 +346,44 @@ namespace LLP
             /* Get a new block for the miner. */
             case GET_BLOCK:
             {
-                Legacy::LegacyBlock new_block;
+                
                 uint1024_t proof_hash;
                 uint32_t s = static_cast<uint32_t>(mapBlocks.size());
 
-                if(pBaseBlock->IsNull())
+                /*  make a copy of the base block before making the hash  unique for this requst*/ 
+                Legacy::LegacyBlock new_block = *pBaseBlock;
+
+
+                /* We need to make the block hash unique for each subsribed miner so that they are not
+                    duplicating their work.  To achieve this we take a copy of pBaseblock and then modify
+                    the scriptSig to be unique for each subscriber, before rebuilding the merkle tree. 
+                        
+                    We need to drop into this for loop at least once to set the unique hash, but we will iterate
+                    indefinitely for the prime channel until the generated hash meets the min prime origins 
+                    and is less than 1024 bits*/ 
+                for(uint32_t i = s; ; ++i)
                 {
-                    if(!Legacy::CreateLegacyBlock(*pMiningKey, nChannel, 1, *pBaseBlock))
-                        return debug::error(FUNCTION, "GET_BLOCK: failed to create a new block.");
-                }
+                    new_block.vtx[0].vin[0].scriptSig = (Legacy::Script() <<  (uint64_t)((i+1) * 513513512151));
 
+                    /* Rebuild the merkle tree. */
+                    std::vector<uint512_t> vMerkleTree;
+                    for(const auto& tx : new_block.vtx)
+                        vMerkleTree.push_back(tx.GetHash());
+                    new_block.hashMerkleRoot = new_block.BuildMerkleTree(vMerkleTree);
 
-                if(!Legacy::CreateLegacyBlock(*pMiningKey, nChannel, s, new_block))
-                    return debug::error(FUNCTION, "GET_BLOCK: failed to create a new block.");
+                    /* Update the time. */
+                    new_block.UpdateTime();
 
+                    /* skip if not prime channel or version less than 5 */
+                    if(nChannel != 1 || new_block.nVersion >= 5)
+                        break;
 
-                /* skip if not prime channel or version less than 5 */
-                if(nChannel == 1 && new_block.nVersion >= 5)
-                {
-                    for(uint32_t i = s; ; ++i)
-                    {
-                        proof_hash = new_block.ProofHash();
+                    proof_hash = new_block.ProofHash();
 
-                        /* exit loop when the block is above minimum prime origins and less than
-                           1024-bit hashes */
-                        if(proof_hash > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !proof_hash.high_bits(0x80000000))
-                           break;
-
-                        if(!Legacy::CreateLegacyBlock(*pMiningKey, nChannel, i, new_block))
-                            return debug::error(FUNCTION, "GET_BLOCK: failed to create a new block.");
-                    }
+                    /* exit loop when the block is above minimum prime origins and less than
+                        1024-bit hashes */
+                    if(proof_hash > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !proof_hash.high_bits(0x80000000))
+                        break;
                 }
 
                 debug::log(2, FUNCTION, "***** Mining LLP: Created new Block ",
@@ -432,7 +448,7 @@ namespace LLP
                 }
 
                 /* Clear map on new block found. */
-                clear_map();
+                check_best_height();
 
                 /* Tell the wallet to keep this key */
                 pMiningKey->KeepKey();
@@ -513,10 +529,19 @@ namespace LLP
      *  the block map if the height is outdated. */
     bool Miner::check_best_height()
     {
-        if(nBestHeight != TAO::Ledger::ChainState::nBestHeight)
+        if(nBestHeight != TAO::Ledger::ChainState::nBestHeight || pBaseBlock->IsNull())
         {
+            debug::log(2, FUNCTION, "Mining best height changed.  Creating new base block.");
+
             clear_map();
             nBestHeight = TAO::Ledger::ChainState::nBestHeight;
+
+            /*create a new base block */
+            if(!Legacy::CreateLegacyBlock(*pMiningKey, nChannel, 1, *pBaseBlock))
+            {
+                debug::error(FUNCTION, "Failed to create a new block.");
+                return false;
+            }
 
             return true;
         }

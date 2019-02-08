@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_MANAGER_H
 #define NEXUS_LLP_INCLUDE_MANAGER_H
 
-#include <LLP/include/trustaddress.h>
+#include <LLP/include/trust_address.h>
 #include <map>
 #include <vector>
 #include <cstdint>

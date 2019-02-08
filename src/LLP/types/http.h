@@ -14,13 +14,12 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TYPES_HTTP_H
 #define NEXUS_LLP_TYPES_HTTP_H
 
-#include <algorithm>
-
-#include <LLP/include/legacyaddress.h>
+#include <LLP/include/legacy_address.h>
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
 #include <LLP/packets/http.h>
-#include <LLP/templates/connection.h>
+#include <LLP/templates/base_connection.h>
+#include <LLP/templates/ddos.h>
 #include <Util/include/string.h>
 
 #define HTTPNODE ANSI_COLOR_FUNCTION "HTTPNode" ANSI_COLOR_RESET " : "

@@ -32,13 +32,17 @@ namespace LLP
         GET_OFFSET      = 1,
         DAT_OFFSET      = 2,
 
-        DAT_INVENTORY   = 10,
-        GET_INVENTORY   = 11,
+        DAT_HAS_TX      = 10,
+        GET_TRANSACTION = 11,
+
+        DAT_HAS_BLOCK   = 12,
+        GET_BLOCK       = 13,
 
         GET_ADDRESSES   = 20,
         DAT_ADDRESSES   = 21,
 
         DAT_TRANSACTION = 30,
+        DAT_BLOCK       = 31,
 
         DAT_PING        = 65533,
         DAT_PONG        = 65534,

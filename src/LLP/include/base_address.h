@@ -51,7 +51,6 @@ namespace LLP
         BaseAddress(const struct in6_addr &ipv6Addr, uint16_t port = 0);
         BaseAddress(const struct sockaddr_in &addr);
         BaseAddress(const struct sockaddr_in6 &addr);
-        BaseAddress(const char *pszIp, uint16_t portDefault = 0, bool fAllowLookup = false);
         BaseAddress(const std::string &strIp, uint16_t portDefault = 0, bool fAllowLookup = false);
 
 

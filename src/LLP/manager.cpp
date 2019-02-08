@@ -395,8 +395,8 @@ namespace LLP
 
         /* Check if the DNS needs update. */
         uint64_t nLastUpdate = 0;
-        if(!pDatabase->ReadLastUpdate(nLastUpdate)
-        || nLastUpdate + config::GetArg("-dnsupdate", 86400) <= runtime::unifiedtimestamp())
+        if(!config::GetBoolArg("-nodns") && 
+            (!pDatabase->ReadLastUpdate(nLastUpdate) || nLastUpdate + config::GetArg("-dnsupdate", 86400) <= runtime::unifiedtimestamp()))
         {
             /* Log out that DNS is updating. */
             debug::log(0, "DNS cache is out of date by ",

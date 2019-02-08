@@ -15,7 +15,6 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_TYPES_BLOCK_H
 
 #include <LLC/types/uint1024.h>
-
 #include <Util/include/runtime.h>
 
 //forward declerations for BigNum
@@ -25,6 +24,11 @@ namespace LLC
     class ECKey;
 }
 
+namespace Legacy
+{
+    class LegacyBlock;
+}
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -32,6 +36,8 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+
+        class BlockState;
 
         /** Block
          *
@@ -100,7 +106,18 @@ namespace TAO
             , nHeight(nHeightIn)
             , nBits(0)
             , nNonce(0)
-            , nTime(runtime::unifiedtimestamp()) { }
+            , nTime(runtime::unifiedtimestamp())
+            , vchBlockSig()
+            {
+            }
+
+
+            /** Copy constructor. */
+            Block(const Legacy::LegacyBlock& block);
+
+
+            /** Copy constructor. */
+            Block(const BlockState& block);
 
 
             /** Default Destructor **/
@@ -114,7 +131,7 @@ namespace TAO
              *  Set the block to Null state.
              *
              **/
-            void SetNull();
+            virtual void SetNull();
 
 
             /** SetChannel

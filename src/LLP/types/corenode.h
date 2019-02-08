@@ -16,7 +16,6 @@ ________________________________________________________________________________
 
 #include <LLP/types/http.h>
 #include <Util/include/json.h>
-#include <functional>
 
 namespace LLP
 {

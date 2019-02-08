@@ -386,8 +386,7 @@ namespace LLD
                         if(!pstream->is_open())
                         {
                             delete pstream;
-                            return debug::error(FUNCTION, "couldn't create hashmap object at: ",
-                                filename, " (", strerror(errno), ")");
+                            continue;
                         }
 
                         /* If file not found add to LRU cache. */
@@ -407,6 +406,10 @@ namespace LLD
                     /* Deserialie key and return if found. */
                     DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
                     ssKey >> cKey;
+
+                    /* Check if the key is ready. */
+                    if(!cKey.Ready())
+                        continue;
 
                     /* Debug Output of Sector Key Information. */
                     debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
@@ -467,8 +470,7 @@ namespace LLD
                         if(!pstream->is_open())
                         {
                             delete pstream;
-                            return debug::error(FUNCTION, "couldn't create hashmap object at: ",
-                                filename, " (", strerror(errno), ")");
+                            continue;
                         }
 
                         /* If file not found add to LRU cache. */
@@ -489,6 +491,12 @@ namespace LLD
                     DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
                     SectorKey cKey;
                     ssKey >> cKey;
+
+                    /* Check if the key is in ready state. */
+                    if(!cKey.Ready())
+                        continue;
+
+                    /* Assign the binary key. */
                     cKey.vKey = vKey;
 
                     /* Add key to return vector. */
@@ -552,8 +560,7 @@ namespace LLD
                         if(!pstream->is_open())
                         {
                             delete pstream;
-                            return debug::error(FUNCTION, "couldn't create hashmap object at: ",
-                                filename, " (", strerror(errno), ")");
+                            continue;
                         }
 
                         /* If file not found add to LRU cache. */
@@ -573,6 +580,10 @@ namespace LLD
                         /* Serialize the key and return if found. */
                         DataStream ssKey(SER_LLD, DATABASE_VERSION);
                         ssKey << cKey;
+
+                        /* Check if the key is ready. */
+                        if(!cKey.Ready())
+                            continue;
 
                         /* Serialize the key into the end of the vector. */
                         ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
@@ -743,6 +754,7 @@ namespace LLD
                 {
                     stream.seekp(item * 4, std::ios::beg);
                     stream.write((char*)&hashmap[0] + (item * 4), 4);
+                    stream.flush();
                 }
                 //vDisk.insert(vDisk.end(), (uint8_t*)&hashmap[0], (uint8_t*)&hashmap[0] + (4 * hashmap.size()));
             }

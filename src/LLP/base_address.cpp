@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLP/include/baseaddress.h>
+#include <LLP/include/base_address.h>
 #include <LLP/include/network.h>
 #include <LLP/include/hosts.h>   //Lookup
 #include <LLC/hash/SK.h>         //LLC::SK64
@@ -89,7 +89,7 @@ namespace LLP
     /* Copy constructor */
     BaseAddress::BaseAddress(const struct sockaddr_in6 &addr)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-    , nPort(ntohs(addr.sin6_port))
+    , nPort(0)
     {
         if(addr.sin6_family != AF_INET6)
         {
@@ -97,46 +97,39 @@ namespace LLP
             return;
         }
 
-
-        //memcpy(ip, &addr.sin6_addr, 16);
         std::copy((uint8_t*)&addr.sin6_addr, (uint8_t*)&addr.sin6_addr + 16, (uint8_t*)&ip[0]);
+
+        nPort = ntohs(addr.sin6_port);
     }
 
 
     /* Copy constructor */
-    BaseAddress::BaseAddress(const char *pszIpPort, uint16_t portDefault, bool fAllowLookup)
+    BaseAddress::BaseAddress(const std::string &strIp, uint16_t portDefault, bool fAllowLookup)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-    , nPort(portDefault)
+    , nPort(0)
     {
         BaseAddress addr;
-        if (Lookup(pszIpPort, addr, portDefault, fAllowLookup))
+
+        /* Make sure there is a string to lookup. */
+        size_t s = strIp.size();
+        if (s == 0 || s > 255)
+        {
+            debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
+            return;
+        }
+
+        if (Lookup(strIp, addr, portDefault, fAllowLookup))
         {
             *this = addr;
 
             if(fAllowLookup)
-                debug::log(3, FUNCTION, pszIpPort, " resolved to ", ToStringIP());
-        }
-
-        else
-          debug::log(3, FUNCTION, pszIpPort, " bad lookup");
-    }
-
-
-    /* Copy constructor */
-    BaseAddress::BaseAddress(const std::string &strIpPort, uint16_t portDefault, bool fAllowLookup)
-    : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-    , nPort(portDefault)
-    {
-        BaseAddress addr;
-        if (Lookup(strIpPort.c_str(), addr, portDefault, fAllowLookup))
-        {
-            *this = addr;
-
-            if(fAllowLookup)
-                debug::log(3, FUNCTION, strIpPort, " resolved to ", ToStringIP());
+                debug::log(3, FUNCTION, strIp, " resolved to ", ToStringIP());
         }
         else
-          debug::log(3, FUNCTION, strIpPort, " bad lookup");
+          debug::log(3, FUNCTION, strIp, " bad lookup");
+
+
+        nPort = portDefault;
     }
 
 
