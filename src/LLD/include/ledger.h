@@ -156,7 +156,7 @@ namespace LLD
          **/
         bool IndexBlock(const uint32_t& nBlockHeight, const uint1024_t& hashBlock)
         {
-            return Index(std::make_pair(std::string("indexheight"), nBlockHeight), hashBlock);
+            return Index(std::make_pair(std::string("height"), nBlockHeight), hashBlock);
         }
 
 
@@ -185,7 +185,7 @@ namespace LLD
          **/
         bool EraseIndex(const uint32_t& nBlockHeight)
         {
-            return Erase(std::make_pair(std::string("indexheight"), nBlockHeight));
+            return Erase(std::make_pair(std::string("height"), nBlockHeight));
         }
 
 
@@ -300,7 +300,7 @@ namespace LLD
          **/
         bool ReadBlock(const uint32_t& nBlockHeight, TAO::Ledger::BlockState& state)
         {
-            return Read(std::make_pair(std::string("indexheight"), nBlockHeight), state);
+            return Read(std::make_pair(std::string("height"), nBlockHeight), state);
         }
 
 
@@ -457,6 +457,21 @@ namespace LLD
         bool HasBlock(const uint1024_t& hashBlock)
         {
             return Exists(hashBlock);
+        }
+
+
+        /** EraseBlock
+         *
+         *  Erase a block from disk.
+         *
+         *  @param[in] hashBlock The block hash to erase.
+         *
+         *  @return True if it exists, false otherwise.
+         *
+         **/
+        bool EraseBlock(const uint1024_t& hashBlock)
+        {
+            return Erase(hashBlock);
         }
 
 

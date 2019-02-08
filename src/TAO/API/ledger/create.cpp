@@ -83,10 +83,9 @@ namespace TAO
                 throw APIException(-26, "Block is invalid");
 
             /* Create the state object. */
-            TAO::Ledger::BlockState state = TAO::Ledger::BlockState(block);
-            if(!state.Accept())
-                throw APIException(-26, "State is invalid");
-
+            if(!block.Accept())
+                throw APIException(-26, "Block failed accept");
+                
             json::json ret;
             ret["block"] = block.GetHash().ToString();
 

@@ -183,7 +183,7 @@ namespace LLP
 
    /*  Public Wraper to Add a Connection Manually. */
    template <class ProtocolType>
-   int8_t Server<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort)
+   bool Server<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort)
    {
        /* Initialize DDOS Protection for Incoming IP Address. */
        BaseAddress addrConnect(strAddress, nPort);
@@ -194,23 +194,23 @@ namespace LLP
 
        /* DDOS Operations: Only executed when DDOS is enabled. */
        if((fDDOS && DDOS_MAP[addrConnect]->Banned()))
-           return 0;
+           return false;
 
        /* Find a balanced Data Thread to Add Connection to. */
        int32_t nThread = FindThread();
        if(nThread < 0)
-           return -1;
+           return false;
 
        /* Select the proper data thread. */
        DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
        if(!dt)
-           return -1;
+           return false;
 
        /* Attempt the connection. */
        if(!dt->AddConnection(strAddress, nPort, DDOS_MAP[addrConnect]))
-           return 0;
+           return false;
 
-       return 1;
+       return true;
    }
 
 
@@ -349,16 +349,14 @@ namespace LLP
         /* Address to select. */
         BaseAddress addr;
 
-        /* Connect state. */
-        uint8_t state = 0;
-        int8_t status = 0;
-
         /* Read the address database. */
         pAddressManager->ReadDatabase();
 
         /* Set the port. */
         pAddressManager->SetPort(PORT);
 
+
+        //TODO: move this logic inside AddAddress and legacy.cpp
         /* Set this node's current address. */
         if(!pAddressManager->GetThisAddress().IsValid())
             pAddressManager->SetThisAddress(addrThisNode);
@@ -370,26 +368,14 @@ namespace LLP
         /* Loop connections. */
         while(!fDestruct.load())
         {
-            runtime::sleep(100);
-
+            /* Sleep in 1 second intervals for easy break on shutdown. */
+            for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown; ++i)
+                runtime::sleep(1000);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
             if(pAddressManager->StochasticSelect(addr))
             {
-
-                /* Get the state of the selected address. */
-                state = pAddressManager->GetState(addr);
-
-                /* Check for connect to self. */
-                if(addr.ToStringIP() == addrThisNode.ToStringIP())
-                {
-                    runtime::sleep(1000);
-                    debug::log(3, FUNCTION, ProtocolType::Name(), " Cannot self-connect, removing address ", addr.ToString());
-                    pAddressManager->RemoveAddress(addr);
-                    continue;
-                }
-
-                /* Check for invalid addresses */
+                /* Check for invalid address */
                 if(!addr.IsValid())
                 {
                     runtime::sleep(nSleepTime);
@@ -401,31 +387,11 @@ namespace LLP
                 /* Attempt the connection. */
                 debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
 
-                /* Attempt the connection. */
-                status = AddConnection(addr.ToStringIP(), addr.GetPort());
-
-                if(status > 0)
-                {
-                    state = static_cast<uint8_t>(ConnectState::CONNECTED);
-
-                    /* Sleep in 1 second intervals for easy break on shutdown. */
-                    for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown; ++i)
-                        runtime::sleep(1000);
-                }
-                else if(status < 0)
-                {
-                    debug::error(FUNCTION, ProtocolType::Name(), " There was an issue selecting data thread...");
-                    continue;
-                }
-                else
-                    state = static_cast<uint8_t>(ConnectState::FAILED);
-
-
-                /* Update the address state. */
-                pAddressManager->AddAddress(addr, state);
-
-                debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
+                if(!AddConnection(addr.ToStringIP(), addr.GetPort()))
+                    pAddressManager->AddAddress(addr, ConnectState::FAILED);
             }
+
+            debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
         }
     }
 

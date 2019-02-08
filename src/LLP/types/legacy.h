@@ -97,7 +97,7 @@ namespace LLP
         }
 
 
-        /** Randomly genearted session ID. **/
+        /** Randomly generated session ID. **/
         static uint64_t nSessionID;
 
 
@@ -109,7 +109,7 @@ namespace LLP
         uint32_t nCurrentVersion;
 
 
-        /** LEGACY: The height of this ndoe given at the version message. **/
+        /** LEGACY: The height of this node given at the version message. **/
         uint32_t nStartingHeight;
 
 
