@@ -57,7 +57,6 @@ namespace LLP
     , DDOS_TIMESPAN(nTimespan)
     , DATA_THREADS(0)
     , pAddressManager(0)
-    , addrThisNode()
     , nSleepTime(nSleepTimeIn)
     {
         for(uint16_t index = 0; index < MAX_THREADS; ++index)
@@ -65,17 +64,6 @@ namespace LLP
             DATA_THREADS.push_back(new DataThread<ProtocolType>(
                 index, fDDOS, rScore, cScore, nTimeout, fMeter));
         }
-
-        /* Set the IP for this address */
-        if(!BaseAddress::GetThisIP(addrThisNode))
-            debug::error(FUNCTION, "Failed to get the IP address for this computer");
-
-        /* Set the port for this address */
-        addrThisNode.SetPort(nPort);
-
-        /* Check to see if this address is valid */
-        if(!addrThisNode.IsValid())
-            debug::error(FUNCTION, "This address in invalid: ", addrThisNode.ToString());
 
         /* Initialize the address manager. */
         if(fManager)
@@ -358,10 +346,6 @@ namespace LLP
         /* Set the port. */
         pAddressManager->SetPort(PORT);
 
-        /* Set this node's current address. */
-        if(!pAddressManager->GetThisAddress().IsValid())
-            pAddressManager->SetThisAddress(addrThisNode);
-
         /* Wait for data threads to startup. */
         while(DATA_THREADS.size() < MAX_THREADS)
             runtime::sleep(1000);
@@ -377,15 +361,6 @@ namespace LLP
             /* Pick a weighted random priority from a sorted list of addresses. */
             if(pAddressManager->StochasticSelect(addr))
             {
-                /* Check for connect to self. */
-                if(addr.ToStringIP() == addrThisNode.ToStringIP())
-                {
-                    runtime::sleep(1000);
-                    debug::log(3, FUNCTION, ProtocolType::Name(), " Cannot self-connect, removing address ", addr.ToString());
-                    pAddressManager->RemoveAddress(addr);
-                    continue;
-                }
-
                 /* Check for invalid addresses */
                 if(!addr.IsValid())
                 {

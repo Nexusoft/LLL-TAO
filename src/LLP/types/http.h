@@ -52,12 +52,6 @@ namespace LLP
         std::vector<int8_t> vchBuffer;
 
 
-    protected:
-
-        /* The local address of this node. */
-        LegacyAddress addrThisNode;
-
-
     public:
 
         /** Default Constructor **/
@@ -104,19 +98,6 @@ namespace LLP
                 DDOS->rSCORE += nDoS;
 
             return fReturn;
-        }
-
-
-        /** GetAddress
-         *
-         *  Get the current IP address of this node.
-         *
-         *  @return The address of this node
-         *
-         **/
-        LegacyAddress GetAddress() const
-        {
-            return addrThisNode;
         }
 
 

@@ -16,8 +16,8 @@ ________________________________________________________________________________
 
 
 #include <LLP/include/base_address.h>
+#include <LLP/include/network.h>
 
-#include <poll.h>
 #include <vector>
 #include <cstdint>
 

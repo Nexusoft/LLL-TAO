@@ -80,10 +80,6 @@ namespace LLP
         AddressManager *pAddressManager;
 
 
-        /* Address of the server node */
-        BaseAddress addrThisNode;
-
-
         /* The sleep time of address manager. */
         uint32_t nSleepTime;
 
