@@ -125,7 +125,7 @@ namespace TAO
             {
                 /* Search back until fail or different checkpoint. */
                 BlockState state;
-                if(!LLD::legDB->HasBlock(hashCheckpoint))
+                if(!LLD::legDB->ReadBlock(hashCheckpoint, state))
                     return debug::error(FUNCTION, "no pending checkpoint");
 
                 /* Get the previous state. */
