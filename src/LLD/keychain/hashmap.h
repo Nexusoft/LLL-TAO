@@ -407,6 +407,10 @@ namespace LLD
                     DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
                     ssKey >> cKey;
 
+                    /* Check if the key is ready. */
+                    if(!cKey.Ready())
+                        continue;
+
                     /* Debug Output of Sector Key Information. */
                     debug::log(4, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
                         " | Length: ", cKey.nLength,
@@ -487,6 +491,12 @@ namespace LLD
                     DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
                     SectorKey cKey;
                     ssKey >> cKey;
+
+                    /* Check if the key is in ready state. */
+                    if(!cKey.Ready())
+                        continue;
+
+                    /* Assign the binary key. */
                     cKey.vKey = vKey;
 
                     /* Add key to return vector. */
@@ -570,6 +580,10 @@ namespace LLD
                         /* Serialize the key and return if found. */
                         DataStream ssKey(SER_LLD, DATABASE_VERSION);
                         ssKey << cKey;
+
+                        /* Check if the key is ready. */
+                        if(!cKey.Ready())
+                            continue;
 
                         /* Serialize the key into the end of the vector. */
                         ssKey.write((char*)&vKeyCompressed[0], vKeyCompressed.size());
