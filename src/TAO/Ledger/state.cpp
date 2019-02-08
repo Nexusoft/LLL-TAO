@@ -47,11 +47,13 @@ namespace TAO
         /* Get the block state object. */
         bool GetLastState(BlockState &state, uint32_t nChannel)
         {
+            uint1024_t genesisHash =  config::fTestNet ? hashGenesisTestnet : hashGenesis; 
+
             /* Loop back 10k blocks. */
             for(uint_t i = 0; i < 1440; ++i)
             {
                 /* Return false on genesis. */
-                if(state.GetHash() == hashGenesis)
+                if(state.GetHash() == genesisHash)
                     return false;
 
                 /* Return true on channel found. */
