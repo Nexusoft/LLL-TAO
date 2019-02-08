@@ -107,6 +107,20 @@ namespace TAO
             }
 
 
+            /** SetNull
+             *
+             *  Set the block to Null state.
+             *
+             **/
+            void SetNull() override
+            {
+                Block::SetNull();
+
+                vtx.clear();
+                producer = Transaction();
+            }
+
+
             /** Check
              *
              *  Check a tritium block for consistency.

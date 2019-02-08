@@ -131,7 +131,7 @@ namespace TAO
              *  Set the block to Null state.
              *
              **/
-            void SetNull();
+            virtual void SetNull();
 
 
             /** SetChannel
