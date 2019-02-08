@@ -851,7 +851,7 @@ namespace Legacy
 
             /* Check for double spends. */
             if(LLD::legacyDB->IsSpent(prevout.hash, prevout.n))
-                return debug::error(FUNCTION, "prev tx is already spent");
+                return debug::error(FUNCTION, "prev tx ", prevout.hash.ToString().substr(0, 20), " is already spent");
 
             /* Check the ECDSA signatures. (...When not syncronizing) */
             if(!TAO::Ledger::ChainState::Synchronizing() && !VerifySignature(txPrev, *this, i, 0))
