@@ -84,7 +84,7 @@ namespace LLP
 
             /* Assign the slot to the connection. */
             CONNECTIONS[nSlot] = node;
-            
+
             if(fDDOS)
                 DDOS -> cSCORE += 1;
 
@@ -271,11 +271,13 @@ namespace LLP
                 catch(const std::bad_alloc &e)
                 {
                     debug::error(FUNCTION, "Memory allocation failed ", e.what());
+                    debug::error(FUNCTION, "Currently running ", nConnections, " connections.");
                     disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                 }
                 catch(const std::exception& e)
                 {
-                    debug::error(FUNCTION, "data connection: ", e.what());
+                    debug::error(FUNCTION, "Data Connection: ", e.what());
+                    debug::error(FUNCTION, "Currently running ", nConnections, " connections.");
                     disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                 }
             }
@@ -289,6 +291,8 @@ namespace LLP
     void DataThread<ProtocolType>::disconnect_remove_event(uint32_t index, uint8_t reason)
     {
         CONNECTIONS[index]->Event(EVENT_DISCONNECT, reason);
+
+        LOCK(MUTEX);
         remove(index);
     }
 
@@ -302,8 +306,6 @@ namespace LLP
         {
             /* Free the memory. */
             delete CONNECTIONS[index];
-
-            /* Derefrence the pointer. */
             CONNECTIONS[index] = nullptr;
 
             --nConnections;

@@ -98,7 +98,7 @@ namespace LLP
 
 
         /** Randomly generated session ID. **/
-        static uint64_t nSessionID;
+        static const uint64_t nSessionID;
 
 
         /** String version of this Node's Version. **/

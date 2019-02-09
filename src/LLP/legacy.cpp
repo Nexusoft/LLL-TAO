@@ -48,7 +48,7 @@ namespace LLP
 
 
     /* the session identifier. */
-    uint64_t LegacyNode::nSessionID = LLC::GetRand();
+    const uint64_t LegacyNode::nSessionID = LLC::GetRand();
 
 
     /* The current node that is being used for fast sync */
@@ -142,15 +142,17 @@ namespace LLP
             /* Handle sending the pings to remote node.. */
             if(nLastPing + 15 < runtime::unifiedtimestamp())
             {
-                RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
+                uint64_t nNonce = 0;
+                RAND_bytes((uint8_t*)&nNonce, sizeof(nNonce));
 
                 nLastPing = runtime::unifiedtimestamp();
 
-                mapLatencyTracker.emplace(nSessionID, runtime::timer());
-                mapLatencyTracker[nSessionID].Start();
+
+                mapLatencyTracker.insert(std::pair<uint64_t, runtime::timer>(nNonce, runtime::timer()));
+                mapLatencyTracker[nNonce].Start();
                             /* Reset the timeouts. */
 
-                PushMessage("ping", nSessionID);
+                PushMessage("ping", nNonce);
 
                 /* Rebroadcast transactions. */
                 Legacy::Wallet::GetInstance().ResendWalletTransactions();
