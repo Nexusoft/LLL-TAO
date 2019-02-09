@@ -547,17 +547,6 @@ namespace LLP
         int32_t nOne = 1;
 #endif
 
-#ifdef WIN32
-        // Initialize Windows Sockets
-        WSADATA wsadata;
-        int32_t ret = WSAStartup(MAKEWORD(2, 2), &wsadata);
-        if (ret != NO_ERROR)
-        {
-            debug::error("TCP/IP socket library failed to start (WSAStartup returned error )", ret);
-            return false;
-        }
-#endif
-
         /* Create socket for listening for incoming connections */
         hListenSocket = socket(fIPv4 ? AF_INET : AF_INET6, SOCK_STREAM, IPPROTO_TCP);
         if (hListenSocket == INVALID_SOCKET)

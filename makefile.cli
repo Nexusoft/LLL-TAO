@@ -147,66 +147,66 @@ OBJS= \
 	build/LLC_KeccakSponge.o \
 	build/LLC_Keccak-compact64.o \
 	build/LLC_KeccakHash.o \
-	build/LLC_random.o \
-	build/LLC_key.o \
     build/LLC_bignum.o \
+	build/LLC_key.o \
+	build/LLC_random.o \
 	build/LLD_global.o \
-    build/LLP_server.o \
-    build/LLP_data.o \
 	build/LLP_base_address.o \
-	build/LLP_legacy_address.o \
-	build/LLP_trust_address.o \
-	build/LLP_hosts.o \
-	build/LLP_socket.o \
-	build/LLP_time.o \
-	build/LLP_inv.o \
     build/LLP_base_connection.o \
     build/LLP_connection.o \
-	build/LLP_legacy.o \
-	build/LLP_miner.o \
-	build/LLP_tritium.o \
 	build/LLP_corenode.o \
-	build/LLP_rpcnode.o \
-    build/LLP_manager.o \
+    build/LLP_data.o \
     build/LLP_ddos.o \
+	build/LLP_hosts.o \
+	build/LLP_inv.o \
+	build/LLP_legacy.o \
+	build/LLP_legacy_address.o \
+    build/LLP_manager.o \
+	build/LLP_miner.o \
+	build/LLP_network.o \
+	build/LLP_rpcnode.o \
+    build/LLP_server.o \
+	build/LLP_socket.o \
+	build/LLP_time.o \
+	build/LLP_tritium.o \
+	build/LLP_trust_address.o \
 	build/Ledger_block.o \
+	build/Ledger_chainstate.o \
+	build/Ledger_checkpoints.o \
+	build/Ledger_create.o \
+	build/Ledger_difficulty.o \
+	build/Ledger_mempool.o \
 	build/Ledger_prime.o \
 	build/Ledger_state.o \
 	build/Ledger_supply.o \
-	build/Ledger_create.o \
-	build/Ledger_mempool.o \
-	build/Ledger_difficulty.o \
-	build/Ledger_checkpoints.o \
-	build/Ledger_chainstate.o \
 	build/Ledger_transaction.o \
 	build/Ledger_tritium.o \
 	build/Ledger_trust.o \
 	build/Ledger_trustkey.o \
-	build/Register_verify.o \
 	build/Register_rollback.o \
-	build/Operation_write.o \
+	build/Register_verify.o \
 	build/Operation_append.o \
+	build/Operation_authorize.o \
+	build/Operation_coinbase.o \
+	build/Operation_credit.o \
+	build/Operation_debit.o \
 	build/Operation_register.o \
 	build/Operation_transfer.o \
-	build/Operation_debit.o \
-	build/Operation_credit.o \
-	build/Operation_coinbase.o \
 	build/Operation_trust.o \
-	build/Operation_authorize.o \
+	build/Operation_write.o \
 	build/API_cmd.o \
+	build/API_accounts_accounts.o \
+	build/API_accounts_create.o \
+	build/API_accounts_login.o \
+	build/API_ledger_create.o \
+	build/API_lisp_lisp.o \
 	build/API_RPC_account.o \
 	build/API_RPC_daemon.o \
 	build/API_RPC_info.o \
 	build/API_RPC_network.o \
 	build/API_RPC_rpc.o \
 	build/API_RPC_wallet.o \
-	build/API_accounts_accounts.o \
-	build/API_accounts_create.o \
-	build/API_accounts_login.o \
 	build/API_supply_supply.o \
-	build/API_ledger_create.o \
-	build/API_lisp_lisp.o \
-	build/Legacy_evaluate.o \
 	build/Legacy_address.o \
 	build/Legacy_addressbook.o \
 	build/Legacy_ambassador.o \
@@ -242,9 +242,9 @@ OBJS= \
 	build/Util_config.o \
 	build/Util_debug.o \
 	build/Util_filesystem.o \
+    build/Util_memory.o \
 	build/Util_signals.o \
-	build/Util_version.o \
-    build/Util_memory.o
+	build/Util_version.o 
 
 ###############################################################################
 ifeq ($(detected_OS),Windows)

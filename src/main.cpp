@@ -13,9 +13,8 @@ ________________________________________________________________________________
 
 #include <LLC/include/random.h>
 
-
-
 #include <LLP/include/global.h>
+#include <LLP/include/network.h>
 #include <LLP/types/corenode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
@@ -184,7 +183,7 @@ int main(int argc, char** argv)
     /** Load the Wallet Database. **/
     bool fFirstRun;
     if (!Legacy::Wallet::InitializeWallet(config::GetArg("-wallet", Legacy::WalletDB::DEFAULT_WALLET_DB)))
-        return debug::error("failed initializing wallet");
+        return debug::error("Failed initializing wallet");
 
 
     /** Check the wallet loading for errors. **/
@@ -192,13 +191,13 @@ int main(int argc, char** argv)
     if (nLoadWalletRet != Legacy::DB_LOAD_OK)
     {
         if (nLoadWalletRet == Legacy::DB_CORRUPT)
-            return debug::error("failed loading wallet.dat: Wallet corrupted");
+            return debug::error("Failed loading wallet.dat: Wallet corrupted");
         else if (nLoadWalletRet == Legacy::DB_TOO_NEW)
-            return debug::error("failed loading wallet.dat: Wallet requires newer version of Nexus");
+            return debug::error("Failed loading wallet.dat: Wallet requires newer version of Nexus");
         else if (nLoadWalletRet == Legacy::DB_NEED_REWRITE)
-            return debug::error("wallet needed to be rewritten: restart Nexus to complete");
+            return debug::error("Wallet needed to be rewritten: restart Nexus to complete");
         else
-            return debug::error("failed loading wallet.dat");
+            return debug::error("Failed loading wallet.dat");
     }
 
     /** Rebroadcast transactions. **/
@@ -216,6 +215,11 @@ int main(int argc, char** argv)
     /** Handle Rescanning. **/
     if(config::GetBoolArg("-rescan"))
         Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
+
+
+    /** Initialize network resources. **/
+    if (!LLP::NetworkStartup())
+        debug::error("Failed initializing network resources");
 
 
     /** Startup the time server. **/
@@ -454,6 +458,10 @@ int main(int argc, char** argv)
         MINING_SERVER->Shutdown();
         delete MINING_SERVER;
     }
+
+
+    /** After all servers shut down, clean up underlying networking resources **/
+    LLP::NetworkShutdown();
 
 
     /* Cleanup the ledger database. */
