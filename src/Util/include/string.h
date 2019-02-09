@@ -60,6 +60,33 @@ inline void ParseString(const std::string& str, char c, std::vector<std::string>
     }
 }
 
+/** replace_all
+ *
+ *  Replace all instances in a string
+ *
+ *  @param[out] str The string to replace in.
+ *  @param[in] strFind The string to find.
+ *  @param[in] strReplace The string to replace with.
+ *
+ **/
+inline void replace_all(std::string& str, const std::string& strFind, const std::string& strReplace)
+{
+    /* Catch any call that would not terminate. */
+    if(strFind == strReplace)
+        return;
+
+    /* Loop through the source string to replace all instances. */
+    std::string::size_type pos = str.find(strFind);
+    while(pos != std::string::npos)
+    {
+        /* Replace the instance found. */
+        str.replace(pos, strFind.length(), strReplace);
+
+        /* Seek for another instance. */
+        pos = str.find(strFind);
+    }
+}
+
 
 /** FormatMoney
  *

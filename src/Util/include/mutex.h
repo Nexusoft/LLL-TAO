@@ -17,6 +17,6 @@ ________________________________________________________________________________
 #include <mutex>
 
 /* Macro preprocessor definitions for debug purposes. */
-#define LOCK(cs) std::unique_lock<std::mutex> lock(cs)
+#define LOCK(mut) std::unique_lock<std::mutex> lk(mut)
 
 #endif

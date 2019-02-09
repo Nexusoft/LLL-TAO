@@ -143,7 +143,11 @@ namespace LLP
 
         /* Clear the address manager. */
         if(pAddressManager)
+        {
             delete pAddressManager;
+            pAddressManager = nullptr;
+        }
+
     }
 
 
@@ -151,10 +155,8 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::Shutdown()
     {
-        //DisconnectAll();
-
         if(pAddressManager)
-            pAddressManager->WriteDatabase();
+          pAddressManager->WriteDatabase();
     }
 
 
@@ -164,42 +166,41 @@ namespace LLP
    {
        BaseAddress addr(strAddress, nPort, false);
 
+       /* Make sure manager is enabled. */
        if(pAddressManager)
-           pAddressManager->AddAddress(addr, ConnectState::NEW);
+          pAddressManager->AddAddress(addr, ConnectState::NEW);
    }
 
 
-    /*  Public Wraper to Add a Connection Manually. */
-    template <class ProtocolType>
-    bool Server<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort)
-    {
-        /* Initialize DDOS Protection for Incoming IP Address. */
-        BaseAddress addrConnect(strAddress, nPort);
+   /*  Public Wraper to Add a Connection Manually. */
+   template <class ProtocolType>
+   bool Server<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort)
+   {
+       /* Initialize DDOS Protection for Incoming IP Address. */
+       BaseAddress addrConnect(strAddress, nPort);
 
-        /* Create new DDOS Filter if Needed. */
-        if(!DDOS_MAP.count(addrConnect))
-            DDOS_MAP[addrConnect] = new DDOS_Filter(DDOS_TIMESPAN);
+       /* Create new DDOS Filter if Needed. */
+       if(!DDOS_MAP.count(addrConnect))
+           DDOS_MAP[addrConnect] = new DDOS_Filter(DDOS_TIMESPAN);
 
-        /* DDOS Operations: Only executed when DDOS is enabled. */
-        if((fDDOS && DDOS_MAP[addrConnect]->Banned()))
-            return false;
+       /* DDOS Operations: Only executed when DDOS is enabled. */
+       if((fDDOS && DDOS_MAP[addrConnect]->Banned()))
+           return false;
 
-        /* Find a balanced Data Thread to Add Connection to. */
-        int32_t nThread = FindThread();
-        if(nThread < 0)
-            return false;
+       /* Find a balanced Data Thread to Add Connection to. */
+       int32_t nThread = FindThread();
+       if(nThread < 0)
+           return false;
 
-        /* Select the proper data thread. */
-        DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-        if(!dt)
-            return false;
+       /* Select the proper data thread. */
+       DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
-        /* Attempt the connection. */
-        if(!dt->AddConnection(strAddress, nPort, DDOS_MAP[addrConnect]))
-            return false;
+       /* Attempt the connection. */
+       if(!dt->AddConnection(strAddress, nPort, DDOS_MAP[addrConnect]))
+           return false;
 
-        return true;
-    }
+       return true;
+   }
 
 
     /*  Get the active connection pointers from data threads. */
@@ -212,8 +213,6 @@ namespace LLP
        {
            /* Get the data threads. */
            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-           if(!dt)
-               continue;
 
            /* Loop through connections in data thread. */
            int32_t nSize = dt->CONNECTIONS.size();
@@ -243,8 +242,6 @@ namespace LLP
         {
             /* Get the data threads. */
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-            if(!dt)
-                continue;
 
             /* Loop through connections in data thread and add any that are connected to count. */
             int32_t nSize = dt->CONNECTIONS.size();
@@ -264,7 +261,7 @@ namespace LLP
 
     /*  Get the best connection based on latency */
     template <class ProtocolType>
-    ProtocolType* Server<ProtocolType>::GetConnection()
+    ProtocolType* Server<ProtocolType>::GetConnection(const BaseAddress& addrExclude)
     {
         /* List of connections to return. */
         ProtocolType* pBest = nullptr;
@@ -273,8 +270,9 @@ namespace LLP
         {
             /* Get the data threads. */
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+
             if(!dt)
-                continue;
+              continue;
 
             /* Loop through connections in data thread. */
             int32_t nSize = dt->CONNECTIONS.size();
@@ -282,6 +280,10 @@ namespace LLP
             {
                 /* Skip over inactive connections. */
                 if(!dt->CONNECTIONS[nIndex] || !dt->CONNECTIONS[nIndex]->Connected())
+                    continue;
+
+                /* Skip over exclusion address. */
+                if(dt->CONNECTIONS[nIndex]->GetAddress() == addrExclude)
                     continue;
 
                 /* Push the active connection. */
@@ -320,9 +322,7 @@ namespace LLP
     void Server<ProtocolType>::DisconnectAll()
     {
         for(uint16_t index = 0; index < MAX_THREADS; ++index)
-        {
             DATA_THREADS[index]->DisconnectAll();
-        }
     }
 
 
@@ -337,14 +337,12 @@ namespace LLP
         /* Address to select. */
         BaseAddress addr;
 
-        /* Connect state. */
-        uint8_t state = 0;
-
         /* Read the address database. */
         pAddressManager->ReadDatabase();
 
         /* Set the port. */
         pAddressManager->SetPort(PORT);
+
 
         /* Wait for data threads to startup. */
         while(DATA_THREADS.size() < MAX_THREADS)
@@ -353,15 +351,14 @@ namespace LLP
         /* Loop connections. */
         while(!fDestruct.load())
         {
-            runtime::sleep(100);
-
-            /* Assume the connect state is in a failed state. */
-            state = static_cast<uint8_t>(ConnectState::FAILED);
+            /* Sleep in 1 second intervals for easy break on shutdown. */
+            for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown; ++i)
+                runtime::sleep(1000);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
             if(pAddressManager->StochasticSelect(addr))
             {
-                /* Check for invalid addresses */
+                /* Check for invalid address */
                 if(!addr.IsValid())
                 {
                     runtime::sleep(nSleepTime);
@@ -373,21 +370,11 @@ namespace LLP
                 /* Attempt the connection. */
                 debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
 
-                /* Attempt the connection. */
-                if(AddConnection(addr.ToStringIP(), addr.GetPort()))
-                {
-                    state = static_cast<uint8_t>(ConnectState::CONNECTED);
-
-                    /* Sleep in 1 second intervals for easy break on shutdown. */
-                    for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown; ++i)
-                        runtime::sleep(1000);
-                }
-
-                /* Update the address state. */
-                pAddressManager->AddAddress(addr, state);
-
-                debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
+                if(!AddConnection(addr.ToStringIP(), addr.GetPort()))
+                    pAddressManager->AddAddress(addr, ConnectState::FAILED);
             }
+
+            debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
         }
     }
 
@@ -398,14 +385,11 @@ namespace LLP
     int32_t Server<ProtocolType>::FindThread()
     {
         int32_t nIndex = -1;
-        int32_t nConnections = std::numeric_limits<int32_t>::max();
+        uint32_t nConnections = std::numeric_limits<uint32_t>::max();
 
         for(uint16_t index = 0; index < MAX_THREADS; ++index)
         {
             DataThread<ProtocolType> *dt = DATA_THREADS[index];
-
-            if(!dt)
-                continue;
 
             /* Limit data threads to 32 connections per thread. */
             if(dt->nConnections < nConnections && dt->nConnections < 32)
@@ -514,21 +498,18 @@ namespace LLP
                         continue;
                     }
 
+                    /* Get the data thread. */
                     DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-                    if(!dt)
-                        continue;
 
                     dt->AddConnection(sockNew, DDOS_MAP[addr]);
 
-                    /* Update state in address manager. */
-                    uint8_t state = static_cast<uint8_t>(ConnectState::CONNECTED);
-
-                    /* Update the address state. */
-                    if(pAddressManager)
-                        pAddressManager->AddAddress(addr, state);
 
                     /* Verbose output. */
                     debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ",  PORT);
+
+
+                    /* Update the address state. */
+                    pAddressManager->AddAddress(addr, ConnectState::CONNECTED);
                 }
             }
         }
@@ -643,9 +624,6 @@ namespace LLP
            {
                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
-               if(!dt)
-                   continue;
-
                nGlobalConnections += dt->nConnections;
            }
 
@@ -670,8 +648,6 @@ namespace LLP
        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
        {
            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-           if(!dt)
-               continue;
 
            nTotalRequests += dt->REQUESTS;
        }

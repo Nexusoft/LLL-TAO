@@ -32,43 +32,23 @@ namespace LLD
 
         /* Check the register DB journal. */
         if(!regDB->TxnRecovery())
-        {
             fRecovery = false;
-
-            debug::log(0, FUNCTION, "register DB journal not recoverable");
-        }
 
         /* Check the ledger DB journal. */
         if(!legDB->TxnRecovery())
-        {
             fRecovery = false;
-
-            debug::log(0, FUNCTION, "ledger DB journal not recoverable");
-        }
 
         /* Check the local DB journal. */
         if(!locDB->TxnRecovery())
-        {
             fRecovery = false;
-
-            debug::log(0, FUNCTION, "local DB journal not recoverable");
-        }
 
         /* Check the ledger DB journal. */
         if(!trustDB->TxnRecovery())
-        {
             fRecovery = false;
-
-            debug::log(0, FUNCTION, "trust DB journal not recoverable");
-        }
 
         /* Check the ledger DB journal. */
         if(!legacyDB->TxnRecovery())
-        {
             fRecovery = false;
-
-            debug::log(0, FUNCTION, "legacy DB journal not recoverable");
-        }
 
         /* Commit the transactions if journals are recovered. */
         if(fRecovery)

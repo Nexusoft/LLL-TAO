@@ -221,17 +221,20 @@ namespace LLP
         /** ToString
          *
          *  Returns the IP and Port in string format. (IP:Port)
+         *  NOTE: can't be const, for Windows compile, because calls ToStringIP()
          *
          **/
-        std::string ToString(); //can't be const, for Windows compile, because calls ToStringIP()
+        std::string ToString();
 
 
         /** ToStringIP
          *
          *  Returns the IP in string format.
+         *  NOTE: can't be const, for Windows compile, which defines
+         *        inet_ntop using void* and not const void*
          *
          **/
-        std::string ToStringIP(); //can't be const, for Windows compile, which defines inet_ntop using void* and not const void*
+        std::string ToStringIP();
 
 
         /** ToStringPort

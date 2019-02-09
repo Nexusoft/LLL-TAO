@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <LLP/templates/base_connection.h>
 #include <LLP/templates/ddos.h>
 #include <Util/include/string.h>
+#include <new> //std::bad_alloc
 
 #define HTTPNODE ANSI_COLOR_FUNCTION "HTTPNode" ANSI_COLOR_RESET " : "
 
@@ -56,11 +57,21 @@ namespace LLP
 
         /** Default Constructor **/
         HTTPNode()
-        : BaseConnection<HTTPPacket>() { }
+        : BaseConnection<HTTPPacket>()
+        {
+        }
 
         /** Constructor **/
         HTTPNode( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
-        : BaseConnection<HTTPPacket>( SOCKET_IN, DDOS_IN ) { }
+        : BaseConnection<HTTPPacket>( SOCKET_IN, DDOS_IN )
+        {
+        }
+
+
+        /** Default Destructor **/
+        virtual ~HTTPNode()
+        {
+        }
 
 
         /** Event
@@ -222,6 +233,11 @@ namespace LLP
                 RESPONSE.strContent = strContent;
 
                 this->WritePacket(RESPONSE);
+            }
+            catch(const std::bad_alloc &e)
+            {
+                debug::error(FUNCTION, "Memory allocation failed ", e.what());
+                throw;
             }
             catch(...)
             {

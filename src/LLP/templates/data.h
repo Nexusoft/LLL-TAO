@@ -14,10 +14,11 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_DATA_H
 #define NEXUS_LLP_TEMPLATES_DATA_H
 
+#include <Util/include/mutex.h>
+
 #include <atomic>
 #include <vector>
 #include <thread>
-#include <mutex>
 #include <cstdint>
 #include <condition_variable>
 
@@ -144,7 +145,7 @@ namespace LLP
          *  @param[in] The index of the connection to remove.
          *
          **/
-        void remove(int index);
+        void remove(int32_t index);
 
 
         /** find_slot
@@ -153,7 +154,7 @@ namespace LLP
          *  has been flagged Disconnected
          *
          **/
-        int find_slot();
+        int32_t find_slot();
 
     };
 }

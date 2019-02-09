@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 
 #include <Util/include/hex.h>
+#include <new> //std::bad_alloc
 
 /* Global TAO namespace. */
 namespace TAO
@@ -305,7 +306,11 @@ namespace TAO
                     }
                 }
             }
-            catch(std::runtime_error& e)
+            catch(const std::bad_alloc &e)
+            {
+                return debug::error(FUNCTION, "Memory allocation failed ", e.what());
+            }
+            catch(const std::runtime_error& e)
             {
                 return debug::error(FUNCTION, "exception encountered ", e.what());
             }

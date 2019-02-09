@@ -36,7 +36,7 @@ namespace LLP
     , vBuffer()
     , addr()
     {
-        fd = -1;
+        fd = INVALID_SOCKET;
 
         events = POLLIN;
     }
@@ -56,7 +56,7 @@ namespace LLP
     }
 
 
-    /* Constructor for Socket */
+    /* Constructor for socket */
     Socket::Socket(const BaseAddress &addrConnect)
     : nError(0)
     , nLastSend(runtime::timestamp())
@@ -64,10 +64,16 @@ namespace LLP
     , vBuffer()
     , addr()
     {
-        fd = -1;
+        fd = INVALID_SOCKET;
         events = POLLIN;
 
         Attempt(addrConnect);
+    }
+
+
+    /* Destructor for socket */
+    Socket::~Socket()
+    {
     }
 
 
@@ -164,7 +170,13 @@ namespace LLP
                 {
                     debug::log(3, FUNCTION, "connection timeout ", addrDestCopy.ToString(), "...");
 
-                    closesocket(fd);
+                    if(fd != INVALID_SOCKET)
+                    {
+                         closesocket(fd);
+
+
+
+                    }
 
                     return false;
                 }
@@ -174,7 +186,10 @@ namespace LLP
                 {
                     debug::log(3, FUNCTION, "select failed ", addrDestCopy.ToString(), " (",  WSAGetLastError(), ")");
 
-                    closesocket(fd);
+                    if(fd != INVALID_SOCKET)
+                    {
+                        closesocket(fd);
+                    }
 
                     return false;
                 }
@@ -189,7 +204,10 @@ namespace LLP
                 {
                     debug::log(3, FUNCTION, "get options failed ", addrDestCopy.ToString(), " (", WSAGetLastError(), ")");
 
-                    closesocket(fd);
+                    if(fd != INVALID_SOCKET)
+                    {
+                        closesocket(fd);
+                    }
 
                     return false;
                 }
@@ -199,8 +217,10 @@ namespace LLP
                 {
                     debug::log(3, FUNCTION, "failed after select ", addrDestCopy.ToString(), " (", nRet, ")");
 
-                    closesocket(fd);
-
+                    if(fd != INVALID_SOCKET)
+                    {
+                        closesocket(fd);
+                    }
 
                     return false;
                 }
@@ -209,7 +229,10 @@ namespace LLP
             {
                 debug::log(3, FUNCTION, "connect failed ", addrDestCopy.ToString(), " (", WSAGetLastError(), ")");
 
-                closesocket(fd);
+                if(fd != INVALID_SOCKET)
+                {
+                    closesocket(fd);
+                }
 
                 return false;
             }
@@ -240,7 +263,11 @@ namespace LLP
     /* Clear resources associated with socket and return to invalid state. */
     void Socket::Close()
     {
-        closesocket(fd);
+
+        if(fd != INVALID_SOCKET)
+        {
+          closesocket(fd);
+        }
 
         fd = INVALID_SOCKET;
     }

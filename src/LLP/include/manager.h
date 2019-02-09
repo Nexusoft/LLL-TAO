@@ -157,7 +157,19 @@ namespace LLP
          *  @param[in] addr The address to find.
          *
          **/
-        bool Has(const BaseAddress &addr);
+        bool Has(const BaseAddress &addr) const;
+
+
+        /** GetState
+         *
+         *  Gets the Connect State of the address in the manager if it exists.
+         *
+         *  @param[in] addr The address to get the state from.
+         *
+         *  @return Returns the connect state of the address.
+         *
+         **/
+        uint8_t GetState(const BaseAddress &addr) const;
 
 
         /** SetLatency
@@ -215,6 +227,19 @@ namespace LLP
          **/
         void SetPort(uint16_t port);
 
+
+        /** Ban
+         *
+         *  Blacklists the given address so it won't get selected. The default
+         *  behavior is to ban indefinitely.
+         *
+         *  @param[in] addr The address to ban.
+         *  @param[in] banTime The time to ban for (or zero for indefinite ban)
+         *
+         **/
+         void Ban(const BaseAddress &addr, uint32_t banTime = 0);
+
+
     private:
 
         /** get_addresses
@@ -250,6 +275,16 @@ namespace LLP
         uint32_t total_count(const uint8_t flags);
 
 
+        /** remove_address
+         *
+         *  Helper function that removes the given address from the map.
+         *
+         *  @param[in] addr The address to remove if it exists.
+         *
+         **/
+         void remove_address(const BaseAddress &addr);
+
+
         /** to_string
          *
          *  Print the current state of the address manager.
@@ -258,9 +293,24 @@ namespace LLP
         std::string to_string();
 
 
-        LLD::AddressDB *pDatabase;
+        /** is_banned
+         *
+         *  Helper function to determine if an address identified by it's hash
+         *  is banned.
+         *
+         *  @param[in] hash The hash of the address to check for.
+         *
+         *  @return Returns true if address is banned, false otherwise.
+         *
+         **/
+        bool is_banned(uint64_t hash);
+
+
+
         std::map<uint64_t, TrustAddress> mapTrustAddress;
+        std::map<uint64_t, uint32_t> mapBanned;
         mutable std::mutex mut;
+        LLD::AddressDB *pDatabase;
         uint16_t nPort;
     };
 }

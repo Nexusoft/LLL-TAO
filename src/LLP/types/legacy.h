@@ -62,6 +62,7 @@ namespace LLP
         , strNodeVersion()
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
         , nStartingHeight(0)
+        , nConsecutiveFails(0)
         , fInbound(false)
         , nLastPing(runtime::timestamp())
         , nConsecutiveTimeouts(0)
@@ -79,6 +80,7 @@ namespace LLP
         , strNodeVersion()
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
         , nStartingHeight(0)
+        , nConsecutiveFails(0)
         , fInbound(false)
         , nLastPing(runtime::timestamp())
         , nConsecutiveTimeouts(0)
@@ -92,13 +94,11 @@ namespace LLP
         /* Virtual destructor. */
         virtual ~LegacyNode()
         {
-            mapLatencyTracker.clear();
-            mapSentRequests.clear();
         }
 
 
-        /** Randomly genearted session ID. **/
-        static uint64_t nSessionID;
+        /** Randomly generated session ID. **/
+        static const uint64_t nSessionID;
 
 
         /** String version of this Node's Version. **/
@@ -109,8 +109,12 @@ namespace LLP
         uint32_t nCurrentVersion;
 
 
-        /** LEGACY: The height of this ndoe given at the version message. **/
+        /** LEGACY: The height of this node given at the version message. **/
         uint32_t nStartingHeight;
+
+
+        /* Duplicates connection reset. */
+        uint32_t nConsecutiveFails;
 
 
         /** Flag to determine if a connection is Inbound. **/
@@ -129,8 +133,16 @@ namespace LLP
         static uint64_t nLastGetBlocks;
 
 
+        /** Handle an average calculation of fast sync blocks. */
+        static uint32_t nFastSyncAverage;
+
+
         /** The current node that is being used for fast sync.l **/
         static BaseAddress addrFastSync;
+
+
+        /** The last time a block was accepted. **/
+        static uint64_t nLastTimeReceived;
 
 
         /** The number of times getblocks has timed out (to deal with unreliable NON-TRITIUM nodes). **/
@@ -261,13 +273,19 @@ namespace LLP
                 return;
 
             /* Set the fast sync address. */
-            if(config::GetBoolArg("-fastsync")
-            && addrFastSync.ToStringIP() != GetAddress().ToStringIP())
+            if(addrFastSync.ToStringIP() != GetAddress().ToStringIP())
             {
+                /* Set the new sync address. */
                 addrFastSync = GetAddress();
 
-                debug::log(0, NODE, "Fast sync address set");
+                /* Reset the last time received. */
+                nLastTimeReceived = runtime::timestamp();
+
+                debug::log(0, NODE, "New sync address set");
             }
+
+            /* Calculate the fast sync average. */
+            nFastSyncAverage = (nFastSyncAverage + (runtime::timestamp() - nLastGetBlocks)) / 2;
 
             /* Update the last timestamp this was called. */
             nLastGetBlocks = runtime::timestamp();
@@ -279,7 +297,7 @@ namespace LLP
             PushMessage("getblocks", Legacy::Locator(hashBlockFrom), hashBlockTo);
 
             /* Debug output for monitoring. */
-            debug::log(0, NODE, "requesting getblocks from ", hashBlockFrom.ToString().substr(0, 20), " to ", hashBlockTo.ToString().substr(0, 20));
+            debug::log(0, NODE, "(", nFastSyncAverage, ") requesting getblocks from ", hashBlockFrom.ToString().substr(0, 20), " to ", hashBlockTo.ToString().substr(0, 20));
         }
 
 

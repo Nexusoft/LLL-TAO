@@ -13,7 +13,9 @@ ________________________________________________________________________________
 
 #include <LLC/types/bignum.h>
 #include <LLC/hash/SK.h>
+
 #include <Util/include/base58.h>
+#include <Util/include/debug.h>
 
 #include <Legacy/include/constants.h>
 #include <Legacy/include/evaluate.h>
@@ -25,7 +27,7 @@ ________________________________________________________________________________
 #include <string>
 #include <vector>
 #include <algorithm>
-
+#include <new> //std::bad_alloc
 #include <stdexcept>
 
 namespace Legacy
@@ -859,7 +861,11 @@ namespace Legacy
                     return false;
             }
         }
-        catch (...)
+        catch(const std::bad_alloc &e)
+        {
+            return debug::error(FUNCTION, "Memory allocation failed ", e.what());
+        }
+        catch(...)
         {
             return false;
         }

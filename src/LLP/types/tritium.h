@@ -47,7 +47,8 @@ namespace LLP
         , nLastSamples(0)
         , mapLatencyTracker()
         , mapSentRequests()
-        {}
+        {
+        }
 
         /** Constructor **/
         TritiumNode( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
@@ -57,7 +58,12 @@ namespace LLP
         , nLastSamples(0)
         , mapLatencyTracker()
         , mapSentRequests()
-        { }
+        {
+        }
+
+        virtual ~TritiumNode()
+        {
+        }
 
 
         /** Randomly genearted session ID. **/

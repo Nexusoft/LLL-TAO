@@ -346,22 +346,19 @@ namespace LLP
 
 
     /* Returns the IP in string format. */
+    /* NOTE: ip must be non-const in Windows, so requires method not be const */
     std::string BaseAddress::ToStringIP()
     {
         if (IsIPv4())
         {
             char dst[INET_ADDRSTRLEN];
-            inet_ntop(AF_INET, ip + 12, dst, INET_ADDRSTRLEN); //ip must be non-const in Windows, so requires method not be const
-
+            inet_ntop(AF_INET, ip + 12, dst, INET_ADDRSTRLEN);
             return std::string(dst);
         }
-        else
-        {
-            char dst[INET6_ADDRSTRLEN];
-            inet_ntop(AF_INET6, ip, dst, INET6_ADDRSTRLEN); //ip must be non-const in Windows, so requires method not be const
 
-            return std::string(dst);
-        }
+        char dst[INET6_ADDRSTRLEN];
+        inet_ntop(AF_INET6, ip, dst, INET6_ADDRSTRLEN);
+        return std::string(dst);
     }
 
 
