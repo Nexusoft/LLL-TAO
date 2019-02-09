@@ -120,12 +120,12 @@ namespace TAO
                 TAO::Ledger::BlockState state = stateBest;
                 Legacy::Transaction tx;
 
-                bool fFailed = false;
-                for(int i = 0; i < config::GetArg("-checkblocks", 0) && !fFailed && !config::fShutdown; i++)
+                TAO::Ledger::BlockState stateReset = stateBest;
+                for(uint32_t i = 0; i < config::GetArg("-checkblocks", 0) && !config::fShutdown; i++)
                 {
                     if(state == stateGenesis)
                         break;
-                        
+
                     /* Scan each transaction in the block and process those related to this wallet */
                     std::vector<uint512_t> vHashes;
                     for(const auto& item : state.vtx)
@@ -140,13 +140,18 @@ namespace TAO
 
                                 debug::error(FUNCTION, "tx ", item.second.ToString().substr(0, 20), " not found");
 
-                                fFailed = true;
-                                break;
+                                stateReset = state;
+                                continue;
                             }
 
                             /* Check for coinbase or coinstake. */
                             if(item.second == state.vtx[0].second && !tx.IsCoinBase() && !tx.IsCoinStake())
-                                return debug::error(FUNCTION, "first transction not coinbase/coinstake");
+                            {
+                                debug::error(FUNCTION, "first transction not coinbase/coinstake");
+
+                                stateReset = state;
+                                continue;
+                            }
                         }
                     }
 
@@ -157,7 +162,7 @@ namespace TAO
 
                         debug::error(FUNCTION, "merkle tree mismatch");
 
-                        fFailed = true;
+                        stateReset = state;
                     }
 
                     /* Iterate backwards. */
@@ -170,11 +175,11 @@ namespace TAO
                         debug::log(0, "Checked ", i, " Blocks...");
                 }
 
-                if(fFailed)
+                if(stateReset != stateBest)
                 {
                     /* Set the best to older block. */
                     LLD::TxnBegin();
-                    state.SetBest();
+                    stateReset.SetBest();
                     LLD::TxnCommit();
                 }
             }

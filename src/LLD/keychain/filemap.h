@@ -301,6 +301,7 @@ namespace LLD
             std::vector<uint8_t> vData(ssKey.begin(), ssKey.end());
             vData.insert(vData.end(), cKey.vKey.begin(), cKey.vKey.end());
             ssFile.write((char*) &vData[0], vData.size());
+            ssFile.flush();
 
 
             /* Debug Output of Sector Key Information. */
@@ -347,6 +348,7 @@ namespace LLD
             /* Establish the Sector State as Empty. */
             std::vector<uint8_t> vData(1, STATE::EMPTY);
             ssFile.write((char*) &vData[0], vData.size());
+            ssFile.flush();
 
 
             /* Remove the Sector Key from the Memory Map. */
@@ -421,21 +423,6 @@ namespace LLD
             }
 
             return false;
-        }
-
-        /** FlushIndex
-         *
-         *  Flush the disk index.
-         *
-         **/
-        void Flush()
-        {
-            //this method is empty because there is no background cache to flush
-        }
-
-        void Lock()
-        {
-            //this method is empty because there is no background cache to flush
         }
     };
 }
