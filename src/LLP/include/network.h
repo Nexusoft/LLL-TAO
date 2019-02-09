@@ -56,7 +56,8 @@ typedef int socklen_t;
 
 typedef u_int SOCKET;
 
-#define GetLastError()      errno
+/* These alias the winsock names to map them for non-Windows */
+#define WSAGetLastError()   errno       
 #define WSAEINVAL           EINVAL
 #define WSAEALREADY         EALREADY
 #define WSAEWOULDBLOCK      EWOULDBLOCK

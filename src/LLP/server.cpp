@@ -484,8 +484,8 @@ namespace LLP
 
                 if (hSocket == INVALID_SOCKET)
                 {
-                    if (GetLastError() != WSAEWOULDBLOCK)
-                        debug::error("socket error accept failed: ", GetLastError());
+                    if (WSAGetLastError() != WSAEWOULDBLOCK)
+                        debug::error("socket error accept failed: ", WSAGetLastError());
                 }
                 else
                 {
@@ -551,7 +551,7 @@ namespace LLP
         hListenSocket = socket(fIPv4 ? AF_INET : AF_INET6, SOCK_STREAM, IPPROTO_TCP);
         if (hListenSocket == INVALID_SOCKET)
         {
-            debug::error("Couldn't open socket for incoming connections (socket returned error )", GetLastError());
+            debug::error("Couldn't open socket for incoming connections (socket returned error )", WSAGetLastError());
             return false;
         }
 
@@ -578,7 +578,7 @@ namespace LLP
             sockaddr.sin_port = htons(PORT);
             if (::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
             {
-                int32_t nErr = GetLastError();
+                int32_t nErr = WSAGetLastError();
                 if (nErr == WSAEADDRINUSE)
                     debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer. Address already in use.");
                 else
@@ -598,7 +598,7 @@ namespace LLP
             sockaddr.sin6_port = htons(PORT);
             if (::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
             {
-                int32_t nErr = GetLastError();
+                int32_t nErr = WSAGetLastError();
                 if (nErr == WSAEADDRINUSE)
                     debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer. Address already in use.");
                 else
@@ -613,7 +613,7 @@ namespace LLP
         /* Listen for incoming connections */
         if (listen(hListenSocket, SOMAXCONN) == SOCKET_ERROR)
         {
-            debug::error("Listening for incoming connections failed (listen returned error )", GetLastError());
+            debug::error("Listening for incoming connections failed (listen returned error )", WSAGetLastError());
             return false;
         }
 

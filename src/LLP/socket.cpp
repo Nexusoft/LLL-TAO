@@ -119,6 +119,10 @@ namespace LLP
             /* Copy in the new address. */
             addr = BaseAddress(sockaddr);
 
+            /* Connect for non-blocking socket should return SOCKET_ERROR (with last error WSAEWOULDBLOCK normally). 
+             * Then we have to use select below to check if connection was made.
+             * If it doesn't return that, it means it connected immediately and connection was successful. (very unusual, but possible)
+             */
             fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
         else
@@ -136,16 +140,23 @@ namespace LLP
         /* Handle final socket checks if connection established with no errors. */
         if (fConnected)
         {
-            // WSAEINVAL is here because some legacy version of winsock uses it
-            if (GetLastError() == WSAEINPROGRESS || GetLastError() == WSAEWOULDBLOCK || GetLastError() == WSAEINVAL)
+            /* We would expect to get WSAEWOULDBLOCK here in the normal case of attempting a connection.
+             * WSAEINVAL is here because some legacy version of winsock uses it
+             */
+            if (WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAEINPROGRESS || WSAGetLastError() == WSAEINVAL)
             {
                 struct timeval timeout;
                 timeout.tv_sec  = nTimeout / 1000;
                 timeout.tv_usec = (nTimeout % 1000) * 1000;
 
+                /* Create an fd_set with our current socket (and only it) */
                 fd_set fdset;
                 FD_ZERO(&fdset);
                 FD_SET(fd, &fdset);
+
+                /* select returns the number of descriptors that have successfully established connection and are writeable.
+                 * We only pass one descriptor in the fd_set, so this will return 1 if connect attempt succeeded, 0 if it timed out, or SOCKET_ERROR on error
+                 */
                 int nRet = select(fd + 1, nullptr, &fdset, nullptr, &timeout);
 
                 /* If the connection attempt timed out with select. */
@@ -164,7 +175,7 @@ namespace LLP
                 /* If the select failed. */
                 if (nRet == SOCKET_ERROR)
                 {
-                    debug::log(3, FUNCTION, "select failed ", addrDestCopy.ToString(), " (",  GetLastError(), ")");
+                    debug::log(3, FUNCTION, "select failed ", addrDestCopy.ToString(), " (",  WSAGetLastError(), ")");
     #ifdef WIN32
                     closesocket(fd);
     #else
@@ -182,7 +193,7 @@ namespace LLP
                 if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
     #endif
                 {
-                    debug::log(3, FUNCTION, "get options failed ", addrDestCopy.ToString(), " (", GetLastError(), ")");
+                    debug::log(3, FUNCTION, "get options failed ", addrDestCopy.ToString(), " (", WSAGetLastError(), ")");
     #ifdef WIN32
                     closesocket(fd);
     #else
@@ -206,12 +217,12 @@ namespace LLP
                 }
             }
     #ifdef WIN32
-            else if (GetLastError() != WSAEISCONN)
+            else if (WSAGetLastError() != WSAEISCONN)
     #else
             else
     #endif
             {
-                debug::log(3, FUNCTION, "connect failed ", addrDestCopy.ToString(), " (", GetLastError(), ")");
+                debug::log(3, FUNCTION, "connect failed ", addrDestCopy.ToString(), " (", WSAGetLastError(), ")");
     #ifdef WIN32
                 closesocket(fd);
     #else
@@ -268,7 +279,7 @@ namespace LLP
 
         if (nRead < 0)
         {
-            nError = GetLastError();
+            nError = WSAGetLastError();
             debug::log(2, FUNCTION, "read failed ", addr.ToString(), " (", nError, " ", strerror(nError), ")");
 
             return nError;
@@ -289,7 +300,7 @@ namespace LLP
     #endif
         if (nRead < 0)
         {
-            nError = GetLastError();
+            nError = WSAGetLastError();
             debug::log(2, FUNCTION, "read failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
 
             return nError;
@@ -324,7 +335,7 @@ namespace LLP
     #endif
         if(nSent < 0)
         {
-            nError = GetLastError();
+            nError = WSAGetLastError();
             debug::log(2, FUNCTION, "write failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
 
             return nError;
@@ -360,7 +371,7 @@ namespace LLP
 
         /* Handle errors on flush. */
         if(nSent < 0)
-            return GetLastError();
+            return WSAGetLastError();
 
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent > 0)
