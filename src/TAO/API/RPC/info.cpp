@@ -76,19 +76,26 @@ namespace TAO
             obj["synchronizing"] = (bool)TAO::Ledger::ChainState::Synchronizing();
 
             obj["connections"] = GetTotalConnectionCount();
+
+            obj["syncnode"]    = LLP::LegacyNode::addrFastSync.ToStringIP();
+            obj["syncaverage"] = (int)LLP::LegacyNode::nFastSyncAverage;
+
             obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToString() : std::string());
             obj["ip"] = config::GetBoolArg("-beta") ? LLP::LEGACY_SERVER->addrThisNode.ToStringIP() : LLP::TRITIUM_SERVER->addrThisNode.ToStringIP();
 
             // get the EID's if using LISP
-            try
+            if(config::GetBoolArg("-lisp"))
             {
-                json::json jsonEIDs = TAO::API::lisp.MyEIDs(json::json(), false);
-                if( jsonEIDs.is_object() && jsonEIDs["eids"].is_array())
-                    obj["eids"] = jsonEIDs["eids"];
-            }
-            catch(const APIException& e)
-            {
-                /* This is a no-op because the MyEIDs API call will throw an exception if lisp is not running */
+                try
+                {
+                    json::json jsonEIDs = TAO::API::lisp.MyEIDs(json::json(), false);
+                    if( jsonEIDs.is_object() && jsonEIDs["eids"].is_array())
+                        obj["eids"] = jsonEIDs["eids"];
+                }
+                catch(const APIException& e)
+                {
+                    /* This is a no-op because the MyEIDs API call will throw an exception if lisp is not running */
+                }
             }
 
 

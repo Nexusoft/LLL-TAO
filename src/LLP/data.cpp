@@ -138,8 +138,6 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::DisconnectAll()
     {
-       LOCK(MUTEX);
-
        uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
        for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
            remove(nIndex);
@@ -169,21 +167,21 @@ namespace LLP
             if(fDestruct.load() || config::fShutdown)
                 return;
 
+            /* Wrapped mutex lock. */
             uint32_t nSize = 0;
-            {
-                LOCK(MUTEX);
+            { LOCK(MUTEX);
 
+                /* Get the total connections. */
                 nSize = static_cast<uint32_t>(CONNECTIONS.size());
 
-                        /* Poll the sockets. */
-#ifdef WIN32
+#ifdef WIN32    /* Poll the sockets. */
                 int nPoll = WSAPoll((pollfd*)CONNECTIONS[0], nSize, 100);
 #else
                 int nPoll = poll((pollfd*)CONNECTIONS[0], nSize, 100);
 #endif
+                /* Continue on poll errors. */
                 if(nPoll < 0)
                     continue;
-
             }
 
             /* Check all connections for data and packets. */
@@ -275,8 +273,8 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::disconnect_remove_event(uint32_t index, uint8_t reason)
     {
-       CONNECTIONS[index]->Event(EVENT_DISCONNECT, reason);
-       remove(index);
+        CONNECTIONS[index]->Event(EVENT_DISCONNECT, reason);
+        remove(index);
     }
 
 
@@ -285,16 +283,17 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::remove(int index)
     {
+        LOCK(MUTEX);
 
-       /* Free the memory. */
-       delete CONNECTIONS[index];
+        /* Free the memory. */
+        delete CONNECTIONS[index];
 
-       /* Derefrence the pointer. */
-       CONNECTIONS[index] = nullptr;
+        /* Derefrence the pointer. */
+        CONNECTIONS[index] = nullptr;
 
-       --nConnections;
+        --nConnections;
 
-       CONDITION.notify_all();
+        CONDITION.notify_all();
     }
 
 

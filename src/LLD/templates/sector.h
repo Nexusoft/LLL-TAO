@@ -301,8 +301,9 @@ namespace LLD
             { LOCK(TRANSACTION_MUTEX);
                 if(pTransaction)
                 {
+                    /* Check if in erase queue. */
                     if(pTransaction->mapEraseData.count(ssKey.Bytes()))
-                        return false;
+                        return debug::error(FUNCTION, "data is in transaction erase queue");
 
                     /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
                     if(pTransaction->mapTransactions.count(ssKey.Bytes()))
@@ -310,6 +311,10 @@ namespace LLD
 
                     /* Check for keychain commits. */
                     if(pTransaction->mapKeychain.count(ssKey.Bytes()))
+                        return true;
+
+                    /* Check for the indexes. */
+                    if(pTransaction->mapIndex.count(ssKey.Bytes()))
                         return true;
                 }
             }
@@ -406,17 +411,27 @@ namespace LLD
             { LOCK(TRANSACTION_MUTEX);
                 if(pTransaction)
                 {
-
+                    /* Check if in erase queue. */
                     if(pTransaction->mapEraseData.count(ssKey.Bytes()))
-                        return false;
+                        return debug::error(FUNCTION, "data is in transaction erase queue");
 
                     /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
                     if(pTransaction->mapTransactions.count(ssKey.Bytes()))
+                    {
+                        /* Get the data from the transction object. */
                         vData = pTransaction->mapTransactions[ssKey.Bytes()];
+
+                        /* Deserialize Value. */
+                        DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
+                        ssValue >> value;
+
+                        return true;
+                    }
                 }
             }
 
-            if(vData.empty() && !Get(ssKey.Bytes(), vData))
+            /* Get the data from the database. */
+            if(!Get(ssKey.Bytes(), vData))
                 return false;
 
             /* Deserialize Value. */
@@ -563,7 +578,8 @@ namespace LLD
                 if(pTransaction)
                 {
                     /* Create an append only stream. */
-                    std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
+                    std::ofstream stream(debug::safe_printstr(config::GetDataDir(),
+                        strName, "/journal.dat"), std::ios::app | std::ios::binary);
 
                     /* Serialize the key. */
                     DataStream ssJournal(SER_LLD, DATABASE_VERSION);
@@ -1034,24 +1050,6 @@ namespace LLD
         }
 
 
-        /** RollbackTransactions
-         *
-         *  Rollback the disk to previous state.
-         *
-         *  @return True if rollback was successful, false otherwise.
-         *
-         **/
-        bool RollbackTransactions()
-        {
-            /* Commit the sector data. */
-            for(auto it = pTransaction->mapOriginalData.begin(); it != pTransaction->mapOriginalData.end(); ++it )
-                if(!Force(it->first, it->second))
-                    return debug::error(FUNCTION, "failed to rollback transaction");
-
-            return true;
-        }
-
-
         /** TxnCheckpoint
          *
          *  Write the transaction commitment message.
@@ -1133,6 +1131,7 @@ namespace LLD
                     pTransaction = nullptr;
                     //RollbackTransactions();
                     //TxnAbort();
+                    return debug::error(FUNCTION, "failed to write to keychin");
                 }
             }
 
