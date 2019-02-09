@@ -763,13 +763,18 @@ namespace LLP
                  || nLastGetBlocks + (LegacyNode::nFastSyncAverage + 5) < runtime::timestamp()
                  || nLastTimeReceived + LegacyNode::nFastSyncAverage < runtime::timestamp())
             {
-                /* Normal case of asking for a getblocks inventory message. */
-                LegacyNode* pBest = LEGACY_SERVER->GetConnection(addrFastSync);
-                if(pBest)
+                /* Fast sync or the same fast sync node. */
+                if(!config::GetBoolArg("-fastsync")
+                || pnode->GetAddress().ToStringIP() == addrFastSync.ToStringIP())
                 {
-                    pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+                    /* Normal case of asking for a getblocks inventory message. */
+                    LegacyNode* pBest = LEGACY_SERVER->GetConnection(addrFastSync);
+                    if(pBest)
+                    {
+                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
 
-                    return true;
+                        return true;
+                    }
                 }
             }
 
@@ -784,22 +789,25 @@ namespace LLP
 
             /* Check for failure limit on node. */
             if(config::GetBoolArg("-fastsync")
-            && pnode->GetAddress().ToStringIP() == addrFastSync.ToStringIP()
             && TAO::Ledger::ChainState::Synchronizing()
             && pnode->nConsecutiveFails >= 100)
             {
-                /* Normal case of asking for a getblocks inventory message. */
-                LegacyNode* pBest = LEGACY_SERVER->GetConnection(addrFastSync);
-                if(pBest)
+                /* Find a new fast sync node if too many failures. */
+                if(pnode->GetAddress().ToStringIP() == addrFastSync.ToStringIP())
                 {
-                    /* Switch to a new node for fast sync. */
-                    pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+                    /* Normal case of asking for a getblocks inventory message. */
+                    LegacyNode* pBest = LEGACY_SERVER->GetConnection(addrFastSync);
+                    if(pBest)
+                    {
+                        /* Switch to a new node for fast sync. */
+                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
 
-                    /* Debug output. */
-                    debug::error(FUNCTION, "fast sync node reached failure limit...");
-
-                    return false;
+                        /* Debug output. */
+                        debug::error(FUNCTION, "fast sync node reached failure limit...");
+                    }
                 }
+
+                return false;
             }
 
             /* Reset the consecutive accepts. */

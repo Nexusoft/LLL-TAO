@@ -666,7 +666,7 @@ namespace LLD
                 return true;
             }
 
-            return debug::error(FUNCTION, "Key not found");
+            return false;
         }
 
 
