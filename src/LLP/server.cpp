@@ -264,7 +264,7 @@ namespace LLP
 
     /*  Get the best connection based on latency */
     template <class ProtocolType>
-    ProtocolType* Server<ProtocolType>::GetConnection()
+    ProtocolType* Server<ProtocolType>::GetConnection(const BaseAddress& addrExclude)
     {
         /* List of connections to return. */
         ProtocolType* pBest = nullptr;
@@ -282,6 +282,10 @@ namespace LLP
             {
                 /* Skip over inactive connections. */
                 if(!dt->CONNECTIONS[nIndex] || !dt->CONNECTIONS[nIndex]->Connected())
+                    continue;
+
+                /* Skip over exclusion address. */
+                if(dt->CONNECTIONS[nIndex]->GetAddress() == addrExclude)
                     continue;
 
                 /* Push the active connection. */

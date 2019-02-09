@@ -225,10 +225,7 @@ namespace runtime
      **/
     inline void command(std::string strCommand)
     {
-        int nErr = ::system(strCommand.c_str());
-        if (nErr) //NOTE: suppress errors for now
-            return;
-        //    debug::error(FUNCTION, "system ", strCommand, " returned ", nErr);
+        ::system(strCommand.c_str());
     }
 
 

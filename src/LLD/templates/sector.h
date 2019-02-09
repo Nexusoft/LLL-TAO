@@ -1108,9 +1108,6 @@ namespace LLD
             if(!pTransaction)
                 return false;
 
-            /* Lock the sector keys cache. */
-            pSectorKeys->Lock();
-
             /* Erase data set to be removed. */
             for(auto it = pTransaction->mapEraseData.begin(); it != pTransaction->mapEraseData.end(); ++it )
             {
@@ -1187,9 +1184,6 @@ namespace LLD
                 }
             }
 
-            /* Flush the keychain. */
-            pSectorKeys->Flush();
-
             /* Cleanup the transaction object. */
             delete pTransaction;
             pTransaction = nullptr;
@@ -1222,7 +1216,7 @@ namespace LLD
             stream.read((char*) &vBuffer[0], vBuffer.size());
             stream.close();
 
-            debug::log(0, FUNCTION, "transaction journal detected of ", nSize, " bytes");
+            debug::log(0, FUNCTION, strName, " transaction journal detected of ", nSize, " bytes");
 
             /* Create the transaction object. */
             TxnBegin();
@@ -1258,7 +1252,7 @@ namespace LLD
                     pTransaction->mapKeychain[vKey] = 0;
 
                     /* Debug output. */
-                    debug::log(0, FUNCTION, "writing key ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
+                    debug::log(0, FUNCTION, "writing keychain ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
                 }
                 else if(strType == "write")
                 {
@@ -1294,13 +1288,13 @@ namespace LLD
                 }
                 if(strType == "commit")
                 {
-                    debug::log(0, FUNCTION, "transaction journal ready to be restored");
+                    debug::log(0, FUNCTION, strName, " transaction journal ready to be restored");
 
                     return true;
                 }
             }
 
-            return debug::error(FUNCTION, "transaction journal never reached commit");
+            return debug::error(FUNCTION, strName, " transaction journal never reached commit");
         }
 
     };

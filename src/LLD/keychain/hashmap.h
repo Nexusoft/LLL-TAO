@@ -50,28 +50,20 @@ namespace LLD
         mutable std::mutex KEY_MUTEX;
 
 
-        /* The condition for thread sleeping. */
-        std::condition_variable CONDITION;
-
-
         /** The string to hold the database location. **/
         std::string strBaseLocation;
 
 
         /** Keychain stream object. **/
-        TemplateLRU<uint32_t, std::fstream *> *fileCache;
+        TemplateLRU<uint32_t, std::fstream*>* fileCache;
+
+
+        /** Keychain index stream. **/
+        std::fstream* pindex;
 
 
         /** Total elements in hashmap for quick inserts. **/
         std::vector<uint32_t> hashmap;
-
-
-        /** The hashmap object queue. */
-        std::vector<uint32_t> queue;
-
-
-        /* The cache writer thread. */
-        std::thread CacheThread;
 
 
         /** The Maximum buckets allowed in the hashmap. */
@@ -94,85 +86,55 @@ namespace LLD
         uint8_t nFlags;
 
 
-        /** Initialized flag (used for cache thread) **/
-        std::atomic<bool> fCacheActive;
-
-
-        /** Lock the cache writer. */
-        std::atomic<bool> fLocked;
-
-
-        /** Destructor flag. **/
-        std::atomic<bool> fDestruct;
-
-
     public:
 
         /** Default Constructor **/
         BinaryHashMap()
         : KEY_MUTEX()
-        , CONDITION()
         , strBaseLocation()
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+        , pindex(nullptr)
         , hashmap(256 * 256 * 24)
-        , queue()
-        , CacheThread()
         , HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
         , HASHMAP_MAX_CACHE_SIZE(10 * 1024)
         , HASHMAP_MAX_KEY_SIZE(32)
         , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 13)
         , nFlags(FLAGS::APPEND)
-        , fCacheActive(false)
-        , fLocked(false)
-        , fDestruct(false)
         {
-            CacheThread = std::thread(std::bind(&BinaryHashMap::CacheWriter, this));
         }
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND)
         : KEY_MUTEX()
-        , CONDITION()
         , strBaseLocation(strBaseLocationIn)
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+        , pindex(nullptr)
         , hashmap(256 * 256 * 24)
-        , queue()
-        , CacheThread()
         , HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
         , HASHMAP_MAX_CACHE_SIZE(10 * 1024)
         , HASHMAP_MAX_KEY_SIZE(32)
         , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 13)
         , nFlags(nFlagsIn)
-        , fCacheActive(false)
-        , fLocked(false)
-        , fDestruct(false)
         {
             Initialize();
-            CacheThread = std::thread(std::bind(&BinaryHashMap::CacheWriter, this));
         }
 
 
         /** Default Constructor **/
         BinaryHashMap(std::string strBaseLocationIn, uint32_t nTotalBuckets, uint32_t nMaxCacheSize, uint8_t nFlagsIn = FLAGS::APPEND)
         : KEY_MUTEX()
-        , CONDITION()
         , strBaseLocation(strBaseLocationIn)
         , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+        , pindex(nullptr)
         , hashmap(nTotalBuckets)
-        , queue()
-        , CacheThread()
         , HASHMAP_TOTAL_BUCKETS(nTotalBuckets)
         , HASHMAP_MAX_CACHE_SIZE(nMaxCacheSize)
         , HASHMAP_MAX_KEY_SIZE(32)
         , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 13)
         , nFlags(nFlagsIn)
-        , fCacheActive(false)
-        , fLocked(false)
-        , fDestruct(false)
         {
             Initialize();
-            CacheThread = std::thread(std::bind(&BinaryHashMap::CacheWriter, this));
         }
 
 
@@ -197,11 +159,8 @@ namespace LLD
         /** Default Destructor **/
         ~BinaryHashMap()
         {
-            fDestruct.store(true);
-            CONDITION.notify_all();
-
-            CacheThread.join();
             delete fileCache;
+            delete pindex;
         }
 
 
@@ -333,14 +292,11 @@ namespace LLD
                 debug::log(0, FUNCTION, "Generated Disk Hash Map 0 of ", vSpace.size(), " bytes");
             }
 
+            /* Create the stream index object. */
+            pindex = new std::fstream(index, std::ios::in | std::ios::out | std::ios::binary);
+
             /* Load the stream object into the stream LRU cache. */
             fileCache->Put(0, new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary));
-
-            /* Set the initialization flag to complete. */
-            fCacheActive.store(true);
-
-            /* Notify threads it is initialized. */
-            CONDITION.notify_all();
         }
 
 
@@ -567,8 +523,10 @@ namespace LLD
                         fileCache->Put(i, pstream);
                     }
 
+
                     /* Seek to the hashmap index in file. */
                     pstream->seekg (nFilePos, std::ios::beg);
+
 
                     /* Read the bucket binary data from file stream */
                     pstream->read((char*) &vBucket[0], vBucket.size());
@@ -607,6 +565,7 @@ namespace LLD
                             fileCache->Put(i, pstream);
                         }
 
+
                         /* Handle the disk writing operations. */
                         pstream->seekp (nFilePos, std::ios::beg);
                         pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
@@ -623,13 +582,6 @@ namespace LLD
                             " | Sector Size: ", cKey.nSectorSize,
                             " | Sector Start: ", cKey.nSectorStart, "\n",
                             HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
-
-                        /* Signal the cache thread to wake up. */
-                        if(!fLocked.load())
-                        {
-                            fCacheActive.store(true);
-                            CONDITION.notify_all();
-                        }
 
                         return true;
                     }
@@ -687,11 +639,18 @@ namespace LLD
                 pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
                 pstream->flush();
 
-                /* Iterate the linked list value in the hashmap. */
-                ++hashmap[nBucket];
+                /* Seek to the index position. */
+                pindex->seekp((nBucket * 4), std::ios::beg);
 
-                /* Push to the queue. */
-                queue.push_back(nBucket);
+                /* Write the index to disk. */
+                uint32_t nIndex = ++hashmap[nBucket];
+
+                /* Get the bucket data. */
+                std::vector<uint8_t> vBucket((uint8_t*)&nIndex, (uint8_t*)&nIndex + 4);
+
+                /* Write the index into hashmap. */
+                pindex->write((char*)&vBucket[0], vBucket.size());
+                pindex->flush();
             }
 
             /* Debug Output of Sector Key Information. */
@@ -706,100 +665,7 @@ namespace LLD
                 " | Sector Start: ", cKey.nSectorStart,
                 " | Key: ",  HexStr(vKeyCompressed.begin(), vKeyCompressed.end()));
 
-            /* Signal the cache thread to wake up. */
-            if(!fLocked.load())
-            {
-                fCacheActive.store(true);
-                CONDITION.notify_all();
-            }
-
             return true;
-        }
-
-
-        /** Flush
-         *
-         *  Flush the disk index.
-         *
-         **/
-        void Flush()
-        {
-            /* Flush the disk hashmap. */
-            std::vector<uint8_t> vDisk;
-
-            std::string filename = debug::strprintf("%s_hashmap.index", strBaseLocation.c_str());
-
-            /* Create the file handler. */
-            std::fstream stream(filename, std::ios::in | std::ios::out | std::ios::binary);
-            if(!stream.is_open())
-            {
-                debug::error(FUNCTION, "couldn't open file: ",
-                    filename, " (", strerror(errno), ")");
-
-                return;
-            }
-
-            //stream.seekp(0, std::ios::beg);
-            //stream.write((char*)&vDisk[0], vDisk.size());
-
-            /* Lock for hashmap object. */
-            { LOCK(KEY_MUTEX);
-
-                /* Create an object on the stack to swap memory with. */
-                std::vector<uint32_t> vQueue;
-                vQueue.swap(queue);
-
-                /* Loop through queued changes. */
-                for(const auto& item : vQueue)
-                {
-                    stream.seekp(item * 4, std::ios::beg);
-                    stream.write((char*)&hashmap[0] + (item * 4), 4);
-                    stream.flush();
-                }
-                //vDisk.insert(vDisk.end(), (uint8_t*)&hashmap[0], (uint8_t*)&hashmap[0] + (4 * hashmap.size()));
-            }
-
-            stream.close();
-
-            /* Verbose logging to show triggered write. */
-            debug::log(4, FUNCTION, "Flushed Disk Indexes");
-
-            /* Unlock if called. */
-            fLocked.store(false);
-        }
-
-
-        /** Lock
-         *
-         *  Lock the background flush.
-         *
-         **/
-        void Lock()
-        {
-            fLocked.store(true);
-        }
-
-
-        /** CacheWriter
-         *
-         *  Helper Thread to Batch Write to Disk.
-         *
-         **/
-        void CacheWriter()
-        {
-            std::mutex CONDITION_MUTEX;
-            while(!fDestruct.load())
-            {
-                /* Wait for Database to Initialize. */
-                std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-                CONDITION.wait(CONDITION_LOCK, [this]{ return fCacheActive.load() || fDestruct.load(); });
-
-                /* Flush the disk indexes. */
-                Flush();
-
-                /* Set the cache flag to be inactive. */
-                fCacheActive.store(false);
-            }
         }
 
 
@@ -856,6 +722,10 @@ namespace LLD
                         DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
                         SectorKey cKey;
                         ssKey >> cKey;
+
+                        /* Skip over keys that are already erased. */
+                        if(!cKey.Ready())
+                            continue;
 
                         /* Seek to the hashmap index in file. */
                         pstream->seekp (nFilePos, std::ios::beg);
