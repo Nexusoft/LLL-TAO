@@ -34,6 +34,7 @@ ________________________________________________________________________________
 #include <mswsock.h>
 #include <ws2tcpip.h>
 
+
 typedef int socklen_t;
 
 #define MSG_NOSIGNAL        0
@@ -56,16 +57,18 @@ typedef int socklen_t;
 
 typedef u_int SOCKET;
 
-/* These alias the winsock names to map them for non-Windows */
+/* These alias winsock names to map them for non-Windows */
 #define WSAGetLastError()   errno       
-#define WSAEINVAL           EINVAL
-#define WSAEALREADY         EALREADY
-#define WSAEWOULDBLOCK      EWOULDBLOCK
-#define WSAEMSGSIZE         EMSGSIZE
-#define WSAEINTR            EINTR
-#define WSAEINPROGRESS      EINPROGRESS
+#define closesocket(x)      close(x)
 #define WSAEADDRINUSE       EADDRINUSE
+#define WSAEALREADY         EALREADY
 #define WSAENOTSOCK         EBADF
+#define WSAEINPROGRESS      EINPROGRESS
+#define WSAEINTR            EINTR
+#define WSAEINVAL           EINVAL
+#define WSAEISCONN          EISCONN
+#define WSAEMSGSIZE         EMSGSIZE
+#define WSAEWOULDBLOCK      EWOULDBLOCK
 #define INVALID_SOCKET      (SOCKET)(~0)
 #define SOCKET_ERROR        -1
 

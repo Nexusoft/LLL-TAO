@@ -163,11 +163,8 @@ namespace LLP
                 if (nRet == 0)
                 {
                     debug::log(3, FUNCTION, "connection timeout ", addrDestCopy.ToString(), "...");
-    #ifdef WIN32
+
                     closesocket(fd);
-    #else
-                    close(fd);
-    #endif
 
                     return false;
                 }
@@ -176,11 +173,8 @@ namespace LLP
                 if (nRet == SOCKET_ERROR)
                 {
                     debug::log(3, FUNCTION, "select failed ", addrDestCopy.ToString(), " (",  WSAGetLastError(), ")");
-    #ifdef WIN32
+
                     closesocket(fd);
-    #else
-                    close(fd);
-    #endif
 
                     return false;
                 }
@@ -194,11 +188,8 @@ namespace LLP
     #endif
                 {
                     debug::log(3, FUNCTION, "get options failed ", addrDestCopy.ToString(), " (", WSAGetLastError(), ")");
-    #ifdef WIN32
+
                     closesocket(fd);
-    #else
-                    close(fd);
-    #endif
 
                     return false;
                 }
@@ -207,27 +198,18 @@ namespace LLP
                 if (nRet != 0)
                 {
                     debug::log(3, FUNCTION, "failed after select ", addrDestCopy.ToString(), " (", nRet, ")");
-    #ifdef WIN32
+
                     closesocket(fd);
-    #else
-                    close(fd);
-    #endif
+
 
                     return false;
                 }
             }
-    #ifdef WIN32
             else if (WSAGetLastError() != WSAEISCONN)
-    #else
-            else
-    #endif
             {
                 debug::log(3, FUNCTION, "connect failed ", addrDestCopy.ToString(), " (", WSAGetLastError(), ")");
-    #ifdef WIN32
+
                 closesocket(fd);
-    #else
-                close(fd);
-    #endif
 
                 return false;
             }
@@ -258,11 +240,7 @@ namespace LLP
     /* Clear resources associated with socket and return to invalid state. */
     void Socket::Close()
     {
-    #ifdef WIN32
         closesocket(fd);
-    #else
-        close(fd);
-    #endif
 
         fd = INVALID_SOCKET;
     }

@@ -497,11 +497,9 @@ namespace LLP
                     if((fDDOS && DDOS_MAP[addr]->Banned()))
                     {
                         debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Banned.");
-#ifdef WIN32
+
                         closesocket(hSocket);
-#else
-                        close(hSocket);
-#endif
+
                         continue;
                     }
 
