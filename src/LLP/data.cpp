@@ -35,7 +35,8 @@ namespace LLP
     DataThread<ProtocolType>::DataThread(uint32_t id, bool isDDOS,
                                          uint32_t rScore, uint32_t cScore,
                                          uint32_t nTimeout, bool fMeter)
-    : fDDOS(isDDOS)
+    : MUTEX()
+    , fDDOS(isDDOS)
     , fMETER(fMeter)
     , fDestruct(false)
     , nConnections(0)
@@ -44,7 +45,7 @@ namespace LLP
     , TIMEOUT(nTimeout)
     , DDOS_rSCORE(rScore)
     , DDOS_cSCORE(cScore)
-    , CONNECTIONS(0)
+    , CONNECTIONS()
     , CONDITION()
     , DATA_THREAD(std::bind(&DataThread::Thread, this))
     {

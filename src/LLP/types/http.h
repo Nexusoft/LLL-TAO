@@ -57,11 +57,21 @@ namespace LLP
 
         /** Default Constructor **/
         HTTPNode()
-        : BaseConnection<HTTPPacket>() { }
+        : BaseConnection<HTTPPacket>()
+        {
+        }
 
         /** Constructor **/
         HTTPNode( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
-        : BaseConnection<HTTPPacket>( SOCKET_IN, DDOS_IN ) { }
+        : BaseConnection<HTTPPacket>( SOCKET_IN, DDOS_IN )
+        {
+        }
+
+
+        /** Default Destructor **/
+        virtual ~HTTPNode()
+        {
+        }
 
 
         /** Event

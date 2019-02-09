@@ -36,7 +36,7 @@ namespace LLP
     , vBuffer()
     , addr()
     {
-        fd = -1;
+        fd = INVALID_SOCKET;
 
         events = POLLIN;
     }
@@ -56,7 +56,7 @@ namespace LLP
     }
 
 
-    /* Constructor for Socket */
+    /* Constructor for socket */
     Socket::Socket(const BaseAddress &addrConnect)
     : nError(0)
     , nLastSend(runtime::timestamp())
@@ -64,10 +64,16 @@ namespace LLP
     , vBuffer()
     , addr()
     {
-        fd = -1;
+        fd = INVALID_SOCKET;
         events = POLLIN;
 
         Attempt(addrConnect);
+    }
+
+
+    /* Destructor for socket */
+    Socket::~Socket()
+    {
     }
 
 
@@ -152,11 +158,15 @@ namespace LLP
                 if (nRet == 0)
                 {
                     debug::log(3, FUNCTION, "connection timeout ", addrDestCopy.ToString(), "...");
+
+                    if(fd != INVALID_SOCKET)
+                    {
     #ifdef WIN32
-                    closesocket(fd);
+                        closesocket(fd);
     #else
-                    close(fd);
+                        close(fd);
     #endif
+                    }
 
                     return false;
                 }
@@ -165,11 +175,16 @@ namespace LLP
                 if (nRet == SOCKET_ERROR)
                 {
                     debug::log(3, FUNCTION, "select failed ", addrDestCopy.ToString(), " (",  GetLastError(), ")");
+
+
+                    if(fd != INVALID_SOCKET)
+                    {
     #ifdef WIN32
-                    closesocket(fd);
+                        closesocket(fd);
     #else
-                    close(fd);
+                        close(fd);
     #endif
+                    }
 
                     return false;
                 }
@@ -183,11 +198,15 @@ namespace LLP
     #endif
                 {
                     debug::log(3, FUNCTION, "get options failed ", addrDestCopy.ToString(), " (", GetLastError(), ")");
+
+                    if(fd != INVALID_SOCKET)
+                    {
     #ifdef WIN32
-                    closesocket(fd);
+                        closesocket(fd);
     #else
-                    close(fd);
+                        close(fd);
     #endif
+                    }
 
                     return false;
                 }
@@ -196,11 +215,15 @@ namespace LLP
                 if (nRet != 0)
                 {
                     debug::log(3, FUNCTION, "failed after select ", addrDestCopy.ToString(), " (", nRet, ")");
+
+                    if(fd != INVALID_SOCKET)
+                    {
     #ifdef WIN32
-                    closesocket(fd);
+                        closesocket(fd);
     #else
-                    close(fd);
+                        close(fd);
     #endif
+                    }
 
                     return false;
                 }
@@ -212,11 +235,15 @@ namespace LLP
     #endif
             {
                 debug::log(3, FUNCTION, "connect failed ", addrDestCopy.ToString(), " (", GetLastError(), ")");
-    #ifdef WIN32
-                closesocket(fd);
-    #else
-                close(fd);
-    #endif
+
+                if(fd != INVALID_SOCKET)
+                {
+#ifdef WIN32
+                    closesocket(fd);
+#else
+                    close(fd);
+#endif
+                }
 
                 return false;
             }
@@ -247,11 +274,15 @@ namespace LLP
     /* Clear resources associated with socket and return to invalid state. */
     void Socket::Close()
     {
+
+        if(fd != INVALID_SOCKET)
+        {
     #ifdef WIN32
-        closesocket(fd);
+          closesocket(fd);
     #else
-        close(fd);
+          close(fd);
     #endif
+        }
 
         fd = INVALID_SOCKET;
     }

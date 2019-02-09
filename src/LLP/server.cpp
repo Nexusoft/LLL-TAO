@@ -155,9 +155,8 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::Shutdown()
     {
-        //DisconnectAll();
-
-        pAddressManager->WriteDatabase();
+        if(pAddressManager)
+          pAddressManager->WriteDatabase();
     }
 
 
@@ -168,10 +167,8 @@ namespace LLP
        BaseAddress addr(strAddress, nPort, false);
 
        /* Make sure manager is enabled. */
-       if(!pAddressManager)
-            return;
-
-       pAddressManager->AddAddress(addr, ConnectState::NEW);
+       if(pAddressManager)
+          pAddressManager->AddAddress(addr, ConnectState::NEW);
    }
 
 
@@ -264,7 +261,7 @@ namespace LLP
 
     /*  Get the best connection based on latency */
     template <class ProtocolType>
-    ProtocolType* Server<ProtocolType>::GetConnection()
+    ProtocolType* Server<ProtocolType>::GetConnection(const BaseAddress& addrExclude)
     {
         /* List of connections to return. */
         ProtocolType* pBest = nullptr;
@@ -274,12 +271,19 @@ namespace LLP
             /* Get the data threads. */
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
+            if(!dt)
+              continue;
+
             /* Loop through connections in data thread. */
             int32_t nSize = dt->CONNECTIONS.size();
             for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
                 /* Skip over inactive connections. */
                 if(!dt->CONNECTIONS[nIndex] || !dt->CONNECTIONS[nIndex]->Connected())
+                    continue;
+
+                /* Skip over exclusion address. */
+                if(dt->CONNECTIONS[nIndex]->GetAddress() == addrExclude)
                     continue;
 
                 /* Push the active connection. */
@@ -633,9 +637,6 @@ namespace LLP
            {
                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
-               if(!dt)
-                   continue;
-
                nGlobalConnections += dt->nConnections;
            }
 
@@ -660,8 +661,6 @@ namespace LLP
        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
        {
            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-           if(!dt)
-               continue;
 
            nTotalRequests += dt->REQUESTS;
        }

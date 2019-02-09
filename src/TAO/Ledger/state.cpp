@@ -34,6 +34,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/supply.h>
 
+#include <Util/include/string.h>
+
 
 
 /* Global TAO namespace. */
@@ -437,7 +439,7 @@ namespace TAO
                     std::string strCmd = config::GetArg("-blocknotify", "");
                     if (!strCmd.empty())
                     {
-                        //std::replace_all(strCmd, "%s", ChainState::hashBestChain.GetHex());
+                        replace_all(strCmd, "%s", ChainState::hashBestChain.GetHex());
                         std::thread t(runtime::command, strCmd);
                     }
 

@@ -29,6 +29,9 @@ namespace LLP
     /* Default constructor */
     AddressManager::AddressManager(uint16_t port)
     : mapTrustAddress()
+    , mapBanned()
+    , mut()
+    , pDatabase(nullptr)
     , nPort(port)
     {
         pDatabase = new LLD::AddressDB(port, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
@@ -201,7 +204,7 @@ namespace LLP
     void AddressManager::RemoveAddress(const BaseAddress &addr)
     {
         /* Ensure thread safety while removing address. */
-        std::unique_lock<std::mutex> lk(mut);
+        LOCK(mut);
         remove_address(addr);
     }
 
@@ -210,16 +213,11 @@ namespace LLP
      *  already in there. */
     void AddressManager::AddSeedAddresses(bool testnet)
     {
-        std::vector<std::string> seeds;
-
         /* Add the testnet seed nodes if testnet flag is enabled. */
         if(testnet)
-            seeds = DNS_SeedNodes_Testnet;
+            AddAddresses(DNS_SeedNodes_Testnet);
         else
-            seeds = DNS_SeedNodes;
-
-        AddAddresses(seeds);
-        debug::log(3, seeds.size(), " seed nodes added");
+            AddAddresses(DNS_SeedNodes);
     }
 
 
@@ -227,7 +225,7 @@ namespace LLP
     bool AddressManager::Has(const BaseAddress &addr) const
     {
         uint64_t hash = addr.GetHash();
-        std::unique_lock<std::mutex> lk(mut);
+        LOCK(mut);
 
         auto it = mapTrustAddress.find(hash);
         if(it != mapTrustAddress.end())
@@ -243,7 +241,7 @@ namespace LLP
         uint8_t state = static_cast<uint8_t>(ConnectState::NEW);
 
         uint64_t hash = addr.GetHash();
-        std::unique_lock<std::mutex> lk(mut);
+        LOCK(mut);
 
         auto it = mapTrustAddress.find(hash);
         if(it != mapTrustAddress.end())
@@ -257,7 +255,7 @@ namespace LLP
     void AddressManager::SetLatency(uint32_t lat, const BaseAddress &addr)
     {
         uint64_t hash = addr.GetHash();
-        std::unique_lock<std::mutex> lk(mut);
+        LOCK(mut);
 
         auto it = mapTrustAddress.find(hash);
         if(it != mapTrustAddress.end())
@@ -370,7 +368,7 @@ namespace LLP
                 DataStream ssKey(keys[i], SER_LLD, LLD::DATABASE_VERSION);
                 ssKey >> str;
 
-                /* Check for the info string. */
+                /* Check for trust addresses. */
                 if(str == "addr")
                 {
                     /* Deserialize the key if it is an info type. */
@@ -383,23 +381,14 @@ namespace LLP
                     uint64_t nHash = trust_addr.GetHash();
                     mapTrustAddress[nHash] = trust_addr;
                 }
-
-                /* Check for the info string. */
-                else if(str == "this")
-                {
-                    /* Deserialize the key if it is an info type. */
-                    ssKey >> nKey;
-
-                    /* Read the trust address. */
-                    //pDatabase->ReadThisAddress(nKey, this_addr);
-                }
             }
         }
 
         /* Check if the DNS needs update. */
         uint64_t nLastUpdate = 0;
-        if(!config::GetBoolArg("-nodns") &&
-            (!pDatabase->ReadLastUpdate(nLastUpdate) || nLastUpdate + config::GetArg("-dnsupdate", 86400) <= runtime::unifiedtimestamp()))
+        if(!config::GetBoolArg("-nodns")
+           && (!pDatabase->ReadLastUpdate(nLastUpdate) ||
+                nLastUpdate + config::GetArg("-dnsupdate", 86400) <= runtime::unifiedtimestamp()))
         {
             /* Log out that DNS is updating. */
             debug::log(0, "DNS cache is out of date by ",
@@ -426,14 +415,17 @@ namespace LLP
     /*  Write the addresses from the manager into the address database. */
     void AddressManager::WriteDatabase()
     {
-        LOCK(mut);
-
         /* Make sure the database exists. */
         if(!pDatabase)
         {
             debug::error(FUNCTION, "database null");
             return;
         }
+
+        LOCK(mut);
+
+        if(!mapTrustAddress.size())
+          return;
 
         pDatabase->TxnBegin();
 
@@ -503,6 +495,7 @@ namespace LLP
             if(mapBanned.find(it->first) != mapBanned.end())
                 continue;
 
+            /* Sum up the total stats of each category */
             if(flags & ConnectState::CONNECTED)
                 total += it->second.nConnected;
             if(flags & ConnectState::DROPPED)

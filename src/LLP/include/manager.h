@@ -306,12 +306,11 @@ namespace LLP
         bool is_banned(uint64_t hash);
 
 
-        LLD::AddressDB *pDatabase;
+
         std::map<uint64_t, TrustAddress> mapTrustAddress;
         std::map<uint64_t, uint32_t> mapBanned;
-
-
         mutable std::mutex mut;
+        LLD::AddressDB *pDatabase;
         uint16_t nPort;
     };
 }

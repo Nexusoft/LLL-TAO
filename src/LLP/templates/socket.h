@@ -64,13 +64,16 @@ namespace LLP
         Socket(int32_t nSocketIn, const BaseAddress &addrIn);
 
 
-        /** Constructor for Socket
+        /** Constructor for socket
          *
          *  @param[in] addrDest The address to connect socket to
          *
          **/
         Socket(const BaseAddress &addrDest);
 
+
+        /** Destructor for socket **/
+        virtual ~Socket();
 
 
         /** Error

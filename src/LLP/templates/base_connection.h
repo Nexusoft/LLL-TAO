@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TEMPLATES_BASE_CONNECTION_H
 
 #include <LLP/templates/socket.h>
+#include <Util/include/mutex.h>
 #include <vector>
 
 

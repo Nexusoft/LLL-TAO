@@ -225,11 +225,9 @@ namespace runtime
      *  Runs a command to the commandline.
      *
      **/
-    inline void command(std::string strCommand)
+    inline int command(std::string strCommand)
     {
-        int nErr = ::system(strCommand.c_str());
-        if (nErr) //NOTE: suppress errors for now
-            debug::error(FUNCTION, "system ", strCommand, " returned ", nErr);
+        return ::system(strCommand.c_str());
     }
 
 

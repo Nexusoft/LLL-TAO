@@ -46,11 +46,21 @@ namespace LLP
 
         /** Default Constructor **/
         CoreNode()
-        : HTTPNode() {}
+        : HTTPNode()
+        {
+        }
 
         /** Constructor **/
         CoreNode( LLP::Socket SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false )
-        : HTTPNode( SOCKET_IN, DDOS_IN ) { }
+        : HTTPNode( SOCKET_IN, DDOS_IN )
+        {
+        }
+
+
+        /** Default Destructor **/
+        virtual ~CoreNode()
+        {
+        }
 
 
         /** Event

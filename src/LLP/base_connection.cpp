@@ -20,7 +20,6 @@ ________________________________________________________________________________
 #include <LLP/packets/legacy.h>
 #include <LLP/packets/tritium.h>
 
-#include <Util/include/mutex.h>
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>
 #include <Util/include/args.h>
@@ -35,6 +34,7 @@ namespace LLP
     template <class PacketType>
     BaseConnection<PacketType>::BaseConnection()
     : Socket()
+    , MUTEX()
     , INCOMING()
     , DDOS(nullptr)
     , nLatency(std::numeric_limits<uint32_t>::max())
@@ -49,6 +49,7 @@ namespace LLP
     template <class PacketType>
     BaseConnection<PacketType>::BaseConnection(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS, bool fOutgoing)
     : Socket(SOCKET_IN)
+    , MUTEX()
     , INCOMING()
     , DDOS(DDOS_IN)
     , nLatency(std::numeric_limits<uint32_t>::max())
@@ -64,9 +65,6 @@ namespace LLP
     BaseConnection<PacketType>::~BaseConnection()
     {
         Disconnect();
-
-        /* Clean up the buffer usage. */
-        std::vector<uint8_t>().swap(vBuffer);
     }
 
 
