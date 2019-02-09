@@ -627,7 +627,7 @@ namespace TAO
                     /* Check if in memory pool. */
                     Legacy::Transaction tx;
                     if(!LLD::legacyDB->ReadTx(hash, tx))
-                        continue;//return debug::error(FUNCTION, "transaction is not on disk");
+                        return debug::error(FUNCTION, "transaction is not on disk");
 
                     /* Disconnect the inputs. */
                     if(!tx.Disconnect())
