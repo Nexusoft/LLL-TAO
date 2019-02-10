@@ -305,7 +305,7 @@ namespace LLP
                     if(!LLD::legDB->HasTx(tx.GetHash()))
                     {
                         /* Debug output for tx. */
-                        debug::log(3, NODE "recieved tx ", tx.GetHash().ToString().substr(0, 20));
+                        debug::log(3, NODE "Received tx ", tx.GetHash().ToString().substr(0, 20));
 
                         /* Check if tx is valid. */
                         if(!tx.IsValid())

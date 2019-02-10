@@ -94,7 +94,7 @@ namespace LLP
             const std::string message = INCOMING.GetMessage();
             uint32_t length = INCOMING.LENGTH;
 
-            debug::log(3, NODE, "recieved Message (", message, ", ", length, ")");
+            debug::log(3, NODE, "Received Message (", message, ", ", length, ")");
 
             if(fDDOS)
             {
@@ -357,7 +357,7 @@ namespace LLP
             }
 
 
-            /* Reject Samples that are recieved 30 seconds after last check on this node. */
+            /* Reject Samples that are received 30 seconds after last check on this node. */
             if(runtime::unifiedtimestamp(true) - mapSentRequests[nRequestID] > 30000)
             {
                 mapSentRequests.erase(nRequestID);
