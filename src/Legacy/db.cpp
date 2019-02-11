@@ -491,14 +491,6 @@ namespace Legacy
                     BerkeleyDB::mapFileUseCount.erase(strFile);
                 }
             }
-
-            if (fShutdown)
-            {
-                char** listp;
-
-                if (BerkeleyDB::mapFileUseCount.empty())
-                    BerkeleyDB::dbenv.log_archive(&listp, DB_ARCH_REMOVE);
-            }
         }
 
         if (fShutdown)
@@ -741,7 +733,25 @@ namespace Legacy
             }
 
             for (auto& dbFile : dbFilesToClose)
+            {
                 BerkeleyDB::CloseDb(dbFile);
+
+                /* Flush log data to the dat file and detach the file */
+                debug::log(2, FUNCTION, dbFile, " checkpoint");
+                BerkeleyDB::dbenv.txn_checkpoint(0, 0, 0);
+
+                debug::log(2, FUNCTION, dbFile, " detach");
+                BerkeleyDB::dbenv.lsn_reset(dbFile.c_str(), 0);
+
+                debug::log(2, FUNCTION, dbFile, " closed");
+                BerkeleyDB::mapFileUseCount.erase(dbFile);
+            }
+
+
+            /* Remove log files */
+            char** listp;
+            if (BerkeleyDB::mapFileUseCount.empty())
+                BerkeleyDB::dbenv.log_archive(&listp, DB_ARCH_REMOVE);
 
             /* Shut down the database environment */
             BerkeleyDB::fDbEnvInit = false;
