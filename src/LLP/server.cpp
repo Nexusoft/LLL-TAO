@@ -55,8 +55,8 @@ namespace LLP
     , PORT(nPort)
     , MAX_THREADS(nMaxThreads)
     , DDOS_TIMESPAN(nTimespan)
-    , DATA_THREADS(0)
-    , pAddressManager(0)
+    , DATA_THREADS()
+    , pAddressManager(nullptr)
     , nSleepTime(nSleepTimeIn)
     {
         for(uint16_t index = 0; index < MAX_THREADS; ++index)

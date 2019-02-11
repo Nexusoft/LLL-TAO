@@ -179,25 +179,31 @@ namespace LLP
         template<typename MessageType, typename DataType>
         void Relay(MessageType message, DataType data)
         {
+            DataThread<ProtocolType> *dt = nullptr;
+            ProtocolType *pNode = nullptr;
+            uint16_t nThread = 0;
+            uint16_t nSize = 0;
+            uint16_t nIndex = 0;
+
             /* List of connections to return. */
-            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            for(; nThread < MAX_THREADS; ++nThread)
             {
                 /* Get the data threads. */
-                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-                if(!dt)
-                    continue;
+                dt = DATA_THREADS[nThread];
 
                 /* Loop through connections in data thread. */
-                int32_t nSize = dt->CONNECTIONS.size();
-                for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
+                nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
+
+                for(nIndex = 0; nIndex < nSize; ++nIndex)
                 {
+                    pNode = dt->CONNECTIONS[nIndex];
+
                     /* Skip over inactive connections. */
-                    if(!dt->CONNECTIONS[nIndex] ||
-                       !dt->CONNECTIONS[nIndex]->Connected())
+                    if(!pNode || !pNode->Connected())
                         continue;
 
                     /* Push the active connection. */
-                    dt->CONNECTIONS[nIndex]->PushMessage(message, data);
+                    pNode->PushMessage(message, data);
                 }
             }
         }
