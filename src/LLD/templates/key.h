@@ -168,11 +168,12 @@ namespace LLD
          **/
         void Print() const
         {
-            debug::log(0, "SectorKey(nState=", nState,
-            ", nLength=", nLength,
-            ", nSectorFile=", nSectorFile,
-            ", nSectorSize=", nSectorSize,
-            ", nSectorStart=)", nSectorStart);
+            debug::log(0,
+                "SectorKey(nState=", (uint32_t)nState,
+                ", nLength=", nLength,
+                ", nSectorFile=", nSectorFile,
+                ", nSectorSize=", nSectorSize,
+                ", nSectorStart=", nSectorStart,")");
         }
 
 

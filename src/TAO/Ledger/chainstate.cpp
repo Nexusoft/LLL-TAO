@@ -116,6 +116,8 @@ namespace TAO
             /* Check blocks and check transactions for consistency. */
             if(config::GetArg("-checkblocks", 0) > 0)
             {
+                debug::log(0, FUNCTION, "Checking from height=", stateBest.nHeight, " hash=", stateBest.GetHash().ToString().substr(0, 20));
+
                 /* Rollback the chain a given number of blocks. */
                 TAO::Ledger::BlockState state = stateBest;
                 Legacy::Transaction tx;

@@ -33,7 +33,12 @@ namespace LLP
      **/
     class Socket : public pollfd
     {
+
+        /** Mutex for thread synchronization. **/
+        std::mutex MUTEX;
+
     protected:
+
 
         /** The error codes for socket. **/
         int32_t nError;
@@ -58,6 +63,10 @@ namespace LLP
 
         /** The default constructor. **/
         Socket();
+
+
+        /** Copy constructor. **/
+        Socket(const Socket& socket);
 
 
         /** The socket constructor. **/

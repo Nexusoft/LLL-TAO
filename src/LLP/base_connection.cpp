@@ -159,8 +159,6 @@ namespace LLP
     template <class PacketType>
     void BaseConnection<PacketType>::WritePacket(const PacketType& PACKET)
     {
-        LOCK(MUTEX);
-
         /* Debug dump of message type. */
         debug::log(3, NODE "Sent Message (", PACKET.GetBytes().size(), " bytes)");
 
