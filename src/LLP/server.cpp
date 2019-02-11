@@ -437,14 +437,37 @@ namespace LLP
             if (hListenSocket != INVALID_SOCKET)
             {
                 /* Poll the sockets. */
+                fds[0].revents = 0;
+
 #ifdef WIN32
                 int nPoll = WSAPoll(&fds[0], 1, 100);
 #else
                 int nPoll = poll(&fds[0], 1, 100);
 #endif
 
-                if(nPoll < 0)
+                if(nPoll == 0)
+                {
+                    /* No sockets have POLLIN status (no data to read) */
                     continue;
+                }
+
+                /* This was for testing. Uncomment if need to log info on potential SOCKET_ERROR 
+                 * Potentially spits out a ton of error messages if get this repeatedly
+                 */
+                // else if(nPoll == SOCKET_ERROR)
+                // {
+                //     /* Poll attempt generated an error */
+                //     debug::error(FUNCTION, "Error polling socket (Error code ", WSAGetLastError(), ")");
+                //     debug::log(3, "    Listening node fd ", fds[0].fd, " events ", fds[0].events, " revents ", fds[0].revents);
+
+                //     continue;
+                // }
+                else if (nPoll < 0)
+                {
+                    /* Should only be SOCKET_ERROR if not 0 or >0 */
+                    // debug::error(FUNCTION, "Invalid return value from poll (", nPoll, ")");
+                    continue;
+                }
 
                 if(!(fds[0].revents & POLLIN))
                     continue;
@@ -469,7 +492,7 @@ namespace LLP
                 if (hSocket == INVALID_SOCKET)
                 {
                     if (WSAGetLastError() != WSAEWOULDBLOCK)
-                        debug::error("socket error accept failed: ", WSAGetLastError());
+                        debug::error(FUNCTION, "Socket error accept failed: ", WSAGetLastError());
                 }
                 else
                 {
@@ -477,17 +500,16 @@ namespace LLP
                     if(!DDOS_MAP.count(addr))
                         DDOS_MAP[addr] = new DDOS_Filter(DDOS_TIMESPAN);
 
+                    Socket sockNew(hSocket, addr);
+
                     /* DDOS Operations: Only executed when DDOS is enabled. */
                     if((fDDOS && DDOS_MAP[addr]->Banned()))
                     {
-                        debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Banned.");
-
-                        closesocket(hSocket);
+                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
+                        sockNew.Close();
 
                         continue;
                     }
-
-                    Socket sockNew(hSocket, addr);
 
                     int32_t nThread = FindThread();
                     if(nThread < 0)

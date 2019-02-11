@@ -171,12 +171,7 @@ namespace LLP
                     debug::log(3, FUNCTION, "connection timeout ", addrDestCopy.ToString(), "...");
 
                     if(fd != INVALID_SOCKET)
-                    {
-                         closesocket(fd);
-
-
-
-                    }
+                        closesocket(fd);
 
                     return false;
                 }
@@ -187,9 +182,7 @@ namespace LLP
                     debug::log(3, FUNCTION, "select failed ", addrDestCopy.ToString(), " (",  WSAGetLastError(), ")");
 
                     if(fd != INVALID_SOCKET)
-                    {
                         closesocket(fd);
-                    }
 
                     return false;
                 }
@@ -205,9 +198,7 @@ namespace LLP
                     debug::log(3, FUNCTION, "get options failed ", addrDestCopy.ToString(), " (", WSAGetLastError(), ")");
 
                     if(fd != INVALID_SOCKET)
-                    {
                         closesocket(fd);
-                    }
 
                     return false;
                 }
@@ -218,9 +209,7 @@ namespace LLP
                     debug::log(3, FUNCTION, "failed after select ", addrDestCopy.ToString(), " (", nRet, ")");
 
                     if(fd != INVALID_SOCKET)
-                    {
                         closesocket(fd);
-                    }
 
                     return false;
                 }
@@ -230,9 +219,7 @@ namespace LLP
                 debug::log(3, FUNCTION, "connect failed ", addrDestCopy.ToString(), " (", WSAGetLastError(), ")");
 
                 if(fd != INVALID_SOCKET)
-                {
                     closesocket(fd);
-                }
 
                 return false;
             }
@@ -265,9 +252,7 @@ namespace LLP
     {
 
         if(fd != INVALID_SOCKET)
-        {
-          closesocket(fd);
-        }
+            closesocket(fd);
 
         fd = INVALID_SOCKET;
     }

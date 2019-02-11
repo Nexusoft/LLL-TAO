@@ -167,9 +167,16 @@ namespace LLP
             /* Keep thread from consuming too many resources. */
             runtime::sleep(1);
 
-            /* Keep data threads waiting for work. */
+            /* Keep data threads waiting for work. 
+             * Will wait until have one or more connections, DataThread is disposed, or system shutdown 
+             * While loop catches potential for spurious wakeups. Also has the effect of skipping the wait() call after connections established.
+             */
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-            CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown || nConnections.load() > 0; });
+            while (!(fDestruct.load() || config::fShutdown || nConnections.load() > 0))
+              CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown || nConnections.load() > 0; });
+
+            /* We don't need to hold the condition lock. Nothing outside this current thread uses it. It is purely to wait for connections */
+            CONDITION_LOCK.unlock();
 
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown)
@@ -181,14 +188,49 @@ namespace LLP
 
                 nSize = static_cast<uint32_t>(CONNECTIONS.size());
 
-                        /* Poll the sockets. */
+                /* Poll the sockets. */
 #ifdef WIN32
-                int nPoll = WSAPoll((pollfd*)CONNECTIONS[0], nSize, 100);
+                /* Windows returns intermittent SOCKET_ERROR with WSAEINVAL (bad parameters) if you pass pointer to connections
+                 * so copy fd data into an array of only pollfd struct and pass that instead
+                 */
+                struct pollfd pollfds[nSize];
+                for (uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+                {
+                    pollfds[nIndex].fd = CONNECTIONS[nIndex]->fd;
+                    pollfds[nIndex].events = POLLIN;
+                    pollfds[nIndex].revents = 0;
+                }
+
+                int nPoll = WSAPoll((pollfd*)&pollfds[0], nSize, 100);
 #else
                 int nPoll = poll((pollfd*)CONNECTIONS[0], nSize, 100);
 #endif
-                if(nPoll < 0)
+                if (nPoll == 0)
+                {
+                    /* No connections have data to read */
                     continue;
+                }
+
+                /* This was for testing. Uncomment if need to log info on potential SOCKET_ERROR 
+                 * Potentially spits out a ton of error messages if get this repeatedly
+                 */
+                // else if (nPoll == SOCKET_ERROR)
+                // {
+                //     debug::error(FUNCTION, "Error polling outgoing connections (Error code ", WSAGetLastError(), ")");
+
+                //     debug::log(3, "DataThread contents:");
+
+                //     for (uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+                //         debug::log(3, "    Data thread node ", nIndex, " fd ", pollfds[nIndex].fd, " events ", pollfds[nIndex].events, " revents ", pollfds[nIndex].revents);
+
+                //     continue;
+                // }
+                else if (nPoll < 0)
+                {
+                    /* Should only be SOCKET_ERROR if not 0 or >0 */
+                    // debug::error(FUNCTION, "Invalid return value polling outgoing connections (", nPoll, ")");
+                    continue;
+                }
 
             }
 
