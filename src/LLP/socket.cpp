@@ -94,8 +94,6 @@ namespace LLP
     /* Connects the socket to an external address */
     bool Socket::Attempt(const BaseAddress &addrDest, uint32_t nTimeout)
     {
-        BaseAddress addrDestCopy = addrDest; //non-const copy to use with ToString (which is non-const)
-
         /* Create the Socket Object (Streaming TCP/IP). */
         if(addrDest.IsIPv4())
             fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -157,7 +155,7 @@ namespace LLP
                 /* If the connection attempt timed out with select. */
                 if (nRet == 0)
                 {
-                    debug::log(3, FUNCTION, "connection timeout ", addrDestCopy.ToString(), "...");
+                    debug::log(3, FUNCTION, "connection timeout ", addrDest.ToString(), "...");
 
                     if(fd != INVALID_SOCKET)
                     {
@@ -174,7 +172,7 @@ namespace LLP
                 /* If the select failed. */
                 if (nRet == SOCKET_ERROR)
                 {
-                    debug::log(3, FUNCTION, "select failed ", addrDestCopy.ToString(), " (",  GetLastError(), ")");
+                    debug::log(3, FUNCTION, "select failed ", addrDest.ToString(), " (",  GetLastError(), ")");
 
 
                     if(fd != INVALID_SOCKET)
@@ -197,7 +195,7 @@ namespace LLP
                 if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
     #endif
                 {
-                    debug::log(3, FUNCTION, "get options failed ", addrDestCopy.ToString(), " (", GetLastError(), ")");
+                    debug::log(3, FUNCTION, "get options failed ", addrDest.ToString(), " (", GetLastError(), ")");
 
                     if(fd != INVALID_SOCKET)
                     {
@@ -214,7 +212,7 @@ namespace LLP
                 /* If there are no socket options set. TODO: Remove preprocessors for cross platform sockets. */
                 if (nRet != 0)
                 {
-                    debug::log(3, FUNCTION, "failed after select ", addrDestCopy.ToString(), " (", nRet, ")");
+                    debug::log(3, FUNCTION, "failed after select ", addrDest.ToString(), " (", nRet, ")");
 
                     if(fd != INVALID_SOCKET)
                     {
@@ -234,7 +232,7 @@ namespace LLP
             else
     #endif
             {
-                debug::log(3, FUNCTION, "connect failed ", addrDestCopy.ToString(), " (", GetLastError(), ")");
+                debug::log(3, FUNCTION, "connect failed ", addrDest.ToString(), " (", GetLastError(), ")");
 
                 if(fd != INVALID_SOCKET)
                 {

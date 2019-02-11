@@ -363,14 +363,16 @@ namespace LLP
                 {
                     runtime::sleep(nSleepTime);
                     debug::log(3, FUNCTION, ProtocolType::Name(), " Invalid address, removing address", addr.ToString());
-                    pAddressManager->RemoveAddress(addr);
+                    pAddressManager->Ban(addr);
                     continue;
                 }
 
                 /* Attempt the connection. */
                 debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
 
-                if(!AddConnection(addr.ToStringIP(), addr.GetPort()))
+                if(AddConnection(addr.ToStringIP(), addr.GetPort()))
+                    pAddressManager->AddAddress(addr, ConnectState::CONNECTED);
+                else
                     pAddressManager->AddAddress(addr, ConnectState::FAILED);
             }
 

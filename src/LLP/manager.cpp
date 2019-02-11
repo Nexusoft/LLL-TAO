@@ -110,70 +110,28 @@ namespace LLP
         /* Reject adding invalid addresses. */
         if(!addr.IsValid())
         {
-            BaseAddress addrCopy = addr; //non-const copy for ToString
-            debug::log(3, FUNCTION, "Invalid Address ", addrCopy.ToString());
+            debug::log(3, FUNCTION, "Invalid Address ", addr.ToString());
             return;
         }
 
         uint64_t hash = addr.GetHash();
-        uint64_t ms = runtime::unifiedtimestamp(true);
 
         LOCK(mut);
+
+        /* Reject banned addresses. */
+        if(is_banned(hash))
+            return;
 
         if(mapTrustAddress.find(hash) == mapTrustAddress.end())
             mapTrustAddress[hash] = addr;
 
-        TrustAddress &trust_addr = mapTrustAddress[hash];
+        TrustAddress *pAddr = &mapTrustAddress[hash];
 
         /* Set the port number to match this server */
-        trust_addr.SetPort(nPort);
+        pAddr->SetPort(nPort);
 
-        switch(state)
-        {
-        /* New State */
-        case ConnectState::NEW:
-            break;
-
-        /* Connected State */
-        case ConnectState::CONNECTED:
-
-            /* If the address is already connected, don't update */
-            if(trust_addr.nState == ConnectState::CONNECTED)
-                break;
-
-            ++trust_addr.nConnected;
-            trust_addr.nSession = 0;
-            trust_addr.nFails = 0;
-            trust_addr.nLastSeen = ms;
-            trust_addr.nState = state;
-            break;
-
-        /* Dropped State */
-        case ConnectState::DROPPED:
-
-            /* If the address is already dropped, don't update */
-            if(trust_addr.nState == ConnectState::DROPPED)
-                break;
-
-            ++trust_addr.nDropped;
-            trust_addr.nSession = ms - trust_addr.nLastSeen;
-            trust_addr.nLastSeen = ms;
-            trust_addr.nState = state;
-            break;
-
-        /* Failed State */
-        case ConnectState::FAILED:
-            ++trust_addr.nFailed;
-            ++trust_addr.nFails;
-            trust_addr.nSession = 0;
-            trust_addr.nState = state;
-            break;
-
-        /* Unrecognized state */
-        default:
-            debug::log(0, FUNCTION, "Unrecognized state");
-            break;
-        }
+        /* Update the stats for this address based on the state. */
+        update_state(pAddr, state);
     }
 
 
@@ -333,7 +291,11 @@ namespace LLP
         uint64_t hash = addr.GetHash();
         LOCK(mut);
 
+        /* Store the hash in the map for banned addresses */
         mapBanned[hash] = banTime;
+
+        /* Remove the address from the map of addresses */
+        remove_address(addr);
     }
 
 
@@ -345,6 +307,7 @@ namespace LLP
 
             /* Make sure the map is empty. */
             mapTrustAddress.clear();
+            mapBanned.clear();
 
             /* Make sure the database exists. */
             if(!pDatabase)
@@ -518,6 +481,76 @@ namespace LLP
             " TC=", total_count(ConnectState::CONNECTED),
             " TD=", total_count(ConnectState::DROPPED),
             " TF=", total_count(ConnectState::FAILED), " |",
+            " B=",  ban_count(), " |",
             " size=", mapTrustAddress.size());
+    }
+
+
+    /*  Helper function to determine if an address identified by it's hash
+     *  is banned. */
+    bool AddressManager::is_banned(uint64_t hash)
+    {
+        return mapBanned.find(hash) != mapBanned.end();
+    }
+
+
+    /*  Returns the total number of addresses currently banned. */
+    uint32_t AddressManager::ban_count()
+    {
+      return static_cast<uint32_t>(mapBanned.size());
+    }
+
+
+    /*  Updates the state of the given Trust address. */
+    void AddressManager::update_state(TrustAddress *pAddr, uint8_t state)
+    {
+        uint64_t ms = runtime::unifiedtimestamp(true);
+
+        switch(state)
+        {
+          /* New State */
+          case ConnectState::NEW:
+              break;
+
+          /* Connected State */
+          case ConnectState::CONNECTED:
+
+              /* If the address is already connected, don't update */
+              if(pAddr->nState == ConnectState::CONNECTED)
+                  break;
+
+              ++pAddr->nConnected;
+              pAddr->nSession = 0;
+              pAddr->nFails = 0;
+              pAddr->nLastSeen = ms;
+              pAddr->nState = state;
+              break;
+
+          /* Dropped State */
+          case ConnectState::DROPPED:
+
+              /* If the address is already dropped, don't update */
+              if(pAddr->nState == ConnectState::DROPPED)
+                  break;
+
+              ++pAddr->nDropped;
+              pAddr->nSession = ms - pAddr->nLastSeen;
+              pAddr->nLastSeen = ms;
+              pAddr->nState = state;
+              break;
+
+          /* Failed State */
+          case ConnectState::FAILED:
+              ++pAddr->nFailed;
+              ++pAddr->nFails;
+              pAddr->nSession = 0;
+              pAddr->nState = state;
+              break;
+
+          /* Unrecognized state */
+          default:
+              debug::log(0, FUNCTION, "Unrecognized state");
+              break;
+        }
     }
 }

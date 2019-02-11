@@ -60,6 +60,21 @@ namespace LLP
     }
 
 
+    /** Build Base Connection with all Parameters. **/
+    template <class PacketType>
+    BaseConnection<PacketType>::BaseConnection(DDOS_Filter* DDOS_IN, bool isDDOS, bool fOutgoing)
+    : Socket()
+    , MUTEX()
+    , INCOMING()
+    , DDOS(DDOS_IN)
+    , nLatency(std::numeric_limits<uint32_t>::max())
+    , fDDOS(isDDOS)
+    , fOUTGOING(fOutgoing)
+    , fCONNECTED(false)
+    {
+    }
+
+
     /* Default destructor */
     template <class PacketType>
     BaseConnection<PacketType>::~BaseConnection()

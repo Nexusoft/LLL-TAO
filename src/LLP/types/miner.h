@@ -116,7 +116,11 @@ namespace LLP
 
 
         /** Constructor **/
-        Miner( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false );
+        Miner(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
+
+
+        /** Constructor **/
+        Miner(DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Default Destructor **/

@@ -52,7 +52,19 @@ namespace LLP
 
         /** Constructor **/
         TritiumNode( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
-        : BaseConnection<TritiumPacket>( SOCKET_IN, DDOS_IN )
+        : BaseConnection<TritiumPacket>( SOCKET_IN, DDOS_IN, isDDOS )
+        , fInbound(false)
+        , nLastPing(0)
+        , nLastSamples(0)
+        , mapLatencyTracker()
+        , mapSentRequests()
+        {
+        }
+
+
+        /** Constructor **/
+        TritiumNode( DDOS_Filter* DDOS_IN, bool isDDOS = false )
+        : BaseConnection<TritiumPacket>(DDOS_IN, isDDOS )
         , fInbound(false)
         , nLastPing(0)
         , nLastSamples(0)

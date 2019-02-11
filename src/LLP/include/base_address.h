@@ -225,6 +225,7 @@ namespace LLP
          *
          **/
         std::string ToString();
+        std::string ToString() const;
 
 
         /** ToStringIP
@@ -235,6 +236,8 @@ namespace LLP
          *
          **/
         std::string ToStringIP();
+        std::string ToStringIP() const;
+
 
 
         /** ToStringPort

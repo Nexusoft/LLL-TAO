@@ -344,10 +344,30 @@ namespace LLP
         return ToStringIP() + std::string(":") + ToStringPort();
     }
 
+    /* Returns the IP and Port in string format. (IP:Port) */
+    std::string BaseAddress::ToString() const
+    {
+        return ToStringIP() + std::string(":") + ToStringPort();
+    }
+
 
     /* Returns the IP in string format. */
-    /* NOTE: ip must be non-const in Windows, so requires method not be const */
     std::string BaseAddress::ToStringIP()
+    {
+        if (IsIPv4())
+        {
+            char dst[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, ip + 12, dst, INET_ADDRSTRLEN);
+            return std::string(dst);
+        }
+
+        char dst[INET6_ADDRSTRLEN];
+        inet_ntop(AF_INET6, ip, dst, INET6_ADDRSTRLEN);
+        return std::string(dst);
+    }
+
+    /* Returns the IP in string format. */
+    std::string BaseAddress::ToStringIP() const
     {
         if (IsIPv4())
         {

@@ -34,6 +34,15 @@ namespace LLP
     }
 
 
+    /** Constructor **/
+    Connection::Connection(DDOS_Filter* DDOS_IN,
+                           bool isDDOS,
+                           bool fOutgoing)
+   : BaseConnection(DDOS_IN, isDDOS, fOutgoing)
+   {
+   }
+
+
     /** Default destructor **/
     Connection::~Connection()
     {

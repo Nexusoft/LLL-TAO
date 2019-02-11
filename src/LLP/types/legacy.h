@@ -75,8 +75,8 @@ namespace LLP
 
 
         /** Constructor **/
-        LegacyNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
-        : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN)
+        LegacyNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false)
+        : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN, isDDOS)
         , strNodeVersion()
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
         , nStartingHeight(0)
@@ -88,7 +88,23 @@ namespace LLP
         , mapLatencyTracker()
         , mapSentRequests()
         {
+        }
 
+
+        /** Constructor **/
+        LegacyNode(DDOS_Filter* DDOS_IN, bool isDDOS = false)
+        : BaseConnection<LegacyPacket>(DDOS_IN, isDDOS)
+        , strNodeVersion()
+        , nCurrentVersion(LLP::PROTOCOL_VERSION)
+        , nStartingHeight(0)
+        , nConsecutiveFails(0)
+        , fInbound(false)
+        , nLastPing(runtime::timestamp())
+        , nConsecutiveTimeouts(0)
+        , hashContinue(0)
+        , mapLatencyTracker()
+        , mapSentRequests()
+        {
         }
 
         /* Virtual destructor. */
