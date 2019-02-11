@@ -509,7 +509,8 @@ namespace LLP
 
 
                     /* Update the address state. */
-                    pAddressManager->AddAddress(addr, ConnectState::CONNECTED);
+                    if(pAddressManager)
+                        pAddressManager->AddAddress(addr, ConnectState::CONNECTED);
                 }
             }
         }
