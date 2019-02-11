@@ -152,6 +152,7 @@ OBJS= \
 	build/LLC_random.o \
 	build/LLD_global.o \
     build/LLD_filemap.o \
+    build/LLD_hashmap.o \
 	build/LLP_base_address.o \
     build/LLP_base_connection.o \
     build/LLP_connection.o \
