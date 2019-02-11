@@ -156,6 +156,8 @@ OBJS= \
     build/LLD_hashtree.o \
     build/LLD_key.o \
     build/LLD_transaction.o \
+    build/LLD_binary_lru.o \
+    build/LLD_sector.o \
 	build/LLP_base_address.o \
     build/LLP_base_connection.o \
     build/LLP_connection.o \
