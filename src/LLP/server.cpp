@@ -55,9 +55,8 @@ namespace LLP
     , PORT(nPort)
     , MAX_THREADS(nMaxThreads)
     , DDOS_TIMESPAN(nTimespan)
-    , DATA_THREADS(0)
-    , pAddressManager(0)
-    , addrThisNode()
+    , DATA_THREADS()
+    , pAddressManager(nullptr)
     , nSleepTime(nSleepTimeIn)
     {
         for(uint16_t index = 0; index < MAX_THREADS; ++index)
@@ -65,17 +64,6 @@ namespace LLP
             DATA_THREADS.push_back(new DataThread<ProtocolType>(
                 index, fDDOS, rScore, cScore, nTimeout, fMeter));
         }
-
-        /* Set the IP for this address */
-        if(!BaseAddress::GetThisIP(addrThisNode))
-            debug::error(FUNCTION, "Failed to get the IP address for this computer");
-
-        /* Set the port for this address */
-        addrThisNode.SetPort(nPort);
-
-        /* Check to see if this address is valid */
-        if(!addrThisNode.IsValid())
-            debug::error(FUNCTION, "This address in invalid: ", addrThisNode.ToString());
 
         /* Initialize the address manager. */
         if(fManager)
@@ -155,7 +143,11 @@ namespace LLP
 
         /* Clear the address manager. */
         if(pAddressManager)
+        {
             delete pAddressManager;
+            pAddressManager = nullptr;
+        }
+
     }
 
 
@@ -163,10 +155,8 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::Shutdown()
     {
-        //DisconnectAll();
-
         if(pAddressManager)
-            pAddressManager->WriteDatabase();
+          pAddressManager->WriteDatabase();
     }
 
 
@@ -176,42 +166,41 @@ namespace LLP
    {
        BaseAddress addr(strAddress, nPort, false);
 
+       /* Make sure manager is enabled. */
        if(pAddressManager)
-           pAddressManager->AddAddress(addr, ConnectState::NEW);
+          pAddressManager->AddAddress(addr, ConnectState::NEW);
    }
 
 
-    /*  Public Wraper to Add a Connection Manually. */
-    template <class ProtocolType>
-    bool Server<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort)
-    {
-        /* Initialize DDOS Protection for Incoming IP Address. */
-        BaseAddress addrConnect(strAddress, nPort);
+   /*  Public Wraper to Add a Connection Manually. */
+   template <class ProtocolType>
+   bool Server<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort)
+   {
+       /* Initialize DDOS Protection for Incoming IP Address. */
+       BaseAddress addrConnect(strAddress, nPort);
 
-        /* Create new DDOS Filter if Needed. */
-        if(!DDOS_MAP.count(addrConnect))
-            DDOS_MAP[addrConnect] = new DDOS_Filter(DDOS_TIMESPAN);
+       /* Create new DDOS Filter if Needed. */
+       if(!DDOS_MAP.count(addrConnect))
+           DDOS_MAP[addrConnect] = new DDOS_Filter(DDOS_TIMESPAN);
 
-        /* DDOS Operations: Only executed when DDOS is enabled. */
-        if((fDDOS && DDOS_MAP[addrConnect]->Banned()))
-            return false;
+       /* DDOS Operations: Only executed when DDOS is enabled. */
+       if((fDDOS && DDOS_MAP[addrConnect]->Banned()))
+           return false;
 
-        /* Find a balanced Data Thread to Add Connection to. */
-        int32_t nThread = FindThread();
-        if(nThread < 0)
-            return false;
+       /* Find a balanced Data Thread to Add Connection to. */
+       int32_t nThread = FindThread();
+       if(nThread < 0)
+           return false;
 
-        /* Select the proper data thread. */
-        DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-        if(!dt)
-            return false;
+       /* Select the proper data thread. */
+       DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
-        /* Attempt the connection. */
-        if(!dt->AddConnection(strAddress, nPort, DDOS_MAP[addrConnect]))
-            return false;
+       /* Attempt the connection. */
+       if(!dt->AddConnection(strAddress, nPort, DDOS_MAP[addrConnect]))
+           return false;
 
-        return true;
-    }
+       return true;
+   }
 
 
     /*  Get the active connection pointers from data threads. */
@@ -224,8 +213,6 @@ namespace LLP
        {
            /* Get the data threads. */
            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-           if(!dt)
-               continue;
 
            /* Lock the data thread. */
            LOCK(dt->MUTEX);
@@ -258,8 +245,6 @@ namespace LLP
         {
             /* Get the data threads. */
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-            if(!dt)
-                continue;
 
             /* Lock the data thread. */
             LOCK(dt->MUTEX);
@@ -291,8 +276,9 @@ namespace LLP
         {
             /* Get the data threads. */
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+
             if(!dt)
-                continue;
+              continue;
 
             /* Lock the data thread. */
             LOCK(dt->MUTEX);
@@ -345,9 +331,7 @@ namespace LLP
     void Server<ProtocolType>::DisconnectAll()
     {
         for(uint16_t index = 0; index < MAX_THREADS; ++index)
-        {
             DATA_THREADS[index]->DisconnectAll();
-        }
     }
 
 
@@ -362,18 +346,12 @@ namespace LLP
         /* Address to select. */
         BaseAddress addr;
 
-        /* Connect state. */
-        uint8_t state = 0;
-
         /* Read the address database. */
         pAddressManager->ReadDatabase();
 
         /* Set the port. */
         pAddressManager->SetPort(PORT);
 
-        /* Set this node's current address. */
-        if(!pAddressManager->GetThisAddress().IsValid())
-            pAddressManager->SetThisAddress(addrThisNode);
 
         /* Wait for data threads to startup. */
         while(DATA_THREADS.size() < MAX_THREADS)
@@ -382,50 +360,32 @@ namespace LLP
         /* Loop connections. */
         while(!fDestruct.load())
         {
-            runtime::sleep(100);
-
-            /* Assume the connect state is in a failed state. */
-            state = static_cast<uint8_t>(ConnectState::FAILED);
+            /* Sleep in 1 second intervals for easy break on shutdown. */
+            for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown; ++i)
+                runtime::sleep(1000);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
             if(pAddressManager->StochasticSelect(addr))
             {
-                /* Check for connect to self. */
-                if(addr.ToStringIP() == addrThisNode.ToStringIP())
-                {
-                    runtime::sleep(1000);
-                    debug::log(3, FUNCTION, ProtocolType::Name(), " Cannot self-connect, removing address ", addr.ToString());
-                    pAddressManager->RemoveAddress(addr);
-                    continue;
-                }
-
-                /* Check for invalid addresses */
+                /* Check for invalid address */
                 if(!addr.IsValid())
                 {
                     runtime::sleep(nSleepTime);
                     debug::log(3, FUNCTION, ProtocolType::Name(), " Invalid address, removing address", addr.ToString());
-                    pAddressManager->RemoveAddress(addr);
+                    pAddressManager->Ban(addr);
                     continue;
                 }
 
                 /* Attempt the connection. */
                 debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
 
-                /* Attempt the connection. */
                 if(AddConnection(addr.ToStringIP(), addr.GetPort()))
-                {
-                    state = static_cast<uint8_t>(ConnectState::CONNECTED);
-
-                    /* Sleep in 1 second intervals for easy break on shutdown. */
-                    for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown; ++i)
-                        runtime::sleep(1000);
-                }
-
-                /* Update the address state. */
-                pAddressManager->AddAddress(addr, state);
-
-                debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
+                    pAddressManager->AddAddress(addr, ConnectState::CONNECTED);
+                else
+                    pAddressManager->AddAddress(addr, ConnectState::FAILED);
             }
+
+            debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
         }
     }
 
@@ -436,14 +396,11 @@ namespace LLP
     int32_t Server<ProtocolType>::FindThread()
     {
         int32_t nIndex = -1;
-        int32_t nConnections = std::numeric_limits<int32_t>::max();
+        uint32_t nConnections = std::numeric_limits<uint32_t>::max();
 
         for(uint16_t index = 0; index < MAX_THREADS; ++index)
         {
             DataThread<ProtocolType> *dt = DATA_THREADS[index];
-
-            if(!dt)
-                continue;
 
             /* Limit data threads to 32 connections per thread. */
             if(dt->nConnections < nConnections && dt->nConnections < 32)
@@ -522,8 +479,8 @@ namespace LLP
 
                 if (hSocket == INVALID_SOCKET)
                 {
-                    if (GetLastError() != WSAEWOULDBLOCK)
-                        debug::error("socket error accept failed: ", GetLastError());
+                    if (WSAGetLastError() != WSAEWOULDBLOCK)
+                        debug::error("socket error accept failed: ", WSAGetLastError());
                 }
                 else
                 {
@@ -535,11 +492,9 @@ namespace LLP
                     if((fDDOS && DDOS_MAP[addr]->Banned()))
                     {
                         debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Banned.");
-#ifdef WIN32
+
                         closesocket(hSocket);
-#else
-                        close(hSocket);
-#endif
+
                         continue;
                     }
 
@@ -554,21 +509,19 @@ namespace LLP
                         continue;
                     }
 
+                    /* Get the data thread. */
                     DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-                    if(!dt)
-                        continue;
 
                     dt->AddConnection(sockNew, DDOS_MAP[addr]);
 
-                    /* Update state in address manager. */
-                    uint8_t state = static_cast<uint8_t>(ConnectState::CONNECTED);
-
-                    /* Update the address state. */
-                    if(pAddressManager)
-                        pAddressManager->AddAddress(addr, state);
 
                     /* Verbose output. */
                     debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ",  PORT);
+
+
+                    /* Update the address state. */
+                    if(pAddressManager)
+                        pAddressManager->AddAddress(addr, ConnectState::CONNECTED);
                 }
             }
         }
@@ -585,22 +538,11 @@ namespace LLP
         int32_t nOne = 1;
 #endif
 
-#ifdef WIN32
-        // Initialize Windows Sockets
-        WSADATA wsadata;
-        int32_t ret = WSAStartup(MAKEWORD(2, 2), &wsadata);
-        if (ret != NO_ERROR)
-        {
-            debug::error("TCP/IP socket library failed to start (WSAStartup returned error )", ret);
-            return false;
-        }
-#endif
-
         /* Create socket for listening for incoming connections */
         hListenSocket = socket(fIPv4 ? AF_INET : AF_INET6, SOCK_STREAM, IPPROTO_TCP);
         if (hListenSocket == INVALID_SOCKET)
         {
-            debug::error("Couldn't open socket for incoming connections (socket returned error )", GetLastError());
+            debug::error("Couldn't open socket for incoming connections (socket returned error )", WSAGetLastError());
             return false;
         }
 
@@ -627,7 +569,7 @@ namespace LLP
             sockaddr.sin_port = htons(PORT);
             if (::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
             {
-                int32_t nErr = GetLastError();
+                int32_t nErr = WSAGetLastError();
                 if (nErr == WSAEADDRINUSE)
                     debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer. Address already in use.");
                 else
@@ -647,7 +589,7 @@ namespace LLP
             sockaddr.sin6_port = htons(PORT);
             if (::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
             {
-                int32_t nErr = GetLastError();
+                int32_t nErr = WSAGetLastError();
                 if (nErr == WSAEADDRINUSE)
                     debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer. Address already in use.");
                 else
@@ -662,7 +604,7 @@ namespace LLP
         /* Listen for incoming connections */
         if (listen(hListenSocket, SOMAXCONN) == SOCKET_ERROR)
         {
-            debug::error("Listening for incoming connections failed (listen returned error )", GetLastError());
+            debug::error("Listening for incoming connections failed (listen returned error )", WSAGetLastError());
             return false;
         }
 
@@ -694,9 +636,6 @@ namespace LLP
            {
                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
-               if(!dt)
-                   continue;
-
                nGlobalConnections += dt->nConnections;
            }
 
@@ -721,8 +660,6 @@ namespace LLP
        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
        {
            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-           if(!dt)
-               continue;
 
            nTotalRequests += dt->REQUESTS;
        }

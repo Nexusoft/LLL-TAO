@@ -37,7 +37,7 @@ namespace LLP
     , vBuffer()
     , addr()
     {
-        fd = -1;
+        fd = INVALID_SOCKET;
 
         events = POLLIN;
     }
@@ -73,7 +73,7 @@ namespace LLP
     }
 
 
-    /* Constructor for Socket */
+    /* Constructor for socket */
     Socket::Socket(const BaseAddress &addrConnect)
     : MUTEX()
     , nError(0)
@@ -82,10 +82,16 @@ namespace LLP
     , vBuffer()
     , addr()
     {
-        fd = -1;
+        fd = INVALID_SOCKET;
         events = POLLIN;
 
         Attempt(addrConnect);
+    }
+
+
+    /* Destructor for socket */
+    Socket::~Socket()
+    {
     }
 
 
@@ -106,8 +112,6 @@ namespace LLP
     /* Connects the socket to an external address */
     bool Socket::Attempt(const BaseAddress &addrDest, uint32_t nTimeout)
     {
-        BaseAddress addrDestCopy = addrDest; //non-const copy to use with ToString (which is non-const)
-
         /* Create the Socket Object (Streaming TCP/IP). */
         if(addrDest.IsIPv4())
             fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -137,6 +141,10 @@ namespace LLP
             /* Copy in the new address. */
             addr = BaseAddress(sockaddr);
 
+            /* Connect for non-blocking socket should return SOCKET_ERROR (with last error WSAEWOULDBLOCK normally).
+             * Then we have to use select below to check if connection was made.
+             * If it doesn't return that, it means it connected immediately and connection was successful. (very unusual, but possible)
+             */
             fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
         else
@@ -154,40 +162,46 @@ namespace LLP
         /* Handle final socket checks if connection established with no errors. */
         if (fConnected)
         {
-            // WSAEINVAL is here because some legacy version of winsock uses it
-            if (GetLastError() == WSAEINPROGRESS || GetLastError() == WSAEWOULDBLOCK || GetLastError() == WSAEINVAL)
+            /* We would expect to get WSAEWOULDBLOCK here in the normal case of attempting a connection.
+             * WSAEINVAL is here because some legacy version of winsock uses it
+             */
+            nError = WSAGetLastError();
+
+            if (nError == WSAEWOULDBLOCK || nError == WSAEINPROGRESS || nError == WSAEINVAL)
             {
                 struct timeval timeout;
                 timeout.tv_sec  = nTimeout / 1000;
                 timeout.tv_usec = (nTimeout % 1000) * 1000;
 
+                /* Create an fd_set with our current socket (and only it) */
                 fd_set fdset;
                 FD_ZERO(&fdset);
                 FD_SET(fd, &fdset);
+
+                /* select returns the number of descriptors that have successfully established connection and are writeable.
+                 * We only pass one descriptor in the fd_set, so this will return 1 if connect attempt succeeded, 0 if it timed out, or SOCKET_ERROR on error
+                 */
                 int nRet = select(fd + 1, nullptr, &fdset, nullptr, &timeout);
 
                 /* If the connection attempt timed out with select. */
                 if (nRet == 0)
                 {
-                    debug::log(3, FUNCTION, "connection timeout ", addrDestCopy.ToString(), "...");
-    #ifdef WIN32
-                    closesocket(fd);
-    #else
-                    close(fd);
-    #endif
+                    debug::log(3, FUNCTION, "connection timeout ", addrDest.ToString(), "...");
+
+                    if(fd != INVALID_SOCKET)
+                         closesocket(fd);
 
                     return false;
                 }
 
                 /* If the select failed. */
-                if (nRet == SOCKET_ERROR)
+                else if (nRet == SOCKET_ERROR)
                 {
-                    debug::log(3, FUNCTION, "select failed ", addrDestCopy.ToString(), " (",  GetLastError(), ")");
-    #ifdef WIN32
-                    closesocket(fd);
-    #else
-                    close(fd);
-    #endif
+                    debug::log(3, FUNCTION, "select failed ", addrDest.ToString(), " (",  WSAGetLastError(), ")");
+
+
+                    if(fd != INVALID_SOCKET)
+                        closesocket(fd);
 
                     return false;
                 }
@@ -200,12 +214,12 @@ namespace LLP
                 if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
     #endif
                 {
-                    debug::log(3, FUNCTION, "get options failed ", addrDestCopy.ToString(), " (", GetLastError(), ")");
-    #ifdef WIN32
-                    closesocket(fd);
-    #else
-                    close(fd);
-    #endif
+                    debug::log(3, FUNCTION, "get options failed ", addrDest.ToString(), " (", WSAGetLastError(), ")");
+
+                    if(fd != INVALID_SOCKET)
+                    {
+                        closesocket(fd);
+                    }
 
                     return false;
                 }
@@ -213,28 +227,24 @@ namespace LLP
                 /* If there are no socket options set. TODO: Remove preprocessors for cross platform sockets. */
                 if (nRet != 0)
                 {
-                    debug::log(3, FUNCTION, "failed after select ", addrDestCopy.ToString(), " (", nRet, ")");
-    #ifdef WIN32
-                    closesocket(fd);
-    #else
-                    close(fd);
-    #endif
+                    debug::log(3, FUNCTION, "failed after select ", addrDest.ToString(), " (", nRet, ")");
+
+                    if(fd != INVALID_SOCKET)
+                    {
+                        closesocket(fd);
+                    }
 
                     return false;
                 }
             }
-    #ifdef WIN32
-            else if (GetLastError() != WSAEISCONN)
-    #else
-            else
-    #endif
+            else if (nError != WSAEISCONN)
             {
-                debug::log(3, FUNCTION, "connect failed ", addrDestCopy.ToString(), " (", GetLastError(), ")");
-    #ifdef WIN32
-                closesocket(fd);
-    #else
-                close(fd);
-    #endif
+                debug::log(3, FUNCTION, "connect failed ", addrDest.ToString(), " (", nError, ")");
+
+                if(fd != INVALID_SOCKET)
+                {
+                    closesocket(fd);
+                }
 
                 return false;
             }
@@ -265,11 +275,11 @@ namespace LLP
     /* Clear resources associated with socket and return to invalid state. */
     void Socket::Close()
     {
-    #ifdef WIN32
-        closesocket(fd);
-    #else
-        close(fd);
-    #endif
+
+        if(fd != INVALID_SOCKET)
+        {
+          closesocket(fd);
+        }
 
         fd = INVALID_SOCKET;
     }
@@ -286,7 +296,7 @@ namespace LLP
 
         if (nRead < 0)
         {
-            nError = GetLastError();
+            nError = WSAGetLastError();
             debug::log(2, FUNCTION, "read failed ", addr.ToString(), " (", nError, " ", strerror(nError), ")");
 
             return nError;
@@ -307,7 +317,7 @@ namespace LLP
     #endif
         if (nRead < 0)
         {
-            nError = GetLastError();
+            nError = WSAGetLastError();
             debug::log(2, FUNCTION, "read failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
 
             return nError;
@@ -341,7 +351,7 @@ namespace LLP
     #endif
         if(nSent < 0)
         {
-            nError = GetLastError();
+            nError = WSAGetLastError();
             debug::log(2, FUNCTION, "write failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
 
             return nError;
@@ -379,7 +389,7 @@ namespace LLP
 
         /* Handle errors on flush. */
         if(nSent < 0)
-            return GetLastError();
+            return WSAGetLastError();
 
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent > 0)

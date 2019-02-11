@@ -16,8 +16,8 @@ ________________________________________________________________________________
 
 
 #include <LLP/include/base_address.h>
+#include <LLP/include/network.h>
 
-#include <poll.h>
 #include <vector>
 #include <cstdint>
 
@@ -73,13 +73,16 @@ namespace LLP
         Socket(int32_t nSocketIn, const BaseAddress &addrIn);
 
 
-        /** Constructor for Socket
+        /** Constructor for socket
          *
          *  @param[in] addrDest The address to connect socket to
          *
          **/
         Socket(const BaseAddress &addrDest);
 
+
+        /** Destructor for socket **/
+        virtual ~Socket();
 
 
         /** Error

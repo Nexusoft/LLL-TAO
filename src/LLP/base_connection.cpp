@@ -20,7 +20,6 @@ ________________________________________________________________________________
 #include <LLP/packets/legacy.h>
 #include <LLP/packets/tritium.h>
 
-#include <Util/include/mutex.h>
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>
 #include <Util/include/args.h>
@@ -59,14 +58,25 @@ namespace LLP
     }
 
 
+    /** Build Base Connection with all Parameters. **/
+    template <class PacketType>
+    BaseConnection<PacketType>::BaseConnection(DDOS_Filter* DDOS_IN, bool isDDOS, bool fOutgoing)
+    : Socket()
+    , INCOMING()
+    , DDOS(DDOS_IN)
+    , nLatency(std::numeric_limits<uint32_t>::max())
+    , fDDOS(isDDOS)
+    , fOUTGOING(fOutgoing)
+    , fCONNECTED(false)
+    {
+    }
+
+
     /* Default destructor */
     template <class PacketType>
     BaseConnection<PacketType>::~BaseConnection()
     {
         Disconnect();
-
-        /* Clean up the buffer usage. */
-        std::vector<uint8_t>().swap(vBuffer);
     }
 
 

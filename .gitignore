@@ -11,3 +11,6 @@
 *.qm
 *.log
 nexus
+.cproject
+.project
+/.settings/

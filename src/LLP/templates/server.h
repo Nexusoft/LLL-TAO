@@ -80,10 +80,6 @@ namespace LLP
         AddressManager *pAddressManager;
 
 
-        /* Address of the server node */
-        BaseAddress addrThisNode;
-
-
         /* The sleep time of address manager. */
         uint32_t nSleepTime;
 
@@ -97,9 +93,17 @@ namespace LLP
 
 
         /** Constructor **/
-        Server<ProtocolType>(uint16_t nPort, uint16_t nMaxThreads, uint32_t nTimeout = 30, bool isDDOS = false,
-                             uint32_t cScore = 0, uint32_t rScore = 0, uint32_t nTimespan = 60, bool fListen = true,
-                             bool fMeter = false, bool fManager = false, uint32_t nSleepTimeIn = 1000);
+        Server<ProtocolType>(uint16_t nPort,
+                             uint16_t nMaxThreads,
+                             uint32_t nTimeout = 30,
+                             bool isDDOS = false,
+                             uint32_t cScore = 0,
+                             uint32_t rScore = 0,
+                             uint32_t nTimespan = 60,
+                             bool fListen = true,
+                             bool fMeter = false,
+                             bool fManager = false,
+                             uint32_t nSleepTimeIn = 1000);
 
 
         /** Default Destructor **/
@@ -132,10 +136,11 @@ namespace LLP
          *  @param[in] strAddress	IPv4 Address of outgoing connection
          *  @param[in] strPort		Port of outgoing connection
          *
-         *  @return	Returns true if the connection was established successfully
+         *  @return	Returns 1 If successful, 0 if unsuccessful, -1 on errors.
          *
          **/
         bool AddConnection(std::string strAddress, uint16_t nPort);
+
 
 
         /** GetConnections
@@ -174,25 +179,31 @@ namespace LLP
         template<typename MessageType, typename DataType>
         void Relay(MessageType message, DataType data)
         {
+            DataThread<ProtocolType> *dt = nullptr;
+            ProtocolType *pNode = nullptr;
+            uint16_t nThread = 0;
+            uint16_t nSize = 0;
+            uint16_t nIndex = 0;
+
             /* List of connections to return. */
-            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            for(; nThread < MAX_THREADS; ++nThread)
             {
                 /* Get the data threads. */
-                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-                if(!dt)
-                    continue;
+                dt = DATA_THREADS[nThread];
 
                 /* Loop through connections in data thread. */
-                int32_t nSize = dt->CONNECTIONS.size();
-                for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
+                nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
+
+                for(nIndex = 0; nIndex < nSize; ++nIndex)
                 {
+                    pNode = dt->CONNECTIONS[nIndex];
+
                     /* Skip over inactive connections. */
-                    if(!dt->CONNECTIONS[nIndex] ||
-                       !dt->CONNECTIONS[nIndex]->Connected())
+                    if(!pNode || !pNode->Connected())
                         continue;
 
                     /* Push the active connection. */
-                    dt->CONNECTIONS[nIndex]->PushMessage(message, data);
+                    pNode->PushMessage(message, data);
                 }
             }
         }

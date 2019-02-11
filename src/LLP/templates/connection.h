@@ -42,6 +42,12 @@ namespace LLP
                    bool fOutgoing = false);
 
 
+         /** Constructor **/
+         Connection(DDOS_Filter* DDOS_IN,
+                    bool isDDOS = false,
+                    bool fOutgoing = false);
+
+
         /** Default destructor **/
         virtual ~Connection();
 

@@ -34,6 +34,15 @@ namespace LLP
     }
 
 
+    /** Constructor **/
+    Connection::Connection(DDOS_Filter* DDOS_IN,
+                           bool isDDOS,
+                           bool fOutgoing)
+   : BaseConnection(DDOS_IN, isDDOS, fOutgoing)
+   {
+   }
+
+
     /** Default destructor **/
     Connection::~Connection()
     {
@@ -52,30 +61,35 @@ namespace LLP
                 INCOMING.HEADER = HEADER[0];
         }
 
-        /* Read the packet length. */
-        if(Available() >= 4 && INCOMING.LENGTH == 0)
+        /* At this point we need to check agin whether the packet is considered complete as some
+           packet types only require a header and no length or data*/
+        if(!INCOMING.IsNull() && !INCOMING.Complete())
         {
-            /* Handle Reading Packet Length Header. */
-            std::vector<uint8_t> BYTES(4, 0);
-            if(Read(BYTES, 4) == 4)
+            /* Read the packet length. */
+            if(Available() >= 4 && INCOMING.LENGTH == 0)
             {
-                INCOMING.SetLength(BYTES);
-                Event(EVENT_HEADER);
+                /* Handle Reading Packet Length Header. */
+                std::vector<uint8_t> BYTES(4, 0);
+                if(Read(BYTES, 4) == 4)
+                {
+                    INCOMING.SetLength(BYTES);
+                    Event(EVENT_HEADER);
+                }
             }
-        }
 
-        /* Handle Reading Packet Data. */
-        uint32_t nAvailable = Available();
-        if(nAvailable > 0 && INCOMING.LENGTH > 0 && INCOMING.DATA.size() < INCOMING.LENGTH)
-        {
-            /* Read the data in the packet */
-            std::vector<uint8_t> DATA( std::min(nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
-
-            /* On successful read, fire event and add data to packet. */
-            if(Read(DATA, DATA.size()) == DATA.size())
+            /* Handle Reading Packet Data. */
+            uint32_t nAvailable = Available();
+            if(nAvailable > 0 && INCOMING.LENGTH > 0 && INCOMING.DATA.size() < INCOMING.LENGTH)
             {
-                INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
-                Event(EVENT_PACKET, DATA.size());
+                /* Read the data in the packet */
+                std::vector<uint8_t> DATA( std::min(nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
+
+                /* On successful read, fire event and add data to packet. */
+                if(Read(DATA, DATA.size()) == DATA.size())
+                {
+                    INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
+                    Event(EVENT_PACKET, DATA.size());
+                }
             }
         }
     }

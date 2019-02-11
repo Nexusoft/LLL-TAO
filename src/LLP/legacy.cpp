@@ -52,11 +52,11 @@ namespace LLP
 
 
     /* The time since last getblocks. */
-    uint64_t LegacyNode::nLastGetBlocks = runtime::timestamp();;
+    uint64_t LegacyNode::nLastGetBlocks = runtime::timestamp();
 
 
     /* the session identifier. */
-    uint64_t LegacyNode::nSessionID = LLC::GetRand();
+    const uint64_t LegacyNode::nSessionID = LLC::GetRand();
 
 
     /* The fast sync average speed. */
@@ -155,15 +155,17 @@ namespace LLP
             /* Handle sending the pings to remote node.. */
             if(nLastPing + 15 < runtime::unifiedtimestamp())
             {
-                uint64_t nRequestID = 0;
-                RAND_bytes((uint8_t*)&nRequestID, sizeof(nRequestID));
+                uint64_t nNonce = 0;
+                RAND_bytes((uint8_t*)&nNonce, sizeof(nNonce));
 
                 nLastPing = runtime::unifiedtimestamp();
 
-                mapLatencyTracker.emplace(nRequestID, runtime::timer());
-                mapLatencyTracker[nRequestID].Start();
 
-                PushMessage("ping", nRequestID);
+                mapLatencyTracker.insert(std::pair<uint64_t, runtime::timer>(nNonce, runtime::timer()));
+                mapLatencyTracker[nNonce].Start();
+                            /* Reset the timeouts. */
+
+                PushMessage("ping", nNonce);
 
                 /* Rebroadcast transactions. */
                 Legacy::Wallet::GetInstance().ResendWalletTransactions();
@@ -173,6 +175,7 @@ namespace LLP
             /* Unreliabilitiy re-requesting (max time since getblocks) */
             if(config::GetBoolArg("-fastsync")
             && TAO::Ledger::ChainState::Synchronizing()
+            && addrFastSync.ToStringIP() == GetAddress().ToStringIP()
             && nLastGetBlocks + 30 < runtime::timestamp())
             {
                 /* Keep too many threads from re-executing this at once. */
@@ -245,6 +248,7 @@ namespace LLP
             if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
                 LEGACY_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
+
             /* Debug output for node disconnect. */
             debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming",
                 " Disconnected (", strReason, ") at timestamp ", runtime::unifiedtimestamp());
@@ -287,6 +291,11 @@ namespace LLP
             if(nSession == LegacyNode::nSessionID)
             {
                 debug::log(0, FUNCTION, "connected to self");
+
+                /* Cache self-address in the banned list of the Address Manager. */
+                if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
+                    LEGACY_SERVER->pAddressManager->Ban(addrMe);
+
                 return false;
             }
 
@@ -301,7 +310,7 @@ namespace LLP
             static uint32_t nAsked = 0;
             if (fOUTGOING && nAsked == 0)
             {
-                nAsked++;
+                ++nAsked;
                 PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
             }
 
@@ -498,9 +507,10 @@ namespace LLP
                     vAddr.push_back(*it);
                 }
 
-                /* Add the connections to Legacy Server. */
+                /* Add new addresses to Legacy Server. */
                 if(LEGACY_SERVER->pAddressManager)
                     LEGACY_SERVER->pAddressManager->AddAddresses(vAddr);
+
             }
 
         }
@@ -707,7 +717,7 @@ namespace LLP
 
             /* Add the best 1000 addresses. */
             std::vector<LegacyAddress> vSend;
-            for(uint32_t n = 0; n < vAddr.size() && n < 1000; n++)
+            for(uint32_t n = 0; n < vAddr.size() && n < 1000; ++n)
                 vSend.push_back(vAddr[n]);
 
             /* Send the addresses off. */
@@ -810,22 +820,15 @@ namespace LLP
                 return false;
             }
 
-            /* Reset the consecutive accepts. */
-            pnode->nConsecutiveAccept = 0;
-
             return true;
         }
         else
         {
-            /* Increment the consecutive accepts. */
-            ++pnode->nConsecutiveAccept;
-
             /* Update the last time received. */
             nLastTimeReceived = runtime::timestamp();
 
             /* Reset the consecutive failures. */
-            if(pnode->nConsecutiveAccept > 5)
-                pnode->nConsecutiveFails = 0;
+            pnode->nConsecutiveFails = 0;
         }
 
         /* Process orphan if found. */

@@ -65,7 +65,6 @@ namespace LLP
         , nConsecutiveFails(0)
         , fInbound(false)
         , nLastPing(runtime::timestamp())
-        , nConsecutiveAccept(0)
         , hashContinue(0)
         , mapLatencyTracker()
         , mapSentRequests()
@@ -75,32 +74,44 @@ namespace LLP
 
 
         /** Constructor **/
-        LegacyNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
-        : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN)
+        LegacyNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false)
+        : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN, isDDOS)
         , strNodeVersion()
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
         , nStartingHeight(0)
         , nConsecutiveFails(0)
         , fInbound(false)
         , nLastPing(runtime::timestamp())
-        , nConsecutiveAccept(0)
         , hashContinue(0)
         , mapLatencyTracker()
         , mapSentRequests()
         {
+        }
 
+
+        /** Constructor **/
+        LegacyNode(DDOS_Filter* DDOS_IN, bool isDDOS = false)
+        : BaseConnection<LegacyPacket>(DDOS_IN, isDDOS)
+        , strNodeVersion()
+        , nCurrentVersion(LLP::PROTOCOL_VERSION)
+        , nStartingHeight(0)
+        , nConsecutiveFails(0)
+        , fInbound(false)
+        , nLastPing(runtime::timestamp())
+        , hashContinue(0)
+        , mapLatencyTracker()
+        , mapSentRequests()
+        {
         }
 
         /* Virtual destructor. */
         virtual ~LegacyNode()
         {
-            mapLatencyTracker.clear();
-            mapSentRequests.clear();
         }
 
 
-        /** Randomly genearted session ID. **/
-        static uint64_t nSessionID;
+        /** Randomly generated session ID. **/
+        static const uint64_t nSessionID;
 
 
         /** String version of this Node's Version. **/
@@ -111,7 +122,7 @@ namespace LLP
         uint32_t nCurrentVersion;
 
 
-        /** LEGACY: The height of this ndoe given at the version message. **/
+        /** LEGACY: The height of this node given at the version message. **/
         uint32_t nStartingHeight;
 
 
@@ -145,10 +156,6 @@ namespace LLP
 
         /** The last time a block was accepted. **/
         static uint64_t nLastTimeReceived;
-
-
-        /** The number of consecutive succesful blocks accepted. */
-        uint32_t nConsecutiveAccept;
 
 
         /** The trigger hash to send a continue inv message to remote node. **/

@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <LLP/templates/base_connection.h>
 #include <LLP/templates/ddos.h>
 #include <Util/include/string.h>
+#include <new> //std::bad_alloc
 
 #define HTTPNODE ANSI_COLOR_FUNCTION "HTTPNode" ANSI_COLOR_RESET " : "
 
@@ -52,21 +53,32 @@ namespace LLP
         std::vector<int8_t> vchBuffer;
 
 
-    protected:
-
-        /* The local address of this node. */
-        LegacyAddress addrThisNode;
-
-
     public:
 
         /** Default Constructor **/
         HTTPNode()
-        : BaseConnection<HTTPPacket>() { }
+        : BaseConnection<HTTPPacket>()
+        {
+        }
 
         /** Constructor **/
-        HTTPNode( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
-        : BaseConnection<HTTPPacket>( SOCKET_IN, DDOS_IN ) { }
+        HTTPNode(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false)
+        : BaseConnection<HTTPPacket>(SOCKET_IN, DDOS_IN, isDDOS)
+        {
+        }
+
+
+        /** Constructor **/
+        HTTPNode(DDOS_Filter* DDOS_IN, bool isDDOS = false)
+        : BaseConnection<HTTPPacket>(DDOS_IN, isDDOS)
+        {
+        }
+
+
+        /** Default Destructor **/
+        virtual ~HTTPNode()
+        {
+        }
 
 
         /** Event
@@ -107,19 +119,6 @@ namespace LLP
         }
 
 
-        /** GetAddress
-         *
-         *  Get the current IP address of this node.
-         *
-         *  @return The address of this node
-         *
-         **/
-        LegacyAddress GetAddress() const
-        {
-            return addrThisNode;
-        }
-
-
         /** ReadPacket
          *
          *  Non-Blocking Packet reader to build a packet from TCP Connection.
@@ -145,7 +144,7 @@ namespace LLP
                     return;
 
                 /* Allow up to 10 iterations to parse the header. */
-                for(int i = 0; i < 10; i++)
+                for(int i = 0; i < 10; ++i)
                 {
                     /* Read content if there is some. */
                     if(INCOMING.fHeader)
@@ -241,6 +240,11 @@ namespace LLP
                 RESPONSE.strContent = strContent;
 
                 this->WritePacket(RESPONSE);
+            }
+            catch(const std::bad_alloc &e)
+            {
+                debug::error(FUNCTION, "Memory allocation failed ", e.what());
+                throw;
             }
             catch(...)
             {

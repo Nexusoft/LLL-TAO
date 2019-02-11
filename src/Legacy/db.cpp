@@ -750,7 +750,7 @@ namespace Legacy
             {
                 BerkeleyDB::dbenv.close(0);
             }
-            catch (const DbException& e)
+            catch(const DbException& e)
             {
                 debug::log(0, FUNCTION, "Exception: ", e.what(), "(", e.get_errno(), ")");
             }

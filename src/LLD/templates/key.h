@@ -14,20 +14,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_TEMPLATES_KEY_H
 #define NEXUS_LLD_TEMPLATES_KEY_H
 
-#include <fstream>
-
-#include <LLD/include/version.h>
-#include <LLD/include/enum.h>
-
-#include <LLC/hash/SK.h>
-#include <LLC/hash/macro.h>
-#include <LLC/types/bignum.h>
-
-#include <Util/include/args.h>
-#include <Util/include/config.h>
-#include <Util/include/mutex.h>
-#include <Util/include/hex.h>
 #include <Util/templates/serialize.h>
+
+#include <cstdint>
+#include <vector>
 
 
 namespace LLD
@@ -49,14 +39,14 @@ namespace LLD
             Byte 3 - 5: nSector (The Sector Number [0 - x])
         **/
         uint8_t   		   	nState;
-        uint16_t 			    nLength;
+        uint16_t 		    nLength;
 
         /** These three hold the location of
             Sector in the Sector Database of
             Given Sector Key. **/
-        uint16_t 			   nSectorFile;
+        uint16_t 		   nSectorFile;
         uint32_t   		   nSectorSize;
-        uint32_t   			 nSectorStart;
+        uint32_t   		   nSectorStart;
 
         /* The binary data of the Sector key. */
         std::vector<uint8_t> vKey;
@@ -74,58 +64,27 @@ namespace LLD
 
 
         /** Default Constructor. **/
-        SectorKey()
-        : nState(0)
-        , nLength(0)
-        , nSectorFile(0)
-        , nSectorSize(0)
-        , nSectorStart(0) { }
+        SectorKey();
 
 
         /** Constructor **/
-        SectorKey(uint8_t nStateIn, std::vector<uint8_t> vKeyIn,
-                  uint16_t nSectorFileIn, uint32_t nSectorStartIn, uint32_t nSectorSizeIn)
-        : nState(nStateIn)
-        , nLength(vKeyIn.size())
-        , nSectorFile(nSectorFileIn)
-        , nSectorSize(nSectorSizeIn)
-        , nSectorStart(nSectorStartIn)
-        , vKey(vKeyIn)
-        {
-        }
+        SectorKey(uint8_t nStateIn,
+                  std::vector<uint8_t> vKeyIn,
+                  uint16_t nSectorFileIn,
+                  uint32_t nSectorStartIn,
+                  uint32_t nSectorSizeIn);
 
 
         /** Default Destructor **/
-        ~SectorKey()
-        {
-
-        }
+        ~SectorKey();
 
 
         /** Copy Assignment Operator **/
-        SectorKey& operator=(const SectorKey& key)
-        {
-            nState          = key.nState;
-            nLength         = key.nLength;
-            nSectorFile     = key.nSectorFile;
-            nSectorSize     = key.nSectorSize;
-            nSectorStart    = key.nSectorStart;
-            vKey            = key.vKey;
-
-            return *this;
-        }
+        SectorKey& operator=(const SectorKey& key);
 
 
         /** Default Copy Constructor **/
-        SectorKey(const SectorKey& key)
-        {
-            nState          = key.nState;
-            nLength         = key.nLength;
-            nSectorFile     = key.nSectorFile;
-            nSectorSize     = key.nSectorSize;
-            nSectorStart    = key.nSectorStart;
-            vKey            = key.vKey;
-        }
+        SectorKey(const SectorKey& key);
 
 
         /** SetKey
@@ -135,11 +94,7 @@ namespace LLD
          *  @param[in] vKeyIn The key to set.
          *
          **/
-        void SetKey(const std::vector<uint8_t>& vKeyIn)
-        {
-            vKey = vKeyIn;
-            nLength = vKey.size();
-        }
+        void SetKey(const std::vector<uint8_t>& vKeyIn);
 
 
         /** Begin
@@ -147,10 +102,7 @@ namespace LLD
          *  Iterator to the beginning of the raw key.
          *
          **/
-        inline uint32_t Begin() const
-        {
-            return 13;
-        }
+        uint32_t Begin() const;
 
 
         /** Size
@@ -158,7 +110,7 @@ namespace LLD
          *  Return the size of the key sector on disk.
          *
          **/
-        inline uint32_t Size() const { return (13 + nLength); }
+        uint32_t Size() const;
 
 
         /** Print
@@ -166,15 +118,7 @@ namespace LLD
          *  Dump Key to Debug Console.
          *
          **/
-        void Print() const
-        {
-            debug::log(0,
-                "SectorKey(nState=", (uint32_t)nState,
-                ", nLength=", nLength,
-                ", nSectorFile=", nSectorFile,
-                ", nSectorSize=", nSectorSize,
-                ", nSectorStart=", nSectorStart,")");
-        }
+        void Print() const;
 
 
         /** Empty
@@ -182,10 +126,7 @@ namespace LLD
          *  Determines if the key is in an empty state.
          *
          **/
-        inline bool Empty() const
-        {
-            return (nState == STATE::EMPTY);
-        }
+        bool Empty() const;
 
 
         /** Ready
@@ -193,10 +134,7 @@ namespace LLD
          *  Determines if the key is in a ready state.
          *
          **/
-        inline bool Ready() const
-        {
-            return (nState == STATE::READY);
-        }
+        bool Ready() const;
 
 
         /** IsTxn
@@ -204,10 +142,7 @@ namespace LLD
          *  Determines if the key is in a transaction state.
          *
          **/
-        inline bool IsTxn() const
-        {
-            return (nState == STATE::TRANSACTION);
-        }
+        bool IsTxn() const;
 
     };
 }

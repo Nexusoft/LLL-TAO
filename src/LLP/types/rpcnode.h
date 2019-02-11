@@ -43,11 +43,29 @@ namespace LLP
 
         /** Default Constructor **/
         RPCNode()
-        : HTTPNode() {}
+        : HTTPNode()
+        {
+        }
+
 
         /** Constructor **/
         RPCNode( LLP::Socket SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false )
-        : HTTPNode(SOCKET_IN, DDOS_IN, isDDOS) {}
+        : HTTPNode(SOCKET_IN, DDOS_IN, isDDOS)
+        {
+        }
+
+
+        /** Constructor **/
+        RPCNode(LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false )
+        : HTTPNode(DDOS_IN, isDDOS)
+        {
+        }
+
+
+        /** Default Destructor **/
+        virtual ~RPCNode()
+        {
+        }
 
 
         /** Event

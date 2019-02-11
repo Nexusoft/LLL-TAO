@@ -157,7 +157,19 @@ namespace LLP
          *  @param[in] addr The address to find.
          *
          **/
-        bool Has(const BaseAddress &addr);
+        bool Has(const BaseAddress &addr) const;
+
+
+        /** GetState
+         *
+         *  Gets the Connect State of the address in the manager if it exists.
+         *
+         *  @param[in] addr The address to get the state from.
+         *
+         *  @return Returns the connect state of the address.
+         *
+         **/
+        uint8_t GetState(const BaseAddress &addr) const;
 
 
         /** SetLatency
@@ -216,20 +228,17 @@ namespace LLP
         void SetPort(uint16_t port);
 
 
-        /** GetThisAddress
+        /** Ban
          *
-         *  Returns the address for this node.
+         *  Blacklists the given address so it won't get selected. The default
+         *  behavior is to ban indefinitely.
          *
-         **/
-        BaseAddress GetThisAddress() const;
-
-
-        /** SetThisAddress
-         *
-         *  Sets the address for this node.
+         *  @param[in] addr The address to ban.
+         *  @param[in] banTime The time to ban for (or zero for indefinite ban)
          *
          **/
-         void SetThisAddress(const BaseAddress &addr);
+         void Ban(const BaseAddress &addr, uint32_t banTime = 0);
+
 
     private:
 
@@ -266,6 +275,16 @@ namespace LLP
         uint32_t total_count(const uint8_t flags);
 
 
+        /** remove_address
+         *
+         *  Helper function that removes the given address from the map.
+         *
+         *  @param[in] addr The address to remove if it exists.
+         *
+         **/
+         void remove_address(const BaseAddress &addr);
+
+
         /** to_string
          *
          *  Print the current state of the address manager.
@@ -274,10 +293,43 @@ namespace LLP
         std::string to_string();
 
 
-        LLD::AddressDB *pDatabase;
+        /** is_banned
+         *
+         *  Helper function to determine if an address identified by it's hash
+         *  is banned.
+         *
+         *  @param[in] hash The hash of the address to check for.
+         *
+         *  @return Returns true if address is banned, false otherwise.
+         *
+         **/
+        bool is_banned(uint64_t hash);
+
+
+        /** ban_count
+         *
+         *  Returns the total number of addresses currently banned.
+         *
+         **/
+        uint32_t ban_count();
+
+
+        /** update_state
+         *
+         *  Updates the state of the given Trust address.
+         *
+         *  @param[out] pAddr The pointer to the trust address to update.
+         *  @param[in] state The state the address should be updated to.
+         *
+         **/
+        void update_state(TrustAddress *pAddr, uint8_t state);
+
+
         std::map<uint64_t, TrustAddress> mapTrustAddress;
+        std::map<uint64_t, uint32_t> mapBanned;
         mutable std::mutex mut;
-        BaseAddress this_addr;
+        LLD::AddressDB *pDatabase;
+        uint16_t nPort;
     };
 }
 

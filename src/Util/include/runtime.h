@@ -14,10 +14,12 @@ ________________________________________________________________________________
 #ifndef NEXUS_UTIL_INCLUDE_RUNTIME_H
 #define NEXUS_UTIL_INCLUDE_RUNTIME_H
 
-#include <cinttypes>
+#include <cstdint>
 #include <thread>
 #include <chrono>
 #include <locale>
+
+#include <Util/include/debug.h>
 
 #define ARRAYLEN(array)     (sizeof(array)/sizeof((array)[0]))
 
@@ -223,9 +225,9 @@ namespace runtime
      *  Runs a command to the commandline.
      *
      **/
-    inline void command(std::string strCommand)
+    inline int command(std::string strCommand)
     {
-        ::system(strCommand.c_str());
+        return ::system(strCommand.c_str());
     }
 
 

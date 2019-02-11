@@ -53,6 +53,9 @@ namespace LLP
         /** The current channel mining for. */
         uint8_t nChannel;
 
+        /* Used to synchronize access to the nBestHeight / pBaseBlock*/
+        std::mutex BLOCK_MUTEX;
+
         enum
         {
             /** DATA PACKETS **/
@@ -116,7 +119,11 @@ namespace LLP
 
 
         /** Constructor **/
-        Miner( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false );
+        Miner(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
+
+
+        /** Constructor **/
+        Miner(DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Default Destructor **/

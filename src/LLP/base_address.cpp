@@ -344,6 +344,12 @@ namespace LLP
         return ToStringIP() + std::string(":") + ToStringPort();
     }
 
+    /* Returns the IP and Port in string format. (IP:Port) */
+    std::string BaseAddress::ToString() const
+    {
+        return ToStringIP() + std::string(":") + ToStringPort();
+    }
+
 
     /* Returns the IP in string format. */
     std::string BaseAddress::ToStringIP()
@@ -351,17 +357,28 @@ namespace LLP
         if (IsIPv4())
         {
             char dst[INET_ADDRSTRLEN];
-            inet_ntop(AF_INET, ip + 12, dst, INET_ADDRSTRLEN); //ip must be non-const in Windows, so requires method not be const
-
+            inet_ntop(AF_INET, ip + 12, dst, INET_ADDRSTRLEN);
             return std::string(dst);
         }
-        else
+
+        char dst[INET6_ADDRSTRLEN];
+        inet_ntop(AF_INET6, ip, dst, INET6_ADDRSTRLEN);
+        return std::string(dst);
+    }
+
+    /* Returns the IP in string format. */
+    std::string BaseAddress::ToStringIP() const
+    {
+        if (IsIPv4())
         {
-            char dst[INET6_ADDRSTRLEN];
-            inet_ntop(AF_INET6, ip, dst, INET6_ADDRSTRLEN); //ip must be non-const in Windows, so requires method not be const
-
+            char dst[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, ip + 12, dst, INET_ADDRSTRLEN);
             return std::string(dst);
         }
+
+        char dst[INET6_ADDRSTRLEN];
+        inet_ntop(AF_INET6, ip, dst, INET6_ADDRSTRLEN);
+        return std::string(dst);
     }
 
 
@@ -555,46 +572,4 @@ namespace LLP
         return (memory::compare(a.ip, b.ip, 16) < 0);
     }
 
-    bool BaseAddress::GetThisIP(BaseAddress &addr)
-    {
-        struct ifaddrs *ifAddrStruct = nullptr;
-        struct ifaddrs *ifa = nullptr;
-        //void *tmpAddrPtr=nullptr;
-        bool success = false;
-
-        getifaddrs(&ifAddrStruct);
-
-        for(ifa = ifAddrStruct; ifa != nullptr; ifa = ifa->ifa_next)
-        {
-            if(!ifa->ifa_addr)
-                continue;
-
-            if(ifa->ifa_addr->sa_family == AF_INET)
-            {
-                // this is a valid IP4 Address
-                //tmpAddrPtr = &((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
-                //char addressBuffer[INET_ADDRSTRLEN];
-                //inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
-                struct sockaddr_in *psockaddr_in = (struct sockaddr_in *)ifa->ifa_addr;
-
-                addr = BaseAddress(*psockaddr_in);
-                success = true;
-            }
-            else if(ifa->ifa_addr->sa_family == AF_INET6)
-            {
-                //tmpAddrPtr=&((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr;
-                //char addressBuffer[INET6_ADDRSTRLEN];
-                //inet_ntop(AF_INET6, tmpAddrPtr, addressBuffer, INET6_ADDRSTRLEN);
-
-                struct sockaddr_in6 *psockaddr_in6 = (struct sockaddr_in6 *)ifa->ifa_addr;
-                addr = BaseAddress(*psockaddr_in6);
-                success = true;
-
-            }
-        }
-        if(ifAddrStruct != nullptr)
-            freeifaddrs(ifAddrStruct);
-
-        return success;
-    }
 }

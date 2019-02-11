@@ -221,17 +221,23 @@ namespace LLP
         /** ToString
          *
          *  Returns the IP and Port in string format. (IP:Port)
+         *  NOTE: can't be const, for Windows compile, because calls ToStringIP()
          *
          **/
-        std::string ToString(); //can't be const, for Windows compile, because calls ToStringIP()
+        std::string ToString();
+        std::string ToString() const;
 
 
         /** ToStringIP
          *
          *  Returns the IP in string format.
+         *  NOTE: can't be const, for Windows compile, which defines
+         *        inet_ntop using void* and not const void*
          *
          **/
-        std::string ToStringIP(); //can't be const, for Windows compile, which defines inet_ntop using void* and not const void*
+        std::string ToStringIP();
+        std::string ToStringIP() const;
+
 
 
         /** ToStringPort
@@ -330,14 +336,6 @@ namespace LLP
         friend bool operator==(const BaseAddress& a, const BaseAddress& b);
         friend bool operator!=(const BaseAddress& a, const BaseAddress& b);
         friend bool operator<(const BaseAddress& a,  const BaseAddress& b);
-
-
-        /** GetThisIP
-         *
-         *  Finds the address for this computer.
-         *
-         **/
-        static bool GetThisIP(BaseAddress &addr);
 
 
 

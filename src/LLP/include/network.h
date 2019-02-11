@@ -15,24 +15,34 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_NETWORK_H
 
 #ifdef WIN32
+/* Windows specific defs and includes */
 
 #ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0600    //targeting minimum Windows Vista version for winsock2, etc.
+#define _WIN32_WINNT 0x0600    //minimum Windows Vista version for winsock2, etc.
 #endif
 
 #ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN 1  //prevents windows.h from including winsock.h and messing up winsock2.h definitions we use
+#define WIN32_LEAN_AND_MEAN 1  //prevents windows.h from including winsock.h and messing with winsock2.h definitions we use
 #endif
 
 #ifndef NOMINMAX
 #define NOMINMAX //prevents windows.h from including min/max and potentially interfering with std::min/std::max
 #endif
 
+#include <windows.h>
 #include <winsock2.h>
 #include <mswsock.h>
 #include <ws2tcpip.h>
 
+
+typedef int socklen_t;
+
+#define MSG_NOSIGNAL        0
+#define MSG_DONTWAIT        0
+
 #else
+/* Non-windows defs and includes */
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/fcntl.h>
@@ -44,28 +54,57 @@ ________________________________________________________________________________
 #include <poll.h>
 #include <ifaddrs.h>
 #include <errno.h>
-#endif
 
-
-#ifdef WIN32
-#define MSG_NOSIGNAL        0
-#define MSG_DONTWAIT        0
-typedef int socklen_t;
-#else
 typedef u_int SOCKET;
 
-#define GetLastError()   errno
-#define WSAEINVAL           EINVAL
-#define WSAEALREADY         EALREADY
-#define WSAEWOULDBLOCK      EWOULDBLOCK
-#define WSAEMSGSIZE         EMSGSIZE
-#define WSAEINTR            EINTR
-#define WSAEINPROGRESS      EINPROGRESS
+/* These alias winsock names to map them for non-Windows */
+#define WSAGetLastError()   errno
+#define closesocket(x)      close(x)
 #define WSAEADDRINUSE       EADDRINUSE
+#define WSAEALREADY         EALREADY
 #define WSAENOTSOCK         EBADF
+#define WSAEINPROGRESS      EINPROGRESS
+#define WSAEINTR            EINTR
+#define WSAEINVAL           EINVAL
+#define WSAEISCONN          EISCONN
+#define WSAEMSGSIZE         EMSGSIZE
+#define WSAEWOULDBLOCK      EWOULDBLOCK
 #define INVALID_SOCKET      (SOCKET)(~0)
 #define SOCKET_ERROR        -1
-#endif
 
+#endif // ifdef WIN32
+
+
+namespace LLP
+{
+    /** NetworkStartup
+     *
+     *  Perform any necessary processing to initialize the underlying network
+     *  resources such as sockets, etc.
+     *
+     *  Call this method before starting up any servers or related services.
+     *
+     *  This method specifically supports calling WSAStartup to initialize Windows sockets.
+     *
+     *  @return true if the network resource initialization was successful, false otherwise
+     *
+     **/
+    bool NetworkStartup();
+
+
+    /** NetworkShutdown
+     *
+     *  Perform any necessary processing to shutdown and release underlying network resources.
+     *
+     *  Call this method during system shutdown.
+     *
+     *  This method specifically supports calling WSACleanup to shutdown Windows sockets.
+     *
+     *  @return true if the network resource initialization was successful, false otherwise
+     *
+     **/
+    bool NetworkShutdown();
+
+}
 
 #endif
