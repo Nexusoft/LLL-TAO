@@ -14,11 +14,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_TEMPLATES_TRANSACTION_H
 #define NEXUS_LLD_TEMPLATES_TRANSACTION_H
 
+#include <LLC/types/uint1024.h>
+#include <cstdint>
 #include <map>
 #include <vector>
-
-#include <LLC/hash/SK.h>
-#include <Util/include/mutex.h>
 
 namespace LLD
 {
@@ -80,9 +79,11 @@ namespace LLD
         std::map< std::vector<uint8_t>, uint32_t > mapEraseData;
 
         /** Default Constructor **/
-        SectorTransaction()
-        {
-        }
+        SectorTransaction();
+
+
+        /** Default Destructor **/
+        ~SectorTransaction();
 
 
         /** EraseTransaction
@@ -94,17 +95,7 @@ namespace LLD
          *  @return True if the erase was successful, false otherwise.
          *
          **/
-        bool EraseTransaction(const std::vector<uint8_t> &vKey)
-        {
-            mapEraseData[vKey] = 0;
-            if(mapTransactions.count(vKey))
-                mapTransactions.erase(vKey);
-
-            if(mapOriginalData.count(vKey))
-                mapOriginalData.erase(vKey);
-
-            return true;
-        }
+        bool EraseTransaction(const std::vector<uint8_t> &vKey);
 
 
         /** GetHash
@@ -113,12 +104,7 @@ namespace LLD
          *  Transaction History Journal.
          *
          **/
-        uint512_t GetHash() const
-        {
-            uint512_t hashTransaction;
-
-            return hashTransaction;
-        }
+        uint512_t GetHash() const;
     };
 }
 

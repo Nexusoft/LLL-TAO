@@ -154,6 +154,8 @@ OBJS= \
     build/LLD_filemap.o \
     build/LLD_hashmap.o \
     build/LLD_hashtree.o \
+    build/LLD_key.o \
+    build/LLD_transaction.o \
 	build/LLP_base_address.o \
     build/LLP_base_connection.o \
     build/LLP_connection.o \

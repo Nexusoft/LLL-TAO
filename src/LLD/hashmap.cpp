@@ -12,6 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #include <LLD/keychain/hashmap.h>
+#include <LLD/include/enum.h>
+#include <LLD/include/version.h>
 
 #include <Util/include/filesystem.h>
 #include <Util/include/debug.h>

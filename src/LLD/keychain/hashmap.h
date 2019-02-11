@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <LLD/templates/key.h>
 #include <LLD/cache/template_lru.h>
+#include <LLD/include/enum.h>
 
 #include <cstdint>
 #include <fstream>

@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/keychain/hashtree.h>
 #include <LLD/templates/key.h>
+#include <LLD/include/enum.h>
+#include <LLD/include/version.h>
 
 #include <Util/include/filesystem.h>
 #include <Util/include/debug.h>

@@ -13,8 +13,12 @@ ________________________________________________________________________________
 
 #include <LLD/keychain/filemap.h>
 #include <LLD/templates/key.h>
+#include <LLD/include/enum.h>
+#include <LLD/include/version.h>
+
 #include <Util/include/filesystem.h>
 #include <Util/include/debug.h>
+#include <Util/include/hex.h>
 
 namespace LLD
 {
