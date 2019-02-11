@@ -129,7 +129,7 @@ namespace TAO
         {
             /* Read leger DB for duplicate block. */
             if(LLD::legDB->HasBlock(GetHash()))
-                return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20));
+                return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20), " height ", nHeight);
 
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();

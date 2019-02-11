@@ -73,9 +73,6 @@ namespace LLD
         /** Index items to commit. */
         std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapIndex;
 
-        /** Original Data that is retained when new one is added. **/
-        std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapOriginalData;
-
         /** Vector to hold the keys of transactions to be erased. **/
         std::map< std::vector<uint8_t>, uint32_t > mapEraseData;
 
@@ -100,8 +97,11 @@ namespace LLD
             if(mapTransactions.count(vKey))
                 mapTransactions.erase(vKey);
 
-            if(mapOriginalData.count(vKey))
-                mapOriginalData.erase(vKey);
+            if(mapKeychain.count(vKey))
+                mapKeychain.erase(vKey);
+
+            if(mapIndex.count(vKey))
+                mapIndex.erase(vKey);
 
             return true;
         }
