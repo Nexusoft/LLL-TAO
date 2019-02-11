@@ -94,8 +94,6 @@ namespace LLP
     /* Connects the socket to an external address */
     bool Socket::Attempt(const BaseAddress &addrDest, uint32_t nTimeout)
     {
-        BaseAddress addrDestCopy = addrDest; //non-const copy to use with ToString (which is non-const)
-
         /* Create the Socket Object (Streaming TCP/IP). */
         if(addrDest.IsIPv4())
             fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -125,7 +123,7 @@ namespace LLP
             /* Copy in the new address. */
             addr = BaseAddress(sockaddr);
 
-            /* Connect for non-blocking socket should return SOCKET_ERROR (with last error WSAEWOULDBLOCK normally). 
+            /* Connect for non-blocking socket should return SOCKET_ERROR (with last error WSAEWOULDBLOCK normally).
              * Then we have to use select below to check if connection was made.
              * If it doesn't return that, it means it connected immediately and connection was successful. (very unusual, but possible)
              */
@@ -149,7 +147,9 @@ namespace LLP
             /* We would expect to get WSAEWOULDBLOCK here in the normal case of attempting a connection.
              * WSAEINVAL is here because some legacy version of winsock uses it
              */
-            if (WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAEINPROGRESS || WSAGetLastError() == WSAEINVAL)
+            nError = WSAGetLastError();
+
+            if (nError == WSAEWOULDBLOCK || nError == WSAEINPROGRESS || nError == WSAEINVAL)
             {
                 struct timeval timeout;
                 timeout.tv_sec  = nTimeout / 1000;
@@ -168,28 +168,22 @@ namespace LLP
                 /* If the connection attempt timed out with select. */
                 if (nRet == 0)
                 {
-                    debug::log(3, FUNCTION, "connection timeout ", addrDestCopy.ToString(), "...");
+                    debug::log(3, FUNCTION, "connection timeout ", addrDest.ToString(), "...");
 
                     if(fd != INVALID_SOCKET)
-                    {
                          closesocket(fd);
-
-
-
-                    }
 
                     return false;
                 }
 
                 /* If the select failed. */
-                if (nRet == SOCKET_ERROR)
+                else if (nRet == SOCKET_ERROR)
                 {
-                    debug::log(3, FUNCTION, "select failed ", addrDestCopy.ToString(), " (",  WSAGetLastError(), ")");
+                    debug::log(3, FUNCTION, "select failed ", addrDest.ToString(), " (",  WSAGetLastError(), ")");
+
 
                     if(fd != INVALID_SOCKET)
-                    {
                         closesocket(fd);
-                    }
 
                     return false;
                 }
@@ -202,7 +196,7 @@ namespace LLP
                 if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
     #endif
                 {
-                    debug::log(3, FUNCTION, "get options failed ", addrDestCopy.ToString(), " (", WSAGetLastError(), ")");
+                    debug::log(3, FUNCTION, "get options failed ", addrDest.ToString(), " (", WSAGetLastError(), ")");
 
                     if(fd != INVALID_SOCKET)
                     {
@@ -215,7 +209,7 @@ namespace LLP
                 /* If there are no socket options set. TODO: Remove preprocessors for cross platform sockets. */
                 if (nRet != 0)
                 {
-                    debug::log(3, FUNCTION, "failed after select ", addrDestCopy.ToString(), " (", nRet, ")");
+                    debug::log(3, FUNCTION, "failed after select ", addrDest.ToString(), " (", nRet, ")");
 
                     if(fd != INVALID_SOCKET)
                     {
@@ -225,9 +219,9 @@ namespace LLP
                     return false;
                 }
             }
-            else if (WSAGetLastError() != WSAEISCONN)
+            else if (nError != WSAEISCONN)
             {
-                debug::log(3, FUNCTION, "connect failed ", addrDestCopy.ToString(), " (", WSAGetLastError(), ")");
+                debug::log(3, FUNCTION, "connect failed ", addrDest.ToString(), " (", nError, ")");
 
                 if(fd != INVALID_SOCKET)
                 {

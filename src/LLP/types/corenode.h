@@ -51,8 +51,15 @@ namespace LLP
         }
 
         /** Constructor **/
-        CoreNode( LLP::Socket SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false )
-        : HTTPNode( SOCKET_IN, DDOS_IN )
+        CoreNode(const LLP::Socket &SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false)
+        : HTTPNode(SOCKET_IN, DDOS_IN, isDDOS)
+        {
+        }
+
+
+        /** Constructor **/
+        CoreNode(LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false)
+        : HTTPNode(DDOS_IN, isDDOS)
         {
         }
 

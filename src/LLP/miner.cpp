@@ -46,7 +46,7 @@ namespace LLP
 
 
     /** Constructor **/
-    Miner::Miner( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
+    Miner::Miner(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : Connection(SOCKET_IN, DDOS_IN, isDDOS)
     , mapBlocks()
     , pMiningKey(nullptr)
@@ -59,6 +59,22 @@ namespace LLP
         pBaseBlock = new Legacy::LegacyBlock();
         pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
     }
+
+
+    /** Constructor **/
+    Miner::Miner(DDOS_Filter* DDOS_IN, bool isDDOS)
+    : Connection(DDOS_IN, isDDOS)
+    , mapBlocks()
+    , pMiningKey(nullptr)
+    , pBaseBlock(nullptr)
+    , nBestHeight(0)
+    , nSubscribed(0)
+    , nChannel(0)
+    {
+        pBaseBlock = new Legacy::LegacyBlock();
+        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
+    }
+
 
     /** Default Destructor **/
     Miner::~Miner()
@@ -151,7 +167,7 @@ namespace LLP
                 if(!check_best_height())
                 {
                     respond(NEW_ROUND);
-                    
+
                     LOCK(BLOCK_MUTEX);
 
                     if(pBaseBlock->IsNull())
@@ -163,17 +179,17 @@ namespace LLP
                     {
                         uint32_t s = static_cast<uint32_t>(mapBlocks.size());
 
-                        /*  make a copy of the base block before making the hash  unique for this requst*/ 
+                        /*  make a copy of the base block before making the hash  unique for this requst*/
                         Legacy::LegacyBlock new_block = *pBaseBlock;
 
 
                         /* We need to make the block hash unique for each subscribed miner so that they are not
                             duplicating their work.  To achieve this we take a copy of pBaseblock and then modify
-                            the scriptSig to be unique for each subscriber, before rebuilding the merkle tree. 
-                                
+                            the scriptSig to be unique for each subscriber, before rebuilding the merkle tree.
+
                             We need to drop into this for loop at least once to set the unique hash, but we will iterate
-                            indefinitely for the prime channel until the generated hash meets the min prime origins 
-                            and is less than 1024 bits*/ 
+                            indefinitely for the prime channel until the generated hash meets the min prime origins
+                            and is less than 1024 bits*/
                         for(uint32_t i = s; ; ++i)
                         {
                             new_block.vtx[0].vin[0].scriptSig = (Legacy::Script() <<  (uint64_t)((nSubscribedLoop + i + 1) * 513513512151));
@@ -357,17 +373,17 @@ namespace LLP
 
                 LOCK(BLOCK_MUTEX);
 
-                /*  make a copy of the base block before making the hash  unique for this requst*/ 
+                /*  make a copy of the base block before making the hash  unique for this requst*/
                 Legacy::LegacyBlock new_block = *pBaseBlock;
 
 
                 /* We need to make the block hash unique for each subsribed miner so that they are not
                     duplicating their work.  To achieve this we take a copy of pBaseblock and then modify
-                    the scriptSig to be unique for each subscriber, before rebuilding the merkle tree. 
-                        
+                    the scriptSig to be unique for each subscriber, before rebuilding the merkle tree.
+
                     We need to drop into this for loop at least once to set the unique hash, but we will iterate
-                    indefinitely for the prime channel until the generated hash meets the min prime origins 
-                    and is less than 1024 bits*/ 
+                    indefinitely for the prime channel until the generated hash meets the min prime origins
+                    and is less than 1024 bits*/
                 for(uint32_t i = s; ; ++i)
                 {
                     new_block.vtx[0].vin[0].scriptSig = (Legacy::Script() <<  (uint64_t)((i+1) * 513513512151));

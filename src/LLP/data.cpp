@@ -101,8 +101,7 @@ namespace LLP
     bool DataThread<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort, DDOS_Filter* DDOS)
     {
        /* Create a new pointer on the heap. */
-       Socket SOCKET;
-       ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
+       ProtocolType* node = new ProtocolType(DDOS, fDDOS);
 
 
        if(!node->Connect(strAddress, nPort))

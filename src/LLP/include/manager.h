@@ -306,6 +306,24 @@ namespace LLP
         bool is_banned(uint64_t hash);
 
 
+        /** ban_count
+         *
+         *  Returns the total number of addresses currently banned.
+         *
+         **/
+        uint32_t ban_count();
+
+
+        /** update_state
+         *
+         *  Updates the state of the given Trust address.
+         *
+         *  @param[out] pAddr The pointer to the trust address to update.
+         *  @param[in] state The state the address should be updated to.
+         *
+         **/
+        void update_state(TrustAddress *pAddr, uint8_t state);
+
 
         std::map<uint64_t, TrustAddress> mapTrustAddress;
         std::map<uint64_t, uint32_t> mapBanned;

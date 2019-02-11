@@ -62,8 +62,15 @@ namespace LLP
         }
 
         /** Constructor **/
-        HTTPNode( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
-        : BaseConnection<HTTPPacket>( SOCKET_IN, DDOS_IN )
+        HTTPNode(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false)
+        : BaseConnection<HTTPPacket>(SOCKET_IN, DDOS_IN, isDDOS)
+        {
+        }
+
+
+        /** Constructor **/
+        HTTPNode(DDOS_Filter* DDOS_IN, bool isDDOS = false)
+        : BaseConnection<HTTPPacket>(DDOS_IN, isDDOS)
         {
         }
 
@@ -137,7 +144,7 @@ namespace LLP
                     return;
 
                 /* Allow up to 10 iterations to parse the header. */
-                for(int i = 0; i < 10; i++)
+                for(int i = 0; i < 10; ++i)
                 {
                     /* Read content if there is some. */
                     if(INCOMING.fHeader)
