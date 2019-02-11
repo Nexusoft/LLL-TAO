@@ -183,6 +183,10 @@ namespace LLP
                 /* Get the total connections. */
                 nSize = static_cast<uint32_t>(CONNECTIONS.size());
 
+                /* We should have connections, as predicate of releasing condition wait. This is a precaution, checking after getting MUTEX lock */
+                if (nSize == 0)
+                    continue;
+
                 /* Poll the sockets. */
 #ifdef WIN32
                 /* Windows returns intermittent SOCKET_ERROR with WSAEINVAL (bad parameters) if you pass pointer to connections
