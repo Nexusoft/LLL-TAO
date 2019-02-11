@@ -186,9 +186,10 @@ namespace LLP
                 /* Poll the sockets. */
 #ifdef WIN32
                 /* Windows returns intermittent SOCKET_ERROR with WSAEINVAL (bad parameters) if you pass pointer to connections
-                 * so copy fd data into an array of only pollfd struct and pass that instead
+                 * so copy fd data and only pass pollfd struct
                  */
-                struct pollfd pollfds[nSize];
+                std::vector<pollfd> pollfds;
+                pollfds.resize(nSize);
                 for (uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
                 {
                     pollfds[nIndex].fd = CONNECTIONS[nIndex]->fd;
