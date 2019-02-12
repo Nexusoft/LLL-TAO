@@ -608,7 +608,7 @@ namespace Legacy
                 txtype += "genesis";
             else
                 txtype += "user";
-        str += debug::strprintf("%s %s", GetHash().ToString().c_str(), txtype.c_str());
+        str += debug::safe_printstr(GetHash().ToString(), " ", txtype);
         return str;
     }
 
@@ -618,13 +618,13 @@ namespace Legacy
     {
         std::string str;
         str += IsCoinBase() ? "Coinbase" : (IsGenesis() ? "Genesis" : (IsTrust() ? "Trust" : "Transaction"));
-        str += debug::strprintf("(hash=%s, nTime=%d, ver=%d, vin.size=%d, vout.size=%d, nLockTime=%d)\n",
-            GetHash().ToString().substr(0,10).c_str(),
-            nTime,
-            nVersion,
-            vin.size(),
-            vout.size(),
-            nLockTime);
+        str += debug::safe_printstr(
+            "(hash=", GetHash().ToString().substr(0,10),
+            ", nTime=", nTime,
+            ", ver=", nVersion,
+            ", vin.size=", vin.size(),
+            ", vout.size=", vout.size(),
+            ", nLockTime=", nLockTime, ")\n");
 
         for (const auto& txin : vin)
             str += "    " + txin.ToString() + "\n";

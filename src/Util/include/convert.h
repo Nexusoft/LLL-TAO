@@ -35,7 +35,7 @@ namespace convert
      **/
     inline std::string i64tostr(int64_t n)
     {
-        return debug::strprintf("%" PRI64d, n);
+        return debug::safe_printstr(n);
     }
 
 
@@ -50,7 +50,7 @@ namespace convert
      **/
     inline std::string itostr(int n)
     {
-        return debug::strprintf("%d", n);
+        return debug::safe_printstr(n);
     }
 
 

@@ -1594,7 +1594,7 @@ namespace Legacy
             return std::string("Invalid amount");
 
         if (nValue < MIN_TXOUT_AMOUNT)
-            return debug::strprintf("Send amount less than minimum of %s NXS", FormatMoney(MIN_TXOUT_AMOUNT).c_str());
+            return debug::safe_printstr("Send amount less than minimum of ", FormatMoney(MIN_TXOUT_AMOUNT), " NXS");
 
         /* Validate balance supports value + fees */
         if (nValue + MIN_TX_FEE > GetBalance())
@@ -1639,9 +1639,8 @@ namespace Legacy
                  * Really should not get this because of initial check at start of function. Could only happen
                  * if it calculates an additional fee such that nFeeRequired > MIN_TX_FEE
                  */
-                strError = debug::strprintf(
-                    "This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  ",
-                    FormatMoney(nFeeRequired).c_str());
+                strError = debug::safe_printstr(
+                    "This transaction requires a transaction fee of at least ", FormatMoney(nFeeRequired), " because of its amount, complexity, or use of recently received funds  ");
             }
             else
             {
