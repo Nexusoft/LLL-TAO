@@ -485,7 +485,7 @@ namespace Legacy
         if (nChannel == 0)
         {
             debug::log(1, FUNCTION, "Nexus Stake Minter: new nPoS channel block found at unified time ", timestampString);
-            debug::log(1, " blockHash: ", blockHash.ToString().substr(0, 30), " block height: " block.nHeight);
+            debug::log(1, " blockHash: ", blockHash.ToString().substr(0, 30), " block height: ", block.nHeight);
         }
         else if (nChannel == 1)
         {

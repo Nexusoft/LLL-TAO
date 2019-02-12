@@ -14,7 +14,8 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 #include <Util/include/convert.h>
 #include <Util/include/runtime.h>
-#include <Util/include/strlcpy.h>
+#include <cstring>
+#include <cmath>
 
 namespace config
 {
@@ -59,7 +60,11 @@ namespace config
         for (int i = 1; i < argc; ++i)
         {
             char psz[10000];
-            strlcpy(psz, argv[i], sizeof(psz));
+
+            uint16_t len = static_cast<uint16_t>(std::strlen(argv[i]));
+            len = std::min(len, static_cast<uint16_t>(10000));
+            std::copy((uint8_t *)argv[i], (uint8_t *)argv[i] + len, psz);
+
             char* pszValue = (char*)"";
             if (strchr(psz, '='))
             {
