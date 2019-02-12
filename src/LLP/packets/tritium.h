@@ -64,7 +64,7 @@ namespace LLP
     class TritiumPacket
     {
     public:
-        uint16_t      MESSAGE;
+        uint16_t       MESSAGE;
         uint32_t	    LENGTH;
         uint32_t	    CHECKSUM;
 
