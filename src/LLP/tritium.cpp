@@ -154,16 +154,23 @@ namespace LLP
                     uint64_t nSession;
                     ssPacket >> nSession;
 
+                    /* Get your address. */
+                    BaseAddress addr;
+                    ssPacket >> addr;
+
                     /* Check for a connect to self. */
                     if(nSession == TritiumNode::nSessionID)
                     {
                         debug::log(0, FUNCTION, "connected to self");
+
+                        /* Cache self-address in the banned list of the Address Manager. */
+                        if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
+                            TRITIUM_SERVER->pAddressManager->Ban(addr);
+
                         return false;
                     }
 
-                    /* Get your address. */
-                    BaseAddress addr;
-                    ssPacket >> addr;
+
 
                     /* Send version message if connection is inbound. */
                     if(!fOUTGOING)

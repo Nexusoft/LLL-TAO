@@ -54,11 +54,17 @@ namespace LLP
         uint32_t DDOS_rSCORE;
         uint32_t DDOS_cSCORE;
 
+
         /* Vector to store Connections. */
         std::vector<ProtocolType *> CONNECTIONS;
 
+
         /* The condition for thread sleeping. */
         std::condition_variable CONDITION;
+
+
+        /* Empty protocol type. */
+
 
         /* Data Thread. */
         std::thread DATA_THREAD;

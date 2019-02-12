@@ -151,17 +151,17 @@ namespace debug
         if(config::GetArg("-verbose", 0) < nLevel)
             return;
 
-        LOCK(DEBUG_MUTEX);
-
-        /* Get the debug string. */
+        /* Get the debug string and log file. */
         std::string debug = safe_printstr(args...);
+        std::string pathDebug = config::GetDataDir() + "debug.log";
+        std::ofstream ssFile(pathDebug, std::ios::app);
+
+        LOCK(DEBUG_MUTEX);
 
         /* Dump it to the console. */
         std::cout << debug << std::endl;
 
         /* Write it to the debug file. */
-        std::string pathDebug = config::GetDataDir() + "debug.log";
-        std::ofstream ssFile(pathDebug, std::ios::app);
         ssFile << debug << std::endl;
     }
 

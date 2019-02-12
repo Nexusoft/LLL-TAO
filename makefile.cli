@@ -151,6 +151,13 @@ OBJS= \
 	build/LLC_key.o \
 	build/LLC_random.o \
 	build/LLD_global.o \
+    build/LLD_filemap.o \
+    build/LLD_hashmap.o \
+    build/LLD_hashtree.o \
+    build/LLD_key.o \
+    build/LLD_transaction.o \
+    build/LLD_binary_lru.o \
+    build/LLD_sector.o \
 	build/LLP_base_address.o \
     build/LLP_base_connection.o \
     build/LLP_connection.o \
@@ -244,7 +251,7 @@ OBJS= \
 	build/Util_filesystem.o \
     build/Util_memory.o \
 	build/Util_signals.o \
-	build/Util_version.o 
+	build/Util_version.o
 
 ###############################################################################
 ifeq ($(detected_OS),Windows)

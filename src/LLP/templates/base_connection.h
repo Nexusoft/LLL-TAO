@@ -35,9 +35,6 @@ namespace LLP
     {
     protected:
 
-        /** Mutex for thread synchronization. **/
-        mutable std::mutex MUTEX;
-
 
         /** Event
          *
@@ -93,7 +90,7 @@ namespace LLP
 
         /** Build Base Connection with all Parameters. **/
         BaseConnection(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false);
-
+        BaseConnection(DDOS_Filter* DDOS_IN, bool isDDOS = false, bool fOutgoing = false);
 
         /* Default destructor */
         virtual ~BaseConnection();

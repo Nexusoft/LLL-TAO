@@ -155,15 +155,17 @@ namespace LLP
             /* Handle sending the pings to remote node.. */
             if(nLastPing + 15 < runtime::unifiedtimestamp())
             {
-                uint64_t nRequestID = 0;
-                RAND_bytes((uint8_t*)&nRequestID, sizeof(nRequestID));
+                uint64_t nNonce = 0;
+                RAND_bytes((uint8_t*)&nNonce, sizeof(nNonce));
 
                 nLastPing = runtime::unifiedtimestamp();
 
-                mapLatencyTracker.emplace(nRequestID, runtime::timer());
-                mapLatencyTracker[nRequestID].Start();
 
-                PushMessage("ping", nRequestID);
+                mapLatencyTracker.insert(std::pair<uint64_t, runtime::timer>(nNonce, runtime::timer()));
+                mapLatencyTracker[nNonce].Start();
+                            /* Reset the timeouts. */
+
+                PushMessage("ping", nNonce);
 
                 /* Rebroadcast transactions. */
                 Legacy::Wallet::GetInstance().ResendWalletTransactions();
@@ -173,10 +175,11 @@ namespace LLP
             /* Unreliabilitiy re-requesting (max time since getblocks) */
             if(config::GetBoolArg("-fastsync")
             && TAO::Ledger::ChainState::Synchronizing()
+            && addrFastSync.ToStringIP() == GetAddress().ToStringIP()
+            && nLastTimeReceived + 30 < runtime::timestamp()
             && nLastGetBlocks + 30 < runtime::timestamp())
             {
-                /* Keep too many threads from re-executing this at once. */
-                LOCK(PROCESSING_MUTEX);
+                debug::error(FUNCTION, "fast sync node event timeout");
 
                 /* Normal case of asking for a getblocks inventory message. */
                 LegacyNode* pBest = LEGACY_SERVER->GetConnection(addrFastSync);
@@ -287,6 +290,11 @@ namespace LLP
             if(nSession == LegacyNode::nSessionID)
             {
                 debug::log(0, FUNCTION, "connected to self");
+
+                /* Cache self-address in the banned list of the Address Manager. */
+                if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
+                    LEGACY_SERVER->pAddressManager->Ban(addrMe);
+
                 return false;
             }
 
@@ -532,7 +540,7 @@ namespace LLP
             {
                 /* Fast sync should switch to new node if time since request is over average seconds */
                 if(nLastGetBlocks + (LegacyNode::nFastSyncAverage + 5) < runtime::timestamp()
-                || nLastTimeReceived + LegacyNode::nFastSyncAverage < runtime::timestamp())
+                || nLastTimeReceived + (LegacyNode::nFastSyncAverage + 5) < runtime::timestamp())
                 {
                     /* Normal case of asking for a getblocks inventory message. */
                     LegacyNode* pnode = LEGACY_SERVER->GetConnection(addrFastSync);
@@ -760,21 +768,17 @@ namespace LLP
             if(!TAO::Ledger::ChainState::Synchronizing())
                 pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
             else if(!config::GetBoolArg("-fastsync")
-                 || nLastGetBlocks + (LegacyNode::nFastSyncAverage + 5) < runtime::timestamp()
-                 || nLastTimeReceived + LegacyNode::nFastSyncAverage < runtime::timestamp())
+                 || (nLastGetBlocks + (LegacyNode::nFastSyncAverage + 5) < runtime::timestamp()
+                 && nLastTimeReceived + (LegacyNode::nFastSyncAverage + 5) < runtime::timestamp()
+                 && pnode->GetAddress().ToStringIP() == addrFastSync.ToStringIP()))
             {
-                /* Fast sync or the same fast sync node. */
-                if(!config::GetBoolArg("-fastsync")
-                || pnode->GetAddress().ToStringIP() == addrFastSync.ToStringIP())
+                /* Normal case of asking for a getblocks inventory message. */
+                LegacyNode* pBest = LEGACY_SERVER->GetConnection(addrFastSync);
+                if(pBest)
                 {
-                    /* Normal case of asking for a getblocks inventory message. */
-                    LegacyNode* pBest = LEGACY_SERVER->GetConnection(addrFastSync);
-                    if(pBest)
-                    {
-                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+                    pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
 
-                        return true;
-                    }
+                    return true;
                 }
             }
 
@@ -810,22 +814,15 @@ namespace LLP
                 return false;
             }
 
-            /* Reset the consecutive accepts. */
-            pnode->nConsecutiveAccept = 0;
-
             return true;
         }
         else
         {
-            /* Increment the consecutive accepts. */
-            ++pnode->nConsecutiveAccept;
-
             /* Update the last time received. */
             nLastTimeReceived = runtime::timestamp();
 
             /* Reset the consecutive failures. */
-            if(pnode->nConsecutiveAccept > 5)
-                pnode->nConsecutiveFails = 0;
+            pnode->nConsecutiveFails = 0;
         }
 
         /* Process orphan if found. */

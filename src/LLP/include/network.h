@@ -18,7 +18,7 @@ ________________________________________________________________________________
 /* Windows specific defs and includes */
 
 #ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0600    //minimum Windows Vista version for winsock2, etc. 
+#define _WIN32_WINNT 0x0600    //minimum Windows Vista version for winsock2, etc.
 #endif
 
 #ifndef WIN32_LEAN_AND_MEAN
@@ -58,7 +58,7 @@ typedef int socklen_t;
 typedef u_int SOCKET;
 
 /* These alias winsock names to map them for non-Windows */
-#define WSAGetLastError()   errno       
+#define WSAGetLastError()   errno
 #define closesocket(x)      close(x)
 #define WSAEADDRINUSE       EADDRINUSE
 #define WSAEALREADY         EALREADY
@@ -78,7 +78,7 @@ typedef u_int SOCKET;
 namespace LLP
 {
     /** NetworkStartup
-     * 
+     *
      *  Perform any necessary processing to initialize the underlying network
      *  resources such as sockets, etc.
      *
@@ -93,7 +93,7 @@ namespace LLP
 
 
     /** NetworkShutdown
-     * 
+     *
      *  Perform any necessary processing to shutdown and release underlying network resources.
      *
      *  Call this method during system shutdown.

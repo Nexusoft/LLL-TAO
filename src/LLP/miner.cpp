@@ -38,6 +38,7 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
+    , BLOCK_MUTEX()
     {
         pBaseBlock = new Legacy::LegacyBlock();
         pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
@@ -45,8 +46,24 @@ namespace LLP
 
 
     /** Constructor **/
-    Miner::Miner( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
+    Miner::Miner(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : Connection(SOCKET_IN, DDOS_IN, isDDOS)
+    , mapBlocks()
+    , pMiningKey(nullptr)
+    , pBaseBlock(nullptr)
+    , nBestHeight(0)
+    , nSubscribed(0)
+    , nChannel(0)
+    , BLOCK_MUTEX()
+    {
+        pBaseBlock = new Legacy::LegacyBlock();
+        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
+    }
+
+
+    /** Constructor **/
+    Miner::Miner(DDOS_Filter* DDOS_IN, bool isDDOS)
+    : Connection(DDOS_IN, isDDOS)
     , mapBlocks()
     , pMiningKey(nullptr)
     , pBaseBlock(nullptr)
@@ -57,6 +74,7 @@ namespace LLP
         pBaseBlock = new Legacy::LegacyBlock();
         pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
     }
+
 
     /** Default Destructor **/
     Miner::~Miner()
@@ -150,6 +168,8 @@ namespace LLP
                 {
                     respond(NEW_ROUND);
 
+                    LOCK(BLOCK_MUTEX);
+
                     if(pBaseBlock->IsNull())
                         return;
 
@@ -159,17 +179,17 @@ namespace LLP
                     {
                         uint32_t s = static_cast<uint32_t>(mapBlocks.size());
 
-                        /*  make a copy of the base block before making the hash  unique for this requst*/ 
+                        /*  make a copy of the base block before making the hash  unique for this requst*/
                         Legacy::LegacyBlock new_block = *pBaseBlock;
 
 
                         /* We need to make the block hash unique for each subscribed miner so that they are not
                             duplicating their work.  To achieve this we take a copy of pBaseblock and then modify
-                            the scriptSig to be unique for each subscriber, before rebuilding the merkle tree. 
-                                
+                            the scriptSig to be unique for each subscriber, before rebuilding the merkle tree.
+
                             We need to drop into this for loop at least once to set the unique hash, but we will iterate
-                            indefinitely for the prime channel until the generated hash meets the min prime origins 
-                            and is less than 1024 bits*/ 
+                            indefinitely for the prime channel until the generated hash meets the min prime origins
+                            and is less than 1024 bits*/
                         for(uint32_t i = s; ; ++i)
                         {
                             new_block.vtx[0].vin[0].scriptSig = (Legacy::Script() <<  (uint64_t)((nSubscribedLoop + i + 1) * 513513512151));
@@ -346,21 +366,24 @@ namespace LLP
             /* Get a new block for the miner. */
             case GET_BLOCK:
             {
-                
                 uint1024_t proof_hash;
                 uint32_t s = static_cast<uint32_t>(mapBlocks.size());
 
-                /*  make a copy of the base block before making the hash  unique for this requst*/ 
+                check_best_height();
+
+                LOCK(BLOCK_MUTEX);
+
+                /*  make a copy of the base block before making the hash  unique for this requst*/
                 Legacy::LegacyBlock new_block = *pBaseBlock;
 
 
                 /* We need to make the block hash unique for each subsribed miner so that they are not
                     duplicating their work.  To achieve this we take a copy of pBaseblock and then modify
-                    the scriptSig to be unique for each subscriber, before rebuilding the merkle tree. 
-                        
+                    the scriptSig to be unique for each subscriber, before rebuilding the merkle tree.
+
                     We need to drop into this for loop at least once to set the unique hash, but we will iterate
-                    indefinitely for the prime channel until the generated hash meets the min prime origins 
-                    and is less than 1024 bits*/ 
+                    indefinitely for the prime channel until the generated hash meets the min prime origins
+                    and is less than 1024 bits*/
                 for(uint32_t i = s; ; ++i)
                 {
                     new_block.vtx[0].vin[0].scriptSig = (Legacy::Script() <<  (uint64_t)((i+1) * 513513512151));
@@ -406,45 +429,48 @@ namespace LLP
             /* Submit a block using the merkle root as the key. */
             case SUBMIT_BLOCK:
             {
-                /* Get the merkle root. */
-                uint512_t hashMerkleRoot;
-                hashMerkleRoot.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
-
-                /* Check that the block exists. */
-                if(!mapBlocks.count(hashMerkleRoot))
                 {
-                    /* If not found, send rejected message. */
-                    respond(BLOCK_REJECTED);
+                    LOCK(BLOCK_MUTEX);
+                    /* Get the merkle root. */
+                    uint512_t hashMerkleRoot;
+                    hashMerkleRoot.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
 
-                    debug::log(2, FUNCTION, "***** Mining LLP: Block Not Found ", hashMerkleRoot.ToString().substr(0, 20));
+                    /* Check that the block exists. */
+                    if(!mapBlocks.count(hashMerkleRoot))
+                    {
+                        /* If not found, send rejected message. */
+                        respond(BLOCK_REJECTED);
 
-                    return true;
-                }
+                        debug::log(2, FUNCTION, "***** Mining LLP: Block Not Found ", hashMerkleRoot.ToString().substr(0, 20));
 
-                /* Create the pointer to the heap. */
-                Legacy::LegacyBlock *pBlock = &mapBlocks[hashMerkleRoot];
-                pBlock->nNonce = bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
-                pBlock->UpdateTime();
-                pBlock->print();
+                        return true;
+                    }
 
-                /* Sign the submitted block */
-                if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
-                {
-                    respond(BLOCK_REJECTED);
+                    /* Create the pointer to the heap. */
+                    Legacy::LegacyBlock *pBlock = &mapBlocks[hashMerkleRoot];
+                    pBlock->nNonce = bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
+                    pBlock->UpdateTime();
+                    pBlock->print();
 
-                    debug::log(2, "***** Mining LLP: Unable to Sign block ", hashMerkleRoot.ToString().substr(0, 20));
+                    /* Sign the submitted block */
+                    if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
+                    {
+                        respond(BLOCK_REJECTED);
 
-                    return true;
-                }
+                        debug::log(2, "***** Mining LLP: Unable to Sign block ", hashMerkleRoot.ToString().substr(0, 20));
 
-                /* Check the Proof of Work for submitted block. */
-                if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::GetInstance()))
-                {
-                    respond(BLOCK_REJECTED);
+                        return true;
+                    }
 
-                    debug::log(2, "***** Mining LLP: Invalid Work for block ", hashMerkleRoot.ToString().substr(0, 20));
+                    /* Check the Proof of Work for submitted block. */
+                    if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::GetInstance()))
+                    {
+                        respond(BLOCK_REJECTED);
 
-                    return true;
+                        debug::log(2, "***** Mining LLP: Invalid Work for block ", hashMerkleRoot.ToString().substr(0, 20));
+
+                        return true;
+                    }
                 }
 
                 /* Clear map on new block found. */
@@ -529,12 +555,23 @@ namespace LLP
      *  the block map if the height is outdated. */
     bool Miner::check_best_height()
     {
-        if(nBestHeight != TAO::Ledger::ChainState::nBestHeight || pBaseBlock->IsNull())
-        {
-            debug::log(2, FUNCTION, "Mining best height changed.  Creating new base block.");
+        LOCK(BLOCK_MUTEX);
 
+        bool fHeightChanged = false;
+
+        if(nBestHeight != TAO::Ledger::ChainState::nBestHeight)
+        {
             clear_map();
             nBestHeight = TAO::Ledger::ChainState::nBestHeight;
+
+            debug::log(2, FUNCTION, "Mining best height changed to ", nBestHeight);
+
+            fHeightChanged = true;
+        }
+
+        if( fHeightChanged || pBaseBlock->IsNull() )
+        {
+            debug::log(2, FUNCTION, "Creating new base block.");
 
             /*create a new base block */
             if(!Legacy::CreateLegacyBlock(*pMiningKey, nChannel, 1, *pBaseBlock))
@@ -542,11 +579,9 @@ namespace LLP
                 debug::error(FUNCTION, "Failed to create a new block.");
                 return false;
             }
-
-            return true;
         }
 
-        return false;
+        return fHeightChanged;
     }
 
 

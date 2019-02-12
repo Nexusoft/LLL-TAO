@@ -65,7 +65,6 @@ namespace LLP
         , nConsecutiveFails(0)
         , fInbound(false)
         , nLastPing(runtime::timestamp())
-        , nConsecutiveAccept(0)
         , hashContinue(0)
         , mapLatencyTracker()
         , mapSentRequests()
@@ -75,20 +74,34 @@ namespace LLP
 
 
         /** Constructor **/
-        LegacyNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
-        : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN)
+        LegacyNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false)
+        : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN, isDDOS)
         , strNodeVersion()
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
         , nStartingHeight(0)
         , nConsecutiveFails(0)
         , fInbound(false)
         , nLastPing(runtime::timestamp())
-        , nConsecutiveAccept(0)
         , hashContinue(0)
         , mapLatencyTracker()
         , mapSentRequests()
         {
+        }
 
+
+        /** Constructor **/
+        LegacyNode(DDOS_Filter* DDOS_IN, bool isDDOS = false)
+        : BaseConnection<LegacyPacket>(DDOS_IN, isDDOS)
+        , strNodeVersion()
+        , nCurrentVersion(LLP::PROTOCOL_VERSION)
+        , nStartingHeight(0)
+        , nConsecutiveFails(0)
+        , fInbound(false)
+        , nLastPing(runtime::timestamp())
+        , hashContinue(0)
+        , mapLatencyTracker()
+        , mapSentRequests()
+        {
         }
 
         /* Virtual destructor. */
@@ -143,10 +156,6 @@ namespace LLP
 
         /** The last time a block was accepted. **/
         static uint64_t nLastTimeReceived;
-
-
-        /** The number of consecutive succesful blocks accepted. */
-        uint32_t nConsecutiveAccept;
 
 
         /** The trigger hash to send a continue inv message to remote node. **/

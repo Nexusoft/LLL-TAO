@@ -99,8 +99,9 @@ namespace LLP
     bool DataThread<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort, DDOS_Filter* DDOS)
     {
        /* Create a new pointer on the heap. */
-       Socket SOCKET;
-       ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
+       ProtocolType* node = new ProtocolType(DDOS, fDDOS);
+
+
        if(!node->Connect(strAddress, nPort))
        {
            node->Disconnect();
@@ -161,8 +162,8 @@ namespace LLP
             /* Keep thread from consuming too many resources. */
             runtime::sleep(1);
 
-            /* Keep data threads waiting for work. 
-             * Will wait until have one or more connections, DataThread is disposed, or system shutdown 
+            /* Keep data threads waiting for work.
+             * Will wait until have one or more connections, DataThread is disposed, or system shutdown
              * While loop catches potential for spurious wakeups. Also has the effect of skipping the wait() call after connections established.
              */
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
@@ -211,7 +212,7 @@ namespace LLP
                     /* No connections have data to read */
                     continue;
                 }
-                /* This was for testing. Uncomment if need to log info on potential SOCKET_ERROR 
+                /* This was for testing. Uncomment if need to log info on potential SOCKET_ERROR
                  * Potentially spits out a ton of error messages if get this repeatedly
                  */
                 // else if (nPoll == SOCKET_ERROR)
@@ -324,6 +325,8 @@ namespace LLP
     void DataThread<ProtocolType>::disconnect_remove_event(uint32_t index, uint8_t reason)
     {
         CONNECTIONS[index]->Event(EVENT_DISCONNECT, reason);
+
+        LOCK(MUTEX);
         remove(index);
     }
 
@@ -333,15 +336,14 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::remove(int index)
     {
-        LOCK(MUTEX);
+        if(CONNECTIONS[index])
+        {
+            /* Free the memory. */
+            delete CONNECTIONS[index];
+            CONNECTIONS[index] = nullptr;
 
-        /* Free the memory. */
-        delete CONNECTIONS[index];
-
-        /* Derefrence the pointer. */
-        CONNECTIONS[index] = nullptr;
-
-        --nConnections;
+            --nConnections;
+        }
 
         CONDITION.notify_all();
     }

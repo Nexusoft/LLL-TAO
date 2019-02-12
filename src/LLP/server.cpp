@@ -55,8 +55,8 @@ namespace LLP
     , PORT(nPort)
     , MAX_THREADS(nMaxThreads)
     , DDOS_TIMESPAN(nTimespan)
-    , DATA_THREADS(0)
-    , pAddressManager(0)
+    , DATA_THREADS()
+    , pAddressManager(nullptr)
     , nSleepTime(nSleepTimeIn)
     {
         for(uint16_t index = 0; index < MAX_THREADS; ++index)
@@ -372,14 +372,16 @@ namespace LLP
                 {
                     runtime::sleep(nSleepTime);
                     debug::log(3, FUNCTION, ProtocolType::Name(), " Invalid address, removing address", addr.ToString());
-                    pAddressManager->RemoveAddress(addr);
+                    pAddressManager->Ban(addr);
                     continue;
                 }
 
                 /* Attempt the connection. */
                 debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
 
-                if(!AddConnection(addr.ToStringIP(), addr.GetPort()))
+                if(AddConnection(addr.ToStringIP(), addr.GetPort()))
+                    pAddressManager->AddAddress(addr, ConnectState::CONNECTED);
+                else
                     pAddressManager->AddAddress(addr, ConnectState::FAILED);
             }
 
@@ -540,7 +542,8 @@ namespace LLP
 
 
                     /* Update the address state. */
-                    pAddressManager->AddAddress(addr, ConnectState::CONNECTED);
+                    if(pAddressManager)
+                        pAddressManager->AddAddress(addr, ConnectState::CONNECTED);
                 }
             }
         }
