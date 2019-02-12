@@ -20,7 +20,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/version.h>
 
-#include <Util/templates/serialize.h>
+#include <Util/templates/datastream.h>
 #include <Util/include/hex.h>
 #include <Util/include/debug.h>
 
@@ -240,7 +240,7 @@ namespace TAO
                 txtype += "trust";
             else if(IsGenesis())
                 txtype += "genesis";
-            else 
+            else
                 txtype += "user";
             str += debug::strprintf("%s %s", GetHash().ToString().c_str(), txtype.c_str());
             return str;

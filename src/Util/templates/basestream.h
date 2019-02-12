@@ -14,10 +14,11 @@ ________________________________________________________________________________
 #ifndef NEXUS_UTIL_TEMPLATES_STREAM_H
 #define NEXUS_UTIL_TEMPLATES_STREAM_H
 
+#include <Util/include/debug.h>
+
 #include <vector>
 #include <cstdint>
-
-#include <Util/templates/serialize.h>
+#include <stdexcept>
 
 
 /** Stream enumeration. **/
@@ -70,6 +71,11 @@ public:
     BaseStream(std::vector<uint8_t> vchDataIn)
     : nReadPos(0)
     , vchData(vchDataIn)
+    {
+    }
+
+    /** Default Destructor **/
+    virtual ~BaseStream()
     {
     }
 

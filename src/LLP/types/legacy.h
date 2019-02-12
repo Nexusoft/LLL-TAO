@@ -27,7 +27,6 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    extern LegacyAddress addrMyNode; //TODO: move this to a better location
 
     /** LegacyNode
      *

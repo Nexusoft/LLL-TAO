@@ -32,7 +32,7 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
-#include <Util/templates/serialize.h>
+#include <Util/templates/datastream.h>
 
 
 namespace Legacy

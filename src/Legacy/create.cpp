@@ -42,7 +42,6 @@ ________________________________________________________________________________
 #include <Util/include/convert.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
-#include <Util/templates/serialize.h>
 
 /* Global Legacy namespace. */
 namespace Legacy

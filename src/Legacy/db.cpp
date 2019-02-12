@@ -19,7 +19,6 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/debug.h>
 #include <Util/include/filesystem.h>
-#include <Util/templates/serialize.h>
 
 #include <sys/stat.h>
 
