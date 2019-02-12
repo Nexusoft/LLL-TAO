@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <LLP/types/miner.h>
 
 #include <Util/include/hex.h>
+#include <Util/templates/datastream.h>
 #include <new> //std::bad_alloc
 
 namespace LLP

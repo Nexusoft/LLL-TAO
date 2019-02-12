@@ -19,9 +19,6 @@ ________________________________________________________________________________
 #include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
 
-#include <LLD/cache/binary_lru.h>
-#include <LLD/keychain/filemap.h>
-
 #include <TAO/Ledger/types/trustkey.h>
 
 
@@ -41,7 +38,11 @@ namespace LLD
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         TrustDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE)
-        : SectorDatabase("trust", nFlagsIn) { }
+        : SectorDatabase(std::string("trust"), nFlagsIn) { }
+
+
+        /** Default Destructor **/
+        virtual ~TrustDB() {}
 
 
         /** WriteTrustKey

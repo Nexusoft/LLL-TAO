@@ -45,6 +45,9 @@ ________________________________________________________________________________
 
 #include <iostream>
 #include <sstream>
+#include <cstdint>
+#include <string>
+#include <vector>
 
 #if !defined(WIN32) && !defined(QT_GUI) && !defined(NO_DAEMON)
 #include <sys/types.h>
@@ -56,7 +59,7 @@ namespace LLP
 {
     Server<TritiumNode>* TRITIUM_SERVER;
     Server<LegacyNode> * LEGACY_SERVER;
-    Server<TimeNode>*    TIME_SERVER;
+    Server<TimeNode>   * TIME_SERVER;
 }
 
 /* Daemonize by forking the parent process*/

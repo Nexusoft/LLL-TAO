@@ -24,7 +24,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/version.h>
 
-#include <Util/templates/serialize.h>
+#include <Util/templates/datastream.h>
 
 namespace Legacy
 {

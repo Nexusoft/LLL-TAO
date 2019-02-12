@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 
+
+#include <Util/templates/datastream.h>
 #include <LLP/include/version.h>
 
 #include <Util/include/string.h>

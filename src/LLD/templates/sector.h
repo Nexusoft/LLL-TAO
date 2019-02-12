@@ -14,15 +14,24 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_TEMPLATES_SECTOR_H
 #define NEXUS_LLD_TEMPLATES_SECTOR_H
 
-#include <LLD/cache/template_lru.h>
+
 #include <LLD/include/enum.h>
 #include <LLD/include/version.h>
 #include <LLD/templates/key.h>
 #include <LLD/templates/transaction.h>
 
+#include <LLD/cache/binary_lru.h>
+#include <LLD/cache/template_lru.h>
+
+#include <LLD/keychain/filemap.h>
+#include <LLD/keychain/hashmap.h>
+#include <LLD/keychain/hashtree.h>
+
+#include <Util/templates/datastream.h>
 #include <Util/include/runtime.h>
 #include <Util/include/debug.h>
 
+#include <string>
 #include <cstdint>
 #include <atomic>
 #include <thread>
@@ -161,7 +170,7 @@ namespace LLD
 
 
         /** Default Destructor **/
-        ~SectorDatabase();
+        virtual ~SectorDatabase();
 
 
         /** Initialize

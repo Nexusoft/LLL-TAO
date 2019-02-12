@@ -13,9 +13,9 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_CACHE_BINARY_LRU_H
 #define NEXUS_LLD_CACHE_BINARY_LRU_H
 
+#include <mutex>
 #include <cstdint>
 #include <vector>
-#include <mutex>
 
 
 //TODO: Abstract base class for all cache systems
@@ -163,7 +163,7 @@ namespace LLD
 
         /** Put
          *
-         *  Add data in the Pool.
+         *  Add data in the Pool
          *
          *  @param[in] vKey The key in binary form.
          *  @param[in] vData The input data in binary form.
@@ -175,7 +175,7 @@ namespace LLD
 
         /** Reserve
          *
-         *  Reserve this item in the cache permanently if true, unreserve if false.
+         *  Reserve this item in the cache permanently if true, unreserve if false
          *
          *  @param[in] vKey The key to flag as reserved true/false
          *  @param[in] fReserve If this object is to be reserved for disk.
@@ -186,7 +186,7 @@ namespace LLD
 
         /** Remove
          *
-         *  Force Remove Object by Index.
+         *  Force Remove Object by Index
          *
          *  @param[in] vKey Binary Data of the Key
          *

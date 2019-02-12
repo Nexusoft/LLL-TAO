@@ -19,11 +19,9 @@ ________________________________________________________________________________
 #include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
 
-#include <LLD/cache/binary_lru.h>
-#include <LLD/keychain/hashmap.h>
-
 #include <TAO/Register/include/state.h>
 #include <TAO/Register/include/enum.h>
+
 
 namespace LLD
 {
@@ -46,6 +44,10 @@ namespace LLD
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         RegisterDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::APPEND)
         : SectorDatabase("registers", nFlags) {}
+
+
+        /** Default Destructor **/
+        virtual ~RegisterDB() {}
 
 
         /** WriteState
@@ -241,6 +243,7 @@ namespace LLD
             return (states.size() > 0);
         }
     };
+
 }
 
 #endif

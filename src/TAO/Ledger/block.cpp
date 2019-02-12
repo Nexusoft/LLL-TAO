@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #include <LLC/include/key.h>
 #include <LLC/types/bignum.h>
 
-#include <Util/templates/serialize.h>
+#include <Util/templates/datastream.h>
 #include <Util/include/hex.h>
 #include <Util/include/args.h>
 #include <Util/include/runtime.h>
