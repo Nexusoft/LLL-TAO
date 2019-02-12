@@ -64,6 +64,7 @@ namespace LLP
 
 
         /* Empty protocol type. */
+        ProtocolType* pEmpty;
 
 
         /* Data Thread. */

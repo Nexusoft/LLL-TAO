@@ -199,7 +199,8 @@ namespace LLP
                     pNode = dt->CONNECTIONS[nIndex];
 
                     /* Skip over inactive connections. */
-                    if(!pNode || !pNode->Connected())
+                    if(pNode == dt->pEmpty 
+                    || !pNode->Connected())
                         continue;
 
                     /* Push the active connection. */

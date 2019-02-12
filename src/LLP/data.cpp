@@ -45,6 +45,7 @@ namespace LLP
     , DDOS_cSCORE(cScore)
     , CONNECTIONS(0)
     , CONDITION()
+    , pEmpty(new ProtocolType())
     , DATA_THREAD(std::bind(&DataThread::Thread, this))
     {
     }
@@ -60,6 +61,8 @@ namespace LLP
         DATA_THREAD.join();
 
         DisconnectAll();
+
+        delete pEmpty;
     }
 
 
@@ -79,7 +82,7 @@ namespace LLP
 
             /* Find a slot that is empty. */
             if(nSlot == CONNECTIONS.size())
-                CONNECTIONS.push_back(nullptr);
+                CONNECTIONS.push_back(pEmpty);
 
             /* Assign the slot to the connection. */
             CONNECTIONS[nSlot] = node;
@@ -116,7 +119,7 @@ namespace LLP
            /* Find a slot that is empty. */
            int nSlot = find_slot();
            if(nSlot == CONNECTIONS.size())
-               CONNECTIONS.push_back(nullptr);
+               CONNECTIONS.push_back(pEmpty);
 
            CONNECTIONS[nSlot] = node;
 
@@ -190,49 +193,16 @@ namespace LLP
 
                 /* Poll the sockets. */
 #ifdef WIN32
-                /* Windows returns intermittent SOCKET_ERROR with WSAEINVAL (bad parameters) if you pass pointer to connections
-                 * so copy fd data and only pass pollfd struct
-                 */
-                std::vector<pollfd> pollfds;
-                pollfds.resize(nSize);
-                for (uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
-                {
-                    pollfds[nIndex].fd = CONNECTIONS[nIndex]->fd;
-                    pollfds[nIndex].events = POLLIN;
-                    pollfds[nIndex].revents = 0;
-                }
-
                 int nPoll = WSAPoll((pollfd*)&pollfds[0], nSize, 100);
 #else
                 int nPoll = poll((pollfd*)CONNECTIONS[0], nSize, 100);
 #endif
                 /* Continue on poll errors. */
-                if (nPoll == 0)
+                if (nPoll <= 0)
                 {
                     /* No connections have data to read */
                     continue;
                 }
-                /* This was for testing. Uncomment if need to log info on potential SOCKET_ERROR
-                 * Potentially spits out a ton of error messages if get this repeatedly
-                 */
-                // else if (nPoll == SOCKET_ERROR)
-                // {
-                //     debug::error(FUNCTION, "Error polling outgoing connections (Error code ", WSAGetLastError(), ")");
-
-                //     debug::log(3, "DataThread contents:");
-
-                //     for (uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
-                //         debug::log(3, "    Data thread node ", nIndex, " fd ", pollfds[nIndex].fd, " events ", pollfds[nIndex].events, " revents ", pollfds[nIndex].revents);
-
-                //     continue;
-                // }
-                else if (nPoll < 0)
-                {
-                    /* Should only be SOCKET_ERROR if not 0 or >0 */
-                    // debug::error(FUNCTION, "Invalid return value polling outgoing connections (", nPoll, ")");
-                    continue;
-                }
-
             }
 
             /* Check all connections for data and packets. */
@@ -241,7 +211,7 @@ namespace LLP
                 try
                 {
                     /* Skip over Inactive Connections. */
-                    if(!CONNECTIONS[nIndex] || !CONNECTIONS[nIndex]->Connected())
+                    if(CONNECTIONS[nIndex] == pEmpty || !CONNECTIONS[nIndex]->Connected())
                         continue;
 
                     /* Remove Connection if it has Timed out or had any Errors. */
@@ -336,11 +306,11 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::remove(int index)
     {
-        if(CONNECTIONS[index])
+        if(CONNECTIONS[index] != pEmpty)
         {
             /* Free the memory. */
             delete CONNECTIONS[index];
-            CONNECTIONS[index] = nullptr;
+            CONNECTIONS[index] = pEmpty;
 
             --nConnections;
         }
@@ -356,7 +326,7 @@ namespace LLP
     {
        int nSize = CONNECTIONS.size();
        for(int index = 0; index < nSize; ++index)
-           if(!CONNECTIONS[index])
+           if(CONNECTIONS[index] == pEmpty)
                return index;
 
        return nSize;

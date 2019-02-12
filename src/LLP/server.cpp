@@ -222,8 +222,8 @@ namespace LLP
            for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
            {
                /* Skip over inactive connections. */
-               if(!dt->CONNECTIONS[nIndex] ||
-                  !dt->CONNECTIONS[nIndex]->Connected())
+               if(dt->CONNECTIONS[nIndex] == dt->pEmpty
+               || !dt->CONNECTIONS[nIndex]->Connected())
                    continue;
 
                /* Push the active connection. */
@@ -254,7 +254,8 @@ namespace LLP
             for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
                 /* Skip over inactive connections. */
-                if(!dt->CONNECTIONS[nIndex] || !dt->CONNECTIONS[nIndex]->Connected())
+                if(dt->CONNECTIONS[nIndex] == dt->pEmpty
+                || !dt->CONNECTIONS[nIndex]->Connected())
                     continue;
 
                 connectionCount += 1;
@@ -288,7 +289,8 @@ namespace LLP
             for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
                 /* Skip over inactive connections. */
-                if(!dt->CONNECTIONS[nIndex] || !dt->CONNECTIONS[nIndex]->Connected())
+                if(dt->CONNECTIONS[nIndex] == dt->pEmpty
+                || !dt->CONNECTIONS[nIndex]->Connected())
                     continue;
 
                 /* Skip over exclusion address. */
@@ -462,7 +464,7 @@ namespace LLP
                     continue;
                 }
 
-                /* This was for testing. Uncomment if need to log info on potential SOCKET_ERROR 
+                /* This was for testing. Uncomment if need to log info on potential SOCKET_ERROR
                  * Potentially spits out a ton of error messages if get this repeatedly
                  */
                 // else if(nPoll == SOCKET_ERROR)
