@@ -185,6 +185,26 @@ namespace debug
     }
 
 
+
+    /** success
+     *
+     *  Safe constant format debugging success logs.
+     *  Dumps to console or to log file.
+     *
+     *  @param[in] args The variadic template arguments in.
+     *
+     *  @return Returns true always. (Assumed to return successful.)
+     *
+     **/
+    template<class... Args>
+    bool success(Args&&... args)
+    {
+        log(0, ANSI_COLOR_BRIGHT_GREEN, "SUCCESS: ", ANSI_COLOR_RESET, args...);
+
+        return true;
+    }
+
+
     /** real_strprintf
      *
      *  Prints output into a string that is returned.
