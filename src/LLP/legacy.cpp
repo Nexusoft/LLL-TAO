@@ -605,6 +605,10 @@ namespace LLP
                 /* Handle the block message. */
                 if (inv.GetType() == LLP::MSG_BLOCK)
                 {
+                    /* Don't send genesis if asked for. */
+                    if(inv.GetHash() == TAO::Ledger::ChainState::Genesis())
+                        continue;
+
                     /* Read the block from disk. */
                     TAO::Ledger::BlockState state;
                     if(!LLD::legDB->ReadBlock(inv.GetHash(), state))
@@ -669,6 +673,8 @@ namespace LLP
             std::vector<CInv> vInv;
             while(!config::fShutdown)
             {
+                state = state.Next();
+
                 if (state.GetHash() == hashStop)
                 {
                     debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", state.GetHash().ToString().substr(0, 20));
@@ -690,8 +696,6 @@ namespace LLP
                     hashContinue = state.GetHash();
                     break;
                 }
-
-                state = state.Next();
             }
 
             /* Push the inventory. */

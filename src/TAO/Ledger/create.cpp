@@ -27,6 +27,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <Legacy/types/transaction.h>
+#include <Legacy/types/legacy.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -212,7 +213,7 @@ namespace TAO
          **/
         bool CreateGenesis()
         {
-            uint1024_t genesisHash = config::fTestNet ? hashGenesisTestnet : hashGenesis;
+            uint1024_t genesisHash = TAO::Ledger::ChainState::Genesis();
 
             if(!LLD::legDB->ReadBlock(genesisHash, ChainState::stateGenesis))
             {
@@ -231,8 +232,8 @@ namespace TAO
                 vHashes.push_back(genesis.GetHash());
 
                 /* Create the genesis block. */
-                TritiumBlock block;
-                block.vtx.push_back(std::make_pair(LEGACY_TX, genesis.GetHash()));
+                Legacy::LegacyBlock block;
+                block.vtx.push_back(genesis);
                 block.hashPrevBlock = 0;
                 block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
                 block.nVersion = 1;
@@ -249,7 +250,7 @@ namespace TAO
                 assert(genesis.nTime == block.nTime);
 
                 /* Check that the genesis hash is correct. */
-                
+
                 LLC::CBigNum target;
                 target.SetCompact(block.nBits);
                 if(block.GetHash() != genesisHash)

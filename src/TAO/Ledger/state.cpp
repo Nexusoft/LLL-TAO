@@ -49,7 +49,7 @@ namespace TAO
         /* Get the block state object. */
         bool GetLastState(BlockState &state, uint32_t nChannel)
         {
-            uint1024_t genesisHash =  config::fTestNet ? hashGenesisTestnet : hashGenesis; 
+            uint1024_t genesisHash =  ChainState::Genesis();
 
             /* Loop back 10k blocks. */
             for(uint_t i = 0; i < 1440; ++i)
@@ -75,6 +75,24 @@ namespace TAO
         }
 
 
+        /** Default Constructor. **/
+        BlockState::BlockState(const TritiumBlock& block)
+        : Block(block)
+        , vtx()
+        , nChainTrust(0)
+        , nMoneySupply(0)
+        , nMint(0)
+        , nChannelHeight(0)
+        , nReleasedReserve{0, 0, 0}
+        , hashNextBlock(0)
+        , hashCheckpoint(0)
+        {
+            vtx.push_back(std::make_pair(TYPE::TRITIUM_TX, block.producer.GetHash()));
+            vtx.insert(vtx.end(), block.vtx.begin(), block.vtx.end());
+
+            assert(vtx.size() == block.vtx.size()); //TODO: maybe a softer way to verify?
+        }
+
 
         /* Construct a block state from a legacy block. */
         BlockState::BlockState(const Legacy::LegacyBlock& block)
@@ -91,7 +109,7 @@ namespace TAO
             for(const auto& tx : block.vtx)
                 vtx.push_back(std::make_pair(TYPE::LEGACY_TX, tx.GetHash()));
 
-            assert(vtx.size() == block.vtx.size());
+            assert(vtx.size() == block.vtx.size()); //TODO: maybe a softer way to verify?
         }
 
 

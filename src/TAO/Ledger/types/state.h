@@ -121,20 +121,7 @@ namespace TAO
 
 
             /** Default Constructor. **/
-            BlockState(const TritiumBlock& block)
-            : Block(block)
-            , vtx()
-            , nChainTrust(0)
-            , nMoneySupply(0)
-            , nMint(0)
-            , nChannelHeight(0)
-            , nReleasedReserve{0, 0, 0}
-            , hashNextBlock(0)
-            , hashCheckpoint(0)
-            {
-                vtx.push_back(std::make_pair(TYPE::TRITIUM_TX, block.producer.GetHash()));
-                vtx.insert(vtx.end(), block.vtx.begin(), block.vtx.end());
-            }
+            BlockState(const TritiumBlock& block);
 
 
             /** Default Constructor. **/
