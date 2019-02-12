@@ -114,7 +114,7 @@ namespace config
     int64_t GetArg(const std::string& strArg, int64_t nDefault)
     {
         if (mapArgs.count(strArg))
-            return atoi64(mapArgs[strArg]);
+            return convert::atoi64(mapArgs[strArg]);
         return nDefault;
     }
 
@@ -125,7 +125,7 @@ namespace config
         {
             if (mapArgs[strArg].empty())
                 return true;
-            return (atoi(mapArgs[strArg]) != 0);
+            return (convert::atoi(mapArgs[strArg]) != 0);
         }
         return fDefault;
     }

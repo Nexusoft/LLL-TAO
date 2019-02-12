@@ -313,7 +313,7 @@ namespace TAO
                 return std::string(
                     "getblockhash <index>"
                     " - Returns hash of block in best-block-chain at <index>.");
-            
+
             if(!config::GetBoolArg("-indexheight"))
             {
                 return std::string("getblockhash requires the wallet to be started with the -indexheight flag.");
@@ -325,7 +325,7 @@ namespace TAO
             TAO::Ledger::BlockState blockState;
             if(!LLD::legDB->ReadBlock(nHeight, blockState))
                 return std::string("Block not found");
-            
+
             return blockState.GetHash().GetHex();
 
         }
@@ -368,7 +368,7 @@ namespace TAO
             result["channel"] = (int)block.nChannel;
             result["version"] = (int)block.nVersion;
             result["merkleroot"] = block.hashMerkleRoot.GetHex();
-            result["time"] = DateTimeStrFormat(block.GetBlockTime());
+            result["time"] = convert::DateTimeStrFormat(block.GetBlockTime());
             result["nonce"] = (uint64_t)block.nNonce;
             result["bits"] = HexBits(block.nBits);
             result["difficulty"] = TAO::Ledger::GetDifficulty(block.nBits, block.nChannel);
@@ -392,7 +392,7 @@ namespace TAO
                         if (fPrintTransactionDetail)
                         {
                             txinfo.push_back(tx.ToStringShort());
-                            txinfo.push_back(DateTimeStrFormat(tx.nTimestamp));
+                            txinfo.push_back(convert::DateTimeStrFormat(tx.nTimestamp));
                         }
                         else
                             txinfo.push_back(tx.GetHash().GetHex());
@@ -407,7 +407,7 @@ namespace TAO
                         if (fPrintTransactionDetail)
                         {
                             txinfo.push_back(tx.ToStringShort());
-                            txinfo.push_back(DateTimeStrFormat(tx.nTime));
+                            txinfo.push_back(convert::DateTimeStrFormat(tx.nTime));
                             for(const Legacy::TxIn& txin : tx.vin)
                                 txinfo.push_back(txin.ToStringShort());
                             for(const Legacy::TxOut& txout : tx.vout)

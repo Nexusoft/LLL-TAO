@@ -178,7 +178,7 @@ inline bool ParseMoney(const char* pszIn, int64_t& nRet, int64_t COIN_SIZE = 100
     if (nUnits < 0 || nUnits > COIN_SIZE)
         return false;
 
-    int64_t nWhole = atoi64(strWhole);
+    int64_t nWhole = convert::atoi64(strWhole);
     int64_t nValue = nWhole* COIN_SIZE + nUnits;
 
     nRet = nValue;

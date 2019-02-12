@@ -711,7 +711,7 @@ namespace Legacy
                         auto mi = BerkeleyDB::mapFileUseCount.find(strWalletFile);
                         if (BerkeleyDB::fDbEnvInit && mi != BerkeleyDB::mapFileUseCount.end())
                         {
-                            debug::log(0, FUNCTION, DateTimeStrFormat(runtime::unifiedtimestamp()), " Flushing ", strWalletFile);
+                            debug::log(0, FUNCTION, convert::DateTimeStrFormat(runtime::unifiedtimestamp()), " Flushing ", strWalletFile);
                             nLastFlushed = WalletDB::nWalletDBUpdated;
                             int64_t nStart = runtime::timestamp(true);
 

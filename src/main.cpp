@@ -143,7 +143,7 @@ int main(int argc, char** argv)
     /* Handle Commandline switch */
     for (int i = 1; i < argc; ++i)
     {
-        if (!IsSwitchChar(argv[i][0]))
+        if (!convert::IsSwitchChar(argv[i][0]))
         {
             if(config::GetBoolArg("-api"))
                 return TAO::API::CommandLineAPI(argc, argv, i);

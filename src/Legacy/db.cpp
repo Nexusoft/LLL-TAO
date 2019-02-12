@@ -154,7 +154,7 @@ namespace Legacy
             ret = BerkeleyDB::dbenv.open(pathDataDir.c_str(), dbFlags, dbMode);
 
             if (ret > 0)
-                throw std::runtime_error(debug::strprintf(FUNCTION, "Error %d initializing Berkeley database environment", ret));
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Error ", ret, " initializing Berkeley database environment"));
 
             BerkeleyDB::fDbEnvInit = true;
 
@@ -226,7 +226,7 @@ namespace Legacy
 
                 --BerkeleyDB::mapFileUseCount[strFile];
 
-                throw std::runtime_error(debug::strprintf(FUNCTION, "Cannot open database file %s, error %d", strFile.c_str(), ret));
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Cannot open database file ", strFile, ", error ", ret));
             }
         }
     }
