@@ -248,7 +248,7 @@ int main(int argc, char** argv)
         LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(
             port,
             config::GetArg("-threads", 10),
-            config::GetArg("-timeout", 30),
+            config::GetArg("-timeout", 120),
             config::GetBoolArg("-ddos", false),
             config::GetArg("-cscore", 1),
             config::GetArg("-rscore", 50),
@@ -281,7 +281,7 @@ int main(int argc, char** argv)
         LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(
             port,
             config::GetArg("-threads", 10),
-            config::GetArg("-timeout", 30),
+            config::GetArg("-timeout", 120),
             config::GetBoolArg("-ddos", false),
             config::GetArg("-cscore", 1),
             config::GetArg("-rscore", 50),
