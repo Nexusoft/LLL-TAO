@@ -193,7 +193,7 @@ namespace LLP
 
                 /* Poll the sockets. */
 #ifdef WIN32
-                int nPoll = WSAPoll((pollfd*)&pollfds[0], nSize, 100);
+                int nPoll = WSAPoll((pollfd*)CONNECTIONS[0], nSize, 100);
 #else
                 int nPoll = poll((pollfd*)CONNECTIONS[0], nSize, 100);
 #endif
