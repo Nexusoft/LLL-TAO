@@ -23,6 +23,8 @@ ________________________________________________________________________________
 #include <LLP/include/version.h>
 
 #include <Util/templates/datastream.h>
+#include <Util/templates/flatdata.h>
+
 #include <Util/include/debug.h>
 #include <Util/include/args.h>
 #include <Util/include/memory.h>
