@@ -47,12 +47,10 @@ namespace TAO
 
             std::string strEndpoint = "database-mapping";
             /* Build the HTTP Header. */
-            std::string strReply = debug::strprintf(
-                    "GET /lisp/api/%s HTTP/1.1\r\n"
-                    "Authorization: Basic %s\r\n"
-                    "\r\n",
-                strEndpoint.c_str(),
-                strUserPass64.c_str());
+            std::string strReply = debug::safe_printstr(
+                    "GET /lisp/api/", strEndpoint, " HTTP/1.1\r\n",
+                    "Authorization: Basic ", strUserPass64, "\r\n",
+                    "\r\n");
 
             /* Convert the content into a byte buffer. */
             std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
@@ -130,7 +128,7 @@ namespace TAO
             }
 
             return jsonRet;
-            
+
         }
 
     }

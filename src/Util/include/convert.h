@@ -48,7 +48,7 @@ namespace convert
      *  @return the integer string
      *
      **/
-    inline std::string itostr(int n)
+    inline std::string i32tostr(int n)
     {
         return debug::safe_printstr(n);
     }
@@ -92,7 +92,7 @@ namespace convert
     }
 
 
-    /** atoi
+    /** atoi32
      *
      *  The ASCII to integer wrapper for the standard string
      *
@@ -101,7 +101,7 @@ namespace convert
      *  @return the integer value of the string
      *
      **/
-    inline int atoi(const std::string& str)
+    inline int32_t atoi32(const std::string& str)
     {
         return atoi(str.c_str());
     }
@@ -235,7 +235,7 @@ namespace convert
      **/
     inline std::string ip_string(std::vector<uint8_t> ip)
     {
-        return debug::strprintf("%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+        return debug::safe_printstr(ip[0], ".", ip[1], ".", ip[2], ".", ip[3]);
     }
 
 

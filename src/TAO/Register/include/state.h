@@ -307,7 +307,7 @@ namespace TAO
             {
                 /* Check size constraints. */
                 if(nReadPos + nSize > vchState.size())
-                    throw std::runtime_error(debug::strprintf(FUNCTION, "reached end of stream %u", nReadPos));
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "reached end of stream ", nReadPos));
 
                 /* Copy the bytes into tmp object. */
                 std::copy((uint8_t*)&vchState[nReadPos], (uint8_t*)&vchState[nReadPos] + nSize, (uint8_t*)pch);

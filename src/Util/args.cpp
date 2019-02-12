@@ -125,7 +125,7 @@ namespace config
         {
             if (mapArgs[strArg].empty())
                 return true;
-            return (convert::atoi(mapArgs[strArg]) != 0);
+            return (convert::atoi32(mapArgs[strArg]) != 0);
         }
         return fDefault;
     }

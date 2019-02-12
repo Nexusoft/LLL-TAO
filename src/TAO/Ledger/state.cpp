@@ -49,7 +49,7 @@ namespace TAO
         /* Get the block state object. */
         bool GetLastState(BlockState &state, uint32_t nChannel)
         {
-            uint1024_t genesisHash =  config::fTestNet ? hashGenesisTestnet : hashGenesis; 
+            uint1024_t genesisHash =  config::fTestNet ? hashGenesisTestnet : hashGenesis;
 
             /* Loop back 10k blocks. */
             for(uint_t i = 0; i < 1440; ++i)
@@ -687,38 +687,33 @@ namespace TAO
             /* Handle verbose output for just header. */
             if(nState & debug::flags::header)
             {
-                strDebug += debug::strprintf("Block("
-                VALUE("hash") " = %s, "
-                VALUE("nVersion") " = %u, "
-                VALUE("hashPrevBlock") " = %s, "
-                VALUE("hashMerkleRoot") " = %s, "
-                VALUE("nChannel") " = %u, "
-                VALUE("nHeight") " = %u, "
-                VALUE("nDiff") " = %f, "
-                VALUE("nNonce") " = %" PRIu64 ", "
-                VALUE("nTime") " = %u, "
-                VALUE("blockSig") " = %s",
-                GetHash().ToString().substr(0, 20).c_str(), nVersion, hashPrevBlock.ToString().substr(0, 20).c_str(),
-                hashMerkleRoot.ToString().substr(0, 20).c_str(), nChannel,
-                nHeight, GetDifficulty(nBits, nChannel), nNonce, nTime, HexStr(vchBlockSig.begin(), vchBlockSig.end()).c_str());
+                strDebug += debug::safe_printstr("Block(",
+                VALUE("hash") " = ", GetHash().ToString().substr(0, 20), ", ",
+                VALUE("nVersion") " = ", nVersion, ", ",
+                VALUE("hashPrevBlock") " = ", hashPrevBlock.ToString().substr(0, 20), ", ",
+                VALUE("hashMerkleRoot") " = ", hashMerkleRoot.ToString().substr(0, 20), ", ",
+                VALUE("nChannel") " = ", nChannel, ", ",
+                VALUE("nHeight") " = ", nHeight, ", ",
+                VALUE("nDiff") " = ", GetDifficulty(nBits, nChannel), ", ",
+                VALUE("nNonce") " = ", nNonce, ", ",
+                VALUE("nTime") " = ", nTime, ", ",
+                VALUE("blockSig") " = ", HexStr(vchBlockSig.begin(), vchBlockSig.end()));
             }
 
             /* Handle the verbose output for chain state. */
             if(nState & debug::flags::chain)
             {
-                strDebug += debug::strprintf(", "
-                VALUE("nChainTrust") " = %" PRIu64 ", "
-                VALUE("nMoneySupply") " = %" PRIu64 ", "
-                VALUE("nChannelHeight") " = %" PRIu32 ", "
-                VALUE("nMinerReserve") " = %" PRIu32 ", "
-                VALUE("nAmbassadorReserve") " = %" PRIu32 ", "
-                VALUE("nDeveloperReserve") " = %" PRIu32 ", "
-                VALUE("hashNextBlock") " = %s, "
-                VALUE("hashCheckpoint") " = %s",
-                nChainTrust, nMoneySupply, nChannelHeight, nReleasedReserve[0], nReleasedReserve[1],
-                nReleasedReserve[2], hashNextBlock.ToString().substr(0, 20).c_str(),
-                hashCheckpoint.ToString().substr(0, 20).c_str());
+                strDebug += debug::safe_printstr(", ",
+                VALUE("nChainTrust") " = ", nChainTrust, ", ",
+                VALUE("nMoneySupply") " = ", nMoneySupply, ", ",
+                VALUE("nChannelHeight") " = ", nChannelHeight, ", ",
+                VALUE("nMinerReserve") " = ", nReleasedReserve[0], ", ",
+                VALUE("nAmbassadorReserve") " = ", nReleasedReserve[1], ", ",
+                VALUE("nDeveloperReserve") " = ", nReleasedReserve[2], ", ",
+                VALUE("hashNextBlock") " = ", hashNextBlock.ToString().substr(0, 20), ", ",
+                VALUE("hashCheckpoint") " = ", hashCheckpoint.ToString().substr(0, 20));
             }
+
             strDebug += ")";
 
             /* Handle the verbose output for transactions. */

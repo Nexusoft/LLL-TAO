@@ -184,7 +184,7 @@ namespace TAO
             if( strCommand.length() > 0)
             {
                 if( mapFunctions.find(strCommand) == mapFunctions.end())
-                    throw APIException(-32601, debug::strprintf("Method not found: %s", strCommand.c_str()));
+                    throw APIException(-32601, debug::safe_printstr("Method not found: ", strCommand));
                 else
                 {
                     ret = mapFunctions[strCommand].Execute(jsonParams, true).get<std::string>();

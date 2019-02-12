@@ -242,7 +242,7 @@ namespace TAO
                 txtype += "genesis";
             else
                 txtype += "user";
-            str += debug::strprintf("%s %s", GetHash().ToString().c_str(), txtype.c_str());
+            str += debug::safe_printstr(GetHash().ToString(), " ", txtype);
             return str;
         }
     }

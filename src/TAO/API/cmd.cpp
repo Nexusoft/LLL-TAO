@@ -85,19 +85,15 @@ namespace TAO
 
             /* Build the HTTP Header. */
             std::string strContent = parameters.dump();
-            std::string strReply = debug::strprintf(
-                    "POST /%s/%s HTTP/1.1\r\n"
-                    "Date: %s\r\n"
-                    "Connection: close\r\n"
-                    "Content-Length: %d\r\n"
-                    "Content-Type: application/json\r\n"
-                    "Server: Nexus-JSON-API\r\n"
-                    "\r\n"
-                    "%s",
-                endpoint.substr(0, pos).c_str(), endpoint.substr(pos + 1).c_str(),
-                runtime::rfc1123Time().c_str(),
-                strContent.size(),
-                strContent.c_str());
+            std::string strReply = debug::safe_printstr(
+                    "POST /", endpoint.substr(0, pos), "/", endpoint.substr(pos + 1), " HTTP/1.1\r\n",
+                    "Date: ", runtime::rfc1123Time(), "\r\n",
+                    "Connection: close\r\n",
+                    "Content-Length: ", strContent.size(), "\r\n",
+                    "Content-Type: application/json\r\n",
+                    "Server: Nexus-JSON-API\r\n",
+                    "\r\n",
+                    strContent);
 
             /* Convert the content into a byte buffer. */
             std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
@@ -177,10 +173,10 @@ namespace TAO
 
             /** Check RPC user/pass are set */
             if (config::mapArgs["-rpcuser"] == "" && config::mapArgs["-rpcpassword"] == "")
-                throw std::runtime_error(debug::strprintf(
-                    "You must set rpcpassword=<password> in the configuration file:%s\n"
-                    "If the file does not exist, create it with owner-readable-only file permissions.\n",
-                    config::GetConfigFile().c_str()));
+                throw std::runtime_error(debug::safe_printstr(
+                    "You must set rpcpassword=<password> in the configuration file: ",
+                    config::GetConfigFile(), "\n",
+                    "If the file does not exist, create it with owner-readable-only file permissions.\n"));
 
              // HTTP basic authentication
             std::string strUserPass64 = encoding::EncodeBase64(config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"]);
@@ -199,20 +195,16 @@ namespace TAO
             /* Build the HTTP Header. */
             json::json body = { {"method", argv[argn]}, {"params", parameters}, {"id", 1} };
             std::string strContent = body.dump();
-            std::string strReply = debug::strprintf(
-                    "POST / HTTP/1.1\r\n"
-                    "Date: %s\r\n"
-                    "Connection: close\r\n"
-                    "Content-Length: %d\r\n"
-                    "Content-Type: application/json\r\n"
-                    "Server: Nexus-JSON-RPC\r\n"
-                    "Authorization: Basic %s\r\n"
-                    "\r\n"
-                    "%s",
-                runtime::rfc1123Time().c_str(),
-                strContent.size(),
-                strUserPass64.c_str(),
-                strContent.c_str());
+            std::string strReply = debug::safe_printstr(
+                    "POST / HTTP/1.1\r\n",
+                    "Date: ", runtime::rfc1123Time(), "\r\n",
+                    "Connection: close\r\n",
+                    "Content-Length: ", strContent.size(), "\r\n",
+                    "Content-Type: application/json\r\n",
+                    "Server: Nexus-JSON-RPC\r\n",
+                    "Authorization: Basic ", strUserPass64, "\r\n",
+                    "\r\n",
+                    strContent);
 
             /* Convert the content into a byte buffer. */
             std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
@@ -282,7 +274,8 @@ namespace TAO
             }
 
             // output to console
-            printf("%s\n", strPrint.c_str());
+            debug::log(0, strPrint);
+            
             return nRet;
 
             return 0;
