@@ -45,16 +45,14 @@ namespace LLP
 
     /** Copy constructor. **/
     Socket::Socket(const Socket& socket)
-    : MUTEX()
+    : pollfd(socket)
+    , MUTEX()
     , nError(socket.nError)
     , nLastSend(socket.nLastSend)
     , nLastRecv(socket.nLastRecv)
     , vBuffer(socket.vBuffer)
     , addr(socket.addr)
     {
-        fd = -1;
-
-        events = POLLIN;
     }
 
 
