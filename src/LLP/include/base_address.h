@@ -224,18 +224,14 @@ namespace LLP
          *  NOTE: can't be const, for Windows compile, because calls ToStringIP()
          *
          **/
-        std::string ToString();
         std::string ToString() const;
 
 
         /** ToStringIP
          *
          *  Returns the IP in string format.
-         *  NOTE: can't be const, for Windows compile, which defines
-         *        inet_ntop using void* and not const void*
          *
          **/
-        std::string ToStringIP();
         std::string ToStringIP() const;
 
 
