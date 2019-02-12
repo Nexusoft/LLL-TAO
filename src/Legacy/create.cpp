@@ -254,20 +254,20 @@ namespace Legacy
             if (!TAO::Ledger::mempool.Get(txHash, tx))
             {
                 /* Should never have free floating Coinbase or Coinstake transaction in the mempool */
-                debug::error(FUNCTION, "Unable to read transaction from mempool %s", txHash.ToString().substr(0, 10).c_str());
+                debug::error(FUNCTION, "Unable to read transaction from mempool ", txHash.ToString().substr(0, 10));
                 continue;
             }
 
             if (tx.IsCoinBase() || tx.IsCoinStake())
             {
                 /* Should never have free floating Coinbase or Coinstake transaction in the mempool */
-                debug::log(2, FUNCTION, "Mempool transaction is Coinbase/Coinstake %s", txHash.ToString().substr(0, 10).c_str());
+                debug::log(2, FUNCTION, "Mempool transaction is Coinbase/Coinstake ", txHash.ToString().substr(0, 10));
                 continue;
             }
 
             if (!tx.IsFinal())
             {
-                debug::log(2, FUNCTION, "Mempool transaction is not Final %s", txHash.ToString().substr(0, 10).c_str());
+                debug::log(2, FUNCTION, "Mempool transaction is not Final ", txHash.ToString().substr(0, 10));
                 continue;
             }
 
@@ -280,7 +280,7 @@ namespace Legacy
                 if (!LLD::legacyDB->ReadTx(txin.prevout.hash, txPrev))
                 {
                     /* Skip any orphan transactions in the mempool until the prevout tx is confirmed */
-                    debug::log(2, FUNCTION, "Found orphan transaction in mempool %s", txHash.ToString().substr(0, 10).c_str());
+                    debug::log(2, FUNCTION, "Found orphan transaction in mempool ", txHash.ToString().substr(0, 10));
                     continue;
                 }
 
@@ -296,7 +296,8 @@ namespace Legacy
                 /* Update priority from current input */
                 dPriority += (double)nValueIn * (double)txAge;
 
-                debug::log(3, FUNCTION, "Updated transaction priority: nValueIn=%-12" PRI64d " txAge=%-5" PRI64d ", new dPriority=%-20.1f\n", nValueIn, txAge, dPriority);
+                //debug::log(3, FUNCTION, "Updated transaction priority: nValueIn=%-12" PRI64d " txAge=%-5" PRI64d ", new dPriority=%-20.1f\n", nValueIn, txAge, dPriority);
+                debug::log(3, FUNCTION, "Updated transaction priority: nValueIn=", nValueIn, ", txAge=", txAge, ", new dPriority=", dPriority);
             }
 
             /* Priority is sum (valuein * age) / txsize */
@@ -305,7 +306,8 @@ namespace Legacy
             /* Map will be ordered with SMALLEST value first, so add using -dPriority as key so highest priority is first */
             mapPriority.emplace(std::make_pair(-dPriority, &tx));
 
-            debug::log(3, FUNCTION, "Final priority %-20.1f %s\n%s", dPriority, txHash.ToString().substr(0,10).c_str(), tx.ToString().c_str());
+            //debug::log(3, FUNCTION, "Final priority %-20.1f %s\n%s", dPriority, txHash.ToString().substr(0,10).c_str(), tx.ToString().c_str());
+            debug::log(3, FUNCTION, "Final priority ", dPriority, " ", txHash.ToString().substr(0,10), "\n", tx.ToString());
 
         }
 
@@ -330,7 +332,7 @@ namespace Legacy
             /* Check block size limits */
             if ((nBlockSize + nTxSize) >= TAO::Ledger::MAX_BLOCK_SIZE_GEN)
             {
-                debug::log(2, FUNCTION, "Block size limits reached on transaction %s\n", tx.GetHash().ToString().substr(0, 10).c_str());
+                debug::log(2, FUNCTION, "Block size limits reached on transaction ", tx.GetHash().ToString().substr(0, 10));
                 continue;
             }
 
@@ -338,21 +340,21 @@ namespace Legacy
             nTxSigOps = tx.GetLegacySigOpCount();
             if (nBlockSigOps + nTxSigOps >= TAO::Ledger::MAX_BLOCK_SIGOPS)
             {
-                debug::log(2, FUNCTION, "Too many legacy signature operations %s\n", tx.GetHash().ToString().substr(0, 10).c_str());
+                debug::log(2, FUNCTION, "Too many legacy signature operations ", tx.GetHash().ToString().substr(0, 10));
                 continue;
             }
 
             /* Timestamp limit */
             if (tx.nTime > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
             {
-                debug::log(2, FUNCTION, "Transaction time too far in future %s\n", tx.GetHash().ToString().substr(0, 10).c_str());
+                debug::log(2, FUNCTION, "Transaction time too far in future ", tx.GetHash().ToString().substr(0, 10));
                 continue;
             }
 
             /* Retrieve tx inputs */
             if (!tx.FetchInputs(mapInputs))
             {
-                debug::log(2, FUNCTION, "Failed to get transaction inputs %s\n", tx.GetHash().ToString().substr(0, 10).c_str());
+                debug::log(2, FUNCTION, "Failed to get transaction inputs ", tx.GetHash().ToString().substr(0, 10));
 
                 vRemoveFromPool.push_back(tx.GetHash());
                 continue;
@@ -362,7 +364,7 @@ namespace Legacy
             nTxFees = tx.GetValueIn(mapInputs) - tx.GetValueOut();
             if (nTxFees < nMinFee)
             {
-                debug::log(2, FUNCTION, "Not enough fees %s\n", tx.GetHash().ToString().substr(0, 10).c_str());
+                debug::log(2, FUNCTION, "Not enough fees ", tx.GetHash().ToString().substr(0, 10));
 
                 vRemoveFromPool.push_back(tx.GetHash());
                 continue;
@@ -372,7 +374,7 @@ namespace Legacy
             nTxSigOps += tx.TotalSigOps(mapInputs);
             if ((nBlockSigOps + nTxSigOps) >= TAO::Ledger::MAX_BLOCK_SIGOPS)
             {
-                debug::log(2, FUNCTION, "Too many P2SH signature operations %s\n", tx.GetHash().ToString().substr(0, 10).c_str());
+                debug::log(2, FUNCTION, "Too many P2SH signature operations ", tx.GetHash().ToString().substr(0, 10));
 
                 vRemoveFromPool.push_back(tx.GetHash());
                 continue;
@@ -380,7 +382,7 @@ namespace Legacy
 
             if (!tx.Connect(mapInputs, prevBlockState))
             {
-                debug::log(2, FUNCTION, "Failed to connect inputs %s\n", tx.GetHash().ToString().substr(0, 10).c_str());
+                debug::log(2, FUNCTION, "Failed to connect inputs ", tx.GetHash().ToString().substr(0, 10));
 
                 vRemoveFromPool.push_back(tx.GetHash());
                 continue;
@@ -401,7 +403,7 @@ namespace Legacy
         /* Remove any invalid transactions from the mempool */
         for (const uint512_t& txHashToRemove : vRemoveFromPool)
         {
-            debug::log(0, FUNCTION, "Removed invalid tx %s from mempool\n", txHashToRemove.ToString().substr(0, 10).c_str());
+            debug::log(0, FUNCTION, "Removed invalid tx ", txHashToRemove.ToString().substr(0, 10), " from mempool");
             TAO::Ledger::mempool.RemoveLegacy(txHashToRemove);
         }
 
@@ -482,20 +484,20 @@ namespace Legacy
         std::string timestampString(DateTimeStrFormat(runtime::unifiedtimestamp()));
         if (nChannel == 0)
         {
-            debug::log(1, FUNCTION, "Nexus Stake Minter: new nPoS channel block found at unified time %s", timestampString.c_str());
-            debug::log(1, " blockHash: %s block height: %d", blockHash.ToString().substr(0, 30).c_str(), block.nHeight);
+            debug::log(1, FUNCTION, "Nexus Stake Minter: new nPoS channel block found at unified time ", timestampString);
+            debug::log(1, " blockHash: ", blockHash.ToString().substr(0, 30), " block height: " block.nHeight);
         }
         else if (nChannel == 1)
         {
-            debug::log(1, FUNCTION, "Nexus Miner: new Prime channel block found at unified time %s", timestampString.c_str());
-            debug::log(1, "  blockHash: %s block height: %d", blockHash.ToString().substr(0, 30).c_str(), block.nHeight);
-            debug::log(1, "  prime cluster verified of size %f", TAO::Ledger::GetDifficulty(block.nBits, 1));
+            debug::log(1, FUNCTION, "Nexus Miner: new Prime channel block found at unified time ", timestampString);
+            debug::log(1, "  blockHash: ", blockHash.ToString().substr(0, 30), " block height: ", block.nHeight);
+            debug::log(1, "  prime cluster verified of size ", TAO::Ledger::GetDifficulty(block.nBits, 1));
         }
         else if (nChannel == 2)
         {
-            debug::log(1, FUNCTION, "Nexus Miner: new Hashing channel block found at unified time %s", timestampString.c_str());
-            debug::log(1, "  blockHash: %s block height: ", blockHash.ToString().substr(0, 30).c_str(), block.nHeight);
-            debug::log(1, "  target: %s", hashTarget.ToString().substr(0, 30).c_str());
+            debug::log(1, FUNCTION, "Nexus Miner: new Hashing channel block found at unified time ", timestampString);
+            debug::log(1, "  blockHash: ", blockHash.ToString().substr(0, 30), " block height: ", block.nHeight);
+            debug::log(1, "  target: ", hashTarget.ToString().substr(0, 30));
         }
 
         if (block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain)
