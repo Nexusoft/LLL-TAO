@@ -795,10 +795,12 @@ namespace LLP
         if(!block.Accept())
         {
             /* Increment the consecutive failures. */
-            ++pnode->nConsecutiveFails;
+            if(pnode)
+                ++pnode->nConsecutiveFails;
 
             /* Check for failure limit on node. */
-            if(config::GetBoolArg("-fastsync")
+            if(pnode
+            && config::GetBoolArg("-fastsync")
             && TAO::Ledger::ChainState::Synchronizing()
             && pnode->nConsecutiveFails >= 100)
             {
@@ -828,7 +830,8 @@ namespace LLP
             nLastTimeReceived = runtime::timestamp();
 
             /* Reset the consecutive failures. */
-            pnode->nConsecutiveFails = 0;
+            if(pnode)
+                pnode->nConsecutiveFails = 0;
         }
 
         /* Process orphan if found. */
