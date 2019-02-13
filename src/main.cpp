@@ -34,10 +34,11 @@ ________________________________________________________________________________
 
 #include <Util/include/args.h>
 #include <Util/include/config.h>
-#include <Util/include/signals.h>
 #include <Util/include/convert.h>
-#include <Util/include/runtime.h>
 #include <Util/include/filesystem.h>
+#include <Util/include/runtime.h>
+#include <Util/include/signals.h>
+#include <Util/include/version.h>
 
 #include <Legacy/include/ambassador.h>
 #include <Legacy/wallet/wallet.h>
@@ -136,6 +137,10 @@ int main(int argc, char** argv)
     /* Once we have read in the CLI paramters and config file, cache the args into global variables*/
     config::CacheArgs();
 
+    /* Log system startup */
+    debug::log(0, "\n\n\n\n\n\n\n\n\n\n", version::CLIENT_VERSION_BUILD_STRING, " (", version::CLIENT_DATE, ")");
+    debug::log(0, "Startup time ", DateTimeStrFormat(runtime::timestamp()));
+    debug::log(0, "Logging verbose level ", config::GetArg("-verbose", 0));
 
     /* Handle Commandline switch */
     for (int i = 1; i < argc; ++i)
