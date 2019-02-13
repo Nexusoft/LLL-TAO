@@ -160,12 +160,10 @@ namespace LLP
         /* Handle final socket checks if connection established with no errors. */
         if (fConnected)
         {
-            /* We would expect to get WSAEWOULDBLOCK here in the normal case of attempting a connection.
-             * WSAEINVAL is here because some legacy version of winsock uses it
-             */
+            /* We would expect to get WSAEWOULDBLOCK here in the normal case of attempting a connection. */
             nError = WSAGetLastError();
 
-            if (nError == WSAEWOULDBLOCK || nError == WSAEINPROGRESS || nError == WSAEINVAL)
+            if (nError == WSAEWOULDBLOCK || nError == WSAEALREADY)
             {
                 struct timeval timeout;
                 timeout.tv_sec  = nTimeout / 1000;
@@ -179,12 +177,12 @@ namespace LLP
                 /* select returns the number of descriptors that have successfully established connection and are writeable.
                  * We only pass one descriptor in the fd_set, so this will return 1 if connect attempt succeeded, 0 if it timed out, or SOCKET_ERROR on error
                  */
-                int nRet = select(fd + 1, nullptr, &fdset, nullptr, &timeout);
+                uint32_t nRet = select(fd + 1, nullptr, &fdset, nullptr, &timeout);
 
                 /* If the connection attempt timed out with select. */
                 if (nRet == 0)
                 {
-                    debug::log(3, FUNCTION, "connection timeout ", addrDest.ToString(), "...");
+                    debug::log(2, FUNCTION, "Connection timeout ", addrDest.ToString());
 
                     if(fd != INVALID_SOCKET)
                          closesocket(fd);
@@ -195,7 +193,7 @@ namespace LLP
                 /* If the select failed. */
                 else if (nRet == SOCKET_ERROR)
                 {
-                    debug::log(3, FUNCTION, "select failed ", addrDest.ToString(), " (",  WSAGetLastError(), ")");
+                    debug::log(3, FUNCTION, "Select failed ", addrDest.ToString(), " (",  WSAGetLastError(), ")");
 
 
                     if(fd != INVALID_SOCKET)
@@ -212,7 +210,7 @@ namespace LLP
                 if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
     #endif
                 {
-                    debug::log(3, FUNCTION, "get options failed ", addrDest.ToString(), " (", WSAGetLastError(), ")");
+                    debug::log(3, FUNCTION, "Get options failed ", addrDest.ToString(), " (", WSAGetLastError(), ")");
 
                     if(fd != INVALID_SOCKET)
                         closesocket(fd);
@@ -220,10 +218,10 @@ namespace LLP
                     return false;
                 }
 
-                /* If there are no socket options set. TODO: Remove preprocessors for cross platform sockets. */
+                /* If there are no socket options set. */
                 if (nRet != 0)
                 {
-                    debug::log(3, FUNCTION, "failed after select ", addrDest.ToString(), " (", nRet, ")");
+                    debug::log(3, FUNCTION, "Failed after select ", addrDest.ToString(), " (", nRet, ")");
 
                     if(fd != INVALID_SOCKET)
                         closesocket(fd);
