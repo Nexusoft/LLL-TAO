@@ -206,7 +206,7 @@ namespace LLD
             debug::log(0, FUNCTION, "repairing index for ", hashTransaction.ToString().substr(0, 20));
 
             /* Loop until it is found. */
-            while(!config::fShutdown && !state.IsNull())
+            while(!config::fShutdown.load() && !state.IsNull())
             {
                 /* Give debug output of status. */
                 if(state.nHeight % 100000 == 0)
@@ -254,7 +254,7 @@ namespace LLD
             TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateGenesis;
 
             /* Loop until it is found. */
-            while(!config::fShutdown && !state.IsNull())
+            while(!config::fShutdown.load() && !state.IsNull())
             {
                 /* Give debug output of status. */
                 if(state.nHeight % 100000 == 0)

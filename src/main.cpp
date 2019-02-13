@@ -379,7 +379,7 @@ int main(int argc, char** argv)
     {
         std::mutex SHUTDOWN_MUTEX;
         std::unique_lock<std::mutex> SHUTDOWN_LOCK(SHUTDOWN_MUTEX);
-        SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown; });
+        SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown.load(); });
     }
 
     /* GDB mode waits for keyboard input to initiate clean shutdown. */
@@ -408,7 +408,6 @@ int main(int argc, char** argv)
         debug::log(0, FUNCTION, "Shutting down Time Server");
 
         LLP::TIME_SERVER->Shutdown();
-
         delete LLP::TIME_SERVER;
     }
 

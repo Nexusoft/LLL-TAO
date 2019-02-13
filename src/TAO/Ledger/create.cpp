@@ -249,7 +249,7 @@ namespace TAO
                 assert(genesis.nTime == block.nTime);
 
                 /* Check that the genesis hash is correct. */
-                
+
                 LLC::CBigNum target;
                 target.SetCompact(block.nBits);
                 if(block.GetHash() != genesisHash)
@@ -295,13 +295,13 @@ namespace TAO
             TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("user", "pass");
 
             std::mutex MUTEX;
-            while(!config::fShutdown)
+            while(!config::fShutdown.load())
             {
                 std::unique_lock<std::mutex> CONDITION_LOCK(MUTEX);
-                PRIVATE_CONDITION.wait(CONDITION_LOCK, []{ return config::fShutdown || mempool.Size() > 0; });
+                PRIVATE_CONDITION.wait(CONDITION_LOCK, []{ return config::fShutdown.load() || mempool.Size() > 0; });
 
                 /* Check for shutdown. */
-                if(config::fShutdown)
+                if(config::fShutdown.load())
                     return;
 
                 /* Create the block object. */

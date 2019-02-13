@@ -80,6 +80,7 @@ namespace LLP
     BaseConnection<PacketType>::~BaseConnection()
     {
         Disconnect();
+        SetNull();
     }
 
 
@@ -98,11 +99,18 @@ namespace LLP
     template <class PacketType>
     void BaseConnection<PacketType>::SetNull()
     {
+
         fd = -1;
         nError = 0;
 
         INCOMING.SetNull();
-        DDOS  = nullptr;
+
+        if(DDOS)
+        {
+            delete DDOS;
+            DDOS  = nullptr;
+        }
+
         fDDOS = false;
         fOUTGOING = false;
         fCONNECTED = false;
@@ -137,6 +145,8 @@ namespace LLP
     template <class PacketType>
     bool BaseConnection<PacketType>::Connected() const
     {
+        LOCK(MUTEX);
+
         return fCONNECTED;
     }
 
@@ -174,15 +184,17 @@ namespace LLP
     {
         LOCK(MUTEX);
 
+        std::vector<uint8_t> vBytes = PACKET.GetBytes();
+
         /* Debug dump of message type. */
-        debug::log(3, NODE "Sent Message (", PACKET.GetBytes().size(), " bytes)");
+        debug::log(3, NODE "Sent Message (", vBytes.size(), " bytes)");
 
         /* Debug dump of packet data. */
         if(config::GetArg("-verbose", 0) >= 5)
-            PrintHex(PACKET.GetBytes());
+            PrintHex(vBytes);
 
         /* Write the packet to socket buffer. */
-        std::vector<uint8_t> vBytes = PACKET.GetBytes();
+
         Write(vBytes, vBytes.size());
     }
 
@@ -203,6 +215,8 @@ namespace LLP
         if (Attempt(addrConnect))
         {
             debug::log(1, NODE, "Connected to ", addrConnect.ToStringIP());
+
+            LOCK(MUTEX);
 
             fCONNECTED = true;
             fOUTGOING  = true;
@@ -226,6 +240,7 @@ namespace LLP
     {
         Close();
 
+        LOCK(MUTEX);
         fCONNECTED = false;
     }
 

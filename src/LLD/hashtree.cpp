@@ -255,7 +255,7 @@ namespace LLD
     /*  Helper Thread to Batch Write to Disk. */
     void BinaryHashTree::CacheWriter()
     {
-        while(!config::fShutdown)
+        while(!config::fShutdown.load())
         {
             /* Wait for Database to Initialize. */
             if(!fInitialized)

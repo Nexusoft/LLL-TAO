@@ -70,7 +70,7 @@ namespace Legacy
     bool WalletDB::WriteMinVersion(const uint32_t nVersion)
     {
         LOCK(WalletDB::cs_walletdb);
-        WalletDB::nWalletDBUpdated++;
+        ++WalletDB::nWalletDBUpdated;
         return Write(std::string("minversion"), nVersion, true);
     }
 
@@ -88,7 +88,7 @@ namespace Legacy
     bool WalletDB::WriteAccount(const std::string& strAccount, const Account& account)
     {
         LOCK(WalletDB::cs_walletdb);
-        WalletDB::nWalletDBUpdated++;
+        ++WalletDB::nWalletDBUpdated;
         return Write(std::make_pair(std::string("acc"), strAccount), account);
     }
 
@@ -106,7 +106,7 @@ namespace Legacy
     bool WalletDB::WriteName(const std::string& strAddress, const std::string& strName)
     {
         LOCK(WalletDB::cs_walletdb);
-        WalletDB::nWalletDBUpdated++;
+        ++WalletDB::nWalletDBUpdated;
         return Write(std::make_pair(std::string("name"), strAddress), strName);
     }
 
@@ -115,7 +115,7 @@ namespace Legacy
     bool WalletDB::EraseName(const std::string& strAddress)
     {
         LOCK(WalletDB::cs_walletdb);
-        WalletDB::nWalletDBUpdated++;
+        ++WalletDB::nWalletDBUpdated;
         return Erase(std::make_pair(std::string("name"), strAddress));
     }
 
@@ -133,7 +133,7 @@ namespace Legacy
     bool WalletDB::WriteDefaultKey(const std::vector<uint8_t>& vchPubKey)
     {
         LOCK(WalletDB::cs_walletdb);
-        WalletDB::nWalletDBUpdated++;
+        ++WalletDB::nWalletDBUpdated;
         return Write(std::string("defaultkey"), vchPubKey);
     }
 
@@ -151,7 +151,7 @@ namespace Legacy
     bool WalletDB::WriteTrustKey(const std::vector<uint8_t>& vchPubKey)
     {
         LOCK(WalletDB::cs_walletdb);
-        WalletDB::nWalletDBUpdated++;
+        ++WalletDB::nWalletDBUpdated;
         return Write(std::string("trustkey"), vchPubKey);
     }
 
@@ -160,7 +160,7 @@ namespace Legacy
     bool WalletDB::EraseTrustKey()
     {
         LOCK(WalletDB::cs_walletdb);
-        WalletDB::nWalletDBUpdated++;
+        ++WalletDB::nWalletDBUpdated;
         return Erase(std::string("trustkey"));
     }
 
@@ -178,7 +178,7 @@ namespace Legacy
     bool WalletDB::WriteKey(const std::vector<uint8_t>& vchPubKey, const LLC::CPrivKey& vchPrivKey)
     {
         LOCK(WalletDB::cs_walletdb);
-        WalletDB::nWalletDBUpdated++;
+        ++WalletDB::nWalletDBUpdated;
         return Write(std::make_pair(std::string("key"), vchPubKey), vchPrivKey, false);
     }
 
@@ -187,7 +187,7 @@ namespace Legacy
     bool WalletDB::WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret, bool fEraseUnencryptedKey)
     {
         LOCK(WalletDB::cs_walletdb);
-        WalletDB::nWalletDBUpdated++;
+        ++WalletDB::nWalletDBUpdated;
         if (!Write(std::make_pair(std::string("ckey"), vchPubKey), vchCryptedSecret, false))
             return false;
 
@@ -212,7 +212,7 @@ namespace Legacy
     bool WalletDB::WriteTx(const uint512_t& hash, const WalletTx& wtx)
     {
         LOCK(WalletDB::cs_walletdb);
-        WalletDB::nWalletDBUpdated++;
+        ++WalletDB::nWalletDBUpdated;
         return Write(std::make_pair(std::string("tx"), hash), wtx);
     }
 
@@ -221,7 +221,7 @@ namespace Legacy
     bool WalletDB::EraseTx(const uint512_t& hash)
     {
         LOCK(WalletDB::cs_walletdb);
-        WalletDB::nWalletDBUpdated++;
+        ++WalletDB::nWalletDBUpdated;
         return Erase(std::make_pair(std::string("tx"), hash));
     }
 
@@ -239,7 +239,7 @@ namespace Legacy
     bool WalletDB::WriteScript(const uint256_t& hash, const Script& redeemScript)
     {
         LOCK(WalletDB::cs_walletdb);
-        WalletDB::nWalletDBUpdated++;
+        ++WalletDB::nWalletDBUpdated;
         return Write(std::make_pair(std::string("cscript"), hash), redeemScript, false);
     }
 
@@ -256,7 +256,7 @@ namespace Legacy
     bool WalletDB::WritePool(const uint64_t nPool, const KeyPoolEntry& keypoolEntry)
     {
         LOCK(WalletDB::cs_walletdb);
-        WalletDB::nWalletDBUpdated++;
+        ++WalletDB::nWalletDBUpdated;
         return Write(std::make_pair(std::string("pool"), nPool), keypoolEntry);
     }
 
@@ -265,7 +265,7 @@ namespace Legacy
     bool WalletDB::ErasePool(const uint64_t nPool)
     {
         LOCK(WalletDB::cs_walletdb);
-        WalletDB::nWalletDBUpdated++;
+        ++WalletDB::nWalletDBUpdated;
         return Erase(std::make_pair(std::string("pool"), nPool));
     }
 
@@ -674,9 +674,12 @@ namespace Legacy
 
         debug::log(1, FUNCTION, "Wallet flush thread started");
 
-        while (!config::fShutdown)
+        while (!config::fShutdown.load())
         {
             runtime::sleep(1000);
+
+            if(config::fShutdown.load())
+                break;
 
             if (nLastSeen != WalletDB::nWalletDBUpdated)
             {
@@ -686,8 +689,11 @@ namespace Legacy
             }
 
             /* Perform flush if any wallet database updated, and the minimum required time has passed since recognizing the update */
-            if (nLastFlushed != WalletDB::nWalletDBUpdated && (runtime::unifiedtimestamp() - nLastWalletUpdate) >= minTimeSinceLastUpdate)
+            if (nLastFlushed != WalletDB::nWalletDBUpdated
+            && (runtime::unifiedtimestamp() - nLastWalletUpdate) >= minTimeSinceLastUpdate
+            &&  !config::fShutdown.load())
             {
+
                 /* Try to lock but don't wait for it. Skip this iteration if fail to get lock. */
                 if (BerkeleyDB::cs_db.try_lock())
                 {
@@ -699,10 +705,10 @@ namespace Legacy
                     {
                         /* Calculate total of all ref counts in map. This will be zero if no databases in use, non-zero if any are. */
                         nRefCount += (*mi).second;
-                        mi++;
+                        ++mi;
                     }
 
-                    if (nRefCount == 0 && !config::fShutdown)
+                    if (nRefCount == 0)
                     {
                         /* If strWalletFile has not been opened since startup, no need to flush even if nWalletDBUpdated count has changed.
                          * An entry in mapFileUseCount verifies that this particular wallet file has been used at some point, so it will be flushed.
@@ -733,7 +739,7 @@ namespace Legacy
         debug::log(1, FUNCTION, "Shutting down wallet flush thread");
 
         /* Should be shutdown if get here, so this thread can shutdown database environment */
-        if (config::fShutdown)
+        if (config::fShutdown.load())
             BerkeleyDB::EnvShutdown();
     }
 
@@ -746,18 +752,20 @@ namespace Legacy
 
         /* Validate the length of strDest. This assures pathDest.size() cast to uint32_t is always valid (nobody can pass a ridiculously long string) */
 #ifndef WIN32
-        if (strDest.size() > 4096) {
+        if (strDest.size() > 4096)
+        {
             debug::log(0, FUNCTION, "Error: Invalid destination path. Path size exceeds maximum limit");
             return false;
         }
 #else
-        if (strDest.size() > 260) {
+        if (strDest.size() > 260)
+        {
             debug::log(0, FUNCTION, "Error: Invalid destination path. Path size exceeds maximum limit");
             return false;
         }
 #endif
 
-        while (!config::fShutdown)
+        while (!config::fShutdown.load())
         {
             {
                 LOCK(BerkeleyDB::cs_db);

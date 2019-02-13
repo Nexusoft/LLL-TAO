@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_UTIL_INCLUDE_ARGS_H
 #define NEXUS_UTIL_INCLUDE_ARGS_H
 
+#include <atomic>
 #include <map>
 #include <vector>
 #include <string>
@@ -25,10 +26,9 @@ namespace config
     extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
     extern std::string strMiscWarning;
 
+    extern std::atomic<bool> fShutdown;
     extern bool fDebug;
     extern bool fPrintToConsole;
-    extern bool fRequestShutdown;
-    extern bool fShutdown;
     extern bool fDaemon;
     extern bool fClient;
     extern bool fServer;

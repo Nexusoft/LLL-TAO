@@ -66,7 +66,7 @@ namespace TAO
             coreNode.Write(vBuffer, vBuffer.size());
 
             /* Read the response packet. */
-            while(!coreNode.INCOMING.Complete() && !config::fShutdown)
+            while(!coreNode.INCOMING.Complete() && !config::fShutdown.load())
             {
 
                 /* Catch if the connection was closed. */

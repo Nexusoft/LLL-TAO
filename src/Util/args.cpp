@@ -22,10 +22,9 @@ namespace config
     std::map<std::string, std::string> mapArgs;
     std::map<std::string, std::vector<std::string> > mapMultiArgs;
 
+    std::atomic<bool> fShutdown(false);
     bool fDebug = false;
     bool fPrintToConsole = false;
-    bool fRequestShutdown = false;
-    bool fShutdown = false;
     bool fDaemon = false;
     bool fServer = false;
     bool fClient = false;

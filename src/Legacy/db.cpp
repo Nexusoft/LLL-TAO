@@ -96,7 +96,7 @@ namespace Legacy
         if (!BerkeleyDB::fDbEnvInit)
         {
             /* Need to initialize database environment. This is only done once upon construction of the first BerkeleyDB instance */
-            if (config::fShutdown)
+            if (config::fShutdown.load())
                 return;
 
             std::string pathDataDir(config::GetDataDir());
@@ -467,7 +467,7 @@ namespace Legacy
             /* Copy mapFileUseCount so can erase without invalidating iterator */
             std::map<std::string, uint32_t> mapTempUseCount = BerkeleyDB::mapFileUseCount;
 
-            for (auto mi = mapTempUseCount.cbegin(); mi != mapTempUseCount.cend(); mi++)
+            for (auto mi = mapTempUseCount.cbegin(); mi != mapTempUseCount.cend(); ++mi)
             {
                 const std::string strFile = (*mi).first;
                 const uint32_t nRefCount = (*mi).second;

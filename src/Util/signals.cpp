@@ -20,7 +20,7 @@ std::condition_variable SHUTDOWN;
 /** Shutdown the system and all its subsystems. **/
 void Shutdown()
 {
-    config::fShutdown = true;
+    config::fShutdown.store(true);
     SHUTDOWN.notify_all();
 }
 
