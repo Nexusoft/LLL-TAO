@@ -508,6 +508,18 @@ namespace LLD
                     /* Set the transaction data. */
                     pTransaction->mapTransactions[ssKey.Bytes()] = ssData.Bytes();
 
+                    /* Handle for a record update that needs to be reverted in case of errors. */
+                    //if(pSectorKeys->Get(ssKey.Bytes()))
+                    //{
+                        /* Read the data if it exists. */
+                    //    std::vector<uint8_t> vData;
+                    //    if(!Get(ssKey.Bytes(), vData))
+                    //        return false;
+
+                        /* Add the original data to the transaction. */
+                    //    pTransaction->mapOriginalData[ssKey.Bytes()] = vData;
+                    //}
+
                     return true;
                 }
             }
@@ -603,6 +615,14 @@ namespace LLD
          *
          **/
         void TxnBegin();
+
+
+        /** TxnRollback
+         *
+         *  Rollback the transaction to previous state.
+         *
+         **/
+        void TxnRollback();
 
 
         /** TxnAbort

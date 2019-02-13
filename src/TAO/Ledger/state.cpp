@@ -49,7 +49,7 @@ namespace TAO
         /* Get the block state object. */
         bool GetLastState(BlockState &state, uint32_t nChannel)
         {
-            uint1024_t genesisHash =  config::fTestNet ? hashGenesisTestnet : hashGenesis; 
+            uint1024_t genesisHash =  config::fTestNet ? hashGenesisTestnet : hashGenesis;
 
             /* Loop back 10k blocks. */
             for(uint_t i = 0; i < 1440; ++i)
@@ -222,6 +222,35 @@ namespace TAO
 
             /* Commit the transaction to database. */
             LLD::TxnCommit();
+
+
+            /* Scan each transaction in the block and process those related to this wallet */
+            std::vector<uint512_t> vHashes;
+            Legacy::Transaction tx;
+            for(const auto& item : ChainState::stateBest.vtx)
+            {
+                vHashes.push_back(item.second);
+                if (item.first == TAO::Ledger::LEGACY_TX)
+                {
+                    /* Read transaction from database */
+                    if (!LLD::legacyDB->ReadTx(item.second, tx))
+                    {
+                        debug::log(0, ChainState::stateBest.ToString(debug::flags::tx | debug::flags::header));
+
+                        assert(debug::error(FUNCTION, "tx ", item.second.ToString().substr(0, 20), " not found"));
+                    }
+
+                    /* Check for coinbase or coinstake. */
+                    if(item.second == ChainState::stateBest.vtx[0].second && !tx.IsCoinBase() && !tx.IsCoinStake())
+                    {
+                        assert(debug::error(FUNCTION, "first transction not coinbase/coinstake"));
+                    }
+                }
+            }
+
+            /* Check the merkle root. */
+            if(ChainState::stateBest.hashMerkleRoot != ChainState::stateBest.BuildMerkleTree(vHashes))
+                assert(debug::error(FUNCTION, "merkle tree mismatch"));
 
 
             /* Debug output. */

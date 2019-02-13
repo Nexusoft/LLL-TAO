@@ -176,8 +176,8 @@ namespace LLP
             if(config::GetBoolArg("-fastsync")
             && TAO::Ledger::ChainState::Synchronizing()
             && addrFastSync.ToStringIP() == GetAddress().ToStringIP()
-            && nLastTimeReceived + 30 < runtime::timestamp()
-            && nLastGetBlocks + 30 < runtime::timestamp())
+            && nLastTimeReceived + 10 < runtime::timestamp()
+            && nLastGetBlocks + 10 < runtime::timestamp())
             {
                 debug::error(FUNCTION, "fast sync node event timeout");
 

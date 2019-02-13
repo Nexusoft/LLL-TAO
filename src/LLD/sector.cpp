@@ -520,6 +520,46 @@ namespace LLD
         TxnRelease();
     }
 
+    /* Rollback the transaction to previous state. */
+     template<class KeychainType, class CacheType>
+     void SectorDatabase<KeychainType, CacheType>::TxnRollback()
+     {
+         LOCK(TRANSACTION_MUTEX);
+
+         /* Check that there is a valid transaction to apply to the database. */
+         assert(pTransaction);
+
+         /* Restore erase data. */
+         for(const auto& item : pTransaction->mapEraseData)
+             if(!pSectorKeys->Restore(item.first))
+                 assert(debug::error(FUNCTION, "failed to rollback erase"));
+
+        /* Erase all the transactions. */
+        for(const auto& item : pTransaction->mapTransactions)
+            if(!pSectorKeys->Erase(item.first))
+                assert(debug::error(FUNCTION, "failed to rollback transactions"));
+
+         /* Commit the sector data. */
+         for(const auto& item : pTransaction->mapOriginalData)
+             if(!Force(item.first, item.second))
+                assert(debug::error(FUNCTION, "failed to rollback sector data"));
+
+         /* Commit keychain entries. */
+         for(const auto& item : pTransaction->mapKeychain)
+             if(!pSectorKeys->Erase(item.first))
+                assert(debug::error(FUNCTION, "failed to commit to keychain"));
+
+         /* Commit the index data. */
+         for(const auto& item : pTransaction->mapIndex)
+            if(!pSectorKeys->Erase(item.first))
+                assert(debug::error(FUNCTION, "failed to erase indexes"));
+
+
+         /* Cleanup the transaction object. */
+         delete pTransaction;
+         pTransaction = nullptr;
+     }
+
 
     /*  Abort a transaction from happening. */
     template<class KeychainType, class CacheType>
@@ -585,79 +625,43 @@ namespace LLD
             return false;
 
         /* Erase data set to be removed. */
-        for(auto it = pTransaction->mapEraseData.begin(); it != pTransaction->mapEraseData.end(); ++it )
-        {
-            /* Erase the transaction data. */
-            if(!pSectorKeys->Erase(it->first))
-            {
-                delete pTransaction;
-                pTransaction = nullptr;
-                //RollbackTransactions();
-                //TxnAbort();
-
-                return debug::error(FUNCTION, "failed to erase from keychain");
-            }
-        }
-
-        /* Commit keychain entries. */
-        for(auto it = pTransaction->mapKeychain.begin(); it != pTransaction->mapKeychain.end(); ++it )
-        {
-            SectorKey cKey(STATE::READY, it->first, 0, 0, 0);
-            if(!pSectorKeys->Put(cKey))
-            {
-                delete pTransaction;
-                pTransaction = nullptr;
-                //RollbackTransactions();
-                //TxnAbort();
-            }
-        }
+        for(const auto& item : pTransaction->mapEraseData)
+            if(!pSectorKeys->Erase(item.first))
+                assert(debug::error(FUNCTION, "failed to erase from keychain"));
 
         /* Commit the sector data. */
-        for(auto it = pTransaction->mapTransactions.begin(); it != pTransaction->mapTransactions.end(); ++it )
-        {
-            if(!Force(it->first, it->second))
-            {
-                delete pTransaction;
-                pTransaction = nullptr;
-                //RollbackTransactions();
-                //TxnAbort();
+        for(const auto& item : pTransaction->mapTransactions)
+            if(!Force(item.first, item.second))
+                assert(debug::error(FUNCTION, "failed to commit sector data"));
 
-                return debug::error(FUNCTION, "failed to commit sector data");
-            }
+        /* Commit keychain entries. */
+        for(const auto& item : pTransaction->mapKeychain)
+        {
+            SectorKey cKey(STATE::READY, item.first, 0, 0, 0);
+            if(!pSectorKeys->Put(cKey))
+                assert(debug::error(FUNCTION, "failed to commit to keychain"));
         }
 
         /* Commit the index data. */
         std::map<std::vector<uint8_t>, SectorKey> mapIndex;
-        for(auto it = pTransaction->mapIndex.begin(); it != pTransaction->mapIndex.end(); ++it )
+        for(const auto& item : pTransaction->mapIndex)
         {
             /* Get the key. */
             SectorKey cKey;
-            if(mapIndex.count(it->second))
-                cKey = mapIndex[it->second];
+            if(mapIndex.count(item.second))
+                cKey = mapIndex[item.second];
             else
             {
-                if(!pSectorKeys->Get(it->second, cKey))
-                {
-                    delete pTransaction;
-                    pTransaction = nullptr;
-                    //TxnAbort();
+                if(!pSectorKeys->Get(item.second, cKey))
+                    assert(debug::error(FUNCTION, "failed to read indexing entry"));
 
-                    return debug::error(FUNCTION, "failed to read indexing entry");
-                }
-
-                mapIndex[it->second] = cKey;
+                mapIndex[item.second] = cKey;
             }
 
             /* Write the new sector key. */
-            cKey.SetKey(it->first);
+            cKey.SetKey(item.first);
             if(!pSectorKeys->Put(cKey))
-            {
-                delete pTransaction;
-                pTransaction = nullptr;
-                //TxnAbort();
-
-                return debug::error(FUNCTION, "failed to write indexing entry");
-            }
+                assert(debug::error(FUNCTION, "failed to write indexing entry"));
         }
 
         /* Cleanup the transaction object. */

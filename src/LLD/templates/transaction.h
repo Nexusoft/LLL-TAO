@@ -60,11 +60,11 @@ namespace LLD
     {
     public:
 
-        /** The hash for the Transaction to be saved under. **/
-        uint64_t TransactionID;
-
         /** New Data to be Added. **/
         std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapTransactions;
+
+        /** Original data to be mapped. **/
+        std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapOriginalData;
 
         /** Keychain items to commit. */
         std::map< std::vector<uint8_t>, uint8_t > mapKeychain;
@@ -93,15 +93,6 @@ namespace LLD
          *
          **/
         bool EraseTransaction(const std::vector<uint8_t> &vKey);
-
-
-        /** GetHash
-         *
-         *  Returns a hash to keep track of the Sector Transactions in the
-         *  Transaction History Journal.
-         *
-         **/
-        uint512_t GetHash() const;
     };
 }
 
