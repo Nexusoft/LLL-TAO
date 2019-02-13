@@ -139,7 +139,8 @@ namespace LLP
             /* Copy in the new address. */
             addr = BaseAddress(sockaddr);
 
-            /* Connect for non-blocking socket should return SOCKET_ERROR (with last error WSAEWOULDBLOCK normally).
+            /* Connect for non-blocking socket should return SOCKET_ERROR 
+             * (with last error WSAEWOULDBLOCK/Windows, WSAEINPROGRESS/Linux normally).
              * Then we have to use select below to check if connection was made.
              * If it doesn't return that, it means it connected immediately and connection was successful. (very unusual, but possible)
              */
@@ -160,10 +161,10 @@ namespace LLP
         /* Handle final socket checks if connection established with no errors. */
         if (fConnected)
         {
-            /* We would expect to get WSAEWOULDBLOCK here in the normal case of attempting a connection. */
+            /* We would expect to get WSAEWOULDBLOCK/WSAEINPROGRESS here in the normal case of attempting a connection. */
             nError = WSAGetLastError();
 
-            if (nError == WSAEWOULDBLOCK || nError == WSAEALREADY)
+            if (nError == WSAEWOULDBLOCK || nError == WSAEALREADY || nError == WSAEINPROGRESS)
             {
                 struct timeval timeout;
                 timeout.tv_sec  = nTimeout / 1000;
