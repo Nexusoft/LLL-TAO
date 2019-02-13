@@ -12,7 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/templates/data.h>
-#include <LLP/include/network.h>
 #include <LLP/templates/ddos.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/socket.h>
@@ -44,6 +43,7 @@ namespace LLP
     , DDOS_rSCORE(rScore)
     , DDOS_cSCORE(cScore)
     , CONNECTIONS(0)
+    , POLLFDS(0)
     , CONDITION()
     , pEmpty(new ProtocolType())
     , DATA_THREAD(std::bind(&DataThread::Thread, this))
@@ -82,10 +82,17 @@ namespace LLP
 
             /* Find a slot that is empty. */
             if(nSlot == CONNECTIONS.size())
+            {
                 CONNECTIONS.push_back(pEmpty);
+
+                pollfd pollfdForConnection;
+                POLLFDS.push_back(pollfdForConnection);
+            }
 
             /* Assign the slot to the connection. */
             CONNECTIONS[nSlot] = node;
+            POLLFDS[nSlot].fd = node->fd;
+            POLLFDS[nSlot].events = node->events;
 
             if(fDDOS)
                 DDOS -> cSCORE += 1;
@@ -101,41 +108,48 @@ namespace LLP
     template <class ProtocolType>
     bool DataThread<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort, DDOS_Filter* DDOS)
     {
-       /* Create a new pointer on the heap. */
-       ProtocolType* node = new ProtocolType(DDOS, fDDOS);
+        /* Create a new pointer on the heap. */
+        ProtocolType* node = new ProtocolType(DDOS, fDDOS);
 
 
-       if(!node->Connect(strAddress, nPort))
-       {
-           node->Disconnect();
-           delete node;
+        if(!node->Connect(strAddress, nPort))
+        {
+            node->Disconnect();
+            delete node;
 
-           return false;
-       }
+            return false;
+        }
 
-       {
-           LOCK(MUTEX);
+        {
+            LOCK(MUTEX);
 
-           /* Find a slot that is empty. */
-           int nSlot = find_slot();
-           if(nSlot == CONNECTIONS.size())
-               CONNECTIONS.push_back(pEmpty);
+            /* Find a slot that is empty. */
+            int nSlot = find_slot();
+            if(nSlot == CONNECTIONS.size())
+            {
+                CONNECTIONS.push_back(pEmpty);
 
-           CONNECTIONS[nSlot] = node;
+                pollfd pollfdForConnection;
+                POLLFDS.push_back(pollfdForConnection);
+            }
 
-           /* Set the outgoing flag. */
-           CONNECTIONS[nSlot]->fOUTGOING = true;
+            CONNECTIONS[nSlot] = node;
+            POLLFDS[nSlot].fd = node->fd;
+            POLLFDS[nSlot].events = node->events;
 
-           if(fDDOS)
-               DDOS -> cSCORE += 1;
+            /* Set the outgoing flag. */
+            CONNECTIONS[nSlot]->fOUTGOING = true;
 
-           CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
-           ++nConnections;
+            if(fDDOS)
+                DDOS -> cSCORE += 1;
 
-           CONDITION.notify_all();
-       }
+            CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
+            ++nConnections;
 
-       return true;
+            CONDITION.notify_all();
+        }
+
+        return true;
     }
 
 
@@ -191,11 +205,24 @@ namespace LLP
                 if (nSize == 0)
                     continue;
 
+                /* Initialize the revents for all connection pollfd structures. One connection must be live, so verify that and skip if none */
+                bool fHasValidConnections = false;
+                for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+                {
+                    POLLFDS[nIndex].revents = 0;
+
+                    if (POLLFDS[nIndex].fd != INVALID_SOCKET)
+                        fHasValidConnections = true;
+                }
+
+                if (!fHasValidConnections)
+                    continue;
+
                 /* Poll the sockets. */
 #ifdef WIN32
-                int nPoll = WSAPoll((pollfd*)CONNECTIONS[0], nSize, 100);
+                int nPoll = WSAPoll((pollfd*)&POLLFDS[0], nSize, 100);
 #else
-                int nPoll = poll((pollfd*)CONNECTIONS[0], nSize, 100);
+                int nPoll = poll((pollfd*)&POLLFDS[0], nSize, 100);
 #endif
                 /* Continue on poll errors. */
                 if (nPoll <= 0)
@@ -214,7 +241,14 @@ namespace LLP
                     if(CONNECTIONS[nIndex] == pEmpty || !CONNECTIONS[nIndex]->Connected())
                         continue;
 
-                    /* Remove Connection if it has Timed out or had any Errors. */
+                    /* Disconnect if there was a polling error */
+                    if(POLLFDS[nIndex].revents == POLLERR || POLLFDS[nIndex].revents == POLLNVAL)
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
+                        continue;
+                    }
+
+                    /* Remove Connection if it has Timed out or had any read/write Errors. */
                     if(CONNECTIONS[nIndex]->Errors())
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
@@ -311,6 +345,7 @@ namespace LLP
             /* Free the memory. */
             delete CONNECTIONS[index];
             CONNECTIONS[index] = pEmpty;
+            POLLFDS[index].fd = INVALID_SOCKET;
 
             --nConnections;
         }

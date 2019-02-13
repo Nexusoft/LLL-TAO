@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_DATA_H
 #define NEXUS_LLP_TEMPLATES_DATA_H
 
+#include <LLP/include/network.h>
+
 #include <Util/include/mutex.h>
 
 #include <atomic>
@@ -57,6 +59,10 @@ namespace LLP
 
         /* Vector to store Connections. */
         std::vector<ProtocolType *> CONNECTIONS;
+
+
+        /* Vector to store Connections. */
+        std::vector<pollfd> POLLFDS;
 
 
         /* The condition for thread sleeping. */
