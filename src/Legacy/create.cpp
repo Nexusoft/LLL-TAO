@@ -49,7 +49,7 @@ namespace Legacy
 {
 
     /** Constructs a new legacy block **/
-    bool CreateLegacyBlock(Legacy::ReserveKey& coinbaseKey, const uint32_t nChannel, const uint32_t nID, LegacyBlock& newBlock)
+    bool CreateLegacyBlock(Legacy::ReserveKey& coinbaseKey, const Legacy::Coinbase& coinbaseRecipients, const uint32_t nChannel, const uint32_t nID, LegacyBlock& newBlock)
     {
         newBlock.SetNull();
 
@@ -90,7 +90,7 @@ namespace Legacy
         else
         {
             /* Create the Coinbase transaction for Prime/Hash Channels. */
-            if (!CreateCoinbaseTransaction(coinbaseKey, nChannel, nID, newBlock.nVersion, txNew))
+            if (!CreateCoinbaseTransaction(coinbaseKey, coinbaseRecipients, nChannel, nID, newBlock.nVersion, txNew))
                 return debug::error(FUNCTION, "Error creating coinbase transaction");
 
             /* Add coinbase to block. */
@@ -149,11 +149,12 @@ namespace Legacy
 
 
     /* Create the Coinbase transaction for a legacy block. */
-    bool CreateCoinbaseTransaction(Legacy::ReserveKey& coinbaseKey, const uint32_t nChannel,
+    bool CreateCoinbaseTransaction(Legacy::ReserveKey& coinbaseKey, const Legacy::Coinbase& coinbaseRecipients, const uint32_t nChannel,
                                    const uint32_t nID, const uint32_t nNewBlockVersion, Transaction& coinbaseTx)
     {
         /* Previous block state is current best state on chain */
         TAO::Ledger::BlockState& prevBlockState = TAO::Ledger::ChainState::stateBest;
+        int64_t nBlockReward = TAO::Ledger::GetCoinbaseReward(prevBlockState, nChannel, 0);
 
         /* Initialize vin */
         coinbaseTx.vin.resize(1);
@@ -162,43 +163,45 @@ namespace Legacy
         /* Set the Proof of Work Script Signature. */
         coinbaseTx.vin[0].scriptSig = (Legacy::Script() << ((uint64_t)nID * 513513512151));
 
-        /* Set the first output to pay to the coinbaseKey. */
-        coinbaseTx.vout.resize(1);
-        coinbaseTx.vout[0].scriptPubKey << coinbaseKey.GetReservedKey() << Legacy::OP_CHECKSIG;
+        /* calculate the reward for this wallet */
+        int64_t nReward = 0;
+        if(coinbaseRecipients.IsNull())
+            nReward = nBlockReward; // Output type 0 is minting of miner reward 
+        else
+            nReward = coinbaseRecipients.nPoolFee; 
 
-//TODO -- Add pool support for coinbase
-        /* Customized Coinbase Transaction - not currently supported, this is old code */
-        // if (pCoinbase)
-        // {
-
-        //     /* Dummy Transaction to Allow the Block to be Signed by Pool Wallet. [For Now] */
-        //     coinbaseTx.vout[0].nValue = pCoinbase->nPoolFee;
-
-        //     unsigned int nTx = 1;
-        //     coinbaseTx.vout.resize(pCoinbase->vOutputs.size() + 1);
-        //     for(std::map<std::string, uint64>::iterator nIterator = pCoinbase->vOutputs.begin(); nIterator != pCoinbase->vOutputs.end(); nIterator++)
-        //     {
-        //         /* Set the Appropriate Outputs. */
-        //         coinbaseTx.vout[nTx].scriptPubKey.SetNexusAddress(nIterator->first);
-        //         coinbaseTx.vout[nTx].nValue = nIterator->second;
-
-        //         nTx++;
-        //     }
-
-        //     int64 nMiningReward = 0;
-        //     for(int nIndex = 0; nIndex < coinbaseTx.vout.size(); nIndex++)
-        //         nMiningReward += coinbaseTx.vout[nIndex].nValue;
-
-        //     /* Double Check the Coinbase Transaction Fits in the Maximum Value. */
-        //     if(nMiningReward != TAO::Ledger::GetCoinbaseReward(prevBlockState, nChannel, 0))
-        //         return false;
-
-        // }
-        // else
+        if( nReward > 0)
         {
-            /* When no customized coinbase, pay full miner reward to coinbaseKey */
-            coinbaseTx.vout[0].nValue = TAO::Ledger::GetCoinbaseReward(prevBlockState, nChannel, 0); // Output type 0 is minting of miner reward
+            coinbaseTx.vout.resize(1);
+            coinbaseTx.vout[0].scriptPubKey << coinbaseKey.GetReservedKey() << Legacy::OP_CHECKSIG;
+            coinbaseTx.vout[0].nValue = nReward;
         }
+        
+        /* if additional coinbase recipients have been provided them add them to vout*/
+        if( !coinbaseRecipients.IsNull() )
+        {
+            unsigned int nTx = 1;
+            coinbaseTx.vout.resize(coinbaseRecipients.vOutputs.size() + coinbaseTx.vout.size());
+            for(const auto& entry : coinbaseRecipients.vOutputs)
+            {
+                /* Set the Appropriate Outputs. */
+                coinbaseTx.vout[nTx].scriptPubKey.SetNexusAddress(NexusAddress(entry.first));
+                coinbaseTx.vout[nTx].nValue = entry.second;
+
+                nTx++;
+            }
+
+            int64_t nMiningReward = 0;
+            for(int nIndex = 0; nIndex < coinbaseTx.vout.size(); nIndex++)
+                nMiningReward += coinbaseTx.vout[nIndex].nValue;
+
+            /* Double Check the Coinbase Transaction Fits in the Maximum Value. */
+            if(nMiningReward != nBlockReward)
+                return false;
+        }
+        
+        
+
 
         /* Make coinbase counter mod 13 of height. */
         int nCoinbaseCounter = TAO::Ledger::ChainState::stateBest.nHeight % 13;

@@ -273,8 +273,9 @@ namespace Legacy
         candidateBlock = LegacyBlock();
 
         ReserveKey dummyReserveKey(pStakingWallet); //Reserve key not used by CreateLegacyBlock for nChannel=0
+        Coinbase dummyCoinbase; // Coinbase not used for staking
 
-        if (!CreateLegacyBlock(dummyReserveKey, 0, 0, candidateBlock))
+        if (!CreateLegacyBlock(dummyReserveKey, dummyCoinbase, 0, 0, candidateBlock))
             return debug::error(FUNCTION, "Unable to create candidate block");
 
         if (!trustKey.IsNull())
