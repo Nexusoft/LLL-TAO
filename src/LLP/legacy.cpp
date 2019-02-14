@@ -36,16 +36,19 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/chainstate.h>
 
-namespace LLP
+namespace
 {
+    std::atomic<uint32_t> nAsked(0);
 
     /* Static instantiation of orphan blocks in queue to process. */
-    static std::map<uint1024_t, Legacy::LegacyBlock> mapLegacyOrphans;
-
+    std::map<uint1024_t, Legacy::LegacyBlock> mapLegacyOrphans;
 
     /* Mutex to protect checking more than one block at a time. */
-    static std::mutex PROCESSING_MUTEX;
+    std::mutex PROCESSING_MUTEX;
+}
 
+namespace LLP
+{
 
     /* Static initialization of last get blocks. */
     uint1024_t LegacyNode::hashLastGetblocks = 0;
@@ -307,7 +310,7 @@ namespace LLP
             PushMessage("verack");
 
             /* Push our version back since we just completed getting the version from the other node. */
-            static uint32_t nAsked = 0;
+
             if (fOUTGOING && nAsked == 0)
             {
                 ++nAsked;

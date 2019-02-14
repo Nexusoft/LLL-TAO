@@ -49,9 +49,13 @@ ________________________________________________________________________________
 
 #endif
 
+
+
 namespace debug
 {
     static FILE* fileout = nullptr;
+    std::mutex DEBUG_MUTEX;
+    std::ofstream ssFile;
 
     /*  Safer snprintf output string is always null terminated even if the limit
      *  is reach. Returns the number of characters printed. */
@@ -79,6 +83,7 @@ namespace debug
         char* p = buffer;
         int limit = sizeof(buffer);
         int ret;
+
         while(true)
         {
             va_list arg_ptr;
