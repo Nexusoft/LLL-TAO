@@ -139,9 +139,11 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::DisconnectAll()
     {
-       uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
-       for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
-           remove(nIndex);
+        LOCK(MUTEX);
+
+        uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
+        for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+            remove(nIndex);
     }
 
 
@@ -151,8 +153,6 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::Thread()
     {
-        /* The mutex for the condition. */
-        std::mutex CONDITION_MUTEX;
 
         /* The main connection handler loop. */
         while(!fDestruct.load() && !config::fShutdown.load())
@@ -161,6 +161,7 @@ namespace LLP
             runtime::sleep(1);
 
             /* Keep data threads waiting for work. */
+            std::mutex CONDITION_MUTEX;
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
             CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown.load() || nConnections.load() > 0; });
 
@@ -170,7 +171,8 @@ namespace LLP
 
             /* Wrapped mutex lock. */
             uint32_t nSize = 0;
-            { LOCK(MUTEX);
+            {
+                LOCK(MUTEX);
 
                 /* Get the total connections. */
                 nSize = static_cast<uint32_t>(CONNECTIONS.size());
