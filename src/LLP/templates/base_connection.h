@@ -73,7 +73,7 @@ namespace LLP
 
 
         /** Flag to Determine if DDOS is Enabled. **/
-        bool fDDOS;
+        std::atomic<bool> fDDOS;
 
 
         /** Flag to Determine if the connection was made by this Node. **/
@@ -96,14 +96,6 @@ namespace LLP
         virtual ~BaseConnection();
 
 
-        /** Reset
-         *
-         *  Resets the internal timers.
-         *
-         **/
-        void Reset();
-
-
         /** SetNull
          *
          *  Sets the object to an invalid state.
@@ -112,46 +104,12 @@ namespace LLP
         void SetNull();
 
 
-        /** IsNull
-         *
-         *  Checks if is in null state.
-         *
-         **/
-        bool IsNull() const;
-
-
-        /** Errors
-         *
-         *  Checks for any flags in the Error Handle.
-         *
-         **/
-        bool Errors() const;
-
-
-        /** Error
-         *
-         *  Give the message (c-string) of the error in the socket.
-         *
-         **/
-        char* Error() const;
-
-
         /** Connected
          *
          *  Connection flag to determine if socket should be handled if not connected.
          *
          **/
         bool Connected() const;
-
-
-        /** Timeout
-         *
-         *  Determines if nTime seconds have elapsed since last Read / Write.
-         *
-         *  @param[in] nTime The time in seconds.
-         *
-         **/
-        bool Timeout(uint32_t nTime) const;
 
 
         /** PacketComplete
