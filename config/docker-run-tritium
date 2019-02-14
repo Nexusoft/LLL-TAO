@@ -13,10 +13,15 @@
 # Note the port number allocated to get to the lispers.net webpage interface
 # can be found in the PORTS column of "docker ps".
 #
+# Usage: docker-run-tritium [<ipv4-eid> <ipv6-eid> <container-name>]
 #
 HOSTNAME=`hostname | cut -d "." -f 1`
 RAND=`python -c "import random as r; print hex(r.randint(0, 0xffffffff))[2::]"`
-NAME="nexus-$HOSTNAME-$RAND"
+if [ -z "$3" ] ; then
+    NAME="nexus-$HOSTNAME-$RAND"
+else    
+    NAME="$3"
+fi
 
 #
 # When one container is running, we use port 9090 for accessing the lispers.net
@@ -42,7 +47,8 @@ fi
 #    --privileged --name $NAME -h $NAME -ti tritium > /dev/null
 
 docker create -p $NPORT:8080 -p $LPORT:9090 -v /:/hostOS -e "EID4=$1" \
-       -e "EID6=$2" --privileged --name $NAME -h $NAME -ti tritium > /dev/null
+       -e "EID6=$2" -e "NAME=$NAME" --privileged --name $NAME -h $NAME \
+       -ti tritium > /dev/null
 
 #
 # Startup container.
