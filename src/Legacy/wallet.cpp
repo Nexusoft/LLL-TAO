@@ -60,6 +60,35 @@ namespace Legacy
     bool Wallet::fWalletInitialized = false;
 
 
+    /** Constructor **/
+    Wallet::Wallet()
+    : CryptoKeyStore()
+    , nWalletVersion(FEATURE_BASE)
+    , nWalletMaxVersion(FEATURE_BASE)
+    , fFileBacked(false)
+    , fLoaded(false)
+    , strWalletFile("")
+    , mapMasterKeys()
+    , nMasterKeyMaxID(0)
+    , addressBook(AddressBook(*this))
+    , keyPool(KeyPool(*this))
+    , vchDefaultKey()
+    , vchTrustKey()
+    , nWalletUnlockTime(0)
+    , pWalletDbEncryption(nullptr)
+    , cs_wallet()
+    , mapWallet()
+    , mapRequestCount()
+    {
+    }
+
+
+    /** Destructor **/
+    Wallet::~Wallet()
+    {
+    }
+
+
     /* Implement static methods */
 
     /* Initializes the wallet instance. */
@@ -527,7 +556,7 @@ namespace Legacy
             /* We now probably have half of our keys encrypted in memory,
              * and half not...die to let the user reload their unencrypted wallet.
              */
-            config::fShutdown = true;
+            config::fShutdown.store(true);
             return debug::error(FUNCTION, "Error encrypting wallet. Shutting down.");;
         }
 
@@ -536,7 +565,7 @@ namespace Legacy
             if (!pWalletDbEncryption->TxnCommit())
             {
                 /* Keys encrypted in memory, but not on disk...die to let the user reload their unencrypted wallet. */
-                config::fShutdown = true;
+                config::fShutdown.store(true);
                 return debug::error(FUNCTION, "Error committing encryption updates to wallet file. Shutting down.");
             }
 
@@ -1210,7 +1239,7 @@ namespace Legacy
         runtime::timer timer;
         timer.Start();
         Legacy::Transaction tx;
-        while (!config::fShutdown)
+        while (!config::fShutdown.load())
         {
             /* Output for the debugger. */
             ++nScannedBlocks;

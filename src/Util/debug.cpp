@@ -197,32 +197,51 @@ namespace debug
     /*  Shrinks the size of the debug.log file if it has grown exceptionally large.
      *  It keeps some of the end of the file with most recent log history before
      *  shrinking it down. */
-    void ShrinkDebugFile()
+    void ShrinkDebugFile(std::string debugPath)
     {
         /* Scroll debug.log if it's getting too big */
-        std::string pathLog = config::GetDataDir() + "\\debug.log";
-        FILE* file = fopen(pathLog.c_str(), "r");
+        FILE* file = fopen(debugPath.c_str(), "r");
         if (file && GetFilesize(file) > 10 * 1000000)
         {
             /* Restart the file with some of the end */
             char pch[200000];
 
             /* define pchSize instead of passing -sizeof() directly to fseek
-               fseek size parameter is long int, which on Windows is 32-bit and throws compile warning for conversion overflow 
+               fseek size parameter is long int, which on Windows is 32-bit and throws compile warning for conversion overflow
                if you pass -sizeof() which is type size_t, or 64 bit on Windows. So we convert the positive, then pass negative of it */
             uint32_t pchSize = sizeof(pch);
             fseek(file, -pchSize, SEEK_END);
-            
+
             int nBytes = fread(pch, 1, sizeof(pch), file);
             fclose(file);
 
-            file = fopen(pathLog.c_str(), "w");
+            file = fopen(debugPath.c_str(), "w");
             if (file)
             {
                 fwrite(pch, 1, nBytes, file);
                 fclose(file);
             }
         }
+    }
+
+
+    /*  Open the debug log file. */
+    bool init(std::string debugPath)
+    {
+        LOCK(DEBUG_MUTEX);
+
+        ssFile.open(debugPath, std::ios::app);
+        return ssFile.is_open();
+    }
+
+
+    /*  Close the debug log file. */
+    void shutdown()
+    {
+        LOCK(DEBUG_MUTEX);
+
+        if(ssFile.is_open())
+            ssFile.close();
     }
 
 }

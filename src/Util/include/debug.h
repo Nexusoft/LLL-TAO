@@ -17,11 +17,13 @@ ________________________________________________________________________________
 #include <string>
 #include <cinttypes>
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <fstream>
 
 #include <Util/include/args.h>
 #include <Util/include/config.h>
+#include <Util/include/runtime.h>
 #include <Util/include/mutex.h>
 
 #ifdef snprintf
@@ -75,6 +77,7 @@ namespace debug
 {
 
     static std::mutex DEBUG_MUTEX;
+    static std::ofstream ssFile;
 
     /** Block debug output flags. **/
     enum flags
@@ -83,6 +86,22 @@ namespace debug
         tx            = (1 << 1),
         chain         = (1 << 2)
     };
+
+
+    /** init
+     *
+     *  Open the debug log file.
+     *
+     **/
+    bool init(std::string debugPath = config::GetDataDir() + "debug.log");
+
+
+    /** shutdown
+     *
+     *  Close the debug log file.
+     *
+     **/
+    void shutdown();
 
 
     /** print_args
@@ -153,16 +172,34 @@ namespace debug
 
         /* Get the debug string and log file. */
         std::string debug = safe_printstr(args...);
-        std::string pathDebug = config::GetDataDir() + "debug.log";
-        std::ofstream ssFile(pathDebug, std::ios::app);
 
+        /* Get the timestamp. */
+        time_t timestamp = std::time(nullptr);
+
+        /* Lock the mutex. */
         LOCK(DEBUG_MUTEX);
 
         /* Dump it to the console. */
-        std::cout << debug << std::endl;
+        std::cout << "["
+                  << std::put_time(std::localtime(&timestamp), "%H:%M:%S")
+                  << "."
+                  << std::setfill('0')
+                  << std::setw(3)
+                  << (runtime::timestamp(true) % 1000)
+                  << "] "
+                  << debug
+                  << std::endl;
 
         /* Write it to the debug file. */
-        ssFile << debug << std::endl;
+        ssFile    << "["
+                  << std::put_time(std::localtime(&timestamp), "%H:%M:%S")
+                  << "."
+                  << std::setfill('0')
+                  << std::setw(3)
+                  << (runtime::timestamp(true) % 1000)
+                  << "] "
+                  << debug
+                  << std::endl;
     }
 
 
@@ -282,7 +319,7 @@ namespace debug
      *  shrinking it down.
      *
      **/
-    void ShrinkDebugFile();
+    void ShrinkDebugFile(std::string debugPath = config::GetDataDir() + "debug.log");
 
 }
 #endif

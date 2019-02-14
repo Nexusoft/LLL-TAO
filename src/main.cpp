@@ -124,6 +124,9 @@ int main(int argc, char** argv)
     runtime::timer timer;
     timer.Start();
 
+    if(!debug::init())
+        printf("unable to initalize debug log file\n");
+
     /* Handle all the signals with signal handler method. */
     SetupSignals();
 
@@ -379,7 +382,7 @@ int main(int argc, char** argv)
     {
         std::mutex SHUTDOWN_MUTEX;
         std::unique_lock<std::mutex> SHUTDOWN_LOCK(SHUTDOWN_MUTEX);
-        SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown; });
+        SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown.load(); });
     }
 
     /* GDB mode waits for keyboard input to initiate clean shutdown. */
@@ -512,13 +515,16 @@ int main(int argc, char** argv)
     }
 
 
-
     /* Elapsed Milliseconds from timer. */
     nElapsed = timer.ElapsedMilliseconds();
 
 
     /* Startup performance metric. */
     debug::log(0, FUNCTION, "Closed in ", nElapsed, "ms");
+
+
+    /* Close the debug log file once and for all. */
+    debug::shutdown();
 
     return 0;
 }

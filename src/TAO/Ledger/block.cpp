@@ -225,7 +225,7 @@ namespace TAO
                 if(nPrimeBits < nBits)
                     return debug::error(FUNCTION, "prime-cluster below target ", "(proof: ", nPrimeBits, " target: ", nBits, ")");
 
-                return debug::success(FUNCTION, "prime-cluster accepted ", "(proof: ", nPrimeBits, " target: ", nBits, ")");
+                return true;
             }
             if(nChannel == 2)
             {

@@ -73,7 +73,7 @@ namespace LLP
         /* Create a new pointer on the heap. */
         ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
         node->Event(EVENT_CONNECT);
-        node->fCONNECTED = true;
+        node->fCONNECTED.store(true);
 
         {
             LOCK(MUTEX);
@@ -103,8 +103,6 @@ namespace LLP
     {
        /* Create a new pointer on the heap. */
        ProtocolType* node = new ProtocolType(DDOS, fDDOS);
-
-
        if(!node->Connect(strAddress, nPort))
        {
            node->Disconnect();
@@ -122,9 +120,6 @@ namespace LLP
                CONNECTIONS.push_back(nullptr);
 
            CONNECTIONS[nSlot] = node;
-
-           /* Set the outgoing flag. */
-           CONNECTIONS[nSlot]->fOUTGOING = true;
 
            if(fDDOS)
                DDOS -> cSCORE += 1;
@@ -162,17 +157,17 @@ namespace LLP
         std::mutex CONDITION_MUTEX;
 
         /* The main connection handler loop. */
-        while(!fDestruct.load() && !config::fShutdown)
+        while(!fDestruct.load() && !config::fShutdown.load())
         {
             /* Keep thread from consuming too many resources. */
             runtime::sleep(1);
 
             /* Keep data threads waiting for work. */
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-            CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown || nConnections.load() > 0; });
+            CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown.load() || nConnections.load() > 0; });
 
             /* Check for close. */
-            if(fDestruct.load() || config::fShutdown)
+            if(fDestruct.load() || config::fShutdown.load())
                 return;
 
             uint32_t nSize = 0;

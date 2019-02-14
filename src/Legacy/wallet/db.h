@@ -378,7 +378,6 @@ namespace Legacy
          *  Alternative version that takes filename as std::string
          *
          *  @param[in] strFile The database file name
-         *
          *  @param[in] pszMode A string containing one or more access mode characters
          *
          **/
@@ -391,6 +390,7 @@ namespace Legacy
          *
          **/
         virtual ~BerkeleyDB();
+
 
         /** Copy constructor deleted. No copy allowed **/
         BerkeleyDB(const BerkeleyDB&) = delete;
@@ -471,7 +471,7 @@ namespace Legacy
         void Close();
 
 
-        /** @fn CloseDb
+        /** CloseDb
          *
          *  Closes down the open database handle for a database and removes it from BerkeleyDB::mapDb
          *
@@ -489,7 +489,7 @@ namespace Legacy
         static void CloseDb(const std::string& strFile);
 
 
-        /** @fn DBFlush
+        /** DBFlush
          *
          *  Flushes log file to data file for any database handles with BerkeleyDB::mapFileUseCount = 0
          *  then calls CloseDb on that database.
@@ -500,14 +500,13 @@ namespace Legacy
         static void DBFlush(bool fShutdown);
 
 
-        /** @fn DBRewrite
+        /** DBRewrite
          *
          *  Rewrites a database file by copying all contents to an new file, then
          *  replacing the old file with the new one. Does nothing if
          *  BerkeleyDB::mapFileUseCount indicates the source file is in use.
          *
          *  @param[in] strFile The database file to rewrite
-         *
          *  @param[in] pszSkip An optional key type. Any database entries with this key are not copied to the rewritten file
          *
          *  @return true if rewrite was successful
@@ -516,7 +515,7 @@ namespace Legacy
         static bool DBRewrite(const std::string& strFile, const char* pszSkip = nullptr);
 
 
-        /** @fn EnvShutdown
+        /** EnvShutdown
          *
          *  Called to shut down the Berkeley database environment in BerkeleyDB:dbenv
          *

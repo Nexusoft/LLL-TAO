@@ -252,7 +252,7 @@ namespace Legacy
             }
         }
 
-        if (trustKey.IsNull() && !config::fShutdown)
+        if (trustKey.IsNull() && !config::fShutdown.load())
         {
             /* No trust key found. Reserve a new key to use as the trust key for Genesis */
             debug::log(0, FUNCTION, "Staking for Genesis with new trust key");
@@ -570,7 +570,7 @@ namespace Legacy
         /* Search for the proof of stake hash solution until it mines a block, minter is stopped,
          * or network generates a new block (minter must start over with new candidate)
          */
-        while (!fstop && !config::fShutdown && hashLastBlock == TAO::Ledger::ChainState::hashBestChain)
+        while (!fstop && !config::fShutdown.load() && hashLastBlock == TAO::Ledger::ChainState::hashBestChain)
         {
             /* Update the block time for difficulty accuracy. */
             candidateBlock.UpdateTime();
@@ -591,7 +591,7 @@ namespace Legacy
                 LOCK(StakeMinter::cs_stakeMinter);
                 fstop = StakeMinter::fstopMinter;
 
-                if (fstop || config::fShutdown)
+                if (fstop || config::fShutdown.load())
                     continue;
             }
 
@@ -716,7 +716,7 @@ namespace Legacy
         pStakeMinter->nSleepTime = 5000;
 
         /* If minter is not started, or the system is still syncing/connecting on startup, wait to start minter */
-        while ((!fstarted || TAO::Ledger::ChainState::Synchronizing() || LLP::LEGACY_SERVER->GetConnectionCount() == 0)  && !config::fShutdown)
+        while ((!fstarted || TAO::Ledger::ChainState::Synchronizing() || LLP::LEGACY_SERVER->GetConnectionCount() == 0)  && !config::fShutdown.load())
         {
             runtime::sleep(pStakeMinter->nSleepTime);
 
@@ -727,7 +727,7 @@ namespace Legacy
             }
         }
 
-        if(!config::fShutdown)
+        if(!config::fShutdown.load())
             return;
 
         pStakeMinter->FindTrustKey();
@@ -736,7 +736,7 @@ namespace Legacy
         pStakeMinter->nSleepTime = 1000;
 
         /* Minting thread will continue repeating this loop until shutdown */
-        while(!config::fShutdown)
+        while(!config::fShutdown.load())
         {
             runtime::sleep(pStakeMinter->nSleepTime);
 
@@ -755,7 +755,7 @@ namespace Legacy
             }
 
             /* If the minter is stopped, wait for it to start again */
-            while (!fstarted and !config::fShutdown)
+            while (!fstarted and !config::fShutdown.load())
             {
                 runtime::sleep(pStakeMinter->nSleepTime);
 
@@ -765,7 +765,7 @@ namespace Legacy
                 }
             }
 
-            if (fstop && !config::fShutdown)
+            if (fstop && !config::fShutdown.load())
             {
                 /* When minter is restarted after a stop, reset for normal running */
                 fstop = false;
@@ -778,7 +778,7 @@ namespace Legacy
             }
 
             /* If we got a shutdown while it was sleeping or waiting to be restarted, skip the rest of this iteration */
-            if (config::fShutdown)
+            if (config::fShutdown.load())
                 return;
 
             /* Save the current best block hash immediately in case it change while we do setup */

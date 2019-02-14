@@ -114,30 +114,11 @@ namespace Legacy
          *  Initializes a wallet instance for FEATURE_BASE that is not file backed.
          *
          **/
-        Wallet()
-        : CryptoKeyStore()
-        , nWalletVersion(FEATURE_BASE)
-        , nWalletMaxVersion(FEATURE_BASE)
-        , fFileBacked(false)
-        , fLoaded(false)
-        , strWalletFile("")
-        , mapMasterKeys()
-        , nMasterKeyMaxID(0)
-        , addressBook(AddressBook(*this))
-        , keyPool(KeyPool(*this))
-        , vchDefaultKey()
-        , vchTrustKey()
-        , nWalletUnlockTime(0)
-        , pWalletDbEncryption(nullptr)
-        , cs_wallet()
-        , mapWallet()
-        , mapRequestCount()
-        {
-        }
+        Wallet();
 
-        virtual ~Wallet()
-        {
-        }
+
+        /** Destructor **/
+        virtual ~Wallet();
 
 
         /** InitializeWallet
@@ -317,7 +298,10 @@ namespace Legacy
          *  @return current wallet version
          *
          */
-        inline uint32_t GetVersion() const { return nWalletVersion; }
+        inline uint32_t GetVersion() const
+        {
+            return nWalletVersion;
+        }
 
 
         /** IsFileBacked
@@ -325,7 +309,10 @@ namespace Legacy
          *  @return true if wallet backed by a wallet database
          *
          */
-        inline bool IsFileBacked() const { return fFileBacked; }
+        inline bool IsFileBacked() const
+        {
+            return fFileBacked;
+        }
 
 
         /** GetAddressBook
@@ -335,7 +322,10 @@ namespace Legacy
          *  @return this wallet's address book
          *
          */
-        inline AddressBook& GetAddressBook() { return addressBook; }
+        inline AddressBook& GetAddressBook()
+        {
+            return addressBook;
+        }
 
 
         /** GetWalletFile
@@ -345,7 +335,10 @@ namespace Legacy
          *  @return the wallet database file name, or empty string if not file backed
          *
          */
-        inline std::string GetWalletFile() const { return strWalletFile; }
+        inline std::string GetWalletFile() const
+        {
+            return strWalletFile;
+        }
 
 
         /** LoadWallet
@@ -387,7 +380,10 @@ namespace Legacy
          *  @return the time until which this wallet will remain unlocked
          *
          */
-        inline uint64_t GetWalletUnlockTime() const { return nWalletUnlockTime; }
+        inline uint64_t GetWalletUnlockTime() const
+        {
+            return nWalletUnlockTime;
+        }
 
 
     /*----------------------------------------------------------------------------------------*/
@@ -471,7 +467,10 @@ namespace Legacy
          *  @return the default key value
          *
          */
-        inline std::vector<uint8_t> GetDefaultKey() const { return vchDefaultKey; }
+        inline std::vector<uint8_t> GetDefaultKey() const
+        {
+            return vchDefaultKey;
+        }
 
 
         /** GetTrustKey
@@ -481,7 +480,10 @@ namespace Legacy
          *  @return the public key for the trust key
          *
          */
-        inline std::vector<uint8_t> GetTrustKey() const { return vchTrustKey; }
+        inline std::vector<uint8_t> GetTrustKey() const
+        {
+            return vchTrustKey;
+        }
 
 
         /** SetDefaultKey
@@ -864,7 +866,10 @@ namespace Legacy
          *  @return true if this wallet sends balance via this transaction
          *
          **/
-        inline bool IsFromMe(const Transaction& tx) { return (GetDebit(tx) > 0); }
+        inline bool IsFromMe(const Transaction& tx)
+        {
+            return (GetDebit(tx) > 0);
+        }
 
 
     /*----------------------------------------------------------------------------------------*/

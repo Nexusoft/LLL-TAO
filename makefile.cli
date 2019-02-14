@@ -126,6 +126,11 @@ ifdef WARNINGS_FAIL
 	CXXFLAGS+= -Werror
 endif
 
+#Build with race checking
+ifdef RACE_CHECK
+    CXXFLAGS+= -fsanitize=thread
+endif
+
 #Enable / Disable debug symbols and set appropriate optimization level
 ifdef ENABLE_DEBUG
 	DEBUG+=-g

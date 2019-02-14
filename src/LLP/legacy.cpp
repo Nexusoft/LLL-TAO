@@ -645,7 +645,7 @@ namespace LLP
 
             /* Iterate forward the blocks required. */
             std::vector<CInv> vInv;
-            while(!config::fShutdown)
+            while(!config::fShutdown.load())
             {
                 if (state.GetHash() == hashStop)
                 {
