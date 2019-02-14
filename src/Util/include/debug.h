@@ -76,8 +76,8 @@ ________________________________________________________________________________
 namespace debug
 {
 
-    static std::mutex DEBUG_MUTEX;
-    static std::ofstream ssFile;
+    extern std::mutex DEBUG_MUTEX;
+    extern std::ofstream ssFile;
 
     /** Block debug output flags. **/
     enum flags
