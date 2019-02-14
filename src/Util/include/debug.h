@@ -17,11 +17,13 @@ ________________________________________________________________________________
 #include <string>
 #include <cinttypes>
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <fstream>
 
 #include <Util/include/args.h>
 #include <Util/include/config.h>
+#include <Util/include/runtime.h>
 #include <Util/include/mutex.h>
 
 #ifdef snprintf
@@ -168,16 +170,36 @@ namespace debug
         if(config::GetArg("-verbose", 0) < nLevel)
             return;
 
-        /* Get the debug string. */
+        /* Get the debug string and log file. */
         std::string debug = safe_printstr(args...);
 
+        /* Get the timestamp. */
+        time_t timestamp = std::time(nullptr);
+
+        /* Lock the mutex. */
         LOCK(DEBUG_MUTEX);
 
         /* Dump it to the console. */
-        std::cout << debug << std::endl;
+        std::cout << "["
+                  << std::put_time(std::localtime(&timestamp), "%H:%M:%S")
+                  << "."
+                  << std::setfill('0')
+                  << std::setw(3)
+                  << (runtime::timestamp(true) % 1000)
+                  << "] "
+                  << debug
+                  << std::endl;
 
         /* Write it to the debug file. */
-        ssFile << debug << std::endl;
+        ssFile    << "["
+                  << std::put_time(std::localtime(&timestamp), "%H:%M:%S")
+                  << "."
+                  << std::setfill('0')
+                  << std::setw(3)
+                  << (runtime::timestamp(true) % 1000)
+                  << "] "
+                  << debug
+                  << std::endl;
     }
 
 
