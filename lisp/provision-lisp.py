@@ -47,7 +47,7 @@ def allocate_eids():
 def get_rloc(device):
     addr = commands.getoutput('ifconfig {} | egrep "inet "'.format(device))
     if (addr == ""): return(None)
-    return(addr.split()[-1])
+    return(addr.split()[1])
 #enddef
 
 #
