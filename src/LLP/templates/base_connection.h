@@ -35,9 +35,6 @@ namespace LLP
     {
     protected:
 
-        /** Mutex for thread synchronization. **/
-        mutable std::mutex MUTEX;
-
 
         /** Event
          *

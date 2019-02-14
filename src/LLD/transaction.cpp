@@ -35,8 +35,11 @@ namespace LLD
         if(mapTransactions.count(vKey))
             mapTransactions.erase(vKey);
 
-        if(mapOriginalData.count(vKey))
-            mapOriginalData.erase(vKey);
+        if(mapKeychain.count(vKey))
+            mapKeychain.erase(vKey);
+
+        if(mapIndex.count(vKey))
+            mapIndex.erase(vKey);
 
         return true;
     }

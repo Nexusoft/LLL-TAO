@@ -34,7 +34,6 @@ namespace LLP
     template <class PacketType>
     BaseConnection<PacketType>::BaseConnection()
     : Socket()
-    , MUTEX()
     , INCOMING()
     , DDOS(nullptr)
     , nLatency(std::numeric_limits<uint32_t>::max())
@@ -49,7 +48,6 @@ namespace LLP
     template <class PacketType>
     BaseConnection<PacketType>::BaseConnection(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS, bool fOutgoing)
     : Socket(SOCKET_IN)
-    , MUTEX()
     , INCOMING()
     , DDOS(DDOS_IN)
     , nLatency(std::numeric_limits<uint32_t>::max())
@@ -64,7 +62,6 @@ namespace LLP
     template <class PacketType>
     BaseConnection<PacketType>::BaseConnection(DDOS_Filter* DDOS_IN, bool isDDOS, bool fOutgoing)
     : Socket()
-    , MUTEX()
     , INCOMING()
     , DDOS(DDOS_IN)
     , nLatency(std::numeric_limits<uint32_t>::max())
@@ -105,11 +102,7 @@ namespace LLP
 
         INCOMING.SetNull();
 
-        if(DDOS)
-        {
-            delete DDOS;
-            DDOS  = nullptr;
-        }
+        DDOS  = nullptr;
 
         fDDOS = false;
         fOUTGOING = false;
@@ -180,19 +173,15 @@ namespace LLP
     template <class PacketType>
     void BaseConnection<PacketType>::WritePacket(const PacketType& PACKET)
     {
-        LOCK(MUTEX);
-
-        std::vector<uint8_t> vBytes = PACKET.GetBytes();
-
         /* Debug dump of message type. */
-        debug::log(3, NODE "Sent Message (", vBytes.size(), " bytes)");
+        debug::log(3, NODE "Sent Message (", PACKET.GetBytes().size(), " bytes)");
 
         /* Debug dump of packet data. */
         if(config::GetArg("-verbose", 0) >= 5)
-            PrintHex(vBytes);
+            PrintHex(PACKET.GetBytes());
 
         /* Write the packet to socket buffer. */
-
+        std::vector<uint8_t> vBytes = PACKET.GetBytes();
         Write(vBytes, vBytes.size());
     }
 

@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/supply.h>
 
 #include <Legacy/include/create.h>
 #include <Legacy/types/legacy.h>
@@ -25,6 +26,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/reservekey.h>
 
 #include <Util/include/convert.h>
+
 
 namespace LLP
 {
@@ -46,7 +48,7 @@ namespace LLP
 
 
     /** Constructor **/
-    Miner::Miner(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
+    Miner::Miner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : Connection(SOCKET_IN, DDOS_IN, isDDOS)
     , mapBlocks()
     , pMiningKey(nullptr)
@@ -225,7 +227,7 @@ namespace LLP
                         /* Create and send a packet response */
                         respond(BLOCK_DATA, len, data);
 
-                        debug::log(2, FUNCTION, "***** Mining LLP: Sent Block ",
+                        debug::log(2, FUNCTION, "Mining LLP: Sent Block ",
                             new_block.GetHash().ToString().substr(0, 20), " to Worker.");
                     }
 
@@ -236,11 +238,41 @@ namespace LLP
 
             /* On Connect Event, Assign the Proper Daemon Handle. */
             case EVENT_CONNECT:
+            {
+                /* Debut output. */
+                debug::log(2, FUNCTION, "Mining LLP: New Connection from ", GetAddress().ToStringIP());
                 return;
+            }
+            
 
             /* On Disconnect Event, Reduce the Connection Count for Daemon */
             case EVENT_DISCONNECT:
+            {
+                /* Debut output. */
+                uint8_t reason = LENGTH;
+                std::string strReason;
+
+                switch(reason)
+                {
+                    case DISCONNECT_TIMEOUT:
+                        strReason = "DISCONNECT_TIMEOUT";
+                        break;
+                    case DISCONNECT_ERRORS:
+                        strReason = "DISCONNECT_ERRORS";
+                        break;
+                    case DISCONNECT_DDOS:
+                        strReason = "DISCONNECT_DDOS";
+                        break;
+                    case DISCONNECT_FORCE:
+                        strReason = "DISCONNECT_FORCE";
+                        break;
+                    default:
+                        strReason = "UNKNOWN";
+                        break;
+                }
+                debug::log(2, FUNCTION, "Mining LLP: Disconnecting ", GetAddress().ToStringIP(), " (", strReason, ")");
                 return;
+            }
         }
 
     }
@@ -299,7 +331,62 @@ namespace LLP
 
             case SET_COINBASE:
             {
-                //TODO: INTEGRATE THIS
+                uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest, nChannel, 0);
+
+                /** Deserialize the Coinbase Transaction. **/
+        
+                /** Bytes 1 - 8 is the Pool Fee for that Round. **/
+                uint64_t nPoolFee  = convert::bytes2uint64(PACKET.DATA, 1);
+
+                std::map<std::string, uint64_t> vOutputs;
+
+                /** First byte of Serialization Packet is the Number of Records. **/
+                unsigned int nSize = PACKET.DATA[0], nIterator = 9;
+
+                /** Loop through every Record. **/
+                for(unsigned int nIndex = 0; nIndex < nSize; nIndex++)
+                {
+                    /** De-Serialize the Address String and uint64 nValue. **/
+                    unsigned int nLength = PACKET.DATA[nIterator];
+
+                    std::string strAddress = convert::bytes2string(std::vector<unsigned char>(PACKET.DATA.begin() + nIterator + 1, PACKET.DATA.begin() + nIterator + 1 + nLength));
+                    uint64_t nValue = convert::bytes2uint64(std::vector<unsigned char>(PACKET.DATA.begin() + nIterator + 1 + nLength, PACKET.DATA.begin() + nIterator + 1 + nLength + 8));
+
+                    /* Validate the address */
+                    Legacy::NexusAddress address(strAddress);
+                    if(!address.IsValid())
+                    {
+                        respond(COINBASE_FAIL);
+                        debug::log(2, "***** Mining LLP: Invalid Address in Coinbase Tx: ", strAddress) ;
+                        return false; //disconnect immediately if an invalid address is provided
+                    }
+                    /** Add the Transaction as an Output. **/
+                    vOutputs[strAddress] = nValue;
+
+                    /** Increment the Iterator. **/
+                    nIterator += (nLength + 9);
+                }
+
+                Legacy::Coinbase pCoinbase(vOutputs, nMaxValue, nPoolFee);
+
+                if(!pCoinbase.IsValid())
+                {
+                    respond(COINBASE_FAIL);
+                    debug::log(2, "***** Mining LLP: Invalid Coinbase Tx") ;
+                }
+                else
+                {
+                    respond(COINBASE_SET);
+                    debug::log(2, "***** Mining LLP: Coinbase Set") ;
+                    /* set the global coinbase, null the base block, and then call check_best_height
+                       which in turn will generate a new base block using the new coinbase */ 
+                    pCoinbaseTx = pCoinbase;
+                    pBaseBlock->SetNull();
+
+                    check_best_height();
+                }
+                
+        
                 return true;
             }
 
@@ -307,6 +394,7 @@ namespace LLP
             case CLEAR_MAP:
             {
                 clear_map();
+                pCoinbaseTx.SetNull();
                 return true;
             }
 
@@ -314,13 +402,13 @@ namespace LLP
             /* Respond to the miner with the new height. */
             case GET_HEIGHT:
             {
-
-                /* Clear the Maps if Requested Height that is a New Best Block. */
-                check_best_height();
-
                 /* Create the response packet and write. */
                 respond(BLOCK_HEIGHT, 4, convert::uint2bytes(nBestHeight + 1));
 
+                /* Prevent mining clients from spamming with GET_HEIGHT messages*/
+                runtime::sleep(500);
+
+                check_best_height();
 
                 return true;
             }
@@ -340,9 +428,7 @@ namespace LLP
 
             case GET_REWARD:
             {
-                uint64_t nCoinbaseReward = 0;
-
-                //TODO: get the coinbase reward and return it here.
+                uint64_t nCoinbaseReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest, nChannel, 0);
 
                 respond(BLOCK_REWARD, 8, convert::uint2bytes64(nCoinbaseReward));
 
@@ -471,10 +557,11 @@ namespace LLP
 
                         return true;
                     }
-                }
 
-                /* Clear map on new block found. */
-                check_best_height();
+                    /* Clear map on new block found. */
+                    clear_map();
+                    pCoinbaseTx.SetNull();
+                }
 
                 /* Tell the wallet to keep this key */
                 pMiningKey->KeepKey();
@@ -574,7 +661,7 @@ namespace LLP
             debug::log(2, FUNCTION, "Creating new base block.");
 
             /*create a new base block */
-            if(!Legacy::CreateLegacyBlock(*pMiningKey, nChannel, 1, *pBaseBlock))
+            if(!Legacy::CreateLegacyBlock(*pMiningKey, pCoinbaseTx, nChannel, 1, *pBaseBlock))
             {
                 debug::error(FUNCTION, "Failed to create a new block.");
                 return false;

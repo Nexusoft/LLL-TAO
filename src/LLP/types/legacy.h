@@ -64,7 +64,6 @@ namespace LLP
         , nConsecutiveFails(0)
         , fInbound(false)
         , nLastPing(runtime::timestamp())
-        , nConsecutiveTimeouts(0)
         , hashContinue(0)
         , mapLatencyTracker()
         , mapSentRequests()
@@ -82,7 +81,6 @@ namespace LLP
         , nConsecutiveFails(0)
         , fInbound(false)
         , nLastPing(runtime::timestamp())
-        , nConsecutiveTimeouts(0)
         , hashContinue(0)
         , mapLatencyTracker()
         , mapSentRequests()
@@ -99,7 +97,6 @@ namespace LLP
         , nConsecutiveFails(0)
         , fInbound(false)
         , nLastPing(runtime::timestamp())
-        , nConsecutiveTimeouts(0)
         , hashContinue(0)
         , mapLatencyTracker()
         , mapSentRequests()
@@ -158,10 +155,6 @@ namespace LLP
 
         /** The last time a block was accepted. **/
         static uint64_t nLastTimeReceived;
-
-
-        /** The number of times getblocks has timed out (to deal with unreliable NON-TRITIUM nodes). **/
-        uint32_t nConsecutiveTimeouts;
 
 
         /** The trigger hash to send a continue inv message to remote node. **/
@@ -274,7 +267,7 @@ namespace LLP
 
 
         /** Push Get Blocks
-         *
+         *nConsecutiveFails
          *  Send a request to get recent inventory from remote node.
          *
          *  @param[in] hashBlockFrom The block to start from
@@ -300,7 +293,7 @@ namespace LLP
             }
 
             /* Calculate the fast sync average. */
-            nFastSyncAverage = (nFastSyncAverage + (runtime::timestamp() - nLastGetBlocks)) / 2;
+            nFastSyncAverage = std::min((uint64_t)25, (nFastSyncAverage + (runtime::timestamp() - nLastGetBlocks)) / 2);
 
             /* Update the last timestamp this was called. */
             nLastGetBlocks = runtime::timestamp();

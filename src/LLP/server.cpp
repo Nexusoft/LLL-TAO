@@ -211,6 +211,9 @@ namespace LLP
            /* Get the data threads. */
            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
+           /* Lock the data thread. */
+           LOCK(dt->MUTEX);
+
            /* Loop through connections in data thread. */
            int32_t nSize = dt->CONNECTIONS.size();
            for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
@@ -239,6 +242,9 @@ namespace LLP
         {
             /* Get the data threads. */
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+
+            /* Lock the data thread. */
+            LOCK(dt->MUTEX);
 
             /* Loop through connections in data thread and add any that are connected to count. */
             int32_t nSize = dt->CONNECTIONS.size();
@@ -270,6 +276,9 @@ namespace LLP
 
             if(!dt)
               continue;
+
+            /* Lock the data thread. */
+            LOCK(dt->MUTEX);
 
             /* Loop through connections in data thread. */
             int32_t nSize = dt->CONNECTIONS.size();

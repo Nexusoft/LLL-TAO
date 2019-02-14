@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_LEGACY_INCLUDE_CREATE_H
 
 #include <Legacy/types/legacy.h>
+#include <Legacy/types/coinbase.h>
 #include <Legacy/wallet/reservekey.h>
 #include <Legacy/wallet/wallet.h>
 
@@ -29,6 +30,8 @@ namespace Legacy
      *
      *  @param[in] coinbaseKey Key for receiving coinbase reward. Not used for staking channel.
      *
+     *  @param[in] coinbaseRecipients Optional coinbase to allow multiple coinbase recipients.
+     * 
      *  @param[in] nChannel The minting channel creating the block.
      *
      *  @param[in] nID Used for coinbase input scriptsig. Not used for staking channel
@@ -38,7 +41,7 @@ namespace Legacy
      *  @return true if block successfully created
      *
      **/
-    bool CreateLegacyBlock(Legacy::ReserveKey& coinbaseKey, const uint32_t nChannel, const uint32_t nID, LegacyBlock& newBlock);
+    bool CreateLegacyBlock(Legacy::ReserveKey& coinbaseKey, const Legacy::Coinbase& coinbaseRecipients, const uint32_t nChannel, const uint32_t nID, LegacyBlock& newBlock);
 
 
     /** CreateCoinstakeTransaction
@@ -61,6 +64,8 @@ namespace Legacy
      *
      *  @param[in] coinbaseKey Key for receiving coinbase reward. 
      *
+     *  @param[in] coinbaseRecipients Optional coinbase to allow multiple coinbase recipients.
+     * 
      *  @param[in] nChannel The minting channel creating the block.
      *
      *  @param[in] nID Used for coinbase input scriptsig. 
@@ -72,7 +77,7 @@ namespace Legacy
      *  @return true if transaction successfully created
      *
      **/
-    bool CreateCoinbaseTransaction(Legacy::ReserveKey& coinbaseKey, const uint32_t nChannel, 
+    bool CreateCoinbaseTransaction(Legacy::ReserveKey& coinbaseKey, const Legacy::Coinbase& coinbaseRecipients, const uint32_t nChannel, 
                                    const uint32_t nID, const uint32_t nNewBlockVersion, Transaction& coinbaseTx);
 
 

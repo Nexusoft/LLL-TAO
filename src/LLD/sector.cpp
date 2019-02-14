@@ -299,22 +299,22 @@ namespace LLD
     {
         if(nFlags & FLAGS::APPEND || !Update(vKey, vData))
         {
-            /* Create new file if above current file size. */
-            if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
-            {
-                debug::log(4, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
-
-                ++ nCurrentFile;
-                nCurrentFileSize = 0;
-
-                std::ofstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
-                stream.close();
-            }
-
-            /* Write the data into the memory cache. */
-            cachePool->Put(vKey, vData, false);
-
             { LOCK(SECTOR_MUTEX);
+
+                /* Create new file if above current file size. */
+                if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
+                {
+                    debug::log(4, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
+
+                    ++ nCurrentFile;
+                    nCurrentFileSize = 0;
+
+                    std::ofstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                    stream.close();
+                }
+
+                /* Write the data into the memory cache. */
+                cachePool->Put(vKey, vData, false);
 
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
@@ -532,19 +532,6 @@ namespace LLD
 
         /* Release the journal file. */
         TxnRelease();
-    }
-
-
-    /*  Rollback the disk to previous state. */
-    template<class KeychainType, class CacheType>
-    bool SectorDatabase<KeychainType, CacheType>::RollbackTransactions()
-    {
-        /* Commit the sector data. */
-        for(auto it = pTransaction->mapOriginalData.begin(); it != pTransaction->mapOriginalData.end(); ++it )
-            if(!Force(it->first, it->second))
-                return debug::error(FUNCTION, "failed to rollback transaction");
-
-        return true;
     }
 
 

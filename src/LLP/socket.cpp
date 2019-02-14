@@ -30,7 +30,8 @@ namespace LLP
 
     /** The default constructor. **/
     Socket::Socket()
-    : nError(0)
+    : MUTEX()
+    , nError(0)
     , nLastSend(runtime::timestamp())
     , nLastRecv(runtime::timestamp())
     , vBuffer()
@@ -42,9 +43,23 @@ namespace LLP
     }
 
 
+    /** Copy constructor. **/
+    Socket::Socket(const Socket& socket)
+    : pollfd(socket)
+    , MUTEX()
+    , nError(socket.nError)
+    , nLastSend(socket.nLastSend)
+    , nLastRecv(socket.nLastRecv)
+    , vBuffer(socket.vBuffer)
+    , addr(socket.addr)
+    {
+    }
+
+
     /** The socket constructor. **/
     Socket::Socket(int32_t nSocketIn, const BaseAddress &addrIn)
-    : nError(0)
+    : MUTEX()
+    , nError(0)
     , nLastSend(runtime::timestamp())
     , nLastRecv(runtime::timestamp())
     , vBuffer()
@@ -58,7 +73,8 @@ namespace LLP
 
     /* Constructor for socket */
     Socket::Socket(const BaseAddress &addrConnect)
-    : nError(0)
+    : MUTEX()
+    , nError(0)
     , nLastSend(runtime::timestamp())
     , nLastRecv(runtime::timestamp())
     , vBuffer()
@@ -314,14 +330,13 @@ namespace LLP
     /* Write data into the socket buffer non-blocking */
     int Socket::Write(const std::vector<uint8_t>& vData, size_t nBytes)
     {
+        LOCK(MUTEX);
+
         /* Check overflow buffer. */
         if(vBuffer.size() > 0)
         {
             nLastSend = runtime::timestamp();
             vBuffer.insert(vBuffer.end(), vData.begin(), vData.end());
-
-            /* Flush the remaining bytes from the buffer. */
-            Flush();
 
             return nBytes;
         }
@@ -354,6 +369,8 @@ namespace LLP
     /* Flushes data out of the overflow buffer */
     int Socket::Flush()
     {
+        LOCK(MUTEX);
+
         /* Don't flush if buffer doesn't have any data. */
         if(vBuffer.size() == 0)
             return 0;

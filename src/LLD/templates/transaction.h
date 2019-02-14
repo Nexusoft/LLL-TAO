@@ -72,9 +72,6 @@ namespace LLD
         /** Index items to commit. */
         std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapIndex;
 
-        /** Original Data that is retained when new one is added. **/
-        std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapOriginalData;
-
         /** Vector to hold the keys of transactions to be erased. **/
         std::map< std::vector<uint8_t>, uint32_t > mapEraseData;
 

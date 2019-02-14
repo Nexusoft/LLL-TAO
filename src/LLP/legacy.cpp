@@ -39,6 +39,14 @@ ________________________________________________________________________________
 namespace LLP
 {
 
+    /* Static instantiation of orphan blocks in queue to process. */
+    static std::map<uint1024_t, Legacy::LegacyBlock> mapLegacyOrphans;
+
+
+    /* Mutex to protect checking more than one block at a time. */
+    static std::mutex PROCESSING_MUTEX;
+
+
     /* Static initialization of last get blocks. */
     uint1024_t LegacyNode::hashLastGetblocks = 0;
 
@@ -66,13 +74,10 @@ namespace LLP
     /* Push a Message With Information about This Current Node. */
     void LegacyNode::PushVersion()
     {
-        /* Random Session ID */
-        RAND_bytes((uint8_t*)&nSessionID, sizeof(nSessionID));
-
         /* Current Unified timestamp. */
         int64_t nTime = runtime::unifiedtimestamp();
 
-        /* Dummy Variable NOTE: Remove in Tritium ++ */
+        /* Dummy Variable not supported in Tritium */
         uint64_t nLocalServices = 0;
 
         /* Relay Your Address. */
@@ -81,7 +86,7 @@ namespace LLP
 
         /* Push the Message to receiving node. */
         PushMessage("version", LLP::PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,
-                    nSessionID, strProtocolName, TAO::Ledger::ChainState::nBestHeight);
+                    LegacyNode::nSessionID, strProtocolName, TAO::Ledger::ChainState::nBestHeight);
     }
 
 
@@ -164,6 +169,22 @@ namespace LLP
 
                 /* Rebroadcast transactions. */
                 Legacy::Wallet::GetInstance().ResendWalletTransactions();
+            }
+
+
+            /* Unreliabilitiy re-requesting (max time since getblocks) */
+            if(config::GetBoolArg("-fastsync")
+            && TAO::Ledger::ChainState::Synchronizing()
+            && addrFastSync.ToStringIP() == GetAddress().ToStringIP()
+            && nLastTimeReceived + 30 < runtime::timestamp()
+            && nLastGetBlocks + 30 < runtime::timestamp())
+            {
+                debug::error(FUNCTION, "fast sync node event timeout");
+
+                /* Normal case of asking for a getblocks inventory message. */
+                LegacyNode* pBest = LEGACY_SERVER->GetConnection(addrFastSync);
+                if(pBest)
+                    pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
             }
 
             //TODO: mapRequests data, if no response given retry the request at given times
@@ -520,20 +541,21 @@ namespace LLP
             && vInv.back().GetType() == MSG_BLOCK)
             {
                 /* Fast sync should switch to new node if time since request is over average seconds */
-                if(nLastGetBlocks + 30 < runtime::timestamp()
-                || nLastTimeReceived + 30 < runtime::timestamp())
+                if(nLastGetBlocks + (LegacyNode::nFastSyncAverage + 5) < runtime::timestamp()
+                || nLastTimeReceived + (LegacyNode::nFastSyncAverage + 5) < runtime::timestamp())
                 {
                     /* Normal case of asking for a getblocks inventory message. */
                     LegacyNode* pnode = LEGACY_SERVER->GetConnection(addrFastSync);
                     if(pnode)
                     {
                         /* Switch to a new node for fast sync. */
-                        pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+                        pnode->PushGetBlocks(vInv.back().GetHash(), uint1024_t(0));
+                        pnode->PushMessage("getdata", vInv);
 
                         /* Debug output. */
                         debug::log(0, NODE, "fast sync node timed out...");
 
-                        return false;
+                        return true;
                     }
                 }
 
@@ -583,6 +605,10 @@ namespace LLP
                 /* Handle the block message. */
                 if (inv.GetType() == LLP::MSG_BLOCK)
                 {
+                    /* Don't send genesis if asked for. */
+                    if(inv.GetHash() == TAO::Ledger::ChainState::Genesis())
+                        continue;
+
                     /* Read the block from disk. */
                     TAO::Ledger::BlockState state;
                     if(!LLD::legDB->ReadBlock(inv.GetHash(), state))
@@ -647,6 +673,8 @@ namespace LLP
             std::vector<CInv> vInv;
             while(!config::fShutdown.load())
             {
+                state = state.Next();
+
                 if (state.GetHash() == hashStop)
                 {
                     debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", state.GetHash().ToString().substr(0, 20));
@@ -668,8 +696,6 @@ namespace LLP
                     hashContinue = state.GetHash();
                     break;
                 }
-
-                state = state.Next();
             }
 
             /* Push the inventory. */
@@ -707,14 +733,6 @@ namespace LLP
     }
 
 
-    /* Static instantiation of orphan blocks in queue to process. */
-    static std::map<uint1024_t, Legacy::LegacyBlock> mapLegacyOrphans;
-
-
-    /* Mutex to protect checking more than one block at a time. */
-    static std::mutex PROCESSING_MUTEX;
-
-
     /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
     bool LegacyNode::Process(const Legacy::LegacyBlock& block, LegacyNode* pnode)
     {
@@ -729,21 +747,22 @@ namespace LLP
         if(mapLegacyOrphans.count(hash))
             mapLegacyOrphans.erase(hash);
 
-        /* Detect large orphan chains and ask for new blocks from origin again. */
-        if(mapLegacyOrphans.size() > 1000)
-        {
-            debug::log(0, FUNCTION, "node reached orphan limit... closing");
-
-            /* Clear the memory to prevent DoS attacks. */
-            mapLegacyOrphans.clear();
-
-            /* Disconnect from a node with large orphan chain. */
-            return false;
-        }
-
         /* Check for orphan. */
         if(!LLD::legDB->HasBlock(block.hashPrevBlock))
         {
+
+            /* Detect large orphan chains and ask for new blocks from origin again. */
+            if(mapLegacyOrphans.size() > 1000)
+            {
+                debug::log(0, FUNCTION, "node reached orphan limit... closing");
+
+                /* Clear the memory to prevent DoS attacks. */
+                mapLegacyOrphans.clear();
+
+                /* Disconnect from a node with large orphan chain. */
+                return false;
+            }
+
             /* Skip if already in orphan queue. */
             if(!mapLegacyOrphans.count(block.hashPrevBlock))
                 mapLegacyOrphans[block.hashPrevBlock] = block;
@@ -755,8 +774,9 @@ namespace LLP
             if(!TAO::Ledger::ChainState::Synchronizing())
                 pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
             else if(!config::GetBoolArg("-fastsync")
-                 || nLastGetBlocks + 30 < runtime::timestamp()
-                 || nLastTimeReceived + 30 < runtime::timestamp())
+                 || (nLastGetBlocks + (LegacyNode::nFastSyncAverage + 5) < runtime::timestamp()
+                 && nLastTimeReceived + (LegacyNode::nFastSyncAverage + 5) < runtime::timestamp()
+                 && pnode->GetAddress().ToStringIP() == addrFastSync.ToStringIP()))
             {
                 /* Normal case of asking for a getblocks inventory message. */
                 LegacyNode* pBest = LEGACY_SERVER->GetConnection(addrFastSync);
@@ -764,7 +784,7 @@ namespace LLP
                 {
                     pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
 
-                    return false;
+                    return true;
                 }
             }
 
@@ -773,9 +793,46 @@ namespace LLP
 
         /* Check if valid in the chain. */
         if(!block.Accept())
+        {
+            /* Increment the consecutive failures. */
+            if(pnode)
+                ++pnode->nConsecutiveFails;
+
+            /* Check for failure limit on node. */
+            if(pnode
+            && config::GetBoolArg("-fastsync")
+            && TAO::Ledger::ChainState::Synchronizing()
+            && pnode->nConsecutiveFails >= 100)
+            {
+                /* Find a new fast sync node if too many failures. */
+                if(pnode->GetAddress().ToStringIP() == addrFastSync.ToStringIP())
+                {
+                    /* Normal case of asking for a getblocks inventory message. */
+                    LegacyNode* pBest = LEGACY_SERVER->GetConnection(addrFastSync);
+                    if(pBest)
+                    {
+                        /* Switch to a new node for fast sync. */
+                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+
+                        /* Debug output. */
+                        debug::error(FUNCTION, "fast sync node reached failure limit...");
+                    }
+                }
+
+                return false;
+            }
+
             return true;
+        }
         else
+        {
+            /* Update the last time received. */
             nLastTimeReceived = runtime::timestamp();
+
+            /* Reset the consecutive failures. */
+            if(pnode)
+                pnode->nConsecutiveFails = 0;
+        }
 
         /* Process orphan if found. */
         while(mapLegacyOrphans.count(hash))
