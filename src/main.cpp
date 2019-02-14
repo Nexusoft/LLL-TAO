@@ -138,9 +138,7 @@ int main(int argc, char** argv)
     config::CacheArgs();
 
     /* Log system startup */
-    debug::log(0, "\n\n\n\n\n\n\n\n\n\n", version::CLIENT_VERSION_BUILD_STRING, " (", version::CLIENT_DATE, ")");
-    debug::log(0, "Startup time ", DateTimeStrFormat(runtime::timestamp()));
-    debug::log(0, "Logging verbose level ", config::GetArg("-verbose", 0));
+    debug::InitializeLog(argc, argv);
 
     /* Handle Commandline switch */
     for (int i = 1; i < argc; ++i)

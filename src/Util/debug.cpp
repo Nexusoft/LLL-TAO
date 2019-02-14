@@ -11,13 +11,15 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Util/include/config.h>
 #include <Util/include/debug.h>
+
 #include <Util/include/args.h>
-#include <Util/include/mutex.h>
-#include <Util/include/runtime.h>
+#include <Util/include/config.h>
 #include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
+#include <Util/include/mutex.h>
+#include <Util/include/runtime.h>
+#include <Util/include/version.h>
 
 #include <string>
 #include <cstdarg>
@@ -118,6 +120,62 @@ namespace debug
 
         debug::log(0, ANSI_COLOR_FUNCTION, base, "::", __func__, "()", ANSI_COLOR_RESET, " : ", buffer);
     }
+
+
+    /* Write startup information into the log file */
+    void InitializeLog(int argc, char** argv)
+    {
+        log(0, "\n\n\n\n\n", version::CLIENT_VERSION_BUILD_STRING, " (", version::CLIENT_DATE, ")");
+
+    #ifdef WIN32
+        log(0, "Microsoft Windows Build");
+    #else 
+        #ifdef MAC_OSX
+        log(0, "Mac OSX Build");
+        #else
+        log(0, "Linux Build");
+        #endif
+    #endif
+
+        log(0, "Startup time ", DateTimeStrFormat(runtime::timestamp()));
+
+        std::string cmdLineParms = "";
+
+        for (int i = 1; i < argc; i++)
+            cmdLineParms += std::string(argv[i]) + " ";
+
+        if (cmdLineParms == "")
+            cmdLineParms = "(none)";
+
+        log(0, "Command line parameters: ", cmdLineParms);
+
+        log(0, "All argument settings (command line and config file):");
+
+        std::string argsList = "";
+        bool fHaveOne = false;
+        /* All args are placed in mapMultiArgs whether they have one or multiple values, so only need to log this one */
+        for (const auto& argItem : config::mapMultiArgs)
+        {
+            for (int i = 0; i < argItem.second.size(); i++)
+            {
+                if (fHaveOne)
+                    argsList += "\n";
+            
+                argsList += "\t" + argItem.first + " = ";
+
+                if (argItem.second[i].empty())
+                    argsList += "true";
+                else 
+                    argsList += argItem.second[i];
+
+                fHaveOne = true;
+            }
+        }
+
+        log(0, argsList);
+        log(0, "\n");
+    }
+
 
     /*  Prints and logs the stack trace of the code execution call stack up to
      *  the point where this function is called to debug.log */

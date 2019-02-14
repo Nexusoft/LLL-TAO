@@ -200,6 +200,16 @@ namespace debug
     #define strprintf(format, ...) real_strprintf(format, __VA_ARGS__)
 
 
+    /** InitializeLog
+      *
+      *  Write startup information into the log file 
+      *
+      *  @param argc The argc value from main()
+      *  @param argv The argv value from main()
+      *
+      */
+    void InitializeLog(int argc, char** argv);
+
 
     /** LogStackTrace
      *
