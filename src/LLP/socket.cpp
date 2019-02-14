@@ -275,13 +275,11 @@ namespace LLP
     /* Clear resources associated with socket and return to invalid state. */
     void Socket::Close()
     {
-
         if(fd != INVALID_SOCKET)
         {
-          closesocket(fd);
+            closesocket(fd);
+            fd = INVALID_SOCKET;
         }
-
-        fd = INVALID_SOCKET;
     }
 
 
