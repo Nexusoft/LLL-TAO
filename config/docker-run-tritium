@@ -13,7 +13,7 @@
 # Note the port number allocated to get to the lispers.net webpage interface
 # can be found in the PORTS column of "docker ps".
 #
-# Usage: docker-run-tritium [<ipv4-eid> <ipv6-eid> <container-name>]
+# Usage: docker-run-tritium [<ipv4-eid> <ipv6-eid>] [<container-name>]
 #
 HOSTNAME=`hostname | cut -d "." -f 1`
 RAND=`python -c "import random as r; print hex(r.randint(0, 0xffffffff))[2::]"`
