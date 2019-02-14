@@ -102,11 +102,7 @@ namespace LLP
 
         INCOMING.SetNull();
 
-        if(DDOS)
-        {
-            delete DDOS;
-            DDOS  = nullptr;
-        }
+        DDOS  = nullptr;
 
         fDDOS = false;
         fOUTGOING = false;
