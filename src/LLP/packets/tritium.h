@@ -20,6 +20,7 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 
+#include <Util/templates/datastream.h>
 #include <Util/include/debug.h>
 
 namespace LLP

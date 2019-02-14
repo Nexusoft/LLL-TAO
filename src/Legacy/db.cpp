@@ -19,7 +19,6 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/debug.h>
 #include <Util/include/filesystem.h>
-#include <Util/templates/serialize.h>
 
 #include <sys/stat.h>
 
@@ -97,7 +96,7 @@ namespace Legacy
         if (!BerkeleyDB::fDbEnvInit)
         {
             /* Need to initialize database environment. This is only done once upon construction of the first BerkeleyDB instance */
-            if (config::fShutdown)
+            if (config::fShutdown.load())
                 return;
 
             std::string pathDataDir(config::GetDataDir());
@@ -155,7 +154,7 @@ namespace Legacy
             ret = BerkeleyDB::dbenv.open(pathDataDir.c_str(), dbFlags, dbMode);
 
             if (ret > 0)
-                throw std::runtime_error(debug::strprintf(FUNCTION, "Error %d initializing Berkeley database environment", ret));
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Error ", ret, " initializing Berkeley database environment"));
 
             BerkeleyDB::fDbEnvInit = true;
 
@@ -227,7 +226,7 @@ namespace Legacy
 
                 --BerkeleyDB::mapFileUseCount[strFile];
 
-                throw std::runtime_error(debug::strprintf(FUNCTION, "Cannot open database file %s, error %d", strFile.c_str(), ret));
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Cannot open database file ", strFile, ", error ", ret));
             }
         }
     }
@@ -468,7 +467,7 @@ namespace Legacy
             /* Copy mapFileUseCount so can erase without invalidating iterator */
             std::map<std::string, uint32_t> mapTempUseCount = BerkeleyDB::mapFileUseCount;
 
-            for (auto mi = mapTempUseCount.cbegin(); mi != mapTempUseCount.cend(); mi++)
+            for (auto mi = mapTempUseCount.cbegin(); mi != mapTempUseCount.cend(); ++mi)
             {
                 const std::string strFile = (*mi).first;
                 const uint32_t nRefCount = (*mi).second;

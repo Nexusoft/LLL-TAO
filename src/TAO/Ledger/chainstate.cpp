@@ -124,7 +124,7 @@ namespace TAO
                 Legacy::Transaction tx;
 
                 TAO::Ledger::BlockState stateReset = stateBest;
-                for(uint32_t i = 0; i < config::GetArg("-checkblocks", 0) && !config::fShutdown; i++)
+                for(uint32_t i = 0; i < config::GetArg("-checkblocks", 0) && !config::fShutdown.load(); ++i)
                 {
                     if(state == stateGenesis)
                         break;

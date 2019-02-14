@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_UTIL_INCLUDE_MEMORY_H
 #define NEXUS_UTIL_INCLUDE_MEMORY_H
 
-#include <cinttypes>
+#include <cstdint>
 
 namespace memory
 {

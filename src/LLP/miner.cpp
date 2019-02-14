@@ -270,7 +270,7 @@ namespace LLP
         {
             case SET_CHANNEL:
             {
-                nChannel = static_cast<uint8_t>(bytes2uint(PACKET.DATA));
+                nChannel = static_cast<uint8_t>(convert::bytes2uint(PACKET.DATA));
 
                 switch (nChannel)
                 {
@@ -319,7 +319,7 @@ namespace LLP
                 check_best_height();
 
                 /* Create the response packet and write. */
-                respond(BLOCK_HEIGHT, 4, uint2bytes(nBestHeight + 1));
+                respond(BLOCK_HEIGHT, 4, convert::uint2bytes(nBestHeight + 1));
 
 
                 return true;
@@ -344,7 +344,7 @@ namespace LLP
 
                 //TODO: get the coinbase reward and return it here.
 
-                respond(BLOCK_REWARD, 8, uint2bytes64(nCoinbaseReward));
+                respond(BLOCK_REWARD, 8, convert::uint2bytes64(nCoinbaseReward));
 
                 debug::log(2, "***** Mining LLP: Sent Coinbase Reward of ", nCoinbaseReward);
 
@@ -353,7 +353,7 @@ namespace LLP
 
             case SUBSCRIBE:
             {
-                nSubscribed = bytes2uint(PACKET.DATA);
+                nSubscribed = convert::bytes2uint(PACKET.DATA);
 
                 /** Don't allow mining llp requests for proof of stake channel **/
                 if(nSubscribed == 0 || nChannel == 0)
@@ -448,7 +448,7 @@ namespace LLP
 
                     /* Create the pointer to the heap. */
                     Legacy::LegacyBlock *pBlock = &mapBlocks[hashMerkleRoot];
-                    pBlock->nNonce = bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
+                    pBlock->nNonce = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
                     pBlock->UpdateTime();
                     pBlock->print();
 
@@ -519,13 +519,13 @@ namespace LLP
      *  Reading and Writing Across Sockets. */
     std::vector<uint8_t> Miner::SerializeBlock(const TAO::Ledger::Block &BLOCK)
     {
-        std::vector<uint8_t> VERSION  = uint2bytes(BLOCK.nVersion);
+        std::vector<uint8_t> VERSION  = convert::uint2bytes(BLOCK.nVersion);
         std::vector<uint8_t> PREVIOUS = BLOCK.hashPrevBlock.GetBytes();
         std::vector<uint8_t> MERKLE   = BLOCK.hashMerkleRoot.GetBytes();
-        std::vector<uint8_t> CHANNEL  = uint2bytes(BLOCK.nChannel);
-        std::vector<uint8_t> HEIGHT   = uint2bytes(BLOCK.nHeight);
-        std::vector<uint8_t> BITS     = uint2bytes(BLOCK.nBits);
-        std::vector<uint8_t> NONCE    = uint2bytes64(BLOCK.nNonce);
+        std::vector<uint8_t> CHANNEL  = convert::uint2bytes(BLOCK.nChannel);
+        std::vector<uint8_t> HEIGHT   = convert::uint2bytes(BLOCK.nHeight);
+        std::vector<uint8_t> BITS     = convert::uint2bytes(BLOCK.nBits);
+        std::vector<uint8_t> NONCE    = convert::uint2bytes64(BLOCK.nNonce);
 
         std::vector<uint8_t> DATA;
         DATA.insert(DATA.end(), VERSION.begin(),   VERSION.end());

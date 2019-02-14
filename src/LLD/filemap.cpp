@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLD/include/enum.h>
 #include <LLD/include/version.h>
 
+#include <Util/templates/datastream.h>
 #include <Util/include/filesystem.h>
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>

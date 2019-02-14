@@ -126,6 +126,11 @@ ifdef WARNINGS_FAIL
 	CXXFLAGS+= -Werror
 endif
 
+#Build with race checking
+ifdef RACE_CHECK
+    CXXFLAGS+= -fsanitize=thread
+endif
+
 #Enable / Disable debug symbols and set appropriate optimization level
 ifdef ENABLE_DEBUG
 	DEBUG+=-g
@@ -248,6 +253,7 @@ OBJS= \
 	build/Util_base64.o \
 	build/Util_config.o \
 	build/Util_debug.o \
+    build/Util_datastream.o \
 	build/Util_filesystem.o \
     build/Util_memory.o \
 	build/Util_signals.o \

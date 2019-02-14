@@ -49,7 +49,7 @@ namespace TAO
 
             /* Check if you are logged in. */
             if(!mapSessions.count(nSession))
-                throw APIException(-1, debug::strprintf("session %" PRIu64 " doesn't exist", nSession));
+                throw APIException(-1, debug::safe_printstr("session ", nSession, " doesn't exist"));
 
             return mapSessions[nSession]->Generate(nKey, strSecret);
         }
@@ -62,7 +62,7 @@ namespace TAO
 
             /* Check if you are logged in. */
             if(!mapSessions.count(nSession))
-                throw APIException(-1, debug::strprintf("session %" PRIu64 " doesn't exist", nSession));
+                throw APIException(-1, debug::safe_printstr("session ", nSession, " doesn't exist"));
 
             return mapSessions[nSession]->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
         }

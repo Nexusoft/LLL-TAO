@@ -86,19 +86,19 @@ namespace Legacy
     /* For debugging Purposes seeing block state data dump */
     std::string LegacyBlock::ToString() const
     {
-        return debug::strprintf("Block("
-            VALUE("hash")     " = %s "
-            VALUE("nVersion") " = %u, "
-            VALUE("hashPrevBlock") " = %s, "
-            VALUE("hashMerkleRoot") " = %s, "
-            VALUE("nChannel") " = %u, "
-            VALUE("nHeight") " = %u, "
-            VALUE("nBits") " = %u, "
-            VALUE("nNonce") " = %" PRIu64 ", "
-            VALUE("nTime") " = %u, "
-            VALUE("vchBlockSig") " = %s, "
-            VALUE("vtx.size()") " = %u)",
-        GetHash().ToString().substr(0, 20).c_str(), nVersion, hashPrevBlock.ToString().substr(0, 20).c_str(), hashMerkleRoot.ToString().substr(0, 20).c_str(), nChannel, nHeight, nBits, nNonce, nTime, HexStr(vchBlockSig.begin(), vchBlockSig.end()).c_str(), vtx.size());
+        return debug::safe_printstr("Block("
+            VALUE("hash")     " = ", GetHash().ToString().substr(0, 20), " ",
+            VALUE("nVersion") " = ", nVersion, ", ",
+            VALUE("hashPrevBlock") " = ", hashPrevBlock.ToString().substr(0, 20), ", ",
+            VALUE("hashMerkleRoot") " = ", hashMerkleRoot.ToString().substr(0, 20), ", ",
+            VALUE("nChannel") " = ", nChannel, ", ",
+            VALUE("nHeight") " = ", nHeight, ", ",
+            VALUE("nBits") " = ", nBits, ", ",
+            VALUE("nNonce") " = ", nNonce, ", ",
+            VALUE("nTime") " = ", nTime, ", ",
+            VALUE("vchBlockSig") " = ", HexStr(vchBlockSig.begin(), vchBlockSig.end()), ", ",
+            VALUE("vtx.size()") " = ", vtx.size(), ")"
+        );
     }
 
 

@@ -34,7 +34,7 @@ namespace Legacy
     std::string ValueString(const std::vector<uint8_t>& vch)
     {
         if (vch.size() <= 4)
-            return debug::strprintf("%d", LLC::CBigNum(vch).getint32());
+            return debug::safe_printstr(LLC::CBigNum(vch).getint32());
         else
             return HexStr(vch);
     }

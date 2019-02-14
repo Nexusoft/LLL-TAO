@@ -45,6 +45,9 @@ ________________________________________________________________________________
 
 #include <iostream>
 #include <sstream>
+#include <cstdint>
+#include <string>
+#include <vector>
 
 #if !defined(WIN32) && !defined(QT_GUI) && !defined(NO_DAEMON)
 #include <sys/types.h>
@@ -56,7 +59,7 @@ namespace LLP
 {
     Server<TritiumNode>* TRITIUM_SERVER;
     Server<LegacyNode> * LEGACY_SERVER;
-    Server<TimeNode>*    TIME_SERVER;
+    Server<TimeNode>   * TIME_SERVER;
 }
 
 /* Daemonize by forking the parent process*/
@@ -121,6 +124,9 @@ int main(int argc, char** argv)
     runtime::timer timer;
     timer.Start();
 
+    if(!debug::init())
+        printf("unable to initalize debug log file\n");
+
     /* Handle all the signals with signal handler method. */
     SetupSignals();
 
@@ -140,7 +146,7 @@ int main(int argc, char** argv)
     /* Handle Commandline switch */
     for (int i = 1; i < argc; ++i)
     {
-        if (!IsSwitchChar(argv[i][0]))
+        if (!convert::IsSwitchChar(argv[i][0]))
         {
             if(config::GetBoolArg("-api"))
                 return TAO::API::CommandLineAPI(argc, argv, i);
@@ -376,7 +382,7 @@ int main(int argc, char** argv)
     {
         std::mutex SHUTDOWN_MUTEX;
         std::unique_lock<std::mutex> SHUTDOWN_LOCK(SHUTDOWN_MUTEX);
-        SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown; });
+        SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown.load(); });
     }
 
     /* GDB mode waits for keyboard input to initiate clean shutdown. */
@@ -509,13 +515,16 @@ int main(int argc, char** argv)
     }
 
 
-
     /* Elapsed Milliseconds from timer. */
     nElapsed = timer.ElapsedMilliseconds();
 
 
     /* Startup performance metric. */
     debug::log(0, FUNCTION, "Closed in ", nElapsed, "ms");
+
+
+    /* Close the debug log file once and for all. */
+    debug::shutdown();
 
     return 0;
 }

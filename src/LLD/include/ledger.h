@@ -19,9 +19,6 @@ ________________________________________________________________________________
 #include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
 
-#include <LLD/cache/binary_lru.h>
-#include <LLD/keychain/hashmap.h>
-
 #include <TAO/Register/include/state.h>
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/trustkey.h>
@@ -49,7 +46,11 @@ namespace LLD
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         LedgerDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE)
-        : SectorDatabase("ledger", nFlagsIn) { }
+        : SectorDatabase(std::string("ledger"), nFlagsIn) { }
+
+
+        /** Default Destructor **/
+        virtual ~LedgerDB() {}
 
 
         /** WriteBestChain
@@ -205,7 +206,7 @@ namespace LLD
             debug::log(0, FUNCTION, "repairing index for ", hashTransaction.ToString().substr(0, 20));
 
             /* Loop until it is found. */
-            while(!config::fShutdown && !state.IsNull())
+            while(!config::fShutdown.load() && !state.IsNull())
             {
                 /* Give debug output of status. */
                 if(state.nHeight % 100000 == 0)
@@ -253,7 +254,7 @@ namespace LLD
             TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateGenesis;
 
             /* Loop until it is found. */
-            while(!config::fShutdown && !state.IsNull())
+            while(!config::fShutdown.load() && !state.IsNull())
             {
                 /* Give debug output of status. */
                 if(state.nHeight % 100000 == 0)

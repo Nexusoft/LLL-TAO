@@ -48,9 +48,6 @@ namespace LLP
                          uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen,
                          bool fMeter, bool fManager, uint32_t nSleepTimeIn)
     : fDDOS(isDDOS)
-    , fLISTEN(fListen)
-    , fMETER(fMeter)
-    , fDestruct(false)
     , MANAGER()
     , PORT(nPort)
     , MAX_THREADS(nMaxThreads)
@@ -96,12 +93,7 @@ namespace LLP
     Server<ProtocolType>::~Server()
     {
         /* Set all flags back to false. */
-        fLISTEN = false;
-        fMETER  = false;
-        fDDOS   = false;
-
-        /* Start the destructor. */
-        fDestruct = true;
+        fDDOS.store(false);
 
         /* Wait for address manager. */
         if(pAddressManager)
@@ -180,12 +172,17 @@ namespace LLP
        BaseAddress addrConnect(strAddress, nPort);
 
        /* Create new DDOS Filter if Needed. */
-       if(!DDOS_MAP.count(addrConnect))
-           DDOS_MAP[addrConnect] = new DDOS_Filter(DDOS_TIMESPAN);
+       if(fDDOS.load())
+       {
+           if(!DDOS_MAP.count(addrConnect))
+               DDOS_MAP[addrConnect] = new DDOS_Filter(DDOS_TIMESPAN);
 
-       /* DDOS Operations: Only executed when DDOS is enabled. */
-       if((fDDOS && DDOS_MAP[addrConnect]->Banned()))
-           return false;
+           /* DDOS Operations: Only executed when DDOS is enabled. */
+           if(DDOS_MAP[addrConnect]->Banned())
+               return false;
+       }
+
+
 
        /* Find a balanced Data Thread to Add Connection to. */
        int32_t nThread = FindThread();
@@ -358,10 +355,10 @@ namespace LLP
             runtime::sleep(1000);
 
         /* Loop connections. */
-        while(!fDestruct.load())
+        while(!config::fShutdown.load())
         {
             /* Sleep in 1 second intervals for easy break on shutdown. */
-            for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown; ++i)
+            for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown.load(); ++i)
                 runtime::sleep(1000);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
@@ -425,10 +422,6 @@ namespace LLP
         socklen_t len_v4 = sizeof(struct sockaddr_in);
         socklen_t len_v6 = sizeof(struct sockaddr_in6);
 
-        /* End the listening thread if LLP set to not listen. */
-        if(!fLISTEN)
-            return;
-
         /* Bind the Listener. */
         if(!BindListenPort(hListenSocket, fIPv4))
             return;
@@ -443,7 +436,7 @@ namespace LLP
         fds[0].fd     = hListenSocket;
 
         /* Main listener loop. */
-        while(!fDestruct.load())
+        while(!config::fShutdown.load())
         {
             if (hListenSocket != INVALID_SOCKET)
             {
@@ -619,13 +612,10 @@ namespace LLP
        if(!config::GetBoolArg("-meters", false))
            return;
 
-       if(!fMETER)
-           return;
-
        runtime::timer TIMER;
        TIMER.Start();
 
-       while(!fDestruct.load())
+       while(!config::fShutdown.load())
        {
            runtime::sleep(100);
            if(TIMER.Elapsed() < 10)
