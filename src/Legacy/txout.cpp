@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 
+
+#include <Util/templates/datastream.h>
 #include <LLP/include/version.h>
 
 #include <Util/include/string.h>
@@ -69,7 +71,7 @@ namespace Legacy
 	/* Short Hand debug output of the object */
 	std::string TxOut::ToStringShort() const
 	{
-		return debug::strprintf(" out %s %s", FormatMoney(nValue).c_str(), scriptPubKey.ToString(true).c_str());
+		return debug::safe_printstr(" out ", FormatMoney(nValue), " ", scriptPubKey.ToString(true));
 	}
 
 
@@ -79,7 +81,7 @@ namespace Legacy
 		if (IsEmpty()) return "TxOut(empty)";
 		if (scriptPubKey.size() < 6)
 			return "TxOut(error)";
-		return debug::strprintf("TxOut(nValue=%s, scriptPubKey=%s)", FormatMoney(nValue).c_str(), scriptPubKey.ToString().c_str());
+		return debug::safe_printstr("TxOut(nValue=", FormatMoney(nValue), ", scriptPubKey=", scriptPubKey.ToString(), ")");
 	}
 
 

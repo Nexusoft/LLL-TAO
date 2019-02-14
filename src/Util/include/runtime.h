@@ -19,8 +19,6 @@ ________________________________________________________________________________
 #include <chrono>
 #include <locale>
 
-#include <Util/include/debug.h>
-
 #define ARRAYLEN(array)     (sizeof(array)/sizeof((array)[0]))
 
 /** The location of the unified time seed. To enable a Unified Time System push data to this variable. **/

@@ -110,7 +110,7 @@ namespace LLP
 
                 /* Check the Packet Sizes to Unified Time Commands. */
                 if((message == "getoffset" || message == "offset") && length != 16)
-                    DDOS->Ban(debug::strprintf("INVALID PACKET SIZE | OFFSET/GETOFFSET | LENGTH %u", length));
+                    DDOS->Ban(debug::safe_printstr("INVALID PACKET SIZE | OFFSET/GETOFFSET | LENGTH ", length));
             }
 
             return;
@@ -671,7 +671,7 @@ namespace LLP
 
             /* Iterate forward the blocks required. */
             std::vector<CInv> vInv;
-            while(!config::fShutdown)
+            while(!config::fShutdown.load())
             {
                 state = state.Next();
 

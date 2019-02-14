@@ -18,18 +18,18 @@ ________________________________________________________________________________
 
 #include <Legacy/wallet/wallettx.h>
 
-#include <Util/include/debug.h> 
+#include <Util/include/debug.h>
 #include <Util/include/string.h> /* for FormatMoney() */
 
 namespace Legacy
 {
-    
+
      /** @class Output
       *
       *  Class to determine the value and depth of a specific transaction output.
       *
       *  Used for the Available Coins Method located in Wallet.cpp mainly.
-      *  To be used for further purpose in the future. 
+      *  To be used for further purpose in the future.
       **/
     class Output
     {
@@ -53,12 +53,12 @@ namespace Legacy
          *  @param[in] walletTxIn The transaction containing the corresponding output
          *
          *  @param[in] iIn The index of the output within the transactions's vout
-         * 
+         *
          *  @param[in] nDepthIn The depth of the transaction at time of Output creation
          *
          **/
         Output(const WalletTx& walletTxIn, const uint32_t iIn, const uint32_t nDepthIn) :
-            walletTx(walletTxIn), 
+            walletTx(walletTxIn),
             i(iIn),
             nDepth(nDepthIn)
         { }
@@ -67,13 +67,13 @@ namespace Legacy
         /** ToString
          *
          *  Generate a string representation of this output.
-         * 
+         *
          *  @return String representation of this output
          *
          **/
         std::string ToString() const
         {
-            return debug::strprintf("Output(%s, %d, %d) [%s]", walletTx.GetHash().ToString().substr(0,10).c_str(), i, nDepth, FormatMoney(walletTx.vout[i].nValue).c_str());
+            return debug::safe_printstr("Output(", walletTx.GetHash().ToString().substr(0,10), ", ", i, ", ", nDepth, ") [", FormatMoney(walletTx.vout[i].nValue), "]");
         }
 
 

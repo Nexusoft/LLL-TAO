@@ -17,10 +17,8 @@ ________________________________________________________________________________
 #include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
 
-#include <LLD/cache/binary_lru.h>
-#include <LLD/keychain/filemap.h>
-
 #include <LLP/include/trust_address.h>
+
 
 namespace LLD
 {
@@ -37,7 +35,11 @@ namespace LLD
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         AddressDB(uint16_t port, uint8_t nFlags = FLAGS::CREATE | FLAGS::FORCE)
-        : SectorDatabase("addr/" + std::to_string(port), nFlags) { }
+        : SectorDatabase(std::string("addr/") + std::to_string(port), nFlags) { }
+
+
+        /** Default Destructor **/
+        virtual ~AddressDB() {}
 
 
         /** WriteTrustAddress

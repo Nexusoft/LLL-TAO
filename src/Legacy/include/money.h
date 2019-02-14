@@ -92,7 +92,7 @@ namespace Legacy
     {
         if (dAmount <= 0.0 || dAmount > Legacy::MaxTxOut())
             throw std::runtime_error( "Invalid amount");
-        int64_t nAmount = roundint64(dAmount * COIN);
+        int64_t nAmount = convert::roundint64(dAmount * COIN);
         if (!MoneyRange(nAmount))
             throw std::runtime_error("Invalid amount");
         return nAmount;

@@ -33,6 +33,7 @@ ________________________________________________________________________________
 
 namespace filesystem
 {
+
     /* Removes a file or folder from the specified path. */
     bool remove(const std::string &path)
     {
@@ -45,6 +46,7 @@ namespace filesystem
         return false;
     }
 
+
     /* Determines if the file or folder from the specified path exists. */
     bool exists(const std::string &path)
     {
@@ -53,6 +55,7 @@ namespace filesystem
 
         return false;
     }
+
 
     /* Copy a file. */
     bool copy_file(const std::string &pathSource, const std::string &pathDest)
@@ -120,6 +123,7 @@ namespace filesystem
         return false;
     }
 
+
     /*  Recursively create directories along the path if they don't exist. */
     bool create_directories(const std::string &path)
     {
@@ -133,6 +137,7 @@ namespace filesystem
         }
         return true;
     }
+
 
     /* Create a single directory at the path if it doesn't already exist. */
     bool create_directory(const std::string &path)
@@ -156,6 +161,7 @@ namespace filesystem
 
         return true;
     }
+
 
     /* Obtain the system complete path from a given relative path. */
     std::string system_complete(const std::string &path)
@@ -186,6 +192,7 @@ namespace filesystem
         return abs_path + rel_path;
     }
 
+
     /* Returns the full pathname of the PID file */
     std::string GetPidFile()
     {
@@ -193,6 +200,7 @@ namespace filesystem
         std::string pathPidFile(config::GetArg("-pid", "Nexus.pid"));
         return config::GetDataDir() + "/" +pathPidFile;
     }
+
 
     /* Creates a PID file on disk for the provided PID */
     void CreatePidFile(const std::string &path, pid_t pid)

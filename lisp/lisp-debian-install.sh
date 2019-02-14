@@ -8,7 +8,7 @@
 #
 # Run this script in the LLL-TAO/lisp directory.
 #
-# To start LISP, use the RL or RL-seed script.
+# To start LISP, use the RL script.
 #
 sudo apt-get update && sudo apt-get -yq install \
     gcc libc-dev python python-dev libffi-dev openssl libpcap-dev \
@@ -31,7 +31,7 @@ sudo pip install -r /lispers.net/pip-requirements.txt
 #
 cd -
 sudo cp RL /lispers.net/RL
-sudo cp RL-seed /lispers.net/RL-seed
+sudo cp provision-lisp.py /lispers.net/provision-lisp.py
 sudo cp lisp.config.xtr /lispers.net/lisp.config.xtr
 sudo cp lisp-join.py /lispers.net/lisp-join.py
 sudo cp make-crypto-eid.py /lispers.net/make-crypto-eid.py

@@ -19,10 +19,8 @@ ________________________________________________________________________________
 #include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
 
-#include <LLD/cache/binary_lru.h>
-#include <LLD/keychain/hashmap.h>
-
 #include <Legacy/types/transaction.h>
+
 
 namespace LLD
 {
@@ -39,7 +37,11 @@ namespace LLD
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         LegacyDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
-        : SectorDatabase("legacy", nFlags) {}
+        : SectorDatabase(std::string("legacy"), nFlags) {}
+
+
+        /** Default Destructor **/
+        virtual ~LegacyDB() {}
 
 
         /** WriteTx

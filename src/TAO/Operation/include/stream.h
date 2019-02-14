@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/version.h>
 
+#include <Util/templates/serialize.h>
 #include <Util/templates/basestream.h>
 
 /* Global TAO namespace. */
@@ -52,6 +53,11 @@ namespace TAO
              **/
             Stream(std::vector<uint8_t> vchDataIn)
             : BaseStream(vchDataIn)
+            {
+            }
+
+            /** Default Destructor **/
+            virtual ~Stream()
             {
             }
 

@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLC/types/bignum.h>
 #include <LLC/hash/SK.h>
 
+#include <Util/templates/datastream.h>
 #include <Util/include/base58.h>
 
 #include <Legacy/include/signature.h>

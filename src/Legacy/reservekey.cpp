@@ -21,7 +21,6 @@ ________________________________________________________________________________
 #include <Legacy/wallet/reservekey.h>
 
 #include <Util/include/debug.h>
-#include <Util/templates/serialize.h>
 
 
 namespace Legacy

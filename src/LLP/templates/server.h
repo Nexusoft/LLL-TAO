@@ -50,11 +50,7 @@ namespace LLP
     private:
         /* The DDOS variables. */
         std::map<BaseAddress, DDOS_Filter *> DDOS_MAP;
-        bool fDDOS;
-        bool fLISTEN;
-        bool fMETER;
-
-        std::atomic<bool> fDestruct;
+        std::atomic<bool> fDDOS;
 
         std::condition_variable MANAGER;
 

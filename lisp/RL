@@ -2,98 +2,38 @@
 #
 # RL - Restart LISP Wrapper Script
 #
-# Nexus/LISP wrapper script to start the lispers.net LISP subsystem. The
-# lisp.config configuration file will be provisioned with parameters in
-# variables at the top of this file. The intention of this script is to be
-# used in a docker container for a client Nexus node (not a seed node).
+# Nexus/LISP wrapper script to start the lispers.net LISP subsystem.
+# This script makes two calls. One to a provisioning program that will
+# provision the lisp.config and setup kernel routes in the routing table.
+# And the other to start the lispers.net LISP subsystem.
 #
-# Use script LLL-TAO/RL-seed to start lispers.net on a seed node.
+# This script is used by either a client or seed nexus/lisp node. And can be
+# run inside a docker container or natively on most unix derived OS platforms.
+#
+# The lispers.net code does not run natively on Windows. You must install
+# docker on the platform to run it.
 #
 #------------------------------------------------------------------------------
 
 #
-# Use eth0 by default
+# Default to docker default device of eth0. If you are running natively, you
+# pick your interface where your default route points to. Run the following
+# to find out: "ip route | egrep default".
 #
 set device = "eth0"
-set hostname = `hostname`
 
 #
 # Go into directory where RL resides.
 #
 cd `dirname $0`
-e
-#
-# If the lisp.config file already provisioned, then just start the lispers.net
-# LISP subsystem.
-#
-egrep "<iid>" lisp.config >& /dev/null
-if ($status == 1) then
-  echo "Provisioning lisp.config file already performed"
-
-  #
-  # Set MTU for $device interface.
-  #
-  sudo ifconfig $device mtu 1400
-
-  #
-  # Start LISP.
-  #
-  /lispers.net/RESTART-LISP -9090 $device
-  exit
-endif
 
 #
-# Provision instance-ID, EIDs, and RLOCs.
+# Provision lisp.config and/or reinstall kernel routes.
 #
-set iid = 200
-set rand = `python -c "import random; print random.randint(0, 0xffffff)"`
-set byte2 = `python -c "print ($rand >> 16) & 0xff"`
-set byte1 = `python -c "print ($rand >> 8) & 0xff"`
-set byte0 = `python -c "print $rand & 0xff"`
-set v4_eid = 240.$byte2.$byte1.$byte0
-set v6_eid = fe::${byte2}:${byte1}:${byte0}
-
-set v4_rloc = `ifconfig $device | egrep "inet "`
-set v4_rloc = `echo $v4_rloc | cut -d " " -f 2`
-
-echo "Provisioning lisp.config file for nexus client node, EIDs [$iid]$v4_eid & [$iid]$v6_eid"
-cat lisp.config.xtr | sed "s/<sample>/$hostname/; s/eth0/$device/" > lisp.config.bak
-cat lisp.config.bak | sed "s/<iid>/$iid/" > lisp.config
-cat lisp.config | sed "s/<v4-eid>/$v4_eid/" > lisp.config.bak
-cat lisp.config.bak | sed "s/<v6-eid>/$v6_eid/" > lisp.config
-cat lisp.config | sed "s/<v4-rloc>/$v4_rloc/" > lisp.config.bak
-mv lisp.config.bak lisp.config
+python provision-lisp.py $device $EID4 $EID6
 
 #
-# Configure IPv4 EIDs on interface lo and routes for EID source selection.
-#
-sudo ip addr add $v4_eid/32 dev lo >& /dev/null
-sudo ip route add 240.0.0.0/8 dev lo src $v4_eid
-sudo ip route add 224.0.0.0/4 dev lo src $v4_eid
-
-#
-# Tell kernel LISP wants to use IPv6 and configure IPv6 routing.
-#
-sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null
-sysctl -w net.ipv6.conf.all.forwarding=1 > /dev/null
-
-#
-# An IPv6 EID MUST not be assigned to interface lo or it will be unreachable.
-#
-sudo ip addr add $v6_eid/128 dev $device >& /dev/null
-sudo ip neighbor add fe80::1 lladdr 0:0:0:0:0:1 dev $device
-sleep 2
-sudo ip route add fd00::/8 via fe80::1 dev $device src $v6_eid
-sudo ip route add fe00::/8 via fe80::1 dev $device src $v6_eid
-sudo ip route add ff00::/8 via fe80::1 dev $device src $v6_eid
-
-#
-# Set MTU for $device interface.
-#
-sudo ifconfig $device mtu 1400
-
-#
-# Start LISP quietly.
+# Start the lispers.net LISP subsystem, quietly.
 #
 /lispers.net/RESTART-LISP -9090 $device > /dev/null
 exit
