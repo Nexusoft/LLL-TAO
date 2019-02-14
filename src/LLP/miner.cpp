@@ -405,6 +405,11 @@ namespace LLP
                 /* Create the response packet and write. */
                 respond(BLOCK_HEIGHT, 4, convert::uint2bytes(nBestHeight + 1));
 
+                /* Prevent mining clients from spamming with GET_HEIGHT messages*/
+                runtime::sleep(500);
+
+                check_best_height();
+
                 return true;
             }
 
