@@ -101,7 +101,7 @@ namespace memory
          *  @param[in] a The atomic to compare to.
          *
          **/
-        bool operator==(const atomic& a)
+        bool operator==(const atomic& a) const
         {
             LOCK(MUTEX);
 
@@ -114,11 +114,37 @@ namespace memory
          *  @param[in] a The data type to compare to.
          *
          **/
-        bool operator==(const TypeName& dataIn)
+        bool operator==(const TypeName& dataIn) const
         {
             LOCK(MUTEX);
 
             return data == dataIn;
+        }
+
+
+        /** Not equivilent operator.
+         *
+         *  @param[in] a The atomic to compare to.
+         *
+         **/
+        bool operator!=(const atomic& a) const
+        {
+            LOCK(MUTEX);
+
+            return data != a.data;
+        }
+
+
+        /** Not equivilent operator.
+         *
+         *  @param[in] a The data type to compare to.
+         *
+         **/
+        bool operator!=(const TypeName& dataIn) const
+        {
+            LOCK(MUTEX);
+
+            return data != dataIn;
         }
 
 

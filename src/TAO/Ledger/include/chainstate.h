@@ -76,7 +76,7 @@ namespace TAO
 
 
             /** The best block in the chain. **/
-            static BlockState stateBest;
+            static memory::atomic<BlockState> stateBest;
 
 
             /** The best block in the chain. **/

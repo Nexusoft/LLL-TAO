@@ -245,7 +245,7 @@ namespace TAO
             /* Scan each transaction in the block and process those related to this wallet */
             std::vector<uint512_t> vHashes;
             Legacy::Transaction tx;
-            for(const auto& item : ChainState::stateBest.vtx)
+            for(const auto& item : ChainState::stateBest.load().vtx)
             {
                 vHashes.push_back(item.second);
                 if (item.first == TAO::Ledger::LEGACY_TX)
@@ -253,13 +253,13 @@ namespace TAO
                     /* Read transaction from database */
                     if (!LLD::legacyDB->ReadTx(item.second, tx))
                     {
-                        debug::log(0, ChainState::stateBest.ToString(debug::flags::tx | debug::flags::header));
+                        debug::log(0, ChainState::stateBest.load().ToString(debug::flags::tx | debug::flags::header));
 
                         assert(debug::error(FUNCTION, "tx ", item.second.ToString().substr(0, 20), " not found"));
                     }
 
                     /* Check for coinbase or coinstake. */
-                    if(item.second == ChainState::stateBest.vtx[0].second && !tx.IsCoinBase() && !tx.IsCoinStake())
+                    if(item.second == ChainState::stateBest.load().vtx[0].second && !tx.IsCoinBase() && !tx.IsCoinStake())
                     {
                         assert(debug::error(FUNCTION, "first transction not coinbase/coinstake"));
                     }
@@ -267,7 +267,7 @@ namespace TAO
             }
 
             /* Check the merkle root. */
-            if(ChainState::stateBest.hashMerkleRoot != ChainState::stateBest.BuildMerkleTree(vHashes))
+            if(ChainState::stateBest.load().hashMerkleRoot != ChainState::stateBest.load().BuildMerkleTree(vHashes))
                 assert(debug::error(FUNCTION, "merkle tree mismatch"));
 
 
@@ -301,7 +301,7 @@ namespace TAO
             else
             {
                 /* Get initial block states. */
-                BlockState fork   = ChainState::stateBest;
+                BlockState fork   = ChainState::stateBest.load();
                 BlockState longer = *this;
 
                 /* Get the blocks to connect and disconnect. */
@@ -343,7 +343,7 @@ namespace TAO
                 {
                     debug::log(0, FUNCTION, "REORGANIZE: Disconnect ", vDisconnect.size(),
                         " blocks; ", fork.GetHash().ToString().substr(0,20),
-                        "..",  ChainState::stateBest.GetHash().ToString().substr(0,20));
+                        "..",  ChainState::stateBest.load().GetHash().ToString().substr(0,20));
 
                     debug::log(0, FUNCTION, "REORGANIZE: Connect ", vConnect.size(), " blocks; ", fork.GetHash().ToString().substr(0,20),
                         "..", this->GetHash().ToString().substr(0,20));

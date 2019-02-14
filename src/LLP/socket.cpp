@@ -49,9 +49,9 @@ namespace LLP
     Socket::Socket(const Socket& socket)
     : pollfd(socket)
     , MUTEX()
-    , nError(socket.nError)
-    , nLastSend(socket.nLastSend)
-    , nLastRecv(socket.nLastRecv)
+    , nError(socket.nError.load())
+    , nLastSend(socket.nLastSend.load())
+    , nLastRecv(socket.nLastRecv.load())
     , vBuffer(socket.vBuffer)
     , addr(socket.addr)
     {
@@ -403,8 +403,6 @@ namespace LLP
     /*  Determines if nTime seconds have elapsed since last Read / Write. */
     bool Socket::Timeout(uint32_t nTime) const
     {
-        LOCK(MUTEX);
-
         return (runtime::timestamp() > nLastSend + nTime &&
                 runtime::timestamp() > nLastRecv + nTime);
     }

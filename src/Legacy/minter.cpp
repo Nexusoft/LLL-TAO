@@ -372,7 +372,7 @@ namespace Legacy
             }
 
             /* Calculate time since the last trust block for this trust key (block age = age of previous trust block). */
-            uint32_t nBlockAge = TAO::Ledger::ChainState::stateBest.GetBlockTime() - prevBlockState.GetBlockTime();
+            uint32_t nBlockAge = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() - prevBlockState.GetBlockTime();
             uint32_t nMaxTrustScore = (60 * 60 * 24 * 28 * 13);
             uint32_t nMaxBlockAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
 
@@ -648,7 +648,7 @@ namespace Legacy
             return debug::error(FUNCTION, "Check state failed");
 
         /* Check the stake. */
-        if (!candidateBlock.vtx[0].CheckTrust(TAO::Ledger::ChainState::stateBest))
+        if (!candidateBlock.vtx[0].CheckTrust(TAO::Ledger::ChainState::stateBest.load()))
             return debug::error(FUNCTION, "Check trust failed");
 
         /* Check the work for the block.

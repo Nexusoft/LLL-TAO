@@ -48,7 +48,7 @@ namespace TAO
             {
                 uint64_t nTimeConstant = 276758250000;
 
-                TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest;
+                TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest.load();
 
                 bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 2);
                 for(;  (nHTotal < 1440 && bLastStateFound); nHTotal ++)
@@ -95,12 +95,12 @@ namespace TAO
             uint64_t nPrimePS = 0;
             double nPrimeAverageDifficulty = 0.0;
             unsigned int nPrimeAverageTime = 0;
-            if( TAO::Ledger::ChainState::nBestHeight.load() > 0 && TAO::Ledger::ChainState::stateBest != TAO::Ledger::ChainState::stateGenesis)
+            if( TAO::Ledger::ChainState::nBestHeight.load() > 0 && TAO::Ledger::ChainState::stateBest.load() != TAO::Ledger::ChainState::stateGenesis)
             {
 
                 unsigned int nPrimeTimeConstant = 2480;
                 int nTotal = 0;
-                TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest;
+                TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest.load();
 
                 bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
                 for(; (nTotal < 1440 && bLastStateFound); nTotal ++)
@@ -220,13 +220,13 @@ namespace TAO
                     "getdifficulty"
                     " - Returns difficulty as a multiple of the minimum difficulty.");
 
-            TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::stateBest;
+            TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::stateBest.load();
             bool fHasStake = TAO::Ledger::GetLastState(lastStakeBlockState, 0);
 
-            TAO::Ledger::BlockState lastPrimeBlockState = TAO::Ledger::ChainState::stateBest;
+            TAO::Ledger::BlockState lastPrimeBlockState = TAO::Ledger::ChainState::stateBest.load();
             bool fHasPrime = TAO::Ledger::GetLastState(lastPrimeBlockState, 1);
 
-            TAO::Ledger::BlockState lastHashBlockState = TAO::Ledger::ChainState::stateBest;
+            TAO::Ledger::BlockState lastHashBlockState = TAO::Ledger::ChainState::stateBest.load();
             bool fHasHash = TAO::Ledger::GetLastState(lastHashBlockState, 2);
 
 
@@ -260,11 +260,11 @@ namespace TAO
                     " This is to prevent error from Gregorian Figures.");
 
             json::json obj;
-            unsigned int nMinutes = TAO::Ledger::GetChainAge(TAO::Ledger::ChainState::stateBest.GetBlockTime());
+            unsigned int nMinutes = TAO::Ledger::GetChainAge(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
 
             obj["chainAge"] = (int)nMinutes;
 
-            int64_t nSupply = TAO::Ledger::ChainState::stateBest.nMoneySupply;
+            int64_t nSupply = TAO::Ledger::ChainState::stateBest.load().nMoneySupply;
             int64_t nTarget = TAO::Ledger::CompoundSubsidy(nMinutes);
 
             obj["moneysupply"] = Legacy::SatoshisToAmount(nSupply);
@@ -294,7 +294,7 @@ namespace TAO
                     " Default timestamp is the current Unified timestamp. The timestamp is recorded as a UNIX timestamp");
 
             json::json obj;
-            unsigned int nMinutes = TAO::Ledger::GetChainAge(TAO::Ledger::ChainState::stateBest.GetBlockTime());
+            unsigned int nMinutes = TAO::Ledger::GetChainAge(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
 
             obj["chainAge"] = (int)nMinutes;
             obj["miners"] = Legacy::SatoshisToAmount(TAO::Ledger::CompoundSubsidy(nMinutes, 0));

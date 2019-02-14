@@ -138,17 +138,6 @@ namespace LLP
         bool AddConnection(std::string strAddress, uint16_t nPort);
 
 
-
-        /** GetConnections
-         *
-         *  Get the active connection pointers from data threads.
-         *
-         *  @return Returns the list of active connections in a vector
-         *
-         **/
-        std::vector<ProtocolType *> GetConnections();
-
-
         /** GetConnectionCount
          *
          *  Get the number of active connection pointers from data threads.

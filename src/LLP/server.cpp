@@ -200,38 +200,6 @@ namespace LLP
    }
 
 
-    /*  Get the active connection pointers from data threads. */
-   template <class ProtocolType>
-   std::vector<ProtocolType *> Server<ProtocolType>::GetConnections()
-   {
-       /* List of connections to return. */
-       std::vector<ProtocolType *> vConnections;
-       for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
-       {
-           /* Get the data threads. */
-           DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-
-           /* Lock the data thread. */
-           LOCK(dt->MUTEX);
-
-           /* Loop through connections in data thread. */
-           int32_t nSize = dt->CONNECTIONS.size();
-           for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
-           {
-               /* Skip over inactive connections. */
-               if(!dt->CONNECTIONS[nIndex] ||
-                  !dt->CONNECTIONS[nIndex]->Connected())
-                   continue;
-
-               /* Push the active connection. */
-               vConnections.push_back(dt->CONNECTIONS[nIndex]);
-           }
-       }
-
-       return vConnections;
-   }
-
-
    /*  Get the number of active connection pointers from data threads. */
     template <class ProtocolType>
     uint32_t Server<ProtocolType>::GetConnectionCount()
