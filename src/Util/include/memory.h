@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_UTIL_INCLUDE_MEMORY_H
 
 #include <cstdint>
+#include <Util/include/mutex.h>
 
 namespace memory
 {
@@ -32,6 +33,122 @@ namespace memory
      *
      **/
     int32_t compare(const uint8_t *a, const uint8_t *b, const uint64_t size);
+
+
+    /** atomic
+     *
+     *  Protects an object inside with a mutex.
+     *
+     **/
+    template<class TypeName>
+    class atomic
+    {
+        /* The mutex to protect the memory. */
+        std::mutex MUTEX;
+
+
+        /* The internal data. */
+        TypeName data;
+
+
+    public:
+
+        /** Default Constructor. **/
+        atomic()
+        : data()
+        {
+        }
+
+
+        /** Constructor for storing. **/
+        atomic(const TypeName& dataIn)
+        : data()
+        {
+            store(dataIn);
+        }
+
+
+        /** Assignment operator.
+         *
+         *  @param[in] a The atomic to assign from.
+         *
+         **/
+        atomic& operator=(const atomic& a)
+        {
+            LOCK(MUTEX);
+
+            data = a.data;
+            return (*this);
+        }
+
+
+        /** Assignment operator.
+         *
+         *  @param[in] dataIn The atomic to assign from.
+         *
+         **/
+        atomic& operator=(const TypeName& dataIn)
+        {
+            LOCK(MUTEX);
+
+            data = dataIn;
+            return (*this);
+        }
+
+
+        /** Equivilent operator.
+         *
+         *  @param[in] a The atomic to compare to.
+         *
+         **/
+        bool operator==(const atomic& a)
+        {
+            LOCK(MUTEX);
+
+            return data == a.data;
+        }
+
+
+        /** Equivilent operator.
+         *
+         *  @param[in] a The data type to compare to.
+         *
+         **/
+        bool operator==(const TypeName& dataIn)
+        {
+            LOCK(MUTEX);
+
+            return data == dataIn;
+        }
+
+
+        /** load
+         *
+         *  Load the object from memory.
+         *
+         **/
+        TypeName load()
+        {
+            LOCK(MUTEX);
+
+            return data;
+        }
+
+
+        /** store
+         *
+         *  Stores an object into memory.
+         *
+         *  @param[in] dataIn The data to into protected memory.
+         *
+         **/
+        void store(TypeName dataIn)
+        {
+            LOCK(MUTEX);
+
+            data = dataIn;
+        }
+    };
 }
 
 #endif

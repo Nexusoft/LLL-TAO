@@ -187,6 +187,9 @@ namespace LLP
                 /* Get the data threads. */
                 dt = DATA_THREADS[nThread];
 
+                /* Lock the data thread. */
+                LOCK(dt->MUTEX);
+
                 /* Loop through connections in data thread. */
                 nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
 

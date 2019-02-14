@@ -72,7 +72,7 @@ namespace config
         #ifndef WIN32
             fprintf(file, "%d", pid);
         #else
-            /* For some reason, PRI64d fails with warning here because %I non-ANSI compliant, 
+            /* For some reason, PRI64d fails with warning here because %I non-ANSI compliant,
                but it doesn't give this warning in other places except for config.cpp
                perhaps because this is fprintf (debug::log for example does not use printf).
 
@@ -183,7 +183,6 @@ namespace config
             return path;
 
         LOCK(csPathCached);
-
         if (mapArgs.count("-datadir"))
         {
             /* get the command line argument for the data directory */
