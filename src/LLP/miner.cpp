@@ -227,7 +227,7 @@ namespace LLP
                         /* Create and send a packet response */
                         respond(BLOCK_DATA, len, data);
 
-                        debug::log(2, FUNCTION, "***** Mining LLP: Sent Block ",
+                        debug::log(2, FUNCTION, "Mining LLP: Sent Block ",
                             new_block.GetHash().ToString().substr(0, 20), " to Worker.");
                     }
 
@@ -238,11 +238,41 @@ namespace LLP
 
             /* On Connect Event, Assign the Proper Daemon Handle. */
             case EVENT_CONNECT:
+            {
+                /* Debut output. */
+                debug::log(2, FUNCTION, "Mining LLP: New Connection from ", GetAddress().ToStringIP());
                 return;
+            }
+            
 
             /* On Disconnect Event, Reduce the Connection Count for Daemon */
             case EVENT_DISCONNECT:
+            {
+                /* Debut output. */
+                uint8_t reason = LENGTH;
+                std::string strReason;
+
+                switch(reason)
+                {
+                    case DISCONNECT_TIMEOUT:
+                        strReason = "DISCONNECT_TIMEOUT";
+                        break;
+                    case DISCONNECT_ERRORS:
+                        strReason = "DISCONNECT_ERRORS";
+                        break;
+                    case DISCONNECT_DDOS:
+                        strReason = "DISCONNECT_DDOS";
+                        break;
+                    case DISCONNECT_FORCE:
+                        strReason = "DISCONNECT_FORCE";
+                        break;
+                    default:
+                        strReason = "UNKNOWN";
+                        break;
+                }
+                debug::log(2, FUNCTION, "Mining LLP: Disconnecting ", GetAddress().ToStringIP(), " (", strReason, ")");
                 return;
+            }
         }
 
     }
