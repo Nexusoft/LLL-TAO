@@ -59,6 +59,7 @@ namespace config
         for (int i = 1; i < argc; ++i)
         {
             char psz[10000];
+            memset( psz, 0, 10000);
 
             uint16_t len = static_cast<uint16_t>(std::strlen(argv[i]));
             len = std::min(len, static_cast<uint16_t>(10000));
