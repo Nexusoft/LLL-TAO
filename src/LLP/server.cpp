@@ -247,14 +247,16 @@ namespace LLP
             LOCK(dt->MUTEX);
 
             /* Loop through connections in data thread and add any that are connected to count. */
-            int32_t nSize = dt->CONNECTIONS.size();
-            for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
+            uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
+            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
+                ProtocolType *pNode = dt->CONNECTIONS[nIndex];
+
                 /* Skip over inactive connections. */
-                if(!dt->CONNECTIONS[nIndex] || !dt->CONNECTIONS[nIndex]->Connected())
+                if(!pNode || !pNode->Connected())
                     continue;
 
-                connectionCount += 1;
+                ++connectionCount;
             }
         }
 
@@ -274,27 +276,26 @@ namespace LLP
             /* Get the data threads. */
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
-            if(!dt)
-              continue;
-
             /* Lock the data thread. */
             LOCK(dt->MUTEX);
 
             /* Loop through connections in data thread. */
-            int32_t nSize = dt->CONNECTIONS.size();
-            for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
+            uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
+            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
+                ProtocolType *pNode = dt->CONNECTIONS[nIndex];
+
                 /* Skip over inactive connections. */
-                if(!dt->CONNECTIONS[nIndex] || !dt->CONNECTIONS[nIndex]->Connected())
+                if(!pNode || !pNode->Connected())
                     continue;
 
                 /* Skip over exclusion address. */
-                if(dt->CONNECTIONS[nIndex]->GetAddress() == addrExclude)
+                if(pNode->GetAddress() == addrExclude)
                     continue;
 
                 /* Push the active connection. */
-                if(!pBest || dt->CONNECTIONS[nIndex]->nLatency < pBest->nLatency)
-                    pBest = dt->CONNECTIONS[nIndex];
+                if(!pBest || pNode->nLatency < pBest->nLatency)
+                    pBest = pNode;
             }
         }
 
@@ -637,7 +638,7 @@ namespace LLP
            ClearRequests();
        }
 
-       printf("Meter closed..\n");
+       debug::log(0, FUNCTION, "Meter closed..");
     }
 
 
@@ -664,12 +665,9 @@ namespace LLP
     {
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
-           DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
-           if(!dt)
-               continue;
-
-           dt->REQUESTS = 0;
+            dt->REQUESTS = 0;
         }
     }
 

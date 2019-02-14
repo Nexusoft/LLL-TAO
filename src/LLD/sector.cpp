@@ -157,7 +157,8 @@ namespace LLD
         SectorKey cKey;
         if(pSectorKeys->Get(vKey, cKey))
         {
-            { LOCK(SECTOR_MUTEX);
+            {
+                LOCK(SECTOR_MUTEX);
 
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
@@ -204,7 +205,8 @@ namespace LLD
     template<class KeychainType, class CacheType>
     bool SectorDatabase<KeychainType, CacheType>::Get(const SectorKey& cKey, std::vector<uint8_t>& vData)
     {
-        { LOCK(SECTOR_MUTEX);
+        {
+            LOCK(SECTOR_MUTEX);
 
             nBytesRead += (cKey.vKey.size() + vData.size());
 
@@ -257,7 +259,8 @@ namespace LLD
         /* Write the data into the memory cache. */
         cachePool->Put(vKey, vData, false);
 
-        { LOCK(SECTOR_MUTEX);
+        {
+            LOCK(SECTOR_MUTEX);
 
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
@@ -299,7 +302,8 @@ namespace LLD
     {
         if(nFlags & FLAGS::APPEND || !Update(vKey, vData))
         {
-            { LOCK(SECTOR_MUTEX);
+            {
+                LOCK(SECTOR_MUTEX);
 
                 /* Create new file if above current file size. */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
@@ -376,7 +380,9 @@ namespace LLD
         }
 
         /* Add to the write buffer thread. */
-        { LOCK(BUFFER_MUTEX);
+        {
+            LOCK(BUFFER_MUTEX);
+
             vDiskBuffer.push_back(std::make_pair(vKey, vData));
             nBufferBytes += (vKey.size() + vData.size());
         }
@@ -392,13 +398,6 @@ namespace LLD
     template<class KeychainType, class CacheType>
     void SectorDatabase<KeychainType, CacheType>::CacheWriter()
     {
-        /* No cache write on force mode. */
-        if(nFlags & FLAGS::FORCE)
-        {
-            debug::log(0, FUNCTION, strBaseLocation, " in FORCE mode... closing");
-            return;
-        }
-
         /* Wait for initialization. */
         while(!fInitialized)
             runtime::sleep(100);
@@ -406,6 +405,14 @@ namespace LLD
         /* Check if writing is enabled. */
         if(!(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND))
             return;
+
+        /* No cache write on force mode. */
+        if(nFlags & FLAGS::FORCE)
+        {
+            debug::log(0, FUNCTION, strBaseLocation, " in FORCE mode... closing");
+            return;
+        }
+
 
         while(true)
         {

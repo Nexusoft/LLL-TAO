@@ -32,14 +32,16 @@ namespace LLP
     Socket::Socket()
     : MUTEX()
     , nError(0)
-    , nLastSend(runtime::timestamp())
-    , nLastRecv(runtime::timestamp())
+    , nLastSend(0)
+    , nLastRecv(0)
     , vBuffer()
     , addr()
     {
         fd = INVALID_SOCKET;
-
         events = POLLIN;
+
+        /* Reset the internal timers. */
+        Reset();
     }
 
 
@@ -60,14 +62,16 @@ namespace LLP
     Socket::Socket(int32_t nSocketIn, const BaseAddress &addrIn)
     : MUTEX()
     , nError(0)
-    , nLastSend(runtime::timestamp())
-    , nLastRecv(runtime::timestamp())
+    , nLastSend(0)
+    , nLastRecv(0)
     , vBuffer()
     , addr(addrIn)
     {
         fd = nSocketIn;
-
         events = POLLIN;
+
+        /* Reset the internal timers. */
+        Reset();
     }
 
 
@@ -75,14 +79,18 @@ namespace LLP
     Socket::Socket(const BaseAddress &addrConnect)
     : MUTEX()
     , nError(0)
-    , nLastSend(runtime::timestamp())
-    , nLastRecv(runtime::timestamp())
+    , nLastSend(0)
+    , nLastRecv(0)
     , vBuffer()
     , addr()
     {
         fd = INVALID_SOCKET;
         events = POLLIN;
 
+        /* Reset the internal timers. */
+        Reset();
+
+        /* Connect socket to external address. */
         Attempt(addrConnect);
     }
 
@@ -93,17 +101,11 @@ namespace LLP
     }
 
 
-    /* Returns the error of socket if any */
-    int Socket::ErrorCode() const
+    /*  Resets the internal timers. */
+    void Socket::Reset()
     {
-        /* Check for errors from reads or writes. */
-        if (nError == WSAEWOULDBLOCK ||
-            nError == WSAEMSGSIZE ||
-            nError == WSAEINTR ||
-            nError == WSAEINPROGRESS)
-            return 0;
-
-        return nError;
+        nLastRecv = runtime::timestamp();
+        nLastSend = runtime::timestamp();
     }
 
 
@@ -248,8 +250,8 @@ namespace LLP
             }
         }
 
-        nLastRecv = runtime::timestamp();
-        nLastSend = runtime::timestamp();
+        /* Reset the internal timers. */
+        Reset();
 
         return true;
     }
@@ -273,13 +275,11 @@ namespace LLP
     /* Clear resources associated with socket and return to invalid state. */
     void Socket::Close()
     {
-
         if(fd != INVALID_SOCKET)
         {
-          closesocket(fd);
+            closesocket(fd);
+            fd = INVALID_SOCKET;
         }
-
-        fd = INVALID_SOCKET;
     }
 
 
@@ -398,4 +398,51 @@ namespace LLP
 
         return nSent;
     }
+
+
+    /*  Determines if nTime seconds have elapsed since last Read / Write. */
+    bool Socket::Timeout(uint32_t nTime) const
+    {
+        LOCK(MUTEX);
+
+        return (runtime::timestamp() > nLastSend + nTime &&
+                runtime::timestamp() > nLastRecv + nTime);
+    }
+
+
+    /*  Checks if is in null state. */
+    bool Socket::IsNull() const
+    {
+        return fd == -1;
+    }
+
+
+    /*  Checks for any flags in the Error Handle. */
+    bool Socket::Errors() const
+    {
+        return error_code() != 0;
+    }
+
+
+    /*  Give the message (c-string) of the error in the socket. */
+    char *Socket::Error() const
+    {
+        return strerror(error_code());
+    }
+
+
+    /* Returns the error of socket if any */
+    int Socket::error_code() const
+    {
+        /* Check for errors from reads or writes. */
+        if (nError == WSAEWOULDBLOCK ||
+            nError == WSAEMSGSIZE ||
+            nError == WSAEINTR ||
+            nError == WSAEINPROGRESS)
+            return 0;
+
+        return nError;
+    }
+
+
 }

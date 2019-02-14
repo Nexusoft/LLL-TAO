@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <LLP/templates/connection.h>
 #include <TAO/Ledger/types/block.h>
-
+#include <Legacy/types/coinbase.h>
 
 
 namespace Legacy
@@ -55,6 +55,10 @@ namespace LLP
 
         /* Used to synchronize access to the nBestHeight / pBaseBlock*/
         std::mutex BLOCK_MUTEX;
+
+        /* Externally set coinbase to be set on mined blocks */
+        Legacy::Coinbase pCoinbaseTx;
+                    
 
         enum
         {
@@ -119,7 +123,7 @@ namespace LLP
 
 
         /** Constructor **/
-        Miner(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        Miner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Constructor **/

@@ -363,8 +363,8 @@ int main(int argc, char** argv)
     timer.Stop();
 
 
-    /* Sleep before output. */
-    runtime::sleep(100);
+    ///* Sleep before output. */
+    //runtime::sleep(100);
 
 
     /* Startup performance metric. */

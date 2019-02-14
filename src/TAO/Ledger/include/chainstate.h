@@ -65,6 +65,14 @@ namespace TAO
             static bool Initialize();
 
 
+            /** Genesis
+             *
+             *  Get the hash of the genesis block.
+             *
+             **/
+            static uint1024_t Genesis();
+
+
             /** The best block in the chain. **/
             static BlockState stateBest;
 

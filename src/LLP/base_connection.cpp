@@ -81,60 +81,17 @@ namespace LLP
     }
 
 
-
-    /*  Resets the internal timers. */
-    template <class PacketType>
-    void BaseConnection<PacketType>::Reset()
-    {
-        nLastRecv = runtime::timestamp();
-        nLastSend = runtime::timestamp();
-    }
-
-
-
     /*  Sets the object to an invalid state. */
     template <class PacketType>
     void BaseConnection<PacketType>::SetNull()
     {
-
         fd = -1;
         nError = 0;
-
         INCOMING.SetNull();
-
-        if(DDOS)
-        {
-            delete DDOS;
-            DDOS  = nullptr;
-        }
-
+        DDOS  = nullptr;
         fDDOS = false;
         fOUTGOING = false;
         fCONNECTED = false;
-    }
-
-
-    /*  Checks if is in null state. */
-    template <class PacketType>
-    bool BaseConnection<PacketType>::IsNull() const
-    {
-        return fd == -1;
-    }
-
-
-    /*  Checks for any flags in the Error Handle. */
-    template <class PacketType>
-    bool BaseConnection<PacketType>::Errors() const
-    {
-        return ErrorCode() != 0;
-    }
-
-
-    /*  Give the message (c-string) of the error in the socket. */
-    template <class PacketType>
-    char *BaseConnection<PacketType>::Error() const
-    {
-        return strerror(ErrorCode());
     }
 
 
@@ -143,15 +100,6 @@ namespace LLP
     bool BaseConnection<PacketType>::Connected() const
     {
         return fCONNECTED.load();
-    }
-
-
-    /*  Determines if nTime seconds have elapsed since last Read / Write. */
-    template <class PacketType>
-    bool BaseConnection<PacketType>::Timeout(uint32_t nTime) const
-    {
-        return (runtime::timestamp() > nLastSend + nTime &&
-                runtime::timestamp() > nLastRecv + nTime);
     }
 
 
@@ -196,21 +144,19 @@ namespace LLP
     template <class PacketType>
     bool BaseConnection<PacketType>::Connect(std::string strAddress, uint16_t nPort)
     {
-        BaseAddress addrConnect(strAddress, nPort);
-
         /* Check for connect to self */
-        if(addr.ToStringIP() == addrConnect.ToStringIP())
+        if(addr.ToStringIP() == strAddress)
             return debug::error(NODE, "cannot self-connect");
 
-        debug::log(1, NODE, "Connecting to ", addrConnect.ToStringIP());
+        debug::log(1, NODE, "Connecting to ", strAddress);
 
         // Connect
-        if (Attempt(addrConnect))
+        if (Attempt(BaseAddress(strAddress, nPort)))
         {
-            debug::log(1, NODE, "Connected to ", addrConnect.ToStringIP());
+            debug::log(1, NODE, "Connected to ", strAddress);
 
-            fCONNECTED.store(true);
-            fOUTGOING.store(true);
+            fCONNECTED = true;
+            fOUTGOING = true;
 
             return true;
         }
@@ -229,9 +175,11 @@ namespace LLP
     template <class PacketType>
     void BaseConnection<PacketType>::Disconnect()
     {
-        Close();
-
-        fCONNECTED.store(false);
+        if(fCONNECTED.load())
+        {
+            Close();
+            fCONNECTED = false;
+        }
     }
 
 

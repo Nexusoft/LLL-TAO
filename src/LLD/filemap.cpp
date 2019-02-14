@@ -99,7 +99,8 @@ namespace LLD
             debug::log(0, FUNCTION, "Generated Path ", strBaseLocation);
 
         /* Stats variable for collective keychain size. */
-        uint32_t nKeychainSize = 0, nTotalKeys = 0;
+        uint32_t nKeychainSize = 0;
+        uint32_t nTotalKeys = 0;
 
 
         /* Iterate through the files detected. */
@@ -176,13 +177,16 @@ namespace LLD
             }
 
             /* Iterate the current file. */
-            ++ nCurrentFile;
+            ++nCurrentFile;
 
             /* Clear the keychain data. */
             vKeychain.clear();
         }
 
-        debug::log(0, FUNCTION, "Initialized with ", nTotalKeys, " Keys | Total Size ", nKeychainSize, " | Total Files ", nCurrentFile + 1, " | Current Size ", nCurrentFileSize);
+        debug::log(0, FUNCTION, "Initialized with ", nTotalKeys, " Keys",
+          " | Total Size ", nKeychainSize,
+          " | Total Files ", nCurrentFile + 1,
+          " | Current Size ", nCurrentFileSize);
     }
 
 

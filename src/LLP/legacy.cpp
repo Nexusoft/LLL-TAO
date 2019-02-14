@@ -36,16 +36,19 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/chainstate.h>
 
-namespace LLP
+namespace
 {
+    std::atomic<uint32_t> nAsked(0);
 
     /* Static instantiation of orphan blocks in queue to process. */
-    static std::map<uint1024_t, Legacy::LegacyBlock> mapLegacyOrphans;
-
+    std::map<uint1024_t, Legacy::LegacyBlock> mapLegacyOrphans;
 
     /* Mutex to protect checking more than one block at a time. */
-    static std::mutex PROCESSING_MUTEX;
+    std::mutex PROCESSING_MUTEX;
+}
 
+namespace LLP
+{
 
     /* Static initialization of last get blocks. */
     uint1024_t LegacyNode::hashLastGetblocks = 0;
@@ -307,7 +310,7 @@ namespace LLP
             PushMessage("verack");
 
             /* Push our version back since we just completed getting the version from the other node. */
-            static uint32_t nAsked = 0;
+
             if (fOUTGOING && nAsked == 0)
             {
                 ++nAsked;
@@ -605,6 +608,10 @@ namespace LLP
                 /* Handle the block message. */
                 if (inv.GetType() == LLP::MSG_BLOCK)
                 {
+                    /* Don't send genesis if asked for. */
+                    if(inv.GetHash() == TAO::Ledger::ChainState::Genesis())
+                        continue;
+
                     /* Read the block from disk. */
                     TAO::Ledger::BlockState state;
                     if(!LLD::legDB->ReadBlock(inv.GetHash(), state))
@@ -669,6 +676,8 @@ namespace LLP
             std::vector<CInv> vInv;
             while(!config::fShutdown.load())
             {
+                state = state.Next();
+
                 if (state.GetHash() == hashStop)
                 {
                     debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", state.GetHash().ToString().substr(0, 20));
@@ -690,8 +699,6 @@ namespace LLP
                     hashContinue = state.GetHash();
                     break;
                 }
-
-                state = state.Next();
             }
 
             /* Push the inventory. */
@@ -791,10 +798,12 @@ namespace LLP
         if(!block.Accept())
         {
             /* Increment the consecutive failures. */
-            ++pnode->nConsecutiveFails;
+            if(pnode)
+                ++pnode->nConsecutiveFails;
 
             /* Check for failure limit on node. */
-            if(config::GetBoolArg("-fastsync")
+            if(pnode
+            && config::GetBoolArg("-fastsync")
             && TAO::Ledger::ChainState::Synchronizing()
             && pnode->nConsecutiveFails >= 100)
             {
@@ -824,7 +833,8 @@ namespace LLP
             nLastTimeReceived = runtime::timestamp();
 
             /* Reset the consecutive failures. */
-            pnode->nConsecutiveFails = 0;
+            if(pnode)
+                pnode->nConsecutiveFails = 0;
         }
 
         /* Process orphan if found. */
