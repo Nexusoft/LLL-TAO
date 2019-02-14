@@ -75,6 +75,7 @@ namespace debug
 {
 
     static std::mutex DEBUG_MUTEX;
+    static std::ofstream ssFile;
 
     /** Block debug output flags. **/
     enum flags
@@ -83,6 +84,22 @@ namespace debug
         tx            = (1 << 1),
         chain         = (1 << 2)
     };
+
+
+    /** init
+     *
+     *  Open the debug log file.
+     *
+     **/
+    bool init(std::string debugPath = config::GetDataDir() + "debug.log");
+
+
+    /** shutdown
+     *
+     *  Close the debug log file.
+     *
+     **/
+    void shutdown();
 
 
     /** print_args
@@ -151,10 +168,8 @@ namespace debug
         if(config::GetArg("-verbose", 0) < nLevel)
             return;
 
-        /* Get the debug string and log file. */
+        /* Get the debug string. */
         std::string debug = safe_printstr(args...);
-        std::string pathDebug = config::GetDataDir() + "debug.log";
-        std::ofstream ssFile(pathDebug, std::ios::app);
 
         LOCK(DEBUG_MUTEX);
 
@@ -282,7 +297,7 @@ namespace debug
      *  shrinking it down.
      *
      **/
-    void ShrinkDebugFile();
+    void ShrinkDebugFile(std::string debugPath = config::GetDataDir() + "debug.log");
 
 }
 #endif

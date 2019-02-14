@@ -124,6 +124,9 @@ int main(int argc, char** argv)
     runtime::timer timer;
     timer.Start();
 
+    if(!debug::init())
+        printf("unable to initalize debug log file\n");
+
     /* Handle all the signals with signal handler method. */
     SetupSignals();
 
@@ -408,6 +411,7 @@ int main(int argc, char** argv)
         debug::log(0, FUNCTION, "Shutting down Time Server");
 
         LLP::TIME_SERVER->Shutdown();
+
         delete LLP::TIME_SERVER;
     }
 
@@ -511,13 +515,16 @@ int main(int argc, char** argv)
     }
 
 
-
     /* Elapsed Milliseconds from timer. */
     nElapsed = timer.ElapsedMilliseconds();
 
 
     /* Startup performance metric. */
     debug::log(0, FUNCTION, "Closed in ", nElapsed, "ms");
+
+
+    /* Close the debug log file once and for all. */
+    debug::shutdown();
 
     return 0;
 }
