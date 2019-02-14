@@ -344,7 +344,8 @@ namespace LLD
                 nCurrentFileSize += vData.size();
 
                 /* Assign the Key to Keychain. */
-                pSectorKeys->Put(key);
+                if(!pSectorKeys->Put(key))
+                    return debug::error(FUNCTION, "failed to write key to keychain");
 
                 /* Verboe output. */
                 debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
