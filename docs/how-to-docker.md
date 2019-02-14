@@ -41,7 +41,9 @@ LISP mapping system.
 
 If you run the script config/docker-run-tritium on your host OS then the
 container name will be chosen for you and will be unique. And you then can
-run multiple containers if you wish to have multiple Nexus nodes running.    
+run multiple containers if you wish to have multiple Nexus nodes running. You
+can use docker-run-tritium to start a nexus client node or seed node. See
+script header comments for details.
 
 ## Monitoring:
 

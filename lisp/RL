@@ -23,6 +23,18 @@
 set device = "eth0"
 
 #
+# If caller does a "setenv EID4 <ipv4-eid>" and "setenv EID6 <ipv6-eid>", the
+# EID values will be passed to provision-lisp.py to provision the lisp.config
+# file with the supplied EIDs. Otherwise, random values will be created.
+#
+if ($?EID4 == 0) then
+    set EID4 = ""
+endif
+if ($?EID6 == 0) then
+    set EID6 = ""
+endif
+
+#
 # Go into directory where RL resides.
 #
 cd `dirname $0`
