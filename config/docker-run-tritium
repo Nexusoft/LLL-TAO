@@ -41,8 +41,8 @@ fi
 #docker create -p $NPORT:8080 -p $LPORT:9090 -p $MPORT:9336 -p $TPORT:8336 \
 #    --privileged --name $NAME -h $NAME -ti tritium > /dev/null
 
-docker create -p $NPORT:8080 -p $LPORT:9090 -v /:/hostOS \
-     --privileged --name $NAME -h $NAME -ti tritium > /dev/null
+docker create -p $NPORT:8080 -p $LPORT:9090 -v /:/hostOS -e "EID4=$1" \
+       -e "EID6=$2" --privileged --name $NAME -h $NAME -ti tritium > /dev/null
 
 #
 # Startup container.

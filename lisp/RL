@@ -28,11 +28,9 @@ set device = "eth0"
 cd `dirname $0`
 
 #
-# Provision lisp.config and/or reinstall kernel routes. If you want to pass
-# in EIDs for a seed node, use the second form of the command below.
+# Provision lisp.config and/or reinstall kernel routes.
 #
-python provision-lisp.py $device
-#python provision-lisp.py $device <ipv4-eid> <ipv6-eid>
+python provision-lisp.py $device $EID4 $EID6
 
 #
 # Start the lispers.net LISP subsystem, quietly.
