@@ -89,7 +89,7 @@ namespace LLP
 
         /* Push the Message to receiving node. */
         PushMessage("version", LLP::PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,
-                    LegacyNode::nSessionID, strProtocolName, TAO::Ledger::ChainState::nBestHeight);
+                    LegacyNode::nSessionID, strProtocolName, TAO::Ledger::ChainState::nBestHeight.load());
     }
 
 
@@ -187,7 +187,7 @@ namespace LLP
                 /* Normal case of asking for a getblocks inventory message. */
                 LegacyNode* pBest = LEGACY_SERVER->GetConnection(addrFastSync);
                 if(pBest)
-                    pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+                    pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
             }
 
             //TODO: mapRequests data, if no response given retry the request at given times
@@ -240,7 +240,7 @@ namespace LLP
                 if(pnode)
                 {
                     /* Switch to a new node for fast sync. */
-                    pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+                    pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
 
                     /* Debug output. */
                     debug::log(0, NODE, "fast sync node dropped, switching to ", addrFastSync.ToStringIP());
@@ -314,7 +314,7 @@ namespace LLP
             if (fOUTGOING && nAsked == 0)
             {
                 ++nAsked;
-                PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+                PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
             }
 
             PushMessage("getaddr");
@@ -623,7 +623,7 @@ namespace LLP
                     /* Check that all transactions were included. */
                     if(block.vtx.size() != state.vtx.size())
                     {
-                        std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain, LLP::MSG_BLOCK) };
+                        std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain.load(), LLP::MSG_BLOCK) };
                         PushMessage("inv", vInv);
                         hashContinue = 0;
 
@@ -636,7 +636,7 @@ namespace LLP
                     /* Trigger a new getblocks if hash continue is set. */
                     if (inv.GetHash() == hashContinue)
                     {
-                        std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain, LLP::MSG_BLOCK) };
+                        std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain.load(), LLP::MSG_BLOCK) };
                         PushMessage("inv", vInv);
                         hashContinue = 0;
                     }
@@ -683,8 +683,8 @@ namespace LLP
                     debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", state.GetHash().ToString().substr(0, 20));
 
                     /* Tell about latest block if hash stop is found. */
-                    if (hashStop != TAO::Ledger::ChainState::hashBestChain)
-                        vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain, MSG_BLOCK));
+                    if (hashStop != TAO::Ledger::ChainState::hashBestChain.load())
+                        vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), MSG_BLOCK));
 
                     break;
                 }
@@ -775,7 +775,7 @@ namespace LLP
 
             /* Fast sync block requests. */
             if(!TAO::Ledger::ChainState::Synchronizing())
-                pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+                pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
             else if(!config::GetBoolArg("-fastsync")
                  || (nLastGetBlocks + (LegacyNode::nFastSyncAverage + 5) < runtime::timestamp()
                  && nLastTimeReceived + (LegacyNode::nFastSyncAverage + 5) < runtime::timestamp()
@@ -785,7 +785,7 @@ namespace LLP
                 LegacyNode* pBest = LEGACY_SERVER->GetConnection(addrFastSync);
                 if(pBest)
                 {
-                    pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+                    pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
 
                     return true;
                 }
@@ -815,7 +815,7 @@ namespace LLP
                     if(pBest)
                     {
                         /* Switch to a new node for fast sync. */
-                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain, uint1024_t(0));
+                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
 
                         /* Debug output. */
                         debug::error(FUNCTION, "fast sync node reached failure limit...");

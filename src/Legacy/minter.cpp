@@ -571,7 +571,7 @@ namespace Legacy
         /* Search for the proof of stake hash solution until it mines a block, minter is stopped,
          * or network generates a new block (minter must start over with new candidate)
          */
-        while (!fstop && !config::fShutdown.load() && hashLastBlock == TAO::Ledger::ChainState::hashBestChain)
+        while (!fstop && !config::fShutdown.load() && hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
         {
             /* Update the block time for difficulty accuracy. */
             candidateBlock.UpdateTime();
@@ -702,12 +702,6 @@ namespace Legacy
             return;
         }
 
-        if( !config::GetBoolArg("-legacy"))
-        {
-            debug::log(0, FUNCTION, "Staking Disabled - staking only available in legacy mode");
-            return;
-        }
-
         /* Local copies of stake minter flags. These support testing conditions while only reading the shared static flags within a lock scope. */
         bool fstarted = false;
         bool fstop = false;
@@ -783,7 +777,7 @@ namespace Legacy
                 return;
 
             /* Save the current best block hash immediately in case it change while we do setup */
-            pStakeMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain;
+            pStakeMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain.load();
 
             /* Set up the candidate block the minter is attempting to mine */
             if (!pStakeMinter->CreateCandidateBlock())

@@ -1291,15 +1291,16 @@ namespace Legacy
          * and returns. Any subsequent calls will only process resend if at least that much time
          * has passed.
          */
-        static int64_t snNextTime = 0;
+        static std::atomic<int64_t> snNextTime;
 
         /* Also keep track of best height on last resend, because no need to process again if has not changed */
-        static int32_t snLastHeight = 0;
+        static std::atomic<int32_t> snLastHeight;
+
 
         bool fFirst = (snNextTime == 0);
 
         /* Always false on first iteration */
-        if (runtime::unifiedtimestamp() < snNextTime)
+        if (runtime::unifiedtimestamp() < snNextTime.load())
             return;
 
         /* Set a random time until resend is processed */
@@ -1310,11 +1311,11 @@ namespace Legacy
             return;
 
         /* If no new block, nothing has changed, so just return. */
-        if (TAO::Ledger::ChainState::nBestHeight <= snLastHeight)
+        if (TAO::Ledger::ChainState::nBestHeight.load() <= snLastHeight.load())
             return;
 
         /* Record that it is processing resend now */
-        snLastHeight = TAO::Ledger::ChainState::nBestHeight;
+        snLastHeight = TAO::Ledger::ChainState::nBestHeight.load();
         {
             LOCK(cs_wallet);
 

@@ -44,7 +44,7 @@ namespace TAO
             int nHTotal = 0;
             unsigned int nHashAverageTime = 0;
             double nHashAverageDifficulty = 0.0;
-            if( TAO::Ledger::ChainState::nBestHeight && TAO::Ledger::ChainState::stateBest != TAO::Ledger::ChainState::stateGenesis)
+            if( TAO::Ledger::ChainState::nBestHeight.load() > 0 && TAO::Ledger::ChainState::stateBest != TAO::Ledger::ChainState::stateGenesis)
             {
                 uint64_t nTimeConstant = 276758250000;
 
@@ -95,7 +95,7 @@ namespace TAO
             uint64_t nPrimePS = 0;
             double nPrimeAverageDifficulty = 0.0;
             unsigned int nPrimeAverageTime = 0;
-            if( TAO::Ledger::ChainState::nBestHeight && TAO::Ledger::ChainState::stateBest != TAO::Ledger::ChainState::stateGenesis)
+            if( TAO::Ledger::ChainState::nBestHeight.load() > 0 && TAO::Ledger::ChainState::stateBest != TAO::Ledger::ChainState::stateGenesis)
             {
 
                 unsigned int nPrimeTimeConstant = 2480;
@@ -197,7 +197,7 @@ namespace TAO
                     "getblockcount"
                     " - Returns the number of blocks in the longest block chain.");
 
-            return (int)TAO::Ledger::ChainState::nBestHeight;
+            return (int)TAO::Ledger::ChainState::nBestHeight.load();
         }
 
 
@@ -209,7 +209,7 @@ namespace TAO
                     "getblocknumber"
                     " - Deprecated.  Use getblockcount.");
 
-            return (int)TAO::Ledger::ChainState::nBestHeight;
+            return (int)TAO::Ledger::ChainState::nBestHeight.load();
         }
 
         /* Returns difficulty as a multiple of the minimum difficulty */
@@ -319,7 +319,7 @@ namespace TAO
                 return std::string("getblockhash requires the wallet to be started with the -indexheight flag.");
             }
             int nHeight = params[0];
-            if (nHeight < 0 || nHeight > TAO::Ledger::ChainState::nBestHeight)
+            if (nHeight < 0 || nHeight > TAO::Ledger::ChainState::nBestHeight.load())
                 return std::string("Block number out of range.");
 
             TAO::Ledger::BlockState blockState;

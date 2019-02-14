@@ -233,7 +233,7 @@ namespace TAO
 
 
             /* Signal to set the best chain. */
-            if(nChainTrust > ChainState::nBestChainTrust)
+            if(nChainTrust > ChainState::nBestChainTrust.load())
                 if(!SetBest())
                     return debug::error(FUNCTION, "failed to set best chain");
 
@@ -465,15 +465,15 @@ namespace TAO
 
 
                 /* Write the best chain pointer. */
-                if(!LLD::legDB->WriteBestChain(ChainState::hashBestChain))
+                if(!LLD::legDB->WriteBestChain(ChainState::hashBestChain.load()))
                     return debug::error(FUNCTION, "failed to write best chain");
 
 
                 /* Debug output about the best chain. */
                 debug::log(0, FUNCTION,
                     "New Best Block hash=", GetHash().ToString().substr(0, 20),
-                    " height=", ChainState::nBestHeight,
-                    " trust=", ChainState::nBestChainTrust,
+                    " height=", ChainState::nBestHeight.load(),
+                    " trust=", ChainState::nBestChainTrust.load(),
                     " [verified in ", time.ElapsedMilliseconds(), " ms]",
                     " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
 
@@ -486,12 +486,12 @@ namespace TAO
                     std::string strCmd = config::GetArg("-blocknotify", "");
                     if (!strCmd.empty())
                     {
-                        replace_all(strCmd, "%s", ChainState::hashBestChain.GetHex());
+                        replace_all(strCmd, "%s", ChainState::hashBestChain.load().GetHex());
                         std::thread t(runtime::command, strCmd);
                     }
 
                     /* Create the inventory object. */
-                    std::vector<LLP::CInv> vInv = { LLP::CInv(ChainState::hashBestChain, LLP::MSG_BLOCK) };
+                    std::vector<LLP::CInv> vInv = { LLP::CInv(ChainState::hashBestChain.load(), LLP::MSG_BLOCK) };
 
                     /* Relay the new block to all connected nodes. */
                     if(LLP::LEGACY_SERVER)
@@ -722,7 +722,7 @@ namespace TAO
         /* Function to determine if this block has been connected into the main chain. */
         bool BlockState::IsInMainChain() const
         {
-            return (hashNextBlock != 0 || GetHash() == ChainState::hashBestChain);
+            return (hashNextBlock != 0 || GetHash() == ChainState::hashBestChain.load());
         }
 
 

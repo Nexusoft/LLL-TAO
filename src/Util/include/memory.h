@@ -44,7 +44,7 @@ namespace memory
     class atomic
     {
         /* The mutex to protect the memory. */
-        std::mutex MUTEX;
+        mutable std::mutex MUTEX;
 
 
         /* The internal data. */
@@ -127,7 +127,7 @@ namespace memory
          *  Load the object from memory.
          *
          **/
-        TypeName load()
+        const TypeName load() const
         {
             LOCK(MUTEX);
 
@@ -142,7 +142,7 @@ namespace memory
          *  @param[in] dataIn The data to into protected memory.
          *
          **/
-        void store(TypeName dataIn)
+        void store(const TypeName& dataIn)
         {
             LOCK(MUTEX);
 

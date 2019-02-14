@@ -78,7 +78,7 @@ namespace Legacy
 			return true;
 
 		if (nBlockHeight == 0)
-			nBlockHeight = TAO::Ledger::ChainState::nBestHeight;
+			nBlockHeight = TAO::Ledger::ChainState::nBestHeight.load();
 
 		if (nBlockTime == 0)
 			nBlockTime = runtime::unifiedtimestamp();

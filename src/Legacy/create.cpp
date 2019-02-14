@@ -165,9 +165,9 @@ namespace Legacy
         /* calculate the reward for this wallet */
         int64_t nReward = 0;
         if(coinbaseRecipients.IsNull())
-            nReward = nBlockReward; // Output type 0 is minting of miner reward 
+            nReward = nBlockReward; // Output type 0 is minting of miner reward
         else
-            nReward = coinbaseRecipients.nPoolFee; 
+            nReward = coinbaseRecipients.nPoolFee;
 
         if( nReward > 0)
         {
@@ -175,7 +175,7 @@ namespace Legacy
             coinbaseTx.vout[0].scriptPubKey << coinbaseKey.GetReservedKey() << Legacy::OP_CHECKSIG;
             coinbaseTx.vout[0].nValue = nReward;
         }
-        
+
         /* if additional coinbase recipients have been provided them add them to vout*/
         if( !coinbaseRecipients.IsNull() )
         {
@@ -198,8 +198,8 @@ namespace Legacy
             if(nMiningReward != nBlockReward)
                 return false;
         }
-        
-        
+
+
 
 
         /* Make coinbase counter mod 13 of height. */
@@ -503,7 +503,7 @@ namespace Legacy
             debug::log(1, "  target: ", hashTarget.ToString().substr(0, 30));
         }
 
-        if (block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain)
+        if (block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
             return debug::error(FUNCTION, "Generated block is stale");
 
         /* Add new block to request tracking in wallet */

@@ -72,7 +72,7 @@ namespace TAO
 
             obj["txtotal"] =(int)Legacy::Wallet::GetInstance().mapWallet.size();
 
-            obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
+            obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
 
             obj["timestamp"] =  (int)runtime::unifiedtimestamp();
             obj["synchronizing"] = (bool)TAO::Ledger::ChainState::Synchronizing();
@@ -208,7 +208,7 @@ namespace TAO
             // Prime
             uint64_t nPrimePS = 0;
             uint64_t nHashRate = 0;
-            if( TAO::Ledger::ChainState::nBestHeight && TAO::Ledger::ChainState::stateBest != TAO::Ledger::ChainState::stateGenesis)
+            if( TAO::Ledger::ChainState::nBestHeight.load() && TAO::Ledger::ChainState::stateBest != TAO::Ledger::ChainState::stateGenesis)
             {
                 double nPrimeAverageDifficulty = 0.0;
                 unsigned int nPrimeAverageTime = 0;
@@ -263,7 +263,7 @@ namespace TAO
             }
 
             json::json obj;
-            obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight;
+            obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
             obj["timestamp"] = (int)runtime::unifiedtimestamp();
 
             //PS TODO

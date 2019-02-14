@@ -26,19 +26,19 @@ namespace TAO
     {
 
         /* The best block height in the chain. */
-        uint32_t ChainState::nBestHeight = 0;
-
-
-        /* The best hash in the chain. */
-        uint1024_t ChainState::hashBestChain = 0;
+        std::atomic<uint32_t> ChainState::nBestHeight;
 
 
         /* The best trust in the chain. */
-        uint64_t ChainState::nBestChainTrust = 0;
+        std::atomic<uint64_t> ChainState::nBestChainTrust;
+
+
+        /* The best hash in the chain. */
+        memory::atomic<uint1024_t> ChainState::hashBestChain;
 
 
         /** Hardened Checkpoint. **/
-        uint1024_t ChainState::hashCheckpoint   = 0;
+        memory::atomic<uint1024_t> ChainState::hashCheckpoint;
 
 
         /* Flag to tell if initial blocks are downloading. */
@@ -49,11 +49,11 @@ namespace TAO
                 return true;
 
             /* Check if there's been a new block. */
-            static uint1024_t hashLast = 0;
-            static uint32_t nLastTime  = 0;
-            if(hashBestChain != hashLast)
+            static memory::atomic<uint1024_t> hashLast;
+            static std::atomic<uint32_t> nLastTime;
+            if(hashBestChain.load() != hashLast.load())
             {
-                hashLast = hashBestChain;
+                hashLast = hashBestChain.load();
                 nLastTime = runtime::unifiedtimestamp();
             }
 
@@ -75,11 +75,15 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to create genesis");
 
             /* Read the best chain. */
-            if(!LLD::legDB->ReadBestChain(hashBestChain))
+            uint1024_t hashBestChainIn = 0;
+            if(!LLD::legDB->ReadBestChain(hashBestChainIn))
                 return debug::error(FUNCTION, "failed to read best chain");
 
+            /* Store the best chain in the atomic. */
+            hashBestChain = hashBestChainIn;
+
             /* Get the best chain stats. */
-            if(!LLD::legDB->ReadBlock(hashBestChain, stateBest))
+            if(!LLD::legDB->ReadBlock(hashBestChain.load(), stateBest))
             {
                 debug::error(FUNCTION, "failed to read best block, attempting to recover database");
 
@@ -94,7 +98,7 @@ namespace TAO
                 }
 
                 hashBestChain = stateBest.GetHash();
-                if(!LLD::legDB->WriteBestChain(hashBestChain))
+                if(!LLD::legDB->WriteBestChain(hashBestChain.load()))
                     return debug::error(FUNCTION, "failed to write best chain");
 
                 debug::log(0, FUNCTION, "database successfully recovered" );
@@ -199,7 +203,7 @@ namespace TAO
             {
                 /* Search back until fail or different checkpoint. */
                 BlockState state;
-                if(!LLD::legDB->ReadBlock(hashCheckpoint, state))
+                if(!LLD::legDB->ReadBlock(hashCheckpoint.load(), state))
                     return debug::error(FUNCTION, "no pending checkpoint");
 
                 /* Get the previous state. */
@@ -225,8 +229,8 @@ namespace TAO
 
             /* Debug logging. */
             debug::log(0, FUNCTION, config::fTestNet? "Test" : "Nexus", " Network: genesis=", Genesis().ToString().substr(0, 20),
-            " nBitsStart=0x", std::hex, bnProofOfWorkStart[0].GetCompact(), " best=", hashBestChain.ToString().substr(0, 20),
-            " checkpoint=", hashCheckpoint.ToString().substr(0, 20).c_str()," height=", std::dec, stateBest.nHeight);
+            " nBitsStart=0x", std::hex, bnProofOfWorkStart[0].GetCompact(), " best=", hashBestChain.load().ToString().substr(0, 20),
+            " checkpoint=", hashCheckpoint.load().ToString().substr(0, 20).c_str()," height=", std::dec, stateBest.nHeight);
 
             return true;
         }
