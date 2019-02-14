@@ -177,19 +177,15 @@ namespace LLP
     template <class PacketType>
     void BaseConnection<PacketType>::WritePacket(const PacketType& PACKET)
     {
-        LOCK(MUTEX);
-
-        std::vector<uint8_t> vBytes = PACKET.GetBytes();
-
         /* Debug dump of message type. */
-        debug::log(3, NODE "Sent Message (", vBytes.size(), " bytes)");
+        debug::log(3, NODE "Sent Message (", PACKET.GetBytes().size(), " bytes)");
 
         /* Debug dump of packet data. */
         if(config::GetArg("-verbose", 0) >= 5)
-            PrintHex(vBytes);
+            PrintHex(PACKET.GetBytes());
 
         /* Write the packet to socket buffer. */
-
+        std::vector<uint8_t> vBytes = PACKET.GetBytes();
         Write(vBytes, vBytes.size());
     }
 

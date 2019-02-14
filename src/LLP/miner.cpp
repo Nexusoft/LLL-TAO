@@ -336,7 +336,7 @@ namespace LLP
                 /** Deserialize the Coinbase Transaction. **/
         
                 /** Bytes 1 - 8 is the Pool Fee for that Round. **/
-                uint64_t nPoolFee  = bytes2uint64(PACKET.DATA, 1);
+                uint64_t nPoolFee  = convert::bytes2uint64(PACKET.DATA, 1);
 
                 std::map<std::string, uint64_t> vOutputs;
 
@@ -349,8 +349,8 @@ namespace LLP
                     /** De-Serialize the Address String and uint64 nValue. **/
                     unsigned int nLength = PACKET.DATA[nIterator];
 
-                    std::string strAddress = bytes2string(std::vector<unsigned char>(PACKET.DATA.begin() + nIterator + 1, PACKET.DATA.begin() + nIterator + 1 + nLength));
-                    uint64_t nValue = bytes2uint64(std::vector<unsigned char>(PACKET.DATA.begin() + nIterator + 1 + nLength, PACKET.DATA.begin() + nIterator + 1 + nLength + 8));
+                    std::string strAddress = convert::bytes2string(std::vector<unsigned char>(PACKET.DATA.begin() + nIterator + 1, PACKET.DATA.begin() + nIterator + 1 + nLength));
+                    uint64_t nValue = convert::bytes2uint64(std::vector<unsigned char>(PACKET.DATA.begin() + nIterator + 1 + nLength, PACKET.DATA.begin() + nIterator + 1 + nLength + 8));
 
                     /* Validate the address */
                     Legacy::NexusAddress address(strAddress);
