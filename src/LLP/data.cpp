@@ -73,7 +73,7 @@ namespace LLP
         /* Create a new pointer on the heap. */
         ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
         node->Event(EVENT_CONNECT);
-        node->fCONNECTED = true;
+        node->fCONNECTED.store(true);
 
         {
             LOCK(MUTEX);
@@ -103,8 +103,6 @@ namespace LLP
     {
        /* Create a new pointer on the heap. */
        ProtocolType* node = new ProtocolType(DDOS, fDDOS);
-
-
        if(!node->Connect(strAddress, nPort))
        {
            node->Disconnect();
@@ -122,9 +120,6 @@ namespace LLP
                CONNECTIONS.push_back(nullptr);
 
            CONNECTIONS[nSlot] = node;
-
-           /* Set the outgoing flag. */
-           CONNECTIONS[nSlot]->fOUTGOING = true;
 
            if(fDDOS)
                DDOS -> cSCORE += 1;

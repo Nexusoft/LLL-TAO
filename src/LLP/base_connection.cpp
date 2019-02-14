@@ -145,9 +145,7 @@ namespace LLP
     template <class PacketType>
     bool BaseConnection<PacketType>::Connected() const
     {
-        LOCK(MUTEX);
-
-        return fCONNECTED;
+        return fCONNECTED.load();
     }
 
 
@@ -216,10 +214,8 @@ namespace LLP
         {
             debug::log(1, NODE, "Connected to ", addrConnect.ToStringIP());
 
-            LOCK(MUTEX);
-
-            fCONNECTED = true;
-            fOUTGOING  = true;
+            fCONNECTED.store(true);
+            fOUTGOING.store(true);
 
             return true;
         }
@@ -240,8 +236,7 @@ namespace LLP
     {
         Close();
 
-        LOCK(MUTEX);
-        fCONNECTED = false;
+        fCONNECTED.store(false);
     }
 
 

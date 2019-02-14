@@ -80,11 +80,11 @@ namespace LLP
 
 
         /** Flag to Determine if the connection was made by this Node. **/
-        bool fOUTGOING;
+        std::atomic<bool> fOUTGOING;
 
 
         /** Flag to determine if the connection is active. **/
-        bool fCONNECTED;
+        std::atomic<bool> fCONNECTED;
 
 
         /** Build Base Connection with no parameters **/
