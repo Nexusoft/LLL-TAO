@@ -82,9 +82,7 @@ namespace LLP
 
         /* Initialize the meter. */
         if(fMeter)
-        {
             METER_THREAD = std::thread(std::bind(&Server::Meter, this));
-        }
 
     }
 

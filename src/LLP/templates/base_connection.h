@@ -162,13 +162,6 @@ namespace LLP
         bool Connect(std::string strAddress, uint16_t nPort);
 
 
-        /** GetAddress
-         *
-         *  Returns the address of socket.
-         *
-         **/
-        BaseAddress GetAddress() const;
-
 
         /** Disconnect
          *

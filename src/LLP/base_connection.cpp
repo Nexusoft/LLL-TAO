@@ -166,13 +166,6 @@ namespace LLP
 
 
     template <class PacketType>
-    BaseAddress BaseConnection<PacketType>::GetAddress() const
-    {
-        return addr;
-    }
-
-
-    template <class PacketType>
     void BaseConnection<PacketType>::Disconnect()
     {
         if(fCONNECTED.load())
