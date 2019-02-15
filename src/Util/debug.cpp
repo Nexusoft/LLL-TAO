@@ -125,20 +125,49 @@ namespace debug
     /* Write startup information into the log file */
     void InitializeLog(int argc, char** argv)
     {
-        log(0, "\n\n\n\n\n", version::CLIENT_VERSION_BUILD_STRING, " (", version::CLIENT_DATE, ")");
+        log(0, "\nStartup time ", DateTimeStrFormat(runtime::timestamp()));
+        log(0, version::CLIENT_VERSION_BUILD_STRING);
 
     #ifdef WIN32
-        log(0, "Microsoft Windows Build");
+        log(0, "Microsoft Windows Build (created ", version::CLIENT_DATE, ")");
     #else 
         #ifdef MAC_OSX
-        log(0, "Mac OSX Build");
+        log(0, "Mac OSX Build (created ", version::CLIENT_DATE, ")");
         #else
-        log(0, "Linux Build");
+        log(0, "Linux Build (created ", version::CLIENT_DATE, ")");
         #endif
     #endif
 
-        log(0, "Startup time ", DateTimeStrFormat(runtime::timestamp()));
+        /* Log configuration file parameters.
+         * All args are placed in mapMultiArgs whether they have one or multiple values, so only need to log entries from it
+         */
+        std::string confFileParams = "";
+        bool fHaveOne = false;
 
+        for (const auto& argItem : config::mapMultiArgs)
+        {
+            for (int i = 0; i < argItem.second.size(); i++)
+            {
+                if (fHaveOne)
+                    confFileParams += ", ";
+            
+                confFileParams += argItem.first + "=";
+
+                if (argItem.second[i].empty())
+                    confFileParams += "true";
+                else 
+                    confFileParams += argItem.second[i];
+
+                fHaveOne = true;
+            }
+        }
+
+        if (confFileParams == "")
+            confFileParams = "(none)";
+
+        log(0, "Configuration file parameters: ", confFileParams);
+
+        /* Log command line parameters (which can override conf file settings) */
         std::string cmdLineParms = "";
 
         for (int i = 1; i < argc; i++)
@@ -149,30 +178,6 @@ namespace debug
 
         log(0, "Command line parameters: ", cmdLineParms);
 
-        log(0, "All argument settings (command line and config file):");
-
-        std::string argsList = "";
-        bool fHaveOne = false;
-        /* All args are placed in mapMultiArgs whether they have one or multiple values, so only need to log this one */
-        for (const auto& argItem : config::mapMultiArgs)
-        {
-            for (int i = 0; i < argItem.second.size(); i++)
-            {
-                if (fHaveOne)
-                    argsList += "\n";
-            
-                argsList += "\t" + argItem.first + " = ";
-
-                if (argItem.second[i].empty())
-                    argsList += "true";
-                else 
-                    argsList += argItem.second[i];
-
-                fHaveOne = true;
-            }
-        }
-
-        log(0, argsList);
         log(0, "\n");
     }
 

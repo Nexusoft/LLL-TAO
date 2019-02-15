@@ -130,15 +130,16 @@ int main(int argc, char** argv)
     config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
 
 
+    /* Log system startup after reading conf file, before parsing command line (so it isn't loaded into args yet) */
+    debug::InitializeLog(argc, argv);
+
+
     /* Parse out the parameters */
     config::ParseParameters(argc, argv);
 
 
     /* Once we have read in the CLI paramters and config file, cache the args into global variables*/
     config::CacheArgs();
-
-    /* Log system startup */
-    debug::InitializeLog(argc, argv);
 
     /* Handle Commandline switch */
     for (int i = 1; i < argc; ++i)
@@ -519,6 +520,7 @@ int main(int argc, char** argv)
 
     /* Startup performance metric. */
     debug::log(0, FUNCTION, "Closed in ", nElapsed, "ms");
+    debug::log(0, "Shutdown time ", DateTimeStrFormat(runtime::timestamp()), "\n\n\n\n");
 
     return 0;
 }
