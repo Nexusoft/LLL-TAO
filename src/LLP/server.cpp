@@ -235,10 +235,12 @@ namespace LLP
 
     /*  Get the best connection based on latency */
     template <class ProtocolType>
-    ProtocolType* Server<ProtocolType>::GetConnection(const BaseAddress& addrExclude)
+    memory::atomic_ptr<ProtocolType>& Server<ProtocolType>::GetConnection(const BaseAddress& addrExclude)
     {
         /* List of connections to return. */
-        ProtocolType* pBest = nullptr;
+        uint32_t nLatency   = std::numeric_limits<uint32_t>::max();
+        uint16_t nRetThread = 0;
+        uint16_t nRetIndex  = 0;
 
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
@@ -259,7 +261,7 @@ namespace LLP
                 std::unique_lock<std::mutex> lock = dt->CONNECTIONS[nIndex].lock();
 
                 /* Skip over inactive connections. */
-                if(!pNode || !pNode->Connected())
+                if(!pNode)
                     continue;
 
                 /* Skip over exclusion address. */
@@ -267,12 +269,17 @@ namespace LLP
                     continue;
 
                 /* Push the active connection. */
-                if(!pBest || pNode->nLatency < pBest->nLatency)
-                    pBest = pNode;
+                if(pNode->nLatency < nLatency)
+                {
+                    nLatency = pNode->nLatency;
+
+                    nRetThread = nThread;
+                    nRetIndex  = nIndex;
+                }
             }
         }
 
-        return pBest;
+        return DATA_THREADS[nRetThread]->CONNECTIONS[nRetIndex];
     }
 
 

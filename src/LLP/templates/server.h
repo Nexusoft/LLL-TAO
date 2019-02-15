@@ -153,7 +153,7 @@ namespace LLP
          *  Get the best connection based on latency
          *
          **/
-        ProtocolType* GetConnection(const BaseAddress& addrExclude);
+        memory::atomic_ptr<ProtocolType>& GetConnection(const BaseAddress& addrExclude);
 
 
         /** Relay
