@@ -105,6 +105,15 @@ namespace LLP
     }
 
 
+    /*  Returns the address of the socket. */
+    BaseAddress Socket::GetAddress() const
+    {
+        LOCK(DATA_MUTEX);
+
+        return addr;
+    }
+
+
     /*  Resets the internal timers. */
     void Socket::Reset()
     {

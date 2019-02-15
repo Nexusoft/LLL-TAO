@@ -88,6 +88,14 @@ namespace LLP
         virtual ~Socket();
 
 
+        /** GetAddress
+         *
+         *  Returns the address of the socket.
+         *
+         **/
+        BaseAddress GetAddress() const;
+
+
         /** Reset
         *
         *  Resets the internal timers.
