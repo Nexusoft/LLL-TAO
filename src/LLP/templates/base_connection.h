@@ -69,7 +69,7 @@ namespace LLP
 
 
         /** Latency in Milliseconds to determine a node's reliability. **/
-        uint32_t nLatency; //milli-seconds
+        std::atomic<uint32_t> nLatency; //milli-seconds
 
 
         /** Flag to Determine if DDOS is Enabled. **/

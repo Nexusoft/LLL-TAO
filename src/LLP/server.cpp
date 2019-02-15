@@ -211,12 +211,19 @@ namespace LLP
             /* Get the data threads. */
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
+            /* Lock the data thread. */
+            uint16_t nSize = 0;
+            {
+                LOCK(dt->MUTEX);
+                
+                nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
+            }
+
             /* Loop through connections in data thread and add any that are connected to count. */
-            uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
             for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
                 /* Skip over inactive connections. */
-                if(dt->CONNECTIONS[nIndex] != nullptr)
+                if(dt->CONNECTIONS[nIndex] == nullptr)
                     continue;
 
                 ++nConnectionCount;
@@ -241,8 +248,15 @@ namespace LLP
             /* Get the data threads. */
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
+            /* Lock the data thread. */
+            uint16_t nSize = 0;
+            {
+                LOCK(dt->MUTEX);
+
+                nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
+            }
+
             /* Loop through connections in data thread. */
-            uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
             for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
                 /* Skip over inactive connections. */

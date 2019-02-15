@@ -86,13 +86,14 @@ namespace LLP
             else
                 CONNECTIONS[nSlot] = node;
 
-            if(fDDOS)
-                DDOS -> cSCORE += 1;
-
-            ++nConnections;
-
-            CONDITION.notify_all();
         }
+
+        if(fDDOS)
+            DDOS -> cSCORE += 1;
+
+        ++nConnections;
+
+        CONDITION.notify_all();
     }
 
 
@@ -121,14 +122,15 @@ namespace LLP
             else
                 CONNECTIONS[nSlot] = node;
 
-            if(fDDOS)
-                DDOS -> cSCORE += 1;
-
             CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
-            ++nConnections;
-
-            CONDITION.notify_all();
         }
+
+        if(fDDOS)
+            DDOS -> cSCORE += 1;
+
+        ++nConnections;
+
+        CONDITION.notify_all();
 
        return true;
     }
@@ -176,17 +178,18 @@ namespace LLP
                 /* Get the total connections. */
                 nSize = static_cast<uint32_t>(CONNECTIONS.size());
 
-#ifdef WIN32    /* Poll the sockets. */
+    #ifdef WIN32    /* Poll the sockets. */
                 int nPoll = WSAPoll((pollfd*)CONNECTIONS[0].load(), nSize, 100);
-#else
+    #else
                 int nPoll = poll((pollfd*)CONNECTIONS[0].load(), nSize, 100);
-#endif
+    #endif
 
                 /* Continue on poll errors. */
                 if(nPoll < 0)
                     continue;
 
             }
+
 
             /* Check all connections for data and packets. */
             for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
@@ -287,8 +290,6 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::disconnect_remove_event(uint32_t index, uint8_t reason)
     {
-        LOCK(MUTEX);
-
         CONNECTIONS[index]->Event(EVENT_DISCONNECT, reason);
 
         remove(index);

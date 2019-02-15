@@ -446,6 +446,7 @@ namespace LLP
             nError = WSAGetLastError();
             return nError;
         }
+
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent > 0)
         {
