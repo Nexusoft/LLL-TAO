@@ -211,18 +211,12 @@ namespace LLP
             /* Get the data threads. */
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
-            /* Lock the data thread. */
-            LOCK(dt->MUTEX);
-
             /* Loop through connections in data thread and add any that are connected to count. */
             uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
             for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
-                /* Load the connection object from the atomic pointer. */
-                ProtocolType *pNode = dt->CONNECTIONS[nIndex].load();
-
                 /* Skip over inactive connections. */
-                if(!pNode)
+                if(dt->CONNECTIONS[nIndex] != nullptr)
                     continue;
 
                 ++nConnectionCount;
@@ -247,31 +241,22 @@ namespace LLP
             /* Get the data threads. */
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
-            /* Lock the data thread. */
-            LOCK(dt->MUTEX);
-
             /* Loop through connections in data thread. */
             uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
             for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
-                /* Load the connection object from the atomic pointer. */
-                ProtocolType *pNode = dt->CONNECTIONS[nIndex].load();
-
-                /* Handle the lock of the connection object. */
-                std::unique_lock<std::mutex> lock = dt->CONNECTIONS[nIndex].lock();
-
                 /* Skip over inactive connections. */
-                if(!pNode)
+                if(dt->CONNECTIONS[nIndex] == nullptr)
                     continue;
 
                 /* Skip over exclusion address. */
-                if(pNode->GetAddress() == addrExclude)
+                if(dt->CONNECTIONS[nIndex]->GetAddress() == addrExclude)
                     continue;
 
                 /* Push the active connection. */
-                if(pNode->nLatency < nLatency)
+                if(dt->CONNECTIONS[nIndex]->nLatency < nLatency)
                 {
-                    nLatency = pNode->nLatency;
+                    nLatency = dt->CONNECTIONS[nIndex]->nLatency;
 
                     nRetThread = nThread;
                     nRetIndex  = nIndex;
@@ -486,8 +471,8 @@ namespace LLP
                     /* Get the data thread. */
                     DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
+                    /* Accept an incoming connection. */
                     dt->AddConnection(sockNew, DDOS_MAP[addr]);
-
 
                     /* Verbose output. */
                     debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ",  PORT);
