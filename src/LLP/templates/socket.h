@@ -37,7 +37,8 @@ namespace LLP
     private:
 
         /** Mutex for thread synchronization. **/
-        mutable std::mutex MUTEX;
+        mutable std::mutex PACKET_MUTEX;
+        mutable std::mutex DATA_MUTEX;
 
     protected:
 

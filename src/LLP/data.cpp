@@ -170,7 +170,8 @@ namespace LLP
 
             /* Wrapped mutex lock. */
             uint32_t nSize = 0;
-            { LOCK(MUTEX);
+            {
+                LOCK(MUTEX);
 
                 /* Get the total connections. */
                 nSize = static_cast<uint32_t>(CONNECTIONS.size());
@@ -287,7 +288,7 @@ namespace LLP
     void DataThread<ProtocolType>::disconnect_remove_event(uint32_t index, uint8_t reason)
     {
         LOCK(MUTEX);
-        
+
         CONNECTIONS[index]->Event(EVENT_DISCONNECT, reason);
 
         remove(index);

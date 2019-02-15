@@ -56,6 +56,22 @@ namespace Legacy
         return stakeMinter;
     }
 
+    /** Default constructor **/
+    StakeMinter::StakeMinter()
+    : pStakingWallet(nullptr)
+    , trustKey(TAO::Ledger::TrustKey())
+    , pReservedTrustKey(nullptr)
+    , candidateBlock(LegacyBlock())
+    , hashLastBlock(0)
+    , nSleepTime(1000)
+    , fIsWaitPeriod(false)
+    , nTrustWeight(0.0)
+    , nBlockWeight(0.0)
+    , nStakeRate(0.0)
+    {
+        StakeMinter::minterThread = std::thread(std::bind(StakeMinter::StakeMinterThread, this));
+    }
+
 
     /* Destructor signals the stake minter thread to shut down and waits for it to join */
     StakeMinter::~StakeMinter()
@@ -64,6 +80,9 @@ namespace Legacy
             LOCK(StakeMinter::cs_stakeMinter);
             StakeMinter::fdestructMinter = true;
         }
+
+        if(StakeMinter::minterThread.joinable())
+            StakeMinter::minterThread.join();
 
         //StakeMinter::minterThread.join();
 

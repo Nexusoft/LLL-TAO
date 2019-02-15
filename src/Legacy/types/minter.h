@@ -245,21 +245,7 @@ namespace Legacy
 
 
         /** Default constructor **/
-        StakeMinter()
-        : pStakingWallet(nullptr)
-        , trustKey(TAO::Ledger::TrustKey())
-        , pReservedTrustKey(nullptr)
-        , candidateBlock(LegacyBlock())
-        , hashLastBlock(0)
-        , nSleepTime(1000)
-        , fIsWaitPeriod(false)
-        , nTrustWeight(0.0)
-        , nBlockWeight(0.0)
-        , nStakeRate(0.0)
-        {
-          StakeMinter::minterThread = std::thread(StakeMinter::StakeMinterThread, this);
-          StakeMinter::minterThread.detach();
-        }
+        StakeMinter();
 
 
         /** FindTrustKey
