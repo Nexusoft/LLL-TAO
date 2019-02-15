@@ -323,7 +323,7 @@ namespace Legacy
         {
             /* Extract first entry from the priority map  */
             auto firstMapEntry = mapPriority.begin();
-            Transaction& tx = firstMapEntry->second; 
+            Transaction tx = firstMapEntry->second; 
             mapPriority.erase(firstMapEntry);
 
             uint32_t nTxSize = ::GetSerializeSize(tx, SER_NETWORK, LLP::PROTOCOL_VERSION);
