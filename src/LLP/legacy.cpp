@@ -163,10 +163,10 @@ namespace LLP
 
                 nLastPing = runtime::unifiedtimestamp();
 
-
+                
                 mapLatencyTracker.insert(std::pair<uint64_t, runtime::timer>(nNonce, runtime::timer()));
                 mapLatencyTracker[nNonce].Start();
-                            /* Reset the timeouts. */
+
 
                 PushMessage("ping", nNonce);
 

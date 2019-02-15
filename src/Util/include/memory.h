@@ -175,6 +175,184 @@ namespace memory
             data = dataIn;
         }
     };
+
+
+    /** atomic_ptr
+     *
+     *  Protects a pointer with a mutex.
+     *
+     **/
+    template<class TypeName>
+    class atomic_ptr
+    {
+        /* The mutex to protect the memory. */
+        mutable std::mutex MUTEX;
+
+
+        /* The internal data. */
+        TypeName* data;
+
+
+    public:
+
+        /** Default Constructor. **/
+        atomic_ptr()
+        : data(nullptr)
+        {
+        }
+
+
+        /** Constructor for storing. **/
+        atomic_ptr(const TypeName& dataIn)
+        : data(nullptr)
+        {
+            store(dataIn);
+        }
+
+
+        /** Destructor. **/
+        ~atomic_ptr()
+        {
+            if(data)
+                delete data;
+        }
+
+
+        /** Assignment operator.
+         *
+         *  @param[in] dataIn The atomic to assign from.
+         *
+         **/
+        atomic_ptr& operator=(const TypeName& dataIn)
+        {
+            store(dataIn);
+
+            return (*this);
+        }
+
+
+        /** Equivilent operator.
+         *
+         *  @param[in] a The data type to compare to.
+         *
+         **/
+        bool operator==(const TypeName& dataIn) const
+        {
+            LOCK(MUTEX);
+
+            if(data == nullptr)
+                return false;
+
+            return *data == dataIn;
+        }
+
+
+        /** Equivilent operator.
+         *
+         *  @param[in] a The data type to compare to.
+         *
+         **/
+        bool operator==(const TypeName* ptr) const
+        {
+            LOCK(MUTEX);
+
+            return data == ptr;
+        }
+
+
+        /** Not equivilent operator.
+         *
+         *  @param[in] a The data type to compare to.
+         *
+         **/
+        bool operator!=(const TypeName* ptr) const
+        {
+            LOCK(MUTEX);
+
+            return data != ptr;
+        }
+
+
+        /** Member access overload
+         *
+         *  Allow atomic_ptr access like a normal pointer.
+         *
+         **/
+        TypeName* operator->()
+        {
+            LOCK(MUTEX);
+
+            return data;
+        }
+
+
+        /** load
+         *
+         *  Load the object from memory.
+         *
+         **/
+        TypeName* load() const
+        {
+            LOCK(MUTEX);
+
+            return data;
+        }
+
+
+        /** store
+         *
+         *  Stores an object into memory.
+         *
+         *  @param[in] dataIn The data into protected memory.
+         *
+         **/
+        void store(const TypeName& dataIn)
+        {
+            LOCK(MUTEX);
+
+            if(data)
+                delete data;
+
+            data = new TypeName(dataIn);
+        }
+
+
+        /** store
+         *
+         *  Stores an object into memory.
+         *
+         *  @param[in] dataIn The data into protected memory.
+         *
+         **/
+        void store(const TypeName* dataIn)
+        {
+            LOCK(MUTEX);
+
+            if(data)
+                delete data;
+
+            if(dataIn)
+                data = new TypeName(dataIn);
+            else
+                data = nullptr;
+        }
+
+
+        /** free
+         *
+         *  Free the internal memory of the atomic pointer.
+         *
+         **/
+        void free()
+        {
+            LOCK(MUTEX);
+
+            if(data)
+                delete data;
+
+            data = nullptr;
+        }
+    };
 }
 
 #endif
