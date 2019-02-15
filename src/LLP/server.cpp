@@ -204,7 +204,7 @@ namespace LLP
     template <class ProtocolType>
     uint32_t Server<ProtocolType>::GetConnectionCount()
     {
-        uint32_t connectionCount = 0;
+        uint32_t nConnectionCount = 0;
 
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
@@ -218,17 +218,18 @@ namespace LLP
             uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
             for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
-                ProtocolType *pNode = dt->CONNECTIONS[nIndex];
+                /* Load the connection object from the atomic pointer. */
+                ProtocolType *pNode = dt->CONNECTIONS[nIndex].load();
 
                 /* Skip over inactive connections. */
-                if(!pNode || !pNode->Connected())
+                if(!pNode)
                     continue;
 
-                ++connectionCount;
+                ++nConnectionCount;
             }
         }
 
-        return connectionCount;
+        return nConnectionCount;
     }
 
 
@@ -251,7 +252,11 @@ namespace LLP
             uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
             for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
-                ProtocolType *pNode = dt->CONNECTIONS[nIndex];
+                /* Load the connection object from the atomic pointer. */
+                ProtocolType *pNode = dt->CONNECTIONS[nIndex].load();
+
+                /* Handle the lock of the connection object. */
+                std::unique_lock<std::mutex> lock = dt->CONNECTIONS[nIndex].lock();
 
                 /* Skip over inactive connections. */
                 if(!pNode || !pNode->Connected())

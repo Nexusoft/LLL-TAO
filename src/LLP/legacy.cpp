@@ -163,7 +163,7 @@ namespace LLP
 
                 nLastPing = runtime::unifiedtimestamp();
 
-                
+
                 mapLatencyTracker.insert(std::pair<uint64_t, runtime::timer>(nNonce, runtime::timer()));
                 mapLatencyTracker[nNonce].Start();
 
@@ -182,12 +182,19 @@ namespace LLP
             && nLastTimeReceived.load() + 10 < runtime::timestamp()
             && nLastGetBlocks.load() + 10 < runtime::timestamp())
             {
-                debug::error(FUNCTION, "fast sync node event timeout");
+                debug::log(0, NODE, "fast sync event timeout");
 
                 /* Normal case of asking for a getblocks inventory message. */
                 LegacyNode* pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
                 if(pBest)
                     pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                else
+                {
+                    debug::error(FUNCTION, "no nodes available to switch");
+
+                    nLastTimeReceived = runtime::timestamp();
+                    nLastGetBlocks    = runtime::timestamp();
+                }
             }
 
             //TODO: mapRequests data, if no response given retry the request at given times
@@ -544,8 +551,8 @@ namespace LLP
             && vInv.back().GetType() == MSG_BLOCK)
             {
                 /* Fast sync should switch to new node if time since request is over average seconds */
-                if(nLastGetBlocks + (LegacyNode::nFastSyncAverage + 5) < runtime::timestamp()
-                || nLastTimeReceived + (LegacyNode::nFastSyncAverage + 5) < runtime::timestamp())
+                if(nLastGetBlocks + (LegacyNode::nFastSyncAverage + 10) < runtime::timestamp()
+                || nLastTimeReceived + (LegacyNode::nFastSyncAverage + 10) < runtime::timestamp())
                 {
                     /* Normal case of asking for a getblocks inventory message. */
                     LegacyNode* pnode = LEGACY_SERVER->GetConnection(addrFastSync.load());
@@ -776,19 +783,12 @@ namespace LLP
             /* Fast sync block requests. */
             if(!TAO::Ledger::ChainState::Synchronizing())
                 pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-            else if(!config::GetBoolArg("-fastsync")
-                 || (nLastGetBlocks.load() + (LegacyNode::nFastSyncAverage.load() + 5) < runtime::timestamp()
-                 && nLastTimeReceived.load() + (LegacyNode::nFastSyncAverage.load() + 5) < runtime::timestamp()
-                 && addrFastSync == pnode->GetAddress()))
+            else if(!config::GetBoolArg("-fastsync"))
             {
                 /* Normal case of asking for a getblocks inventory message. */
                 LegacyNode* pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
                 if(pBest)
-                {
                     pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-
-                    return true;
-                }
             }
 
             return true;

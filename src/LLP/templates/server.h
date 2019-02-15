@@ -184,10 +184,14 @@ namespace LLP
 
                 for(nIndex = 0; nIndex < nSize; ++nIndex)
                 {
-                    pNode = dt->CONNECTIONS[nIndex];
+                    /* Load the connection object from the atomic pointer. */
+                    pNode = dt->CONNECTIONS[nIndex].load();
+
+                    /* Handle the lock of the connection object. */
+                    std::unique_lock<std::mutex> lock = dt->CONNECTIONS[nIndex].lock();
 
                     /* Skip over inactive connections. */
-                    if(!pNode || !pNode->Connected())
+                    if(!pNode)
                         continue;
 
                     /* Push the active connection. */

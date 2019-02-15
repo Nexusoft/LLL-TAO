@@ -55,14 +55,16 @@ namespace memory
 
         /** Default Constructor. **/
         atomic()
-        : data()
+        : MUTEX()
+        , data()
         {
         }
 
 
         /** Constructor for storing. **/
         atomic(const TypeName& dataIn)
-        : data()
+        : MUTEX()
+        , data()
         {
             store(dataIn);
         }
@@ -186,35 +188,42 @@ namespace memory
     class atomic_ptr
     {
         /* The mutex to protect the memory. */
-        mutable std::mutex MUTEX;
+        mutable std::mutex MUTEX; //for use in member access externally ->
 
 
         /* The internal data. */
         TypeName* data;
 
-
     public:
 
         /** Default Constructor. **/
         atomic_ptr()
-        : data(nullptr)
+        : MUTEX()
+        , data(nullptr)
         {
         }
 
 
         /** Constructor for storing. **/
-        atomic_ptr(const TypeName& dataIn)
-        : data(nullptr)
+        atomic_ptr(TypeName* dataIn)
+        : MUTEX()
+        , data(dataIn)
         {
-            store(dataIn);
+        }
+
+
+        /** Copy Constructor. **/
+        atomic_ptr(const atomic_ptr<TypeName>& pointer)
+        : MUTEX()
+        , data(pointer.data)
+        {
+
         }
 
 
         /** Destructor. **/
         ~atomic_ptr()
         {
-            if(data)
-                delete data;
         }
 
 
@@ -223,7 +232,20 @@ namespace memory
          *  @param[in] dataIn The atomic to assign from.
          *
          **/
-        atomic_ptr& operator=(const TypeName& dataIn)
+        atomic_ptr& operator=(const atomic_ptr<TypeName>& dataIn)
+        {
+            store(dataIn.data);
+
+            return (*this);
+        }
+
+
+        /** Assignment operator.
+         *
+         *  @param[in] dataIn The atomic to assign from.
+         *
+         **/
+        atomic_ptr& operator=(TypeName* dataIn)
         {
             store(dataIn);
 
@@ -279,7 +301,7 @@ namespace memory
          *
          **/
         TypeName* operator->()
-        {
+        { //TODO: find a better way to encapsulate member access in mutex
             LOCK(MUTEX);
 
             return data;
@@ -299,21 +321,14 @@ namespace memory
         }
 
 
-        /** store
+        /** lock
          *
-         *  Stores an object into memory.
-         *
-         *  @param[in] dataIn The data into protected memory.
+         *  Lock the internal object from the outside.
          *
          **/
-        void store(const TypeName& dataIn)
+        std::unique_lock<std::mutex> lock()
         {
-            LOCK(MUTEX);
-
-            if(data)
-                delete data;
-
-            data = new TypeName(dataIn);
+            return std::unique_lock<std::mutex>(MUTEX);
         }
 
 
@@ -324,17 +339,14 @@ namespace memory
          *  @param[in] dataIn The data into protected memory.
          *
          **/
-        void store(const TypeName* dataIn)
+        void store(TypeName* dataIn)
         {
             LOCK(MUTEX);
 
             if(data)
                 delete data;
 
-            if(dataIn)
-                data = new TypeName(dataIn);
-            else
-                data = nullptr;
+            data = dataIn;
         }
 
 

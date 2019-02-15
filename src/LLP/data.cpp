@@ -82,10 +82,9 @@ namespace LLP
 
             /* Find a slot that is empty. */
             if(nSlot == CONNECTIONS.size())
-                CONNECTIONS.push_back(nullptr);
-
-            /* Assign the slot to the connection. */
-            CONNECTIONS[nSlot] = node;
+                CONNECTIONS.push_back(memory::atomic_ptr<ProtocolType>(node));
+            else
+                CONNECTIONS[nSlot] = node;
 
             if(fDDOS)
                 DDOS -> cSCORE += 1;
@@ -101,34 +100,35 @@ namespace LLP
     template <class ProtocolType>
     bool DataThread<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort, DDOS_Filter* DDOS)
     {
-       /* Create a new pointer on the heap. */
-       ProtocolType* node = new ProtocolType(DDOS, fDDOS);
-       if(!node->Connect(strAddress, nPort))
-       {
+        /* Create a new pointer on the heap. */
+        ProtocolType* node = new ProtocolType(DDOS, fDDOS);
+        if(!node->Connect(strAddress, nPort))
+        {
            node->Disconnect();
            delete node;
 
            return false;
-       }
+        }
 
-       {
-           LOCK(MUTEX);
+        node->fOUTGOING = true;
+        {
+            LOCK(MUTEX);
 
-           /* Find a slot that is empty. */
-           int nSlot = find_slot();
-           if(nSlot == CONNECTIONS.size())
-               CONNECTIONS.push_back(nullptr);
+            /* Find a slot that is empty. */
+            int nSlot = find_slot();
+            if(nSlot == CONNECTIONS.size())
+                CONNECTIONS.push_back(memory::atomic_ptr<ProtocolType>(node));
+            else
+                CONNECTIONS[nSlot] = node;
 
-           CONNECTIONS[nSlot] = node;
+            if(fDDOS)
+                DDOS -> cSCORE += 1;
 
-           if(fDDOS)
-               DDOS -> cSCORE += 1;
+            CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
+            ++nConnections;
 
-           CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
-           ++nConnections;
-
-           CONDITION.notify_all();
-       }
+            CONDITION.notify_all();
+        }
 
        return true;
     }
@@ -176,9 +176,9 @@ namespace LLP
                 nSize = static_cast<uint32_t>(CONNECTIONS.size());
 
 #ifdef WIN32    /* Poll the sockets. */
-                int nPoll = WSAPoll((pollfd*)CONNECTIONS[0], nSize, 100);
+                int nPoll = WSAPoll((pollfd*)CONNECTIONS[0].load(), nSize, 100);
 #else
-                int nPoll = poll((pollfd*)CONNECTIONS[0], nSize, 100);
+                int nPoll = poll((pollfd*)CONNECTIONS[0].load(), nSize, 100);
 #endif
 
                 /* Continue on poll errors. */
@@ -193,7 +193,7 @@ namespace LLP
                 try
                 {
                     /* Grab a connection handle for this index. */
-                    ProtocolType *pNode = CONNECTIONS[nIndex];
+                    ProtocolType *pNode = CONNECTIONS[nIndex].load();
 
                     /* Skip over Inactive Connections. */
                     if(!pNode || !pNode->Connected())
@@ -299,11 +299,10 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::remove(int index)
     {
-        if(CONNECTIONS[index])
+        if(CONNECTIONS[index] != nullptr)
         {
             /* Free the memory. */
-            delete CONNECTIONS[index];
-            CONNECTIONS[index] = nullptr;
+            CONNECTIONS[index].free();
 
             --nConnections;
         }
@@ -321,7 +320,7 @@ namespace LLP
 
         for(int index = 0; index < nSize; ++index)
         {
-            if(!CONNECTIONS[index])
+            if(CONNECTIONS[index] == nullptr)
                 return index;
         }
 
