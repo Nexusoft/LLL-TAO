@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_WALLETDB_H
 #define NEXUS_LEGACY_WALLET_WALLETDB_H
 
+#include <atomic>
 #include <list>
 #include <memory>
 #include <string>
@@ -550,7 +551,30 @@ namespace Legacy
         uint32_t LoadWallet(Wallet& wallet);
 
 
-         /** @fn ThreadFlushWalletDB
+        /** @fn ThreadFlushWalletDB
+         *
+         *  Start the wallet flush thread for a given wallet file.
+         *  If -flushwallet argument is false, this method will not start the thread and simply return.
+         *  This method only supports one flush thread for one wallet file, and will return false ir
+         *  attempt to start a second.
+         *
+         *  @param strFile The wallet file to periodically flush
+         *
+         *  @return true if the flush thread was started, false otherwise
+         *
+         **/
+        static bool StartFlushThread(const std::string& strFile);
+
+
+        /** @fn ThreadFlushWalletDB
+         *
+         *  Signals the wallet flush thread to shut down. 
+         *
+         **/
+        static void ShutdownFlushThread();
+
+
+        /** @fn ThreadFlushWalletDB
          *
          *  Function that loops until shutdown and periodically flushes a wallet db
          *  to disk as needed to ensure all data updates are properly persisted. Execute
@@ -567,7 +591,7 @@ namespace Legacy
         static void ThreadFlushWalletDB(const std::string& strWalletFile);
 
 
-       /** @fn BackupWallet
+        /** @fn BackupWallet
          *
          *  Writes a backup copy of a wallet to a designated backup file
          *
@@ -581,9 +605,19 @@ namespace Legacy
          **/
         static bool BackupWallet(const Wallet& wallet, const std::string& strDest);
 
+    
     private:
         /** mutex to provide synchronized access on mutable methods **/
         static std::mutex cs_walletdb;
+
+
+        /**  Thread to perform wallet flush. Used to execute WalletDB::ThreadFlushWalletDB **/
+        static std::thread flushThread;
+
+
+        /**  Flag to signal flushThread to shut down **/
+        static std::atomic<bool> fShutdownFlushThread;
+
     };
 
 }

@@ -226,8 +226,7 @@ namespace Legacy
         }
 
         /* Launch background thread to periodically flush the wallet to the backing database */
-        std::thread flushThread(Legacy::WalletDB::ThreadFlushWalletDB, std::string(strWalletFile));
-        flushThread.detach();
+        WalletDB::StartFlushThread(strWalletFile);
 
         fLoaded = true;
 

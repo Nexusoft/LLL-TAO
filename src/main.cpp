@@ -41,6 +41,7 @@ ________________________________________________________________________________
 #include <Util/include/version.h>
 
 #include <Legacy/include/ambassador.h>
+#include <Legacy/wallet/db.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
 
@@ -130,16 +131,17 @@ int main(int argc, char** argv)
     config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
 
 
-    /* Log system startup after reading conf file, before parsing command line (so it isn't loaded into args yet) */
-    debug::InitializeLog(argc, argv);
-
-
     /* Parse out the parameters */
     config::ParseParameters(argc, argv);
 
 
     /* Once we have read in the CLI paramters and config file, cache the args into global variables*/
     config::CacheArgs();
+
+    /* Log system startup */
+    debug::log(0, "\n\n\n\n\n\n\n\n\n\n", version::CLIENT_VERSION_BUILD_STRING, " (", version::CLIENT_DATE, ")");
+    debug::log(0, "Startup time ", DateTimeStrFormat(runtime::timestamp()));
+    debug::log(0, "Logging verbose level ", config::GetArg("-verbose", 0));
 
     /* Handle Commandline switch */
     for (int i = 1; i < argc; ++i)
@@ -513,6 +515,13 @@ int main(int argc, char** argv)
     }
 
 
+    /* Shut down wallet database environment. */
+    if (config::GetBoolArg("-flushwallet", true))
+        Legacy::WalletDB::ShutdownFlushThread();
+
+    Legacy::BerkeleyDB::EnvShutdown();
+
+
 
     /* Elapsed Milliseconds from timer. */
     nElapsed = timer.ElapsedMilliseconds();
@@ -520,7 +529,6 @@ int main(int argc, char** argv)
 
     /* Startup performance metric. */
     debug::log(0, FUNCTION, "Closed in ", nElapsed, "ms");
-    debug::log(0, "Shutdown time ", DateTimeStrFormat(runtime::timestamp()), "\n\n\n\n");
 
     return 0;
 }
