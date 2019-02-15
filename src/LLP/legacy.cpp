@@ -187,15 +187,11 @@ namespace LLP
                 /* Normal case of asking for a getblocks inventory message. */
                 memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
 
-                /* Null check the pointer. */
-                LegacyNode* pnode = pBest.load();
-                if(pnode != nullptr)
+                /* Null pointer check. */
+                if(pBest != nullptr)
                 {
-                    /* Lock the atomic pointer to operate on it. */
-                    std::unique_lock<std::mutex> lock = pBest.lock();
-
                     /* Ask for another inventory batch. */
-                    pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                    pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
                 }
                 else
                 {
@@ -255,14 +251,10 @@ namespace LLP
                 memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
 
                 /* Null check the pointer. */
-                LegacyNode* pnode = pBest.load();
-                if(pnode != nullptr)
+                if(pBest != nullptr)
                 {
-                    /* Lock the atomic pointer to operate on it. */
-                    std::unique_lock<std::mutex> lock = pBest.lock();
-
                     /* Switch to a new node for fast sync. */
-                    pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                    pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
 
                     /* Debug output. */
                     debug::log(0, NODE, "fast sync node dropped, switching to ", addrFastSync.load().ToStringIP());
@@ -572,16 +564,12 @@ namespace LLP
                     /* Normal case of asking for a getblocks inventory message. */
                     memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
 
-                    /* Null check the pointer. */
-                    LegacyNode* pnode = pBest.load();
-                    if(pnode != nullptr)
+                    /* Check for nullptr */
+                    if(pBest != nullptr)
                     {
-                        /* Lock the atomic pointer to operate on it. */
-                        std::unique_lock<std::mutex> lock = pBest.lock();
-
                         /* Switch to a new node for fast sync. */
-                        pnode->PushGetBlocks(vInv.back().GetHash(), uint1024_t(0));
-                        pnode->PushMessage("getdata", vInv);
+                        pBest->PushGetBlocks(vInv.back().GetHash(), uint1024_t(0));
+                        pBest->PushMessage("getdata", vInv);
 
                         /* Debug output. */
                         debug::log(0, NODE, "fast sync node timed out...");
@@ -809,15 +797,11 @@ namespace LLP
                 /* Normal case of asking for a getblocks inventory message. */
                 memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
 
-                /* Null check the pointer. */
-                LegacyNode* pnode = pBest.load();
-                if(pnode != nullptr)
+                /* Lock the atomic pointer to operate on it. */
+                if(pBest != nullptr)
                 {
-                    /* Lock the atomic pointer to operate on it. */
-                    std::unique_lock<std::mutex> lock = pBest.lock();
-
                     /* Push a new getblocks request. */
-                    pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                    pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
                 }
             }
 
@@ -844,14 +828,10 @@ namespace LLP
                     memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
 
                     /* Null check the pointer. */
-                    LegacyNode* pnode = pBest.load();
-                    if(pnode != nullptr)
+                    if(pBest != nullptr)
                     {
-                        /* Lock the atomic pointer to operate on it. */
-                        std::unique_lock<std::mutex> lock = pBest.lock();
-
                         /* Switch to a new node for fast sync. */
-                        pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
 
                         /* Debug output. */
                         debug::error(FUNCTION, "fast sync node reached failure limit...");
