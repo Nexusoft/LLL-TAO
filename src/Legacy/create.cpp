@@ -236,7 +236,7 @@ namespace Legacy
 
         std::vector<uint512_t> vMemPoolHashes;           // legacy tx hashes currently in mempool
         std::vector<uint512_t> vRemoveFromPool;          // invalid tx to remove from mempool
-        std::multimap<double, Transaction*> mapPriority; // processing priority for mempool tx
+        std::multimap<double, Transaction> mapPriority; // processing priority for mempool tx
         uint64_t nFees = 0;
 
         /* Retrieve list of transaction hashes from mempool.
@@ -307,7 +307,7 @@ namespace Legacy
             dPriority /= ::GetSerializeSize(tx, SER_NETWORK, LLP::PROTOCOL_VERSION);
 
             /* Map will be ordered with SMALLEST value first, so add using -dPriority as key so highest priority is first */
-            mapPriority.emplace(std::make_pair(-dPriority, &tx));
+            mapPriority.emplace(std::make_pair(-dPriority, tx));
 
             //debug::log(3, FUNCTION, "Final priority %-20.1f %s\n%s", dPriority, txHash.ToString().substr(0,10).c_str(), tx.ToString().c_str());
             debug::log(3, FUNCTION, "Final priority ", dPriority, " ", txHash.ToString().substr(0,10), "\n", tx.ToString());
@@ -323,7 +323,7 @@ namespace Legacy
         {
             /* Extract first entry from the priority map  */
             auto firstMapEntry = mapPriority.begin();
-            Transaction& tx = *((*firstMapEntry).second); //dereferences the iterator to get map entry, then dereferences the tx pointer
+            Transaction& tx = firstMapEntry->second; 
             mapPriority.erase(firstMapEntry);
 
             uint32_t nTxSize = ::GetSerializeSize(tx, SER_NETWORK, LLP::PROTOCOL_VERSION);
