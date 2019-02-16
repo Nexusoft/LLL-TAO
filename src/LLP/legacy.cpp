@@ -771,7 +771,7 @@ namespace LLP
         {
 
             /* Detect large orphan chains and ask for new blocks from origin again. */
-            if(mapLegacyOrphans.size() > 1000)
+            if(mapLegacyOrphans.size() > 100)
             {
                 debug::log(0, FUNCTION, "node reached orphan limit... closing");
 

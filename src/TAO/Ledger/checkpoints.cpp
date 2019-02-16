@@ -99,7 +99,7 @@ namespace TAO
             ChainState::hashCheckpoint    = state.hashCheckpoint;
 
             /* Dump the Checkpoint if not Initializing. */
-            debug::log(0, "===== Hardened Checkpoint ", ChainState::hashCheckpoint.load().ToString().substr(0, 20));
+            debug::log(ChainState::Synchronizing() ? 1 : 0, "===== Hardened Checkpoint ", ChainState::hashCheckpoint.load().ToString().substr(0, 20));
 
             return true;
         }

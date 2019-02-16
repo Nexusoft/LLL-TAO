@@ -59,6 +59,14 @@ namespace TAO
             static bool Synchronizing();
 
 
+            /** PercentSynchronized
+             *
+             *  Real value of the total synchronzation percent completion.
+             *
+             **/
+            static double PercentSynchronized();
+
+
             /** Initialize
              *
              *  Initialize the Chain State.

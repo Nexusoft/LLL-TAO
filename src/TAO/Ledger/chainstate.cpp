@@ -66,6 +66,15 @@ namespace TAO
             return (stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60);
         }
 
+        /* Flag to tell if initial blocks are downloading. */
+        double ChainState::PercentSynchronized()
+        {
+            uint32_t nChainAge = (runtime::unifiedtimestamp() - 20 * 60) - (config::fTestNet ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK);
+            uint32_t nSyncAge  = (stateBest.load().GetBlockTime() - (config::fTestNet ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK));
+
+            return (100.0 * nSyncAge) / nChainAge;
+        }
+
 
         /* Initialize the Chain State. */
         bool ChainState::Initialize()

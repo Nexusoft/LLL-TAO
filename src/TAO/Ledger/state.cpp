@@ -213,7 +213,7 @@ namespace TAO
             {
                 hashCheckpoint = GetHash();
 
-                debug::log(0, "===== New Pending Checkpoint Hash = ", hashCheckpoint.ToString().substr(0, 15));
+                debug::log(1, "===== New Pending Checkpoint Hash = ", hashCheckpoint.ToString().substr(0, 15));
             }
             else
             {
@@ -242,37 +242,8 @@ namespace TAO
             LLD::TxnCommit();
 
 
-            /* Scan each transaction in the block and process those related to this wallet */
-            std::vector<uint512_t> vHashes;
-            Legacy::Transaction tx;
-            for(const auto& item : ChainState::stateBest.load().vtx)
-            {
-                vHashes.push_back(item.second);
-                if (item.first == TAO::Ledger::LEGACY_TX)
-                {
-                    /* Read transaction from database */
-                    if (!LLD::legacyDB->ReadTx(item.second, tx))
-                    {
-                        debug::log(0, ChainState::stateBest.load().ToString(debug::flags::tx | debug::flags::header));
-
-                        assert(debug::error(FUNCTION, "tx ", item.second.ToString().substr(0, 20), " not found"));
-                    }
-
-                    /* Check for coinbase or coinstake. */
-                    if(item.second == ChainState::stateBest.load().vtx[0].second && !tx.IsCoinBase() && !tx.IsCoinStake())
-                    {
-                        assert(debug::error(FUNCTION, "first transction not coinbase/coinstake"));
-                    }
-                }
-            }
-
-            /* Check the merkle root. */
-            if(ChainState::stateBest.load().hashMerkleRoot != ChainState::stateBest.load().BuildMerkleTree(vHashes))
-                assert(debug::error(FUNCTION, "merkle tree mismatch"));
-
-
             /* Debug output. */
-            debug::log(0, FUNCTION, "ACCEPTED");
+            debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "ACCEPTED");
 
             return true;
         }
@@ -470,7 +441,7 @@ namespace TAO
 
 
                 /* Debug output about the best chain. */
-                debug::log(0, FUNCTION,
+                debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
                     "New Best Block hash=", GetHash().ToString().substr(0, 20),
                     " height=", ChainState::nBestHeight.load(),
                     " trust=", ChainState::nBestChainTrust.load(),
@@ -496,6 +467,13 @@ namespace TAO
                     /* Relay the new block to all connected nodes. */
                     if(LLP::LEGACY_SERVER)
                         LLP::LEGACY_SERVER->Relay("inv", vInv);
+                }
+                else if(nHeight % 1000 == 0)
+                {
+                    debug::log(0, FUNCTION,
+                        "Processed 1000 blocks [", std::fixed, ChainState::PercentSynchronized(), " %]",
+                        " height=", ChainState::nBestHeight.load(),
+                        " trust=", ChainState::nBestChainTrust.load() );
                 }
             }
 
@@ -621,7 +599,7 @@ namespace TAO
             nMoneySupply = (prev.IsNull() ? 0 : prev.nMoneySupply) + nMint;
 
             /* Log how much was generated / destroyed. */
-            debug::log(0, FUNCTION, nMint > 0 ? "Generated " : "Destroyed ", std::fixed, (double)nMint / Legacy::COIN, " Nexus | Money Supply ", std::fixed, (double)nMoneySupply / Legacy::COIN);
+            debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, nMint > 0 ? "Generated " : "Destroyed ", std::fixed, (double)nMint / Legacy::COIN, " Nexus | Money Supply ", std::fixed, (double)nMoneySupply / Legacy::COIN);
 
             /* Write the updated block state to disk. */
             if(!LLD::legDB->WriteBlock(GetHash(), *this))

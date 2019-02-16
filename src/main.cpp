@@ -115,7 +115,7 @@ void Daemonize()
 
 
 int main(int argc, char** argv)
-{
+{    
     LLP::Server<LLP::CoreNode>* CORE_SERVER = nullptr;
     LLP::Server<LLP::RPCNode>* RPC_SERVER = nullptr;
     LLP::Server<LLP::Miner>* MINING_SERVER = nullptr;
