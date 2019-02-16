@@ -79,12 +79,28 @@ namespace TAO
         const uint32_t TRUST_KEY_EXPIRE   = 60 * 60 * 24;
 
 
-        /** nVersion > 4 - timespan is 3 days, 30 minutes for testnet **/
+        /** nVersion > 4 - timespan is 3 days (max block age before decay) **/
         const uint32_t TRUST_KEY_TIMESPAN = 60 * 60 * 24 * 3;
 
 
-        /** Timestamp of trust key for testnet. **/
+        /** Timespan of trust key for testnet. (30 minutes) **/
         const uint32_t TRUST_KEY_TIMESPAN_TESTNET = 60 * 30;
+
+
+        /** The maximum allowed value for trust score (364 days). **/
+        const uint32_t TRUST_SCORE_MAX = 60 * 60 * 24 * 28 * 13;
+
+
+        /** The maximum allowed value for trust score for testnet (140 hrs - ratio of MAX/TIMESPAN is same for Testnet at Mainnet) **/
+        const uint32_t TRUST_SCORE_MAX_TESTNET = 60 * 30 * 28 * 10;
+
+
+        /** The base value for calculating trust weight (84 days) **/
+        const uint32_t TRUST_WEIGHT_BASE = 60 * 60 * 24 * 28 * 3;
+
+
+        /** The base value for calculating Testnet trust weight (14 hours) **/
+        const uint32_t TRUST_WEIGHT_BASE_TESTNET = 60 * 30 * 28;
 
 
         /** Minimum span between trust blocks testnet. **/

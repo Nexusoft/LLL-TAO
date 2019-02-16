@@ -267,17 +267,17 @@ namespace Legacy
 		bool CoinstakeAge(uint64_t& nAge) const;
 
 
-		/** Coinstake Interest
+		/** Coinstake Reward
 		 *
-		 *  Get the total calculated interest of the coinstake transaction
+		 *  Get the total calculated coinstake reward for a Proof of Stake block
 		 *
 		 *  @param[in] block The block to check from
-		 *  @param[out] nAge The age to return.
+		 *  @param[out] nAge nStakeReward Amount of coinstake reward
 		 *
 		 *  @return true if succeeded.
 		 *
 		 **/
-		bool CoinstakeInterest(const TAO::Ledger::BlockState& block, uint64_t& nInterest) const;
+		bool CoinstakeReward(const TAO::Ledger::BlockState& block, uint64_t& nStakeReward) const;
 
 
 		/** Are Inputs Standard

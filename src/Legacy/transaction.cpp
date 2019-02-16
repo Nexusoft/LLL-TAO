@@ -338,9 +338,12 @@ namespace Legacy
     }
 
 
-    /* Get the total calculated interest of the coinstake transaction */
-    bool Transaction::CoinstakeInterest(const TAO::Ledger::BlockState& block, uint64_t& nInterest) const
+    /* Get the total calculated coinstake reward for a Proof of Stake block */
+    bool Transaction::CoinstakeReward(const TAO::Ledger::BlockState& block, uint64_t& nStakeReward) const
     {
+        /* Use appropriate settings for Testnet or Mainnet */
+        uint32_t nMaxTrustScore = config::fTestNet ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX;
+
         /* Check that the transaction is Coinstake. */
         if(!IsCoinStake())
             return debug::error(FUNCTION, "not coinstake transaction");
@@ -352,12 +355,12 @@ namespace Legacy
 
         /* Output figure to show the amount of coins being staked at their interest rates. */
         uint64_t nTotalCoins = 0, nAverageAge = 0;
-        nInterest = 0;
+        nStakeReward = 0;
 
         /* Calculate the Variable Interest Rate for Given Coin Age Input. */
-        double nInterestRate = 0.05; //genesis interest rate
+        double nStakeRate = 0.05; //genesis interest rate
         if(block.nVersion >= 6)
-            nInterestRate = 0.005;
+            nStakeRate = 0.005;
 
         /* Get the trust key from index database. */
         if(!IsGenesis() || block.nVersion >= 6)
@@ -365,7 +368,7 @@ namespace Legacy
             /* Read the trust key from the disk. */
             TAO::Ledger::TrustKey trustKey;
             if(LLD::trustDB->ReadTrustKey(cKey, trustKey))
-                nInterestRate = trustKey.InterestRate(block, nTime);
+                nStakeRate = trustKey.InterestRate(block, nTime);
 
             /* Check if it failed to read and this is genesis. */
             else if(!IsGenesis())
@@ -394,8 +397,10 @@ namespace Legacy
             nTotalCoins += nValue;
             nAverageAge += nCoinAge;
 
-            /* Interest is 3% of Year's Interest of Value of Coins. Coin Age is in Seconds. */
-            nInterest += ((nValue * nInterestRate * nCoinAge) / (60 * 60 * 24 * 28 * 13));
+            /* Reward rate for time period is annual rate * (time period / annual time) = nStakeRate * (nCoinAge / nMaxTrustScore) 
+             * Then, nStakeReward = nValue * reward rate
+             */
+            nStakeReward += ((nValue * nStakeRate * nCoinAge) / nMaxTrustScore);
         }
 
         nAverageAge /= (vin.size() - 1);
@@ -867,14 +872,14 @@ namespace Legacy
         if (IsCoinStake())
         {
             /* Get the coinstake interest. */
-            uint64_t nInterest = 0;
-            if(!CoinstakeInterest(state, nInterest))
+            uint64_t nStakeReward = 0;
+            if(!CoinstakeReward(state, nStakeReward))
                 return debug::error(FUNCTION, GetHash().ToString().substr(0, 10), " failed to get coinstake interest");
 
             /* Check that the interest is within range. */
             //add tolerance to stake reward of + 1 (viz.) for stake rewards
-            if (vout[0].nValue > nInterest + nValueIn + 1)
-                return debug::error(FUNCTION, GetHash().ToString().substr(0,10), " stake reward ", vout[0].nValue, " mismatch ", nInterest + nValueIn);
+            if (vout[0].nValue > nStakeReward + nValueIn + 1)
+                return debug::error(FUNCTION, GetHash().ToString().substr(0,10), " stake reward ", vout[0].nValue, " mismatch ", nStakeReward + nValueIn);
         }
         else if (nValueIn < GetValueOut())
             return debug::error(FUNCTION, GetHash().ToString().substr(0,10), "value in < value out");

@@ -41,6 +41,7 @@ ________________________________________________________________________________
 #include <Util/include/version.h>
 
 #include <Legacy/include/ambassador.h>
+#include <Legacy/types/minter.h>
 #include <Legacy/wallet/db.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
@@ -401,6 +402,10 @@ int main(int argc, char** argv)
 
     /* Shutdown metrics. */
     timer.Reset();
+
+
+    /* Stop stake minter if it is running (before server shutdown). */
+    Legacy::StakeMinter::GetInstance().StopStakeMinter();
 
 
     /* Shutdown the tritium server and its subsystems */

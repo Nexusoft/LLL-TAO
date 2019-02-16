@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #define NEXUS_LEGACY_TYPES_MINTER_H
 
 
+#include <atomic>
 #include <thread>
 
 #include <Legacy/types/legacy.h>
@@ -52,6 +53,16 @@ namespace Legacy
     class StakeMinter final
     {
     public:
+        /** Copy constructor deleted **/
+        StakeMinter(const StakeMinter&) = delete;
+
+        /** Copy assignment deleted **/
+        StakeMinter& operator=(const StakeMinter&) = delete;
+
+        /** Destructor **/
+        ~StakeMinter();
+
+
         /** GetInstance
           *
           * Retrieves the StakeMinter.
@@ -137,21 +148,25 @@ namespace Legacy
           *
           * Start the stake minter.
           *
-          * Call this method to start the stake minter and begin mining Proof of Statke, or
+          * Call this method to start the stake minter thread and begin mining Proof of Stake, or
           * to restart it after it was stopped.
           *
           * The first time this method is called, it will retrieve a reference to the wallet
-          * by calling Wallet::GetInstance(), so the wallet should be initialized before
+          * by calling Wallet::GetInstance(), so the wallet must be initialized and loaded before
           * starting the stake minter.
           *
           * In general, this method should be called when the wallet is unlocked.
           *
-          * After calling this method, the StakeMinter may stay in suspended state if
+          * If the system is configured not to run the StakeMinter, this method will return false.
+          * By default, the StakeMinter will run for non-server, and won't run for server/daemon.
+          * These defaults can be changed using the -stake setting.
+          *
+          * After calling this method, the StakeMinter thread may stay in suspended state if
           * the local node is synchronizing, or if it does not have any connections, yet.
           * In that case, it will automatically begin when sync is complete and connections
           * are available.
           *
-          * @return true if the stake minter was started, false if it was already running
+          * @return true if the stake minter was started, false if it was already running or not started
           *
           */
         bool StartStakeMinter();
@@ -161,11 +176,10 @@ namespace Legacy
           *
           * Stops the stake minter.
           *
-          * Call this method to suspend the stake minter. This suspends Proof of Stake mining,
-          * though the stake minter thread remains operational, so mining and can be restarted
-          * via a subsequent call to StartStakeMinter().
+          * Call this method to signal the stake minter thread stop Proof of Stake mining and end.
+          * It can be restarted via a subsequent call to StartStakeMinter().
           *
-          * Should be called whenever the wallet is locked.
+          * Should be called whenever the wallet is locked, and on system shutdown.
           *
           * @return true if the stake minter was stopped, false if it was already stopped
           *
@@ -173,33 +187,17 @@ namespace Legacy
         bool StopStakeMinter();
 
 
-        /** Destructor
-          *
-          * Signals the stake minter thread to shut down and waits for it to join
-          *
-          **/
-        ~StakeMinter();
-
-
     private:
-        /** Mutex for stake minter thread synchronization **/
-        static std::mutex cs_stakeMinter;
+        /** Set true when stake miner thread starts and remains true while it is running **/
+        static std::atomic<bool> fisStarted;
 
 
-        /** Set true when stake miner starts processing and remains true while it is running **/
-        static bool fisStarted;
-
-
-        /** Flag to tell the stake minter thread to suspend processing. Will reset when stake minter is restarted.**/
-        static bool fstopMinter;
-
-
-        /** Flag to tell the stake minter thread that the minter is being destructed and it should end/join **/
-        static bool fdestructMinter;
+        /** Flag to tell the stake minter thread to stop processing and exit. **/
+        static std::atomic<bool> fstopMinter;
 
 
         /** Thread for operating the stake minter **/
-        static std::thread minterThread; // Needs static or cannot copy instance returned from GetInstance()
+        static std::thread minterThread;
 
 
         /** The wallet where the stake minter will operate. **/
@@ -229,19 +227,19 @@ namespace Legacy
 
 
         /** true when the minter is waiting for coin age to reach the minimum required to begin staking for Genesis **/
-        bool fIsWaitPeriod;
+        std::atomic<bool> fIsWaitPeriod;
 
 
         /** The current trust weight for the trust key in the minter (value ranges from 1 - 90) **/
-        double nTrustWeight;
+        std::atomic<double> nTrustWeight;
 
 
         /** The current block weight for the trust key in the minter (value ranges from 1 - 10) **/
-        double nBlockWeight;
+        std::atomic<double> nBlockWeight;
 
 
         /** The current staking rate (previously, interest rate) for calculating staking rewards **/
-        double nStakeRate;
+        std::atomic<double> nStakeRate;
 
 
         /** Default constructor **/
@@ -257,8 +255,6 @@ namespace Legacy
         , nBlockWeight(0.0)
         , nStakeRate(0.0)
         {
-          StakeMinter::minterThread = std::thread(StakeMinter::StakeMinterThread, this);
-          StakeMinter::minterThread.detach();
         }
 
 

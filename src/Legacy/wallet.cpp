@@ -230,14 +230,6 @@ namespace Legacy
 
         fLoaded = true;
 
-        if (!IsCrypted())
-        {
-            /* Successfully loading an unencrypted wallet will start the stake minter.
-             * As you cannot lock such a wallet, it will always be running after load.
-             */
-            StakeMinter::GetInstance().StartStakeMinter();
-        }
-
         return DB_LOAD_OK;
     }
 
@@ -626,7 +618,7 @@ namespace Legacy
                     {
                         nWalletUnlockTime = runtime::timestamp() + nUnlockSeconds;
 
-                        // use C++ lambda to creating a threaded callback to lock the wallet
+                        /* use C++ lambda to creating a threaded callback to lock the wallet */
                         std::thread([=]()
                         {
                             // check the time every second until the unlock time is surpassed or the wallet is manually locked
@@ -639,9 +631,8 @@ namespace Legacy
 
                     }
 
-                    /* Whether unlocked fully or for minting only, start the stake minter */
+                    /* Whether unlocked fully or for minting only, start the stake minter if configured */
                     StakeMinter::GetInstance().StartStakeMinter();
-
 
                     return true;
                 }
@@ -1960,7 +1951,7 @@ namespace Legacy
         uint64_t nStakeReward;
         TAO::Ledger::BlockState blockState(block);
 
-        if(!block.vtx[0].CoinstakeInterest(blockState, nStakeReward))
+        if(!block.vtx[0].CoinstakeReward(blockState, nStakeReward))
             return debug::error(FUNCTION, "Failed to calculate staking reward");
 
         /* Add the staking reward to the Coinstake output */
