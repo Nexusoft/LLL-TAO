@@ -468,13 +468,6 @@ namespace TAO
                     if(LLP::LEGACY_SERVER)
                         LLP::LEGACY_SERVER->Relay("inv", vInv);
                 }
-                else if(nHeight % 1000 == 0)
-                {
-                    debug::log(0, FUNCTION,
-                        "Processed 1000 blocks [", std::fixed, ChainState::PercentSynchronized(), " %]",
-                        " height=", ChainState::nBestHeight.load(),
-                        " trust=", ChainState::nBestChainTrust.load() );
-                }
             }
 
             return true;

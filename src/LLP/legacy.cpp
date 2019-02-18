@@ -74,6 +74,10 @@ namespace LLP
     std::atomic<uint64_t> LegacyNode::nLastTimeReceived;
 
 
+    /* Timer for sync metrics. */
+    static uint64_t nTimer = runtime::timestamp(true);
+
+
     /* Push a Message With Information about This Current Node. */
     void LegacyNode::PushVersion()
     {
@@ -557,33 +561,8 @@ namespace LLP
             && TAO::Ledger::ChainState::Synchronizing()
             && vInv.back().GetType() == MSG_BLOCK)
             {
-                /* Fast sync should switch to new node if time since request is over average seconds */
-                if(nLastGetBlocks + (LegacyNode::nFastSyncAverage + 10) < runtime::timestamp()
-                || nLastTimeReceived + (LegacyNode::nFastSyncAverage + 10) < runtime::timestamp())
-                {
-                    /* Normal case of asking for a getblocks inventory message. */
-                    memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
-
-                    /* Check for nullptr */
-                    if(pBest != nullptr)
-                    {
-                        /* Switch to a new node for fast sync. */
-                        pBest->PushGetBlocks(vInv.back().GetHash(), uint1024_t(0));
-                        pBest->PushMessage("getdata", vInv);
-
-                        /* Debug output. */
-                        debug::log(0, NODE, "fast sync node timed out...");
-
-                        return true;
-                    }
-                }
-
-                /* Otherwise ask for another batch of blocks from the end of this inventory. */
-                else
-                {
-                    /* Normal case of asking for a getblocks inventory message. */
-                    PushGetBlocks(vInv.back().GetHash(), uint1024_t(0));
-                }
+                /* Normal case of asking for a getblocks inventory message. */
+                PushGetBlocks(vInv.back().GetHash(), uint1024_t(0));
             }
 
             /* Push getdata after fastsync inv (if enabled).
@@ -845,6 +824,21 @@ namespace LLP
         }
         else
         {
+            /* Special meter for synchronizing. */
+            if(TAO::Ledger::ChainState::Synchronizing()
+            && block.nHeight % 1000 == 0)
+            {
+                uint64_t nElapsed = runtime::timestamp(true) - nTimer;
+                debug::log(0, FUNCTION,
+                    "Processed 1000 blocks in ", nElapsed, " ms [", std::setw(2),
+                    TAO::Ledger::ChainState::PercentSynchronized(), " %]",
+                    " height=", TAO::Ledger::ChainState::nBestHeight.load(),
+                    " trust=", TAO::Ledger::ChainState::nBestChainTrust.load(),
+                    " [", 1000000 / nElapsed, " blocks/s]" );
+
+                nTimer = runtime::timestamp(true);
+            }
+
             /* Update the last time received. */
             nLastTimeReceived = runtime::timestamp();
 
