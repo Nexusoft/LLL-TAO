@@ -379,7 +379,11 @@ namespace TAO
                     }
 
                     /* Erase block if not connecting anything. */
-                    LLD::legDB->EraseBlock(state.GetHash());
+                    if(vConnect.empty())
+                    {
+                        LLD::legDB->EraseBlock(state.GetHash());
+                        //LLD::legDB->EraseIndex(state.nHeight);
+                    }
                 }
 
 
