@@ -289,7 +289,12 @@ namespace TAO
                         /* Iterate backwards in chain. */
                         longer = longer.Prev();
                         if(!longer)
+                        {
+                            /* Abort the Transaction. */
+                            LLD::TxnAbort();
+
                             return debug::error(FUNCTION, "failed to find longer ancestor block");
+                        }
                     }
 
                     /* Break if found. */
@@ -328,6 +333,10 @@ namespace TAO
                 std::vector<Legacy::Transaction> vLegacyResurrect;
                 for(auto& state : vDisconnect)
                 {
+                    /* Output the block state if flagged. */
+                    if(config::GetBoolArg("-printstate"))
+                        debug::log(0, state.ToString(debug::flags::header | debug::flags::tx));
+
                     /* Add transactions into memory pool. */
                     if(!vConnect.empty())
                     {
@@ -370,11 +379,7 @@ namespace TAO
                     }
 
                     /* Erase block if not connecting anything. */
-                    if(vConnect.empty())
-                    {
-                        LLD::legDB->EraseBlock(state.GetHash());
-                        LLD::legDB->EraseIndex(state.nHeight);
-                    }
+                    LLD::legDB->EraseBlock(state.GetHash());
                 }
 
 
@@ -399,6 +404,10 @@ namespace TAO
                 std::reverse(vConnect.begin(), vConnect.end());
                 for(auto& state : vConnect)
                 {
+                    /* Output the block state if flagged. */
+                    if(config::GetBoolArg("-printstate"))
+                        debug::log(0, state.ToString(debug::flags::header | debug::flags::tx));
+
                     /* Connect the block. */
                     if(!state.Connect())
                     {
@@ -416,10 +425,6 @@ namespace TAO
 
                     /* Harden a checkpoint if there is any. */
                     HardenCheckpoint(Prev());
-
-                    /* Output the block state if flagged. */
-                    if(config::GetBoolArg("-printstate"))
-                        debug::log(0, state.ToString(debug::flags::header | debug::flags::tx));
                 }
 
 
