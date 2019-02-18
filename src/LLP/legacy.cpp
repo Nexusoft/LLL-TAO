@@ -537,6 +537,33 @@ namespace LLP
                 return true;
             }
 
+            /* It is possible for nodes to send is inventory messages for blocks that we already have in our chain. 
+               If this occurs we need to filter the incoming inventory list to skip those we already have.  */
+            TAO::Ledger::BlockState state;
+                    
+            /* Because it is safe to assume that the inventory list is sequential by height, as an optimisation 
+               we can just check the last element and if we have it we can ignore the whole message. */
+            if(LLD::legDB->ReadBlock(vInv.back().GetHash(), state))
+                return true; // we already have the 
+
+            std::vector<CInv> vInvFiltered;
+            
+            /* Similarly we can optimize by not checking any of the inventory if we don't have the first block */
+            if(!LLD::legDB->ReadBlock(vInv.front().GetHash(), state))
+            {
+                vInvFiltered = vInv;
+            }
+            else
+            {
+                /* Work backwards because as soon as we find one we already have we can ignore everything before it in the inventory */
+                std::reverse( vInv.begin(), vInv.end() );
+                for(const auto& inv : vInv)
+                {
+                    if(!LLD::legDB->ReadBlock(inv.GetHash(), state))
+                        vInvFiltered.insert(vInvFiltered.begin(), inv);
+                }
+            }
+
             /* Fast sync mode. */
             if(config::GetBoolArg("-fastsync")
             && GetAddress().ToStringIP() == addrFastSync.ToStringIP()
