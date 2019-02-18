@@ -90,7 +90,7 @@ namespace TAO
             vtx.push_back(std::make_pair(TYPE::TRITIUM_TX, block.producer.GetHash()));
             vtx.insert(vtx.end(), block.vtx.begin(), block.vtx.end());
 
-            assert(vtx.size() == block.vtx.size()); //TODO: maybe a softer way to verify?
+            assert(vtx.size() == block.vtx.size() +1); //TODO: maybe a softer way to verify?
         }
 
 

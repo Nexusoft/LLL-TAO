@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <LLP/types/corenode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
+#include <LLP/types/tritiumminer.h>
 
 #include <LLP/include/manager.h>
 #include <LLP/include/trust_address.h>
@@ -679,5 +680,5 @@ namespace LLP
     template class Server<CoreNode>;
     template class Server<RPCNode>;
     template class Server<Miner>;
-
+    template class Server<TritiumMiner>;
 }

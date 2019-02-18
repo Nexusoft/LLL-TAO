@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLP/types/corenode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
+#include <LLP/types/tritiumminer.h>
 
 #include <Util/include/hex.h>
 #include <Util/templates/datastream.h>
@@ -335,5 +336,6 @@ namespace LLP
     template class DataThread<CoreNode>;
     template class DataThread<RPCNode>;
     template class DataThread<Miner>;
+    template class DataThread<TritiumMiner>;
 
 }

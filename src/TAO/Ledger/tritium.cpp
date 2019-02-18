@@ -106,8 +106,8 @@ namespace TAO
 
 
             /* Check the Proof of Work Claims. */
-            //if (IsProofOfWork() && !VerifyWork())
-            //    return debug::error(FUNCTION, "invalid proof of work");
+            if (IsProofOfWork() && !VerifyWork())
+               return debug::error(FUNCTION, "invalid proof of work");
 
 
             /* Check the Network Launch Time-Lock. */
