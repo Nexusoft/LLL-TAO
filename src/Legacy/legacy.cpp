@@ -450,7 +450,13 @@ namespace Legacy
         {
             /* Remove from the memory pool. */
             for(const auto& tx : vtx)
+            {
+                /* Keep transactions in memory pool that aren't on disk. */
+                if(!LLD::legacyDB->HasTx(tx.GetHash()))
+                    continue;
+
                 TAO::Ledger::mempool.Remove(tx.GetHash());
+            }
 
             return false;
         }
