@@ -61,7 +61,7 @@ namespace LLP
         std::vector<ProtocolType *> CONNECTIONS;
 
 
-        /* Vector to store Connections. */
+        /* This mirrors CONNECTIONS with pollfd settings for passing to poll methods. Windows throws SOCKET_ERROR intermittently if pass CONNECTIONS directly. */
         std::vector<pollfd> POLLFDS;
 
 
