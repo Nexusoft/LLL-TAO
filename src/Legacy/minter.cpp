@@ -142,7 +142,7 @@ namespace Legacy
     	/* Check that stake minter is configured to run.
     	 * Stake Minter default is to run for non-server and not to run for server
     	 */
-    	if ((!config::fServer && config::GetBoolArg("-stake", true)) || (config::fServer && config::GetBoolArg("-stake", false)))
+    	if ((!config::fServer && !config::GetBoolArg("-stake", true)) || (config::fServer && !config::GetBoolArg("-stake", false)))
     	{
     		debug::log(2, "Stake Minter not configured. Startup cancelled.");
     		return false;
