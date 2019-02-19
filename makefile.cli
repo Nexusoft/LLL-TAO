@@ -174,8 +174,8 @@ OBJS= \
 	build/LLP_legacy.o \
 	build/LLP_legacy_address.o \
     build/LLP_manager.o \
-	build/LLP_miner.o \
-	build/LLP_tritiumminer.o \
+	build/LLP_legacy_miner.o \
+	build/LLP_tritium_miner.o \
 	build/LLP_network.o \
 	build/LLP_rpcnode.o \
     build/LLP_server.o \

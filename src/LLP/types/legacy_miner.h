@@ -10,34 +10,39 @@
             "ad vocem populi" - To the Voice of the People
 ____________________________________________________________________________________________*/
 
-#pragma once
+#ifndef NEXUS_LLP_TYPES_MINER_H
+#define NEXUS_LLP_TYPES_MINER_H
+
 #include <LLP/templates/connection.h>
 #include <TAO/Ledger/types/block.h>
-#include <TAO/Ledger/types/tritium.h>
-#include <TAO/Ledger/types/sigchain.h>
 #include <Legacy/types/coinbase.h>
-#include <Util/include/allocators.h>
+
+
+namespace Legacy
+{
+    class ReserveKey;
+    class LegacyBlock;
+}
 
 namespace LLP
 {
 
-    /** TritiumMiner
+    /** LegacyMiner
      *
      *  Connection class that handles requests and responses from miners.
      *
      **/
-    class TritiumMiner : public Connection
+    class LegacyMiner : public Connection
     {
     private:
         /** The map to hold the list of blocks that are being mined. */
-        std::map<uint512_t, TAO::Ledger::TritiumBlock> mapBlocks;
+        std::map<uint512_t, Legacy::LegacyBlock> mapBlocks;
 
-        /** the sig chain to receive block rewards **/
-        TAO::Ledger::SignatureChain *pSigChain;
-        SecureString PIN;
+        /** the mining key for block rewards to send **/
+        Legacy::ReserveKey *pMiningKey;
 
         /** block to get and iterate if requesting more than one block **/
-        TAO::Ledger::TritiumBlock *pBaseBlock;
+        Legacy::LegacyBlock *pBaseBlock;
 
         /** The current best block. **/
         uint32_t nBestHeight;
@@ -53,7 +58,7 @@ namespace LLP
 
         /* Externally set coinbase to be set on mined blocks */
         Legacy::Coinbase pCoinbaseTx;
-                    
+
 
         enum
         {
@@ -110,23 +115,23 @@ namespace LLP
          *  Returns a string for the name of this type of Node.
          *
          **/
-          static std::string Name() { return "Miner"; }
+          static std::string Name() { return "LegacyMiner"; }
 
 
         /** Default Constructor **/
-        TritiumMiner();
+        LegacyMiner();
 
 
         /** Constructor **/
-        TritiumMiner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        LegacyMiner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Constructor **/
-        TritiumMiner(DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        LegacyMiner(DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Default Destructor **/
-        virtual ~TritiumMiner();
+        virtual ~LegacyMiner();
 
 
         /** Event
@@ -194,3 +199,5 @@ namespace LLP
 
     };
 }
+
+#endif

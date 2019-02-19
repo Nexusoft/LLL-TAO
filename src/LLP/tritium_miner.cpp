@@ -11,7 +11,7 @@
 ____________________________________________________________________________________________*/
 
 
-#include <LLP/types/tritiumminer.h>
+#include <LLP/types/tritium_miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
 
@@ -46,7 +46,7 @@ namespace LLP
     {
         pBaseBlock = new TAO::Ledger::TritiumBlock();
         pSigChain = new TAO::Ledger::SignatureChain("user", "pass");
-        PIN = "1234"; 
+        PIN = "1234";
     }
 
 
@@ -198,7 +198,7 @@ namespace LLP
                             We need to drop into this for loop at least once to set the unique hash, but we will iterate
                             indefinitely for the prime channel until the generated hash meets the min prime origins
                             and is less than 1024 bits*/
-                        
+
                         //PS TODO
                         // for(uint32_t i = s; ; ++i)
                         // {
@@ -251,7 +251,7 @@ namespace LLP
                 debug::log(2, FUNCTION, "Mining LLP: New Connection from ", GetAddress().ToStringIP());
                 return;
             }
-            
+
 
             /* On Disconnect Event, Reduce the Connection Count for Daemon */
             case EVENT_DISCONNECT:
@@ -344,7 +344,7 @@ namespace LLP
                 // uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest, nChannel, 0);
 
                 // /** Deserialize the Coinbase Transaction. **/
-        
+
                 // /** Bytes 1 - 8 is the Pool Fee for that Round. **/
                 // uint64_t nPoolFee  = convert::bytes2uint64(PACKET.DATA, 1);
 
@@ -389,14 +389,14 @@ namespace LLP
                 //     respond(COINBASE_SET);
                 //     debug::log(2, "***** Mining LLP: Coinbase Set") ;
                 //     /* set the global coinbase, null the base block, and then call check_best_height
-                //        which in turn will generate a new base block using the new coinbase */ 
+                //        which in turn will generate a new base block using the new coinbase */
                 //     pCoinbaseTx = pCoinbase;
                 //     pBaseBlock->SetNull();
 
                 //     check_best_height();
                 // }
-                
-        
+
+
                 return true;
             }
 
@@ -582,7 +582,7 @@ namespace LLP
 
                         return true;
                     }
-                    
+
 
                     /* Create the state object. */
                     if(!pBlock->Accept())

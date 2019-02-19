@@ -11,7 +11,7 @@
 ____________________________________________________________________________________________*/
 
 
-#include <LLP/types/miner.h>
+#include <LLP/types/legacy_miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
 
@@ -32,7 +32,7 @@ namespace LLP
 {
 
     /** Default Constructor **/
-    Miner::Miner()
+    LegacyMiner::LegacyMiner()
     : Connection()
     , mapBlocks()
     , pMiningKey(nullptr)
@@ -48,7 +48,7 @@ namespace LLP
 
 
     /** Constructor **/
-    Miner::Miner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
+    LegacyMiner::LegacyMiner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : Connection(SOCKET_IN, DDOS_IN, isDDOS)
     , mapBlocks()
     , pMiningKey(nullptr)
@@ -64,7 +64,7 @@ namespace LLP
 
 
     /** Constructor **/
-    Miner::Miner(DDOS_Filter* DDOS_IN, bool isDDOS)
+    LegacyMiner::LegacyMiner(DDOS_Filter* DDOS_IN, bool isDDOS)
     : Connection(DDOS_IN, isDDOS)
     , mapBlocks()
     , pMiningKey(nullptr)
@@ -79,7 +79,7 @@ namespace LLP
 
 
     /** Default Destructor **/
-    Miner::~Miner()
+    LegacyMiner::~LegacyMiner()
     {
         if(pBaseBlock)
             delete pBaseBlock;
@@ -94,7 +94,7 @@ namespace LLP
      *  Handle custom message events.
      *
      **/
-    void Miner::Event(uint8_t EVENT, uint32_t LENGTH)
+    void LegacyMiner::Event(uint8_t EVENT, uint32_t LENGTH)
     {
 
         /* Handle any DDOS Packet Filters. */
@@ -197,6 +197,7 @@ namespace LLP
 
                             /* Rebuild the merkle tree. */
                             std::vector<uint512_t> vMerkleTree;
+
                             for(const auto& tx : new_block.vtx)
                                 vMerkleTree.push_back(tx.GetHash());
                             new_block.hashMerkleRoot = new_block.BuildMerkleTree(vMerkleTree);
@@ -242,7 +243,7 @@ namespace LLP
                 debug::log(2, FUNCTION, "Mining LLP: New Connection from ", GetAddress().ToStringIP());
                 return;
             }
-            
+
 
             /* On Disconnect Event, Reduce the Connection Count for Daemon */
             case EVENT_DISCONNECT:
@@ -279,7 +280,7 @@ namespace LLP
 
     /** This function is necessary for a template LLP server. It handles your
         custom messaging system, and how to interpret it from raw packets. **/
-    bool Miner::ProcessPacket()
+    bool LegacyMiner::ProcessPacket()
     {
         /* Get the incoming packet. */
         Packet PACKET   = this->INCOMING;
@@ -333,7 +334,7 @@ namespace LLP
                 uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest, nChannel, 0);
 
                 /** Deserialize the Coinbase Transaction. **/
-        
+
                 /** Bytes 1 - 8 is the Pool Fee for that Round. **/
                 uint64_t nPoolFee  = convert::bytes2uint64(PACKET.DATA, 1);
 
@@ -378,14 +379,14 @@ namespace LLP
                     respond(COINBASE_SET);
                     debug::log(2, "***** Mining LLP: Coinbase Set") ;
                     /* set the global coinbase, null the base block, and then call check_best_height
-                       which in turn will generate a new base block using the new coinbase */ 
+                       which in turn will generate a new base block using the new coinbase */
                     pCoinbaseTx = pCoinbase;
                     pBaseBlock->SetNull();
 
                     check_best_height();
                 }
-                
-        
+
+
                 return true;
             }
 
@@ -603,7 +604,7 @@ namespace LLP
 
     /*  Convert the Header of a Block into a Byte Stream for
      *  Reading and Writing Across Sockets. */
-    std::vector<uint8_t> Miner::SerializeBlock(const TAO::Ledger::Block &BLOCK)
+    std::vector<uint8_t> LegacyMiner::SerializeBlock(const TAO::Ledger::Block &BLOCK)
     {
         std::vector<uint8_t> VERSION  = convert::uint2bytes(BLOCK.nVersion);
         std::vector<uint8_t> PREVIOUS = BLOCK.hashPrevBlock.GetBytes();
@@ -626,7 +627,7 @@ namespace LLP
     }
 
 
-    void Miner::respond(uint8_t header_response, uint32_t length, const std::vector<uint8_t> &data)
+    void LegacyMiner::respond(uint8_t header_response, uint32_t length, const std::vector<uint8_t> &data)
     {
         Packet RESPONSE;
 
@@ -639,7 +640,7 @@ namespace LLP
 
     /*  Checks the current height index and updates best height. It will clear
      *  the block map if the height is outdated. */
-    bool Miner::check_best_height()
+    bool LegacyMiner::check_best_height()
     {
         LOCK(BLOCK_MUTEX);
 
@@ -672,7 +673,7 @@ namespace LLP
 
 
     /*  Clear the blocks map. */
-    void Miner::clear_map()
+    void LegacyMiner::clear_map()
     {
         mapBlocks.clear();
 
