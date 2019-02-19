@@ -40,7 +40,27 @@ namespace TAO
     namespace Ledger
     {
 
-        /** Copy constructor. */
+        /** The default constructor. Sets block state to Null. **/
+        Block::Block()
+        {
+            SetNull();
+        }
+
+        /** A base constructor. **/
+        Block::Block(uint32_t nVersionIn, uint1024_t hashPrevBlockIn, uint32_t nChannelIn, uint32_t nHeightIn)
+        : nVersion(nVersionIn)
+        , hashPrevBlock(hashPrevBlockIn)
+        , nChannel(nChannelIn)
+        , nHeight(nHeightIn)
+        , nBits(0)
+        , nNonce(0)
+        , nTime(runtime::unifiedtimestamp())
+        , vchBlockSig()
+        {
+        }
+
+
+        /** Copy constructor. **/
         Block::Block(const Legacy::LegacyBlock& block)
         : nVersion(block.nVersion)
         , hashPrevBlock(block.hashPrevBlock)
@@ -55,7 +75,7 @@ namespace TAO
         }
 
 
-        /** Copy constructor. */
+        /** Copy constructor. **/
         Block::Block(const BlockState& block)
         : nVersion(block.nVersion)
         , hashPrevBlock(block.hashPrevBlock)
@@ -66,6 +86,12 @@ namespace TAO
         , nNonce(block.nNonce)
         , nTime(block.nTime)
         , vchBlockSig(block.vchBlockSig)
+        {
+        }
+
+
+        /** Default Destructor **/
+        Block::~Block()
         {
         }
 
@@ -173,14 +199,20 @@ namespace TAO
         /* Generate the Merkle Tree from uint512_t hashes. */
         uint512_t Block::BuildMerkleTree(std::vector<uint512_t> vMerkleTree) const
         {
-            int j = 0;
-            for (int nSize = (int)vMerkleTree.size(); nSize > 1; nSize = (nSize + 1) / 2)
+            uint32_t i = 0;
+            uint32_t j = 0;
+            uint32_t nSize = static_cast<uint32_t>(vMerkleTree.size());
+
+            for (; nSize > 1; nSize = (nSize + 1) >> 1)
             {
-                for (int i = 0; i < nSize; i += 2)
+                for (i = 0; i < nSize; i += 2)
                 {
-                    int i2 = std::min(i+1, nSize-1);
-                    vMerkleTree.push_back(LLC::SK512(BEGIN(vMerkleTree[j+i]),  END(vMerkleTree[j+i]),
-                                                BEGIN(vMerkleTree[j+i2]), END(vMerkleTree[j+i2])));
+                    /* get the references to the left and right leaves in the merkle tree */
+                    uint512_t &left_tx = vMerkleTree[j+i];
+                    uint512_t &right_tx = vMerkleTree[j + std::min(i+1, nSize-1)];
+
+                    vMerkleTree.push_back(LLC::SK512(BEGIN(left_tx),  END(left_tx),
+                                                     BEGIN(right_tx), END(right_tx)));
                 }
                 j += nSize;
             }
@@ -267,7 +299,7 @@ namespace TAO
         }
 
         /* Generates the StakeHash for this block from a uint256_t hashGenesis*/
-        uint1024_t Block::StakeHash(bool fIsGenesis, uint256_t hashGenesis) const
+        uint1024_t Block::StakeHash(bool fIsGenesis, const uint256_t &hashGenesis) const
         {
             /* Create a data stream to get the hash. */
             DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
@@ -292,7 +324,7 @@ namespace TAO
         }
 
         /* Generates the StakeHash for this block from a uint256_t hashGenesis*/
-        uint1024_t Block::StakeHash(bool fIsGenesis, uint576_t trustKey) const
+        uint1024_t Block::StakeHash(bool fIsGenesis, const uint576_t &trustKey) const
         {
             /* Create a data stream to get the hash. */
             DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
