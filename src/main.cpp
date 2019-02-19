@@ -132,16 +132,13 @@ int main(int argc, char** argv)
     config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
 
 
-    /* Log system startup after reading conf file, before parsing command line (so it isn't loaded into args yet) */
-    debug::InitializeLog(argc, argv);
-
-
     /* Parse out the parameters */
     config::ParseParameters(argc, argv);
 
 
     /* Once we have read in the CLI paramters and config file, cache the args into global variables*/
     config::CacheArgs();
+
     /* Handle Commandline switch */
     for (int i = 1; i < argc; ++i)
     {
@@ -153,6 +150,11 @@ int main(int argc, char** argv)
             return TAO::API::CommandLineRPC(argc, argv, i);
         }
     }
+
+
+    /* Log system startup now, after branching to API/RPC where appropriate */
+    debug::InitializeLog(argc, argv);
+
 
     /** Run the process as Daemon RPC/LLP Server if Flagged. **/
     if (config::fDaemon)

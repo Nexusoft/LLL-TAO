@@ -24,6 +24,8 @@ ________________________________________________________________________________
 #include <string>
 #include <cstdarg>
 #include <cstdio>
+#include <map>
+#include <vector>
 
 #ifndef WIN32
 #include <execinfo.h>
@@ -138,13 +140,16 @@ namespace debug
         #endif
     #endif
 
-        /* Log configuration file parameters.
-         * All args are placed in mapMultiArgs whether they have one or multiple values, so only need to log entries from it
-         */
+        /* Log configuration file parameters. Need to read them into our own map copy first */
+        std::map<std::string, std::string> mapBasicConfig;  //not used
+        std::map<std::string, std::vector<std::string> > mapMultiConfig; //All values stored here whether multi or not, will use this
+
+        config::ReadConfigFile(mapBasicConfig, mapMultiConfig);
+
         std::string confFileParams = "";
         bool fHaveOne = false;
 
-        for (const auto& argItem : config::mapMultiArgs)
+        for (const auto& argItem : mapMultiConfig)
         {
             for (int i = 0; i < argItem.second.size(); i++)
             {
