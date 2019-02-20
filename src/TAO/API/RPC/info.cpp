@@ -64,11 +64,11 @@ namespace TAO
             obj["stake"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetStake());
 
             /* Staking metrics */
-            Legacy::StakeMinter stakeMinter = Legacy::StakeMinter::GetInstance();
-            obj["stakerate"]   = stakeMinter.GetStakeRate();
-            obj["stakeweight"] = stakeMinter.GetTrustWeight() + stakeMinter.GetBlockWeight(); // 100 max so is already a %
-            obj["trustweight"] = stakeMinter.GetTrustWeightPercent();
-            obj["blockweight"] = stakeMinter.GetBlockWeightPercent();
+            //Legacy::StakeMinter stakeMinter = Legacy::StakeMinter::GetInstance();
+            obj["stakerate"]   = 0;//stakeMinter.GetStakeRate();
+            obj["stakeweight"] = 0;//stakeMinter.GetTrustWeight() + stakeMinter.GetBlockWeight(); // 100 max so is already a %
+            obj["trustweight"] = 0;//stakeMinter.GetTrustWeightPercent();
+            obj["blockweight"] = 0;//stakeMinter.GetBlockWeightPercent();
 
             obj["txtotal"] =(int)Legacy::Wallet::GetInstance().mapWallet.size();
 
