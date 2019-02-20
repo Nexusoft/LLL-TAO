@@ -232,8 +232,11 @@ namespace memory
         **/
         TypeName* operator->() const
         {
-           if(data == nullptr)
+            if(data == nullptr)
+            {
+                MUTEX.unlock();
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "member access to nullptr"));
+            }
 
            return data;
         }
@@ -364,11 +367,16 @@ namespace memory
          *  Allow atomic_ptr access like a normal pointer.
          *
          **/
-        lock_proxy<TypeName> operator->()
+        TypeName* operator->()
         {
-            MUTEX.lock();
+            LOCK(MUTEX);
 
-            return lock_proxy<TypeName>(data, MUTEX);
+            /* Throw an exception on nullptr. */
+            if(data == nullptr)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "member access on a nullptr"));
+
+            return data;
+            //return lock_proxy<TypeName>(data, MUTEX);
         }
 
 
