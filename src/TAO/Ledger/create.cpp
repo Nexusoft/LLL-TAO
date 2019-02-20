@@ -159,7 +159,7 @@ namespace TAO
                 block.producer << (uint8_t) TAO::Operation::OP::COINBASE;
 
                 /* The total to be credited. */
-                uint64_t  nCredit = GetCoinbaseReward(ChainState::stateBest, nChannel, 0);
+                uint64_t  nCredit = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
                 block.producer << nCredit;
 
             }
@@ -193,11 +193,11 @@ namespace TAO
             vHashes.erase(vHashes.begin() + block.vtx.size() + 1, vHashes.end());
 
             /** Populate the Block Data. **/
-            block.hashPrevBlock   = ChainState::stateBest.GetHash();
+            block.hashPrevBlock   = ChainState::stateBest.load().GetHash();
             block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
             block.nChannel       = nChannel;
-            block.nHeight        = ChainState::stateBest.nHeight + 1;
-            block.nBits          = GetNextTargetRequired(ChainState::stateBest, nChannel, false);
+            block.nHeight        = ChainState::stateBest.load().nHeight + 1;
+            block.nBits          = GetNextTargetRequired(ChainState::stateBest.load(), nChannel, false);
             block.nNonce         = 1;
             block.nTime          = runtime::unifiedtimestamp();
 

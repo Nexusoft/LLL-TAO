@@ -82,9 +82,7 @@ namespace LLP
 
         /* Initialize the meter. */
         if(fMeter)
-        {
             METER_THREAD = std::thread(std::bind(&Server::Meter, this));
-        }
 
     }
 
@@ -200,43 +198,11 @@ namespace LLP
    }
 
 
-    /*  Get the active connection pointers from data threads. */
-   template <class ProtocolType>
-   std::vector<ProtocolType *> Server<ProtocolType>::GetConnections()
-   {
-       /* List of connections to return. */
-       std::vector<ProtocolType *> vConnections;
-       for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
-       {
-           /* Get the data threads. */
-           DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-
-           /* Lock the data thread. */
-           LOCK(dt->MUTEX);
-
-           /* Loop through connections in data thread. */
-           int32_t nSize = dt->CONNECTIONS.size();
-           for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
-           {
-               /* Skip over inactive connections. */
-               if(!dt->CONNECTIONS[nIndex] ||
-                  !dt->CONNECTIONS[nIndex]->Connected())
-                   continue;
-
-               /* Push the active connection. */
-               vConnections.push_back(dt->CONNECTIONS[nIndex]);
-           }
-       }
-
-       return vConnections;
-   }
-
-
    /*  Get the number of active connection pointers from data threads. */
     template <class ProtocolType>
     uint32_t Server<ProtocolType>::GetConnectionCount()
     {
-        uint32_t connectionCount = 0;
+        uint32_t nConnectionCount = 0;
 
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
@@ -244,32 +210,36 @@ namespace LLP
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
             /* Lock the data thread. */
-            LOCK(dt->MUTEX);
+            uint16_t nSize = 0;
+            {
+                LOCK(dt->MUTEX);
+
+                nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
+            }
 
             /* Loop through connections in data thread and add any that are connected to count. */
-            uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
             for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
-                ProtocolType *pNode = dt->CONNECTIONS[nIndex];
-
                 /* Skip over inactive connections. */
-                if(!pNode || !pNode->Connected())
+                if(!dt->CONNECTIONS[nIndex])
                     continue;
 
-                ++connectionCount;
+                ++nConnectionCount;
             }
         }
 
-        return connectionCount;
+        return nConnectionCount;
     }
 
 
     /*  Get the best connection based on latency */
     template <class ProtocolType>
-    ProtocolType* Server<ProtocolType>::GetConnection(const BaseAddress& addrExclude)
+    memory::atomic_ptr<ProtocolType>& Server<ProtocolType>::GetConnection(const BaseAddress& addrExclude)
     {
         /* List of connections to return. */
-        ProtocolType* pBest = nullptr;
+        uint32_t nLatency   = std::numeric_limits<uint32_t>::max();
+        uint16_t nRetThread = 0;
+        uint16_t nRetIndex  = 0;
 
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
@@ -277,29 +247,43 @@ namespace LLP
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
             /* Lock the data thread. */
-            LOCK(dt->MUTEX);
+            uint16_t nSize = 0;
+            {
+                LOCK(dt->MUTEX);
+
+                nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
+            }
 
             /* Loop through connections in data thread. */
-            uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
             for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
-                ProtocolType *pNode = dt->CONNECTIONS[nIndex];
+                try
+                {
+                    /* Skip over inactive connections. */
+                    if(!dt->CONNECTIONS[nIndex])
+                        continue;
 
-                /* Skip over inactive connections. */
-                if(!pNode || !pNode->Connected())
-                    continue;
+                    /* Skip over exclusion address. */
+                    if(dt->CONNECTIONS[nIndex]->GetAddress() == addrExclude)
+                        continue;
 
-                /* Skip over exclusion address. */
-                if(pNode->GetAddress() == addrExclude)
-                    continue;
+                    /* Push the active connection. */
+                    if(dt->CONNECTIONS[nIndex]->nLatency < nLatency)
+                    {
+                        nLatency = dt->CONNECTIONS[nIndex]->nLatency;
 
-                /* Push the active connection. */
-                if(!pBest || pNode->nLatency < pBest->nLatency)
-                    pBest = pNode;
+                        nRetThread = nThread;
+                        nRetIndex  = nIndex;
+                    }
+                }
+                catch(std::runtime_error e)
+                {
+                    debug::error(FUNCTION, e.what());
+                }
             }
         }
 
-        return pBest;
+        return DATA_THREADS[nRetThread]->CONNECTIONS[nRetIndex];
     }
 
 
@@ -506,8 +490,8 @@ namespace LLP
                     /* Get the data thread. */
                     DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
+                    /* Accept an incoming connection. */
                     dt->AddConnection(sockNew, DDOS_MAP[addr]);
-
 
                     /* Verbose output. */
                     debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ",  PORT);

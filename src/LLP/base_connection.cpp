@@ -125,15 +125,17 @@ namespace LLP
     template <class PacketType>
     void BaseConnection<PacketType>::WritePacket(const PacketType& PACKET)
     {
+        /* Get the bytes of the packet. */
+        std::vector<uint8_t> vBytes = PACKET.GetBytes();
+
         /* Debug dump of message type. */
-        debug::log(3, NODE "Sent Message (", PACKET.GetBytes().size(), " bytes)");
+        debug::log(3, NODE "Sent Message (", vBytes.size(), " bytes)");
 
         /* Debug dump of packet data. */
         if(config::GetArg("-verbose", 0) >= 5)
-            PrintHex(PACKET.GetBytes());
+            PrintHex(vBytes);
 
         /* Write the packet to socket buffer. */
-        std::vector<uint8_t> vBytes = PACKET.GetBytes();
         Write(vBytes, vBytes.size());
     }
 
@@ -160,13 +162,6 @@ namespace LLP
         }
 
         return false;
-    }
-
-
-    template <class PacketType>
-    BaseAddress BaseConnection<PacketType>::GetAddress() const
-    {
-        return addr;
     }
 
 

@@ -18,6 +18,11 @@ namespace LLD
 
     /** Default Constructor **/
     SectorTransaction::SectorTransaction()
+    : mapTransactions()
+    , mapOriginalData()
+    , mapKeychain()
+    , mapIndex()
+    , mapEraseData()
     {
     }
 
@@ -31,25 +36,26 @@ namespace LLD
     /*  Function to Erase a Key from the Keychain. */
     bool SectorTransaction::EraseTransaction(const std::vector<uint8_t> &vKey)
     {
+        /* Add the erased data to the map. */
         mapEraseData[vKey] = 0;
+
+        /* Delete from transactions map if exists. */
         if(mapTransactions.count(vKey))
             mapTransactions.erase(vKey);
 
+        /* Delete from original data if exists. */
+        if(mapOriginalData.count(vKey))
+            mapOriginalData.erase(vKey);
+
+        /* Delete from keychain if exists. */
         if(mapKeychain.count(vKey))
             mapKeychain.erase(vKey);
 
+        /* Delete from indexes if exists. */
         if(mapIndex.count(vKey))
             mapIndex.erase(vKey);
 
         return true;
-    }
-
-
-    uint512_t SectorTransaction::GetHash() const
-    {
-        uint512_t hashTransaction;
-
-        return hashTransaction;
     }
 
 }

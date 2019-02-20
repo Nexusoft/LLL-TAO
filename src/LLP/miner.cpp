@@ -243,7 +243,7 @@ namespace LLP
                 debug::log(2, FUNCTION, "Mining LLP: New Connection from ", GetAddress().ToStringIP());
                 return;
             }
-            
+
 
             /* On Disconnect Event, Reduce the Connection Count for Daemon */
             case EVENT_DISCONNECT:
@@ -331,10 +331,10 @@ namespace LLP
 
             case SET_COINBASE:
             {
-                uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest, nChannel, 0);
+                uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel, 0);
 
                 /** Deserialize the Coinbase Transaction. **/
-        
+
                 /** Bytes 1 - 8 is the Pool Fee for that Round. **/
                 uint64_t nPoolFee  = convert::bytes2uint64(PACKET.DATA, 1);
 
@@ -379,14 +379,14 @@ namespace LLP
                     respond(COINBASE_SET);
                     debug::log(2, "***** Mining LLP: Coinbase Set") ;
                     /* set the global coinbase, null the base block, and then call check_best_height
-                       which in turn will generate a new base block using the new coinbase */ 
+                       which in turn will generate a new base block using the new coinbase */
                     pCoinbaseTx = pCoinbase;
                     pBaseBlock->SetNull();
 
                     check_best_height();
                 }
-                
-        
+
+
                 return true;
             }
 
@@ -428,7 +428,7 @@ namespace LLP
 
             case GET_REWARD:
             {
-                uint64_t nCoinbaseReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest, nChannel, 0);
+                uint64_t nCoinbaseReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel, 0);
 
                 respond(BLOCK_REWARD, 8, convert::uint2bytes64(nCoinbaseReward));
 

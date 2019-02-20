@@ -39,6 +39,8 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/filesystem.h>
 
+#include <Util/include/memory.h>
+
 #include <Legacy/include/ambassador.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>

@@ -56,6 +56,22 @@ namespace Legacy
         return stakeMinter;
     }
 
+    /** Default constructor **/
+    StakeMinter::StakeMinter()
+    : pStakingWallet(nullptr)
+    , trustKey(TAO::Ledger::TrustKey())
+    , pReservedTrustKey(nullptr)
+    , candidateBlock(LegacyBlock())
+    , hashLastBlock(0)
+    , nSleepTime(1000)
+    , fIsWaitPeriod(false)
+    , nTrustWeight(0.0)
+    , nBlockWeight(0.0)
+    , nStakeRate(0.0)
+    {
+        StakeMinter::minterThread = std::thread(std::bind(StakeMinter::StakeMinterThread, this));
+    }
+
 
     /* Destructor signals the stake minter thread to shut down and waits for it to join */
     StakeMinter::~StakeMinter()
@@ -64,6 +80,9 @@ namespace Legacy
             LOCK(StakeMinter::cs_stakeMinter);
             StakeMinter::fdestructMinter = true;
         }
+
+        if(StakeMinter::minterThread.joinable())
+            StakeMinter::minterThread.join();
 
         //StakeMinter::minterThread.join();
 
@@ -372,7 +391,7 @@ namespace Legacy
             }
 
             /* Calculate time since the last trust block for this trust key (block age = age of previous trust block). */
-            uint32_t nBlockAge = TAO::Ledger::ChainState::stateBest.GetBlockTime() - prevBlockState.GetBlockTime();
+            uint32_t nBlockAge = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() - prevBlockState.GetBlockTime();
             uint32_t nMaxTrustScore = (60 * 60 * 24 * 28 * 13);
             uint32_t nMaxBlockAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
 
@@ -571,7 +590,7 @@ namespace Legacy
         /* Search for the proof of stake hash solution until it mines a block, minter is stopped,
          * or network generates a new block (minter must start over with new candidate)
          */
-        while (!fstop && !config::fShutdown.load() && hashLastBlock == TAO::Ledger::ChainState::hashBestChain)
+        while (!fstop && !config::fShutdown.load() && hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
         {
             /* Update the block time for difficulty accuracy. */
             candidateBlock.UpdateTime();
@@ -648,7 +667,7 @@ namespace Legacy
             return debug::error(FUNCTION, "Check state failed");
 
         /* Check the stake. */
-        if (!candidateBlock.vtx[0].CheckTrust(TAO::Ledger::ChainState::stateBest))
+        if (!candidateBlock.vtx[0].CheckTrust(TAO::Ledger::ChainState::stateBest.load()))
             return debug::error(FUNCTION, "Check trust failed");
 
         /* Check the work for the block.
@@ -699,12 +718,6 @@ namespace Legacy
         {
             debug::error(FUNCTION, "Stake minter disabled if not in -beta mode");
 
-            return;
-        }
-
-        if( !config::GetBoolArg("-legacy"))
-        {
-            debug::log(0, FUNCTION, "Staking Disabled - staking only available in legacy mode");
             return;
         }
 
@@ -783,7 +796,7 @@ namespace Legacy
                 return;
 
             /* Save the current best block hash immediately in case it change while we do setup */
-            pStakeMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain;
+            pStakeMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain.load();
 
             /* Set up the candidate block the minter is attempting to mine */
             if (!pStakeMinter->CreateCandidateBlock())

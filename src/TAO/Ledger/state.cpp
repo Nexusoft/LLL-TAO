@@ -213,7 +213,7 @@ namespace TAO
             {
                 hashCheckpoint = GetHash();
 
-                debug::log(0, "===== New Pending Checkpoint Hash = ", hashCheckpoint.ToString().substr(0, 15));
+                debug::log(1, "===== New Pending Checkpoint Hash = ", hashCheckpoint.ToString().substr(0, 15));
             }
             else
             {
@@ -233,7 +233,7 @@ namespace TAO
 
 
             /* Signal to set the best chain. */
-            if(nChainTrust > ChainState::nBestChainTrust)
+            if(nChainTrust > ChainState::nBestChainTrust.load())
                 if(!SetBest())
                     return debug::error(FUNCTION, "failed to set best chain");
 
@@ -243,7 +243,7 @@ namespace TAO
 
 
             /* Debug output. */
-            debug::log(0, FUNCTION, "ACCEPTED");
+            debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "ACCEPTED");
 
             return true;
         }
@@ -272,7 +272,7 @@ namespace TAO
             else
             {
                 /* Get initial block states. */
-                BlockState fork   = ChainState::stateBest;
+                BlockState fork   = ChainState::stateBest.load();
                 BlockState longer = *this;
 
                 /* Get the blocks to connect and disconnect. */
@@ -289,7 +289,12 @@ namespace TAO
                         /* Iterate backwards in chain. */
                         longer = longer.Prev();
                         if(!longer)
+                        {
+                            /* Abort the Transaction. */
+                            LLD::TxnAbort();
+
                             return debug::error(FUNCTION, "failed to find longer ancestor block");
+                        }
                     }
 
                     /* Break if found. */
@@ -314,7 +319,7 @@ namespace TAO
                 {
                     debug::log(0, FUNCTION, "REORGANIZE: Disconnect ", vDisconnect.size(),
                         " blocks; ", fork.GetHash().ToString().substr(0,20),
-                        "..",  ChainState::stateBest.GetHash().ToString().substr(0,20));
+                        "..",  ChainState::stateBest.load().GetHash().ToString().substr(0,20));
 
                     debug::log(0, FUNCTION, "REORGANIZE: Connect ", vConnect.size(), " blocks; ", fork.GetHash().ToString().substr(0,20),
                         "..", this->GetHash().ToString().substr(0,20));
@@ -328,6 +333,10 @@ namespace TAO
                 std::vector<Legacy::Transaction> vLegacyResurrect;
                 for(auto& state : vDisconnect)
                 {
+                    /* Output the block state if flagged. */
+                    if(config::GetBoolArg("-printstate"))
+                        debug::log(0, state.ToString(debug::flags::header | debug::flags::tx));
+
                     /* Add transactions into memory pool. */
                     if(!vConnect.empty())
                     {
@@ -373,7 +382,7 @@ namespace TAO
                     if(vConnect.empty())
                     {
                         LLD::legDB->EraseBlock(state.GetHash());
-                        LLD::legDB->EraseIndex(state.nHeight);
+                        //LLD::legDB->EraseIndex(state.nHeight);
                     }
                 }
 
@@ -399,6 +408,10 @@ namespace TAO
                 std::reverse(vConnect.begin(), vConnect.end());
                 for(auto& state : vConnect)
                 {
+                    /* Output the block state if flagged. */
+                    if(config::GetBoolArg("-printstate"))
+                        debug::log(0, state.ToString(debug::flags::header | debug::flags::tx));
+
                     /* Connect the block. */
                     if(!state.Connect())
                     {
@@ -416,10 +429,6 @@ namespace TAO
 
                     /* Harden a checkpoint if there is any. */
                     HardenCheckpoint(Prev());
-
-                    /* Output the block state if flagged. */
-                    if(config::GetBoolArg("-printstate"))
-                        debug::log(0, state.ToString(debug::flags::header | debug::flags::tx));
                 }
 
 
@@ -436,15 +445,15 @@ namespace TAO
 
 
                 /* Write the best chain pointer. */
-                if(!LLD::legDB->WriteBestChain(ChainState::hashBestChain))
+                if(!LLD::legDB->WriteBestChain(ChainState::hashBestChain.load()))
                     return debug::error(FUNCTION, "failed to write best chain");
 
 
                 /* Debug output about the best chain. */
-                debug::log(0, FUNCTION,
+                debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
                     "New Best Block hash=", GetHash().ToString().substr(0, 20),
-                    " height=", ChainState::nBestHeight,
-                    " trust=", ChainState::nBestChainTrust,
+                    " height=", ChainState::nBestHeight.load(),
+                    " trust=", ChainState::nBestChainTrust.load(),
                     " [verified in ", time.ElapsedMilliseconds(), " ms]",
                     " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
 
@@ -457,12 +466,12 @@ namespace TAO
                     std::string strCmd = config::GetArg("-blocknotify", "");
                     if (!strCmd.empty())
                     {
-                        replace_all(strCmd, "%s", ChainState::hashBestChain.GetHex());
+                        replace_all(strCmd, "%s", ChainState::hashBestChain.load().GetHex());
                         std::thread t(runtime::command, strCmd);
                     }
 
                     /* Create the inventory object. */
-                    std::vector<LLP::CInv> vInv = { LLP::CInv(ChainState::hashBestChain, LLP::MSG_BLOCK) };
+                    std::vector<LLP::CInv> vInv = { LLP::CInv(ChainState::hashBestChain.load(), LLP::MSG_BLOCK) };
 
                     /* Relay the new block to all connected nodes. */
                     if(LLP::LEGACY_SERVER)
@@ -592,7 +601,7 @@ namespace TAO
             nMoneySupply = (prev.IsNull() ? 0 : prev.nMoneySupply) + nMint;
 
             /* Log how much was generated / destroyed. */
-            debug::log(0, FUNCTION, nMint > 0 ? "Generated " : "Destroyed ", std::fixed, (double)nMint / Legacy::COIN, " Nexus | Money Supply ", std::fixed, (double)nMoneySupply / Legacy::COIN);
+            debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, nMint > 0 ? "Generated " : "Destroyed ", std::fixed, (double)nMint / Legacy::COIN, " Nexus | Money Supply ", std::fixed, (double)nMoneySupply / Legacy::COIN);
 
             /* Write the updated block state to disk. */
             if(!LLD::legDB->WriteBlock(GetHash(), *this))
@@ -693,7 +702,7 @@ namespace TAO
         /* Function to determine if this block has been connected into the main chain. */
         bool BlockState::IsInMainChain() const
         {
-            return (hashNextBlock != 0 || GetHash() == ChainState::hashBestChain);
+            return (hashNextBlock != 0 || GetHash() == ChainState::hashBestChain.load());
         }
 
 

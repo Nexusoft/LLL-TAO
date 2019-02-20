@@ -40,7 +40,7 @@ namespace Legacy
         if (!blockState.IsInMainChain())
             return 0;
 
-        return TAO::Ledger::ChainState::nBestHeight - blockState.nHeight + 1;
+        return TAO::Ledger::ChainState::nBestHeight.load() - blockState.nHeight + 1;
 
     }
 

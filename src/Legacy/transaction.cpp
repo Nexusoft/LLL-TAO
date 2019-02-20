@@ -78,7 +78,7 @@ namespace Legacy
 			return true;
 
 		if (nBlockHeight == 0)
-			nBlockHeight = TAO::Ledger::ChainState::nBestHeight;
+			nBlockHeight = TAO::Ledger::ChainState::nBestHeight.load();
 
 		if (nBlockTime == 0)
 			nBlockTime = runtime::unifiedtimestamp();
@@ -996,11 +996,11 @@ namespace Legacy
                 return debug::error(FUNCTION, "version 4 block sequence number is ", nSequence);
 
             /* Ensure that a version 4 trust key is not expired based on new timespan rules. */
-            if(trustKey.Expired(TAO::Ledger::ChainState::stateBest))
-                return debug::error("version 4 key expired ", trustKey.BlockAge(TAO::Ledger::ChainState::stateBest));
+            if(trustKey.Expired(TAO::Ledger::ChainState::stateBest.load()))
+                return debug::error("version 4 key expired ", trustKey.BlockAge(TAO::Ledger::ChainState::stateBest.load()));
 
             /* Score is the total age of the trust key for version 4. */
-            nScorePrev = trustKey.Age(TAO::Ledger::ChainState::stateBest.GetBlockTime());
+            nScorePrev = trustKey.Age(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
         }
 
         /* Version 5 blocks that are trust must pass sequence checks. */

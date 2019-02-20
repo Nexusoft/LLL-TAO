@@ -1208,7 +1208,7 @@ namespace TAO
                     throw APIException(-8, "Invalid parameter");
             }
 
-            int depth = nBlockHeight ? (1 + TAO::Ledger::ChainState::nBestHeight - nBlockHeight) : -1;
+            int depth = nBlockHeight ? (1 + TAO::Ledger::ChainState::nBestHeight.load() - nBlockHeight) : -1;
 
             json::json transactions = json::json::array();
 
