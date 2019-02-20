@@ -25,6 +25,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/trust.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/tritium.h> //for LEGACY_TX enum
@@ -273,11 +274,19 @@ namespace Legacy
     bool StakeMinter::CreateCandidateBlock()
     {
         /* Use appropriate settings for Testnet or Mainnet */
-        uint32_t nMaxTrustScore = config::fTestNet ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX;
-        uint32_t nMaxBlockAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
-        uint32_t nMinimumInterval = config::fTestNet ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL : TAO::Ledger::MAINNET_MINIMUM_INTERVAL;
+        static const uint32_t nMaxTrustScore = config::fTestNet ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX;
+        static const uint32_t nMaxBlockAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
 
         static uint32_t nWaitCounter = 0; //Prevents log spam during wait period
+
+        /* New Mainnet interval will go into effect with activation of v7. Can't be static so it goes live immediately (can update after activation) */
+        const uint32_t nMinimumInterval = config::fTestNet 
+                                            ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL 
+                                            : (TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7) 
+                                                ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY
+                                                : (runtime::timestamp() > TAO::Ledger::NETWORK_VERSION_TIMELOCK[5]) 
+                                                        ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL 
+                                                        : TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY;
 
         /* Create the block to work on.
          * Don't just reset old block. May still have a reference to it floating around in process of relaying it.
@@ -335,7 +344,7 @@ namespace Legacy
             /* Enforce the minimum staking transaction interval. */
             if ((candidateBlock.nHeight - prevBlockState.nHeight) < nMinimumInterval)
             {
-                /* Below minimum interval. Previous stake block still maturing. Increase sleep time until can continue normally. */
+                /* Below minimum interval for generating stake blocks. Increase sleep time until can continue normally. */
                 nSleepTime = 5000; //5 second wait is reset below (can't sleep too long or will hang until wakes up on shutdown)
                 return false;
             }
@@ -431,7 +440,7 @@ namespace Legacy
             nSleepTime = 5000;
 
             /* Update log every 60 iterations (5 minutes) */
-            if (nWaitCounter % 60)
+            if ((nWaitCounter % 60) == 0)
                 debug::log(0, FUNCTION, "Wallet has no balance or no spendable inputs available.");
 
             nWaitCounter++;
@@ -460,9 +469,9 @@ namespace Legacy
         static const double LOG3 = log(3); // Constant for use in calculations
 
         /* Use appropriate settings for Testnet or Mainnet */
-        uint32_t nTrustWeightBase = config::fTestNet ? TAO::Ledger::TRUST_WEIGHT_BASE_TESTNET : TAO::Ledger::TRUST_WEIGHT_BASE;
-        uint32_t nMaxBlockAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
-        uint32_t nMinimumCoinAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
+        static const uint32_t nTrustWeightBase = config::fTestNet ? TAO::Ledger::TRUST_WEIGHT_BASE_TESTNET : TAO::Ledger::TRUST_WEIGHT_BASE;
+        static const uint32_t nMaxBlockAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
+        static const uint32_t nMinimumCoinAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
 
         /* Use local variables for calculations, then set instance variables with a lock scope at the end */
         double nCurrentTrustWeight = 0.0;
@@ -526,7 +535,7 @@ namespace Legacy
                 nSleepTime = 5000;
 
                 /* Update log every 60 iterations (5 minutes) */
-                if (nWaitCounter % 60)
+                if ((nWaitCounter % 60) == 0)
                 {
 					uint32_t nRemainingWaitTime = (nMinimumCoinAge - nCoinAge) / 60; //minutes
 

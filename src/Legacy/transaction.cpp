@@ -959,7 +959,15 @@ namespace Legacy
             return debug::error(FUNCTION, "last state coinstake tx not found");
 
         /* Enforce the minimum trust key interval of 120 blocks. */
-        if(state.nHeight - stateLast.nHeight < (config::fTestNet ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL : TAO::Ledger::MAINNET_MINIMUM_INTERVAL))
+        const uint32_t nMinimumInterval = config::fTestNet 
+                                            ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL 
+                                            : (TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7) 
+                                                ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY
+                                                : (runtime::timestamp() > TAO::Ledger::NETWORK_VERSION_TIMELOCK[5]) 
+                                                        ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL 
+                                                        : TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY;
+
+        if(state.nHeight - stateLast.nHeight < nMinimumInterval)
             return debug::error(FUNCTION, "trust key interval below minimum interval ", state.nHeight - stateLast.nHeight);
 
         /* Extract the last trust key */

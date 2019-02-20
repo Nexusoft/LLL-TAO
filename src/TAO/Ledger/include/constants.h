@@ -107,8 +107,12 @@ namespace TAO
         const uint32_t TESTNET_MINIMUM_INTERVAL = 3;
 
 
+        /** Minimum span between trust blocks, legacy mainnet (allows validation of stake blocks from legacy wallets during transition period). **/
+        const uint32_t MAINNET_MINIMUM_INTERVAL_LEGACY = 120;
+
+
         /** Minimum span between trust blocks mainnet. **/
-        const uint32_t MAINNET_MINIMUM_INTERVAL = 120;
+        const uint32_t MAINNET_MINIMUM_INTERVAL = 250;
 
 
         /** Set the Maximum Output Value of Coinstake Transaction. **/

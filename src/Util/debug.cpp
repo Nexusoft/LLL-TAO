@@ -147,23 +147,15 @@ namespace debug
         config::ReadConfigFile(mapBasicConfig, mapMultiConfig);
 
         std::string confFileParams = "";
-        bool fHaveOne = false;
 
         for (const auto& argItem : mapMultiConfig)
         {
             for (int i = 0; i < argItem.second.size(); i++)
             {
-                if (fHaveOne)
-                    confFileParams += ", ";
-            
-                confFileParams += argItem.first + "=";
+                confFileParams += argItem.first;
 
-                if (argItem.second[i].empty())
-                    confFileParams += "true";
-                else 
-                    confFileParams += argItem.second[i];
-
-                fHaveOne = true;
+                if (!argItem.second[i].empty())
+                    confFileParams += "=" + argItem.second[i];
             }
         }
 
