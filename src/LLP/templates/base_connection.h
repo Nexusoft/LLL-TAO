@@ -69,7 +69,7 @@ namespace LLP
 
 
         /** Latency in Milliseconds to determine a node's reliability. **/
-        uint32_t nLatency; //milli-seconds
+        std::atomic<uint32_t> nLatency; //milli-seconds
 
 
         /** Flag to Determine if DDOS is Enabled. **/
@@ -161,13 +161,6 @@ namespace LLP
          */
         bool Connect(std::string strAddress, uint16_t nPort);
 
-
-        /** GetAddress
-         *
-         *  Returns the address of socket.
-         *
-         **/
-        BaseAddress GetAddress() const;
 
 
         /** Disconnect

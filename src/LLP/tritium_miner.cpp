@@ -86,11 +86,13 @@ namespace LLP
          /*  make a copy of the base block before making the hash  unique for this requst*/
          uint1024_t proof_hash;
          uint32_t s = static_cast<uint32_t>(mapBlocks.size());
-         TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
 
-         /* Update base block member variables */
-         TAO::Ledger::Block *pBase = static_cast<TAO::Ledger::Block *>(pBlock);
-         *pBase = *pBaseBlock;
+         /* Get a pointer to the derived class block */
+         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(pBaseBlock);
+
+
+         /* Set it to a null state */
+         pBlock->SetNull();
 
 
          /* We need to make the block hash unique for each subsribed miner so that they are not
@@ -185,7 +187,6 @@ namespace LLP
      /** validates the block for the derived miner class. **/
      bool TritiumMiner::sign_block(uint64_t nonce, const uint512_t &merkle_root)
      {
-
          /* Create the pointer to the heap. */
          TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[merkle_root]);
          pBlock->nNonce = nonce;
@@ -219,14 +220,14 @@ namespace LLP
      /*  Determines if the mining wallet is unlocked. */
      bool TritiumMiner::is_locked()
      {
+         //TODO: add more relevant checks here
+
          /* No mining when user is not logged in */
          if(PIN == "")
          {
              debug::error(FUNCTION, Name(), " Cannot mine while user is not logged in.");
              return true;
          }
-
-         //TODO: add more relevant checks here
 
         return false;
      }

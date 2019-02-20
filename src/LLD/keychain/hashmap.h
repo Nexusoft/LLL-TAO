@@ -185,6 +185,18 @@ namespace LLD
         bool Put(const SectorKey& cKey);
 
 
+        /** Restore
+         *
+         *  Restore an erased key from keychain.
+         *
+         *  @param[in] vKey the key to restore.
+         *
+         *  @return True if the key was restored.
+         *
+         **/
+        bool Restore(const std::vector<uint8_t> &vKey);
+        
+
         /** Erase
          *
          *  Erase a key from the disk hashmaps.

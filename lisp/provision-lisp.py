@@ -45,9 +45,11 @@ def allocate_eids():
 # Get IP address on interface.
 #
 def get_rloc(device):
-    addr = commands.getoutput('ifconfig {} | egrep "inet "'.format(device))
+    cmd = 'ip addr show dev {} | egrep "inet " | egrep "brd "'.format(device)
+    addr = commands.getoutput(cmd)
     if (addr == ""): return(None)
-    return(addr.split()[1])
+    addr = addr.split()[1]
+    return(addr.split("/")[0])
 #enddef
 
 #
@@ -126,6 +128,7 @@ if (provision):
     lisp_config = lisp_config.replace("<v4-eid>", eid4)
     lisp_config = lisp_config.replace("<v6-eid>", eid6)
     lisp_config = lisp_config.replace("<v4-rloc>", rloc)
+    lisp_config = lisp_config.replace("<device>", device)
     f = open("./lisp.config", "w"); f.write(lisp_config); f.close()
 else:
     iid, eid4, eid6 = get_eids(lisp_config)

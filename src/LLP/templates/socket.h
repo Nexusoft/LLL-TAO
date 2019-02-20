@@ -37,21 +37,22 @@ namespace LLP
     private:
 
         /** Mutex for thread synchronization. **/
-        mutable std::mutex MUTEX;
+        mutable std::mutex PACKET_MUTEX;
+        mutable std::mutex DATA_MUTEX;
 
     protected:
 
 
         /** The error codes for socket. **/
-        int32_t nError;
+        std::atomic<int32_t> nError;
 
 
         /** Keep track of last time data was sent. **/
-        uint32_t nLastSend;
+        std::atomic<uint32_t> nLastSend;
 
 
         /** Keep track of last time data was received. **/
-        uint32_t nLastRecv;
+        std::atomic<uint32_t> nLastRecv;
 
 
         /** Oversize buffer for large packets. **/
@@ -85,6 +86,14 @@ namespace LLP
 
         /** Destructor for socket **/
         virtual ~Socket();
+
+
+        /** GetAddress
+         *
+         *  Returns the address of the socket.
+         *
+         **/
+        BaseAddress GetAddress() const;
 
 
         /** Reset

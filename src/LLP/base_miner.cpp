@@ -282,7 +282,7 @@ namespace LLP
 
             case SET_COINBASE:
             {
-                uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest, nChannel, 0);
+                uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel, 0);
 
                 /** Deserialize the Coinbase Transaction. **/
 
@@ -381,7 +381,7 @@ namespace LLP
 
             case GET_REWARD:
             {
-                uint64_t nCoinbaseReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest, nChannel, 0);
+                uint64_t nCoinbaseReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel, 0);
 
                 respond(BLOCK_REWARD, 8, convert::uint2bytes64(nCoinbaseReward));
 
@@ -426,15 +426,18 @@ namespace LLP
             /* Submit a block using the merkle root as the key. */
             case SUBMIT_BLOCK:
             {
+                uint512_t hashMerkleRoot;
+                uint64_t nonce = 0;
+
+
+                /* Get the merkle root. */
+                hashMerkleRoot.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
+
+                /* Get the nonce */
+                nonce = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
+
                 {
                     LOCK(BLOCK_MUTEX);
-                    /* Get the merkle root. */
-                    uint512_t hashMerkleRoot;
-                    hashMerkleRoot.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
-
-                    /* Get the nonce */
-                    uint64_t nonce = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
-
 
                     /* find, sign, and validate the submitted block */
                     if(!find_block(hashMerkleRoot)

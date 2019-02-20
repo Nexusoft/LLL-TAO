@@ -70,7 +70,7 @@ namespace TAO
         , nBits(block.nBits)
         , nNonce(block.nNonce)
         , nTime(block.nTime)
-        , vchBlockSig(block.vchBlockSig)
+        , vchBlockSig(block.vchBlockSig.begin(), block.vchBlockSig.end())
         {
         }
 
@@ -85,7 +85,7 @@ namespace TAO
         , nBits(block.nBits)
         , nNonce(block.nNonce)
         , nTime(block.nTime)
-        , vchBlockSig(block.vchBlockSig)
+        , vchBlockSig(block.vchBlockSig.begin(), block.vchBlockSig.end())
         {
         }
 
@@ -219,6 +219,7 @@ namespace TAO
             return (vMerkleTree.empty() ? 0 : vMerkleTree.back());
         }
 
+
         /* Dump the Block data to Console / Debug.log. */
         void Block::print() const
         {
@@ -298,6 +299,7 @@ namespace TAO
             return key.Verify((nVersion == 4) ? SignatureHash() : GetHash(), vchBlockSig, 1024);
         }
 
+
         /* Generates the StakeHash for this block from a uint256_t hashGenesis*/
         uint1024_t Block::StakeHash(bool fIsGenesis, const uint256_t &hashGenesis) const
         {
@@ -322,6 +324,7 @@ namespace TAO
 
             return LLC::SK1024(ss.begin(), ss.end());
         }
+
 
         /* Generates the StakeHash for this block from a uint256_t hashGenesis*/
         uint1024_t Block::StakeHash(bool fIsGenesis, const uint576_t &trustKey) const

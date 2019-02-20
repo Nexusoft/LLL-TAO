@@ -83,6 +83,26 @@ namespace LLD
         }
 
 
+        /** ReadBestChain
+         *
+         *  Reads the best chain pointer from the ledger DB.
+         *
+         *  @param[out] atomicBest The best chain hash to read in atomic form.
+         *
+         *  @return True if the read was successful, false otherwise.
+         *
+         **/
+        bool ReadBestChain(memory::atomic<uint1024_t>& atomicBest)
+        {
+            uint1024_t hashBest = 0;
+            if(!Read(std::string("hashbestchain"), hashBest))
+                return false;
+
+            atomicBest.store(hashBest);
+            return true;
+        }
+
+
         /** WriteTx
          *
          *  Writes a transaction to the ledger DB.
@@ -443,6 +463,27 @@ namespace LLD
         bool ReadBlock(const uint1024_t& hashBlock, TAO::Ledger::BlockState& state)
         {
             return Read(hashBlock, state);
+        }
+
+
+        /** ReadBlock
+         *
+         *  Reads a block state object from disk for an atomic object.
+         *
+         *  @param[in] hashBlock The block hash to read.
+         *  @param[in] atomicState The block state object to read in atomic form.
+         *
+         *  @return True if the read was successful, false otherwise.
+         *
+         **/
+        bool ReadBlock(const uint1024_t& hashBlock, memory::atomic<TAO::Ledger::BlockState>& atomicState)
+        {
+            TAO::Ledger::BlockState state;
+            if(!Read(hashBlock, state))
+                return false;
+
+            atomicState.store(state);
+            return true;
         }
 
 

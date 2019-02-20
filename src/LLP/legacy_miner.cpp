@@ -76,12 +76,12 @@ namespace LLP
          /*  make a copy of the base block before making the hash  unique for this requst*/
          uint1024_t proof_hash;
          uint32_t s = static_cast<uint32_t>(mapBlocks.size());
-         Legacy::LegacyBlock *pBlock = new Legacy::LegacyBlock();
 
-         /* Update base block member variables */
-         TAO::Ledger::Block *pBase = static_cast<TAO::Ledger::Block *>(pBlock);
-         *pBase = *pBaseBlock;
+         /* Get a pointer to the derived class block */
+         Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(pBaseBlock);
 
+         /* Set it to a null state */
+         pBlock->SetNull();
 
          /* We need to make the block hash unique for each subsribed miner so that they are not
              duplicating their work.  To achieve this we take a copy of pBaseblock and then modify
@@ -92,18 +92,8 @@ namespace LLP
              and is less than 1024 bits*/
          for(uint32_t i = s; ; ++i)
          {
-             pBlock->vtx[0].vin[0].scriptSig = (Legacy::Script() <<  (uint64_t)((i+1) * 513513512151));
-
-             /* Rebuild the merkle tree. */
-             std::vector<uint512_t> vMerkleTree;
-             for(const auto& tx : pBlock->vtx)
-                 vMerkleTree.push_back(tx.GetHash());
-
-
-             pBlock->hashMerkleRoot = pBlock->BuildMerkleTree(vMerkleTree);
-
-             /* Update the time. */
-             pBlock->UpdateTime();
+             if(!Legacy::CreateLegacyBlock(*pMiningKey, pCoinbaseTx, nChannel, i, *pBlock))
+                 debug::error(FUNCTION, "Failed to create a new block.");
 
              /* skip if not prime channel or version less than 5 */
              if(nChannel != 1 || pBlock->nVersion >= 5)
@@ -168,23 +158,23 @@ namespace LLP
      /** validates the block for the derived miner class. **/
      bool LegacyMiner::sign_block(uint64_t nonce, const uint512_t &merkle_root)
      {
-         //Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(mapBlocks[merkle_root]);
+         Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(mapBlocks[merkle_root]);
 
-         //pBlock->nNonce = nonce;
-         //pBlock->UpdateTime();
-         //pBlock->print();
+         pBlock->nNonce = nonce;
+         pBlock->UpdateTime();
+         pBlock->print();
 
-         //if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
-         //{
-        //     debug::log(2, "***** Mining LLP: Unable to Sign block ", merkle_root.ToString().substr(0, 20));
+         if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
+         {
+             debug::log(2, "***** Mining LLP: Unable to Sign block ", merkle_root.ToString().substr(0, 20));
 
              return false;
-         //}
+         }
 
          /* Tell the wallet to keep this key */
-         //pMiningKey->KeepKey();
+         pMiningKey->KeepKey();
 
-        // return true;
+         return true;
      }
 
 
