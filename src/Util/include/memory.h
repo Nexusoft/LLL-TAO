@@ -208,8 +208,8 @@ namespace memory
          *
          **/
         lock_proxy(TypeName* pData, std::mutex& MUTEX_IN)
-        : data(pData)
-        , MUTEX(MUTEX_IN)
+        : MUTEX(MUTEX_IN)
+        , data(pData)
         {
         }
 

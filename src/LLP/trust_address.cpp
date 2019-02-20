@@ -41,6 +41,7 @@ namespace LLP
     , nFailed(0)
     , nFails(0)
     , nLatency(std::numeric_limits<uint32_t>::max())
+    , nHeight(0)
     , nState(static_cast<uint8_t>(ConnectState::NEW))
     , nType(0)
     {
@@ -57,6 +58,7 @@ namespace LLP
     , nFailed(other.nFailed)
     , nFails(other.nFails)
     , nLatency(other.nLatency)
+    , nHeight(other.nHeight)
     , nState(other.nState)
     , nType(0)
     {
@@ -77,6 +79,7 @@ namespace LLP
     , nFailed(0)
     , nFails(0)
     , nLatency(std::numeric_limits<uint32_t>::max())
+    , nHeight(0)
     , nState(static_cast<uint8_t>(ConnectState::NEW))
     , nType(0)
     {
@@ -104,6 +107,7 @@ namespace LLP
         this->nFailed = other.nFailed;
         this->nFails = other.nFails;
         this->nLatency = other.nLatency;
+        this->nHeight = other.nHeight;
         this->nState = other.nState;
         this->nType = other.nType;
 
@@ -124,6 +128,7 @@ namespace LLP
         this->nFailed = 0;
         this->nFails = 0;
         this->nLatency = std::numeric_limits<uint32_t>::max();
+        this->nHeight = 0;
         this->nState = static_cast<uint8_t>(ConnectState::NEW);
         this->nType = 0;
 
@@ -162,6 +167,7 @@ namespace LLP
         debug::log(0, ":\t", "nFailed=", nFailed);
         debug::log(0, ":\t", "nFails=", nFails);
         debug::log(0, ":\t", "nLatency=", nLatency);
+        debug::log(0, ":\t", "nHeight=", nHeight);
         debug::log(0, ":\t", "nState=",  static_cast<uint32_t>(nState));
         debug::log(0, ":\t", "nType=", static_cast<uint32_t>(nType));
     }

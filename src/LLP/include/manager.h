@@ -174,14 +174,24 @@ namespace LLP
 
         /** SetLatency
          *
-         *  Finds the managed address info and sets the latency experienced by
-         *  that address.
+         *  Finds the trust address and sets it's updated latency.
          *
          *  @param[in] lat The latency, in milliseconds
          *  @param[in] addr The address in reference to
          *
          **/
         void SetLatency(uint32_t lat, const BaseAddress &addr);
+
+
+        /** SetHeight
+         *
+         *  Finds the trust address and sets it's updated block height.
+         *
+         *  @param[in] lat The latency, in milliseconds
+         *  @param[in] addr The address in reference to
+         *
+         **/
+        void SetHeight(uint32_t height, const BaseAddress &addr);
 
 
         /** StochasticSelect
