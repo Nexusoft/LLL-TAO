@@ -126,6 +126,7 @@ if (provision):
     lisp_config = lisp_config.replace("<v4-eid>", eid4)
     lisp_config = lisp_config.replace("<v6-eid>", eid6)
     lisp_config = lisp_config.replace("<v4-rloc>", rloc)
+    lisp_config = lisp_config.replace("<device>", device)
     f = open("./lisp.config", "w"); f.write(lisp_config); f.close()
 else:
     iid, eid4, eid6 = get_eids(lisp_config)
