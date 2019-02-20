@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <cstdint>
 #include <Util/include/mutex.h>
+#include <Util/include/debug.h>
 
 namespace memory
 {
@@ -179,6 +180,66 @@ namespace memory
     };
 
 
+    /** lock_proxy
+     *
+     *  Temporary class that unlocks a mutex when outside of scope.
+     *  Useful for protecting member access to a raw pointer.
+     *
+     **/
+    template <class TypeName>
+    class lock_proxy
+    {
+        /** Reference of the mutex. **/
+        std::mutex& MUTEX;
+
+
+        /** The pointer being locked. **/
+        TypeName* data;
+
+
+    public:
+
+        /** Basic constructor
+         *
+         *  Assign the pointer and reference to the mutex.
+         *
+         *  @param[in] pData The pointer to shallow copy
+         *  @param[in] MUTEX_IN The mutex reference
+         *
+         **/
+        lock_proxy(TypeName* pData, std::mutex& MUTEX_IN)
+        : data(pData)
+        , MUTEX(MUTEX_IN)
+        {
+        }
+
+
+        /** Destructor
+        *
+        *  Unlock the mutex.
+        *
+        **/
+        ~lock_proxy()
+        {
+           MUTEX.unlock();
+        }
+
+
+        /** Member Access Operator.
+        *
+        *  Access the memory of the raw pointer.
+        *
+        **/
+        TypeName* operator->() const
+        {
+           if(data == nullptr)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "member access to nullptr"));
+
+           return data;
+        }
+    };
+
+
     /** atomic_ptr
      *
      *  Protects a pointer with a mutex.
@@ -187,12 +248,13 @@ namespace memory
     template<class TypeName>
     class atomic_ptr
     {
-        /* The mutex to protect the memory. */
-        mutable std::mutex MUTEX; //for use in member access externally ->
+        /** The internal locking mutex. **/
+        mutable std::mutex MUTEX;
 
 
-        /* The internal data. */
+        /** The internal raw poitner. **/
         TypeName* data;
+
 
     public:
 
@@ -213,11 +275,13 @@ namespace memory
 
 
         /** Copy Constructor. **/
-        atomic_ptr(const atomic_ptr<TypeName>& pointer)
-        : MUTEX()
-        , data(pointer.data)
-        {
+        atomic_ptr(const atomic_ptr<TypeName>& pointer) = delete;
 
+
+        /** Move Constructor. **/
+        atomic_ptr(const atomic_ptr<TypeName>&& pointer)
+        : data(pointer.data)
+        {
         }
 
 
@@ -234,20 +298,7 @@ namespace memory
          **/
         atomic_ptr& operator=(const atomic_ptr<TypeName>& dataIn)
         {
-            store(dataIn.data);
-
-            return (*this);
-        }
-
-
-        /** Assignment operator.
-         *
-         *  @param[in] dataIn The atomic to assign from.
-         *
-         **/
-        atomic_ptr& operator=(TypeName* dataIn)
-        {
-            store(dataIn);
+            data = dataIn.data;
 
             return (*this);
         }
@@ -262,6 +313,7 @@ namespace memory
         {
             LOCK(MUTEX);
 
+            /* Throw an exception on nullptr. */
             if(data == nullptr)
                 return false;
 
@@ -294,41 +346,54 @@ namespace memory
             return data != ptr;
         }
 
+        /** Not operator
+         *
+         *  Check if the pointer is nullptr.
+         *
+         **/
+        bool operator!(void)
+        {
+            LOCK(MUTEX);
+
+            return data == nullptr;
+        }
+
 
         /** Member access overload
          *
          *  Allow atomic_ptr access like a normal pointer.
          *
          **/
-        TypeName* operator->()
-        { //TODO: find a better way to encapsulate member access in mutex
-            LOCK(MUTEX);
+        lock_proxy<TypeName> operator->()
+        {
+            MUTEX.lock();
 
-            return data;
+            return lock_proxy<TypeName>(data, MUTEX);
         }
 
 
-        /** load
+        /** dereference operator overload
          *
          *  Load the object from memory.
          *
          **/
-        TypeName* load() const
+        TypeName operator*() const
+        {
+            LOCK(MUTEX);
+
+            /* Throw an exception on nullptr. */
+            if(data == nullptr)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "dereferencing a nullptr"));
+
+            return *data;
+        }
+
+
+        TypeName* load()
         {
             LOCK(MUTEX);
 
             return data;
-        }
-
-
-        /** lock
-         *
-         *  Lock the internal object from the outside.
-         *
-         **/
-        std::unique_lock<std::mutex> lock()
-        {
-            return std::unique_lock<std::mutex>(MUTEX);
         }
 
 
@@ -350,9 +415,9 @@ namespace memory
         }
 
 
-        /** free
+        /** reset
          *
-         *  Free the internal memory of the atomic pointer.
+         *  Reset the internal memory of the atomic pointer.
          *
          **/
         void free()
@@ -363,6 +428,14 @@ namespace memory
                 delete data;
 
             data = nullptr;
+        }
+
+
+        void print()
+        {
+            LOCK(MUTEX);
+
+            printf("pointer %llu mutex %llu\n", (uint64_t)data, (uint64_t)&MUTEX);
         }
     };
 }

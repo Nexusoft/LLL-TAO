@@ -72,7 +72,6 @@ namespace LLP
     {
         /* Create a new pointer on the heap. */
         ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
-        node->Event(EVENT_CONNECT);
         node->fCONNECTED.store(true);
 
         {
@@ -86,6 +85,7 @@ namespace LLP
             else
                 CONNECTIONS[nSlot] = node;
 
+            node->Event(EVENT_CONNECT);
         }
 
         if(fDDOS)

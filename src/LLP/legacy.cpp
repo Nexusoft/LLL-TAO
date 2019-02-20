@@ -200,8 +200,16 @@ namespace LLP
                 /* Null pointer check. */
                 if(pBest != nullptr)
                 {
-                    /* Ask for another inventory batch. */
-                    pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                    try
+                    {
+                        /* Ask for another inventory batch. */
+                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+
+                    }
+                    catch(std::runtime_error e)
+                    {
+                        debug::error(FUNCTION, e.what());
+                    }
                 }
                 else
                 {
@@ -263,11 +271,18 @@ namespace LLP
                 /* Null check the pointer. */
                 if(pBest != nullptr)
                 {
-                    /* Switch to a new node for fast sync. */
-                    pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                    try
+                    {
+                        /* Switch to a new node for fast sync. */
+                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
 
-                    /* Debug output. */
-                    debug::log(0, NODE, "fast sync node dropped, switching to ", addrFastSync.load().ToStringIP());
+                        /* Debug output. */
+                        debug::log(0, NODE, "fast sync node dropped, switching to ", addrFastSync.load().ToStringIP());
+                    }
+                    catch(std::runtime_error e)
+                    {
+                        debug::error(FUNCTION, e.what());
+                    }
                 }
             }
 
@@ -833,7 +848,7 @@ else
         {
 
             /* Detect large orphan chains and ask for new blocks from origin again. */
-            if(mapLegacyOrphans.size() > 100)
+            if(mapLegacyOrphans.size() > 500)
             {
                 debug::log(0, FUNCTION, "node reached orphan limit... closing");
 
@@ -862,8 +877,16 @@ else
                 /* Lock the atomic pointer to operate on it. */
                 if(pBest != nullptr)
                 {
-                    /* Push a new getblocks request. */
-                    pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                    try
+                    {
+                        /* Push a new getblocks request. */
+                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+
+                    }
+                    catch(std::runtime_error e)
+                    {
+                        debug::error(FUNCTION, e.what());
+                    }
                 }
             }
 
@@ -881,7 +904,7 @@ else
             if(pnode
             && config::GetBoolArg("-fastsync")
             && TAO::Ledger::ChainState::Synchronizing()
-            && pnode->nConsecutiveFails >= 100)
+            && pnode->nConsecutiveFails >= 500)
             {
                 /* Find a new fast sync node if too many failures. */
                 if(addrFastSync == pnode->GetAddress())
@@ -892,11 +915,18 @@ else
                     /* Null check the pointer. */
                     if(pBest != nullptr)
                     {
-                        /* Switch to a new node for fast sync. */
-                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                        try
+                        {
+                            /* Switch to a new node for fast sync. */
+                            pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
 
-                        /* Debug output. */
-                        debug::error(FUNCTION, "fast sync node reached failure limit...");
+                            /* Debug output. */
+                            debug::error(FUNCTION, "fast sync node reached failure limit...");
+                        }
+                        catch(std::runtime_error e)
+                        {
+                            debug::error(FUNCTION, e.what());
+                        }
                     }
                 }
 

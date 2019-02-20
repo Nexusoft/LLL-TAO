@@ -177,25 +177,27 @@ namespace LLP
                 dt = DATA_THREADS[nThread];
 
                 /* Lock the data thread. */
-                LOCK(dt->MUTEX);
-
-                /* Loop through connections in data thread. */
-                nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
+                { LOCK(dt->MUTEX);
+                    /* Loop through connections in data thread. */
+                    nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
+                }
 
                 for(nIndex = 0; nIndex < nSize; ++nIndex)
                 {
-                    /* Load the connection object from the atomic pointer. */
-                    pNode = dt->CONNECTIONS[nIndex].load();
+                    try
+                    {
+                        /* Skip over inactive connections. */
+                        if(!dt->CONNECTIONS[nIndex])
+                            continue;
 
-                    /* Handle the lock of the connection object. */
-                    std::unique_lock<std::mutex> lock = dt->CONNECTIONS[nIndex].lock();
-
-                    /* Skip over inactive connections. */
-                    if(!pNode)
-                        continue;
-
-                    /* Push the active connection. */
-                    pNode->PushMessage(message, data);
+                        /* Push the active connection. */
+                        dt->CONNECTIONS[nIndex]->PushMessage(message, data);
+                    }
+                    catch(std::runtime_error e)
+                    {
+                        debug::error(FUNCTION, e.what());
+                        //catch the atomic pointer throws
+                    }
                 }
             }
         }

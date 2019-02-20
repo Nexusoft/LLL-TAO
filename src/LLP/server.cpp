@@ -213,7 +213,7 @@ namespace LLP
             uint16_t nSize = 0;
             {
                 LOCK(dt->MUTEX);
-                
+
                 nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
             }
 
@@ -221,7 +221,7 @@ namespace LLP
             for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
                 /* Skip over inactive connections. */
-                if(dt->CONNECTIONS[nIndex] == nullptr)
+                if(!dt->CONNECTIONS[nIndex])
                     continue;
 
                 ++nConnectionCount;
@@ -257,21 +257,28 @@ namespace LLP
             /* Loop through connections in data thread. */
             for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
-                /* Skip over inactive connections. */
-                if(dt->CONNECTIONS[nIndex] == nullptr)
-                    continue;
-
-                /* Skip over exclusion address. */
-                if(dt->CONNECTIONS[nIndex]->GetAddress() == addrExclude)
-                    continue;
-
-                /* Push the active connection. */
-                if(dt->CONNECTIONS[nIndex]->nLatency < nLatency)
+                try
                 {
-                    nLatency = dt->CONNECTIONS[nIndex]->nLatency;
+                    /* Skip over inactive connections. */
+                    if(!dt->CONNECTIONS[nIndex])
+                        continue;
 
-                    nRetThread = nThread;
-                    nRetIndex  = nIndex;
+                    /* Skip over exclusion address. */
+                    if(dt->CONNECTIONS[nIndex]->GetAddress() == addrExclude)
+                        continue;
+
+                    /* Push the active connection. */
+                    if(dt->CONNECTIONS[nIndex]->nLatency < nLatency)
+                    {
+                        nLatency = dt->CONNECTIONS[nIndex]->nLatency;
+
+                        nRetThread = nThread;
+                        nRetIndex  = nIndex;
+                    }
+                }
+                catch(std::runtime_error e)
+                {
+                    debug::error(FUNCTION, e.what());
                 }
             }
         }
