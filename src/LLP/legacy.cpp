@@ -576,33 +576,6 @@ namespace LLP
                 return true;
             }
 
-            /* It is possible for nodes to send is inventory messages for blocks that we already have in our chain. 
-               If this occurs we need to filter the incoming inventory list to skip those we already have.  */
-            TAO::Ledger::BlockState state;
-                    
-            /* Because it is safe to assume that the inventory list is sequential by height, as an optimisation 
-               we can just check the last element and if we have it we can ignore the whole message. */
-            if(LLD::legDB->ReadBlock(vInv.back().GetHash(), state))
-                return true; // we already have the 
-
-            std::vector<CInv> vInvFiltered;
-            
-            /* Similarly we can optimize by not checking any of the inventory if we don't have the first block */
-            if(!LLD::legDB->ReadBlock(vInv.front().GetHash(), state))
-            {
-                vInvFiltered = vInv;
-            }
-            else
-            {
-                /* Work backwards because as soon as we find one we already have we can ignore everything before it in the inventory */
-                std::reverse( vInv.begin(), vInv.end() );
-                for(const auto& inv : vInv)
-                {
-                    if(!LLD::legDB->ReadBlock(inv.GetHash(), state))
-                        vInvFiltered.insert(vInvFiltered.begin(), inv);
-                }
-            }
-
             /* Fast sync mode. */
             if(config::GetBoolArg("-fastsync")
             && addrFastSync == GetAddress()
@@ -618,40 +591,56 @@ namespace LLP
             {
                 /* Filter duplicates if not synchronizing. */
                 std::vector<CInv> vGet;
-                for(const auto& inv : vInv)
+
+                /* Because it is safe to assume that the inventory list is sequential by height, as an optimisation
+                   we can just check the last element and if we have it we can ignore the whole message. */
+                if(LLD::legDB->HasBlock(vInv.back().GetHash()))
+                    return true; // we already have the
+
+                /* Similarly we can optimize by not checking any of the inventory if we don't have the first block */
+                if(!LLD::legDB->HasBlock(vInv.front().GetHash()))
+                    vGet = vInv;
+                else
                 {
-                    /* If this is a block type, only request if not in database. */
-                    if(inv.GetType() == MSG_BLOCK)
+                    /* Work backwards because as soon as we find one we already have we can ignore everything before it in the inventory */
+                    std::reverse(vInv.begin(), vInv.end());
+                    for(const auto& inv : vInv)
                     {
-                        /* Check the LLD for block. */
-                        if(!cacheInventory.Has(inv.GetHash())
-                        && !LLD::legDB->HasBlock(inv.GetHash()))
+                        /* If this is a block type, only request if not in database. */
+                        if(inv.GetType() == MSG_BLOCK)
+                        {
+                            /* Check the LLD for block. */
+                            if(!cacheInventory.Has(inv.GetHash())
+                            && !LLD::legDB->HasBlock(inv.GetHash()))
+                            {
+                                /* Add this item to request queue. */
+                                vGet.push_back(inv);
+
+                                /* Add this item to cached relay inventory (key only). */
+                                cacheInventory.Add(inv.GetHash());
+                            }
+                            else
+                                break;
+                        }
+
+                        /* Check the memory pool for transactions being relayed. */
+                        else if(!cacheInventory.Has(inv.GetHash().getuint512())
+                             && !TAO::Ledger::mempool.Has(inv.GetHash().getuint512()))
                         {
                             /* Add this item to request queue. */
                             vGet.push_back(inv);
 
                             /* Add this item to cached relay inventory (key only). */
-                            cacheInventory.Add(inv.GetHash());
+                            cacheInventory.Add(inv.GetHash().getuint512());
                         }
                     }
-
-                    /* Check the memory pool for transactions being relayed. */
-                    else if(!cacheInventory.Has(inv.GetHash().getuint512())
-                         && !TAO::Ledger::mempool.Has(inv.GetHash().getuint512()))
-                    {
-                        /* Add this item to request queue. */
-                        vGet.push_back(inv);
-
-                        /* Add this item to cached relay inventory (key only). */
-                        cacheInventory.Add(inv.GetHash().getuint512());
-                    }
-
-                    /* Push getdata after fastsync inv (if enabled).
-                     * This will ask for a new inv before blocks to
-                     * always stay at least 1k blocks ahead.
-                     */
-                    PushMessage("getdata", vGet);
                 }
+
+                /* Push getdata after fastsync inv (if enabled).
+                 * This will ask for a new inv before blocks to
+                 * always stay at least 1k blocks ahead.
+                 */
+                PushMessage("getdata", vGet);
             }
             else
                 PushMessage("getdata", vInv);
