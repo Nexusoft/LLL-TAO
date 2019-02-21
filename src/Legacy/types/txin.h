@@ -91,6 +91,12 @@ namespace Legacy
 		TxIn(uint512_t hashPrevTx, uint32_t nOut, Script scriptSigIn=Script(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max());
 
 
+		/** Destructor **/
+		~TxIn()
+		{
+		}
+
+
 		/** Comparison Operator overload
 		 *
 		 *	Compares two TxIn objects to one another

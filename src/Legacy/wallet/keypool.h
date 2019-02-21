@@ -6,7 +6,7 @@
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
-        
+
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
@@ -22,7 +22,7 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    /* forward declarations */    
+    /* forward declarations */
     class KeyPoolEntry;
     class Wallet;
     class WalletDB;
@@ -34,10 +34,10 @@ namespace Legacy
      *  of the wallet containing the pool.
      *
      *  A KeyPool instance contains the pool indexes of the KeyPoolEntry values
-     *  (public keys) stored in the wallet database, and supports adding/retrieving 
+     *  (public keys) stored in the wallet database, and supports adding/retrieving
      *  them as needed.
      *
-     *  Keys may also be reserved for potential use, then kept (removed from pool) 
+     *  Keys may also be reserved for potential use, then kept (removed from pool)
      *  if actually used, or returned (unreserved) if not used.
      *
      *  The containing wallet manages and stores the private keys associated
@@ -52,7 +52,7 @@ namespace Legacy
     class KeyPool
     {
         friend class WalletDB;
-        
+
 
     public:
         /** Defines the default number of keys contained by a key pool **/
@@ -64,20 +64,18 @@ namespace Legacy
 
 
     private:
-        /** Mutex for thread concurrency. 
+
+        /** Mutex for thread concurrency.
          *
-         *  Static because having instance-specific mutex causes move constructor (used in Wallet initialization) to be deleted.
-         *  We really only use one KeyPool so no problem simply sharing one mutex within the class.
-         *  
          **/
-        static std::mutex cs_keyPool;
+        std::mutex cs_keyPool;
 
 
-        /** 
-         *  A set containing the key pool index values for all the keys in the pool. 
+        /**
+         *  A set containing the key pool index values for all the keys in the pool.
          *  The actual keys pool entries are stored in the wallet database and
          *  retrieved using these index values.
-         **/ 
+         **/
         std::set<uint64_t> setKeyPool;
 
 
@@ -94,8 +92,23 @@ namespace Legacy
          *
          **/
         KeyPool(Wallet& walletIn)
-        : setKeyPool()
+        : cs_keyPool()
+        , setKeyPool()
         , poolWallet(walletIn)
+        {
+        }
+
+
+        KeyPool(const KeyPool &other)
+        : cs_keyPool()
+        , setKeyPool(other.setKeyPool)
+        , poolWallet(other.poolWallet)
+        {
+        }
+
+
+        /** Destructor **/
+        ~KeyPool()
         {
         }
 
@@ -130,10 +143,10 @@ namespace Legacy
 
         /** ClearKeyPool
          *
-         *  Empties the current key pool. 
+         *  Empties the current key pool.
          *
          **/
-        inline void ClearKeyPool() 
+        inline void ClearKeyPool()
         {
             setKeyPool.clear();
         }
@@ -143,7 +156,7 @@ namespace Legacy
          *
          *  Manually adds a key pool entry. This only adds the entry to the pool.
          *  If used, a separate call to Wallet::GenerateNewKey is required to
-         *  create the key and record the private key in the wallet database. 
+         *  create the key and record the private key in the wallet database.
          *  Otherwise the key pool entry added here is useless.
          *
          *  @param[in] keypoolEntry The key pool entry to add
@@ -186,15 +199,15 @@ namespace Legacy
         /** ReserveKeyFromPool
          *
          *  Reserves a key pool entry out of this key pool. After reserving it, the
-         *  key pool entry is unavailable for other use. 
+         *  key pool entry is unavailable for other use.
          *
-         *  Reserved keys can be returned to the pool by calling ReturnKey() or removed 
-         *  entirely by calling KeepKey(). Shutting down and restarting has the same 
+         *  Reserved keys can be returned to the pool by calling ReturnKey() or removed
+         *  entirely by calling KeepKey(). Shutting down and restarting has the same
          *  effect as ReturnKey().
          *
          *  @param[out] nPoolIndex The pool index of the reserved key
          *
-         *  @param[out] keypoolEntry The reserved key pool entry 
+         *  @param[out] keypoolEntry The reserved key pool entry
          *
          *  @see KeepKey() ReturnKey()
          *
@@ -214,7 +227,7 @@ namespace Legacy
 
         /** ReturnKey
          *
-         *  Returns a reserved key to the key pool. After call, it is no longer 
+         *  Returns a reserved key to the key pool. After call, it is no longer
          *  reserved and available again in the pool for other use.
          *
          *  @param[in] nPoolIndex The pool index of the reserved key

@@ -41,6 +41,82 @@ namespace Legacy
     std::mutex WalletTx::cs_wallettx;
 
 
+    /** Constructor **/
+    WalletTx::WalletTx()
+    : ptransactionWallet(nullptr)
+    , fHaveWallet(false)
+    {
+        InitWalletTx();
+    }
+
+
+    /** Constructor **/
+    WalletTx::WalletTx(Wallet& walletIn)
+    : ptransactionWallet(&walletIn)
+    , fHaveWallet(true)
+    {
+        InitWalletTx();
+    }
+
+
+    /** Constructor **/
+    WalletTx::WalletTx(Wallet* pwalletIn)
+    : ptransactionWallet(pwalletIn)
+    , fHaveWallet(true)
+    {
+        InitWalletTx();
+    }
+
+
+    /** Constructor **/
+    WalletTx::WalletTx(Wallet* pwalletIn, const MerkleTx& txIn)
+    : MerkleTx(txIn)
+    , ptransactionWallet(pwalletIn)
+    , fHaveWallet(true)
+    {
+        InitWalletTx();
+    }
+
+
+    /** Constructor **/
+    WalletTx::WalletTx(Wallet* pwalletIn, const Transaction& txIn)
+    : MerkleTx(txIn)
+    , ptransactionWallet(pwalletIn)
+    , fHaveWallet(true)
+    {
+        InitWalletTx();
+    }
+
+
+    /** Destructor **/
+    WalletTx::~WalletTx()
+    {
+    }
+
+
+    /*  Initializes an empty wallet transaction */
+    void WalletTx::InitWalletTx()
+    {
+        vtxPrev.clear();
+        mapValue.clear();
+        vOrderForm.clear();
+        strFromAccount.clear();
+        vfSpent.clear();
+
+        fTimeReceivedIsTxTime = false;
+        nTimeReceived = 0;
+        fFromMe = false;
+        fDebitCached = false;
+        fCreditCached = false;
+        fAvailableCreditCached = false;
+        fChangeCached = false;
+        nDebitCached = 0;
+        nCreditCached = 0;
+        nAvailableCreditCached = 0;
+        nChangeCached = 0;
+    }
+
+
     /* Assigns the wallet for this wallet transaction. */
     void WalletTx::BindWallet(Wallet& walletIn)
     {
@@ -58,6 +134,13 @@ namespace Legacy
             fHaveWallet = true;
             MarkDirty();
         }
+    }
+
+
+    /*  Test whether transaction is bound to a wallet. */
+    bool WalletTx::IsBound() const
+    {
+        return fHaveWallet;
     }
 
 
@@ -188,6 +271,14 @@ namespace Legacy
     }
 
 
+    /*  Retrieve the time when this transaction was received. */
+    uint64_t WalletTx::GetTxTime() const
+    {
+        return nTimeReceived;
+    }
+
+
+    /*  Get the number of remote requests recorded for this transaction. */
     int32_t WalletTx::GetRequestCount() const
     {
         /* Return 0 if no wallet bound */
@@ -195,6 +286,14 @@ namespace Legacy
             return 0;
 
         return ptransactionWallet->GetRequestCount(*this);
+    }
+
+
+    /*  Checks whether this transaction contains any inputs belonging
+     *  to the bound wallet. */
+    bool  WalletTx::IsFromMe() const
+    {
+        return (GetDebit() > 0);
     }
 
 
@@ -342,10 +441,10 @@ namespace Legacy
     /* Store this transaction in the database for the bound wallet */
     bool WalletTx::WriteToDisk()
     {
+        LOCK(WalletTx::cs_wallettx);
+
         if (IsBound() && ptransactionWallet->IsFileBacked())
         {
-            LOCK(WalletTx::cs_wallettx);
-
             WalletDB walletDB(ptransactionWallet->GetWalletFile());
             bool ret = walletDB.WriteTx(GetHash(), *this);
             walletDB.Close();

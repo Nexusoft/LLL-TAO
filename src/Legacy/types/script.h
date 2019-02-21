@@ -90,7 +90,10 @@ namespace Legacy
          *  @param[in] b The object to copy into the vector.
          *
          **/
-        Script(const Script& b) : std::vector<uint8_t>(b.begin(), b.end()) { }
+        Script(const Script& b)
+        : std::vector<uint8_t>(b.begin(), b.end())
+        {
+        }
 
 
         /** Construct from iterators
@@ -101,7 +104,10 @@ namespace Legacy
          *  @param[in] pend The end iterator of object
          *
          **/
-        Script(const_iterator pbegin, const_iterator pend) : std::vector<uint8_t>(pbegin, pend) { }
+        Script(const_iterator pbegin, const_iterator pend)
+        : std::vector<uint8_t>(pbegin, pend)
+        {
+        }
 
 
     #ifndef _MSC_VER
@@ -114,8 +120,17 @@ namespace Legacy
          *  @param[in] pend The end iterator of object
          *
          **/
-        Script(const uint8_t* pbegin, const uint8_t* pend) : std::vector<uint8_t>(pbegin, pend) { }
+        Script(const uint8_t* pbegin, const uint8_t* pend)
+        : std::vector<uint8_t>(pbegin, pend)
+        {
+        }
+
     #endif
+
+        /** Default Destructor **/
+        ~Script()
+        {
+        }
 
 
         /** GetOP
