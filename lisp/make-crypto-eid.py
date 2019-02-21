@@ -36,8 +36,6 @@ import ecdsa
 import sys
 import hashlib
 from binascii import b2a_base64 as b2a
-from binascii import unhexlify as u
-from binascii import hexlify as h
 
 #------------------------------------------------------------------------------
 

@@ -45,7 +45,7 @@ def allocate_eids():
 # Get IP address on interface.
 #
 def get_rloc(device):
-    addr = commands.getoutput('ip route | egrep "link src "'.format(device)
+    addr = commands.getoutput('ip route | egrep "link src "'.format(device))
     if (addr == ""): return(None)
     addr = addr.split()[-1]
     return(addr)
