@@ -35,14 +35,16 @@ ________________________________________________________________________________
 
 #include <Util/include/args.h>
 #include <Util/include/config.h>
-#include <Util/include/signals.h>
 #include <Util/include/convert.h>
-#include <Util/include/runtime.h>
 #include <Util/include/filesystem.h>
-
 #include <Util/include/memory.h>
+#include <Util/include/runtime.h>
+#include <Util/include/signals.h>
+#include <Util/include/version.h>
 
 #include <Legacy/include/ambassador.h>
+#include <Legacy/types/minter.h>
+#include <Legacy/wallet/db.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
 
@@ -128,9 +130,6 @@ int main(int argc, char** argv)
     runtime::timer timer;
     timer.Start();
 
-    if(!debug::init())
-        printf("unable to initalize debug log file\n");
-
     /* Handle all the signals with signal handler method. */
     SetupSignals();
 
@@ -146,7 +145,6 @@ int main(int argc, char** argv)
     /* Once we have read in the CLI paramters and config file, cache the args into global variables*/
     config::CacheArgs();
 
-
     /* Handle Commandline switch */
     for (int i = 1; i < argc; ++i)
     {
@@ -158,6 +156,14 @@ int main(int argc, char** argv)
             return TAO::API::CommandLineRPC(argc, argv, i);
         }
     }
+
+
+    if(!debug::init())
+        printf("Unable to initalize system logging\n");
+
+    /* Log system startup now, after branching to API/RPC where appropriate */
+    debug::InitializeLog(argc, argv);
+
 
     /** Run the process as Daemon RPC/LLP Server if Flagged. **/
     if (config::fDaemon)
@@ -423,6 +429,10 @@ int main(int argc, char** argv)
     timer.Reset();
 
 
+    /* Stop stake minter if it is running (before server shutdown). */
+    Legacy::StakeMinter::GetInstance().StopStakeMinter();
+
+
     /* Shutdown the tritium server and its subsystems */
     if(LLP::TIME_SERVER)
     {
@@ -539,6 +549,13 @@ int main(int argc, char** argv)
 
         delete LLD::trustDB;
     }
+
+
+    /* Shut down wallet database environment. */
+    if (config::GetBoolArg("-flushwallet", true))
+        Legacy::WalletDB::ShutdownFlushThread();
+
+    Legacy::BerkeleyDB::EnvShutdown();
 
 
     /* Elapsed Milliseconds from timer. */

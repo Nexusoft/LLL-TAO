@@ -178,7 +178,24 @@ namespace LLP
         void SetMessage(const char* chMessage)
         {
             //std::copy((char*)chMessage, (char*)chMessage + std::min((size_t)12, sizeof(chMessage)), (char*)&MESSAGE);
+
+            /* In gcc 8+ it throws a warning that copying the full length of the destination may truncate the terminating null character.
+             * This is the behavior we want, because it is a fixed-width message. We also want padding with null characters when chMessage is shorter.
+             * Thus, the warning is that we might be doing exactly what we want to do.
+             *
+             * This code conditionally ignores the warning in gcc 8 and above, while doing nothing for versions < gcc 8 which do not
+             * understand -Wstringop-truncation
+             */
+            #if defined (__GNUC__) && (__GNUC__ > 7)
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wstringop-truncation"
+            #endif
+
             strncpy(MESSAGE, chMessage, 12);
+
+            #if defined (__GNUC__) && (__GNUC__ > 7)
+            #pragma GCC diagnostic pop
+            #endif
         }
 
 

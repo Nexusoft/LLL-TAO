@@ -339,12 +339,6 @@ namespace LLP
 
 
     /* Returns the IP and Port in string format. (IP:Port) */
-    std::string BaseAddress::ToString()
-    {
-        return ToStringIP() + std::string(":") + ToStringPort();
-    }
-
-    /* Returns the IP and Port in string format. (IP:Port) */
     std::string BaseAddress::ToString() const
     {
         return ToStringIP() + std::string(":") + ToStringPort();
@@ -352,32 +346,22 @@ namespace LLP
 
 
     /* Returns the IP in string format. */
-    std::string BaseAddress::ToStringIP()
-    {
-        if (IsIPv4())
-        {
-            char dst[INET_ADDRSTRLEN];
-            inet_ntop(AF_INET, ip + 12, dst, INET_ADDRSTRLEN);
-            return std::string(dst);
-        }
-
-        char dst[INET6_ADDRSTRLEN];
-        inet_ntop(AF_INET6, ip, dst, INET6_ADDRSTRLEN);
-        return std::string(dst);
-    }
-
-    /* Returns the IP in string format. */
     std::string BaseAddress::ToStringIP() const
     {
+        /* inet_ntop on mingw64 is void* (non-const), so compile fails if pass ip within const method. Make a non-const copy we can use */
+        uint8_t ipCopy[16];
+        for (int i=0; i<16; i++)
+            ipCopy[i] = ip[i];
+
         if (IsIPv4())
         {
             char dst[INET_ADDRSTRLEN];
-            inet_ntop(AF_INET, ip + 12, dst, INET_ADDRSTRLEN);
+            inet_ntop(AF_INET, ipCopy + 12, dst, INET_ADDRSTRLEN);
             return std::string(dst);
         }
 
         char dst[INET6_ADDRSTRLEN];
-        inet_ntop(AF_INET6, ip, dst, INET6_ADDRSTRLEN);
+        inet_ntop(AF_INET6, ipCopy, dst, INET6_ADDRSTRLEN);
         return std::string(dst);
     }
 

@@ -427,12 +427,15 @@ namespace LLP
             if (hListenSocket != INVALID_SOCKET)
             {
                 /* Poll the sockets. */
+                fds[0].revents = 0;
+
 #ifdef WIN32
                 int nPoll = WSAPoll(&fds[0], 1, 100);
 #else
                 int nPoll = poll(&fds[0], 1, 100);
 #endif
 
+				/* Continue on poll error or no data to read */
                 if(nPoll < 0)
                     continue;
 
@@ -459,7 +462,7 @@ namespace LLP
                 if (hSocket == INVALID_SOCKET)
                 {
                     if (WSAGetLastError() != WSAEWOULDBLOCK)
-                        debug::error("socket error accept failed: ", WSAGetLastError());
+                        debug::error(FUNCTION, "Socket error accept failed: ", WSAGetLastError());
                 }
                 else
                 {
@@ -467,17 +470,16 @@ namespace LLP
                     if(!DDOS_MAP.count(addr))
                         DDOS_MAP[addr] = new DDOS_Filter(DDOS_TIMESPAN);
 
+                    Socket sockNew(hSocket, addr);
+
                     /* DDOS Operations: Only executed when DDOS is enabled. */
                     if((fDDOS && DDOS_MAP[addr]->Banned()))
                     {
-                        debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Banned.");
-
-                        closesocket(hSocket);
+                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
+                        sockNew.Close();
 
                         continue;
                     }
-
-                    Socket sockNew(hSocket, addr);
 
                     int32_t nThread = FindThread();
                     if(nThread < 0)
