@@ -24,6 +24,7 @@ namespace config
 
     extern std::map<std::string, std::string> mapArgs;
     extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
+    extern std::map<uint32_t, std::vector<std::string> > mapIPFilters;
     extern std::string strMiscWarning;
 
     extern std::atomic<bool> fShutdown;

@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <LLP/include/trust_address.h>
 
 #include <Util/include/args.h>
+#include <LLP/include/permissions.h>
 #include <functional>
 #include <numeric>
 
@@ -477,6 +478,14 @@ namespace LLP
                     {
                         debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
                         sockNew.Close();
+
+                        continue;
+                    }
+                    else if(!CheckPermissions(addr.ToStringIP(), PORT))
+                    {
+                        debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
+
+                        closesocket(hSocket);
 
                         continue;
                     }
