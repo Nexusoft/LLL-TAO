@@ -50,7 +50,7 @@ namespace LLC
         {
             RAND_add(pdata, nSize, nSize/100.0);
             memset(pdata, 0, nSize);
-            debug::log(0, DateTimeStrFormat(runtime::timestamp()), " RandAddSeed() ", nSize, " bytes");
+            debug::log(0, convert::DateTimeStrFormat(runtime::timestamp()), " RandAddSeed() ", nSize, " bytes");
         }
     #endif
     }
