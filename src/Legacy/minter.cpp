@@ -280,12 +280,12 @@ namespace Legacy
         static uint32_t nWaitCounter = 0; //Prevents log spam during wait period
 
         /* New Mainnet interval will go into effect with activation of v7. Can't be static so it goes live immediately (can update after activation) */
-        const uint32_t nMinimumInterval = config::fTestNet 
-                                            ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL 
-                                            : (TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7) 
+        const uint32_t nMinimumInterval = config::fTestNet
+                                            ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
+                                            : (TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7)
                                                 ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY
-                                                : (runtime::timestamp() > TAO::Ledger::NETWORK_VERSION_TIMELOCK[5]) 
-                                                        ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL 
+                                                : (runtime::timestamp() > TAO::Ledger::NETWORK_VERSION_TIMELOCK[5])
+                                                        ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL
                                                         : TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY;
 
         /* Create the block to work on.
@@ -717,7 +717,9 @@ namespace Legacy
         pStakeMinter->nSleepTime = 5000;
 
         /* If the system is still syncing/connecting on startup, wait to run minter */
-        while ((TAO::Ledger::ChainState::Synchronizing() || LLP::LEGACY_SERVER->GetConnectionCount() == 0)
+        while ((TAO::Ledger::ChainState::Synchronizing()
+        || !LLP::LEGACY_SERVER
+        || LLP::LEGACY_SERVER->GetConnectionCount() == 0)
         		&& !StakeMinter::fstopMinter.load() && !config::fShutdown.load())
         {
             runtime::sleep(pStakeMinter->nSleepTime);

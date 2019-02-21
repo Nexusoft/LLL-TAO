@@ -77,8 +77,8 @@ namespace LLP
          uint1024_t proof_hash;
          uint32_t s = static_cast<uint32_t>(mapBlocks.size());
 
-         /* Get a pointer to the derived class block */
-         Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(pBaseBlock);
+         /* Create a new Legacy Block. */
+         Legacy::LegacyBlock *pBlock = new Legacy::LegacyBlock();
 
          /* Set it to a null state */
          pBlock->SetNull();
@@ -92,8 +92,8 @@ namespace LLP
              and is less than 1024 bits*/
          for(uint32_t i = s; ; ++i)
          {
-             if(!Legacy::CreateLegacyBlock(*pMiningKey, pCoinbaseTx, nChannel, i, *pBlock))
-                 debug::error(FUNCTION, "Failed to create a new block.");
+             if(!Legacy::CreateLegacyBlock(*pMiningKey, CoinbaseTx, nChannel, i, *pBlock))
+                 debug::error(FUNCTION, "Failed to create a new Legacy Block.");
 
              /* skip if not prime channel or version less than 5 */
              if(nChannel != 1 || pBlock->nVersion >= 5)
@@ -108,34 +108,12 @@ namespace LLP
                  break;
          }
 
-         debug::log(2, FUNCTION, "***** Mining LLP: Created new Block ",
+         debug::log(2, FUNCTION, "***** Mining LLP: Created new Legacy Block ",
              pBlock->hashMerkleRoot.ToString().substr(0, 20));
-
-         /* Store the new block in the memory map of recent blocks being worked on. */
-         mapBlocks[pBlock->hashMerkleRoot] = pBlock;
 
          /* Return a pointer to the heap memory */
          return pBlock;
      }
-
-
-    /*  Creates the derived block for the base miner class. */
-    bool LegacyMiner::create_base_block()
-    {
-        Legacy::LegacyBlock *pDerived = new Legacy::LegacyBlock();
-
-        /*create a new base block */
-        if(!Legacy::CreateLegacyBlock(*pMiningKey, pCoinbaseTx, nChannel, 1, *pDerived))
-        {
-            debug::error(FUNCTION, "Failed to create a new block.");
-            delete pDerived;
-            return false;
-        }
-
-        pBaseBlock = static_cast<TAO::Ledger::Block *>(pDerived);
-
-        return true;
-    }
 
 
     /** validates the block for the derived miner class. **/
@@ -146,8 +124,7 @@ namespace LLP
         /* Check the Proof of Work for submitted block. */
         if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::GetInstance()))
         {
-            debug::log(2, "***** Mining LLP: Invalid Work for block ", merkle_root.ToString().substr(0, 20));
-
+            debug::log(2, "***** Mining LLP: Invalid Work for Legacy Block ", merkle_root.ToString().substr(0, 20));
             return false;
         }
 
@@ -166,8 +143,7 @@ namespace LLP
 
          if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
          {
-             debug::log(2, "***** Mining LLP: Unable to Sign block ", merkle_root.ToString().substr(0, 20));
-
+             debug::log(2, "***** Mining LLP: Unable to Sign Legacy Block ", merkle_root.ToString().substr(0, 20));
              return false;
          }
 

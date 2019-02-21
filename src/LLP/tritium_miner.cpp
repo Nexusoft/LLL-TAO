@@ -38,7 +38,6 @@ namespace LLP
     , pSigChain(nullptr)
     , PIN()
     {
-        pBaseBlock = new TAO::Ledger::TritiumBlock();
         pSigChain = new TAO::Ledger::SignatureChain("user", "pass");
         PIN = "1234";
     }
@@ -50,7 +49,6 @@ namespace LLP
     , pSigChain(nullptr)
     , PIN()
     {
-        pBaseBlock = new TAO::Ledger::TritiumBlock();
         pSigChain = new TAO::Ledger::SignatureChain("user", "pass");
         PIN = "1234";
     }
@@ -62,7 +60,6 @@ namespace LLP
     , pSigChain(nullptr)
     , PIN()
     {
-        pBaseBlock = new TAO::Ledger::TritiumBlock();
         pSigChain = new TAO::Ledger::SignatureChain("user", "pass");
         PIN = "1234";
     }
@@ -87,9 +84,8 @@ namespace LLP
          uint1024_t proof_hash;
          uint32_t s = static_cast<uint32_t>(mapBlocks.size());
 
-         /* Get a pointer to the derived class block */
-         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(pBaseBlock);
-
+         /* Create a new Tritium Block. */
+         TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
 
          /* Set it to a null state */
          pBlock->SetNull();
@@ -111,8 +107,11 @@ namespace LLP
              //for(const auto& tx : pBlock->vtx)
              //    vMerkleTree.push_back(tx.GetHash());
 
-
              //pBlock->hashMerkleRoot = pBlock->BuildMerkleTree(vMerkleTree);
+
+             //TODO:
+             //if(!TAO::Ledger::CreateBlock(*pMiningKey, CoinbaseTx, nChannel, i, *pBlock))
+            //     debug::error(FUNCTION, "Failed to create a new Tritium Block.");
 
              /* Update the time. */
              pBlock->UpdateTime();
@@ -130,34 +129,12 @@ namespace LLP
                  break;
          }
 
-         debug::log(2, FUNCTION, "***** Mining LLP: Created new Block ",
+         debug::log(2, FUNCTION, "***** Mining LLP: Created new Tritium Block ",
              pBlock->hashMerkleRoot.ToString().substr(0, 20));
-
-         /* Store the new block in the memory map of recent blocks being worked on. */
-         mapBlocks[pBlock->hashMerkleRoot] = pBlock;
 
          /* Return a pointer to the heap memory */
          return pBlock;
      }
-
-
-    /*  Creates the derived block for the base miner class. */
-    bool TritiumMiner::create_base_block()
-    {
-        TAO::Ledger::TritiumBlock *pDerived = new TAO::Ledger::TritiumBlock();
-
-        /*create a new base block */
-        if(!TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel, *pDerived))
-        {
-            debug::error(FUNCTION, "Failed to create a new block.");
-            delete pDerived;
-            return false;
-        }
-
-        pBaseBlock = static_cast<TAO::Ledger::TritiumBlock *>(pDerived);
-
-        return true;
-    }
 
 
     /** validates the block for the derived miner class. **/
@@ -169,14 +146,14 @@ namespace LLP
         /* Verify the block object. */
         if(!pBlock->Check())
         {
-            debug::log(2, "***** Mining LLP: Invalid Work for block ", merkle_root.ToString().substr(0, 20));
+            debug::log(2, "***** Mining LLP: Invalid Work for Tritium Block ", merkle_root.ToString().substr(0, 20));
             return false;
         }
 
         /* Create the state object. */
         if(!pBlock->Accept())
         {
-            debug::log(2, "***** Mining LLP: Block not accepted ", merkle_root.ToString().substr(0, 20));
+            debug::log(2, "***** Mining LLP: Tritium Block not accepted ", merkle_root.ToString().substr(0, 20));
             return false;
         }
 
@@ -202,7 +179,7 @@ namespace LLP
          if(!key.SetSecret(vchSecret, true)
          || !pBlock->GenerateSignature(key))
          {
-             debug::log(2, "***** Mining LLP: Unable to Sign block ", merkle_root.ToString().substr(0, 20));
+             debug::log(2, "***** Mining LLP: Unable to Sign Tritium Block ", merkle_root.ToString().substr(0, 20));
              return false;
          }
 

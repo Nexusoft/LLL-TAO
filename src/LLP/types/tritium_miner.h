@@ -90,14 +90,6 @@ namespace LLP
          virtual TAO::Ledger::Block *new_block() override;
 
 
-        /** create_block
-         *
-         *  Creates the block for the derived miner class.
-         *
-         **/
-        virtual bool create_base_block() override;
-
-
         /** validate_block
          *
          *  validates the block for the derived miner class.

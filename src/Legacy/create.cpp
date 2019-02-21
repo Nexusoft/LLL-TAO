@@ -323,7 +323,7 @@ namespace Legacy
         {
             /* Extract first entry from the priority map  */
             auto firstMapEntry = mapPriority.begin();
-            Transaction tx = firstMapEntry->second; 
+            Transaction tx = firstMapEntry->second;
             mapPriority.erase(firstMapEntry);
 
             uint32_t nTxSize = ::GetSerializeSize(tx, SER_NETWORK, LLP::PROTOCOL_VERSION);
@@ -447,7 +447,10 @@ namespace Legacy
             }
 
             /* Sign the block */
-            return block.GenerateSignature(key);
+            block.GenerateSignature(key);
+
+            /* Ensure the signed block is a valid signature */
+            return block.VerifySignature(key);
         }
 
         debug::error(FUNCTION, "Wrong key type attempting to sign new block");

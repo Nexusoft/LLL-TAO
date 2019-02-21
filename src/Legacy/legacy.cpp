@@ -63,6 +63,21 @@ namespace Legacy
         return false;
     }
 
+    /** The default constructor. **/
+    LegacyBlock::LegacyBlock()
+    : Block()
+    , vtx()
+    {
+        SetNull();
+    }
+
+    /** Copy Constructor. **/
+    LegacyBlock::LegacyBlock(const LegacyBlock& block)
+    : Block(block)
+    , vtx(block.vtx)
+    {
+    }
+
     /** Copy Constructor. **/
     LegacyBlock::LegacyBlock(const TAO::Ledger::BlockState& state)
     : Block(state)
@@ -82,6 +97,21 @@ namespace Legacy
             }
         }
     }
+
+    /** Default Destructor **/
+    LegacyBlock::~LegacyBlock()
+    {
+    }
+
+
+    /*  Set the block to Null state. */
+    void LegacyBlock::SetNull()
+    {
+        Block::SetNull();
+
+        vtx.clear();
+    }
+
 
     /* For debugging Purposes seeing block state data dump */
     std::string LegacyBlock::ToString() const

@@ -34,12 +34,12 @@ namespace LLP
     /** Default Constructor **/
     BaseMiner::BaseMiner()
     : Connection()
+    , CoinbaseTx()
+    , MUTEX()
     , mapBlocks()
-    , pBaseBlock(nullptr)
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
-    , BLOCK_MUTEX()
     {
     }
 
@@ -47,12 +47,12 @@ namespace LLP
     /** Constructor **/
     BaseMiner::BaseMiner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : Connection(SOCKET_IN, DDOS_IN, isDDOS)
+    , CoinbaseTx()
+    , MUTEX()
     , mapBlocks()
-    , pBaseBlock(nullptr)
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
-    , BLOCK_MUTEX()
     {
     }
 
@@ -60,12 +60,12 @@ namespace LLP
     /** Constructor **/
     BaseMiner::BaseMiner(DDOS_Filter* DDOS_IN, bool isDDOS)
     : Connection(DDOS_IN, isDDOS)
+    , CoinbaseTx()
+    , MUTEX()
     , mapBlocks()
-    , pBaseBlock(nullptr)
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
-    , BLOCK_MUTEX()
     {
     }
 
@@ -73,8 +73,7 @@ namespace LLP
     /** Default Destructor **/
     BaseMiner::~BaseMiner()
     {
-        if(pBaseBlock)
-            delete pBaseBlock;
+        LOCK(MUTEX);
 
         clear_map();
     }
@@ -154,32 +153,55 @@ namespace LLP
             /* On Generic Event, Broadcast new block if flagged. */
             case EVENT_GENERIC:
             {
-                if(nSubscribed == 0)
+                if(nSubscribed.load() == 0)
                     return;
 
-                if(!check_best_height())
+                bool new_round = false;
+
+                {
+                  LOCK(MUTEX);
+                  new_round = check_best_height();
+                }
+
+                if(!new_round)
                 {
                     respond(NEW_ROUND);
 
-                    LOCK(BLOCK_MUTEX);
+                    uint1024_t block_hash;
+                    std::vector<uint8_t> data;
+                    TAO::Ledger::Block *pBlock = nullptr;
+                    uint32_t len = 0;
+                    uint16_t subscribed = nSubscribed.load();
 
-                    if(!pBaseBlock || pBaseBlock->IsNull())
-                        return;
-
-                    for(uint32_t nSubscribedLoop = 0; nSubscribedLoop < nSubscribed; ++nSubscribedLoop)
+                    for(uint16_t i = 0; i < subscribed; ++i)
                     {
-                        /* Get a new block for the subscriber */
-                        TAO::Ledger::Block *pBlock = new_block();
+                        {
+                            LOCK(MUTEX);
 
-                        /* Serialize the block data */
-                        std::vector<uint8_t> data = SerializeBlock(*pBlock);
-                        uint32_t len = static_cast<uint32_t>(data.size());
+                            /* Get a new block for the subscriber */
+                            pBlock = new_block();
+
+                            if(!pBlock)
+                            {
+                              debug::log(2, FUNCTION, "Failed to create block.");
+                              return;
+                            }
+
+
+                            /* Serialize the block data */
+                            data = SerializeBlock(*pBlock);
+                            len = static_cast<uint32_t>(data.size());
+
+                            /* Get the block hash for display purposes */
+                            block_hash = pBlock->GetHash();
+                        }
 
                         /* Create and send a packet response */
                         respond(BLOCK_DATA, len, data);
 
+
                         debug::log(2, FUNCTION, "Mining LLP: Sent Block ",
-                            pBlock->GetHash().ToString().substr(0, 20), " to Worker.");
+                            block_hash.ToString().substr(0, 20), " to Worker.");
                     }
 
 
@@ -255,7 +277,7 @@ namespace LLP
             {
                 nChannel = static_cast<uint8_t>(convert::bytes2uint(PACKET.DATA));
 
-                switch (nChannel)
+                switch (nChannel.load())
                 {
                     case 1:
                     debug::log(2, FUNCTION, " Prime Channel Set.");
@@ -267,7 +289,7 @@ namespace LLP
 
                     /** Don't allow Mining LLP Requests for Proof of Stake Channel. **/
                     default:
-                    return debug::error(2, FUNCTION, " Invalid PoW Channel (", nChannel, ")");
+                    return debug::error(2, FUNCTION, " Invalid PoW Channel (", nChannel.load(), ")");
                 }
 
                 return true;
@@ -282,7 +304,7 @@ namespace LLP
 
             case SET_COINBASE:
             {
-                uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel, 0);
+                uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
 
                 /** Deserialize the Coinbase Transaction. **/
 
@@ -327,18 +349,21 @@ namespace LLP
                 }
                 else
                 {
+                    {
+                        LOCK(MUTEX);
+
+                        /* Set the global coinbase, null the base block, and
+                           then call check_best_height which in turn will generate
+                           a new base block using the new coinbase. */
+                        CoinbaseTx = pCoinbase;
+
+                        check_best_height();
+
+                    }
+
                     respond(COINBASE_SET);
                     debug::log(2, "***** Mining LLP: Coinbase Set") ;
-                    /* set the global coinbase, null the base block, and then call check_best_height
-                       which in turn will generate a new base block using the new coinbase */
-                    pCoinbaseTx = pCoinbase;
-
-                    if(pBaseBlock)
-                        pBaseBlock->SetNull();
-
-                    check_best_height();
                 }
-
 
                 return true;
             }
@@ -346,8 +371,11 @@ namespace LLP
             /* Clear the Block Map if Requested by Client. */
             case CLEAR_MAP:
             {
+                LOCK(MUTEX);
+
                 clear_map();
-                pCoinbaseTx.SetNull();
+                CoinbaseTx.SetNull();
+
                 return true;
             }
 
@@ -361,6 +389,8 @@ namespace LLP
                 /* Prevent mining clients from spamming with GET_HEIGHT messages*/
                 runtime::sleep(500);
 
+                LOCK(MUTEX);
+
                 check_best_height();
 
                 return true;
@@ -369,19 +399,27 @@ namespace LLP
             /* Respond to a miner if it is a new round. */
             case GET_ROUND:
             {
+
+              bool new_round = false;
+
+              {
+                LOCK(MUTEX);
+                new_round = check_best_height();
+              }
+
                 /* If height was outdated, respond with old round, otherwise
                  * respond with a new round */
-                if(!check_best_height())
-                    respond(OLD_ROUND);
-                else
+                if(new_round)
                     respond(NEW_ROUND);
+                else
+                    respond(OLD_ROUND);
 
                 return true;
             }
 
             case GET_REWARD:
             {
-                uint64_t nCoinbaseReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel, 0);
+                uint64_t nCoinbaseReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
 
                 respond(BLOCK_REWARD, 8, convert::uint2bytes64(nCoinbaseReward));
 
@@ -395,7 +433,7 @@ namespace LLP
                 nSubscribed = convert::bytes2uint(PACKET.DATA);
 
                 /** Don't allow mining llp requests for proof of stake channel **/
-                if(nSubscribed == 0 || nChannel == 0)
+                if(nSubscribed == 0 || nChannel.load() == 0)
                     return false;
 
                 debug::log(2, FUNCTION, "***** Mining LLP: Subscribed to ", nSubscribed, " Blocks");
@@ -405,17 +443,31 @@ namespace LLP
             /* Get a new block for the miner. */
             case GET_BLOCK:
             {
-                check_best_height();
+                TAO::Ledger::Block *pBlock = nullptr;
+                std::vector<uint8_t> data;
+                uint32_t len = 0;
 
-                LOCK(BLOCK_MUTEX);
+                {
+                    LOCK(MUTEX);
 
-                /* Create a new block */
-                TAO::Ledger::Block *pBlock = new_block();
+                    check_best_height();
 
-                /* Serialize the block data */
-                std::vector<uint8_t> data = SerializeBlock(*pBlock);
+                    /* Create a new block */
+                    pBlock = new_block();
 
-                uint32_t len = static_cast<uint32_t>(data.size());
+                    if(!pBlock)
+                    {
+                      debug::log(2, FUNCTION, "Failed to create block.");
+                      return true;
+                    }
+
+                    /* Store the new block in the memory map of recent blocks being worked on. */
+                    mapBlocks[pBlock->hashMerkleRoot] = pBlock;
+
+                    /* Serialize the block data */
+                    data = SerializeBlock(*pBlock);
+                    len = static_cast<uint32_t>(data.size());
+                }
 
                 /* Create and write the response packet. */
                 respond(BLOCK_DATA, len, data);
@@ -429,36 +481,44 @@ namespace LLP
                 uint512_t hashMerkleRoot;
                 uint64_t nonce = 0;
 
-
                 /* Get the merkle root. */
                 hashMerkleRoot.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
 
                 /* Get the nonce */
                 nonce = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
 
+                bool rejected = true;
+
                 {
-                    LOCK(BLOCK_MUTEX);
+                  LOCK(MUTEX);
 
-                    /* find, sign, and validate the submitted block */
-                    if(!find_block(hashMerkleRoot)
-                    || !sign_block(nonce, hashMerkleRoot)
-                    || !validate_block(hashMerkleRoot))
-                    {
-                        respond(BLOCK_REJECTED);
+                  /* Find, sign, and validate the submitted block in order to
+                     not be rejected. */
+                  rejected = !find_block(hashMerkleRoot)
+                          || !sign_block(nonce, hashMerkleRoot)
+                          || !validate_block(hashMerkleRoot);
+                }
 
-                        return true;
-                    }
+
+                /* Generate a Rejected response. */
+                if(rejected)
+                {
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+
+                {
+                    LOCK(MUTEX);
 
                     /* Clear map on new block found. */
                     clear_map();
-
-                    pCoinbaseTx.SetNull();
+                    CoinbaseTx.SetNull();
                 }
 
-                /* Generate a response message. */
+                /* Generate an Accepted response. */
                 respond(BLOCK_ACCEPTED);
-
                 return true;
+
             }
 
             /** Check Block Command: Allows Client to Check if a Block is part of the Main Chain. **/
@@ -531,30 +591,18 @@ namespace LLP
      *  the block map if the height is outdated. */
     bool BaseMiner::check_best_height()
     {
-        LOCK(BLOCK_MUTEX);
 
         bool fHeightChanged = false;
 
         if(nBestHeight != TAO::Ledger::ChainState::nBestHeight)
         {
             clear_map();
-            nBestHeight = TAO::Ledger::ChainState::nBestHeight;
+
+            nBestHeight = TAO::Ledger::ChainState::nBestHeight.load();
 
             debug::log(2, FUNCTION, "Mining best height changed to ", nBestHeight);
 
             fHeightChanged = true;
-        }
-
-        if( fHeightChanged || !pBaseBlock || pBaseBlock->IsNull() )
-        {
-            debug::log(2, FUNCTION, "Creating new base block.");
-
-            /*create a new base block */
-            if(!create_base_block())
-            {
-                debug::error(FUNCTION, "Failed to create a new block.");
-                return false;
-            }
         }
 
         return fHeightChanged;

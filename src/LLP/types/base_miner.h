@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/templates/connection.h>
 #include <TAO/Ledger/types/block.h>
 #include <Legacy/types/coinbase.h>
+#include <atomic>
 
 
 namespace LLP
@@ -29,26 +30,24 @@ namespace LLP
     class BaseMiner : public Connection
     {
     protected:
+
+        /* Externally set coinbase to be set on mined blocks */
+        Legacy::Coinbase CoinbaseTx;
+
+        /* Used for synchronization */
+        std::mutex MUTEX;
+
         /** The map to hold the list of blocks that are being mined. */
         std::map<uint512_t, TAO::Ledger::Block *> mapBlocks;
 
-        /** block to get and iterate if requesting more than one block **/
-        TAO::Ledger::Block *pBaseBlock;
-
         /** The current best block. **/
-        uint32_t nBestHeight;
+        std::atomic<uint32_t> nBestHeight;
 
         /** Subscribe to display how many blocks connection subscribed to **/
-        uint16_t nSubscribed;
+        std::atomic<uint16_t> nSubscribed;
 
         /** The current channel mining for. */
-        uint8_t nChannel;
-
-        /* Used to synchronize access to the nBestHeight / pBaseBlock*/
-        std::mutex BLOCK_MUTEX;
-
-        /* Externally set coinbase to be set on mined blocks */
-        Legacy::Coinbase pCoinbaseTx;
+        std::atomic<uint8_t> nChannel;
 
 
         enum
@@ -100,7 +99,6 @@ namespace LLP
 
 
     public:
-
 
         /** Default Constructor **/
         BaseMiner();
@@ -188,14 +186,6 @@ namespace LLP
           *
           **/
          virtual TAO::Ledger::Block *new_block() = 0;
-
-
-         /** create_block
-          *
-          *  Creates the block for the derived miner class.
-          *
-          **/
-         virtual bool create_base_block() = 0;
 
 
          /** validate_block
