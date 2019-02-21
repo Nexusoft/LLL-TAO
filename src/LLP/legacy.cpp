@@ -206,7 +206,7 @@ namespace LLP
                         pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
 
                     }
-                    catch(std::runtime_error e)
+                    catch(const std::runtime_error& e)
                     {
                         debug::error(FUNCTION, e.what());
                     }
@@ -279,7 +279,7 @@ namespace LLP
                         /* Debug output. */
                         debug::log(0, NODE, "fast sync node dropped, switching to ", addrFastSync.load().ToStringIP());
                     }
-                    catch(std::runtime_error e)
+                    catch(const std::runtime_error& e)
                     {
                         debug::error(FUNCTION, e.what());
                     }
@@ -903,7 +903,7 @@ namespace LLP
                         pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
 
                     }
-                    catch(std::runtime_error e)
+                    catch(const std::runtime_error& e)
                     {
                         debug::error(FUNCTION, e.what());
                     }
@@ -943,7 +943,7 @@ namespace LLP
                             /* Debug output. */
                             debug::error(FUNCTION, "fast sync node reached failure limit...");
                         }
-                        catch(std::runtime_error e)
+                        catch(const std::runtime_error& e)
                         {
                             debug::error(FUNCTION, e.what());
                         }

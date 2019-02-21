@@ -277,7 +277,7 @@ namespace LLP
                         nRetIndex  = nIndex;
                     }
                 }
-                catch(std::runtime_error e)
+                catch(const std::runtime_error& e)
                 {
                     debug::error(FUNCTION, e.what());
                 }
