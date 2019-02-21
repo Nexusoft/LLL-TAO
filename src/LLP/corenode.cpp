@@ -80,7 +80,7 @@ namespace LLP
                     else if(INCOMING.mapHeaders["content-type"] == "application/json")
                         params = json::json::parse(INCOMING.strContent);
                     else
-                        throw TAO::API::APIException(-5, debug::strprintf("content-type %s not supported\n", INCOMING.mapHeaders["content-type"].c_str()));
+                        throw TAO::API::APIException(-5, debug::safe_printstr("content-type ", INCOMING.mapHeaders["content-type"], " not supported"));
                 }
                 else
                     throw TAO::API::APIException(-6, "content-type not provided when content included");
@@ -122,7 +122,7 @@ namespace LLP
             else if(strAPI == "lisp")
                 ret = { {"result", TAO::API::lisp.Execute(METHOD, params) } };
             else
-                throw TAO::API::APIException(-4, debug::strprintf("API not found: %s", strAPI.c_str()));
+                throw TAO::API::APIException(-4, debug::safe_printstr("API not found: ", strAPI));
         }
 
         /* Handle for custom API exceptions. */

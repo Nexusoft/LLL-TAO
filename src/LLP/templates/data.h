@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLP/include/network.h>
 
 #include <Util/include/mutex.h>
+#include <Util/include/memory.h>
 
 #include <atomic>
 #include <vector>
@@ -58,7 +59,7 @@ namespace LLP
 
 
         /* Vector to store Connections. */
-        std::vector<ProtocolType *> CONNECTIONS;
+        std::vector< memory::atomic_ptr<ProtocolType> > CONNECTIONS;
 
 
         /* This mirrors CONNECTIONS with pollfd settings for passing to poll methods. Windows throws SOCKET_ERROR intermittently if pass CONNECTIONS directly. */
@@ -67,11 +68,6 @@ namespace LLP
 
         /* The condition for thread sleeping. */
         std::condition_variable CONDITION;
-
-
-        /* Empty protocol type. */
-        ProtocolType* pEmpty;
-
 
         /* Data Thread. */
         std::thread DATA_THREAD;

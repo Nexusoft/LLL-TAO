@@ -13,10 +13,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_CACHE_TEMPLATE_LRU_H
 #define NEXUS_LLD_CACHE_TEMPLATE_LRU_H
 
-#include <Util/templates/serialize.h>
 #include <Util/include/mutex.h>
-#include <Util/include/runtime.h>
-#include <Util/include/hex.h>
+
+#include <cstdint>
+#include <vector>
 
 
 //TODO: Abstract base class for all cache systems

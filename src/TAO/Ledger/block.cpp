@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #include <LLC/include/key.h>
 #include <LLC/types/bignum.h>
 
-#include <Util/templates/serialize.h>
+#include <Util/templates/datastream.h>
 #include <Util/include/hex.h>
 #include <Util/include/args.h>
 #include <Util/include/runtime.h>
@@ -50,7 +50,7 @@ namespace TAO
         , nBits(block.nBits)
         , nNonce(block.nNonce)
         , nTime(block.nTime)
-        , vchBlockSig(block.vchBlockSig)
+        , vchBlockSig(block.vchBlockSig.begin(), block.vchBlockSig.end())
         {
         }
 
@@ -65,9 +65,10 @@ namespace TAO
         , nBits(block.nBits)
         , nNonce(block.nNonce)
         , nTime(block.nTime)
-        , vchBlockSig(block.vchBlockSig)
+        , vchBlockSig(block.vchBlockSig.begin(), block.vchBlockSig.end())
         {
         }
+
 
         /* Set the block state to null. */
         void Block::SetNull()
@@ -187,6 +188,7 @@ namespace TAO
             return (vMerkleTree.empty() ? 0 : vMerkleTree.back());
         }
 
+
         /* Dump the Block data to Console / Debug.log. */
         void Block::print() const
         {
@@ -207,8 +209,10 @@ namespace TAO
         /* Verify the Proof of Work satisfies network requirements. */
         bool Block::VerifyWork() const
         {
+            uint32_t nChannel = GetChannel();
+
             /* Check the Prime Number Proof of Work for the Prime Channel. */
-            if(GetChannel() == 1)
+            if(nChannel == 1)
             {
                 /* Check prime minimum origins. */
                 if(nVersion >= 5 && ProofHash() < bnPrimeMinOrigins.getuint1024())
@@ -217,29 +221,34 @@ namespace TAO
                 /* Check proof of work limits. */
                 uint32_t nPrimeBits = GetPrimeBits(GetPrime());
                 if (nPrimeBits < bnProofOfWorkLimit[1])
-                    return debug::error(FUNCTION, "prime-cluster below minimum work");
+                    return debug::error(FUNCTION, "prime-cluster below minimum work" "(", nPrimeBits, ")");
 
                 /* Check the prime difficulty target. */
-                if(nBits > nPrimeBits)
-                    return debug::error(FUNCTION, "prime-cluster below target");
+                if(nPrimeBits < nBits)
+                    return debug::error(FUNCTION, "prime-cluster below target ", "(proof: ", nPrimeBits, " target: ", nBits, ")");
+
+                return true;
+            }
+            if(nChannel == 2)
+            {
+
+                /* Get the hash target. */
+                LLC::CBigNum bnTarget;
+                bnTarget.SetCompact(nBits);
+
+                /* Check that the hash is within range. */
+                if (bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[2])
+                    return debug::error(FUNCTION, "proof-of-work hash not in range");
+
+
+                /* Check that the that enough work was done on this block. */
+                if (ProofHash() > bnTarget.getuint1024())
+                    return debug::error(FUNCTION, "proof-of-work hash below target");
 
                 return true;
             }
 
-            /* Get the hash target. */
-            LLC::CBigNum bnTarget;
-            bnTarget.SetCompact(nBits);
-
-            /* Check that the hash is within range. */
-            if (bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[2])
-                return debug::error(FUNCTION, "proof-of-work hash not in range");
-
-
-            /* Check that the that enough work was done on this block. */
-            if (ProofHash() > bnTarget.getuint1024())
-                return debug::error(FUNCTION, "proof-of-work hash below target");
-
-            return true;
+            return debug::error(FUNCTION, "invalid proof-of-work channel: ", nChannel);
         }
 
 
@@ -258,6 +267,7 @@ namespace TAO
 
             return key.Verify((nVersion == 4) ? SignatureHash() : GetHash(), vchBlockSig, 1024);
         }
+
 
         /* Generates the StakeHash for this block from a uint256_t hashGenesis*/
         uint1024_t Block::StakeHash(bool fIsGenesis, uint256_t hashGenesis) const
@@ -283,6 +293,7 @@ namespace TAO
 
             return LLC::SK1024(ss.begin(), ss.end());
         }
+
 
         /* Generates the StakeHash for this block from a uint256_t hashGenesis*/
         uint1024_t Block::StakeHash(bool fIsGenesis, uint576_t trustKey) const

@@ -14,17 +14,17 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 #include <Util/include/convert.h>
 #include <Util/include/runtime.h>
-#include <Util/include/strlcpy.h>
+#include <cstring>
+#include <cmath>
 
 namespace config
 {
     std::map<std::string, std::string> mapArgs;
     std::map<std::string, std::vector<std::string> > mapMultiArgs;
 
+    std::atomic<bool> fShutdown(false);
     bool fDebug = false;
     bool fPrintToConsole = false;
-    bool fRequestShutdown = false;
-    bool fShutdown = false;
     bool fDaemon = false;
     bool fServer = false;
     bool fClient = false;
@@ -59,7 +59,12 @@ namespace config
         for (int i = 1; i < argc; ++i)
         {
             char psz[10000];
-            strlcpy(psz, argv[i], sizeof(psz));
+            memset( psz, 0, 10000);
+
+            uint16_t len = static_cast<uint16_t>(std::strlen(argv[i]));
+            len = std::min(len, static_cast<uint16_t>(10000));
+            std::copy((uint8_t *)argv[i], (uint8_t *)argv[i] + len, psz);
+
             char* pszValue = (char*)"";
             if (strchr(psz, '='))
             {
@@ -109,7 +114,7 @@ namespace config
     int64_t GetArg(const std::string& strArg, int64_t nDefault)
     {
         if (mapArgs.count(strArg))
-            return atoi64(mapArgs[strArg]);
+            return convert::atoi64(mapArgs[strArg]);
         return nDefault;
     }
 
@@ -120,7 +125,7 @@ namespace config
         {
             if (mapArgs[strArg].empty())
                 return true;
-            return (atoi(mapArgs[strArg]) != 0);
+            return (convert::atoi32(mapArgs[strArg]) != 0);
         }
         return fDefault;
     }

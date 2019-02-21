@@ -64,7 +64,7 @@ namespace LLP
             Packet REQUEST;
             REQUEST.HEADER = GET_OFFSET;
             REQUEST.LENGTH = 4;
-            REQUEST.DATA = uint2bytes(runtime::timestamp());
+            REQUEST.DATA = convert::uint2bytes(runtime::timestamp());
 
             WritePacket(REQUEST);
         }
@@ -85,13 +85,13 @@ namespace LLP
         /* Rspond with an offset. */
         if(PACKET.HEADER == GET_OFFSET)
         {
-            uint32_t nTimestamp  = bytes2uint(PACKET.DATA);
+            uint32_t nTimestamp  = convert::bytes2uint(PACKET.DATA);
             int32_t   nOffset    = (int32_t)(runtime::unifiedtimestamp() - nTimestamp);
 
             Packet RESPONSE;
             RESPONSE.HEADER = TIME_OFFSET;
             RESPONSE.LENGTH = 4;
-            RESPONSE.DATA   = int2bytes(nOffset);
+            RESPONSE.DATA   = convert::int2bytes(nOffset);
 
             debug::log(4, NODE, "Sent offset ", nOffset);
 
@@ -104,7 +104,7 @@ namespace LLP
             Packet RESPONSE;
             RESPONSE.HEADER = TIME_DATA;
             RESPONSE.LENGTH = 4;
-            RESPONSE.DATA = uint2bytes(runtime::unifiedtimestamp());
+            RESPONSE.DATA = convert::uint2bytes(runtime::unifiedtimestamp());
 
             debug::log(4, NODE, "Sent time sample ", runtime::unifiedtimestamp());
 
@@ -119,14 +119,14 @@ namespace LLP
         if(PACKET.HEADER == TIME_OFFSET)
         {
             /* Calculate this particular sample. */
-            int32_t nOffset = bytes2int(PACKET.DATA);
+            int32_t nOffset = convert::bytes2int(PACKET.DATA);
             nSamples.Add(nOffset);
 
             /* Reset the Timer and request another sample. */
             Packet REQUEST;
             REQUEST.HEADER = GET_OFFSET;
             REQUEST.LENGTH = 4;
-            REQUEST.DATA = uint2bytes(runtime::timestamp());
+            REQUEST.DATA = convert::uint2bytes(runtime::timestamp());
 
             /* Verbose debug output. */
             debug::log(2, NODE, "Added Sample ", nOffset, " | Seed ", GetAddress().ToStringIP());

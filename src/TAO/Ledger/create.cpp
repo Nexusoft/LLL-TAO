@@ -27,6 +27,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <Legacy/types/transaction.h>
+#include <Legacy/types/legacy.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -158,7 +159,7 @@ namespace TAO
                 block.producer << (uint8_t) TAO::Operation::OP::COINBASE;
 
                 /* The total to be credited. */
-                uint64_t  nCredit = GetCoinbaseReward(ChainState::stateBest, nChannel, 0);
+                uint64_t  nCredit = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
                 block.producer << nCredit;
 
             }
@@ -192,11 +193,11 @@ namespace TAO
             vHashes.erase(vHashes.begin() + block.vtx.size() + 1, vHashes.end());
 
             /** Populate the Block Data. **/
-            block.hashPrevBlock   = ChainState::stateBest.GetHash();
+            block.hashPrevBlock   = ChainState::stateBest.load().GetHash();
             block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
             block.nChannel       = nChannel;
-            block.nHeight        = ChainState::stateBest.nHeight + 1;
-            block.nBits          = GetNextTargetRequired(ChainState::stateBest, nChannel, false);
+            block.nHeight        = ChainState::stateBest.load().nHeight + 1;
+            block.nBits          = GetNextTargetRequired(ChainState::stateBest.load(), nChannel, false);
             block.nNonce         = 1;
             block.nTime          = runtime::unifiedtimestamp();
 
@@ -212,7 +213,7 @@ namespace TAO
          **/
         bool CreateGenesis()
         {
-            uint1024_t genesisHash = config::fTestNet ? hashGenesisTestnet : hashGenesis;
+            uint1024_t genesisHash = TAO::Ledger::ChainState::Genesis();
 
             if(!LLD::legDB->ReadBlock(genesisHash, ChainState::stateGenesis))
             {
@@ -231,8 +232,8 @@ namespace TAO
                 vHashes.push_back(genesis.GetHash());
 
                 /* Create the genesis block. */
-                TritiumBlock block;
-                block.vtx.push_back(std::make_pair(LEGACY_TX, genesis.GetHash()));
+                Legacy::LegacyBlock block;
+                block.vtx.push_back(genesis);
                 block.hashPrevBlock = 0;
                 block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
                 block.nVersion = 1;
@@ -249,7 +250,7 @@ namespace TAO
                 assert(genesis.nTime == block.nTime);
 
                 /* Check that the genesis hash is correct. */
-                
+
                 LLC::CBigNum target;
                 target.SetCompact(block.nBits);
                 if(block.GetHash() != genesisHash)
@@ -295,13 +296,13 @@ namespace TAO
             TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("user", "pass");
 
             std::mutex MUTEX;
-            while(!config::fShutdown)
+            while(!config::fShutdown.load())
             {
                 std::unique_lock<std::mutex> CONDITION_LOCK(MUTEX);
-                PRIVATE_CONDITION.wait(CONDITION_LOCK, []{ return config::fShutdown || mempool.Size() > 0; });
+                PRIVATE_CONDITION.wait(CONDITION_LOCK, []{ return config::fShutdown.load() || mempool.Size() > 0; });
 
                 /* Check for shutdown. */
-                if(config::fShutdown)
+                if(config::fShutdown.load())
                     return;
 
                 /* Create the block object. */

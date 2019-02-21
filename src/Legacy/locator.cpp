@@ -35,14 +35,14 @@ namespace Legacy
     : vHave()
     {
         vHave.push_back(hashBlock);
-        if(hashBlock == (config::fTestNet ? TAO::Ledger::hashGenesisTestnet : TAO::Ledger::hashGenesis))
+        if(hashBlock == TAO::Ledger::ChainState::Genesis())
             return;
 
         TAO::Ledger::BlockState state;
         if(!LLD::legDB->ReadBlock(hashBlock, state))
         {
-            if(hashBlock != TAO::Ledger::ChainState::hashBestChain)
-                vHave.push_back(TAO::Ledger::ChainState::hashBestChain);
+            if(hashBlock != TAO::Ledger::ChainState::hashBestChain.load())
+                vHave.push_back(TAO::Ledger::ChainState::hashBestChain.load());
 
             return;
         }
@@ -69,6 +69,6 @@ namespace Legacy
 
             vHave.push_back(state.GetHash());
         }
-        vHave.push_back(config::fTestNet ? TAO::Ledger::hashGenesisTestnet :TAO::Ledger::hashGenesis);
+        vHave.push_back(TAO::Ledger::ChainState::Genesis());
     }
 }

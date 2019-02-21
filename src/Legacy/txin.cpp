@@ -47,7 +47,7 @@ namespace Legacy
 	/* Short Hand debug output of the object (hash, n) */
 	std::string TxIn::ToStringShort() const
     {
-        return debug::strprintf(" %s %d", prevout.hash.ToString().c_str(), prevout.n);
+        return debug::safe_printstr(" ", prevout.hash.ToString(), " ", prevout.n);
     }
 
 
@@ -60,16 +60,16 @@ namespace Legacy
         if (prevout.IsNull())
         {
             if(IsStakeSig())
-                str += debug::strprintf(", genesis %s", HexStr(scriptSig).c_str());
+                str += debug::safe_printstr(", genesis ", HexStr(scriptSig));
             else
-                str += debug::strprintf(", coinbase %s", HexStr(scriptSig).c_str());
+                str += debug::safe_printstr(", coinbase ", HexStr(scriptSig));
         }
         else if(IsStakeSig())
-            str += debug::strprintf(", trust %s", HexStr(scriptSig).c_str());
+            str += debug::safe_printstr(", trust ", HexStr(scriptSig));
         else
-            str += debug::strprintf(", scriptSig=%s", scriptSig.ToString().substr(0,24).c_str());
+            str += debug::safe_printstr(", scriptSig=", scriptSig.ToString().substr(0,24));
         if (nSequence != std::numeric_limits<uint32_t>::max())
-            str += debug::strprintf(", nSequence=%u", nSequence);
+            str += debug::safe_printstr(", nSequence=", nSequence);
         str += ")";
         return str;
     }

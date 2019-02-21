@@ -60,8 +60,8 @@ namespace LLP
 				}
 				if (i == len)
 				{
-					  throw std::out_of_range(debug::strprintf(
-						    "CInv::CInv(string, uint1024_t) : unknown type '%s'", strType.c_str()));
+					  throw std::out_of_range(debug::safe_printstr(
+						    "CInv::CInv(string, uint1024_t) : unknown type '", strType, "'"));
 				}
 		}
 
@@ -85,7 +85,7 @@ namespace LLP
 		{
 		  	if (!IsKnownType())
 				  throw std::out_of_range(
-			    		debug::strprintf("CInv::GetCommand() : type=%d unknown type", type));
+			    		debug::safe_printstr("CInv::GetCommand() : type=", type, " unknown type"));
 
 			  return ppszTypeName[type];
 		}
@@ -97,10 +97,10 @@ namespace LLP
 				if(GetCommand() == std::string("tx"))
 				{
 						std::string invHash = hash.ToString();
-						return debug::strprintf("tx %s", invHash.substr(invHash.length() - 20, invHash.length()).c_str());
+						return debug::safe_printstr("tx ", invHash.substr(invHash.length() - 20, invHash.length()));
 				}
 
-				return debug::strprintf("%s %s", GetCommand(), hash.ToString().substr(0,20).c_str());
+				return debug::safe_printstr(GetCommand(), " ", hash.ToString().substr(0,20));
 		}
 
 

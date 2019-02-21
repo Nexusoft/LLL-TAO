@@ -168,19 +168,15 @@ namespace LLP
         {
             //TODO: use constant format (not ...) -> ostringstream
             //TODO: add headers map to build more complex response rather than const as follows
-            std::string strReply = debug::strprintf(
-                    "HTTP/1.1 %s\r\n"
-                    "Date: %s\r\n"
-                    "Connection: close\r\n"
-                    "Content-Length: %d\r\n"
-                    "Content-Type: application/json\r\n"
-                    "Server: Nexus-JSON-RPC\r\n"
-                    "\r\n"
-                    "%s",
-                strType.c_str(),
-                runtime::rfc1123Time().c_str(),
-                strContent.size(),
-                strContent.c_str());
+            std::string strReply = debug::safe_printstr(
+                    "HTTP/1.1 ", strType, "\r\n",
+                    "Date: ", runtime::rfc1123Time(), "\r\n",
+                    "Connection: close\r\n",
+                    "Content-Length: ", strContent.size(), "\r\n",
+                    "Content-Type: application/json\r\n",
+                    "Server: Nexus-JSON-RPC\r\n",
+                    "\r\n",
+                    strContent);
 
             //get the bytes to submit over socket
             std::vector<uint8_t> vBytes(strReply.begin(), strReply.end());

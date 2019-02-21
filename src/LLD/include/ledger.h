@@ -19,9 +19,6 @@ ________________________________________________________________________________
 #include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
 
-#include <LLD/cache/binary_lru.h>
-#include <LLD/keychain/hashmap.h>
-
 #include <TAO/Register/include/state.h>
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/trustkey.h>
@@ -49,7 +46,11 @@ namespace LLD
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         LedgerDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE)
-        : SectorDatabase("ledger", nFlagsIn) { }
+        : SectorDatabase(std::string("ledger"), nFlagsIn) { }
+
+
+        /** Default Destructor **/
+        virtual ~LedgerDB() {}
 
 
         /** WriteBestChain
@@ -79,6 +80,26 @@ namespace LLD
         bool ReadBestChain(uint1024_t& hashBest)
         {
             return Read(std::string("hashbestchain"), hashBest);
+        }
+
+
+        /** ReadBestChain
+         *
+         *  Reads the best chain pointer from the ledger DB.
+         *
+         *  @param[out] atomicBest The best chain hash to read in atomic form.
+         *
+         *  @return True if the read was successful, false otherwise.
+         *
+         **/
+        bool ReadBestChain(memory::atomic<uint1024_t>& atomicBest)
+        {
+            uint1024_t hashBest = 0;
+            if(!Read(std::string("hashbestchain"), hashBest))
+                return false;
+
+            atomicBest.store(hashBest);
+            return true;
         }
 
 
@@ -205,7 +226,7 @@ namespace LLD
             debug::log(0, FUNCTION, "repairing index for ", hashTransaction.ToString().substr(0, 20));
 
             /* Loop until it is found. */
-            while(!config::fShutdown && !state.IsNull())
+            while(!config::fShutdown.load() && !state.IsNull())
             {
                 /* Give debug output of status. */
                 if(state.nHeight % 100000 == 0)
@@ -253,7 +274,7 @@ namespace LLD
             TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateGenesis;
 
             /* Loop until it is found. */
-            while(!config::fShutdown && !state.IsNull())
+            while(!config::fShutdown.load() && !state.IsNull())
             {
                 /* Give debug output of status. */
                 if(state.nHeight % 100000 == 0)
@@ -442,6 +463,27 @@ namespace LLD
         bool ReadBlock(const uint1024_t& hashBlock, TAO::Ledger::BlockState& state)
         {
             return Read(hashBlock, state);
+        }
+
+
+        /** ReadBlock
+         *
+         *  Reads a block state object from disk for an atomic object.
+         *
+         *  @param[in] hashBlock The block hash to read.
+         *  @param[in] atomicState The block state object to read in atomic form.
+         *
+         *  @return True if the read was successful, false otherwise.
+         *
+         **/
+        bool ReadBlock(const uint1024_t& hashBlock, memory::atomic<TAO::Ledger::BlockState>& atomicState)
+        {
+            TAO::Ledger::BlockState state;
+            if(!Read(hashBlock, state))
+                return false;
+
+            atomicState.store(state);
+            return true;
         }
 
 

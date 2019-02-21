@@ -81,7 +81,7 @@ lisp database-mapping {
         eid-prefix = <v6-eid>/128
     }
     rloc {
-        interface = eth0
+        interface = <device>
     }
     rloc {
         address = <v4-rloc>

@@ -34,22 +34,25 @@ namespace LLP
     class Socket : public pollfd
     {
 
+    private:
+
         /** Mutex for thread synchronization. **/
-        std::mutex MUTEX;
+        mutable std::mutex PACKET_MUTEX;
+        mutable std::mutex DATA_MUTEX;
 
     protected:
 
 
         /** The error codes for socket. **/
-        int32_t nError;
+        std::atomic<int32_t> nError;
 
 
         /** Keep track of last time data was sent. **/
-        uint32_t nLastSend;
+        std::atomic<uint32_t> nLastSend;
 
 
         /** Keep track of last time data was received. **/
-        uint32_t nLastRecv;
+        std::atomic<uint32_t> nLastRecv;
 
 
         /** Oversize buffer for large packets. **/
@@ -85,14 +88,20 @@ namespace LLP
         virtual ~Socket();
 
 
-        /** Error
+        /** GetAddress
          *
-         *  Returns the error of socket if any
-         *
-         *  @return error code of the socket
+         *  Returns the address of the socket.
          *
          **/
-        int32_t ErrorCode() const;
+        BaseAddress GetAddress() const;
+
+
+        /** Reset
+        *
+        *  Resets the internal timers.
+        *
+        **/
+        void Reset();
 
 
         /** Attempts
@@ -172,6 +181,52 @@ namespace LLP
          *
          **/
         int32_t Flush();
+
+
+        /** Timeout
+        *
+        *  Determines if nTime seconds have elapsed since last Read / Write.
+        *
+        *  @param[in] nTime The time in seconds.
+        *
+        **/
+        bool Timeout(uint32_t nTime) const;
+
+
+        /** IsNull
+         *
+         *  Checks if is in null state.
+         *
+         **/
+        bool IsNull() const;
+
+
+        /** Errors
+         *
+         *  Checks for any flags in the Error Handle.
+         *
+         **/
+        bool Errors() const;
+
+
+        /** Error
+         *
+         *  Give the message (c-string) of the error in the socket.
+         *
+         **/
+        char* Error() const;
+
+
+    private:
+
+        /** error_code
+         *
+         *  Returns the error of socket if any
+         *
+         *  @return error code of the socket
+         *
+         **/
+        int32_t error_code() const;
 
     };
 

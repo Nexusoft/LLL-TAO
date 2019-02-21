@@ -27,7 +27,6 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    extern LegacyAddress addrMyNode; //TODO: move this to a better location
 
     /** LegacyNode
      *
@@ -111,7 +110,7 @@ namespace LLP
 
 
         /** Randomly generated session ID. **/
-        static uint64_t nSessionID;
+        static const uint64_t nSessionID;
 
 
         /** String version of this Node's Version. **/
@@ -135,27 +134,27 @@ namespace LLP
 
 
         /** Counter to keep track of the last time a ping was made. **/
-        uint32_t nLastPing;
+        std::atomic<uint32_t> nLastPing;
 
 
         /** The last getblocks call this node has received. **/
-        static uint1024_t hashLastGetblocks;
+        static memory::atomic<uint1024_t> hashLastGetblocks;
 
 
         /** The time since last getblocks call. **/
-        static uint64_t nLastGetBlocks;
+        static std::atomic<uint64_t> nLastGetBlocks;
 
 
         /** Handle an average calculation of fast sync blocks. */
-        static uint32_t nFastSyncAverage;
+        static std::atomic<uint32_t> nFastSyncAverage;
 
 
         /** The current node that is being used for fast sync.l **/
-        static BaseAddress addrFastSync;
+        static memory::atomic<BaseAddress> addrFastSync;
 
 
         /** The last time a block was accepted. **/
-        static uint64_t nLastTimeReceived;
+        static std::atomic<uint64_t> nLastTimeReceived;
 
 
         /** The trigger hash to send a continue inv message to remote node. **/
@@ -268,7 +267,7 @@ namespace LLP
 
 
         /** Push Get Blocks
-         *nConsecutiveFails
+         *
          *  Send a request to get recent inventory from remote node.
          *
          *  @param[in] hashBlockFrom The block to start from
@@ -278,11 +277,11 @@ namespace LLP
         void PushGetBlocks(const uint1024_t& hashBlockFrom, const uint1024_t& hashBlockTo)
         {
             /* Filter out duplicate requests. */
-            if(hashLastGetblocks == hashBlockFrom && nLastGetBlocks + 1 > runtime::timestamp())
+            if(hashLastGetblocks.load() == hashBlockFrom && nLastGetBlocks.load() + 1 > runtime::timestamp())
                 return;
 
             /* Set the fast sync address. */
-            if(addrFastSync.ToStringIP() != GetAddress().ToStringIP())
+            if(addrFastSync != GetAddress())
             {
                 /* Set the new sync address. */
                 addrFastSync = GetAddress();
@@ -294,7 +293,7 @@ namespace LLP
             }
 
             /* Calculate the fast sync average. */
-            nFastSyncAverage = std::min((uint64_t)25, (nFastSyncAverage + (runtime::timestamp() - nLastGetBlocks)) / 2);
+            nFastSyncAverage = std::min((uint64_t)25, (nFastSyncAverage.load() + (runtime::timestamp() - nLastGetBlocks.load())) / 2);
 
             /* Update the last timestamp this was called. */
             nLastGetBlocks = runtime::timestamp();
@@ -306,7 +305,7 @@ namespace LLP
             PushMessage("getblocks", Legacy::Locator(hashBlockFrom), hashBlockTo);
 
             /* Debug output for monitoring. */
-            debug::log(0, NODE, "(", nFastSyncAverage, ") requesting getblocks from ", hashBlockFrom.ToString().substr(0, 20), " to ", hashBlockTo.ToString().substr(0, 20));
+            debug::log(0, NODE, "(", nFastSyncAverage.load(), ") requesting getblocks from ", hashBlockFrom.ToString().substr(0, 20), " to ", hashBlockTo.ToString().substr(0, 20));
         }
 
 

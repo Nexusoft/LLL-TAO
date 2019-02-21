@@ -33,7 +33,7 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
-#include <Util/templates/serialize.h>
+#include <Util/templates/datastream.h>
 
 
 namespace Legacy
@@ -258,7 +258,7 @@ namespace Legacy
             }
         }
 
-        if (trustKey.IsNull() && !config::fShutdown)
+        if (trustKey.IsNull() && !config::fShutdown.load())
         {
             /* No trust key found. Reserve a new key to use as the trust key for Genesis */
             debug::log(0, FUNCTION, "Staking for Genesis with new trust key");
@@ -294,8 +294,9 @@ namespace Legacy
         candidateBlock = LegacyBlock();
 
         ReserveKey dummyReserveKey(pStakingWallet); //Reserve key not used by CreateLegacyBlock for nChannel=0
+        Coinbase dummyCoinbase; // Coinbase not used for staking
 
-        if (!CreateLegacyBlock(dummyReserveKey, 0, 0, candidateBlock))
+        if (!CreateLegacyBlock(dummyReserveKey, dummyCoinbase, 0, 0, candidateBlock))
             return debug::error(FUNCTION, "Unable to create candidate block");
 
         if (!trustKey.IsNull())
@@ -386,7 +387,7 @@ namespace Legacy
             }
 
             /* Calculate time since the last trust block for this trust key (block age = age of previous trust block). */
-            uint32_t nBlockAge = TAO::Ledger::ChainState::stateBest.GetBlockTime() - prevBlockState.GetBlockTime();
+            uint32_t nBlockAge = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() - prevBlockState.GetBlockTime();
 
             /* Block age less than maximum awards trust score increase equal to the current block age. */
             if (nBlockAge <= nMaxBlockAge)
@@ -598,7 +599,7 @@ namespace Legacy
         /* Search for the proof of stake hash solution until it mines a block, minter is stopped,
          * or network generates a new block (minter must start over with new candidate)
          */
-        while (!StakeMinter::fstopMinter.load() && !config::fShutdown && hashLastBlock == TAO::Ledger::ChainState::hashBestChain)
+        while (!StakeMinter::fstopMinter.load() && !config::fShutdown.load() && hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
         {
             /* Update the block time for difficulty accuracy. */
             candidateBlock.UpdateTime();
@@ -666,7 +667,7 @@ namespace Legacy
             return debug::error(FUNCTION, "Check state failed");
 
         /* Check the stake. */
-        if (!candidateBlock.vtx[0].CheckTrust(TAO::Ledger::ChainState::stateBest))
+        if (!candidateBlock.vtx[0].CheckTrust(TAO::Ledger::ChainState::stateBest.load()))
             return debug::error(FUNCTION, "Check trust failed");
 
         /* Check the work for the block.
@@ -717,13 +718,13 @@ namespace Legacy
 
         /* If the system is still syncing/connecting on startup, wait to run minter */
         while ((TAO::Ledger::ChainState::Synchronizing() || LLP::LEGACY_SERVER->GetConnectionCount() == 0)
-        		&& !StakeMinter::fstopMinter.load() && !config::fShutdown)
+        		&& !StakeMinter::fstopMinter.load() && !config::fShutdown.load())
         {
             runtime::sleep(pStakeMinter->nSleepTime);
         }
 
         /* Check stop/shutdown status after wait ends */
-        if (StakeMinter::fstopMinter.load() || config::fShutdown)
+        if (StakeMinter::fstopMinter.load() || config::fShutdown.load())
             return;
 
         debug::log(0, FUNCTION, "Stake Minter Initialized");
@@ -732,16 +733,16 @@ namespace Legacy
         pStakeMinter->nSleepTime = 1000;
 
         /* Minting thread will continue repeating this loop until shutdown */
-        while (!StakeMinter::fstopMinter.load() && !config::fShutdown)
+        while (!StakeMinter::fstopMinter.load() && !config::fShutdown.load())
         {
             runtime::sleep(pStakeMinter->nSleepTime);
 
             /* Check stop/shutdown status after wakeup */
-            if (StakeMinter::fstopMinter.load() || config::fShutdown)
+            if (StakeMinter::fstopMinter.load() || config::fShutdown.load())
             	continue;
 
             /* Save the current best block hash immediately in case it changes while we do setup */
-            pStakeMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain;
+            pStakeMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain.load();
 
             /* Set up the candidate block the minter is attempting to mine */
             if (!pStakeMinter->CreateCandidateBlock())

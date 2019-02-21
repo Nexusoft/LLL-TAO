@@ -489,10 +489,10 @@ namespace TAO
 
             /* Check for accounts. */
             if((strFrom != "default" || strFrom != "") && !Find(Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap(), strFrom))
-                throw APIException(-5, debug::strprintf("%s from account doesn't exist.", strFrom.c_str()));
+                throw APIException(-5, debug::safe_printstr(strFrom, " from account doesn't exist."));
 
             if((strTo != "default" || strTo != "") && !Find(Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap(), strTo))
-                throw APIException(-5, debug::strprintf("%s to account doesn't exist.", strTo.c_str()));
+                throw APIException(-5, debug::safe_printstr(strTo, " to account doesn't exist."));
 
             /* Build the from transaction. */
             Legacy::WalletTx wtx;
@@ -673,9 +673,8 @@ namespace TAO
             if (nRequired < 1)
                 return std::string("a multisignature address must require at least one key to redeem");
             if ((int)keys.size() < nRequired)
-                return std::string(
-                    debug::strprintf("not enough keys supplied "
-                              "(got %d keys, but need at least %d to redeem)", keys.size(), nRequired));
+                return debug::safe_printstr("not enough keys supplied ",
+                              "(got ", keys.size(), " keys, but need at least ", nRequired, " to redeem)");
             std::vector<LLC::ECKey> pubkeys;
             pubkeys.resize(keys.size());
             for (unsigned int i = 0; i < keys.size(); i++)
@@ -687,14 +686,14 @@ namespace TAO
                 if (address.IsValid())
                 {
                     if (address.IsScript())
-                        return std::string(
-                            debug::strprintf("%s is a pay-to-script address",ks.c_str()));
+                        return debug::safe_printstr(ks, " is a pay-to-script address");
+
                     std::vector<unsigned char> vchPubKey;
                     if (!Legacy::Wallet::GetInstance().GetPubKey(address, vchPubKey))
-                        return std::string(
-                            debug::strprintf("no full public key for address %s",ks.c_str()));
+                        return debug::safe_printstr("no full public key for address ", ks);
+
                     if (vchPubKey.empty() || !pubkeys[i].SetPubKey(vchPubKey))
-                        return std::string(" Invalid public key: "+ks);
+                        return debug::safe_printstr(" Invalid public key: ", ks);
                 }
 
                 // Case 2: hex public key
@@ -1209,7 +1208,7 @@ namespace TAO
                     throw APIException(-8, "Invalid parameter");
             }
 
-            int depth = nBlockHeight ? (1 + TAO::Ledger::ChainState::nBestHeight - nBlockHeight) : -1;
+            int depth = nBlockHeight ? (1 + TAO::Ledger::ChainState::nBestHeight.load() - nBlockHeight) : -1;
 
             json::json transactions = json::json::array();
 
@@ -1487,13 +1486,14 @@ namespace TAO
                 const Legacy::Script& pk = out.walletTx.vout[out.i].scriptPubKey;
                 Legacy::NexusAddress address;
 
-                debug::strprintf("txid %s | ", out.walletTx.GetHash().GetHex().c_str());
-                debug::strprintf("vout %u | ", out.i);
-                if (Legacy::ExtractAddress(pk, address))
-                    debug::strprintf("address %s |", address.ToString().c_str());
+                debug::log(4, "txid ", out.walletTx.GetHash().GetHex(), " | ");
+                debug::log(4, "vout ", out.i, " | ");
 
-                debug::strprintf("amount %f |", Legacy::SatoshisToAmount(nValue));
-                debug::strprintf("confirmations %u\n",out.nDepth);
+                if (Legacy::ExtractAddress(pk, address))
+                    debug::log(4, "address ", address.ToString(), " |");
+
+                debug::log(4, "amount ", Legacy::SatoshisToAmount(nValue), " |");
+                debug::log(4, "confirmations ",out.nDepth);
 
                 nCredit += nValue;
             }

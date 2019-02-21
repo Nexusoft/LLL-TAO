@@ -19,8 +19,8 @@ ________________________________________________________________________________
 #include <LLD/include/enum.h>
 
 #include <cstdint>
-#include <fstream>
 #include <string>
+#include <fstream>
 #include <vector>
 #include <mutex>
 
@@ -184,6 +184,18 @@ namespace LLD
          **/
         bool Put(const SectorKey& cKey);
 
+
+        /** Restore
+         *
+         *  Restore an erased key from keychain.
+         *
+         *  @param[in] vKey the key to restore.
+         *
+         *  @return True if the key was restored.
+         *
+         **/
+        bool Restore(const std::vector<uint8_t> &vKey);
+        
 
         /** Erase
          *

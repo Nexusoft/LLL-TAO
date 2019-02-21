@@ -80,7 +80,7 @@ namespace Legacy
           * @return true if the stake minter is started, false otherwise
           *
           */
-        inline bool IsStarted() const;
+        bool IsStarted() const;
 
 
         /** GetBlockWeight

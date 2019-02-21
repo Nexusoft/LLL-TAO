@@ -78,7 +78,7 @@ namespace Legacy
 			return true;
 
 		if (nBlockHeight == 0)
-			nBlockHeight = TAO::Ledger::ChainState::nBestHeight;
+			nBlockHeight = TAO::Ledger::ChainState::nBestHeight.load();
 
 		if (nBlockTime == 0)
 			nBlockTime = runtime::unifiedtimestamp();
@@ -613,7 +613,7 @@ namespace Legacy
                 txtype += "genesis";
             else
                 txtype += "user";
-        str += debug::strprintf("%s %s", GetHash().ToString().c_str(), txtype.c_str());
+        str += debug::safe_printstr(GetHash().ToString(), " ", txtype);
         return str;
     }
 
@@ -623,13 +623,13 @@ namespace Legacy
     {
         std::string str;
         str += IsCoinBase() ? "Coinbase" : (IsGenesis() ? "Genesis" : (IsTrust() ? "Trust" : "Transaction"));
-        str += debug::strprintf("(hash=%s, nTime=%d, ver=%d, vin.size=%d, vout.size=%d, nLockTime=%d)\n",
-            GetHash().ToString().substr(0,10).c_str(),
-            nTime,
-            nVersion,
-            vin.size(),
-            vout.size(),
-            nLockTime);
+        str += debug::safe_printstr(
+            "(hash=", GetHash().ToString().substr(0,10),
+            ", nTime=", nTime,
+            ", ver=", nVersion,
+            ", vin.size=", vin.size(),
+            ", vout.size=", vout.size(),
+            ", nLockTime=", nLockTime, ")\n");
 
         for (const auto& txin : vin)
             str += "    " + txin.ToString() + "\n";
@@ -1009,11 +1009,11 @@ namespace Legacy
                 return debug::error(FUNCTION, "version 4 block sequence number is ", nSequence);
 
             /* Ensure that a version 4 trust key is not expired based on new timespan rules. */
-            if(trustKey.Expired(TAO::Ledger::ChainState::stateBest))
-                return debug::error("version 4 key expired ", trustKey.BlockAge(TAO::Ledger::ChainState::stateBest));
+            if(trustKey.Expired(TAO::Ledger::ChainState::stateBest.load()))
+                return debug::error("version 4 key expired ", trustKey.BlockAge(TAO::Ledger::ChainState::stateBest.load()));
 
             /* Score is the total age of the trust key for version 4. */
-            nScorePrev = trustKey.Age(TAO::Ledger::ChainState::stateBest.GetBlockTime());
+            nScorePrev = trustKey.Age(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
         }
 
         /* Version 5 blocks that are trust must pass sequence checks. */

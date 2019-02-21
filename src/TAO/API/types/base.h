@@ -88,7 +88,7 @@ namespace TAO
                 if(mapFunctions.find(strMethod) != mapFunctions.end())
                     return mapFunctions[strMethod].Execute(SanitizeParams(strMethod, jsonParams), fHelp);
                 else
-                    throw APIException(-32601, debug::strprintf("Method not found: %s", strMethod.c_str()));
+                    throw APIException(-32601, debug::safe_printstr("Method not found: ", strMethod));
             }
 
 

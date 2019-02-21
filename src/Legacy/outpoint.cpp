@@ -13,8 +13,6 @@ ________________________________________________________________________________
 
 #include <Legacy/types/outpoint.h>
 
-#include <LLC/types/uint1024.h>
-#include <Util/templates/serialize.h>
 #include <Util/include/debug.h>
 
 namespace Legacy
@@ -23,7 +21,7 @@ namespace Legacy
 	/* Full object debug output */
 	std::string OutPoint::ToString() const
 	{
-		return debug::strprintf("OutPoint(%s, %d)", hash.ToString().substr(0,10).c_str(), n);
+		return debug::safe_printstr("OutPoint(", hash.ToString().substr(0, 20), ", ", n, ")");
 	}
 
 

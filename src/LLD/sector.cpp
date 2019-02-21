@@ -12,13 +12,9 @@
 ____________________________________________________________________________________________*/
 
 #include <LLD/templates/sector.h>
-
-#include <LLD/keychain/filemap.h>
-#include <LLD/keychain/hashmap.h>
-#include <LLD/keychain/hashtree.h>
-#include <LLD/cache/binary_lru.h>
-
 #include <Util/include/filesystem.h>
+#include <Util/include/hex.h>
+
 #include <functional>
 
 namespace LLD
@@ -161,7 +157,8 @@ namespace LLD
         SectorKey cKey;
         if(pSectorKeys->Get(vKey, cKey))
         {
-            { LOCK(SECTOR_MUTEX);
+            {
+                LOCK(SECTOR_MUTEX);
 
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
@@ -208,7 +205,8 @@ namespace LLD
     template<class KeychainType, class CacheType>
     bool SectorDatabase<KeychainType, CacheType>::Get(const SectorKey& cKey, std::vector<uint8_t>& vData)
     {
-        { LOCK(SECTOR_MUTEX);
+        {
+            LOCK(SECTOR_MUTEX);
 
             nBytesRead += (cKey.vKey.size() + vData.size());
 
@@ -261,7 +259,8 @@ namespace LLD
         /* Write the data into the memory cache. */
         cachePool->Put(vKey, vData, false);
 
-        { LOCK(SECTOR_MUTEX);
+        {
+            LOCK(SECTOR_MUTEX);
 
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
@@ -303,7 +302,8 @@ namespace LLD
     {
         if(nFlags & FLAGS::APPEND || !Update(vKey, vData))
         {
-            { LOCK(SECTOR_MUTEX);
+            {
+                LOCK(SECTOR_MUTEX);
 
                 /* Create new file if above current file size. */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
@@ -348,7 +348,8 @@ namespace LLD
                 nCurrentFileSize += vData.size();
 
                 /* Assign the Key to Keychain. */
-                pSectorKeys->Put(key);
+                if(!pSectorKeys->Put(key))
+                    return debug::error(FUNCTION, "failed to write key to keychain");
 
                 /* Verboe output. */
                 debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
@@ -379,7 +380,9 @@ namespace LLD
         }
 
         /* Add to the write buffer thread. */
-        { LOCK(BUFFER_MUTEX);
+        {
+            LOCK(BUFFER_MUTEX);
+
             vDiskBuffer.push_back(std::make_pair(vKey, vData));
             nBufferBytes += (vKey.size() + vData.size());
         }
@@ -395,13 +398,6 @@ namespace LLD
     template<class KeychainType, class CacheType>
     void SectorDatabase<KeychainType, CacheType>::CacheWriter()
     {
-        /* No cache write on force mode. */
-        if(nFlags & FLAGS::FORCE)
-        {
-            debug::log(0, FUNCTION, strBaseLocation, " in FORCE mode... closing");
-            return;
-        }
-
         /* Wait for initialization. */
         while(!fInitialized)
             runtime::sleep(100);
@@ -409,6 +405,14 @@ namespace LLD
         /* Check if writing is enabled. */
         if(!(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND))
             return;
+
+        /* No cache write on force mode. */
+        if(nFlags & FLAGS::FORCE)
+        {
+            debug::log(0, FUNCTION, strBaseLocation, " in FORCE mode... closing");
+            return;
+        }
+
 
         while(true)
         {
@@ -520,6 +524,46 @@ namespace LLD
         TxnRelease();
     }
 
+    /* Rollback the transaction to previous state. */
+     template<class KeychainType, class CacheType>
+     void SectorDatabase<KeychainType, CacheType>::TxnRollback()
+     {
+         LOCK(TRANSACTION_MUTEX);
+
+         /* Check that there is a valid transaction to apply to the database. */
+         assert(pTransaction);
+
+         /* Restore erase data. */
+         for(const auto& item : pTransaction->mapEraseData)
+             if(!pSectorKeys->Restore(item.first))
+                 assert(debug::error(FUNCTION, "failed to rollback erase"));
+
+        /* Erase all the transactions. */
+        for(const auto& item : pTransaction->mapTransactions)
+            if(!pSectorKeys->Erase(item.first))
+                assert(debug::error(FUNCTION, "failed to rollback transactions"));
+
+         /* Commit the sector data. */
+         for(const auto& item : pTransaction->mapOriginalData)
+             if(!Force(item.first, item.second))
+                assert(debug::error(FUNCTION, "failed to rollback sector data"));
+
+         /* Commit keychain entries. */
+         for(const auto& item : pTransaction->mapKeychain)
+             if(!pSectorKeys->Erase(item.first))
+                assert(debug::error(FUNCTION, "failed to commit to keychain"));
+
+         /* Commit the index data. */
+         for(const auto& item : pTransaction->mapIndex)
+            if(!pSectorKeys->Erase(item.first))
+                assert(debug::error(FUNCTION, "failed to erase indexes"));
+
+
+         /* Cleanup the transaction object. */
+         delete pTransaction;
+         pTransaction = nullptr;
+     }
+
 
     /*  Abort a transaction from happening. */
     template<class KeychainType, class CacheType>
@@ -585,79 +629,43 @@ namespace LLD
             return false;
 
         /* Erase data set to be removed. */
-        for(auto it = pTransaction->mapEraseData.begin(); it != pTransaction->mapEraseData.end(); ++it )
-        {
-            /* Erase the transaction data. */
-            if(!pSectorKeys->Erase(it->first))
-            {
-                delete pTransaction;
-                pTransaction = nullptr;
-                //RollbackTransactions();
-                //TxnAbort();
-
-                return debug::error(FUNCTION, "failed to erase from keychain");
-            }
-        }
-
-        /* Commit keychain entries. */
-        for(auto it = pTransaction->mapKeychain.begin(); it != pTransaction->mapKeychain.end(); ++it )
-        {
-            SectorKey cKey(STATE::READY, it->first, 0, 0, 0);
-            if(!pSectorKeys->Put(cKey))
-            {
-                delete pTransaction;
-                pTransaction = nullptr;
-                //RollbackTransactions();
-                //TxnAbort();
-            }
-        }
+        for(const auto& item : pTransaction->mapEraseData)
+            if(!pSectorKeys->Erase(item.first))
+                assert(debug::error(FUNCTION, "failed to erase from keychain"));
 
         /* Commit the sector data. */
-        for(auto it = pTransaction->mapTransactions.begin(); it != pTransaction->mapTransactions.end(); ++it )
-        {
-            if(!Force(it->first, it->second))
-            {
-                delete pTransaction;
-                pTransaction = nullptr;
-                //RollbackTransactions();
-                //TxnAbort();
+        for(const auto& item : pTransaction->mapTransactions)
+            if(!Force(item.first, item.second))
+                assert(debug::error(FUNCTION, "failed to commit sector data"));
 
-                return debug::error(FUNCTION, "failed to commit sector data");
-            }
+        /* Commit keychain entries. */
+        for(const auto& item : pTransaction->mapKeychain)
+        {
+            SectorKey cKey(STATE::READY, item.first, 0, 0, 0);
+            if(!pSectorKeys->Put(cKey))
+                assert(debug::error(FUNCTION, "failed to commit to keychain"));
         }
 
         /* Commit the index data. */
         std::map<std::vector<uint8_t>, SectorKey> mapIndex;
-        for(auto it = pTransaction->mapIndex.begin(); it != pTransaction->mapIndex.end(); ++it )
+        for(const auto& item : pTransaction->mapIndex)
         {
             /* Get the key. */
             SectorKey cKey;
-            if(mapIndex.count(it->second))
-                cKey = mapIndex[it->second];
+            if(mapIndex.count(item.second))
+                cKey = mapIndex[item.second];
             else
             {
-                if(!pSectorKeys->Get(it->second, cKey))
-                {
-                    delete pTransaction;
-                    pTransaction = nullptr;
-                    //TxnAbort();
+                if(!pSectorKeys->Get(item.second, cKey))
+                    assert(debug::error(FUNCTION, "failed to read indexing entry"));
 
-                    return debug::error(FUNCTION, "failed to read indexing entry");
-                }
-
-                mapIndex[it->second] = cKey;
+                mapIndex[item.second] = cKey;
             }
 
             /* Write the new sector key. */
-            cKey.SetKey(it->first);
+            cKey.SetKey(item.first);
             if(!pSectorKeys->Put(cKey))
-            {
-                delete pTransaction;
-                pTransaction = nullptr;
-                //TxnAbort();
-
-                return debug::error(FUNCTION, "failed to write indexing entry");
-            }
+                assert(debug::error(FUNCTION, "failed to write indexing entry"));
         }
 
         /* Cleanup the transaction object. */
@@ -774,7 +782,5 @@ namespace LLD
     /* Explicity instantiate all template instances needed for compiler. */
     template class SectorDatabase<BinaryFileMap, BinaryLRU>;
     template class SectorDatabase<BinaryHashMap, BinaryLRU>;
-
-
 
 }

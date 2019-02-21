@@ -64,8 +64,8 @@ RUN mkdir /nexus
 RUN mkdir /nexus/build
 COPY ./makefile.cli /nexus
 COPY ./src /nexus/src/
-RUN cd /nexus; make -f makefile.cli clean;
-#RUN cd /nexus; make -j 8 -f makefile.cli STATIC=1;
+#RUN cd /nexus; make -f makefile.cli clean;
+#RUN cd /nexus; make -j 8 -f makefile.cli ENABLE_DEBUG=1
 RUN cd /nexus; make -j 8 -f makefile.cli
 
 #
@@ -80,7 +80,7 @@ COPY config/curl-nexus /nexus/curl-nexus
 # Copy LISP startup config.
 #
 COPY lisp/RL /lispers.net/RL
-COPY lisp/RL-seed /lispers.net/RL-seed
+COPY lisp/provision-lisp.py /lispers.net/provision-lisp.py
 COPY lisp/lisp.config.xtr /lispers.net/lisp.config.xtr
 COPY lisp/lisp-join.py /lispers.net/lisp-join.py
 COPY lisp/make-crypto-eid.py /lispers.net/make-crypto-eid.py
@@ -95,7 +95,6 @@ COPY config/.cshrc /root/.cshrc
 # Startup lispers.net and nexus. Output some useful data and drop into tcsh.
 #
 ENV RUN_LISP    /lispers.net/RL
-#ENV RUN_LISP    /lispers.net/RL-seed
 ENV RUN_NEXUS   /nexus/run-nexus
 ENV RUN_GETINFO /nexus/nexus -test getinfo
 ENV RUN_PSLISP  /lispers.net/pslisp

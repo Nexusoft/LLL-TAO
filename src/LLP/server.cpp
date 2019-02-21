@@ -48,9 +48,6 @@ namespace LLP
                          uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen,
                          bool fMeter, bool fManager, uint32_t nSleepTimeIn)
     : fDDOS(isDDOS)
-    , fLISTEN(fListen)
-    , fMETER(fMeter)
-    , fDestruct(false)
     , MANAGER()
     , PORT(nPort)
     , MAX_THREADS(nMaxThreads)
@@ -85,9 +82,7 @@ namespace LLP
 
         /* Initialize the meter. */
         if(fMeter)
-        {
             METER_THREAD = std::thread(std::bind(&Server::Meter, this));
-        }
 
     }
 
@@ -96,12 +91,7 @@ namespace LLP
     Server<ProtocolType>::~Server()
     {
         /* Set all flags back to false. */
-        fLISTEN = false;
-        fMETER  = false;
-        fDDOS   = false;
-
-        /* Start the destructor. */
-        fDestruct = true;
+        fDDOS.store(false);
 
         /* Wait for address manager. */
         if(pAddressManager)
@@ -180,12 +170,17 @@ namespace LLP
        BaseAddress addrConnect(strAddress, nPort);
 
        /* Create new DDOS Filter if Needed. */
-       if(!DDOS_MAP.count(addrConnect))
-           DDOS_MAP[addrConnect] = new DDOS_Filter(DDOS_TIMESPAN);
+       if(fDDOS.load())
+       {
+           if(!DDOS_MAP.count(addrConnect))
+               DDOS_MAP[addrConnect] = new DDOS_Filter(DDOS_TIMESPAN);
 
-       /* DDOS Operations: Only executed when DDOS is enabled. */
-       if((fDDOS && DDOS_MAP[addrConnect]->Banned()))
-           return false;
+           /* DDOS Operations: Only executed when DDOS is enabled. */
+           if(DDOS_MAP[addrConnect]->Banned())
+               return false;
+       }
+
+
 
        /* Find a balanced Data Thread to Add Connection to. */
        int32_t nThread = FindThread();
@@ -203,43 +198,11 @@ namespace LLP
    }
 
 
-    /*  Get the active connection pointers from data threads. */
-   template <class ProtocolType>
-   std::vector<ProtocolType *> Server<ProtocolType>::GetConnections()
-   {
-       /* List of connections to return. */
-       std::vector<ProtocolType *> vConnections;
-       for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
-       {
-           /* Get the data threads. */
-           DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-
-           /* Lock the data thread. */
-           LOCK(dt->MUTEX);
-
-           /* Loop through connections in data thread. */
-           int32_t nSize = dt->CONNECTIONS.size();
-           for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
-           {
-               /* Skip over inactive connections. */
-               if(dt->CONNECTIONS[nIndex] == dt->pEmpty
-               || !dt->CONNECTIONS[nIndex]->Connected())
-                   continue;
-
-               /* Push the active connection. */
-               vConnections.push_back(dt->CONNECTIONS[nIndex]);
-           }
-       }
-
-       return vConnections;
-   }
-
-
    /*  Get the number of active connection pointers from data threads. */
     template <class ProtocolType>
     uint32_t Server<ProtocolType>::GetConnectionCount()
     {
-        uint32_t connectionCount = 0;
+        uint32_t nConnectionCount = 0;
 
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
@@ -247,63 +210,80 @@ namespace LLP
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
             /* Lock the data thread. */
-            LOCK(dt->MUTEX);
+            uint16_t nSize = 0;
+            {
+                LOCK(dt->MUTEX);
+
+                nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
+            }
 
             /* Loop through connections in data thread and add any that are connected to count. */
-            int32_t nSize = dt->CONNECTIONS.size();
-            for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
+            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
                 /* Skip over inactive connections. */
-                if(dt->CONNECTIONS[nIndex] == dt->pEmpty
-                || !dt->CONNECTIONS[nIndex]->Connected())
+                if(!dt->CONNECTIONS[nIndex])
                     continue;
 
-                connectionCount += 1;
+                ++nConnectionCount;
             }
         }
 
-        return connectionCount;
+        return nConnectionCount;
     }
 
 
     /*  Get the best connection based on latency */
     template <class ProtocolType>
-    ProtocolType* Server<ProtocolType>::GetConnection(const BaseAddress& addrExclude)
+    memory::atomic_ptr<ProtocolType>& Server<ProtocolType>::GetConnection(const BaseAddress& addrExclude)
     {
         /* List of connections to return. */
-        ProtocolType* pBest = nullptr;
+        uint32_t nLatency   = std::numeric_limits<uint32_t>::max();
+        uint16_t nRetThread = 0;
+        uint16_t nRetIndex  = 0;
 
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
             /* Get the data threads. */
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
-            if(!dt)
-              continue;
-
             /* Lock the data thread. */
-            LOCK(dt->MUTEX);
+            uint16_t nSize = 0;
+            {
+                LOCK(dt->MUTEX);
+
+                nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
+            }
 
             /* Loop through connections in data thread. */
-            int32_t nSize = dt->CONNECTIONS.size();
-            for(int32_t nIndex = 0; nIndex < nSize; ++nIndex)
+            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
-                /* Skip over inactive connections. */
-                if(dt->CONNECTIONS[nIndex] == dt->pEmpty
-                || !dt->CONNECTIONS[nIndex]->Connected())
-                    continue;
+                try
+                {
+                    /* Skip over inactive connections. */
+                    if(!dt->CONNECTIONS[nIndex])
+                        continue;
 
-                /* Skip over exclusion address. */
-                if(dt->CONNECTIONS[nIndex]->GetAddress() == addrExclude)
-                    continue;
+                    /* Skip over exclusion address. */
+                    if(dt->CONNECTIONS[nIndex]->GetAddress() == addrExclude)
+                        continue;
 
-                /* Push the active connection. */
-                if(!pBest || dt->CONNECTIONS[nIndex]->nLatency < pBest->nLatency)
-                    pBest = dt->CONNECTIONS[nIndex];
+                    /* Push the active connection. */
+                    if(dt->CONNECTIONS[nIndex]->nLatency < nLatency)
+                    {
+                        nLatency = dt->CONNECTIONS[nIndex]->nLatency;
+
+                        nRetThread = nThread;
+                        nRetIndex  = nIndex;
+                    }
+                }
+                catch(std::runtime_error e)
+                {
+                    debug::error(FUNCTION, e.what());
+                }
             }
         }
 
-        return pBest;
+        return DATA_THREADS[nRetThread]->CONNECTIONS[nRetIndex];
     }
 
 
@@ -360,10 +340,10 @@ namespace LLP
             runtime::sleep(1000);
 
         /* Loop connections. */
-        while(!fDestruct.load())
+        while(!config::fShutdown.load())
         {
             /* Sleep in 1 second intervals for easy break on shutdown. */
-            for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown; ++i)
+            for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown.load(); ++i)
                 runtime::sleep(1000);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
@@ -427,10 +407,6 @@ namespace LLP
         socklen_t len_v4 = sizeof(struct sockaddr_in);
         socklen_t len_v6 = sizeof(struct sockaddr_in6);
 
-        /* End the listening thread if LLP set to not listen. */
-        if(!fLISTEN)
-            return;
-
         /* Bind the Listener. */
         if(!BindListenPort(hListenSocket, fIPv4))
             return;
@@ -445,7 +421,7 @@ namespace LLP
         fds[0].fd     = hListenSocket;
 
         /* Main listener loop. */
-        while(!fDestruct.load())
+        while(!config::fShutdown.load())
         {
             if (hListenSocket != INVALID_SOCKET)
             {
@@ -458,29 +434,9 @@ namespace LLP
                 int nPoll = poll(&fds[0], 1, 100);
 #endif
 
-                if(nPoll == 0)
-                {
-                    /* No sockets have POLLIN status (no data to read) */
+				/* Continue on poll error or no data to read */
+                if(nPoll < 0)
                     continue;
-                }
-
-                /* This was for testing. Uncomment if need to log info on potential SOCKET_ERROR
-                 * Potentially spits out a ton of error messages if get this repeatedly
-                 */
-                // else if(nPoll == SOCKET_ERROR)
-                // {
-                //     /* Poll attempt generated an error */
-                //     debug::error(FUNCTION, "Error polling socket (Error code ", WSAGetLastError(), ")");
-                //     debug::log(3, "    Listening node fd ", fds[0].fd, " events ", fds[0].events, " revents ", fds[0].revents);
-
-                //     continue;
-                // }
-                else if (nPoll < 0)
-                {
-                    /* Should only be SOCKET_ERROR if not 0 or >0 */
-                    // debug::error(FUNCTION, "Invalid return value from poll (", nPoll, ")");
-                    continue;
-                }
 
                 if(!(fds[0].revents & POLLIN))
                     continue;
@@ -536,8 +492,8 @@ namespace LLP
                     /* Get the data thread. */
                     DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
+                    /* Accept an incoming connection. */
                     dt->AddConnection(sockNew, DDOS_MAP[addr]);
-
 
                     /* Verbose output. */
                     debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ",  PORT);
@@ -643,13 +599,10 @@ namespace LLP
        if(!config::GetBoolArg("-meters", false))
            return;
 
-       if(!fMETER)
-           return;
-
        runtime::timer TIMER;
        TIMER.Start();
 
-       while(!fDestruct.load())
+       while(!config::fShutdown.load())
        {
            runtime::sleep(100);
            if(TIMER.Elapsed() < 10)
@@ -671,7 +624,7 @@ namespace LLP
            ClearRequests();
        }
 
-       printf("Meter closed..\n");
+       debug::log(0, FUNCTION, "Meter closed..");
     }
 
 
@@ -698,12 +651,9 @@ namespace LLP
     {
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
-           DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
-           if(!dt)
-               continue;
-
-           dt->REQUESTS = 0;
+            dt->REQUESTS = 0;
         }
     }
 

@@ -16,6 +16,8 @@ ________________________________________________________________________________
 
 #include <LLP/include/network.h>
 #include <Util/templates/serialize.h>
+#include <Util/templates/flatdata.h>
+
 #include <vector>
 #include <cstdint>
 

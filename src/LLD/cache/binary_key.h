@@ -1,55 +1,56 @@
 /*__________________________________________________________________________________________
-
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
-
             (c) Copyright The Nexus Developers 2014 - 2019
-
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
             "ad vocem populi" - To the Voice of the People
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LLD_CACHE_BINARY_LRU_H
-#define NEXUS_LLD_CACHE_BINARY_LRU_H
+#ifndef NEXUS_LLD_CACHE_KEY_LRU_H
+#define NEXUS_LLD_CACHE_KEY_LRU_H
 
 #include <mutex>
 #include <cstdint>
 #include <vector>
+
+#include <LLD/include/version.h>
+
+#include <Util/templates/datastream.h>
 
 
 //TODO: Abstract base class for all cache systems
 namespace LLD
 {
 
-    /** BinaryNode
+    /** BinaryKey
      *
      *  Node to hold the binary data of the double linked list.
      *
      **/
-    struct BinaryNode
+    struct BinaryKey
     {
-        BinaryNode* pprev;
-        BinaryNode* pnext;
+        BinaryKey* pprev;
+        BinaryKey* pnext;
 
+        /** The binary data of the key. **/
         std::vector<uint8_t> vKey;
-        std::vector<uint8_t> vData;
 
-        bool fReserve;
+        /** The timestamp of last update. */
+        uint64_t nTimestamp;
 
         /** Default constructor **/
-        BinaryNode(const std::vector<uint8_t>& vKeyIn, const std::vector<uint8_t>& vDataIn, bool fReserveIn);
+        BinaryKey(const std::vector<uint8_t>& vKeyIn);
     };
 
 
-    /** BinaryLRU
+    /** KeyLRU
     *
     *   LRU - Least Recently Used.
     *   This class is responsible for holding data that is partially processed.
     *   This class has no types, all objects are in binary forms.
     *
     **/
-    class BinaryLRU
+    class KeyLRU
     {
 
     protected:
@@ -71,15 +72,15 @@ namespace LLD
 
 
         /* Map of the current holding data. */
-        std::vector<BinaryNode *> hashmap;
+        std::vector<BinaryKey *> hashmap;
 
 
         /* Keep track of the first object in linked list. */
-        BinaryNode* pfirst;
+        BinaryKey* pfirst;
 
 
         /* Keep track of the last object in linked list. */
-        BinaryNode* plast;
+        BinaryKey* plast;
 
 
 
@@ -91,7 +92,7 @@ namespace LLD
          *  MAX_CACHE_BUCKETS default value is 65,539 (2 bytes)
          *
          **/
-        BinaryLRU();
+        KeyLRU();
 
 
         /** Cache Size Constructor
@@ -99,11 +100,53 @@ namespace LLD
          *  @param[in] nCacheSizeIn The maximum size of this Cache Pool
          *
          **/
-        BinaryLRU(uint32_t nCacheSizeIn);
+        KeyLRU(uint32_t nCacheSizeIn);
+
+
+        /** Copy constructor. **/
+        KeyLRU(const KeyLRU& cache);
 
 
         /** Class Destructor. **/
-        ~BinaryLRU();
+        ~KeyLRU();
+
+
+        /** Add
+         *
+         *  Template for writing a generic key into the key LRU.
+         *
+         *  @param[in] key The key object to write.
+         *
+         **/
+        template<typename KeyType>
+        void Add(const KeyType& key)
+        {
+            /* Serialialize the key object. */
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
+            ssKey << key;
+
+            /* Add the key to the cache. */
+            Put(ssKey.Bytes());
+        }
+
+
+        /** Has
+         *
+         *  Template for checking for a generic key in the key LRU.
+         *
+         *  @param[in] key The key object to check.
+         *
+         **/
+        template<typename KeyType>
+        bool Has(const KeyType& key)
+        {
+            /* Serialialize the key object. */
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
+            ssKey << key;
+
+            /* Add the key to the cache. */
+            return Get(ssKey.Bytes());
+        }
 
 
         /** Bucket
@@ -125,7 +168,7 @@ namespace LLD
          *  @return True/False whether pool contains data by index.
          *
          **/
-        bool Has(const std::vector<uint8_t>& vKey) const;
+        bool Get(const std::vector<uint8_t>& vKey);
 
 
         /** RemoveNode
@@ -135,7 +178,7 @@ namespace LLD
          *  @param[in] pthis The node to remove from list.
          *
          **/
-        void RemoveNode(BinaryNode* pthis);
+        void RemoveNode(BinaryKey* pthis);
 
 
         /** MoveToFront
@@ -145,20 +188,7 @@ namespace LLD
          *  @param[in] pthis The node to move to front.
          *
          **/
-        void MoveToFront(BinaryNode* pthis);
-
-
-        /** Get
-         *
-         *  Get the data by index
-         *
-         *  @param[in] vKey The binary data of the key.
-         *  @param[out] vData The binary data of the cached record.
-         *
-         *  @return True if object was found, false if none found by index.
-         *
-         **/
-        bool Get(const std::vector<uint8_t>& vKey, std::vector<uint8_t>& vData);
+        void MoveToFront(BinaryKey* pthis);
 
 
         /** Put
@@ -170,18 +200,7 @@ namespace LLD
          *  @param[in] fReserve Flag for if item should be saved from cache eviction.
          *
          **/
-        void Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData, bool fReserve = false);
-
-
-        /** Reserve
-         *
-         *  Reserve this item in the cache permanently if true, unreserve if false
-         *
-         *  @param[in] vKey The key to flag as reserved true/false
-         *  @param[in] fReserve If this object is to be reserved for disk.
-         *
-         **/
-        void Reserve(const std::vector<uint8_t>& vKey, bool fReserve = true);
+        void Put(const std::vector<uint8_t>& vKey);
 
 
         /** Remove

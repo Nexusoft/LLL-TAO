@@ -133,16 +133,6 @@ namespace LLP
         if (s == 0 || s > 255)
             return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
 
-        /* deprecated!
-        char psz[256];
-        char *pszHost = psz;
-        strlcpy(psz, pszName, sizeof(psz));
-        if (psz[0] == '[' && psz[strlen(psz)-1] == ']')
-        {
-            pszHost = psz+1;
-            psz[strlen(psz)-1] = 0;
-        } */
-
         return LookupIntern(strName, vAddr, nMaxSolutions, fAllowLookup);
     }
 
@@ -173,37 +163,6 @@ namespace LLP
         if (s == 0 || s > 255)
             return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
 
-        /* deprecated (no need for string names such as 192.168.0.1:9325, or [192.168.0.1]:9325,
-                       just plain old ip address will work 192.168.0.1 and pass in port # to set)
-        uint16_t port = portDefault;
-        char psz[256] = { 0 };
-        char *pszHost = psz;
-        strlcpy(psz, pszName, sizeof(psz));
-        char* pszColon = strrchr(psz+1,':');
-        char *pszPortEnd = nullptr;
-        int portParsed = pszColon ? strtoul(pszColon+1, &pszPortEnd, 10) : 0;
-        if (pszColon && pszPortEnd && pszPortEnd[0] == 0)
-        {
-            if (psz[0] == '[' && pszColon[-1] == ']')
-            {
-                pszHost = psz+1;
-                pszColon[-1] = 0;
-            }
-            else
-                pszColon[0] = 0;
-
-            port = static_cast<uint16_t>(portParsed);
-        }
-        else
-        {
-            if (psz[0] == '[' && psz[strlen(psz)-1] == ']')
-            {
-                pszHost = psz+1;
-                psz[strlen(psz)-1] = 0;
-            }
-
-        }
-        */
 
         if(!LookupIntern(strName, vAddr, nMaxSolutions, fAllowLookup))
             return false;

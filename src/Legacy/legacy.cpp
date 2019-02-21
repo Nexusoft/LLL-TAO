@@ -86,19 +86,19 @@ namespace Legacy
     /* For debugging Purposes seeing block state data dump */
     std::string LegacyBlock::ToString() const
     {
-        return debug::strprintf("Block("
-            VALUE("hash")     " = %s "
-            VALUE("nVersion") " = %u, "
-            VALUE("hashPrevBlock") " = %s, "
-            VALUE("hashMerkleRoot") " = %s, "
-            VALUE("nChannel") " = %u, "
-            VALUE("nHeight") " = %u, "
-            VALUE("nBits") " = %u, "
-            VALUE("nNonce") " = %" PRIu64 ", "
-            VALUE("nTime") " = %u, "
-            VALUE("vchBlockSig") " = %s, "
-            VALUE("vtx.size()") " = %u)",
-        GetHash().ToString().substr(0, 20).c_str(), nVersion, hashPrevBlock.ToString().substr(0, 20).c_str(), hashMerkleRoot.ToString().substr(0, 20).c_str(), nChannel, nHeight, nBits, nNonce, nTime, HexStr(vchBlockSig.begin(), vchBlockSig.end()).c_str(), vtx.size());
+        return debug::safe_printstr("Block("
+            VALUE("hash")     " = ", GetHash().ToString().substr(0, 20), " ",
+            VALUE("nVersion") " = ", nVersion, ", ",
+            VALUE("hashPrevBlock") " = ", hashPrevBlock.ToString().substr(0, 20), ", ",
+            VALUE("hashMerkleRoot") " = ", hashMerkleRoot.ToString().substr(0, 20), ", ",
+            VALUE("nChannel") " = ", nChannel, ", ",
+            VALUE("nHeight") " = ", nHeight, ", ",
+            VALUE("nBits") " = ", nBits, ", ",
+            VALUE("nNonce") " = ", nNonce, ", ",
+            VALUE("nTime") " = ", nTime, ", ",
+            VALUE("vchBlockSig") " = ", HexStr(vchBlockSig.begin(), vchBlockSig.end()), ", ",
+            VALUE("vtx.size()") " = ", vtx.size(), ")"
+        );
     }
 
 
@@ -140,7 +140,7 @@ namespace Legacy
 
 
         /* Check the Proof of Work Claims. */
-        if (IsProofOfWork() && !VerifyWork())
+        if (!TAO::Ledger::ChainState::Synchronizing() && IsProofOfWork() && !VerifyWork())
             return debug::error(FUNCTION, "invalid proof of work");
 
 
@@ -450,7 +450,13 @@ namespace Legacy
         {
             /* Remove from the memory pool. */
             for(const auto& tx : vtx)
+            {
+                /* Keep transactions in memory pool that aren't on disk. */
+                if(!LLD::legacyDB->HasTx(tx.GetHash()))
+                    continue;
+
                 TAO::Ledger::mempool.Remove(tx.GetHash());
+            }
 
             return false;
         }

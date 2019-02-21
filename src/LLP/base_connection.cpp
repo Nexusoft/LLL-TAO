@@ -77,18 +77,8 @@ namespace LLP
     BaseConnection<PacketType>::~BaseConnection()
     {
         Disconnect();
+        SetNull();
     }
-
-
-
-    /*  Resets the internal timers. */
-    template <class PacketType>
-    void BaseConnection<PacketType>::Reset()
-    {
-        nLastRecv = runtime::timestamp();
-        nLastSend = runtime::timestamp();
-    }
-
 
 
     /*  Sets the object to an invalid state. */
@@ -97,7 +87,6 @@ namespace LLP
     {
         fd = -1;
         nError = 0;
-
         INCOMING.SetNull();
         DDOS  = nullptr;
         fDDOS = false;
@@ -106,44 +95,11 @@ namespace LLP
     }
 
 
-    /*  Checks if is in null state. */
-    template <class PacketType>
-    bool BaseConnection<PacketType>::IsNull() const
-    {
-        return fd == -1;
-    }
-
-
-    /*  Checks for any flags in the Error Handle. */
-    template <class PacketType>
-    bool BaseConnection<PacketType>::Errors() const
-    {
-        return ErrorCode() != 0;
-    }
-
-
-    /*  Give the message (c-string) of the error in the socket. */
-    template <class PacketType>
-    char *BaseConnection<PacketType>::Error() const
-    {
-        return strerror(ErrorCode());
-    }
-
-
     /*  Connection flag to determine if socket should be handled if not connected. */
     template <class PacketType>
     bool BaseConnection<PacketType>::Connected() const
     {
-        return fCONNECTED;
-    }
-
-
-    /*  Determines if nTime seconds have elapsed since last Read / Write. */
-    template <class PacketType>
-    bool BaseConnection<PacketType>::Timeout(uint32_t nTime) const
-    {
-        return (runtime::timestamp() > nLastSend + nTime &&
-                runtime::timestamp() > nLastRecv + nTime);
+        return fCONNECTED.load();
     }
 
 
@@ -169,15 +125,17 @@ namespace LLP
     template <class PacketType>
     void BaseConnection<PacketType>::WritePacket(const PacketType& PACKET)
     {
+        /* Get the bytes of the packet. */
+        std::vector<uint8_t> vBytes = PACKET.GetBytes();
+
         /* Debug dump of message type. */
-        debug::log(3, NODE "Sent Message (", PACKET.GetBytes().size(), " bytes)");
+        debug::log(3, NODE "Sent Message (", vBytes.size(), " bytes)");
 
         /* Debug dump of packet data. */
         if(config::GetArg("-verbose", 0) >= 5)
-            PrintHex(PACKET.GetBytes());
+            PrintHex(vBytes);
 
         /* Write the packet to socket buffer. */
-        std::vector<uint8_t> vBytes = PACKET.GetBytes();
         Write(vBytes, vBytes.size());
     }
 
@@ -186,21 +144,19 @@ namespace LLP
     template <class PacketType>
     bool BaseConnection<PacketType>::Connect(std::string strAddress, uint16_t nPort)
     {
-        BaseAddress addrConnect(strAddress, nPort);
-
         /* Check for connect to self */
-        if(addr.ToStringIP() == addrConnect.ToStringIP())
+        if(addr.ToStringIP() == strAddress)
             return debug::error(NODE, "cannot self-connect");
 
-        debug::log(1, NODE, "Connecting to ", addrConnect.ToStringIP());
+        debug::log(1, NODE, "Connecting to ", strAddress);
 
         // Connect
-        if (Attempt(addrConnect))
+        if (Attempt(BaseAddress(strAddress, nPort)))
         {
-            debug::log(1, NODE, "Connected to ", addrConnect.ToStringIP());
+            debug::log(1, NODE, "Connected to ", strAddress);
 
             fCONNECTED = true;
-            fOUTGOING  = true;
+            fOUTGOING = true;
 
             return true;
         }
@@ -210,18 +166,13 @@ namespace LLP
 
 
     template <class PacketType>
-    BaseAddress BaseConnection<PacketType>::GetAddress() const
-    {
-        return addr;
-    }
-
-
-    template <class PacketType>
     void BaseConnection<PacketType>::Disconnect()
     {
-        Close();
-
-        fCONNECTED = false;
+        if(fCONNECTED.load())
+        {
+            Close();
+            fCONNECTED = false;
+        }
     }
 
 

@@ -50,11 +50,7 @@ namespace LLP
     private:
         /* The DDOS variables. */
         std::map<BaseAddress, DDOS_Filter *> DDOS_MAP;
-        bool fDDOS;
-        bool fLISTEN;
-        bool fMETER;
-
-        std::atomic<bool> fDestruct;
+        std::atomic<bool> fDDOS;
 
         std::condition_variable MANAGER;
 
@@ -142,17 +138,6 @@ namespace LLP
         bool AddConnection(std::string strAddress, uint16_t nPort);
 
 
-
-        /** GetConnections
-         *
-         *  Get the active connection pointers from data threads.
-         *
-         *  @return Returns the list of active connections in a vector
-         *
-         **/
-        std::vector<ProtocolType *> GetConnections();
-
-
         /** GetConnectionCount
          *
          *  Get the number of active connection pointers from data threads.
@@ -168,7 +153,7 @@ namespace LLP
          *  Get the best connection based on latency
          *
          **/
-        ProtocolType* GetConnection(const BaseAddress& addrExclude);
+        memory::atomic_ptr<ProtocolType>& GetConnection(const BaseAddress& addrExclude);
 
 
         /** Relay
@@ -180,7 +165,7 @@ namespace LLP
         void Relay(MessageType message, DataType data)
         {
             DataThread<ProtocolType> *dt = nullptr;
-            ProtocolType *pNode = nullptr;
+
             uint16_t nThread = 0;
             uint16_t nSize = 0;
             uint16_t nIndex = 0;
@@ -191,20 +176,28 @@ namespace LLP
                 /* Get the data threads. */
                 dt = DATA_THREADS[nThread];
 
-                /* Loop through connections in data thread. */
-                nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
+                /* Lock the data thread. */
+                { LOCK(dt->MUTEX);
+                    /* Loop through connections in data thread. */
+                    nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
+                }
 
                 for(nIndex = 0; nIndex < nSize; ++nIndex)
                 {
-                    pNode = dt->CONNECTIONS[nIndex];
+                    try
+                    {
+                        /* Skip over inactive connections. */
+                        if(!dt->CONNECTIONS[nIndex])
+                            continue;
 
-                    /* Skip over inactive connections. */
-                    if(pNode == dt->pEmpty 
-                    || !pNode->Connected())
-                        continue;
-
-                    /* Push the active connection. */
-                    pNode->PushMessage(message, data);
+                        /* Push the active connection. */
+                        dt->CONNECTIONS[nIndex]->PushMessage(message, data);
+                    }
+                    catch(std::runtime_error e)
+                    {
+                        debug::error(FUNCTION, e.what());
+                        //catch the atomic pointer throws
+                    }
                 }
             }
         }

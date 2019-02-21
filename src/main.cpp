@@ -36,6 +36,7 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
+#include <Util/include/memory.h>
 #include <Util/include/runtime.h>
 #include <Util/include/signals.h>
 #include <Util/include/version.h>
@@ -48,6 +49,9 @@ ________________________________________________________________________________
 
 #include <iostream>
 #include <sstream>
+#include <cstdint>
+#include <string>
+#include <vector>
 
 #if !defined(WIN32) && !defined(QT_GUI) && !defined(NO_DAEMON)
 #include <sys/types.h>
@@ -59,7 +63,7 @@ namespace LLP
 {
     Server<TritiumNode>* TRITIUM_SERVER;
     Server<LegacyNode> * LEGACY_SERVER;
-    Server<TimeNode>*    TIME_SERVER;
+    Server<TimeNode>   * TIME_SERVER;
 }
 
 /* Daemonize by forking the parent process*/
@@ -142,7 +146,7 @@ int main(int argc, char** argv)
     /* Handle Commandline switch */
     for (int i = 1; i < argc; ++i)
     {
-        if (!IsSwitchChar(argv[i][0]))
+        if (!convert::IsSwitchChar(argv[i][0]))
         {
             if(config::GetBoolArg("-api"))
                 return TAO::API::CommandLineAPI(argc, argv, i);
@@ -151,6 +155,9 @@ int main(int argc, char** argv)
         }
     }
 
+
+    if(!debug::init())
+        printf("Unable to initalize system logging\n");
 
     /* Log system startup now, after branching to API/RPC where appropriate */
     debug::InitializeLog(argc, argv);
@@ -255,7 +262,7 @@ int main(int argc, char** argv)
         LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(
             port,
             config::GetArg("-threads", 10),
-            config::GetArg("-timeout", 120),
+            config::GetArg("-timeout", 30),
             config::GetBoolArg("-ddos", false),
             config::GetArg("-cscore", 1),
             config::GetArg("-rscore", 50),
@@ -288,7 +295,7 @@ int main(int argc, char** argv)
         LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(
             port,
             config::GetArg("-threads", 10),
-            config::GetArg("-timeout", 120),
+            config::GetArg("-timeout", 30),
             config::GetBoolArg("-ddos", false),
             config::GetArg("-cscore", 1),
             config::GetArg("-rscore", 50),
@@ -364,8 +371,8 @@ int main(int argc, char** argv)
     timer.Stop();
 
 
-    /* Sleep before output. */
-    runtime::sleep(100);
+    ///* Sleep before output. */
+    //runtime::sleep(100);
 
 
     /* Startup performance metric. */
@@ -383,7 +390,7 @@ int main(int argc, char** argv)
     {
         std::mutex SHUTDOWN_MUTEX;
         std::unique_lock<std::mutex> SHUTDOWN_LOCK(SHUTDOWN_MUTEX);
-        SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown; });
+        SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown.load(); });
     }
 
     /* GDB mode waits for keyboard input to initiate clean shutdown. */
@@ -527,13 +534,16 @@ int main(int argc, char** argv)
     Legacy::BerkeleyDB::EnvShutdown();
 
 
-
     /* Elapsed Milliseconds from timer. */
     nElapsed = timer.ElapsedMilliseconds();
 
 
     /* Startup performance metric. */
     debug::log(0, FUNCTION, "Closed in ", nElapsed, "ms");
+
+
+    /* Close the debug log file once and for all. */
+    debug::shutdown();
 
     return 0;
 }

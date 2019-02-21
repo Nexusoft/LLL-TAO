@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLD/include/enum.h>
 #include <LLD/include/version.h>
 
+#include <Util/templates/datastream.h>
 #include <Util/include/filesystem.h>
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>
@@ -98,7 +99,8 @@ namespace LLD
             debug::log(0, FUNCTION, "Generated Path ", strBaseLocation);
 
         /* Stats variable for collective keychain size. */
-        uint32_t nKeychainSize = 0, nTotalKeys = 0;
+        uint32_t nKeychainSize = 0;
+        uint32_t nTotalKeys = 0;
 
 
         /* Iterate through the files detected. */
@@ -175,13 +177,16 @@ namespace LLD
             }
 
             /* Iterate the current file. */
-            ++ nCurrentFile;
+            ++nCurrentFile;
 
             /* Clear the keychain data. */
             vKeychain.clear();
         }
 
-        debug::log(0, FUNCTION, "Initialized with ", nTotalKeys, " Keys | Total Size ", nKeychainSize, " | Total Files ", nCurrentFile + 1, " | Current Size ", nCurrentFileSize);
+        debug::log(0, FUNCTION, "Initialized with ", nTotalKeys, " Keys",
+          " | Total Size ", nKeychainSize,
+          " | Total Files ", nCurrentFile + 1,
+          " | Current Size ", nCurrentFileSize);
     }
 
 
@@ -267,7 +272,41 @@ namespace LLD
 
 
         /* Establish the Sector State as Empty. */
-        std::vector<uint8_t> vData(1, STATE::EMPTY);
+        std::vector<uint8_t> vData(STATE::EMPTY);
+        ssFile.write((char*) &vData[0], vData.size());
+        ssFile.flush();
+
+
+        /* Remove the Sector Key from the Memory Map. */
+        mapKeys.erase(vKey);
+
+
+        return true;
+    }
+
+
+    /*  Simple Erase for now, not efficient in Data Usage of HD but quick
+     *  to get erase function working. */
+    bool BinaryFileMap::Restore(const std::vector<uint8_t> &vKey)
+    {
+        LOCK(KEY_MUTEX);
+
+        /* Check for the Key. */
+        if(!mapKeys.count(vKey))
+            return debug::error(FUNCTION, "Key doesn't Exist");
+
+
+        /* Establish the Outgoing Stream. */
+        std::string strFilename = debug::strprintf("%s_filemap.%05u", strBaseLocation.c_str(), mapKeys[vKey].first);
+        std::fstream ssFile(strFilename.c_str(), std::ios::in | std::ios::out | std::ios::binary);
+
+
+        /* Set to put at the right file and sector position. */
+        ssFile.seekp(mapKeys[vKey].second, std::ios::beg);
+
+
+        /* Establish the Sector State as Empty. */
+        std::vector<uint8_t> vData(STATE::READY);
         ssFile.write((char*) &vData[0], vData.size());
         ssFile.flush();
 

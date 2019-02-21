@@ -18,6 +18,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/state.h>
 
+#include <Util/include/memory.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -34,19 +36,19 @@ namespace TAO
         struct ChainState
         {
             /** The best block height in the chain. **/
-            static uint32_t nBestHeight;
-
-
-            /** The best hash in the chain. */
-            static uint1024_t hashBestChain;
+            static std::atomic<uint32_t> nBestHeight;
 
 
             /** The best trust in the chain. **/
-            static uint64_t nBestChainTrust;
+            static std::atomic<uint64_t> nBestChainTrust;
+
+
+            /** The best hash in the chain. */
+            static memory::atomic<uint1024_t> hashBestChain;
 
 
             /** Hardened Checkpoint. **/
-            static uint1024_t hashCheckpoint;
+            static memory::atomic<uint1024_t> hashCheckpoint;
 
 
             /** Synchronizing
@@ -57,6 +59,14 @@ namespace TAO
             static bool Synchronizing();
 
 
+            /** PercentSynchronized
+             *
+             *  Real value of the total synchronzation percent completion.
+             *
+             **/
+            static double PercentSynchronized();
+
+
             /** Initialize
              *
              *  Initialize the Chain State.
@@ -65,8 +75,16 @@ namespace TAO
             static bool Initialize();
 
 
+            /** Genesis
+             *
+             *  Get the hash of the genesis block.
+             *
+             **/
+            static uint1024_t Genesis();
+
+
             /** The best block in the chain. **/
-            static BlockState stateBest;
+            static memory::atomic<BlockState> stateBest;
 
 
             /** The best block in the chain. **/
