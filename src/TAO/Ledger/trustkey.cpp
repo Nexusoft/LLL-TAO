@@ -115,6 +115,11 @@ namespace TAO
         /* Interest is Determined By Logarithmic Equation from Genesis Key. */
         double TrustKey::InterestRate(const TAO::Ledger::BlockState& block, uint32_t nTime) const
         {
+            static const double LOG10 = log(10); // Constant for use in calculations
+
+            /* Use appropriate settings for Testnet or Mainnet */
+            uint32_t nMaxTrustScore = config::fTestNet ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX;
+
             /* Get the previous coinstake transaction. */
             Legacy::Transaction tx;
             if(!LLD::legacyDB->ReadTx(block.vtx[0].second, tx))
@@ -129,13 +134,12 @@ namespace TAO
             if(block.nVersion == 4)
                 nTrustScore = (nTime - nGenesisTime);
 
-            /* Block version 5 is the trust score of the key. */
+            /* Block version 5+ is the trust score of the key. */
             else if(!tx.TrustScore(nTrustScore))
                 return 0.0; //this will trigger an interest rate failure
 
-            return std::min(0.03,
-                ((((0.025 * log(((9.0 * (nTrustScore)) / (60 * 60 * 24 * 28 * 13)) + 1.0)) /
-                log(10))) + 0.005));
+            double nTrustScoreRatio = (double)nTrustScore / (double)nMaxTrustScore;
+            return std::min(0.03, (0.025 * log((9.0 * nTrustScoreRatio) + 1.0) / LOG10) + 0.005);
         }
 
 

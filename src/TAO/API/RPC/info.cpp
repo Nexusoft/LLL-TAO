@@ -33,7 +33,6 @@ ________________________________________________________________________________
 
 #include <vector>
 #include <new> //std::bad_alloc
-
 //#include <TAO/Ledger/include/global.h>
 
 /* Global TAO namespace. */
@@ -64,12 +63,23 @@ namespace TAO
             obj["stake"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetStake());
 
             /* Staking metrics */
-            //Legacy::StakeMinter stakeMinter = Legacy::StakeMinter::GetInstance();
-            obj["stakerate"]   = 0;//stakeMinter.GetStakeRate();
-            obj["stakeweight"] = 0;//stakeMinter.GetTrustWeight() + stakeMinter.GetBlockWeight(); // 100 max so is already a %
-            obj["trustweight"] = 0;//stakeMinter.GetTrustWeightPercent();
-            obj["blockweight"] = 0;//stakeMinter.GetBlockWeightPercent();
-
+            Legacy::StakeMinter& stakeMinter = Legacy::StakeMinter::GetInstance();
+			obj["staking"] = stakeMinter.IsStarted() ? "Started" : "Not Started";
+			if (!stakeMinter.IsStarted())
+			{
+	            obj["stakerate"]   = stakeMinter.GetStakeRate();
+	            obj["trustweight"] = stakeMinter.GetTrustWeightPercent();
+	            obj["blockweight"] = stakeMinter.GetBlockWeightPercent();
+	            obj["stakeweight"] = stakeMinter.GetTrustWeight() + stakeMinter.GetBlockWeight(); // These total to 100, so can use as a %
+			}
+			else
+			{
+	            obj["stakerate"]   = 0;
+	            obj["trustweight"] = 0;
+	            obj["blockweight"] = 0;
+	            obj["stakeweight"] = 0; 
+			}
+			
             obj["txtotal"] =(int)Legacy::Wallet::GetInstance().mapWallet.size();
 
             obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();

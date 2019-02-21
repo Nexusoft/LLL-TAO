@@ -166,7 +166,8 @@ namespace LLP
                 addr = BaseAddress(sockaddr);
             }
 
-            /* Connect for non-blocking socket should return SOCKET_ERROR (with last error WSAEWOULDBLOCK normally).
+            /* Connect for non-blocking socket should return SOCKET_ERROR 
+             * (with last error WSAEWOULDBLOCK/Windows, WSAEINPROGRESS/Linux normally).
              * Then we have to use select below to check if connection was made.
              * If it doesn't return that, it means it connected immediately and connection was successful. (very unusual, but possible)
              */
@@ -190,12 +191,10 @@ namespace LLP
         /* Handle final socket checks if connection established with no errors. */
         if (fConnected)
         {
-            /* We would expect to get WSAEWOULDBLOCK here in the normal case of attempting a connection.
-             * WSAEINVAL is here because some legacy version of winsock uses it
-             */
+            /* We would expect to get WSAEWOULDBLOCK/WSAEINPROGRESS here in the normal case of attempting a connection. */
             nError = WSAGetLastError();
 
-            if (nError == WSAEWOULDBLOCK || nError == WSAEINPROGRESS || nError == WSAEINVAL)
+            if (nError == WSAEWOULDBLOCK || nError == WSAEALREADY || nError == WSAEINPROGRESS)
             {
                 struct timeval timeout;
                 timeout.tv_sec  = nTimeout / 1000;
@@ -206,7 +205,6 @@ namespace LLP
                 FD_ZERO(&fdset);
                 FD_SET(nFile, &fdset);
 
-
                 /* select returns the number of descriptors that have successfully established connection and are writeable.
                  * We only pass one descriptor in the fd_set, so this will return 1 if connect attempt succeeded, 0 if it timed out, or SOCKET_ERROR on error
                  */
@@ -215,16 +213,18 @@ namespace LLP
                 /* If the connection attempt timed out with select. */
                 if (nRet == 0)
                 {
-                    debug::log(3, FUNCTION, "connection timeout ", addrDest.ToString(), "...");
+                    debug::log(2, FUNCTION, "Connection timeout ", addrDest.ToString());
                     closesocket(nFile);
+
                     return false;
                 }
 
                 /* If the select failed. */
                 else if (nRet == SOCKET_ERROR)
                 {
-                    debug::log(3, FUNCTION, "select failed ", addrDest.ToString(), " (",  WSAGetLastError(), ")");
+                    debug::log(3, FUNCTION, "Select failed ", addrDest.ToString(), " (",  WSAGetLastError(), ")");
                     closesocket(nFile);
+
                     return false;
                 }
 
@@ -236,23 +236,28 @@ namespace LLP
                 if (getsockopt(nFile, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
     #endif
                 {
-                    debug::log(3, FUNCTION, "get options failed ", addrDest.ToString(), " (", WSAGetLastError(), ")");
+                    debug::log(3, FUNCTION, "Get options failed ", addrDest.ToString(), " (", WSAGetLastError(), ")");
                     closesocket(nFile);
+
                     return false;
                 }
 
-                /* If there are no socket options set. TODO: Remove preprocessors for cross platform sockets. */
+                /* If there are no socket options set. */
                 if (nRet != 0)
                 {
-                    debug::log(3, FUNCTION, "failed after select ", addrDest.ToString(), " (", nRet, ")");
+                    debug::log(3, FUNCTION, "Failed after select ", addrDest.ToString(), " (", nRet, ")");
+
                     closesocket(nFile);
+
                     return false;
                 }
             }
             else if (nError != WSAEISCONN)
             {
-                debug::log(3, FUNCTION, "connect failed ", addrDest.ToString(), " (", nError, ")");
+                debug::log(3, FUNCTION, "Connect failed ", addrDest.ToString(), " (", nError, ")");
+
                 closesocket(nFile);
+
                 return false;
             }
         }
@@ -288,6 +293,8 @@ namespace LLP
 
         if(fd != INVALID_SOCKET)
             closesocket(fd);
+
+        fd = INVALID_SOCKET;
     }
 
 
@@ -310,7 +317,6 @@ namespace LLP
         nRead = recv(nFile, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT);
     #endif
 
-
         if (nRead < 0)
         {
             nError = WSAGetLastError();
@@ -320,7 +326,6 @@ namespace LLP
         }
         else if(nRead > 0)
             nLastRecv = runtime::timestamp();
-
 
         return nRead;
     }
@@ -343,8 +348,6 @@ namespace LLP
         nRead = recv(nFile, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT);
     #endif
 
-
-
         if (nRead < 0)
         {
             nError = WSAGetLastError();
@@ -354,7 +357,6 @@ namespace LLP
         }
         else if(nRead > 0)
             nLastRecv = runtime::timestamp();
-
 
         return nRead;
     }
@@ -401,6 +403,7 @@ namespace LLP
 
             return nError;
         }
+
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent != vData.size())
         {

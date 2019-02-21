@@ -14,6 +14,9 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_DATA_H
 #define NEXUS_LLP_TEMPLATES_DATA_H
 
+#include <LLP/include/network.h>
+
+#include <Util/include/mutex.h>
 #include <Util/include/memory.h>
 
 #include <atomic>
@@ -54,8 +57,14 @@ namespace LLP
         uint32_t DDOS_rSCORE;
         uint32_t DDOS_cSCORE;
 
+
         /* Vector to store Connections. */
         std::vector< memory::atomic_ptr<ProtocolType> > CONNECTIONS;
+
+
+        /* This mirrors CONNECTIONS with pollfd settings for passing to poll methods. Windows throws SOCKET_ERROR intermittently if pass CONNECTIONS directly. */
+        std::vector<pollfd> POLLFDS;
+
 
         /* The condition for thread sleeping. */
         std::condition_variable CONDITION;

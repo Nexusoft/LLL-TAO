@@ -11,17 +11,21 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Util/include/config.h>
 #include <Util/include/debug.h>
+
 #include <Util/include/args.h>
-#include <Util/include/mutex.h>
-#include <Util/include/runtime.h>
+#include <Util/include/config.h>
 #include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
+#include <Util/include/mutex.h>
+#include <Util/include/runtime.h>
+#include <Util/include/version.h>
 
 #include <string>
 #include <cstdarg>
 #include <cstdio>
+#include <map>
+#include <vector>
 
 #ifndef WIN32
 #include <execinfo.h>
@@ -123,6 +127,65 @@ namespace debug
 
         debug::log(0, ANSI_COLOR_FUNCTION, base, "::", __func__, "()", ANSI_COLOR_RESET, " : ", buffer);
     }
+
+
+    /* Write startup information into the log file */
+    void InitializeLog(int argc, char** argv)
+    {
+        log(0, "Startup time ", convert::DateTimeStrFormat(runtime::timestamp()));
+        log(0, version::CLIENT_VERSION_BUILD_STRING);
+
+    #ifdef WIN32
+        log(0, "Microsoft Windows Build (created ", version::CLIENT_DATE, ")");
+    #else
+        #ifdef MAC_OSX
+        log(0, "Mac OSX Build (created ", version::CLIENT_DATE, ")");
+        #else
+        log(0, "Linux Build (created ", version::CLIENT_DATE, ")");
+        #endif
+    #endif
+
+        /* Log configuration file parameters. Need to read them into our own map copy first */
+        std::map<std::string, std::string> mapBasicConfig;  //not used
+        std::map<std::string, std::vector<std::string> > mapMultiConfig; //All values stored here whether multi or not, will use this
+
+        config::ReadConfigFile(mapBasicConfig, mapMultiConfig);
+
+        std::string confFileParams = "";
+
+        for (const auto& argItem : mapMultiConfig)
+        {
+            for (int i = 0; i < argItem.second.size(); i++)
+            {
+                confFileParams += argItem.first;
+
+                if (!argItem.second[i].empty())
+                    confFileParams += "=" + argItem.second[i];
+
+                confFileParams += " ";
+            }
+        }
+
+        if (confFileParams == "")
+            confFileParams = "(none)";
+
+        log(0, "Configuration file parameters: ", confFileParams);
+
+        /* Log command line parameters (which can override conf file settings) */
+        std::string cmdLineParms = "";
+
+        for (int i = 1; i < argc; i++)
+            cmdLineParms += std::string(argv[i]) + " ";
+
+        if (cmdLineParms == "")
+            cmdLineParms = "(none)";
+
+        log(0, "Command line parameters: ", cmdLineParms);
+
+        log(0, "");
+        log(0, "");
+    }
+
 
     /*  Prints and logs the stack trace of the code execution call stack up to
      *  the point where this function is called to debug.log */
