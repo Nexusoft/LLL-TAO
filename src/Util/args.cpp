@@ -14,13 +14,16 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 #include <Util/include/convert.h>
 #include <Util/include/runtime.h>
+#include <Util/include/string.h>
 #include <cstring>
+#include <string>
 #include <cmath>
 
 namespace config
 {
     std::map<std::string, std::string> mapArgs;
     std::map<std::string, std::vector<std::string> > mapMultiArgs;
+    std::map<uint32_t, std::vector<std::string> > mapIPFilters;
 
     std::atomic<bool> fShutdown(false);
     bool fDebug = false;
@@ -161,5 +164,22 @@ namespace config
         //fUseProxy               = GetBoolArg("-proxy")
         fAllowDNS               = GetBoolArg("-allowdns", true);
         fLogTimestamps          = GetBoolArg("-logtimestamps", false);
+
+
+        /* Parse the allowip entries and add them to a map for easier processing when new connections are made*/
+        const std::vector<std::string>& vIPPortFilters = config::mapMultiArgs["-llpallowip"];
+
+        for(const auto& entry : vIPPortFilters)
+        {
+            /* ensure it has a port*/
+            std::size_t nPortPos = entry.find(":");
+            if( nPortPos == std::string::npos)
+                continue;
+
+            std::string strIP = entry.substr(0, nPortPos);
+            uint32_t nPort = stoi(entry.substr( nPortPos +1));
+
+            mapIPFilters[nPort].push_back(strIP);
+        }
     }
 }

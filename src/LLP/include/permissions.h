@@ -34,38 +34,35 @@ inline bool CheckPermissions(std::string strAddress, uint32_t nPort)
     if(vAddress.size() != 4)
         return debug::error("Address size not at least 4 bytes.");
 
-    /* Check against the commandline parameters. */
-    const std::vector<std::string>& vAllow = config::mapMultiArgs["-llpallowip"];
-    for(int nIndex = 0; nIndex < vAllow.size(); ++nIndex)
-    {
-        /* Detect if the port for LLP filtering is a wildcard or not. */
-        bool fWildcardPort = (vAllow[nIndex].find(":") == std::string::npos);
+    /* Check against the llpallowip list from config / commandline parameters. */
 
-        /* Scan out the data for the wildcard port. */
-        std::vector<std::string> vCheck = Split(vAllow[nIndex], ',');
+    /* If no llpallowip whitelist has been defined for this port then we assume they are allowed */
+    if( config::mapIPFilters[nPort].size() == 0 )
+        return true;
+
+    for(const auto& strIPFilter : config::mapIPFilters[nPort])
+    {
+        
+        /* Split the components of the IP so that we can check for wildcard ranges. */
+        std::vector<std::string> vCheck = Split(strIPFilter, '.');
 
         /* Skip invalid inputs. */
         if(vCheck.size() != 4)
             continue;
 
-        /* Check the Wildcard port. */
-        if(!fWildcardPort)
-        {
-            std::vector<std::string> strPort = Split(vCheck[3], ':');
-            vCheck[3] = strPort[0];
-
-            uint32_t nPortCheck = stoi(strPort[1]);
-            if(nPort != nPortCheck)
-                return debug::error("Bad Port.");
-        }
-
         /* Check the components of IP address. */
+        bool fIPMatches = true;
         for(int nByte = 0; nByte < 4; ++nByte)
             if(vCheck[nByte] != "*" && vCheck[nByte] != vAddress[nByte])
-                return debug::error("Check ", vCheck[nByte], " - ", vAddress[nByte]);
+                fIPMatches = false;
+
+        /* if the IP matches then the address being checked is on the whitelist */
+        if( fIPMatches )
+            return true; 
+        
     }
 
-    return true;
+    return false;
 }
 
 
