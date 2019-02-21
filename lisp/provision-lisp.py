@@ -45,11 +45,10 @@ def allocate_eids():
 # Get IP address on interface.
 #
 def get_rloc(device):
-    cmd = 'ip addr show dev {} | egrep "inet " | egrep "brd "'.format(device)
-    addr = commands.getoutput(cmd)
+    addr = commands.getoutput('ip route | egrep "link src "'.format(device)
     if (addr == ""): return(None)
-    addr = addr.split()[1]
-    return(addr.split("/")[0])
+    addr = addr.split()[-1]
+    return(addr)
 #enddef
 
 #
@@ -132,6 +131,10 @@ if (provision):
     f = open("./lisp.config", "w"); f.write(lisp_config); f.close()
 else:
     iid, eid4, eid6 = get_eids(lisp_config)
+    if (iid == None):
+        print "lisp.config file corrupt, remove it and rerun script"
+        exit(1)
+    #endif
     print "Using EIDs [{}]{} & [{}]{} found in lisp.config".format(iid, eid4,
         iid, eid6)
 #endif
