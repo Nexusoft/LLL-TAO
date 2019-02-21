@@ -340,6 +340,10 @@ namespace LLP
                 return false;
             }
 
+            /* Update the block height in the Address Manager. */
+            if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
+                LEGACY_SERVER->pAddressManager->SetHeight(nStartingHeight, addrFrom);
+
             /* Push version in response. */
             if(!fOUTGOING)
                 PushVersion();

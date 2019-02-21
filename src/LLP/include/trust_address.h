@@ -96,6 +96,7 @@ namespace LLP
             READWRITE(nFailed);
             READWRITE(nFails);
             READWRITE(nLatency);
+            READWRITE(nHeight);
             READWRITE(*pAddr);
         )
 
@@ -124,6 +125,7 @@ namespace LLP
         uint32_t nFailed;     //total number of failed connections
         uint32_t nFails;      //consecutive number of failed connections
         uint32_t nLatency;    //the latency experienced by the connection
+        uint32_t nHeight;     //last recorded block height for the connection
         uint8_t  nState;      //the flag for the state of connection
         uint8_t  nType;       //TODO: the type for serialization
 
