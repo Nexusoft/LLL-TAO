@@ -1313,7 +1313,7 @@ namespace TAO
         //     try {
         //         ssData >> tx;
         //     }
-        //     catch (std::exception &e) {
+        //     catch (const std::exception &e) {
         //         throw APIException(-22, "TX decode failed");
         //     }
         //     uint512 hashTx = tx.GetHash();
