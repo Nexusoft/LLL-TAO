@@ -48,6 +48,10 @@ namespace Legacy
 
     std::mutex WalletDB::cs_walletdb;
 
+    std::thread WalletDB::flushThread;
+
+    std::atomic<bool> WalletDB::fShutdownFlushThread(false);
+
 
     /* Stores an encrypted master key into the database. */
     bool WalletDB::WriteMasterKey(const uint32_t nMasterKeyId, const MasterKey& kMasterKey)
@@ -654,6 +658,38 @@ namespace Legacy
     }
 
 
+    /* Start the wallet flush thread for a given wallet file. */
+    bool WalletDB::StartFlushThread(const std::string& strFile)
+    {
+        static bool fStarted = false;
+
+        if (fStarted)
+        {
+            debug::error(FUNCTION, "Attempt to start a second wallet flush thread for file ", strFile);
+            return false;
+        }
+
+        if (config::GetBoolArg("-flushwallet", true))
+        {
+            WalletDB::flushThread = std::thread(WalletDB::ThreadFlushWalletDB, std::string(strFile));
+            fStarted = true;
+        }
+
+        return true;
+    }
+
+
+    /* Signals the wallet flush thread to shut down. */
+    void WalletDB::ShutdownFlushThread()
+    {
+        if (config::GetBoolArg("-flushwallet", true))
+        {
+            WalletDB::fShutdownFlushThread.store(true);
+            WalletDB::flushThread.join();
+        }
+    }
+
+
     /* Function that loops until shutdown and periodically flushes a wallet db */
     void WalletDB::ThreadFlushWalletDB(const std::string& strWalletFile)
     {
@@ -674,12 +710,9 @@ namespace Legacy
 
         debug::log(1, FUNCTION, "Wallet flush thread started");
 
-        while (!config::fShutdown.load())
+        while (!WalletDB::fShutdownFlushThread.load())
         {
             runtime::sleep(1000);
-
-            if(config::fShutdown.load())
-                break;
 
             if (nLastSeen != WalletDB::nWalletDBUpdated)
             {
@@ -689,11 +722,8 @@ namespace Legacy
             }
 
             /* Perform flush if any wallet database updated, and the minimum required time has passed since recognizing the update */
-            if (nLastFlushed != WalletDB::nWalletDBUpdated
-            && (runtime::unifiedtimestamp() - nLastWalletUpdate) >= minTimeSinceLastUpdate
-            &&  !config::fShutdown.load())
+            if (nLastFlushed != WalletDB::nWalletDBUpdated && (runtime::unifiedtimestamp() - nLastWalletUpdate) >= minTimeSinceLastUpdate)
             {
-
                 /* Try to lock but don't wait for it. Skip this iteration if fail to get lock. */
                 if (BerkeleyDB::cs_db.try_lock())
                 {
@@ -708,7 +738,7 @@ namespace Legacy
                         ++mi;
                     }
 
-                    if (nRefCount == 0)
+                    if (nRefCount == 0 && !WalletDB::fShutdownFlushThread.load())
                     {
                         /* If strWalletFile has not been opened since startup, no need to flush even if nWalletDBUpdated count has changed.
                          * An entry in mapFileUseCount verifies that this particular wallet file has been used at some point, so it will be flushed.
@@ -737,10 +767,6 @@ namespace Legacy
         }
 
         debug::log(1, FUNCTION, "Shutting down wallet flush thread");
-
-        /* Should be shutdown if get here, so this thread can shutdown database environment */
-        if (config::fShutdown.load())
-            BerkeleyDB::EnvShutdown();
     }
 
 

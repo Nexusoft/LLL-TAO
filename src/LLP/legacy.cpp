@@ -112,7 +112,7 @@ namespace LLP
             const std::string message = INCOMING.GetMessage();
             uint32_t length = INCOMING.LENGTH;
 
-            debug::log(3, NODE, "recieved Message (", message, ", ", length, ")");
+            debug::log(3, NODE, "Received Message (", message, ", ", length, ")");
 
             if(fDDOS)
             {
@@ -290,7 +290,6 @@ namespace LLP
             if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
                 LEGACY_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
-
             /* Debug output for node disconnect. */
             debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming",
                 " Disconnected (", strReason, ") at timestamp ", runtime::unifiedtimestamp());
@@ -388,7 +387,7 @@ namespace LLP
                 "Unified ", runtime::unifiedtimestamp());
         }
 
-        /* Recieve a Time Offset from this Node. */
+        /* Receive a Time Offset from this Node. */
         else if(message == "offset")
         {
 
@@ -405,7 +404,7 @@ namespace LLP
             //uint32_t nLatencyTime = (Core::runtime::unifiedtimestamp(true) - nTimestamp);
 
 
-            /* Ignore Messages Recieved that weren't Requested. */
+            /* Ignore Messages Received that weren't Requested. */
             if(!mapSentRequests.count(nRequestID))
             {
                 DDOS->rSCORE += 5;
@@ -416,7 +415,7 @@ namespace LLP
             }
 
 
-            /* Reject Samples that are recieved 30 seconds after last check on this node. */
+            /* Reject Samples that are received 30 seconds after last check on this node. */
             if(runtime::unifiedtimestamp(true) - mapSentRequests[nRequestID] > 30000)
             {
                 mapSentRequests.erase(nRequestID);
@@ -447,7 +446,7 @@ namespace LLP
         }
 
 
-        /* Push a transaction into the Node's Recieved Transaction Queue. */
+        /* Push a transaction into the Node's Received Transaction Queue. */
         else if (message == "tx")
         {
             /* Deserialize the Transaction. */
@@ -470,7 +469,7 @@ namespace LLP
         }
 
 
-        /* Push a block into the Node's Recieved Blocks Queue. */
+        /* Push a block into the Node's Received Blocks Queue. */
         else if (message == "block")
         {
             /* Deserialize the block. */
@@ -754,48 +753,49 @@ namespace LLP
                     /* Tell about latest block if hash stop is found. */
                     if (hashStop != TAO::Ledger::ChainState::hashBestChain.load())
                         vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), MSG_BLOCK));
-/* Make a copy of the data to request that is not in inventory. */
-if(!TAO::Ledger::ChainState::Synchronizing())
-{
-    /* Filter duplicates if not synchronizing. */
-    std::vector<CInv> vGet;
-    for(const auto& inv : vInv)
-    {
-        /* If this is a block type, only request if not in database. */
-        if(inv.GetType() == MSG_BLOCK)
-        {
-            /* Check the LLD for block. */
-            if(!cacheInventory.Has(inv.GetHash())
-            && !LLD::legDB->HasBlock(inv.GetHash()))
-            {
-                /* Add this item to request queue. */
-                vGet.push_back(inv);
 
-                /* Add this item to cached relay inventory (key only). */
-                cacheInventory.Add(inv.GetHash());
-            }
-        }
+					/* Make a copy of the data to request that is not in inventory. */
+					if(!TAO::Ledger::ChainState::Synchronizing())
+					{
+					    /* Filter duplicates if not synchronizing. */
+					    std::vector<CInv> vGet;
+					    for(const auto& inv : vInv)
+					    {
+					        /* If this is a block type, only request if not in database. */
+					        if(inv.GetType() == MSG_BLOCK)
+					        {
+					            /* Check the LLD for block. */
+					            if(!cacheInventory.Has(inv.GetHash())
+					            && !LLD::legDB->HasBlock(inv.GetHash()))
+					            {
+					                /* Add this item to request queue. */
+					                vGet.push_back(inv);
 
-        /* Check the memory pool for transactions being relayed. */
-        else if(!cacheInventory.Has(inv.GetHash().getuint512())
-             && !TAO::Ledger::mempool.Has(inv.GetHash().getuint512()))
-        {
-            /* Add this item to request queue. */
-            vGet.push_back(inv);
+					                /* Add this item to cached relay inventory (key only). */
+					                cacheInventory.Add(inv.GetHash());
+					            }
+					        }
 
-            /* Add this item to cached relay inventory (key only). */
-            cacheInventory.Add(inv.GetHash().getuint512());
-        }
+					        /* Check the memory pool for transactions being relayed. */
+					        else if(!cacheInventory.Has(inv.GetHash().getuint512())
+					             && !TAO::Ledger::mempool.Has(inv.GetHash().getuint512()))
+					        {
+					            /* Add this item to request queue. */
+					            vGet.push_back(inv);
 
-        /* Push getdata after fastsync inv (if enabled).
-         * This will ask for a new inv before blocks to
-         * always stay at least 1k blocks ahead.
-         */
-        PushMessage("getdata", vGet);
-    }
-}
-else
-                    break;
+					            /* Add this item to cached relay inventory (key only). */
+					            cacheInventory.Add(inv.GetHash().getuint512());
+					        }
+
+					        /* Push getdata after fastsync inv (if enabled).
+					         * This will ask for a new inv before blocks to
+					         * always stay at least 1k blocks ahead.
+					         */
+					        PushMessage("getdata", vGet);
+					    }
+					}
+					else
+                 	   break;
                 }
 
                 vInv.push_back(CInv(state.GetHash(), MSG_BLOCK));

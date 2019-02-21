@@ -208,8 +208,8 @@ namespace memory
          *
          **/
         lock_proxy(TypeName* pData, std::mutex& MUTEX_IN)
-        : data(pData)
-        , MUTEX(MUTEX_IN)
+        : MUTEX(MUTEX_IN)
+        , data(pData)
         {
         }
 
@@ -238,7 +238,7 @@ namespace memory
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "member access to nullptr"));
             }
 
-           return data;
+            return data;
         }
     };
 

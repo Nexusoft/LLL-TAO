@@ -165,7 +165,7 @@ namespace LLP
         void Relay(MessageType message, DataType data)
         {
             DataThread<ProtocolType> *dt = nullptr;
-            ProtocolType *pNode = nullptr;
+
             uint16_t nThread = 0;
             uint16_t nSize = 0;
             uint16_t nIndex = 0;
