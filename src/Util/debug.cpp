@@ -132,12 +132,12 @@ namespace debug
     /* Write startup information into the log file */
     void InitializeLog(int argc, char** argv)
     {
-        log(0, "\nStartup time ", convert::DateTimeStrFormat(runtime::timestamp()));
+        log(0, "Startup time ", convert::DateTimeStrFormat(runtime::timestamp()));
         log(0, version::CLIENT_VERSION_BUILD_STRING);
 
     #ifdef WIN32
         log(0, "Microsoft Windows Build (created ", version::CLIENT_DATE, ")");
-    #else 
+    #else
         #ifdef MAC_OSX
         log(0, "Mac OSX Build (created ", version::CLIENT_DATE, ")");
         #else
@@ -182,7 +182,8 @@ namespace debug
 
         log(0, "Command line parameters: ", cmdLineParms);
 
-        log(0, "\n");
+        log(0, "");
+        log(0, "");
     }
 
 

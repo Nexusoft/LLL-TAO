@@ -164,41 +164,10 @@ namespace LLP
         template<typename MessageType, typename DataType>
         void Relay(MessageType message, DataType data)
         {
-            DataThread<ProtocolType> *dt = nullptr;
-            uint16_t nThread = 0;
-            uint16_t nSize = 0;
-            uint16_t nIndex = 0;
-
-            /* List of connections to return. */
-            for(; nThread < MAX_THREADS; ++nThread)
-            {
-                /* Get the data threads. */
-                dt = DATA_THREADS[nThread];
-
-                /* Lock the data thread. */
-                { LOCK(dt->MUTEX);
-                    /* Loop through connections in data thread. */
-                    nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
-                }
-
-                for(nIndex = 0; nIndex < nSize; ++nIndex)
-                {
-                    try
-                    {
-                        /* Skip over inactive connections. */
-                        if(!dt->CONNECTIONS[nIndex])
-                            continue;
-
-                        /* Push the active connection. */
-                        dt->CONNECTIONS[nIndex]->PushMessage(message, data);
-                    }
-                    catch(std::runtime_error e)
-                    {
-                        debug::error(FUNCTION, e.what());
-                        //catch the atomic pointer throws
-                    }
-                }
-            }
+            /* Relay message to each data thread, which will relay message to
+               each connection of each data thread */
+            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+                DATA_THREADS[nThread]->Relay(message, data);
         }
 
 

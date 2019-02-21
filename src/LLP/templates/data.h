@@ -130,6 +130,44 @@ namespace LLP
         void Thread();
 
 
+        /** Relay
+         *
+         *  Relays data to all nodes on the network.
+         *
+         **/
+        template<typename MessageType, typename DataType>
+        void Relay(MessageType message, DataType data)
+        {
+            uint16_t nSize = 0;
+            uint16_t nIndex = 0;
+
+            /* Thread-safe read of connection count. */
+            {
+                LOCK(MUTEX);
+                nSize = static_cast<uint16_t>(CONNECTIONS.size());
+            }
+
+            /* Loop through connections in data thread. */
+            for(nIndex = 0; nIndex < nSize; ++nIndex)
+            {
+                try
+                {
+                    /* Skip over inactive connections. */
+                    if(!CONNECTIONS[nIndex])
+                        continue;
+
+                    /* Push the active connection. */
+                    CONNECTIONS[nIndex]->PushMessage(message, data);
+                }
+                catch(std::runtime_error e)
+                {
+                    debug::error(FUNCTION, e.what());
+                    //catch the atomic pointer throws
+                }
+            }
+        }
+
+
       private:
 
 

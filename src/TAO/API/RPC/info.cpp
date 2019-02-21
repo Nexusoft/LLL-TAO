@@ -168,6 +168,7 @@ namespace TAO
 
                 obj["addr"]     = addr.ToString();
                 obj["type"]     = std::string("Legacy");
+                obj["height"]   = addr.nHeight;
                 obj["latency"]  = debug::safe_printstr(addr.nLatency, " ms");
                 obj["lastseen"] = addr.nLastSeen;
                 obj["connects"] = addr.nConnected;
@@ -191,6 +192,7 @@ namespace TAO
 
                 obj["addr"]     = addr.ToString();
                 obj["type"]     = std::string("Tritium");
+                obj["height"]   = addr.nHeight;
                 obj["latency"]  = debug::strprintf("%u ms", addr.nLatency);
                 obj["lastseen"] = addr.nLastSeen;
                 obj["connects"] = addr.nConnected;

@@ -221,6 +221,18 @@ namespace LLP
     }
 
 
+    /*  Finds the trust address and sets it's updated block height. */
+    void AddressManager::SetHeight(uint32_t height, const BaseAddress &addr)
+    {
+        uint64_t hash = addr.GetHash();
+        LOCK(mut);
+
+        auto it = mapTrustAddress.find(hash);
+        if(it != mapTrustAddress.end())
+            it->second.nHeight = height;
+    }
+
+
     /*  Select a good address to connect to that isn't already connected. */
     bool AddressManager::StochasticSelect(BaseAddress &addr)
     {
