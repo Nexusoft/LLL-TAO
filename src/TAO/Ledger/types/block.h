@@ -184,7 +184,7 @@ namespace TAO
 
             /** SignatureHash
              *
-             *  Get the hash for signatures.
+             *  Get the Signature Hash of the block. Used to verify work claims.
              *
              *  @return 1024-bit signature hash
              *

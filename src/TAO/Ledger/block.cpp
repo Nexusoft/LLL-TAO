@@ -145,7 +145,7 @@ namespace TAO
         }
 
 
-        /* GGet the Proof Hash of the block. Used to verify work claims. */
+        /* Get the Proof Hash of the block. Used to verify work claims. */
         uint1024_t Block::ProofHash() const
         {
             /** Hashing template for CPU miners uses nVersion to nBits **/
@@ -157,7 +157,7 @@ namespace TAO
         }
 
 
-        /* Get the Proof Hash of the block. Used to verify work claims. */
+        /* Get the Signarture Hash of the block. Used to verify work claims. */
         uint1024_t Block::SignatureHash() const
         {
             return LLC::SK1024(BEGIN(nVersion), END(nTime));

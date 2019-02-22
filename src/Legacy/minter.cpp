@@ -383,7 +383,7 @@ namespace Legacy
                     return debug::error("Failed to extract trust from previous block");
 
                 /* Increment sequence number for next trust transaction. */
-                nSequence ++;
+                ++nSequence;
             }
 
             /* Calculate time since the last trust block for this trust key (block age = age of previous trust block). */
@@ -444,7 +444,7 @@ namespace Legacy
             if ((nWaitCounter % 60) == 0)
                 debug::log(0, FUNCTION, "Wallet has no balance or no spendable inputs available.");
 
-            nWaitCounter++;
+            ++nWaitCounter;
 
             return false;
         }
@@ -538,12 +538,12 @@ namespace Legacy
                 /* Update log every 60 iterations (5 minutes) */
                 if ((nWaitCounter % 60) == 0)
                 {
-					uint32_t nRemainingWaitTime = (nMinimumCoinAge - nCoinAge) / 60; //minutes
-
-					debug::log(0, FUNCTION, "Average coin age is immature. %" PRIu32 " minutes remaining until staking available.", nRemainingWaitTime);
+                    uint32_t nRemainingWaitTime = (nMinimumCoinAge - nCoinAge) / 60; //minutes
+	                  debug::log(0, FUNCTION, "Average coin age is immature. ",
+                      nRemainingWaitTime, " minutes remaining until staking available.");
                 }
 
-                nWaitCounter++;
+                ++nWaitCounter;
 
                 return false;
             }
@@ -567,10 +567,10 @@ namespace Legacy
             nCurrentBlockWeight = 0.0;
         }
 
-		/* Update instance settings */
-		nBlockWeight.store(nCurrentBlockWeight);
-		nTrustWeight.store(nCurrentTrustWeight);
-		fIsWaitPeriod.store(fNewIsWaitPeriod);
+    		/* Update instance settings */
+    		nBlockWeight.store(nCurrentBlockWeight);
+    		nTrustWeight.store(nCurrentTrustWeight);
+    		fIsWaitPeriod.store(fNewIsWaitPeriod);
 
         return true;
     }
@@ -593,8 +593,9 @@ namespace Legacy
         bnTarget.SetCompact(candidateBlock.nBits);
         uint1024_t nHashTarget = bnTarget.getuint1024();
 
-        debug::log(0, FUNCTION, "Staking new block from %s at weight %f and stake rate %f",
-            hashLastBlock.ToString().substr(0, 20).c_str(), (nTrustWeight.load() + nBlockWeight.load()), nStakeRate.load());
+        debug::log(0, FUNCTION, "Staking new block from ", hashLastBlock.ToString().substr(0, 20),
+          " at weight ", nTrustWeight.load() + nBlockWeight.load(),
+          " and stake rate ", nStakeRate.load());
 
         /* Search for the proof of stake hash solution until it mines a block, minter is stopped,
          * or network generates a new block (minter must start over with new candidate)
@@ -623,11 +624,12 @@ namespace Legacy
             }
 
             /* Increment the nonce only after we know we can use it (threshold exceeds required). */
-            candidateBlock.nNonce++;
+            ++candidateBlock.nNonce;
 
             /* Log every 1000 attempts */
             if (candidateBlock.nNonce % 1000 == 0)
-                debug::log(3, FUNCTION, "Threshold %f exceeds required %f, mining Proof of Stake with nonce %" PRIu64, nThreshold, nRequired, candidateBlock.nNonce);
+                debug::log(3, FUNCTION, "Threshold ", nThreshold, " exceeds required ", nRequired,
+                  ", mining Proof of Stake with nonce ", candidateBlock.nNonce);
 
             /* Handle if block is found. */
             uint1024_t stakeHash = candidateBlock.StakeHash();
