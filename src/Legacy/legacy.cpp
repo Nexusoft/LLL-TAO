@@ -338,8 +338,8 @@ namespace Legacy
     bool LegacyBlock::Accept() const
     {
         /* Check for duplicates */
-        if(LLD::legDB->HasBlock(GetHash()))
-            return debug::error(FUNCTION, "already have block");
+        //if(LLD::legDB->HasBlock(GetHash()))
+        //    return debug::error(FUNCTION, "already have block");
 
         /* Print the block on verbose 2. */
         if(config::GetArg("-verbose", 0) >= 2)
