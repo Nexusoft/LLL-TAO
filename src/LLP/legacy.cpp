@@ -902,34 +902,39 @@ namespace LLP
 
             /* Check for failure limit on node. */
             if(pnode
-            && config::GetBoolArg("-fastsync")
-            && TAO::Ledger::ChainState::Synchronizing()
-            && pnode->nConsecutiveFails >= 500)
+            && pnode->nConsecutiveFails >= 100)
             {
-                /* Find a new fast sync node if too many failures. */
-                if(addrFastSync == pnode->GetAddress())
+
+                /* Fast Sync node switch. */
+                if(config::GetBoolArg("-fastsync")
+                && TAO::Ledger::ChainState::Synchronizing())
                 {
-                    /* Normal case of asking for a getblocks inventory message. */
-                    memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
-
-                    /* Null check the pointer. */
-                    if(pBest != nullptr)
+                    /* Find a new fast sync node if too many failures. */
+                    if(addrFastSync == pnode->GetAddress())
                     {
-                        try
-                        {
-                            /* Switch to a new node for fast sync. */
-                            pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                        /* Normal case of asking for a getblocks inventory message. */
+                        memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
 
-                            /* Debug output. */
-                            debug::error(FUNCTION, "fast sync node reached failure limit...");
-                        }
-                        catch(const std::runtime_error& e)
+                        /* Null check the pointer. */
+                        if(pBest != nullptr)
                         {
-                            debug::error(FUNCTION, e.what());
+                            try
+                            {
+                                /* Switch to a new node for fast sync. */
+                                pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+
+                                /* Debug output. */
+                                debug::error(FUNCTION, "fast sync node reached failure limit...");
+                            }
+                            catch(const std::runtime_error& e)
+                            {
+                                debug::error(FUNCTION, e.what());
+                            }
                         }
                     }
                 }
 
+                /* Drop pesky nodes. */
                 return false;
             }
 
