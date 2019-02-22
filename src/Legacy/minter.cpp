@@ -511,7 +511,6 @@ namespace Legacy
             /* Block Weight reaches maximum of 10.0 when Block Age equals the defined timespan */
             double nBlockAgeRatio = (double)nBlockAge / (double)nMaxBlockAge;
             nCurrentBlockWeight = std::min(10.0, (9.0 * log((2.0 * nBlockAgeRatio) + 1.0) / LOG3) + 1.0);
-
         }
 
         /* Weights for Genesis transactions only uses trust weight with its value based on average coin age. */
@@ -635,7 +634,7 @@ namespace Legacy
             uint1024_t stakeHash = candidateBlock.StakeHash();
             if (stakeHash < nHashTarget)
             {
-                debug::log(0, FUNCTION, "Found new stake hash %sn", stakeHash.ToString().substr(0, 20).c_str());
+                debug::log(0, FUNCTION, "Found new stake hash ", stakeHash.ToString().substr(0, 20));
 
                 ProcessMinedBlock();
                 break;

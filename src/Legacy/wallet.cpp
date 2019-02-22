@@ -602,7 +602,8 @@ namespace Legacy
     bool Wallet::Lock()
     {
         /* Cannot lock unencrypted key store. This will enable encryption if not enabled already. */
-        if (IsCrypted() && CryptoKeyStore::Lock()) {
+        if (IsCrypted() && CryptoKeyStore::Lock())
+        {
             /* Upon successful lock, stop the stake minter */
             StakeMinter::GetInstance().StopStakeMinter();
 
