@@ -166,7 +166,7 @@ namespace LLP
                 addr = BaseAddress(sockaddr);
             }
 
-            /* Connect for non-blocking socket should return SOCKET_ERROR 
+            /* Connect for non-blocking socket should return SOCKET_ERROR
              * (with last error WSAEWOULDBLOCK/Windows, WSAEINPROGRESS/Linux normally).
              * Then we have to use select below to check if connection was made.
              * If it doesn't return that, it means it connected immediately and connection was successful. (very unusual, but possible)
@@ -466,6 +466,9 @@ namespace LLP
 
             LOCK(DATA_MUTEX);
             vBuffer.erase(vBuffer.begin(), vBuffer.begin() + nSent);
+
+            if(config::GetBoolArg("-printflush"))
+                debug::log(3, FUNCTION, "flushed ", nSent, " bytes");
         }
 
         return nSent;
