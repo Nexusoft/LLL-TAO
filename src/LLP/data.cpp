@@ -244,13 +244,6 @@ namespace LLP
                     if(!pNode || !pNode->Connected())
                         continue;
 
-                    /* Disconnect if there was a polling error */
-                    if(POLLFDS[nIndex].revents & POLLERR || POLLFDS[nIndex].revents & POLLNVAL)
-                    {
-                        disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
-                        continue;
-                    }
-
                     /* Remove Connection if it has Timed out or had any read/write Errors. */
                     if(pNode->Errors())
                     {
