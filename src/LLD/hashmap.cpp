@@ -619,15 +619,11 @@ namespace LLD
                 SectorKey cKey;
                 ssKey >> cKey;
 
-                /* Skip over keys that are already erased. */
-                if(!cKey.Ready())
-                    continue;
-
                 /* Seek to the hashmap index in file. */
                 pstream->seekp (nFilePos, std::ios::beg);
 
                 /* Read the bucket binary data from file stream */
-                std::vector<uint8_t> vEmpty(STATE::EMPTY);
+                std::vector<uint8_t> vEmpty(HASHMAP_KEY_ALLOCATION, 0);
                 pstream->write((char*) &vEmpty[0], vEmpty.size());
                 pstream->flush();
 

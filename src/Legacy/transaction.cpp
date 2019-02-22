@@ -397,7 +397,7 @@ namespace Legacy
             nTotalCoins += nValue;
             nAverageAge += nCoinAge;
 
-            /* Reward rate for time period is annual rate * (time period / annual time) = nStakeRate * (nCoinAge / nMaxTrustScore) 
+            /* Reward rate for time period is annual rate * (time period / annual time) = nStakeRate * (nCoinAge / nMaxTrustScore)
              * Then, nStakeReward = nValue * reward rate
              */
             nStakeReward += ((nValue * nStakeRate * nCoinAge) / nMaxTrustScore);
@@ -725,7 +725,7 @@ namespace Legacy
             if(!LLD::legacyDB->ReadTx(prevout.hash, txPrev))
             {
                 //TODO: check the memory pool for previous
-                return debug::error(FUNCTION, "previous transaction ", prevout.hash.ToString(), " not found");
+                return debug::error(FUNCTION, "previous transaction ", prevout.hash.ToString().substr(0, 20), " not found");
             }
 
             /* Check that it is valid. */
@@ -959,12 +959,12 @@ namespace Legacy
             return debug::error(FUNCTION, "last state coinstake tx not found");
 
         /* Enforce the minimum trust key interval of 120 blocks. */
-        const uint32_t nMinimumInterval = config::fTestNet 
-                                            ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL 
-                                            : (TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7) 
+        const uint32_t nMinimumInterval = config::fTestNet
+                                            ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
+                                            : (TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7)
                                                 ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY
-                                                : (runtime::timestamp() > TAO::Ledger::NETWORK_VERSION_TIMELOCK[5]) 
-                                                        ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL 
+                                                : (runtime::timestamp() > TAO::Ledger::NETWORK_VERSION_TIMELOCK[5])
+                                                        ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL
                                                         : TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY;
 
         if(state.nHeight - stateLast.nHeight < nMinimumInterval)

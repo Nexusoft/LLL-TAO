@@ -371,8 +371,9 @@ int main(int argc, char** argv)
     timer.Stop();
 
 
-    ///* Sleep before output. */
-    //runtime::sleep(100);
+    /* If wallet is not encrypted, it is unlocked by default. Start stake minter now. It will run until stopped by system shutdown. */
+    if (!Legacy::Wallet::GetInstance().IsCrypted())
+        Legacy::StakeMinter::GetInstance().StartStakeMinter();
 
 
     /* Startup performance metric. */
