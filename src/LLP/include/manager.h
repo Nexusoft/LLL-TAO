@@ -295,14 +295,6 @@ namespace LLP
          void remove_address(const BaseAddress &addr);
 
 
-        /** to_string
-         *
-         *  Print the current state of the address manager.
-         *
-         **/
-        std::string to_string();
-
-
         /** is_banned
          *
          *  Helper function to determine if an address identified by it's hash
