@@ -713,6 +713,7 @@ namespace Legacy
     /* Method run on its own thread to oversee stake minter operation. */
     void StakeMinter::StakeMinterThread(StakeMinter* pStakeMinter)
     {
+
         debug::log(0, FUNCTION, "Stake Minter Started");
         pStakeMinter->nSleepTime = 5000;
 

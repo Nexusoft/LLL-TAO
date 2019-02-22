@@ -42,14 +42,18 @@ def allocate_eids():
 #
 # get_rloc
 #
-# Get IP address on interface.
+# Get IP address on interface. Various versions of ubumtu put gratitious
+# whitespaces between keywords and hence the two types of greps below.
 #
 def get_rloc(device):
-    cmd = 'ip addr show dev {} | egrep "inet " | egrep "brd "'.format(device)
-    addr = commands.getoutput(cmd)
-    if (addr == ""): return(None)
-    addr = addr.split()[1]
-    return(addr.split("/")[0])
+    addr = commands.getoutput('ip route | egrep "link src "'.format(device))
+    if (addr == ""): 
+        addr = commands.getoutput('ip route | egrep "link  src "'.format( \
+            device))
+        if (addr == ""): return(None)
+    #endif
+    addr = addr.split()[-1]
+    return(addr)
 #enddef
 
 #
@@ -132,6 +136,10 @@ if (provision):
     f = open("./lisp.config", "w"); f.write(lisp_config); f.close()
 else:
     iid, eid4, eid6 = get_eids(lisp_config)
+    if (iid == None):
+        print "lisp.config file corrupt, remove it and rerun script"
+        exit(1)
+    #endif
     print "Using EIDs [{}]{} & [{}]{} found in lisp.config".format(iid, eid4,
         iid, eid6)
 #endif

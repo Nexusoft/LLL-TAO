@@ -594,48 +594,32 @@ namespace LLP
             {
                 /* Filter duplicates if not synchronizing. */
                 std::vector<CInv> vGet;
-
-                /* Because it is safe to assume that the inventory list is sequential by height, as an optimisation
-                   we can just check the last element and if we have it we can ignore the whole message. */
-                if(LLD::legDB->HasBlock(vInv.back().GetHash()))
-                    return true; // we already have the
-
-                /* Similarly we can optimize by not checking any of the inventory if we don't have the first block */
-                if(!LLD::legDB->HasBlock(vInv.front().GetHash()))
-                    vGet = vInv;
-                else
+                for(const auto& inv : vInv)
                 {
-                    /* Work backwards because as soon as we find one we already have we can ignore everything before it in the inventory */
-                    std::reverse(vInv.begin(), vInv.end());
-                    for(const auto& inv : vInv)
+                    /* If this is a block type, only request if not in database. */
+                    if(inv.GetType() == MSG_BLOCK)
                     {
-                        /* If this is a block type, only request if not in database. */
-                        if(inv.GetType() == MSG_BLOCK)
-                        {
-                            /* Check the LLD for block. */
-                            if(!cacheInventory.Has(inv.GetHash())
-                            && !LLD::legDB->HasBlock(inv.GetHash()))
-                            {
-                                /* Add this item to request queue. */
-                                vGet.push_back(inv);
-
-                                /* Add this item to cached relay inventory (key only). */
-                                cacheInventory.Add(inv.GetHash());
-                            }
-                            else
-                                break;
-                        }
-
-                        /* Check the memory pool for transactions being relayed. */
-                        else if(!cacheInventory.Has(inv.GetHash().getuint512())
-                             && !TAO::Ledger::mempool.Has(inv.GetHash().getuint512()))
+                        /* Check the LLD for block. */
+                        if(!cacheInventory.Has(inv.GetHash()))
                         {
                             /* Add this item to request queue. */
                             vGet.push_back(inv);
 
                             /* Add this item to cached relay inventory (key only). */
-                            cacheInventory.Add(inv.GetHash().getuint512());
+                            cacheInventory.Add(inv.GetHash());
                         }
+                        else
+                            break;
+                    }
+
+                    /* Check the memory pool for transactions being relayed. */
+                    else if(!cacheInventory.Has(inv.GetHash().getuint512()))
+                    {
+                        /* Add this item to request queue. */
+                        vGet.push_back(inv);
+
+                        /* Add this item to cached relay inventory (key only). */
+                        cacheInventory.Add(inv.GetHash().getuint512());
                     }
                 }
 
@@ -858,10 +842,6 @@ namespace LLP
         uint1024_t hash = block.GetHash();
         if(!block.Check())
             return true;
-
-        /* Erase from orphan queue. */
-        if(mapLegacyOrphans.count(hash))
-            mapLegacyOrphans.erase(hash);
 
         /* Check for orphan. */
         if(!LLD::legDB->HasBlock(block.hashPrevBlock))

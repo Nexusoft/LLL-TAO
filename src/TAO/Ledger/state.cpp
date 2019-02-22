@@ -474,8 +474,8 @@ namespace TAO
                     std::vector<LLP::CInv> vInv = { LLP::CInv(ChainState::hashBestChain.load(), LLP::MSG_BLOCK) };
 
                     /* Relay the new block to all connected nodes. */
-                    if(LLP::LEGACY_SERVER)
-                        LLP::LEGACY_SERVER->Relay("inv", vInv);
+                    //if(LLP::LEGACY_SERVER)
+                    //    LLP::LEGACY_SERVER->Relay("inv", vInv);
                 }
             }
 
