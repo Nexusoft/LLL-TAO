@@ -394,9 +394,6 @@ namespace LLP
             vBuffer.insert(vBuffer.end(), vData.begin() + nSent, vData.end());
         }
 
-        if(config::GetBoolArg("-printflush"))
-            debug::log(0, FUNCTION, "wrote ", nSent, " bytes");
-
         return nSent;
     }
 
@@ -425,6 +422,9 @@ namespace LLP
         /* Set the maximum bytes to flush to 2^16 or maximum socket buffers. */
         nBytes = std::min(nSize, 65535u);
 
+        /* Allow user configured sending size (but make sure it won't overflow buffer). */
+        nBytes = std::min((uint32_t)config::GetArg("-maxsendsize", 65535u), 65535u);
+
         /* If there were any errors, handle them gracefully. */
         {
             LOCK(PACKET_MUTEX);
@@ -451,9 +451,6 @@ namespace LLP
 
             LOCK(DATA_MUTEX);
             vBuffer.erase(vBuffer.begin(), vBuffer.begin() + nSent);
-
-            if(config::GetBoolArg("-printflush"))
-                debug::log(0, FUNCTION, "flushed ", nSent, " bytes");
         }
 
         return nSent;
