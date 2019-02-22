@@ -619,7 +619,7 @@ namespace LLP
 
                     /* Check the memory pool for transactions being relayed. */
                     else if(!cacheInventory.Has(inv.GetHash().getuint512())
-                         && !LLD::legacyDB->HasTx(inv.GetHash().getuint512()))
+                         && !TAO::Ledger::mempool.Has(inv.GetHash().getuint512()))
                     {
                         /* Add this item to request queue. */
                         vGet.push_back(inv);
