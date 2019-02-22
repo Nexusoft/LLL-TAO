@@ -265,6 +265,8 @@ namespace TAO
                     if(!LLD::legacyDB->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
 
+                    debug::log(0, FUNCTION, "wrote tx ", hash.ToString().substr(0, 20), " to disk");
+
                 }
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");
