@@ -145,10 +145,6 @@ namespace TAO
         /* Accept a block state into chain. */
         bool BlockState::Index()
         {
-            /* Read leger DB for duplicate block. */
-            //if(LLD::legDB->HasBlock(GetHash()))
-            //    return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20), " height ", nHeight);
-
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();
             if(!statePrev)
