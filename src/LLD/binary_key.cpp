@@ -98,10 +98,18 @@ namespace LLD
         if(pthis == nullptr)
             return false;
 
+        /* Check that the key mateches. */
+        if(pthis->vKey != vKey)
+            return false;
+
+        /* If the time has expired, return false. */
+        if(pthis->nTimestamp + 60 < runtime::timestamp())
+            return debug::error(FUNCTION, "key has expired");
+
         /* Move to front of LRU. */
         MoveToFront(pthis);
 
-        return (pthis->vKey == vKey);
+        return true;
     }
 
 
