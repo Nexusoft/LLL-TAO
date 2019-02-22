@@ -112,8 +112,8 @@ namespace TAO
         }
 
 
-        /* Interest is Determined By Logarithmic Equation from Genesis Key. */
-        double TrustKey::InterestRate(const TAO::Ledger::BlockState& block, uint32_t nTime) const
+        /* Retrieves the staking rate (ie, minting rate or interest rate) of the trust key for a given PoS block. */
+        double TrustKey::StakeRate(const TAO::Ledger::BlockState& block, const uint32_t nTime) const
         {
             static const double LOG10 = log(10); // Constant for use in calculations
 

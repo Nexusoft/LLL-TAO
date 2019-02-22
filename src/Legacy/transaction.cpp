@@ -368,7 +368,7 @@ namespace Legacy
             /* Read the trust key from the disk. */
             TAO::Ledger::TrustKey trustKey;
             if(LLD::trustDB->ReadTrustKey(cKey, trustKey))
-                nStakeRate = trustKey.InterestRate(block, nTime);
+                nStakeRate = trustKey.StakeRate(block, nTime);
 
             /* Check if it failed to read and this is genesis. */
             else if(!IsGenesis())
