@@ -229,10 +229,6 @@ namespace LLP
                 int nPoll = poll((pollfd*)&POLLFDS[0], nSize, 100);
     #endif
 
-                /* Continue on poll errors or no connections with data to read */
-                if (nPoll <= 0)
-                    continue;
-
             }
 
 
