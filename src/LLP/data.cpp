@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLP/include/base_address.h>
 #include <LLP/templates/data.h>
 #include <LLP/templates/ddos.h>
 #include <LLP/templates/events.h>
@@ -122,7 +123,7 @@ namespace LLP
         }
 
         node->fOUTGOING = true;
-		
+
         {
             LOCK(MUTEX);
 
@@ -136,7 +137,7 @@ namespace LLP
             }
             else
                 CONNECTIONS[nSlot] = node;
-				
+
             POLLFDS[nSlot].fd = node->fd;
             POLLFDS[nSlot].events = node->events;
 
@@ -334,6 +335,72 @@ namespace LLP
             }
         }
     }
+
+
+    /*  Get the number of active connection pointers from data threads. */
+     template <class ProtocolType>
+     uint16_t DataThread<ProtocolType>::GetConnectionCount()
+     {
+         uint16_t nConnectionCount = 0;
+         uint16_t nSize = 0;
+         uint16_t nIndex = 0;
+
+         LOCK(MUTEX);
+
+         nSize = static_cast<uint16_t>(CONNECTIONS.size());
+
+         /* Loop through connections in data thread and add any that are connected to count. */
+         for(; nIndex < nSize; ++nIndex)
+         {
+             /* Skip over inactive connections. */
+             if(!CONNECTIONS[nIndex])
+                 continue;
+
+             ++nConnectionCount;
+         }
+
+         return nConnectionCount;
+     }
+
+     template <class ProtocolType>
+     uint16_t DataThread<ProtocolType>::GetBestConnection(const BaseAddress& addrExclude, uint32_t &nLatency)
+     {
+          uint16_t nIndex = 0;
+          uint16_t nSize = 0;
+          uint16_t i = 0;
+
+          {
+              LOCK(MUTEX);
+              nSize = static_cast<uint16_t>(CONNECTIONS.size());
+          }
+
+          for(; i < nSize; ++i)
+          {
+              try
+              {
+                  /* Skip over inactive connections. */
+                  if(!CONNECTIONS[i])
+                      continue;
+
+                  /* Skip over exclusion address. */
+                  if(CONNECTIONS[i]->GetAddress() == addrExclude)
+                      continue;
+
+                  /* Choose the active index, update lowest latency output. */
+                  if(CONNECTIONS[i]->nLatency < nLatency)
+                  {
+                      nLatency = CONNECTIONS[i]->nLatency;
+                      nIndex = i;
+                  }
+              }
+              catch(const std::runtime_error& e)
+              {
+                  debug::error(FUNCTION, e.what());
+              }
+          }
+
+          return nIndex;
+     }
 
 
     /*  Fires off a Disconnect event with the given disconnect reason
