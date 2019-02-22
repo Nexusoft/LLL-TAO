@@ -214,22 +214,20 @@ namespace LLP
                 for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
                 {
                     POLLFDS[nIndex].revents = 0;
-
-                    if (POLLFDS[nIndex].fd & INVALID_SOCKET)
+                    if (POLLFDS[nIndex].fd != INVALID_SOCKET)
                         fHasValidConnections = true;
                 }
-
-                if (!fHasValidConnections)
-                    continue;
-
-                /* Poll the sockets. */
-    #ifdef WIN32    /* Poll the sockets. */
-                int nPoll = WSAPoll((pollfd*)&POLLFDS[0], nSize, 100);
-    #else
-                int nPoll = poll((pollfd*)&POLLFDS[0], nSize, 100);
-    #endif
-
             }
+
+            if (!fHasValidConnections)
+                continue;
+
+            /* Poll the sockets. */
+#ifdef WIN32    /* Poll the sockets. */
+            int nPoll = WSAPoll((pollfd*)&POLLFDS[0], nSize, 100);
+#else
+            int nPoll = poll((pollfd*)&POLLFDS[0], nSize, 100);
+#endif
 
 
             /* Check all connections for data and packets. */
@@ -243,6 +241,13 @@ namespace LLP
                     /* Skip over Inactive Connections. */
                     if(!pNode || !pNode->Connected())
                         continue;
+
+                    /* Disconnect if there was a polling error */
+                    if(POLLFDS[nIndex].revents & POLLERR || POLLFDS[nIndex].revents & POLLNVAL)
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
+                        continue;
+                    }
 
                     /* Remove Connection if it has Timed out or had any read/write Errors. */
                     if(pNode->Errors())
