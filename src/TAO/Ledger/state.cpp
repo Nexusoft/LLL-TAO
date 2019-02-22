@@ -232,6 +232,45 @@ namespace TAO
                 return debug::error(FUNCTION, "block state failed to write");
 
 
+            /* Write the transactions. */
+            for(const auto& tx : vtx)
+            {
+                /* Only work on tritium transactions for now. */
+                if(tx.first == TYPE::TRITIUM_TX)
+                {
+                    /* Get the transaction hash. */
+                    uint512_t hash = tx.second;
+
+                    /* Check the memory pool. */
+                    TAO::Ledger::Transaction tx;
+                    if(!mempool.Get(hash, tx))
+                        return debug::error(FUNCTION, "transaction is not in memory pool"); //TODO: recover from missing transactions
+
+                    /* Write to disk. */
+                    if(!LLD::legDB->WriteTx(hash, tx))
+                        return debug::error(FUNCTION, "failed to write tx to disk");
+
+                }
+                else if(tx.first == TYPE::LEGACY_TX)
+                {
+                    /* Get the transaction hash. */
+                    uint512_t hash = tx.second;
+
+                    /* Check if in memory pool. */
+                    Legacy::Transaction tx;
+                    if(!mempool.Get(hash, tx))
+                        return debug::error(FUNCTION, "transaction is not in memory pool");  //TODO: recover from missing transactions
+
+                    /* Write to disk. */
+                    if(!LLD::legacyDB->WriteTx(hash, tx))
+                        return debug::error(FUNCTION, "failed to write tx to disk");
+
+                }
+                else
+                    return debug::error(FUNCTION, "using an unknown transaction type");
+            }
+
+
             /* Signal to set the best chain. */
             if(nChainTrust > ChainState::nBestChainTrust.load())
                 if(!SetBest())
@@ -496,16 +535,14 @@ namespace TAO
                     /* Get the transaction hash. */
                     uint512_t hash = tx.second;
 
-                    /* Check if in memory pool. */
+                    /* Make sure the transaction is on disk. */
                     TAO::Ledger::Transaction tx;
+                    if(!LLD::legDB->ReadTx(hash, tx))
+                        return debug::error(FUNCTION, "transaction not on disk");
 
-                    /* Make sure the transaction isn't on disk. */
-                    if(LLD::legDB->ReadTx(hash, tx))
-                        return debug::error(FUNCTION, "transaction already exists");
-
-                    /* Check the memory pool. */
-                    if(!mempool.Get(hash, tx))
-                        return debug::error(FUNCTION, "transaction is not in memory pool"); //TODO: recover from this and ask sending node.
+                    /* Check for existing indexes. */
+                    if(LLD::legDB->HasIndex(hash))
+                        return debug::error(FUNCTION, "transaction overwrites not allowed");
 
                     /* Verify the ledger layer. */
                     if(!TAO::Register::Verify(tx))
@@ -555,16 +592,14 @@ namespace TAO
                     /* Get the transaction hash. */
                     uint512_t hash = tx.second;
 
-                    /* Check if in memory pool. */
-                    Legacy::Transaction tx;
-
                     /* Make sure the transaction isn't on disk. */
-                    if(LLD::legacyDB->ReadTx(hash, tx))
-                        return debug::error(FUNCTION, "transaction already exists");
+                    Legacy::Transaction tx;
+                    if(!LLD::legacyDB->ReadTx(hash, tx))
+                        return debug::error(FUNCTION, "transaction not on disk");
 
-                    /* Check the memory pool. */
-                    if(!mempool.Get(hash, tx))
-                        return debug::error(FUNCTION, "transaction is not in memory pool");
+                    /* Check for existing indexes. */
+                    if(LLD::legDB->HasIndex(hash))
+                        return debug::error(FUNCTION, "transaction overwrites not allowed");
 
                     /* Check for coinbase or coinstake. */
                     if(hash == vtx[0].second && !tx.IsCoinBase() && !tx.IsCoinStake())

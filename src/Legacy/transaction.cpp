@@ -906,8 +906,9 @@ namespace Legacy
             }
         }
 
-        /* Erase the transaction object. */
-        LLD::legacyDB->EraseTx(GetHash());
+        /* Erase the index. */
+        if(!LLD::legDB->EraseIndex(GetHash()))
+            return debug::error(FUNCTION, "failed to erase index");
 
         return true;
     }
