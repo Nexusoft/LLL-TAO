@@ -302,19 +302,11 @@ namespace LLP
     int Socket::Read(std::vector<uint8_t> &vData, size_t nBytes)
     {
         int nRead = 0;
-        SOCKET nFile = INVALID_SOCKET;
-
-        {
-            /* Create a thread-safe copy of the file descriptor */
-            LOCK(DATA_MUTEX);
-            nFile = fd;
-        }
-
 
     #ifdef WIN32
-        nRead = recv(nFile, (char*)&vData[0], nBytes, MSG_DONTWAIT);
+        nRead = recv(fd, (char*)&vData[0], nBytes, MSG_DONTWAIT);
     #else
-        nRead = recv(nFile, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT);
+        nRead = recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT);
     #endif
 
         if (nRead < 0)
@@ -334,18 +326,11 @@ namespace LLP
     int Socket::Read(std::vector<int8_t> &vData, size_t nBytes)
     {
         int nRead = 0;
-        SOCKET nFile = INVALID_SOCKET;
-
-        {
-            /* Create a thread-safe copy of the file descriptor */
-            LOCK(DATA_MUTEX);
-            nFile = fd;
-        }
 
     #ifdef WIN32
-        nRead = recv(nFile, (char*)&vData[0], nBytes, MSG_DONTWAIT);
+        nRead = recv(fd, (char*)&vData[0], nBytes, MSG_DONTWAIT);
     #else
-        nRead = recv(nFile, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT);
+        nRead = recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT);
     #endif
 
         if (nRead < 0)
@@ -366,13 +351,9 @@ namespace LLP
     int Socket::Write(const std::vector<uint8_t>& vData, size_t nBytes)
     {
         int nSent = 0;
-        SOCKET nFile = INVALID_SOCKET;
 
         {
             LOCK(DATA_MUTEX);
-
-            /* Create a thread-safe copy of the file descriptor */
-            nFile = fd;
 
             /* Check overflow buffer. */
             if(vBuffer.size() > 0)
@@ -389,9 +370,9 @@ namespace LLP
             LOCK(PACKET_MUTEX);
 
             #ifdef WIN32
-                nSent = send(nFile, (char*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT);
+                nSent = send(fd, (char*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT);
             #else
-                nSent = send(nFile, (int8_t*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT);
+                nSent = send(fd, (int8_t*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT);
             #endif
         }
 
@@ -413,6 +394,9 @@ namespace LLP
             vBuffer.insert(vBuffer.end(), vData.begin() + nSent, vData.end());
         }
 
+        if(config::GetBoolArg("-printflush"))
+            debug::log(0, FUNCTION, "wrote ", nSent, " bytes");
+
         return nSent;
     }
 
@@ -421,14 +405,15 @@ namespace LLP
     int Socket::Flush()
     {
         int nSent = 0;
-        SOCKET nFile = INVALID_SOCKET;
+
+
         uint32_t nBytes = 0;
         uint32_t nSize = 0;
 
         {
             LOCK(DATA_MUTEX);
+
             /* Create a thread-safe copy of the file descriptor */
-            nFile = fd;
             nSize = static_cast<uint32_t>(vBuffer.size());
         }
 
@@ -445,9 +430,9 @@ namespace LLP
             LOCK(PACKET_MUTEX);
 
             #ifdef WIN32
-                nSent = send(nFile, (char*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT);
+                nSent = send(fd, (char*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT);
             #else
-                nSent = send(nFile, (int8_t*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT);
+                nSent = send(fd, (int8_t*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT);
             #endif
         }
 
@@ -468,7 +453,7 @@ namespace LLP
             vBuffer.erase(vBuffer.begin(), vBuffer.begin() + nSent);
 
             if(config::GetBoolArg("-printflush"))
-                debug::log(3, FUNCTION, "flushed ", nSent, " bytes");
+                debug::log(0, FUNCTION, "flushed ", nSent, " bytes");
         }
 
         return nSent;
