@@ -12,14 +12,26 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/include/rpc.h>
-#include <Util/include/json.h>
-#include <Util/include/hex.h>
-#include <TAO/Ledger/include/chainstate.h>
-#include <TAO/Ledger/include/supply.h>
+
 #include <Legacy/include/money.h>
-#include <TAO/Ledger/include/difficulty.h>
+#include <Legacy/types/address.h>
+
 #include <LLD/include/global.h>
+
+#include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/tritium.h>
+
+#include <Util/include/args.h>
+#include <Util/include/hex.h>
+#include <Util/include/json.h>
+
+#include <functional>
+#include <map>
+#include <string>
+#include <vector>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -141,52 +153,61 @@ namespace TAO
                     " - List all the Trust Keys on the Network");
 
 
-        //     unsigned int nTotalActive = 0;
-        //     Array trustkeys;
-        //     Object ret;
+            json::json response;
+            std::vector<json::json> trustKeyList;
 
-        //     std::vector<uint576> vKeys;
-        //     LLD::CIndexDB indexdb("cr");
-        //     if(!indexdb.GetTrustKeys(vKeys))
-        //         return ret;
+            /* Map will store trust keys, keyed by stake rate, sorted in descending order */
+            std::multimap<double, TAO::Ledger::TrustKey, std::greater<double>> mapTrustKeys;
 
-        //     /* Search through the trust keys. */
-        //     for(auto key : vKeys)
-        //     {
-        //         Core::CTrustKey trustKey;
-        //         if(!indexdb.ReadTrustKey(key, trustKey))
-        //             continue;
+            /* Retrieve all raw trust database keys from keychain */
+            const std::vector< std::vector<uint8_t> >& vKeys = LLD::trustDB->GetKeys();
 
-        //         uint1024 hashLastBlock = trustKey.hashLastBlock;
-        //         if(!Core::mapBlockIndex.count(hashLastBlock))
-        //             continue;
+            /* Search through the trust keys. */
+            for (const auto& key : vKeys)
+            {
+                /* Extract trust key hash from raw database keys. */
+                uint576_t trustKeyHash = 0;
+                DataStream ssKey(key, SER_LLD, LLD::DATABASE_VERSION);
+                ssKey >> trustKeyHash;
 
-        //         if(Core::mapBlockIndex[hashLastBlock]->GetBlockTime() < (fTestNet ? Core::TESTNET_VERSION_TIMELOCK[3] : Core::NETWORK_VERSION_TIMELOCK[3]))
-        //             continue;
+                /* Use trust key hash to retrieve trust key */
+                TAO::Ledger::TrustKey trustKey;
+                if (!LLD::trustDB->ReadTrustKey(trustKeyHash, trustKey))
+                    continue;
 
-        //         Object obj;
-        //         Legacy::NexusAddress address;
-        //         address.SetPubKey(trustKey.vchPubKey);
+                /* Retrieve block state of last trust block for current trust key */
+                uint1024_t hashLastBlock = trustKey.hashLastBlock;
+                TAO::Ledger::BlockState blockState;
+                if (!LLD::legDB->ReadBlock(hashLastBlock, blockState))
+                    continue;
 
-        //         /* Read the previous block from disk. */
-        //         Core::CBlock block;
-        //         if(!block.ReadFromDisk(Core::mapBlockIndex[hashLastBlock], true))
-        //             continue;
+                /* Ignore any pre-v5 blocks */
+                if (blockState.nTime < (config::fTestNet ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[4] : TAO::Ledger::NETWORK_VERSION_TIMELOCK[4]))
+                    continue;
 
-        //         obj["address", address.ToString()));
-        //         obj["interestrate", 100.0 * trustKey.InterestRate(block, GetUnifiedTimestamp())));
-        //         obj["trustkey", trustKey.ToString()));
+                /* Put trust keys into a map keyed by stake rate (sorts them by rate) */
+                double stakeRate = trustKey.StakeRate(blockState, runtime::unifiedtimestamp());
+                mapTrustKeys.insert (std::make_pair(stakeRate, trustKey));
+            }
 
-        //         trustkeys.push_back(obj);
-        //     }
+            /* Now have map of all trust keys. Assemble into response data */
+            for (auto& item : mapTrustKeys)
+            {
+                json::json obj;
+                Legacy::NexusAddress address;
+                address.SetPubKey(item.second.vchPubKey);
 
-        //     ret["keys", trustkeys));
-        //     ret["total", (int)trustkeys.size()));
+                obj["address"] = address.ToString();
+                obj["interestrate"] = item.first;
+                obj["trustkey"] = item.second.ToString();
 
-        //     return ret;
-            json::json ret;
-            ret = "NOT AVAILABLE IN THIS RELEASE";
-            return ret;
+                trustKeyList.push_back(obj);
+            }
+
+            response["keys"] = trustKeyList;
+            response["total"] = (uint32_t)trustKeyList.size();
+
+            return response;
         }
 
         /* Returns the number of blocks in the longest block chain */

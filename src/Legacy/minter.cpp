@@ -456,7 +456,7 @@ namespace Legacy
 
         /* Update the current stake rate in the minter (not used for calculations, retrievable for display) */
         TAO::Ledger::BlockState candidateBlockState(candidateBlock);
-        double nCurrentStakeRate = trustKey.InterestRate(candidateBlockState, candidateBlock.GetBlockTime());
+        double nCurrentStakeRate = trustKey.StakeRate(candidateBlockState, candidateBlock.GetBlockTime());
 
         nStakeRate.store(nCurrentStakeRate);
 
