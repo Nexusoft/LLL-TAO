@@ -146,8 +146,8 @@ namespace TAO
         bool BlockState::Index()
         {
             /* Read leger DB for duplicate block. */
-            if(LLD::legDB->HasBlock(GetHash()))
-                return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20), " height ", nHeight);
+            //if(LLD::legDB->HasBlock(GetHash()))
+            //    return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20), " height ", nHeight);
 
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();
@@ -264,9 +264,6 @@ namespace TAO
                     /* Write to disk. */
                     if(!LLD::legacyDB->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
-
-                    debug::log(0, FUNCTION, "wrote tx ", hash.ToString().substr(0, 20), " to disk");
-
                 }
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");
