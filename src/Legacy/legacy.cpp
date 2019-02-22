@@ -448,6 +448,16 @@ namespace Legacy
         /* Accept the block state. */
         if(!state.Index())
         {
+            //TODO: index transactions on disk if block is accepted
+            //Use the flag for if the transction points to a block to check for duplicates
+            //If TX does point to a block, make sure the block it points to is not conflicting
+            //but for now assume that there will not be any conflicts or transactions stuck with indexes
+
+            //NOTE: the issue we have here is that if a block is accepted its transactions are removed from the memory pool
+            //and this creates a problem if there is a REORGANIZE that depends on one of these transactions
+            //this is why above disk indexing is the best route to prevent memory flooding on duplicates, and maintain integrity on
+            //block state connects
+
             /* Remove from the memory pool. */
             for(const auto& tx : vtx)
             {

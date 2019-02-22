@@ -739,7 +739,6 @@ namespace LLP
             while(!config::fShutdown.load())
             {
                 state = state.Next();
-
                 if (state.GetHash() == hashStop)
                 {
                     debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", state.GetHash().ToString().substr(0, 20));
@@ -747,49 +746,6 @@ namespace LLP
                     /* Tell about latest block if hash stop is found. */
                     if (hashStop != TAO::Ledger::ChainState::hashBestChain.load())
                         vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), MSG_BLOCK));
-
-					/* Make a copy of the data to request that is not in inventory. */
-					if(!TAO::Ledger::ChainState::Synchronizing())
-					{
-					    /* Filter duplicates if not synchronizing. */
-					    std::vector<CInv> vGet;
-					    for(const auto& inv : vInv)
-					    {
-					        /* If this is a block type, only request if not in database. */
-					        if(inv.GetType() == MSG_BLOCK)
-					        {
-					            /* Check the LLD for block. */
-					            if(!cacheInventory.Has(inv.GetHash())
-					            && !LLD::legDB->HasBlock(inv.GetHash()))
-					            {
-					                /* Add this item to request queue. */
-					                vGet.push_back(inv);
-
-					                /* Add this item to cached relay inventory (key only). */
-					                cacheInventory.Add(inv.GetHash());
-					            }
-					        }
-
-					        /* Check the memory pool for transactions being relayed. */
-					        else if(!cacheInventory.Has(inv.GetHash().getuint512())
-					             && !TAO::Ledger::mempool.Has(inv.GetHash().getuint512()))
-					        {
-					            /* Add this item to request queue. */
-					            vGet.push_back(inv);
-
-					            /* Add this item to cached relay inventory (key only). */
-					            cacheInventory.Add(inv.GetHash().getuint512());
-					        }
-
-					        /* Push getdata after fastsync inv (if enabled).
-					         * This will ask for a new inv before blocks to
-					         * always stay at least 1k blocks ahead.
-					         */
-					        PushMessage("getdata", vGet);
-					    }
-					}
-					else
-                 	   break;
                 }
 
                 vInv.push_back(CInv(state.GetHash(), MSG_BLOCK));
