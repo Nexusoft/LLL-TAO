@@ -217,10 +217,10 @@ namespace LLP
                     if (POLLFDS[nIndex].fd != INVALID_SOCKET)
                         fHasValidConnections = true;
                 }
-            }
 
-            if (!fHasValidConnections)
-                continue;
+                if (!fHasValidConnections)
+                    continue;
+            }
 
             /* Poll the sockets. */
 #ifdef WIN32    /* Poll the sockets. */
