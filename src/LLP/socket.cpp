@@ -420,10 +420,7 @@ namespace LLP
             return 0;
 
         /* Set the maximum bytes to flush to 2^16 or maximum socket buffers. */
-        nBytes = std::min(nSize, 65535u);
-
-        /* Allow user configured sending size (but make sure it won't overflow buffer). */
-        nBytes = std::min((uint32_t)config::GetArg("-maxsendsize", 65535u), 65535u);
+        nBytes = std::min(nSize, std::min((uint32_t)config::GetArg("-maxsendsize", 65535u), 65535u));
 
         /* If there were any errors, handle them gracefully. */
         {
