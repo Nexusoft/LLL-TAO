@@ -107,16 +107,7 @@ namespace TAO
             }
             catch(const APIException& e)
             {
-                try
-                {
-                    json::json jsonEIDs = TAO::API::lisp.MyEIDs(json::json(), false);
-                    if( jsonEIDs.is_object() && jsonEIDs["eids"].is_array())
-                        obj["eids"] = jsonEIDs["eids"];
-                }
-                catch(const APIException& e)
-                {
-                    /* This is a no-op because the MyEIDs API call will throw an exception if lisp is not running */
-                }
+                /* This is a no-op because the MyEIDs API call will throw an exception if lisp is not running */
             }
 
 

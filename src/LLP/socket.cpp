@@ -127,7 +127,7 @@ namespace LLP
     bool Socket::Attempt(const BaseAddress &addrDest, uint32_t nTimeout)
     {
         bool fConnected = false;
-        int nFile = INVALID_SOCKET;
+        SOCKET nFile = INVALID_SOCKET;
 
         /* Create the Socket Object (Streaming TCP/IP). */
         {
@@ -302,7 +302,7 @@ namespace LLP
     int Socket::Read(std::vector<uint8_t> &vData, size_t nBytes)
     {
         int nRead = 0;
-        int nFile = INVALID_SOCKET;
+        SOCKET nFile = INVALID_SOCKET;
 
         {
             /* Create a thread-safe copy of the file descriptor */
@@ -334,7 +334,7 @@ namespace LLP
     int Socket::Read(std::vector<int8_t> &vData, size_t nBytes)
     {
         int nRead = 0;
-        int nFile = INVALID_SOCKET;
+        SOCKET nFile = INVALID_SOCKET;
 
         {
             /* Create a thread-safe copy of the file descriptor */
@@ -366,7 +366,7 @@ namespace LLP
     int Socket::Write(const std::vector<uint8_t>& vData, size_t nBytes)
     {
         int nSent = 0;
-        int nFile = INVALID_SOCKET;
+        SOCKET nFile = INVALID_SOCKET;
 
         {
             LOCK(DATA_MUTEX);
@@ -421,7 +421,7 @@ namespace LLP
     int Socket::Flush()
     {
         int nSent = 0;
-        int nFile = INVALID_SOCKET;
+        SOCKET nFile = INVALID_SOCKET;
         uint32_t nBytes = 0;
         uint32_t nSize = 0;
 

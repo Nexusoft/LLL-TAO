@@ -78,6 +78,30 @@ namespace TAO
              **/
             json::json MyEIDs(const json::json& params, bool fHelp);
 
+            /** MyRLOCs
+             *
+             *  Queries the lisp api and returns the RLOC's for this node
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json MyRLOCs(const json::json& params, bool fHelp);
+
+            /** DatabaseMappings
+             *
+             *  Queries the lisp api and returns the database mapping for this node
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json DatabaseMapping(const json::json& params, bool fHelp);
+
         };
 
         extern Lisp lisp;
