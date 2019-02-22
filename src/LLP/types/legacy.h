@@ -252,6 +252,7 @@ namespace LLP
                 uint32_t nAvailable = Available();
                 if(nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
                 {
+
                     /* Create the packet data object. */
                     std::vector<uint8_t> DATA( std::min( nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
 

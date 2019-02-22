@@ -122,7 +122,7 @@ namespace LLP
         }
 
         node->fOUTGOING = true;
-		
+
         {
             LOCK(MUTEX);
 
@@ -136,7 +136,7 @@ namespace LLP
             }
             else
                 CONNECTIONS[nSlot] = node;
-				
+
             POLLFDS[nSlot].fd = node->fd;
             POLLFDS[nSlot].events = node->events;
 
@@ -215,7 +215,7 @@ namespace LLP
                 {
                     POLLFDS[nIndex].revents = 0;
 
-                    if (POLLFDS[nIndex].fd != INVALID_SOCKET)
+                    if (POLLFDS[nIndex].fd & INVALID_SOCKET)
                         fHasValidConnections = true;
                 }
 
@@ -249,7 +249,7 @@ namespace LLP
                         continue;
 
                     /* Disconnect if there was a polling error */
-                    if(POLLFDS[nIndex].revents == POLLERR || POLLFDS[nIndex].revents == POLLNVAL)
+                    if(POLLFDS[nIndex].revents & POLLERR || POLLFDS[nIndex].revents & POLLNVAL)
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                         continue;

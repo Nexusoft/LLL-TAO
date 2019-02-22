@@ -150,8 +150,6 @@ namespace LLP
 
             }
 
-            debug::log(4, NODE, "read ", LENGTH, " bytes | total ", INCOMING.DATA.size());
-
             if(INCOMING.Complete())
             {
                 debug::log(4, NODE, "Received Packet (", INCOMING.LENGTH, ", ", INCOMING.GetBytes().size(), ")");
