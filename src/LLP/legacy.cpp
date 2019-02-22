@@ -594,13 +594,17 @@ namespace LLP
             {
                 /* Filter duplicates if not synchronizing. */
                 std::vector<CInv> vGet;
+
+                /* Reverse iterate for blocks in inventory. */
+                std::reverse(vInv.begin(), vInv.end());
                 for(const auto& inv : vInv)
                 {
                     /* If this is a block type, only request if not in database. */
                     if(inv.GetType() == MSG_BLOCK)
                     {
                         /* Check the LLD for block. */
-                        if(!cacheInventory.Has(inv.GetHash()))
+                        if(!cacheInventory.Has(inv.GetHash())
+                        && !LLD::legDB->HasBlock(inv.GetHash()))
                         {
                             /* Add this item to request queue. */
                             vGet.push_back(inv);
@@ -609,11 +613,13 @@ namespace LLP
                             cacheInventory.Add(inv.GetHash());
                         }
                         else
-                            break;
+                            break; //break since iterating backwards (searching newest to oldest)
+                                   //the assumtion here is that if you have newer inventory, you have older
                     }
 
                     /* Check the memory pool for transactions being relayed. */
-                    else if(!cacheInventory.Has(inv.GetHash().getuint512()))
+                    else if(!cacheInventory.Has(inv.GetHash().getuint512())
+                         && !LLD::legacyDB->HasTx(inv.GetHash().getuint512()))
                     {
                         /* Add this item to request queue. */
                         vGet.push_back(inv);
@@ -623,10 +629,10 @@ namespace LLP
                     }
                 }
 
-                /* Push getdata after fastsync inv (if enabled).
-                 * This will ask for a new inv before blocks to
-                 * always stay at least 1k blocks ahead.
-                 */
+                /* Reverse inventory to get to receive data in proper order. */
+                std::reverse(vGet.begin(), vGet.end());
+
+                /* Ask your friendly neighborhood node for the data. */
                 PushMessage("getdata", vGet);
             }
             else
