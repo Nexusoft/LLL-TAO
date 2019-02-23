@@ -198,7 +198,7 @@ namespace TAO
                 address.SetPubKey(item.second.vchPubKey);
 
                 obj["address"] = address.ToString();
-                obj["interestrate"] = item.first;
+                obj["stakerate"] = item.first;
                 obj["trustkey"] = item.second.ToString();
 
                 trustKeyList.push_back(obj);
