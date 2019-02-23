@@ -734,9 +734,18 @@ namespace LLP
 
             /* Get the block state from. */
             TAO::Ledger::BlockState state;
-            if(!LLD::legDB->ReadBlock(locator.vHave[0], state))
+            for(const auto& have : locator.vHave)
+            {
+                /* Check the database for the ancestor block. */
+                if(LLD::legDB->ReadBlock(have, state))
+                    break;
+            }
+
+            /* If no ancestor blocks were found. */
+            if(!state)
                 return true;
 
+            /* Set the search from search limit. */
             int32_t nLimit = 1000;
             debug::log(3, "getblocks ", state.nHeight, " to ", hashStop.ToString().substr(0, 20), " limit ", nLimit);
 
@@ -816,6 +825,9 @@ namespace LLP
         /* Check for orphan. */
         if(!LLD::legDB->HasBlock(block.hashPrevBlock))
         {
+            /* Continue if already have this orphan. */
+            if(mapLegacyOrphans.count(block.hashPrevBlock))
+                return true;
 
             /* Detect large orphan chains and ask for new blocks from origin again. */
             if(mapLegacyOrphans.size() > 500)
