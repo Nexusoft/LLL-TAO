@@ -314,7 +314,7 @@ namespace memory
          *  @param[in] dataIn The pointer to assign from.
          *
          **/
-        atomic_ptr& operator=(const TypeName* dataIn)
+        atomic_ptr& operator=(TypeName* dataIn)
         {
             LOCK(MUTEX);
 
