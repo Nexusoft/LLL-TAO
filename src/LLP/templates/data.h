@@ -146,7 +146,7 @@ namespace LLP
 
             /* Thread-safe read of connection count. */
             {
-                //LOCK(MUTEX); disable due to major thread contention
+                LOCK(MUTEX);
                 nSize = static_cast<uint16_t>(CONNECTIONS.size());
             }
 
