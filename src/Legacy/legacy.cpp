@@ -337,6 +337,9 @@ namespace Legacy
     /* Accept a block into the chain. */
     bool LegacyBlock::Accept() const
     {
+        /* Check for duplicates */
+        if(LLD::legDB->HasBlock(GetHash()))
+            return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20));
 
         /* Print the block on verbose 2. */
         if(config::GetArg("-verbose", 0) >= 2)

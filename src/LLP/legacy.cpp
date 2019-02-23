@@ -470,6 +470,11 @@ namespace LLP
                 std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX) };
                 LEGACY_SERVER->Relay("inv", vInv);
             }
+            else
+            {
+                /* Give this item a time penalty in the relay cache to make it ignored from here forward. */
+                cacheInventory.Ban(tx.GetHash());
+            }
         }
 
 
@@ -566,6 +571,7 @@ namespace LLP
         */
         else if (message == "inv")
         {
+
             std::vector<CInv> vInv;
             ssMessage >> vInv;
 
@@ -595,54 +601,44 @@ namespace LLP
                 /* Filter duplicates if not synchronizing. */
                 std::vector<CInv> vGet;
 
-                /* Because it is safe to assume that the inventory list is sequential by height, as an optimisation
-                   we can just check the last element and if we have it we can ignore the whole message. */
-                if(LLD::legDB->HasBlock(vInv.back().GetHash()))
-                    return true; // we already have the
-
-                /* Similarly we can optimize by not checking any of the inventory if we don't have the first block */
-                if(!LLD::legDB->HasBlock(vInv.front().GetHash()))
-                    vGet = vInv;
-                else
+                /* Reverse iterate for blocks in inventory. */
+                std::reverse(vInv.begin(), vInv.end());
+                for(const auto& inv : vInv)
                 {
-                    /* Work backwards because as soon as we find one we already have we can ignore everything before it in the inventory */
-                    std::reverse(vInv.begin(), vInv.end());
-                    for(const auto& inv : vInv)
+                    /* If this is a block type, only request if not in database. */
+                    if(inv.GetType() == MSG_BLOCK)
                     {
-                        /* If this is a block type, only request if not in database. */
-                        if(inv.GetType() == MSG_BLOCK)
-                        {
-                            /* Check the LLD for block. */
-                            if(!cacheInventory.Has(inv.GetHash())
-                            && !LLD::legDB->HasBlock(inv.GetHash()))
-                            {
-                                /* Add this item to request queue. */
-                                vGet.push_back(inv);
-
-                                /* Add this item to cached relay inventory (key only). */
-                                cacheInventory.Add(inv.GetHash());
-                            }
-                            else
-                                break;
-                        }
-
-                        /* Check the memory pool for transactions being relayed. */
-                        else if(!cacheInventory.Has(inv.GetHash().getuint512())
-                             && !TAO::Ledger::mempool.Has(inv.GetHash().getuint512()))
+                        /* Check the LLD for block. */
+                        if(!cacheInventory.Has(inv.GetHash())
+                        && !LLD::legDB->HasBlock(inv.GetHash()))
                         {
                             /* Add this item to request queue. */
                             vGet.push_back(inv);
 
                             /* Add this item to cached relay inventory (key only). */
-                            cacheInventory.Add(inv.GetHash().getuint512());
+                            cacheInventory.Add(inv.GetHash());
                         }
+                        else
+                            break; //break since iterating backwards (searching newest to oldest)
+                                   //the assumtion here is that if you have newer inventory, you have older
+                    }
+
+                    /* Check the memory pool for transactions being relayed. */
+                    else if(!cacheInventory.Has(inv.GetHash().getuint512())
+                         && !TAO::Ledger::mempool.Has(inv.GetHash().getuint512()))
+                    {
+                        /* Add this item to request queue. */
+                        vGet.push_back(inv);
+
+                        /* Add this item to cached relay inventory (key only). */
+                        cacheInventory.Add(inv.GetHash().getuint512());
                     }
                 }
 
-                /* Push getdata after fastsync inv (if enabled).
-                 * This will ask for a new inv before blocks to
-                 * always stay at least 1k blocks ahead.
-                 */
+                /* Reverse inventory to get to receive data in proper order. */
+                std::reverse(vGet.begin(), vGet.end());
+
+                /* Ask your friendly neighborhood node for the data. */
                 PushMessage("getdata", vGet);
             }
             else
@@ -749,7 +745,6 @@ namespace LLP
             while(!config::fShutdown.load())
             {
                 state = state.Next();
-
                 if (state.GetHash() == hashStop)
                 {
                     debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", state.GetHash().ToString().substr(0, 20));
@@ -757,49 +752,6 @@ namespace LLP
                     /* Tell about latest block if hash stop is found. */
                     if (hashStop != TAO::Ledger::ChainState::hashBestChain.load())
                         vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), MSG_BLOCK));
-
-					/* Make a copy of the data to request that is not in inventory. */
-					if(!TAO::Ledger::ChainState::Synchronizing())
-					{
-					    /* Filter duplicates if not synchronizing. */
-					    std::vector<CInv> vGet;
-					    for(const auto& inv : vInv)
-					    {
-					        /* If this is a block type, only request if not in database. */
-					        if(inv.GetType() == MSG_BLOCK)
-					        {
-					            /* Check the LLD for block. */
-					            if(!cacheInventory.Has(inv.GetHash())
-					            && !LLD::legDB->HasBlock(inv.GetHash()))
-					            {
-					                /* Add this item to request queue. */
-					                vGet.push_back(inv);
-
-					                /* Add this item to cached relay inventory (key only). */
-					                cacheInventory.Add(inv.GetHash());
-					            }
-					        }
-
-					        /* Check the memory pool for transactions being relayed. */
-					        else if(!cacheInventory.Has(inv.GetHash().getuint512())
-					             && !TAO::Ledger::mempool.Has(inv.GetHash().getuint512()))
-					        {
-					            /* Add this item to request queue. */
-					            vGet.push_back(inv);
-
-					            /* Add this item to cached relay inventory (key only). */
-					            cacheInventory.Add(inv.GetHash().getuint512());
-					        }
-
-					        /* Push getdata after fastsync inv (if enabled).
-					         * This will ask for a new inv before blocks to
-					         * always stay at least 1k blocks ahead.
-					         */
-					        PushMessage("getdata", vGet);
-					    }
-					}
-					else
-                 	   break;
                 }
 
                 vInv.push_back(CInv(state.GetHash(), MSG_BLOCK));
@@ -858,10 +810,6 @@ namespace LLP
         uint1024_t hash = block.GetHash();
         if(!block.Check())
             return true;
-
-        /* Erase from orphan queue. */
-        if(mapLegacyOrphans.count(hash))
-            mapLegacyOrphans.erase(hash);
 
         /* Check for orphan. */
         if(!LLD::legDB->HasBlock(block.hashPrevBlock))
@@ -922,34 +870,39 @@ namespace LLP
 
             /* Check for failure limit on node. */
             if(pnode
-            && config::GetBoolArg("-fastsync")
-            && TAO::Ledger::ChainState::Synchronizing()
-            && pnode->nConsecutiveFails >= 500)
+            && pnode->nConsecutiveFails >= 100)
             {
-                /* Find a new fast sync node if too many failures. */
-                if(addrFastSync == pnode->GetAddress())
+
+                /* Fast Sync node switch. */
+                if(config::GetBoolArg("-fastsync")
+                && TAO::Ledger::ChainState::Synchronizing())
                 {
-                    /* Normal case of asking for a getblocks inventory message. */
-                    memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
-
-                    /* Null check the pointer. */
-                    if(pBest != nullptr)
+                    /* Find a new fast sync node if too many failures. */
+                    if(addrFastSync == pnode->GetAddress())
                     {
-                        try
-                        {
-                            /* Switch to a new node for fast sync. */
-                            pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                        /* Normal case of asking for a getblocks inventory message. */
+                        memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
 
-                            /* Debug output. */
-                            debug::error(FUNCTION, "fast sync node reached failure limit...");
-                        }
-                        catch(const std::runtime_error& e)
+                        /* Null check the pointer. */
+                        if(pBest != nullptr)
                         {
-                            debug::error(FUNCTION, e.what());
+                            try
+                            {
+                                /* Switch to a new node for fast sync. */
+                                pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+
+                                /* Debug output. */
+                                debug::error(FUNCTION, "fast sync node reached failure limit...");
+                            }
+                            catch(const std::runtime_error& e)
+                            {
+                                debug::error(FUNCTION, e.what());
+                            }
                         }
                     }
                 }
 
+                /* Drop pesky nodes. */
                 return false;
             }
 

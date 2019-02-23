@@ -256,10 +256,6 @@ namespace Legacy
         /* Launch background thread to periodically flush the wallet to the backing database */
         WalletDB::StartFlushThread(strWalletFile);
 
-        /* If wallet is not encrypted, it is unlocked by default. Start stake minter now. It will run until stopped by system shutdown. */
-        if (!IsCrypted()) 
-            StakeMinter::GetInstance().StartStakeMinter();
-
         fLoaded = true;
 
         return DB_LOAD_OK;

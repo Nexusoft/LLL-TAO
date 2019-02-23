@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLP/include/base_address.h>
 #include <LLP/templates/data.h>
 #include <LLP/templates/ddos.h>
 #include <LLP/templates/events.h>
@@ -122,7 +123,7 @@ namespace LLP
         }
 
         node->fOUTGOING = true;
-		
+
         {
             LOCK(MUTEX);
 
@@ -136,7 +137,7 @@ namespace LLP
             }
             else
                 CONNECTIONS[nSlot] = node;
-				
+
             POLLFDS[nSlot].fd = node->fd;
             POLLFDS[nSlot].events = node->events;
 
@@ -214,26 +215,20 @@ namespace LLP
                 for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
                 {
                     POLLFDS[nIndex].revents = 0;
-
                     if (POLLFDS[nIndex].fd != INVALID_SOCKET)
                         fHasValidConnections = true;
                 }
 
                 if (!fHasValidConnections)
                     continue;
-
-                /* Poll the sockets. */
-    #ifdef WIN32    /* Poll the sockets. */
-                int nPoll = WSAPoll((pollfd*)&POLLFDS[0], nSize, 100);
-    #else
-                int nPoll = poll((pollfd*)&POLLFDS[0], nSize, 100);
-    #endif
-
-                /* Continue on poll errors or no connections with data to read */
-                if (nPoll <= 0)
-                    continue;
-
             }
+
+            /* Poll the sockets. */
+#ifdef WIN32    /* Poll the sockets. */
+            int nPoll = WSAPoll((pollfd*)&POLLFDS[0], nSize, 100);
+#else
+            int nPoll = poll((pollfd*)&POLLFDS[0], nSize, 100);
+#endif
 
 
             /* Check all connections for data and packets. */
@@ -249,7 +244,7 @@ namespace LLP
                         continue;
 
                     /* Disconnect if there was a polling error */
-                    if(POLLFDS[nIndex].revents == POLLERR || POLLFDS[nIndex].revents == POLLNVAL)
+                    if(POLLFDS[nIndex].revents & POLLERR || POLLFDS[nIndex].revents & POLLNVAL)
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                         continue;
@@ -289,6 +284,10 @@ namespace LLP
 
                     /* Flush the write buffer. */
                     pNode->Flush();
+
+                    /* Skip over if nothing to read. */
+                    if(!POLLFDS[nIndex].revents & POLLIN)
+                        continue;
 
                     /* Work on Reading a Packet. **/
                     pNode->ReadPacket();
@@ -334,6 +333,72 @@ namespace LLP
             }
         }
     }
+
+
+    /*  Get the number of active connection pointers from data threads. */
+     template <class ProtocolType>
+     uint16_t DataThread<ProtocolType>::GetConnectionCount()
+     {
+         uint16_t nConnectionCount = 0;
+         uint16_t nSize = 0;
+         uint16_t nIndex = 0;
+
+         LOCK(MUTEX);
+
+         nSize = static_cast<uint16_t>(CONNECTIONS.size());
+
+         /* Loop through connections in data thread and add any that are connected to count. */
+         for(; nIndex < nSize; ++nIndex)
+         {
+             /* Skip over inactive connections. */
+             if(!CONNECTIONS[nIndex])
+                 continue;
+
+             ++nConnectionCount;
+         }
+
+         return nConnectionCount;
+     }
+
+     template <class ProtocolType>
+     uint16_t DataThread<ProtocolType>::GetBestConnection(const BaseAddress& addrExclude, uint32_t &nLatency)
+     {
+          uint16_t nIndex = 0;
+          uint16_t nSize = 0;
+          uint16_t i = 0;
+
+          {
+              LOCK(MUTEX);
+              nSize = static_cast<uint16_t>(CONNECTIONS.size());
+          }
+
+          for(; i < nSize; ++i)
+          {
+              try
+              {
+                  /* Skip over inactive connections. */
+                  if(!CONNECTIONS[i])
+                      continue;
+
+                  /* Skip over exclusion address. */
+                  if(CONNECTIONS[i]->GetAddress() == addrExclude)
+                      continue;
+
+                  /* Choose the active index, update lowest latency output. */
+                  if(CONNECTIONS[i]->nLatency < nLatency)
+                  {
+                      nLatency = CONNECTIONS[i]->nLatency;
+                      nIndex = i;
+                  }
+              }
+              catch(const std::runtime_error& e)
+              {
+                  debug::error(FUNCTION, e.what());
+              }
+          }
+
+          return nIndex;
+     }
 
 
     /*  Fires off a Disconnect event with the given disconnect reason

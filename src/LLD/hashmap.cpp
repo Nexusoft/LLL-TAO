@@ -284,30 +284,6 @@ namespace LLD
 
                 return true;
             }
-            else
-            {
-                debug::log(3, "BUK ", HexStr(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size()));
-                debug::log(3, "KEY ", HexStr(vKeyCompressed.begin(), vKeyCompressed.end()));
-
-                /* Deserialie key and return if found. */
-                DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
-                ssKey >> cKey;
-
-                /* Check if the key is ready. */
-                if(!cKey.Ready())
-                    continue;
-
-                /* Debug Output of Sector Key Information. */
-                debug::log(3, FUNCTION, "State: ", cKey.nState == STATE::READY ? "Valid" : "Invalid",
-                    " | Length: ", cKey.nLength,
-                    " | Bucket ", nBucket,
-                    " | Location: ", nFilePos,
-                    " | File: ", i,
-                    " | Sector File: ", cKey.nSectorFile,
-                    " | Sector Size: ", cKey.nSectorSize,
-                    " | Sector Start: ", cKey.nSectorStart, "\n",
-                    HexStr(vKeyCompressed.begin(), vKeyCompressed.end(), true));
-            }
         }
 
         return false;
@@ -619,15 +595,11 @@ namespace LLD
                 SectorKey cKey;
                 ssKey >> cKey;
 
-                /* Skip over keys that are already erased. */
-                if(!cKey.Ready())
-                    continue;
-
                 /* Seek to the hashmap index in file. */
                 pstream->seekp (nFilePos, std::ios::beg);
 
                 /* Read the bucket binary data from file stream */
-                std::vector<uint8_t> vEmpty(STATE::EMPTY);
+                std::vector<uint8_t> vEmpty(HASHMAP_KEY_ALLOCATION, 0);
                 pstream->write((char*) &vEmpty[0], vEmpty.size());
                 pstream->flush();
 
