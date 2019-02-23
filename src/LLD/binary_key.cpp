@@ -267,6 +267,26 @@ namespace LLD
     }
 
 
+    /*  Penalize Object by Index. */
+    void KeyLRU::Penalize(const std::vector<uint8_t>& vKey, const uint32_t nPenalties)
+    {
+        LOCK(MUTEX);
+
+        /* Get the bucket. */
+        uint32_t nBucket = Bucket(vKey);
+
+        /* Get the object we are working on. */
+        BinaryKey* pthis = hashmap[nBucket];
+
+        /* Check if the Record Exists. */
+        if (pthis == nullptr || pthis->vKey != vKey)
+            return;
+
+        /* Set the binary key to have a large time penalty. */
+        pthis->nTimestamp = runtime::timestamp() + nPenalties;
+    }
+
+
     /*  Force Remove Object by Index. */
     bool KeyLRU::Remove(const std::vector<uint8_t>& vKey)
     {

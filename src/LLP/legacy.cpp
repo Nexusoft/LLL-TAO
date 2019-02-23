@@ -470,6 +470,11 @@ namespace LLP
                 std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX) };
                 LEGACY_SERVER->Relay("inv", vInv);
             }
+            else
+            {
+                /* Give this item a time penalty in the relay cache to make it ignored from here forward. */
+                cacheInventory.Ban(tx.GetHash());
+            }
         }
 
 

@@ -130,6 +130,25 @@ namespace LLD
         }
 
 
+        /** Ban
+         *
+         *  Template for banning a generic key.
+         *
+         *  @param[in] key The key object to write.
+         *
+         **/
+        template<typename KeyType>
+        void Ban(const KeyType& key)
+        {
+            /* Serialialize the key object. */
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
+            ssKey << key;
+
+            /* Add the key to the cache. */
+            Penalize(ssKey.Bytes(), 86400);
+        }
+
+
         /** Has
          *
          *  Template for checking for a generic key in the key LRU.
@@ -197,10 +216,20 @@ namespace LLD
          *
          *  @param[in] vKey The key in binary form.
          *  @param[in] vData The input data in binary form.
-         *  @param[in] fReserve Flag for if item should be saved from cache eviction.
          *
          **/
         void Put(const std::vector<uint8_t>& vKey);
+
+
+        /** Penalize
+         *
+         *  Penalize Object by Index.
+         *
+         *  @param[in] vKey The key in binary form.
+         *  @param[in] nPenalties The time penalties to give key. [DEFAULT: 1 day]
+         *
+         **/
+        void Penalize(const std::vector<uint8_t>& vKey, const uint32_t nPenalties);
 
 
         /** Remove
