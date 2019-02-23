@@ -753,7 +753,10 @@ namespace LLP
             std::vector<CInv> vInv;
             while(!config::fShutdown.load())
             {
+                /* Iterate to next state. */
                 state = state.Next();
+
+                /* Check for hash stop. */
                 if (state.GetHash() == hashStop)
                 {
                     debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", state.GetHash().ToString().substr(0, 20));
@@ -765,7 +768,10 @@ namespace LLP
                     break;
                 }
 
+                /* Push new item to inventory. */
                 vInv.push_back(CInv(state.GetHash(), MSG_BLOCK));
+
+                /* Stop at limits. */
                 if (--nLimit <= 0)
                 {
                     // When this block is requested, we'll send an inv that'll make them
