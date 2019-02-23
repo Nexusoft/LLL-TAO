@@ -301,6 +301,8 @@ namespace memory
          **/
         atomic_ptr& operator=(const atomic_ptr<TypeName>& dataIn)
         {
+            LOCK(MUTEX);
+            
             data = dataIn.data;
 
             return (*this);
