@@ -589,7 +589,8 @@ namespace LLP
             if(config::GetBoolArg("-fastsync")
             && addrFastSync == GetAddress()
             && TAO::Ledger::ChainState::Synchronizing()
-            && vInv.back().GetType() == MSG_BLOCK)
+            && vInv.back().GetType() == MSG_BLOCK
+            && vInv.size() > 1)
             {
                 /* Normal case of asking for a getblocks inventory message. */
                 PushGetBlocks(vInv.back().GetHash(), uint1024_t(0));
