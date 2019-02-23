@@ -748,7 +748,7 @@ namespace LLP
 
             /* Set the search from search limit. */
             int32_t nLimit = 1000;
-            debug::log(3, "getblocks ", state.nHeight, " to ", hashStop.ToString().substr(0, 20), " limit ", nLimit);
+            debug::log(2, "getblocks ", state.nHeight, " to ", hashStop.ToString().substr(0, 20), " limit ", nLimit);
 
             /* Iterate forward the blocks required. */
             std::vector<CInv> vInv;
