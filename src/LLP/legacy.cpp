@@ -895,7 +895,7 @@ namespace LLP
 
             /* Check for failure limit on node. */
             if(pnode
-            && pnode->nConsecutiveFails >= 100)
+            && pnode->nConsecutiveFails >= 500)
             {
 
                 /* Fast Sync node switch. */
