@@ -743,7 +743,7 @@ namespace LLP
 
             /* If no ancestor blocks were found. */
             if(!state)
-                return true;
+                return debug::error(FUNCTION, "no ancestor blocks found");
 
             /* Set the search from search limit. */
             int32_t nLimit = 1000;
