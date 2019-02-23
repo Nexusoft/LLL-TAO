@@ -590,7 +590,7 @@ namespace LLP
             && addrFastSync == GetAddress()
             && TAO::Ledger::ChainState::Synchronizing()
             && vInv.back().GetType() == MSG_BLOCK
-            && vInv.size() > 1)
+            && vInv.size() > 100) //an assumption that a getblocks batch will be at least 100 blocks or more.
             {
                 /* Normal case of asking for a getblocks inventory message. */
                 PushGetBlocks(vInv.back().GetHash(), uint1024_t(0));
@@ -735,13 +735,11 @@ namespace LLP
 
             /* Get the block state from. */
             TAO::Ledger::BlockState state;
-            for(uint16_t i = 0; i < locator.vHave.size(); ++i)
+            for(const auto& have : locator.vHave)
             {
                 /* Check the database for the ancestor block. */
-                if(LLD::legDB->ReadBlock(locator.vHave[i], state))
+                if(LLD::legDB->ReadBlock(have, state))
                     break;
-                else
-                    debug::error(FUNCTION, "failed to read at hash ", locator.vHave[i].ToString(), " index ", i);
             }
 
             /* If no ancestor blocks were found. */
