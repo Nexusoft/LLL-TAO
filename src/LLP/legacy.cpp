@@ -734,15 +734,13 @@ namespace LLP
 
             /* Get the block state from. */
             TAO::Ledger::BlockState state;
-            for(const auto& have : locator.vHave)
+            for(uint16_t i = 0; i < locator.vHave.size(); ++i)
             {
                 /* Check the database for the ancestor block. */
-                if(LLD::legDB->ReadBlock(have, state))
+                if(LLD::legDB->ReadBlock(locator.vHave[i], state))
                     break;
-                else if(!LLD::legDB->ReadBlock(have, state))
-                    debug::error(FUNCTION, "failed to read at hash ", have.ToString().substr(0, 20));
                 else
-                    break;
+                    debug::error(FUNCTION, "failed to read at hash ", locator.vHave[i].ToString(), " index ", i);
             }
 
             /* If no ancestor blocks were found. */
