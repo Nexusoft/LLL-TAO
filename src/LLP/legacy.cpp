@@ -753,9 +753,6 @@ namespace LLP
             std::vector<CInv> vInv;
             while(!config::fShutdown.load())
             {
-                /* Iterate to next state. */
-                state = state.Next();
-
                 /* Check for hash stop. */
                 if (state.GetHash() == hashStop)
                 {
@@ -781,6 +778,9 @@ namespace LLP
                     hashContinue = state.GetHash();
                     break;
                 }
+
+                /* Iterate to next state. */
+                state = state.Next();
             }
 
             /* Push the inventory. */
