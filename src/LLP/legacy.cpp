@@ -752,6 +752,8 @@ namespace LLP
                     /* Tell about latest block if hash stop is found. */
                     if (hashStop != TAO::Ledger::ChainState::hashBestChain.load())
                         vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), MSG_BLOCK));
+
+                    break;
                 }
 
                 vInv.push_back(CInv(state.GetHash(), MSG_BLOCK));
