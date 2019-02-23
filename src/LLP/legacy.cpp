@@ -825,29 +825,6 @@ namespace LLP
         /* Check for orphan. */
         if(!LLD::legDB->HasBlock(block.hashPrevBlock))
         {
-            /* Continue if already have this orphan. */
-            if(mapLegacyOrphans.count(block.hashPrevBlock))
-                return true;
-
-            /* Detect large orphan chains and ask for new blocks from origin again. */
-            if(mapLegacyOrphans.size() > 500)
-            {
-                debug::log(0, FUNCTION, "node reached orphan limit... closing");
-
-                /* Clear the memory to prevent DoS attacks. */
-                mapLegacyOrphans.clear();
-
-                /* Disconnect from a node with large orphan chain. */
-                return false;
-            }
-
-            /* Skip if already in orphan queue. */
-            if(!mapLegacyOrphans.count(block.hashPrevBlock))
-                mapLegacyOrphans[block.hashPrevBlock] = block;
-
-            /* Debug output. */
-            debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
-
             /* Fast sync block requests. */
             if(!TAO::Ledger::ChainState::Synchronizing())
                 pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
@@ -871,6 +848,29 @@ namespace LLP
                     }
                 }
             }
+
+            /* Continue if already have this orphan. */
+            if(mapLegacyOrphans.count(block.hashPrevBlock))
+                return true;
+
+            /* Detect large orphan chains and ask for new blocks from origin again. */
+            if(mapLegacyOrphans.size() > 500)
+            {
+                debug::log(0, FUNCTION, "node reached orphan limit... closing");
+
+                /* Clear the memory to prevent DoS attacks. */
+                mapLegacyOrphans.clear();
+
+                /* Disconnect from a node with large orphan chain. */
+                return false;
+            }
+
+            /* Skip if already in orphan queue. */
+            if(!mapLegacyOrphans.count(block.hashPrevBlock))
+                mapLegacyOrphans[block.hashPrevBlock] = block;
+
+            /* Debug output. */
+            debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
 
             return true;
         }
