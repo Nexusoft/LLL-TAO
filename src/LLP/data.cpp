@@ -224,10 +224,10 @@ namespace LLP
             }
 
             /* Poll the sockets. */
-#ifdef WIN32    /* Poll the sockets. */
-            int nPoll = WSAPoll((pollfd*)&POLLFDS[0], nSize, 100);
+#ifdef WIN32
+            WSAPoll((pollfd*)&POLLFDS[0], nSize, 100);
 #else
-            int nPoll = poll((pollfd*)&POLLFDS[0], nSize, 100);
+            poll((pollfd*)&POLLFDS[0], nSize, 100);
 #endif
 
 
@@ -244,7 +244,7 @@ namespace LLP
                         continue;
 
                     /* Disconnect if there was a polling error */
-                    if(POLLFDS[nIndex].revents & POLLERR || POLLFDS[nIndex].revents & POLLNVAL)
+                    if((POLLFDS[nIndex].revents & POLLERR) || (POLLFDS[nIndex].revents & POLLNVAL))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                         continue;
@@ -286,7 +286,7 @@ namespace LLP
                     pNode->Flush();
 
                     /* Skip over if nothing to read. */
-                    if(!POLLFDS[nIndex].revents & POLLIN)
+                    if(!(POLLFDS[nIndex].revents & POLLIN))
                         continue;
 
                     /* Work on Reading a Packet. **/
@@ -365,14 +365,13 @@ namespace LLP
      {
           uint16_t nIndex = 0;
           uint16_t nSize = 0;
-          uint16_t i = 0;
 
           {
               LOCK(MUTEX);
               nSize = static_cast<uint16_t>(CONNECTIONS.size());
           }
 
-          for(; i < nSize; ++i)
+          for(uint16_t i = 0; i < nSize; ++i)
           {
               try
               {

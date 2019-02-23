@@ -589,7 +589,8 @@ namespace LLP
             if(config::GetBoolArg("-fastsync")
             && addrFastSync == GetAddress()
             && TAO::Ledger::ChainState::Synchronizing()
-            && vInv.back().GetType() == MSG_BLOCK)
+            && vInv.back().GetType() == MSG_BLOCK
+            && vInv.size() > 100) //an assumption that a getblocks batch will be at least 100 blocks or more.
             {
                 /* Normal case of asking for a getblocks inventory message. */
                 PushGetBlocks(vInv.back().GetHash(), uint1024_t(0));
@@ -734,17 +735,29 @@ namespace LLP
 
             /* Get the block state from. */
             TAO::Ledger::BlockState state;
-            if(!LLD::legDB->ReadBlock(locator.vHave[0], state))
-                return true;
+            for(const auto& have : locator.vHave)
+            {
+                /* Check the database for the ancestor block. */
+                if(LLD::legDB->ReadBlock(have, state))
+                    break;
+            }
 
+            /* If no ancestor blocks were found. */
+            if(!state)
+                return debug::error(FUNCTION, "no ancestor blocks found");
+
+            /* Set the search from search limit. */
             int32_t nLimit = 1000;
-            debug::log(3, "getblocks ", state.nHeight, " to ", hashStop.ToString().substr(0, 20), " limit ", nLimit);
+            debug::log(2, "getblocks ", state.nHeight, " to ", hashStop.ToString().substr(0, 20), " limit ", nLimit);
 
             /* Iterate forward the blocks required. */
             std::vector<CInv> vInv;
             while(!config::fShutdown.load())
             {
+                /* Iterate to next state. */
                 state = state.Next();
+
+                /* Check for hash stop. */
                 if (state.GetHash() == hashStop)
                 {
                     debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", state.GetHash().ToString().substr(0, 20));
@@ -752,9 +765,14 @@ namespace LLP
                     /* Tell about latest block if hash stop is found. */
                     if (hashStop != TAO::Ledger::ChainState::hashBestChain.load())
                         vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), MSG_BLOCK));
+
+                    break;
                 }
 
+                /* Push new item to inventory. */
                 vInv.push_back(CInv(state.GetHash(), MSG_BLOCK));
+
+                /* Stop at limits. */
                 if (--nLimit <= 0)
                 {
                     // When this block is requested, we'll send an inv that'll make them
@@ -814,9 +832,41 @@ namespace LLP
         /* Check for orphan. */
         if(!LLD::legDB->HasBlock(block.hashPrevBlock))
         {
+            /* Fast sync block requests. */
+            if(!TAO::Ledger::ChainState::Synchronizing())
+                pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+            else if(!config::GetBoolArg("-fastsync"))
+            {
+                /* Normal case of asking for a getblocks inventory message. */
+                memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
+
+                /* Null check the pointer. */
+                if(pBest != nullptr)
+                {
+                    try
+                    {
+                        /* Push a new getblocks request. */
+                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+
+                    }
+                    catch(const std::runtime_error& e)
+                    {
+                        debug::error(FUNCTION, e.what());
+                    }
+                }
+            }
+
+            /* Continue if already have this orphan. */
+            if(mapLegacyOrphans.count(block.hashPrevBlock))
+                return true;
+
+            /* Increment the consecutive orphans. */
+            if(pnode)
+                ++pnode->nConsecutiveOrphans;
 
             /* Detect large orphan chains and ask for new blocks from origin again. */
-            if(mapLegacyOrphans.size() > 500)
+            if(pnode
+            && pnode->nConsecutiveOrphans >= 500)
             {
                 debug::log(0, FUNCTION, "node reached orphan limit... closing");
 
@@ -834,30 +884,6 @@ namespace LLP
             /* Debug output. */
             debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
 
-            /* Fast sync block requests. */
-            if(!TAO::Ledger::ChainState::Synchronizing())
-                pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-            else if(!config::GetBoolArg("-fastsync"))
-            {
-                /* Normal case of asking for a getblocks inventory message. */
-                memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
-
-                /* Lock the atomic pointer to operate on it. */
-                if(pBest != nullptr)
-                {
-                    try
-                    {
-                        /* Push a new getblocks request. */
-                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-
-                    }
-                    catch(const std::runtime_error& e)
-                    {
-                        debug::error(FUNCTION, e.what());
-                    }
-                }
-            }
-
             return true;
         }
 
@@ -870,7 +896,7 @@ namespace LLP
 
             /* Check for failure limit on node. */
             if(pnode
-            && pnode->nConsecutiveFails >= 100)
+            && pnode->nConsecutiveFails >= 500)
             {
 
                 /* Fast Sync node switch. */
@@ -931,6 +957,10 @@ namespace LLP
             /* Reset the consecutive failures. */
             if(pnode)
                 pnode->nConsecutiveFails = 0;
+
+            /* Reset the consecutive orphans. */
+            if(pnode)
+                pnode->nConsecutiveOrphans = 0;
         }
 
         /* Process orphan if found. */

@@ -339,7 +339,7 @@ namespace Legacy
     {
         /* Check for duplicates */
         if(LLD::legDB->HasBlock(GetHash()))
-            return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20));
+            return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20), " height=", nHeight);
 
         /* Print the block on verbose 2. */
         if(config::GetArg("-verbose", 0) >= 2)
