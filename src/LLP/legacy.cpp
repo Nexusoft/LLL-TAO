@@ -739,6 +739,8 @@ namespace LLP
                 /* Check the database for the ancestor block. */
                 if(LLD::legDB->ReadBlock(have, state))
                     break;
+                else
+                    debug::error(FUNCTION, "failed to read at hash ", have.ToString().substr(0, 20));
             }
 
             /* If no ancestor blocks were found. */
