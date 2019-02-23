@@ -753,6 +753,9 @@ namespace LLP
             std::vector<CInv> vInv;
             while(!config::fShutdown.load())
             {
+                /* Iterate to next state. */
+                state = state.Next();
+
                 /* Check for hash stop. */
                 if (state.GetHash() == hashStop)
                 {
@@ -778,9 +781,6 @@ namespace LLP
                     hashContinue = state.GetHash();
                     break;
                 }
-
-                /* Iterate to next state. */
-                state = state.Next();
             }
 
             /* Push the inventory. */
@@ -839,7 +839,7 @@ namespace LLP
                 /* Normal case of asking for a getblocks inventory message. */
                 memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
 
-                /* Lock the atomic pointer to operate on it. */
+                /* Null check the pointer. */
                 if(pBest != nullptr)
                 {
                     try
@@ -859,8 +859,13 @@ namespace LLP
             if(mapLegacyOrphans.count(block.hashPrevBlock))
                 return true;
 
+            /* Increment the consecutive orphans. */
+            if(pnode)
+                ++pnode->nConsecutiveOrphans;
+
             /* Detect large orphan chains and ask for new blocks from origin again. */
-            if(mapLegacyOrphans.size() > 500)
+            if(pnode
+            && pnode->nConsecutiveOrphans >= 500)
             {
                 debug::log(0, FUNCTION, "node reached orphan limit... closing");
 
@@ -951,6 +956,10 @@ namespace LLP
             /* Reset the consecutive failures. */
             if(pnode)
                 pnode->nConsecutiveFails = 0;
+
+            /* Reset the consecutive orphans. */
+            if(pnode)
+                pnode->nConsecutiveOrphans = 0;
         }
 
         /* Process orphan if found. */

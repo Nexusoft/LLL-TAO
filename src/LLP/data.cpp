@@ -365,14 +365,13 @@ namespace LLP
      {
           uint16_t nIndex = 0;
           uint16_t nSize = 0;
-          uint16_t i = 0;
 
           {
               LOCK(MUTEX);
               nSize = static_cast<uint16_t>(CONNECTIONS.size());
           }
 
-          for(; i < nSize; ++i)
+          for(uint16_t i = 0; i < nSize; ++i)
           {
               try
               {

@@ -62,6 +62,7 @@ namespace LLP
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
         , nStartingHeight(0)
         , nConsecutiveFails(0)
+        , nConsecutiveOrphans(0)
         , fInbound(false)
         , nLastPing(runtime::timestamp())
         , hashContinue(0)
@@ -79,6 +80,7 @@ namespace LLP
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
         , nStartingHeight(0)
         , nConsecutiveFails(0)
+        , nConsecutiveOrphans(0)
         , fInbound(false)
         , nLastPing(runtime::timestamp())
         , hashContinue(0)
@@ -95,6 +97,7 @@ namespace LLP
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
         , nStartingHeight(0)
         , nConsecutiveFails(0)
+        , nConsecutiveOrphans(0)
         , fInbound(false)
         , nLastPing(runtime::timestamp())
         , hashContinue(0)
@@ -127,6 +130,10 @@ namespace LLP
 
         /* Duplicates connection reset. */
         uint32_t nConsecutiveFails;
+
+
+        /* Orphans connection reset. */
+        uint32_t nConsecutiveOrphans;
 
 
         /** Flag to determine if a connection is Inbound. **/
