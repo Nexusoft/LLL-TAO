@@ -68,11 +68,11 @@ namespace TAO
 
 
         /** Nexus Coinbase/Coinstake Maturity Settings **/
-        const uint32_t TESTNET_MATURITY_BLOCKS = 100;
+        const uint32_t TESTNET_MATURITY_BLOCKS = 10;
 
 
         /** Mainnet maturity for blocks. */
-        const uint32_t NEXUS_MATURITY_BLOCKS   = 100;
+        const uint32_t NEXUS_MATURITY_BLOCKS   = 120;
 
 
         /** nVersion 4 and earlier trust keys expire after 24 hours. **/
@@ -104,7 +104,7 @@ namespace TAO
 
 
         /** Minimum span between trust blocks testnet. **/
-        const uint32_t TESTNET_MINIMUM_INTERVAL = 3;
+        const uint32_t TESTNET_MINIMUM_INTERVAL = 10;
 
 
         /** Minimum span between trust blocks, legacy mainnet (allows validation of stake blocks from legacy wallets during transition period). **/

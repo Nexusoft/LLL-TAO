@@ -48,11 +48,17 @@ namespace Legacy
     /* Retrieve the number of blocks remaining until transaction outputs are spendable. */
     uint32_t MerkleTx::GetBlocksToMaturity() const
     {
+        static const uint32_t nCoinbaseMaturity = config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS;
+
         if (!(IsCoinBase() || IsCoinStake()))
             return 0;
 
-        int32_t nCoinbaseMaturity = config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS;
-        return std::max((int32_t)0, (int32_t)(nCoinbaseMaturity + (config::fTestNet ? 1 : 20) - GetDepthInMainChain()));
+        const uint32_t nDepthInChain = GetDepthInMainChain();
+
+        if (nCoinbaseMaturity > nDepthInChain)
+            return (nCoinbaseMaturity - nDepthInChain);
+
+        return 0;
     }
 
 }

@@ -211,12 +211,12 @@ namespace Legacy
 
 
         /* Check the Coinbase Transaction is First, with no repetitions. */
-        if (vtx.empty() || (!vtx[0].IsCoinBase() && IsProofOfWork()))
+        if (IsProofOfWork() && (vtx.empty() || !vtx[0].IsCoinBase()))
             return debug::error(FUNCTION, "first tx is not coinbase for proof of work");
 
 
         /* Check the Coinstake Transaction is First, with no repetitions. */
-        if (vtx.empty() || (!vtx[0].IsCoinStake() && IsProofOfStake()))
+        if (IsProofOfStake() && (vtx.empty() || !vtx[0].IsCoinStake()))
             return debug::error(FUNCTION, "first tx is not coinstake for proof of stake");
 
 

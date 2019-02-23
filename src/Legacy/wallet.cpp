@@ -1366,7 +1366,7 @@ namespace Legacy
                      */
                     if (!prevTx.IsSpent(txin.prevout.n) && IsMine(prevTx.vout[txin.prevout.n]))
                     {
-                        debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(prevTx.GetCredit()), " NXS ", prevTx.GetHash().ToString().substr(0, 20));
+                        debug::log(2, FUNCTION, "Found spent coin ", FormatMoney(prevTx.GetCredit()), " NXS ", prevTx.GetHash().ToString().substr(0, 20));
 
                         prevTx.MarkSpent(txin.prevout.n);
                         prevTx.WriteToDisk();
