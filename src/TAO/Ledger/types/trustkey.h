@@ -199,17 +199,21 @@ namespace TAO
             bool CheckGenesis(const TAO::Ledger::BlockState& block) const;
 
 
-            /** InterestRate
+            /** StakeRate
              *
-             *  Interest is Determined By Logarithmic Equation from Genesis Key.
+             *  Retrieves the staking rate (ie, minting rate or interest rate) of the trust key for a given PoS block.
+             *
+             *  For version v5+ blocks, the trust score is extracted from the block and used
+             *  to calculate stake rate. For v4 blocks, the difference between nTime
+             *  and the nGenesisTime of the trust key is used (age of trust key). 
              *
              *  @param[in] block The block to check against.
-             *  @param[in] nTime The time to check against.
+             *  @param[in] nTime The time to check against. Ignored for v5+ blocks
              *
-             *  @return the total interest rate of trust key.
+             *  @return the stake rate of the trust key at the time the block was generated
              *
              **/
-            double InterestRate(const TAO::Ledger::BlockState& block, uint32_t nTime) const;
+            double StakeRate(const TAO::Ledger::BlockState& block, uint32_t nTime) const;
 
 
             /** ToString
