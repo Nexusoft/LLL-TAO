@@ -285,10 +285,6 @@ namespace LLP
                     /* Flush the write buffer. */
                     pNode->Flush();
 
-                    /* Skip over if nothing to read. */
-                    if(!(POLLFDS[nIndex].revents & POLLIN))
-                        continue;
-
                     /* Work on Reading a Packet. **/
                     pNode->ReadPacket();
 
