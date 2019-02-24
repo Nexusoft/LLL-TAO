@@ -77,9 +77,9 @@ namespace TAO
 	            obj["stakerate"]   = 0;
 	            obj["trustweight"] = 0;
 	            obj["blockweight"] = 0;
-	            obj["stakeweight"] = 0; 
+	            obj["stakeweight"] = 0;
 			}
-			
+
             obj["txtotal"] =(int)Legacy::Wallet::GetInstance().mapWallet.size();
 
             obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
@@ -91,6 +91,7 @@ namespace TAO
 
             obj["syncnode"]    = LLP::LegacyNode::addrFastSync.load().ToStringIP();
             obj["syncaverage"] = (int)LLP::LegacyNode::nFastSyncAverage;
+            obj["synccomplete"] = (int)TAO::Ledger::ChainState::PercentSynchronized();
 
             obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToString() : std::string());
 

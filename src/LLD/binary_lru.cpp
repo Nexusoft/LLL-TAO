@@ -244,7 +244,7 @@ namespace LLD
                     nCurrentSize -= (pnode->vData.size() - pnode->vKey.size());
 
                     /* Clear the pointers. */
-                    hashmap[Bucket(pnode->vKey)] = nullptr; //TODO: hashmap linked list for collisions
+                    hashmap[Bucket(pnode->vKey)] = nullptr;
 
                     /* Reset the memory linking. */
                     pnode->pprev = nullptr;
