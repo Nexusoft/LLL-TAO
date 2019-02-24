@@ -309,21 +309,6 @@ namespace memory
         }
 
 
-        /** Assignment operator.
-         *
-         *  @param[in] dataIn The pointer to assign from.
-         *
-         **/
-        atomic_ptr& operator=(TypeName* dataIn)
-        {
-            LOCK(MUTEX);
-
-            data = dataIn;
-
-            return (*this);
-        }
-
-
         /** Equivilent operator.
          *
          *  @param[in] a The data type to compare to.

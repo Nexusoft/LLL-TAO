@@ -89,7 +89,7 @@ namespace LLP
                 POLLFDS.push_back(pollfdForConnection);
             }
             else
-                CONNECTIONS[nSlot] = node;
+                CONNECTIONS[nSlot].store(node);
 
             POLLFDS[nSlot].fd = node->fd;
             POLLFDS[nSlot].events = node->events;
@@ -136,7 +136,7 @@ namespace LLP
                 POLLFDS.push_back(pollfdForConnection);
             }
             else
-                CONNECTIONS[nSlot] = node;
+                CONNECTIONS[nSlot].store(node);
 
             POLLFDS[nSlot].fd = node->fd;
             POLLFDS[nSlot].events = node->events;
