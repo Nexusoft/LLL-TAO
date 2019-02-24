@@ -841,7 +841,7 @@ namespace Legacy
                         return debug::error(FUNCTION, "failed to read previous tx block");
 
                 /* Check the maturity. */
-                if((state.nHeight - statePrev.nHeight) < (config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS))
+                if((state.nHeight - statePrev.nHeight) + 1 < (config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS))
                     return debug::error(FUNCTION, "tried to spend immature balance ", (state.nHeight - statePrev.nHeight));
             }
 
