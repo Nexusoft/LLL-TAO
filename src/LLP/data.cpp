@@ -89,7 +89,7 @@ namespace LLP
                 POLLFDS.push_back(pollfdForConnection);
             }
             else
-                CONNECTIONS[nSlot] = node;
+                CONNECTIONS[nSlot].store(node);
 
             POLLFDS[nSlot].fd = node->fd;
             POLLFDS[nSlot].events = node->events;
@@ -136,7 +136,7 @@ namespace LLP
                 POLLFDS.push_back(pollfdForConnection);
             }
             else
-                CONNECTIONS[nSlot] = node;
+                CONNECTIONS[nSlot].store(node);
 
             POLLFDS[nSlot].fd = node->fd;
             POLLFDS[nSlot].events = node->events;
@@ -188,11 +188,7 @@ namespace LLP
              * While loop catches potential for spurious wakeups. Also has the effect of skipping the wait() call after connections established.
              */
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-            while (!(fDestruct.load() || config::fShutdown || nConnections.load() > 0))
-            	CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown || nConnections.load() > 0; });
-
-            /* We don't need to hold the condition lock. Nothing outside this current thread uses it. It is purely to wait for connections */
-            CONDITION_LOCK.unlock();
+            CONDITION.wait(CONDITION_LOCK, [this]{ return fDestruct.load() || config::fShutdown || nConnections.load() > 0; });
 
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())

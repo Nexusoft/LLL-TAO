@@ -294,34 +294,12 @@ namespace memory
         }
 
 
-        /** Assignment operator.
-         *
-         *  @param[in] dataIn The atomic to assign from.
-         *
-         **/
-        atomic_ptr& operator=(const atomic_ptr<TypeName>& dataIn)
-        {
-            LOCK(MUTEX);
-
-            data = dataIn.data;
-
-            return (*this);
-        }
+        /** Assignment operator. **/
+        atomic_ptr& operator=(const atomic_ptr<TypeName>& dataIn) = delete;
 
 
-        /** Assignment operator.
-         *
-         *  @param[in] dataIn The pointer to assign from.
-         *
-         **/
-        atomic_ptr& operator=(TypeName* dataIn)
-        {
-            LOCK(MUTEX);
-
-            data = dataIn;
-
-            return (*this);
-        }
+        /** Assignment operator. **/
+        atomic_ptr& operator=(TypeName* dataIn) = delete;
 
 
         /** Equivilent operator.
