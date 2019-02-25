@@ -571,7 +571,6 @@ namespace LLP
         */
         else if (message == "inv")
         {
-
             std::vector<CInv> vInv;
             ssMessage >> vInv;
 

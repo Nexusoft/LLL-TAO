@@ -167,19 +167,6 @@ namespace LLP
         uint16_t GetConnectionCount();
 
 
-        /** GetBestConnection
-         *
-         *  Gets the best connection index based on latency.
-         *
-         *  @param[in] addrExclude The address to ignore for best connection.
-         *  @param[out] nLatency Returns the lowest latency of the best connection.
-         *
-         *  @return Returns the index of the best Connection.
-         *
-         **/
-        uint16_t GetBestConnection(const BaseAddress& addrExclude, uint32_t &nLatency);
-
-
       private:
 
 

@@ -365,15 +365,6 @@ namespace LLP
          return nConnectionCount;
      }
 
-     template <class ProtocolType>
-     uint16_t DataThread<ProtocolType>::GetBestConnection(const BaseAddress& addrExclude, uint32_t &nLatency)
-     {
-          uint16_t nRetIndex = 0;
-
-
-          return nRetIndex;
-     }
-
 
     /*  Fires off a Disconnect event with the given disconnect reason
      *  and also removes the data thread connection. */
