@@ -532,7 +532,7 @@ int main(int argc, char** argv)
     if (config::GetBoolArg("-flushwallet", true))
         Legacy::WalletDB::ShutdownFlushThread();
 
-    Legacy::BerkeleyDB::EnvShutdown();
+    //Legacy::BerkeleyDB::EnvShutdown();
 
 
     /* Elapsed Milliseconds from timer. */

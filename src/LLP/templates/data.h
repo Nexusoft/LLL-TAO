@@ -42,9 +42,6 @@ namespace LLP
     template <class ProtocolType>
     class DataThread
     {
-    private:
-        std::mutex MUTEX;
-
     public:
 
         /* Variables to track Connection / Request Count. */
@@ -62,12 +59,12 @@ namespace LLP
 
 
         /* Vector to store Connections. */
-        std::vector< memory::atomic_ptr<ProtocolType> > CONNECTIONS;
+        memory::atomic_ptr< std::vector< memory::atomic_ptr<ProtocolType>> > CONNECTIONS;
 
 
         /* The condition for thread sleeping. */
         std::condition_variable CONDITION;
-        
+
 
         /* Data Thread. */
         std::thread DATA_THREAD;
@@ -138,26 +135,20 @@ namespace LLP
         template<typename MessageType, typename DataType>
         void Relay(MessageType message, DataType data)
         {
-            uint16_t nSize = 0;
-            uint16_t nIndex = 0;
-
-            /* Thread-safe read of connection count. */
-            {
-                LOCK(MUTEX);
-                nSize = static_cast<uint16_t>(CONNECTIONS.size());
-            }
+            /* Get the size of the vector. */
+            uint16_t nSize = static_cast<uint16_t>(CONNECTIONS->size());
 
             /* Loop through connections in data thread. */
-            for(nIndex = 0; nIndex < nSize; ++nIndex)
+            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
                 try
                 {
                     /* Skip over inactive connections. */
-                    if(!CONNECTIONS[nIndex])
+                    if(!CONNECTIONS->at(nIndex))
                         continue;
 
                     /* Push the active connection. */
-                    CONNECTIONS[nIndex]->PushMessage(message, data);
+                    CONNECTIONS->at(nIndex)->PushMessage(message, data);
                 }
                 catch(const std::runtime_error& e)
                 {

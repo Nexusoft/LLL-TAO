@@ -129,7 +129,27 @@ endif
 #Build with race checking
 ifdef RACE_CHECK
     CXXFLAGS+= -fsanitize=thread
+	TSAN_OPTIONS="history_size=7"
 endif
+
+
+#Build with memory checking
+ifdef ADDRESS_CHECK
+    CXXFLAGS+=-fsanitize=address
+endif
+
+
+#Build with memory checking
+ifdef LEAK_CHECK
+    CXXFLAGS+=-fsanitize=leak
+endif
+
+
+#Build with undefined behavior checking
+ifdef UNDEFINED_CHECK
+    CXXFLAGS+= -fsanitize=undefined
+endif
+
 
 #Enable / Disable debug symbols and set appropriate optimization level
 ifdef ENABLE_DEBUG

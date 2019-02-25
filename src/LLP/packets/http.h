@@ -170,7 +170,7 @@ namespace LLP
             //TODO: add headers map to build more complex response rather than const as follows
             std::string strReply = debug::safe_printstr(
                     "HTTP/1.1 ", strType, "\r\n",
-                    "Date: ", runtime::rfc1123Time(), "\r\n",
+                    "Date: ", debug::rfc1123Time(), "\r\n",
                     "Connection: close\r\n",
                     "Content-Length: ", strContent.size(), "\r\n",
                     "Content-Type: application/json\r\n",

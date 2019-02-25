@@ -190,7 +190,7 @@ namespace memory
     class lock_proxy
     {
         /** Reference of the mutex. **/
-        std::mutex& MUTEX;
+        std::recursive_mutex& MUTEX;
 
 
         /** The pointer being locked. **/
@@ -207,7 +207,7 @@ namespace memory
          *  @param[in] MUTEX_IN The mutex reference
          *
          **/
-        lock_proxy(TypeName* pData, std::mutex& MUTEX_IN)
+        lock_proxy(TypeName* pData, std::recursive_mutex& MUTEX_IN)
         : MUTEX(MUTEX_IN)
         , data(pData)
         {
@@ -252,7 +252,7 @@ namespace memory
     class atomic_ptr
     {
         /** The internal locking mutex. **/
-        mutable std::mutex MUTEX;
+        mutable std::recursive_mutex MUTEX;
 
 
         /** The internal raw poitner. **/
@@ -309,7 +309,7 @@ namespace memory
          **/
         bool operator==(const TypeName& dataIn) const
         {
-            LOCK(MUTEX);
+            RLOCK(MUTEX);
 
             /* Throw an exception on nullptr. */
             if(data == nullptr)
@@ -326,7 +326,7 @@ namespace memory
          **/
         bool operator==(const TypeName* ptr) const
         {
-            LOCK(MUTEX);
+            RLOCK(MUTEX);
 
             return data == ptr;
         }
@@ -339,7 +339,7 @@ namespace memory
          **/
         bool operator!=(const TypeName* ptr) const
         {
-            LOCK(MUTEX);
+            RLOCK(MUTEX);
 
             return data != ptr;
         }
@@ -351,7 +351,7 @@ namespace memory
          **/
         bool operator!(void)
         {
-            LOCK(MUTEX);
+            RLOCK(MUTEX);
 
             return data == nullptr;
         }
@@ -362,16 +362,11 @@ namespace memory
          *  Allow atomic_ptr access like a normal pointer.
          *
          **/
-        TypeName* operator->()
+        lock_proxy<TypeName> operator->()
         {
-            LOCK(MUTEX);
+            MUTEX.lock();
 
-            /* Throw an exception on nullptr. */
-            if(data == nullptr)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "member access on a nullptr"));
-
-            return data;
-            //return lock_proxy<TypeName>(data, MUTEX);
+            return lock_proxy<TypeName>(data, MUTEX);
         }
 
 
@@ -382,21 +377,13 @@ namespace memory
          **/
         TypeName operator*() const
         {
-            LOCK(MUTEX);
+            RLOCK(MUTEX);
 
             /* Throw an exception on nullptr. */
             if(data == nullptr)
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "dereferencing a nullptr"));
 
             return *data;
-        }
-
-
-        TypeName* load()
-        {
-            LOCK(MUTEX);
-
-            return data;
         }
 
 
@@ -409,7 +396,7 @@ namespace memory
          **/
         void store(TypeName* dataIn)
         {
-            LOCK(MUTEX);
+            RLOCK(MUTEX);
 
             if(data)
                 delete data;
@@ -425,20 +412,12 @@ namespace memory
          **/
         void free()
         {
-            LOCK(MUTEX);
+            RLOCK(MUTEX);
 
             if(data)
                 delete data;
 
             data = nullptr;
-        }
-
-
-        void print()
-        {
-            LOCK(MUTEX);
-
-            printf("pointer %llu mutex %llu\n", (uint64_t)data, (uint64_t)&MUTEX);
         }
     };
 }

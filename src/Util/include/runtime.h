@@ -79,26 +79,6 @@ namespace runtime
     }
 
 
-    /** rfc1123Time
-     *
-     *  Special Specification for HTTP Protocol.
-     *  TODO: This could be cleaned up I'd say.
-     *
-     **/
-    inline std::string rfc1123Time()
-    {
-        char buffer[64];
-        time_t now;
-        time(&now);
-        struct tm* now_gmt = gmtime(&now);
-        std::string locale(setlocale(LC_TIME, nullptr));
-        setlocale(LC_TIME, "C"); // we want posix (aka "C") weekday/month strings
-        strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S +0000", now_gmt);
-        setlocale(LC_TIME, locale.c_str());
-        return std::string(buffer);
-    }
-
-
     /** timer
      *
      *  Class the tracks the duration of time elapsed in seconds or milliseconds.

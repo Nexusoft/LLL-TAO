@@ -236,7 +236,7 @@ namespace LLP
             }
         }
 
-        return DATA_THREADS[nRetThread]->CONNECTIONS[nRetIndex];
+        return DATA_THREADS[nRetThread]->CONNECTIONS->at(nRetIndex);
     }
 
 
