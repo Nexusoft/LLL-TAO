@@ -455,8 +455,7 @@ namespace Legacy
         }
 
         /* Update the current stake rate in the minter (not used for calculations, retrievable for display) */
-        TAO::Ledger::BlockState candidateBlockState(candidateBlock);
-        double nCurrentStakeRate = trustKey.InterestRate(candidateBlockState, candidateBlock.GetBlockTime());
+        double nCurrentStakeRate = trustKey.StakeRate(candidateBlock, candidateBlock.GetBlockTime());
 
         nStakeRate.store(nCurrentStakeRate);
 
@@ -537,9 +536,9 @@ namespace Legacy
                 /* Update log every 60 iterations (5 minutes) */
                 if ((nWaitCounter % 60) == 0)
                 {
-                    uint32_t nRemainingWaitTime = (nMinimumCoinAge - nCoinAge) / 60; //minutes
-	                  debug::log(0, FUNCTION, "Average coin age is immature. ",
-                      nRemainingWaitTime, " minutes remaining until staking available.");
+					uint32_t nRemainingWaitTime = (nMinimumCoinAge - nCoinAge) / 60; //minutes
+
+					debug::log(0, FUNCTION, "Average coin age is immature. ", nRemainingWaitTime, " minutes remaining until staking available.");
                 }
 
                 ++nWaitCounter;
@@ -593,8 +592,8 @@ namespace Legacy
         uint1024_t nHashTarget = bnTarget.getuint1024();
 
         debug::log(0, FUNCTION, "Staking new block from ", hashLastBlock.ToString().substr(0, 20),
-          " at weight ", nTrustWeight.load() + nBlockWeight.load(),
-          " and stake rate ", nStakeRate.load());
+                                " at weight ", (nTrustWeight.load() + nBlockWeight.load()),
+                                " and stake rate ", nStakeRate.load());
 
         /* Search for the proof of stake hash solution until it mines a block, minter is stopped,
          * or network generates a new block (minter must start over with new candidate)
@@ -613,7 +612,7 @@ namespace Legacy
             }
 
             /* Calculate the new Efficiency Threshold for the next nonce. */
-            double nThreshold = (nCurrentBlockTime * 100.0) / (candidateBlock.nNonce + 1);
+            double nThreshold = (nCurrentBlockTime * 100.0) / candidateBlock.nNonce;
 
             /* If energy efficiency requirement exceeds threshold, wait and keep trying with the same nonce value until it threshold increases */
             if(nThreshold < nRequired)
@@ -621,9 +620,6 @@ namespace Legacy
                 runtime::sleep(10);
                 continue;
             }
-
-            /* Increment the nonce only after we know we can use it (threshold exceeds required). */
-            ++candidateBlock.nNonce;
 
             /* Log every 1000 attempts */
             if (candidateBlock.nNonce % 1000 == 0)
@@ -639,6 +635,9 @@ namespace Legacy
                 ProcessMinedBlock();
                 break;
             }
+
+            /* Increment nonce for next iteration. */
+            ++candidateBlock.nNonce;
         }
 
         return;
@@ -653,6 +652,9 @@ namespace Legacy
 
         /* Build the Merkle Root. */
         std::vector<uint512_t> vMerkleTree;
+        for(const auto& tx : candidateBlock.vtx)
+            vMerkleTree.push_back(tx.GetHash());
+
         candidateBlock.hashMerkleRoot = candidateBlock.BuildMerkleTree(vMerkleTree);
 
         /* Sign the block. */
@@ -717,11 +719,10 @@ namespace Legacy
 
         debug::log(0, FUNCTION, "Stake Minter Started");
         pStakeMinter->nSleepTime = 5000;
+        bool fLocalTestnet = config::fTestNet && config::GetBoolArg("-nodns", false);
 
         /* If the system is still syncing/connecting on startup, wait to run minter */
-        while ((TAO::Ledger::ChainState::Synchronizing()
-        || !LLP::LEGACY_SERVER
-        || LLP::LEGACY_SERVER->GetConnectionCount() == 0)
+        while ((TAO::Ledger::ChainState::Synchronizing() || (LLP::LEGACY_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
         		&& !StakeMinter::fstopMinter.load() && !config::fShutdown.load())
         {
             runtime::sleep(pStakeMinter->nSleepTime);

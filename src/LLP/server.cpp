@@ -205,83 +205,35 @@ namespace LLP
     uint32_t Server<ProtocolType>::GetConnectionCount()
     {
         uint32_t nConnectionCount = 0;
+        uint16_t nThread = 0;
 
-        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
-        {
-            /* Get the data threads. */
-            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
-
-            /* Lock the data thread. */
-            uint16_t nSize = 0;
-            {
-                LOCK(dt->MUTEX);
-
-                nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
-            }
-
-            /* Loop through connections in data thread and add any that are connected to count. */
-            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
-            {
-                /* Skip over inactive connections. */
-                if(!dt->CONNECTIONS[nIndex])
-                    continue;
-
-                ++nConnectionCount;
-            }
-        }
+        for(; nThread < MAX_THREADS; ++nThread)
+            nConnectionCount += DATA_THREADS[nThread]->GetConnectionCount();
 
         return nConnectionCount;
     }
 
 
-    /*  Get the best connection based on latency */
+    /*  Get the best connection based on latency. */
     template <class ProtocolType>
     memory::atomic_ptr<ProtocolType>& Server<ProtocolType>::GetConnection(const BaseAddress& addrExclude)
     {
         /* List of connections to return. */
-        uint32_t nLatency   = std::numeric_limits<uint32_t>::max();
+        uint32_t nLatencyBest = std::numeric_limits<uint32_t>::max();
         uint16_t nRetThread = 0;
         uint16_t nRetIndex  = 0;
 
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
-            /* Get the data threads. */
-            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+            /* Determine the best thread and connection index */
+            uint32_t nLatencyPrev = nLatencyBest;
+            uint16_t nIndex = DATA_THREADS[nThread]->GetBestConnection(addrExclude, nLatencyBest);
 
-            /* Lock the data thread. */
-            uint16_t nSize = 0;
+            /* If we get a new best latency, update indices. */
+            if(nLatencyBest < nLatencyPrev)
             {
-                LOCK(dt->MUTEX);
-
-                nSize = static_cast<uint16_t>(dt->CONNECTIONS.size());
-            }
-
-            /* Loop through connections in data thread. */
-            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
-            {
-                try
-                {
-                    /* Skip over inactive connections. */
-                    if(!dt->CONNECTIONS[nIndex])
-                        continue;
-
-                    /* Skip over exclusion address. */
-                    if(dt->CONNECTIONS[nIndex]->GetAddress() == addrExclude)
-                        continue;
-
-                    /* Push the active connection. */
-                    if(dt->CONNECTIONS[nIndex]->nLatency < nLatency)
-                    {
-                        nLatency = dt->CONNECTIONS[nIndex]->nLatency;
-
-                        nRetThread = nThread;
-                        nRetIndex  = nIndex;
-                    }
-                }
-                catch(const std::runtime_error& e)
-                {
-                    debug::error(FUNCTION, e.what());
-                }
+                nRetThread = nThread;
+                nRetIndex =  nIndex;
             }
         }
 

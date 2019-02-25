@@ -230,8 +230,6 @@ namespace TAO
                      LLD::legDB->RepairIndexHeight();
             }
 
-            stateBest.load().print();
-
             /* Debug logging. */
             debug::log(0, FUNCTION, config::fTestNet? "Test" : "Nexus", " Network: genesis=", Genesis().ToString().substr(0, 20),
             " nBitsStart=0x", std::hex, bnProofOfWorkStart[0].GetCompact(), " best=", hashBestChain.load().ToString().substr(0, 20),

@@ -368,7 +368,7 @@ namespace Legacy
             /* Read the trust key from the disk. */
             TAO::Ledger::TrustKey trustKey;
             if(LLD::trustDB->ReadTrustKey(cKey, trustKey))
-                nStakeRate = trustKey.InterestRate(block, nTime);
+                nStakeRate = trustKey.StakeRate(block, nTime);
 
             /* Check if it failed to read and this is genesis. */
             else if(!IsGenesis())
@@ -841,7 +841,7 @@ namespace Legacy
                         return debug::error(FUNCTION, "failed to read previous tx block");
 
                 /* Check the maturity. */
-                if((state.nHeight - statePrev.nHeight) < TAO::Ledger::NEXUS_MATURITY_BLOCKS)
+                if((state.nHeight - statePrev.nHeight) < (config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS))
                     return debug::error(FUNCTION, "tried to spend immature balance ", (state.nHeight - statePrev.nHeight));
             }
 
@@ -863,7 +863,7 @@ namespace Legacy
                 return debug::error(FUNCTION, "signature is invalid");
 
             /* Commit to disk if flagged. */
-            if(nFlags & FLAGS::BLOCK && !LLD::legacyDB->WriteSpend(prevout.hash, prevout.n))
+            if((nFlags & FLAGS::BLOCK) && !LLD::legacyDB->WriteSpend(prevout.hash, prevout.n))
                 return debug::error(FUNCTION, "failed to write spend");
 
         }
@@ -906,8 +906,9 @@ namespace Legacy
             }
         }
 
-        /* Erase the transaction object. */
-        LLD::legacyDB->EraseTx(GetHash());
+        /* Erase the index. */
+        if(!LLD::legDB->EraseIndex(GetHash()))
+            return debug::error(FUNCTION, "failed to erase index");
 
         return true;
     }

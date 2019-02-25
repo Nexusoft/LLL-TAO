@@ -241,12 +241,12 @@ namespace Legacy
 
 
         /* Check the Coinbase Transaction is First, with no repetitions. */
-        if (vtx.empty() || (!vtx[0].IsCoinBase() && IsProofOfWork()))
+        if (IsProofOfWork() && (vtx.empty() || !vtx[0].IsCoinBase()))
             return debug::error(FUNCTION, "first tx is not coinbase for proof of work");
 
 
         /* Check the Coinstake Transaction is First, with no repetitions. */
-        if (vtx.empty() || (!vtx[0].IsCoinStake() && IsProofOfStake()))
+        if (IsProofOfStake() && (vtx.empty() || !vtx[0].IsCoinStake()))
             return debug::error(FUNCTION, "first tx is not coinstake for proof of stake");
 
 
@@ -367,6 +367,9 @@ namespace Legacy
     /* Accept a block into the chain. */
     bool LegacyBlock::Accept() const
     {
+        /* Check for duplicates */
+        if(LLD::legDB->HasBlock(GetHash()))
+            return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20), " height=", nHeight);
 
         /* Print the block on verbose 2. */
         if(config::GetArg("-verbose", 0) >= 2)

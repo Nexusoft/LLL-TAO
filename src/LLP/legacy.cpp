@@ -470,6 +470,11 @@ namespace LLP
                 std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX) };
                 LEGACY_SERVER->Relay("inv", vInv);
             }
+            else
+            {
+                /* Give this item a time penalty in the relay cache to make it ignored from here forward. */
+                cacheInventory.Ban(tx.GetHash());
+            }
         }
 
 
@@ -566,6 +571,7 @@ namespace LLP
         */
         else if (message == "inv")
         {
+
             std::vector<CInv> vInv;
             ssMessage >> vInv;
 
@@ -583,7 +589,8 @@ namespace LLP
             if(config::GetBoolArg("-fastsync")
             && addrFastSync == GetAddress()
             && TAO::Ledger::ChainState::Synchronizing()
-            && vInv.back().GetType() == MSG_BLOCK)
+            && vInv.back().GetType() == MSG_BLOCK
+            && vInv.size() > 100) //an assumption that a getblocks batch will be at least 100 blocks or more.
             {
                 /* Normal case of asking for a getblocks inventory message. */
                 PushGetBlocks(vInv.back().GetHash(), uint1024_t(0));
@@ -594,13 +601,17 @@ namespace LLP
             {
                 /* Filter duplicates if not synchronizing. */
                 std::vector<CInv> vGet;
+
+                /* Reverse iterate for blocks in inventory. */
+                std::reverse(vInv.begin(), vInv.end());
                 for(const auto& inv : vInv)
                 {
                     /* If this is a block type, only request if not in database. */
                     if(inv.GetType() == MSG_BLOCK)
                     {
                         /* Check the LLD for block. */
-                        if(!cacheInventory.Has(inv.GetHash()))
+                        if(!cacheInventory.Has(inv.GetHash())
+                        && !LLD::legDB->HasBlock(inv.GetHash()))
                         {
                             /* Add this item to request queue. */
                             vGet.push_back(inv);
@@ -609,11 +620,13 @@ namespace LLP
                             cacheInventory.Add(inv.GetHash());
                         }
                         else
-                            break;
+                            break; //break since iterating backwards (searching newest to oldest)
+                                   //the assumtion here is that if you have newer inventory, you have older
                     }
 
                     /* Check the memory pool for transactions being relayed. */
-                    else if(!cacheInventory.Has(inv.GetHash().getuint512()))
+                    else if(!cacheInventory.Has(inv.GetHash().getuint512())
+                         && !TAO::Ledger::mempool.Has(inv.GetHash().getuint512()))
                     {
                         /* Add this item to request queue. */
                         vGet.push_back(inv);
@@ -623,10 +636,10 @@ namespace LLP
                     }
                 }
 
-                /* Push getdata after fastsync inv (if enabled).
-                 * This will ask for a new inv before blocks to
-                 * always stay at least 1k blocks ahead.
-                 */
+                /* Reverse inventory to get to receive data in proper order. */
+                std::reverse(vGet.begin(), vGet.end());
+
+                /* Ask your friendly neighborhood node for the data. */
                 PushMessage("getdata", vGet);
             }
             else
@@ -722,18 +735,29 @@ namespace LLP
 
             /* Get the block state from. */
             TAO::Ledger::BlockState state;
-            if(!LLD::legDB->ReadBlock(locator.vHave[0], state))
-                return true;
+            for(const auto& have : locator.vHave)
+            {
+                /* Check the database for the ancestor block. */
+                if(LLD::legDB->ReadBlock(have, state))
+                    break;
+            }
 
+            /* If no ancestor blocks were found. */
+            if(!state)
+                return debug::error(FUNCTION, "no ancestor blocks found");
+
+            /* Set the search from search limit. */
             int32_t nLimit = 1000;
-            debug::log(3, "getblocks ", state.nHeight, " to ", hashStop.ToString().substr(0, 20), " limit ", nLimit);
+            debug::log(2, "getblocks ", state.nHeight, " to ", hashStop.ToString().substr(0, 20), " limit ", nLimit);
 
             /* Iterate forward the blocks required. */
             std::vector<CInv> vInv;
             while(!config::fShutdown.load())
             {
+                /* Iterate to next state. */
                 state = state.Next();
 
+                /* Check for hash stop. */
                 if (state.GetHash() == hashStop)
                 {
                     debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", state.GetHash().ToString().substr(0, 20));
@@ -742,51 +766,13 @@ namespace LLP
                     if (hashStop != TAO::Ledger::ChainState::hashBestChain.load())
                         vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), MSG_BLOCK));
 
-					/* Make a copy of the data to request that is not in inventory. */
-					if(!TAO::Ledger::ChainState::Synchronizing())
-					{
-					    /* Filter duplicates if not synchronizing. */
-					    std::vector<CInv> vGet;
-					    for(const auto& inv : vInv)
-					    {
-					        /* If this is a block type, only request if not in database. */
-					        if(inv.GetType() == MSG_BLOCK)
-					        {
-					            /* Check the LLD for block. */
-					            if(!cacheInventory.Has(inv.GetHash())
-					            && !LLD::legDB->HasBlock(inv.GetHash()))
-					            {
-					                /* Add this item to request queue. */
-					                vGet.push_back(inv);
-
-					                /* Add this item to cached relay inventory (key only). */
-					                cacheInventory.Add(inv.GetHash());
-					            }
-					        }
-
-					        /* Check the memory pool for transactions being relayed. */
-					        else if(!cacheInventory.Has(inv.GetHash().getuint512())
-					             && !TAO::Ledger::mempool.Has(inv.GetHash().getuint512()))
-					        {
-					            /* Add this item to request queue. */
-					            vGet.push_back(inv);
-
-					            /* Add this item to cached relay inventory (key only). */
-					            cacheInventory.Add(inv.GetHash().getuint512());
-					        }
-
-					        /* Push getdata after fastsync inv (if enabled).
-					         * This will ask for a new inv before blocks to
-					         * always stay at least 1k blocks ahead.
-					         */
-					        PushMessage("getdata", vGet);
-					    }
-					}
-					else
-                 	   break;
+                    break;
                 }
 
+                /* Push new item to inventory. */
                 vInv.push_back(CInv(state.GetHash(), MSG_BLOCK));
+
+                /* Stop at limits. */
                 if (--nLimit <= 0)
                 {
                     // When this block is requested, we'll send an inv that'll make them
@@ -846,9 +832,41 @@ namespace LLP
         /* Check for orphan. */
         if(!LLD::legDB->HasBlock(block.hashPrevBlock))
         {
+            /* Fast sync block requests. */
+            if(!TAO::Ledger::ChainState::Synchronizing())
+                pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+            else if(!config::GetBoolArg("-fastsync"))
+            {
+                /* Normal case of asking for a getblocks inventory message. */
+                memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
+
+                /* Null check the pointer. */
+                if(pBest != nullptr)
+                {
+                    try
+                    {
+                        /* Push a new getblocks request. */
+                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+
+                    }
+                    catch(const std::runtime_error& e)
+                    {
+                        debug::error(FUNCTION, e.what());
+                    }
+                }
+            }
+
+            /* Continue if already have this orphan. */
+            if(mapLegacyOrphans.count(block.hashPrevBlock))
+                return true;
+
+            /* Increment the consecutive orphans. */
+            if(pnode)
+                ++pnode->nConsecutiveOrphans;
 
             /* Detect large orphan chains and ask for new blocks from origin again. */
-            if(mapLegacyOrphans.size() > 500)
+            if(pnode
+            && pnode->nConsecutiveOrphans >= 500)
             {
                 debug::log(0, FUNCTION, "node reached orphan limit... closing");
 
@@ -866,30 +884,6 @@ namespace LLP
             /* Debug output. */
             debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
 
-            /* Fast sync block requests. */
-            if(!TAO::Ledger::ChainState::Synchronizing())
-                pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-            else if(!config::GetBoolArg("-fastsync"))
-            {
-                /* Normal case of asking for a getblocks inventory message. */
-                memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
-
-                /* Lock the atomic pointer to operate on it. */
-                if(pBest != nullptr)
-                {
-                    try
-                    {
-                        /* Push a new getblocks request. */
-                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-
-                    }
-                    catch(const std::runtime_error& e)
-                    {
-                        debug::error(FUNCTION, e.what());
-                    }
-                }
-            }
-
             return true;
         }
 
@@ -902,34 +896,39 @@ namespace LLP
 
             /* Check for failure limit on node. */
             if(pnode
-            && config::GetBoolArg("-fastsync")
-            && TAO::Ledger::ChainState::Synchronizing()
             && pnode->nConsecutiveFails >= 500)
             {
-                /* Find a new fast sync node if too many failures. */
-                if(addrFastSync == pnode->GetAddress())
+
+                /* Fast Sync node switch. */
+                if(config::GetBoolArg("-fastsync")
+                && TAO::Ledger::ChainState::Synchronizing())
                 {
-                    /* Normal case of asking for a getblocks inventory message. */
-                    memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
-
-                    /* Null check the pointer. */
-                    if(pBest != nullptr)
+                    /* Find a new fast sync node if too many failures. */
+                    if(addrFastSync == pnode->GetAddress())
                     {
-                        try
-                        {
-                            /* Switch to a new node for fast sync. */
-                            pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                        /* Normal case of asking for a getblocks inventory message. */
+                        memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
 
-                            /* Debug output. */
-                            debug::error(FUNCTION, "fast sync node reached failure limit...");
-                        }
-                        catch(const std::runtime_error& e)
+                        /* Null check the pointer. */
+                        if(pBest != nullptr)
                         {
-                            debug::error(FUNCTION, e.what());
+                            try
+                            {
+                                /* Switch to a new node for fast sync. */
+                                pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+
+                                /* Debug output. */
+                                debug::error(FUNCTION, "fast sync node reached failure limit...");
+                            }
+                            catch(const std::runtime_error& e)
+                            {
+                                debug::error(FUNCTION, e.what());
+                            }
                         }
                     }
                 }
 
+                /* Drop pesky nodes. */
                 return false;
             }
 
@@ -958,6 +957,10 @@ namespace LLP
             /* Reset the consecutive failures. */
             if(pnode)
                 pnode->nConsecutiveFails = 0;
+
+            /* Reset the consecutive orphans. */
+            if(pnode)
+                pnode->nConsecutiveOrphans = 0;
         }
 
         /* Process orphan if found. */
