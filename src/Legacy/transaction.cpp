@@ -863,7 +863,7 @@ namespace Legacy
                 return debug::error(FUNCTION, "signature is invalid");
 
             /* Commit to disk if flagged. */
-            if(nFlags & FLAGS::BLOCK && !LLD::legacyDB->WriteSpend(prevout.hash, prevout.n))
+            if((nFlags & FLAGS::BLOCK) && !LLD::legacyDB->WriteSpend(prevout.hash, prevout.n))
                 return debug::error(FUNCTION, "failed to write spend");
 
         }

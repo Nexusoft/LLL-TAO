@@ -104,7 +104,7 @@ namespace TAO
 
 
         /** Minimum span between trust blocks testnet. **/
-        const uint32_t TESTNET_MINIMUM_INTERVAL = 3;
+        const uint32_t TESTNET_MINIMUM_INTERVAL = 10;
 
 
         /** Minimum span between trust blocks, legacy mainnet (allows validation of stake blocks from legacy wallets during transition period). **/

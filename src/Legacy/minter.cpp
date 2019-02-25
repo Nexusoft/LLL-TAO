@@ -236,7 +236,7 @@ namespace Legacy
                 if (pStakingWallet->HaveKey(address))
                 {
                     /* Trust key belongs to current wallet. Verify this is the one to use. */
-                    TAO::Ledger::BlockState blockStateCheck;
+                    TAO::Ledger::BlockState blockStateCheck = TAO::Ledger::ChainState::stateBest.load();
 
                     /* Check for keys that are expired version 4. */
                     if (TAO::Ledger::GetLastTrust(trustKeyCheck, blockStateCheck) && blockStateCheck.nVersion < 5)
@@ -338,7 +338,7 @@ namespace Legacy
             candidateBlock.vtx[0].vin[0].prevout.hash = trustKey.GetHash();
 
             /* Get the last stake block for this trust key. */
-            TAO::Ledger::BlockState prevBlockState;
+            TAO::Ledger::BlockState prevBlockState = TAO::Ledger::ChainState::stateBest.load();
             if (!TAO::Ledger::GetLastTrust(trustKey, prevBlockState))
                 return debug::error(FUNCTION, "Failed to get last trust for trust key");
 
@@ -624,13 +624,13 @@ namespace Legacy
 
             /* Log every 1000 attempts */
             if (candidateBlock.nNonce % 1000 == 0)
-                debug::log(3, FUNCTION, "Threshold %f exceeds required %f, mining Proof of Stake with nonce %" PRIu64, nThreshold, nRequired, candidateBlock.nNonce);
+                debug::log(3, FUNCTION, "Threshold ", nThreshold, " exceeds required ", nRequired,", mining Proof of Stake with nonce ", candidateBlock.nNonce);
 
             /* Handle if block is found. */
             uint1024_t stakeHash = candidateBlock.StakeHash();
             if (stakeHash < nHashTarget)
             {
-                debug::log(0, FUNCTION, "Found new stake hash %sn", stakeHash.ToString().substr(0, 20).c_str());
+                debug::log(0, FUNCTION, "Found new stake hash ", stakeHash.ToString().substr(0, 20).c_str());
 
                 ProcessMinedBlock();
                 break;
