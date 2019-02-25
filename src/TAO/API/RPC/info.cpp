@@ -231,10 +231,19 @@ namespace TAO
                     nPrimeAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 1));
 
                 }
-                nPrimeAverageDifficulty /= nTotal;
-                nPrimeAverageTime /= nTotal;
-                nPrimePS = (nPrimeTimeConstant / nPrimeAverageTime) * std::pow(50.0, (nPrimeAverageDifficulty - 3.0));
-
+                if( nTotal > 0)
+                {
+                    nPrimeAverageDifficulty /= nTotal;
+                    nPrimeAverageTime /= nTotal;
+                    nPrimePS = (nPrimeTimeConstant / nPrimeAverageTime) * std::pow(50.0, (nPrimeAverageDifficulty - 3.0));
+                }
+                else
+                {
+                    /* Edge case where there are no prime blocks so use the difficulty from genesis */
+                    blockState = TAO::Ledger::ChainState::stateGenesis;
+                    nPrimeAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 1));
+                }
+                
 
 
                 // Hash
@@ -263,6 +272,12 @@ namespace TAO
                     nHashAverageTime /= nHTotal;
 
                     nHashRate = (nTimeConstant / nHashAverageTime) * nHashAverageDifficulty;
+                }
+                else
+                {
+                    /* Edge case where there are no hash blocks so use the difficulty from genesis */
+                    blockState = TAO::Ledger::ChainState::stateGenesis;
+                    nPrimeAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 2));
                 }
             }
 
