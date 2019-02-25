@@ -47,7 +47,6 @@ namespace LLP
     , DDOS_rSCORE(rScore)
     , DDOS_cSCORE(cScore)
     , CONNECTIONS(0)
-    , POLLFDS(0)
     , CONDITION()
     , DATA_THREAD(std::bind(&DataThread::Thread, this))
     {
@@ -73,8 +72,6 @@ namespace LLP
     {
         /* Create a new pointer on the heap. */
         ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
-        pollfd pollfdForConnection;
-
         node->fCONNECTED.store(true);
 
         {
@@ -84,15 +81,9 @@ namespace LLP
 
             /* Find a slot that is empty. */
             if(nSlot == CONNECTIONS.size())
-            {
                 CONNECTIONS.push_back(memory::atomic_ptr<ProtocolType>(node));
-                POLLFDS.push_back(pollfdForConnection);
-            }
             else
                 CONNECTIONS[nSlot].store(node);
-
-            POLLFDS[nSlot].fd = node->fd;
-            POLLFDS[nSlot].events = node->events;
 
             CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
         }
@@ -112,8 +103,6 @@ namespace LLP
     {
         /* Create a new pointer on the heap. */
         ProtocolType* node = new ProtocolType(DDOS, fDDOS);
-        pollfd pollfdForConnection;
-
         if(!node->Connect(strAddress, nPort))
         {
             node->Disconnect();
@@ -131,15 +120,9 @@ namespace LLP
 
             /* Find a slot that is empty. */
             if(nSlot == CONNECTIONS.size())
-            {
                 CONNECTIONS.push_back(memory::atomic_ptr<ProtocolType>(node));
-                POLLFDS.push_back(pollfdForConnection);
-            }
             else
                 CONNECTIONS[nSlot].store(node);
-
-            POLLFDS[nSlot].fd = node->fd;
-            POLLFDS[nSlot].events = node->events;
 
             CONNECTIONS[nSlot]->Event(EVENT_CONNECT);
         }
@@ -180,6 +163,11 @@ namespace LLP
         /* The mutex for the condition. */
         std::mutex CONDITION_MUTEX;
 
+        /* This mirrors CONNECTIONS with pollfd settings for passing to poll methods.
+         * Windows throws SOCKET_ERROR intermittently if pass CONNECTIONS directly.
+         */
+        std::vector<pollfd> POLLFDS;
+
         /* The main connection handler loop. */
         while(!fDestruct.load() && !config::fShutdown.load())
         {
@@ -202,21 +190,42 @@ namespace LLP
                 /* Get the total connections. */
                 nSize = static_cast<uint32_t>(CONNECTIONS.size());
 
-                /* We should have connections, as predicate of releasing condition wait. This is a precaution, checking after getting MUTEX lock */
-                if (nSize == 0)
+                /* We should have connections, as predicate of releasing condition wait.
+                 * This is a precaution, checking after getting MUTEX lock
+                 */
+                if (nConnections.load() == 0)
                     continue;
 
-                /* Initialize the revents for all connection pollfd structures. One connection must be live, so verify that and skip if none */
-                bool fHasValidConnections = false;
+                /* Check the pollfd's size. */
+                if(POLLFDS.size() != nSize)
+                    POLLFDS.resize(nSize);
+
+                /* Initialize the revents for all connection pollfd structures.
+                 * One connection must be live, so verify that and skip if none
+                 */
                 for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
                 {
-                    POLLFDS[nIndex].revents = 0;
-                    if (POLLFDS[nIndex].fd != INVALID_SOCKET)
-                        fHasValidConnections = true;
-                }
+                    try
+                    {
+                        /* Set the proper POLLIN flags. */
+                        POLLFDS[nIndex].events = POLLIN;
 
-                if (!fHasValidConnections)
-                    continue;
+                        /* Set to invalid socket if connection is inactive. */
+                        if(!CONNECTIONS[nIndex])
+                        {
+                            POLLFDS[nIndex].fd = INVALID_SOCKET;
+
+                            continue;
+                        }
+
+                        /* Set the correct file descriptor. */
+                        POLLFDS[nIndex].fd = CONNECTIONS[nIndex]->fd;
+                    }
+                    catch(const std::runtime_error& e)
+                    {
+                        debug::error(FUNCTION, e.what());
+                    }
+                }
             }
 
             /* Poll the sockets. */
@@ -408,17 +417,10 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::remove(int index)
     {
-        /* Get the total connections. */
-        uint32_t nSize = static_cast<uint32_t>(CONNECTIONS.size());
+        /* Free the memory. */
+        CONNECTIONS[index].free();
 
-        if(index < nSize && CONNECTIONS[index] != nullptr)
-        {
-            /* Free the memory. */
-            CONNECTIONS[index].free();
-            POLLFDS[index].fd = INVALID_SOCKET;
-
-            --nConnections;
-        }
+        --nConnections;
 
         CONDITION.notify_all();
     }
@@ -434,7 +436,7 @@ namespace LLP
 
         for(int index = 0; index < nSize; ++index)
         {
-            if(CONNECTIONS[index] == nullptr)
+            if(!CONNECTIONS[index])
                 return index;
         }
 

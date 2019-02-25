@@ -65,12 +65,9 @@ namespace LLP
         std::vector< memory::atomic_ptr<ProtocolType> > CONNECTIONS;
 
 
-        /* This mirrors CONNECTIONS with pollfd settings for passing to poll methods. Windows throws SOCKET_ERROR intermittently if pass CONNECTIONS directly. */
-        std::vector<pollfd> POLLFDS;
-
-
         /* The condition for thread sleeping. */
         std::condition_variable CONDITION;
+        
 
         /* Data Thread. */
         std::thread DATA_THREAD;
