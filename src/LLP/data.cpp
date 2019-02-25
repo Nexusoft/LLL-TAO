@@ -219,14 +219,11 @@ namespace LLP
             {
                 try
                 {
-                    /* Grab a reference of the connection atomic pointer. */
-                    memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
-
                     /* Set the proper POLLIN flags. */
                     POLLFDS.at(nIndex).events = POLLIN;
 
                     /* Set to invalid socket if connection is inactive. */
-                    if(!CONNECTION)
+                    if(!CONNECTIONS->at(nIndex))
                     {
                         POLLFDS.at(nIndex).fd = INVALID_SOCKET;
 
@@ -234,7 +231,7 @@ namespace LLP
                     }
 
                     /* Set the correct file descriptor. */
-                    POLLFDS.at(nIndex).fd = CONNECTION->fd;
+                    POLLFDS.at(nIndex).fd = CONNECTIONS->at(nIndex)->fd;
                 }
                 catch(const std::runtime_error& e)
                 {
@@ -255,11 +252,8 @@ namespace LLP
             {
                 try
                 {
-                    /* Grab a reference of the connection atomic pointer. */
-                    memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
-
                     /* Skip over Inactive Connections. */
-                    if(!CONNECTION || !CONNECTION->Connected())
+                    if(!CONNECTIONS->at(nIndex) || !CONNECTIONS->at(nIndex)->Connected())
                         continue;
 
                     /* Disconnect if there was a polling error */
@@ -270,29 +264,29 @@ namespace LLP
                     }
 
                     /* Remove Connection if it has Timed out or had any read/write Errors. */
-                    if(CONNECTION->Errors())
+                    if(CONNECTIONS->at(nIndex)->Errors())
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                         continue;
                     }
 
                     /* Remove Connection if it has Timed out or had any Errors. */
-                    if(CONNECTION->Timeout(TIMEOUT))
+                    if(CONNECTIONS->at(nIndex)->Timeout(TIMEOUT))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_TIMEOUT);
                         continue;
                     }
 
                     /* Handle any DDOS Filters. */
-                    if(fDDOS && CONNECTION->DDOS)
+                    if(fDDOS && CONNECTIONS->at(nIndex)->DDOS)
                     {
                         /* Ban a node if it has too many Requests per Second. **/
-                        if(CONNECTION->DDOS->rSCORE.Score() > DDOS_rSCORE
-                        || CONNECTION->DDOS->cSCORE.Score() > DDOS_cSCORE)
-                            CONNECTION->DDOS->Ban();
+                        if(CONNECTIONS->at(nIndex)->DDOS->rSCORE.Score() > DDOS_rSCORE
+                        || CONNECTIONS->at(nIndex)->DDOS->cSCORE.Score() > DDOS_cSCORE)
+                            CONNECTIONS->at(nIndex)->DDOS->Ban();
 
                         /* Remove a connection if it was banned by DDOS Protection. */
-                        if(CONNECTION->DDOS->Banned())
+                        if(CONNECTIONS->at(nIndex)->DDOS->Banned())
                         {
                             disconnect_remove_event(nIndex, DISCONNECT_DDOS);
                             continue;
@@ -300,38 +294,38 @@ namespace LLP
                     }
 
                     /* Generic event for Connection. */
-                    CONNECTION->Event(EVENT_GENERIC);
+                    CONNECTIONS->at(nIndex)->Event(EVENT_GENERIC);
 
                     /* Flush the write buffer. */
-                    CONNECTION->Flush();
+                    CONNECTIONS->at(nIndex)->Flush();
 
                     /* Work on Reading a Packet. **/
-                    CONNECTION->ReadPacket();
+                    CONNECTIONS->at(nIndex)->ReadPacket();
 
                     /* If a Packet was received successfully, increment request count [and DDOS count if enabled]. */
-                    if(CONNECTION->PacketComplete())
+                    if(CONNECTIONS->at(nIndex)->PacketComplete())
                     {
                         /* Debug dump of message type. */
-                        debug::log(4, FUNCTION, "Recieved Message (", CONNECTION->INCOMING.GetBytes().size(), " bytes)");
+                        debug::log(4, FUNCTION, "Recieved Message (", CONNECTIONS->at(nIndex)->INCOMING.GetBytes().size(), " bytes)");
 
                         /* Debug dump of packet data. */
                         if(config::GetArg("-verbose", 0) >= 5)
-                            PrintHex(CONNECTION->INCOMING.GetBytes());
+                            PrintHex(CONNECTIONS->at(nIndex)->INCOMING.GetBytes());
 
                         /* Handle Meters and DDOS. */
                         if(fMETER)
                             ++REQUESTS;
                         if(fDDOS)
-                            CONNECTION->DDOS->rSCORE += 1;
+                            CONNECTIONS->at(nIndex)->DDOS->rSCORE += 1;
 
                         /* Packet Process return value of False will flag Data Thread to Disconnect. */
-                        if(!CONNECTION->ProcessPacket())
+                        if(!CONNECTIONS->at(nIndex)->ProcessPacket())
                         {
                             disconnect_remove_event(nIndex, DISCONNECT_FORCE);
                             continue;
                         }
 
-                        CONNECTION->ResetPacket();
+                        CONNECTIONS->at(nIndex)->ResetPacket();
                     }
                 }
                 catch(const std::bad_alloc &e)
@@ -375,35 +369,7 @@ namespace LLP
      uint16_t DataThread<ProtocolType>::GetBestConnection(const BaseAddress& addrExclude, uint32_t &nLatency)
      {
           uint16_t nRetIndex = 0;
-          uint16_t nSize = static_cast<uint16_t>(CONNECTIONS->size());
 
-          for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
-          {
-              try
-              {
-                  /* Grab a reference of the connection atomic pointer. */
-                  memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
-
-                  /* Skip over inactive connections. */
-                  if(!CONNECTION)
-                      continue;
-
-                  /* Skip over exclusion address. */
-                  if(CONNECTION->GetAddress() == addrExclude)
-                      continue;
-
-                  /* Choose the active index, update lowest latency output. */
-                  if(CONNECTION->nLatency < nLatency)
-                  {
-                      nLatency = CONNECTION->nLatency;
-                      nRetIndex = nIndex;
-                  }
-              }
-              catch(const std::runtime_error& e)
-              {
-                  debug::error(FUNCTION, e.what());
-              }
-          }
 
           return nRetIndex;
      }
@@ -428,7 +394,6 @@ namespace LLP
         /* Free the memory. */
         CONNECTIONS->at(index).free();
 
-        /* Reduce the connection count. */
         --nConnections;
 
         CONDITION.notify_all();

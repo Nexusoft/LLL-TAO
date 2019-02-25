@@ -211,6 +211,7 @@ namespace memory
         : MUTEX(MUTEX_IN)
         , data(pData)
         {
+            MUTEX.lock();
         }
 
 
@@ -233,10 +234,7 @@ namespace memory
         TypeName* operator->() const
         {
             if(data == nullptr)
-            {
-                MUTEX.unlock();
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "member access to nullptr"));
-            }
 
             return data;
         }
@@ -364,8 +362,6 @@ namespace memory
          **/
         lock_proxy<TypeName> operator->()
         {
-            MUTEX.lock();
-
             return lock_proxy<TypeName>(data, MUTEX);
         }
 

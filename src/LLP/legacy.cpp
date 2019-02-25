@@ -593,7 +593,25 @@ namespace LLP
             && vInv.size() > 100) //an assumption that a getblocks batch will be at least 100 blocks or more.
             {
                 /* Normal case of asking for a getblocks inventory message. */
-                PushGetBlocks(vInv.back().GetHash(), uint1024_t(0));
+                memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
+
+                /* Null pointer check. */
+                if(pBest != nullptr)
+                {
+                    try
+                    {
+                        /* Ask for another inventory batch. */
+                        pBest->PushGetBlocks(vInv.back().GetHash(), uint1024_t(0));
+
+                    }
+                    catch(const std::runtime_error& e)
+                    {
+                        debug::error(FUNCTION, e.what());
+
+                        /* Normal case of asking for a getblocks inventory message. */
+                        PushGetBlocks(vInv.back().GetHash(), uint1024_t(0));
+                    }
+                }
             }
 
             /* Make a copy of the data to request that is not in inventory. */
