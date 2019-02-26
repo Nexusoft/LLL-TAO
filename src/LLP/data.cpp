@@ -374,7 +374,8 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::disconnect_remove_event(uint32_t index, uint8_t reason)
     {
-        CONNECTIONS->at(index)->Event(EVENT_DISCONNECT, reason);
+        ProtocolType* connection = CONNECTIONS->at(index).load();
+        connection->Event(EVENT_DISCONNECT, reason);
 
         remove(index);
     }
