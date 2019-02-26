@@ -93,8 +93,9 @@ Return value JSON object:
 
 ### Credit
 
-Get the contents of a previous created object register. The lookup is by name,
-register address, or txid.
+Increment a token amount to owner’s object register received from an owner of
+another object register address.
+
 
 ```
 <method>:
@@ -111,6 +112,7 @@ pin=<pin-number>
 ```
 
 Return value JSON object:
+```
 {
     "amount" : <new-amount>
     "txid" : "<txid>"
@@ -130,7 +132,7 @@ count=<number of recent txids>
 start=<optional-start-offset>
 ```
 
-Returns:
+Return value JSON object:
 ```
 [
     <list-of-token-txids>
