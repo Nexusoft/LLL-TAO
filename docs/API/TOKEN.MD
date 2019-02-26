@@ -232,7 +232,6 @@ Return value JSON object:
 ]
 
 Output parameter descritpion:
-
 <list-of-token-txids>:
     A dictionary array of values equal to what is returned from the supply/
     history API call.
