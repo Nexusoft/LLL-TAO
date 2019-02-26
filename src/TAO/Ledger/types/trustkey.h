@@ -201,13 +201,30 @@ namespace TAO
 
             /** StakeRate
              *
-             *  Retrieves the staking rate (ie, minting rate or interest rate) of the trust key for a given PoS block.
+             *  Retrieves the staking rate (ie, minting rate or interest rate) of the trust key for a given PoS legacy block.
              *
              *  For version v5+ blocks, the trust score is extracted from the block and used
              *  to calculate stake rate. For v4 blocks, the difference between nTime
-             *  and the nGenesisTime of the trust key is used (age of trust key). 
+             *  and the nGenesisTime of the trust key is used (age of trust key).
              *
-             *  @param[in] block The block to check against.
+             *  @param[in] block The block to check against. Does not need to be available in LLD, can be new candidate block.
+             *  @param[in] nTime The time to check against. Ignored for v5+ blocks
+             *
+             *  @return the stake rate of the trust key at the time the block was generated
+             *
+             **/
+            double StakeRate(const Legacy::LegacyBlock& block, uint32_t nTime) const;
+
+
+            /** StakeRate
+             *
+             *  Retrieves the staking rate (ie, minting rate or interest rate) of the trust key for a given PoS block state.
+             *
+             *  For version v5+ blocks, the trust score is extracted from the block and used
+             *  to calculate stake rate. For v4 blocks, the difference between nTime
+             *  and the nGenesisTime of the trust key is used (age of trust key).
+             *
+             *  @param[in] block The block state to check against. Must be previously connected block stored in LLD.
              *  @param[in] nTime The time to check against. Ignored for v5+ blocks
              *
              *  @return the stake rate of the trust key at the time the block was generated

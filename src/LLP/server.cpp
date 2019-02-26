@@ -218,25 +218,48 @@ namespace LLP
     memory::atomic_ptr<ProtocolType>& Server<ProtocolType>::GetConnection(const BaseAddress& addrExclude)
     {
         /* List of connections to return. */
-        uint32_t nLatencyBest = std::numeric_limits<uint32_t>::max();
+        uint32_t nLatency   = std::numeric_limits<uint32_t>::max();
         uint16_t nRetThread = 0;
         uint16_t nRetIndex  = 0;
 
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
-            /* Determine the best thread and connection index */
-            uint32_t nLatencyPrev = nLatencyBest;
-            uint16_t nIndex = DATA_THREADS[nThread]->GetBestConnection(addrExclude, nLatencyBest);
+            /* Get the data threads. */
+            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
-            /* If we get a new best latency, update indices. */
-            if(nLatencyBest < nLatencyPrev)
+            /* Lock the data thread. */
+            uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS->size());
+
+            /* Loop through connections in data thread. */
+            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
-                nRetThread = nThread;
-                nRetIndex =  nIndex;
+                try
+                {
+                    /* Skip over inactive connections. */
+                    if(!dt->CONNECTIONS->at(nIndex))
+                        continue;
+
+                    /* Skip over exclusion address. */
+                    if(dt->CONNECTIONS->at(nIndex)->GetAddress() == addrExclude)
+                        continue;
+
+                    /* Push the active connection. */
+                    if(dt->CONNECTIONS->at(nIndex)->nLatency < nLatency)
+                    {
+                        nLatency = dt->CONNECTIONS->at(nIndex)->nLatency;
+
+                        nRetThread = nThread;
+                        nRetIndex  = nIndex;
+                    }
+                }
+                catch(const std::runtime_error& e)
+                {
+                    debug::error(FUNCTION, e.what());
+                }
             }
         }
 
-        return DATA_THREADS[nRetThread]->CONNECTIONS[nRetIndex];
+        return DATA_THREADS[nRetThread]->CONNECTIONS->at(nRetIndex);
     }
 
 

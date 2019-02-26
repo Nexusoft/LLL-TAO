@@ -62,6 +62,7 @@ namespace LLP
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
         , nStartingHeight(0)
         , nConsecutiveFails(0)
+        , nConsecutiveOrphans(0)
         , fInbound(false)
         , nLastPing(runtime::timestamp())
         , hashContinue(0)
@@ -79,6 +80,7 @@ namespace LLP
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
         , nStartingHeight(0)
         , nConsecutiveFails(0)
+        , nConsecutiveOrphans(0)
         , fInbound(false)
         , nLastPing(runtime::timestamp())
         , hashContinue(0)
@@ -95,6 +97,7 @@ namespace LLP
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
         , nStartingHeight(0)
         , nConsecutiveFails(0)
+        , nConsecutiveOrphans(0)
         , fInbound(false)
         , nLastPing(runtime::timestamp())
         , hashContinue(0)
@@ -127,6 +130,10 @@ namespace LLP
 
         /* Duplicates connection reset. */
         uint32_t nConsecutiveFails;
+
+
+        /* Orphans connection reset. */
+        uint32_t nConsecutiveOrphans;
 
 
         /** Flag to determine if a connection is Inbound. **/
@@ -252,6 +259,7 @@ namespace LLP
                 uint32_t nAvailable = Available();
                 if(nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
                 {
+
                     /* Create the packet data object. */
                     std::vector<uint8_t> DATA( std::min( nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
 

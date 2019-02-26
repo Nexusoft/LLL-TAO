@@ -150,6 +150,21 @@ namespace LLD
         }
 
 
+        /** HasIndex
+         *
+         *  Determine if a transaction has already been indexed.
+         *
+         *  @param[in] hashTransaction The txid of transaction to write.
+         *
+         *  @return True if the transaction was successfully written, false otherwise.
+         *
+         **/
+        bool HasIndex(const uint512_t& hashTransaction)
+        {
+            return Exists(std::make_pair(std::string("index"), hashTransaction));
+        }
+
+
         /** IndexBlock
          *
          *  Index a transaction hash to a block in keychain.

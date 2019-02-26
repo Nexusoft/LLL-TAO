@@ -87,7 +87,7 @@ namespace TAO
             std::string strContent = parameters.dump();
             std::string strReply = debug::safe_printstr(
                     "POST /", endpoint.substr(0, pos), "/", endpoint.substr(pos + 1), " HTTP/1.1\r\n",
-                    "Date: ", runtime::rfc1123Time(), "\r\n",
+                    "Date: ", debug::rfc1123Time(), "\r\n",
                     "Connection: close\r\n",
                     "Content-Length: ", strContent.size(), "\r\n",
                     "Content-Type: application/json\r\n",
@@ -198,7 +198,7 @@ namespace TAO
             std::string strContent = body.dump();
             std::string strReply = debug::safe_printstr(
                     "POST / HTTP/1.1\r\n",
-                    "Date: ", runtime::rfc1123Time(), "\r\n",
+                    "Date: ", debug::rfc1123Time(), "\r\n",
                     "Connection: close\r\n",
                     "Content-Length: ", strContent.size(), "\r\n",
                     "Content-Type: application/json\r\n",

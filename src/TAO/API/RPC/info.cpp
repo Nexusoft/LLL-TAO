@@ -77,9 +77,9 @@ namespace TAO
 	            obj["stakerate"]   = 0;
 	            obj["trustweight"] = 0;
 	            obj["blockweight"] = 0;
-	            obj["stakeweight"] = 0; 
+	            obj["stakeweight"] = 0;
 			}
-			
+
             obj["txtotal"] =(int)Legacy::Wallet::GetInstance().mapWallet.size();
 
             obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
@@ -91,6 +91,7 @@ namespace TAO
 
             obj["syncnode"]    = LLP::LegacyNode::addrFastSync.load().ToStringIP();
             obj["syncaverage"] = (int)LLP::LegacyNode::nFastSyncAverage;
+            obj["synccomplete"] = (int)TAO::Ledger::ChainState::PercentSynchronized();
 
             obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToString() : std::string());
 
@@ -230,10 +231,19 @@ namespace TAO
                     nPrimeAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 1));
 
                 }
-                nPrimeAverageDifficulty /= nTotal;
-                nPrimeAverageTime /= nTotal;
-                nPrimePS = (nPrimeTimeConstant / nPrimeAverageTime) * std::pow(50.0, (nPrimeAverageDifficulty - 3.0));
-
+                if( nTotal > 0)
+                {
+                    nPrimeAverageDifficulty /= nTotal;
+                    nPrimeAverageTime /= nTotal;
+                    nPrimePS = (nPrimeTimeConstant / nPrimeAverageTime) * std::pow(50.0, (nPrimeAverageDifficulty - 3.0));
+                }
+                else
+                {
+                    /* Edge case where there are no prime blocks so use the difficulty from genesis */
+                    blockState = TAO::Ledger::ChainState::stateGenesis;
+                    nPrimeAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 1));
+                }
+                
 
 
                 // Hash
@@ -262,6 +272,12 @@ namespace TAO
                     nHashAverageTime /= nHTotal;
 
                     nHashRate = (nTimeConstant / nHashAverageTime) * nHashAverageDifficulty;
+                }
+                else
+                {
+                    /* Edge case where there are no hash blocks so use the difficulty from genesis */
+                    blockState = TAO::Ledger::ChainState::stateGenesis;
+                    nPrimeAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 2));
                 }
             }
 

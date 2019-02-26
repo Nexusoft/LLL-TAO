@@ -98,10 +98,18 @@ namespace LLD
         if(pthis == nullptr)
             return false;
 
+        /* Check that the key mateches. */
+        if(pthis->vKey != vKey)
+            return false;
+
+        /* If the time has expired, return false. */
+        if(pthis->nTimestamp + 60 < runtime::timestamp())
+            return debug::error(FUNCTION, "key has expired");
+
         /* Move to front of LRU. */
         MoveToFront(pthis);
 
-        return (pthis->vKey == vKey);
+        return true;
     }
 
 
@@ -256,6 +264,26 @@ namespace LLD
 
             break;
         }
+    }
+
+
+    /*  Penalize Object by Index. */
+    void KeyLRU::Penalize(const std::vector<uint8_t>& vKey, const uint32_t nPenalties)
+    {
+        LOCK(MUTEX);
+
+        /* Get the bucket. */
+        uint32_t nBucket = Bucket(vKey);
+
+        /* Get the object we are working on. */
+        BinaryKey* pthis = hashmap[nBucket];
+
+        /* Check if the Record Exists. */
+        if (pthis == nullptr || pthis->vKey != vKey)
+            return;
+
+        /* Set the binary key to have a large time penalty. */
+        pthis->nTimestamp = runtime::timestamp() + nPenalties;
     }
 
 

@@ -280,7 +280,17 @@ namespace LLP
     std::string AddressManager::ToString()
     {
         LOCK(mut);
-        return to_string();
+        std::string strRet = debug::safe_printstr(
+             "C=", count(ConnectState::CONNECTED),
+            " D=", count(ConnectState::DROPPED),
+            " F=", count(ConnectState::FAILED),   " |",
+            " TC=", total_count(ConnectState::CONNECTED),
+            " TD=", total_count(ConnectState::DROPPED),
+            " TF=", total_count(ConnectState::FAILED), " |",
+            " B=",  ban_count(), " |",
+            " size=", mapTrustAddress.size());
+
+        return strRet;
     }
 
 
@@ -464,37 +474,22 @@ namespace LLP
     {
         uint32_t total = 0;
 
-        for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
+        for(const auto& addr : mapTrustAddress)
         {
             /* If the address is on the ban list, skip it. */
-            if(mapBanned.find(it->first) != mapBanned.end())
+            if(mapBanned.find(addr.first) != mapBanned.end())
                 continue;
 
             /* Sum up the total stats of each category */
             if(flags & ConnectState::CONNECTED)
-                total += it->second.nConnected;
+                total += addr.second.nConnected;
             if(flags & ConnectState::DROPPED)
-                total += it->second.nDropped;
+                total += addr.second.nDropped;
             if(flags & ConnectState::FAILED)
-                total += it->second.nFailed;
+                total += addr.second.nFailed;
         }
 
         return total;
-    }
-
-
-    /* Print the current state of the address manager. */
-    std::string AddressManager::to_string()
-    {
-        return debug::safe_printstr(
-             "C=", count(ConnectState::CONNECTED),
-            " D=", count(ConnectState::DROPPED),
-            " F=", count(ConnectState::FAILED),   " |",
-            " TC=", total_count(ConnectState::CONNECTED),
-            " TD=", total_count(ConnectState::DROPPED),
-            " TF=", total_count(ConnectState::FAILED), " |",
-            " B=",  ban_count(), " |",
-            " size=", mapTrustAddress.size());
     }
 
 

@@ -170,14 +170,14 @@ namespace debug
         if(config::GetArg("-verbose", 0) < nLevel)
             return;
 
+        /* Lock the mutex. */
+        LOCK(DEBUG_MUTEX);
+
         /* Get the debug string and log file. */
         std::string debug = safe_printstr(args...);
 
         /* Get the timestamp. */
         time_t timestamp = std::time(nullptr);
-
-        /* Lock the mutex. */
-        LOCK(DEBUG_MUTEX);
 
         /* Dump it to the console. */
         std::cout << "["
@@ -242,6 +242,28 @@ namespace debug
     }
 
 
+    /** rfc1123Time
+     *
+     *  Special Specification for HTTP Protocol.
+     *  TODO: This could be cleaned up I'd say.
+     *
+     **/
+    inline std::string rfc1123Time()
+    {
+        LOCK(DEBUG_MUTEX); //gmtime and localtime are not thread safe together
+
+        char buffer[64];
+        time_t now;
+        time(&now);
+        struct tm* now_gmt = gmtime(&now);
+        std::string locale(setlocale(LC_TIME, nullptr));
+        setlocale(LC_TIME, "C"); // we want posix (aka "C") weekday/month strings
+        strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S +0000", now_gmt);
+        setlocale(LC_TIME, locale.c_str());
+        return std::string(buffer);
+    }
+
+
     /** real_strprintf
      *
      *  Prints output into a string that is returned.
@@ -259,7 +281,7 @@ namespace debug
 
     /** InitializeLog
       *
-      *  Write startup information into the log file 
+      *  Write startup information into the log file
       *
       *  @param argc The argc value from main()
       *  @param argv The argv value from main()

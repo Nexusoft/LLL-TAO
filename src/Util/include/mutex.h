@@ -18,5 +18,6 @@ ________________________________________________________________________________
 
 /* Macro preprocessor definitions for debug purposes. */
 #define LOCK(mut) std::unique_lock<std::mutex> lk(mut)
+#define RLOCK(mut) std::lock_guard<std::recursive_mutex> lk(mut)
 
 #endif

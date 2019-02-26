@@ -250,7 +250,6 @@ namespace TAO
                 assert(genesis.nTime == block.nTime);
 
                 /* Check that the genesis hash is correct. */
-
                 LLC::CBigNum target;
                 target.SetCompact(block.nBits);
                 if(block.GetHash() != genesisHash)
@@ -264,7 +263,6 @@ namespace TAO
                 ChainState::stateGenesis = BlockState(block);
                 ChainState::stateGenesis.nChannelHeight = 1;
                 ChainState::stateGenesis.hashCheckpoint = genesisHash;
-                ChainState::stateGenesis.print();
 
                 /* Set the best block. */
                 ChainState::stateBest = ChainState::stateGenesis;
