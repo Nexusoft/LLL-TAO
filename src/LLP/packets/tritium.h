@@ -39,6 +39,11 @@ namespace LLP
         DAT_HAS_BLOCK   = 12,
         GET_BLOCK       = 13,
 
+        GET_INVENTORY   = 14,
+        DAT_INVENTORY   = 15,
+
+        GET_DATA        = 16,
+        
         GET_ADDRESSES   = 20,
         DAT_ADDRESSES   = 21,
 

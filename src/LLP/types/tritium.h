@@ -19,6 +19,11 @@ ________________________________________________________________________________
 #include <LLP/packets/tritium.h>
 #include <LLP/templates/base_connection.h>
 #include <LLP/templates/events.h>
+#include <LLD/cache/binary_key.h>
+#include <TAO/Ledger/types/locator.h>
+#include <Util/include/memory.h>
+#include <LLP/templates/ddos.h>
+#include <TAO/Ledger/types/tritium.h>
 
 namespace LLP
 {
@@ -47,6 +52,9 @@ namespace LLP
         , nLastSamples(0)
         , mapLatencyTracker()
         , mapSentRequests()
+        , hashContinue(0)
+        , nConsecutiveFails(0)
+        , nConsecutiveOrphans(0)
         {
         }
 
@@ -58,6 +66,9 @@ namespace LLP
         , nLastSamples(0)
         , mapLatencyTracker()
         , mapSentRequests()
+        , hashContinue(0)
+        , nConsecutiveFails(0)
+        , nConsecutiveOrphans(0)
         {
         }
 
@@ -70,6 +81,9 @@ namespace LLP
         , nLastSamples(0)
         , mapLatencyTracker()
         , mapSentRequests()
+        , hashContinue(0)
+        , nConsecutiveFails(0)
+        , nConsecutiveOrphans(0)
         {
         }
 
@@ -100,6 +114,32 @@ namespace LLP
 
         /** Map to keep track of sent request ID's while witing for them to return. **/
         std::map<uint32_t, uint64_t> mapSentRequests;
+
+        /** The trigger hash to send a continue inv message to remote node. **/
+        uint1024_t hashContinue;
+
+        /* Duplicates connection reset. */
+        uint32_t nConsecutiveFails;
+
+        /* Orphans connection reset. */
+        uint32_t nConsecutiveOrphans;
+
+        /** The last getblocks call this node has received. **/
+        static memory::atomic<uint1024_t> hashLastGetblocks;
+
+        /** The time since last getblocks call. **/
+        static std::atomic<uint64_t> nLastGetBlocks;
+
+        /** Handle an average calculation of fast sync blocks. */
+        static std::atomic<uint32_t> nFastSyncAverage;
+
+        /** The current node that is being used for fast sync.l **/
+        static memory::atomic<BaseAddress> addrFastSync;
+
+        /** The last time a block was accepted. **/
+        static std::atomic<uint64_t> nLastTimeReceived;
+
+        static LLD::KeyLRU cacheInventory;
 
 
         /** Event
@@ -181,6 +221,57 @@ namespace LLP
                 }
             }
         }
+
+        /** PushGetInventory
+         *
+         *  Send a request to get recent inventory from remote node.
+         *
+         *  @param[in] hashBlockFrom The block to start from
+         *  @param[in] hashBlockTo The block to search to
+         *
+         **/
+        void PushGetInventory(const uint1024_t& hashBlockFrom, const uint1024_t& hashBlockTo)
+        {
+            /* Filter out duplicate requests. */
+            if(hashLastGetblocks.load() == hashBlockFrom && nLastGetBlocks.load() + 1 > runtime::timestamp())
+                return;
+
+            /* Set the fast sync address. */
+            if(addrFastSync != GetAddress())
+            {
+                /* Set the new sync address. */
+                addrFastSync = GetAddress();
+
+                /* Reset the last time received. */
+                nLastTimeReceived = runtime::timestamp();
+
+                debug::log(0, NODE, "New sync address set");
+            }
+
+            /* Calculate the fast sync average. */
+            nFastSyncAverage = std::min((uint64_t)25, (nFastSyncAverage.load() + (runtime::timestamp() - nLastGetBlocks.load())) / 2);
+
+            /* Update the last timestamp this was called. */
+            nLastGetBlocks = runtime::timestamp();
+
+            /* Update the hash that was used for last request. */
+            hashLastGetblocks = hashBlockFrom;
+
+            /* Push the request to the node. */
+            PushMessage(GET_INVENTORY, TAO::Ledger::Locator(hashBlockFrom), hashBlockTo);
+
+            /* Debug output for monitoring. */
+            debug::log(0, NODE, "(", nFastSyncAverage.load(), ") requesting getinventory from ", hashBlockFrom.ToString().substr(0, 20), " to ", hashBlockTo.ToString().substr(0, 20));
+        }
+
+        /** Process
+         *
+         *  Verify a block and accept it into the block chain
+         *
+         *  @return True is no errors, false otherwise.
+         *
+         **/
+        static bool Process(const TAO::Ledger::TritiumBlock& block, TritiumNode* pnode);
 
 
         /** NewMessage

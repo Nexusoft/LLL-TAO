@@ -570,7 +570,7 @@ namespace Legacy
                 uint512_t hash = tx.GetHash();
                 if (!LLD::legacyDB->HasTx(hash))
                 {
-                    std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX) };
+                    std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX_LEGACY) };
                     LLP::LEGACY_SERVER->Relay("inv", vInv);
 
                     //Add to the memory pool
@@ -588,7 +588,7 @@ namespace Legacy
             {
                 debug::log(0, FUNCTION, "Relaying wtx ", hash.ToString().substr(0,10));
 
-                std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX) };
+                std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX_LEGACY) };
                 LLP::LEGACY_SERVER->Relay("inv", vInv);
 
                 //Add to the memory pool

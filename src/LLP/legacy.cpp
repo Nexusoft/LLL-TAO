@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <Legacy/types/transaction.h>
-#include <Legacy/types/locator.h>
+#include <TAO/Ledger/types/locator.h>
 #include <Legacy/wallet/wallet.h>
 
 #include <LLP/include/hosts.h>
@@ -467,7 +467,7 @@ namespace LLP
             {
                 Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
 
-                std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX) };
+                std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX_LEGACY) };
                 LEGACY_SERVER->Relay("inv", vInv);
             }
             else
@@ -709,7 +709,7 @@ namespace LLP
                         hashContinue = 0;
                     }
                 }
-                else if (inv.GetType() == LLP::MSG_TX)
+                else if (inv.GetType() == LLP::MSG_TX_LEGACY)
                 {
                     Legacy::Transaction tx;
                     if(!TAO::Ledger::mempool.Get(inv.GetHash().getuint512(), tx) && !LLD::legacyDB->ReadTx(inv.GetHash().getuint512(), tx))
@@ -724,7 +724,7 @@ namespace LLP
         /* Handle a Request to get a list of Blocks from a Node. */
         else if (message == "getblocks")
         {
-            Legacy::Locator locator;
+            TAO::Ledger::Locator locator;
             uint1024_t hashStop;
             ssMessage >> locator >> hashStop;
 

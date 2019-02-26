@@ -1338,7 +1338,7 @@ namespace TAO
 
         //         SyncWithWallets(tx, NULL, true);
         //     }
-        //     RelayMessage(CInv(MSG_TX, hashTx), tx);
+        //     RelayMessage(CInv(MSG_TX_LEGACY, hashTx), tx);
 
         //     return hashTx.GetHex();
             json::json ret;

@@ -216,6 +216,7 @@ OBJS= \
 	build/Ledger_tritium.o \
 	build/Ledger_trust.o \
 	build/Ledger_trustkey.o \
+	build/Ledger_locator.o \
 	build/Register_rollback.o \
 	build/Register_verify.o \
 	build/Operation_append.o \
@@ -254,7 +255,6 @@ OBJS= \
 	build/Legacy_keypool.o \
 	build/Legacy_keystore.o \
 	build/Legacy_legacy.o \
-	build/Legacy_locator.o \
 	build/Legacy_mempool.o \
 	build/Legacy_merkle.o \
 	build/Legacy_minter.o \

@@ -138,7 +138,7 @@ namespace TAO
              *  Accept a tritium block with chain state parameters.
              *
              **/
-            bool Accept();
+            bool Accept() const;
 
 
             /** CheckStake

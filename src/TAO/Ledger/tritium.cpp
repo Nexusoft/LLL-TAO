@@ -280,7 +280,7 @@ namespace TAO
 
 
         /** Accept a tritium block. **/
-        bool TritiumBlock::Accept()
+        bool TritiumBlock::Accept() const
         {
             /* Read leger DB for duplicate block. */
             if(LLD::legDB->HasBlock(GetHash()))
