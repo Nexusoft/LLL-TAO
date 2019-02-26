@@ -19,15 +19,15 @@ pin=<pin-number>
 
 Input parameter descritpion:
         
-<name>:
+name:
     Is an API caller's selected name for the object register.
-<supply-count>:
+amount:
     The initial token supply count.
-<supply-count-pieces>:
+amount-pieces:
     The granularity of fungibility of a single token in decimal places.
-<session-id>:
+session:
      The value returned from the accounts/login API call.
-pin=<pin-number>
+pin:
      The input value used on the accounts/create API call.
 
 Return value JSON object:
@@ -39,7 +39,7 @@ Return value JSON object:
 
 Output parameter descritpion:
 
-<register-address>:
+address:
     The address used for the register. Any address references in other token
     API calls use this address.    
 
@@ -57,7 +57,7 @@ name=<name>
 
 Input parameter descritpion:
         
-<name>:
+name:
     Is an API caller's selected name for the object register.
 
 Return value JSON object:
@@ -69,7 +69,7 @@ Return value JSON object:
 
 Output parameter descritpion:
 
-<register-address>:
+address:
     The address used for the register. Any address references in other token
     API calls use this address.    
 
