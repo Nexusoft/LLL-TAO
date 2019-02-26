@@ -45,8 +45,6 @@ namespace LLP
     template <class ProtocolType>
     class Server
     {
-
-
     private:
         /* The DDOS variables. */
         std::map<BaseAddress, DDOS_Filter *> DDOS_MAP;

@@ -969,11 +969,12 @@ namespace LLP
 
             debug::log(0, FUNCTION, "processing ORPHAN prev=", orphan.GetHash().ToString().substr(0, 20), " size=", mapLegacyOrphans.size());
 
+            uint1024_t hashOrphan = hash;
             if(!orphan.Accept())
                 return true;
 
-            mapLegacyOrphans.erase(hash);
             hash = orphan.GetHash();
+            mapLegacyOrphans.erase(hashOrphan);
         }
 
         return true;
