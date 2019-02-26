@@ -17,12 +17,31 @@ session=<session-id>
 pin=<pin-number>
 ```
 
+Input parameter descritpion:
+        
+<name>:
+    Is an API caller's selected name for the object register.
+<supply-count>:
+    The initial token supply count.
+<supply-count-pieces>:
+    The granularity of fungibility of a single token in decimal places.
+<session-id>:
+     The value returned from the accounts/login API call.
+pin=<pin-number>
+     The input value used on the accounts/create API call.
+
 Return value JSON object:
 ```    
 {
     "address" : "<register-address>"
 }    
 ```
+
+Output parameter descritpion:
+
+<register-address>:
+    The address used for the register. Any address references in other token
+    API calls use this address.    
 
 ### Get Address
 
@@ -36,12 +55,23 @@ Get a previous created object register address by name.
 name=<name>
 ```
 
+Input parameter descritpion:
+        
+<name>:
+    Is an API caller's selected name for the object register.
+
 Return value JSON object:
 ```
 {
     "address": "<register-address>"
 }
 ```
+
+Output parameter descritpion:
+
+<register-address>:
+    The address used for the register. Any address references in other token
+    API calls use this address.    
 
 ### Get Data
 
