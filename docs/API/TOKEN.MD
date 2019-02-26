@@ -15,10 +15,8 @@ amount=<supply-count>
 amount-pieces=<supply-count-divisor>
 session=<session-id>
 pin=<pin-number>
-```
 
 Input parameter descritpion:
-        
 name:
     Is an API caller's selected name for the object register.
 amount:
@@ -29,20 +27,20 @@ session:
      The value returned from the accounts/login API call.
 pin:
      The input value used on the accounts/create API call.
-
+```
+    
 Return value JSON object:
 ```    
 {
     "address" : "<register-address>"
 }    
-```
 
 Output parameter descritpion:
-
 address:
     The address used for the register. Any address references in other token
     API calls use this address.    
-
+```
+    
 ### Get Address
 
 Get a previous created object register address by name.
