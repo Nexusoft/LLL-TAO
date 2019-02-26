@@ -36,7 +36,7 @@ Return value JSON object:
 }    
 
 Output parameter descritpion:
-address:
+<register-address>:
     The address used for the register. Any address references in other token
     API calls use this address.    
 ```
@@ -89,7 +89,8 @@ Input parameter descritpion:
 <address>:
     A token object register address returned from the token/create API call.
 <txid>:
-    A transaction-id obtained from token API return parameters or out of band.```
+    A transaction-id obtained from token API return parameters or out of band.
+```
 
 Return value JSON object:
 ```
