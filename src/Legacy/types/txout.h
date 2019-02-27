@@ -53,7 +53,7 @@ namespace Legacy
 		 **/
 		TxOut()
 		{
-			SetNull();
+				SetNull();
 		}
 
 
@@ -65,8 +65,14 @@ namespace Legacy
 		 **/
 		TxOut(int64_t nValueIn, Script scriptPubKeyIn)
 		{
-			nValue = nValueIn;
-			scriptPubKey = scriptPubKeyIn;
+				nValue = nValueIn;
+				scriptPubKey = scriptPubKeyIn;
+		}
+
+
+		/** Destructor **/
+		~TxOut()
+		{
 		}
 
 

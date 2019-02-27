@@ -58,7 +58,6 @@ namespace Legacy
         : wallet(*pWalletIn)
         , nPoolIndex(-1)
         , vchPubKey()
-
         { }
 
 

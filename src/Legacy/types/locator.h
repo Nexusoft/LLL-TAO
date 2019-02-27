@@ -86,6 +86,12 @@ namespace Legacy
         }
 
 
+        /** Destructor **/
+        ~Locator()
+        {
+        }
+
+
         /** Set Null
          *
          *  Set the object to null.

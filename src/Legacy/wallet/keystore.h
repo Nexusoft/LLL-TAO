@@ -37,12 +37,15 @@ namespace Legacy
     class KeyStore
     {
     public:
-        /** Virtual destructor
+
+        /** Virtual Destructor
          *
          *  Supports dynamic allocation of objects in inheritance hierarchy.
          *
          **/
-        virtual ~KeyStore() = default;
+        virtual ~KeyStore()
+        {
+        };
 
 
         /** AddKey

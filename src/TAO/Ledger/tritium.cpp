@@ -39,6 +39,26 @@ namespace TAO
     namespace Ledger
     {
 
+        /** The default constructor. **/
+        TritiumBlock::TritiumBlock()
+        : Block()
+        , producer()
+        , vtx()
+        {
+            SetNull();
+        }
+
+
+        /** Copy Constructor. **/
+        TritiumBlock::TritiumBlock(const TritiumBlock& block)
+        : Block(block)
+        , producer(block.producer)
+        , vtx(block.vtx)
+        {
+
+        }
+
+
         /** Copy Constructor. **/
         TritiumBlock::TritiumBlock(const BlockState& state)
         : Block(state)
@@ -51,6 +71,23 @@ namespace TAO
             if(!LLD::legDB->ReadTx(state.vtx[0].second, producer))
                 debug::error(FUNCTION, "failed to read producer");
         }
+
+
+        /** Default Destructor **/
+        TritiumBlock::~TritiumBlock()
+        {
+        }
+
+
+        /*  Set the block to Null state. */
+        void TritiumBlock::SetNull()
+        {
+            Block::SetNull();
+
+            vtx.clear();
+            producer = Transaction();
+        }
+
 
         /* For debugging Purposes seeing block state data dump */
         std::string TritiumBlock::ToString() const
@@ -106,8 +143,8 @@ namespace TAO
 
 
             /* Check the Proof of Work Claims. */
-            //if (IsProofOfWork() && !VerifyWork())
-            //    return debug::error(FUNCTION, "invalid proof of work");
+            if (IsProofOfWork() && !VerifyWork())
+               return debug::error(FUNCTION, "invalid proof of work");
 
 
             /* Check the Network Launch Time-Lock. */

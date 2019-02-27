@@ -28,9 +28,6 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    /* Initialize static variables */
-    std::mutex KeyPool::cs_keyPool;
-
 
     /*  Clears any existing keys in the pool and the wallet database
      *  and generates a completely new key set.
@@ -45,7 +42,7 @@ namespace Legacy
 
             WalletDB walletdb(poolWallet.GetWalletFile());
 
-            LOCK(KeyPool::cs_keyPool);
+            LOCK(cs_keyPool);
 
             /* Remove all entries for old key pool from database */
             if (setKeyPool.size() > 0)
@@ -86,7 +83,7 @@ namespace Legacy
 
         if (poolWallet.IsFileBacked())
         {
-            LOCK(KeyPool::cs_keyPool);
+            LOCK(cs_keyPool);
 
             /* Current key pool size */
             uint64_t nStartingSize = setKeyPool.size();
@@ -145,7 +142,7 @@ namespace Legacy
     {
         if (poolWallet.IsFileBacked())
         {
-            LOCK(KeyPool::cs_keyPool);
+            LOCK(cs_keyPool);
 
             WalletDB walletdb(poolWallet.GetWalletFile());
 
@@ -174,7 +171,7 @@ namespace Legacy
     {
         uint64_t nPoolIndex = 0;
         KeyPoolEntry keypoolEntry;
-            
+
         /* Attempt to reserve a key from the key pool */
         ReserveKeyFromPool(nPoolIndex, keypoolEntry);
 
@@ -200,7 +197,7 @@ namespace Legacy
         KeepKey(nPoolIndex);
 
         key = keypoolEntry.vchPubKey;
-        
+
         return true;
     }
 
@@ -221,7 +218,7 @@ namespace Legacy
             if(setKeyPool.empty())
                 return;
 
-            LOCK(KeyPool::cs_keyPool);
+            LOCK(cs_keyPool);
 
             WalletDB walletdb(poolWallet.GetWalletFile());
 
@@ -256,7 +253,7 @@ namespace Legacy
     {
         if (poolWallet.IsFileBacked())
         {
-            LOCK(KeyPool::cs_keyPool);
+            LOCK(cs_keyPool);
 
             /* Remove from key pool */
             WalletDB walletdb(poolWallet.GetWalletFile());
@@ -275,7 +272,7 @@ namespace Legacy
     {
         if (poolWallet.IsFileBacked())
         {
-            LOCK(KeyPool::cs_keyPool);
+            LOCK(cs_keyPool);
 
             setKeyPool.insert(nPoolIndex);
         }

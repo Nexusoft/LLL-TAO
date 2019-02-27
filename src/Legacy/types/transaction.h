@@ -84,7 +84,7 @@ namespace Legacy
 		}
 
 		/** Default destructor. **/
-		~Transaction() {}
+		virtual ~Transaction() {}
 
 
 		/** Comparison overload (equals). **/

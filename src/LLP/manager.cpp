@@ -504,7 +504,7 @@ namespace LLP
     /*  Returns the total number of addresses currently banned. */
     uint32_t AddressManager::ban_count()
     {
-      return static_cast<uint32_t>(mapBanned.size());
+        return static_cast<uint32_t>(mapBanned.size());
     }
 
 

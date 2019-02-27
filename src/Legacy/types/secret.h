@@ -42,6 +42,12 @@ namespace Legacy
         NexusSecret(const LLC::CSecret& vchSecret, bool fCompressed);
 
 
+        /** Destructor **/
+        virtual ~NexusSecret()
+        {
+        }
+
+
         /** SetSecret
          *
          *  Sets from a CSecret phrase (byte vector in secure allocator)

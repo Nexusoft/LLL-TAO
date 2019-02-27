@@ -21,9 +21,9 @@ ________________________________________________________________________________
 
 #include <Util/include/allocators.h>
 
-namespace Legacy 
+namespace Legacy
 {
-    
+
     const uint32_t WALLET_CRYPTO_KEY_SIZE = 72;
     const uint32_t WALLET_CRYPTO_SALT_SIZE = 18;
 
@@ -32,7 +32,7 @@ namespace Legacy
 
     /** @class Crypter
      *
-     * Encryption/decryption context with key information 
+     * Encryption/decryption context with key information
      *
      **/
     class Crypter
@@ -54,7 +54,8 @@ namespace Legacy
          *  Initializes fKeySet = false
          *
          **/
-        Crypter() : fKeySet(false)
+        Crypter()
+        : fKeySet(false)
         {
         }
 
@@ -127,7 +128,7 @@ namespace Legacy
 
         /** CleanKey
          *
-         *  Clear the current encryption key from memory. 
+         *  Clear the current encryption key from memory.
          *
          **/
         void CleanKey();
@@ -167,7 +168,7 @@ namespace Legacy
 
     /** @fn EncryptSecret
      *
-     *  Function to encrypt a private key using a master key and IV pair. 
+     *  Function to encrypt a private key using a master key and IV pair.
      *  Creates a Crypter instance and assigns the key context to perform the actual encryption.
      *
      *  @param[in] vMasterKey The encryption key to use for encryption
@@ -186,7 +187,7 @@ namespace Legacy
 
     /** @fn DecryptSecret
      *
-     *  Function to encrypt a private key using a master key and IV pair. 
+     *  Function to encrypt a private key using a master key and IV pair.
      *  Creates a Crypter instance and assigns the key context to perform the actual decryption.
      *
      *  @param[in] vMasterKey The encryption key to use for encryption
