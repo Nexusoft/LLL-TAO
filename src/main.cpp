@@ -59,15 +59,93 @@ ________________________________________________________________________________
 #include <sys/stat.h>
 #endif
 
-/* Declare the Global LLP Instances. */
+
 namespace LLP
 {
+    /* Declare the Global LLP Instances. */
     Server<TritiumNode>* TRITIUM_SERVER;
     Server<LegacyNode> * LEGACY_SERVER;
     Server<TimeNode>   * TIME_SERVER;
+
+
+    /** CreateMiningServer
+     *
+     *  Helper for creating Mining Servers.
+     *
+     *  @return Returns a templated mining server.
+     *
+     **/
+    template <class ProtocolType>
+    Server<ProtocolType> *CreateMiningServer()
+    {
+        return new Server<ProtocolType>(
+            config::GetArg("-miningport", config::fTestNet ? 8325 : 9325),
+            config::GetArg("-threads", 10),
+            30,
+            false,
+            0,
+            0,
+            60,
+            config::GetBoolArg("-listen", true),
+            false,
+            false);
+    }
+
+
+    /** Create_TAO_Server
+     *
+     *  Helper for creating Legacy/Tritium Servers.
+     *
+     *  we can change the name of this if we want since Legacy is not a part of
+     *  the TAO framework. I just think it's a future proof name :)
+     *
+     *  @param[in] port The unique port for the server type
+     *
+     *  @return Returns a templated server.
+     *
+     **/
+    template <class ProtocolType>
+    Server<ProtocolType> *Create_TAO_Server(uint16_t port)
+    {
+        return new Server<ProtocolType>(
+            port,
+            config::GetArg("-threads", 10),
+            config::GetArg("-timeout", 30),
+            config::GetBoolArg("-ddos", false),
+            config::GetArg("-cscore", 1),
+            config::GetArg("-rscore", 50),
+            config::GetArg("-timespan", 60),
+            config::GetBoolArg("-listen", true),
+            config::GetBoolArg("-meters", false),
+            config::GetBoolArg("-manager", true));
+    }
+
+
+    /** ShutdownServer
+     *
+     *  Performs a shutdown and cleanup of resources on a server if it exists.
+     *
+     *  pServer The potential server.
+     *
+     **/
+    template <class ProtocolType>
+    void ShutdownServer(Server<ProtocolType> *pServer)
+    {
+        if(pServer)
+        {
+            debug::log(0, FUNCTION, "Shutting down ", ProtocolType::Name(), " Server");
+
+            pServer->Shutdown();
+            delete pServer;
+        }
+    }
 }
 
-/* Daemonize by forking the parent process*/
+/** Daemonize
+ *
+ *  Daemonize by forking the parent process
+ *
+ **/
 void Daemonize()
 {
  #if !defined(WIN32) && !defined(QT_GUI) && !defined(NO_DAEMON)
@@ -256,23 +334,11 @@ int main(int argc, char** argv)
     /** Handle the beta server. */
     if(!config::GetBoolArg("-beta"))
     {
-        /** Get the port for Tritium Server. **/
+        /* Get the port for Tritium Server. */
         port = static_cast<uint16_t>(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
 
-
         /* Initialize the Tritium Server. */
-        LLP::TRITIUM_SERVER = new LLP::Server<LLP::TritiumNode>(
-            port,
-            config::GetArg("-threads", 10),
-            config::GetArg("-timeout", 30),
-            config::GetBoolArg("-ddos", false),
-            config::GetArg("-cscore", 1),
-            config::GetArg("-rscore", 50),
-            config::GetArg("-timespan", 60),
-            config::GetBoolArg("-listen", true),
-            config::GetBoolArg("-meters", false),
-            config::GetBoolArg("-manager", true));
-
+        LLP::TRITIUM_SERVER = LLP::Create_TAO_Server<LLP::TritiumNode>(port);
 
         /* -connect means  try to establish a connection */
         if(config::mapMultiArgs["-connect"].size() > 0)
@@ -287,33 +353,23 @@ int main(int argc, char** argv)
             for(const auto& node : config::mapMultiArgs["-addnode"])
                 LLP::TRITIUM_SERVER->AddNode(node, port);
         }
-
     }
-    /* Initialize the Legacy Server. */
     else
     {
+        /* Get the port for Legacy Server. */
         port = static_cast<uint16_t>(config::GetArg("-port", config::fTestNet ? 8323 : 9323));
 
-        LLP::LEGACY_SERVER = new LLP::Server<LLP::LegacyNode>(
-            port,
-            config::GetArg("-threads", 10),
-            config::GetArg("-timeout", 30),
-            config::GetBoolArg("-ddos", false),
-            config::GetArg("-cscore", 1),
-            config::GetArg("-rscore", 50),
-            config::GetArg("-timespan", 60),
-            config::GetBoolArg("-listen", true),
-            config::GetBoolArg("-meters", false),
-            config::GetBoolArg("-manager", true));
+        /* Initialize the Legacy Server. */
+        LLP::LEGACY_SERVER = LLP::Create_TAO_Server<LLP::LegacyNode>(port);
 
-        /* -connect means  try to establish a connection */
+        /* -connect means  try to establish a connection. */
         if(config::mapMultiArgs["-connect"].size() > 0)
         {
             for(const auto& node : config::mapMultiArgs["-connect"])
                 LLP::LEGACY_SERVER->AddConnection(node, port);
         }
 
-        /* -addnode means add to address manager */
+        /* -addnode means add to address manager. */
         if(config::mapMultiArgs["-addnode"].size() > 0)
         {
             for(const auto& node : config::mapMultiArgs["-addnode"])
@@ -352,33 +408,12 @@ int main(int argc, char** argv)
 
 
     /* Set up Mining Server */
-    if(config::GetBoolArg("-mining") && config::GetBoolArg("-beta"))
+    if(config::GetBoolArg("-mining"))
     {
-        LEGACY_MINING_SERVER = new LLP::Server<LLP::LegacyMiner>(
-            config::GetArg("-miningport", config::fTestNet ? 8325 : 9325),
-            10,
-            30,
-            false,
-            0,
-            0,
-            60,
-            config::GetBoolArg("-listen", true),
-            false,
-            false);
-    }
-    else if(config::GetBoolArg("-mining") )
-    {
-        TRITIUM_MINING_SERVER = new LLP::Server<LLP::TritiumMiner>(
-            config::GetArg("-miningport", config::fTestNet ? 8325 : 9325),
-            10,
-            30,
-            false,
-            0,
-            0,
-            60,
-            config::GetBoolArg("-listen", true),
-            false,
-            false);
+      if(config::GetBoolArg("-beta"))
+          LEGACY_MINING_SERVER  = LLP::CreateMiningServer<LLP::LegacyMiner>();
+      else
+          TRITIUM_MINING_SERVER = LLP::CreateMiningServer<LLP::TritiumMiner>();
     }
 
 
@@ -433,79 +468,29 @@ int main(int argc, char** argv)
     /* Stop stake minter if it is running (before server shutdown). */
     Legacy::StakeMinter::GetInstance().StopStakeMinter();
 
+    /* Shutdown the time server and its subsystems. */
+    LLP::ShutdownServer<LLP::TimeNode>(LLP::TIME_SERVER);
 
-    /* Shutdown the tritium server and its subsystems */
-    if(LLP::TIME_SERVER)
-    {
-        debug::log(0, FUNCTION, "Shutting down Time Server");
+    /* Shutdown the tritium server and its subsystems. */
+    LLP::ShutdownServer<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
 
-        LLP::TIME_SERVER->Shutdown();
+    /* Shutdown the legacy server and its subsystems. */
+    LLP::ShutdownServer<LLP::LegacyNode>(LLP::LEGACY_SERVER);
 
-        delete LLP::TIME_SERVER;
-    }
+    /* Shutdown the core API server and its subsystems. */
+    LLP::ShutdownServer<LLP::CoreNode>(CORE_SERVER);
 
+    /* Shutdown the RPC server and its subsystems. */
+    LLP::ShutdownServer<LLP::RPCNode>(RPC_SERVER);
 
-    /* Shutdown the tritium server and its subsystems */
-    if(LLP::TRITIUM_SERVER)
-    {
-        debug::log(0, FUNCTION, "Shutting down Tritium Server");
+    /* Shutdown the legacy mining server and its subsystems. */
+    LLP::ShutdownServer<LLP::LegacyMiner>(LEGACY_MINING_SERVER);
 
-        LLP::TRITIUM_SERVER->Shutdown();
-        delete LLP::TRITIUM_SERVER;
-    }
-
-
-    /* Shutdown the legacy server and its subsystems */
-    if(LLP::LEGACY_SERVER)
-    {
-        debug::log(0, FUNCTION, "Shutting down Legacy Server");
-
-        LLP::LEGACY_SERVER->Shutdown();
-        delete LLP::LEGACY_SERVER;
-    }
-
-
-    /* Shutdown the core API server and its subsystems */
-    if(CORE_SERVER)
-    {
-        debug::log(0, FUNCTION, "Shutting down API Server");
-
-        CORE_SERVER->Shutdown();
-        delete CORE_SERVER;
-    }
-
-
-    /* Shutdown the RPC server and its subsystems */
-    if(RPC_SERVER)
-    {
-        debug::log(0, FUNCTION, "Shutting down RPC Server");
-
-        RPC_SERVER->Shutdown();
-        delete RPC_SERVER;
-    }
-
-
-    /* Shutdown the mining server and its subsystems */
-    if(LEGACY_MINING_SERVER)
-    {
-        debug::log(0, FUNCTION, "Shutting down Mining Server");
-
-        LEGACY_MINING_SERVER->Shutdown();
-        delete LEGACY_MINING_SERVER;
-    }
-
-    if(TRITIUM_MINING_SERVER)
-    {
-        debug::log(0, FUNCTION, "Shutting down Mining Server");
-
-        TRITIUM_MINING_SERVER->Shutdown();
-        delete TRITIUM_MINING_SERVER;
-    }
-
+    /* Shutdown the tritium mining server and its subsystems. */
+    LLP::ShutdownServer<LLP::TritiumMiner>(TRITIUM_MINING_SERVER);
 
     /** After all servers shut down, clean up underlying networking resources **/
     LLP::NetworkShutdown();
-
 
     /* Cleanup the ledger database. */
     if(LLD::legDB)
