@@ -147,8 +147,9 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::Shutdown()
     {
-        if(pAddressManager)
-          pAddressManager->WriteDatabase();
+        /* DEPRECATED. address write to database on update, not shutdown. */
+        //if(pAddressManager)
+        //  pAddressManager->WriteDatabase();
     }
 
 
