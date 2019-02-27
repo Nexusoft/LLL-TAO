@@ -593,7 +593,12 @@ namespace Legacy
                 debug::log(0, FUNCTION, "Relaying wtx ", hash.ToString().substr(0,10));
 
                 std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX_LEGACY) };
-                LLP::LEGACY_SERVER->Relay("inv", vInv);
+                
+                if( LLP::LEGACY_SERVER)
+                    LLP::LEGACY_SERVER->Relay("inv", vInv);
+                
+                if( LLP::TRITIUM_SERVER)
+                    LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
 
                 //Add to the memory pool
                 TAO::Ledger::mempool.Accept((Transaction)*this);

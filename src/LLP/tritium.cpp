@@ -696,7 +696,7 @@ namespace LLP
                                 Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
 
                                 std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX_LEGACY) };
-                                LEGACY_SERVER->Relay("inv", vInv);
+                                TRITIUM_SERVER->Relay(DAT_INVENTORY, vInv);
                             }
                             else
                             {
