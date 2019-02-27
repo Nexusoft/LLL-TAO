@@ -842,7 +842,7 @@ namespace LLP
     {
         LOCK(PROCESSING_MUTEX);
 
-        mapTest.emplace(block.GetHash(), block.Clone());
+        mapTest.insert(std::make_pair(block.GetHash(), block.Clone()));
         debug::log(3, FUNCTION, "Checking block type in test map: ", mapTest[block.GetHash()]->ToString());
 
         /* Check if the block is valid. */
@@ -900,7 +900,7 @@ namespace LLP
 
             /* Skip if already in orphan queue. */
             if(!mapOrphans.count(block.hashPrevBlock))
-                mapOrphans.emplace(block.hashPrevBlock, block.Clone());
+                mapOrphans.insert(std::make_pair(block.hashPrevBlock, block.Clone()));
 
             /* Debug output. */
             debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
