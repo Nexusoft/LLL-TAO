@@ -271,7 +271,7 @@ namespace LLP
          *  @return True is no errors, false otherwise.
          *
          **/
-        static bool Process(const TAO::Ledger::TritiumBlock& block, TritiumNode* pnode);
+        static bool Process(const TAO::Ledger::Block& block, TritiumNode* pnode);
 
 
         /** NewMessage

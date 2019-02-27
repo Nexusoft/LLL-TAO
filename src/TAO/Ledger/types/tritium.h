@@ -130,7 +130,7 @@ namespace TAO
              *  Check a tritium block for consistency.
              *
              **/
-            bool Check() const;
+            bool Check() const override;
 
 
             /** Accept
@@ -138,7 +138,7 @@ namespace TAO
              *  Accept a tritium block with chain state parameters.
              *
              **/
-            bool Accept() const;
+            bool Accept() const override;
 
 
             /** CheckStake

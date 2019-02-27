@@ -588,7 +588,7 @@ namespace LLP
             if(config::GetBoolArg("-fastsync")
             && addrFastSync == GetAddress()
             && TAO::Ledger::ChainState::Synchronizing()
-            && vInv.back().GetType() == MSG_BLOCK
+            && vInv.back().GetType() == MSG_BLOCK_LEGACY
             && vInv.size() > 100) //an assumption that a getblocks batch will be at least 100 blocks or more.
             {
                 /* Normal case of asking for a getblocks inventory message. */
@@ -606,7 +606,7 @@ namespace LLP
                 for(const auto& inv : vInv)
                 {
                     /* If this is a block type, only request if not in database. */
-                    if(inv.GetType() == MSG_BLOCK)
+                    if(inv.GetType() == MSG_BLOCK_LEGACY)
                     {
                         /* Check the LLD for block. */
                         if(!cacheInventory.Has(inv.GetHash())
@@ -674,7 +674,7 @@ namespace LLP
                 debug::log(3, FUNCTION, "received getdata ", inv.ToString());
 
                 /* Handle the block message. */
-                if (inv.GetType() == LLP::MSG_BLOCK)
+                if (inv.GetType() == LLP::MSG_BLOCK_LEGACY)
                 {
                     /* Don't send genesis if asked for. */
                     if(inv.GetHash() == TAO::Ledger::ChainState::Genesis())
@@ -691,7 +691,7 @@ namespace LLP
                     /* Check that all transactions were included. */
                     if(block.vtx.size() != state.vtx.size())
                     {
-                        std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain.load(), LLP::MSG_BLOCK) };
+                        std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain.load(), LLP::MSG_BLOCK_LEGACY) };
                         PushMessage("inv", vInv);
                         hashContinue = 0;
 
@@ -704,7 +704,7 @@ namespace LLP
                     /* Trigger a new getblocks if hash continue is set. */
                     if (inv.GetHash() == hashContinue)
                     {
-                        std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain.load(), LLP::MSG_BLOCK) };
+                        std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain.load(), LLP::MSG_BLOCK_LEGACY) };
                         PushMessage("inv", vInv);
                         hashContinue = 0;
                     }
@@ -763,13 +763,13 @@ namespace LLP
 
                     /* Tell about latest block if hash stop is found. */
                     if (hashStop != TAO::Ledger::ChainState::hashBestChain.load())
-                        vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), MSG_BLOCK));
+                        vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), MSG_BLOCK_LEGACY));
 
                     break;
                 }
 
                 /* Push new item to inventory. */
-                vInv.push_back(CInv(state.GetHash(), MSG_BLOCK));
+                vInv.push_back(CInv(state.GetHash(), MSG_BLOCK_LEGACY));
 
                 /* Stop at limits. */
                 if (--nLimit <= 0)

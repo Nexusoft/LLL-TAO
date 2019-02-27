@@ -133,6 +133,21 @@ namespace TAO
              **/
             virtual void SetNull();
 
+            /** Check
+             *
+             *  Check a block for consistency.
+             *
+             **/
+            virtual bool Check() const { /* no implementation in base class*/ return true;}
+
+
+            /** Accept
+             *
+             *  Accept a block with chain state parameters.
+             *
+             **/
+            virtual bool Accept() const { /* no implementation in base class*/ return true;}
+
 
             /** SetChannel
              *

@@ -103,7 +103,7 @@ namespace Legacy
          *  Check a legacy block for consistency.
          *
          **/
-        bool Check() const;
+        bool Check() const override;
 
 
         /** Accept
@@ -111,7 +111,7 @@ namespace Legacy
          *  Accept a legacy block with chain state parameters.
          *
          **/
-        bool Accept() const;
+        bool Accept() const override;
 
 
         /** Verify Stake

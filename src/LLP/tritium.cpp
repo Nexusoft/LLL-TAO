@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 
 #include <TAO/Operation/include/execute.h>
-
+#include <Legacy/wallet/wallet.h>
 #include <LLC/include/random.h>
 
 #include <LLD/include/global.h>
@@ -37,7 +37,7 @@ namespace
     std::atomic<uint32_t> nAsked(0);
 
     /* Static instantiation of orphan blocks in queue to process. */
-    std::map<uint1024_t, TAO::Ledger::TritiumBlock> mapOrphans;
+    std::map<uint1024_t, TAO::Ledger::Block> mapOrphans;
 
     /* Mutex to protect checking more than one block at a time. */
     std::mutex PROCESSING_MUTEX;
@@ -346,10 +346,12 @@ namespace LLP
 
                     /* Iterate forward the blocks required. */
                     std::vector<CInv> vInv;
+                    bool fIsLegacy = false;
                     while(!config::fShutdown.load())
                     {
                         /* Iterate to next state. */
                         state = state.Next();
+                        fIsLegacy = state.vtx[0].first == TAO::Ledger::TYPE::LEGACY_TX;
 
                         /* Check for hash stop. */
                         if (state.GetHash() == hashStop)
@@ -364,7 +366,7 @@ namespace LLP
                                     vInv.push_back(CInv(tx.second, tx.first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM)); 
 
                                 /* lastly add the block hash */
-                                vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), MSG_BLOCK));
+                                vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), fIsLegacy ? MSG_BLOCK_LEGACY : MSG_BLOCK_TRITIUM));
                             }
                                 
 
@@ -377,7 +379,7 @@ namespace LLP
                             vInv.push_back(CInv(tx.second, tx.first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM));
                         
                         /* lastly add the block hash */
-                        vInv.push_back(CInv(state.GetHash(), MSG_BLOCK));
+                        vInv.push_back(CInv(state.GetHash(), fIsLegacy ? MSG_BLOCK_LEGACY : MSG_BLOCK_TRITIUM));
 
                         /* Stop at limits. */
                         if (--nLimit <= 0)
@@ -420,7 +422,7 @@ namespace LLP
                     if(config::GetBoolArg("-fastsync")
                     && addrFastSync == GetAddress()
                     && TAO::Ledger::ChainState::Synchronizing()
-                    && vInv.back().GetType() == MSG_BLOCK
+                    && (vInv.back().GetType() == MSG_BLOCK_LEGACY || vInv.back().GetType() == MSG_BLOCK_TRITIUM )
                     && vInv.size() > 100) //an assumption that a getblocks batch will be at least 100 blocks or more.
                     {
                         /* Normal case of asking for a getblocks inventory message. */
@@ -439,7 +441,7 @@ namespace LLP
                         for(const auto& inv : vInv)
                         {
                             /* If this is a block type, only request if not in database. */
-                            if(inv.GetType() == MSG_BLOCK)
+                            if(inv.GetType() == MSG_BLOCK_LEGACY || inv.GetType() == MSG_BLOCK_TRITIUM)
                             {
                                 /* Check the LLD for block. */
                                 if(!cacheInventory.Has(inv.GetHash())
@@ -495,15 +497,17 @@ namespace LLP
                         return true;
                     }
 
+                    debug::log(3, FUNCTION, "received getdata of ", vInv.size(), " elements");
+
                     /* Loop the inventory and deliver messages. */
                     for(const auto& inv : vInv)
                     {
 
                         /* Log the inventory message receive. */
-                        debug::log(3, FUNCTION, "received getdata ", inv.ToString());
+                        debug::log(3, FUNCTION, "processing getdata ", inv.ToString());
 
                         /* Handle the block message. */
-                        if (inv.GetType() == LLP::MSG_BLOCK)
+                        if (inv.GetType() == MSG_BLOCK_LEGACY || inv.GetType() == MSG_BLOCK_TRITIUM)
                         {
                             /* Don't send genesis if asked for. */
                             if(inv.GetHash() == TAO::Ledger::ChainState::Genesis())
@@ -514,26 +518,24 @@ namespace LLP
                             if(!LLD::legDB->ReadBlock(inv.GetHash(), state))
                                 continue;
 
-                            /* Scan each transaction in the block and process those related to this wallet */
-                            Legacy::LegacyBlock block(state);
-
-                            /* Check that all transactions were included. */
-                            if(block.vtx.size() != state.vtx.size())
-                            {
-                                std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain.load(), LLP::MSG_BLOCK) };
-                                PushMessage(GET_INVENTORY, vInv);
-                                hashContinue = 0;
-
-                                return true;
-                            }
-
                             /* Push the response message. */
-                            PushMessage(DAT_BLOCK, block);
+                            if( inv.GetType() == MSG_BLOCK_TRITIUM)
+                            {
+                                TAO::Ledger::TritiumBlock block(state);
+                                PushMessage(DAT_BLOCK, (uint8_t)MSG_BLOCK_TRITIUM, block);
+                            }
+                            else
+                            {
+                                Legacy::LegacyBlock block(state);
+                                PushMessage(DAT_BLOCK, (uint8_t)MSG_BLOCK_LEGACY, block);
+                            }
+                            
 
                             /* Trigger a new getblocks if hash continue is set. */
                             if (inv.GetHash() == hashContinue)
                             {
-                                std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain.load(), LLP::MSG_BLOCK) };
+                                bool fStateBestIsLegacy = TAO::Ledger::ChainState::stateBest.load().vtx[0].first == TAO::Ledger::TYPE::LEGACY_TX;
+                                std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain.load(), fStateBestIsLegacy ? LLP::MSG_BLOCK_LEGACY : MSG_BLOCK_TRITIUM) };
                                 PushMessage(GET_INVENTORY, vInv);
                                 hashContinue = 0;
                             }
@@ -627,6 +629,7 @@ namespace LLP
                     uint8_t type;
                     ssPacket >> type;
 
+                    //PS TODO See if we can't refactor this if...else since most of the code is cloned
                     if(type == LLP::MSG_TX_TRITIUM)
                     {
                         TAO::Ledger::Transaction tx;
@@ -648,7 +651,16 @@ namespace LLP
                             }
 
                             /* Add the transaction to the memory pool. */
-                            TAO::Ledger::mempool.Accept(tx);
+                            if (TAO::Ledger::mempool.Accept(tx))
+                            {
+                                std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX_TRITIUM) };
+                                TRITIUM_SERVER->Relay(DAT_INVENTORY, vInv);
+                            }
+                            else
+                            {
+                                /* Give this item a time penalty in the relay cache to make it ignored from here forward. */
+                                cacheInventory.Ban(tx.GetHash());
+                            }
                         }
 
                         /* Debug output for offsets. */
@@ -675,7 +687,19 @@ namespace LLP
                             }
 
                             /* Add the transaction to the memory pool. */
-                            TAO::Ledger::mempool.Accept(tx);
+                            if (TAO::Ledger::mempool.Accept(tx))
+                            {
+                                TAO::Ledger::BlockState notUsed;
+                                Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
+
+                                std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX_LEGACY) };
+                                LEGACY_SERVER->Relay("inv", vInv);
+                            }
+                            else
+                            {
+                                /* Give this item a time penalty in the relay cache to make it ignored from here forward. */
+                                cacheInventory.Ban(tx.GetHash());
+                            }
                         }
 
                         /* Debug output for offsets. */
@@ -686,15 +710,29 @@ namespace LLP
                 }
                 case DAT_BLOCK:
                 {
+                    uint8_t type;
+                    ssPacket >> type;
 
-                    /* Deserialize the block. */
-                    TAO::Ledger::TritiumBlock block;
-                    ssPacket >> block;
+                    if(type == MSG_BLOCK_LEGACY)
+                    {   
+                        /* Deserialize the block. */
+                        Legacy::LegacyBlock block;
+                        ssPacket >> block;
 
-                    /* Process the block. */
-                    if(!TritiumNode::Process(block, this))
-                        return false;
+                        /* Process the block. */
+                        if(!LegacyNode::Process(block, nullptr))
+                            return false;
+                    }
+                    else if(type == MSG_BLOCK_TRITIUM)
+                    {
+                        /* Deserialize the block. */
+                        TAO::Ledger::TritiumBlock block;
+                        ssPacket >> block;
 
+                        /* Process the block. */
+                        if(!TritiumNode::Process(block, this))
+                            return false;
+                    }
                     return true;
                 }
 
@@ -790,7 +828,7 @@ namespace LLP
         }
 
         /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
-        bool TritiumNode::Process(const TAO::Ledger::TritiumBlock& block, TritiumNode* pnode)
+        bool TritiumNode::Process(const TAO::Ledger::Block& block, TritiumNode* pnode)
         {
             LOCK(PROCESSING_MUTEX);
 
@@ -936,7 +974,7 @@ namespace LLP
             /* Process orphan if found. */
             while(mapOrphans.count(hash))
             {
-                TAO::Ledger::TritiumBlock& orphan = mapOrphans[hash];
+                TAO::Ledger::Block& orphan = mapOrphans[hash];
 
                 debug::log(0, FUNCTION, "processing ORPHAN prev=", orphan.GetHash().ToString().substr(0, 20), " size=", mapOrphans.size());
 
