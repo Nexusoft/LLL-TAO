@@ -1,6 +1,27 @@
 #!/bin/bash
 #
-# Launch Nexus Daemon. Start with seed node in JDC data center.
+# Launch Nexus Daemon. Check to see if nexus data directory needs to be
+# copied from host OS file system.
+#
 #
 cd /nexus
-./nexus -verbose=5 -testnet -threads=10 -private >& /nexus/nexus.log &
+
+if [ ! -f "/root/.TAO/Nexus.pid" ]; then
+    SRC="/hostOS$HOSTOS_HOME/.Nexus_Core_Data_BETA"
+    if [ -d $SRC ]; then
+        echo -n "Copying nexus data directory $SRC -> /root/.TAO ... "
+        cp -r $SRC /root/.TAO/.
+        echo "done"
+    fi
+fi
+
+#
+# Testnet.
+#
+#./nexus -verbose=5 -testnet -threads=10 -private >& /nexus/nexus.log &
+
+#
+# Mainnet.
+#
+./nexus -verbose=5 -beta -server -daemon -threads=10 &
+
