@@ -85,9 +85,14 @@ namespace LLP
                 /* Debut output. */
                 debug::log(1, NODE, " Connected at timestamp ", runtime::unifiedtimestamp());
 
-                /* Send version if making the connection. */
                 if(fOUTGOING)
+                {
+                    /* Send version if making the connection. */
                     PushMessage(DAT_VERSION, TritiumNode::nSessionID, GetAddress());
+
+                    /* Ask the node you are connecting to for their inventory*/
+                    PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                }
 
                 break;
             }
@@ -197,6 +202,30 @@ namespace LLP
                     default:
                         strReason = "UNKNOWN";
                         break;
+                }
+
+                /* Detect if the fast sync node was disconnected. */
+                if(addrFastSync == GetAddress())
+                {
+                    /* Normal case of asking for a getblocks inventory message. */
+                    memory::atomic_ptr<TritiumNode>& pBest = TRITIUM_SERVER->GetConnection(addrFastSync.load());
+
+                    /* Null check the pointer. */
+                    if(pBest != nullptr)
+                    {
+                        try
+                        {
+                            /* Switch to a new node for fast sync. */
+                            pBest->PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+
+                            /* Debug output. */
+                            debug::log(0, NODE, "fast sync node dropped, switching to ", addrFastSync.load().ToStringIP());
+                        }
+                        catch(const std::runtime_error& e)
+                        {
+                            debug::error(FUNCTION, e.what());
+                        }
+                    }
                 }
 
                 /* Print disconnect and reason message */
