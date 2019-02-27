@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #include <Util/include/convert.h>
 #include <Util/include/runtime.h>
 #include <Util/include/string.h>
+#include <Util/include/mutex.h>
+
 #include <cstring>
 #include <string>
 #include <cmath>
@@ -26,6 +28,7 @@ namespace config
     std::map<uint32_t, std::vector<std::string> > mapIPFilters;
 
     std::atomic<bool> fShutdown(false);
+
     bool fDebug = false;
     bool fPrintToConsole = false;
     bool fDaemon = false;
@@ -37,6 +40,8 @@ namespace config
     bool fUseProxy = false;
     bool fAllowDNS = false;
     bool fLogTimestamps = false;
+
+    std::mutex ARGS_MUTEX;
 
     /* Give Opposite Argument Settings */
     void InterpretNegativeSetting(const std::string &name, std::map<std::string, std::string>& mapSettingsRet)
@@ -108,22 +113,30 @@ namespace config
     /* Return string argument or default value */
     std::string GetArg(const std::string& strArg, const std::string& strDefault)
     {
+        LOCK(ARGS_MUTEX);
+
         if (mapArgs.count(strArg))
             return mapArgs[strArg];
+
         return strDefault;
     }
 
     /* Return integer argument or default value */
     int64_t GetArg(const std::string& strArg, int64_t nDefault)
     {
+        LOCK(ARGS_MUTEX);
+
         if (mapArgs.count(strArg))
             return convert::atoi64(mapArgs[strArg]);
+
         return nDefault;
     }
 
     /* Return boolean argument or default value */
     bool GetBoolArg(const std::string& strArg, bool fDefault)
     {
+        LOCK(ARGS_MUTEX);
+
         if (mapArgs.count(strArg))
         {
             if (mapArgs[strArg].empty())
@@ -136,8 +149,11 @@ namespace config
     /* Set an argument if it doesn't already have a value */
     bool SoftSetArg(const std::string& strArg, const std::string& strValue)
     {
+        LOCK(ARGS_MUTEX);
+        
         if (mapArgs.count(strArg))
             return false;
+
         mapArgs[strArg] = strValue;
         return true;
     }
