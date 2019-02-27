@@ -512,8 +512,17 @@ namespace TAO
                     if(LLP::LEGACY_SERVER)
                         LLP::LEGACY_SERVER->Relay("inv", vInv);
                     
+                    /* If using Tritium server then we need to include the blocks transactions in the inventory before the block*/
                     if(LLP::TRITIUM_SERVER)
+                    {
+                        for(const auto& tx : ChainState::stateBest.load().vtx)
+                            vInv.push_back(LLP::CInv(tx.second, tx.first == TAO::Ledger::TYPE::LEGACY_TX ? LLP::MSG_TX_LEGACY : LLP::MSG_TX_TRITIUM));
+
+                        /* We want the block at the end of the inventory so that the transactions are requested first. 
+                           Therefore we rotate the vInv so that the block at the front is moved to the back*/
+                        std::rotate(vInv.begin(), vInv.begin() +1, vInv.end());
                         LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
+                    }
                 }
             }
 
