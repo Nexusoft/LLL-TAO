@@ -128,7 +128,7 @@ namespace LLP
         }
 
         /* Handle a connection close header. */
-        return true;
+        return false;
     }
 
 
