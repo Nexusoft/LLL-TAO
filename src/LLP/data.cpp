@@ -62,6 +62,8 @@ namespace LLP
         DATA_THREAD.join();
 
         DisconnectAll();
+
+        CONNECTIONS.free();
     }
 
 
