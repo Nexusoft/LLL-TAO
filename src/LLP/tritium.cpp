@@ -841,10 +841,7 @@ namespace LLP
     bool TritiumNode::Process(const TAO::Ledger::Block& block, TritiumNode* pnode)
     {
         LOCK(PROCESSING_MUTEX);
-
-        mapTest.insert(std::make_pair(block.GetHash(), block.Clone()));
-        debug::log(3, FUNCTION, "Checking block type in test map: ", mapTest[block.GetHash()]->ToString());
-
+        
         /* Check if the block is valid. */
         uint1024_t hash = block.GetHash();
         if(!block.Check())
@@ -900,7 +897,7 @@ namespace LLP
 
             /* Skip if already in orphan queue. */
             if(!mapOrphans.count(block.hashPrevBlock))
-                mapOrphans.insert(std::make_pair(block.hashPrevBlock, block.Clone()));
+                mapOrphans.insert(std::make_pair(block.hashPrevBlock, std::unique_ptr<TAO::Ledger::Block>(block.Clone())));
 
             /* Debug output. */
             debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
