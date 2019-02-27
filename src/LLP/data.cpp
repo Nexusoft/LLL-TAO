@@ -263,7 +263,9 @@ namespace LLP
                         continue;
 
                     /* Disconnect if there was a polling error */
-                    if((POLLFDS.at(nIndex).revents & POLLERR) || (POLLFDS.at(nIndex).revents & POLLNVAL))
+                    if((POLLFDS.at(nIndex).revents & POLLERR)
+                    || (POLLFDS.at(nIndex).revents & POLLNVAL)
+                    || (POLLFDS.at(nIndex).revents & POLLHUP))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                         continue;
