@@ -361,7 +361,7 @@ namespace LLP
             DataThread<ProtocolType> *dt = DATA_THREADS[index];
 
             /* Limit data threads to 32 connections per thread. */
-            if(dt->nConnections < nConnections && dt->nConnections < 32)
+            if(dt->nConnections < nConnections)
             {
                 nIndex = index;
                 nConnections = dt->nConnections;
