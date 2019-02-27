@@ -18,26 +18,6 @@ ________________________________________________________________________________
 #include <limits>
 #include <LLC/types/uint1024.h>
 
-#ifdef WIN32
-
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0600    //targeting minimum Windows Vista version for winsock2, etc.
-#endif
-
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN 1  //prevents windows.h from including winsock.h and messing up winsock2.h definitions we use
-#endif
-
-#ifndef NOMINMAX
-#define NOMINMAX //prevents windows.h from including min/max and potentially interfering with std::min/std::max
-#endif
-
-#include <windows.h>
-
-#else
-#include <sys/time.h>
-#endif
-
 namespace LLC
 {
 
@@ -46,18 +26,7 @@ namespace LLC
      *  Performance counter wrapper for Random Seed Generating.
      *
      **/
-    inline int64_t GetPerformanceCounter()
-    {
-        int64_t nCounter = 0;
-    #ifdef WIN32
-        QueryPerformanceCounter((LARGE_INTEGER*)&nCounter);
-    #else
-        timeval t;
-        gettimeofday(&t, nullptr);
-        nCounter = t.tv_sec * 1000000 + t.tv_usec;
-    #endif
-        return nCounter;
-    }
+    int64_t GetPerformanceCounter();
 
 
     /** RandAddSeed

@@ -112,8 +112,8 @@ inline std::string FormatMoney(int64_t n, bool fPlus = false, int64_t COIN_SIZE 
     std::string str = debug::strprintf("%" PRI64d ".%06" PRI64d "", quotient, remainder);
 
     // Right-trim excess 0's before the decimal point:
-    int nTrim = 0;
-    for (int i = str.size()-1; (str[i] == '0' && isdigit(str[i-2])); --i)
+    uint64_t nTrim = 0;
+    for (uint64_t i = str.size()-1; (str[i] == '0' && isdigit(str[i-2])); --i)
         ++nTrim;
 
     if (nTrim)

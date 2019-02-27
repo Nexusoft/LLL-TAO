@@ -133,10 +133,10 @@ namespace LLP
     {
         if(pServer)
         {
-            debug::log(0, FUNCTION, "Shutting down ", ProtocolType::Name(), " Server");
-
             pServer->Shutdown();
             delete pServer;
+
+            debug::log(0, FUNCTION, ProtocolType::Name());
         }
     }
 }

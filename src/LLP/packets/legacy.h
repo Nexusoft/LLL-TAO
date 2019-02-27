@@ -133,7 +133,7 @@ namespace LLP
          **/
         bool Complete() const
         {
-            return (Header() && DATA.size() == LENGTH);
+            return (Header() && static_cast<uint32_t>(DATA.size()) == LENGTH);
         }
 
 
@@ -237,7 +237,7 @@ namespace LLP
         void SetData(const DataStream& ssData)
         {
             DATA = std::vector<uint8_t>(ssData.begin(), ssData.end());
-            LENGTH = DATA.size();
+            LENGTH = static_cast<uint32_t>(DATA.size());
 
             SetChecksum();
         }

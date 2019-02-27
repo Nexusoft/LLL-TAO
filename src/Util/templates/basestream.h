@@ -46,7 +46,7 @@ class BaseStream
 protected:
 
     /** The current reading position. **/
-    mutable uint32_t nReadPos;
+    mutable uint64_t nReadPos;
 
 
     /** The operation data vector. **/
@@ -120,7 +120,7 @@ public:
      *  Gets a byte without chainging read pointer.
      *
      **/
-    uint8_t get(uint32_t nPos) const
+    uint8_t get(uint64_t nPos) const
     {
         if(nPos >= vchData.size())
             throw std::runtime_error(debug::safe_printstr(FUNCTION, "get out of bounds ", nPos));
@@ -134,7 +134,7 @@ public:
      *  Gets the size of the stream.
      *
      **/
-    uint32_t size() const
+    uint64_t size() const
     {
         return vchData.size();
     }
@@ -145,7 +145,7 @@ public:
      *  Seeks the read pointer to position.
      *
      **/
-    void seek(uint32_t nSeek, uint8_t nFlags = STREAM::CURSOR) const
+    void seek(uint64_t nSeek, uint8_t nFlags = STREAM::CURSOR) const
     {
         /* Seek from end of stream. */
         if(nFlags == STREAM::CURSOR)

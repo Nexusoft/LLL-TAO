@@ -150,9 +150,9 @@ namespace runtime
         uint32_t Elapsed() const
         {
             if(fStopped)
-                return std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
+                return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count());
 
-            return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - start_time).count();
+            return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - start_time).count());
         }
 
 
@@ -166,9 +166,9 @@ namespace runtime
         uint32_t ElapsedMilliseconds() const
         {
             if(fStopped)
-                return std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+                return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count());
 
-            return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count();
+            return static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count());
         }
 
 

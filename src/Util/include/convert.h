@@ -272,10 +272,10 @@ namespace convert
     inline std::vector<uint8_t> uint2bytes(uint32_t UINT)
     {
         std::vector<uint8_t> BYTES(4, 0);
-        BYTES[0] = UINT >> 24;
-        BYTES[1] = UINT >> 16;
-        BYTES[2] = UINT >> 8;
-        BYTES[3] = UINT;
+        BYTES[0] = static_cast<uint8_t>(UINT >> 24);
+        BYTES[1] = static_cast<uint8_t>(UINT >> 16);
+        BYTES[2] = static_cast<uint8_t>(UINT >> 8);
+        BYTES[3] = static_cast<uint8_t>(UINT);
 
         return BYTES;
     }
@@ -310,10 +310,10 @@ namespace convert
     inline std::vector<uint8_t> int2bytes(int INT)
     {
         std::vector<uint8_t> BYTES(4, 0);
-        BYTES[0] = INT >> 24;
-        BYTES[1] = INT >> 16;
-        BYTES[2] = INT >> 8;
-        BYTES[3] = INT;
+        BYTES[0] = static_cast<uint8_t>(INT >> 24);
+        BYTES[1] = static_cast<uint8_t>(INT >> 16);
+        BYTES[2] = static_cast<uint8_t>(INT >> 8);
+        BYTES[3] = static_cast<uint8_t>(INT);
 
         return BYTES;
     }

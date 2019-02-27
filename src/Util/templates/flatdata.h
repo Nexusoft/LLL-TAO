@@ -92,7 +92,7 @@ public:
      *  @return The number of bytes.
      *
      **/
-    uint32_t GetSerializeSize(uint32_t, uint32_t=0) const
+    uint64_t GetSerializeSize(uint32_t, uint32_t=0) const
     {
         return pend - pbegin;
     }

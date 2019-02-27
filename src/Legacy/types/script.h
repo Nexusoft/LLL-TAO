@@ -446,13 +446,13 @@ namespace Legacy
             else if (b.size() <= 0xffff)
             {
                 insert(end(), OP_PUSHDATA2);
-                uint16_t nSize = b.size();
+                uint16_t nSize = static_cast<uint16_t>(b.size());
                 insert(end(), (uint8_t*)&nSize, (uint8_t*)&nSize + sizeof(nSize));
             }
             else
             {
                 insert(end(), OP_PUSHDATA4);
-                uint32_t nSize = b.size();
+                uint32_t nSize =static_cast<uint32_t>(b.size());
                 insert(end(), (uint8_t*)&nSize, (uint8_t*)&nSize + sizeof(nSize));
             }
             insert(end(), b.begin(), b.end());

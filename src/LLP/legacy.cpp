@@ -67,7 +67,7 @@ namespace LLP
 
 
     /* The fast sync average speed. */
-    std::atomic<uint32_t> LegacyNode::nFastSyncAverage;
+    std::atomic<uint64_t> LegacyNode::nFastSyncAverage;
 
 
     /* The current node that is being used for fast sync */

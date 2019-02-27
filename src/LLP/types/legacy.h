@@ -142,7 +142,7 @@ namespace LLP
 
 
         /** Counter to keep track of the last time a ping was made. **/
-        std::atomic<uint32_t> nLastPing;
+        std::atomic<uint64_t> nLastPing;
 
 
         /** The last getblocks call this node has received. **/
@@ -154,7 +154,7 @@ namespace LLP
 
 
         /** Handle an average calculation of fast sync blocks. */
-        static std::atomic<uint32_t> nFastSyncAverage;
+        static std::atomic<uint64_t> nFastSyncAverage;
 
 
         /** The current node that is being used for fast sync.l **/
@@ -268,7 +268,7 @@ namespace LLP
                     if(Read(DATA, DATA.size()) == DATA.size())
                     {
                         INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
-                        Event(EVENT_PACKET, DATA.size());
+                        Event(EVENT_PACKET, static_cast<uint32_t>(DATA.size()));
                     }
                 }
             }

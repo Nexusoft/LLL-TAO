@@ -337,7 +337,6 @@ namespace LLP
         friend bool operator<(const BaseAddress& a,  const BaseAddress& b);
 
 
-
         /**
          *  Serialization
          *
