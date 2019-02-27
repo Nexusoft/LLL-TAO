@@ -214,7 +214,7 @@ public:
      *  @return Returns a reference to the BaseStream.
      *
      **/
-    const BaseStream& read(char* pch, int nSize) const
+    const BaseStream& read(char* pch, uint64_t nSize) const
     {
         /* Check size constraints. */
         if(nReadPos + nSize > vchData.size())
@@ -238,7 +238,7 @@ public:
      *  @param[in] nSize The total number of bytes to copy.
      *
      **/
-    BaseStream& write(const char* pch, int nSize)
+    BaseStream& write(const char* pch, uint64_t nSize)
     {
         /* Push the obj bytes into the vector. */
         vchData.insert(vchData.end(), (uint8_t*)pch, (uint8_t*)pch + nSize);

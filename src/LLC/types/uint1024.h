@@ -320,7 +320,8 @@ public:
             *p1 = phexdigit[(uint8_t)*psz--];
             if (psz >= pbegin)
             {
-                *p1 |= (phexdigit[(uint8_t)*psz--] << 4);
+                uint32_t tmp = (phexdigit[(uint8_t)*psz--] << 4);
+                *p1 = *p1 | static_cast<uint8_t>(tmp);
                 ++p1;
             }
         }
