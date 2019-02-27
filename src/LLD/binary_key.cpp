@@ -12,6 +12,21 @@ ________________________________________________________________________________
 
 namespace LLD
 {
+    /*  Node to hold the binary data of the double linked list. */
+    struct BinaryKey
+    {
+        BinaryKey* pprev;
+        BinaryKey* pnext;
+
+        /** The binary data of the key. **/
+        std::vector<uint8_t> vKey;
+
+        /** The timestamp of last update. */
+        uint64_t nTimestamp;
+
+        /** Default constructor **/
+        BinaryKey(const std::vector<uint8_t>& vKeyIn);
+    };
 
     /** Default constructor **/
     BinaryKey::BinaryKey(const std::vector<uint8_t>& vKeyIn)

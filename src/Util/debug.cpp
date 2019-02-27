@@ -21,11 +21,13 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/version.h>
 
-#include <string>
 #include <cstdarg>
 #include <cstdio>
 #include <map>
 #include <vector>
+
+#include <iostream>
+#include <iomanip>
 
 #ifndef WIN32
 #include <execinfo.h>
@@ -126,6 +128,50 @@ namespace debug
         }
 
         debug::log(0, ANSI_COLOR_FUNCTION, base, "::", __func__, "()", ANSI_COLOR_RESET, " : ", buffer);
+    }
+
+
+    std::string rfc1123Time()
+    {
+        LOCK(DEBUG_MUTEX); //gmtime and localtime are not thread safe together
+
+        char buffer[64];
+        time_t now;
+        time(&now);
+        struct tm* now_gmt = gmtime(&now);
+        std::string locale(setlocale(LC_TIME, nullptr));
+        setlocale(LC_TIME, "C"); // we want posix (aka "C") weekday/month strings
+        strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S +0000", now_gmt);
+        setlocale(LC_TIME, locale.c_str());
+        return std::string(buffer);
+    }
+
+
+    /*  Writes log output to console and debug file with timestamps.
+     *  Encapsulated log for improved compile time. Not thread safe. */
+    void log_(time_t &timestamp, std::string &debug_str)
+    {
+        /* Dump it to the console. */
+        std::cout << "["
+                  << std::put_time(std::localtime(&timestamp), "%H:%M:%S")
+                  << "."
+                  << std::setfill('0')
+                  << std::setw(3)
+                  << (runtime::timestamp(true) % 1000)
+                  << "] "
+                  << debug_str
+                  << std::endl;
+
+        /* Write it to the debug file. */
+        ssFile    << "["
+                  << std::put_time(std::localtime(&timestamp), "%H:%M:%S")
+                  << "."
+                  << std::setfill('0')
+                  << std::setw(3)
+                  << (runtime::timestamp(true) % 1000)
+                  << "] "
+                  << debug_str
+                  << std::endl;
     }
 
 

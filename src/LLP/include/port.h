@@ -48,8 +48,6 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    /*  */
-
     /** GetCorePort
      *
      *  Get the Main Core LLP Port for Nexus.

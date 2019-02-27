@@ -15,9 +15,8 @@ ________________________________________________________________________________
 #define NEXUS_UTIL_INCLUDE_DEBUG_H
 
 #include <string>
-#include <cinttypes>
-#include <iostream>
-#include <iomanip>
+#include <cstdint>
+#include <iosfwd>
 #include <sstream>
 #include <fstream>
 
@@ -146,12 +145,22 @@ namespace debug
      *
      **/
     template<class... Args>
-    std::string safe_printstr(Args&&... args) {
+    std::string safe_printstr(Args&&... args)
+    {
         std::ostringstream ss;
         print_args(ss, std::forward<Args>(args)...);
 
         return ss.str();
     }
+
+
+    /** log_
+     *
+     *  Writes log output to console and debug file with timestamps.
+     *  Encapsulated log for improved compile time. Not thread safe.
+     *
+     **/
+     void log_(time_t &timestamp, std::string &debug_str);
 
 
     /** log
@@ -179,27 +188,7 @@ namespace debug
         /* Get the timestamp. */
         time_t timestamp = std::time(nullptr);
 
-        /* Dump it to the console. */
-        std::cout << "["
-                  << std::put_time(std::localtime(&timestamp), "%H:%M:%S")
-                  << "."
-                  << std::setfill('0')
-                  << std::setw(3)
-                  << (runtime::timestamp(true) % 1000)
-                  << "] "
-                  << debug
-                  << std::endl;
-
-        /* Write it to the debug file. */
-        ssFile    << "["
-                  << std::put_time(std::localtime(&timestamp), "%H:%M:%S")
-                  << "."
-                  << std::setfill('0')
-                  << std::setw(3)
-                  << (runtime::timestamp(true) % 1000)
-                  << "] "
-                  << debug
-                  << std::endl;
+        log_(timestamp, debug);
     }
 
 
@@ -248,20 +237,7 @@ namespace debug
      *  TODO: This could be cleaned up I'd say.
      *
      **/
-    inline std::string rfc1123Time()
-    {
-        LOCK(DEBUG_MUTEX); //gmtime and localtime are not thread safe together
-
-        char buffer[64];
-        time_t now;
-        time(&now);
-        struct tm* now_gmt = gmtime(&now);
-        std::string locale(setlocale(LC_TIME, nullptr));
-        setlocale(LC_TIME, "C"); // we want posix (aka "C") weekday/month strings
-        strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S +0000", now_gmt);
-        setlocale(LC_TIME, locale.c_str());
-        return std::string(buffer);
-    }
+    std::string rfc1123Time();
 
 
     /** real_strprintf

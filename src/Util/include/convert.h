@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <cstdlib>
 #include <cstdint>
 #include <string>
-#include <iostream>
+#include <iosfwd>
 #include <Util/include/debug.h>
 #include <Util/include/json.h>
 

@@ -27,19 +27,7 @@ namespace LLD
      *  Node to hold the binary data of the double linked list.
      *
      **/
-    struct BinaryNode
-    {
-        BinaryNode* pprev;
-        BinaryNode* pnext;
-
-        std::vector<uint8_t> vKey;
-        std::vector<uint8_t> vData;
-
-        bool fReserve;
-
-        /** Default constructor **/
-        BinaryNode(const std::vector<uint8_t>& vKeyIn, const std::vector<uint8_t>& vDataIn, bool fReserveIn);
-    };
+    struct BinaryNode;
 
 
     /** BinaryLRU
