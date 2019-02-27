@@ -349,7 +349,10 @@ namespace LLP
                     bool fIsLegacy = false;
                     while(!config::fShutdown.load())
                     {
-                        /* Iterate to next state. */
+                        /* Iterate to next state, if there is one */
+                        if( state.hashNextBlock == 0)
+                            break;
+
                         state = state.Next();
                         fIsLegacy = state.vtx[0].first == TAO::Ledger::TYPE::LEGACY_TX;
 
@@ -714,10 +717,12 @@ namespace LLP
                     ssPacket >> type;
 
                     if(type == MSG_BLOCK_LEGACY)
-                    {   
+                    {
                         /* Deserialize the block. */
                         Legacy::LegacyBlock block;
                         ssPacket >> block;
+
+                        debug::log(3, NODE "Received legacy block data ", block.GetHash().ToString().substr(0, 20));
 
                         /* Process the block. */
                         if(!LegacyNode::Process(block, nullptr))
@@ -728,6 +733,8 @@ namespace LLP
                         /* Deserialize the block. */
                         TAO::Ledger::TritiumBlock block;
                         ssPacket >> block;
+
+                        debug::log(3, NODE "Received tritium block data ", block.GetHash().ToString().substr(0, 20));
 
                         /* Process the block. */
                         if(!TritiumNode::Process(block, this))

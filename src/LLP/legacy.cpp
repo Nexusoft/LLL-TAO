@@ -753,8 +753,9 @@ namespace LLP
             std::vector<CInv> vInv;
             while(!config::fShutdown.load())
             {
-                /* Iterate to next state. */
-                state = state.Next();
+                /* Iterate to next state, if there is one */
+                if( state.hashNextBlock == 0)
+                    break;
 
                 /* Check for hash stop. */
                 if (state.GetHash() == hashStop)
