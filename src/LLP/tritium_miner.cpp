@@ -28,6 +28,8 @@ ________________________________________________________________________________
 
 #include <Util/include/convert.h>
 
+#include <openssl/obj_mac.h>
+
 
 namespace LLP
 {

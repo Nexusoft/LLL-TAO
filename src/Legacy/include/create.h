@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LEGACY_INCLUDE_CREATE_H
 #define NEXUS_LEGACY_INCLUDE_CREATE_H
 
@@ -31,7 +32,7 @@ namespace Legacy
      *  @param[in] coinbaseKey Key for receiving coinbase reward. Not used for staking channel.
      *
      *  @param[in] coinbaseRecipients Optional coinbase to allow multiple coinbase recipients.
-     * 
+     *
      *  @param[in] nChannel The minting channel creating the block.
      *
      *  @param[in] nID Used for coinbase input scriptsig. Not used for staking channel
@@ -46,7 +47,7 @@ namespace Legacy
 
     /** CreateCoinstakeTransaction
      *
-     *  Create the Coinstake transaction for a legacy block. 
+     *  Create the Coinstake transaction for a legacy block.
      *
      *  This method only populates base data that does not rely on trust key. The stake minter will add the rest.
      *
@@ -60,30 +61,30 @@ namespace Legacy
 
     /** CreateCoinbaseTransaction
      *
-     *  Create the Coinbase transaction for a legacy block. 
+     *  Create the Coinbase transaction for a legacy block.
      *
-     *  @param[in] coinbaseKey Key for receiving coinbase reward. 
+     *  @param[in] coinbaseKey Key for receiving coinbase reward.
      *
      *  @param[in] coinbaseRecipients Optional coinbase to allow multiple coinbase recipients.
-     * 
+     *
      *  @param[in] nChannel The minting channel creating the block.
      *
-     *  @param[in] nID Used for coinbase input scriptsig. 
+     *  @param[in] nID Used for coinbase input scriptsig.
      *
-     *  @param[in] nNewBlockVersion The block version being created 
+     *  @param[in] nNewBlockVersion The block version being created
      *
      *  @param[in, out] coinbaseTx The Coinbase transaction to create.
      *
      *  @return true if transaction successfully created
      *
      **/
-    bool CreateCoinbaseTransaction(Legacy::ReserveKey& coinbaseKey, const Legacy::Coinbase& coinbaseRecipients, const uint32_t nChannel, 
+    bool CreateCoinbaseTransaction(Legacy::ReserveKey& coinbaseKey, const Legacy::Coinbase& coinbaseRecipients, const uint32_t nChannel,
                                    const uint32_t nID, const uint32_t nNewBlockVersion, Transaction& coinbaseTx);
 
 
     /** AddTransactions
      *
-     *  Add transactions from mempool into the vtx for a legacy block. 
+     *  Add transactions from mempool into the vtx for a legacy block.
      *
      *  @param[in, out] vtx The block transactions to populate.
      *
@@ -93,7 +94,7 @@ namespace Legacy
 
     /** SignBlock
      *
-     *  Sign the block with the key that found the block. 
+     *  Sign the block with the key that found the block.
      *
      *  @param[in, out] block The block to sign
      *
@@ -107,9 +108,9 @@ namespace Legacy
 
     /** CheckWork
      *
-     * Work Check Before Submit. 
+     * Work Check Before Submit.
      * This checks the work as a miner, a lot more conservatively than the network will check it
-     * to ensure that you do not submit a bad block. 
+     * to ensure that you do not submit a bad block.
      *
      * This method does NOT submit the block to the network.
      *

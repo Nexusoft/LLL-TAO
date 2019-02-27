@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_UTIL_TEMPLATES_AUTOFILE_H
 #define NEXUS_UTIL_TEMPLATES_AUTOFILE_H
 

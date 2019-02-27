@@ -10,6 +10,8 @@
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
+
+#pragma once
 #ifndef NEXUS_UTIL_TEMPLATES_DATASTREAM_H
 #define NEXUS_UTIL_TEMPLATES_DATASTREAM_H
 

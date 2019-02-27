@@ -22,6 +22,8 @@ ________________________________________________________________________________
 #include <Util/include/hex.h>
 #include <Util/include/mutex.h>
 
+#include <openssl/ec.h> // for EC_KEY definition
+
 namespace LLC
 {
 

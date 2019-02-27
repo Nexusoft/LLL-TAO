@@ -24,6 +24,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
+#pragma once
 #ifndef SKEINAPI_H
 #define SKEINAPI_H
 

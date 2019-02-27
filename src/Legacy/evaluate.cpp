@@ -30,6 +30,8 @@ ________________________________________________________________________________
 #include <new> //std::bad_alloc
 #include <stdexcept>
 
+#include <openssl/bn.h>
+
 namespace Legacy
 {
 

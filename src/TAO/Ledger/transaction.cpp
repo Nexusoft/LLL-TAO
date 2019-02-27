@@ -29,6 +29,7 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/enum.h>
 
+#include <openssl/obj_mac.h>
 /* Global TAO namespace. */
 namespace TAO
 {

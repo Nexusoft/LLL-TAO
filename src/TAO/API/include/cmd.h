@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_TAO_API_INCLUDE_CMD_H
 #define NEXUS_TAO_API_INCLUDE_CMD_H
 

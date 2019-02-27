@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLP_PACKETS_HTTP_H
 #define NEXUS_LLP_PACKETS_HTTP_H
 

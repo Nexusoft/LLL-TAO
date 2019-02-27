@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LEGACY_WALLET_WALLETKEY_H
 #define NEXUS_LEGACY_WALLET_WALLETKEY_H
 

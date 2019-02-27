@@ -170,9 +170,7 @@ namespace LLP
             /* Handle sending the pings to remote node.. */
             if(nLastPing + 15 < runtime::unifiedtimestamp())
             {
-                uint64_t nNonce = 0;
-                RAND_bytes((uint8_t*)&nNonce, sizeof(nNonce));
-
+                uint64_t nNonce = LLC::GetRand();
                 nLastPing = runtime::unifiedtimestamp();
 
 

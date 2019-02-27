@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-
+#pragma once
 #ifndef NEXUS_UNIFIED_TIME_H
 #define NEXUS_UNIFIED_TIME_H
 

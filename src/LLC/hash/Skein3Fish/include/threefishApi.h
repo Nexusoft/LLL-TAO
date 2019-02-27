@@ -1,4 +1,5 @@
 
+#pragma once
 #ifndef THREEFISHAPI_H
 #define THREEFISHAPI_H
 

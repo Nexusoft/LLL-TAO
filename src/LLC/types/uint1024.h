@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLC_TYPES_UINT1024_H
 #define NEXUS_LLC_TYPES_UINT1024_H
 

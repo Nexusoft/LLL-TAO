@@ -6,6 +6,7 @@
             "ad vocem populi" - To the Voice of the People
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLD_CACHE_KEY_LRU_H
 #define NEXUS_LLD_CACHE_KEY_LRU_H
 

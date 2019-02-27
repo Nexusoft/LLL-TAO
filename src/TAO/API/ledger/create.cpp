@@ -23,6 +23,8 @@ ________________________________________________________________________________
 
 #include <Util/include/hex.h>
 
+#include <openssl/obj_mac.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -85,7 +87,7 @@ namespace TAO
             /* Create the state object. */
             if(!block.Accept())
                 throw APIException(-26, "Block failed accept");
-                
+
             json::json ret;
             ret["block"] = block.GetHash().ToString();
 

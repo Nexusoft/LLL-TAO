@@ -11,12 +11,11 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLC_INCLUDE_RANDOM_H
 #define NEXUS_LLC_INCLUDE_RANDOM_H
 
-#include <openssl/rand.h>
 #include <limits>
-
 #include <LLC/types/uint1024.h>
 
 #ifdef WIN32
@@ -35,7 +34,7 @@ ________________________________________________________________________________
 
 #include <windows.h>
 
-#else 
+#else
 #include <sys/time.h>
 #endif
 

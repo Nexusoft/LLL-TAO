@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_UTIL_INCLUDE_ALLOCATORS_H
 #define NEXUS_UTIL_INCLUDE_ALLOCATORS_H
 

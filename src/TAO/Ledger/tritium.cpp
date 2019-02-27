@@ -31,6 +31,8 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
 
+#include <openssl/obj_mac.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {

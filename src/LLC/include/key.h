@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLC_INCLUDE_KEY_H
 #define NEXUS_LLC_INCLUDE_KEY_H
 
@@ -20,8 +21,7 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 #include <Util/include/allocators.h>
 
-#include <openssl/ec.h> // for EC_KEY definition
-#include <openssl/obj_mac.h>
+typedef struct ec_key_st EC_KEY;
 
 namespace LLC
 {

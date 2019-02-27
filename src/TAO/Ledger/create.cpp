@@ -29,6 +29,8 @@ ________________________________________________________________________________
 #include <Legacy/types/transaction.h>
 #include <Legacy/types/legacy.h>
 
+#include <openssl/obj_mac.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
