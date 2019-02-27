@@ -104,7 +104,7 @@ namespace LLD
 
         /* If the time has expired, return false. */
         if(pthis->nTimestamp + 60 < runtime::timestamp())
-            return debug::error(FUNCTION, "key has expired");
+            return false;
 
         /* Move to front of LRU. */
         MoveToFront(pthis);
