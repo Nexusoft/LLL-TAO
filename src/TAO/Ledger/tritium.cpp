@@ -409,6 +409,9 @@ namespace TAO
             /* Process the block state. */
             TAO::Ledger::BlockState state(*this);
 
+            /* Add the producer transaction */
+            TAO::Ledger::mempool.AddUnchecked(producer);
+
             /* Accept the block state. */
             if(!state.Index())
                 return false;

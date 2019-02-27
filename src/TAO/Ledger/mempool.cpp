@@ -69,6 +69,14 @@ namespace TAO
             if(mapPrevHashes.count(hashClaim))
                 return debug::error(FUNCTION, "trying to claim spent next hash ", hashClaim.ToString().substr(0, 20));
 
+            /* Coinbase is only valid in a block, not as a loose transaction */
+            if (tx.IsCoinbase())
+                return debug::error(FUNCTION, "coinbase ", tx.GetHash().ToString().substr(0, 20), "as individual tx");
+
+            /* Nexus: coinstake is also only valid in a block, not as a loose transaction */
+            if (tx.IsTrust())
+                return debug::error(FUNCTION, "coinstake ", tx.GetHash().ToString().substr(0, 20), " as individual tx");
+
             /* Check for duplicate coinbase or coinstake. */
             if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                 return debug::error(FUNCTION, "tx ", tx.GetHash().ToString().substr(0, 20), " too far in the future");

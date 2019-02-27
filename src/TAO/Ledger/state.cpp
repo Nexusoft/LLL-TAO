@@ -515,8 +515,9 @@ namespace TAO
                     /* If using Tritium server then we need to include the blocks transactions in the inventory before the block*/
                     if(LLP::TRITIUM_SERVER)
                     {
-                        for(const auto& tx : ChainState::stateBest.load().vtx)
-                            vInv.push_back(LLP::CInv(tx.second, tx.first == TAO::Ledger::TYPE::LEGACY_TX ? LLP::MSG_TX_LEGACY : LLP::MSG_TX_TRITIUM));
+                        /* start at index 1 so that we dont' include producer, as that is sent as part of the block*/
+                        for(int i=1; i > ChainState::stateBest.load().vtx.size(); i++)
+                            vInv.push_back(LLP::CInv(ChainState::stateBest.load().vtx[i].second, ChainState::stateBest.load().vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? LLP::MSG_TX_LEGACY : LLP::MSG_TX_TRITIUM));
 
                         /* We want the block at the end of the inventory so that the transactions are requested first. 
                            Therefore we rotate the vInv so that the block at the front is moved to the back*/
