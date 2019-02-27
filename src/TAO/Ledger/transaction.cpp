@@ -29,7 +29,6 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/enum.h>
 
-#include <openssl/obj_mac.h>
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -82,7 +81,7 @@ namespace TAO
                 return debug::error(FUNCTION, "ledger data outside of maximum size constraints");
 
             /* Check the more expensive ECDSA verification. */
-            LLC::ECKey ecPub(NID_brainpoolP512t1, 64);
+            LLC::ECKey ecPub(LLC::BRAINPOOL_P512_T1, 64);
             ecPub.SetPubKey(vchPubKey);
             if(!ecPub.Verify(GetHash().GetBytes(), vchSig))
                 return debug::error(FUNCTION, "invalid transaction signature");
@@ -174,7 +173,7 @@ namespace TAO
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Generate the EC Key. */
-            LLC::ECKey key(NID_brainpoolP512t1, 64);
+            LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
             if(!key.SetSecret(vchSecret, true))
                 return;
 
@@ -198,7 +197,7 @@ namespace TAO
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Generate the EC Key. */
-            LLC::ECKey key(NID_brainpoolP512t1, 64);
+            LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
             if(!key.SetSecret(vchSecret, true))
                 return false;
 

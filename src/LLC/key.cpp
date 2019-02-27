@@ -21,7 +21,6 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>
 #include <Util/include/mutex.h>
-
 #include <openssl/ec.h> // for EC_KEY definition
 
 namespace LLC
@@ -285,13 +284,25 @@ namespace LLC
 
 
     /* Constructor from a new curve type. */
-    ECKey::ECKey(const int nID, const int nKeySizeIn = 72)
-    : pkey(EC_KEY_new_by_curve_name(nID))
+    ECKey::ECKey(const int nID, const int nKeySizeIn)
+    : pkey(nullptr)
     , fSet(false)
     , fCompressedPubKey(false)
     , nCurveID(nID)
     , nKeySize(nKeySizeIn)
     {
+
+        switch(nID)
+        {
+        case SECT_571_R1:
+            pkey = EC_KEY_new_by_curve_name(NID_sect571r1);
+            break;
+        case BRAINPOOL_P512_T1:
+            pkey = EC_KEY_new_by_curve_name(NID_brainpoolP512t1);
+            break;
+        default:
+            throw key_error("ECKey::ECKey() : Unrecognized EC Type");
+        }
         /* Set the Curve Type. */
         //nCurveID   = nID;
         //nKeySize = nKeySizeIn;

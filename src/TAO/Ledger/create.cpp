@@ -29,8 +29,6 @@ ________________________________________________________________________________
 #include <Legacy/types/transaction.h>
 #include <Legacy/types/legacy.h>
 
-#include <openssl/obj_mac.h>
-
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -317,7 +315,7 @@ namespace TAO
                 LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
                 /* Generate the EC Key. */
-                LLC::ECKey key(NID_brainpoolP512t1, 64);
+                LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
                 if(!key.SetSecret(vchSecret, true))
                     continue;
 

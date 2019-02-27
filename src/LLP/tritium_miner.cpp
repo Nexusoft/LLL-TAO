@@ -28,9 +28,6 @@ ________________________________________________________________________________
 
 #include <Util/include/convert.h>
 
-#include <openssl/obj_mac.h>
-
-
 namespace LLP
 {
 
@@ -177,7 +174,7 @@ namespace LLP
          LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
          /* Generate the EC Key and new block signature. */
-         LLC::ECKey key(NID_brainpoolP512t1, 64);
+         LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
          if(!key.SetSecret(vchSecret, true)
          || !pBlock->GenerateSignature(key))
          {

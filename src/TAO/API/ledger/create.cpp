@@ -23,8 +23,6 @@ ________________________________________________________________________________
 
 #include <Util/include/hex.h>
 
-#include <openssl/obj_mac.h>
-
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -40,7 +38,7 @@ namespace TAO
         /* Standard initialization function. */
         void Ledger::Initialize()
         {
-            mapFunctions["createblock"]               = Function(std::bind(&Ledger::CreateBlock,           this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["createblock"] = Function(std::bind(&Ledger::CreateBlock, this, std::placeholders::_1, std::placeholders::_2));
         }
 
 
@@ -73,7 +71,7 @@ namespace TAO
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Generate the EC Key. */
-            LLC::ECKey key(NID_brainpoolP512t1, 64);
+            LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
             if(!key.SetSecret(vchSecret, true))
                 throw APIException(-26, "Failed to set secret key");
 

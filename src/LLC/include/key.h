@@ -23,8 +23,15 @@ ________________________________________________________________________________
 
 typedef struct ec_key_st EC_KEY;
 
+
 namespace LLC
 {
+
+    enum
+    {
+        SECT_571_R1 = 0,
+        BRAINPOOL_P512_T1 = 1,
+    };
 
     /** Key Runtime Error Wrapper. **/
     class key_error : public std::runtime_error
@@ -73,7 +80,7 @@ namespace LLC
 
         ECKey();
         ECKey(const ECKey& b);
-        ECKey(const int nID, const int nKeySizeIn);
+        ECKey(const int nID, const int nKeySizeIn = 72);
         ~ECKey();
 
 

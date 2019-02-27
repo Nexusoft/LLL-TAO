@@ -464,7 +464,6 @@ int main(int argc, char** argv)
     /* Shutdown metrics. */
     timer.Reset();
 
-
     /* Stop stake minter if it is running (before server shutdown). */
     Legacy::StakeMinter::GetInstance().StopStakeMinter();
 

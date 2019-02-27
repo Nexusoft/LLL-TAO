@@ -31,8 +31,6 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
 
-#include <openssl/obj_mac.h>
-
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -306,7 +304,7 @@ namespace TAO
             if(nHeight > 0)
             {
                 /* Create the key to check. */
-                LLC::ECKey key(NID_brainpoolP512t1, 64);
+                LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
                 key.SetPubKey(producer.vchPubKey);
 
                 /* Check the Block Signature. */
