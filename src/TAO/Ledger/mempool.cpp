@@ -70,14 +70,6 @@ namespace TAO
                 return debug::error(FUNCTION, "trying to claim spent next hash ", hashClaim.ToString().substr(0, 20));
 
             /* Check for duplicate coinbase or coinstake. */
-            if(tx.IsCoinbase())
-                return debug::error(FUNCTION, "coinbase ", tx.GetHash().ToString().substr(0, 20), " not accepted in pool");
-
-            /* Check for duplicate coinbase or coinstake. */
-            if(tx.IsTrust())
-                return debug::error(FUNCTION, "trust ", tx.GetHash().ToString().substr(0, 20), " not accepted in pool");
-
-            /* Check for duplicate coinbase or coinstake. */
             if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                 return debug::error(FUNCTION, "tx ", tx.GetHash().ToString().substr(0, 20), " too far in the future");
 
