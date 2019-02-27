@@ -21,8 +21,8 @@ alias tcp-nexus         'netstat -an | egrep "9323|9324|9325|9888"'
 alias tcp-nexus-testnet 'netstat -an | egrep "8323|8329|8325|8888"'
 alias ns-prod           'tcp-nexus'
 alias ns-testnet        'tcp-nexus-testnet'
-alias tail-nexus        'tail -f /nexus/nexus.log'
-
+alias tail-nexus        'tail -f /root/.TAO//debug.log'
+p
 #
 # There are 3 programaitc interfaces into the nexus Daemon. (1) the RPC
 # interface for legacy compatibility, (2) the command-line API, and (3)
@@ -36,6 +36,7 @@ alias getinfo            'nexus-rpc getinfo'
 alias getpeerinfo        'nexus-rpc getpeerinfo'
 alias getconnectioncount 'nexus-rpc getconnectioncount'
 alias getpeercount       'getconnectioncount'
+alias height             'getinfo | egrep blocks'
     
 #
 # Handy network aliases.
