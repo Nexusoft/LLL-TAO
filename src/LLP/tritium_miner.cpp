@@ -110,8 +110,8 @@ namespace LLP
              //pBlock->hashMerkleRoot = pBlock->BuildMerkleTree(vMerkleTree);
 
              //TODO:
-             //if(!TAO::Ledger::CreateBlock(*pMiningKey, CoinbaseTx, nChannel, i, *pBlock))
-            //     debug::error(FUNCTION, "Failed to create a new Tritium Block.");
+             if(!TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel, *pBlock))
+                 debug::error(FUNCTION, "Failed to create a new Tritium Block.");
 
              /* Update the time. */
              pBlock->UpdateTime();
