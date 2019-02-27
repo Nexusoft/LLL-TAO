@@ -18,11 +18,11 @@ ________________________________________________________________________________
 
 #include <Util/templates/serialize.h>
 
-namespace Legacy 
+namespace Legacy
 {
 
     /** @class AccountingEntry
-     * 
+     *
      * Supports accounting entries that internally transfer balance between wallet accounts
      * without a corresponding blockchain transaction.
      *
@@ -32,17 +32,17 @@ namespace Legacy
      * side as the strOtherAccount value.
      *
      * Example: to record an internal transfer of 10 NXS from account A to account B
-     * 
+     *
      * First accounting entry, debit from account A:
      *   - strAccount = account A
-     *   - credit/debit amount = -10 
+     *   - credit/debit amount = -10
      *   - strOtherAccount = account B
      *
      * Second accounting entry, creidt to account B:
      *   - strAccount = account B
-     *   - credit/debit amount = 10 
+     *   - credit/debit amount = 10
      *   - strOtherAccount = account A
-     * 
+     *
      * Database key is acentry<account><counter>
      */
     class AccountingEntry
@@ -74,12 +74,17 @@ namespace Legacy
 
         /** Constructor
          *
-         *  Calls SetNull() to initialize a null accounting entry 
+         *  Calls SetNull() to initialize a null accounting entry
          *
          **/
         AccountingEntry()
         {
             SetNull();
+        }
+
+        /** Destructor **/
+        ~AccountingEntry()
+        {
         }
 
 

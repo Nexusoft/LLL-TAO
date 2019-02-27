@@ -59,6 +59,7 @@ namespace Legacy
         /** Copy assignment deleted **/
         StakeMinter& operator=(const StakeMinter&) = delete;
 
+
         /** Destructor **/
         ~StakeMinter();
 

@@ -17,7 +17,8 @@ ________________________________________________________________________________
 #include <LLP/include/network.h>
 #include <LLP/types/corenode.h>
 #include <LLP/types/rpcnode.h>
-#include <LLP/types/miner.h>
+#include <LLP/types/legacy_miner.h>
+#include <LLP/types/tritium_miner.h>
 
 #include <LLD/include/global.h>
 
@@ -120,7 +121,8 @@ int main(int argc, char** argv)
 {
     LLP::Server<LLP::CoreNode>* CORE_SERVER = nullptr;
     LLP::Server<LLP::RPCNode>* RPC_SERVER = nullptr;
-    LLP::Server<LLP::Miner>* MINING_SERVER = nullptr;
+    LLP::Server<LLP::LegacyMiner>*  LEGACY_MINING_SERVER = nullptr;
+    LLP::Server<LLP::TritiumMiner>* TRITIUM_MINING_SERVER = nullptr;
 
     uint16_t port = 0;
 
@@ -350,9 +352,23 @@ int main(int argc, char** argv)
 
 
     /* Set up Mining Server */
-    if(config::GetBoolArg("-mining"))
+    if(config::GetBoolArg("-mining") && config::GetBoolArg("-beta"))
     {
-        MINING_SERVER = new LLP::Server<LLP::Miner>(
+        LEGACY_MINING_SERVER = new LLP::Server<LLP::LegacyMiner>(
+            config::GetArg("-miningport", config::fTestNet ? 8325 : 9325),
+            10,
+            30,
+            false,
+            0,
+            0,
+            60,
+            config::GetBoolArg("-listen", true),
+            false,
+            false);
+    }
+    else if(config::GetBoolArg("-mining") )
+    {
+        TRITIUM_MINING_SERVER = new LLP::Server<LLP::TritiumMiner>(
             config::GetArg("-miningport", config::fTestNet ? 8325 : 9325),
             10,
             30,
@@ -470,12 +486,20 @@ int main(int argc, char** argv)
 
 
     /* Shutdown the mining server and its subsystems */
-    if(MINING_SERVER)
+    if(LEGACY_MINING_SERVER)
     {
         debug::log(0, FUNCTION, "Shutting down Mining Server");
 
-        MINING_SERVER->Shutdown();
-        delete MINING_SERVER;
+        LEGACY_MINING_SERVER->Shutdown();
+        delete LEGACY_MINING_SERVER;
+    }
+
+    if(TRITIUM_MINING_SERVER)
+    {
+        debug::log(0, FUNCTION, "Shutting down Mining Server");
+
+        TRITIUM_MINING_SERVER->Shutdown();
+        delete TRITIUM_MINING_SERVER;
     }
 
 

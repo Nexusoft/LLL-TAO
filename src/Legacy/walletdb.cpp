@@ -444,12 +444,14 @@ namespace Legacy
                     WalletTx& wtx = wallet.mapWallet[hash];
                     ssValue >> wtx;
 
-                    if(config::GetBoolArg("-walletclean", false)) {
+                    if(config::GetBoolArg("-walletclean", false))
+                    {
                         /* Add all transactions to remove list if -walletclean argument is set */
                         vWalletRemove.push_back(hash);
 
                     }
-                    else if (wtx.GetHash() != hash) {
+                    else if (wtx.GetHash() != hash)
+                    {
                         debug::error(FUNCTION, "Error in wallet.dat, hash mismatch. Removing Transaction from wallet map. Run the rescan command to restore.");
 
                         /* Add mismatched transaction to list of transactions to remove from database */

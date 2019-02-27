@@ -383,7 +383,7 @@ namespace Legacy
                     return debug::error("Failed to extract trust from previous block");
 
                 /* Increment sequence number for next trust transaction. */
-                nSequence ++;
+                ++nSequence;
             }
 
             /* Calculate time since the last trust block for this trust key (block age = age of previous trust block). */
@@ -444,7 +444,7 @@ namespace Legacy
             if ((nWaitCounter % 60) == 0)
                 debug::log(0, FUNCTION, "Wallet has no balance or no spendable inputs available.");
 
-            nWaitCounter++;
+            ++nWaitCounter;
 
             return false;
         }
@@ -510,7 +510,6 @@ namespace Legacy
             /* Block Weight reaches maximum of 10.0 when Block Age equals the defined timespan */
             double nBlockAgeRatio = (double)nBlockAge / (double)nMaxBlockAge;
             nCurrentBlockWeight = std::min(10.0, (9.0 * log((2.0 * nBlockAgeRatio) + 1.0) / LOG3) + 1.0);
-
         }
 
         /* Weights for Genesis transactions only uses trust weight with its value based on average coin age. */
@@ -542,7 +541,7 @@ namespace Legacy
 					debug::log(0, FUNCTION, "Average coin age is immature. ", nRemainingWaitTime, " minutes remaining until staking available.");
                 }
 
-                nWaitCounter++;
+                ++nWaitCounter;
 
                 return false;
             }
@@ -566,10 +565,10 @@ namespace Legacy
             nCurrentBlockWeight = 0.0;
         }
 
-		/* Update instance settings */
-		nBlockWeight.store(nCurrentBlockWeight);
-		nTrustWeight.store(nCurrentTrustWeight);
-		fIsWaitPeriod.store(fNewIsWaitPeriod);
+    		/* Update instance settings */
+    		nBlockWeight.store(nCurrentBlockWeight);
+    		nTrustWeight.store(nCurrentTrustWeight);
+    		fIsWaitPeriod.store(fNewIsWaitPeriod);
 
         return true;
     }
@@ -592,7 +591,7 @@ namespace Legacy
         bnTarget.SetCompact(candidateBlock.nBits);
         uint1024_t nHashTarget = bnTarget.getuint1024();
 
-        debug::log(0, FUNCTION, "Staking new block from ", hashLastBlock.ToString().substr(0, 20).c_str(),
+        debug::log(0, FUNCTION, "Staking new block from ", hashLastBlock.ToString().substr(0, 20),
                                 " at weight ", (nTrustWeight.load() + nBlockWeight.load()),
                                 " and stake rate ", nStakeRate.load());
 
@@ -630,7 +629,7 @@ namespace Legacy
             uint1024_t stakeHash = candidateBlock.StakeHash();
             if (stakeHash < nHashTarget)
             {
-                debug::log(0, FUNCTION, "Found new stake hash ", stakeHash.ToString().substr(0, 20).c_str());
+                debug::log(0, FUNCTION, "Found new stake hash ", stakeHash.ToString().substr(0, 20));
 
                 ProcessMinedBlock();
                 break;

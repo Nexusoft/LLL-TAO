@@ -11,7 +11,7 @@
 ____________________________________________________________________________________________*/
 
 
-#include <LLP/types/miner.h>
+#include <LLP/types/legacy_miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
 
@@ -32,60 +32,50 @@ namespace LLP
 {
 
     /** Default Constructor **/
-    Miner::Miner()
+    BaseMiner::BaseMiner()
     : Connection()
+    , CoinbaseTx()
+    , MUTEX()
     , mapBlocks()
-    , pMiningKey(nullptr)
-    , pBaseBlock(nullptr)
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
-    , BLOCK_MUTEX()
     {
-        pBaseBlock = new Legacy::LegacyBlock();
-        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
     }
 
 
     /** Constructor **/
-    Miner::Miner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
+    BaseMiner::BaseMiner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : Connection(SOCKET_IN, DDOS_IN, isDDOS)
+    , CoinbaseTx()
+    , MUTEX()
     , mapBlocks()
-    , pMiningKey(nullptr)
-    , pBaseBlock(nullptr)
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
-    , BLOCK_MUTEX()
     {
-        pBaseBlock = new Legacy::LegacyBlock();
-        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
     }
 
 
     /** Constructor **/
-    Miner::Miner(DDOS_Filter* DDOS_IN, bool isDDOS)
+    BaseMiner::BaseMiner(DDOS_Filter* DDOS_IN, bool isDDOS)
     : Connection(DDOS_IN, isDDOS)
+    , CoinbaseTx()
+    , MUTEX()
     , mapBlocks()
-    , pMiningKey(nullptr)
-    , pBaseBlock(nullptr)
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
     {
-        pBaseBlock = new Legacy::LegacyBlock();
-        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
     }
 
 
     /** Default Destructor **/
-    Miner::~Miner()
+    BaseMiner::~BaseMiner()
     {
-        if(pBaseBlock)
-            delete pBaseBlock;
+        LOCK(MUTEX);
 
-        if(pMiningKey)
-            delete pMiningKey;
+        clear_map();
     }
 
 
@@ -94,7 +84,7 @@ namespace LLP
      *  Handle custom message events.
      *
      **/
-    void Miner::Event(uint8_t EVENT, uint32_t LENGTH)
+    void BaseMiner::Event(uint8_t EVENT, uint32_t LENGTH)
     {
 
         /* Handle any DDOS Packet Filters. */
@@ -163,72 +153,55 @@ namespace LLP
             /* On Generic Event, Broadcast new block if flagged. */
             case EVENT_GENERIC:
             {
-                if(nSubscribed == 0)
+                if(nSubscribed.load() == 0)
                     return;
 
-                if(!check_best_height())
+                bool new_round = false;
+
+                {
+                  LOCK(MUTEX);
+                  new_round = check_best_height();
+                }
+
+                if(!new_round)
                 {
                     respond(NEW_ROUND);
 
-                    LOCK(BLOCK_MUTEX);
+                    uint1024_t block_hash;
+                    std::vector<uint8_t> data;
+                    TAO::Ledger::Block *pBlock = nullptr;
+                    uint32_t len = 0;
+                    uint16_t subscribed = nSubscribed.load();
 
-                    if(pBaseBlock->IsNull())
-                        return;
-
-                    uint1024_t proof_hash;
-
-                    for(uint32_t nSubscribedLoop = 0; nSubscribedLoop < nSubscribed; ++nSubscribedLoop)
+                    for(uint16_t i = 0; i < subscribed; ++i)
                     {
-                        uint32_t s = static_cast<uint32_t>(mapBlocks.size());
-
-                        /*  make a copy of the base block before making the hash  unique for this requst*/
-                        Legacy::LegacyBlock new_block = *pBaseBlock;
-
-
-                        /* We need to make the block hash unique for each subscribed miner so that they are not
-                            duplicating their work.  To achieve this we take a copy of pBaseblock and then modify
-                            the scriptSig to be unique for each subscriber, before rebuilding the merkle tree.
-
-                            We need to drop into this for loop at least once to set the unique hash, but we will iterate
-                            indefinitely for the prime channel until the generated hash meets the min prime origins
-                            and is less than 1024 bits*/
-                        for(uint32_t i = s; ; ++i)
                         {
-                            new_block.vtx[0].vin[0].scriptSig = (Legacy::Script() <<  (uint64_t)((nSubscribedLoop + i + 1) * 513513512151));
+                            LOCK(MUTEX);
 
-                            /* Rebuild the merkle tree. */
-                            std::vector<uint512_t> vMerkleTree;
-                            for(const auto& tx : new_block.vtx)
-                                vMerkleTree.push_back(tx.GetHash());
-                            new_block.hashMerkleRoot = new_block.BuildMerkleTree(vMerkleTree);
+                            /* Get a new block for the subscriber */
+                            pBlock = new_block();
 
-                            /* Update the time. */
-                            new_block.UpdateTime();
+                            if(!pBlock)
+                            {
+                              debug::log(2, FUNCTION, "Failed to create block.");
+                              return;
+                            }
 
-                            /* skip if not prime channel or version less than 5 */
-                            if(nChannel != 1 || new_block.nVersion >= 5)
-                                break;
 
-                            proof_hash = new_block.ProofHash();
+                            /* Serialize the block data */
+                            data = SerializeBlock(*pBlock);
+                            len = static_cast<uint32_t>(data.size());
 
-                            /* exit loop when the block is above minimum prime origins and less than
-                                1024-bit hashes */
-                            if(proof_hash > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !proof_hash.high_bits(0x80000000))
-                                break;
+                            /* Get the block hash for display purposes */
+                            block_hash = pBlock->GetHash();
                         }
-
-                        /* Store the new block in the map */
-                        mapBlocks[new_block.hashMerkleRoot] = new_block;
-
-                        /* Serialize the block data */
-                        std::vector<uint8_t> data = SerializeBlock(new_block);
-                        uint32_t len = static_cast<uint32_t>(data.size());
 
                         /* Create and send a packet response */
                         respond(BLOCK_DATA, len, data);
 
+
                         debug::log(2, FUNCTION, "Mining LLP: Sent Block ",
-                            new_block.GetHash().ToString().substr(0, 20), " to Worker.");
+                            block_hash.ToString().substr(0, 20), " to Worker.");
                     }
 
 
@@ -280,7 +253,7 @@ namespace LLP
 
     /** This function is necessary for a template LLP server. It handles your
         custom messaging system, and how to interpret it from raw packets. **/
-    bool Miner::ProcessPacket()
+    bool BaseMiner::ProcessPacket()
     {
         /* Get the incoming packet. */
         Packet PACKET   = this->INCOMING;
@@ -290,11 +263,11 @@ namespace LLP
 
         /* No mining when synchronizing. */
         if(TAO::Ledger::ChainState::Synchronizing())
-            return debug::error(FUNCTION, Name(), " Cannot mine while ledger is synchronizing.");
+            return debug::error(FUNCTION, " Cannot mine while ledger is synchronizing.");
 
         /* No mining when wallet is locked */
-        if(Legacy::Wallet::GetInstance().IsLocked())
-            return debug::error(FUNCTION, Name(), " Cannot mine while wallet is locked.");
+        if(is_locked())
+            return debug::error(FUNCTION, " Cannot mine while wallet is locked.");
 
 
         /* Set the Mining Channel this Connection will Serve Blocks for. */
@@ -304,19 +277,19 @@ namespace LLP
             {
                 nChannel = static_cast<uint8_t>(convert::bytes2uint(PACKET.DATA));
 
-                switch (nChannel)
+                switch (nChannel.load())
                 {
                     case 1:
-                    debug::log(2, FUNCTION, Name(), " Prime Channel Set.");
+                    debug::log(2, FUNCTION, " Prime Channel Set.");
                     break;
 
                     case 2:
-                    debug::log(2, FUNCTION, Name(), " Hash Channel Set.");
+                    debug::log(2, FUNCTION, " Hash Channel Set.");
                     break;
 
                     /** Don't allow Mining LLP Requests for Proof of Stake Channel. **/
                     default:
-                    return debug::error(2, FUNCTION, Name(), " Invalid PoW Channel (", nChannel, ")");
+                    return debug::error(2, FUNCTION, " Invalid PoW Channel (", nChannel.load(), ")");
                 }
 
                 return true;
@@ -331,7 +304,7 @@ namespace LLP
 
             case SET_COINBASE:
             {
-                uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel, 0);
+                uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
 
                 /** Deserialize the Coinbase Transaction. **/
 
@@ -341,16 +314,16 @@ namespace LLP
                 std::map<std::string, uint64_t> vOutputs;
 
                 /** First byte of Serialization Packet is the Number of Records. **/
-                unsigned int nSize = PACKET.DATA[0], nIterator = 9;
+                uint32_t nSize = PACKET.DATA[0], nIterator = 9;
 
                 /** Loop through every Record. **/
-                for(unsigned int nIndex = 0; nIndex < nSize; nIndex++)
+                for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
                 {
                     /** De-Serialize the Address String and uint64 nValue. **/
-                    unsigned int nLength = PACKET.DATA[nIterator];
+                    uint32_t nLength = PACKET.DATA[nIterator];
 
-                    std::string strAddress = convert::bytes2string(std::vector<unsigned char>(PACKET.DATA.begin() + nIterator + 1, PACKET.DATA.begin() + nIterator + 1 + nLength));
-                    uint64_t nValue = convert::bytes2uint64(std::vector<unsigned char>(PACKET.DATA.begin() + nIterator + 1 + nLength, PACKET.DATA.begin() + nIterator + 1 + nLength + 8));
+                    std::string strAddress = convert::bytes2string(std::vector<uint8_t>(PACKET.DATA.begin() + nIterator + 1, PACKET.DATA.begin() + nIterator + 1 + nLength));
+                    uint64_t nValue = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.begin() + nIterator + 1 + nLength, PACKET.DATA.begin() + nIterator + 1 + nLength + 8));
 
                     /* Validate the address */
                     Legacy::NexusAddress address(strAddress);
@@ -376,16 +349,21 @@ namespace LLP
                 }
                 else
                 {
+                    {
+                        LOCK(MUTEX);
+
+                        /* Set the global coinbase, null the base block, and
+                           then call check_best_height which in turn will generate
+                           a new base block using the new coinbase. */
+                        CoinbaseTx = pCoinbase;
+
+                        check_best_height();
+
+                    }
+
                     respond(COINBASE_SET);
                     debug::log(2, "***** Mining LLP: Coinbase Set") ;
-                    /* set the global coinbase, null the base block, and then call check_best_height
-                       which in turn will generate a new base block using the new coinbase */
-                    pCoinbaseTx = pCoinbase;
-                    pBaseBlock->SetNull();
-
-                    check_best_height();
                 }
-
 
                 return true;
             }
@@ -393,8 +371,11 @@ namespace LLP
             /* Clear the Block Map if Requested by Client. */
             case CLEAR_MAP:
             {
+                LOCK(MUTEX);
+
                 clear_map();
-                pCoinbaseTx.SetNull();
+                CoinbaseTx.SetNull();
+
                 return true;
             }
 
@@ -408,6 +389,8 @@ namespace LLP
                 /* Prevent mining clients from spamming with GET_HEIGHT messages*/
                 runtime::sleep(500);
 
+                LOCK(MUTEX);
+
                 check_best_height();
 
                 return true;
@@ -416,19 +399,27 @@ namespace LLP
             /* Respond to a miner if it is a new round. */
             case GET_ROUND:
             {
+
+              bool new_round = false;
+
+              {
+                LOCK(MUTEX);
+                new_round = check_best_height();
+              }
+
                 /* If height was outdated, respond with old round, otherwise
                  * respond with a new round */
-                if(!check_best_height())
-                    respond(OLD_ROUND);
-                else
+                if(new_round)
                     respond(NEW_ROUND);
+                else
+                    respond(OLD_ROUND);
 
                 return true;
             }
 
             case GET_REWARD:
             {
-                uint64_t nCoinbaseReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel, 0);
+                uint64_t nCoinbaseReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
 
                 respond(BLOCK_REWARD, 8, convert::uint2bytes64(nCoinbaseReward));
 
@@ -442,7 +433,7 @@ namespace LLP
                 nSubscribed = convert::bytes2uint(PACKET.DATA);
 
                 /** Don't allow mining llp requests for proof of stake channel **/
-                if(nSubscribed == 0 || nChannel == 0)
+                if(nSubscribed == 0 || nChannel.load() == 0)
                     return false;
 
                 debug::log(2, FUNCTION, "***** Mining LLP: Subscribed to ", nSubscribed, " Blocks");
@@ -452,59 +443,31 @@ namespace LLP
             /* Get a new block for the miner. */
             case GET_BLOCK:
             {
-                uint1024_t proof_hash;
-                uint32_t s = static_cast<uint32_t>(mapBlocks.size());
+                TAO::Ledger::Block *pBlock = nullptr;
+                std::vector<uint8_t> data;
+                uint32_t len = 0;
 
-                check_best_height();
-
-                LOCK(BLOCK_MUTEX);
-
-                /*  make a copy of the base block before making the hash  unique for this requst*/
-                Legacy::LegacyBlock new_block = *pBaseBlock;
-
-
-                /* We need to make the block hash unique for each subsribed miner so that they are not
-                    duplicating their work.  To achieve this we take a copy of pBaseblock and then modify
-                    the scriptSig to be unique for each subscriber, before rebuilding the merkle tree.
-
-                    We need to drop into this for loop at least once to set the unique hash, but we will iterate
-                    indefinitely for the prime channel until the generated hash meets the min prime origins
-                    and is less than 1024 bits*/
-                for(uint32_t i = s; ; ++i)
                 {
-                    new_block.vtx[0].vin[0].scriptSig = (Legacy::Script() <<  (uint64_t)((i+1) * 513513512151));
+                    LOCK(MUTEX);
 
-                    /* Rebuild the merkle tree. */
-                    std::vector<uint512_t> vMerkleTree;
-                    for(const auto& tx : new_block.vtx)
-                        vMerkleTree.push_back(tx.GetHash());
-                    new_block.hashMerkleRoot = new_block.BuildMerkleTree(vMerkleTree);
+                    check_best_height();
 
-                    /* Update the time. */
-                    new_block.UpdateTime();
+                    /* Create a new block */
+                    pBlock = new_block();
 
-                    /* skip if not prime channel or version less than 5 */
-                    if(nChannel != 1 || new_block.nVersion >= 5)
-                        break;
+                    if(!pBlock)
+                    {
+                      debug::log(2, FUNCTION, "Failed to create block.");
+                      return true;
+                    }
 
-                    proof_hash = new_block.ProofHash();
+                    /* Store the new block in the memory map of recent blocks being worked on. */
+                    mapBlocks[pBlock->hashMerkleRoot] = pBlock;
 
-                    /* exit loop when the block is above minimum prime origins and less than
-                        1024-bit hashes */
-                    if(proof_hash > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !proof_hash.high_bits(0x80000000))
-                        break;
+                    /* Serialize the block data */
+                    data = SerializeBlock(*pBlock);
+                    len = static_cast<uint32_t>(data.size());
                 }
-
-                debug::log(2, FUNCTION, "***** Mining LLP: Created new Block ",
-                    new_block.hashMerkleRoot.ToString().substr(0, 20));
-
-                /* Store the new block in the memory map of recent blocks being worked on. */
-                mapBlocks[new_block.hashMerkleRoot] = new_block;
-
-
-                /* Serialize the block data */
-                std::vector<uint8_t> data = SerializeBlock(new_block);
-                uint32_t len = static_cast<uint32_t>(data.size());
 
                 /* Create and write the response packet. */
                 respond(BLOCK_DATA, len, data);
@@ -515,61 +478,47 @@ namespace LLP
             /* Submit a block using the merkle root as the key. */
             case SUBMIT_BLOCK:
             {
+                uint512_t hashMerkleRoot;
+                uint64_t nonce = 0;
+
+                /* Get the merkle root. */
+                hashMerkleRoot.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
+
+                /* Get the nonce */
+                nonce = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
+
+                bool rejected = true;
+
                 {
-                    LOCK(BLOCK_MUTEX);
-                    /* Get the merkle root. */
-                    uint512_t hashMerkleRoot;
-                    hashMerkleRoot.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
+                  LOCK(MUTEX);
 
-                    /* Check that the block exists. */
-                    if(!mapBlocks.count(hashMerkleRoot))
-                    {
-                        /* If not found, send rejected message. */
-                        respond(BLOCK_REJECTED);
+                  /* Find, sign, and validate the submitted block in order to
+                     not be rejected. */
+                  rejected = !find_block(hashMerkleRoot)
+                          || !sign_block(nonce, hashMerkleRoot)
+                          || !validate_block(hashMerkleRoot);
+                }
 
-                        debug::log(2, FUNCTION, "***** Mining LLP: Block Not Found ", hashMerkleRoot.ToString().substr(0, 20));
 
-                        return true;
-                    }
+                /* Generate a Rejected response. */
+                if(rejected)
+                {
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
 
-                    /* Create the pointer to the heap. */
-                    Legacy::LegacyBlock *pBlock = &mapBlocks[hashMerkleRoot];
-                    pBlock->nNonce = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
-                    pBlock->UpdateTime();
-                    pBlock->print();
-
-                    /* Sign the submitted block */
-                    if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
-                    {
-                        respond(BLOCK_REJECTED);
-
-                        debug::log(2, "***** Mining LLP: Unable to Sign block ", hashMerkleRoot.ToString().substr(0, 20));
-
-                        return true;
-                    }
-
-                    /* Check the Proof of Work for submitted block. */
-                    if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::GetInstance()))
-                    {
-                        respond(BLOCK_REJECTED);
-
-                        debug::log(2, "***** Mining LLP: Invalid Work for block ", hashMerkleRoot.ToString().substr(0, 20));
-
-                        return true;
-                    }
+                {
+                    LOCK(MUTEX);
 
                     /* Clear map on new block found. */
                     clear_map();
-                    pCoinbaseTx.SetNull();
+                    CoinbaseTx.SetNull();
                 }
 
-                /* Tell the wallet to keep this key */
-                pMiningKey->KeepKey();
-
-                /* Generate a response message. */
+                /* Generate an Accepted response. */
                 respond(BLOCK_ACCEPTED);
-
                 return true;
+
             }
 
             /** Check Block Command: Allows Client to Check if a Block is part of the Main Chain. **/
@@ -604,7 +553,7 @@ namespace LLP
 
     /*  Convert the Header of a Block into a Byte Stream for
      *  Reading and Writing Across Sockets. */
-    std::vector<uint8_t> Miner::SerializeBlock(const TAO::Ledger::Block &BLOCK)
+    std::vector<uint8_t> BaseMiner::SerializeBlock(const TAO::Ledger::Block &BLOCK)
     {
         std::vector<uint8_t> VERSION  = convert::uint2bytes(BLOCK.nVersion);
         std::vector<uint8_t> PREVIOUS = BLOCK.hashPrevBlock.GetBytes();
@@ -627,7 +576,7 @@ namespace LLP
     }
 
 
-    void Miner::respond(uint8_t header_response, uint32_t length, const std::vector<uint8_t> &data)
+    void BaseMiner::respond(uint8_t header_response, uint32_t length, const std::vector<uint8_t> &data)
     {
         Packet RESPONSE;
 
@@ -640,32 +589,20 @@ namespace LLP
 
     /*  Checks the current height index and updates best height. It will clear
      *  the block map if the height is outdated. */
-    bool Miner::check_best_height()
+    bool BaseMiner::check_best_height()
     {
-        LOCK(BLOCK_MUTEX);
 
         bool fHeightChanged = false;
 
         if(nBestHeight != TAO::Ledger::ChainState::nBestHeight)
         {
             clear_map();
-            nBestHeight = TAO::Ledger::ChainState::nBestHeight;
+
+            nBestHeight = TAO::Ledger::ChainState::nBestHeight.load();
 
             debug::log(2, FUNCTION, "Mining best height changed to ", nBestHeight);
 
             fHeightChanged = true;
-        }
-
-        if( fHeightChanged || pBaseBlock->IsNull() )
-        {
-            debug::log(2, FUNCTION, "Creating new base block.");
-
-            /*create a new base block */
-            if(!Legacy::CreateLegacyBlock(*pMiningKey, pCoinbaseTx, nChannel, 1, *pBaseBlock))
-            {
-                debug::error(FUNCTION, "Failed to create a new block.");
-                return false;
-            }
         }
 
         return fHeightChanged;
@@ -673,11 +610,31 @@ namespace LLP
 
 
     /*  Clear the blocks map. */
-    void Miner::clear_map()
+    void BaseMiner::clear_map()
     {
+        for(auto it = mapBlocks.begin(); it != mapBlocks.end(); ++it)
+        {
+            if(it->second)
+                delete it->second;
+        }
         mapBlocks.clear();
 
         debug::log(2, FUNCTION, "Cleared map of blocks");
+    }
+
+
+    /*  Determines if the block exists. */
+    bool BaseMiner::find_block(const uint512_t &merkle_root)
+    {
+        /* Check that the block exists. */
+        if(!mapBlocks.count(merkle_root))
+        {
+            debug::log(2, FUNCTION, "***** Mining LLP: Block Not Found ", merkle_root.ToString().substr(0, 20));
+
+            return false;
+        }
+
+        return true;
     }
 
 }
