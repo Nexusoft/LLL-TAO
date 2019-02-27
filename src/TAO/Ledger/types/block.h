@@ -125,6 +125,16 @@ namespace TAO
             {
             }
 
+            /** Clone
+            *
+            *  Allows polymorphic copying of blocks
+            *  Derived classes should override this and return an instance of the derived type.
+            *
+            *  @return A pointer to a copy of this Block.
+            *
+            **/
+            virtual Block* Clone() const {return new Block(*this);};
+
 
             /** SetNull
              *
@@ -262,6 +272,13 @@ namespace TAO
              **/
             uint512_t BuildMerkleTree(std::vector<uint512_t> vMerkleTree) const;
 
+
+            /** ToString
+             *
+             *  For debugging Purposes seeing block state data dump
+             *
+             **/
+            virtual std::string ToString() const ;
 
             /** print
              *

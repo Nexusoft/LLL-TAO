@@ -55,7 +55,7 @@ namespace TAO
         /* For debugging Purposes seeing block state data dump */
         std::string TritiumBlock::ToString() const
         {
-            return debug::safe_printstr("Block("
+            return debug::safe_printstr("Tritium Block("
                 VALUE("hash")     " = ", GetHash().ToString().substr(0, 20), " ",
                 VALUE("nVersion") " = ", nVersion, ", ",
                 VALUE("hashPrevBlock") " = ", hashPrevBlock.ToString().substr(0, 20), ", ",
@@ -67,13 +67,6 @@ namespace TAO
                 VALUE("nTime") " = ", nTime, ", ",
                 VALUE("vchBlockSig") " = ", HexStr(vchBlockSig.begin(), vchBlockSig.end()), ", ",
                 VALUE("vtx.size()") " = ", vtx.size(), ")");
-        }
-
-
-        /* For debugging purposes, printing the block to stdout */
-        void TritiumBlock::print() const
-        {
-            debug::log(0, ToString());
         }
 
 

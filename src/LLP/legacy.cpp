@@ -754,7 +754,9 @@ namespace LLP
             while(!config::fShutdown.load())
             {
                 /* Iterate to next state, if there is one */
-                if( state.hashNextBlock == 0)
+                state = state.Next();
+                
+                if(!state)
                     break;
 
                 /* Check for hash stop. */
@@ -973,8 +975,9 @@ namespace LLP
             if(!orphan.Accept())
                 return true;
 
+            uint1024_t hashPrev = orphan.GetHash();
             mapLegacyOrphans.erase(hash);
-            hash = orphan.GetHash();
+            hash = hashPrev;
         }
 
         return true;
