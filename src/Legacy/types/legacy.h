@@ -41,44 +41,29 @@ namespace Legacy
         IMPLEMENT_SERIALIZE
         (
             READWRITE(nVersion);
-			READWRITE(hashPrevBlock);
-			READWRITE(hashMerkleRoot);
-			READWRITE(nChannel);
-			READWRITE(nHeight);
-			READWRITE(nBits);
-			READWRITE(nNonce);
-			READWRITE(nTime);
+	          READWRITE(hashPrevBlock);
+		        READWRITE(hashMerkleRoot);
+		        READWRITE(nChannel);
+            READWRITE(nHeight);
+            READWRITE(nBits);
+            READWRITE(nNonce);
+            READWRITE(nTime);
 
-			// ConnectBlock depends on vtx following header to generate CDiskTxPos
-			if (!(nSerType & (SER_GETHASH | SER_BLOCKHEADERONLY)))
-			{
-				READWRITE(vtx);
-				READWRITE(vchBlockSig);
-			}
+      			// ConnectBlock depends on vtx following header to generate CDiskTxPos
+      			if (!(nSerType & (SER_GETHASH | SER_BLOCKHEADERONLY)))
+      			{
+      				READWRITE(vtx);
+      				READWRITE(vchBlockSig);
+      			}
         )
 
 
         /** The default constructor. **/
-        LegacyBlock()
-        : Block()
-        , vtx()
-        {
-            SetNull();
-        }
+        LegacyBlock();
 
 
         /** Copy Constructor. **/
-        LegacyBlock(const LegacyBlock& block)
-        : Block(block)
-        , vtx(block.vtx)
-        {
-
-        }
-
-        /** Default Destructor **/
-        virtual ~LegacyBlock()
-        {
-        }
+        LegacyBlock(const LegacyBlock& block);
 
         /** Clone
         *
@@ -97,17 +82,16 @@ namespace Legacy
         LegacyBlock(const TAO::Ledger::BlockState& state);
 
 
+        /** Default Destructor **/
+        virtual ~LegacyBlock();
+
+
         /** SetNull
          *
          *  Set the block to Null state.
          *
          **/
-        void SetNull() override
-        {
-            Block::SetNull();
-
-            vtx.clear();
-        }
+        void SetNull() override;
 
 
         /** Check

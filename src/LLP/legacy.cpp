@@ -972,12 +972,12 @@ namespace LLP
 
             debug::log(0, FUNCTION, "processing ORPHAN prev=", orphan.GetHash().ToString().substr(0, 20), " size=", mapLegacyOrphans.size());
 
+            uint1024_t hashOrphan = hash;
             if(!orphan.Accept())
                 return true;
 
-            uint1024_t hashPrev = orphan.GetHash();
-            mapLegacyOrphans.erase(hash);
-            hash = hashPrev;
+            hash = orphan.GetHash();
+            mapLegacyOrphans.erase(hashOrphan);
         }
 
         return true;

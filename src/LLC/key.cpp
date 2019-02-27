@@ -365,6 +365,7 @@ namespace LLC
     void ECKey::Reset()
     {
         fCompressedPubKey = false;
+        EC_KEY_free(pkey);
         pkey = EC_KEY_new_by_curve_name(nCurveID);
         if (pkey == nullptr)
             throw key_error("ECKey::ECKey() : EC_KEY_new_by_curve_name failed");

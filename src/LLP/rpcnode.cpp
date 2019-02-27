@@ -55,7 +55,7 @@ namespace LLP
             /* Deter brute-forcing short passwords.
              * If this results in a DOS the user really
              * shouldn't have their RPC port exposed. */
-            if (config::mapArgs["-rpcpassword"].size() < 20)
+            if (config::GetArg("-rpcpassword", "").size() < 20)
                 runtime::sleep(250);
 
             PushResponse(401, "");
@@ -195,7 +195,7 @@ namespace LLP
 
         /* Decode from base64 */
         std::string strUserPass = encoding::DecodeBase64(strUserPass64);
-        std::string strRPCUserColonPass = config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"];
+        std::string strRPCUserColonPass = config::GetArg("-rpcuser", "") + ":" + config::GetArg("-rpcpassword", "");
 
         return strUserPass == strRPCUserColonPass;
     }

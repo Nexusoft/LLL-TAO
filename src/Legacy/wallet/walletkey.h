@@ -21,10 +21,10 @@ ________________________________________________________________________________
 
 namespace Legacy
 {
-    
+
     /** @class WalletKey
      *
-     *  Class to hold unencrypted private key binary data. 
+     *  Class to hold unencrypted private key binary data.
      *
      *  @deprecated This class is no longer used or written to the wallet database. It
      *              is supported for backward compatability, so values can be read
@@ -50,13 +50,19 @@ namespace Legacy
 
         /** Constructor
          *
-         *  Sets nTimeCreated to current time if nExpires has a value. 
+         *  Sets nTimeCreated to current time if nExpires has a value.
          *
          **/
         WalletKey(const uint64_t nExpires=0)
         {
             nTimeCreated = (nExpires ? runtime::unifiedtimestamp() : 0);
             nTimeExpires = nExpires;
+        }
+
+
+        /** Destructor **/
+        ~WalletKey()
+        {
         }
 
 

@@ -88,7 +88,7 @@ namespace TAO
 
 
             /** The default constructor. Sets block state to Null. **/
-            Block() { SetNull(); }
+            Block();
 
 
             /** A base constructor.
@@ -99,31 +99,19 @@ namespace TAO
              *  @param[in] nHeightIn The height this block is being created at.
              *
             **/
-            Block(uint32_t nVersionIn, uint1024_t hashPrevBlockIn, uint32_t nChannelIn, uint32_t nHeightIn)
-            : nVersion(nVersionIn)
-            , hashPrevBlock(hashPrevBlockIn)
-            , nChannel(nChannelIn)
-            , nHeight(nHeightIn)
-            , nBits(0)
-            , nNonce(0)
-            , nTime(runtime::unifiedtimestamp())
-            , vchBlockSig()
-            {
-            }
+            Block(uint32_t nVersionIn, uint1024_t hashPrevBlockIn, uint32_t nChannelIn, uint32_t nHeightIn);
 
 
-            /** Copy constructor. */
+            /** Copy constructor. **/
             Block(const Legacy::LegacyBlock& block);
 
 
-            /** Copy constructor. */
+            /** Copy constructor. **/
             Block(const BlockState& block);
 
 
             /** Default Destructor **/
-            virtual ~Block()
-            {
-            }
+            virtual ~Block();
 
             /** Clone
             *
@@ -221,7 +209,7 @@ namespace TAO
 
             /** SignatureHash
              *
-             *  Get the hash for signatures.
+             *  Get the Signature Hash of the block. Used to verify work claims.
              *
              *  @return 1024-bit signature hash
              *
@@ -329,7 +317,7 @@ namespace TAO
              *  @return 1024-bit stake hash
              *
              **/
-            uint1024_t StakeHash(bool fIsGenesis, uint256_t hashGenesis) const;
+            uint1024_t StakeHash(bool fIsGenesis, const uint256_t &hashGenesis) const;
 
 
             /** StakeHash
@@ -339,7 +327,7 @@ namespace TAO
              *  @return 1024-bit stake hash
              *
              **/
-            uint1024_t StakeHash(bool fIsGenesis, uint576_t trustKey) const;
+            uint1024_t StakeHash(bool fIsGenesis, const uint576_t &trustKey) const;
         };
     }
 }

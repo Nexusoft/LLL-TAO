@@ -165,6 +165,8 @@ namespace convert
      **/
     inline std::string DateTimeStrFormat(const char* pszFormat, int64_t nTime)
     {
+        LOCK(debug::DEBUG_MUTEX); //gmtime and localtime are not thread safe together
+
         time_t n = nTime;
         struct tm* ptmTime = gmtime(&n);
         char pszTime[200];

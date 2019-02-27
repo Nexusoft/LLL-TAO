@@ -21,7 +21,8 @@ ________________________________________________________________________________
 #include <LLP/types/time.h>
 #include <LLP/types/corenode.h>
 #include <LLP/types/rpcnode.h>
-#include <LLP/types/miner.h>
+#include <LLP/types/legacy_miner.h>
+#include <LLP/types/tritium_miner.h>
 
 #include <LLP/include/manager.h>
 #include <LLP/include/trust_address.h>
@@ -361,7 +362,7 @@ namespace LLP
             DataThread<ProtocolType> *dt = DATA_THREADS[index];
 
             /* Limit data threads to 32 connections per thread. */
-            if(dt->nConnections < nConnections && dt->nConnections < 32)
+            if(dt->nConnections < nConnections)
             {
                 nIndex = index;
                 nConnections = dt->nConnections;
@@ -648,6 +649,6 @@ namespace LLP
     template class Server<TimeNode>;
     template class Server<CoreNode>;
     template class Server<RPCNode>;
-    template class Server<Miner>;
-
+    template class Server<LegacyMiner>;
+    template class Server<TritiumMiner>;
 }

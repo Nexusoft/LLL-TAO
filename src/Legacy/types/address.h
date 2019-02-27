@@ -32,7 +32,9 @@ namespace Legacy
     public:
 
         /** Default Constructor. **/
-        NexusAddress() { }
+        NexusAddress()
+        {
+        }
 
 
         /** Constructor
@@ -73,6 +75,12 @@ namespace Legacy
          *
          **/
         NexusAddress(const char* pszAddress);
+
+
+        /** Destructor **/
+        virtual ~NexusAddress()
+        {
+        }
 
 
         /** SetHash256

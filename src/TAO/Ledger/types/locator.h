@@ -79,6 +79,11 @@ namespace TAO
             {
             }
 
+            /** Destructor **/
+            ~Locator()
+            {
+            }
+
 
             /** Set Null
              *
