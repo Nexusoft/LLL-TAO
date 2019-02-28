@@ -1,27 +1,36 @@
 #!/bin/bash
-#
+
 # Launch Nexus Daemon. Check to see if nexus data directory needs to be
 # copied from host OS file system.
 #
 #
 cd /nexus
 
-if [ ! -f "/root/.TAO/Nexus.pid" ]; then
+#DO_COPY=""
+
+#
+# If first innvocation of nexus daemon after container creation, then setup
+# /root/.TAO directory. Should we copy from host OS file system or link to it?
+#
+if [ ! -d "/root/.TAO" ]; then
     SRC="/hostOS$HOSTOS_HOME/.Nexus_Core_Data_BETA"
+    if [ -v DO_COPY ]; then
+        mkdir /root/.TAO
+    fi
     if [ -d $SRC ]; then
-        echo -n "Copying nexus data directory $SRC -> /root/.TAO ... "
-        cp -r $SRC /root/.TAO/.
+        if [ -v DO_COPY ]; then
+            echo -n "Copying nexus data directory $SRC -> /root/.TAO ... "
+            cp -r $SRC /root/.TAO/.
+        else
+            echo -n "Symlink nexus data directory /root/.TAO -> $SRC ... "
+            ln -sf $SRC /root/.TAO
+         fi
         echo "done"
     fi
 fi
 
 #
-# Testnet.
-#
-#./nexus -verbose=5 -testnet -threads=10 -private >& /nexus/nexus.log &
-
-#
-# Mainnet.
+# Startup daemon.
 #
 ./nexus -verbose=5 -beta -server -daemon -threads=10 &
 
