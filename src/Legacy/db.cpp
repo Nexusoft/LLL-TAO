@@ -26,54 +26,31 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    /* Initialize namespace-scope variable */
-    bool fDetachDB = false;
+    /* Static variable initialization */
 
-    /* Initialization for class static variables */
-    DbEnv BerkeleyDB::dbenv((uint32_t)0);
+    std::map<std::string, BerkeleyDB*> BerkeleyDB::mapBerkeleyInstances;
 
-    bool BerkeleyDB::fDbEnvInit = false;
-
-    std::map<std::string, uint32_t> BerkeleyDB::mapFileUseCount; //initializes empty map
-
-    std::map<std::string, Db*> BerkeleyDB::mapDb;  //initializes empty map
-
-    std::mutex BerkeleyDB::cs_db; //initializes the mutex
+    std::mutex BerkeleyDB::mapMutex;
 
 
     /* Constructor */
     /* Initializes database environment on first use */
-    BerkeleyDB::BerkeleyDB(const char *pszFileIn, const char* pszMode)
-    : pdb(nullptr)
-    , strFile()
+    BerkeleyDB::BerkeleyDB(const std::string& strFileIn)
+    : cs_db()
+    , dbenv(nullptr)
+    , pdb(nullptr)
+    , strDbFile(strFileIn)
     , vTxn()
-    , fReadOnly(true)
     {
-        /* Passing a null string will initialize a null instance */
-        if (pszFileIn == nullptr)
-            return;
-
-        std::string strFileIn(pszFileIn);
-
-        Init(strFileIn, pszMode);
-
-        return;
-    }
-
-
-    /* Constructor */
-    /* Initializes database environment on first use */
-    BerkeleyDB::BerkeleyDB(const std::string& strFileIn, const char* pszMode)
-    : pdb(nullptr)
-    , strFile()
-    , vTxn()
-    , fReadOnly(true)
-    {
-        /* Passing an empty string will initialize a null instance */
+        /* Passing an empty string is invalid */
         if (strFileIn.empty())
-            return;
+        {
+            debug::error(FUNCTION, "Invalid empty string for Berkeley database file name");
 
-        Init(strFileIn, pszMode);
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, "Invalid empty string for Berkeley database file name"));
+        }
+
+        Init();
 
         return;
     }
@@ -82,162 +59,232 @@ namespace Legacy
     /* Destructor */
     BerkeleyDB::~BerkeleyDB()
     {
-        Close();
+        /* Destructor of instance should only be called after pdb and dbenv already invalidated, but check it here as a precaution */
+        LOCK(cs_db);
+
+        if (pdb != nullptr)
+            CloseHandle();
+
+        if (dbenv != nullptr)
+        {
+             /* Flush log data to the dat file and detach the file */
+            dbenv->txn_checkpoint(0, 0, 0);
+            dbenv->lsn_reset(strDbFile.c_str(), 0);
+
+            /* Remove log files */
+            char** listp;
+            dbenv->log_archive(&listp, DB_ARCH_REMOVE);
+
+            /* Shut down the database environment */
+            try
+            {
+                dbenv->close(0);
+            }
+            catch(const DbException& e)
+            {
+                debug::log(0, FUNCTION, "Exception: ", e.what(), "(", e.get_errno(), ")");
+            }
+
+            delete dbenv;
+            dbenv = nullptr;
+        }       
     }
 
 
-    /* Performs work of initialization for constructors. */
-    void BerkeleyDB::Init(const std::string& strFileIn, const char* pszMode)
+    /* Private Methods */
+
+    /* Performs work of initialization for constructor. */
+    void BerkeleyDB::Init()
     {
-        int32_t ret;
+        int32_t ret = 0;
 
-        LOCK(BerkeleyDB::cs_db); // Need to lock before test fDbEnvInit
-
-        if (!BerkeleyDB::fDbEnvInit)
         {
-            /* Need to initialize database environment. This is only done once upon construction of the first BerkeleyDB instance */
-            if (config::fShutdown.load())
-                return;
+            LOCK(cs_db); 
 
-            std::string pathDataDir(config::GetDataDir());
-            std::string pathLogDir(pathDataDir + "database");
-            filesystem::create_directory(pathLogDir);
-
-            std::string pathErrorFile(pathDataDir + "db.log");
-            //debug::log(0, FUNCTION, "dbenv.open LogDir=", pathLogDir, " ErrorFile=",  pathErrorFile);
-
-            uint32_t nDbCache = config::GetArg("-dbcache", 25);
-
-            BerkeleyDB::dbenv.set_lg_dir(pathLogDir.c_str());
-            BerkeleyDB::dbenv.set_cachesize(nDbCache / 1024, (nDbCache % 1024)*1048576, 1);
-            BerkeleyDB::dbenv.set_lg_bsize(1048576);
-            BerkeleyDB::dbenv.set_lg_max(10485760);
-            BerkeleyDB::dbenv.set_lk_max_locks(10000);
-            BerkeleyDB::dbenv.set_lk_max_objects(10000);
-            //BerkeleyDB::dbenv.set_errfile(fopen(pathErrorFile.c_str(), "a")); /// debug
-            BerkeleyDB::dbenv.set_flags(DB_TXN_WRITE_NOSYNC, 1);
-            BerkeleyDB::dbenv.set_flags(DB_AUTO_COMMIT, 1);
-            BerkeleyDB::dbenv.log_set_config(DB_LOG_AUTO_REMOVE, 1);
-
-            /* Flags to enable dbenv subsystems
-             * DB_CREATE     - Create underlying files, as needed (required when DB_RECOVER present)
-             * DB_INIT_LOCK  - Enable locking to allow multithreaded read/write
-             * DB_INIT_LOG   - Enable use of recovery logs (required when DB_INIT_TXN present)
-             * DB_INIT_MPOOL - Enable shared memory pool
-             * DB_INIT_TXN   - Enable transaction management and recovery
-             * DB_THREAD     - Enable multithreaded access
-             * DB_RECOVER    - Run recovery before opening environment, if necessary
-             */
-            uint32_t dbFlags =  DB_CREATE     |
-                                DB_INIT_LOCK  |
-                                DB_INIT_LOG   |
-                                DB_INIT_MPOOL |
-                                DB_INIT_TXN   |
-                                DB_THREAD     |
-                                DB_RECOVER;
-
-            /* Mode specifies permission settings for all Berkeley-created files on UNIX systems
-             * as defined in the system file sys/stat.h
-             *
-             *   S_IRUSR - Readable by owner
-             *   S_IWUSR - Writable by owner
-             *
-             * This setting overrides default of readable/writable by both owner and group
-             */
-#ifndef WIN32
-            uint32_t dbMode = S_IRUSR | S_IWUSR;
-#else
-            uint32_t dbMode = 0;
-#endif
-
-            /* Open the Berkely DB environment */
-            ret = BerkeleyDB::dbenv.open(pathDataDir.c_str(), dbFlags, dbMode);
-
-            if (ret > 0)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Error ", ret, " initializing Berkeley database environment"));
-
-            BerkeleyDB::fDbEnvInit = true;
-
-            debug::log(0, FUNCTION, "Initialized Legacy Berkeley database environment");
-        }
-
-        /* Initialize current BerkeleyDB instance */
-        strFile = strFileIn;
-
-        /* Usage count will be incremented whether we use pdb from mapDb or open a new one */
-        if (BerkeleyDB::mapFileUseCount.count(strFile) == 0)
-            BerkeleyDB::mapFileUseCount[strFile] = 1;
-        else
-            ++BerkeleyDB::mapFileUseCount[strFile];
-
-        /* Extract mode settings */
-        bool fCreate = (strchr(pszMode, 'c') != nullptr);
-        bool fWrite = (strchr(pszMode, 'w') != nullptr);
-        bool fAppend = (strchr(pszMode, '+') != nullptr);
-
-        /* Set database read-only if not write or append mode */
-        fReadOnly = !(fWrite || fAppend);
-
-        if (BerkeleyDB::mapDb.count(strFile) > 0)
-        {
-            /* mapDb contains entry for strFile, so database is already open */
-            pdb = BerkeleyDB::mapDb[strFile];
-        }
-        else
-        {
-            /* Database not already open, so open it now */
-            pdb = new Db(&BerkeleyDB::dbenv, 0);
-
-            /* Opened database will support multi-threaded access */
-            uint32_t fOpenFlags = DB_THREAD;
-
-            if (fCreate)
-                fOpenFlags |= DB_CREATE; // Add flag to create database file if does not exist
-
-            ret = pdb->open(nullptr,         // Txn pointer
-                            strFile.c_str(), // Filename
-                            "main",          // Logical db name
-                            DB_BTREE,        // Database type
-                            fOpenFlags,      // Flags
-                            0);
-
-            if (ret == 0)
+            if (dbenv == nullptr)  //Should be true when this is called 
             {
-                /* Database opened successfully. Add database to open database map */
-                BerkeleyDB::mapDb[strFile] = pdb;
+                if (config::fShutdown.load())
+                    return;
 
-                if (fCreate && !Exists(std::string("version")))
+                std::string pathDataDir(config::GetDataDir());
+                std::string pathLogDir(pathDataDir + "database");
+                filesystem::create_directory(pathLogDir);
+
+                std::string pathErrorFile(pathDataDir + "db.log");
+
+                uint32_t nDbCache = config::GetArg("-dbcache", 25);
+
+                dbenv = new DbEnv((uint32_t)0);
+
+                dbenv->set_lg_dir(pathLogDir.c_str());
+                dbenv->set_cachesize(nDbCache / 1024, (nDbCache % 1024)*1048576, 1);
+                dbenv->set_lg_bsize(1048576);
+                dbenv->set_lg_max(10485760);
+                dbenv->set_lk_max_locks(10000);
+                dbenv->set_lk_max_objects(10000);
+                //dbenv->set_errfile(fopen(pathErrorFile.c_str(), "a")); /// debug
+                dbenv->set_flags(DB_TXN_WRITE_NOSYNC, 1);
+                dbenv->set_flags(DB_AUTO_COMMIT, 1);
+                dbenv->log_set_config(DB_LOG_AUTO_REMOVE, 1);
+
+                /* Flags to enable dbenv subsystems
+                 * DB_CREATE     - Create underlying files, as needed (required when DB_RECOVER present)
+                 * DB_INIT_LOCK  - Enable locking to allow multithreaded read/write
+                 * DB_INIT_LOG   - Enable use of recovery logs (required when DB_INIT_TXN present)
+                 * DB_INIT_MPOOL - Enable shared memory pool
+                 * DB_INIT_TXN   - Enable transaction management and recovery
+                 * DB_THREAD     - Enable multithreaded access
+                 * DB_RECOVER    - Run recovery before opening environment, if necessary
+                 */
+                uint32_t dbFlags =  DB_CREATE     |
+                                    DB_INIT_LOCK  |
+                                    DB_INIT_LOG   |
+                                    DB_INIT_MPOOL |
+                                    DB_INIT_TXN   |
+                                    DB_THREAD     |
+                                    DB_RECOVER;
+
+                /* Mode specifies permission settings for all Berkeley-created files on UNIX systems
+                 * as defined in the system file sys/stat.h
+                 *
+                 *   S_IRUSR - Readable by owner
+                 *   S_IWUSR - Writable by owner
+                 *
+                 * This setting overrides default of readable/writable by both owner and group
+                 */
+    #ifndef WIN32
+                uint32_t dbMode = S_IRUSR | S_IWUSR;
+    #else
+                uint32_t dbMode = 0;
+    #endif
+
+                /* Open the Berkely DB environment */
+                try
                 {
-                    /* For new database file, write the database version as the first entry
-                     * This is written even if the new database was created as read-only
-                     */
-                    bool fTmp = fReadOnly;
-                    fReadOnly = false;
-                    WriteVersion(LLD::DATABASE_VERSION);
-                    fReadOnly = fTmp;
+                    ret = dbenv->open(pathDataDir.c_str(), dbFlags, dbMode);
                 }
-            }
-            else
-            {
-                /* Error opening db, reset db */
-                delete pdb;
-                pdb = nullptr;
-                strFile = "";
+                catch (const std::exception& e)
+                {
+                    delete dbenv;
+                    dbenv = nullptr;
 
-                --BerkeleyDB::mapFileUseCount[strFile];
+                    debug::error(FUNCTION, "Exception initializing Berkeley database environment for ", strDbFile, ": ", e.what());
 
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Cannot open database file ", strFile, ", error ", ret));
+                    throw std::runtime_error(
+                            debug::safe_printstr(FUNCTION, "Exception initializing Berkeley database environment for ", strDbFile, ": ", e.what()));
+
+                }
+
+                if (ret != 0)
+                {
+                    delete dbenv;
+                    dbenv = nullptr;
+                    
+                    debug::error(FUNCTION, "Error ", ret, " initializing Berkeley database environment for ", strDbFile);
+
+                    throw std::runtime_error(
+                            debug::safe_printstr(FUNCTION, "Error ", ret, " initializing Berkeley database environment for ", strDbFile));
+                }
+
+                debug::log(0, FUNCTION, "Initialized Legacy Berkeley database environment for ", strDbFile);
             }
+
+
+            /* Pre-open the database and initialize handle for its use. Creates file if it doesn't exist. */
+            OpenHandle();
+
+        } //end cs_db lock
+
+
+        /* Successfully opening db for the first time will create the database file.
+         * When file is new, it will not yet contain version. Write the database version as the first entry. 
+         *
+         * These methods lock, so call must be outside lock scope
+         */
+        if (!Exists(std::string("version")))
+            WriteVersion(LLD::DATABASE_VERSION);
+
+    }
+
+
+    /* Initializes the handle for the current database instance, if not currently open. */
+    void BerkeleyDB::OpenHandle()
+    {
+        if (pdb != nullptr)
+            return;
+
+        int32_t ret = 0;
+
+        /* Database not open, so open it now */
+        pdb = new Db(dbenv, 0);
+
+        /* Database will support multi-threaded access and create database file if does not exist*/
+        uint32_t fOpenFlags = DB_THREAD | DB_CREATE;
+
+        ret = pdb->open(nullptr,           // Txn pointer
+                        strDbFile.c_str(), // Filename
+                        "main",            // Logical db name
+                        DB_BTREE,          // Database type
+                        fOpenFlags,        // Flags
+                        0);
+
+        if (ret != 0)
+        {
+            /* Error opening db, reset db */
+            delete pdb;
+            pdb = nullptr;
+
+            debug::error(FUNCTION, "Cannot open database file ", strDbFile, ", error ", ret);
+
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, "Cannot open database file ", strDbFile, ", error ", ret));
         }
     }
 
 
+    /* Close this instance for database access. */
+    void BerkeleyDB::CloseHandle()
+    {
+        if (pdb == nullptr)
+            return;
+
+        /* Abort any in-progress transactions on this database */
+        if (!vTxn.empty())
+            vTxn.front()->abort();
+
+        vTxn.clear();
+
+        /* Flush database activity from memory pool to disk log */
+        uint32_t nMinutes = 0;
+
+        dbenv->txn_checkpoint(nMinutes ? config::GetArg("-dblogsize", 100)*1024 : 0, nMinutes, 0);
+
+        pdb->close(0);
+
+        /* Current pdb no longer valid. Remove it */
+        delete pdb;
+        pdb = nullptr;
+    }
+
+
+    /*  Retrieves the most recently started database transaction. */
+    DbTxn* BerkeleyDB::GetTxn()
+    {
+        if (!vTxn.empty())
+            return vTxn.back();
+        else
+            return nullptr;
+    }
+
+
+    /* Public Methods */
 
     /* Open a cursor at the beginning of the database. */
     Dbc* BerkeleyDB::GetCursor()
     {
+        LOCK(cs_db);
+        
         if (pdb == nullptr)
-            return nullptr;
+            OpenHandle();
 
         Dbc* pcursor = nullptr;
 
@@ -253,6 +300,11 @@ namespace Legacy
     /* Read a database key-value pair from the current cursor location. */
     int32_t BerkeleyDB::ReadAtCursor(Dbc* pcursor, DataStream& ssKey, DataStream& ssValue, uint32_t fFlags)
     {
+        LOCK(cs_db);
+        
+        if (pcursor == nullptr)
+            return 99998;
+
         /* Key - Initialize with argument data for flag settings that need it */
         Dbt datKey;
         if (fFlags == DB_SET || fFlags == DB_SET_RANGE || fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE)
@@ -305,7 +357,9 @@ namespace Legacy
     /* Closes and discards a cursor. After calling this method, the cursor is no longer valid for use. */
     void BerkeleyDB::CloseCursor(Dbc* pcursor)
     {
-        if (pdb == nullptr)
+        LOCK(cs_db);
+        
+        if (pcursor == nullptr)
             return;
 
         pcursor->close();
@@ -314,27 +368,16 @@ namespace Legacy
     }
 
 
-    /*  Retrieves the most recently started database transaction. */
-    DbTxn* BerkeleyDB::GetTxn()
-    {
-        if (!vTxn.empty())
-            return vTxn.back();
-        else
-            return nullptr;
-    }
-
-
     /* Start a new database transaction and add it to vTxn */
     bool BerkeleyDB::TxnBegin()
     {
-        if (pdb == nullptr)
-            return false;
-
+        LOCK(cs_db);
+        
         /* Start a new database transaction. Need to use raw pointer with Berkeley API */
         DbTxn* pTxn = nullptr;
 
         /* Begin new transaction */
-        int32_t ret = BerkeleyDB::dbenv.txn_begin(GetTxn(), &pTxn, DB_TXN_WRITE_NOSYNC);
+        int32_t ret = dbenv->txn_begin(GetTxn(), &pTxn, DB_TXN_WRITE_NOSYNC);
 
         if (pTxn == nullptr || ret != 0)
             return false;
@@ -349,9 +392,8 @@ namespace Legacy
     /* Commit the transaction most recently added to vTxn */
     bool BerkeleyDB::TxnCommit()
     {
-        if (pdb == nullptr)
-            return false;
-
+        LOCK(cs_db);
+        
         auto pTxn = GetTxn();
 
         if (pTxn == nullptr)
@@ -368,9 +410,8 @@ namespace Legacy
     /* Abort the transaction most recently added to vTxn, reversing any updates performed. */
     bool BerkeleyDB::TxnAbort()
     {
-        if (pdb == nullptr)
-            return false;
-
+        LOCK(cs_db);
+        
         auto pTxn = GetTxn();
 
         if (pTxn == nullptr)
@@ -399,151 +440,59 @@ namespace Legacy
     }
 
 
-    /* Close this instance for database access. */
-    void BerkeleyDB::Close()
+    /* Flushes data to the data file for the current database. */
+    void BerkeleyDB::DBFlush()
     {
-        if (pdb == nullptr)
+        LOCK(cs_db);
+
+        if (dbenv == nullptr)
             return;
 
-        /* Abort any in-progress transactions on this database */
-        if (!vTxn.empty())
-            vTxn.front()->abort();
+        /* Close any open database activity. Handle will need to be reopened after flush */
+        CloseHandle();
 
-        vTxn.clear();
+        debug::log(0, FUNCTION, "Flushing ", strDbFile);
+        int64_t nStart = runtime::timestamp(true);
 
-        /* Flush database activity from memory pool to disk log */
-        uint32_t nMinutes = 0;
-        if (fReadOnly)
-            nMinutes = 1;
+        /* Flush wallet file so it's self contained */
+        dbenv->txn_checkpoint(0, 0, 0);
+        dbenv->lsn_reset(strDbFile.c_str(), 0);
 
-        if (strFile == "addr.dat")
-            nMinutes = 2;
-
-        BerkeleyDB::dbenv.txn_checkpoint(nMinutes ? config::GetArg("-dblogsize", 100)*1024 : 0, nMinutes, 0);
-
-        {
-            LOCK(BerkeleyDB::cs_db);
-            --BerkeleyDB::mapFileUseCount[strFile];
-        }
-
-        //delete pdb; //Don't delete here, pointer is stored in mapDb so handle can be reused. It is deleted in CloseDb()
-        pdb = nullptr;
-        strFile = "";
+        debug::log(0, FUNCTION, "Flushed ", strDbFile, " in ", runtime::timestamp(true) - nStart, " ms");
 
     }
 
 
-    /* Closes down the open database handle for a database and removes it from BerkeleyDB::mapDb */
-    void BerkeleyDB::CloseDb(const std::string& strFile)
-    {
-        /* Does not LOCK(BerkeleyDB::cd_db) -- this lock must be previously obtained before calling this methods */
-
-        if (BerkeleyDB::mapDb.count(strFile) > 0 && BerkeleyDB::mapDb[strFile] != nullptr)
-        {
-            /* Close the database handle */
-            auto pdb = BerkeleyDB::mapDb[strFile];
-            pdb->close(0);
-            delete pdb;
-
-            BerkeleyDB::mapDb.erase(strFile);
-        }
-    }
-
-
-    /* Flushes log file to data file for any database handles with BerkeleyDB::mapFileUseCount = 0
-     * then calls CloseDb on that database.
-     */
-    void BerkeleyDB::DBFlush(bool fShutdown)
-    {
-        /* Flush log data to the actual data file on all files that are not in use */
-        debug::log(0, FUNCTION, "Shutdown ", fShutdown ? "true" : "false", ")",  BerkeleyDB::fDbEnvInit ? "" : " db not started");
-
-        {
-            LOCK(BerkeleyDB::cs_db);
-
-            if (!BerkeleyDB::fDbEnvInit)
-                return;
-
-            /* Copy mapFileUseCount so can erase without invalidating iterator */
-            std::map<std::string, uint32_t> mapTempUseCount = BerkeleyDB::mapFileUseCount;
-
-            for (auto mi = mapTempUseCount.cbegin(); mi != mapTempUseCount.cend(); ++mi)
-            {
-                const std::string strFile = (*mi).first;
-                const uint32_t nRefCount = (*mi).second;
-
-                debug::log(2, FUNCTION, strFile, " refcount=", nRefCount);
-
-                if (nRefCount == 0)
-                {
-                    /* We have lock on BerkeleyDB::cs_db so can call CloseDb safely */
-                    CloseDb(strFile);
-
-                    /* Flush log data to the dat file and detach the file */
-                    debug::log(2, FUNCTION, strFile, " checkpoint");
-                    BerkeleyDB::dbenv.txn_checkpoint(0, 0, 0);
-
-                    debug::log(2, FUNCTION, strFile, " detach");
-                    BerkeleyDB::dbenv.lsn_reset(strFile.c_str(), 0);
-
-                    debug::log(2, FUNCTION, strFile, " closed");
-                    BerkeleyDB::mapFileUseCount.erase(strFile);
-                }
-            }
-        }
-
-        if (fShutdown)
-        {
-            /* Need to call this outside of lock scope */
-            EnvShutdown();
-        }
-    }
-
-
-    /* Rewrites a database file by copying all contents */
-    bool BerkeleyDB::DBRewrite(const std::string& strFile, const char* pszSkip)
+    /* Rewrites the database file by copying all contents to a new file. */
+    bool BerkeleyDB::DBRewrite()
     {
         if (config::fShutdown)
-            return false;
+            return false; // Don't start rewrite if shutdown in progress
 
         bool fProcessSuccess = true;
         int32_t dbReturn = 0;
 
         /* Define temporary file name where copy will be written */
-        std::string strFileRewrite = strFile + ".rewrite";
+        std::string strDbFileRewrite = strDbFile + ".rewrite";
 
         {
-            /* Lock database access for full rewrite process.
-             * This process does not use a BerkeleyDB instance and manually calls Berkeley methods
-             * to avoid use of locks within BerkeleyDB itself. Adds work to do ReadAtCursor(), but
-             * allows a proper lock scope.
-             */
-            LOCK(BerkeleyDB::cs_db);
+            /* Lock database access for full rewrite process. */
+            LOCK(cs_db);
 
-            if (BerkeleyDB::mapFileUseCount.count(strFile) != 0 && BerkeleyDB::mapFileUseCount[strFile] != 0)
-            {
-                /* Database file in use. Cannot rewrite */
-                return false;
-            }
-            else
-            {
-                /* We have lock on BerkeleyDB::cs_db so can call CloseDb safely */
-                CloseDb(strFile);
+            CloseHandle();
 
-                /* Flush log data to the dat file and detach the file */
-                BerkeleyDB::dbenv.txn_checkpoint(0, 0, 0);
-                BerkeleyDB::dbenv.lsn_reset(strFile.c_str(), 0);
-                BerkeleyDB::mapFileUseCount.erase(strFile);
-            }
+            /* Flush log data to the dat file and detach the file */
+            dbenv->txn_checkpoint(0, 0, 0);
+            dbenv->lsn_reset(strDbFile.c_str(), 0);
 
-            debug::log(0, FUNCTION, "Rewriting ", strFile.c_str(), "...");
+            debug::log(0, FUNCTION, "Rewriting ", strDbFile.c_str(), "...");
 
-            Db* pdbSource = new Db(&BerkeleyDB::dbenv, 0);
-            Db* pdbCopy = new Db(&BerkeleyDB::dbenv, 0);
+            Db* pdbSource = new Db(dbenv, 0);
+            Db* pdbCopy = new Db(dbenv, 0);
 
             /* Open database handle to temp file */
             dbReturn = pdbSource->open(nullptr,              // Txn pointer
-                                       strFile.c_str(),      // Filename
+                                       strDbFile.c_str(),    // Filename
                                        "main",               // Logical db name
                                        DB_BTREE,             // Database type
                                        DB_RDONLY,            // Flags
@@ -551,21 +500,28 @@ namespace Legacy
 
             if (dbReturn != 0)
             {
-                debug::log(0, FUNCTION, "Cannot open source database file ", strFile.c_str());
+                debug::log(0, FUNCTION, "Cannot open source database file ", strDbFile.c_str());
+
+                delete pdbSource;
+                delete pdbCopy;
                 return false;
             }
 
             /* Open database handle to temp file */
-            dbReturn = pdbCopy->open(nullptr,                // Txn pointer
-                                     strFileRewrite.c_str(), // Filename
-                                     "main",                 // Logical db name
-                                     DB_BTREE,               // Database type
-                                     DB_CREATE,              // Flags
+            dbReturn = pdbCopy->open(nullptr,                  // Txn pointer
+                                     strDbFileRewrite.c_str(), // Filename
+                                     "main",                   // Logical db name
+                                     DB_BTREE,                 // Database type
+                                     DB_CREATE,                // Flags
                                      0);
 
             if (dbReturn != 0)
             {
-                debug::log(0, FUNCTION, "Cannot create target database file ", strFileRewrite.c_str());
+                debug::log(0, FUNCTION, "Cannot create target database file ", strDbFileRewrite.c_str());
+
+                pdbSource->close(0);
+                delete pdbSource;
+                delete pdbCopy;
                 return false;
             }
 
@@ -575,14 +531,19 @@ namespace Legacy
 
             if (dbReturn != 0 || pcursor == nullptr)
             {
-                debug::log(0, FUNCTION, "Failure opening cursor on source database file ", strFile.c_str());
+                debug::error(FUNCTION, "Failure opening cursor on source database file ", strDbFile.c_str());
+
+                pdbSource->close(0);
+                delete pdbSource;
+                pdbCopy->close(0);
+                delete pdbCopy;
                 return false;
             }
 
             while (fProcessSuccess)
             {
-                /* This section duplicates the process in BerkeleyDB::ReadAtCursor without the need for a BerkeleyDB instance
-                 * Code logic from BerkeleyDB::ReadAtCursor that is not needed for this specific process is left out.
+                /* This section directly codes all cursor, read, and write operations without using their corresponding
+                 * methods, allowing it to keep hold of the cs_db mutex the entire time without lock conflicts.
                  */
                 DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
                 DataStream ssValue(SER_DISK, LLD::DATABASE_VERSION);
@@ -593,22 +554,20 @@ namespace Legacy
                 datKey.set_flags(DB_DBT_MALLOC);
                 datValue.set_flags(DB_DBT_MALLOC);
 
-                /* Execute cursor operation */
+                /* Read next entry from source file */
                 dbReturn = pcursor->get(&datKey, &datValue, DB_NEXT);
 
                 if (dbReturn == DB_NOTFOUND)
                 {
                     /* No more data */
-                    pcursor->close();
                     fProcessSuccess = true;
                     break;
                 }
                 else if (datKey.get_data() == nullptr || datValue.get_data() == nullptr)
                 {
                     /* No data reading cursor */
-                    pcursor->close();
                     fProcessSuccess = false;
-                    debug::log(0, FUNCTION, "No data reading cursor on database file ", strFile.c_str());
+                    debug::error(FUNCTION, "No data reading cursor on database file ", strDbFile.c_str());
                     break;
                 }
                 else if (dbReturn == 0)
@@ -632,15 +591,10 @@ namespace Legacy
                 else if (dbReturn != 0)
                 {
                     /* Error reading cursor */
-                    pcursor->close();
                     fProcessSuccess = false;
-                    debug::log(0, FUNCTION, "Failure reading cursor on database file ", strFile.c_str());
+                    debug::error(FUNCTION, "Failure reading cursor on database file ", strDbFile.c_str());
                     break;
                 }
-
-                /* Skip any key value defined by pszSkip argument */
-                if (pszSkip != nullptr && strncmp((char*)ssKey.data(), pszSkip, std::min(ssKey.size(), strlen(pszSkip))) == 0)
-                    continue;
 
                 /* Don't copy the version, instead use latest version */
                 if (strncmp((char*)ssKey.data(), "version", 7) == 0)
@@ -658,12 +612,13 @@ namespace Legacy
 
                 if (dbReturn != 0)
                 {
-                    pcursor->close();
                     fProcessSuccess = false;
-                    debug::log(0, FUNCTION, "Failure writing target database file ", strFile.c_str());
+                    debug::error(FUNCTION, "Failure writing target database file ", strDbFile.c_str());
                     break;
                 }
             }
+
+            pcursor->close();
 
             /* Rewrite complete. Close the databases */
             pdbSource->close(0);
@@ -672,18 +627,18 @@ namespace Legacy
             pdbCopy->close(0);
             delete pdbCopy;
 
-            /* Flush log data to the dat files */
-            BerkeleyDB::dbenv.txn_checkpoint(0, 0, 0);
-            BerkeleyDB::dbenv.lsn_reset(strFile.c_str(), 0);
-            BerkeleyDB::dbenv.lsn_reset(strFileRewrite.c_str(), 0);
+            /* Flush the data files */
+            dbenv->txn_checkpoint(0, 0, 0);
+            dbenv->lsn_reset(strDbFile.c_str(), 0);
+            dbenv->lsn_reset(strDbFileRewrite.c_str(), 0);
 
             if (fProcessSuccess)
             {
                 /* Remove original database file */
-                Db dbOld(&BerkeleyDB::dbenv, 0);
-                if (dbOld.remove(strFile.c_str(), nullptr, 0) != 0)
+                Db dbOld(dbenv, 0);
+                if (dbOld.remove(strDbFile.c_str(), nullptr, 0) != 0)
                 {
-                    debug::log(0, FUNCTION, "Unable to remove old database file ", strFile.c_str());
+                    debug::error(FUNCTION, "Unable to remove old database file ", strDbFile.c_str());
                     fProcessSuccess = false;
                 }
             }
@@ -691,16 +646,16 @@ namespace Legacy
             if (fProcessSuccess)
             {
                 /* Rename temp file to original file name */
-                Db dbNew(&BerkeleyDB::dbenv, 0);
-                if (dbNew.rename(strFileRewrite.c_str(), nullptr, strFile.c_str(), 0) != 0)
+                Db dbNew(dbenv, 0);
+                if (dbNew.rename(strDbFileRewrite.c_str(), nullptr, strDbFile.c_str(), 0) != 0)
                 {
-                    debug::log(0, FUNCTION, "Unable to rename database file ", strFileRewrite.c_str(), " to ", strFile.c_str());
+                    debug::error(FUNCTION, "Unable to rename database file ", strDbFileRewrite.c_str(), " to ", strDbFile.c_str());
                     fProcessSuccess = false;
                 }
             }
 
             if (!fProcessSuccess)
-                debug::log(0, FUNCTION, "Rewriting of ", strFile.c_str(), " FAILED!");
+                debug::log(0, FUNCTION, "Rewriting of ", strDbFile.c_str(), " failed");
 
         } //End lock scope
 
@@ -708,63 +663,91 @@ namespace Legacy
     }
 
 
-    /* Called to shut down the Berkeley database environment in BerkeleyDB:dbenv */
+    /* Static methods */
+
+    /* Retrieves the BerkeleyDB instance that corresponds to a given database file. */
+    BerkeleyDB& BerkeleyDB::GetInstance(const std::string& strFileIn)
+    {
+        if (strFileIn.empty())
+        {
+            debug::error(FUNCTION, "Missing file name");
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, "Missing file name"));
+        }
+
+        {
+            LOCK(BerkeleyDB::mapMutex);
+
+            if (mapBerkeleyInstances.count(strFileIn) == 0)
+                mapBerkeleyInstances[strFileIn] = new BerkeleyDB(strFileIn);
+
+            return *mapBerkeleyInstances[strFileIn];
+        }
+    }
+
+
+    /* Called to shut down the Berkeley database environment in each BerkeleyDB instance */
     void BerkeleyDB::EnvShutdown()
     {
+        debug::log(0, FUNCTION, "Shutting down Legacy Berkeley database environment");
+
         {
-            /* Lock database access before closing databases and shutting down environment */
-            LOCK(BerkeleyDB::cs_db);
+            /* Lock map access before removing databases */
+            LOCK(BerkeleyDB::mapMutex);
 
-            if (!BerkeleyDB::fDbEnvInit)
-                return;
-
-            debug::log(0, FUNCTION, "Shutting down Legacy Berkeley database environment");
-
-            /* Ensure all open db handles are closed and pointers deleted.
-             * CloseDb calls erase() on mapDb so build list of open files first
-             * thus avoiding any problems with erase invalidating iterators.
-             */
-            std::vector<std::string> dbFilesToClose;
-            for (auto& mapEntry : mapDb)
+            /* Ensure all created database instances are cleaned up and destroyed. */
+            for (auto& mapEntry : mapBerkeleyInstances)
             {
                 if (mapEntry.second != nullptr)
-                    dbFilesToClose.push_back(mapEntry.first);
-            }
+                {
+                    BerkeleyDB* pdbToClose = mapEntry.second;
 
-            for (auto& dbFile : dbFilesToClose)
-            {
-                BerkeleyDB::CloseDb(dbFile);
+                    {
+                        LOCK(pdbToClose->cs_db);
 
-                /* Flush log data to the dat file and detach the file */
-                debug::log(2, FUNCTION, dbFile, " checkpoint");
-                BerkeleyDB::dbenv.txn_checkpoint(0, 0, 0);
+                        if (pdbToClose->pdb != nullptr)
+                            pdbToClose->CloseHandle();
 
-                debug::log(2, FUNCTION, dbFile, " detach");
-                BerkeleyDB::dbenv.lsn_reset(dbFile.c_str(), 0);
+                        if (pdbToClose->dbenv != nullptr)
+                        {
+                             /* Flush log data to the dat file and detach the file */
+                            debug::log(2, FUNCTION, pdbToClose->strDbFile, " checkpoint");
+                            pdbToClose->dbenv->txn_checkpoint(0, 0, 0);
 
-                debug::log(2, FUNCTION, dbFile, " closed");
-                BerkeleyDB::mapFileUseCount.erase(dbFile);
-            }
+                            debug::log(2, FUNCTION, pdbToClose->strDbFile, " detach");
+                            pdbToClose->dbenv->lsn_reset(pdbToClose->strDbFile.c_str(), 0);
 
+                            debug::log(2, FUNCTION, pdbToClose->strDbFile, " closed");
 
-            /* Remove log files */
-            char** listp;
-            if (BerkeleyDB::mapFileUseCount.empty())
-                BerkeleyDB::dbenv.log_archive(&listp, DB_ARCH_REMOVE);
+                            /* Remove log files */
+                            char** listp;
+                            pdbToClose->dbenv->log_archive(&listp, DB_ARCH_REMOVE);
 
-            /* Shut down the database environment */
-            BerkeleyDB::fDbEnvInit = false;
+                            /* Shut down the database environment */
+                            try
+                            {
+                                pdbToClose->dbenv->close(0);
+                            }
+                            catch(const DbException& e)
+                            {
+                                debug::log(0, FUNCTION, "Exception: ", e.what(), "(", e.get_errno(), ")");
+                            }
 
-            try
-            {
-                BerkeleyDB::dbenv.close(0);
-            }
-            catch(const DbException& e)
-            {
-                debug::log(0, FUNCTION, "Exception: ", e.what(), "(", e.get_errno(), ")");
-            }
+                            delete pdbToClose->dbenv;
+                            pdbToClose->dbenv = nullptr;
+                        }
 
-        } //End lock scope
+                    } //end cs_db lock
+
+                    delete pdbToClose;
+
+                    pdbToClose = nullptr;
+                    mapEntry.second = nullptr;
+                }
+            } 
+
+            mapBerkeleyInstances.clear();
+
+        } //end map lock
     }
 
 }

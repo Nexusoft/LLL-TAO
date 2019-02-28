@@ -29,77 +29,138 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    extern bool fDetachDB;
-
     /** @class BerkeleyDB
      *
-     *  Provides support for accessing Berkeley databases
+     *  Provides implementation for Berkeley database operations.
+     *
+     *  BerkeleyDB provides one instance per database file used. Each is retrieved
+     *  via the GetInstance(strFileIn) method.  An instance initializes and
+     *  maintains its own database environment and is independent of others.
+     *
+     *  Within the instance, all database operations are single-threaded. 
+     *  Nexus does not require high scalability for Berkeley operations, thus 
+     *  this approach assures data integrity and avoids race conditions 
+     *  without impacting system performance.
+     *
+     *  To assure there can never be two copies of the database instance that may access
+     *  the same file concurrenlty, the BerkeleyDB is not copyable. GetInstance() returns
+     *  a reference, and only the reference can be passed around.
      *
      **/
-    class BerkeleyDB
+    class BerkeleyDB final
     {
-    public:
-        /** Mutex for thread concurrency.
-         *
-         *  Used to manage concurrency across BerkeleyDB databases.
-         */
-        static std::mutex cs_db;
-
-
-        /** The Berkeley database environment.
-         *  Initialized on first use of any Berkeley DB access.
-         */
-        static DbEnv dbenv;
-
-
-        /** Flag indicating whether or not the database environment
-         *  has been initialized.
-         */
-        static bool fDbEnvInit;
-
-
-        /** Tracks databases usage
-         *
-         *  string = file name
-         *  uint32_t = usage count, value > 0 indicates database in use
-         *
-         * A usage count >1 indicates that there are multiple BerkeleyDB instances using the same pdb pointer from mapDb
-         */
-        static std::map<std::string, uint32_t> mapFileUseCount;
-
-
-        /** Stores pdb copy for each open database handle, keyed by file name.  **/
-        static std::map<std::string, Db*> mapDb;
-
 
     private:
 
+        /** Map of BerkelyDB instances by file name **/
+        static std::map<std::string, BerkeleyDB*> mapBerkeleyInstances;
 
-        /** Init
+
+        /* Static mutex for concurrent access to instance map **/
+        static std::mutex mapMutex;
+
+
+        /** Mutex for thread concurrency.
          *
-         *  Performs work of initialization for constructors.
+         *  Used to manage concurrency of operations within this database instance.
+         */
+        std::mutex cs_db;
+
+
+        /** The Berkeley database environment. Initialized by constructor. */
+        DbEnv* dbenv;
+
+
+        /** Pointer to handle for a Berkeley database, 
+         *  for opening/accessing database underlying this BerkeleyDB instance 
          *
+         *  This handle must be closed whenever the database is flushed, then
+         *  must be reopened by the next call.
          **/
-        void Init(const std::string& strFileIn, const char* pszMode);
-
-
-    protected:
-        /* Instance data members */
-
-        /** Pointer to handle for a Berkeley database, for opening/accessing database underlying this BerkeleyDB instance **/
         Db* pdb;
 
 
         /** The file name of the current database **/
-        std::string strFile;
+        std::string strDbFile;
 
 
         /** Contains all current open (uncommitted) transactions for the database in the order they were begun **/
         std::vector<DbTxn*> vTxn;
 
 
-        /** Indicates whether or not this database is in read-only mode **/
-        bool fReadOnly;
+        /** Constructor
+         *
+         *  Initializes database access for a given file name.
+         *
+         *  All BerkeleyDB instances are initialized in read/write/create mode.
+         *
+         *  @param[in] strFileIn The database file name
+         *
+         **/
+        explicit BerkeleyDB(const std::string& strFileIn);
+
+
+        /** Init
+         *
+         *  Performs work of initialization for constructor.
+         *
+         **/
+        void Init();
+
+
+        /** OpenHandle
+         *
+         *  Initializes the handle for the current database instance, if not currently open.
+         *  Access to handle is then available using pdb instance variable
+         *
+         *  This method does not lock the cs_db mutex and should be called within lock scope.
+         *
+         **/
+        void OpenHandle();
+
+
+        /** CloseHandle
+         *
+         *  Closes the handle for the current database instance, if currently open.
+         *  Aborts any open transactions, flushes memory to log file, sets pdb to nullptr. 
+         *
+         *  Call this before any database operations that must close database access (such as flush).
+         *  The next database operation must then open a new database handle.
+         *
+         *  This method does not lock the cs_db mutex and should be called within lock scope.
+         *
+         **/
+        void CloseHandle();
+
+
+        /** GetTxn
+         *
+         *  Retrieves the most recently started database transaction.
+         *
+         *  This method does not lock the cs_db mutex and should be called within lock scope.
+         *
+         *  @return pointer to most recent database transaction, or nullptr if none started
+         *
+         **/
+        DbTxn* GetTxn();
+
+
+    public:
+
+        /** Destructor
+         *
+         *  Calls Close() on the database
+         *
+         **/
+        ~BerkeleyDB();
+
+
+        /** Copy constructor deleted. No copy allowed **/
+        BerkeleyDB(const BerkeleyDB&) = delete;
+
+
+        /** Copy assignment operator deleted. No assignment allowed **/
+        BerkeleyDB& operator= (const BerkeleyDB&) = delete;
 
 
         /** Read
@@ -117,8 +178,10 @@ namespace Legacy
         template<typename K, typename T>
         bool Read(const K& key, T& value)
         {
+            LOCK(cs_db);
+
             if (pdb == nullptr)
-                return false;
+                OpenHandle();
 
             /* Key */
             DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
@@ -187,11 +250,10 @@ namespace Legacy
         template<typename K, typename T>
         bool Write(const K& key, const T& value, bool fOverwrite=true)
         {
+            LOCK(cs_db);
+            
             if (pdb == nullptr)
-                return false;
-
-            if (fReadOnly)
-                assert(!"Write called on database in read-only mode");
+                OpenHandle();
 
             /* Key */
             DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
@@ -230,11 +292,10 @@ namespace Legacy
         template<typename K>
         inline bool Erase(const K& key)
         {
+            LOCK(cs_db);
+            
             if (pdb == nullptr)
-                return false;
-
-            if (fReadOnly)
-                assert(!"Erase called on database in read-only mode");
+                OpenHandle();
 
             /* Key */
             DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
@@ -264,8 +325,10 @@ namespace Legacy
         template<typename K>
         inline bool Exists(const K& key)
         {
+            LOCK(cs_db);
+            
             if (pdb == nullptr)
-                return false;
+                OpenHandle();
 
             /* Key */
             DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
@@ -336,70 +399,6 @@ namespace Legacy
         void CloseCursor(Dbc* pcursor);
 
 
-        /** GetTxn
-         *
-         *  Retrieves the most recently started database transaction.
-         *
-         *  @return pointer to most recent database transaction, or nullptr if none started
-         *
-         **/
-        DbTxn* GetTxn();
-
-
-    public:
-
-        /** Constructor
-         *
-         *  Initializes database access for a given file name and access mode.
-         *
-         *  Access modes: r=read, w=write, +=append, c=create
-         *
-         *  For modes, read is superfluous, as can always read any open database.
-         *  Write and append modes are the same, as append only is not enforced.
-         *  Essentially, a database can be opened in read-only mode or read/write mode
-         *  using the mode settings.
-         *
-         *  The c (create) mode indicates whether or not to create the database file
-         *  if not present. If initialize without using the c mode, and the database file
-         *  does not exist, object instantiation will fail with a runtime error.
-         *
-         *  @param[in] pszFile The database file name
-         *
-         *  @param[in] pszMode A string containing one or more access mode characters
-         *                     defaults to r+ (read and append). An empty or null string is
-         *                     equivalent to read only.
-         *
-         **/
-        explicit BerkeleyDB(const char* pszFileIn, const char* pszMode="r+");
-
-
-        /** Constructor
-         *
-         *  Alternative version that takes filename as std::string
-         *
-         *  @param[in] strFile The database file name
-         *  @param[in] pszMode A string containing one or more access mode characters
-         *
-         **/
-        explicit BerkeleyDB(const std::string& strFileIn, const char* pszMode="r+");
-
-
-        /** Destructor
-         *
-         *  Calls Close() on the database
-         *
-         **/
-        virtual ~BerkeleyDB();
-
-
-        /** Copy constructor deleted. No copy allowed **/
-        BerkeleyDB(const BerkeleyDB&) = delete;
-
-
-        /** Copy assignment operator deleted. No assignment allowed **/
-        BerkeleyDB& operator= (const BerkeleyDB&) = delete;
-
-
         /** TxnBegin
          *
          *  Start a new database transaction and add it to vTxn
@@ -456,74 +455,48 @@ namespace Legacy
         bool WriteVersion(const uint32_t nVersion);
 
 
-        /** Close
-         *
-         *  Close this instance for database access.
-         *  Aborts any open transactions, flushes memory to log file, sets pdb to nullptr,
-         *  and sets strFile to an empty string. At this point, the BerkeleyDB instance can be safely destroyed.
-         *
-         *  This decrements BerkeleyDB::mapFileUseCount but does not close the database handle,
-         *  which remains stored in BerkeleyDB::mapDb. The handle will remain open until a call to CloseDb()
-         *  during DBFlush() or shutdown.  Until then, any new instances created for the same data file
-         *  will re-use the open handle.
-         *
-         **/
-        void Close();
-
-
-        /** CloseDb
-         *
-         *  Closes down the open database handle for a database and removes it from BerkeleyDB::mapDb
-         *
-         *  Should only be called when BerkeleyDB::mapFileUseCount is 0 (after Close() called on any in-use
-         *  instances) or the pdb copy in active instances will become invalid and results of continued
-         *  use are undefined.
-         *
-         *  This method does not obtain a lock on BerkeleyDB::cs_db, thus any methods calling it must first
-         *  obtain that lock. This supports usage within methods that also require obtaining a BerkeleyDB::cs_db
-         *  lock for other purposes.
-         *
-         *  @param[in] strFile Database to close
-         *
-         **/
-        static void CloseDb(const std::string& strFile);
-
-
         /** DBFlush
          *
-         *  Flushes log file to data file for any database handles with BerkeleyDB::mapFileUseCount = 0
-         *  then calls CloseDb on that database.
-         *
-         *  @param[in] fShutdown Set true if shutdown in progress, calls EnvShutdown()
+         *  Flushes data to the data file for the current database.
          *
          **/
-        static void DBFlush(bool fShutdown);
+        void DBFlush();
 
 
-        /** DBRewrite
+       /** DBRewrite
          *
-         *  Rewrites a database file by copying all contents to an new file, then
-         *  replacing the old file with the new one. Does nothing if
-         *  BerkeleyDB::mapFileUseCount indicates the source file is in use.
-         *
-         *  @param[in] strFile The database file to rewrite
-         *  @param[in] pszSkip An optional key type. Any database entries with this key are not copied to the rewritten file
+         *  Rewrites the database file by copying all contents to a new file, then
+         *  replaces the original file with the new one. 
          *
          *  @return true if rewrite was successful
          *
          **/
-        static bool DBRewrite(const std::string& strFile, const char* pszSkip = nullptr);
+        bool DBRewrite();
+
+
+        /* Static Methods */
+
+        /** GetInstance
+         *
+         *  Retrieves the BerkeleyDB instance that corresponds to a given database file.
+         *
+         *  Opens the database environment for a database file the first time it is retrieved.
+         *  The returned instance allows all read/write operations. If the file does not 
+         *  exist, it will be created the first time it is accessed.
+         *
+         *  @param strFileIn[in] The database file name
+         *
+         *  @return Berkeley db reference for operating on the database file
+         *
+         **/
+        static BerkeleyDB& GetInstance(const std::string& strFileIn);
 
 
         /** EnvShutdown
          *
-         *  Called to shut down the Berkeley database environment in BerkeleyDB:dbenv
+         *  Called to shut down the Berkeley database environment across all open instances.
          *
-         *  Should be called on system shutdown. If called at any other time, invalidates
-         *  any active database handles resulting in undefined behavior if they are used.
-         *  Assuming there are no active database handles, shutting down the environment
-         *  when there is no system shutdown requires it to be re-initialized if a new BerkeleyDB
-         *  instance is later constructed. This is costly and should be avoided.
+         *  Call this on system shutdown to flush, checkpoint, and detach the backing database file. 
          *
          **/
         static void EnvShutdown();
