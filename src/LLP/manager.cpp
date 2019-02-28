@@ -134,9 +134,9 @@ namespace LLP
         update_state(pAddr, state);
 
         /* Update the LLD Address database for this entry */
-        pDatabase->TxnBegin();
+        //pDatabase->TxnBegin();
         pDatabase->WriteTrustAddress(hash, *pAddr);
-        pDatabase->TxnCommit();
+        //pDatabase->TxnCommit();
     }
 
 
@@ -226,9 +226,9 @@ namespace LLP
             it->second.nLatency = lat;
 
             /* Update the LLD Address database for this entry */
-            pDatabase->TxnBegin();
+            //pDatabase->TxnBegin();
             pDatabase->WriteTrustAddress(hash, it->second);
-            pDatabase->TxnCommit();
+            //pDatabase->TxnCommit();
         }
     }
 
@@ -245,9 +245,9 @@ namespace LLP
             it->second.nHeight = height;
 
             /* Update the LLD Address database for this entry */
-            pDatabase->TxnBegin();
+            //pDatabase->TxnBegin();
             pDatabase->WriteTrustAddress(hash, it->second);
-            pDatabase->TxnCommit();
+            //pDatabase->TxnCommit();
         }
 
     }
