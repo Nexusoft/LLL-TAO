@@ -287,7 +287,7 @@ namespace LLC
          *  @return True if the Signature was created successfully.
          *
          **/
-        bool SignCompact(uint256_t hash, std::vector<unsigned char>& vchSig);
+        bool SignCompact(uint256_t hash, std::vector<uint8_t>& vchSig);
 
 
         /** SetCompactSignature
@@ -303,7 +303,7 @@ namespace LLC
          *  @return True if the Signature was set.
          *
          **/
-        bool SetCompactSignature(uint256_t hash, const std::vector<unsigned char>& vchSig);
+        bool SetCompactSignature(uint256_t hash, const std::vector<uint8_t>& vchSig);
 
 
         /** Verify

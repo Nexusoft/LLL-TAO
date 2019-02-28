@@ -33,7 +33,7 @@ namespace LLD
     , runtime()
     , pTransaction(nullptr)
     , pSectorKeys(nullptr)
-    , cachePool(new CacheType((config::GetArg("-maxcache", 64) * 1024 * 1024) / 4))
+    , cachePool(new CacheType(static_cast<uint32_t>(config::GetArg("-maxcache", 64) * 1024 * 1024) / 4))
     , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
     , nCurrentFile(0)
     , nCurrentFileSize(0)
@@ -120,7 +120,7 @@ namespace LLD
 
             /* Get the Binary Size. */
             fIncoming.seekg(0, std::ios::end);
-            nCurrentFileSize = fIncoming.tellg();
+            nCurrentFileSize = static_cast<uint32_t>(fIncoming.tellg());
             fIncoming.close();
 
             /* Increment the Current File */
@@ -147,7 +147,7 @@ namespace LLD
     bool SectorDatabase<KeychainType, CacheType>::Get(const std::vector<uint8_t>& vKey, std::vector<uint8_t>& vData)
     {
         /* Iterate if meters are enabled. */
-        nBytesRead += (vKey.size() + vData.size());
+        nBytesRead += static_cast<uint32_t>(vKey.size() + vData.size());
 
         /* Check the cache pool for key first. */
         if(cachePool->Get(vKey, vData))
@@ -208,7 +208,7 @@ namespace LLD
         {
             LOCK(SECTOR_MUTEX);
 
-            nBytesRead += (cKey.vKey.size() + vData.size());
+            nBytesRead += static_cast<uint32_t>(cKey.vKey.size() + vData.size());
 
             /* Find the file stream for LRU cache. */
             std::fstream *pstream;
@@ -285,7 +285,7 @@ namespace LLD
 
             /* Records flushed indicator. */
             ++nRecordsFlushed;
-            nBytesWrote += vData.size();
+            nBytesWrote += static_cast<uint32_t>(vData.size());
 
             /* Verboe output. */
             debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
@@ -342,10 +342,10 @@ namespace LLD
                 pstream->flush();
 
                 /* Create a new Sector Key. */
-                SectorKey key = SectorKey(STATE::READY, vKey, nCurrentFile, nCurrentFileSize, vData.size());
+                SectorKey key = SectorKey(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile), nCurrentFileSize, static_cast<uint32_t>(vData.size()));
 
                 /* Increment the current filesize */
-                nCurrentFileSize += vData.size();
+                nCurrentFileSize += static_cast<uint32_t>(vData.size());
 
                 /* Assign the Key to Keychain. */
                 if(!pSectorKeys->Put(key))
@@ -384,7 +384,7 @@ namespace LLD
             LOCK(BUFFER_MUTEX);
 
             vDiskBuffer.push_back(std::make_pair(vKey, vData));
-            nBufferBytes += (vKey.size() + vData.size());
+            nBufferBytes += static_cast<uint32_t>(vKey.size() + vData.size());
         }
 
         /* Notify if buffer was added to. */
@@ -457,7 +457,7 @@ namespace LLD
                 cachePool->Reserve(vObj.first, false);
 
                 /* Iterate bytes written for meter. */
-                nBytesWrote += (vObj.first.size() + vObj.second.size());
+                nBytesWrote += static_cast<uint32_t>(vObj.first.size() + vObj.second.size());
             }
 
             /* Notify the condition. */
@@ -689,7 +689,7 @@ namespace LLD
         stream.ignore(std::numeric_limits<std::streamsize>::max());
 
         /* Get the data buffer. */
-        uint32_t nSize = stream.gcount();
+        uint32_t nSize = static_cast<uint32_t>(stream.gcount());
         std::vector<uint8_t> vBuffer(nSize, 0);
 
         /* Read the keychain file. */

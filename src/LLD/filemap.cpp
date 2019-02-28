@@ -125,7 +125,7 @@ namespace LLD
 
             /* Get the Binary Size. */
             fIncoming.ignore(std::numeric_limits<std::streamsize>::max());
-            nCurrentFileSize = fIncoming.gcount();
+            nCurrentFileSize = static_cast<int32_t>(fIncoming.gcount());
             nKeychainSize += nCurrentFileSize;
 
             /* Read the keychain file. */

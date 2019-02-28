@@ -35,7 +35,7 @@ namespace LLD
     , HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
     , HASHMAP_MAX_CACHE_SIZE(10 * 1024)
     , HASHMAP_MAX_KEY_SIZE(32)
-    , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 13)
+    , HASHMAP_KEY_ALLOCATION(static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
     , nFlags(FLAGS::APPEND)
     {
     }
@@ -51,7 +51,7 @@ namespace LLD
     , HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
     , HASHMAP_MAX_CACHE_SIZE(10 * 1024)
     , HASHMAP_MAX_KEY_SIZE(32)
-    , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 13)
+    , HASHMAP_KEY_ALLOCATION(static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
     , nFlags(nFlagsIn)
     {
         Initialize();
@@ -68,7 +68,7 @@ namespace LLD
     , HASHMAP_TOTAL_BUCKETS(nTotalBuckets)
     , HASHMAP_MAX_CACHE_SIZE(nMaxCacheSize)
     , HASHMAP_MAX_KEY_SIZE(32)
-    , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 13)
+    , HASHMAP_KEY_ALLOCATION(static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
     , nFlags(nFlagsIn)
     {
         Initialize();
@@ -111,7 +111,7 @@ namespace LLD
             /* Loop half of the key to XOR elements. */
             for(uint64_t i = 0; i < vData.size() / 2; ++i)
                 if(i * 2 < vData.size())
-                    vData[i] ^= vData[i * 2];
+                    vData[i] = vData[i] ^ vData[i * 2];
 
             /* Resize the container to half its size. */
             vData.resize(vData.size() / 2);
@@ -136,10 +136,10 @@ namespace LLD
         MD5((uint8_t *)&vKey[0], vKey.size(), (uint8_t *)&digest);
 
         /* Copy bytes into the bucket. */
-        uint64_t nBucket;
+        uint64_t nBucket = 0;
         std::copy((uint8_t *)&digest[0], (uint8_t *)&digest[0] + 8, (uint8_t *)&nBucket);
 
-        return nBucket % HASHMAP_TOTAL_BUCKETS;
+        return static_cast<uint32_t>(nBucket % HASHMAP_TOTAL_BUCKETS);
     }
 
 

@@ -593,7 +593,7 @@ namespace LLC
         vchSig.resize(nSize); // Make sure it is big enough
 
         /* Attempt the ECDSA Signing Operation. */
-        if(ECDSA_sign(0, &vchData[0], vchData.size(), &vchSig[0], &nSize, pkey) != 1)
+        if(ECDSA_sign(0, &vchData[0], static_cast<int32_t>(vchData.size()), &vchSig[0], &nSize, pkey) != 1)
         {
             vchSig.clear();
             return debug::error("Failed to Sign");
@@ -611,7 +611,7 @@ namespace LLC
     bool ECKey::Verify(const std::vector<uint8_t>& vchData, const std::vector<uint8_t>& vchSig) const
     {
         return Encoding(vchSig) &&
-            (ECDSA_verify(0, &vchData[0], vchData.size(), &vchSig[0], vchSig.size(), pkey) == 1);
+            (ECDSA_verify(0, &vchData[0], static_cast<int32_t>(vchData.size()), &vchSig[0], static_cast<int32_t>(vchSig.size()), pkey) == 1);
     }
 
 
@@ -649,7 +649,7 @@ namespace LLC
     // The format is one header byte, followed by two times 32 bytes for the serialized r and s values.
     // The header byte: 0x1B = first key with even y, 0x1C = first key with odd y,
     //                  0x1D = second key with even y, 0x1E = second key with odd y
-    bool ECKey::SignCompact(uint256_t hash, std::vector<unsigned char>& vchSig)
+    bool ECKey::SignCompact(uint256_t hash, std::vector<uint8_t>& vchSig)
     {
         bool fOk = false;
 
@@ -705,7 +705,7 @@ namespace LLC
                 throw key_error("CKey::SignCompact() : unable to construct recoverable key");
             }
 
-            vchSig[0] = nRecId+27+(fCompressedPubKey ? 4 : 0);
+            vchSig[0] = static_cast<uint8_t>(nRecId+27+(fCompressedPubKey ? 4 : 0));
 
             BN_bn2bin(sig_r, &vchSig[73-(nBitsR+7)/8]);
             BN_bn2bin(sig_s, &vchSig[145-(nBitsS+7)/8]);
@@ -721,13 +721,15 @@ namespace LLC
     // This is only slightly more CPU intensive than just verifying it.
     // If this function succeeds, the recovered public key is guaranteed to be valid
     // (the signature is a valid signature of the given data for that key)
-    bool ECKey::SetCompactSignature(uint256_t hash, const std::vector<unsigned char>& vchSig)
+    bool ECKey::SetCompactSignature(uint256_t hash, const std::vector<uint8_t>& vchSig)
     {
         if (vchSig.size() != 145)
             return false;
+
         int nV = vchSig[0];
         if (nV<27 || nV>=35)
             return false;
+
         ECDSA_SIG* sig = ECDSA_SIG_new();
         if (nullptr == sig)
             return false;
@@ -786,15 +788,15 @@ namespace LLC
         if(nBits == 256)
         {
             uint256_t hash256 = hash.getuint256();
-            fSuccess = (ECDSA_verify(0, (uint8_t*)&hash256, sizeof(hash256), &vchSig[0], vchSig.size(), pkey) == 1);
+            fSuccess = (ECDSA_verify(0, (uint8_t*)&hash256, sizeof(hash256), &vchSig[0], static_cast<int32_t>(vchSig.size()), pkey) == 1);
         }
         else if(nBits == 512)
         {
             uint512_t hash512 = hash.getuint512();
-            fSuccess = (ECDSA_verify(0, (uint8_t*)&hash512, sizeof(hash512), &vchSig[0], vchSig.size(), pkey) == 1);
+            fSuccess = (ECDSA_verify(0, (uint8_t*)&hash512, sizeof(hash512), &vchSig[0], static_cast<int32_t>(vchSig.size()), pkey) == 1);
         }
         else
-            fSuccess = (ECDSA_verify(0, (uint8_t*)&hash, sizeof(hash), &vchSig[0], vchSig.size(), pkey) == 1);
+            fSuccess = (ECDSA_verify(0, (uint8_t*)&hash, sizeof(hash), &vchSig[0], static_cast<int32_t>(vchSig.size()), pkey) == 1);
 
         return fSuccess;
     }

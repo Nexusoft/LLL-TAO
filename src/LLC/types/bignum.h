@@ -556,7 +556,7 @@ namespace LLC
 
 
         /* templated serialization function prototypes */
-        uint32_t GetSerializeSize(uint32_t nSerType=0,
+        uint64_t GetSerializeSize(uint32_t nSerType=0,
                                   uint32_t nVersion=LLP::PROTOCOL_VERSION) const;
 
         template<typename Stream>

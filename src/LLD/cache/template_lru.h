@@ -224,7 +224,7 @@ namespace LLD
                 nBucket += vKey[i] << (8 * i);
 
             /* Round robin to find the bucket. */
-            return nBucket % MAX_CACHE_BUCKETS;
+            return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
         }
 
 

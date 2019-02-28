@@ -35,7 +35,7 @@ namespace LLD
               uint32_t nSectorStartIn,
               uint32_t nSectorSizeIn)
     : nState(nStateIn)
-    , nLength(vKeyIn.size())
+    , nLength(static_cast<uint16_t>(vKeyIn.size()))
     , nSectorFile(nSectorFileIn)
     , nSectorSize(nSectorSizeIn)
     , nSectorStart(nSectorStartIn)
@@ -81,7 +81,7 @@ namespace LLD
     void SectorKey::SetKey(const std::vector<uint8_t>& vKeyIn)
     {
         vKey = vKeyIn;
-        nLength = vKey.size();
+        nLength = static_cast<uint16_t>(vKey.size());
     }
 
 
