@@ -48,11 +48,11 @@ namespace LLP
 
 
         /** Keep track of last time data was sent. **/
-        std::atomic<uint32_t> nLastSend;
+        std::atomic<uint64_t> nLastSend;
 
 
         /** Keep track of last time data was received. **/
-        std::atomic<uint32_t> nLastRecv;
+        std::atomic<uint64_t> nLastRecv;
 
 
         /** Oversize buffer for large packets. **/

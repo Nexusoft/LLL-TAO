@@ -388,11 +388,11 @@ namespace LLP
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent != vData.size())
         {
-            nLastSend = runtime::timestamp();
-
             LOCK(DATA_MUTEX);
             vBuffer.insert(vBuffer.end(), vData.begin() + nSent, vData.end());
         }
+
+        nLastSend = runtime::timestamp();
 
         return nSent;
     }
@@ -444,11 +444,11 @@ namespace LLP
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent > 0)
         {
-            nLastSend = runtime::timestamp();
-
             LOCK(DATA_MUTEX);
             vBuffer.erase(vBuffer.begin(), vBuffer.begin() + nSent);
         }
+
+        nLastSend = runtime::timestamp();
 
         return nSent;
     }
@@ -457,8 +457,8 @@ namespace LLP
     /*  Determines if nTime seconds have elapsed since last Read / Write. */
     bool Socket::Timeout(uint32_t nTime) const
     {
-        return (runtime::timestamp() > nLastSend + nTime &&
-                runtime::timestamp() > nLastRecv + nTime);
+        return (runtime::timestamp() > (uint64_t)(nLastSend + nTime) &&
+                runtime::timestamp() > (uint64_t)(nLastRecv + nTime));
     }
 
 

@@ -89,10 +89,10 @@ namespace LLP
                 {
                     /* Send version if making the connection. */
                     PushMessage(DAT_VERSION, TritiumNode::nSessionID, GetAddress());
-
-                    /* Ask the node you are connecting to for their inventory*/
-                    PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
                 }
+
+                /* Ask the new node for their inventory*/
+                PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
 
                 break;
             }

@@ -141,7 +141,7 @@ namespace LLP
 
 
         /** Counter to keep track of the last time a ping was made. **/
-        std::atomic<uint32_t> nLastPing;
+        std::atomic<uint64_t> nLastPing;
 
 
         /** The last getblocks call this node has received. **/

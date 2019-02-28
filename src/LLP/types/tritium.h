@@ -101,11 +101,11 @@ namespace LLP
 
 
         /** Counter to keep track of the last time a ping was made. **/
-        uint32_t nLastPing;
+        std::atomic<uint64_t> nLastPing;
 
 
         /** Counter to keep track of last time sample request. */
-        uint32_t nLastSamples;
+        std::atomic<uint64_t> nLastSamples;
 
 
         /** timer object to keep track of ping latency. **/
