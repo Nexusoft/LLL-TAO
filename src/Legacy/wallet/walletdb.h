@@ -24,7 +24,9 @@ ________________________________________________________________________________
 #include <LLC/include/key.h>
 #include <LLC/types/uint1024.h>
 
+#include <Legacy/wallet/cryptokeystore.h> //for CryptedKeyMap typedef
 #include <Legacy/wallet/db.h>
+
 
 namespace Legacy
 {
@@ -44,8 +46,7 @@ namespace Legacy
         DB_LOAD_OK,
         DB_CORRUPT,
         DB_TOO_NEW,
-        DB_LOAD_FAIL,
-        DB_NEED_REWRITE
+        DB_LOAD_FAIL
     };
 
 
@@ -54,7 +55,8 @@ namespace Legacy
      *  Access to the wallet database (wallet.dat).
      *
      *  This class implements operations for reading and writing different types
-     *  of entries (keys) into the wallet database.
+     *  of entries (keys) into the wallet database as a proxy for interfacing
+     *  with the actual database environment (BerkeleyDB).
      *
      *  The wallet database, through its supported operations, stores values
      *  for multiple types of entries (keys) in the database, including:
@@ -72,7 +74,7 @@ namespace Legacy
      *    - "acentry"<account><counter> = accounting entry (credit/debit) associated with an account/Nexus address
      *
      **/
-    class WalletDB : public BerkeleyDB
+    class WalletDB
     {
     public:
         /** Defines default name of wallet database file **/
@@ -88,7 +90,7 @@ namespace Legacy
          *  its last iteration that need to be flushed to disk.
          *
          **/
-        static uint32_t nWalletDBUpdated;
+        static std::atomic<uint32_t> nWalletDBUpdated;
 
 
         /**
@@ -103,21 +105,18 @@ namespace Legacy
         static uint64_t nAccountingEntryNumber;
 
 
+        /** The file name of the wallet database file **/
+        std::string strWalletFile;
+
+
         /** Constructor
          *
          *  Initializes database access to wallet database using WalletDB::DEFAULT_WALLET_DB
          *  for the file name.
          *
-         *
-         *  @param[in] pszMode A string containing one or more access mode characters
-         *                     defaults to r+ (read and append). An empty or null string is
-         *                     equivalent to read only.
-         *
-         *  @see BerkeleyDB for modes
-         *
          **/
-        WalletDB(const char* pszMode="r+")
-        : BerkeleyDB(WalletDB::DEFAULT_WALLET_DB, pszMode)
+        WalletDB()
+        : strWalletFile(WalletDB::DEFAULT_WALLET_DB)
         { }
 
 
@@ -128,15 +127,9 @@ namespace Legacy
          *  @param[in] strFileName The database file name. Should be file name only. Database
          *                     will put the file in data directory automatically.
          *
-         *  @param[in] pszMode A string containing one or more access mode characters
-         *                     defaults to r+ (read and append). An empty or null string is
-         *                     equivalent to read only.
-         *
-         *  @see BerkeleyDB for modes
-         *
          **/
-        WalletDB(const std::string& strFileName, const char* pszMode="r+")
-        : BerkeleyDB(strFileName, pszMode)
+        WalletDB(const std::string& strFileName)
+        : strWalletFile(strFileName)
         { }
 
 
@@ -551,6 +544,40 @@ namespace Legacy
         uint32_t LoadWallet(Wallet& wallet);
 
 
+        /** EncryptDatabase
+         *
+         *  Converts the database from unencrypted to encrypted.
+         *
+         *  This method will write the master key and encrypted key map into the database. It will also remove any unencrypted
+         *  keys that correspond to the new encrypted ones. It will suspend the flush thread and perform all database
+         *  updates as a single transaction that is committed on success. 
+         *
+         *  @param[in] nNewMasterKeyId The index (Id) of the master key to store
+         *
+         *  @param[in] kMasterKey Master key used to encrypt the new encrypted keys
+         *
+         *  @param[in] mapNewEncryptedKeys The encrypted keys to store in the database
+         * 
+         *  @return true on success, false otherwise (transaction aborted, database not updated)
+         *
+         **/
+        bool EncryptDatabase(const uint32_t nNewMasterKeyId, const MasterKey& kMasterKey, const CryptedKeyMap& mapNewEncryptedKeys);
+
+
+        /** DBRewrite
+         *
+         *  Rewrites the backing database by copying all contents. 
+         *
+         *  This method provides a proxy to the underlying database process, keeping all database specifics encapsulated 
+         *  within WalletDB. Wallet class, or other use points, should always call this method instead of the
+         *  underlying method, allowing flexibilty to the underlying implementation.
+         * 
+         *  @return true on success, false otherwise 
+         *
+         **/
+        bool DBRewrite();
+
+
         /** @fn ThreadFlushWalletDB
          *
          *  Start the wallet flush thread for a given wallet file.
@@ -607,16 +634,22 @@ namespace Legacy
 
     
     private:
-        /** mutex to provide synchronized access on mutable methods **/
-        static std::mutex cs_walletdb;
-
-
         /**  Thread to perform wallet flush. Used to execute WalletDB::ThreadFlushWalletDB **/
         static std::thread flushThread;
 
 
+        /**  Flag to record that the flush thread has been started **/
+        static std::atomic<bool> fFlushThreadStarted;
+
+
         /**  Flag to signal flushThread to shut down **/
         static std::atomic<bool> fShutdownFlushThread;
+
+
+        /**  Flag to tell flushThread there is a multi-step database operation (cursor, transction, etc.)
+         *   currently in progress and it should wait to flush.
+         **/
+        static std::atomic<bool> fDbInProgress;
 
     };
 
