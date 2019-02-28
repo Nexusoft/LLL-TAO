@@ -43,36 +43,58 @@ namespace Legacy
             if (poolWallet.IsLocked())
                 return false;
 
-            WalletDB walletdb(poolWallet.GetWalletFile());
-
-            LOCK(KeyPool::cs_keyPool);
-
-            /* Remove all entries for old key pool from database */
-            if (setKeyPool.size() > 0)
-                debug::log(2, FUNCTION, "Erasing previous key pool entries");
-
-            for(uint64_t nPoolIndex : setKeyPool)
-                walletdb.ErasePool(nPoolIndex);
-
-            setKeyPool.clear();
-
-            /* Generate a new key pool with a full set of keys */
             const uint64_t nKeyPoolSizeSetting = std::max((int64_t)0, config::GetArg("-keypool", KeyPool::DEFAULT_KEY_POOL_SIZE));
             const uint64_t nKeys = std::max(nKeyPoolSizeSetting, MINIMUM_KEY_POOL_SIZE);
 
-            for (uint64_t i = 0; i < nKeys; i++)
-            {
-                uint64_t nPoolIndex = i + 1;
+            WalletDB walletdb(poolWallet.GetWalletFile());
 
+            std::vector<uint64_t> vPoolIndexList;
+
+            /* Remove all entries for old key pool from database */
+            {
+                /* Copy set and clear it (removes old keys from availability), then release lock before erasing them from database */
+                LOCK(KeyPool::cs_keyPool);
+
+                if (setKeyPool.size() > 0)
+                {
+                    debug::log(2, FUNCTION, "Erasing previous key pool entries");
+
+                    vPoolIndexList.resize(setKeyPool.size());
+
+                    for(uint64_t nPoolIndex : setKeyPool)
+                        vPoolIndexList.push_back(nPoolIndex);
+                }
+
+                setKeyPool.clear();
+            }
+
+
+            for(uint64_t nPoolIndex : vPoolIndexList)
+                walletdb.ErasePool(nPoolIndex);
+
+            vPoolIndexList.clear();
+
+            /* Generate a new key pool with a full set of keys */
+            {
+                LOCK(KeyPool::cs_keyPool);
+
+                vPoolIndexList.resize(nKeys);
+
+                for (uint64_t nPoolIndex = 1; nPoolIndex <= nKeys; nPoolIndex++)
+                {
+                    setKeyPool.insert(nPoolIndex);
+                    vPoolIndexList.push_back(nPoolIndex);
+                }
+            }
+
+            /* Write keys to database using list of indexes added to pool */
+            for(uint64_t nPoolIndex : vPoolIndexList)
+            {
                 if (!walletdb.WritePool(nPoolIndex, KeyPoolEntry(poolWallet.GenerateNewKey())))
                     throw std::runtime_error("KeyPool::NewKeyPool() : writing generated key failed");
-
-                setKeyPool.insert(nPoolIndex);
             }
 
             debug::log(2, FUNCTION, "Added ", nKeys, " new keys to key pool");
-
-            walletdb.Close();
         }
 
         return true;
@@ -86,54 +108,63 @@ namespace Legacy
 
         if (poolWallet.IsFileBacked())
         {
-            LOCK(KeyPool::cs_keyPool);
-
-            /* Current key pool size */
-            uint64_t nStartingSize = setKeyPool.size();
+            if (poolWallet.IsLocked())
+                return false;
 
             /* Desired key pool size */
             const uint64_t nKeyPoolSizeSetting = std::max((int64_t)0, config::GetArg("-keypool", KeyPool::DEFAULT_KEY_POOL_SIZE));
             const uint64_t nTargetSize = std::max(nKeyPoolSizeSetting, MINIMUM_KEY_POOL_SIZE);
-
-            if (nStartingSize >= nTargetSize)
-            	return true; // pool already filled
-
-            if (poolWallet.IsLocked())
-                return false;
-
-            debug::log(2, FUNCTION, "Topping up Keypool, current size = ", nStartingSize, " target size = ",  nTargetSize);
+            const uint64_t nMinimumSize = std::min(nKeyPoolSizeSetting, MINIMUM_KEY_POOL_SIZE);
 
             WalletDB walletdb(poolWallet.GetWalletFile());
 
-            /* Current max pool index in the pool */
-            uint64_t nCurrentMaxPoolIndex = 0;
-            if (!setKeyPool.empty())
-                nCurrentMaxPoolIndex = *(--setKeyPool.cend());
+            std::vector<uint64_t> vPoolIndexList;
 
-            /* New pool indexes will begin from the current max */
-            uint64_t nNewPoolIndex = nCurrentMaxPoolIndex;
+            /* Current key pool size */
+            uint64_t nStartingSize = setKeyPool.size();
 
-            /* Top up key pool */
-            for (uint64_t i = nStartingSize; i < nTargetSize; ++i)
             {
-                ++nNewPoolIndex;
+                LOCK(KeyPool::cs_keyPool);
 
-                /* Generate a new key and add the key pool entry to the wallet database */
-                if (!walletdb.WritePool(nNewPoolIndex, KeyPoolEntry(poolWallet.GenerateNewKey())))
-                    throw std::runtime_error("KeyPool::TopUpKeyPool() : writing generated key failed");
+                if (nStartingSize >= nMinimumSize)
+                	return true; // Pool does not need refill until it falls to minimum size
 
-                /* Store the pool index for the new key in the key pool */
-                setKeyPool.insert(nNewPoolIndex);
+                debug::log(2, FUNCTION, "Topping up Keypool, current size = ", nStartingSize, " target size = ",  nTargetSize);
 
-                debug::log(2, FUNCTION, "Keypool added key ", nNewPoolIndex);
+                /* Current max pool index in the pool */
+                uint64_t nCurrentMaxPoolIndex = 0;
+                if (!setKeyPool.empty())
+                    nCurrentMaxPoolIndex = *(--setKeyPool.cend());
 
-                fKeysAdded = true;
+                /* New pool indexes will begin from the current max */
+                uint64_t nNewPoolIndex = nCurrentMaxPoolIndex;
+
+                vPoolIndexList.resize(nTargetSize - nStartingSize);
+
+                /* Top up key pool */
+                for (uint64_t i = (nStartingSize + 1); i <= nTargetSize; ++i)
+                {
+                    ++nNewPoolIndex;
+
+                    /* Store the pool index for the new key in the key pool */
+                    setKeyPool.insert(nNewPoolIndex);
+                    vPoolIndexList.push_back(nNewPoolIndex);
+
+                    fKeysAdded = true;
+                }
+            }
+
+            /* Write keys to database using list of indexes added to pool */
+            for(uint64_t nPoolIndex : vPoolIndexList)
+            {
+                if (!walletdb.WritePool(nPoolIndex, KeyPoolEntry(poolWallet.GenerateNewKey())))
+                    throw std::runtime_error("KeyPool::NewKeyPool() : writing generated key failed");
+
+                debug::log(2, FUNCTION, "Keypool added key ", nPoolIndex);
             }
 
             if (fKeysAdded)
                 debug::log(2, FUNCTION, "Keypool topped up, ", (nTargetSize - nStartingSize), " keys added, new size = ",  nTargetSize);
-
-            walletdb.Close();
         }
 
         return true;
@@ -145,20 +176,25 @@ namespace Legacy
     {
         if (poolWallet.IsFileBacked())
         {
-            LOCK(KeyPool::cs_keyPool);
+            if (poolWallet.IsLocked())
+                return false;
+
+            uint64_t nPoolIndex = 1;
+
+            {
+                LOCK(KeyPool::cs_keyPool);
+
+                if (!setKeyPool.empty())
+                    nPoolIndex += *(--setKeyPool.cend());
+
+                /* This "reserves" the index so we can release pool lock before writing to database */
+                setKeyPool.insert(nPoolIndex); 
+            }
 
             WalletDB walletdb(poolWallet.GetWalletFile());
 
-            uint64_t nPoolIndex = 1;
-            if (!setKeyPool.empty())
-                nPoolIndex += *(--setKeyPool.cend());
-
             if (!walletdb.WritePool(nPoolIndex, keypoolEntry))
                 throw std::runtime_error("KeyPool::AddKey() : writing added key failed");
-
-            setKeyPool.insert(nPoolIndex);
-
-            walletdb.Close();
 
             return nPoolIndex;
         }
@@ -180,7 +216,7 @@ namespace Legacy
 
         if (nPoolIndex == -1)
         {
-            /* Key pool is empty, attempt to use default key when requested */
+            /* Key pool is empty or wallet is locked, attempt to use default key when requested */
             auto vchPoolWalletDefaultKey = poolWallet.GetDefaultKey();
 
             if (fUseDefaultWhenEmpty && !vchPoolWalletDefaultKey.empty())
@@ -218,26 +254,32 @@ namespace Legacy
             if (!poolWallet.IsLocked())
                 TopUpKeyPool();
 
-            if(setKeyPool.empty())
-                return;
+            {
+                LOCK(KeyPool::cs_keyPool);
 
-            LOCK(KeyPool::cs_keyPool);
+                if(setKeyPool.empty())
+                    return;
+
+                /* Get the oldest key (smallest key pool index) */
+                auto si = setKeyPool.begin();
+                nPoolIndex = *(si);
+
+                /* Reserve key removes it from the key pool, but leaves the key pool entry in the wallet database.
+                 * This will later be removed by KeepKey() or the key will be re-added to the pool by ReturnKey().
+                 * Shutting down and later restarting has the same effect as ReturnKey().
+                 */
+                setKeyPool.erase(si);
+            }
 
             WalletDB walletdb(poolWallet.GetWalletFile());
 
-            /* Get the oldest key (smallest key pool index) */
-            auto si = setKeyPool.begin();
-            nPoolIndex = *(si);
-
-            /* Reserve key removes it from the key pool, but leaves the key pool entry in the wallet database.
-             * This will later be removed by KeepKey() or the key will be re-added to the pool by ReturnKey().
-             * Shutting down and later restarting has the same effect as ReturnKey().
-             */
-            setKeyPool.erase(si);
-
-            /* Retrieve the key pool entry from the database */
+            /* Now that we have reserved the index, retrieve the key pool entry from the database */
             if (!walletdb.ReadPool(nPoolIndex, keypoolEntry))
-                throw std::runtime_error("KeyPool::ReserveKeyFromPool() : unable to read key pool entry");
+            {
+                debug::error(FUNCTION, "KeyPool::ReserveKeyFromPool() : unable to read key pool entry");
+                nPoolIndex = -1;
+                return;
+            }
 
             /* Validate that the key is a valid key for the containing wallet */
             if (!poolWallet.HaveKey(LLC::SK256(keypoolEntry.vchPubKey)))
@@ -245,8 +287,6 @@ namespace Legacy
 
             assert(!keypoolEntry.vchPubKey.empty());
             debug::log(3, FUNCTION, "Keypool reserve ", nPoolIndex);
-
-            walletdb.Close();
         }
     }
 
@@ -256,17 +296,12 @@ namespace Legacy
     {
         if (poolWallet.IsFileBacked())
         {
-            LOCK(KeyPool::cs_keyPool);
-
             /* Remove from key pool */
             WalletDB walletdb(poolWallet.GetWalletFile());
             walletdb.ErasePool(nPoolIndex);
 
             debug::log(3, FUNCTION, "Keypool keep ", nPoolIndex);
-
-	        walletdb.Close();
         }
-
     }
 
 
@@ -278,9 +313,9 @@ namespace Legacy
             LOCK(KeyPool::cs_keyPool);
 
             setKeyPool.insert(nPoolIndex);
-        }
 
-        debug::log(3, FUNCTION, "Keypool return ", nPoolIndex);
+            debug::log(3, FUNCTION, "Keypool return ", nPoolIndex);
+        }
     }
 
 

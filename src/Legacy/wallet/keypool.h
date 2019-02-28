@@ -60,7 +60,7 @@ namespace Legacy
 
 
         /** Defines the minimum key pool size **/
-        static const uint64_t MINIMUM_KEY_POOL_SIZE = 0;
+        static const uint64_t MINIMUM_KEY_POOL_SIZE = 10;
 
 
     private:
