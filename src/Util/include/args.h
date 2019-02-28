@@ -87,7 +87,7 @@ namespace config
      *  @return command-line argument (0 if invalid number) or default value.
      *
      **/
-    int64_t GetArg(const std::string& strArg, int64_t nDefault);
+    int64_t  GetArg(const std::string& strArg, int64_t  nDefault);
 
 
     /** GetBoolArg

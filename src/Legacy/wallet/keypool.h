@@ -177,7 +177,7 @@ namespace Legacy
          **/
         inline uint32_t GetKeyPoolSize() const
         {
-            return setKeyPool.size();
+            return static_cast<uint32_t>(setKeyPool.size());
         }
 
 

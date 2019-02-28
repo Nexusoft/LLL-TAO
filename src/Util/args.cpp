@@ -121,7 +121,7 @@ namespace config
         return strDefault;
     }
 
-    /* Return integer argument or default value */
+    /* Return integer argument or default value. */
     int64_t GetArg(const std::string& strArg, int64_t nDefault)
     {
         LOCK(ARGS_MUTEX);
@@ -131,6 +131,7 @@ namespace config
 
         return nDefault;
     }
+
 
     /* Return boolean argument or default value */
     bool GetBoolArg(const std::string& strArg, bool fDefault)
@@ -150,7 +151,7 @@ namespace config
     bool SoftSetArg(const std::string& strArg, const std::string& strValue)
     {
         LOCK(ARGS_MUTEX);
-        
+
         if (mapArgs.count(strArg))
             return false;
 

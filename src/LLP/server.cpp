@@ -46,10 +46,10 @@ namespace LLP
 
     /** Constructor **/
     template <class ProtocolType>
-    Server<ProtocolType>::Server(uint16_t nPort, uint16_t nMaxThreads, uint32_t nTimeout, bool isDDOS,
+    Server<ProtocolType>::Server(uint16_t nPort, uint16_t nMaxThreads, uint32_t nTimeout, bool fDDOS_,
                          uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen,
                          bool fMeter, bool fManager, uint32_t nSleepTimeIn)
-    : fDDOS(isDDOS)
+    : fDDOS(fDDOS_)
     , MANAGER()
     , PORT(nPort)
     , MAX_THREADS(nMaxThreads)
@@ -61,7 +61,7 @@ namespace LLP
         for(uint16_t index = 0; index < MAX_THREADS; ++index)
         {
             DATA_THREADS.push_back(new DataThread<ProtocolType>(
-                index, fDDOS, rScore, cScore, nTimeout, fMeter));
+                index, fDDOS_, rScore, cScore, nTimeout, fMeter));
         }
 
         /* Initialize the address manager. */

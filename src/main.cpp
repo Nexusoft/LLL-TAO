@@ -48,8 +48,6 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
 
-#include <iostream>
-#include <sstream>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -78,17 +76,29 @@ namespace LLP
     template <class ProtocolType>
     Server<ProtocolType> *CreateMiningServer()
     {
+        uint16_t port = static_cast<uint16_t>(config::GetArg(std::string("-miningport"), config::fTestNet ? 8325 : 9325));
+        uint16_t threads = static_cast<uint16_t>(config::GetArg(std::string("-threads"), 10));
+        uint32_t timeout = 30;
+        bool f_ddos = false;
+        uint32_t c_score = 0;
+        uint32_t r_score = 0;
+        uint32_t timespan = 60;
+        bool f_listen = config::GetBoolArg(std::string("-listen"), true);
+        bool f_meter = false;
+        bool f_manager = false;
+
+
         return new Server<ProtocolType>(
-            config::GetArg("-miningport", config::fTestNet ? 8325 : 9325),
-            config::GetArg("-threads", 10),
-            30,
-            false,
-            0,
-            0,
-            60,
-            config::GetBoolArg("-listen", true),
-            false,
-            false);
+            port,
+            threads,
+            timeout,
+            f_ddos,
+            c_score,
+            r_score,
+            timespan,
+            f_listen,
+            f_meter,
+            f_manager);
     }
 
 
@@ -107,17 +117,27 @@ namespace LLP
     template <class ProtocolType>
     Server<ProtocolType> *Create_TAO_Server(uint16_t port)
     {
+        uint16_t threads = static_cast<uint16_t>(config::GetArg(std::string("-threads"), 10));
+        uint32_t timeout = static_cast<uint32_t>(config::GetArg(std::string("-timeout"), 30));
+        bool f_ddos = config::GetBoolArg(std::string("-ddos"), false);
+        uint32_t c_score = static_cast<uint32_t>(config::GetArg(std::string("-cscore"), 1));
+        uint32_t r_score = static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 50));
+        uint32_t timespan = static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 60));
+        bool f_listen = config::GetBoolArg(std::string("-listen"), true);
+        bool f_meter = config::GetBoolArg(std::string("-meters"), false);
+        bool f_manager = config::GetBoolArg(std::string("-manager"), true);
+
         return new Server<ProtocolType>(
             port,
-            config::GetArg("-threads", 10),
-            config::GetArg("-timeout", 30),
-            config::GetBoolArg("-ddos", false),
-            config::GetArg("-cscore", 1),
-            config::GetArg("-rscore", 50),
-            config::GetArg("-timespan", 60),
-            config::GetBoolArg("-listen", true),
-            config::GetBoolArg("-meters", false),
-            config::GetBoolArg("-manager", true));
+            threads,
+            timeout,
+            f_ddos,
+            c_score,
+            r_score,
+            timespan,
+            f_listen,
+            f_meter,
+            f_manager);
     }
 
 
@@ -228,7 +248,7 @@ int main(int argc, char** argv)
     {
         if (!convert::IsSwitchChar(argv[i][0]))
         {
-            if(config::GetBoolArg("-api"))
+            if(config::GetBoolArg(std::string("-api")))
                 return TAO::API::CommandLineAPI(argc, argv, i);
 
             return TAO::API::CommandLineRPC(argc, argv, i);
@@ -276,7 +296,7 @@ int main(int argc, char** argv)
 
     /** Load the Wallet Database. **/
     bool fFirstRun;
-    if (!Legacy::Wallet::InitializeWallet(config::GetArg("-wallet", Legacy::WalletDB::DEFAULT_WALLET_DB)))
+    if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
         return debug::error("Failed initializing wallet");
 
 
@@ -307,7 +327,7 @@ int main(int argc, char** argv)
 
 
     /** Handle Rescanning. **/
-    if(config::GetBoolArg("-rescan"))
+    if(config::GetBoolArg(std::string("-rescan")))
         Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
 
 
@@ -325,17 +345,17 @@ int main(int argc, char** argv)
         0,
         0,
         10,
-        config::GetBoolArg("-unified", false),
-        config::GetBoolArg("-meters", false),
-        config::GetBoolArg("-manager", true),
+        config::GetBoolArg(std::string("-unified"), false),
+        config::GetBoolArg(std::string("-meters"), false),
+        config::GetBoolArg(std::string("-manager"), true),
         30000);
 
 
     /** Handle the beta server. */
-    if(!config::GetBoolArg("-beta"))
+    if(!config::GetBoolArg(std::string("-beta")))
     {
         /* Get the port for Tritium Server. */
-        port = static_cast<uint16_t>(config::GetArg("-port", config::fTestNet ? 8888 : 9888));
+        port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? 8888 : 9888));
 
         /* Initialize the Tritium Server. */
         LLP::TRITIUM_SERVER = LLP::Create_TAO_Server<LLP::TritiumNode>(port);
@@ -357,7 +377,7 @@ int main(int argc, char** argv)
     else
     {
         /* Get the port for Legacy Server. */
-        port = static_cast<uint16_t>(config::GetArg("-port", config::fTestNet ? 8323 : 9323));
+        port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? 8323 : 9323));
 
         /* Initialize the Legacy Server. */
         LLP::LEGACY_SERVER = LLP::Create_TAO_Server<LLP::LegacyNode>(port);
@@ -378,9 +398,12 @@ int main(int argc, char** argv)
     }
 
 
+    /* Get the port for the Core API Server. */
+    port = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), 8080));
+
     /* Create the Core API Server. */
     CORE_SERVER = new LLP::Server<LLP::CoreNode>(
-        config::GetArg("-apiport", 8080),
+        port,
         10,
         30,
         false,
@@ -392,10 +415,12 @@ int main(int argc, char** argv)
         false);
 
 
+    /* Get the port for the Core API Server. */
+    port = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet? 8336 : 9336));
 
     /* Set up RPC server */
     RPC_SERVER = new LLP::Server<LLP::RPCNode>(
-        config::GetArg("-rpcport", config::fTestNet? 8336 : 9336),
+        port,
         1,
         30,
         false,
@@ -408,9 +433,9 @@ int main(int argc, char** argv)
 
 
     /* Set up Mining Server */
-    if(config::GetBoolArg("-mining"))
+    if(config::GetBoolArg(std::string("-mining")))
     {
-      if(config::GetBoolArg("-beta"))
+      if(config::GetBoolArg(std::string("-beta")))
           LEGACY_MINING_SERVER  = LLP::CreateMiningServer<LLP::LegacyMiner>();
       else
           TRITIUM_MINING_SERVER = LLP::CreateMiningServer<LLP::TritiumMiner>();
@@ -433,12 +458,12 @@ int main(int argc, char** argv)
 
     /* Initialize generator thread. */
     std::thread thread;
-    if(config::GetBoolArg("-private"))
+    if(config::GetBoolArg(std::string("-private")))
         thread = std::thread(TAO::Ledger::ThreadGenerator);
 
 
     /* Wait for shutdown. */
-    if(!config::GetBoolArg("-gdb"))
+    if(!config::GetBoolArg(std::string("-gdb")))
     {
         std::mutex SHUTDOWN_MUTEX;
         std::unique_lock<std::mutex> SHUTDOWN_LOCK(SHUTDOWN_MUTEX);
@@ -454,7 +479,7 @@ int main(int argc, char** argv)
 
 
     /* Wait for the private condition. */
-    if(config::GetBoolArg("-private"))
+    if(config::GetBoolArg(std::string("-private")))
     {
         TAO::Ledger::PRIVATE_CONDITION.notify_all();
         thread.join();
@@ -537,7 +562,7 @@ int main(int argc, char** argv)
 
 
     /* Shut down wallet database environment. */
-    if (config::GetBoolArg("-flushwallet", true))
+    if (config::GetBoolArg(std::string("-flushwallet"), true))
         Legacy::WalletDB::ShutdownFlushThread();
 
     //Legacy::BerkeleyDB::EnvShutdown();

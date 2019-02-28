@@ -75,14 +75,14 @@ inline bool IsHex(const std::string& str)
  **/
 inline char HexChar(const char* psz)
 {
-    signed char c = phexdigit[(uint8_t)*psz++];
-    if (c == (signed char)-1)
+    int8_t c = phexdigit[(uint8_t)*psz++];
+    if (c == -1)
         return 0;
-    uint8_t n = (c << 4);
+    uint8_t n = static_cast<uint8_t>(c << 4);
     c = phexdigit[(uint8_t)*psz++];
-    if (c == (signed char)-1)
+    if (c == -1)
         return 0;
-    n |= c;
+    n |= static_cast<uint8_t>(c);
 
     return n;
 }
@@ -106,18 +106,18 @@ inline std::vector<uint8_t> ParseHex(const char* psz)
         while (isspace(*psz))
             ++psz;
 
-        signed char c = phexdigit[(uint8_t)*psz++];
+        int8_t c = phexdigit[(uint8_t)*psz++];
 
-        if (c == (signed char)-1)
+        if (c == -1)
             break;
 
-        uint8_t n = (c << 4);
+        uint8_t n = static_cast<uint8_t>(c << 4);
         c = phexdigit[(uint8_t)*psz++];
 
-        if (c == (signed char)-1)
+        if (c == -1)
             break;
 
-        n |= c;
+        n |= static_cast<uint8_t>(c);
         vch.push_back(n);
     }
     return vch;
