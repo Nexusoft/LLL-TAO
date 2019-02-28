@@ -88,16 +88,22 @@ namespace Legacy
 
         /** EncryptKeys
          *
-         *  Convert the key store from unencrypted to encrypted.
-         *  Activates encryption for the key store and encrypts any previously unencrypted keys.
+         *  Convert the key store keys from unencrypted to encrypted and returns the encrypted keys.
+         *
+         *  This method converts all the key store keys to encrypted format and stores them in the output map.
+         *  It only updates the key store, removing the unencrypted key and storing the encrypted key 
+         *  in its place. It does not update any backing file or database.
+         *
+         *  If the keystore is already encrypted, this method does nothing and returns false.
          *
          *  @param[in] vMasterKeyIn Encryption key used to perform encryption. Value is not stored in vMasterKey
          *                          so key store remains locked after conversion until explictly unlocked
          *
-         *  @return true if keys successfully encrypted and moved from mapKeys to mapCryptedKeys
-         *          false if key store previously encrypted or encryption not successful
+         *  @param[out] mapNewEncryptedKeys Method populates this map with the newly encrypted keys
+         *
+         *  @return true if keys successfully encrypted, false otherwise
          **/
-        virtual bool EncryptKeys(const CKeyingMaterial& vMasterKeyIn);
+        virtual bool EncryptKeys(const CKeyingMaterial& vMasterKeyIn, CryptedKeyMap& mapNewEncryptedKeys);
 
 
         /** Unlock
