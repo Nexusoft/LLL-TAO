@@ -61,7 +61,7 @@ namespace Legacy
          *  @param[in] state The block state to work from.
          *
          **/
-        explicit Locator(const TAO::Ledger::BlockState& state);
+        explicit Locator(TAO::Ledger::BlockState& state);
 
 
         /** Constructor
@@ -71,7 +71,7 @@ namespace Legacy
          *  @param[in] hashBlock The block hash to work from.
          *
          **/
-        explicit Locator(const uint1024_t hashBlock);
+        explicit Locator(const uint1024_t& hashBlock);
 
 
         /** Constructor
@@ -124,7 +124,7 @@ namespace Legacy
          *  @param[in] state The state to set object from.
          *
          **/
-        void Set(TAO::Ledger::BlockState state);
+        void Set(TAO::Ledger::BlockState& state);
 
 
 

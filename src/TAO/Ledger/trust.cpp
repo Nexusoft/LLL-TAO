@@ -34,11 +34,10 @@ namespace TAO
         {
             /* Loop through all previous blocks looking for most recent trust block. */
             std::vector<uint8_t> vTrustKey;
-            state = TAO::Ledger::ChainState::stateBest.load();
-
             while(vTrustKey != trustKey.vchPubKey)
             {
                 /* Get the last state. */
+                state = state.Prev();
                 if(!GetLastState(state, 0))
                     return debug::error(FUNCTION, "couldn't find previous block");
 

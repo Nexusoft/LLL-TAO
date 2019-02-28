@@ -64,17 +64,15 @@ RUN mkdir /nexus
 RUN mkdir /nexus/build
 COPY ./makefile.cli /nexus
 COPY ./src /nexus/src/
-#RUN cd /nexus; make -f makefile.cli clean;
 #RUN cd /nexus; make -j 8 -f makefile.cli ENABLE_DEBUG=1
 RUN cd /nexus; make -j 8 -f makefile.cli
 
 #
 # Copy Nexus startup files.
 #
-#COPY config/nexus.conf /root/.Nexus/nexus.conf
-COPY config/nexus.conf /root/.TAO/nexus.conf
 COPY config/run-nexus /nexus/run-nexus
 COPY config/curl-nexus /nexus/curl-nexus
+COPY config/nexus-save-data /nexus/nexus-save-data
 
 #
 # Copy LISP startup config.
@@ -96,10 +94,10 @@ COPY config/.cshrc /root/.cshrc
 #
 ENV RUN_LISP    /lispers.net/RL
 ENV RUN_NEXUS   /nexus/run-nexus
-ENV RUN_GETINFO /nexus/nexus -test getinfo
+ENV RUN_GETINFO /nexus/nexus getinfo
 ENV RUN_PSLISP  /lispers.net/pslisp
 
-CMD echo "Starting LISP ..."; $RUN_LISP; \
+CMD echo "Starting LISP ..."; $RUN_LISP;   \
     echo "Network coming up ..."; sleep 2; \
     echo "Starting Nexus ..."; $RUN_NEXUS; \
 #   sleep 1; $RUN_PSLISP; $RUN_GETINFO; tcsh

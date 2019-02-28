@@ -344,7 +344,7 @@ namespace debug
     {
         LOCK(DEBUG_MUTEX);
 
-        ssFile.open(debugPath, std::ios::app);
+        ssFile.open(debugPath, std::ios::app | std::ios::in | std::ios::out);
         return ssFile.is_open();
     }
 
