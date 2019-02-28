@@ -16,11 +16,11 @@ import socket
 
 dns_seeds = [
     "test1.nexusoft.io",
-    "test1.mercuryminer.com",
-    "test2.mercuryminer.com",
-    "test3.mercuryminer.com",
-    "test4.mercuryminer.com",
-    "test5.mercuryminer.com",
+    "lisptest1.mercuryminer.com",
+    "lisptest2.mercuryminer.com",
+    "lisptest3.mercuryminer.com",
+    "lisptest4.mercuryminer.com",
+    "lisptest5.mercuryminer.com",
     "nexus-lisp-seed.lispers.net"
 ]    
 

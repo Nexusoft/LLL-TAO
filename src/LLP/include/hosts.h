@@ -42,7 +42,7 @@ namespace LLP
         "node2.mercuryminer.com",
         "node2.nexusminingpool.com",
         "node2.nexus2.space",
-        "node2.barbequemeportParseddia.com",
+        "node2.barbequemedia.com",
         "node2.nxsorbitalscan.com",
         "node2.nxs.efficienthash.com",
         "node2.henryskinner.net",
@@ -115,6 +115,11 @@ namespace LLP
     static const std::vector<std::string> DNS_SeedNodes_Testnet =
     {
         "test1.nexusoft.io",
+        "lisptest1.mercuryminer.com",
+        "lisptest2.mercuryminer.com",
+        "lisptest3.mercuryminer.com",
+        "lisptest4.mercuryminer.com",
+        "lisptest5.mercuryminer.com",
         "test1.mercuryminer.com",
         "test2.mercuryminer.com",
         "test3.mercuryminer.com",
