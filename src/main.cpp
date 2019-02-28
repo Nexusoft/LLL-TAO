@@ -208,11 +208,10 @@ int main(int argc, char** argv)
             return debug::error("Failed loading wallet.dat: Wallet corrupted");
         else if (nLoadWalletRet == Legacy::DB_TOO_NEW)
             return debug::error("Failed loading wallet.dat: Wallet requires newer version of Nexus");
-        else if (nLoadWalletRet == Legacy::DB_NEED_REWRITE)
-            return debug::error("Wallet needed to be rewritten: restart Nexus to complete");
         else
             return debug::error("Failed loading wallet.dat");
     }
+
 
     /** Rebroadcast transactions. **/
     Legacy::Wallet::GetInstance().ResendWalletTransactions();
@@ -532,7 +531,7 @@ int main(int argc, char** argv)
     if (config::GetBoolArg("-flushwallet", true))
         Legacy::WalletDB::ShutdownFlushThread();
 
-    //Legacy::BerkeleyDB::EnvShutdown();
+    Legacy::BerkeleyDB::EnvShutdown();
 
 
     /* Elapsed Milliseconds from timer. */
