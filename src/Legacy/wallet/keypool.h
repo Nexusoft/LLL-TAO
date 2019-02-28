@@ -64,13 +64,8 @@ namespace Legacy
 
 
     private:
-        /** Mutex for thread concurrency. 
-         *
-         *  Static because having instance-specific mutex causes move constructor (used in Wallet initialization) to be deleted.
-         *  We really only use one KeyPool so no problem simply sharing one mutex within the class.
-         *  
-         **/
-        static std::mutex cs_keyPool;
+        /** Mutex for thread concurrency. **/
+        std::mutex cs_keyPool;
 
 
         /** 
@@ -94,8 +89,23 @@ namespace Legacy
          *
          **/
         KeyPool(Wallet& walletIn)
-        : setKeyPool()
+        : cs_keyPool()
+        , setKeyPool()
         , poolWallet(walletIn)
+        {
+        }
+
+
+        KeyPool(const KeyPool &other)
+        : cs_keyPool()
+        , setKeyPool(other.setKeyPool)
+        , poolWallet(other.poolWallet)
+        {
+        }
+
+
+        /** Destructor **/
+        ~KeyPool()
         {
         }
 

@@ -28,10 +28,6 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    /* Initialize static variables */
-    std::mutex KeyPool::cs_keyPool;
-
-
     /*  Clears any existing keys in the pool and the wallet database
      *  and generates a completely new key set.
      */
@@ -53,7 +49,7 @@ namespace Legacy
             /* Remove all entries for old key pool from database */
             {
                 /* Copy set and clear it (removes old keys from availability), then release lock before erasing them from database */
-                LOCK(KeyPool::cs_keyPool);
+                LOCK(cs_keyPool);
 
                 if (setKeyPool.size() > 0)
                 {
@@ -76,7 +72,7 @@ namespace Legacy
 
             /* Generate a new key pool with a full set of keys */
             {
-                LOCK(KeyPool::cs_keyPool);
+                LOCK(cs_keyPool);
 
                 vPoolIndexList.resize(nKeys);
 
@@ -124,7 +120,7 @@ namespace Legacy
             uint64_t nStartingSize = setKeyPool.size();
 
             {
-                LOCK(KeyPool::cs_keyPool);
+                LOCK(cs_keyPool);
 
                 if (nStartingSize >= nMinimumSize)
                 	return true; // Pool does not need refill until it falls to minimum size
@@ -182,7 +178,7 @@ namespace Legacy
             uint64_t nPoolIndex = 1;
 
             {
-                LOCK(KeyPool::cs_keyPool);
+                LOCK(cs_keyPool);
 
                 if (!setKeyPool.empty())
                     nPoolIndex += *(--setKeyPool.cend());
@@ -255,7 +251,7 @@ namespace Legacy
                 TopUpKeyPool();
 
             {
-                LOCK(KeyPool::cs_keyPool);
+                LOCK(cs_keyPool);
 
                 if(setKeyPool.empty())
                     return;
@@ -310,7 +306,7 @@ namespace Legacy
     {
         if (poolWallet.IsFileBacked())
         {
-            LOCK(KeyPool::cs_keyPool);
+            LOCK(cs_keyPool);
 
             setKeyPool.insert(nPoolIndex);
 
