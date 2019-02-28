@@ -350,7 +350,7 @@ namespace LLP
     {
         /* inet_ntop on mingw64 is void* (non-const), so compile fails if pass ip within const method. Make a non-const copy we can use */
         uint8_t ipCopy[16];
-        for (int i=0; i<16; i++)
+        for (int i=0; i<16; ++i)
             ipCopy[i] = ip[i];
 
         if (IsIPv4())
@@ -400,9 +400,9 @@ namespace LLP
     std::vector<uint8_t> BaseAddress::GetGroup() const
     {
         std::vector<uint8_t> vchRet;
-        int nClass = 0; // 0=IPv6, 1=IPv4, 254=local, 255=unroutable
-        int nStartByte = 0;
-        int nBits = 16;
+        int32_t nClass = 0; // 0=IPv6, 1=IPv4, 254=local, 255=unroutable
+        int32_t nStartByte = 0;
+        int32_t nBits = 16;
 
         // all local addresses belong to the same group
         if (IsLocal())
@@ -445,15 +445,20 @@ namespace LLP
         else
             nBits = 32;
 
-        vchRet.push_back(nClass);
+        vchRet.push_back(static_cast<uint8_t>(nClass));
         while (nBits >= 8)
         {
-            vchRet.push_back(GetByte(15 - nStartByte));
+            vchRet.push_back(GetByte(static_cast<uint8_t>(15 - nStartByte)));
             ++nStartByte;
             nBits -= 8;
         }
         if (nBits > 0)
-            vchRet.push_back(GetByte(15 - nStartByte) | ((1 << nBits) - 1));
+        {
+            uint8_t b = GetByte(static_cast<uint8_t>(15 - nStartByte));
+            uint32_t c = static_cast<uint32_t>(b) | ((1 << nBits) - 1);
+            vchRet.push_back(static_cast<uint8_t>(c));
+        }
+
 
         return vchRet;
     }

@@ -257,10 +257,11 @@ namespace LLP
     bool AddressManager::StochasticSelect(BaseAddress &addr)
     {
         std::vector<TrustAddress> vAddresses;
+        uint64_t nSelect = 0;
         uint64_t nTimestamp = runtime::unifiedtimestamp();
         uint64_t nRand = LLC::GetRand(nTimestamp);
         uint32_t nHash = LLC::SK32(BEGIN(nRand), END(nRand));
-        uint32_t nSelect = 0;
+
 
         /* Put unconnected address info scores into a vector and sort them. */
         uint8_t flags = ConnectState::NEW    |
@@ -272,7 +273,7 @@ namespace LLP
             get_addresses(vAddresses, flags);
         }
 
-        uint32_t s = static_cast<uint32_t>(vAddresses.size());
+        uint64_t s = vAddresses.size();
 
         if(s == 0)
             return false;

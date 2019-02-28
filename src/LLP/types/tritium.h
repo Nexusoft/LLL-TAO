@@ -43,22 +43,22 @@ namespace LLP
         /** Default Constructor **/
         TritiumNode()
         : BaseConnection<TritiumPacket>()
-        , fInbound(false)
         , nLastPing(0)
         , nLastSamples(0)
         , mapLatencyTracker()
         , mapSentRequests()
+        , fInbound(false)
         {
         }
 
         /** Constructor **/
         TritiumNode( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<TritiumPacket>( SOCKET_IN, DDOS_IN, isDDOS )
-        , fInbound(false)
         , nLastPing(0)
         , nLastSamples(0)
         , mapLatencyTracker()
         , mapSentRequests()
+        , fInbound(false)
         {
         }
 
@@ -66,11 +66,11 @@ namespace LLP
         /** Constructor **/
         TritiumNode( DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<TritiumPacket>(DDOS_IN, isDDOS )
-        , fInbound(false)
         , nLastPing(0)
         , nLastSamples(0)
         , mapLatencyTracker()
         , mapSentRequests()
+        , fInbound(false)
         {
         }
 
@@ -83,24 +83,24 @@ namespace LLP
         static uint64_t nSessionID;
 
 
-        /** Flag to determine if a connection is Inbound. **/
-        bool fInbound;
-
-
         /** Counter to keep track of the last time a ping was made. **/
-        uint32_t nLastPing;
+        uint64_t nLastPing;
 
 
         /** Counter to keep track of last time sample request. */
-        uint32_t nLastSamples;
+        uint64_t nLastSamples;
 
 
         /** timer object to keep track of ping latency. **/
-        std::map<uint32_t, uint64_t> mapLatencyTracker;
+        std::map<uint64_t, uint64_t> mapLatencyTracker;
 
 
         /** Map to keep track of sent request ID's while witing for them to return. **/
-        std::map<uint32_t, uint64_t> mapSentRequests;
+        std::map<uint64_t, uint64_t> mapSentRequests;
+
+
+        /** Flag to determine if a connection is Inbound. **/
+        bool fInbound;
 
 
         /** Event

@@ -87,7 +87,7 @@ namespace LLP
                     if(runtime::timestamp() - nLastSamples > 30)
                     {
                         /* Generate the request identification. */
-                        uint32_t nRequestID = LLC::GetRand(std::numeric_limits<uint32_t>::max());
+                        uint64_t nRequestID = LLC::GetRand(std::numeric_limits<uint32_t>::max());
 
                         /* Add sent requests. */
                         mapSentRequests[nRequestID] = runtime::timestamp();
@@ -105,7 +105,7 @@ namespace LLP
                 case EVENT_DISCONNECT:
                 {
                     /* Debut output. */
-                    uint8_t reason = LENGTH;
+                    uint32_t reason = LENGTH;
                     std::string strReason;
 
                     switch(reason)
@@ -196,7 +196,7 @@ namespace LLP
                     ssPacket >> nTimestamp;
 
                     /* Find the sample offset. */
-                    int32_t nOffset = (runtime::timestamp(true) - nTimestamp);
+                    int32_t nOffset = static_cast<int32_t>(runtime::timestamp(true) - nTimestamp);
 
                     /* Debug output for offsets. */
                     debug::log(3, NODE, "received timestamp of ", nTimestamp, " sending offset ", nOffset);
@@ -365,7 +365,11 @@ namespace LLP
                         for(auto it = vLegacyAddr.begin(); it != vLegacyAddr.end(); ++it)
                         {
                             if(config::mapArgs.find("-port") != config::mapArgs.end())
-                                it->SetPort(atoi(config::mapArgs["-port"].c_str()));
+                            {
+                                uint16_t port = static_cast<uint16_t>(atoi(config::mapArgs["-port"].c_str()));
+                                it->SetPort(port);
+                            }
+
                             else
                                 it->SetPort(TRITIUM_SERVER->PORT);
 
@@ -404,7 +408,7 @@ namespace LLP
                     if(!mapLatencyTracker.count(nNonce))
                         return debug::error(NODE "unsolicited pong");
 
-                    uint32_t lat = runtime::timestamp(true) - mapLatencyTracker[nNonce];
+                    uint32_t lat = static_cast<uint32_t>(runtime::timestamp(true) - mapLatencyTracker[nNonce]);
 
                     /* Set the latency used for address manager within server */
                     if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)

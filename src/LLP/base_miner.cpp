@@ -222,7 +222,7 @@ namespace LLP
             case EVENT_DISCONNECT:
             {
                 /* Debut output. */
-                uint8_t reason = LENGTH;
+                uint32_t reason = LENGTH;
                 std::string strReason;
 
                 switch(reason)
@@ -430,7 +430,7 @@ namespace LLP
 
             case SUBSCRIBE:
             {
-                nSubscribed = convert::bytes2uint(PACKET.DATA);
+                nSubscribed = static_cast<uint16_t>(convert::bytes2uint(PACKET.DATA));
 
                 /** Don't allow mining llp requests for proof of stake channel **/
                 if(nSubscribed == 0 || nChannel.load() == 0)
