@@ -348,7 +348,6 @@ namespace Legacy
 
             WalletDB walletDB(ptransactionWallet->GetWalletFile());
             bool ret = walletDB.WriteTx(GetHash(), *this);
-            walletDB.Close();
 
             return ret;
         }

@@ -108,7 +108,6 @@ namespace Legacy
 
     public:
 
-
         /** Constructor
          *
          *  Initializes a wallet instance for FEATURE_BASE that is not file backed.
@@ -218,16 +217,6 @@ namespace Legacy
 
         /** The timestamp that this wallet will remain unlocked until **/
         uint64_t nWalletUnlockTime;
-
-
-        /** Wallet database only used during encryption process to maintain
-         *  open database transaction across the process.
-         *
-         *  This has to be a shared_ptr in C++11 because there is no make_unique function
-         *  for assigning it when used. If we move to C++14 or higher standard that function
-         *  is added and this can be changed.
-         **/
-        std::shared_ptr<WalletDB> pWalletDbEncryption;
 
 
 
