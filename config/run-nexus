@@ -5,8 +5,6 @@
 # Launch Nexus Daemon. Check to see if nexus data directory needs to be
 # copied from host OS file system.
 #
-#
-cd /nexus
 
 #DO_COPY=""
 
@@ -15,7 +13,7 @@ cd /nexus
 # from host filesystem.
 #
 #mkdir /root/.TAO
-#cp /hostOS/Users/dino/.Nexus_Core_Data_BETA/nexus.conf /root/.TAO/.
+#cp /hostOS$HOSTOS_HOME/.Nexus_Core_Data_BETA/nexus.conf /root/.TAO/.
 
 #
 # If first innvocation of nexus daemon after container creation, then setup
@@ -29,7 +27,7 @@ if [ ! -d "/root/.TAO" ]; then
     if [ -d $SRC ]; then
         if [ -v DO_COPY ]; then
             echo -n "Copying nexus data directory $SRC -> /root/.TAO ... "
-            cp -r $SRC /root/.TAO/.
+            cp -r $SRC/* /root/.TAO/.
         else
             echo -n "Symlink nexus data directory /root/.TAO -> $SRC ... "
             ln -sf $SRC /root/.TAO
@@ -41,5 +39,6 @@ fi
 #
 # Startup daemon.
 #
+cd /nexus
 ./nexus -verbose=3 -fastsync -beta -server -daemon -threads=10 &
 
