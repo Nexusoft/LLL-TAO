@@ -108,7 +108,6 @@ namespace LLP
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
     , nPort(0)
     {
-        BaseAddress addr;
 
         /* Make sure there is a string to lookup. */
         size_t s = strIp.size();
@@ -118,16 +117,15 @@ namespace LLP
             return;
         }
 
-        if (Lookup(strIp, addr, portDefault, fAllowLookup))
+        if(fAllowLookup)
         {
-            *this = addr;
-
-            if(fAllowLookup)
+            if (Lookup(strIp, *this, portDefault, true))
                 debug::log(3, FUNCTION, strIp, " resolved to ", ToStringIP());
+            else
+                debug::log(3, FUNCTION, strIp, " bad lookup");
         }
         else
-          debug::log(3, FUNCTION, strIp, " bad lookup");
-
+            Lookup(strIp, *this, portDefault, false);
 
         nPort = portDefault;
     }

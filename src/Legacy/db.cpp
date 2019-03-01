@@ -19,8 +19,8 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/debug.h>
 #include <Util/include/filesystem.h>
-
 #include <sys/stat.h>
+#include <cmath>
 
 
 namespace Legacy
@@ -639,7 +639,7 @@ namespace Legacy
                 }
 
                 /* Skip any key value defined by pszSkip argument */
-                if (pszSkip != nullptr && strncmp((char*)ssKey.data(), pszSkip, std::min(ssKey.size(), strlen(pszSkip))) == 0)
+                if (pszSkip != nullptr && strncmp((char*)ssKey.data(), pszSkip, std::min(static_cast<uint32_t>(ssKey.size()), static_cast<uint32_t>(strlen(pszSkip)))) == 0)
                     continue;
 
                 /* Don't copy the version, instead use latest version */

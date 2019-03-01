@@ -364,14 +364,7 @@ namespace LLP
                         /* try to establish the connection on the port the server is listening to */
                         for(auto it = vLegacyAddr.begin(); it != vLegacyAddr.end(); ++it)
                         {
-                            if(config::mapArgs.find("-port") != config::mapArgs.end())
-                            {
-                                uint16_t port = static_cast<uint16_t>(atoi(config::mapArgs["-port"].c_str()));
-                                it->SetPort(port);
-                            }
-
-                            else
-                                it->SetPort(TRITIUM_SERVER->PORT);
+                            it->SetPort(TRITIUM_SERVER->GetPort());
 
                             /* Create a base address vector from legacy addresses */
                             vAddr.push_back(*it);

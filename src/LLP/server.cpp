@@ -143,6 +143,14 @@ namespace LLP
     }
 
 
+    /*  Returns the port number for this Server. */
+    template <class ProtocolType>
+    uint16_t Server<ProtocolType>::GetPort() const
+    {
+        return PORT;
+    }
+
+
      /*  Cleanup and shutdown subsystems */
     template <class ProtocolType>
     void Server<ProtocolType>::Shutdown()
@@ -155,9 +163,14 @@ namespace LLP
 
    /*  Add a node address to the internal address manager */
    template <class ProtocolType>
-   void Server<ProtocolType>::AddNode(std::string strAddress, uint16_t nPort)
+   void Server<ProtocolType>::AddNode(std::string strAddress, uint16_t nPort, bool fLookup)
    {
-       BaseAddress addr(strAddress, nPort, false);
+       /* Assemble the address from input parameters. */
+       BaseAddress addr(strAddress, nPort, fLookup);
+
+       /* Make sure address is valid. */
+       if(!addr.IsValid())
+            return;
 
        /* Make sure manager is enabled. */
        if(pAddressManager)
@@ -167,10 +180,14 @@ namespace LLP
 
    /*  Public Wraper to Add a Connection Manually. */
    template <class ProtocolType>
-   bool Server<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort)
+   bool Server<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort, bool fLookup)
    {
        /* Initialize DDOS Protection for Incoming IP Address. */
-       BaseAddress addrConnect(strAddress, nPort);
+       BaseAddress addrConnect(strAddress, nPort, fLookup);
+
+       /* Make sure address is valid. */
+       if(!addrConnect.IsValid())
+            return false;
 
        /* Create new DDOS Filter if Needed. */
        if(fDDOS.load())

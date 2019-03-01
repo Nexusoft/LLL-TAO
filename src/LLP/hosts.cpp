@@ -261,7 +261,7 @@ namespace LLP
         if(!LookupIntern(strName, vAddr, nMaxSolutions, fAllowLookup))
             return false;
 
-        /* Set the ports to the lookup port or default port. */
+        /* Set the ports to the default port. */
         for (uint32_t i = 0; i < vAddr.size(); ++i)
             vAddr[i].SetPort(portDefault);
 
