@@ -1,5 +1,7 @@
 #!/bin/bash
-
+#
+# run-nexus
+#
 # Launch Nexus Daemon. Check to see if nexus data directory needs to be
 # copied from host OS file system.
 #
@@ -7,6 +9,13 @@
 cd /nexus
 
 #DO_COPY=""
+
+#
+# If you want to create all the state in the container. Just move nexus.conf
+# from host filesystem.
+#
+#mkdir /root/.TAO
+#cp /hostOS/Users/dino/.Nexus_Core_Data_BETA/nexus.conf /root/.TAO/.
 
 #
 # If first innvocation of nexus daemon after container creation, then setup
