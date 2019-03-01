@@ -189,7 +189,7 @@ namespace Legacy
 
         {
             /* Lock wallet so WalletDB can load all data into it */
-            LOCK(cs_wallet);
+            //LOCK(cs_wallet);
             
             uint32_t nLoadWalletRet = walletdb.LoadWallet(*this);
 
@@ -207,7 +207,6 @@ namespace Legacy
             debug::log(2, FUNCTION, "Setting wallet min version to ", FEATURE_LATEST);
 
             SetMinVersion(FEATURE_LATEST);
-            SetMaxVersion(FEATURE_LATEST);
 
             std::vector<uint8_t> vchNewDefaultKey;
 
@@ -242,11 +241,11 @@ namespace Legacy
             uint32_t nStoredMinVersion = 0;
 
             if (!walletdb.ReadMinVersion(nStoredMinVersion) || nStoredMinVersion == 0)
-            {
                 SetMinVersion(FEATURE_BASE);
-                SetMaxVersion(FEATURE_LATEST);
-            }
         }
+
+        /* Max allowed version is always the current latest */
+        SetMaxVersion(FEATURE_LATEST);
 
         /* Launch background thread to periodically flush the wallet to the backing database */
         WalletDB::StartFlushThread(strWalletFile);

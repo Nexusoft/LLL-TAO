@@ -141,7 +141,7 @@ namespace Legacy
                                     DB_INIT_LOG   |
                                     DB_INIT_MPOOL |
                                     DB_INIT_TXN   |
-                                    DB_THREAD     |
+                                   // DB_THREAD     |
                                     DB_RECOVER;
 
                 /* Mode specifies permission settings for all Berkeley-created files on UNIX systems
@@ -219,13 +219,13 @@ namespace Legacy
         pdb = new Db(dbenv, 0);
 
         /* Database will support multi-threaded access and create database file if does not exist*/
-        uint32_t fOpenFlags = DB_THREAD | DB_CREATE;
+        //uint32_t fOpenFlags = DB_THREAD | DB_CREATE;
 
         ret = pdb->open(nullptr,           // Txn pointer
                         strDbFile.c_str(), // Filename
                         "main",            // Logical db name
                         DB_BTREE,          // Database type
-                        fOpenFlags,        // Flags
+                        DB_CREATE,        // Flags
                         0);
 
         if (ret != 0)
@@ -690,64 +690,76 @@ namespace Legacy
     {
         debug::log(0, FUNCTION, "Shutting down Legacy Berkeley database environment");
 
+        std::map<std::string, BerkeleyDB*> mapDbInstancesToShutdown;
+
         {
-            /* Lock map access before removing databases */
+            /* Lock map access */
             LOCK(BerkeleyDB::mapMutex);
 
-            /* Ensure all created database instances are cleaned up and destroyed. */
-            for (auto& mapEntry : mapBerkeleyInstances)
+            /* Copy all map entries to get shutdown list, then release map lock. */
+            for (const auto& mapEntry : mapBerkeleyInstances)
+                mapDbInstancesToShutdown[mapEntry.first] = mapBerkeleyInstances[mapEntry.first];
+
+        }
+
+        for (auto& mapEntry : mapDbInstancesToShutdown)
+        {
+            if (mapEntry.second != nullptr)
             {
-                if (mapEntry.second != nullptr)
+                BerkeleyDB* pdbToClose = mapEntry.second;
+
                 {
-                    BerkeleyDB* pdbToClose = mapEntry.second;
+                    //LOCK(pdbToClose->cs_db);
 
+                    if (pdbToClose->pdb != nullptr)
+                        pdbToClose->DBFlush();
+                        // pdbToClose->CloseHandle();
+
+                    if (pdbToClose->dbenv != nullptr)
                     {
-                        LOCK(pdbToClose->cs_db);
+                        //  /* Flush log data to the dat file and detach the file */
+                        // debug::log(2, FUNCTION, pdbToClose->strDbFile, " checkpoint");
+                        // pdbToClose->dbenv->txn_checkpoint(0, 0, 0);
 
-                        if (pdbToClose->pdb != nullptr)
-                            pdbToClose->CloseHandle();
+                        // debug::log(2, FUNCTION, pdbToClose->strDbFile, " detach");
+                        // pdbToClose->dbenv->lsn_reset(pdbToClose->strDbFile.c_str(), 0);
 
-                        if (pdbToClose->dbenv != nullptr)
+                        // debug::log(2, FUNCTION, pdbToClose->strDbFile, " closed");
+
+                        // // /* Remove log files */
+                        // char** listp;
+                        // pdbToClose->dbenv->log_archive(&listp, DB_ARCH_REMOVE);
+
+                        /* Shut down the database environment */
+                        try
                         {
-                             /* Flush log data to the dat file and detach the file */
-                            debug::log(2, FUNCTION, pdbToClose->strDbFile, " checkpoint");
-                            pdbToClose->dbenv->txn_checkpoint(0, 0, 0);
-
-                            debug::log(2, FUNCTION, pdbToClose->strDbFile, " detach");
-                            pdbToClose->dbenv->lsn_reset(pdbToClose->strDbFile.c_str(), 0);
-
-                            debug::log(2, FUNCTION, pdbToClose->strDbFile, " closed");
-
-                            /* Remove log files */
-                            char** listp;
-                            pdbToClose->dbenv->log_archive(&listp, DB_ARCH_REMOVE);
-
-                            /* Shut down the database environment */
-                            try
-                            {
-                                pdbToClose->dbenv->close(0);
-                            }
-                            catch(const DbException& e)
-                            {
-                                debug::log(0, FUNCTION, "Exception: ", e.what(), "(", e.get_errno(), ")");
-                            }
-
-                            delete pdbToClose->dbenv;
-                            pdbToClose->dbenv = nullptr;
+                            pdbToClose->dbenv->close(0);
+                        }
+                        catch(const DbException& e)
+                        {
+                            debug::log(0, FUNCTION, "Exception: ", e.what(), "(", e.get_errno(), ")");
                         }
 
-                    } //end cs_db lock
+                        delete pdbToClose->dbenv;
+                        pdbToClose->dbenv = nullptr;
+                    }
 
-                    delete pdbToClose;
+                } //end cs_db lock
 
-                    pdbToClose = nullptr;
-                    mapEntry.second = nullptr;
-                }
-            } 
+                delete pdbToClose;
+
+                pdbToClose = nullptr;
+                mapEntry.second = nullptr;
+            }
+        } 
+
+        {
+            /* Lock map access again so we can clear map */
+            LOCK(BerkeleyDB::mapMutex);
 
             mapBerkeleyInstances.clear();
 
-        } //end map lock
+        } 
     }
 
 }

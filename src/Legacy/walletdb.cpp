@@ -679,9 +679,6 @@ namespace Legacy
             if (nFileVersion < LLD::DATABASE_VERSION)
                 db.WriteVersion(LLD::DATABASE_VERSION);
 
-            /* Assign maximum upgrade version for wallet */
-            wallet.SetMaxVersion(FEATURE_LATEST);
-
             uint64_t elapsedTime = runtime::timestamp(true) - startTimestamp;
 
             debug::log(0, FUNCTION, "", fIsEncrypted ? "Encrypted Wallet" : "Wallet", " Loaded in ", elapsedTime, " ms file version = ", nFileVersion);
