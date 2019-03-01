@@ -11,7 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#pragma once
 #ifndef NEXUS_LEGACY_WALLET_KEYPOOL_H
 #define NEXUS_LEGACY_WALLET_KEYPOOL_H
 
@@ -52,16 +51,17 @@ namespace Legacy
      **/
     class KeyPool
     {
-        friend class WalletDB;
+        /** WalletDB is declared friend so it can load data into KeyPool during LoadWallet() process */
+        friend class WalletDB; 
 
 
     public:
         /** Defines the default number of keys contained by a key pool **/
-        static const uint64_t DEFAULT_KEY_POOL_SIZE = 100;
+        static const uint64_t DEFAULT_KEY_POOL_SIZE;
 
 
         /** Defines the minimum key pool size **/
-        static const uint64_t MINIMUM_KEY_POOL_SIZE = 10;
+        static const uint64_t MINIMUM_KEY_POOL_SIZE;
 
 
     private:

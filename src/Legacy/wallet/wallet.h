@@ -104,7 +104,7 @@ namespace Legacy
      **/
     class Wallet : public CryptoKeyStore
     {
-        /** WalletDB declared friend so it can use private Load methods within LoadWallet **/
+        /** WalletDB declared friend so it can use private Load methods within LoadWallet() process. **/
         friend class WalletDB;
 
     public:

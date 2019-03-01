@@ -43,6 +43,7 @@ namespace Legacy
      **/
     class AddressBook
     {
+        /** WalletDB is declared friend so it can load data into AddressBook during LoadWallet() process */
         friend class WalletDB;
 
 

@@ -28,6 +28,12 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
+    /* Initialize static variables */
+    const uint64_t KeyPool::DEFAULT_KEY_POOL_SIZE = 100;
+
+    const uint64_t KeyPool::MINIMUM_KEY_POOL_SIZE = 10;
+
+
     /*  Clears any existing keys in the pool and the wallet database
      *  and generates a completely new key set.
      */
@@ -40,7 +46,7 @@ namespace Legacy
                 return false;
 
             const uint64_t nKeyPoolSizeSetting = std::max((int64_t)0, config::GetArg("-keypool", KeyPool::DEFAULT_KEY_POOL_SIZE));
-            const uint64_t nKeys = std::max(nKeyPoolSizeSetting, MINIMUM_KEY_POOL_SIZE);
+            const uint64_t nKeys = std::max(nKeyPoolSizeSetting, KeyPool::MINIMUM_KEY_POOL_SIZE);
 
             WalletDB walletdb(poolWallet.GetWalletFile());
 
@@ -109,8 +115,8 @@ namespace Legacy
 
             /* Desired key pool size */
             const uint64_t nKeyPoolSizeSetting = std::max((int64_t)0, config::GetArg("-keypool", KeyPool::DEFAULT_KEY_POOL_SIZE));
-            const uint64_t nTargetSize = std::max(nKeyPoolSizeSetting, MINIMUM_KEY_POOL_SIZE);
-            const uint64_t nMinimumSize = std::min(nKeyPoolSizeSetting, MINIMUM_KEY_POOL_SIZE);
+            const uint64_t nTargetSize = std::max(nKeyPoolSizeSetting, KeyPool::MINIMUM_KEY_POOL_SIZE);
+            const uint64_t nMinimumSize = std::min(nKeyPoolSizeSetting, KeyPool::MINIMUM_KEY_POOL_SIZE);
 
             WalletDB walletdb(poolWallet.GetWalletFile());
 
