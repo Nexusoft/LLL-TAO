@@ -559,7 +559,7 @@ namespace LLP
                 /* Try to establish the connection on the port the server is listening to. */
                 for(auto it = vLegacyAddr.begin(); it != vLegacyAddr.end(); ++it)
                 {
-                    it->SetPort(LEGACY_SERVER->PORT);
+                    it->SetPort(LEGACY_SERVER->GetPort());
 
                     /* Create a base address vector from legacy addresses */
                     vAddr.push_back(*it);

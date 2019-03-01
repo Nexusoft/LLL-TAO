@@ -102,6 +102,27 @@ namespace LLP
     }
 
 
+    template <class ProtocolType>
+    void HandleManualConnections(Server<ProtocolType> *pServer)
+    {
+        /* -connect means  try to establish a connection. */
+        if(config::mapMultiArgs["-connect"].size() > 0)
+        {
+            /* Add connections and resolve potential DNS lookups. */
+            for(const auto& node : config::mapMultiArgs["-connect"])
+                pServer->AddConnection(node, pServer->GetPort(), true);
+        }
+
+        /* -addnode means add to address manager. */
+        if(config::mapMultiArgs["-addnode"].size() > 0)
+        {
+            /* Add nodes and resolve potential DNS lookups. */
+            for(const auto& node : config::mapMultiArgs["-addnode"])
+                pServer->AddNode(node, pServer->GetPort(), true);
+        }
+    }
+
+
     /** Create_TAO_Server
      *
      *  Helper for creating Legacy/Tritium Servers.
@@ -360,19 +381,8 @@ int main(int argc, char** argv)
         /* Initialize the Tritium Server. */
         LLP::TRITIUM_SERVER = LLP::Create_TAO_Server<LLP::TritiumNode>(port);
 
-        /* -connect means  try to establish a connection */
-        if(config::mapMultiArgs["-connect"].size() > 0)
-        {
-            for(const auto& node : config::mapMultiArgs["-connect"])
-                LLP::TRITIUM_SERVER->AddConnection(node, port);
-        }
-
-        /* -addnode means add to address manager */
-        if(config::mapMultiArgs["-addnode"].size() > 0)
-        {
-            for(const auto& node : config::mapMultiArgs["-addnode"])
-                LLP::TRITIUM_SERVER->AddNode(node, port);
-        }
+        /* Handle Manual Connections from Command Line, if there are any. */
+        LLP::HandleManualConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
     }
     else
     {
@@ -382,19 +392,8 @@ int main(int argc, char** argv)
         /* Initialize the Legacy Server. */
         LLP::LEGACY_SERVER = LLP::Create_TAO_Server<LLP::LegacyNode>(port);
 
-        /* -connect means  try to establish a connection. */
-        if(config::mapMultiArgs["-connect"].size() > 0)
-        {
-            for(const auto& node : config::mapMultiArgs["-connect"])
-                LLP::LEGACY_SERVER->AddConnection(node, port);
-        }
-
-        /* -addnode means add to address manager. */
-        if(config::mapMultiArgs["-addnode"].size() > 0)
-        {
-            for(const auto& node : config::mapMultiArgs["-addnode"])
-                LLP::LEGACY_SERVER->AddNode(node, port);
-        }
+        /* Handle Manual Connections from Command Line, if there are any. */
+        LLP::HandleManualConnections<LLP::LegacyNode>(LLP::LEGACY_SERVER);
     }
 
 
