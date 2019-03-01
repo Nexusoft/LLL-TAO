@@ -200,8 +200,6 @@ namespace LLP
                return false;
        }
 
-
-
        /* Find a balanced Data Thread to Add Connection to. */
        int32_t nThread = FindThread();
        if(nThread < 0)
@@ -211,7 +209,7 @@ namespace LLP
        DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
        /* Attempt the connection. */
-       if(!dt->AddConnection(strAddress, nPort, DDOS_MAP[addrConnect]))
+       if(!dt->AddConnection(addrConnect, DDOS_MAP[addrConnect]))
            return false;
 
        return true;

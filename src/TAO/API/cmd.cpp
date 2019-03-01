@@ -14,6 +14,7 @@ ________________________________________________________________________________
 
 #include <LLP/types/corenode.h>
 #include <LLP/types/rpcnode.h>
+#include <LLP/include/base_address.h>
 #include <TAO/API/include/cmd.h>
 
 #include <Util/include/debug.h>
@@ -58,7 +59,7 @@ namespace TAO
 
             /* Keep track of previous parameter. */
             std::string prev;
-            for(int i = argn + 1; i < argc; i++)
+            for(int i = argn + 1; i < argc; ++i)
             {
                 /* Parse out the key / values. */
                 std::string arg = std::string(argv[i]);
@@ -100,7 +101,10 @@ namespace TAO
 
             /* Make the connection to the API server. */
             LLP::CoreNode apiNode;
-            if(!apiNode.Connect("127.0.0.1", 8080))
+
+            LLP::BaseAddress addr("127.0.0.1", 8080);
+
+            if(!apiNode.Connect(addr))
             {
                 debug::log(0, "Couldn't Connect to API");
 
@@ -184,7 +188,7 @@ namespace TAO
 
             /* Build the JSON request object. */
             json::json parameters = json::json::array();
-            for(int i = argn + 1; i < argc; i++)
+            for(int i = argn + 1; i < argc; ++i)
             {
                 std::string strArg = argv[i];
                 // if the paramter is a JSON list or array then we need to parse it
@@ -212,7 +216,13 @@ namespace TAO
 
             /* Make the connection to the API server. */
             LLP::RPCNode rpcNode;
-            if(!rpcNode.Connect(config::GetArg("-rpcconnect", "127.0.0.1"), config::GetArg("-rpcport",config::fTestNet? 8336 : 9336)))
+
+            std::string strAddr = config::GetArg("-rpcconnect", "127.0.0.1");
+            uint16_t port = config::GetArg("-rpcport",config::fTestNet? 8336 : 9336);
+
+            LLP::BaseAddress addr(strAddr, port);
+
+            if(!rpcNode.Connect(addr))
             {
                 debug::log(0, "Couldn't Connect to RPC");
 
