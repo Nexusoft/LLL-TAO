@@ -183,13 +183,6 @@ namespace LLP
              return false;
          }
 
-         /* Add the producer into the memory pool. */
-         if( !TAO::Ledger::mempool.AddUnchecked(pBlock->producer))
-         {
-             debug::log(2, "***** Mining LLP: Failed to add producer transaction to mempool ", merkle_root.ToString().substr(0, 20));
-             return false;
-         }
-
          return true;
      }
 
