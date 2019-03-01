@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLD_TEMPLATES_KEY_H
 #define NEXUS_LLD_TEMPLATES_KEY_H
 

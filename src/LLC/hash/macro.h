@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLC_HASH_MACRO_H
 #define NEXUS_LLC_HASH_MACRO_H
 

@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LEGACY_WALLET_KEYPOOLENTRY_H
 #define NEXUS_LEGACY_WALLET_KEYPOOLENTRY_H
 
@@ -19,14 +20,14 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/templates/serialize.h>
 
-namespace Legacy 
+namespace Legacy
 {
     /** @class KeyPoolEntry
      *
      *  Defines the public key of a key pool entry.
-     *  The KeyPoolEntry is written to the wallet database to store a pre-generated pool of 
+     *  The KeyPoolEntry is written to the wallet database to store a pre-generated pool of
      *  available public keys for use by the wallet. The private keys corresponding to
-     *  public keys in the key pool are not included. 
+     *  public keys in the key pool are not included.
      *
      *  These key pool entries can then be read from the database as new keys are needed
      *  for use by the wallet.
@@ -45,7 +46,7 @@ namespace Legacy
 
         /** Constructor
          *
-         *  Initializes a key pool entry with an empty public key. 
+         *  Initializes a key pool entry with an empty public key.
          *
          **/
         KeyPoolEntry()
@@ -56,7 +57,7 @@ namespace Legacy
 
         /** Constructor
          *
-         *  Initializes a key pool entry with the provided public key. 
+         *  Initializes a key pool entry with the provided public key.
          *
          *  @param[in] vchPubKeyIn The public key to use for initialization
          *
@@ -65,6 +66,12 @@ namespace Legacy
         {
             nTime = runtime::unifiedtimestamp();
             vchPubKey = vchPubKeyIn;
+        }
+
+
+        /** Destructor **/
+        ~KeyPoolEntry()
+        {
         }
 
 

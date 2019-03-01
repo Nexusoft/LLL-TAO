@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LEGACY_WALLET_KEYSTORE_H
 #define NEXUS_LEGACY_WALLET_KEYSTORE_H
 
@@ -37,12 +38,15 @@ namespace Legacy
     class KeyStore
     {
     public:
-        /** Virtual destructor
+
+        /** Virtual Destructor
          *
          *  Supports dynamic allocation of objects in inheritance hierarchy.
          *
          **/
-        virtual ~KeyStore() = default;
+        virtual ~KeyStore()
+        {
+        };
 
 
         /** AddKey

@@ -10,55 +10,46 @@
             "ad vocem populi" - To the Voice of the People
 ____________________________________________________________________________________________*/
 
-#ifndef NEXUS_LLP_TYPES_MINER_H
-#define NEXUS_LLP_TYPES_MINER_H
+#pragma once
+#ifndef NEXUS_LLP_TYPES_BASE_MINER_H
+#define NEXUS_LLP_TYPES_BASE_MINER_H
 
 #include <LLP/templates/connection.h>
 #include <TAO/Ledger/types/block.h>
 #include <Legacy/types/coinbase.h>
+#include <atomic>
 
-
-namespace Legacy
-{
-    class ReserveKey;
-    class LegacyBlock;
-}
 
 namespace LLP
 {
 
-    /** Miner
+    /** BaseMiner
      *
      *  Connection class that handles requests and responses from miners.
      *
      **/
-    class Miner : public Connection
+    class BaseMiner : public Connection
     {
-    private:
-        /** The map to hold the list of blocks that are being mined. */
-        std::map<uint512_t, Legacy::LegacyBlock> mapBlocks;
-
-        /** the mining key for block rewards to send **/
-        Legacy::ReserveKey *pMiningKey;
-
-        /** block to get and iterate if requesting more than one block **/
-        Legacy::LegacyBlock *pBaseBlock;
-
-        /** The current best block. **/
-        uint32_t nBestHeight;
-
-        /** Subscribe to display how many blocks connection subscribed to **/
-        uint16_t nSubscribed;
-
-        /** The current channel mining for. */
-        uint8_t nChannel;
-
-        /* Used to synchronize access to the nBestHeight / pBaseBlock*/
-        std::mutex BLOCK_MUTEX;
+    protected:
 
         /* Externally set coinbase to be set on mined blocks */
-        Legacy::Coinbase pCoinbaseTx;
-                    
+        Legacy::Coinbase CoinbaseTx;
+
+        /* Used for synchronization */
+        std::mutex MUTEX;
+
+        /** The map to hold the list of blocks that are being mined. */
+        std::map<uint512_t, TAO::Ledger::Block *> mapBlocks;
+
+        /** The current best block. **/
+        std::atomic<uint32_t> nBestHeight;
+
+        /** Subscribe to display how many blocks connection subscribed to **/
+        std::atomic<uint16_t> nSubscribed;
+
+        /** The current channel mining for. */
+        std::atomic<uint8_t> nChannel;
+
 
         enum
         {
@@ -110,28 +101,20 @@ namespace LLP
 
     public:
 
-        /** Name
-         *
-         *  Returns a string for the name of this type of Node.
-         *
-         **/
-          static std::string Name() { return "Miner"; }
-
-
         /** Default Constructor **/
-        Miner();
+        BaseMiner();
 
 
         /** Constructor **/
-        Miner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        BaseMiner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Constructor **/
-        Miner(DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        BaseMiner(DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Default Destructor **/
-        virtual ~Miner();
+        virtual ~BaseMiner() = 0;
 
 
         /** Event
@@ -196,6 +179,49 @@ namespace LLP
           *
           **/
          void clear_map();
+
+
+         /** new_block
+          *
+          *  Adds a new block to the map.
+          *
+          **/
+         virtual TAO::Ledger::Block *new_block() = 0;
+
+
+         /** validate_block
+          *
+          *  validates the block for the derived miner class.
+          *
+          **/
+          virtual bool validate_block(const uint512_t &merkle_root) = 0;
+
+
+          /** sign_block
+           *
+           *  validates the block for the derived miner class.
+           *
+           **/
+           virtual bool sign_block(uint64_t nonce, const uint512_t &merkle_root) = 0;
+
+
+
+           /** is_locked
+            *
+            *  Determines if the mining wallet is unlocked.
+            *
+            **/
+           virtual bool is_locked() = 0;
+
+
+           /** find_block
+            *
+            *  Determines if the block exists.
+            *
+            **/
+           bool find_block(const uint512_t &merkle_root);
+
+
 
     };
 }

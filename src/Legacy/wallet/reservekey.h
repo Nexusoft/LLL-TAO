@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LEGACY_WALLET_RESERVEKEY_H
 #define NEXUS_LEGACY_WALLET_RESERVEKEY_H
 
@@ -58,7 +59,6 @@ namespace Legacy
         : wallet(*pWalletIn)
         , nPoolIndex(-1)
         , vchPubKey()
-
         { }
 
 

@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LEGACY_TYPES_MINTER_H
 #define NEXUS_LEGACY_TYPES_MINTER_H
 
@@ -58,6 +59,7 @@ namespace Legacy
 
         /** Copy assignment deleted **/
         StakeMinter& operator=(const StakeMinter&) = delete;
+
 
         /** Destructor **/
         ~StakeMinter();

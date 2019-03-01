@@ -6,6 +6,7 @@
             "ad vocem populi" - To the Voice of the People
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLD_CACHE_KEY_LRU_H
 #define NEXUS_LLD_CACHE_KEY_LRU_H
 
@@ -27,20 +28,7 @@ namespace LLD
      *  Node to hold the binary data of the double linked list.
      *
      **/
-    struct BinaryKey
-    {
-        BinaryKey* pprev;
-        BinaryKey* pnext;
-
-        /** The binary data of the key. **/
-        std::vector<uint8_t> vKey;
-
-        /** The timestamp of last update. */
-        uint64_t nTimestamp;
-
-        /** Default constructor **/
-        BinaryKey(const std::vector<uint8_t>& vKeyIn);
-    };
+    struct BinaryKey;
 
 
     /** KeyLRU

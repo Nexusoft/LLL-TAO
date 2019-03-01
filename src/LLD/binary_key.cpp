@@ -12,6 +12,21 @@ ________________________________________________________________________________
 
 namespace LLD
 {
+    /*  Node to hold the binary data of the double linked list. */
+    struct BinaryKey
+    {
+        BinaryKey* pprev;
+        BinaryKey* pnext;
+
+        /** The binary data of the key. **/
+        std::vector<uint8_t> vKey;
+
+        /** The timestamp of last update. */
+        uint64_t nTimestamp;
+
+        /** Default constructor **/
+        BinaryKey(const std::vector<uint8_t>& vKeyIn);
+    };
 
     /** Default constructor **/
     BinaryKey::BinaryKey(const std::vector<uint8_t>& vKeyIn)
@@ -82,7 +97,7 @@ namespace LLD
         uint64_t nBucket;
         std::copy((uint8_t*)&digest[0], (uint8_t*)&digest[0] + 8, (uint8_t*)&nBucket);
 
-        return nBucket % MAX_CACHE_BUCKETS;
+        return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
     }
 
 
@@ -104,7 +119,7 @@ namespace LLD
 
         /* If the time has expired, return false. */
         if(pthis->nTimestamp + 60 < runtime::timestamp())
-            return debug::error(FUNCTION, "key has expired");
+            return false;
 
         /* Move to front of LRU. */
         MoveToFront(pthis);
@@ -207,7 +222,7 @@ namespace LLD
             pthis->pnext     = nullptr;
 
             /* Reduce the current size. */
-            nCurrentSize -= (pthis->vKey.size());
+            nCurrentSize -= static_cast<uint32_t>(pthis->vKey.size());
 
             /* Free the memory. */
             delete pthis;
@@ -223,7 +238,7 @@ namespace LLD
         MoveToFront(pthis);
 
         /* Set the new cache size. */
-        nCurrentSize += (vKey.size());
+        nCurrentSize += static_cast<uint32_t>(vKey.size());
 
         /* Remove the last node if cache too large. */
         while(nCurrentSize > MAX_CACHE_SIZE)
@@ -244,7 +259,7 @@ namespace LLD
                 /* Reduce the current cache size. */
                 if(pnode)
                 {
-                    nCurrentSize -= (pnode->vKey.size());
+                    nCurrentSize -= static_cast<uint32_t>(pnode->vKey.size());
 
                     /* Clear the pointers. */
                     hashmap[Bucket(pnode->vKey)] = nullptr; //TODO: hashmap linked list for collisions
@@ -311,7 +326,7 @@ namespace LLD
         pthis->pnext     = nullptr;
 
         /* Reduce the current size. */
-        nCurrentSize -= (pthis->vKey.size());
+        nCurrentSize -= static_cast<uint32_t>(pthis->vKey.size());
 
         /* Free the memory. */
         delete pthis;

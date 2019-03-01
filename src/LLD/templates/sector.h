@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLD_TEMPLATES_SECTOR_H
 #define NEXUS_LLD_TEMPLATES_SECTOR_H
 
@@ -213,7 +214,7 @@ namespace LLD
                 {
                     /* Check if in erase queue. */
                     if(pTransaction->mapEraseData.count(ssKey.Bytes()))
-                        return debug::error(FUNCTION, "data is in transaction erase queue");
+                        return false;
 
                     /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
                     if(pTransaction->mapTransactions.count(ssKey.Bytes()))
@@ -327,7 +328,7 @@ namespace LLD
                 {
                     /* Check if in erase queue. */
                     if(pTransaction->mapEraseData.count(ssKey.Bytes()))
-                        return debug::error(FUNCTION, "data is in transaction erase queue");
+                        return false;
 
                     /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
                     if(pTransaction->mapTransactions.count(ssKey.Bytes()))

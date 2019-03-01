@@ -151,7 +151,7 @@ void KeccakF1600_StateXORLanes(void *state, const uint8_t *data, uint32_t laneCo
 {
 #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
     tSmaUtilInt i;
-    laneCount *= sizeof(tKeccakLane);
+    laneCount *= static_cast<uint32_t>(sizeof(tKeccakLane));
     for( i = 0; i < laneCount; ++i)
     {
         ((uint8_t*)state)[i] ^= data[i];

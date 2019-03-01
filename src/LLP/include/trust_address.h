@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLP_INCLUDE_TRUST_ADDRESS_H
 #define NEXUS_LLP_INCLUDE_TRUST_ADDRESS_H
 

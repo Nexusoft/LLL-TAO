@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLC_TYPES_UINT1024_H
 #define NEXUS_LLC_TYPES_UINT1024_H
 
@@ -319,7 +320,8 @@ public:
             *p1 = phexdigit[(uint8_t)*psz--];
             if (psz >= pbegin)
             {
-                *p1 |= (phexdigit[(uint8_t)*psz--] << 4);
+                uint32_t tmp = (phexdigit[(uint8_t)*psz--] << 4);
+                *p1 = *p1 | static_cast<uint8_t>(tmp);
                 ++p1;
             }
         }
@@ -339,10 +341,10 @@ public:
         for(int index = 0; index < WIDTH; ++index)
         {
             std::vector<uint8_t> BYTES(4, 0);
-            BYTES[0] = (pn[index] >> 24);
-            BYTES[1] = (pn[index] >> 16);
-            BYTES[2] = (pn[index] >> 8);
-            BYTES[3] =  pn[index];
+            BYTES[0] = static_cast<uint8_t>(pn[index] >> 24);
+            BYTES[1] = static_cast<uint8_t>(pn[index] >> 16);
+            BYTES[2] = static_cast<uint8_t>(pn[index] >> 8);
+            BYTES[3] = static_cast<uint8_t>(pn[index]);
 
             DATA.insert(DATA.end(), BYTES.begin(), BYTES.end());
         }

@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LEGACY_TYPES_OUTPOINT_H
 #define NEXUS_LEGACY_TYPES_OUTPOINT_H
 
@@ -46,7 +47,10 @@ namespace Legacy
 		 *	Set state to Null.
 		 *
 		 **/
-		OutPoint() { SetNull(); }
+		OutPoint()
+		{
+				SetNull();
+		}
 
 
 		/** Constructor
@@ -55,7 +59,17 @@ namespace Legacy
 		 *	@param[in] nIn The output number of previous transaction.
 		 *
 		 **/
-		OutPoint(uint512_t hashIn, uint32_t nIn) { hash = hashIn; n = nIn; }
+		OutPoint(uint512_t hashIn, uint32_t nIn)
+		{
+				hash = hashIn;
+				n = nIn;
+		}
+
+
+		/** Destructor **/
+		~OutPoint()
+		{
+		}
 
 
 		/** SetNull

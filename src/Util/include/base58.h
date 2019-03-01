@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_UTIL_INCLUDE_BASE58_H
 #define NEXUS_UTIL_INCLUDE_BASE58_H
 
@@ -122,14 +123,6 @@ namespace encoding
         std::vector<uint8_t> vchData;
 
 
-        /** Default Constructor. **/
-        CBase58Data();
-
-
-        /** Default Destructor. **/
-        ~CBase58Data();
-
-
         /** SetData
          *
          *  Set arbitrary data into Base58 structure
@@ -154,6 +147,14 @@ namespace encoding
         void SetData(int nVersionIn, const uint8_t *pbegin, const uint8_t *pend);
 
     public:
+
+
+        /** Default Constructor. **/
+        CBase58Data();
+
+
+        /** Default Destructor. **/
+        virtual ~CBase58Data();
 
 
         /** SetString

@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LEGACY_TYPES_SCRIPT_H
 #define NEXUS_LEGACY_TYPES_SCRIPT_H
 
@@ -90,7 +91,10 @@ namespace Legacy
          *  @param[in] b The object to copy into the vector.
          *
          **/
-        Script(const Script& b) : std::vector<uint8_t>(b.begin(), b.end()) { }
+        Script(const Script& b)
+        : std::vector<uint8_t>(b.begin(), b.end())
+        {
+        }
 
 
         /** Construct from iterators
@@ -101,7 +105,10 @@ namespace Legacy
          *  @param[in] pend The end iterator of object
          *
          **/
-        Script(const_iterator pbegin, const_iterator pend) : std::vector<uint8_t>(pbegin, pend) { }
+        Script(const_iterator pbegin, const_iterator pend)
+        : std::vector<uint8_t>(pbegin, pend)
+        {
+        }
 
 
     #ifndef _MSC_VER
@@ -114,8 +121,17 @@ namespace Legacy
          *  @param[in] pend The end iterator of object
          *
          **/
-        Script(const uint8_t* pbegin, const uint8_t* pend) : std::vector<uint8_t>(pbegin, pend) { }
+        Script(const uint8_t* pbegin, const uint8_t* pend)
+        : std::vector<uint8_t>(pbegin, pend)
+        {
+        }
+
     #endif
+
+        /** Default Destructor **/
+        ~Script()
+        {
+        }
 
 
         /** GetOP
@@ -430,13 +446,13 @@ namespace Legacy
             else if (b.size() <= 0xffff)
             {
                 insert(end(), OP_PUSHDATA2);
-                uint16_t nSize = b.size();
+                uint16_t nSize = static_cast<uint16_t>(b.size());
                 insert(end(), (uint8_t*)&nSize, (uint8_t*)&nSize + sizeof(nSize));
             }
             else
             {
                 insert(end(), OP_PUSHDATA4);
-                uint32_t nSize = b.size();
+                uint32_t nSize =static_cast<uint32_t>(b.size());
                 insert(end(), (uint8_t*)&nSize, (uint8_t*)&nSize + sizeof(nSize));
             }
             insert(end(), b.begin(), b.end());

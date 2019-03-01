@@ -1,3 +1,4 @@
+#pragma once
 #ifndef _SKEIN_IV_H_
 #define _SKEIN_IV_H_
 

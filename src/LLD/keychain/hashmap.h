@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLD_TEMPLATES_HASHMAP_H
 #define NEXUS_LLD_TEMPLATES_HASHMAP_H
 
@@ -195,7 +196,7 @@ namespace LLD
          *
          **/
         bool Restore(const std::vector<uint8_t> &vKey);
-        
+
 
         /** Erase
          *

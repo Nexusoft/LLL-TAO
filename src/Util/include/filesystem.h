@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_UTIL_INCLUDE_FILESYSTEM_H
 #define NEXUS_UTIL_INCLUDE_FILESYSTEM_H
 
@@ -121,8 +122,8 @@ namespace filesystem
 
     /** GetPidFile
     *
-    *  Returns the full pathname of the PID file 
-    * 
+    *  Returns the full pathname of the PID file
+    *
     *  @return The complete path name of the PID file
     *
     **/

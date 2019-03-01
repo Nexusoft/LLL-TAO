@@ -87,7 +87,7 @@ int Keccak_Duplexing(Keccak_DuplexInstance *instance, const uint8_t *sigmaBegin,
     }
     if (ZByteLen*8 > instance->rate)
     {
-        uint8_t mask = (uint8_t)(1 << (instance->rate % 8)) - 1;
+        uint8_t mask = static_cast<uint8_t>((1 << (instance->rate % 8)) - 1);
         Z[ZByteLen-1] &= mask;
     }
 

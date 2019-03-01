@@ -34,7 +34,8 @@ http://creativecommons.org/publicdomain/zero/1.0/
   * It gathers the state processed by the permutation as well as
   * the rate.
   */
-ALIGN typedef struct Keccak_DuplexInstanceStruct {
+ALIGN typedef struct Keccak_DuplexInstanceStruct
+{
     /** The state processed by the permutation. */
     ALIGN uint8_t state[KeccakF_width/8];
     /** The value of the rate in bits.*/

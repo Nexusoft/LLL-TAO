@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLP_INCLUDE_PERMISSIONS_H
 #define NEXUS_LLP_INCLUDE_PERMISSIONS_H
 
@@ -42,7 +43,7 @@ inline bool CheckPermissions(std::string strAddress, uint32_t nPort)
 
     for(const auto& strIPFilter : config::mapIPFilters[nPort])
     {
-        
+
         /* Split the components of the IP so that we can check for wildcard ranges. */
         std::vector<std::string> vCheck = Split(strIPFilter, '.');
 
@@ -58,8 +59,8 @@ inline bool CheckPermissions(std::string strAddress, uint32_t nPort)
 
         /* if the IP matches then the address being checked is on the whitelist */
         if( fIPMatches )
-            return true; 
-        
+            return true;
+
     }
 
     return false;

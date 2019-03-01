@@ -11,13 +11,14 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_UTIL_INCLUDE_CONVERT_H
 #define NEXUS_UTIL_INCLUDE_CONVERT_H
 
 #include <cstdlib>
 #include <cstdint>
 #include <string>
-#include <iostream>
+#include <iosfwd>
 #include <Util/include/debug.h>
 #include <Util/include/json.h>
 
@@ -165,6 +166,8 @@ namespace convert
      **/
     inline std::string DateTimeStrFormat(const char* pszFormat, int64_t nTime)
     {
+        LOCK(debug::DEBUG_MUTEX); //gmtime and localtime are not thread safe together
+
         time_t n = nTime;
         struct tm* ptmTime = gmtime(&n);
         char pszTime[200];
@@ -269,10 +272,10 @@ namespace convert
     inline std::vector<uint8_t> uint2bytes(uint32_t UINT)
     {
         std::vector<uint8_t> BYTES(4, 0);
-        BYTES[0] = UINT >> 24;
-        BYTES[1] = UINT >> 16;
-        BYTES[2] = UINT >> 8;
-        BYTES[3] = UINT;
+        BYTES[0] = static_cast<uint8_t>(UINT >> 24);
+        BYTES[1] = static_cast<uint8_t>(UINT >> 16);
+        BYTES[2] = static_cast<uint8_t>(UINT >> 8);
+        BYTES[3] = static_cast<uint8_t>(UINT);
 
         return BYTES;
     }
@@ -307,10 +310,10 @@ namespace convert
     inline std::vector<uint8_t> int2bytes(int INT)
     {
         std::vector<uint8_t> BYTES(4, 0);
-        BYTES[0] = INT >> 24;
-        BYTES[1] = INT >> 16;
-        BYTES[2] = INT >> 8;
-        BYTES[3] = INT;
+        BYTES[0] = static_cast<uint8_t>(INT >> 24);
+        BYTES[1] = static_cast<uint8_t>(INT >> 16);
+        BYTES[2] = static_cast<uint8_t>(INT >> 8);
+        BYTES[3] = static_cast<uint8_t>(INT);
 
         return BYTES;
     }

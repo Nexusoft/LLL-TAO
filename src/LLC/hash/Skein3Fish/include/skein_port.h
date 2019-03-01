@@ -1,3 +1,4 @@
+#pragma once
 #ifndef _SKEIN_PORT_H_
 #define _SKEIN_PORT_H_
 /*******************************************************************

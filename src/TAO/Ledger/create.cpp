@@ -199,7 +199,7 @@ namespace TAO
             block.nHeight        = ChainState::stateBest.load().nHeight + 1;
             block.nBits          = GetNextTargetRequired(ChainState::stateBest.load(), nChannel, false);
             block.nNonce         = 1;
-            block.nTime          = runtime::unifiedtimestamp();
+            block.nTime          = static_cast<uint32_t>(runtime::unifiedtimestamp());
 
             return true;
         }
@@ -315,7 +315,7 @@ namespace TAO
                 LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
                 /* Generate the EC Key. */
-                LLC::ECKey key(NID_brainpoolP512t1, 64);
+                LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
                 if(!key.SetSecret(vchSecret, true))
                     continue;
 

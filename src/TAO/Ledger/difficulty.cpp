@@ -156,11 +156,11 @@ namespace TAO
                 uint64_t nOverlap = (uint64_t)std::min((nBlockTime - nBlockTarget), (nBlockTarget * 2));
 
                 /** Get the Mod from the Proportion of Overlap in one Interval. **/
-                double nProportions = (double)nOverlap / (nBlockTarget * 2);
+                double nProportions = static_cast<double>(nOverlap) / static_cast<double>(nBlockTarget * 2);
 
                 /** Get Mod from Maximum Decrease Equation with Decimal portions multiplied by Propotions. **/
                 double nMod = 1.0 - (0.15 * nProportions);
-                nLowerBound = nBlockTarget * nMod;
+                nLowerBound = static_cast<uint64_t>(static_cast<double>(nBlockTarget) * nMod);
             }
 
             /** If the time is below target, increase difficulty by modular
@@ -171,11 +171,11 @@ namespace TAO
                 uint64_t nOverlap = nBlockTarget - nBlockTime;
 
                 /** Get the mod from overlap proportion. Time of 1 will be closest to mod of 1. **/
-                double nProportions = (double) nOverlap / nBlockTarget;
+                double nProportions = static_cast<double>(nOverlap) / static_cast<double>(nBlockTarget);
 
                 /** Get the Mod from the Maximum Increase Equation with Decimal portion multiplied by Proportions. **/
                 double nMod = 1.0 + (nProportions * 0.075);
-                nLowerBound = nBlockTarget * nMod;
+                nLowerBound = static_cast<uint64_t>(static_cast<double>(nBlockTarget) * nMod);
             }
 
 
@@ -208,7 +208,7 @@ namespace TAO
                 debug::log(2,
                 "RETARGET weighted time=", nBlockTime,
                 " actual time =", std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1),
-                "[", ((100.0 * nLowerBound) / nUpperBound), "%]\n",
+                "[", ((100.0 * static_cast<double>(nLowerBound)) / static_cast<double>(nUpperBound)), "%]\n",
                 "\tchain time: [", nBlockTarget, " / ", nBlockTime, "]\n",
                 "\tdifficulty: [", std::fixed, GetDifficulty(first.nBits, 0), " to ", std::fixed, GetDifficulty(bnNew.GetCompact(), 0), "]\n",
                 "\ttrust height: ", first.nChannelHeight,
@@ -245,8 +245,8 @@ namespace TAO
             /* Chain Mod: Is a proportion to reflect outstanding released funds. Version 1 Deflates difficulty slightly
             to allow more blocks through when blockchain has been slow, Version 2 Deflates Target Timespan to lower the minimum difficulty.
             This helps stimulate transaction processing while helping get the Nexus production back on track */
-            double nChainMod = GetFractionalSubsidy(GetChainAge(first.GetBlockTime()), 0,
-                ((state.nVersion >= 3) ? 40.0 : 20.0)) / (first.nReleasedReserve[0] + 1);
+            double nChainMod = static_cast<double>(GetFractionalSubsidy(GetChainAge(first.GetBlockTime()), 0,
+                ((state.nVersion >= 3) ? 40.0 : 20.0)) / (first.nReleasedReserve[0] + 1));
 
             nChainMod = std::min(nChainMod, 1.0);
             nChainMod = std::max(nChainMod, (state.nVersion == 1) ? 0.75 : 0.5);
@@ -254,7 +254,7 @@ namespace TAO
 
             /* Enforce Block Version 2 Rule. Chain mod changes block time requirements, not actual mod after block times. */
             if(state.nVersion >= 2)
-                nBlockTarget *= nChainMod;
+                nBlockTarget = static_cast<uint64_t>(static_cast<double>(nBlockTarget) * nChainMod);
 
 
             /* These figures reduce the increase and decrease max and mins as difficulty rises
@@ -278,7 +278,7 @@ namespace TAO
                     uint64_t nOverlap = (uint64_t)std::min((nBlockTime - nBlockTarget), (nBlockTarget * 2));
 
                     /* Get the Mod from the Proportion of Overlap in one Interval. */
-                    double nProportions = (double)nOverlap / (nBlockTarget * 2);
+                    double nProportions = static_cast<double>(nOverlap) / static_cast<double>(nBlockTarget * 2);
 
                     /* Get Mod from Maximum Decrease Equation with Decimal portions multiplied by Propotions. */
                     nMod = 1.0 - (nProportions * (0.5 / ((nDifficulty - 1) * 5.0)));
@@ -292,7 +292,7 @@ namespace TAO
                     uint64_t nOverlap = nBlockTarget - nBlockTime;
 
                     /* Get the mod from overlap proportion. Time of 1 will be closest to mod of 1. */
-                    double nProportions = (double) nOverlap / nBlockTarget;
+                    double nProportions = static_cast<double>(nOverlap) / static_cast<double>(nBlockTarget);
 
                     /* Get the Mod from the Maximum Increase Equation with Decimal portion multiplied by Proportions. */
                     nMod = 1.0 + (nProportions * (0.125 / ((nDifficulty - 1) * 10.0)));
@@ -308,7 +308,7 @@ namespace TAO
                 double nMaxUp = (0.125 / ((nDifficulty - 1) * 50.0)) + 1.0;
 
                 /* Block Modular Determined from Time Proportions. */
-                double nBlockMod = (double) nBlockTarget / nBlockTime;
+                double nBlockMod = static_cast<double>(nBlockTarget) / static_cast<double>(nBlockTime);
                 nBlockMod = std::min(nBlockMod, 1.125);
                 nBlockMod = std::max(nBlockMod, 0.50);
 
@@ -391,8 +391,8 @@ namespace TAO
 
 
             /* Get the Chain Modular from Reserves. */
-            double nChainMod = GetFractionalSubsidy(GetChainAge(first.GetBlockTime()), 0,
-                ((state.nVersion >= 3) ? 40.0 : 20.0)) / (first.nReleasedReserve[0] + 1);
+            double nChainMod = static_cast<double>(GetFractionalSubsidy(GetChainAge(first.GetBlockTime()), 0,
+                ((state.nVersion >= 3) ? 40.0 : 20.0)) / (first.nReleasedReserve[0] + 1));
 
             nChainMod = std::min(nChainMod, 1.0);
             nChainMod = std::max(nChainMod, (state.nVersion == 1) ? 0.75 : 0.5);
@@ -400,7 +400,7 @@ namespace TAO
 
             /* Enforce Block Version 2 Rule. Chain mod changes block time requirements, not actual mod after block times. */
             if(state.nVersion >= 2)
-                nBlockTarget *= nChainMod;
+                nBlockTarget = static_cast<uint64_t>(static_cast<double>(nBlockTarget) * nChainMod);
 
 
             /* The Upper and Lower Bound Adjusters. */
@@ -420,11 +420,11 @@ namespace TAO
                     uint64_t nOverlap = (uint64_t)std::min((nBlockTime - nBlockTarget), (nBlockTarget * 2));
 
                     /* Get the Mod from the Proportion of Overlap in one Interval. */
-                    double nProportions = (double)nOverlap / (nBlockTarget * 2);
+                    double nProportions = static_cast<double>(nOverlap) / static_cast<double>(nBlockTarget * 2);
 
                     /* Get Mod from Maximum Decrease Equation with Decimal portions multiplied by Propotions. */
                     double nMod = 1.0 - (((state.nVersion >= 4) ? 0.15 : 0.75) * nProportions);
-                    nLowerBound = nBlockTarget * nMod;
+                    nLowerBound = static_cast<uint64_t>(static_cast<double>(nBlockTarget) * nMod);
                 }
 
                 /* If the time is below target, increase difficulty by modular
@@ -435,11 +435,11 @@ namespace TAO
                     uint64_t nOverlap = nBlockTarget - nBlockTime;
 
                     /* Get the mod from overlap proportion. Time of 1 will be closest to mod of 1. */
-                    double nProportions = (double) nOverlap / nBlockTarget;
+                    double nProportions = static_cast<double>(nOverlap) / static_cast<double>(nBlockTarget);
 
                     /* Get the Mod from the Maximum Increase Equation with Decimal portion multiplied by Proportions. */
                     double nMod = 1.0 + (nProportions * 0.075);
-                    nLowerBound = nBlockTarget * nMod;
+                    nLowerBound = static_cast<uint64_t>(static_cast<double>(nBlockTarget) * nMod);
                 }
             }
 
@@ -447,16 +447,16 @@ namespace TAO
             /* Handle for Version 2 Difficulty Adjustments. */
             else
             {
-                double nBlockMod = (double) nBlockTarget / nBlockTime;
+                double nBlockMod = static_cast<double>(nBlockTarget) / static_cast<double>(nBlockTime);
                 nBlockMod = std::min(nBlockMod, 1.125);
                 nBlockMod = std::max(nBlockMod, 0.75);
 
                 /* Calculate the Lower Bounds. */
-                nLowerBound = nBlockTarget * nBlockMod;
+                nLowerBound = static_cast<uint64_t>(static_cast<double>(nBlockTarget) * nBlockMod);
 
                 /* Version 1 Blocks Change Lower Bound from Chain Modular. */
                 if(state.nVersion == 1)
-                    nLowerBound *= nChainMod;
+                    nLowerBound = static_cast<uint64_t>(static_cast<double>(nLowerBound) * nChainMod);
 
                 /* Set Maximum [difficulty] up to 8%, and Minimum [difficulty] down to 50% */
                 nLowerBound = std::min(nLowerBound, (uint64_t)(nUpperBound + (nUpperBound / 8)));
@@ -490,7 +490,7 @@ namespace TAO
 
                 debug::log(2,
                     "RETARGET weighted time=", nBlockTime, " actual time ", std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1),
-                    " [", (100.0 * nLowerBound) / nUpperBound, " %]\n",
+                    " [", (100.0 * static_cast<double>(nLowerBound)) / static_cast<double>(nUpperBound), " %]\n",
                     "\tchain time: [", nBlockTarget, " / ", nBlockTime, "]\n",
                     "\treleased reward: ", first.nReleasedReserve[0] / Legacy::COIN,
                     " [", 100.0 * nChainMod, " %]\n",

@@ -206,7 +206,7 @@ namespace Legacy
     {
         uint64_t nPoolIndex = 0;
         KeyPoolEntry keypoolEntry;
-            
+
         /* Attempt to reserve a key from the key pool */
         ReserveKeyFromPool(nPoolIndex, keypoolEntry);
 
@@ -232,7 +232,7 @@ namespace Legacy
         KeepKey(nPoolIndex);
 
         key = keypoolEntry.vchPubKey;
-        
+
         return true;
     }
 

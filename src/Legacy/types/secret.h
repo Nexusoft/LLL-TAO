@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LEGACY_TYPES_SECRET_H
 #define NEXUS_LEGACY_TYPES_SECRET_H
 
@@ -40,6 +41,12 @@ namespace Legacy
          *
          **/
         NexusSecret(const LLC::CSecret& vchSecret, bool fCompressed);
+
+
+        /** Destructor **/
+        virtual ~NexusSecret()
+        {
+        }
 
 
         /** SetSecret

@@ -30,6 +30,7 @@
  Issue 20/10/2006
 */
 
+#pragma once
 #ifndef BRG_ENDIAN_H
 #define BRG_ENDIAN_H
 

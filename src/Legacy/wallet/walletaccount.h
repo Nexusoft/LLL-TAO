@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LEGACY_WALLET_WALLETACCOUNT_H
 #define NEXUS_LEGACY_WALLET_WALLETACCOUNT_H
 
@@ -20,15 +21,15 @@ ________________________________________________________________________________
 
 namespace Legacy
 {
-    
+
     /** @class Account
      *
      *  Account information.
      *
-     *  A wallet account contains the public key value for an account/Nexus address 
+     *  A wallet account contains the public key value for an account/Nexus address
      *  (which is not stored here). These are used to store public keys in the wallet database.
-     *  
-     *  Database key is acc<account> 
+     *
+     *  Database key is acc<account>
      **/
     class Account
     {
@@ -39,7 +40,7 @@ namespace Legacy
 
         /** Constructor
          *
-         *  Calls SetNull() to initialize the account. 
+         *  Calls SetNull() to initialize the account.
          *
          **/
         Account()
@@ -48,9 +49,15 @@ namespace Legacy
         }
 
 
+        /** Destructor **/
+        ~Account()
+        {
+        }
+
+
         /** SetNull
          *
-         *  Clears the current public key value. 
+         *  Clears the current public key value.
          *
          **/
         void SetNull()

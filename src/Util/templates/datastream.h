@@ -10,6 +10,8 @@
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
+
+#pragma once
 #ifndef NEXUS_UTIL_TEMPLATES_DATASTREAM_H
 #define NEXUS_UTIL_TEMPLATES_DATASTREAM_H
 
@@ -31,7 +33,7 @@ class DataStream
 
 
     /** The current reading position. **/
-    mutable uint32_t nReadPos;
+    mutable uint64_t nReadPos;
 
 
     /** The serialization type. **/
@@ -107,7 +109,7 @@ public:
      *  @param[in] nNewPos The position to set to in the stream.
      *
      **/
-    void SetPos(uint32_t nNewPos) const;
+    void SetPos(uint64_t nNewPos) const;
 
 
     /** SetNull
@@ -152,7 +154,7 @@ public:
      *  @return Returns a reference to the DataStream object.
      *
      **/
-    const DataStream& read(char* pch, uint32_t nSize) const;
+    const DataStream& read(char* pch, uint64_t nSize) const;
 
 
     /** write
@@ -163,7 +165,7 @@ public:
      *  @param[in] nSize The total number of bytes to copy.
      *
      **/
-    DataStream& write(const char* pch, uint32_t nSize);
+    DataStream& write(const char* pch, uint64_t nSize);
 
 
     /** Bytes
@@ -178,7 +180,7 @@ public:
      *  Implement the same reserve functionality to vector.
      *
      **/
-    void reserve(const uint32_t nSize);
+    void reserve(const uint64_t nSize);
 
 
     /** begin
@@ -234,7 +236,7 @@ public:
      *  Get the size of the data stream.
      *
      **/
-    size_t size() const;
+    uint64_t size() const;
 
 
     /** Operator Overload <<

@@ -79,7 +79,7 @@ void DataStream::SetType(uint8_t nSerTypeIn)
 
 
 /*  Sets the position in the stream. */
-void DataStream::SetPos(uint32_t nNewPos) const
+void DataStream::SetPos(uint64_t nNewPos) const
 {
     /* Check size constraints. */
     if(nNewPos > size())
@@ -120,7 +120,7 @@ bool DataStream::End() const
 
 
 /*  Reads raw data from the stream. */
-const DataStream& DataStream::read(char* pch, uint32_t nSize) const
+const DataStream& DataStream::read(char* pch, uint64_t nSize) const
 {
     /* Check size constraints. */
     if(nReadPos + nSize > size())
@@ -137,7 +137,7 @@ const DataStream& DataStream::read(char* pch, uint32_t nSize) const
 
 
 /*  Writes data into the stream. */
-DataStream& DataStream::write(const char* pch, uint32_t nSize)
+DataStream& DataStream::write(const char* pch, uint64_t nSize)
 {
     /* Push the obj bytes into the vector. */
     vData.insert(vData.end(), (uint8_t*)pch, (uint8_t*)pch + nSize);
@@ -154,7 +154,7 @@ const std::vector<uint8_t>& DataStream::Bytes()
 
 
 /*  Implement the same reserve functionality to vector. */
-void DataStream::reserve(const uint32_t nSize)
+void DataStream::reserve(const uint64_t nSize)
 {
     vData.reserve(nSize);
 }
@@ -203,7 +203,7 @@ void DataStream::clear()
 
 
 /*  Get the size of the data stream. */
-size_t DataStream::size() const
+uint64_t DataStream::size() const
 {
     return vData.size();
 }

@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_CHECKPOINTS_H
 #define NEXUS_TAO_LEDGER_INCLUDE_CHECKPOINTS_H
 

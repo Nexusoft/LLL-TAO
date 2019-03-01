@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_SUPPLY_H
 #define NEXUS_TAO_LEDGER_INCLUDE_SUPPLY_H
 

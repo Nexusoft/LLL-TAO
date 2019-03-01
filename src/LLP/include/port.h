@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLP_INCLUDE_PORT_H
 #define NEXUS_LLP_INCLUDE_PORT_H
 
@@ -48,8 +49,6 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    /*  */
-
     /** GetCorePort
      *
      *  Get the Main Core LLP Port for Nexus.

@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LEGACY_TYPES_TXOUT_H
 #define NEXUS_LEGACY_TYPES_TXOUT_H
 
@@ -53,7 +54,7 @@ namespace Legacy
 		 **/
 		TxOut()
 		{
-			SetNull();
+				SetNull();
 		}
 
 
@@ -65,8 +66,14 @@ namespace Legacy
 		 **/
 		TxOut(int64_t nValueIn, Script scriptPubKeyIn)
 		{
-			nValue = nValueIn;
-			scriptPubKey = scriptPubKeyIn;
+				nValue = nValueIn;
+				scriptPubKey = scriptPubKeyIn;
+		}
+
+
+		/** Destructor **/
+		~TxOut()
+		{
 		}
 
 

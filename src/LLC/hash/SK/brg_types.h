@@ -39,6 +39,7 @@
  can be used to convert the types used here to the C99 standard types.
 */
 
+#pragma once
 #ifndef BRG_TYPES_H
 #define BRG_TYPES_H
 

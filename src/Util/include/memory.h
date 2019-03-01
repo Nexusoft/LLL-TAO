@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_UTIL_INCLUDE_MEMORY_H
 #define NEXUS_UTIL_INCLUDE_MEMORY_H
 
@@ -380,6 +381,13 @@ namespace memory
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "dereferencing a nullptr"));
 
             return *data;
+        }
+
+        TypeName* load()
+        {
+            RLOCK(MUTEX);
+
+            return data;
         }
 
 

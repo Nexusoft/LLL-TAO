@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LEGACY_WALLET_ADDRESSBOOK_H
 #define NEXUS_LEGACY_WALLET_ADDRESSBOOK_H
 
@@ -86,7 +87,16 @@ namespace Legacy
          *  @param[in] walletIn The wallet containing this address book
          *
          **/
-        AddressBook(Wallet& walletIn) : addressBookWallet(walletIn) {}
+        AddressBook(Wallet& walletIn)
+        : addressBookWallet(walletIn)
+        {
+        }
+
+
+        /** Destructor **/
+        ~AddressBook()
+        {
+        }
 
 
         /** HasAddress
@@ -98,7 +108,10 @@ namespace Legacy
          *  @return true if address is in the address book
          *
          **/
-        inline bool HasAddress(const NexusAddress& address) { return mapAddressBook.count(address) > 0; }
+        inline bool HasAddress(const NexusAddress& address)
+        {
+            return mapAddressBook.count(address) > 0;
+        }
 
 
         /** GetAddressBookName
@@ -186,6 +199,7 @@ namespace Legacy
         **/
         Legacy::NexusAddress GetAccountAddress(const std::string& strAccount, bool fForceNew = false );
 
+
         /** GetAddressBookMap
         *
         *  Gets const access to the internal AddressBookMap (NexusAddress to account name)
@@ -193,7 +207,10 @@ namespace Legacy
         *  @return The AddressBookMap
         *
         **/
-        const AddressBookMap& GetAddressBookMap() const { return mapAddressBook;}
+        const AddressBookMap& GetAddressBookMap() const
+        {
+            return mapAddressBook;
+        }
 
     };
 

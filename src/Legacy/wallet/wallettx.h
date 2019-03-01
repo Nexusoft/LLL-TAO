@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LEGACY_WALLET_WALLETTX_H
 #define NEXUS_LEGACY_WALLET_WALLETTX_H
 
@@ -27,7 +28,8 @@ ________________________________________________________________________________
 
 
 /* forward declaration */
-namespace LLD {
+namespace LLD
+{
     class LegacyDB;
 }
 
@@ -51,10 +53,10 @@ namespace Legacy
     private:
         /* This has to be static or copy constructor/copy assignment are deleted.
          * As we normally process transactions iteratively (not simultaneously),
-         * having it static should have little if any effect. 
+         * having it static should have little if any effect.
          *
          * Should this prove a problem later, then it can be changed to mutable
-         * and copy operations defined 
+         * and copy operations defined
          */
         /** Mutex for thread concurrency across transaction operations. **/
         static std::mutex cs_wallettx;
@@ -71,26 +73,7 @@ namespace Legacy
          *  Initializes an empty wallet transaction
          *
          **/
-        void InitWalletTx()
-        {
-            vtxPrev.clear();
-            mapValue.clear();
-            vOrderForm.clear();
-            strFromAccount.clear();
-            vfSpent.clear();
-
-            fTimeReceivedIsTxTime = false;
-            nTimeReceived = 0;
-            fFromMe = false;
-            fDebitCached = false;
-            fCreditCached = false;
-            fAvailableCreditCached = false;
-            fChangeCached = false;
-            nDebitCached = 0;
-            nCreditCached = 0;
-            nAvailableCreditCached = 0;
-            nChangeCached = 0;
-        }
+        void InitWalletTx();
 
 
     public:
@@ -175,10 +158,7 @@ namespace Legacy
          *  Initializes an empty wallet transaction
          *
          **/
-        WalletTx() : ptransactionWallet(nullptr), fHaveWallet(false)
-        {
-            InitWalletTx();
-        }
+        WalletTx();
 
 
         /** Constructor
@@ -192,10 +172,7 @@ namespace Legacy
          *  @see Wallet::AddToWallet()
          *
          **/
-        WalletTx(Wallet& walletIn) : ptransactionWallet(&walletIn), fHaveWallet(true)
-        {
-            InitWalletTx();
-        }
+        WalletTx(Wallet& walletIn);
 
 
         /** Constructor
@@ -209,10 +186,7 @@ namespace Legacy
          *  @see Wallet::AddToWallet()
          *
          **/
-        WalletTx(Wallet* pwalletIn) : ptransactionWallet(pwalletIn), fHaveWallet(true)
-        {
-            InitWalletTx();
-        }
+        WalletTx(Wallet* pwalletIn);
 
 
         /** Constructor
@@ -228,10 +202,7 @@ namespace Legacy
          *  @see Wallet::AddToWallet()
          *
          **/
-        WalletTx(Wallet* pwalletIn, const MerkleTx& txIn) : MerkleTx(txIn), ptransactionWallet(pwalletIn), fHaveWallet(true)
-        {
-            InitWalletTx();
-        }
+        WalletTx(Wallet* pwalletIn, const MerkleTx& txIn);
 
 
         /** Constructor
@@ -247,10 +218,11 @@ namespace Legacy
          *  @see Wallet::AddToWallet()
          *
          **/
-        WalletTx(Wallet* pwalletIn, const Transaction& txIn) : MerkleTx(txIn), ptransactionWallet(pwalletIn), fHaveWallet(true)
-        {
-            InitWalletTx();
-        }
+        WalletTx(Wallet* pwalletIn, const Transaction& txIn);
+
+
+        /** Destructor **/
+        virtual ~WalletTx();
 
 
         /* Wallet transaction serialize/unserialize needs some customization to set up data*/
@@ -341,7 +313,7 @@ namespace Legacy
          *  @return true if this transaction is bound to a wallet, false otherwise
          *
          **/
-        inline bool IsBound() const { return fHaveWallet; }
+        bool IsBound() const;
 
 
         /** GetDebit
@@ -398,7 +370,7 @@ namespace Legacy
          *  @return The transaction timestamp
          *
          **/
-        inline uint64_t GetTxTime() const { return nTimeReceived; }
+        uint64_t GetTxTime() const;
 
 
 
@@ -422,7 +394,7 @@ namespace Legacy
          *  @return true if the bound wallet sends balance via this transaction
          *
          **/
-        inline bool IsFromMe() const { return (GetDebit() > 0); }
+        bool IsFromMe() const;
 
 
         /** IsConfirmed

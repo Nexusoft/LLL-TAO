@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_TAO_LEDGER_TYPES_TRITIUM_H
 #define NEXUS_TAO_LEDGER_TYPES_TRITIUM_H
 
@@ -83,32 +84,18 @@ namespace TAO
 
 
             /** The default constructor. **/
-            TritiumBlock()
-            : Block()
-            , producer()
-            , vtx()
-            {
-                SetNull();
-            }
-
+            TritiumBlock();
 
             /** Copy Constructor. **/
-            TritiumBlock(const TritiumBlock& block)
-            : Block(block)
-            , producer(block.producer)
-            , vtx(block.vtx)
-            {
-
-            }
+            TritiumBlock(const TritiumBlock& block);
 
 
             /** Copy Constructor. **/
             TritiumBlock(const BlockState& state);
 
+
             /** Default Destructor **/
-            virtual ~TritiumBlock()
-            {
-            }
+            virtual ~TritiumBlock();
 
 
             /** SetNull
@@ -116,13 +103,7 @@ namespace TAO
              *  Set the block to Null state.
              *
              **/
-            void SetNull() override
-            {
-                Block::SetNull();
-
-                vtx.clear();
-                producer = Transaction();
-            }
+            void SetNull() override;
 
 
             /** Check

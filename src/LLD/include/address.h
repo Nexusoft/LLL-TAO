@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLD_INCLUDE_ADDRESS_H
 #define NEXUS_LLD_INCLUDE_ADDRESS_H
 
@@ -34,7 +35,7 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        AddressDB(uint16_t port, uint8_t nFlags = FLAGS::CREATE | FLAGS::FORCE)
+        AddressDB(uint16_t port, uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
         : SectorDatabase(std::string("addr/") + std::to_string(port), nFlags) { }
 
 
@@ -120,11 +121,11 @@ namespace LLD
         }
 
 
-        /** WriteLastUpdate
+        /** ReadLastUpdate
          *
          *  Reads the last time DNS was updated.
          *
-         *  @param[out] nUpdate The las time that DNS was updated.
+         *  @param[out] nUpdated The last time that DNS was updated.
          *
          *  @return True if the read is successful, false otherwise.
          *

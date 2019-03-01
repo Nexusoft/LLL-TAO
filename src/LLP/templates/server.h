@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLP_TEMPLATES_SERVER_H
 #define NEXUS_LLP_TEMPLATES_SERVER_H
 
@@ -45,8 +46,6 @@ namespace LLP
     template <class ProtocolType>
     class Server
     {
-
-
     private:
         /* The DDOS variables. */
         std::map<BaseAddress, DDOS_Filter *> DDOS_MAP;
@@ -92,7 +91,7 @@ namespace LLP
         Server<ProtocolType>(uint16_t nPort,
                              uint16_t nMaxThreads,
                              uint32_t nTimeout = 30,
-                             bool isDDOS = false,
+                             bool fDDOS_ = false,
                              uint32_t cScore = 0,
                              uint32_t rScore = 0,
                              uint32_t nTimespan = 60,

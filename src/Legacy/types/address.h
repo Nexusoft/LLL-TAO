@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LEGACY_TYPES_ADDRESS_H
 #define NEXUS_LEGACY_TYPES_ADDRESS_H
 
@@ -32,7 +33,9 @@ namespace Legacy
     public:
 
         /** Default Constructor. **/
-        NexusAddress() { }
+        NexusAddress()
+        {
+        }
 
 
         /** Constructor
@@ -73,6 +76,12 @@ namespace Legacy
          *
          **/
         NexusAddress(const char* pszAddress);
+
+
+        /** Destructor **/
+        virtual ~NexusAddress()
+        {
+        }
 
 
         /** SetHash256

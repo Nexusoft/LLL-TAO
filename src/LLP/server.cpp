@@ -21,7 +21,8 @@ ________________________________________________________________________________
 #include <LLP/types/time.h>
 #include <LLP/types/corenode.h>
 #include <LLP/types/rpcnode.h>
-#include <LLP/types/miner.h>
+#include <LLP/types/legacy_miner.h>
+#include <LLP/types/tritium_miner.h>
 
 #include <LLP/include/manager.h>
 #include <LLP/include/trust_address.h>
@@ -45,10 +46,10 @@ namespace LLP
 
     /** Constructor **/
     template <class ProtocolType>
-    Server<ProtocolType>::Server(uint16_t nPort, uint16_t nMaxThreads, uint32_t nTimeout, bool isDDOS,
+    Server<ProtocolType>::Server(uint16_t nPort, uint16_t nMaxThreads, uint32_t nTimeout, bool fDDOS_,
                          uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen,
                          bool fMeter, bool fManager, uint32_t nSleepTimeIn)
-    : fDDOS(isDDOS)
+    : fDDOS(fDDOS_)
     , MANAGER()
     , PORT(nPort)
     , MAX_THREADS(nMaxThreads)
@@ -60,7 +61,7 @@ namespace LLP
         for(uint16_t index = 0; index < MAX_THREADS; ++index)
         {
             DATA_THREADS.push_back(new DataThread<ProtocolType>(
-                index, fDDOS, rScore, cScore, nTimeout, fMeter));
+                index, fDDOS_, rScore, cScore, nTimeout, fMeter));
         }
 
         /* Initialize the address manager. */
@@ -146,8 +147,9 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::Shutdown()
     {
-        if(pAddressManager)
-          pAddressManager->WriteDatabase();
+        /* DEPRECATED. address write to database on update, not shutdown. */
+        //if(pAddressManager)
+        //  pAddressManager->WriteDatabase();
     }
 
 
@@ -361,7 +363,7 @@ namespace LLP
             DataThread<ProtocolType> *dt = DATA_THREADS[index];
 
             /* Limit data threads to 32 connections per thread. */
-            if(dt->nConnections < nConnections && dt->nConnections < 32)
+            if(dt->nConnections < nConnections)
             {
                 nIndex = index;
                 nConnections = dt->nConnections;
@@ -648,6 +650,6 @@ namespace LLP
     template class Server<TimeNode>;
     template class Server<CoreNode>;
     template class Server<RPCNode>;
-    template class Server<Miner>;
-
+    template class Server<LegacyMiner>;
+    template class Server<TritiumMiner>;
 }

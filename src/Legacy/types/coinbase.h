@@ -27,12 +27,25 @@ namespace Legacy
 
         /* Default constructor*/
         Coinbase()
-        : vOutputs(), nMaxValue(0), nPoolFee(0) {}
+        : vOutputs()
+				, nMaxValue(0)
+				, nPoolFee(0)
+				{
+				}
 
         /** Constructor when set from incoming data **/
         Coinbase(std::map<std::string, uint64_t> vTxOutputs, uint64_t nValue, uint64_t nLocalFee)
-        : vOutputs(vTxOutputs), nMaxValue(nValue), nPoolFee(nLocalFee) {}
+        : vOutputs(vTxOutputs)
+				, nMaxValue(nValue)
+				, nPoolFee(nLocalFee)
+				{
+				}
 
+
+				/** Destructor **/
+				~Coinbase()
+				{
+				}
 
 
         /** The Transaction Outputs to be Serialized to Mining LLP. **/
@@ -48,7 +61,7 @@ namespace Legacy
          *  Set the coinbase to Null state.
          *
          **/
-        void SetNull() 
+        void SetNull()
         {
             vOutputs.clear();
             nMaxValue = 0;
@@ -57,14 +70,15 @@ namespace Legacy
 
 
         /** Is Null
-		 *
-		 *	Checks the objects null state.
-		 *
-		 **/
-		bool IsNull() const
-		{
-			return vOutputs.empty() && nPoolFee == 0;
-		}
+				 *
+				 *	Checks the objects null state.
+				 *
+				 **/
+				bool IsNull() const
+				{
+						return vOutputs.empty() && nPoolFee == 0;
+				}
+
 
         /** IsValid
         *
@@ -94,17 +108,16 @@ namespace Legacy
             uint64_t nTotal = 0;
             for(const auto& entry : vOutputs)
             {
-                debug::log(0, entry.first.c_str(), ":", entry.second / 1000000.0);
+                debug::log(0, entry.first.c_str(), ":", static_cast<double>(entry.second) / 1000000.0);
                 nTotal += entry.second;
             }
 
-            debug::log(0, "Total Value of Coinbase = ", nTotal / 1000000.0);
-            debug::log(0, "Set Value of Coinbase = ", nMaxValue / 1000000.0);
-            debug::log(0, "PoolFee in Coinbase ", nPoolFee / 1000000.0);
+            debug::log(0, "Total Value of Coinbase = ", static_cast<double>(nTotal) / 1000000.0);
+            debug::log(0, "Set Value of Coinbase = ", static_cast<double>(nMaxValue) / 1000000.0);
+            debug::log(0, "PoolFee in Coinbase ", static_cast<double>(nPoolFee) / 1000000.0);
             debug::log(0, "\n\nIs Complete: ", IsValid() ? "TRUE" : "FALSE");
             debug::log(0, "\n\n +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ \n");
         }
-		
+
 	};
 }
-

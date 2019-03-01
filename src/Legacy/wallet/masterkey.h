@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LEGACY_WALLET_MASTERKEY_H
 #define NEXUS_LEGACY_WALLET_MASTERKEY_H
 
@@ -84,7 +85,7 @@ namespace Legacy
         )
 
 
-        /** Default constructor
+        /** Default Constructor
          *
          *  Defaults iterations to 25000 and derivation method to 0
          *
@@ -95,6 +96,11 @@ namespace Legacy
         , nDerivationMethod(0)
         , nDeriveIterations(25000)
         , vchOtherDerivationParameters(std::vector<uint8_t>(0))
+        {
+        }
+
+        /** Default Destructor **/
+        ~MasterKey()
         {
         }
 

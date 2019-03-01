@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LEGACY_TYPES_INPOINT_H
 #define NEXUS_LEGACY_TYPES_INPOINT_H
 
@@ -24,56 +25,65 @@ namespace Legacy
 	{
 	public:
 
-		/** The transaction pointer. **/
-		Transaction* ptx;
+			/** The transaction pointer. **/
+			Transaction* ptx;
 
 
-		/** The index n of transaction input. **/
-		uint32_t n;
+			/** The index n of transaction input. **/
+			uint32_t n;
 
 
-		/** Default Constructor
-		 *
-		 *	Sets object to null state.
-		 *
-		 **/
-		InPoint() { SetNull(); }
+			/** Default Constructor
+			 *
+			 *	Sets object to null state.
+			 *
+			 **/
+			InPoint()
+			{
+					SetNull();
+			}
 
 
-		/** Constructor
-		 *
-		 *	@param[in] ptxIn The transaction input pointer
-		 *	@param[in] nIn The index input
-		 *
-		 **/
-		InPoint(Transaction* ptxIn, uint32_t nIn)
-		{
-			ptx = ptxIn;
-			n = nIn;
-		}
+			/** Constructor
+			 *
+			 *	@param[in] ptxIn The transaction input pointer
+			 *	@param[in] nIn The index input
+			 *
+			 **/
+			InPoint(Transaction* ptxIn, uint32_t nIn)
+			{
+					ptx = ptxIn;
+					n = nIn;
+			}
 
 
-		/** Set Null
-		 *
-		 *	Sets the object to null state
-		 *
-		 **/
-		void SetNull()
-		{
-			ptx = nullptr;
-			n = -1;
-		}
+			/** Destructor **/
+			~InPoint()
+			{
+			}
 
 
-		/** Is Null
-		 *
-		 *	Checks the objects null state.
-		 *
-		 **/
-		bool IsNull() const
-		{
-			return (ptx == nullptr && n == -1);
-		}
+			/** Set Null
+			 *
+			 *	Sets the object to null state
+			 *
+			 **/
+			void SetNull()
+			{
+					ptx = nullptr;
+					n = -1;
+			}
+
+
+			/** Is Null
+			 *
+			 *	Checks the objects null state.
+			 *
+			 **/
+			bool IsNull() const
+			{
+					return (ptx == nullptr && n == -1);
+			}
 	};
 }
 

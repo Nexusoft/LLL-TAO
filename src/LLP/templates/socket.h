@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLP_TEMPLATES_SOCKET_H
 #define NEXUS_LLP_TEMPLATES_SOCKET_H
 
@@ -42,17 +43,16 @@ namespace LLP
 
     protected:
 
-
-        /** The error codes for socket. **/
-        std::atomic<int32_t> nError;
-
-
         /** Keep track of last time data was sent. **/
-        std::atomic<uint32_t> nLastSend;
+        std::atomic<uint64_t> nLastSend;
 
 
         /** Keep track of last time data was received. **/
-        std::atomic<uint32_t> nLastRecv;
+        std::atomic<uint64_t> nLastRecv;
+
+
+        /** The error codes for socket. **/
+        std::atomic<int32_t> nError;
 
 
         /** Oversize buffer for large packets. **/

@@ -132,6 +132,11 @@ namespace LLP
 
         /* Update the stats for this address based on the state. */
         update_state(pAddr, state);
+
+        /* Update the LLD Address database for this entry */
+        //pDatabase->TxnBegin();
+        pDatabase->WriteTrustAddress(hash, *pAddr);
+        //pDatabase->TxnCommit();
     }
 
 
@@ -217,7 +222,14 @@ namespace LLP
 
         auto it = mapTrustAddress.find(hash);
         if(it != mapTrustAddress.end())
+        {
             it->second.nLatency = lat;
+
+            /* Update the LLD Address database for this entry */
+            //pDatabase->TxnBegin();
+            pDatabase->WriteTrustAddress(hash, it->second);
+            //pDatabase->TxnCommit();
+        }
     }
 
 
@@ -229,7 +241,15 @@ namespace LLP
 
         auto it = mapTrustAddress.find(hash);
         if(it != mapTrustAddress.end())
+        {
             it->second.nHeight = height;
+
+            /* Update the LLD Address database for this entry */
+            //pDatabase->TxnBegin();
+            pDatabase->WriteTrustAddress(hash, it->second);
+            //pDatabase->TxnCommit();
+        }
+
     }
 
 
@@ -237,10 +257,11 @@ namespace LLP
     bool AddressManager::StochasticSelect(BaseAddress &addr)
     {
         std::vector<TrustAddress> vAddresses;
+        uint64_t nSelect = 0;
         uint64_t nTimestamp = runtime::unifiedtimestamp();
         uint64_t nRand = LLC::GetRand(nTimestamp);
         uint32_t nHash = LLC::SK32(BEGIN(nRand), END(nRand));
-        uint32_t nSelect = 0;
+
 
         /* Put unconnected address info scores into a vector and sort them. */
         uint8_t flags = ConnectState::NEW    |
@@ -252,7 +273,7 @@ namespace LLP
             get_addresses(vAddresses, flags);
         }
 
-        uint32_t s = static_cast<uint32_t>(vAddresses.size());
+        uint64_t s = vAddresses.size();
 
         if(s == 0)
             return false;
@@ -400,25 +421,26 @@ namespace LLP
     /*  Write the addresses from the manager into the address database. */
     void AddressManager::WriteDatabase()
     {
+        /* DEPRECATED */
         /* Make sure the database exists. */
-        if(!pDatabase)
-        {
-            debug::error(FUNCTION, "database null");
-            return;
-        }
+        //if(!pDatabase)
+        //{
+        //    debug::error(FUNCTION, "database null");
+        //    return;
+        //}
 
-        LOCK(mut);
+        //LOCK(mut);
 
-        if(!mapTrustAddress.size())
-          return;
+        //if(!mapTrustAddress.size())
+        //  return;
 
-        pDatabase->TxnBegin();
+        //pDatabase->TxnBegin();
 
         /* Write the keys and addresses. */
-        for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
-            pDatabase->WriteTrustAddress(it->first, it->second);
+        //for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
+        //    pDatabase->WriteTrustAddress(it->first, it->second);
 
-        pDatabase->TxnCommit();
+        //pDatabase->TxnCommit();
     }
 
 
@@ -504,7 +526,7 @@ namespace LLP
     /*  Returns the total number of addresses currently banned. */
     uint32_t AddressManager::ban_count()
     {
-      return static_cast<uint32_t>(mapBanned.size());
+        return static_cast<uint32_t>(mapBanned.size());
     }
 
 

@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLC_INCLUDE_KEY_H
 #define NEXUS_LLC_INCLUDE_KEY_H
 
@@ -20,11 +21,17 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 #include <Util/include/allocators.h>
 
-#include <openssl/ec.h> // for EC_KEY definition
-#include <openssl/obj_mac.h>
+typedef struct ec_key_st EC_KEY;
+
 
 namespace LLC
 {
+
+    enum
+    {
+        SECT_571_R1 = 0,
+        BRAINPOOL_P512_T1 = 1,
+    };
 
     /** Key Runtime Error Wrapper. **/
     class key_error : public std::runtime_error
@@ -73,7 +80,7 @@ namespace LLC
 
         ECKey();
         ECKey(const ECKey& b);
-        ECKey(const int nID, const int nKeySizeIn);
+        ECKey(const int nID, const int nKeySizeIn = 72);
         ~ECKey();
 
 
@@ -280,7 +287,7 @@ namespace LLC
          *  @return True if the Signature was created successfully.
          *
          **/
-        bool SignCompact(uint256_t hash, std::vector<unsigned char>& vchSig);
+        bool SignCompact(uint256_t hash, std::vector<uint8_t>& vchSig);
 
 
         /** SetCompactSignature
@@ -296,7 +303,7 @@ namespace LLC
          *  @return True if the Signature was set.
          *
          **/
-        bool SetCompactSignature(uint256_t hash, const std::vector<unsigned char>& vchSig);
+        bool SetCompactSignature(uint256_t hash, const std::vector<uint8_t>& vchSig);
 
 
         /** Verify
