@@ -205,7 +205,9 @@ namespace debug
             {
                 confFileParams += argItem.first;
 
-                if (!argItem.second[i].empty())
+                if (argItem.first.compare(0, 12, "-rpcpassword") == 0)
+                    confFileParams += "=xxxxx";
+                else if (!argItem.second[i].empty())
                     confFileParams += "=" + argItem.second[i];
 
                 confFileParams += " ";
@@ -221,7 +223,13 @@ namespace debug
         std::string cmdLineParms = "";
 
         for (int i = 1; i < argc; i++)
-            cmdLineParms += std::string(argv[i]) + " ";
+        {
+
+            if (std::string(argv[i]).compare(0, 12, "-rpcpassword") == 0)
+                cmdLineParms += "-rpcpassword=xxxxx ";
+            else
+                cmdLineParms += std::string(argv[i]) + " ";
+        }
 
         if (cmdLineParms == "")
             cmdLineParms = "(none)";
