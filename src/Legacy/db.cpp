@@ -120,8 +120,8 @@ namespace Legacy
                 dbenv->set_cachesize(nDbCache / 1024, (nDbCache % 1024)*1048576, 1);
                 dbenv->set_lg_bsize(1048576);
                 dbenv->set_lg_max(10485760);
-                dbenv->set_lk_max_locks(10000);
-                dbenv->set_lk_max_objects(10000);
+                //dbenv->set_lk_max_locks(10000);
+                //dbenv->set_lk_max_objects(10000);
                 //dbenv->set_errfile(fopen(pathErrorFile.c_str(), "a")); /// debug
                 dbenv->set_flags(DB_TXN_WRITE_NOSYNC, 1);
                 dbenv->set_flags(DB_AUTO_COMMIT, 1);
@@ -137,7 +137,7 @@ namespace Legacy
                  * DB_RECOVER    - Run recovery before opening environment, if necessary
                  */
                 uint32_t dbFlags =  DB_CREATE     |
-                                    DB_INIT_LOCK  |
+                                    // DB_INIT_LOCK  |
                                     DB_INIT_LOG   |
                                     DB_INIT_MPOOL |
                                     DB_INIT_TXN   |
@@ -663,6 +663,46 @@ namespace Legacy
     }
 
 
+    /* Shut down the Berkeley database environment for this instance. */
+    void BerkeleyDB::EnvShutdown()
+    {
+        debug::log(0, FUNCTION, "Shutting down Legacy Berkeley database environment for ", strDbFile);
+
+        LOCK(cs_db);
+
+        CloseHandle();
+
+        if (dbenv != nullptr)
+        {
+             /* Flush log data to the dat file and detach the file */
+            debug::log(2, FUNCTION, strDbFile, " checkpoint");
+            dbenv->txn_checkpoint(0, 0, 0);
+
+            debug::log(2, FUNCTION, strDbFile, " detach");
+            dbenv->lsn_reset(strDbFile.c_str(), 0);
+
+            debug::log(2, FUNCTION, strDbFile, " closed");
+
+            // /* Remove log files */
+            char** listp;
+            dbenv->log_archive(&listp, DB_ARCH_REMOVE);
+
+            /* Shut down the database environment */
+            try
+            {
+                dbenv->close(0);
+            }
+            catch(const DbException& e)
+            {
+                debug::log(0, FUNCTION, "Exception: ", e.what(), "(", e.get_errno(), ")");
+            }
+
+            delete dbenv;
+            dbenv = nullptr;
+        }
+    }
+
+
     /* Static methods */
 
     /* Retrieves the BerkeleyDB instance that corresponds to a given database file. */
@@ -677,89 +717,71 @@ namespace Legacy
         {
             LOCK(BerkeleyDB::mapMutex);
 
-            if (mapBerkeleyInstances.count(strFileIn) == 0)
-                mapBerkeleyInstances[strFileIn] = new BerkeleyDB(strFileIn);
-
-            return *mapBerkeleyInstances[strFileIn];
+            if (mapBerkeleyInstances.count(strFileIn) > 0)
+                return *mapBerkeleyInstances[strFileIn];
         }
+
+        /* Initialize outside map lock, which requires a bit of backbending if another thread adds to map while we do it */
+        BerkeleyDB* pNewDb = new BerkeleyDB(strFileIn);
+        BerkeleyDB* pDbToReturn = nullptr;
+        bool fAlreadyHaveDb = false;
+
+        {
+            LOCK(BerkeleyDB::mapMutex);
+
+            if (mapBerkeleyInstances.count(strFileIn) > 0)
+            {
+                pDbToReturn = mapBerkeleyInstances[strFileIn];
+                fAlreadyHaveDb = true;
+            }
+            else 
+            {
+                pDbToReturn = pNewDb;
+                mapBerkeleyInstances[strFileIn] = pNewDb;
+            }
+        }
+
+        if (fAlreadyHaveDb)
+        {
+            /* Don't have to lock around these calls because nobody else could possibly be using pNewDb */
+            pNewDb->CloseHandle();
+            pNewDb->dbenv->close(0);
+            delete pNewDb;
+            pNewDb = nullptr;
+        }
+
+        return *pDbToReturn;
     }
 
 
-    /* Called to shut down the Berkeley database environment in each BerkeleyDB instance */
-    void BerkeleyDB::EnvShutdown()
+    /* Retrieves a list of all open BerkeleyDB instances. */
+    std::vector<BerkeleyDB*> BerkeleyDB::GetInstances()
     {
-        debug::log(0, FUNCTION, "Shutting down Legacy Berkeley database environment");
-
-        std::map<std::string, BerkeleyDB*> mapDbInstancesToShutdown;
+        std::vector<BerkeleyDB*> vDatabases;
 
         {
-            /* Lock map access */
             LOCK(BerkeleyDB::mapMutex);
 
-            /* Copy all map entries to get shutdown list, then release map lock. */
             for (const auto& mapEntry : mapBerkeleyInstances)
-                mapDbInstancesToShutdown[mapEntry.first] = mapBerkeleyInstances[mapEntry.first];
-
+                vDatabases.push_back(mapEntry.second);
         }
 
-        for (auto& mapEntry : mapDbInstancesToShutdown)
+        return vDatabases;
+    }
+
+
+    /* Removes a closed instance from the database environment. */
+    void BerkeleyDB::RemoveInstance(const std::string& strFileIn)
+    {
+        LOCK(BerkeleyDB::mapMutex);
+
+        if (mapBerkeleyInstances.count(strFileIn) > 0)
         {
-            if (mapEntry.second != nullptr)
-            {
-                BerkeleyDB* pdbToClose = mapEntry.second;
-
-                {
-                    //LOCK(pdbToClose->cs_db);
-
-                    if (pdbToClose->pdb != nullptr)
-                        pdbToClose->DBFlush();
-                        // pdbToClose->CloseHandle();
-
-                    if (pdbToClose->dbenv != nullptr)
-                    {
-                        //  /* Flush log data to the dat file and detach the file */
-                        // debug::log(2, FUNCTION, pdbToClose->strDbFile, " checkpoint");
-                        // pdbToClose->dbenv->txn_checkpoint(0, 0, 0);
-
-                        // debug::log(2, FUNCTION, pdbToClose->strDbFile, " detach");
-                        // pdbToClose->dbenv->lsn_reset(pdbToClose->strDbFile.c_str(), 0);
-
-                        // debug::log(2, FUNCTION, pdbToClose->strDbFile, " closed");
-
-                        // // /* Remove log files */
-                        // char** listp;
-                        // pdbToClose->dbenv->log_archive(&listp, DB_ARCH_REMOVE);
-
-                        /* Shut down the database environment */
-                        try
-                        {
-                            pdbToClose->dbenv->close(0);
-                        }
-                        catch(const DbException& e)
-                        {
-                            debug::log(0, FUNCTION, "Exception: ", e.what(), "(", e.get_errno(), ")");
-                        }
-
-                        delete pdbToClose->dbenv;
-                        pdbToClose->dbenv = nullptr;
-                    }
-
-                } //end cs_db lock
-
-                delete pdbToClose;
-
-                pdbToClose = nullptr;
-                mapEntry.second = nullptr;
-            }
-        } 
-
-        {
-            /* Lock map access again so we can clear map */
-            LOCK(BerkeleyDB::mapMutex);
-
-            mapBerkeleyInstances.clear();
-
-        } 
+            BerkeleyDB* dbToRemove = mapBerkeleyInstances[strFileIn];
+            mapBerkeleyInstances.erase(strFileIn);
+            delete dbToRemove;
+            dbToRemove = nullptr;
+        }
     }
 
 }

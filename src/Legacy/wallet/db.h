@@ -164,6 +164,19 @@ namespace Legacy
         BerkeleyDB& operator= (const BerkeleyDB&) = delete;
 
 
+        /** GetDatabaseFile
+         *
+         *  Retrieve the file name backing this database file.
+         *
+         *  @return the database file name
+         *
+         **/
+        inline std::string GetDatabaseFile() const
+        {
+            return strDbFile;
+        }
+
+
         /** Read
          *
          *  Read a value from a database key-value pair.
@@ -475,6 +488,16 @@ namespace Legacy
         bool DBRewrite();
 
 
+        /** EnvShutdown
+         *
+         *  Shut down the Berkeley database environment for this instance.
+         *
+         *  Call this on system shutdown to flush, checkpoint, and detach the backing database file. 
+         *
+         **/
+        void EnvShutdown();
+
+
         /* Static Methods */
 
         /** GetInstance
@@ -493,14 +516,26 @@ namespace Legacy
         static BerkeleyDB& GetInstance(const std::string& strFileIn);
 
 
-        /** EnvShutdown
+        /** GetInstances
          *
-         *  Called to shut down the Berkeley database environment across all open instances.
+         *  Retrieves a list of all open BerkeleyDB instances.
          *
-         *  Call this on system shutdown to flush, checkpoint, and detach the backing database file. 
+         *  @return vector of pointers to BerkeleyDB instances
          *
          **/
-        static void EnvShutdown();
+        static std::vector<BerkeleyDB*> GetInstances();
+
+
+        /** RemoveInstance
+         *
+         *  Removes a closed instance from the database environment. Call this
+         *  after calling EnvShutdown on an instance to clean up resources.
+         *
+         *  @param strFileIn[in] File name of the db instance to remove
+         *
+         **/
+        static void RemoveInstance(const std::string& strFileIn);
+
 
     };
 
