@@ -172,7 +172,7 @@ namespace LLP
        if(!addr.IsValid())
             return;
 
-       /* Make sure manager is enabled. */
+       /* Add the address to the address manager if it exists. */
        if(pAddressManager)
           pAddressManager->AddAddress(addr, ConnectState::NEW);
    }
@@ -187,7 +187,14 @@ namespace LLP
 
        /* Make sure address is valid. */
        if(!addrConnect.IsValid())
-            return false;
+       {
+           /* Ban the address. */
+           if(pAddressManager)
+              pAddressManager->Ban(addrConnect);
+
+           return false;
+       }
+
 
        /* Create new DDOS Filter if Needed. */
        if(fDDOS.load())
@@ -210,7 +217,17 @@ namespace LLP
 
        /* Attempt the connection. */
        if(!dt->AddConnection(addrConnect, DDOS_MAP[addrConnect]))
+       {
+           /* Add the address to the address manager if it exists. */
+           if(pAddressManager)
+              pAddressManager->AddAddress(addrConnect, ConnectState::FAILED);
+
            return false;
+       }
+
+       /* Add the address to the address manager if it exists. */
+       if(pAddressManager)
+          pAddressManager->AddAddress(addrConnect, ConnectState::CONNECTED);
 
        return true;
    }
@@ -354,10 +371,7 @@ namespace LLP
                 /* Attempt the connection. */
                 debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
 
-                if(AddConnection(addr.ToStringIP(), addr.GetPort()))
-                    pAddressManager->AddAddress(addr, ConnectState::CONNECTED);
-                else
-                    pAddressManager->AddAddress(addr, ConnectState::FAILED);
+                AddConnection(addr.ToStringIP(), addr.GetPort());
             }
 
             debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
