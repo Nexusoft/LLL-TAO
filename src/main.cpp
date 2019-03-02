@@ -105,7 +105,7 @@ namespace LLP
     template <class ProtocolType>
     void HandleManualConnections(Server<ProtocolType> *pServer)
     {
-        /* -connect means  try to establish a connection. */
+        /* -connect means try to establish a connection first. */
         if(config::mapMultiArgs["-connect"].size() > 0)
         {
             /* Add connections and resolve potential DNS lookups. */
@@ -113,7 +113,7 @@ namespace LLP
                 pServer->AddConnection(node, pServer->GetPort(), true);
         }
 
-        /* -addnode means add to address manager. */
+        /* -addnode means add to address manager and let it make connections. */
         if(config::mapMultiArgs["-addnode"].size() > 0)
         {
             /* Add nodes and resolve potential DNS lookups. */
@@ -146,6 +146,8 @@ namespace LLP
         uint32_t timespan = static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 60));
         bool f_listen = config::GetBoolArg(std::string("-listen"), true);
         bool f_meter = config::GetBoolArg(std::string("-meters"), false);
+
+        /* If a manual connection is specified, turn off address manager. */
         bool f_manager = config::GetBoolArg(std::string("-manager"), true);
 
         return new Server<ProtocolType>(

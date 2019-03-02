@@ -57,11 +57,11 @@ namespace Legacy
 
     public:
         /** Defines the default number of keys contained by a key pool **/
-        static const uint64_t DEFAULT_KEY_POOL_SIZE = 100;
+        #define DEFAULT_KEY_POOL_SIZE 100
 
 
         /** Defines the minimum key pool size **/
-        static const uint64_t MINIMUM_KEY_POOL_SIZE = 0;
+        #define MINIMUM_KEY_POOL_SIZE 0
 
 
     private:

@@ -54,10 +54,10 @@ namespace Legacy
             setKeyPool.clear();
 
             /* Generate a new key pool with a full set of keys */
-            const uint64_t nKeyPoolSizeSetting = std::max((int64_t)0, config::GetArg("-keypool", KeyPool::DEFAULT_KEY_POOL_SIZE));
-            const uint64_t nKeys = std::max(nKeyPoolSizeSetting, MINIMUM_KEY_POOL_SIZE);
+            const uint64_t nKeyPoolSizeSetting = std::max((uint64_t)0, (uint64_t)config::GetArg("-keypool", DEFAULT_KEY_POOL_SIZE));
+            const uint64_t nKeys = std::max(nKeyPoolSizeSetting, (uint64_t)MINIMUM_KEY_POOL_SIZE);
 
-            for (uint64_t i = 0; i < nKeys; i++)
+            for (uint64_t i = 0; i < nKeys; ++i)
             {
                 uint64_t nPoolIndex = i + 1;
 
@@ -89,8 +89,8 @@ namespace Legacy
             uint64_t nStartingSize = setKeyPool.size();
 
             /* Desired key pool size */
-            const uint64_t nKeyPoolSizeSetting = std::max((int64_t)0, config::GetArg("-keypool", KeyPool::DEFAULT_KEY_POOL_SIZE));
-            const uint64_t nTargetSize = std::max(nKeyPoolSizeSetting, MINIMUM_KEY_POOL_SIZE);
+            const uint64_t nKeyPoolSizeSetting = std::max((uint64_t)0, (uint64_t)config::GetArg("-keypool", DEFAULT_KEY_POOL_SIZE));
+            const uint64_t nTargetSize = std::max(nKeyPoolSizeSetting, (uint64_t)MINIMUM_KEY_POOL_SIZE);
 
             if (nStartingSize >= nTargetSize)
             	return true; // pool already filled
