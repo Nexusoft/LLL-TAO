@@ -18,7 +18,11 @@ ________________________________________________________________________________
 #include <string>
 
 #ifndef MAX_PATH
-#define MAX_PATH 256
+#ifdef WIN32
+#define MAX_PATH 260
+#else
+#define MAX_PATH 4096
+#endif
 #endif
 
 namespace filesystem

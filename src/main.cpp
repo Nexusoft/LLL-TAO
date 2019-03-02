@@ -255,8 +255,8 @@ int main(int argc, char** argv)
     SetupSignals();
 
 
-    /* Read the configuration file. */
-    config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
+    /* Read the configuration file. Pass argc and argv for possible -datadir setting */
+    config::ReadConfigFile(config::mapArgs, config::mapMultiArgs, argc, argv);
 
 
     /* Parse out the parameters */
@@ -265,6 +265,7 @@ int main(int argc, char** argv)
 
     /* Once we have read in the CLI paramters and config file, cache the args into global variables*/
     config::CacheArgs();
+
 
     /* Handle Commandline switch */
     for (int i = 1; i < argc; ++i)
@@ -282,6 +283,7 @@ int main(int argc, char** argv)
     if(!debug::init())
         printf("Unable to initalize system logging\n");
 
+
     /* Log system startup now, after branching to API/RPC where appropriate */
     debug::InitializeLog(argc, argv);
 
@@ -291,7 +293,6 @@ int main(int argc, char** argv)
     {
         Daemonize();
     }
-
 
 
     /* Create directories if they don't exist yet. */
@@ -336,6 +337,7 @@ int main(int argc, char** argv)
         else
             return debug::error("Failed loading wallet.dat");
     }
+
 
     /** Rebroadcast transactions. **/
     Legacy::Wallet::GetInstance().ResendWalletTransactions();
